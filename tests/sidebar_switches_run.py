@@ -99,7 +99,8 @@ check("A: every switch keeps the explanation its old switch had (shown on the bo
   for _, k in ipairs({ "qol>chartoolkit", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
     local sw = found[k]; if not (sw and type(sw.desc) == "string" and #sw.desc > 20) then return false end
   end
-  return found["bonus>datapanels"].desc:find("Master switch", 1, true) ~= nil
+  -- (UI-65, 2026-11-07: the text was shortened from "Master switch. Off: ..." to two sentences)
+  return found["bonus>datapanels"].desc:find("Turns every data panel on or off", 1, true) ~= nil
 end)())
 end)
 

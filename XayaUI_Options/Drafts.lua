@@ -608,7 +608,7 @@ function ns.BuildDraftsPage()
             end },
         toggle = { type = "execute", order = -2,
             name = function() return ns.DraftsEnabled() and "Turn drafts off" or "Turn drafts on" end,
-            desc = "Turning drafts on starts from a clean slate: the rules as they are now count as saved. Turning them off keeps every edit you have made. Drafts already on this tab stay here either way.",
+            desc = "Turning drafts on counts the rules as they are now as saved. Turning them off keeps every edit and every draft.",
             func = function()
                 local ui = CueRulesDB and CueRulesDB.ui
                 if not ui then return end
@@ -636,7 +636,7 @@ function ns.BuildDraftsPage()
         local box = {
             head = { type = "description", order = 1, width = "relative", relWidth = 0.72, fontSize = "medium", name = head },
             restore = { type = "execute", order = 2, width = "relative", relWidth = 0.13, name = "Restore",
-                desc = "Put this draft back in the editor: it is loaded into its rule (replacing the rule's current version). It is not saved until you select Save changes.",
+                desc = "Loads this draft into its rule, replacing the current version. Not saved until you select Save changes.",
                 func = function() ns.DraftRestore(d.id) end },
             delete = { type = "execute", order = 3, width = "relative", relWidth = 0.11, name = "Delete", confirm = function() return ns.DraftsConfirmDelete() end, confirmText = "Delete this draft for good?",
                 func = function() ns.DraftDelete(d.id) end },

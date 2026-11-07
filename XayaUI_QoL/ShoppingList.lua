@@ -956,15 +956,15 @@ function ns.BuildShoppingListPage(Notify)
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your crafting shopping list: the recipes you track, with their reagents (have / need), and what is missing on your gear: an enchant on a slot that takes one, a gem for an empty socket, each with your usual choice. Click a name while the Auction House is open and it searches for it. Off by default." },
         panel = { type = "toggle", order = 2, width = "full", name = "XayaUI's Shopping List panel", disabled = off,
-            desc = "A movable panel in the theme: Missing on your gear, To buy, and your tracked recipes. /xui shop shows or hides it.",
+            desc = "Shows a movable panel of what your gear is missing, what to buy and your tracked recipes. /xui shop shows or hides it.",
             get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed(v and true or nil) end },
         tracker = { type = "toggle", order = 3, width = "full", name = "Restyle Blizzard's Professions list (objective tracker)", disabled = off,
-            desc = "The tracked recipes in Blizzard's objective tracker in the theme's colours: header, recipe names, reagents (finished ones muted). The rest of the objective tracker is untouched for now.",
+            desc = "Colours the tracked recipes in the objective tracker with the theme. Finished reagents are muted.",
             get = function() return C().tracker end, set = function(_, v) C().tracker = v and true or false; Changed() end },
         fontSize = { type = "range", order = 4, name = "Text size", min = 8, max = 16, step = 1, disabled = off,
             get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
         defHdr = { type = "header", order = 10, name = "Your defaults",
-            desc = "One suggestion per slot: the default you set here, else the enchant (gem) XayaUI has seen most on it. Type a name, or shift-click an item into the box. Empty = back to the most used." },
+            desc = "Sets the suggested enchant or gem here: type a name or shift-click an item. Empty uses the one seen most." },
         histHdr = { type = "header", order = 30, name = "History" },
         forget = { type = "execute", order = 31, name = "Forget what this character used", disabled = off,
             desc = "Clears the counts of enchants and gems XayaUI has seen on this character's gear (your defaults stay).",
@@ -989,7 +989,7 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
+    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on; off, nothing of it runs. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
         get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed(v and true or nil) end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }

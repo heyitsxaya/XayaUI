@@ -12,7 +12,7 @@ local unpack = unpack or table.unpack
 
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
     return { type = "input", order = order, width = "full", name = "Name  (optional: shown in gray under the trigger number)",
-        desc = "Up to 30 characters. The trigger number always stays in the title; the name appears beneath it and in brackets in dropdowns.",
+        desc = "Names this trigger, up to 30 characters. The name shows under the trigger number and in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)
             v = tostring(v or ""):gsub("[%c|]", ""):sub(1, 30)
@@ -316,7 +316,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
         return vals, order
     end
     args.xActivate = { type = "select", name = "This rule is activated by", order = 0.25, width = "double",
-        desc = "Which trigger switches the rule on. ALL needs every trigger true (the old behavior). ANY needs just one of them. Choosing one trigger makes that trigger alone decide; the others no longer have to be true, but their lights still show. Conditions on the Conditions tab can still read every trigger separately.",
+        desc = "Sets what switches the rule on: ALL needs every trigger true, ANY needs one, or one trigger decides alone. Conditions can still read every trigger.",
         hidden = function() return #ns.TriggerSequence(rule) < 2 end,
         values = function() local v = ActivateChoices(); return v end,
         sorting = function() local _, o = ActivateChoices(); return o end,
@@ -329,7 +329,7 @@ function ns.BuildExtraTriggerArgs(rule, H)
     args.xMode = H.Sel(X, "mode", "Combine the additional triggers", 0.3,
         { all = "ALL of them must be true", any = "ANY one of them is enough" }, { "all", "any" }, onN,
         { width = "double", hidden = function() return #X.list < 2 or (rule.trigMode ~= nil and rule.trigMode ~= "all") end,
-          desc = "Blank counts as ALL. This only combines the additional triggers with each other. It is not used while 'This rule is activated by' is set to ANY or to one trigger." })
+          desc = "Combines the additional triggers with each other; blank counts as ALL. Not used while 'This rule is activated by' is ANY or one trigger." })
 
     local P = ns.TriggerPositions(rule)
     for j, t in ipairs(X.list) do

@@ -2,7 +2,7 @@
 -- QAWalks-display.lua (XayaUI_DevAssist 0.7.11): in-game QA walkthroughs for the UI bugs session's work (branch
 -- claude/ui-bugs-focused): the display standard (UI-47 / UI-48: tab rows, off pages, switch hovers), the theme tie-in (UI-49 / UI-50),
 -- the Calculator page's info icon (UI-53), Release Guard (UI-57 / UI-58), the stat labels and the standard GCD (UI-62 to UI-64).
--- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78); (0.7.21) when the Shopping List shows itself (UI-77 part 2).
+-- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78); (0.7.21) when the Shopping List shows itself (UI-77 part 2); (0.7.22) brief hover texts (UI-65).
 -- Standing rule V21 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough here sets prefill = true: the addon's own
 -- verdict is offered on "Accept", and nothing is recorded without her click. Steps the addon cannot judge say what to look at and are
@@ -512,4 +512,42 @@ QA.Register("ui-shop-autoshow", { title = "Shopping List: shows itself only at t
     { text = "Close it with its X, then type |cffffd100/xui shop|r.\n\n|cffffd100Expect:|r /xui shop opens it again any time.",
         check = function() local c, shown = ShopState(); if not c then return false, shown end; return shown, shown and "the panel is showing" or "the panel is not showing" end },
     { text = "Your look: with nothing missing on your gear, does it now stay away until you visit the Auction House or ask for it? Pass if yes; Fail and say when it still popped up.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 13. Brief hover texts (UI-65; every changed addon's version bumped, Dev Assist 0.7.22)
+-------------------------------------------------------------------------------
+-- sentences in a hover text: the first line only (lines after it are a list of the choices, one per line), and a "?" right after a lone
+-- capital (the "E?" mark) does not end one
+local function Sentences(s)
+    s = tostring(s or ""):match("^[^\n]*"):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("(%f[%w]%u)%?", "%1")
+    s = s:gsub("e%.g%.", "eg"):gsub("i%.e%.", "ie"):gsub("etc%.", "etc"):gsub("vs%.", "vs"):gsub("(%d)%.(%d)", "%1%2")
+    local n = 0
+    for _ in (s .. " "):gmatch("[%.!?]%s") do n = n + 1 end
+    if not s:match("[%.!?]%s*$") and s:match("%S") then n = n + 1 end
+    return n
+end
+QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two sentences", qa = "B234", order = 272, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens and every option's hover text is read.\n\n|cffffd100Expect:|r none has more than two sentences (the note lists any that do).",
+        setup = function() local ns = NS(); if ns and ns.LoadOptions then ns.LoadOptions() end end,
+        check = function()
+            local ns = NS()
+            local reg = LibStub and LibStub("AceConfigRegistry-3.0", true)
+            local t = reg and reg:GetOptionsTable("CueRules", "dialog", "AceConfigDialog-3.0")
+            if type(t) == "function" then t = t("dialog", "AceConfigDialog-3.0") end
+            if type(t) ~= "table" then return false, "the settings window's options were not found (open it once)" end
+            local n, long, seen = 0, {}, {}
+            local function walk(node, d)
+                if type(node) ~= "table" or d > 12 or seen[node] then return end
+                seen[node] = true
+                if type(node.desc) == "string" and node.desc ~= "" then
+                    n = n + 1
+                    if Sentences(node.desc) > 2 and #long < 6 then long[#long + 1] = tostring(node.name or "?") end
+                end
+                if type(node.args) == "table" then for _, c in pairs(node.args) do walk(c, d + 1) end end
+            end
+            walk(t, 0)
+            return #long == 0, n .. " hover texts read" .. (#long > 0 and ("; longer than two sentences: " .. table.concat(long, ", ")) or "")
+        end },
+    { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },
 } })

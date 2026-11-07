@@ -25,7 +25,7 @@ function T.BuildArgs(refresh)
 
     args.baseHdr = { type = "header", order = nx(), name = "Base theme" }
     args.base = { type = "select", order = nx(), width = "double", name = "Theme",
-        desc = "XUI default (purple), Class colors (follows your character's class), Light mode, a color blind safe palette, a theme you saved or imported, or Custom: your own theme, with the addon background and every color yours to set. Changing any color below switches you to Custom automatically.",
+        desc = "Picks a built-in, saved or imported theme, or Custom to set every color yourself. Changing any color below switches to Custom.",
         values = function()
             local v = { default = "XUI default (purple)", class = "Class colors", custom = "Custom (make your own)" }
             for _, k in ipairs(T.BUILTIN_ORDER) do v[k] = T.BUILTIN[k].name end
@@ -76,7 +76,7 @@ function T.BuildArgs(refresh)
     cust.args.info = { type = "description", order = cx(), width = "full", fontSize = "medium",
         name = "This is your own theme. Set the addon background and window below, then pick any other color in the Palette. Name and Save it at the bottom to keep it, or Export it to share." }
     cust.args.under = { type = "select", order = cx(), width = "double", name = "Start from",
-        desc = "The theme your colors sit on top of. Colors you have changed are kept when you pick a different one; 'Clear my colors' removes them.",
+        desc = "Sets the theme your colors sit on top of. Your changed colors are kept; 'Clear my colors' removes them.",
         values = function()
             local v = { default = "XUI default (purple)", class = "Class colors" }
             for _, k in ipairs(T.BUILTIN_ORDER) do v[k] = T.BUILTIN[k].name end
@@ -121,7 +121,7 @@ function T.BuildArgs(refresh)
         get = function() local th = DB(); return th and th.size or "M" end,
         set = function(_, v) T.SetSize(v); refresh() end }
     args.advanced = { type = "toggle", order = nx(), width = "full", name = "Advanced customization",
-        desc = "Offers more theme options: the tab colours, the tree bars and per-class colour overrides. Off (the default): they are not offered and the theme's own colours are used.",
+        desc = "Offers more theme options: tab colours, tree bars and per-class colour overrides. Off by default.",
         get = function() return T.Advanced() end,
         set = function(_, v)
             if not CueRulesDB then return end

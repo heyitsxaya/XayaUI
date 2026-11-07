@@ -89,7 +89,7 @@ function ns.OptionsApi.ReskinOverview(args)
     end
     args.reskinOverview = { type = "group", name = "Overview", order = 0, args = {
         enable = { type = "toggle", order = 1, width = "full", name = ns.OptionsApi.RESKIN_SWITCH,
-            desc = "Every reskin in this tab at once. Unticked: every reskin is off and Blizzard's own look is back; each keeps its own tick box for when this is ticked again. The reskins are listed in this tab after a reload.",
+            desc = "Turns every reskin in this tab on or off at once; each keeps its own tick box. The reskins are listed in this tab after a reload.",
             get = function() return ns.ReskinTabOn() end,
             set = function(_, v)
                 ns.SetReskinTab(v and true or false)
@@ -470,8 +470,8 @@ end
 local function SearchBox(order, pick, name, kind)
     local item = kind == "item"
     return { type = "input", name = name or (item and "Search by item name" or "Search by spell name"), order = order, width = "double",
-        desc = item and "Type part of an item name (every word, any order; * matches anything). A list with icons pops up; click one (or press Enter for the first) to fill in its item ID. Also accepts an ID. Finds items in your bags, bank, and worn gear, plus every item your game client has already seen; an item it has never loaded will not appear, so type its ID instead (Wowhead shows it in the URL)."
-            or "Type part of a name. A list with icons pops up; click one (or press Enter for the first) to fill in its ID. Also accepts an ID. Matches that belong to your class (every spec and hero tree) are listed first, each with what it is; small typos, missing spaces and words in any order still find them. Every spell ID that shares the name is listed, so pick the one that is the right kind.",
+        desc = item and "Type part of an item name (* matches anything) and pick from the list, or type an ID. Finds items you own or your game has already seen; type the ID for any other."
+            or "Type part of a name and pick from the list, or type an ID. Your class's matches come first; when several share the name, pick the right kind.",
         arg = { xuiSearch = pick, xuiSearchKind = kind },
         get = function() return "" end, set = function() end }
 end
@@ -703,11 +703,11 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
             end }
     end
     body.all = { type = "toggle", order = 100, width = "full", name = "All",
-        desc = "Any is fine (no restriction). Nothing chosen means the same; this just states it.",
+        desc = "Allows any (no restriction), the same as choosing nothing.",
         get = function() return getSet()["*"] == true end,
         set = function(_, v) local s = getSet(); wipe(s); if v then s["*"] = true end; onChange() end }
     local useArg = { type = "toggle", order = 1, width = "full", name = name,
-        desc = "Tick to restrict this rule by " .. name:lower() .. ". The choices open below once ticked, same as the Talent list. Unticking clears them and removes the restriction: this rule then fires for any " .. name:lower() .. ".",
+        desc = "Restricts this rule by " .. name:lower() .. "; the choices open below. Unticking clears them and removes the restriction.",
         get = isOn,
         set = function(_, v)
             ld()[useKey] = v and true or false
@@ -723,8 +723,8 @@ function ns.RadioGroup(name, order, hiddenFn, getSet, choices, onChange, ld, use
         useArg.width = "normal"   -- the row's own tick box sits beside it
         alwaysArg = { type = "toggle", order = 1.2, width = "normal",
             name = "Always load: only this " .. (alwaysWord or name:lower()),
-            desc = "Always load ignores every load condition. Tick this to keep this one: the rule still loads only for the " ..
-                (alwaysWord or name:lower()) .. " ticked here. Unticked, Always load ignores it as well.",
+            desc = "Keeps this condition under Always load: the rule loads only for the " ..
+                (alwaysWord or name:lower()) .. " ticked here.",
             hidden = function() return ld().mode ~= "always" or not isOn() end,
             get = function() return ld()[alwaysKey] == true end,
             set = function(_, v) ld()[alwaysKey] = v and true or nil; onChange() end }
@@ -789,26 +789,26 @@ function ns.DifficultyChoices()
 end
 ns.LOAD_ID_ROWS = {
     { field = "mapIDs", name = "Zones (map IDs)",
-      desc = "Loads only in these zones. A zone covers the maps inside it (a city in its zone, a room in its city), so the zone's or the continent's ID is enough.",
+      desc = "Loads only in these zones. A zone's ID covers the maps inside it.",
       cur = function(p) return p.mapID, p.mapName end },
     { field = "instanceIDs", name = "Instances (instance IDs)",
       desc = "Loads only in these dungeons, raids or other instances, by the game's instance ID (in the open world it is the continent's).",
       cur = function(p) return p.instanceID, p.instanceName end },
     { field = "difficulties", name = "Difficulties (difficulty IDs)",
-      desc = "Loads only on these difficulties. 0 is the open world (no difficulty). Use the menu next to it to add one by its name.",
+      desc = "Loads only on these difficulties (0 is the open world). The menu beside it adds one by name.",
       cur = function(p) return p.difficultyID, p.difficultyName end },
     { field = "sizes", name = "Instance sizes (largest group)",
       desc = "Loads only in instances of these sizes: the largest group the instance allows, as the game reports it. 0 is the open world.",
       cur = function(p) return p.size end },
     { field = "encounterIDs", name = "Boss encounters (encounter IDs)",
-      desc = "Loads only during these boss encounters. The game gives the ID when the pull starts, so after a /reload in the middle of a pull it is unknown until the next pull, and the rule does not load. Add current adds the boss you are fighting, or the last one you fought.",
+      desc = "Loads only during these boss encounters; after a /reload mid-pull it waits for the next pull. Add current adds the boss you are fighting, or the last one.",
       cur = function(p)
           if p.encounterID and p.encounterID > 0 then return p.encounterID, p.encounterName end
           local last = ns.LastEncounter and ns.LastEncounter()
           if last then return last.id, (last.name or "?") .. ", last pulled" end
       end },
     { field = "equipped", name = "Items equipped (item IDs)",
-      desc = "Loads while one of these items is equipped. A minus before an ID: only while that item is NOT equipped. Use the search next to it to add an item you own.",
+      desc = "Loads while one of these items is equipped; a minus before an ID means NOT equipped. Use the search next to it to add an item you own.",
       cur = nil },
 }
 -- The rows of the "Zones, Instances, Bosses and Items" box. ld() returns the load table, changed() saves and redraws, locked() greys
@@ -876,7 +876,7 @@ local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
     }
     for i, ch in ipairs(choices) do
         args["c" .. i] = { type = "toggle", tristate = true, order = i, width = "double",
-            desc = "Click: selected. Click again: NOT (must not be this). Click again: cleared.",
+            desc = "Click to select it; click again for NOT (must not be this). A third click clears it.",
             name = function()
                 if getSet()[ch.id] == "not" then return "|cffff5555NOT|r  " .. ch.text end
                 return ch.text
@@ -1795,16 +1795,16 @@ local function BuildRule(i, rule)
             },
             cdState = ns.CdStateSelect(rule, on),
             countGCD = Tog(rule, "countGCD", "Count the global cooldown", 4.5, on,
-                { desc = "Ticked: while this spell is on the global cooldown it counts as on cooldown (not ready, no charge available). Unticked (default): the global cooldown is ignored." }),
+                { desc = "Counts the spell as on cooldown during the global cooldown. Off by default." }),
             countLOC = Tog(rule, "countLOC", "Count a lockout as cooldown", 4.55, on,
-                { desc = "Ticked: while a loss-of-control lockout (an interrupt or silence) blocks this spell, it counts as on cooldown. Unticked (default): only the spell's own cooldown counts." }),
+                { desc = "Counts the spell as on cooldown while an interrupt or silence locks it out. Off by default." }),
             exactSpell = Tog(rule, "exactSpell", "Exact spell ID", 4.56, on,
-                { desc = "Ticked: reads exactly this spell ID, even when a talent replaces it on your bar. Unticked (default): follows the replacement (the spell on your bar)." }),
+                { desc = "Reads exactly this spell ID, even when a talent replaces it on your bar. Off by default (follows the replacement)." }),
             -- "Seconds left" / "Charges" comparisons on the trigger itself (B2): a dropdown with its number box beside it
             cdTimeOp = Sel(rule, "cdTimeOp", "Seconds left", 4.6, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.cdTimeOp or "any" end,
-                  desc = "Only true while the cooldown has this much time left. Exact when the game shows it; in combat the duration engine's estimate; with no estimate yet the trigger is unknown." }),
+                  desc = "True only while the cooldown has this much time left. In combat this can be an estimate; with none yet the trigger is unknown." }),
             cdTimeSec = { type = "input", name = "Seconds", order = 4.61, width = "half",
                 hidden = function() return not ns.CooldownUsed(rule) or not rule.cdTimeOp or rule.cdTimeOp == "any" end,
                 get = function() return rule.cdTimeSec ~= nil and tostring(rule.cdTimeSec) or "" end,
@@ -1812,7 +1812,7 @@ local function BuildRule(i, rule)
             cdChargeOp = Sel(rule, "cdChargeOp", "Charges", 4.7, ns.CMP_OPS and ns.CMP_OPS.values or { any = "Any" }, ns.CMP_OPS and ns.CMP_OPS.order or { "any" },
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.cdChargeOp or "any" end,
-                  desc = "Only true while the spell has this many charges. Exact out of combat; in combat counted from your casts (exact at 0 and at full; 3+ charges also use the Cooldown Manager). Unknown keeps the trigger unknown." }),
+                  desc = "True only while the spell has this many charges. In combat the count comes from your casts." }),
             cdChargeVal = { type = "input", name = "Charges", order = 4.71, width = "half",
                 hidden = function() return not ns.CooldownUsed(rule) or not rule.cdChargeOp or rule.cdChargeOp == "any" end,
                 get = function() return rule.cdChargeVal ~= nil and tostring(rule.cdChargeVal) or "" end,
@@ -1827,7 +1827,7 @@ local function BuildRule(i, rule)
                 function() Changed(rule); Notify() end,
                 { get = function() return rule.buffTimeOp or "any" end,
                   hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" end,
-                  desc = "Only true while the buff has this much time left. In combat the time is exact when the game shows it, otherwise the duration engine's estimate; with no estimate yet the trigger is unknown and the rule waits." }),
+                  desc = "True only while the buff has this much time left. In combat this can be an estimate; with none yet the rule waits." }),
             buffTimeSec = { type = "input", name = "Seconds", order = 11.2, width = "half",
                 hidden = function() return not ns.BuffUsed(rule) or rule.buffState ~= "present" or not rule.buffTimeOp or rule.buffTimeOp == "any" end,
                 get = function() return rule.buffTimeSec ~= nil and tostring(rule.buffTimeSec) or "" end,
@@ -1851,7 +1851,7 @@ local function BuildRule(i, rule)
             end, "Also count these auras: search to add another", "aura"),
             buffAlt = {
                 type = "input", name = "Extra aura IDs (comma separated; any one counts)", order = 13.2, width = "full",
-                desc = "Other aura spell IDs that mean the same buff to this rule. The trigger is PRESENT when any listed aura is on you and MISSING only when all are absent. If none is present and the game hides one of them (combat), the answer is UNKNOWN and the rule does not fire. Delete an ID from the box to remove it.",
+                desc = "Other aura IDs that count as this same buff: present if any is on you, missing only if all are absent. Delete an ID from the box to remove it.",
                 get = function() local t = type(rule.buffAlt) == "table" and rule.buffAlt or {}; local o = {}; for i, v in ipairs(t) do o[i] = tostring(v) end; return table.concat(o, ", ") end,
                 set = function(_, v)
                     local out, seen = {}, { [tonumber(rule.buffID) or 0] = true }
@@ -1931,7 +1931,7 @@ local function BuildRule(i, rule)
     local function noMatch() return false end   -- every load option stays visible in every mode (0.5.77); Always / Never only decide whether they are used (note below)
     local loadArgs = {
         talentUse = { type = "toggle", name = "Talents", order = 1, width = "double",
-            desc = "Tick to require certain talents. Unticked = talents are ignored. The talent list appears below once ticked.",
+            desc = "Requires certain talents; the talent list appears below once ticked.",
             get = function() return rule.talentMode == "all" or rule.talentMode == "any" end,
             set = function(_, v)
                 if v then
@@ -1974,7 +1974,7 @@ local function BuildRule(i, rule)
     AddSquareRadio(talentBody, "talentMode", 2, TALENT_MODE_USED, TALENT_MODE_USED_ORDER,
         function() return rule.talentMode end,
         function(v) rule.talentMode = v; Changed(rule); Notify() end,
-        { desc = "ALL: every listed talent must match. ANY: one match is enough. Add talents below." })
+        { desc = "ALL: every listed talent must match; ANY: one match is enough. Add talents below." })
     local function talentsOn() return rule.talentMode == "all" or rule.talentMode == "any" end
     loadArgs.talents = { type = "group", inline = true, name = "Talent List", order = 1.5, hidden = function() return not talentsOn() end,
         args = {
@@ -1999,7 +1999,7 @@ local function BuildRule(i, rule)
     local loadModeKeys = AddSquareRadio(loadArgs, "loadMode", 0.5, LOAD_MODE, LOAD_MODE_ORDER,
         function() return rule.load.mode or "all" end,
         function(v) rule.load.mode = v; Changed(rule); Notify() end,
-        { desc = "Never: the rule never loads. Always: ignore every load condition. Match: use the conditions below (ALL must be true, or ANY one is enough). Only conditions you set count." })
+        { desc = "Sets when the rule loads: Never, Always (ignores load conditions), or Match the conditions you set below (ALL or ANY)." })
     for j, t in ipairs(rule.talents) do
         talentBody["talent" .. j] = {
             type = "group", inline = true, order = 5 + j * 0.01,
@@ -2192,10 +2192,10 @@ local function BuildRule(i, rule)
         type = "group", inline = true, name = "Texture", order = 10, args = {
             kind = Sel(V, "kind", "Source", 1, TEX_KIND, TEX_KIND_ORDER, function() Changed(rule); Notify() end,
                 { width = "double", hidden = function() return V.kind == "spellicon" end,
-                  desc = "An atlas is a named piece of Blizzard's built-in UI art, looked up by name instead of by file. Advanced: most people can ignore it and use 'Texture ID / path' or the art list." }),
+                  desc = "Picks where the art comes from. Atlas (Blizzard UI art by name) is advanced; most people use 'Texture ID / path' or the art list." }),
             iconSrc = Sel(V, "iconSrc", "Icon source", 1, ns.ICON_SRC, ns.ICON_SRC_ORDER, function() Changed(rule); Notify() end,
                 { width = "double", hidden = function() return V.kind ~= "spellicon" end, get = function() return V.iconSrc or "auto" end,
-                  desc = "Automatic follows the rule's triggers: the first one that has a spell or an item supplies the icon. Or search a spell or item yourself, or point at your own icon file." }),
+                  desc = "Automatic takes the icon from the rule's first trigger with a spell or item. Or pick a spell, an item, or your own icon file." }),
             iconAuto = { type = "description", order = 1.1, width = "full", fontSize = "medium",
                 hidden = function() return V.kind ~= "spellicon" or (V.iconSrc or "auto") ~= "auto" end,
                 name = function()
@@ -2251,7 +2251,7 @@ local function BuildRule(i, rule)
                 set = function(_, x) V.iconPath = x; Changed(rule); Notify() end },
             iconPath = { type = "input", name = "Or a file path (inside an AddOns folder), or a file ID", order = 1.5, width = "double",
                 hidden = function() return V.kind ~= "spellicon" or V.iconSrc ~= "file" end,
-                desc = "Example: Interface\\AddOns\\XayaUI_Media\\Icons\\myicon.png. The picture must be SQUARE and no bigger than 200x200 pixels (sizes like 32, 64 or 128 work best; the game needs powers of two). The game cannot report a file's size to XayaUI, so a wrong size is not detected here. The art is shown whole (no edge crop).",
+                desc = "Path to your icon, e.g. Interface\\AddOns\\XayaUI_Media\\Icons\\myicon.png. It must be square, at most 200x200, with power-of-two sides (32, 64, 128).",
                 get = function() return tostring(V.iconPath or "") end,
                 set = function(_, x) V.iconPath = tostring(x or ""):gsub("^%s+", ""):gsub("%s+$", ""); Changed(rule); Notify() end },
             iconPathNote = { type = "description", order = 1.6, width = "full", fontSize = "small",
@@ -2278,11 +2278,11 @@ local function BuildRule(i, rule)
                 end },
             sizeH = { type = "header", name = "Size & Orientation", order = 10 },
             w = Rng(V, "w", "Display width", 11, 8, 512, 1, on,
-                { desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. It is the sizing box: art of another shape is cropped by it, never stretched while Maintain aspect ratio is on. The art has its own size below." }),
+                { desc = "Sets the width of the display's box (border, swipe, glow, click area). Art of another shape is cropped to it; the art has its own size below." }),
             h = Rng(V, "h", "Display height", 12, 8, 512, 1, on,
-                { desc = "The size of the display itself: its box on screen, its border, cooldown swipe, glow, and the area you click to move it. It is the sizing box: art of another shape is cropped by it, never stretched while Maintain aspect ratio is on. The art has its own size below." }),
+                { desc = "Sets the height of the display's box (border, swipe, glow, click area). Art of another shape is cropped to it; the art has its own size below." }),
             keepAspect = { type = "toggle", name = "Maintain aspect ratio (art)", order = 12.5, width = "double",
-                desc = "For the art inside the display (icon, texture, progress texture). Turning it on resets the art to its own proportions (keeps its width, recomputes its height); while on, Icon width and height move together and new art snaps to its own proportions. The display box above is never changed by this, so it can crop the art. Art whose size the game cannot report (Blizzard alert file IDs) keeps its current proportions.",
+                desc = "Keeps the art in its own proportions: Icon width and height move together. The display box is not changed, so it can crop the art.",
                 get = function() return V.keepAspect ~= false end,
                 set = function(_, v)
                     V.keepAspect = v and true or false
@@ -2292,26 +2292,26 @@ local function BuildRule(i, rule)
                     on(); Notify()
                 end },
             iconW = Rng(V, "iconW", "Icon width (0 = same as display)", 13, 0, 512, 1, on, { set = ns.ArtAspectSet(V, "iconW", on),
-                desc = "The size of the art inside the display, centered. Larger than the display width: the sides are cropped. Smaller: the art is drawn smaller than the display. 0 follows the display (both axes while Maintain aspect ratio is on)." }),
+                desc = "Sets the art's width inside the display; wider than the display crops the sides. 0 follows the display." }),
             iconH = Rng(V, "iconH", "Icon height (0 = same as display)", 13.2, 0, 512, 1, on, { set = ns.ArtAspectSet(V, "iconH", on),
-                desc = "The size of the art inside the display, centered. Larger than the display height: the top and bottom are cropped. Smaller: the art is drawn smaller than the display. 0 follows the display (both axes while Maintain aspect ratio is on)." }),
+                desc = "Sets the art's height inside the display; taller than the display crops the top and bottom. 0 follows the display." }),
             rotation = Rng(V, "rotation", "Rotation (degrees)", 14, 0, 360, 1, on,
-                { desc = "Rotates the art about its center. Works best on square sizes; a square image shrinks slightly at diagonal angles so it is never cropped." }),
+                { desc = "Rotates the art about its center. Works best on square art." }),
             flipH = Tog(V, "flipH", "Mirror (flip horizontally)", 15, on),
             flipV = Tog(V, "flipV", "Flip vertically", 16, on),
             zoom = Rng(V, "zoom", "Zoom / crop edges", 17, 0, 0.3, 0.01, on),
             colorH = { type = "header", name = "Color & Blend", order = 20 },
             additive = Tog(V, "additive", "Additive blend", 21, on),
             desaturate = Tog(V, "desaturate", "Desaturate the base texture", 22, on,
-                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures gray the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
+                { width = "double", desc = "Grays the art; with a tint below it gives an even recolor. Locked on progress textures unless Advanced customization (Opacity & Fill) is on.",
                   disabled = function() return ProgLocked() end,
                   get = function() if ProgLocked() then return V.recolor and true or false end return V.desaturate and true or false end }),
             recolor = Tog(V, "recolor", "Tint the base texture", 23, on,
-                { desc = "Multiplies the (optionally desaturated) art by this color. With 'Additive blend' on, the color is tinted before it is added to the screen." }),
+                { desc = "Tints the art with this color." }),
             tint = Col(V, "tint", "Tint color", 23.5, on, { disabled = function() return not V.recolor end }),
             fadeH = { type = "header", name = "Fade, Opacity & Flash as the Buff Runs Out", order = 30 },
             fadeGrey = Tog(V, "fadeGrey", "Fade gradually as the buff runs out", 31, on, { width = "double",
-                desc = "Uses the Aura spell ID from the Trigger tab. Uses readable aura times; when Blizzard hides them (combat) it tries Blizzard's duration-object curves (experimental). Needs the aura present, so set Show to 'While the buff is present'. Preview shows a sample cycle." }),
+                desc = "Fades the art as the Trigger tab's aura runs out (experimental in combat). Needs Show set to 'While the buff is present'." }),
             fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - gray)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
                 { disabled = function() return not V.fadeGrey end }),
             fadeColor = Col(V, "fadeColor", "Fade color", 33, on,
@@ -2323,13 +2323,13 @@ local function BuildRule(i, rule)
                 { disabled = function() return not V.flash.enabled end }),
             desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
             hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double", hidden = true,   -- set on the rule's Display tab (0.6.3)
-                desc = "Hover this cue to see the tooltip of the spell or item it is about (the icon source chosen above, else the rule's first trigger). While on, the cue also sees the mouse pointer, but clicks still pass through to what is behind it." }),
+                desc = "Shows the spell or item's tooltip when you hover this cue. Clicks still pass through." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
-                desc = "Uses the Cooldown Spell ID (or the Aura spell ID if no Cooldown Spell ID is set). Hides the display whenever that spell is not currently placed on any of your 12 action bars, even if the rule would otherwise fire. Off by default so existing rules are unaffected." }),
+                desc = "Hides the display while the rule's spell is not on any of your action bars. Off by default." }),
             fxH = { type = "header", name = "Glow & Outline", order = 40 },
             glow = Tog(V, "glow", "Pulsing glow", 41, on),
             olOn = Tog(V.outline, "enabled", "Outline glow (pixel border + glow)", 42, on, { width = "double",
-                desc = "A crisp pixel border with an optional soft glow around it. Spell icons use this by default; other art can pick it under Outline style." }),
+                desc = "Draws a crisp pixel border with an optional soft glow. On by default for spell icons." }),
             olStyle = Sel(V.outline, "style", "Outline style", 42.1, OL_STYLE, OL_STYLE_ORDER, on, { width = "double", hidden = olHide }),
             olBorderOn = Tog(V.outline, "borderOn", "Pixel border", 42.2, on, { hidden = olHide }),
             olWidth = Rng(V.outline, "width", "Border thickness (px)", 43, 1, 10, 1, on, { hidden = olHide }),
@@ -2384,7 +2384,7 @@ local function BuildRule(i, rule)
             tint = Col(OV, "tint", "Overlay tint color", 6, on, { disabled = function() return not OV.enabled end }),
             desaturate = Tog(OV, "desaturate", "Desaturate the overlay first", 7, on,
                 { width = "double", disabled = function() return not OV.enabled or ProgLocked() end,
-                  desc = "Progress textures keep the top layer ungrayed by default (Advanced customization under Overlay Layer overrides this).",
+                  desc = "Grays the overlay layer. Progress textures keep it ungrayed unless Advanced customization (Overlay Layer) is on.",
                   get = function() if ProgLocked() then return false end return OV.desaturate and true or false end }),
             additive = Tog(OV, "additive", "Additive blend for the overlay", 8, on,
                 { width = "double", disabled = function() return not OV.enabled end }),
@@ -2400,7 +2400,7 @@ local function BuildRule(i, rule)
             alpha = Rng(V, "alpha", "Overall opacity (everything)", 1, 0, 1, 0.05, on),
             texAlpha = Rng(V, "texAlpha", "Base texture opacity", 2, 0, 1, 0.05, on,
                 { disabled = function() return ProgLocked() end,
-                  desc = "Progress textures link this to Overlay opacity below, preserving their ratio, unless Advanced customization (bottom of Overlay Layer) is on." }),
+                  desc = "On progress textures this follows Overlay opacity below, unless Advanced customization (Overlay Layer) is on." }),
             ovAlpha = Rng(OV, "alpha", "Overlay opacity", 3, 0, 1, 0.05, on, { disabled = function() return not OV.enabled end,
                 set = function(_, val)
                     if ProgLocked() then
@@ -2417,14 +2417,14 @@ local function BuildRule(i, rule)
             oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double", def = 1 }),
             fadeH = { type = "header", name = "Fade Opacity as the Buff Runs Out", order = 10 },
             fadeAlpha = Tog(V, "fadeAlpha", "Fade opacity", 11, on, { width = "double",
-                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the gray / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
+                desc = "Fades the opacity from the full-duration value to the expiry value. Needs 'Show' set to 'While the buff is present'." }),
             fadeAlphaMax = Rng(V, "fadeAlphaMax", "Opacity at full duration", 12, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not V.fadeAlpha end }),
             fadeAlphaMin = Rng(V, "fadeAlphaMin", "Opacity at expiry", 13, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not V.fadeAlpha end }),
             fillH = { type = "header", name = "Progress-Bar Wipe (Fill)", order = 20 },
             fillOn = Tog(FL, "enabled", "Wipe the art like a progress bar as the buff runs out", 21, on, { width = "full",
-                desc = "Shows only part of the picture, shrinking as time runs out. Works from readable aura times (and the preview sample cycle); while Blizzard hides the numbers the art simply stays full. Applies to the base and overlay layers, not the outline." }),
+                desc = "Wipes the art away as the buff runs out. Stays full while the game hides aura times." }),
             fillDir = Sel(FL, "dir", "Direction", 22, FILL_DIR, { "none", "bottom", "top", "left", "right" }, on,
                 { width = "double", disabled = function() return not FL.enabled end }),
             fillRev = Tog(FL, "reverse", "Reverse (fill up as time runs out)", 23, on,
@@ -2437,7 +2437,7 @@ local function BuildRule(i, rule)
             advanced = Tog(OV, "advanced", "Advanced customization (override the linked base/overlay opacity and tint defaults)", 30,
                 function() Changed(rule); Notify() end,
                 { width = "full", hidden = function() return not FL.enabled end,
-                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, grays automatically only when tinted, and the overlay never grays or dims. Tick this to set the base opacity, base gray, and overlay gray independently instead." }),
+                  desc = "Lets you set a progress texture's base opacity, base gray and overlay gray on their own. Off: they stay linked." }),
         },
     }
     ns.GatePane(rule, opacity.args, "fadeAlpha", "Fade opacity options", 11.5, function() return V.fadeAlpha end, { "fadeAlphaMax", "fadeAlphaMin" })
@@ -2451,7 +2451,7 @@ local function BuildRule(i, rule)
         type = "group", inline = true, name = "Position (Offset From the Anchor)", order = 20, args = {
             -- P1 (#268; Xaya 2026-11-06, her labels: "Anchor point" -> "Anchored to" -> "To <target>'s point")
             point = { type = "select", name = "Anchor point", order = 0.4, width = "double",
-                desc = "The point of this display that is placed. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                desc = "Sets which point of this display is placed; the display stays put. Ignored when snapped to a game frame or in dynamic groups.",
                 values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
                 get = function() local _, f = ns.VisualPoints(rule); return f end,
                 set = function(_, val) ns.SetVisualPoints(rule, val, nil); ns.MarkDirty(); Notify() end },
@@ -2467,7 +2467,7 @@ local function BuildRule(i, rule)
                     local kind, nm = ns.VisualAnchorTarget(rule)
                     return kind == "screen" and "To the screen's point" or ("To " .. nm .. "'s point")
                 end,
-                desc = "The point of what this display is anchored to (the screen, or its group's box) that X and Y are measured from. Changing it keeps the display exactly where it is and recalculates X / Y. Ignored while the display is snapped to a game frame, and in dynamic groups.",
+                desc = "Sets the point of the screen or group box that X and Y are measured from; the display stays put. Ignored when snapped to a game frame or in dynamic groups.",
                 values = ANCHOR_VALUES, sorting = ANCHOR_ORDER,
                 get = function() local a = ns.VisualPoints(rule); return a end,
                 set = function(_, val) ns.SetVisualPoints(rule, nil, val); ns.MarkDirty(); Notify() end },
@@ -2502,7 +2502,7 @@ local function BuildRule(i, rule)
     ns.GatePane(rule, durArgs, "decimals", "Tenths options", 2.5, function() return T.decimals end, { "decimalBelow" })
     ns.GateRest(rule, durArgs, "dur", "Text options", 5, function() return T.enabled end, { enabled = true })
     local cntArgs = TextStyleArgs(C, on, 10)
-    cntArgs.enabled = Tog(C, "enabled", "Show a count", 1, on, { desc = "Aura stacks or spell charges. Experimental under Midnight secrecy: the number can only be displayed, not compared." })
+    cntArgs.enabled = Tog(C, "enabled", "Show a count", 1, on, { desc = "Shows aura stacks or spell charges. Experimental: the number can only be shown, not compared." })
     cntArgs.source = Sel(C, "source", "Count of", 2, COUNT_SOURCE, COUNT_SOURCE_ORDER, on)
     -- #300: only counts the rule's triggers can have (stacks of an aura that stacks, charges of a spell with more than one); the choice in use stays
     local function CountSup() local okc, cs = pcall(ns.CountSupport or function() return { any = true, stacks = true, charges = true } end, rule); return okc and cs or { any = true, stacks = true, charges = true } end
@@ -2523,7 +2523,7 @@ local function BuildRule(i, rule)
     ns.GateRest(rule, cntArgs, "cnt", "Count options", 5, function() return C.enabled end, { enabled = true })
     local AB = V.absorb
     local absArgs = TextStyleArgs(AB, on, 10)
-    absArgs.enabled = Tog(AB, "enabled", "Show shield / absorb amount", 1, on, { desc = "Experimental under Midnight secrecy: the amount can only be displayed, not compared or used as a condition." })
+    absArgs.enabled = Tog(AB, "enabled", "Show shield / absorb amount", 1, on, { desc = "Shows the shield amount. Experimental: it can only be shown, not compared or used as a condition." })
     absArgs.source = Sel(AB, "source", "Amount from", 2, ABSORB_SOURCE, ABSORB_SOURCE_ORDER, on)
     absArgs.abbreviate = Tog(AB, "abbreviate", "Abbreviate (12.3K / 1.2M)", 3, on)
     absArgs.hideZero = Tog(AB, "hideZero", "Hide when zero", 4, on, { desc = "Only works when the number is readable; a secret amount is shown as-is." })
@@ -2559,7 +2559,7 @@ local function BuildRule(i, rule)
             },
             test = { type = "execute", name = "Test sound", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
             soundPath = { type = "input", name = "Or type a sound file path  (.ogg or .mp3, inside Interface\\AddOns)", order = 3.5, width = "full",
-                desc = "For your own sound without editing any list. Example: Interface\\AddOns\\XayaUI_Media\\Sounds\\ding.ogg  (keep your sounds in XayaUI_Media, not in the XayaUI folder, so a XayaUI update never deletes them). The game accepts .ogg and .mp3 (warcraft.wiki.gg PlaySoundFile); .wav is not confirmed. The file must exist before you log in or /reload. Leave empty to use the list above.",
+                desc = "Plays your own .ogg or .mp3; keep it in XayaUI_Media so an update never deletes it. The file must exist before you log in or /reload; leave empty to use the list.",
                 get = function() if rule.sound.source == "file" then return tostring(rule.sound.value or "") end return "" end,
                 set = function(_, v)
                     v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -2581,7 +2581,7 @@ local function BuildRule(i, rule)
                     if rule.sound.source == "kit" then return "This cue's volume" end
                     return "This cue's volume (only for [Game] sounds)"
                 end,
-                desc = "Volume of this cue only, without touching the game's channel volume. Works for the game's own sounds ([Game] in the list). The game has no per-sound volume for sound FILES (.ogg / .mp3: it plays them only at the channel's volume), so for a file this slider does nothing; pick a [Game] sound, or set the channel volume below (shared with everything on that channel).",
+                desc = "Sets this cue's volume, for [Game] sounds only. Sound files play at the channel volume below.",
                 disabled = function() return rule.sound.source ~= "kit" end,
                 get = function() return tonumber(rule.sound.cueVolume) or 100 end,
                 set = function(_, v) rule.sound.cueVolume = (tonumber(v) and v < 100) and v or nil; ns.MarkDirty() end },
@@ -2590,7 +2590,7 @@ local function BuildRule(i, rule)
                     return "Volume of the '" .. (ns.Val(rule.sound.channel) or "Master") .. "' channel (game setting, shared)"
                 end,
                 order = 6, width = "double", min = 0, max = 1, step = 0.05, isPercent = true,
-                desc = "WoW has no per-sound volume. This sets the game's own volume for the selected channel, so it also changes everything else that plays on that channel (same as Options > Sound).",
+                desc = "Sets the game's volume for this channel, which changes everything else on it too (same as Options > Sound).",
                 get = function() return ns.GetChannelVolume(rule.sound.channel) end,
                 set = function(_, v) ns.SetChannelVolume(rule.sound.channel, v) end,
             },
@@ -2599,7 +2599,7 @@ local function BuildRule(i, rule)
             -- Decision D2 (AuraSound.lua): the game plays the sound on the aura itself, so it works while the aura is hidden in combat
             gameSoundOn = { type = "toggle", order = 10, width = "full",
                 name = "Let the game play this sound on the aura itself (works in combat while the aura is hidden)",
-                desc = "The game plays this sound when the Buff / Aura trigger's aura is gained (or lost), even in combat when XayaUI cannot see the aura. The game follows the aura ALONE: this rule's other triggers, conditions and Repeat are ignored for this sound. Sound files only (not [Game] sound kits or speech). Set up out of combat only. Not yet confirmed in game for ordinary auras.",
+                desc = "Plays this sound file when the trigger's aura is gained or lost, even in combat; the rule's other triggers, conditions and Repeat are ignored. Set up out of combat only.",
                 hidden = function() return not (ns.AuraSound and ns.AuraSound.Available()) end,
                 get = function() return type(rule.gameSound) == "table" and rule.gameSound.enabled == true end,
                 set = function(_, v)
@@ -2819,7 +2819,7 @@ local function BuildRule(i, rule)
             h = Rng(V, "h", "Height", 1.2, 4, 200, 1, bon),
             trackH = hdr("Tracks", 2),
             source = Sel(B, "source", "Tracks", 2.1, SRC, SRC_ORDER, bon, { width = "double",
-                desc = "Automatic: the aura's time left when the rule watches an aura, else the spell's cooldown. Aura time and stacks are drawn by the game in combat; a cooldown bar is driven by the game from the cooldown's duration." }),
+                desc = "Sets what the bar tracks. Automatic: the aura's time left when the rule watches an aura, else the spell's cooldown." }),
             srcNow = { type = "description", order = 2.2, width = "full", fontSize = "medium",
                 name = function()
                     local sr, id = ns.BarCueSource(rule), ns.BarCueSpell(rule)
@@ -2839,7 +2839,7 @@ local function BuildRule(i, rule)
             dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
             reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
             texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
-                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already coloured: the bar colour tints it (Colour = Fixed, white, shows it as drawn).",
+                desc = "Sets the bar texture: built-in, the game's power-bar art, other addons' shared textures, or your own file. Power-bar art is already coloured; Fixed white shows it as drawn.",
                 values = function() local vv = ns.BarTextureList(); return vv end,
                 sorting = function() local _, o = ns.BarTextureList(); return o end,
                 get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
@@ -2870,7 +2870,7 @@ local function BuildRule(i, rule)
             style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
                 hidden = function() return B.colorMode == "fixed" end,
                 disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
-                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's family and change its saturation and brightness. Custom: pick each type's colour below." }),
+                desc = "Sets the colours: Blizzard's own, a Neon, Pastel or Muted / Dark take on them, or Custom colours below." }),
             cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
@@ -3064,7 +3064,7 @@ local function BuildRule(i, rule)
             sbMode = { type = "select", name = "Icon in the rule list", order = 3.7, width = "double",
                 values = { auto = "Automatic (spell / buff icon; texture rules show their own art)", type = "Rule type icon", custom = "Custom icon (file ID)" },
                 sorting = { "auto", "type", "custom" },
-                desc = "What the left-hand list shows for this rule. Automatic uses the icon of the spell or buff the rule tracks (rules that track neither show the rule type icon).",
+                desc = "Sets this rule's icon in the left-hand list. Automatic uses the tracked spell or buff's icon.",
                 get = function() return rule.listIcon or "auto" end,
                 set = function(_, v) rule.listIcon = v; Changed(rule); if ns.DecorateTrees then ns.DecorateTrees() end; Notify() end },
             sbId = { type = "input", name = "Icon file ID", order = 3.8, width = "double",
@@ -3388,7 +3388,7 @@ local function BuildAddonSettings()
                 get = function() return ns.SelStyle() end,
                 set = function(_, v) Ui().selStyle = (v == "bar") and "bar" or "text"; Repaint() end },
             parentGradient = { type = "toggle", name = "Gradient highlight on the top parent group of a selected nested item", order = 22, width = "full",
-                desc = "When the selected rule or group sits inside other groups, the topmost group of that chain gets a dark purple to black gradient (left to right). Off: no highlight on parent groups.",
+                desc = "Highlights the topmost parent group of the selected rule or group with a gradient.",
                 get = function() return ns.ParentGradientOn() end,
                 set = function(_, v) Ui().parentGradient = v and true or false; Repaint() end },
             paneHeader = { type = "header", name = "Window Size", order = 30 },
@@ -3408,20 +3408,20 @@ local function BuildAddonSettings()
                 get = function() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.hideGameMenuButton) end,
                 set = function(_, v) Ui().hideGameMenuButton = (not v) or nil; if ns.GameMenu_OnOptionChanged then ns.GameMenu_OnOptionChanged() end end },
             gameMenuStyle = { type = "select", name = "Menu button style", order = 24.1, width = "double",
-                desc = "Gradient button: a class-colored gradient fill with solid text. Standard button: the same flat button as the rest of the UI (inherits the theme's button colors) with class-colored gradient text.",
+                desc = "Gradient button: class-colored fill, solid text. Standard button: the UI's flat button with class-colored text.",
                 values = { gradient = "Gradient button, solid text", standard = "Standard button, gradient text" },
                 sorting = { "gradient", "standard" },
                 get = function() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
             sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
-                desc = "Rules that track a spell or buff show that spell's icon in the left-hand list instead of the generic type icon. Each rule can override this in its Display Options (Sidebar icon).",
+                desc = "Shows a tracked spell or buff's icon in the left-hand list instead of the type icon. Each rule can override it (Sidebar icon).",
                 get = function() return ns.SidebarSpellIcons() end,
                 set = function(_, v) Ui().sidebarSpellIcons = v and true or false; Repaint() end },
         } },
         rules = { type = "group", name = "Rule Creation", order = 1.2, args = {
             savingHeader = { type = "header", name = "Saving", order = 10 },
             promptSave = { type = "toggle", name = "Use drafts (save bar)", order = 11,
-                desc = "Off (default): every change is kept the moment you make it. On: a bar appears under the window when a rule has unsaved changes (Save changes, Save as a copy, Add to drafts, Discard changes), and closing the window first puts unsaved changes in Drafts. The Drafts tab has the same switch.",
+                desc = "Holds rule edits until you save them, with a save bar under the window; closing it moves unsaved changes to Drafts. Off by default: every change is kept at once.",
                 get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
                 set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
             -- draft settings (0.6.4): what asks first, how many are kept, the chat notice. Grayed out while drafts are off.
@@ -3476,17 +3476,17 @@ local function BuildAddonSettings()
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "On (default): XayaUI records its own errors and warnings by itself, each with a code, so you never have to type a debug command or remember a chat line. It does work only when an error happens: nothing is recorded or run while everything works. The debug report below (/xui report) shows them for a screenshot and as a string to send to Xaya. Also sends XayaUI's messages to the console window instead of chat (change that below). Off: nothing is recorded.",
+                desc = "Records XayaUI's own errors and warnings for the debug report (/xui report) and sends its messages to the console window. On by default; it does nothing while nothing goes wrong.",
                 get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
             msgDest = { type = "select", name = "XayaUI's messages", order = 11.1,
-                desc = "Where XayaUI's own messages and error notices appear: the main chat window, the XayaUI console window (its own movable frame, like BugSack; it keeps collecting in combat), or both. Default: the console window while Advanced Debugging is on, chat while it is off.",
+                desc = "Sets where XayaUI's messages appear: chat, the console window, or both. Default: the console while Advanced Debugging is on, else chat.",
                 values = { chat = "Chat window", console = "XayaUI console window", both = "Both" }, sorting = { "console", "chat", "both" },
                 get = function() return ns.MessageDest and ns.MessageDest() or "chat" end,
                 set = function(_, v) Ui().msgDest = v; Notify() end },
             consoleAutoOpen = { type = "toggle", name = "Open the console window when a message arrives", order = 11.2,
-                desc = "With messages going to the console window: open it when one arrives (after combat if one arrives in combat). Off: the lines collect there until you open it (/xui console).",
+                desc = "Opens the console window when a message arrives (after combat, if in combat). Off: lines wait there until you open it (/xui console).",
                 hidden = function() return not (ns.MessageDest and ns.MessageDest() == "console") end,
                 get = function() return Ui().consoleAutoOpen ~= false end,
                 set = function(_, v) if v then Ui().consoleAutoOpen = nil else Ui().consoleAutoOpen = false end end },
@@ -3523,13 +3523,13 @@ local function BuildAddonSettings()
                     func = function() if ns.SendText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end end },
             } },
             showConsole = { type = "toggle", name = "Show the debug console at the bottom of the window", order = 12, width = "full",
-                desc = "The strip under the window with the live rule status and event log. Off: it is not drawn at all (turn it back on here).",
+                desc = "Shows the strip under the window with live rule status and the event log.",
                 get = function() return ns.DebugConsoleOn() end,
                 -- nothing in the tree changes: the strip is placed now (not on the driver's next tick) and the redraw AceConfigDialog
                 -- makes after the click reuses the tree (Tree.Keep, Options 0.6.39)
                 set = function(_, v) Ui().hideTray = (not v) or nil; Tree.Keep(); if ns.UpdateTrayNow then pcall(ns.UpdateTrayNow) end end },
             consoleWin = { type = "toggle", name = "Console window (separate from this window)", order = 13, width = "full",
-                desc = "The same event log as the strip under this window, but in its own movable, resizable window. It keeps collecting lines while this window is closed and during combat. Also: /xui console.",
+                desc = "Opens the event log in its own movable window, which keeps collecting while this one is closed. Also: /xui console.",
                 get = function() return ns.ConsoleWindowOn and ns.ConsoleWindowOn() or false end,
                 -- (true: from this switch, so core asks for no redraw of its own; the one AceConfigDialog makes reuses the tree)
                 set = function(_, v) if ns.ConsoleWindow then ns.ConsoleWindow(v and true or false, true) end; Tree.Keep() end },
@@ -4225,9 +4225,7 @@ function ns.FolderContainerGroup(f)
             HCENTER = "Centered row", VCENTER = "Centered column",
             ANCHOR_ROW = "From anchor point, rows", ANCHOR_COL = "From anchor point, columns" },
         sorting = { "RIGHT", "LEFT", "DOWN", "UP", "HCENTER", "VCENTER", "ANCHOR_ROW", "ANCHOR_COL" },
-        desc = "Which way the group adds its items. Down = top to bottom, Up = bottom to top.\n"
-            .. "Centered row / column: the items stay centered on the group's position and the row (column) grows and shrinks both ways as items appear and go, also in combat.\n"
-            .. "From anchor point: the items start at the group's anchor point (Group position > This group's anchor point) and grow away from it: right from a left anchor, left from a right one, down from a top one, up from a bottom one; a middle anchor keeps them centered on it. New rows / columns go the same way.",
+        desc = "Sets which way the group adds items. Centered keeps them centered on the group's position; From anchor point grows them away from the group's anchor point.",
         get = function() return f.cGrowth or "RIGHT" end, set = function(_, v) f.cGrowth = v; apply() end }
     -- Sort (0.6.6, Xaya: "default, expiration, name, important, manual"): one setting for XayaUI's own layout and the engine
     -- (ns.GroupSortOf in Visual.lua; saved as cSort = nil for Manual, plus cSortRev; old "asc" / "desc" read as Name / Name reversed)
@@ -4236,7 +4234,7 @@ function ns.FolderContainerGroup(f)
         -- (Options 0.6.50: her list as she wrote it, in her order and with her words; S1's cross-chat review B5)
         values = { manual = "Manual", default = "Default", expiration = "Expiration", name = "Name", important = "Important" },
         sorting = { "default", "expiration", "name", "important", "manual" },
-        desc = "Manual: the order of the rules in this group in the sidebar (arrows or drag); each icon keeps its own size and look, and an aura that appears takes its place between the others, also in combat.\nDefault, Expiration, Name, Important: the game's own sorts (Important puts the auras the game marks important first).",
+        desc = "Manual uses this group's sidebar order (arrows or drag). Default, Expiration, Name and Important are the game's own sorts.",
         get = function() return (sortOf()) end,
         set = function(_, v) local _, rev = sortOf(); f.cSort = (v ~= "manual") and v or nil; f.cSortRev = rev or nil; apply() end }
     g.args.sortRev = { type = "toggle", name = "Reverse", order = 2.06, width = "relative", relWidth = 0.22, hidden = function() return not isDyn() end,
@@ -4245,15 +4243,15 @@ function ns.FolderContainerGroup(f)
         set = function(_, v) local mode = sortOf(); f.cSort = (mode ~= "manual") and mode or nil; f.cSortRev = v and true or nil; apply() end }
     g.args.sortSave = { type = "execute", name = "Save order and reload", order = 2.07, width = "relative", relWidth = 0.3,
         hidden = function() return not isDyn() or sortOf() ~= "manual" end,
-        desc = "Saves your settings and reloads the interface. Out of combat the new order already applies; this makes sure it is written to disk and rebuilt from scratch.",
+        desc = "Saves your settings and reloads the interface, so the new order is written to disk.",
         func = function() if ReloadUI then ReloadUI() end end }
     -- G10 (Xaya 2026-11-06, question flow: "Limit (Recommended),Align (Recommended)"; WeakAuras' dynamic group has both, CHAT-3d)
     g.args.limit = { type = "range", name = "Limit (show at most)", order = 2.101, min = 0, max = 40, step = 1,
-        desc = "0 = no limit. After sorting, only this many items show; the others wait and appear when a shown one goes away.",
+        desc = "Shows at most this many items after sorting; the rest appear as shown ones go. 0 = no limit.",
         hidden = function() return not isDyn() end,
         get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; apply() end }
     g.args.align = { type = "select", name = "Align", order = 2.102, arg = { xuiSide = true },
-        desc = "When items in a row (or column) have different sizes: which side they line up on.",
+        desc = "Sets which side items of different sizes line up on.",
         hidden = function() return not isDyn() end,
         values = function()
             if growsAcross() then return { start = "Top", center = "Center", ["end"] = "Bottom" } end
@@ -4272,7 +4270,7 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
     g.args.wrapOn = { type = "toggle", order = 2.11,
         name = function() return growsAcross() and "Wrap into rows" or "Wrap into columns" end,
-        desc = "Start a new row (growing right or left) or a new column (growing down or up) after a set number of items. A container width / height (below) also wraps the line when the items would not fit.",
+        desc = "Starts a new row or column after a set number of items. A box width or height below also wraps when items would not fit.",
         hidden = function() return not isDyn() end,
         get = function() return wrapOn() end,
         set = function(_, v) if v then f.cWrapN = wrapOn() and f.cWrapN or 6 else f.cWrapN = nil end; apply() end }
@@ -4300,7 +4298,7 @@ function ns.FolderContainerGroup(f)
     local function setSize() return ns.GroupSizeMode and ns.GroupSizeMode(f) == "set" end
     g.args.sizeMode = { type = "select", name = "Size", order = 3.04, width = "full", arg = { xuiSide = true },
         values = { auto = "Auto (fits what is showing)", set = "Set (width and height below)" }, sorting = { "auto", "set" },
-        desc = "Auto: the group's box (its border and background) fits the items that are showing, and follows as they come and go. Set: the box has the width and height you give it; it can clip what falls outside it.",
+        desc = "Auto fits the group's box to the items showing. Set uses the width and height you give it, and can clip what falls outside.",
         get = function() return ns.GroupSizeMode and ns.GroupSizeMode(f) or "auto" end,
         set = function(_, v) if ns.SetGroupSizeMode then ns.SetGroupSizeMode(f, v) end; apply() end }
     -- G9 (Xaya 2026-11-06: "Toggle + ask on resize"): with the tick box off, making a static group's box smaller than its items asks
@@ -4323,7 +4321,7 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply(); askFit() end }
     g.args.fit = { type = "toggle", name = "Scale items to fit the box", order = 3.065, width = "full",
         hidden = function() return not setSize() or isDyn() end,
-        desc = "Shrinks everything in this group (never enlarges it) so its displays fit inside the width and height above. The box keeps its size; the saved X / Y and sizes of the displays do not change.",
+        desc = "Shrinks (never enlarges) this group's displays to fit the width and height above. Their saved positions and sizes do not change.",
         get = function() return f.cFit and true or false end, set = function(_, v) f.cFit = v and true or nil; apply() end }
     g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
@@ -4362,7 +4360,7 @@ function ns.FolderContainerGroup(f)
     g.args.anchorTo = { type = "select", name = "Anchored to", order = 4.09, width = "full", arg = { xuiSide = true },
         hidden = function() return not f.parent end,
         values = { parent = "The parent group", screen = "The screen" }, sorting = { "parent", "screen" },
-        desc = "A nested group is placed from its parent group (it moves with it) or from the screen (it stays put when the parent moves). It stays inside its parent either way: the parent's opacity, scale and layer still apply.",
+        desc = "Places this nested group from its parent (moves with it) or from the screen (stays put). The parent's opacity, scale and layer still apply.",
         get = function() return f.cAnchorTo == "screen" and "screen" or "parent" end,
         set = function(_, v) f.cAnchorTo = (v == "screen") and "screen" or nil; apply() end }
     g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
@@ -4464,7 +4462,7 @@ local function BuildFolder(k, f)
             name = { type = "input", name = "Group name", order = 1, width = "double",
                 get = function() return f.name end, set = function(_, v) if v ~= "" then f.name = v end; Notify() end },
             deleteTop = { type = "execute", name = "|cffff6060Delete group|r", order = 1.5,
-                desc = "Deletes this group only. Its rules and nested groups are kept and move up one level. Keyboard: press Delete while this group is open.",
+                desc = "Deletes this group only; its rules and nested groups move up one level. Keyboard: Delete while the group is open.",
                 confirm = function() return "Delete this group? The rules and nested groups inside are kept and move up one level. " .. ns.RecycleBinNote() end,
                 func = function() ns.DeleteFolderById(f.id) end },
             deleteAllTop = { type = "execute", name = "|cffff6060Delete with contents|r", order = 1.6,
@@ -4489,7 +4487,7 @@ local function BuildFolder(k, f)
                 func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
-                desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on Smart Categories and on each rule, so it pauses every preview, not only this group's.",
+                desc = "Freezes the sample countdown, fades and flash in every preview, not only this group's. Untick to resume.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
             note = { type = "description", order = 5, width = "full", fontSize = "small",
@@ -4520,7 +4518,7 @@ local function BuildFolder(k, f)
     for k, o in pairs({ newRule = 6, newSub = 6.1, deleteTop = 7, deleteAllTop = 7.1 }) do if configArgs[k] then configArgs[k].order = o end end
     if configArgs.soundChannel then configArgs.soundChannel.order = 5 end
     configArgs.enabled = { type = "toggle", order = 1.5, width = "full", name = "Enabled",
-        desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
+        desc = "Switches every rule in this group and its nested groups on or off.",
         get = function()
             local any = false
             for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
@@ -4602,7 +4600,7 @@ function ns.FolderLoadConditions(f)
     -- #319: while this group loads "Always" (its own setting or a parent's), a list can still count: "Always load: only this class / spec"
     local function AlwaysRow(order, word, field, key)
         return { type = "toggle", order = order, width = "full", name = "Always load: only this " .. word,
-            desc = "This group is set to Always, which ignores load conditions. Tick this to keep the " .. word .. " list above: the group's rules then load only for the " .. word .. " ticked there.",
+            desc = "Keeps the " .. word .. " list above under Always: the group's rules load only for the " .. word .. " ticked there.",
             hidden = function() return ns.FolderLoadOverrideFrom(f.id) ~= "always" or not (f[field] and next(f[field])) end,
             get = function() return f[key] == true end,
             set = function(_, v) f[key] = v and true or nil; ns.MarkDirty(); Notify() end }
@@ -4748,7 +4746,7 @@ local function BuildOptions()
                 desc = "Applied when you press + New rule. Off by default; you can still change it on the rule's Actions tab.",
                 get = function() return newOpts.visual end, set = function(_, v) newOpts.visual = v end },
             askSounds = { type = "toggle", name = "Ask before previewing many sounds at once", order = 4.5, width = "double",
-                desc = "When on, the headphone icon on a row that covers several sounds asks first. Turned off by ticking 'Don't ask me again' in that box.",
+                desc = "Asks first when the headphone icon on a row covers several sounds.",
                 get = function() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.skipSoundAllPrompt) end,
                 set = function(_, v) local u = CueRulesDB and CueRulesDB.ui; if u then u.skipSoundAllPrompt = (not v) or nil end end },
             unlock = { type = "execute", order = 5, width = "double",

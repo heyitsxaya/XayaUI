@@ -342,7 +342,7 @@ end
 function ns.BuildCalculatorPage()
     local page = { type = "group", name = "Calculator", order = 1,
       xuiSwitch = { type = "toggle", name = "Calculator", tip = "A small calculator window (also /calc).",
-          desc = "Turns the Calculator's window on or off. Off: no window and no Calculator row in the minimap button's list, and the window is never built; /xui calc with a sum still gives the answer in chat. Your last sums are kept.",
+          desc = "Turns the Calculator's window on or off; your last sums are kept. Off, /xui calc with a sum still answers in chat.",
           get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
       args = {
         about = { type = "description", order = 0, width = "full", fontSize = "medium",
