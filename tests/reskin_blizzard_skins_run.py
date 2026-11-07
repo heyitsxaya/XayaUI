@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.10, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.11, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -14,6 +14,7 @@ reskins). What the player sees, in the stand-in game:
     Shopping List while its tracker part is on; labels are the game's own heading strings;
   * Toasts and Pop-ups (0.6.10): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
     faded under our background; each part has its own box;
+  * Loot rolls (0.6.11, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -46,6 +47,11 @@ local SP = Window("SettingsPanel")
 local CF1 = Window("ContainerFrame1")
 local WM = CreateFrame("Frame", "WorldMapFrame", UIParent); WM.BorderFrame = Window(nil, WM)
 local TF = Window("TradeFrame"); TF.IsProtected = function() return true, true end
+-- a loot roll (GroupLootFrameTemplate: art on Background and Border; Blizzard tints Border in the item's quality colour on each show)
+local GL1 = CreateFrame("Frame", "GroupLootFrame1", UIParent)
+GL1.Background = GL1:CreateTexture(nil, "BACKGROUND"); GL1.Border = GL1:CreateTexture(nil, "BORDER")
+GL1:SetScript("OnShow", function(self) self.Border:SetVertexColor(self._q[1], self._q[2], self._q[3]) end)
+GL1._q = { 0.64, 0.21, 0.93 }; GL1:Hide()
 -- minimap (GetMinimapShape is not a Blizzard function in 12.1.5: not in its UI source nor docs/reference/api; the stand-in
 -- world defines one for other tests, so it is cleared here to start as the real game does)
 GetMinimapShape = nil
@@ -119,6 +125,19 @@ check("windows waiting for Blizzard to load one: the watcher listens for ADDON_L
 local MF = Window("MacroFrame")
 W.fire("ADDON_LOADED", "Blizzard_MacroUI")
 check("a window Blizzard loads later (Macros) is skinned when it loads", MF.NineSlice:GetAlpha() == 0 and BS.memo[MF] and BS.memo[MF].bg:IsShown())
+-- loot rolls (0.6.11): Background and Border faded, our border in the item's quality colour after Blizzard's OnShow
+GL1:Show()
+local gm = BS.memo[GL1]
+local e1 = gm and gm.edges and gm.edges[1] and gm.edges[1]._color
+check("loot roll: Blizzard's Background and Border are faded and our background shows", GL1.Background:GetAlpha() == 0 and GL1.Border:GetAlpha() == 0 and gm.bg:IsShown())
+check("loot roll: our border takes the item's quality colour (epic purple)", e1 and near(e1[1], 0.64) and near(e1[2], 0.21) and near(e1[3], 0.93), e1 and table.concat(e1, ","))
+GL1:Hide(); GL1._q = { 0.0, 0.44, 0.87 }; GL1:Show()
+e1 = gm.edges[1]._color
+check("loot roll: the next roll's quality colour (rare blue) reaches our border", near(e1[1], 0.0) and near(e1[3], 0.87), table.concat(e1, ","))
+check("a window without art keys keeps its own Background / Border keys untouched (they are not in the generic list)", SP.NineSlice ~= nil and BS.memo[SP].faded[SP.Background or {}] == nil)
+page.args.list.args.lootroll.set(nil, false)
+check("loot rolls left out: Blizzard's Background and Border are back", GL1.Background:GetAlpha() == 1 and GL1.Border:GetAlpha() == 1 and not gm.bg:IsShown())
+page.args.list.args.lootroll.set(nil, true)
 -- one window left out
 page.args.list.args.bags.set(nil, false)
 check("a window left out on the page is given back (Bags)", CF1.NineSlice:GetAlpha() == 1 and not BS.memo[CF1].bg:IsShown())

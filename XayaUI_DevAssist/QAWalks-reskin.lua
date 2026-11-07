@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.41): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.10 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts and pop-ups in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.42): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.11 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups and loot rolls in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -207,4 +207,30 @@ QA.Register("reskin-toasts", { title = "Reskin: Battle.net toasts and pop-up dia
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
         setup = function() local h = rawget(_G, "StaticPopup_Hide"); if type(h) == "function" then pcall(h, POPUP) end; PutBack() end,
         check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 6. Loot rolls (Reskin 0.6.11, a Blizzard Windows entry)
+-------------------------------------------------------------------------------
+local function OpenRoll() for i = 1, 4 do local f = rawget(_G, "GroupLootFrame" .. i); if f and f:IsShown() then return f end end end
+QA.Register("reskin-lootroll", { title = "Reskin: loot rolls (Need, Greed, Transmog)", area = "Reskin", qa = "RESKIN-L", order = 305, prefill = true, steps = {
+    { text = "This one needs a loot roll: do it in a dungeon or raid group (a Follower dungeon works). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Blizzard Windows|r is switched on with |cffffd100Loot rolls|r ticked.",
+        setup = function() Keep(); Set(function(c) c.windows = true; c.winOff.lootroll = nil end) end,
+        check = function() local s, why = Need(); if not s then return false, why end; local on = s.WinOn and s.WinOn({ key = "lootroll" }); return on and true or false, on and "Loot rolls are on" or "Loot rolls did not switch on" end },
+    { text = "When a loot roll shows, press |cffffd100Check|r while it is on screen (before you roll).\n\n|cffffd100Expect:|r the roll has a solid dark background and a thin border in the item's quality colour (purple for epic, blue for rare), no Blizzard loot frame art. The item name, icon, timer and the Need / Greed / Transmog / Pass buttons are as before.",
+        check = function()
+            local f = OpenRoll(); if not f then return false, "no loot roll is on screen: press Check while one shows" end
+            local s = BS(); local m = s and s.memo[f]
+            if not (m and m.painted) then return false, f:GetName() .. " is not skinned" end
+            local c = m.edgeCol or {}   -- the colour the skin painted its border (a colour texture has no colour to read back)
+            local ok1, er, eg, eb = c[1] ~= nil, c[1], c[2], c[3]
+            local ok2, qr, qg, qb = pcall(f.Border.GetVertexColor, f.Border)
+            local same = ok1 and ok2 and Near(er, qr) and Near(eg, qg) and Near(eb, qb)
+            return (same and Alpha(f.Background) == 0) and true or false,
+                ("%s: Blizzard art alpha %s; our border %.2f %.2f %.2f, item quality %.2f %.2f %.2f"):format(f:GetName(), tostring(Alpha(f.Background)), er or -1, eg or -1, eb or -1, qr or -1, qg or -1, qb or -1)
+        end },
+    { text = "Roll on it (any choice).\n\n|cffffd100Expect:|r every button works as before and the roll closes as usual. Pass if so.",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

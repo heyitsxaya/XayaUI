@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.10's BlizzardSkins.lua (XayaUI_DevAssist 0.7.41, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.11's BlizzardSkins.lua (XayaUI_DevAssist 0.7.42, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
-Checks, on the real addons in the stand-in game: the five walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups) are registered with prefill on
+Checks, on the real addons in the stand-in game: the six walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls) are registered with prefill on
 and every step has a check or is a question (noVerdict); their own checks give the right verdict on the stand-in (a bag window skinned,
 then given back; the square minimap, then round; a tooltip in the theme's window colour; the tracker header in the label colour, then
 the Quests section given back); and her reskin settings are put back exactly as they were at the end of each walkthrough.
@@ -40,6 +40,8 @@ local QOT = CreateFrame("Frame", "QuestObjectiveTracker", OTF); QOT.Header = Hea
 local BNT = CreateFrame("Frame", "BNToastFrame", UIParent); BNT:Hide()
 for i = 1, 4 do local p = CreateFrame("Frame", "StaticPopup" .. i, UIParent); p.BG = CreateFrame("Frame", nil, p); p:Hide() end
 StaticPopupDialogs = {}
+local GL = CreateFrame("Frame", "GroupLootFrame1", UIParent); GL.Background = GL:CreateTexture(nil, "BACKGROUND"); GL.Border = GL:CreateTexture(nil, "BORDER")
+GL:SetScript("OnShow", function(self) self.Border:SetVertexColor(0.64, 0.21, 0.93) end); GL:Hide()
 function StaticPopup_Show(which) if not StaticPopupDialogs[which] then return end; StaticPopup1.which = which; StaticPopup1:Show(); return StaticPopup1 end
 function StaticPopup_Hide(which) if StaticPopup1.which == which then StaticPopup1:Hide() end end
 
@@ -55,7 +57,7 @@ CueRulesDB.ui.rsk = { tracker = true, winOff = { bank = true }, otOff = {} }
 local before = "tracker=true bank-out"
 local function Same() local r = CueRulesDB.ui.rsk; return r and r.tracker == true and r.winOff and r.winOff.bank == true and not r.windows and not r.minimap and not r.tooltips and not r.shape end
 
-local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts" }
+local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local good = w ~= nil and w.prefill == true and w.area == "Reskin"
@@ -112,6 +114,17 @@ ok, why = run("reskin-toasts", 5)
 check("toasts 5: switched off, the pop-up has Blizzard's art back", ok, why)
 run("reskin-toasts", 6)
 check("toasts: the test pop-up is closed and her settings are put back", Same() and not CueRulesDB.ui.rsk.toasts and not StaticPopup1:IsShown(), before)
+
+-- loot rolls (Reskin 0.6.11)
+ok, why = run("reskin-lootroll", 1)
+check("lootroll 1: Blizzard Windows on with Loot rolls", ok, why)
+ok, why = run("reskin-lootroll", 2)
+check("lootroll 2: no roll on screen: the check says so (not a pass)", ok == false and why:find("no loot roll", 1, true), why)
+GL:Show()
+ok, why = run("reskin-lootroll", 2)
+check("lootroll 2: a roll showing is skinned, our border in the item's quality colour", ok, why)
+run("reskin-lootroll", 4)
+check("lootroll: her settings are put back", Same(), before)
 return R
 end
 '''

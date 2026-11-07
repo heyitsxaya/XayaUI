@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.10): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts and pop-up dialogs. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.11): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs and loot rolls. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
 -- and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
@@ -77,6 +77,12 @@ BS.WINDOWS = {
     { key = "trainer",      label = "Trainer",                  frames = { "ClassTrainerFrame" }, lod = "Blizzard_TrainerUI" },
     { key = "dressup",      label = "Dressing room",            frames = { "DressUpFrame" } },
     { key = "itemtext",     label = "Books and letters",        frames = { "ItemTextFrame" } },
+    -- (0.6.11, her "loot roll / need, greed, transmog") GroupLootFrameTemplate draws its art on its own keys Background and Border
+    -- (12.1.5 Blizzard_UIPanels_Game/Mainline/GroupLootFrame.xml:290-307); Border is tinted in the item's quality colour on every show
+    -- (GroupLootFrame.lua:172-177), so our border takes that colour (read after Blizzard's OnShow) and the quality stays visible.
+    -- These two keys are only faded here: other windows use Background / Border for content, so they are not in the generic ART list.
+    { key = "lootroll",     label = "Loot rolls (Need, Greed, Transmog)", frames = { "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4" },
+        art = { "Background", "Border" }, qualityBorder = "Border" },
 }
 -- the objective tracker's sections: the section frame and the game's own heading string for its label (Blizzard_ObjectiveTracker, 12.1.5)
 BS.SECTIONS = {
@@ -260,7 +266,14 @@ local function PaintWindow(f)
             if type(part.Inset) == "table" then Fade(f, part.Inset.Bg); Fade(f, part.Inset.NineSlice) end
         end
     end
+    local e = f.GetName and entryOf[f:GetName() or ""]
+    if e and e.art then for _, k in ipairs(e.art) do Fade(f, f[k]) end end
     local m = OwnBg(f)
+    local qb = e and e.qualityBorder and f[e.qualityBorder]
+    if type(qb) == "table" and qb.GetVertexColor then   -- the item's quality colour Blizzard put on its own border (alpha does not change it)
+        local ok, r, g, b = pcall(qb.GetVertexColor, qb)
+        if ok and num(r) and num(g) and num(b) then m.edgeCol = { r, g, b, 1 }; PaintEdges(m.edges, m.edgeCol) end
+    end
     local tc = f.TitleContainer or (type(f.BorderFrame) == "table" and f.BorderFrame.TitleContainer)
     local title = (type(tc) == "table" and tc.TitleText) or (f.GetName and f:GetName() and rawget(_G, f:GetName() .. "TitleText"))
     Recolor(f, title, TitleCol())
