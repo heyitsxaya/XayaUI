@@ -102,6 +102,8 @@ end
 -- Layout: size, position, regions
 -------------------------------------------------------------------------------
 local function TabH(s) return s.tabsShow and Clamp(s.tabHeight, 16, 40, 24) or 0 end
+local INPUT_POS = { BOTTOM = true, TOP = true, ABOVE = true, FREE = true }
+function C.InputPos() local s = S(); local v = s and s.inputPos; return INPUT_POS[v] and v or "BOTTOM" end
 
 -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) Improved Chat with the Chat Panel off: the block is not placed by the Chat Panel's size and position
 -- (those are skin settings); it is laid over Blizzard's chat where the game (or another chat addon) put it: from the left of the main
@@ -175,12 +177,33 @@ function C.Layout()
     end
 
     local th = TabH(s)
-    tabsA:ClearAllPoints()
-    tabsA:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, 0); tabsA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", 0, 0)
-    tabsA:SetHeight(math.max(1, th))
     local ih = Clamp(s.inputH, 18, 60, 26)
-    inputA:ClearAllPoints()
-    inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
+    -- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7, Xaya: "include an option where to put place the chat entry field (top or bottom;
+    -- disconnected from pane (free move))"; free move: "configurable in mover gui, not from console line"; Top: "Both supported")
+    -- BOTTOM (as before) | TOP (under the tab row) | ABOVE (above the tab row) | FREE (its own place and width, set in the mover only)
+    local ipos = C.InputPos()
+    tabsA:ClearAllPoints(); inputA:ClearAllPoints()
+    if ipos == "ABOVE" then
+        inputA:SetPoint("TOPLEFT", pane, "TOPLEFT", 2, -2); inputA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", -2, -2)
+        tabsA:SetPoint("TOPLEFT", inputA, "BOTTOMLEFT", -2, -2); tabsA:SetPoint("TOPRIGHT", inputA, "BOTTOMRIGHT", 2, -2)
+    else
+        tabsA:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, 0); tabsA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", 0, 0)
+        if ipos == "TOP" then
+            inputA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", 2, -2); inputA:SetPoint("TOPRIGHT", tabsA, "BOTTOMRIGHT", -2, -2)
+        elseif ipos == "FREE" then
+            local fx, fy = tonumber(s.inputX), tonumber(s.inputY)
+            if not (fx and fy) then   -- first time: where the line was (at the pane's bottom), as wide as the pane
+                local pl, pb = container:GetLeft(), container:GetBottom()
+                fx, fy = (tonumber(pl) or 0) + 2, (tonumber(pb) or 0) + 2
+                s.inputX, s.inputY = math.floor(fx + 0.5), math.floor(fy + 0.5)
+            end
+            inputA:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", fx, fy)
+            inputA:SetWidth(Clamp(s.inputW, 120, 1200, W - 4))
+        else
+            inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
+        end
+    end
+    tabsA:SetHeight(math.max(1, th))
     inputA:SetHeight(ih)
     local inset = Clamp(s.textInset, 2, 30, 6)   -- never closer than 2 px to the pane's edge (Xaya 2026-11-04: a 2-3 px gutter)
     local own = C.OwnScroll()                      -- the Chat Panel's scroll bar (Scroll.lua) sits in the space right of the text
@@ -195,8 +218,16 @@ function C.Layout()
         inputA:Hide(); hint:Hide()
     else
         inputA:Show()
-    textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
-    textA:SetPoint("BOTTOMRIGHT", inputA, "TOPRIGHT", -right, 3)
+        if ipos == "TOP" then
+            textA:SetPoint("TOPLEFT", inputA, "BOTTOMLEFT", inset - 2, -3)
+            textA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -right, 3)
+        elseif ipos == "ABOVE" or ipos == "FREE" then
+            textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
+            textA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -right, 3)
+        else
+            textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
+            textA:SetPoint("BOTTOMRIGHT", inputA, "TOPRIGHT", -right, 3)
+        end
     end
 
     -- the arrow: first thing in the bar; with the bar off it hangs under the pane's corner (the pane is invisible while collapsed)
@@ -212,6 +243,7 @@ function C.Layout()
     DrawArrow(collapsed)
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
+    if C.SyncInputMover then C.SyncInputMover() end
     C.Anchor()
     if C.ScrollBar_Layout then C.ScrollBar_Layout() end
     C.ApplyAlpha()
@@ -675,6 +707,66 @@ function C.PositionBox_Toggle(show)
 end
 function C.PositionBox() return posBox end
 
+-------------------------------------------------------------------------------
+-- (Chat 0.6.33; UI-15 / UI-17) the input line's own box in the mover, while "Input line" is Free move: drag it to place the line, drag its
+-- right edge for its width. Her words: "configurable in mover gui, not from console line" (no slider or command sets these). Made the
+-- first time the mover opens with Free move (V14).
+-------------------------------------------------------------------------------
+local inMover
+local function BuildInputMover()
+    if inMover then return end
+    inMover = CreateFrame("Frame", "XayaUIChatInputMover", UIParent, "BackdropTemplate")
+    inMover:SetFrameStrata("FULLSCREEN")
+    inMover:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    inMover:SetBackdropColor(0.3, 0.14, 0.05, 0.94); inMover:SetBackdropBorderColor(1, 0.75, 0.4, 1)
+    inMover:EnableMouse(true); inMover:RegisterForDrag("LeftButton")
+    inMover.label = inMover:CreateFontString(nil, "OVERLAY")
+    inMover.label:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE"); inMover.label:SetPoint("CENTER"); inMover.label:SetTextColor(1, 1, 1, 1)
+    inMover:SetScript("OnDragStart", function()
+        inputA:SetMovable(true)
+        inputA:StartMoving()
+    end)
+    inMover:SetScript("OnDragStop", function()
+        inputA:StopMovingOrSizing()
+        local s = S(); if not s then return end
+        local l, b = inputA:GetLeft(), inputA:GetBottom()
+        if type(l) == "number" and type(b) == "number" then s.inputX, s.inputY = math.floor(l + 0.5), math.floor(b + 0.5) end
+        C.Layout()
+    end)
+    local grip = CreateFrame("Button", nil, inMover)
+    grip:SetWidth(8); grip:SetPoint("TOPRIGHT", inMover, "TOPRIGHT", 0, 0); grip:SetPoint("BOTTOMRIGHT", inMover, "BOTTOMRIGHT", 0, 0)
+    grip.t = grip:CreateTexture(nil, "OVERLAY"); grip.t:SetAllPoints(); grip.t:SetColorTexture(1, 1, 1, 0.8)
+    grip:SetScript("OnMouseDown", function(self) self.sizing = true end)
+    grip:SetScript("OnMouseUp", function(self) self.sizing = false end)
+    grip:SetScript("OnUpdate", function(self)
+        if not self.sizing then return end
+        local s = S(); if not s then return end
+        local cx = GetCursorPosition()
+        local sc = UIParent:GetEffectiveScale()
+        if not (sc and sc > 0) then return end
+        local l = inputA:GetLeft()
+        if type(l) ~= "number" then return end
+        s.inputW = math.floor(Clamp(cx / sc - l, 120, 1200, s.inputW or 300) + 0.5)
+        C.Layout()
+    end)
+    inMover.grip = grip
+    inMover:SetScript("OnUpdate", function(self)
+        local s = S(); if not s then return end
+        self.label:SetText(("Input line  %d wide: drag to move, drag the right edge for its width"):format(math.floor((inputA:GetWidth() or 0) + 0.5)))
+    end)
+    inMover:Hide()
+end
+function C.InputMover() return inMover end
+local function SyncInputMover()
+    local want = C.unlocked and C.skin and C.InputPos() == "FREE"
+    if want then BuildInputMover() end
+    if inMover then
+        if want then inMover:ClearAllPoints(); inMover:SetAllPoints(inputA) end
+        inMover:SetShown(want and true or false)
+    end
+end
+C.SyncInputMover = SyncInputMover
+
 function C.ToggleMover()
     if not container then return end
     BuildMover()
@@ -682,6 +774,7 @@ function C.ToggleMover()
     if not C.unlocked and posBox then posBox:Hide() end
     mover:SetAllPoints(container)
     mover:SetShown(C.unlocked)
+    SyncInputMover()
     ns.Print("Chat Panel mover " .. (C.unlocked and "ON: drag the blue box, click it to type an exact place, resize from its top-right corner. /xui chat move again to finish." or "OFF"))
     if C.unlocked and C.IsCollapsed() then C.SetCollapsed(false) end
 end

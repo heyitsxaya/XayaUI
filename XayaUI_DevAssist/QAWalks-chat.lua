@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is
@@ -481,6 +481,60 @@ QA.Register("chat-improved-split", { title = "Chat: Chat Panel and Improved Chat
             if splitSaved then return false, "not put back yet" end
             local s = S()
             return s ~= nil, ("Chat Panel %s, Improved Chat %s"):format(s and s.enabled and "on" or "off", s and s.improvedOn ~= false and "on" or "off")
+        end },
+} })
+
+-- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) where the input line sits: Bottom, Top under the tabs, Top above the tabs, Free move
+-- (drag + width in the mover only)
+local inSaved
+local function InPos(v)
+    local s, C = S(), Ch(); if not (s and C) then return end
+    if not inSaved then inSaved = { inputPos = s.inputPos, inputX = s.inputX, inputY = s.inputY, inputW = s.inputW } end
+    s.inputPos = v; C.Refresh()
+end
+local function InRects()
+    local C = Ch()
+    return Rect(C.Pane()), Rect(C.TabsArea()), Rect(C.InputArea()), Rect(C.EditBoxOf and C.EditBoxOf(C.Main()))
+end
+local function InGlued(i, e) return i and e and Near(i.l, e.l) and Near(i.b, e.b) and Near(i.w, e.w) end
+QA.Register("chat-input-position", { title = "Chat: input line top, bottom or free move (UI-15)", qa = "D26", order = 239, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Blizzard UI Reskin > Chat Panel > Layout > |cffffd100Input line|r is set to |cffffd100Top, under the tabs|r (yours is remembered).\n\n|cffffd100Expect:|r the tabs, then the line you type in, then the chat text. Press Enter: you type in that top line.",
+        setup = function() InPos("TOP") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local p, t, i, e = InRects()
+            local good = t and i and Near(i.t, t.b - 2, 1.5) and InGlued(i, e)
+            return good and true or false, ("tab row bottom %s, input line top %s; edit box in the line: %s"):format(t and math.floor(t.b) or "?", i and math.floor(i.t) or "?", InGlued(i, e) and "yes" or "NO")
+        end },
+    { text = "Press |cffffd100Do it for me|r: |cffffd100Top, above the tabs|r.\n\n|cffffd100Expect:|r the line you type in at the very top, the tabs under it, then the chat text.",
+        setup = function() InPos("ABOVE") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local p, t, i, e = InRects()
+            local good = p and t and i and Near(i.t, p.t - 2, 1.5) and Near(t.t, i.b - 2, 1.5) and InGlued(i, e)
+            return good and true or false, ("pane top %s, input line top %s, tab row top %s"):format(p and math.floor(p.t) or "?", i and math.floor(i.t) or "?", t and math.floor(t.t) or "?")
+        end },
+    { text = "Press |cffffd100Do it for me|r: |cffffd100Free move|r, and the mover opens. Drag the |cffffd100orange box|r over the input line somewhere else, and drag its right edge to change its width. Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the line moves and resizes with the box; the chat text now reaches the pane's bottom.",
+        setup = function() InPos("FREE"); local C = Ch(); if C and not C.unlocked then C.ToggleMover() end end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local s = S()
+            local p, t, i, e = InRects()
+            local placed = i and Near(i.l, tonumber(s.inputX) or -1, 1.5) and Near(i.b, tonumber(s.inputY) or -1, 1.5)
+            return (placed and InGlued(i, e)) and true or false,
+                ("input line at %s (saved %s, %s; width %s)"):format(Fmt(i), tostring(s.inputX), tostring(s.inputY), tostring(s.inputW or "pane's"))
+        end },
+    { text = "Last step: press |cffffd100Do it for me|r to put your input line setting back and close the mover.",
+        setup = function()
+            local s, C = S(), Ch()
+            if s and C and inSaved then for k, v in pairs(inSaved) do s[k] = v end; inSaved = nil end
+            if C and C.unlocked then C.ToggleMover() end
+            if C then C.Refresh() end
+        end,
+        check = function()
+            if inSaved then return false, "not put back yet" end
+            local C = Ch()
+            return not (C and C.unlocked), "Input line: " .. tostring(C and C.InputPos and C.InputPos())
         end },
 } })
 

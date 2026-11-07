@@ -127,6 +127,10 @@ local function Build(Notify, which)
         tabs = tog("Show the tab row", "tabsShow", 21, "Hiding the tabs also hides the way to switch chat windows."),
         tabH = rng("Tab height (pixels)", "tabHeight", 22, 16, 40, nil, 1, nil, "tabs"),
         inH = rng("Input line height (pixels)", "inputH", 23, 18, 60, nil, 1, nil, "input"),
+        -- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) top (under or above the tab row), bottom, or free move (place and width in
+        -- the mover only: "configurable in mover gui, not from console line")
+        inPos = sel("Input line", "inputPos", 23.5, { BOTTOM = "Bottom", TOP = "Top, under the tabs", ABOVE = "Top, above the tabs", FREE = "Free move" },
+            { "BOTTOM", "TOP", "ABOVE", "FREE" }, "Where the line you type in sits. Free move: drag it and set its width in the mover (Move or resize the chat).", nil, "input"),
         inset = rng("Text inset from the edge (pixels)", "textInset", 24, 2, 30, nil, 1, nil, "text"),
         wrapIndent = tog("Indent wrapped lines", "wrapIndent", 25,
             "When a message is longer than one line, the lines after the first start a little further in, so you can see where each message begins. The game's own chat does this.", nil, "text"),

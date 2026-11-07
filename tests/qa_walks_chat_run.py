@@ -157,6 +157,16 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("split walk negative: Improved Chat back on gives Fail at step 2", not chk(id, 2))
   local okI3, nI3 = run(id, 3); rec("split walk last step: switches put back", okI3 and ns.chat2.enabled == true and ns.chat2.improvedOn ~= false, nI3)
 
+  -- (Chat 0.6.33; UI-15) the input line's place
+  id = "chat-input-position"
+  local okN1, nN1 = run(id, 1); rec("input walk step 1: Top under the tabs", okN1, nN1)
+  rec("input walk negative: Bottom gives Fail at step 1", (function() ns.chat2.inputPos = "BOTTOM"; C.Refresh(); W.flush(); local r = not chk(id, 1); ns.chat2.inputPos = "TOP"; C.Refresh(); W.flush(); return r end)())
+  local okN2, nN2 = run(id, 2); rec("input walk step 2: Top above the tabs", okN2, nN2)
+  local okN3, nN3 = run(id, 3); rec("input walk step 3: Free move, mover open", okN3 and C.unlocked, nN3)
+  ns.chat2.inputX = (ns.chat2.inputX or 0) + 50
+  rec("input walk negative: a saved place the line is not at gives Fail", not chk(id, 3)); C.Refresh(); W.flush()
+  local okN4, nN4 = run(id, 4); rec("input walk last step: put back, mover closed", okN4 and not C.unlocked and C.InputPos() == "BOTTOM", nN4)
+
   -- #430 walkthrough
   id = "chat-position-box"
   rec("position walk step 1", run(id, 1))

@@ -250,6 +250,23 @@ function ns.ChatPrivacy_Refresh()
         cover:Hide()
         cover:SetScript("OnUpdate", nil)
     end
+    -- (Chat 0.6.33; UI-15) the input line moved out of the pane (Free move): a second piece of the cover over it, same fill and opacity
+    local free = s.privOn and canShow and ns.Chat.InputPos and ns.Chat.InputPos() == "FREE" and ns.Chat.skin and ns.Chat.InputArea and ns.Chat.InputArea()
+    if free then
+        if not cover.free then
+            cover.free = CreateFrame("Frame", "XayaUIChatPrivacyInput", UIParent)
+            cover.free:EnableMouse(true)
+            cover.free.fill = cover.free:CreateTexture(nil, "BACKGROUND"); cover.free.fill:SetAllPoints()
+        end
+        local f = cover.free
+        f:SetFrameStrata("DIALOG"); f:SetFrameLevel(100)
+        f:ClearAllPoints(); f:SetAllPoints(free)
+        f.fill:SetColorTexture(s.privR or 0, s.privG or 0, s.privB or 0, (tonumber(s.privFillA) or 100) / 100)
+        f:SetAlpha((s.privAlpha or 100) / 100)
+        f:Show()
+    elseif cover and cover.free then
+        cover.free:Hide()
+    end
 end
 
 function ns.ChatPrivacy_Set(v)

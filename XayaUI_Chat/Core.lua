@@ -31,6 +31,7 @@ C.DEFAULTS = {
     -- parts
     tabsShow = true, tabHeight = 24,
     inputH = 26, inputHint = true, inputHintText = "Press Enter to chat",
+    inputPos = "BOTTOM",   -- (Chat 0.6.33; UI-15) BOTTOM | TOP (under the tab row) | ABOVE (above it) | FREE (inputX / inputY / inputW, mover only)
     stripMode = "HIDE", stripX = 0, stripY = 0,       -- Blizzard's button strip: HIDE | LEFT | RIGHT of the pane
     socialMode = "HIDE", socialX = 0, socialY = 0,    -- the social / quick-join button: HIDE | SHOW (stays above the pane)
     toBottom = "SHOW",                                -- the back-to-newest arrow: SHOW | HIDE
