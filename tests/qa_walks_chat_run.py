@@ -117,6 +117,50 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("#296 last step", run(id, 6))
   rec("no module errors", next(C.errors) == nil)
 
+  -- CHATREV-10 / CHATREV-11 walkthroughs (Chat 0.6.31)
+  C_CVar = { v = { whisperMode = "popout_and_inline", showTimestamps = "none" } }
+  function C_CVar.GetCVar(n) return C_CVar.v[n] end; function C_CVar.SetCVar(n, x) C_CVar.v[n] = x; return true end
+  TIMESTAMP_FORMAT_HHMM_24HR = "%H:%M "
+  ns.OpenSettingsPage = ns.OpenSettingsPage or function() end
+  ns.chat2.whisperSelect = true; C.Refresh(); W.flush()
+  id = "chat-whisper-switch"
+  local okW1, nW1 = chk(id, 1); rec("whisper walk step 1: option on, mode Both", okW1, nW1)
+  C_CVar.v.whisperMode = "inline"
+  rec("whisper walk negative: In-line gives Fail", not chk(id, 1)); C_CVar.v.whisperMode = "popout_and_inline"
+  GENERAL_CHAT_DOCK = GENERAL_CHAT_DOCK or {}
+  local sel = ChatFrame1
+  FCFDock_GetSelectedWindow = function() return sel end
+  rec("whisper walk negative: still on General gives Fail at step 2", not chk(id, 2))
+  sel = { chatType = "WHISPER" }
+  local okW2, nW2 = chk(id, 2); rec("whisper walk step 2: a whisper tab is selected", okW2, nW2)
+  rec("whisper walk negative: on the whisper tab gives Fail at step 3", not chk(id, 3))
+  sel = ChatFrame1
+  rec("whisper walk step 3: back on General", chk(id, 3))
+  id = "chat-settings-layout"
+  local okS1, nS1 = run(id, 1); rec("layout walk step 1: the seven parts", okS1, nS1)
+  local okS2, nS2 = chk(id, 2); rec("layout walk step 2: General's tabs", okS2, nS2)
+  local okS3, nS3 = run(id, 3); rec("layout walk step 3: Chat Tabs has the whisper switch", okS3, nS3)
+  local okS4, nS4 = run(id, 4); rec("layout walk step 4: timestamps set", okS4, nS4)
+  local okS5, nS5 = run(id, 5); rec("layout walk step 5: timestamps put back", okS5 and C_CVar.v.showTimestamps == "none", nS5)
+  local realTree = ns.Service("chatDebug").Options
+  ns.Service("chatDebug").Options = function() local t = realTree(); t.args.look = { type = "group", name = "Appearance", order = 1.5, args = {} }; return t end
+  rec("layout walk negative: an Appearance part back gives Fail", not chk(id, 1))
+  ns.Service("chatDebug").Options = realTree
+
+  -- #430 walkthrough
+  id = "chat-position-box"
+  rec("position walk step 1", run(id, 1))
+  local okP2, nP2 = run(id, 2); rec("position walk step 2: box open and filled", okP2, nP2)
+  local box = C.PositionBox()
+  rec("position walk negative: X not typed yet gives Fail", not chk(id, 3))
+  box.x:SetText("200"); box.x:GetScript("OnEnterPressed")(box.x)
+  local okP3, nP3 = chk(id, 3); rec("position walk step 3: X 200", okP3, nP3)
+  box.right:GetScript("OnClick")(box.right)
+  local okP4, nP4 = chk(id, 4); rec("position walk step 4: one pixel right", okP4, nP4)
+  IsShiftKeyDown = function() return true end; box.up:GetScript("OnClick")(box.up); IsShiftKeyDown = function() return false end
+  local okP5, nP5 = chk(id, 5); rec("position walk step 5: Shift = 10 up", okP5, nP5)
+  local okP6, nP6 = run(id, 6); rec("position walk last step: put back, mover closed", okP6 and not C.unlocked and not box:IsShown(), nP6)
+
   -- pre-fill in the window
   QA.Start("chat-210-mover-collapse")
   local Wn = QA.Window()
