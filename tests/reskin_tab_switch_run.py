@@ -86,7 +86,7 @@ local function shownNames(t)
   for _, e in ipairs(l) do out[#out + 1] = e.n end
   return table.concat(out, " | ")
 end
-check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Friend Colors | Shopping List", names(tab))
+check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Blizzard Windows | Character Pane | Chat Panel | Esc Menu | Friend Colors | Minimap | Objective Tracker | Shopping List | Tooltips", names(tab))
 local ov = tab.args.reskinOverview
 local all = ov and ov.args and ov.args.enable
 check("  ...the switch is on the Overview page (right pane): Enable Blizzard UI Reskin", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard UI Reskin"
@@ -107,7 +107,10 @@ openWin()
 local boxes = 0
 for _, t in ipairs(tabBtns()) do if t.xuiTabBox and t.xuiTabBox:IsShown() then boxes = boxes + 1 end end
 check("the window: no tab button carries a tick box (Blizzard UI Reskin included)", boxes == 0 and #tabBtns() > 0, boxes .. " of " .. #tabBtns())
-local ROWS = { charreskin = "Character Reskin", chatpanel = "Enable Chat Panel", gamemenu = "Use the XayaUI Game Menu look", shoppinglist = "Shopping List" }
+local ROWS = { charreskin = "Character Reskin", chatpanel = "Enable Chat Panel", gamemenu = "Use the XayaUI Game Menu look", shoppinglist = "Shopping List",
+  -- (Reskin 0.6.8, BlizzardSkins.lua)
+  blizzwindows = "Use the XayaUI look on Blizzard's windows", minimapshape = "Use the XayaUI minimap shape", rsktooltips = "Use the XayaUI look on tooltips",
+  objtracker = "Use the XayaUI look on the objective tracker" }
 local bad = {}
 for k, nm in pairs(ROWS) do local sw = tab.args[k] and tab.args[k].xuiSwitch; if not (sw and sw.name == nm) then bad[#bad + 1] = k end end
 table.sort(bad)
@@ -133,7 +136,7 @@ check("the tab saved off: the switch reads off", all.get() == false and ns.Reski
 check("  ...the tab lists Overview only: the reskins' rows are not listed while it was off at load", shownNames(tab) == "Overview", shownNames(tab))
 local s0 = state()
 check("  ...every reskin is off although its own switch is on", not s0.chat and not s0.char and not s0.gm and not s0.shop and own(), fmt(s0))
-check("  ...the reskins' row boxes are greyed (4 of 4)", greyed() == 4, greyed())
+check("  ...the reskins' row boxes are greyed (8 of 8)", greyed() == 8, greyed())
 
 -- ticked on the Overview page: all four start, and a reload is offered
 all.set(nil, true); W.tick(0.1, 10); pcall(ns.DecorateTrees)
@@ -145,7 +148,7 @@ check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overvi
 check("  ...nothing is saved for it while on (a profile that never unticked it holds nothing)", CueRulesDB.reskinTabOff == nil)
 check("  ...the row boxes are no longer greyed", greyed() == 0, greyed())
 ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn()   -- STAND-IN for the reload: the settings addon loads again with the switch on
-check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Friend Colors | Shopping List", shownNames(tab))
+check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Blizzard Windows | Character Pane | Chat Panel | Esc Menu | Friend Colors | Minimap | Objective Tracker | Shopping List | Tooltips", shownNames(tab))
 -- unticked on the tab: all four stop at once, their own switches kept
 all.set(nil, false); W.tick(0.1, 10)
 StaticPopup_Show = rawPopup
