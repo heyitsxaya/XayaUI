@@ -6,7 +6,7 @@
 --     Toolbar history (clock) button (or the options page) opens the Restore list: earlier versions of this note + deleted notes.
 --   * List: the toolbar's list button shows every note in the box (click one to open it).
 --   * Formatting (toolbar underlined-A button, off by default): a format bar (heading, bullet, checkbox, colors, spell icon) and a formatted view.
---     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} icon + name.
+--     Markup is plain text: '# heading', '- bullet', '[ ] / [x] checkbox', |cffRRGGBBtext|r colors, {spell:ID} -> the spell's link ([Name] in the link colour).
 --   * Toolbar: at the top, bottom, left, or right of the box; always visible, or only while the mouse is over the box.
 --   * On / off (Bonus 0.6.14; Xaya 2026-11-06: "It should only enable or disable notepad functionality in its entirety"): the tick box on
 --     its row in Bonus Features > Utilities. Off: nothing of the Notepad is built or runs, its sharing included (V14).
@@ -161,10 +161,16 @@ local function SpellInfo(arg)
     return id, name, icon
 end
 ns.Notepad_SpellInfo = SpellInfo
+-- FA-9 (Bonus 0.6.25; Xaya 2026-11-07: "[Name] in link colour", like a spell shift-clicked into chat): the game's own spell link
+-- (C_Spell.GetSpellLink, the same text a shift-click puts in chat: [Name] in the link colour). No icon. Without a link: plain [Name].
 local function SpellToken(arg)
-    local id, name, icon = SpellInfo(arg)
+    local id, name = SpellInfo(arg)
     if not id then return nil end
-    return ("|T%s:14|t %s"):format(tostring(icon or 134400), name)
+    if C_Spell and C_Spell.GetSpellLink then
+        local ok, link = pcall(C_Spell.GetSpellLink, id)
+        if ok and type(link) == "string" and link ~= "" then return link end
+    end
+    return "[" .. name .. "]"
 end
 local function RenderLine(line)
     line = line:gsub("{spell:([^}]*)}", function(a) return SpellToken(a) or ("|cff888888{spell:" .. a .. "}|r") end)
@@ -400,7 +406,9 @@ Populate = function()
         Add(("%s  %s"):format(date("%b %d %H:%M:%S", h.t), Preview(h.text, 40)), h.text, "Version from " .. date("%b %d %H:%M:%S", h.t), function()
             Flush(); Snapshot(n)   -- what is there now stays recoverable too
             n.text = h.text; n.modified = time()
-            SetEditText(n.text); UpdateTitle(); Populate()
+            -- audit D48 (Bonus 0.6.25): the Restore list opens from the settings page before the box was ever shown (no frame yet)
+            if frame then SetEditText(n.text) end
+            UpdateTitle(); Populate()
         end)
     end
     Add("|cffffd100Deleted notes|r", nil, nil, nil, true)
@@ -740,34 +748,68 @@ function ns.Notepad_ToggleFormat()
 end
 
 local function ToEdit() if mode.list or mode.view then mode.list, mode.view = false, false; ApplyMode() end end
-local function Ins(text, back)   -- insert at the cursor, then step back so the cursor sits inside the pair
+-- UI-59 (Bonus 0.6.20): the game's EditBox:Insert replaces highlighted text, and the API has no way to read the highlighted
+-- range (docs/reference/api: HighlightText / ClearHighlightText only). So Wrap lets Insert put `open` in place of the
+-- selection, works out from the text before and after what it replaced, and puts that text back between open and close.
+-- With nothing highlighted it is the old insert: open + close at the cursor, cursor between them.
+local function Wrap(open, close, lineStart)
     local db = DB(); if not (db and frame and db.format) then return end
     ToEdit()
     local eb = frame.eb
     UndoBreak()
-    eb:SetFocus(); eb:Insert(text)
-    if back and back > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - back)) end
+    eb:SetFocus()
+    local before = eb:GetText() or ""
+    if #before + #open + #close + 1 > MAX_CHARS then   -- the edit box would cut the end off: change nothing
+        if ns.Print then ns.Print("Notepad: this note is full, so the format button did nothing.") end
+        return
+    end
+    eb:Insert(open)
+    local after = eb:GetText() or ""
+    local L = #before - #after + #open                 -- bytes the insert replaced (the highlighted text)
+    local p = 0
+    while p < #before and p < #after and before:byte(p + 1) == after:byte(p + 1) do p = p + 1 end
+    local s
+    if L >= 0 then
+        for i = p, 0, -1 do
+            if after:sub(i + 1, i + #open) == open and after:sub(i + #open + 1) == before:sub(i + L + 1) then s = i; break end
+        end
+    end
+    if not s then   -- could not tell what was replaced: put the note back exactly as it was
+        frame.eb:SetText(before)
+        if ns.Print then ns.Print("Notepad: could not apply the format, the note was left unchanged.") end
+        return
+    end
+    local sel = before:sub(s + 1, s + L)
+    local nl = (lineStart and s > 0 and before:sub(s, s) ~= "\n") and "\n" or ""
+    if L == 0 and nl == "" then   -- nothing highlighted: the old behaviour
+        eb:Insert(close)
+        if #close > 0 then eb:SetCursorPosition(math.max(0, eb:GetCursorPosition() - CharCount(close))) end
+        return
+    end
+    local head = before:sub(1, s) .. nl .. open .. sel .. close
+    local text = head .. before:sub(s + L + 1)
+    eb:SetText(text)                                   -- fires OnTextChanged: the note and the undo steps follow it
+    eb:SetCursorPosition(L == 0 and (CharCount(head) - CharCount(close)) or CharCount(head))
 end
-local function LineStart(prefix)
-    local db = DB(); if not (db and frame and db.format) then return end
-    ToEdit()
-    local eb = frame.eb
-    local pos = eb:GetCursorPosition()
-    local before = CharBefore(eb:GetText(), pos)
-    Ins(((pos == 0 or before == "\n") and "" or "\n") .. prefix)
+local function Ins(text, back)   -- kept for callers that insert one piece: back = characters to step back into it
+    back = back or 0
+    local cut = #text - back
+    Wrap(text:sub(1, cut), text:sub(cut + 1))
 end
+local function LineStart(prefix) Wrap(prefix, "", true) end
 ns.Notepad_LineStart, ns.Notepad_Insert = LineStart, Ins
 
+-- Hovers (UI-65, Xaya 2026-11-07: "briefer, more direct, more user-legible tooltips"): a title plus at most two plain sentences.
 local FMT = {
-    { w = 34, label = "View", tip = "Switch between typing (plain text) and the formatted view. Click the formatted text to edit it again.", act = function() ns.Notepad_SetView(not mode.view) end },
-    { w = 24, label = "H", tip = "Heading: starts the line with # (gold in the formatted view).", act = function() LineStart("# ") end },
-    { w = 24, label = "|cff99ccff-|r", tip = "Bullet: starts the line with - (a bullet in the formatted view).", act = function() LineStart("- ") end },
-    { w = 24, label = "[ ]", tip = "Checkbox: starts the line with [ ]. Change it to [x] when done (grey with a green mark in the formatted view).", act = function() LineStart("[ ] ") end },
-    { w = 24, label = "|cffff5555R|r", tip = "Red text: type between the color code and the closing ||r.", act = function() Ins("|cffff5555|r", 2) end },
-    { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: type between the color code and the closing ||r.", act = function() Ins("|cffffd100|r", 2) end },
-    { w = 24, label = "|cff55dd55G|r", tip = "Green text: type between the color code and the closing ||r.", act = function() Ins("|cff55dd55|r", 2) end },
-    { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: type between the color code and the closing ||r.", act = function() Ins("|cff66b3ff|r", 2) end },
-    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows its icon and name.", act = function() Ins("{spell:}", 1) end },
+    { w = 34, label = "View", title = "View / Edit", tip = "Switches between typing and the formatted view.", act = function() ns.Notepad_SetView(not mode.view) end },
+    { w = 24, label = "H", title = "Heading", tip = "Starts the line with # (gold in the formatted view). Highlighted text is kept.", act = function() LineStart("# ") end },
+    { w = 24, label = "|cff99ccff-|r", title = "Bullet", tip = "Starts the line with - (a bullet in the formatted view). Highlighted text is kept.", act = function() LineStart("- ") end },
+    { w = 24, label = "[ ]", title = "Checkbox", tip = "Starts the line with [ ]. Change it to [x] when done.", act = function() LineStart("[ ] ") end },
+    { w = 24, label = "|cffff5555R|r", title = "Red text", tip = "Turns the highlighted text red. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cffff5555", "|r") end },
+    { w = 24, label = "|cffffd100Y|r", title = "Yellow text", tip = "Turns the highlighted text yellow. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cffffd100", "|r") end },
+    { w = 24, label = "|cff55dd55G|r", title = "Green text", tip = "Turns the highlighted text green. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cff55dd55", "|r") end },
+    { w = 24, label = "|cff66b3ffB|r", title = "Blue text", tip = "Turns the highlighted text blue. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cff66b3ff", "|r") end },
+    { w = 34, label = "Spell", title = "Spell link", tip = "Turns the highlighted spell name into a spell link. With nothing highlighted, type a spell ID, name or link between the braces.", act = function() Wrap("{spell:", "}") end },
 }
 
 BuildFormatBar = function(f)
@@ -782,7 +824,7 @@ BuildFormatBar = function(f)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
         b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); b.fs:SetPoint("CENTER"); b.fs:SetText(def.label)
         b:SetScript("OnClick", def.act)
-        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def.tip, 1, 1, 1, 1, true); GameTooltip:Show() end)
+        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def.title, 1, 0.82, 0); GameTooltip:AddLine(def.tip, 1, 1, 1, true); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         fb.btns[i] = b
     end
@@ -1142,7 +1184,18 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Notepad_OnDBReady)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
+-- O-100 (Bonus 0.6.25; Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer "No
+-- word at all"): no state text; the row exists only while the Notepad is on, and a click shows / hides the box.
 ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
-    function() local d = ns.notepadDB; return d and d.shown and "on" or "off" end, order = 10,
+    nil, order = 10,
     available = function() return On() end })   -- (Bonus 0.6.14) no row while the Notepad is off (core 0.6.49: available())
 -- its settings page is a part of Bonus Features > Utilities (registered by Utilities.lua, Bonus 0.6.11), not a page of its own
+-- (Bonus 0.6.25) the Notepad's service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit.lua), through XayaUI's service list
+-- (Modules.lua ns.Provide / ns.Service), so Dev Assist never calls this addon by name. Nothing here runs until a walkthrough asks.
+if ns.Provide then
+    ns.Provide("notepadDebug", {
+        DB = function() return ns.notepadDB end, On = function() return On() end, Frame = function() return frame end,
+        SetShown = ns.Notepad_SetShown, ToggleFormat = ns.Notepad_ToggleFormat, New = ns.Notepad_New, Delete = ns.Notepad_Delete,
+        Next = ns.Notepad_Next, SetView = ns.Notepad_SetView, Render = ns.Notepad_Render, CurrentText = ns.Notepad_CurrentText,
+    })
+end

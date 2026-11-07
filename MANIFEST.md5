@@ -566,8 +566,10 @@ a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-
 254e54340c60c7433be1be71043f5ac6  debug-log/2026-11-07-0016-stat-labels-gcd-title-case-qol-0.7.39.md
 6a016d1abd045d0c5139db55f57467d7  debug-log/2026-11-07-0022-m-plus-record-prompt-perf-meter-devassist-0.7.8.md
 9f306977e37ec5bb01d75a9510dda64e  debug-log/2026-11-07-0023-standard-gcd-calculation-qol-0.7.39.md
+d866667a873191b4532959e1a65eae3e  debug-log/2026-11-07-0033-notepad-format-keeps-selection-bonus-0.6.25.md
 895a20ea09f6c933f42905c837429024  debug-log/2026-11-07-0037-audit-core-fixes-core-0.6.62.md
 0fb28970af8cb620ad65ce08b64f96c4  debug-log/2026-11-07-0040-audit-chat-fixes-chat-0.6.31.md
+6f4d9541e3192e9b35416eaa39478503  debug-log/2026-11-07-0044-audit-notepad-restore-closed-bonus-0.6.25.md
 8adefcfb458696c3de56e35f76e0ff8e  debug-log/2026-11-07-0045-o100-stat-calculator-row-qol-0.7.40.md
 f1e69afb494a02b2fafb34544eb14c98  debug-log/2026-11-07-0602-qa-walks-display-devassist-0.7.11.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
@@ -793,6 +795,8 @@ adb52b5f86b97b5ac549353e59d97f36  tests/modules_run.py
 6ad4b6d2b5aa5998a397aa381d3de5ba  tests/mover_click_run.py
 e8c79d1d93091479d2ca65df17476a21  tests/mover_session_run.py
 d396016203219aa50f07c7fa18836a27  tests/mover_view_run.py
+5b98715ed25bcd0454d4de3de2632cfb  tests/notepad_format_selection_run.py
+6c2c6f170f9def278b566050575cb3a9  tests/notepad_restore_closed_run.py
 cdf5afa7f1306d8e0784a11f487ff451  tests/notepad_run.py
 3bc4e983f8c433652e211fb94da454c1  tests/options_bonus_off_costs_nothing_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py

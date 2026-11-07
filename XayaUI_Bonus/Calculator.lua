@@ -379,6 +379,6 @@ if ns.RegisterCommand then
 end
 if ns.RegisterLauncher then
     ns.RegisterLauncher({ "calc", "Calculator", "Show or hide the calculator (also /xui calc)", function() ns.Calculator_Toggle() end,
-        function() return (frame and frame:IsShown()) and "on" or "off" end, order = 11,
+        nil, order = 11,   -- O-100 (Bonus 0.6.25, her answer "No word at all"): no "on" / "off" for shown / hidden
         available = function() return On() end })   -- (Bonus 0.6.16) no row while the Calculator is off (core 0.6.49: available())
 end
