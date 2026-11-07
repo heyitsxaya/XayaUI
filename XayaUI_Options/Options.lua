@@ -18,6 +18,7 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
+ns.OptionsApi.AutoPicker = ns.AutoPicker   -- published for Dev Assist's QA walkthrough (QAWalks-generate.lua, V22): the harness lets an addon read only what another publishes through here
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
 -- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
 -- Blizzard UI Reskin (Options 0.6.38; Xaya 2026-11-05: "Take all reskins and put them into a new tab: Blizzard UI Reskin. Currently
