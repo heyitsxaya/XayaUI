@@ -866,8 +866,10 @@ function ns.LoadIdRows(ld, changed, locked, searchBox)
     return args
 end
 
+-- Each choice cycles selected -> NOT -> cleared (AceGUI's tri-state goes true -> nil -> false). An unset choice reads false (unticked);
+-- "none ticked = any" is shown by the All box. Audit D20: an unset box read true, so the first click stored NOT and "selected" could never
+-- be stored.
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
-    local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
         all = { type = "toggle", name = "All", order = 0, width = "double",
             desc = "No restriction. Click a box below once to select it, twice for NOT, a third time to clear it.",
@@ -886,7 +888,6 @@ local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
                 local st = set[ch.id]
                 if st == true then return true end
                 if st == "not" then return nil end
-                if not hasOn(set) then return true end
                 return false
             end,
             set = function(_, v)
@@ -1174,6 +1175,13 @@ end
 local function FolderRules(fid)
     local l = {}
     for _, r in ipairs(ns.rules or {}) do if r.folder and IsInFolder(r.folder, fid) then l[#l + 1] = r end end
+    return l
+end
+-- The rules of a group without the cues and conditions inside them (audit D42: the group's Enabled box and Enable / Disable All Rules
+-- Inside switched a condition the player had turned off back on; the Delete Group confirmation counted cue rows as rules).
+local function FolderTopRules(fid)
+    local l = {}
+    for _, r in ipairs(FolderRules(fid)) do if not r.parentUid then l[#l + 1] = r end end
     return l
 end
 -- Display / Sound / Hybrid / Advanced Cue Tracking default folders are sub-sections of Smart Categories inside All Rules
@@ -1887,6 +1895,8 @@ local function BuildRule(i, rule)
         desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges, and state.",
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "cd") end   -- FA-11: to the Recycle Bin (no prompt), restorable
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
             rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             rule.exactSpell = nil
@@ -1895,7 +1905,13 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil; Changed(rule); Notify() end }
+        func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "buff") end   -- FA-11: to the Recycle Bin (no prompt), restorable
+            rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil
+            rule.buffTimeOp, rule.buffTimeSec = nil, nil   -- audit D25: re-adding the trigger no longer brings back an old "Seconds left" filter
+            Changed(rule); Notify()
+        end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
@@ -2540,7 +2556,7 @@ local function BuildRule(i, rule)
     local sound = {
         type = "group", inline = true, name = "Sound", order = 3, args = {
             soundEnabled = { type = "toggle", name = "Play a sound", order = 1,
-                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v end },
+                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v; ns.MarkDirty() end },
             sound = {
                 type = "select", name = "Sound", order = 2, width = "double",
                 values = function() EnsureSounds(); return soundValues end,
@@ -2552,9 +2568,9 @@ local function BuildRule(i, rule)
                     end
                 end,
                 set = function(_, v)
-                    if v == "0" then rule.sound.value = ""; return end
+                    if v == "0" then rule.sound.value = ""; ns.MarkDirty(); return end
                     local it = soundList[tonumber(v)]
-                    if it then rule.sound.source, rule.sound.value = it.source, it.value end
+                    if it then rule.sound.source, rule.sound.value = it.source, it.value; ns.MarkDirty() end
                 end,
             },
             test = { type = "execute", name = "Test sound", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
@@ -2572,9 +2588,9 @@ local function BuildRule(i, rule)
                 end },
             repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 4, width = "double",
                 min = 0, max = 10, step = 0.1,
-                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
             channel = { type = "select", name = "Sound channel", order = 5, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
-                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v end },
+                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v; ns.MarkDirty() end },
             -- #334 (Insivius): a volume on the cue's own sound, like Speech volume. The game allows it only for its own sound kits.
             cueVolume = { type = "range", order = 5.5, width = "double", min = 0, max = 100, step = 5,
                 name = function()
@@ -2645,7 +2661,7 @@ local function BuildRule(i, rule)
         text = { type = "input", name = "Text to speak", order = 1, width = "full",
             desc = "Spoken when the cue fires. Plain text; no tokens yet.",
             get = function() return rule.sound.value or "" end,
-            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200) end },
+            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200); ns.MarkDirty() end },
         voice = { type = "select", name = "Voice", order = 2, width = "double",
             desc = "Voices come from the voice packs installed on this computer, so other players may see a different list.",
             values = function()
@@ -2659,14 +2675,14 @@ local function BuildRule(i, rule)
                 return s
             end,
             get = function() return tostring(rule.sound.voice or 0) end,
-            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil end },
+            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil; ns.MarkDirty() end },
         test = { type = "execute", name = "Test speech", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
         rate = { type = "range", name = "Speed", order = 4, width = "double", min = -10, max = 10, step = 1,
-            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v end },
+            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v; ns.MarkDirty() end },
         vol = { type = "range", name = "Speech volume", order = 5, width = "double", min = 0, max = 100, step = 5,
-            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v end },
+            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v; ns.MarkDirty() end },
         repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 6, width = "double", min = 0, max = 10, step = 0.1,
-            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
         none = { type = "description", order = 7, fontSize = "small",
             hidden = function() return #ns.GetTtsVoices() > 0 end,
             name = "|cffff8800No text-to-speech voice is installed on this computer, so nothing will be spoken.|r" },
@@ -3051,6 +3067,7 @@ local function BuildRule(i, rule)
                 get = function() return rule.folder or "none" end,
                 set = function(_, v)
                     rule.folder = (v ~= "none") and v or nil
+                    ns.MarkDirty(); pcall(ns.RefreshAllVisuals)   -- audit D24: as right-click > Move To (an undo step; displays follow the new group)
                     Notify()
                     ns.SelectKeep(RulePath(rule))
                 end,
@@ -3125,9 +3142,14 @@ function ns.SelectRuleTab(tabKey)
     Notify()
 end
 
--- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
+-- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar. A cue or condition follows
+-- its rule's lock too (audit D41: the rule row's lock covers the rule and everything shown inside it).
 function ns.IsEditLocked(x)
     if x and x.editLocked then return true end
+    if x and x.parentUid and ns.FindParentRule then
+        local p = ns.FindParentRule(x)
+        if p and p ~= x and p.editLocked then return true end
+    end
     local id, guard = x and x.folder, 0
     while id and guard < 32 do
         local f = ns.FolderById(id)
@@ -3137,10 +3159,36 @@ function ns.IsEditLocked(x)
     end
     return false
 end
+-- A header's own controls (Skin.lua: arg.xuiActions = Move up / Move down / Duplicate / Remove, arg.xuiEdit = the name box) are not
+-- AceConfig options, so `disabled` never reached them (audit D26 / D44). While locked() is true the action icons are drawn grayed out
+-- (false) and do nothing, and the name box refuses the edit. Wrapping twice is harmless.
+function ns.LockHeaderArg(a, locked)
+    if type(a) ~= "table" then return end
+    local acts = a.xuiActions
+    if acts ~= nil and not a.xuiLockWrapped then
+        a.xuiLockWrapped = true
+        a.xuiActions = function(...)
+            local spec = acts
+            if type(spec) == "function" then spec = spec(...) end
+            if type(spec) ~= "table" or not locked() then return spec end
+            local out = {}
+            for k, v in pairs(spec) do if v ~= nil then out[k] = false end end
+            return out
+        end
+    end
+    local ed = a.xuiEdit
+    if type(ed) == "table" and not ed.xuiLockWrapped then
+        ed.xuiLockWrapped = true
+        local set = ed.set
+        ed.locked = locked
+        ed.set = function(...) if locked() then return end; if set then return set(...) end end
+    end
+end
 -- disables every leaf option while locked() is true (collapse / expand controls stay usable; groups are left alone
 -- because a disabled group would also disable those controls)
 function ns.LockArgs(args, locked)
     for _, o in pairs(args or {}) do
+        if type(o) == "table" and o.arg then ns.LockHeaderArg(o.arg, locked) end
         if o.type == "group" then
             ns.LockArgs(o.args, locked)
         elseif not (type(o.desc) == "string" and o.desc:find("^Expand or collapse")) then
@@ -4476,9 +4524,9 @@ local function BuildFolder(k, f)
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
                 end },
             enableAll = { type = "execute", name = "Enable all", order = 3, desc = "Switches on every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             disableAll = { type = "execute", name = "Disable all", order = 4, desc = "Switches off every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
                 desc = "Freezes the sample countdown, the fades, and the flash in every preview while the images stay on screen. Untick to resume. This is the same switch as on Smart Categories and on each rule, so it pauses every preview, not only this group's.",
@@ -4515,10 +4563,10 @@ local function BuildFolder(k, f)
         desc = "Ticked: every rule in this group and its nested groups is on. Unticking switches them all off (ticking again switches them all on).",
         get = function()
             local any = false
-            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            for _, r in ipairs(FolderTopRules(f.id)) do any = true; if not r.enabled then return false end end
             return any
         end,
-        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+        set = function(_, v) for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
     if container and container.args then
         local any = false
         for k, v in pairs(container.args) do
@@ -4906,11 +4954,13 @@ local function BuildOptions()
     end
     local binItems = ns.RecycleItems and ns.RecycleItems() or {}
     binArgs.summary = { type = "description", order = 3, width = "full", fontSize = "medium",
-        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups wait here so they can be restored."
+        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups, and cues, conditions and triggers removed with the red X, wait here so they can be restored."
             or ("\n%d item(s). Each is removed for good %s after it was deleted."):format(#binItems, ns.RecycleKeepLabel()) }
     for i, it in ipairs(binItems) do
+        local KIND_WORD = { cue = "Cue", condition = "Condition", trigger = "Trigger" }   -- FA-11: removed with the red X in a rule
         local what = (it.kind == "rule") and "Rule"
             or (it.kind == "groupAll") and ("Group with its contents: %d rule(s), %d group(s)"):format(it.rules, it.groups)
+            or KIND_WORD[it.kind] and (KIND_WORD[it.kind] .. " of the rule '" .. tostring(it.owner or "?") .. "'")
             or "Group (its contents had moved up one level)"
         binArgs["item" .. i] = { type = "group", inline = true, order = 10 + i, name = tostring(it.name), args = {
             info = { type = "description", order = 1, width = "relative", relWidth = 0.7, fontSize = "medium",
@@ -6349,8 +6399,8 @@ local function RowMenu(button, root)
             end)
             root:CreateDivider()
         end
-        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
-        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Export Group", function() ns.UI.ExportFolder(fold) end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
             function() return "every rule in '" .. tostring(fold.name) .. "' (and its nested groups)" end)
@@ -6360,7 +6410,7 @@ local function RowMenu(button, root)
             AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() DeleteFolder(fold) end)
         end)
         root:CreateButton("|cffff6060Delete Group and All Contents|r", function()
-            local n = #FolderRules(fold.id)
+            local n = #FolderTopRules(fold.id)
             AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? They go to the Recycle Bin together as one item, for " .. ns.RecycleKeepLabel() .. ".", function() ns.DeleteFolderAll(fold) end)
         end)
         return true
@@ -7005,13 +7055,15 @@ do
     function ns.MultiMove(fid)
         local fo = fid and FolderById(fid)
         if fo and ns.IsCategoryRoot(fo) then ns.Print("rules cannot be placed into a Smart Category"); return end
-        local n = 0
+        local n, skipped = 0, 0
         for r in pairs(sel) do
-            if r.folder ~= fid then r.folder = fid; n = n + 1 end
+            if ns.IsEditLocked(r) then skipped = skipped + 1   -- audit D44: a locked rule stays where it is
+            elseif r.folder ~= fid then r.folder = fid; n = n + 1 end
             -- outcomes embedded in a rule follow their parent's group (same rule as the single-rule move)
         end
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) were not moved (unlock them in the sidebar to move them)."):format(skipped)) end
         local keep = {}
-        for r in pairs(sel) do keep[#keep + 1] = r end
+        for r in pairs(sel) do if not ns.IsEditLocked(r) then keep[#keep + 1] = r end end
         ns.MultiReset()
         ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         if ns.DecorateTrees then ns.DecorateTrees() end
@@ -7088,8 +7140,9 @@ do
         if button.xuiMultiTex then button.xuiMultiTex:SetShown(on and true or false) end
     end
     function ns.MultiDelete()
-        local list = {}
-        for r in pairs(sel) do list[#list + 1] = r end
+        local list, skipped = {}, 0
+        for r in pairs(sel) do if ns.IsEditLocked(r) then skipped = skipped + 1 else list[#list + 1] = r end end   -- audit D44
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) are left out (unlock them in the sidebar to delete them)."):format(skipped)) end
         if #list == 0 then return end
         StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? Each goes to the Recycle Bin for %s and can be restored on its own."):format(#list, ns.RecycleKeepLabel()), nil, { cb = function()
             ns.RecycleRules(list)
@@ -7109,7 +7162,7 @@ function ns.SidebarRename(button)
         rule = fk and FolderById(fk)
         isFolder = rule and true or nil
     end
-    if not rule or (not isFolder and ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
+    if not rule or ns.IsEditLocked(isFolder and { folder = rule.id } or rule) then return end   -- audit D44: a locked group is not renamed either
     local eb = button.xuiRenameEB
     if not eb then
         eb = CreateFrame("EditBox", nil, button)
@@ -7130,6 +7183,7 @@ function ns.SidebarRename(button)
                     r.name = t
                     ns.MarkDirty(); Notify()
                 else
+                    if t:match("^%s*$") then return end   -- audit D46: an empty name keeps the old one (as a group and the Rename popup do)
                     r.name = t
                     pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
                 end
@@ -7396,6 +7450,14 @@ local function DecorateButton(button)
         local rules = {}
         for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
         local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+        -- audit D41: a rule whose displays are its cues listed only the cues here, so its lock left the rule itself editable
+        local rn = lastKey:match("^rule(%d+)$")
+        local own = rn and ns.rules and ns.rules[tonumber(rn)]
+        if own then
+            local has = false
+            for _, o in ipairs(rules) do if o == own then has = true; break end end
+            if not has then table.insert(rules, 1, own) end
+        end
         local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
         local vr = {}
         for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
@@ -8150,6 +8212,10 @@ end
 function ns.DeleteKey()
     if ns.MultiCount() > 0 then ns.MultiDelete(); return true end
     local rule = SelectedRule()
+    if rule and ns.IsEditLocked(rule) then   -- audit D44: a locked rule is not deleted
+        ns.Print("'" .. tostring(rule.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if rule then
         AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function()
             ns.RecycleRule(rule)
@@ -8158,6 +8224,10 @@ function ns.DeleteKey()
         return true
     end
     local g = ns.SelectedGroup()
+    if g and ns.IsEditLocked({ folder = g.id }) then
+        ns.Print("the group '" .. tostring(g.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if g then
         AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() ns.DeleteFolderById(g.id) end)
         return true
@@ -8455,7 +8525,10 @@ do
                     f.armed = false
                 end
                 local fn = ns[d[3]]
-                if fn then pcall(fn, r) end
+                if fn then   -- audit D47: a failure is reported (it used to vanish inside pcall)
+                    local ok, err = pcall(fn, r)
+                    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+                end
                 if ns.UI and ns.UI.Notify then ns.UI.Notify() end
             end)
         end
@@ -8589,3 +8662,22 @@ end
 function ns.OptionsApi.IsOpen() return (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) and true or false end
 function ns.OptionsApi.SkinOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
 ns.Options = ns.OptionsApi
+
+-- Dev Assist QA walkthroughs (XayaUI_DevAssist/QAWalks-audit-options.lua) reach the editor only through this service: a fresh options
+-- tree's node for one rule or one group, and the Drafts page. Read-only helpers; nothing runs until a walkthrough calls them.
+do
+    local function FindKey(node, key, depth)
+        if type(node) ~= "table" or depth > 18 or type(node.args) ~= "table" then return nil end
+        if node.args[key] ~= nil then return node.args[key] end
+        for _, c in pairs(node.args) do local hit = FindKey(c, key, depth + 1); if hit then return hit end end
+    end
+    if ns.Provide then ns.Provide("optionsDebug", {
+        RuleNode = function(rule)
+            for i, r in ipairs(ns.rules or {}) do if r == rule then return FindKey(BuildOptions(), "rule" .. i, 0) end end
+        end,
+        FolderNode = function(f) return f and FindKey(BuildOptions(), f.id, 0) end,
+        Find = function(node, key) return FindKey(node, key, 0) end,
+        DraftsPage = function() return ns.BuildDraftsPage and ns.BuildDraftsPage() end,
+        IsEditLocked = function(x) return ns.IsEditLocked(x) end,
+    }) end
+end

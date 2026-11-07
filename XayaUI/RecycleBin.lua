@@ -5,7 +5,10 @@
 --   * a group deleted on its own: only the group; its rules and nested groups move up one level as before, and Restore moves the
 --     ones that are still where they were moved back into it;
 --   * a group deleted with its contents: the group, every group nested in it and every rule inside them.
--- Removing a single cue or condition inside a rule is an edit and does not go here; neither do drafts or backups.
+--   * FA-11 (Xaya, her words: "Recycle Bin, no prompt (Recommended)"): a cue, a condition or a trigger removed with the red X in the rule
+--     editor. Restore puts it back into its rule, at the place it had (a cue also gets back its place in the conditions that played it).
+--     Its rule has to be there: while the rule itself is in the bin, Restore says so and keeps the item.
+-- Drafts and backups do not go here.
 -- While an item is in the bin it is in neither ns.rules nor ns.folders, so nothing loads, shows, fires or can be edited.
 --
 -- How long items stay (Xaya, 2026-11-04): 7 days by default; 36 hours, 3 days or 14 days in the Recycle Bin page. Older items are
@@ -163,6 +166,200 @@ function ns.RecycleFolderAll(f)
     return item, #tops
 end
 
+-------------------------------------------------------------------------------
+-- FA-11: a cue, a condition or a trigger removed with the red X
+-------------------------------------------------------------------------------
+local function liveRuleByUid(uid)
+    if type(uid) ~= "string" then return nil end
+    for _, r in ipairs(ns.rules or {}) do if r.uid == uid and not r.parentUid then return r end end
+end
+local function isCueRow(r) return r.isCue and true or false end
+
+-- A cue or a condition (a rule row with a parentUid): taken out of the rules into one bin item. Returns the item, or nil (the caller then
+-- removes it the old way).
+function ns.RecycleChild(child)
+    if type(child) ~= "table" or type(child.parentUid) ~= "string" or not ns.rules then return nil end
+    local parent = liveRuleByUid(child.parentUid)
+    local pos, k = nil, 0   -- its place among the rule's cues (or conditions)
+    for _, r in ipairs(ns.rules) do
+        if r.parentUid == child.parentUid and isCueRow(r) == isCueRow(child) then
+            k = k + 1
+            if r == child then pos = k end
+        end
+    end
+    if not pos then return nil end
+    local refs = {}
+    if child.isCue and parent and child.cueKey ~= nil then
+        -- the conditions that play this cue: remembered (by uid) so Restore links it again, then unlinked as ns.DeleteCue does
+        for _, r in ipairs(ns.rules) do
+            if r.parentUid == parent.uid and not r.isCue then
+                local at, mod
+                if type(r.thenCues) == "table" then for i, key in ipairs(r.thenCues) do if key == child.cueKey then at = i end end end
+                if type(r.thenMods) == "table" then mod = r.thenMods[child.cueKey] end
+                if at or mod ~= nil then
+                    if type(r.uid) ~= "string" and ns.NewUID then r.uid = ns.NewUID() end
+                    refs[#refs + 1] = { cond = r.uid, at = at, mod = (type(mod) == "table" and ns.Copy) and ns.Copy(mod) or mod }
+                    if at then
+                        for i = #r.thenCues, 1, -1 do if r.thenCues[i] == child.cueKey then table.remove(r.thenCues, i) end end
+                        if #r.thenCues == 0 then r.thenCues = nil end
+                    end
+                    if mod ~= nil then r.thenMods[child.cueKey] = nil; if next(r.thenMods) == nil then r.thenMods = nil end end
+                end
+            end
+        end
+    end
+    local taken = takeRules({ child })
+    if #taken == 0 then return nil end
+    local name
+    if child.isCue then name = (ns.CueLabel and parent and ns.CueLabel(child)) or child.cueName or "Cue"
+    else name = (type(child.name) == "string" and child.name ~= "") and child.name or "Condition" end
+    return addItem({ kind = child.isCue and "cue" or "condition", name = tostring(name), rules = taken, parentUid = child.parentUid,
+        owner = parent and ruleName(parent) or nil, pos = pos, refs = refs })
+end
+
+-- A trigger of a rule: tok "cd" / "buff" (the built-in Cooldown / Buff / Aura trigger: its fields) or "x" with row j (an additional
+-- trigger: a copy of the row). Call it BEFORE removing the trigger; it only stores the copy. Returns the item.
+local TRIGGER_FIELDS = {
+    cd = { "useCooldown", "spellID", "maxCharges", "cdState", "countGCD", "countLOC", "cdTimeOp", "cdTimeSec", "cdChargeOp", "cdChargeVal", "exactSpell", "cdName" },
+    buff = { "useBuff", "buffID", "buffAlt", "buffState", "buffTimeOp", "buffTimeSec", "buffName" },
+}
+function ns.RecycleTrigger(rule, tok, j)
+    if type(rule) ~= "table" or not ns.TriggerSequence or not ns.Copy then return nil end
+    local seq = ns.TriggerSequence(rule)
+    local seqPos, copy, label, refs, trigMode
+    if tok == "x" then
+        local row = type(rule.extra) == "table" and type(rule.extra.list) == "table" and rule.extra.list[j]
+        if type(row) ~= "table" then return nil end
+        local seen = 0
+        for i, tk in ipairs(seq) do if tk == "x" then seen = seen + 1; if seen == j then seqPos = i; break end end end
+        copy = ns.Copy(row)
+        -- the condition rows that read this trigger lose it when it is removed (ns.RemapOutcomeRefs): remembered so Restore points them back
+        refs = {}
+        for _, o in ipairs(ns.OutcomesOf and ns.OutcomesOf(rule) or {}) do
+            if type(o.when) == "table" and type(o.when.list) == "table" then
+                for ti, t in ipairs(o.when.list) do
+                    local ref = type(t.ref) == "string" and t.ref or ""
+                    local pre, n, suf = ref:match("^(n?:?x)(%d+)(%a?)$")
+                    if n and tonumber(n) == j and (pre == "x" or pre == "n:x") then
+                        if type(o.uid) ~= "string" and ns.NewUID then o.uid = ns.NewUID() end
+                        refs[#refs + 1] = { cond = o.uid, term = ti, pre = pre, suf = suf }
+                    end
+                end
+            end
+        end
+        trigMode = (rule.trigMode == "x" .. j) or nil
+        local def = ns.TRIGGER_TYPES and ns.TRIGGER_TYPES[row.type]
+        label = (type(row.name) == "string" and row.name ~= "") and row.name or (def and def.label) or "Trigger"
+    elseif TRIGGER_FIELDS[tok] then
+        for i, tk in ipairs(seq) do if tk == tok then seqPos = i end end
+        if not seqPos then return nil end   -- not in use: nothing to keep
+        copy = {}
+        for _, k in ipairs(TRIGGER_FIELDS[tok]) do local v = rule[k]; copy[k] = (type(v) == "table") and ns.Copy(v) or v end
+        label = (tok == "cd") and (rule.cdName or "Cooldown") or (rule.buffName or "Buff / Aura")
+    else
+        return nil
+    end
+    if type(rule.uid) ~= "string" and ns.NewUID then rule.uid = ns.NewUID() end
+    if type(rule.uid) ~= "string" then return nil end
+    return addItem({ kind = "trigger", name = tostring(label), owner = ruleName(rule), ruleUid = rule.uid, tok = tok, j = j,
+        seqPos = seqPos or (#seq + 1), trigger = copy, refs = refs, trigMode = trigMode, rules = {} })
+end
+
+-- Restore of the three kinds above. Returns ok, note.
+local function restoreChild(it)
+    local parent = liveRuleByUid(it.parentUid)
+    if not parent then return false, "its rule '" .. tostring(it.owner or "?") .. "' is not in your rules (restore that rule first)" end
+    local live = {}
+    for _, r in ipairs(ns.rules) do if type(r.uid) == "string" then live[r.uid] = true end end
+    local wantCue = it.kind == "cue"
+    local remapKey
+    for _, r in ipairs(it.rules or {}) do
+        if type(r.uid) == "string" and live[r.uid] and ns.NewUID then r.uid = ns.NewUID() end
+        r.folder = parent.folder
+        if r.isCue and r.cueKey ~= nil and ns.CueKey then   -- a cue added since then may use its key: take a free one
+            for _, c in ipairs(ns.rules) do
+                if c.parentUid == parent.uid and c.isCue and c.cueKey == r.cueKey then local nk = ns.CueKey(parent); remapKey = { r.cueKey, nk }; r.cueKey = nk; break end
+            end
+        end
+        if ns.NormalizeRule then pcall(ns.NormalizeRule, r) end
+    end
+    -- the place it had: before the sibling now at its position, else after the rule's last row
+    local at, k, last = nil, 0, nil
+    for i, r in ipairs(ns.rules) do
+        if r == parent or r.parentUid == parent.uid then last = i end
+        if r.parentUid == parent.uid and isCueRow(r) == wantCue then
+            k = k + 1
+            if k == it.pos and not at then at = i end
+        end
+    end
+    at = at or ((last or #ns.rules) + 1)
+    for n, r in ipairs(it.rules or {}) do table.insert(ns.rules, at + n - 1, r) end
+    -- a cue: link it again in the conditions that played it (those still there)
+    local key = it.rules and it.rules[1] and it.rules[1].cueKey
+    local relinked = 0
+    for _, ref in ipairs(it.refs or {}) do
+        for _, c in ipairs(ns.rules) do
+            if c.uid == ref.cond and c.parentUid == parent.uid and not c.isCue and key ~= nil then
+                if ref.at then
+                    c.thenCues = type(c.thenCues) == "table" and c.thenCues or {}
+                    table.insert(c.thenCues, math.min(ref.at, #c.thenCues + 1), key)
+                end
+                if ref.mod ~= nil then c.thenMods = type(c.thenMods) == "table" and c.thenMods or {}; c.thenMods[key] = ref.mod end
+                relinked = relinked + 1
+                break
+            end
+        end
+    end
+    for _, r in ipairs(it.rules or {}) do if ns.RefreshVisual then pcall(ns.RefreshVisual, r) end end
+    local notes = {}
+    if remapKey then notes[#notes + 1] = "it got a new cue key" end
+    if #(it.refs or {}) > relinked then notes[#notes + 1] = (#it.refs - relinked) .. " condition(s) that played it are gone" end
+    return true, table.concat(notes, "; ")
+end
+local function restoreTrigger(it)
+    local rule = liveRuleByUid(it.ruleUid)
+    if not rule then return false, "its rule '" .. tostring(it.owner or "?") .. "' is not in your rules (restore that rule first)" end
+    local seq = ns.TriggerSequence and ns.TriggerSequence(rule) or {}
+    if it.tok == "x" then
+        rule.extra = type(rule.extra) == "table" and rule.extra or {}
+        rule.extra.list = type(rule.extra.list) == "table" and rule.extra.list or {}
+        local list = rule.extra.list
+        if #list >= 12 then return false, "its rule already has 12 additional triggers (remove one first)" end
+        local j = math.max(1, math.min(tonumber(it.j) or (#list + 1), #list + 1))
+        -- the k-th "x" in the trigger order is row k, so the new "x" goes just before the one that is row j now (it becomes row j + 1);
+        -- with no row j yet, at its old place but after every additional trigger already there
+        local at, seen, lastX = nil, 0, 0
+        for i, tk in ipairs(seq) do
+            if tk == "x" then seen = seen + 1; lastX = i; if seen == j and not at then at = i end end
+        end
+        if not at then at = math.max(math.min(tonumber(it.seqPos) or (#seq + 1), #seq + 1), lastX + 1) end
+        if ns.RemapOutcomeRefs then ns.RemapOutcomeRefs(rule, function(n) if n >= j then return "x" .. (n + 1) end return "x" .. n end) end
+        table.insert(list, j, ns.Copy(it.trigger))
+        table.insert(seq, at, "x")
+        rule.trigOrder = seq
+        -- the condition rows that read it (still there and still empty) and the "activated by" choice point at it again
+        for _, ref in ipairs(it.refs or {}) do
+            for _, o in ipairs(ns.OutcomesOf and ns.OutcomesOf(rule) or {}) do
+                if o.uid == ref.cond and type(o.when) == "table" and type(o.when.list) == "table" then
+                    local t = o.when.list[ref.term]
+                    if t and t.ref == nil then t.ref = tostring(ref.pre) .. j .. tostring(ref.suf or "") end
+                    break
+                end
+            end
+        end
+        if it.trigMode and rule.trigMode == nil then rule.trigMode = "x" .. j end
+    else
+        local used = (it.tok == "cd") and ns.CooldownUsed or ns.BuffUsed
+        if used and used(rule) then return false, "its rule already has a " .. ((it.tok == "cd") and "Cooldown" or "Buff / Aura") .. " trigger (remove it first)" end
+        for _, k in ipairs(TRIGGER_FIELDS[it.tok] or {}) do local v = it.trigger[k]; rule[k] = (type(v) == "table") and ns.Copy(v) or v end
+        if it.tok == "cd" then rule.useCooldown = true else rule.useBuff = true end
+        table.insert(seq, math.max(1, math.min(tonumber(it.seqPos) or (#seq + 1), #seq + 1)), it.tok)
+        rule.trigOrder = seq
+    end
+    if ns.RefreshVisual then pcall(ns.RefreshVisual, rule) end
+    return true, ""
+end
+
 local function findItem(id)
     local b = ns.RecycleDB()
     if not b then return nil end
@@ -180,6 +377,11 @@ end
 function ns.RecycleRestore(id)
     local it, idx, b = findItem(id)
     if not it then return false, "that item is no longer in the Recycle Bin" end
+    if it.kind == "cue" or it.kind == "condition" or it.kind == "trigger" then   -- FA-11
+        local ok, note = (it.kind == "trigger" and restoreTrigger or restoreChild)(it)
+        if ok then table.remove(b.items, idx); if ns.MarkDirty then ns.MarkDirty() end end
+        return ok, note
+    end
     local notes = {}
     -- groups first, so rules can find them
     local remap = {}
@@ -277,7 +479,7 @@ function ns.RecycleItems(at)
     for _, it in ipairs(b.items) do
         local nr = 0
         for _, r in ipairs(it.rules or {}) do if not r.parentUid then nr = nr + 1 end end
-        out[#out + 1] = { id = it.id, kind = it.kind, name = it.name, rules = nr, groups = #(it.folders or {}),
+        out[#out + 1] = { id = it.id, kind = it.kind, name = it.name, rules = nr, groups = #(it.folders or {}), owner = it.owner,
             deletedAt = it.deletedAt, hoursLeft = math.max(0, ((it.deletedAt or 0) + keep - t) / 3600) }
     end
     table.sort(out, function(a, c) return (a.deletedAt or 0) > (c.deletedAt or 0) end)
