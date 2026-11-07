@@ -121,7 +121,7 @@ function T.BuildArgs(refresh)
         get = function() local th = DB(); return th and th.size or "M" end,
         set = function(_, v) T.SetSize(v); refresh() end }
     args.advanced = { type = "toggle", order = nx(), width = "full", name = "Advanced customization",
-        desc = "Offers more theme options: the tab colours, the tree bars and per-class colour overrides. Off (the default): they are not offered and the theme's own colours are used.",
+        desc = "Offers more theme options: the tab colors, the tree bars and per-class color overrides. Off (the default): they are not offered and the theme's own colors are used.",
         get = function() return T.Advanced() end,
         set = function(_, v)
             if not CueRulesDB then return end

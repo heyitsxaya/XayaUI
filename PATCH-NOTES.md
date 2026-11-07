@@ -40,9 +40,9 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a Bar cue: a progress bar that tracks an aura's time left, a spell's cooldown or recharge, stacks, or charges. Make one with New Rule > Progress Bar, or Add a cue > Bar on any rule.
   - A new bar is 220 x 22 with a black 20% background, a 1 px border and a flat texture, draining from right to left, with the spell's icon on the left, its name inside the bar, the time on the right and a spark on the moving edge.
   - Tracks: Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges. Maximum 0 uses the game's own maximum; if the game gives none, the bar stays empty.
-  - Drain toward the left, right, bottom or top, or fill up instead. The icon can sit left, right or be hidden. The spark can be turned off and recoloured.
-  - Automatic colour follows the type the spell's tooltip names (a school written as "<school> damage", or a dispel type), then the aura's dispel type, then blue.
-  - Colour style per bar: Blizzard default, Neon, Pastel, Muted / Dark, or Custom with a colour for each of 12 types. A group's Display tab has "Every bar: colour style", with "Force on every bar in this group" to override each bar's own choice.
+  - Drain toward the left, right, bottom or top, or fill up instead. The icon can sit left, right or be hidden. The spark can be turned off and recolored.
+  - Automatic color follows the type the spell's tooltip names (a school written as "<school> damage", or a dispel type), then the aura's dispel type, then blue.
+  - Color style per bar: Blizzard default, Neon, Pastel, Muted / Dark, or Custom with a color for each of 12 types. A group's Display tab has "Every bar: color style", with "Force on every bar in this group" to override each bar's own choice.
   - Bar textures: Flat, Blizzard, Raid frame, the game's own power-bar art, any texture shared through LibSharedMedia, or your own file.
   - In combat, aura-time and stacks bars are drawn by the game's own aura buttons and keep moving while the game hides aura numbers. Cooldown bars are driven by the game from the cooldown's duration.
   *Developers' notes: Not yet tested in game (QA B200-B210). The combat drawing is built from Blizzard's 12.1.5 source and tested on a stand-in only.*
@@ -72,13 +72,13 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### Options 0.6.59
 
 **Bar Cues (new)**
-- Added a Bar Options box on each Bar cue, and "Every bar: colour style" on a group's Display tab.
+- Added a Bar Options box on each Bar cue, and "Every bar: color style" on a group's Display tab.
 - Smart Categories > Progress Bars now lists rules that have a Bar cue.
 
 ### Bonus Features 0.6.20
 
 **Enhanced Tooltips**
-- Added a "Type colours" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's colour for that school, and a dispel type such as "Magic" takes its dispel colour.
+- Added a "Type colors" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's color for that school, and a dispel type such as "Magic" takes its dispel color.
   *Developers' notes: Matches English game text only. Not yet tested in game.*
 
 ### Dev Assist 0.7.6
@@ -104,7 +104,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Group Page**
 - Added the tabs Group, Display, Load and Config to a group's page, with Group first.
   - Config holds the name, an Enabled switch, the group type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character>".
-- Added a group Size (Auto or Set, with optional Clip), and Border and Background tick boxes with colour, texture and padding.
+- Added a group Size (Auto or Set, with optional Clip), and Border and Background tick boxes with color, texture and padding.
 - Added "Anchored to: The parent group / The screen" for nested groups.
 - Added Align & Arrange to static groups (Align left / center / right, Distribute, Space with a gap). The choice is saved: a display you drag, nudge, add or resize goes back into line.
 - Added "Scale items to fit the box" for static groups with a Set size. Making the box smaller than its items asks "Scale the items to fit?" once.
@@ -163,7 +163,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a titled auto-populate table: rows grouped under Spell CD, Aura and Debuff, a Spec column when listing every spec, and each spell's icon.
   - Added a Cue set-up column: Speech has a "Customize" box, and Sound and pictures have a picker you must choose from.
   - A row that could not be made stays in the table with an error popup; made rows leave it.
-  - On-screen cues are placed in rows of 3 centred on the screen.
+  - On-screen cues are placed in rows of 3 centered on the screen.
   - Added a "Hide / Show already generated rules" switch.
 - The Cooldown Manager warning now reads "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably." where the game offers no tracking.
 - Combat Tracking Setup moved from the Debugging page to Settings > UI Options > Rule Creation.
@@ -215,14 +215,14 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   - Missing on your gear: each enchantable slot without an enchant and each empty socket, with one suggestion each. "+ Add" puts a suggestion in To buy.
   - Your tracked recipes: each with its reagents and have / need, counted the way Blizzard's tracker counts them.
   - Click a name while the Auction House is open to search for it there; Shift-click links the item.
-- Blizzard's Professions list in the objective tracker now takes your theme's colours (its own switch: "Restyle Blizzard's Professions list").
+- Blizzard's Professions list in the objective tracker now takes your theme's colors (its own switch: "Restyle Blizzard's Professions list").
   *Developers' notes: Which gems count as the one-per-character gem, and how enchant scrolls in your bags are counted, are not yet confirmed in game.*
 
 ### Quality of Life 0.7.31
 
 **Character Pane**
 - Added an Extra height slider (0 to 300 px, default 0) beneath Extra width. The slots spread out evenly, the model gets taller, and the weapons move down with the bottom of the window.
-- Added a full stat list: the character window's stats pane can now show every line of the Stat Calculator's Character Stats, each name in its stat colour. Arrange it under Character Pane > Stat list.
+- Added a full stat list: the character window's stats pane can now show every line of the Stat Calculator's Character Stats, each name in its stat color. Arrange it under Character Pane > Stat list.
 
 **Release Guard (new)**
 - When you die, a box now covers the Release Spirit button so a misclick does not release you. Hold Shift (or Ctrl or Alt, in settings) to click through.
@@ -315,8 +315,8 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### XayaUI 0.6.46
 
 **Themes**
-- Added each Gradient Cursor Trail gradient as a UI theme in Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme, and the Cursor Highlight can use your theme's accent colour (with Quality of Life 0.7.17).
-- `/xui help` is now one command per line, with the command in your theme's accent colour.
+- Added each Gradient Cursor Trail gradient as a UI theme in Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme, and the Cursor Highlight can use your theme's accent color (with Quality of Life 0.7.17).
+- `/xui help` is now one command per line, with the command in your theme's accent color.
 
 ### Options 0.6.40
 
@@ -328,7 +328,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### Options 0.6.39
 
 **Settings Window**
-- The version text at the bottom of the settings window now replaces the Addon Info button and uses your theme colours.
+- The version text at the bottom of the settings window now replaces the Addon Info button and uses your theme colors.
 - Console switches in settings no longer pause while the whole window rebuilds (with XayaUI 0.6.45).
 
 ### Options 0.6.38

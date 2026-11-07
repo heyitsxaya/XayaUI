@@ -2303,7 +2303,7 @@ local function BuildRule(i, rule)
             colorH = { type = "header", name = "Color & Blend", order = 20 },
             additive = Tog(V, "additive", "Additive blend", 21, on),
             desaturate = Tog(V, "desaturate", "Desaturate the base texture", 22, on,
-                { width = "double", desc = "Removes the art's own colors first. On its own this grays it; with a tint below it gives an even, precise recolor (the tint multiplies the gray art). Progress textures gray the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
+                { width = "double", desc = "Removes the art's own colors first. On its own this greys it; with a tint below it gives an even, precise recolor (the tint multiplies the grey art). Progress textures grey the base automatically whenever it's tinted (see Advanced customization under Opacity & Fill) and lock this control while that's on.",
                   disabled = function() return ProgLocked() end,
                   get = function() if ProgLocked() then return V.recolor and true or false end return V.desaturate and true or false end }),
             recolor = Tog(V, "recolor", "Tint the base texture", 23, on,
@@ -2312,7 +2312,7 @@ local function BuildRule(i, rule)
             fadeH = { type = "header", name = "Fade, Opacity & Flash as the Buff Runs Out", order = 30 },
             fadeGrey = Tog(V, "fadeGrey", "Fade gradually as the buff runs out", 31, on, { width = "double",
                 desc = "Uses the Aura spell ID from the Trigger tab. Uses readable aura times; when Blizzard hides them (combat) it tries Blizzard's duration-object curves (experimental). Needs the aura present, so set Show to 'While the buff is present'. Preview shows a sample cycle." }),
-            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - gray)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
+            fadeMode = Sel(V, "fadeMode", "Fade to", 32, { none = "(none - grey)", color = "A color", transparent = "Transparent" }, { "none", "color", "transparent" }, on,
                 { disabled = function() return not V.fadeGrey end }),
             fadeColor = Col(V, "fadeColor", "Fade color", 33, on,
                 { disabled = function() return not (V.fadeGrey and ns.Val(V.fadeMode) == "color") end }),
@@ -2321,7 +2321,7 @@ local function BuildRule(i, rule)
                 { disabled = function() return not V.flash.enabled end }),
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
-            desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
+            desatOnCD = Tog(V, "desatOnCD", "Grey out while the spell is on cooldown", 37, on, { width = "double" }),
             hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double", hidden = true,   -- set on the rule's Display tab (0.6.3)
                 desc = "Hover this cue to see the tooltip of the spell or item it is about (the icon source chosen above, else the rule's first trigger). While on, the cue also sees the mouse pointer, but clicks still pass through to what is behind it." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
@@ -2417,7 +2417,7 @@ local function BuildRule(i, rule)
             oocAlpha = Rng(V, "oocAlpha", "Opacity multiplier out of combat", 4, 0, 1, 0.05, on, { width = "double", def = 1 }),
             fadeH = { type = "header", name = "Fade Opacity as the Buff Runs Out", order = 10 },
             fadeAlpha = Tog(V, "fadeAlpha", "Fade opacity", 11, on, { width = "double",
-                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the gray / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
+                desc = "Opacity multiplier goes from the value at full duration to the value at expiry. Independent of the grey / color fade. Needs the aura present: set 'Show' to 'While the buff is present'." }),
             fadeAlphaMax = Rng(V, "fadeAlphaMax", "Opacity at full duration", 12, 0, 1, 0.05, on,
                 { width = "double", disabled = function() return not V.fadeAlpha end }),
             fadeAlphaMin = Rng(V, "fadeAlphaMin", "Opacity at expiry", 13, 0, 1, 0.05, on,
@@ -2437,7 +2437,7 @@ local function BuildRule(i, rule)
             advanced = Tog(OV, "advanced", "Advanced customization (override the linked base/overlay opacity and tint defaults)", 30,
                 function() Changed(rule); Notify() end,
                 { width = "full", hidden = function() return not FL.enabled end,
-                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, grays automatically only when tinted, and the overlay never grays or dims. Tick this to set the base opacity, base gray, and overlay gray independently instead." }),
+                  desc = "Progress textures default to a locked base+overlay layering: the base opens at a reduced opacity tied to Overlay opacity above, greys automatically only when tinted, and the overlay never greys or dims. Tick this to set the base opacity, base grey, and overlay grey independently instead." }),
         },
     }
     ns.GatePane(rule, opacity.args, "fadeAlpha", "Fade opacity options", 11.5, function() return V.fadeAlpha end, { "fadeAlphaMax", "fadeAlphaMin" })
@@ -2839,16 +2839,16 @@ local function BuildRule(i, rule)
             dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
             reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
             texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
-                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already coloured: the bar colour tints it (Colour = Fixed, white, shows it as drawn).",
+                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already colored: the bar color tints it (Color = Fixed, white, shows it as drawn).",
                 values = function() local vv = ns.BarTextureList(); return vv end,
                 sorting = function() local _, o = ns.BarTextureList(); return o end,
                 get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
             texFile = { type = "input", name = "Texture ID / path", order = 3.4, width = "double", hidden = function() return B.texture ~= "file" end,
                 get = function() return tostring(B.texFile or "") end, set = function(_, x) B.texFile = tostring(x or ""); bon() end },
-            colH = hdr("Colour", 4),
-            colorMode = Sel(B, "colorMode", "Colour", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed colour" },
+            colH = hdr("Color", 4),
+            colorMode = Sel(B, "colorMode", "Color", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed color" },
                 { "auto", "fixed" }, bon, { width = "double" }),
-            color = Col(B, "color", "Bar colour", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
+            color = Col(B, "color", "Bar color", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
             colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
                 name = function()
                     local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
@@ -2867,10 +2867,10 @@ local function BuildRule(i, rule)
                     local st, _, gf = ns.BarCueStyle(rule)
                     return gf and ("|cffffd100Colour style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
                 end },
-            style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
+            style = Sel(B, "style", "Color style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
                 hidden = function() return B.colorMode == "fixed" end,
                 disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
-                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's family and change its saturation and brightness. Custom: pick each type's colour below." }),
+                desc = "Blizzard default: the game's own colors. Neon, Pastel and Muted / Dark keep each color's family and change its saturation and brightness. Custom: pick each type's color below." }),
             cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
@@ -2923,14 +2923,14 @@ local function BuildRule(i, rule)
             icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
                 { desc = "On a vertical bar, left is the top end and right the bottom end." }),
             spark = Tog(B.spark, "enabled", "Spark", 5.2, bon, { desc = "A bright mark on the moving edge of the fill." }),
-            sparkColor = Col(B.spark, "color", "Spark colour", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
+            sparkColor = Col(B.spark, "color", "Spark color", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
             sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, bon, { hidden = function() return not B.spark.enabled end }),
             bgH = hdr("Background and border", 6),
             bg = Tog(V.bg, "enabled", "Background", 6.1, bon),
-            bgColor = Col(V.bg, "color", "Background colour", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
+            bgColor = Col(V.bg, "color", "Background color", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
             border = Tog(V.border, "enabled", "Border", 6.3, bon),
             borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, bon, { hidden = function() return not V.border.enabled end }),
-            borderColor = Col(V.border, "color", "Border colour", 6.5, bon, { hidden = function() return not V.border.enabled end }),
+            borderColor = Col(V.border, "color", "Border color", 6.5, bon, { hidden = function() return not V.border.enabled end }),
             alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, bon),
         }
         local nameArgs = TextStyleArgs(B.name, bon, 10)
@@ -4326,13 +4326,13 @@ function ns.FolderContainerGroup(f)
     g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
     g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
         set = function(_, v) f.cBorder = v and true or nil; apply() end }
-    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+    g.args.borderColor = { type = "color", name = "Border color", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
         get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
     g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
         set = function(_, v) f.cBg = v and true or nil; apply() end }
-    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+    g.args.bgColor = { type = "color", name = "Background color", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
         get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
-    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the color only)", order = 3.085, width = "full",
         hidden = function() return not f.cBg end,
         get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
         set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
@@ -5835,7 +5835,7 @@ drag.fail = function(err)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
-    ns.Print("moving a row failed and was cancelled: " .. tostring(err))
+    ns.Print("moving a row failed and was canceled: " .. tostring(err))
     if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
     pcall(Notify)
 end

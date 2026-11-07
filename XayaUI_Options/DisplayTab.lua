@@ -325,7 +325,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     local function nBars() return #bars() end
     local bst = {
         force = { type = "toggle", order = 1, width = "full", name = "Force on every bar in this group",
-            desc = "Ticked: every Bar cue in this group (and its nested groups) uses this group's colour style, whatever its own is set to. Unticked: each bar keeps its own style; a choice below is copied to every bar once.",
+            desc = "Ticked: every Bar cue in this group (and its nested groups) uses this group's color style, whatever its own is set to. Unticked: each bar keeps its own style; a choice below is copied to every bar once.",
             get = function() return forced() end,
             set = function(_, v)
                 if v and not ns.BAR_STYLE_LABEL[f.barStyle] then f.barStyle = styleNow() end
@@ -335,7 +335,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
         style = { type = "select", order = 2, width = "double",
             name = function()
                 local n = nBars()
-                return "Colour style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
+                return "Color style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
             end,
             values = ns.BAR_STYLE_LABEL, sorting = ns.BAR_STYLES,
             get = function() return styleNow() end,
@@ -447,8 +447,8 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             for i, d in ipairs(l) do local st = ns.BarCueSettings(d.visual).style; if i == 1 then first = st elseif st ~= first then return false end end
             return true
         end,
-        name = "|cff999999Differs between bars: Colour style. The control shows the first bar's style; a change makes them all the same.|r" }
-    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: colour style", 5.5, function() return nBars() > 0 end, bst)
+        name = "|cff999999Differs between bars: Color style. The control shows the first bar's style; a change makes them all the same.|r" }
+    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: color style", 5.5, function() return nBars() > 0 end, bst)
 
     -- the three text elements, each its own section (what to change is the section you open, not a tick list)
     local STYLE = { { "font", "Font" }, { "size", "Text size" }, { "outline", "Outline" }, { "color", "Text color" }, { "place", "Placement" },

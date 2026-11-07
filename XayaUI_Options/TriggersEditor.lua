@@ -11,7 +11,7 @@ local Call, MAX_ROWS, ORDER, TYPES = S.Call, S.MAX_ROWS, S.ORDER, S.TYPES
 local unpack = unpack or table.unpack
 
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
-    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in gray under the trigger number)",
+    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in grey under the trigger number)",
         desc = "Up to 30 characters. The trigger number always stays in the title; the name appears beneath it and in brackets in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)
