@@ -643,6 +643,7 @@ local function Build(Notify, which)
         -- Privacy's tabs in the order Xaya named them: Look, Button, then Area and behavior
         if privacy and privacy.args and privacy.args.tab_btnHdr then privacy.args.tab_btnHdr.order = 20 end
         local switch = { type = "toggle", name = "Improved Chat",
+            tip = "Adds chat features: history, filters, sounds, fading, the privacy cover and the Chat Data Panel.",
             desc = "Off: none of Improved Chat's parts run and nothing of them is made (hooks it placed stay idle until you /reload). Separate from the Chat Panel's switch.",
             get = function() return S().improvedOn ~= false end,
             set = function(_, v) local s = ns.chat2; if s then s.improvedOn = v and true or false end; Re() end }
