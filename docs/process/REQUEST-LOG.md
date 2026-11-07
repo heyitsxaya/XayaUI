@@ -605,6 +605,11 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-33 | Theme page screenshot; "correct on all fronts" (stock Accept button, misaligned Reset, clipped Delete saved, see-through window) | OPEN | #471 |
 | PS-34 | Theme scope answers: levels "unsure -- explain functional difference?"; override "Both (Recommended)"; controls "Both (Recommended)" | Q8, Q9 answered; Q7 explained, pending | #472 |
 | PS-35 | "so Chat Panel has a theme override option like Esc Menu does" / "these can't be clicked" (Esc Menu > Leave out of this menu) | OPEN: per-page overrides folded into #472; greyed boxes = #474 (decision: explain now, investigate later) | #472, #474 |
+| PS-36 | "friend colors work but the reskin doesn't look right. also missing custom created friend groups" | OPEN: reskin half = RSK-Q15 (question doc C10); groups = roadmap | #475 |
+| PS-37 | "class and specialization should be selected before options appears" / "missing devourer" | OPEN (fast lane for Devourer; filter scope = question doc A7, A8) | #476 |
+| PS-38 | "possible to add a "{current expansion} Zone ID Library" lookup menu?" | OPEN, roadmap | #477 |
+| PS-39 | Settings window title bar: buttons move to the middle when collapsed (two screenshots) | OPEN | #478 |
+| PS-40 | "please compile all your questions and keep them stashed in a doc, I'm just notating what I see as I go through it in my own way. I'll get to the outstanding questions shortly!" | DONE: "XayaUI Open Questions" doc (A1-A9, B1-B7, C1-C11, D1-D2); no more questions in chat | |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
