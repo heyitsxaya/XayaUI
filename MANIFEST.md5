@@ -570,6 +570,7 @@ f1e69afb494a02b2fafb34544eb14c98  debug-log/2026-11-07-0602-qa-walks-display-dev
 6f415f2b8820e8de0c71d41826879900  debug-log/2026-11-07-0744-rule-list-icon-columns-options-0.6.64.md
 9c2b68df4245c4bf086cdc3d9dd936c4  debug-log/2026-11-07-0750-autogen-one-icon-four-lines-options-0.6.65.md
 bce866f714d1b56ed482dba81584f5cf  debug-log/2026-11-07-0758-rules-subtabs-smaller-narrower-options-0.6.66.md
+61555827a442b491a941fc1cb782ecd7  debug-log/2026-11-07-0821-core-flat-buttons-after-reload-core-0.6.68.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 424107a3e875a199bb4ce8fe5240afdc  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
@@ -726,6 +727,7 @@ c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
 ad2d93e55c0721ac1a5cabfb51561d9f  tests/compact_button_width_run.py
 b0ebba4258f7b8f079212da934877f23  tests/console_commands_run.py
 5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
+e3ee3fe7089dc8e647ee878452f250ea  tests/core_flat_buttons_run.py
 e165b5fe062c674ce18014843f7fab60  tests/core_off_costs_nothing_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py
 e78532613d70ebbdcc90fcfb23c97f0a  tests/cue_fire_run.py
