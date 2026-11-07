@@ -38,7 +38,8 @@ ns.WhenReady(ns.Minimap_OnDBReady)
 
 -- The quick-access rows come from ns.RegisterLauncher (Modules.lua): each feature adds its own row, so a feature that is switched off
 -- leaves no dead button. Row = { key, label, tooltip, action, optional state text, order = n }. Core adds only Settings.
-ns.RegisterLauncher({ "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
+-- FA-12 (core 0.6.62; Xaya 2026-11-07, "1, XayaUI Settings"): it toggles, so the texts say so; the row is named "XayaUI Settings".
+ns.RegisterLauncher({ "settings", "XayaUI Settings", "Open or close the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
 local function Shown(db, key) return db.entries[key] ~= false end
 -- (core 0.6.49) an entry whose feature is switched off (its available() says false) has no row; read each time the list opens
 local function Available(e)
@@ -216,7 +217,7 @@ local function BuildButton()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("XayaUI", 1, 0.82, 0)
         GameTooltip:AddLine("Left-click: quick-access list", 1, 1, 1)
-        GameTooltip:AddLine("Right-click: settings", 1, 1, 1)
+        GameTooltip:AddLine("Right-click: open or close the XayaUI settings", 1, 1, 1)
         local db = DB()
         if db and not db.locked then GameTooltip:AddLine("Drag: move around the minimap", 0.6, 0.6, 0.6) end
         GameTooltip:Show()

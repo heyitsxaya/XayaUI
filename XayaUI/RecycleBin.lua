@@ -130,6 +130,9 @@ function ns.RecycleFolder(f)
     for _, r in ipairs(ns.rules or {}) do
         if r.folder == f.id then
             r.folder = f.parent
+            -- audit D55 (core 0.6.62): every moved rule is recorded, so Restore brings it back; a rule with no uid yet (no cue or
+            -- condition) gets one here (before: only rules that already had a uid went back into the restored group)
+            if type(r.uid) ~= "string" and ns.NewUID then r.uid = ns.NewUID() end
             if type(r.uid) == "string" then movedRules[#movedRules + 1] = r.uid end
         end
     end

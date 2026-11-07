@@ -254,9 +254,9 @@ local function Drops(p, display, single, slot)
     local v = (display and display.visual) or {}
     local f = v.fill
     if f and f.enabled and not single and v.kind ~= "bar" then out[#out + 1] = "progress drain (drawn only for a display on its own, not inside a group)" end
-    if v.kind == "bar" and slot and slot.barDispel == "failed" then out[#out + 1] = "bar colour by dispel type (the game refused it here; the bar shows the fixed blue)" end
+    if v.kind == "bar" and slot and slot.barDispel == "failed" then out[#out + 1] = "bar color by dispel type (the game refused it here; the bar shows the fixed blue)" end
     if f and f.enabled and single and ((tonumber(f.min) or 0) ~= 0 or (tonumber(f.max) or 1) ~= 1) then out[#out + 1] = "drain start / end limits" end
-    if v.fadeGrey then out[#out + 1] = "grey / colour fade" end
+    if v.fadeGrey then out[#out + 1] = "grey / color fade" end
     if v.fadeAlpha then out[#out + 1] = "opacity fade" end
     if v.flash and v.flash.enabled then out[#out + 1] = "flash" end
     if v.glow then out[#out + 1] = "glow" end

@@ -45,6 +45,20 @@ check("ungrouped rule goes into the wrapper", ns.rules[3].folder == wrap.id)
 check("cue rule not given a folder", ns.rules[4].folder == nil)
 check("existing rule and folder untouched", ns.rules[1].folder == "f111" and ns.folders[1].id == "f111")
 check("counts: 3 groups + wrapper, 4 rules", c.folders == 3 and c.rules == 4)
+-- audit D40 (core 0.6.62): Load (replace) of a backup keeps the built-in categories (top-level, once each); "add" never copies them
+ns.DefaultFolderInfo = function(k) if k == "display" or k == "sound" or k == "hybrid" or k == "advanced" or k == "cursor" then return { key = k } end end
+ns.rules = { { name = "old" } }; ns.folders = { { id = "f1", name = "Display Cues", default = "display" } }
+local bsnap = { v = 1, name = "backup", folders = { { id = "f10", name = "Display Cues", default = "display" }, { id = "f11", name = "Sound Cues", default = "sound" },
+  { id = "f12", name = "Copy", default = "display" }, { id = "f13", name = "Inner", parent = "f10", default = "hybrid" }, { id = "f14", name = "Odd", default = "nope" } },
+  rules = { { name = "d", folder = "f10", uid = "ud" }, { name = "s", folder = "f11", uid = "us" } } }
+ns.Share_ApplyRules(bsnap, "replace")
+local dc, sc, cp, inner, odd = byName("Display Cues"), byName("Sound Cues"), byName("Copy"), byName("Inner"), byName("Odd")
+check("D40 replace: Display Cues keeps its category flag", dc and dc.default == "display")
+check("D40 replace: Sound Cues keeps its category flag", sc and sc.default == "sound")
+check("D40 replace: a second 'display' flag is not duplicated", cp and cp.default == nil)
+check("D40 replace: a nested group never carries a category flag", inner and inner.default == nil)
+check("D40 replace: an unknown flag is dropped", odd and odd.default == nil)
+check("D40 replace: rules point at the restored categories", ns.rules[1].folder == dc.id and ns.rules[2].folder == sc.id and #ns.rules == 2)
 -- repair of old ids
 local env = setmetatable({ ns = ns, time = os.time, math = math, ipairs = ipairs, type = type, tostring = tostring }, { __index = _G })
 local fn = assert(loadstring(FIXSRC .. " return ns.FixFolderIds", "fix")); setfenv(fn, env)

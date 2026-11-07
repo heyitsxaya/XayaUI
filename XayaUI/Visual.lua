@@ -1314,6 +1314,10 @@ local function GroupTag(f)
         if btn ~= "LeftButton" then return end
         local fo = ns.FolderById(self.fid)
         if not fo then return end
+        -- audit D27 (core 0.6.62): like the sidebar handle: a click selects the group for arrow-key nudges (QA B178), and a group
+        -- locked for now does not drag ("its tag does not drag"); the click still opens its settings (OnMouseUp)
+        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+        if ns.IsMoverTempLocked(fo) then self.drag = { locked = true }; return end
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0, moved = false }
     end)
@@ -1330,7 +1334,9 @@ local function GroupTag(f)
         local fo = ns.FolderById(self.fid)
         if not TagWanted(fo) then self.drag = nil; self:Hide(); self.box:Hide(); return end
         local d = self.drag
-        if d then
+        if d and d.locked then
+            if not IsMouseButtonDown("LeftButton") then self.drag = nil end
+        elseif d then
             if not IsMouseButtonDown("LeftButton") then
                 self.drag = nil
                 if d.moved then GroupPosChanged(fo) end
@@ -1562,7 +1568,10 @@ end
 -- ns.ArrangeList is also what the one-shot Align / Distribute / Space buttons use.
 local Place   -- (defined below; the arrangement places frames with it)
 local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128) end
-local function ArrR(n) return math.floor(n + 0.5) end
+-- audit D18 (core 0.6.62): centres stay exact here and are rounded once, when X / Y are stored (SetVisualCenterOffset). Rounding the
+-- centre too moved a display 1 px per apply whenever its centre fell on a half pixel (odd size with a corner anchor, ...), and the
+-- arrangement is re-applied on every refresh: displays crept and the mover view reported moves nobody made.
+local function ArrR(n) return n end
 function ns.ArrangeList(l, xMode, yMode, gap)
     if #l < 2 or not (xMode or yMode) then return false end
     gap = tonumber(gap) or 8
@@ -1698,9 +1707,10 @@ function ns.SnapToTarget(rule, key, pos)
     if not key then
         v.snap = nil
     else
+        -- audit D19 (core 0.6.62): check the frame first; a missing frame changes nothing (before, X / Y were zeroed and the snap saved)
+        if not SnapFrame({ snap = { target = key } }) then ns.Print("that frame does not exist in this client, so the aura keeps its own position."); return end
         v.snap = { target = key, pos = pos or "TOP_CENTER" }
         v.x, v.y = 0, 0
-        if not SnapFrame(v) then ns.Print("that frame does not exist in this client, so the aura keeps its own position.") end
     end
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")
