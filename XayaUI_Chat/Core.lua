@@ -69,6 +69,7 @@ C.DEFAULTS = {
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
     histOn = true, histSize = 300, histConsole = true, histWhispers = "game",   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
+    whisperSelect = true,   -- (Chat 0.6.31, CHATREV-10) switch to a whisper tab you start, also with New Whispers = Both (Whispers.lua)
 }
 C.MAX_SLOTS = 8
 
@@ -354,7 +355,7 @@ function C.Teardown()
     for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
         if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
     end
-    for _, f in ipairs(C.Frames()) do   -- audit D31 (Chat 0.6.32): the game's own fade of old lines, as it was before the Chat Panel set it
+    for _, f in ipairs(C.Frames()) do   -- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before the Chat Panel set it
         local o = f._xuiFade
         if o ~= nil then
             if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
@@ -428,7 +429,7 @@ function ns.Chat_OnDBReady()
     if not (s.enabled and ns.ReskinTabOn()) then return end       -- V14: saved off (or the Reskin tab off), nothing more is built, registered or run
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
     -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
-    -- Chat 0.6.32 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
+    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
@@ -496,6 +497,7 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
-ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end })
+ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
+    Options = function() return ns.BuildChatTab and ns.BuildChatTab(function() end) end })   -- (Chat 0.6.31) the settings tree, for the QA walkthrough
 ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Data Panel settings)")

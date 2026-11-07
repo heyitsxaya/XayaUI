@@ -350,7 +350,7 @@ load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
 -- W.coreHooks are XayaUI_Chat's (tests/chat_off_costs_nothing_run.py)
 W.coreObjects, W.coreHooks, W.coreThemeListeners = #objects, #W.hookLog, #ns.Theme._listeners
 for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Scroll.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
-  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
+  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Whispers.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
 W.ns = ns
 -- XayaUI Dev Assist's chat diagnostics (/xui chat wrap, indent, whispers and the whisper counters; Chat 0.6.20 / Dev Assist 0.7.5,
 -- REQUEST-LOG #81), loaded as the game loads that addon: after XayaUI and XayaUI Chat, finding XayaUI by its shared namespace.

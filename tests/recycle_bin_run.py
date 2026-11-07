@@ -154,7 +154,7 @@ ns.RecycleRule(ns.rules[1])
 NOW = NOW + 37 * 3600
 ns.SetRecycleKeepHours(336)
 check("keep: 14 days keeps a 37 h old item", #ns.RecycleItems() == 1)
--- FA-14 (core 0.6.62; Xaya: "Ask first"): the page asks with this count before a shorter time removes anything
+-- FA-14 (core 0.6.67; Xaya: "Ask first"): the page asks with this count before a shorter time removes anything
 check("FA-14 RecycleWouldPurge: 36 hours would remove the 37 h old item, 72 hours none, and nothing is removed by asking",
   ns.RecycleWouldPurge and ns.RecycleWouldPurge(36) == 1 and ns.RecycleWouldPurge(72) == 0 and #ns.RecycleItems() == 1,
   ns.RecycleWouldPurge and ns.RecycleWouldPurge(36))

@@ -26,4 +26,4 @@ Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D31, D32, D37.
 ## QA
 D22, D23.
 
-Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.
+Versions renumbered for the landing on main bf2ce6a (2026-11-07, numbers claimed for the lander to relabel): core 0.6.67, Options 0.6.69, QoL 0.7.42, Chat 0.6.33, Bonus 0.6.27, Dev Assist 0.7.19.

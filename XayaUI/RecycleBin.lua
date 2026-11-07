@@ -53,7 +53,7 @@ function ns.RecycleKeepLabel()
 end
 -- The sentence every delete prompt ends with.
 function ns.RecycleBinNote() return "It goes to the Recycle Bin for " .. ns.RecycleKeepLabel() .. " (Rules > Recycle Bin)." end
--- FA-14 (core 0.6.62; Xaya: "Ask first (Recommended)"): how many items a keep time of h hours would remove for good right now
+-- FA-14 (core 0.6.67; Xaya: "Ask first (Recommended)"): how many items a keep time of h hours would remove for good right now
 function ns.RecycleWouldPurge(h, at)
     local b = ns.RecycleDB()
     if not (b and validKeep(h)) then return 0 end
@@ -143,7 +143,7 @@ function ns.RecycleFolder(f)
     for _, r in ipairs(ns.rules or {}) do
         if r.folder == f.id then
             r.folder = f.parent
-            -- audit D55 (core 0.6.62): every moved rule is recorded, so Restore brings it back; a rule with no uid yet (no cue or
+            -- audit D55 (core 0.6.67): every moved rule is recorded, so Restore brings it back; a rule with no uid yet (no cue or
             -- condition) gets one here (before: only rules that already had a uid went back into the restored group)
             if type(r.uid) ~= "string" and ns.NewUID then r.uid = ns.NewUID() end
             if type(r.uid) == "string" then movedRules[#movedRules + 1] = r.uid end

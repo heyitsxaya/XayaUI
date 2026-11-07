@@ -1,4 +1,4 @@
-# Function audit D48 (Bonus 0.6.25): the Notepad's Restore list, opened from the settings page before the box was ever shown, restores an
+# Function audit D48 (Bonus 0.6.27): the Notepad's Restore list, opened from the settings page before the box was ever shown, restores an
 # earlier version without a Lua error. On Bonus 0.6.20 (main 28380a9): 'Notepad.lua: attempt to index upvalue frame (a nil value)'.
 # Run from the repo root: python3 tests/notepad_restore_closed_run.py
 # Needs: pip install lupa. A stub cannot show real rendering, sharpness, or fonts: this checks logic and layout numbers only.

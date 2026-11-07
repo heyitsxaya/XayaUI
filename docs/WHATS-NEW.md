@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 9 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 10 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -439,6 +439,23 @@ Not tested in game.
   recorded until it is clicked; Pass / Fail / Skip still work, and Accept puts the addon's reading in the note unless one was typed.
   #296's last step is your decision on what "inherit the same behavior of the chat" should mean, and has no Accept. All other
   walkthroughs are unchanged: you still decide.
+
+## 10. Stat Calculator round (S1; main bfc79ef; QoL 0.7.40, Options 0.6.64, Dev Assist 0.7.13)
+
+Not tested in game. Where this changes how section 1 describes the Stat Calculator, this section wins.
+
+- **Stats tab: what feeds each stat.** Each stat has rows showing what feeds it with its number ("from Agility +2,616", "from Mastery
+  +27.80%"). Every stat starts folded; click it (or its +/-) to open or fold it. The choice is remembered per stat, and folded lines show
+  in the stat's hover. The **Influences** column is now **Modifies** (what the stat applies to; values on hover).
+- **Gear compare:** the picked compare item now gets the clear accent frame (12.x bag links were not matched to their icon before).
+  In the **Changes** table each difference sits in brackets right after the value, for example "1,405 (-12)", with numbers left-aligned;
+  at the default 450 px width two compared items show side by side.
+- **Header:** "Equipped <item level>" on the left and "Max (bags) <item level>" on the right (the game's overall item level), in place of
+  name, class and spec.
+- **The "% / rating" switch is gone;** the columns already show rating, current value and Pt value.
+- **Info > Credits + Acknowledgements:** plain section headings, one box per section with its credits as rows, a slightly darker
+  background, more space between sections, and no intro paragraph.
+- **In-game QA:** steps E1z195 to E1z200 in `/xui dev qa` (Dev Assist on).
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.

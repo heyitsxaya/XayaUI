@@ -280,7 +280,7 @@ function ns.MigrateCues()
     local made = 0
     local snapshot = {}
     for _, r in ipairs(ns.rules) do snapshot[#snapshot + 1] = r end
-    -- audit D57 (core 0.6.62): each child is moved under its own guard: one that fails is recorded (XUI-E011) and left exactly as it
+    -- audit D57 (core 0.6.67): each child is moved under its own guard: one that fails is recorded (XUI-E011) and left exactly as it
     -- was, the others go on, and the migration is marked done once, so it does not run again at every login (a child half moved before
     -- an error could gain its cue a second time).
     local failed = 0

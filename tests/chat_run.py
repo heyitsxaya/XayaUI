@@ -214,7 +214,7 @@ check("own messages never filtered", r is False)
 run("ns.chat2.spamWord=true")
 r = filt("CHAT_MSG_SAY", "he is a boosted warrior", "Fay-R", 1008)
 check("whole-word mode: 'boost run' not in 'boosted warrior'", r is False)
-# audit D37 (Chat 0.6.32): punctuation at a phrase's edge and non-Latin letters (helper checked directly: no filter cache involved)
+# audit D37 (Chat 0.6.33): punctuation at a phrase's edge and non-Latin letters (helper checked directly: no filter cache involved)
 ww = lambda text, ph: run("return ns.Chat_WholeWord and ns.Chat_WholeWord(...)", text, ph)
 check("D37 whole words: 'wts!' found in 'wts! cheap'", ww("wts! cheap", "wts!") is True)
 check("D37 whole words: '$gold' found in 'only $gold here'", ww("only $gold here", "$gold") is True)
@@ -263,7 +263,7 @@ run("ns.chat2.ignoreClick=true; _G.SetItemRef('player:Spammer-Realm', 'x', 'Righ
 check("ctrl+right-click ignores the player", "Spammer-Realm" in [str(x) for x in W.ignored.values()], list(W.ignored.values()))
 run("_G.SetItemRef('player:Xaya', 'x', 'RightButton')")
 check("never ignores yourself", len(list(W.ignored.values())) == 1)
-# audit D32 (Chat 0.6.32): "Ignoring" only when the game added them; a full list / an already ignored name says it did not work
+# audit D32 (Chat 0.6.33): "Ignoring" only when the game added them; a full list / an already ignored name says it did not work
 for k in list(W.printed.keys()): W.printed[k] = None
 W.ignoreFull = True
 run("_G.SetItemRef('player:Third-Realm', 'x', 'RightButton')")
@@ -521,7 +521,8 @@ run("ns.chat2.whisperSounds.list = {}; ns.chat2.whisperSounds.fav = nil; C_Battl
 opt = run("return ns.BuildChatTab(function() end)")
 check("options table builds", opt is not None)
 tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do out[#out+1]=k end table.sort(out) return table.concat(out,',')")
-check("all tabs present", all(t in str(tabs) for t in ["layout","look","bar","behavior","filters","history","sounds","privacy"]), tabs)
+# (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya's #246 words) General and Chat Tabs replace Appearance, Fade and hide and History
+check("all tabs present", all(t in str(tabs) for t in ["general","tabs","layout","bar","filters","sounds","privacy"]) and not any(t in str(tabs).split(",") for t in ["look","behavior","history"]), tabs)
 bad = run("""
 local bad = {}
 local function walk(t, path)
@@ -553,7 +554,7 @@ local headers = 0
 local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
 walk(o)
 out[#out+1] = 'headers:' .. headers
-for _, k in ipairs({ 'layout', 'look', 'bar', 'behavior', 'filters', 'history', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
+for _, k in ipairs({ 'general', 'tabs', 'layout', 'bar', 'filters', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
 out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
 out[#out+1] = 'layoutTop:' .. tostring(o.args.layout.args.enabled == nil and o.args.layout.args.theme == nil)
 local p = o.args.privacy.args
@@ -562,8 +563,8 @@ out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn ==
 out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
 return table.concat(out, ' ')
 """)
-want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
-        "history:tab", "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
+want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "general:tab", "tabs:tab", "layout:tab", "bar:tab", "filters:tab",
+        "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
 check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
 opened = []
 run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")
@@ -596,7 +597,7 @@ check("cover does not touch the bar", cr_[1] >= br_[1] + br_[3] - 0.01, (cr_, br
 check("cover is above the edit box strata", cover.GetFrameStrata(cover) == "DIALOG" and cover.GetFrameLevel(cover) >= 100)
 bb = rect(btn); cc = rect(cont)
 check("privacy button beside the block", bb[0] >= cc[0] + cc[2] - 0.01 and btn.IsShown(btn), (bb, cc))
-# audit D38 (Chat 0.6.32): the defaults say what players have always seen (no label, no border); a ticked label with no text reads "Chat hidden"
+# audit D38 (Chat 0.6.33): the defaults say what players have always seen (no label, no border); a ticked label with no text reads "Chat hidden"
 check("D38 privacy defaults: no border and no label (what players see)", run("return ns.CHAT_DEFAULTS.privBorder == false and ns.CHAT_DEFAULTS.privShowText == false") is True)
 run("ns.chatDB.privShowText = true; ns.chatDB.privText = nil; ns.ChatPrivacy_Refresh()")
 check("D38 a ticked label with no text typed reads Chat hidden", str(cover.label._text) == "Chat hidden", cover.label._text)
@@ -734,7 +735,7 @@ out = " ".join(str(v) for v in W.printed.values() if v)
 check("/xui chat indent: a line that cannot be read ends the report with a message, not an error", "could not finish" in out, out[:300])
 run("C.Main().visibleLines = nil")
 check("/xui chat indent causes no module error", len(list(C.errors.keys())) == 0, dict(C.errors))
-# audit D31 (Chat 0.6.32): turning the Chat Panel off gives the game's own fade of old lines back (stand-in: on, 120 s)
+# audit D31 (Chat 0.6.33): turning the Chat Panel off gives the game's own fade of old lines back (stand-in: on, 120 s)
 run("ns.chat2.textFade = false; C.Refresh()")
 check("D31 with the panel on and its text fade off, the game's fade is off", run("return C.Main()._fading") is False, run("return C.Main()._fading"))
 run("C.Command('off')")

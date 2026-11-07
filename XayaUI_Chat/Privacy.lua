@@ -25,7 +25,7 @@ D.privTexture = "Interface\\DialogFrame\\UI-DialogBox-Background"
 D.privTile = false
 D.privImageChoice = ""           -- a picture picked from the list
 D.privPath = ""                  -- or a typed picture path (wins over the list)
--- audit D38 (Chat 0.6.32): these two said true, but the merge that would apply them runs before this file fills the table (Core.lua),
+-- audit D38 (Chat 0.6.33): these two said true, but the merge that would apply them runs before this file fills the table (Core.lua),
 -- so every player has had no border and no label. FLAGGED reading: what players see is kept, and the defaults now say so (sent to her
 -- question flow). The label text falls back to "Chat hidden" when the label is ticked with no text typed (before: an empty label).
 D.privBorder = false

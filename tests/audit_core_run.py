@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Function audit (UI-60, REQUEST-LOG A11; docs/process/FUNCTION-AUDIT-2026-11-07.md), core fixes in core 0.6.62.
+"""Function audit (UI-60, REQUEST-LOG A11; docs/process/FUNCTION-AUDIT-2026-11-07.md), core fixes in core 0.6.67.
 - D18: a static group's saved arrangement re-applied 5 times leaves X / Y unchanged ("applying again changes nothing", Visual.lua).
   Old code: the centre was rounded, then X / Y rounded again: X, Y grew by 1 per apply (1, 2, 3, 4, 5) for 37x37 TOPLEFT displays.
 - D19: Snap Target to a frame that does not exist keeps the display's X / Y and saves no snap ("the aura keeps its own position").
@@ -162,7 +162,7 @@ do
   for w, a in pairs(want) do local m = ns.ModuleOfCommand and ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
   check("D8 /xui stats, shop, reskin, releaseguard, calc, calculator name their addon", #bad == 0, table.concat(bad, ","))
 end
--- O-100 / FA-15 (Bonus 0.6.25, QoL 0.7.41; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
+-- O-100 / FA-15 (Bonus 0.6.27, QoL 0.7.42; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
 -- the data panels row is named "Data Panels"
 do
   local by = {}

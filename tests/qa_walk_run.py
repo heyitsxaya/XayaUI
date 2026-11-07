@@ -124,7 +124,7 @@ QA.Toggle(); QA.Toggle()
 local gp
 for i, id in ipairs(QA.list) do if id == "group-page" then gp = Wn.rows[i] end end
 check("the list shows the last result of a walkthrough", gp and gp.status:GetText():find("1 failed", 1, true) ~= nil, gp and gp.status:GetText())
--- audit D35 (Dev Assist 0.7.15): a group of the player's own called "QA test group" is never reused or deleted by a walkthrough
+-- audit D35 (Dev Assist 0.7.19): a group of the player's own called "QA test group" is never reused or deleted by a walkthrough
 do
   local mine = ns.NewFolder("QA test group")
   local r = ns.NewRule(); r.name = "my own rule"; r.folder = mine.id; ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
@@ -139,7 +139,7 @@ do
   for _, f in ipairs(ns.folders) do if f.qaTest then tagged = tagged + 1 end end
   check("D35 ...and the walkthrough's own tagged group is gone", tagged == 0, tagged)
 end
--- audit D34 (Dev Assist 0.7.15): walkthroughs put back what Do it for me changed
+-- audit D34 (Dev Assist 0.7.19): walkthroughs put back what Do it for me changed
 local function RunAll(id)
   local def = QA.walks[id]; QA.Start(id)
   for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end

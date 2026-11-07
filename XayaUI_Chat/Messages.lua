@@ -94,7 +94,7 @@ local function Phrases(s)
     return cacheList
 end
 
--- "Match whole words only" (audit D37, Chat 0.6.32): a phrase matches where it is not part of a longer word. A side needs a word
+-- "Match whole words only" (audit D37, Chat 0.6.33): a phrase matches where it is not part of a longer word. A side needs a word
 -- boundary only when the phrase starts / ends with a letter or digit there; bytes of non-ASCII characters (Cyrillic, accents, ...)
 -- count as letters. Before, %f[%w] / %f[%W] (ASCII only) meant "wts!", "$gold" and any Cyrillic phrase could never match.
 local function WordByte(b) return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122)) end
@@ -350,7 +350,7 @@ local function OnItemRef(link, text, button)
             local ok, added = pcall(C_FriendList.AddIgnore, name)
             -- (names another player: never kept in XayaUI's debug record)
             local say = ns.PrintPrivate or ns.Print
-            -- audit D32 (Chat 0.6.32): AddIgnore returns added: bool (namespaces.md); say so only when it was added
+            -- audit D32 (Chat 0.6.33): AddIgnore returns added: bool (namespaces.md); say so only when it was added
             if ok and added then
                 say("Ignoring " .. name .. " (" .. C.ComboName(C.IgnoreCombo()) .. "). Remove them in the social window's Ignore list.")
             else

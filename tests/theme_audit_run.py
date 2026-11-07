@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Function audit, Theme page (core 0.6.62, Options 0.6.65). Her answers (REQUEST-LOG A11): FA-4 "Ask first" (switching throws your
+"""Function audit, Theme page (core 0.6.67, Options 0.6.69). Her answers (REQUEST-LOG A11): FA-4 "Ask first" (switching throws your
 own colors away), FA-5 / FA-8 "1 or add as name (1) name (2) etc" then "Replace, Save As Copy, Cancel" (a name already saved),
 FA-13 "Reword to Class colors (Recommended)"; audit rows D5 (import with a name changed the theme before checking the name), D6 (Save
 replaced a saved theme silently), D7 (picking another theme wiped your colors without a word).

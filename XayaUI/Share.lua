@@ -455,7 +455,7 @@ function ns.Share_ApplyRules(snap, mode)
             if IsTbl(f) and type(f.id) == "string" then
                 local nf = ns.Copy(f)                      -- keep the group's own settings (container type, overrides, ...)
                 -- A built-in category flag must not be duplicated by an "add" import. A replace (Load a backup) swaps every folder out,
-                -- so it keeps the flag of a top-level category once each (audit D40, core 0.6.62): without it Display Cues / Sound Cues
+                -- so it keeps the flag of a top-level category once each (audit D40, core 0.6.67): without it Display Cues / Sound Cues
                 -- became plain folders and every rule's kind changed (EnsureDefaultFolders does not run again once its version is set).
                 local d = nf.default
                 nf.default = nil

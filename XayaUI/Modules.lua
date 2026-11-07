@@ -208,7 +208,7 @@ end
 ns.MODULES = {
     -- (core 0.6.56: chatprobe and widthprobe are XayaUI Dev Assist's now, REQUEST-LOG #81; without it they do not exist)
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
-    -- (core 0.6.62, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
+    -- (core 0.6.67, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
     { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },

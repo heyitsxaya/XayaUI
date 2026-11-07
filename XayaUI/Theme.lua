@@ -545,7 +545,7 @@ function T.CheckName(name)
     return name
 end
 function T.SavedExists(name) local n = T.CheckName(name); return n ~= nil and CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[n] ~= nil end
--- FA-8 (core 0.6.62; Xaya 2026-11-07: "1 or add as name (1) name (2) etc", then "Replace, Save As Copy, Cancel"): the first free
+-- FA-8 (core 0.6.67; Xaya 2026-11-07: "1 or add as name (1) name (2) etc", then "Replace, Save As Copy, Cancel"): the first free
 -- "Name (1)", "Name (2)", ... (the base is shortened so the result stays within 40 characters)
 function T.CopyName(name)
     local n = T.CheckName(name) or "Theme"
@@ -557,7 +557,7 @@ function T.CopyName(name)
     end
     return nil
 end
--- audit D6 (core 0.6.62): a name that is already saved is refused unless replace is true (before: it was replaced silently and the
+-- audit D6 (core 0.6.67): a name that is already saved is refused unless replace is true (before: it was replaced silently and the
 -- message said "Saved"). The Theme page asks first: Replace / Save As Copy / Cancel.
 function T.Save(name, replace)
     local n, why = T.CheckName(name)
@@ -568,7 +568,7 @@ function T.Save(name, replace)
     th.base = th.base
     return true, n
 end
--- FA-4 (core 0.6.62; Xaya: "Ask first"): are there colors of your own that switching or resetting would throw away? Colors identical
+-- FA-4 (core 0.6.67; Xaya: "Ask first"): are there colors of your own that switching or resetting would throw away? Colors identical
 -- to a theme you saved are not "unsaved" (picking a saved theme copies its colors in).
 local function Same(a, b)
     if type(a) ~= type(b) then return false end
@@ -626,7 +626,7 @@ local function CheckTheme(data)
 end
 
 -- apply a checked theme; opts.saveAs (optional) also keeps it under that name. Returns true or false, message.
--- audit D5 (core 0.6.62): the name is checked BEFORE anything changes; a refused name or (without opts.replace) a name already saved
+-- audit D5 (core 0.6.67): the name is checked BEFORE anything changes; a refused name or (without opts.replace) a name already saved
 -- leaves the current theme and the saved one as they were (before: the current theme was replaced first, then the save could fail,
 -- or silently replace a saved theme of that name). Returns true or false, message ("exists" for a name already saved).
 local function ApplyTheme(data, opts)

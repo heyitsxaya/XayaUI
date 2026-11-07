@@ -79,7 +79,7 @@ function ns.ScanAllTalents(done)
         return false, "This game version has no talent view API, so there is nothing to scan."
     end
     if InCombatLockdown() then return false, "Cannot scan in combat." end
-    -- audit D9 (core 0.6.62): the talent window is PlayerSpellsFrame in this client (Dev Assist's scan checks the same); the older
+    -- audit D9 (core 0.6.67): the talent window is PlayerSpellsFrame in this client (Dev Assist's scan checks the same); the older
     -- ClassTalentFrame is checked too in case a client still has it.
     for _, w in ipairs({ rawget(_G, "PlayerSpellsFrame"), rawget(_G, "ClassTalentFrame") }) do
         if w and w.IsShown and w:IsShown() then return false, "Close the talent window first, then scan again." end
@@ -97,7 +97,7 @@ function ns.ScanAllTalents(done)
         if not classID then
             self:SetScript("OnUpdate", nil)
             scanning = false
-            -- audit D10 (core 0.6.62): a scan where every class failed keeps the last good scan (rule creation reads it)
+            -- audit D10 (core 0.6.67): a scan where every class failed keeps the last good scan (rule creation reads it)
             local any = next(db.classes) ~= nil
             if any or type(XayaUITalentDB) ~= "table" then XayaUITalentDB = db end
             local nC, nS, nN, nE = 0, 0, 0, 0

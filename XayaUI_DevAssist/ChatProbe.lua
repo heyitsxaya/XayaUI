@@ -62,7 +62,7 @@ local function Points(o)
     return #out > 0 and table.concat(out, " ") or "none"
 end
 
--- audit D39 (Dev Assist 0.7.15): a frame's own text can be a character name (a whisper tab is titled with the other player's name), and
+-- audit D39 (Dev Assist 0.7.19): a frame's own text can be a character name (a whisper tab is titled with the other player's name), and
 -- the saved lines go into XayaUI.lua, the file players send. So text is only added for the lines shown in chat (ns.PrintPrivate), never
 -- for the saved ones: withText is on only while those shown lines are built.
 local withText = false

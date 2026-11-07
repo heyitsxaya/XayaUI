@@ -1,4 +1,4 @@
-# Function audit, core fixes: backup replace keeps the built-in categories, arrangement no longer creeps, Snap to a missing frame keeps the position, talent scan guard and kept scan, minimap texts (XayaUI 0.6.62)
+# Function audit, core fixes: backup replace keeps the built-in categories, arrangement no longer creeps, Snap to a missing frame keeps the position, talent scan guard and kept scan, minimap texts (XayaUI 0.6.67)
 Logged 2026-11-07 00:37 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx (function audit, UI-60), branch `claude/function-audit`, on main 28380a9. Nothing here has run in the game.
 Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D9, D10, D11, D18, D19, D40. Her answer for D11: REQUEST-LOG A11 FA-12 ("1, XayaUI Settings").
 
@@ -36,7 +36,7 @@ Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D9, D10, D11, D18, D19, D40. Her
 ## QA
 B223, B224, B225.
 
-## Added later the same day (still core 0.6.62, unlanded): D54, D55
+## Added later the same day (still core 0.6.67, unlanded): D54, D55
 - `XayaUI/Engine.lua` (D54): On Initialization runs when the load conditions AND the talent requirement hold (`info.talentOK == true`,
   as `ns.IsLoaded`); it is armed again when either fails, and for every rule on the player's own PLAYER_SPECIALIZATION_CHANGED
   (the event carries unitTarget, events.md 1215; registered for every unit, so only "player" counts). USER-GUIDE / Actions.lua
@@ -50,4 +50,4 @@ B223, B224, B225.
   Same two checks as the sidebar handle. Tests: `tests/audit_core_run.py` D27 (2 of 3 fail on 28380a9); mover_session (29) and
   mover_view (22) pass. QA B227.
 
-Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.
+Versions renumbered for the landing on main bf2ce6a (2026-11-07, numbers claimed for the lander to relabel): core 0.6.67, Options 0.6.69, QoL 0.7.42, Chat 0.6.33, Bonus 0.6.27, Dev Assist 0.7.19.

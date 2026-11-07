@@ -58,7 +58,7 @@ FA-16 scope, FA-16 grey, FA-16 quote, FA-12 minimap reading, FA-8 copy numbering
 - claude/function-audit-opt, claude/function-audit-qol: agent branches, fully merged into the landings (stale after they land).
 
 ## Versions claimed (the lander relabels)
-core 0.6.62, Options 0.6.65, QoL 0.7.41, Bonus 0.6.25, Chat 0.6.32, Dev Assist 0.7.15 (the lander's numbers for this landing). QA ids: B223-B227, B260-B264, D22, D23, D30, F22-F24, E1z194, J28.
+core 0.6.67, Options 0.6.69, QoL 0.7.42, Bonus 0.6.27, Chat 0.6.33, Dev Assist 0.7.19 (the lander's numbers for this landing). QA ids: B223-B227, B260-B264, D22, D23, D30, F22-F24, E1z194, J28.
 
 ## Next steps for the successor
 1. Confirm to the hub that you read this file and checked the branches. 2. Follow both landings with the lander (rebase and re-run the full suite if main moves). 3. When her answers come back from the question flow, build Q7, Q10-Q15, D33 and adjust any flagged reading she overrules. 4. Features added after main 687b624 were not audited: audit them the same way (docs/process/FUNCTION-AUDIT-2026-11-07.md method).

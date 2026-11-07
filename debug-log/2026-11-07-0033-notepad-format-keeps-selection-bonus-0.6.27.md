@@ -1,4 +1,4 @@
-# Notepad format bar keeps highlighted text; spell tokens show as spell links; format-bar hovers (XayaUI_Bonus 0.6.25)
+# Notepad format bar keeps highlighted text; spell tokens show as spell links; format-bar hovers (XayaUI_Bonus 0.6.27)
 Logged 2026-11-07 00:33 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx (function audit, UI-60), branch `claude/function-audit`, on main 28380a9. Nothing here has run in the game.
 
 ## Requests (REQUEST-LOG A11, her words verbatim there)
@@ -39,8 +39,8 @@ USER-GUIDE Notepad paragraph updated.
 ## QA
 F22.
 
-## Also: XayaUI_DevAssist 0.7.15
+## Also: XayaUI_DevAssist 0.7.19
 `XayaUI_DevAssist/QAWalks-Checklist.lua` regenerated (`python3 tools/qa_walks_from_checklist.py`) for F22; no hand-written change.
-Version numbers from the coordinator's registry (Bonus 0.6.25, Dev Assist 0.7.15; 0.7.8 is the performance-test session's).
+Version numbers from the coordinator's registry (Bonus 0.6.27, Dev Assist 0.7.19; 0.7.8 is the performance-test session's).
 
-Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.
+Versions renumbered for the landing on main bf2ce6a (2026-11-07, numbers claimed for the lander to relabel): core 0.6.67, Options 0.6.69, QoL 0.7.42, Chat 0.6.33, Bonus 0.6.27, Dev Assist 0.7.19.

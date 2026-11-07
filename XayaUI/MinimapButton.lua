@@ -38,7 +38,7 @@ ns.WhenReady(ns.Minimap_OnDBReady)
 
 -- The quick-access rows come from ns.RegisterLauncher (Modules.lua): each feature adds its own row, so a feature that is switched off
 -- leaves no dead button. Row = { key, label, tooltip, action, optional state text, order = n }. Core adds only Settings.
--- FA-12 (core 0.6.62; Xaya 2026-11-07, "1, XayaUI Settings"): it toggles, so the texts say so; the row is named "XayaUI Settings".
+-- FA-12 (core 0.6.67; Xaya 2026-11-07, "1, XayaUI Settings"): it toggles, so the texts say so; the row is named "XayaUI Settings".
 ns.RegisterLauncher({ "settings", "XayaUI Settings", "Open or close the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
 local function Shown(db, key) return db.entries[key] ~= false end
 -- (core 0.6.49) an entry whose feature is switched off (its available() says false) has no row; read each time the list opens

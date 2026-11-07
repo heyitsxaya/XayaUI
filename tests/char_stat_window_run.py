@@ -129,7 +129,7 @@ checkp("panel on: the character window gets a Stat Calc button (64 x 18) on it, 
 checkp("  ...in the title row, a gutter left of Blizzard's close button (RIGHT to its LEFT, 4 px)", function()
   local pt = B.pts[#B.pts]
   return pt[1] == "RIGHT" and pt[2] == CharacterFrame.CloseButton and pt[3] == "LEFT" and pt[4] == -4 and pt[5] == 0, tostring(pt[1]) end)
--- (QoL 0.7.41; O-100, Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer
+-- (QoL 0.7.42; O-100, Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer
 -- "No word at all"): the row shows just its name, no on / off for shown / hidden
 checkp("panel on: the minimap button's list shows a Stat Calculator row with just its name (no on / off)", function()
   local e, r = launcher("stats"); return e ~= nil and r.fs.text == "Stat Calculator" and (r.state.text == nil or r.state.text == "") and e[5] == nil, e and e[2] end)

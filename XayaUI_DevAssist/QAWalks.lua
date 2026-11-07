@@ -11,7 +11,7 @@ if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
 local TEST = "QA test group"
 
--- audit D35 (Dev Assist 0.7.15): only the group a walkthrough made (tagged qaTest) is ever reused or deleted; a group of yours that
+-- audit D35 (Dev Assist 0.7.19): only the group a walkthrough made (tagged qaTest) is ever reused or deleted; a group of yours that
 -- happens to be called "QA test group" is never touched (before: matched by name, and Cleanup deleted it with all its rules).
 local function TestGroup()
     local ns = NS()
@@ -101,7 +101,7 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 } })
 
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
--- audit D34 (Dev Assist 0.7.15): what a walkthrough's "Do it for me" changed is put back by its last step
+-- audit D34 (Dev Assist 0.7.19): what a walkthrough's "Do it for me" changed is put back by its last step
 local reskinWas, shopWas
 QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard UI Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",

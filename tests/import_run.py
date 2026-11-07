@@ -45,7 +45,7 @@ check("ungrouped rule goes into the wrapper", ns.rules[3].folder == wrap.id)
 check("cue rule not given a folder", ns.rules[4].folder == nil)
 check("existing rule and folder untouched", ns.rules[1].folder == "f111" and ns.folders[1].id == "f111")
 check("counts: 3 groups + wrapper, 4 rules", c.folders == 3 and c.rules == 4)
--- audit D40 (core 0.6.62): Load (replace) of a backup keeps the built-in categories (top-level, once each); "add" never copies them
+-- audit D40 (core 0.6.67): Load (replace) of a backup keeps the built-in categories (top-level, once each); "add" never copies them
 ns.DefaultFolderInfo = function(k) if k == "display" or k == "sound" or k == "hybrid" or k == "advanced" or k == "cursor" then return { key = k } end end
 ns.rules = { { name = "old" } }; ns.folders = { { id = "f1", name = "Display Cues", default = "display" } }
 local bsnap = { v = 1, name = "backup", folders = { { id = "f10", name = "Display Cues", default = "display" }, { id = "f11", name = "Sound Cues", default = "sound" },

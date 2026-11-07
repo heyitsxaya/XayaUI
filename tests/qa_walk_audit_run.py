@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The function audit's in-game QA walkthroughs (XayaUI_DevAssist 0.7.15, QAWalks-audit.lua; standing rule V21, Xaya 2026-11-07:
+"""The function audit's in-game QA walkthroughs (XayaUI_DevAssist 0.7.19, QAWalks-audit.lua; standing rule V21, Xaya 2026-11-07:
 "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill
 confirmation options or data capturing").
 Checks, on the real addons (Dev Assist on) in the stand-in game:
@@ -79,7 +79,7 @@ do
   local ve, ne = QA.walks["audit-engine"].steps[1].check(); check("D28 engine walkthrough with the box off: verdict Pass", ve == true, ne)
   M.SetSetting("presence", was)
 end
--- audit D36 (Dev Assist 0.7.15): the debug-report walkthrough leaves no test error behind, and raises nothing through the game's handler
+-- audit D36 (Dev Assist 0.7.19): the debug-report walkthrough leaves no test error behind, and raises nothing through the game's handler
 do
   local d = QA.walks["debug-report"]
   if d then

@@ -161,7 +161,7 @@ local function SpellInfo(arg)
     return id, name, icon
 end
 ns.Notepad_SpellInfo = SpellInfo
--- FA-9 (Bonus 0.6.25; Xaya 2026-11-07: "[Name] in link colour", like a spell shift-clicked into chat): the game's own spell link
+-- FA-9 (Bonus 0.6.27; Xaya 2026-11-07: "[Name] in link colour", like a spell shift-clicked into chat): the game's own spell link
 -- (C_Spell.GetSpellLink, the same text a shift-click puts in chat: [Name] in the link colour). No icon. Without a link: plain [Name].
 local function SpellToken(arg)
     local id, name = SpellInfo(arg)
@@ -413,7 +413,7 @@ Populate = function()
         Add(("%s  %s"):format(date("%b %d %H:%M:%S", h.t), Preview(h.text, 40)), h.text, "Version from " .. date("%b %d %H:%M:%S", h.t), function()
             Flush(); Snapshot(n)   -- what is there now stays recoverable too
             n.text = h.text; n.modified = time()
-            -- audit D48 (Bonus 0.6.25): the Restore list opens from the settings page before the box was ever shown (no frame yet)
+            -- audit D48 (Bonus 0.6.27): the Restore list opens from the settings page before the box was ever shown (no frame yet)
             if frame then SetEditText(n.text) end
             UpdateTitle(); Populate()
         end)
@@ -1191,13 +1191,13 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Notepad_OnDBReady)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
--- O-100 (Bonus 0.6.25; Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer "No
+-- O-100 (Bonus 0.6.27; Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer "No
 -- word at all"): no state text; the row exists only while the Notepad is on, and a click shows / hides the box.
 ns.RegisterLauncher({ "notes", "Notes", "Show or hide the notepad (also /xui notes)", function() ns.Notepad_Toggle() end,
     nil, order = 10,
     available = function() return On() end })   -- (Bonus 0.6.14) no row while the Notepad is off (core 0.6.49: available())
 -- its settings page is a part of Bonus Features > Utilities (registered by Utilities.lua, Bonus 0.6.11), not a page of its own
--- (Bonus 0.6.25) the Notepad's service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit.lua), through XayaUI's service list
+-- (Bonus 0.6.27) the Notepad's service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit.lua), through XayaUI's service list
 -- (Modules.lua ns.Provide / ns.Service), so Dev Assist never calls this addon by name. Nothing here runs until a walkthrough asks.
 if ns.Provide then
     ns.Provide("notepadDebug", {
