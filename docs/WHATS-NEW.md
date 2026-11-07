@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 13 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -513,6 +513,17 @@ Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nam
   NPC-keyed Plater scripts (impossible in Mythic+ for any addon). These are questions NP-Q1 to NP-Q8 in the QA question flow.
 - *Why:* cost. The addon only works when the target changes or a plate appears (no per-frame or per-tick work). The real comparison with
   Plater is the perf session's A/B/C measurement, which has not been run.
+
+## 14. Settings window top tabs and Profiles (settings-restructure session; main d8960d8, Options 0.6.72)
+
+Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings window: new top tabs and Profiles (H6-H9)" and "Blizzard Reskin: the new name everywhere (H10)".
+
+- **Top tabs:** Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings. The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, Settings cog) is gone; Settings is a normal tab and the other tabs stay beside it.
+- **"+ New Rule"** is a flat button at the left end of the Rules tab's row (Smart Categories / Enabled / Disabled / Drafts follow; Auto-Generate Rules at the far right).
+- **Profiles tab** (was the hidden Import / Export page): sub-tabs Import, Export and Recycle Bin. Export has a tick box per part (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin). Import lists the parts a pasted text holds, each tickable; settings are merged and a Reload / Later prompt follows. Personal things (Notepad, Shopping List, Recycle Bin, backups, drafts, calculator history, other players' names) never go in. Rules alone still export as the old rules text.
+- **Renamed:** the tab is "Blizzard Reskin" everywhere a player reads it, including the Overview switch "Enable Blizzard Reskin" and chat messages.
+- **Hover texts** are at most two sentences (UI-65).
+- Open choices made without you are in the QA question flow: UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui, UI-24-label-scope.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
