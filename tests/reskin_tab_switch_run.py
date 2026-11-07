@@ -86,7 +86,7 @@ local function shownNames(t)
   for _, e in ipairs(l) do out[#out + 1] = e.n end
   return table.concat(out, " | ")
 end
-check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
+check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Friend Colors | Shopping List", names(tab))
 local ov = tab.args.reskinOverview
 local all = ov and ov.args and ov.args.enable
 check("  ...the switch is on the Overview page (right pane): Enable Blizzard UI Reskin", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard UI Reskin"
@@ -145,7 +145,7 @@ check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overvi
 check("  ...nothing is saved for it while on (a profile that never unticked it holds nothing)", CueRulesDB.reskinTabOff == nil)
 check("  ...the row boxes are no longer greyed", greyed() == 0, greyed())
 ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn()   -- STAND-IN for the reload: the settings addon loads again with the switch on
-check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", shownNames(tab))
+check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Friend Colors | Shopping List", shownNames(tab))
 -- unticked on the tab: all four stop at once, their own switches kept
 all.set(nil, false); W.tick(0.1, 10)
 StaticPopup_Show = rawPopup
