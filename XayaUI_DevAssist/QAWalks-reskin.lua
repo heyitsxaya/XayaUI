@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.42): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.11 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups and loot rolls in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.43): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.12 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls and menus in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -231,6 +231,29 @@ QA.Register("reskin-lootroll", { title = "Reskin: loot rolls (Need, Greed, Trans
         end },
     { text = "Roll on it (any choice).\n\n|cffffd100Expect:|r every button works as before and the roll closes as usual. Pass if so.",
         noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 7. Menus (Reskin 0.6.12)
+-------------------------------------------------------------------------------
+local menusAtStart = 0
+local function MenusPainted() local s = BS(); return (s and s.diag and s.diag.menus) or 0 end
+QA.Register("reskin-menus", { title = "Reskin: right-click and dropdown menus", area = "Reskin", qa = "RESKIN-N", order = 306, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Menus|r is switched on.\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+        setup = function() Keep(); Set(function(c) c.menus = true end); menusAtStart = MenusPainted() end,
+        check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().menus; return on, on and "Menus is on" or "Menus did not switch on" end },
+    { text = "Right-click your own portrait, then close that menu. Open a dropdown too (for example the chat tab's right-click menu, or a dropdown in Esc > Options). Then press |cffffd100Check|r.\n\n|cffffd100Expect:|r each menu's background is the theme's window colour (solid, no Blizzard menu art); entries, checks and arrows read as before.",
+        check = function()
+            local n = MenusPainted() - menusAtStart
+            return n > 0, n > 0 and ("%d menu(s) took the XayaUI look since this walkthrough switched Menus on"):format(n) or "no menu took the look yet: open a right-click menu and press Check again"
+        end },
+    { text = "Use a few entries in those menus (for example the portrait menu's loot or raid target choices, a dropdown choice in Options).\n\n|cffffd100Expect:|r every entry does what it did before; no error appears. Pass if so; Fail and name the menu if not.",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: Menus is switched off. Right-click your portrait again.\n\n|cffffd100Expect:|r the menu has Blizzard's own look, without a /reload.",
+        setup = function() Set(function(c) c.menus = nil end) end,
+        check = function() local s, why = Need(); if not s then return false, why end; local off = not s.Live().menus; return off, off and "Menus is off: the next menu Blizzard builds is its own" or "Menus is still on" end },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

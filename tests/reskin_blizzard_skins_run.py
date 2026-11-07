@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.11, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.12, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -15,6 +15,8 @@ reskins). What the player sees, in the stand-in game:
   * Toasts and Pop-ups (0.6.10): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
     faded under our background; each part has its own box;
   * Loot rolls (0.6.11, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
+  * Menus (0.6.12): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
+    placed only when ticked); nothing added to the pooled menu frame;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -90,6 +92,10 @@ TRACKER_HEADER_QUESTS = "Quests (game string)"
 -- Battle.net toast (SocialToastTemplate: BackdropTemplate, no backdrop colour of its own) and a pop-up dialog (StaticPopup: art on child "BG")
 local BNT = CreateFrame("Frame", "BNToastFrame", UIParent); BNT:Hide()
 local SP1 = CreateFrame("Frame", "StaticPopup1", UIParent); SP1.BG = CreateFrame("Frame", nil, SP1); SP1:Hide()
+-- Blizzard_Menu: the default menu style attaches one background texture (atlas common-dropdown-bg, alpha 0.925) each time a menu is built;
+-- Blizzard mixes the style into a pooled frame and calls Generate (SecureGenerate), so the mixin's function is copied at each build
+MenuStyle1Mixin = { Generate = function(self) local t = self:CreateTexture(nil, "BACKGROUND"); t:SetAtlas("common-dropdown-bg"); t:SetAlpha(0.925); self._bg = t end }
+local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); f:CreateFontString(nil, "OVERLAY"); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
@@ -256,6 +262,31 @@ BNT:Show()
 check("toasts off: a toast shown again is not changed", near(BNT._bdcolor[1], 0) and not BS.Live().toasts)
 tsp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 check("Blizzard UI Reskin off: the toast skin stops too", not BS.Live().toasts and SP1.BG:GetAlpha() == 1)
+ns.SetReskinTab(true)
+-- 7. Menus (Reskin 0.6.12)
+local menuHooksBefore = 0
+for _, n in ipairs(W.hooks) do if n == "Generate" then menuHooksBefore = menuHooksBefore + 1 end end
+check("menus page off: no hook on Blizzard's menu style (V14), a built menu keeps Blizzard's background", menuHooksBefore == 0 and BuildMenu()._bg._color == nil and not BS.Live().menus)
+local mnp = BS.MenusPage(nil)
+mnp.xuiSwitch.set(nil, true)
+local mn = BuildMenu()
+c = mn._bg._color
+check("menus on: a menu Blizzard builds has its own background in the theme's window colour", c and near(c[1], bg[1]) and near(c[2], bg[2]) and near(c[3], bg[3]), c and table.concat(c, ","))
+check("menus on: at the Background opacity (70%)", near(mn._bg:GetAlpha(), 0.7), mn._bg:GetAlpha())
+check("menus on: nothing is added to Blizzard's menu frame (no texture, frame or script of ours)", mn:GetNumRegions() == 2 and BS.memo[mn] == nil)
+local other = CreateFrame("Frame", nil, UIParent); local ot = other:CreateTexture(); ot:SetAtlas("some-other-atlas")
+BS.PaintMenu(other)
+check("only the menu background atlas is recoloured, nothing else", ot._color == nil)
+mnp.xuiSwitch.set(nil, true)
+local n2 = 0
+for _, n in ipairs(W.hooks) do if n == "Generate" then n2 = n2 + 1 end end
+check("the hook is placed once (ticking again adds none)", n2 == 1, n2)
+mnp.xuiSwitch.set(nil, false)
+mn = BuildMenu()
+check("menus off: the next menu is Blizzard's own (background untouched, alpha 0.925)", mn._bg._color == nil and near(mn._bg:GetAlpha(), 0.925) and not BS.Live().menus)
+mnp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+mn = BuildMenu()
+check("Blizzard UI Reskin off: menus are Blizzard's", mn._bg._color == nil and not BS.Live().menus)
 ns.SetReskinTab(true)
 return R
 end

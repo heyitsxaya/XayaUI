@@ -395,6 +395,7 @@ Row IDs: RESKIN-1 to RESKIN-3 were first logged as S8-1 to S8-3 (commits cd3fa00
 Reskin successor (session 014bN6tSvVzc2HRgXhwF3J2L; branch `claude/determined-cerf-981pn8`), build progress on the unbuilt items of `docs/process/handoffs/reskin-elements.md` section 2:
 - RESKIN-3 "bnet alert toasts + popups": BUILT on branch (Reskin 0.6.10, page Toasts and Pop-ups; QA G9). Not on main yet.
 - RESKIN-2 "loot roll / need, greed, transmog": BUILT on branch (Reskin 0.6.11, Blizzard Windows entry Loot rolls; QA G10). Not on main yet.
+- RESKIN-3 "menus" (RESKIN-4 Q12 "all"): BUILT on branch (Reskin 0.6.12, page Menus; QA G11). Not on main yet.
 
 ## A11. Session S8 = session 014bN6tX7AoZQrGX246YSXjC (branch `claude/dreamy-edison-pvb3i1`; progress bar cues, RM-BARS)
 

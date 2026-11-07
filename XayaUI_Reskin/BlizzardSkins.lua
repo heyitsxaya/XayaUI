@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.11): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts, pop-up dialogs and loot rolls. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.12): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs, loot rolls and menus. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
 -- and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
@@ -108,7 +108,7 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker / toasts = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   windows / minimap / tooltips / tracker / toasts / menus = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
@@ -514,20 +514,63 @@ local function ApplyToasts()
 end
 
 -------------------------------------------------------------------------------
+-- 6. Menus: right-click and dropdown menus (her "menus", Q12 "all")
+-------------------------------------------------------------------------------
+-- 12.1.5 source (Gethe/wow-ui-source 297d7aa, read as data): every menu frame comes from a pool and is handed to addons only as a proxy
+-- (Blizzard_Menu/Menu.lua:2094-2135). When Blizzard builds a menu it mixes the menu's style into the frame and calls its Generate
+-- (SecureGenerate, Menu.lua:2094-2097); the default style for menus and context menus is MenuStyle1Mixin (Mainline/MenuVariants.lua:1-7),
+-- whose Generate attaches one background texture with the atlas "common-dropdown-bg" at alpha 0.925 (Mainline/MenuTemplates.lua:51-61).
+-- The Esc-menu lesson (GameMenuSkin.lua header, 0.5.37-0.5.40): never restyle pooled parts once and hope; act each time Blizzard builds.
+-- So: a post-hook on MenuStyle1Mixin.Generate (placed only when this page is ticked) recolours THAT background texture to the theme's
+-- window colour at Background opacity, each time a menu is built. No frame, texture or script is added to Blizzard's menu, nothing is
+-- anchored or moved; entries, text and clicks are Blizzard's. Blizzard sets its atlas and alpha again on every build, so with the page
+-- off the next menu is Blizzard's own (an open menu keeps the look until it closes). Every call is guarded (pcall): a menu whose regions
+-- the game keeps secret is left as it is.
+BS.MENU_BG_ATLAS = "common-dropdown-bg"
+local liveMenu, hookedMenu = false, false
+local function PaintMenu(menu)
+    if not liveMenu or type(menu) ~= "table" or type(menu.GetRegions) ~= "function" then return end
+    local regions = { menu:GetRegions() }
+    local bg = WinBg()
+    for _, r in ipairs(regions) do
+        local ok, atlas = pcall(function() return r.GetAtlas and r:GetAtlas() end)
+        if ok and atlas == BS.MENU_BG_ATLAS then
+            r:SetColorTexture(bg[1], bg[2], bg[3], 1)
+            r:SetAlpha(Alpha())
+            BS.diag.menus = (BS.diag.menus or 0) + 1
+            return true
+        end
+    end
+end
+BS.PaintMenu = PaintMenu
+local function ApplyMenus()
+    if PageOn("menus") then
+        liveMenu = true
+        local mx = rawget(_G, "MenuStyle1Mixin")
+        if not hookedMenu and type(mx) == "table" and type(mx.Generate) == "function" then
+            hookedMenu = true
+            hooksecurefunc(mx, "Generate", function(menu) if liveMenu then Safe(PaintMenu, menu) end end)
+        end
+    else
+        liveMenu = false   -- the hook stays until /reload and does nothing; Blizzard's next build sets its own look
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard UI Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
-    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
+    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -622,8 +665,19 @@ function BS.ToastsPage(Notify)
             "Restyles Battle.net toasts and Blizzard's pop-up dialogs; each has its own box on this page." .. OFFNOTE, Notify) }
 end
 
+function BS.MenusPage(Notify)
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Blizzard's right-click menus and dropdown lists take the theme's window colour in place of Blizzard's menu background, each time a menu opens. The entries, their text, checks and what a click does are unchanged. Opacity: Blizzard Windows' Background opacity. A menu that is open when you untick this keeps the look until it closes." },
+    }
+    return { type = "group", name = "Menus", order = 9, args = args,
+        xuiSwitch = PageSwitch("menus", "Use the XayaUI look on menus", "Right-click and dropdown menus in the theme's colour.",
+            "Recolours Blizzard's right-click and dropdown menus." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
 ns.RegisterSettingsPage("reskin", "objtracker", BS.TrackerPage)
 ns.RegisterSettingsPage("reskin", "rsktoasts", BS.ToastsPage)
+ns.RegisterSettingsPage("reskin", "rskmenus", BS.MenusPage)
