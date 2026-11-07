@@ -369,4 +369,4 @@ function C.Sidebar_Options(Notify, S2, Re)
     return g
 end
 -- (core MinimapButton.lua calls this when "Show it in" changes)
-ns.ChatSidebar_Refresh = function() if C.on and C.on.sidebar then C.Sidebar_Refresh() end end
+ns.Provide("chatSidebar", { Refresh = function() if C.on and C.on.sidebar then C.Sidebar_Refresh() end end })

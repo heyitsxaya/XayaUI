@@ -95,7 +95,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 658ce55fe96abe45fa773744424a3c58  XayaUI/Media/UI/xui_stgroup.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
-246df2faf45970c033048faa892dd658  XayaUI/MinimapButton.lua
+179a7cc6c998f5dc4f3086350fcc4cf7  XayaUI/MinimapButton.lua
 b999e0d127f5574d6bf404d8033888f8  XayaUI/Modules.lua
 af50dc9d4e091e6dc803d69c18c9ed5c  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
@@ -152,7 +152,7 @@ f258d41d39bb1bd3a2f2c8cbac1c9a14  XayaUI_Chat/Locate.lua
 03d2ccb7ae35cc02fc5db83d1f155b21  XayaUI_Chat/Options.lua
 711b5f1a6852849aa5ef2cebf3847476  XayaUI_Chat/Privacy.lua
 ec96bc59c4743c9b10cc4a05b1901e5b  XayaUI_Chat/Scroll.lua
-0655cecf05c5be260b0ee418c475e3d5  XayaUI_Chat/Sidebar.lua
+3082413241a47f75ea886a94f2e280fd  XayaUI_Chat/Sidebar.lua
 89310d84a4fdb3b158d8c79a97abca2f  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 0b25e4d4acccd35a4855b2c7fe691f0d  XayaUI_Chat/Whispers.lua

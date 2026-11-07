@@ -247,8 +247,11 @@ function ns.Minimap_Refresh()
     Watch(true)
     ns.Minimap_SidebarChanged()
 end
--- the chat sidebar shows or drops XayaUI's button at once (XayaUI Chat registers its refresh; nothing without it)
-function ns.Minimap_SidebarChanged() local f = ns.ChatSidebar_Refresh; if type(f) == "function" then pcall(f) end end
+-- the chat sidebar shows or drops XayaUI's button at once (XayaUI Chat provides "chatSidebar" through Modules.lua; nothing without it)
+function ns.Minimap_SidebarChanged()
+    local sv = ns.Service and ns.Service("chatSidebar")
+    if sv and type(sv.Refresh) == "function" then pcall(sv.Refresh) end
+end
 
 -- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
 -- performance cost / demand in any way"). The button is placed again after every loading screen (PLAYER_ENTERING_WORLD, 0.2 s later,
