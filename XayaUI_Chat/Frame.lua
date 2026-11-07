@@ -131,6 +131,11 @@ function C.Layout()
     local host = not C.skin and C.HostRect() or nil
     if not C.skin and not host then container:Hide(); return end
     if host then W, H = host.w, host.h; container:Show() end
+    -- (Chat 0.6.34; UI-17) the chat's size is untouched unless the sidebar's "Width of the whole chat" is set (Chat Panel on only)
+    if not host and C.Sidebar_PaneWidth then
+        local bs = s.barOn and C.ImprovedOn() and (s.barSide == "LEFT" or s.barSide == "RIGHT")
+        W = C.Sidebar_PaneWidth(W, bs and (Clamp(s.barW, 40, 200, 90) + Clamp(s.barGap, 0, 20, 2)) or 0)
+    end
     local barOn = C.BarOn()
     -- (Chat 0.6.23; REQUEST-LOG UI-10 / UI-28 / UI-29, Xaya 2026-11-06: the Chat Data Panel "assigned to the left or right-hand side",
     -- her answers "Vertical strip beside chat", "snap to chat window height", "Slider 40-200, default 90") Left / Right: a strip as tall
@@ -244,10 +249,19 @@ function C.Layout()
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
     if C.SyncInputMover then C.SyncInputMover() end
+    -- (Chat 0.6.34; UI-3) the sidebar must not run off the screen: the Chat Panel's block moves in by that much (its saved place is kept)
+    if not host and C.Sidebar_Clip then
+        local dx, dy = C.Sidebar_Clip(container)
+        if dx ~= 0 or dy ~= 0 then
+            container:ClearAllPoints()
+            container:SetPoint(s.point or "BOTTOMLEFT", UIParent, s.point or "BOTTOMLEFT", (tonumber(s.x) or 24) + dx, (tonumber(s.y) or 90) + dy)
+        end
+    end
     C.Anchor()
     if C.ScrollBar_Layout then C.ScrollBar_Layout() end
     C.ApplyAlpha()
     if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
+    if C.Sidebar_Refresh then C.Sidebar_Refresh() end
 end
 
 -------------------------------------------------------------------------------
@@ -302,7 +316,7 @@ function C.Anchor()
             dock:ClearAllPoints()
             dock:SetPoint("TOPLEFT", tabsA, "TOPLEFT", 0, 0)
             -- the history button sits at the right end of the tab row (History.lua): the tabs stop short of it
-            local reserve = (s.tabsShow and s.histButton) and C.HIST_RESERVE or 0
+            local reserve = (s.tabsShow and s.histButton and C.ImprovedOn() and not (C.Sidebar_Has and C.Sidebar_Has("hist"))) and C.HIST_RESERVE or 0
             dock:SetPoint("BOTTOMRIGHT", tabsA, "BOTTOMRIGHT", -reserve, 0)
             if s.tabsShow then C.Unsuppress(dock) else C.Suppress(dock) end
             -- Blizzard sizes the tabs of user-made windows (60-90 px each) for the dock's width at the moment it lays them out, and
@@ -544,6 +558,7 @@ function C.ApplyAlpha()
     C.master = (collapsed and 0 or 1) * C.fade
     pane:SetAlpha(collapsed and 0 or C.fade)
     if bar then bar:SetAlpha((s.fadeBar and C.fade) or 1) end
+    if C.Sidebar_Alpha then C.Sidebar_Alpha() end   -- (Chat 0.6.34; UI-3) fade with the chat, if ticked
     local off = C.master < 0.02
     for _, el in ipairs(C.Elements()) do
         C.Try("alpha", function()

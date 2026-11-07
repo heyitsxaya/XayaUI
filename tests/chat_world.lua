@@ -55,6 +55,7 @@ local function new(kind, name, parent)
   return o
 end
 W.new = new
+W.proto = proto   -- (tests that load more of XayaUI add the methods those files need)
 function W.objects() return objects end
 
 function proto:GetName() return self._name end
@@ -133,7 +134,8 @@ function proto:RegisterEvent(e) self._events[e] = true end
 function proto:UnregisterEvent(e) self._events[e] = nil end
 function proto:UnregisterAllEvents() self._events = {} end
 function proto:RegisterForClicks() end
-function proto:CreateTexture(n, layer) return new("Texture", n, self) end
+function proto:CreateTexture(n, layer, tmpl, sub) local t = new("Texture", n, self); t._layer, t._sub = layer, sub or 0; return t end
+function proto:GetDrawLayer() return self._layer, self._sub end
 function proto:CreateFontString(n) return new("FontString", n, self) end
 function proto:CreateLine(n) return new("Line", n, self) end
 function proto:GetChildren() return table.unpack(self._kids) end
@@ -344,7 +346,7 @@ load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
 -- W.coreHooks are XayaUI_Chat's (tests/chat_off_costs_nothing_run.py)
 W.coreObjects, W.coreHooks, W.coreThemeListeners = #objects, #W.hookLog, #ns.Theme._listeners
 for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Scroll.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
-  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Whispers.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
+  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Whispers.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/Sidebar.lua" }) do load(rel) end
 W.ns = ns
 -- XayaUI Dev Assist's chat diagnostics (/xui chat wrap, indent, whispers and the whisper counters; Chat 0.6.20 / Dev Assist 0.7.5,
 -- REQUEST-LOG #81), loaded as the game loads that addon: after XayaUI and XayaUI Chat, finding XayaUI by its shared namespace.

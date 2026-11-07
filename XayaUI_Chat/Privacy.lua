@@ -194,6 +194,11 @@ local function PlaceButton()
     local c = ns.Chat and ns.Chat.Container and ns.Chat.Container()
     if not c then return end
     local s2 = ns.chat2
+    -- (Chat 0.6.34; UI-3, her answer "Moves into sidebar") while the chat sidebar holds it, the sidebar places it and it follows its showing
+    local sb = ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy")
+    if btn:GetParent() ~= (sb or UIParent) then btn:SetParent(sb or UIParent) end
+    if sb then return end
+    btn:SetFrameStrata("MEDIUM"); btn:SetFrameLevel(60)
     btn:ClearAllPoints()
     -- beside the chat block, level with its top edge (the strip option "Right of the chat" uses the same side: move one with the offsets)
     local past = (s2 and s2.stripMode == "RIGHT") and 34 or 0   -- Blizzard's button strip may sit on that side: stay clear of it
@@ -237,6 +242,7 @@ function ns.ChatPrivacy_Refresh()
     if wantBtn then BuildButton() end
     if btn then
         local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
+        if ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy") then size = math.max(14, math.min(40, tonumber(ns.chat2 and ns.chat2.sbBtn) or 22)) end   -- (Chat 0.6.34) the sidebar's button size
         btn:SetSize(size, size)
         if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
         btn:SetShown(wantBtn)

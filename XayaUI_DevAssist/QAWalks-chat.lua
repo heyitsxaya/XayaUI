@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is
@@ -395,12 +395,12 @@ QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs beh
             local names, tabs = Kids(t), TabsOf(t, "general")
             return names == "General | Chat Tabs | Layout" and tabs == "Font options | Color + display options", "parts: " .. names .. "; General's tabs: " .. tostring(tabs)
         end },
-    { text = "Press |cffffd100Do it for me|r: the settings open on QoL > |cffffd100Improved Chat|r.\n\n|cffffd100Expect:|r a tick box on its row in the left pane, a note that it likely displays better with a chat reskin, and under it: General, Chat Data Panel, Filters, Sounds, Privacy. General's tabs: Scroll and fade options, Chat history, Timestamp, copying, and links.",
+    { text = "Press |cffffd100Do it for me|r: the settings open on QoL > |cffffd100Improved Chat|r.\n\n|cffffd100Expect:|r a tick box on its row in the left pane, a note that it likely displays better with a chat reskin, and under it: General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar. General's tabs: Scroll and fade options, Chat history, Timestamp, copying, and links.",
         setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("improved") end end,
         check = function()
             local t = ITree(); if not t then return false, "Improved Chat's settings could not be read" end
             local names, tabs = Kids(t), TabsOf(t, "general")
-            local ok = names == "General | Chat Data Panel | Filters | Sounds | Privacy" and tabs == "Scroll and fade options | Chat history | Timestamp, copying, and links"
+            local ok = names == "General | Chat Data Panel | Filters | Sounds | Privacy | Sidebar" and tabs == "Scroll and fade options | Chat history | Timestamp, copying, and links"
                 and t.xuiSwitch ~= nil and t.args.reskinNote ~= nil
             return ok, "parts: " .. names .. "; General's tabs: " .. tostring(tabs) .. (t.xuiSwitch and "" or "; no switch on its row")
         end },
@@ -536,6 +536,69 @@ QA.Register("chat-input-position", { title = "Chat: input line top, bottom or fr
             local C = Ch()
             return not (C and C.unlocked), "Input line: " .. tostring(C and C.InputPos and C.InputPos())
         end },
+} })
+
+-- (Chat 0.6.34 / core 0.6.62; REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7) the chat sidebar (QoL > Improved Chat > Sidebar)
+local sbSaved
+local SB_KEYS = { "sbOn", "sbSide", "sbShow", "sbFade", "sbCombat", "sbBg", "sbChatW", "improvedOn" }
+local function SbSet(t)
+    local s, C = S(), Ch(); if not (s and C) then return end
+    if not sbSaved then sbSaved = {}; for _, k in ipairs(SB_KEYS) do sbSaved[k] = s[k] end end
+    for k, v in pairs(t) do s[k] = v end
+    C.Refresh()
+end
+local function SbReady()
+    local C = Ch()
+    if not C then return false, "XayaUI Chat is not loaded" end
+    if not (C.ImprovedOn and C.ImprovedOn()) then return false, "Improved Chat is off (QoL > Improved Chat tick box)" end
+    local sb = C.Sidebar and C.Sidebar()
+    if not (sb and C.SidebarOn and C.SidebarOn()) then return false, "the sidebar is off (QoL > Improved Chat > Sidebar)" end
+    return true, sb
+end
+QA.Register("chat-sidebar", { title = "Chat: the chat sidebar (UI-3)", qa = "D27", order = 240, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the sidebar is switched on, on the |cffffd100left|r, always shown, with its background (your settings are remembered; the last step puts them back).\n\n|cffffd100Expect:|r a strip left of the chat, as tall as it, with a dark background tinted in your class colour; top to bottom: the privacy eye, Blizzard's chat menu and channel buttons (voice buttons only in a voice channel), the history button, chat windows, newest message. The chat itself is the same size as before.",
+        setup = function() SbSet({ improvedOn = true, sbOn = true, sbSide = "LEFT", sbShow = "ALWAYS", sbFade = false, sbCombat = false, sbBg = true, sbChatW = 0 }) end,
+        check = function()
+            local ok, sb = SbReady(); if not ok then return false, sb end
+            local C = Ch()
+            local b, c = Rect(sb), Rect(C.Container())
+            if not (b and c) then return false, "the sidebar's place could not be read" end
+            local beside = b.r <= c.l + 0.5 and Near(b.h, c.h, 1)
+            local eye = rawget(_G, "XayaUIChatPrivacyButton")
+            local eyeIn = eye and eye:GetParent() == sb and Shown(eye)
+            return (beside and eyeIn) and true or false, ("strip %s, chat block %s; left of it and as tall: %s; eye in it: %s"):format(Fmt(b), Fmt(c), beside and "yes" or "NO", eyeIn and "yes" or "NO")
+        end },
+    { text = "Press |cffffd100Do it for me|r: Show = |cffffd100On mouseover|r. Move the mouse away from the chat, then press |cffffd100Check again|r; then hover the chat.\n\n|cffffd100Expect:|r with the mouse away the strip and all its buttons are hidden; over the chat or the strip they show.",
+        setup = function() SbSet({ sbShow = "MOUSEOVER" }) end,
+        check = function()
+            local ok, sb = SbReady(); if not ok then return false, sb end
+            local a = Alpha(sb)
+            return a ~= nil and a < 0.02, ("strip opacity now %s (0 = hidden with the mouse away)"):format(tostring(a and math.floor(a * 100 + 0.5) / 100))
+        end },
+    { text = "Press |cffffd100Do it for me|r: Show = Always, and |cffffd100Side|r = |cffffd100Right|r.\n\n|cffffd100Expect:|r the strip moves to the chat's right side. If the chat sits at the screen's right edge, the chat moves in to make room.",
+        setup = function() SbSet({ sbShow = "ALWAYS", sbSide = "RIGHT" }) end,
+        check = function()
+            local ok, sb = SbReady(); if not ok then return false, sb end
+            local C = Ch()
+            local b, c = Rect(sb), Rect(C.Container())
+            local sw = UIParent:GetWidth()
+            local right = b and c and b.l >= c.r - 0.5 and (type(sw) ~= "number" or b.r <= sw + 0.5)
+            return right and true or false, ("strip %s, chat block %s"):format(Fmt(b), Fmt(c))
+        end },
+    { text = "Press |cffffd100Do it for me|r: Side back to Left and |cffffd100Hide in combat|r ticked. Start a fight (a training dummy is fine), look at the strip, leave combat, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the strip and its buttons disappear in combat and come back after.",
+        setup = function() SbSet({ sbSide = "LEFT", sbCombat = true }) end,
+        check = function()
+            local ok, sb = SbReady(); if not ok then return false, sb end
+            local inC = InCombatLockdown and InCombatLockdown()
+            if inC then return not Shown(sb), "in combat: strip " .. (Shown(sb) and "SHOWN" or "hidden") end
+            return Shown(sb), "out of combat: strip " .. (Shown(sb) and "shown" or "HIDDEN")
+        end },
+    { text = "Last step: press |cffffd100Do it for me|r to put your sidebar settings back as they were.",
+        setup = function()
+            local s, C = S(), Ch()
+            if s and C and sbSaved then for _, k in ipairs(SB_KEYS) do s[k] = sbSaved[k] end; sbSaved = nil; C.Refresh() end
+        end,
+        check = function() return sbSaved == nil, sbSaved == nil and "sidebar settings put back" or "not put back yet" end },
 } })
 
 -- #430 (from #229 item 5, "Clicking the chat box in mover mode should open exact X/Y entry + cardinal arrows"; Chat 0.6.31)

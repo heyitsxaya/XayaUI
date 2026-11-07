@@ -529,6 +529,13 @@ local function Refresh(s)
     -- which is left of the scroll bar.
     btn:ClearAllPoints()
     local tabs = C.TabsArea()
+    -- (Chat 0.6.34; UI-3) in the chat sidebar while it holds it (Sidebar.lua places it there; it follows the sidebar's showing)
+    local sb = C.Sidebar_Slot and C.Sidebar_Slot("hist")
+    if btn:GetParent() ~= (sb or C.Pane()) then btn:SetParent(sb or C.Pane()) end
+    if sb then
+        btn:SetShown(s.histButton and true or false)
+        return
+    end
     if tabs and s.tabsShow then
         btn:SetPoint("RIGHT", tabs, "RIGHT", -3, 0)
     else

@@ -59,7 +59,7 @@ R = lua.eval(r'''function(W, ns, C)
     return table.concat(tn, "|")
   end
   rec("Chat Panel parts in order: General, Chat Tabs, Layout", partNames(o.args.chatpanel) == "General|Chat Tabs|Layout", partNames(o.args.chatpanel))
-  rec("Improved Chat parts in order: General, Chat Data Panel, Filters, Sounds, Privacy", partNames(o.args.improvedchat) == "General|Chat Data Panel|Filters|Sounds|Privacy", partNames(o.args.improvedchat))
+  rec("Improved Chat parts in order: General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar", partNames(o.args.improvedchat) == "General|Chat Data Panel|Filters|Sounds|Privacy|Sidebar", partNames(o.args.improvedchat))
   rec("Chat Panel General's tabs, her words and order (the look)", tabNames(o.args.chatpanel.args.general) == "Font options|Color + display options", tabNames(o.args.chatpanel.args.general))
   rec("Improved Chat General's tabs, her words and order (behaviour)", tabNames(o.args.improvedchat.args.general) == "Scroll and fade options|Chat history|Timestamp, copying, and links", tabNames(o.args.improvedchat.args.general))
   -- leaves: every control in the whole Chat Panel tree, by name

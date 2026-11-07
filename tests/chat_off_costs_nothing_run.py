@@ -195,7 +195,7 @@ check("A21 (sanity) no module errors", len(list(run("return C.errors").keys())) 
 # ===================================================================================================================================
 ALL_OFF = """CueRulesDB.chat2 = { enabled = true, barOn = false, fadeOn = false, histOn = false, histConsole = false, soundsOn = false,
   whisperSoundsOn = false, spamRepeat = false, spamPhrases = '', links = false, ignoreClick = false, histButton = false, scrollOwn = false,
-  inputHint = false, useTheme = false, whisperSelect = false }
+  inputHint = false, useTheme = false, whisperSelect = false, sbOn = false }
 CueRulesDB.chat = { privBtn = false, privOn = false, privReveal = false }"""
 lua, W, run, frames = world(ALL_OFF)
 cnt, names = both(run, "ONUPDATES")

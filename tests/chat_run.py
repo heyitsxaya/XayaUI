@@ -13,6 +13,9 @@ def check(name, cond, extra=""):
     global fails
     print(("PASS " if cond else "FAIL ") + name + ((" :: " + str(extra)) if (extra != "" and not cond) else ""))
     if not cond: fails += 1
+# (Chat 0.6.34; UI-3) these checks place the privacy and history buttons beside the chat and in the tab row, where they are without the
+# chat sidebar; the sidebar (on by default) holds them otherwise: tests/chat_sidebar_run.py
+lua.execute("CueRulesDB.chat2 = { sbOn = false }")
 S = W.start()
 check("started with chat2 table", S is not None)
 

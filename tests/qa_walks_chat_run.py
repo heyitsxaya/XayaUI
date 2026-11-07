@@ -138,7 +138,7 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("whisper walk step 3: back on General", chk(id, 3))
   id = "chat-settings-layout"
   local okS1, nS1 = run(id, 1); rec("layout walk step 1: Chat Panel = General, Chat Tabs, Layout (the look)", okS1, nS1)
-  local okS2, nS2 = run(id, 2); rec("layout walk step 2: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy (behaviour)", okS2, nS2)
+  local okS2, nS2 = run(id, 2); rec("layout walk step 2: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar (behaviour)", okS2, nS2)
   local okS3, nS3 = run(id, 3); rec("layout walk step 3: the whisper switch is on Improved Chat > General > Chat history", okS3, nS3)
   local okS4, nS4 = run(id, 4); rec("layout walk step 4: timestamps set", okS4, nS4)
   local okS5, nS5 = run(id, 5); rec("layout walk step 5: timestamps put back", okS5 and C_CVar.v.showTimestamps == "none", nS5)
@@ -166,6 +166,19 @@ R = lua.eval(r'''function(W, ns, C, root)
   ns.chat2.inputX = (ns.chat2.inputX or 0) + 50
   rec("input walk negative: a saved place the line is not at gives Fail", not chk(id, 3)); C.Refresh(); W.flush()
   local okN4, nN4 = run(id, 4); rec("input walk last step: put back, mover closed", okN4 and not C.unlocked and C.InputPos() == "BOTTOM", nN4)
+
+  -- (Chat 0.6.34; UI-3) the sidebar
+  id = "chat-sidebar"
+  local okB1, nB1 = run(id, 1); rec("sidebar walk step 1: on the left, eye in it", okB1, nB1)
+  local eye = XayaUIChatPrivacyButton; eye:SetParent(UIParent)
+  rec("sidebar walk negative: the eye not in the strip gives Fail", not chk(id, 1)); C.Refresh(); W.flush()
+  MouseIsOver = function() return false end
+  local okB2, nB2 = run(id, 2); W.update(0.2, 2); okB2, nB2 = chk(id, 2); rec("sidebar walk step 2: hidden with the mouse away", okB2, nB2)
+  MouseIsOver = function() return true end; W.update(0.2, 2)
+  rec("sidebar walk negative: the mouse over it gives Fail at step 2", not chk(id, 2)); MouseIsOver = nil
+  local okB3, nB3 = run(id, 3); rec("sidebar walk step 3: on the right", okB3, nB3)
+  local okB4, nB4 = run(id, 4); rec("sidebar walk step 4: out of combat, shown", okB4, nB4)
+  local okB5 = run(id, 5); rec("sidebar walk last step: put back", okB5 and ns.chat2.sbCombat ~= true)
 
   -- #430 walkthrough
   id = "chat-position-box"
