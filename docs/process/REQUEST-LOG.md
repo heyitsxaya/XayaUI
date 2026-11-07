@@ -350,6 +350,16 @@ Review of old chat issues #210 / #229 / #246 / #250 / #296 against main 687b624 
 | CHATREV-6 | Scope of the QA handler, her answer to "a /xui dev qa walkthrough that checks the result itself and fills in pass or fail": "For every issue here" | BUILT on branch `claude/chat-qa-walks` (assigned to this session by the coordinator); not yet on main | `XayaUI_DevAssist/QAWalks-chat.lua` | Auto-checking `ns.RegisterQAWalk` walkthroughs for #210 (mover, collapse arrow), #229 items 1-4 (arrow drawn and clear of the strip, strip Hidden/Left/Right, data panel, drag to the screen bottom), #250 (collapse leaves the block's size unchanged, no border pieces shown), #296 (bar moves / fades / stays on collapse). |
 | CHATREV-7 | How the QA handler records the answer, her answer (question box, 2026-11-06 ~23:45 UTC; options: auto-record chat walks only / auto-record every walkthrough / pre-fill, I confirm): "Pre-fill, I confirm" | BUILT on branch `claude/chat-qa-walks` (Dev Assist 0.7.7, QA D21); not yet on main | `XayaUI_DevAssist/QAWalk.lua` (Accept button), `XayaUI_DevAssist/QAWalks-chat.lua` | The coordinator assigned CHATREV-6 to this session. Pre-fill applies only to walkthroughs that opt in (the four chat ones); others are unchanged. |
 
+## A15. Nameplates session (opened by "Outstanding items 11-06" for Plater replacement; branch `claude/nameplates-plater`)
+Relayed by that session (2026-11-07 ~07:05 UTC); her message read verbatim from its transcript. The four Plater export strings in it
+are third-party data: kept outside the repo, decoded for reading only (#290).
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| NP-1 | "if you can replicate the following mods and profile functionality into xui and make it cost less, here are the nameplate mods and settings I rely on" [followed by four `!PLATER:2!` export strings; 1st and 3rd identical] | Slice 1 built on branch `claude/nameplates-plater` (XayaUI_Nameplates 0.1.0, Dev Assist 0.7.14) | docs/plans/NAMEPLATES-PLATER-INVENTORY-2026-11-07.md, docs/plans/NAMEPLATES-PLAN-2026-11-07.md | Inventory, feasibility, flagged readings R1-R6, slices 2-3 and four questions for her once her older items are on main. |
+| NP-2 | (relayed) on the Plater scripts "Aura Reorder", "Current Target Color", "Reorder Nameplate": "I rely heavily on these three at least, though" | Current Target Color: built (slice 1). Reorder Nameplate: matched by Blizzard's own layout, nothing to build (walkthrough asks her to confirm). Aura Reorder: differs (plan B3), proposal for slice 2 | plan section B3 | In her export these three are Plater "mods", and they are the only three switched on. |
+| NP-3 | (relayed context) mouse lag in Mythic+ only; Plater mod "Attacking Specific Unit" erroring on every nameplate update ("attempt to perform string conversion on a secret string value"); Plater about 2 % CPU, 33.9 MB | Noted | plan "Where the cost goes" | The mod is OFF in the export she sent (flagged R6). Cost comparison method asked of the performance-test session. |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."

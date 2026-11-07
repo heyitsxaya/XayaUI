@@ -406,6 +406,15 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **J15.** (Dev Assist 0.7.2) `/xuidev probe on`, then play out of combat for 5 minutes (any class). `/xuidev probe status`. **Expect:** line 2 ends with `N proc art hides had no spell ID (counted, not logged)` when the game sent such hides, and the header line's entries-kept number stays well under 6,000 for those 5 minutes (before 0.7.2 those hides filled the log at about two a second).
 - [ ] **J16.** (Dev Assist 0.7.3) Out of combat, type `/xuidev char`, then `/xuidev save` (reloads) and open `WTF/Account/<account>/SavedVariables/XayaUI_DevAssist.lua`. **Expect:** the character record's **ilvlEquipped** holds your equipped item level (before 0.7.3 it was always empty), beside **ilvl**.
 
+## K. XayaUI Nameplates (XayaUI_Nameplates; plan docs/plans/NAMEPLATES-PLAN-2026-11-07.md)
+
+Walkthrough: `/xui dev qa` > "Nameplates: target colour (XayaUI Nameplates 0.1.0)" (Dev Assist 0.7.14) runs K1-K4 with the addon's own checks.
+
+- [ ] **K1.** (Nameplates 0.1.0) Fresh install: open the AddOns list. **Expect:** "XayaUI Nameplates" is listed and NOT ticked (disabled by default). Tick it, disable Plater, /reload, type `/xui nameplates`. **Expect:** "Nameplates: target colour on." and no line saying another nameplate addon is loaded.
+- [ ] **K2.** (Nameplates 0.1.0) Out of combat, target an enemy with a nameplate, then Tab to another. **Expect:** only the current target's health bar fill is teal; the previous one returns to its normal colour; the name and health text stay readable.
+- [ ] **K3.** (Nameplates 0.1.0) In a dungeon or Mythic+ pull, switch targets several times in combat. **Expect:** each new target turns teal at once; no "Interface action failed" or blocked-action message; `/xui nameplates` says "target nameplate found; colour shown".
+- [ ] **K4.** (Nameplates 0.1.0) /xui > QoL > Nameplates: pick another colour, then press Teal; untick Target colour. **Expect:** the target's bar takes the new colour at once, Teal puts teal back, unticked nothing is coloured. Untick XayaUI Nameplates in the AddOns list and /reload: **Expect:** Blizzard's plates as before, no Nameplates page in the settings.
+
 ## Reporting a problem
 
 Send, for each problem:
