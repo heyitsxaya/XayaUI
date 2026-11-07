@@ -227,8 +227,6 @@ abdae05ed3e4b73e9f7969a75da21fd3  XayaUI_Options/Skin.lua
 eac6760f4421c937a3ce3171912561df  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
 d6619b36d66f4f652c514930ec741904  XayaUI_Options/XayaUI_Options.toc
-d6619b36d66f4f652c514930ec741904  XayaUI_Options/XayaUI_Options.toc
-d6619b36d66f4f652c514930ec741904  XayaUI_Options/XayaUI_Options.toc
 c5fab0ea598691a041872b61a749f51c  XayaUI_QoL/CharacterModel.lua
 9a778ac3bac6684e0a310244548fbab3  XayaUI_QoL/CharacterReskin.lua
 a812df94ff9392d7b04710ed94a533d5  XayaUI_QoL/CharacterToolkit.lua
@@ -555,16 +553,16 @@ e7718e351b8d6138ae5c830f5185550e  debug-log/2026-11-06-2230-c1-spec-aura-learner
 166b83a6c1362abd33fe5d66169da172  debug-log/2026-11-06-2241-roadmap-tank-target-indicator.md
 3302f92b60a4208d137c641c976ee2e6  debug-log/2026-11-06-2247-d4-event-routing-core-0.6.56.md
 2c4b405b037091f25123f450a87c575e  debug-log/2026-11-06-2253-stat-calc-proc-lines-set-armor-label-qol-0.7.35.md
-0421f816cee3ec785769ef0f75f54fde  debug-log/2026-11-06-2255-ability-scaling-columns-fold-dividers-qol-0.7.36.md
+68099c949ab0866ca4ce86d8f7f950c7  debug-log/2026-11-06-2255-ability-scaling-columns-fold-dividers-qol-0.7.36.md
 064774082fccf68102056cb6ecc1bbd7  debug-log/2026-11-06-2256-panel-command-text-chat-0.6.27.md
 91c8d3bbc459636840aa4e6429ee7d65  debug-log/2026-11-06-2306-bar-cues-merge-main-relabel-core-0.6.58-options-0.6.59-bonus-0.6.20.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 e85f7300e5f944da7cb819071632d600  docs/QA-CHECKLIST.md
 016d704744f94668de6d3e58e201e3ce  docs/README-INGAME.md
-e03ca66e1eb43c7e39a2d315fc0bbccf  docs/ROADMAP.md
-9d77ce4a6d7f2f3f481802b8ea6f0e37  docs/SESSION-START-SUMMARY.md
+df0b0db8c4ec95be10546f6a19bef400  docs/ROADMAP.md
+83b0df21d9813f58d0a4290b48e16cd5  docs/SESSION-START-SUMMARY.md
 afcc38a3ac15d7ea9f3c2511eb714955  docs/USER-GUIDE.md
-3135b412ba5068e6302e17da0b75e31b  docs/WHATS-NEW.md
+e75854b85cee753a4a085b5678b8fa3b  docs/WHATS-NEW.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
@@ -591,6 +589,7 @@ c303a99e884d75226da5ecac171965bd  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-
 0e6f505ca76ce1a9f019a5d67b9a4f6d  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 46a9fdb8adb718c66995dbb80565e98c  docs/process/OUTSTANDING-2026-11-06.md
+70c785999f3d6a268a50d623ecab47cc  docs/process/PUSH-PROCESS-REVIEW-2026-11-06.md
 f057f7212267aabd551a1ca79b40569c  docs/process/QUESTIONS-engine-session.md
 40c3d124b802a5725d47ba2923820e87  docs/process/REQUEST-LOG-CROSS-CHAT.md
 73cc522e33eac291f5a18cb3cb13c6e8  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
@@ -599,7 +598,7 @@ c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 f2fa31ac21c4a1101f7fb13a72c08285  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-16d04340954a373817f51908914fc550  docs/process/REQUEST-LOG.md
+121b306ca4cac7192a900e5cddcddfb8  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
@@ -687,7 +686,7 @@ e6efd2e052ed59909ffd4caa98b17124  tests/char_spells_compare_run.py
 ea32c3bfc689c37ecccaceb986b90f6e  tests/char_spells_run.py
 75414a550d2ad68a99b8f6e9e28f5056  tests/char_stat_columns_run.py
 1f1871a2727ae2ae7488783b0a50c1cc  tests/char_stat_map_run.py
-1c7fda81c9b1f63379b9665a4aafc037  tests/char_stat_round_run.py
+5de2e646ec7a5bf27e19971a319ae8ae  tests/char_stat_round_run.py
 9b4193e0d1e614fa12e04348dd3e0bab  tests/char_stat_window_run.py
 6b8d6959f64e1849631b04d9e438fc22  tests/char_toolkit2_run.py
 a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
