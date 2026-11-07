@@ -93,6 +93,8 @@ GetCritChance = function() return 22.48 end
 GetRangedCritChance = function() return 5 end
 GetSpellCritChance = function() return 5 end
 GetHaste = function() return 29.25 end
+-- (QoL 0.7.37, UI-63 / UI-64: the GCD rule reads the class; the game always has it) a Demon Hunter: a 1.5 s GCD that haste shortens
+if UnitClass == nil then UnitClass = function(u) if u == "player" then return "Demon Hunter", "DEMONHUNTER", 12 end end end
 GetMeleeHaste = function() return 29.25 end
 GetMasteryEffect = function() return 88.69, 2.8 end
 GetVersatilityBonus = function() return 0 end

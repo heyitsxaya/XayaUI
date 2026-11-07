@@ -366,7 +366,7 @@ checkp("its column heads (narrow panel): Stat | Rating (P / %) | PPP | DR Thresh
     texts(d, "wcolhead") end)
 checkp("its rows: Agility, Stamina, Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed", function()
   return texts(d, "wlabel") == "Agility|Stamina|Critical Strike|Haste|Mastery|Versatility|Avoidance|Leech|Speed", texts(d, "wlabel") end)
-local gcdAmt, asAmt = ("%.2f"):format(1.16 * 1.2925 - 1.16), ("%.2f"):format(2.0 * 1.2925 - 2.0)
+local gcdAmt, asAmt = ("%.2f"):format(1.5 - 1.5 / 1.2925), ("%.2f"):format(2.0 * 1.2925 - 2.0)   -- (GCD: the standard rule, UI-64)
 checkp("Haste: 1,200 / 29.25% | 46.0 / 1% | 1,380 | T: 1,200 [line break] L: 0.0 (her example row's columns; QoL 0.7.28: T/L in two lines)", function()
   local r = wrow(d, "Haste")
   return T(r.wrating) == "1,200 / 29.25%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 1,200" and T(r.wtl2) == "L: 0.0",
@@ -377,9 +377,9 @@ local function hover(dd, key)
   for _, b in ipairs(dd.buttons) do if b.shown and b.item and b.item.key == key then GameTooltip.lines = {}; b.scripts.OnEnter(b); return table.concat(GameTooltip.lines, "\n") end end
   return ""
 end
-checkp("  ...hovering the row: \"Haste decreases Global cooldown by " .. gcdAmt .. " s\" and \"Haste decreases Attack Speed by " .. asAmt .. " s\"", function()
+checkp("  ...hovering the row: \"Haste decreases GCD by " .. gcdAmt .. " s\" and \"Haste decreases Attack Speed by " .. asAmt .. " s\" (UI-62: GCD)", function()
   local h = hover(d, "w_haste")
-  return h:find("Haste decreases Global cooldown by " .. gcdAmt .. " s", 1, true) ~= nil and h:find("Haste decreases Attack Speed by " .. asAmt .. " s", 1, true) ~= nil, h end)
+  return h:find("Haste decreases GCD by " .. gcdAmt .. " s", 1, true) ~= nil and h:find("Haste decreases Attack Speed by " .. asAmt .. " s", 1, true) ~= nil, h end)
 checkp("Critical Strike: 528 / 22.48% | 46.0 / 1% | 1,380 | T: 528 [line break] L: 0.0 | Influences: Parry (+10.15%)", function()
   local r = wrow(d, "Critical Strike")
   return T(r.wrating) == "528 / 22.48%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 528" and T(r.wtl2) == "L: 0.0"
@@ -405,9 +405,14 @@ checkp("past a threshold (1,500 haste): PPP 46.0 / 1% with the DR rate under it 
 ratings[18] = 1200
 CM.gcd = nil
 d = render()
-checkp("an influence the game does not give reads not given: no GCD read yet -> GCD (not given); its hover says so", function()
-  return T(wrow(d, "Haste").winfl):find("GCD (not given)", 1, true) ~= nil and hover(d, "w_haste"):find("Haste -> Global cooldown: not given", 1, true) ~= nil,
-    T(wrow(d, "Haste").winfl) end)
+checkp("no GCD read yet: Haste still influences the GCD by the standard rule (UI-64: it no longer waits for a live reading)", function()
+  return T(wrow(d, "Haste").winfl):find("GCD (-" .. gcdAmt .. " s)", 1, true) ~= nil, T(wrow(d, "Haste").winfl) end)
+local keepClass = UnitClass
+UnitClass = function() return "Rogue", "ROGUE", 4 end
+d = render()
+checkp("a rogue (a fixed 1.0 s GCD): Haste's influences do not list the GCD (UI-63: haste does not shorten it)", function()
+  return T(wrow(d, "Haste").winfl):find("GCD", 1, true) == nil, T(wrow(d, "Haste").winfl) end)
+UnitClass = keepClass
 CM.gcd = { dur = 1.16, haste = 29.25 }
 d = render()
 checkp("collapsible: clicking its header folds it (+ Stat Weights, no rows), the fold is saved, Character Stats stays", function()

@@ -147,11 +147,11 @@ combat = true
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.05, isActive = true } end
 ns.CharToolkit_ReadGCD()
 m = CM.Build(c, "offense")
-check("GCD is read live in combat while the game shows it (1.05 s)", m.byKey.gcd.value == "1.05 s", m.byKey.gcd.value)
+check("GCD read live in combat while the game shows it: listed as the live reading (1.05 s) beside the rule's 1.16 s, the difference flagged (UI-64)", m.byKey.gcd.value == "1.16 s" and (pair(m.byKey.gcd, "Live reading") or ""):find("^1%.05 s") ~= nil, tostring(pair(m.byKey.gcd, "Live reading")))
 C_Spell.GetSpellCooldown = function() return { startTime = SECRET, duration = SECRET, isActive = true } end
 ns.CharToolkit_ReadGCD()
 m = CM.Build(c, "offense")
-check("GCD secret in combat: hidden in combat, the last readable value listed", m.byKey.gcd.value == "hidden in combat" and pair(m.byKey.gcd, "Last read") == "1.05 s", m.byKey.gcd.value)
+check("GCD secret in combat: the live reading says hidden in combat with the last readable value; the rule's value stays (1.16 s)", m.byKey.gcd.value == "1.16 s" and pair(m.byKey.gcd, "Live reading") == "last read 1.05 s", tostring(pair(m.byKey.gcd, "Live reading")))
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false
 ns.CharToolkit_ReadGCD()
@@ -317,8 +317,8 @@ check("compare: Agility 500 | 600 | +100, Stamina 0 | 900 | +900, armor 0 | 500 
 check("compare: the column head names the item", gm.byKey.gearCols.cols[4] == "Better Helm", gm.byKey.gearCols.cols[4])
 check("what it changes: crit through the converter 22.48% -> 24.65% (+100 = +2.17%)", eff("map_crit") and eff("map_crit").value == "22.48% -> 24.65%", eff("map_crit") and eff("map_crit").value)
 check("  ...and parry from crit with it (the crit -> parry link)", (effLine("map_crit", "» Parry") or ""):find(" -> ", 1, true) ~= nil, effLine("map_crit", "» Parry"))
-check("  ...haste down (orange), and the global cooldown with it", eff("map_haste") and eff("map_haste").tone == "warn" and (select(1, effLine("map_haste", "» Global cooldown")) or ""):find("about", 1, true) ~= nil,
-  effLine("map_haste", "» Global cooldown"))
+check("  ...haste down (orange), and the GCD with it (by the standard rule, UI-64)", eff("map_haste") and eff("map_haste").tone == "warn" and (select(1, effLine("map_haste", "» GCD")) or ""):find(" -> ", 1, true) ~= nil,
+  effLine("map_haste", "» GCD"))
 check("  ...mastery +100 through the factor (+6.09%)", eff("map_mastery") and (eff("map_mastery").value or ""):find(" -> ", 1, true) ~= nil)
 check("  ...+100 Agility: attack power from it +2,637 -> +2,737", (effLine("map_primary", "» Attack power") or ""):find("+2,637 -> +2,737", 1, true) == 1,
   effLine("map_primary", "» Attack power"))
@@ -454,9 +454,9 @@ for name, f in pairs(saved) do _G[name] = f end
 combat = false
 C_Spell.GetSpellCooldown = function() return { startTime = 0, duration = 0, isActive = false } end
 fire("SPELL_UPDATE_COOLDOWN")
-check("after combat the GCD still says hidden until the game says combat ended", CM.Build(c, "offense").byKey.gcd.value == "hidden in combat")
+check("after combat the GCD's live reading still says hidden until the game says combat ended", (pair(CM.Build(c, "offense").byKey.gcd, "Live reading") or ""):find("^last read") ~= nil)
 local okE, errE = pcall(fire, "PLAYER_REGEN_ENABLED")
-check("after combat (PLAYER_REGEN_ENABLED) the last readable GCD shows again (1.16 s)", okE and CM.Build(c, "offense").byKey.gcd.value == "1.16 s", errE or CM.Build(c, "offense").byKey.gcd.value)
+check("after combat (PLAYER_REGEN_ENABLED) the live reading shows again (1.16 s)", okE and pair(CM.Build(c, "offense").byKey.gcd, "Live reading") == "1.16 s", errE or pair(CM.Build(c, "offense").byKey.gcd, "Live reading"))
 c.whatIf = 0; c.whatIfStats = {}
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false
