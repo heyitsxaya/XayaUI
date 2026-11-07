@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.17): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
@@ -312,4 +312,53 @@ QA.Register("perf-other-errors", { title = "Performance: other addons' errors (J
             if mine > 0 then return false, note .. ("; but %d recorded entries name a non-XayaUI folder"):format(mine) end
             return true, note
         end },
+} })
+
+-------------------------------------------------------------------------------
+-- J23: rules that are not loaded cost (almost) nothing (core 0.6.66 load first; REQUEST-LOG A15 P-12). Data capture: switched-on and
+-- loaded rule counts, then the engine timer's own lines (/xui debug perf: ms per step, Lua memory KB/s) after a fight.
+-------------------------------------------------------------------------------
+local function RuleCounts()
+    local n = NS() or {}
+    local on, loaded = 0, 0
+    local ctx = n.ReadContext and n.ReadContext()
+    for _, r in ipairs(n.rules or {}) do
+        if not r.parentUid and r.enabled then
+            on = on + 1
+            if n.IsLoaded and n.IsLoaded(r, ctx) then loaded = loaded + 1 end
+        end
+    end
+    return on, loaded
+end
+local perfByWalk
+QA.Register("perf-load-first", { title = "Performance: rules that are not loaded (J23)", area = "Dev Assist", qa = "J23", order = 306, prefill = true, steps = {
+    { text = "Out of combat, press |cffffd100Do it for me|r: the engine's timer starts (|cff88ccff/xui debug perf on|r). Then fight a training dummy for about 30 seconds and leave combat.\n\n|cffffd100Expect:|r the check counts your switched-on and loaded rules.",
+        setup = function()
+            local n = NS() or {}
+            if n.PerfCommand and not n.perfOn and n.CaptureOutput then n.CaptureOutput(n.PerfCommand, "on"); perfByWalk = true end
+        end,
+        check = function()
+            local n = NS() or {}
+            if not n.PerfCommand then return false, "the engine timer is not available" end
+            local on, loaded = RuleCounts()
+            return n.perfOn and true or false, ("%d rules switched on, %d loaded here; timer %s"):format(on, loaded, n.perfOn and "running" or "not running (press Do it for me)")
+        end },
+    { text = "After the fight, press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note gives the engine's milliseconds per step and Lua memory per second. Send it to Xaya. (With load first, rules that are not loaded add almost nothing: the numbers should follow the loaded count, not the switched-on count.)",
+        check = function()
+            local n = NS() or {}
+            if not (n.PerfCommand and n.CaptureOutput) then return false, "the engine timer is not available" end
+            local lines = n.CaptureOutput(n.PerfCommand, "") or {}
+            local avg, worst, mem
+            for _, l in ipairs(lines) do
+                l = tostring(l)
+                avg = avg or l:match("([%d%.]+) ms avg"); worst = worst or l:match("([%d%.]+) ms worst")
+                mem = mem or l:match("([%+%-]?[%d%.]+) KB/s since start")
+            end
+            local on, loaded = RuleCounts()
+            if not avg then return false, "no timing yet: fight with the timer on (step 1)" end
+            return true, ("%d switched on, %d loaded: engine %s ms per step on average, %s ms worst; Lua memory %s KB/s"):format(on, loaded, avg, tostring(worst), tostring(mem))
+        end },
+    { text = "Press |cffffd100Do it for me|r to stop the timer again (if this walkthrough started it), then Pass.",
+        setup = function() local n = NS() or {}; if perfByWalk and n.PerfCommand and n.CaptureOutput then n.CaptureOutput(n.PerfCommand, "off"); perfByWalk = nil end end,
+        noVerdict = true },
 } })

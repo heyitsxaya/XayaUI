@@ -1839,10 +1839,30 @@ function ns.InfoFor(rule)
     return t
 end
 
+-- Load first (core 0.6.66, REQUEST-LOG A15 P-12): during an engine step a rule whose load conditions or talents fail is answered false
+-- without reading its cooldown, auras or trigger rows (Xaya's profile: ~229 switched-on rules, 7 loaded; every step read all 229).
+-- Load behaviour is unchanged: the answer was false before too (result needs ctxOK and talentOK). The one thing such a rule could
+-- still show is a display set to "while the buff is active", on the rule or on one of its cues / conditions (Engine.lua DisplayWanted
+-- reads info.present without the load check; cues and conditions copy the parent's info.present): for those rules the buff is still
+-- read. Outside a step (the editor's trigger lights, /xui debug status, the outcomes editor) the full answer is computed as before.
+local presenceRoots, presenceAt = {}, -1
+local function NeedsPresence(rule)
+    local ver = ns.configVersion or 0
+    if presenceAt ~= ver then
+        presenceRoots, presenceAt = {}, ver
+        for _, r in ipairs(ns.rules or {}) do
+            local v = r.visual
+            if type(v) == "table" and v.trigger == "buffActive" then presenceRoots[r.parentUid or r] = true end
+        end
+    end
+    return presenceRoots[rule] or (rule.uid ~= nil and presenceRoots[rule.uid]) or false
+end
+ns.NeedsPresence = NeedsPresence
 function ns.Evaluate(rule, ctx)
     ctx = ctx or ns.ReadContext()
+    local inStep = ns.InStep and ns.InStep()
     local c = ns.tickID and evalCache[rule]
-    if c and c.tick == ns.tickID and c.ctx == ctx then return c.res, c.info end
+    if c and c.tick == ns.tickID and c.ctx == ctx and not (c.info and c.info.skipped and not inStep) then return c.res, c.info end
     if rule.parentUid and ns.EvaluateOutcome then
         local res, oinfo = ns.EvaluateOutcome(rule, ctx)
         Remember(rule, ctx, res, oinfo)
@@ -1850,6 +1870,18 @@ function ns.Evaluate(rule, ctx)
     end
     local info = ns.InfoFor(rule)
     info.ctx = ctx
+    info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
+    info.talentOK, info.talentDetail = ns.CheckTalents(rule)
+    if inStep and not ns.statusDetail and (info.ctxOK ~= true or info.talentOK ~= true) then
+        info.skipped = true   -- not loaded: no cooldown, aura or trigger-row read this step
+        if NeedsPresence(rule) then
+            info.present, info.buffSource, info.buffRef, info.buffWhich = ns.BuffPresentAny(rule)
+            if info.buffRef == nil and type(rule.extra) == "table" then info.auraRef = ns.AuraRowRef(rule) end
+        end
+        info.trigOK, info.result = false, false
+        Remember(rule, ctx, false, info)
+        return false, info
+    end
     info.cd = ns.ReadCooldown(rule)
     info.present, info.buffSource, info.buffRef, info.buffWhich = ns.BuffPresentAny(rule)
     if rule.buffEstimate ~= false and info.present == true then ns.ApplyBuffEstimate(rule, info) end
@@ -1865,8 +1897,6 @@ function ns.Evaluate(rule, ctx)
         info.buffOK = ns.TimeLeftCheck(rule.buffTimeOp, rule.buffTimeSec, info.buffRef)
         if info.buffOK == nil and ns.statusDetail then info.buffSource = tostring(info.buffSource) .. " | seconds left unknown" end
     end
-    info.ctxOK, info.ctxFail = ns.CheckContext(rule, ctx)
-    info.talentOK, info.talentDetail = ns.CheckTalents(rule)
     if ns.CheckExtraTriggers then info.extraOK, info.extraDetail, info.extraRows, info.extraWhys = ns.CheckExtraTriggers(rule) else info.extraOK = true end
     -- no built-in aura to show: the display takes its time / stacks from the first present aura trigger row (after the rows ran)
     if info.buffRef == nil and type(rule.extra) == "table" then info.auraRef = ns.AuraRowRef(rule) end

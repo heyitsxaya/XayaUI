@@ -1,5 +1,5 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
-walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in combat), J22 (other addons' errors). Loads the real QAWalk.lua
+walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in combat), J22 (other addons' errors), J23 (rules that are not loaded). Loads the real QAWalk.lua
 framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
 it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
 J17 parts go with RunRecord.lua (one push); J18 stays.
@@ -197,6 +197,29 @@ L.execute("NS.otherErrors = 7; ENTRIES = {}; NS.DebugReportData = function() ret
 r = step("perf-other-errors", 1); check("J22 with 7 other addons' errors and a clean record: Pass, gives the count", r[0] == "P" and "this session: 7" in r[1])
 L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI/Engine.lua:2: mine' } }")
 r = step("perf-other-errors", 1); check("J22 when the record holds another addon's error: Fail naming it", r[0] == "F" and "1 recorded entries" in r[1])
+
+# J23: rules that are not loaded (stand-in engine timer: its two lines as /xui debug perf prints them)
+L.execute("""
+NS.perfOn = false
+NS.PerfCommand = function(arg)
+  if arg == 'on' then NS.perfOn = true return end
+  if arg == 'off' then NS.perfOn = false return end
+  if not NS.perfOn then NS.Print('perf: not measuring.') return end
+  NS.Print('perf over 30s: 150 steps (5.0/s), 0.58 ms avg, 1.20 ms worst, 0.1% of one frame budget at 60 fps (229 rules, 229 on)')
+  NS.Print('perf: Lua memory 2048 KB now, +3 KB/s since start (a high number means garbage)')
+end
+NS.rules = { { name = 'a', enabled = true }, { name = 'b', enabled = true }, { name = 'c', enabled = false } }
+NS.IsLoaded = function(r) return r.name == 'a' end
+NS.ReadContext = function() return {} end
+""")
+P = "perf-load-first"
+r = step(P, 1); check("J23.1 before Do it for me: Fail (timer not running), counts rules", r[0] == "F" and "2 rules switched on, 1 loaded" in r[1])
+L.execute("SETUP('perf-load-first', 1)")
+r = step(P, 1); check("J23.1 after Do it for me: Pass, timer running", r[0] == "P" and "timer running" in r[1])
+r = step(P, 2); check("J23.2 after the fight: Pass with ms per step and KB/s from the timer's own lines", r[0] == "P" and "0.58 ms per step on average, 1.20 ms worst; Lua memory +3 KB/s" in r[1])
+L.execute("SETUP('perf-load-first', 3)")
+check("J23.3 stops the timer it started", E("NS.perfOn") == False)
+r = step(P, 2); check("J23.2 with the timer off: Fail (no timing)", r[0] == "F" and "no timing" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
