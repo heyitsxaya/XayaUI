@@ -619,6 +619,7 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-47 | J31 rerun, settings-toplevel and audit-opt-bin results; "clicked later -- unsure if it should say fail" / "last step see no difference" / "import button has wrong alignment, otherwise good" / "where is rules, recycle bin?" / "????" (picker over Drafts) | OPEN | #482-#485, #487 |
 | PS-48 | "comma splice -- make a note to review ALL user-facing text and create "localization" text files that includes all text within a module that acts as the central hub to edit data (like an app)" | OPEN, roadmap; C12 | #486 |
 | PS-49 | "At this point, it seems to me most things don't actually work. Go ahead with sorting out how you want to refactor / reorganize the codebase -- it's going to need extensive debugging either way" | APPROVED: PLATFORM-SPLIT section 15; P0.5 started | |
+| PS-50 | "As discussed, these are not formal blockers. Work on it without the answers please" (2026-11-07 ~20:40 UTC, re B2 / B3 before P4) | IN PROGRESS: P4 started with her own Q2 words ("XayaUI" platform + "XayaUI Core", folder `XayaUI_Core`) and B3 = park D8 (recommended); both stay open in the Open Questions doc and are cheap to change later | B2, B3 |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
