@@ -128,7 +128,7 @@ QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Pr
         noVerdict = true },
 } })
 
--- (Dev Assist 0.7.35; Options 0.6.72, Chat 0.6.38, QoL 0.7.45, Bonus 0.6.28, Reskin 0.6.30: the tab's name "Blizzard Reskin" (UI-24) in
+-- (Dev Assist 0.7.35; Options 0.6.72, Chat 0.6.38, QoL 0.7.45, Bonus 0.6.28, Reskin 0.6.10: the tab's name "Blizzard Reskin" (UI-24) in
 -- every place a player reads it: the Overview switch, chat messages and tooltips; QA H10)
 QA.Register("reskin-rename", { title = "Blizzard Reskin: the new name everywhere (H10)", qa = "H10", order = 271, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin|r.\n\n|cffffd100Expect:|r the tab reads Blizzard Reskin; its first row Overview has the switch |cffffd100Enable Blizzard Reskin|r.",

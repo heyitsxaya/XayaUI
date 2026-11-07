@@ -45,7 +45,7 @@ local function Alpha(r) if r and r.GetAlpha then local ok, a = pcall(r.GetAlpha,
 -------------------------------------------------------------------------------
 local function OpenBag() local f = rawget(_G, "ContainerFrameCombinedBags"); if f and f:IsShown() then return f end; for i = 1, 13 do local c = rawget(_G, "ContainerFrame" .. i); if c and c:IsShown() then return c end end end
 QA.Register("reskin-windows", { title = "Reskin: Blizzard's windows in the XayaUI look", area = "Reskin", qa = "RESKIN-W", order = 300, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Blizzard Windows|r is switched on (every window in its list).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Blizzard Windows|r is switched on (every window in its list).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
         setup = function() Keep(); Set(function(c) c.windows = true end) end,
         check = function() local s, why = Need(); if not s then return false, why end; return s.Live().windows, s.Live().windows and "Blizzard Windows is on" or "Blizzard Windows did not switch on" end },
     { text = "Press |cffffd100Do it for me|r: your bags open.\n\n|cffffd100Expect:|r the bag window has a solid dark background in the theme's window colour, a thin border and its title in the theme's title colour, with no Blizzard frame art or portrait ring. Your items, buttons and the gold line work as before.",
@@ -81,7 +81,7 @@ QA.Register("reskin-windows", { title = "Reskin: Blizzard's windows in the XayaU
 -- 2. The minimap: Square or Circle
 -------------------------------------------------------------------------------
 QA.Register("reskin-minimap", { title = "Reskin: minimap shape (Square / Circle)", area = "Reskin", qa = "RESKIN-M", order = 301, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Minimap|r is switched on with |cffffd100Square|r.\n\n|cffffd100Expect:|r the minimap is square with a thin border; Blizzard's round frame is gone. The zone name, clock, calendar, tracking and mail buttons are where they were and still work.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Minimap|r is switched on with |cffffd100Square|r.\n\n|cffffd100Expect:|r the minimap is square with a thin border; Blizzard's round frame is gone. The zone name, clock, calendar, tracking and mail buttons are where they were and still work.",
         setup = function() Keep(); Set(function(c) c.minimap = true; c.shape = "SQUARE" end) end,
         check = function()
             local s, why = Need(); if not s then return false, why end
@@ -112,7 +112,7 @@ local function TipCenter()
     if c and c.GetVertexColor then local ok, r, g, b = pcall(c.GetVertexColor, c); if ok then return r, g, b end end
 end
 QA.Register("reskin-tooltips", { title = "Reskin: tooltips in the theme's colours", area = "Reskin", qa = "RESKIN-T", order = 302, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Tooltips|r is switched on. Then hover any player, NPC or item and keep the pointer there while you press |cffffd100Check|r.\n\n|cffffd100Expect:|r the tooltip's background is the theme's window colour and its border the theme's border colour. Its text is unchanged.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Tooltips|r is switched on. Then hover any player, NPC or item and keep the pointer there while you press |cffffd100Check|r.\n\n|cffffd100Expect:|r the tooltip's background is the theme's window colour and its border the theme's border colour. Its text is unchanged.",
         setup = function() Keep(); Set(function(c) c.tooltips = true end) end,
         check = function()
             local ns = NS(); local gt = rawget(_G, "GameTooltip")
@@ -137,7 +137,7 @@ local function HeaderCol(frame)
     if t and t.GetTextColor then local ok, r, g, b = pcall(t.GetTextColor, t); if ok then return r, g, b, Alpha(h.Background) end end
 end
 QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a box per section)", area = "Reskin", qa = "RESKIN-O", order = 303, prefill = true, steps = {
-    { text = "Track at least one quest first. Then press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Objective Tracker|r is switched on (every section).\n\n|cffffd100Expect:|r the tracker's header and each section's header (Quests, Campaign, ...) lose Blizzard's header bar and show in the theme's label colour; quest titles and lines are in the theme's text colours, finished lines muted. Nothing moves.",
+    { text = "Track at least one quest first. Then press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Objective Tracker|r is switched on (every section).\n\n|cffffd100Expect:|r the tracker's header and each section's header (Quests, Campaign, ...) lose Blizzard's header bar and show in the theme's label colour; quest titles and lines are in the theme's text colours, finished lines muted. Nothing moves.",
         setup = function() Keep(); Set(function(c) c.tracker = true end) end,
         check = function()
             local ns = NS(); local want = ns and ns.Theme and ns.Theme.Col and ns.Theme.Col("xui-label", "text", { 1, 0.82, 0, 1 })
@@ -153,7 +153,7 @@ QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a b
             if a == nil then return false, "the Quests section could not be read" end
             return a ~= 0, a ~= 0 and "Quests has Blizzard's header bar back" or "Quests still has the XayaUI look"
         end },
-    { text = "Open |cffffd100Blizzard UI Reskin > Objective Tracker|r and read the section names.\n\n|cffffd100Expect:|r the names are the headings the game shows in your tracker (Quests, Campaign, World Quests, ...). Pass if they match; Fail and say which reads wrong.",
+    { text = "Open |cffffd100Blizzard Reskin > Objective Tracker|r and read the section names.\n\n|cffffd100Expect:|r the names are the headings the game shows in your tracker (Quests, Campaign, World Quests, ...). Pass if they match; Fail and say which reads wrong.",
         setup = function() local ns = NS(); if ns and ns.OpenSettingsPage then pcall(ns.OpenSettingsPage, "reskin", "objtracker") end end,
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
