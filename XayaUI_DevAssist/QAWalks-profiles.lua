@@ -126,3 +126,20 @@ QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Pr
         setup = function() local db = rawget(_G, "CueRulesDB"); if db and db.ui and saved then db.ui.selStyle = saved.sel end end,
         noVerdict = true },
 } })
+
+-- (Dev Assist 0.7.33; Options 0.6.72, Chat 0.6.37, QoL 0.7.45, Bonus 0.6.27, Reskin: the tab's name "Blizzard Reskin" (UI-24) in
+-- every place a player reads it: the Overview switch, chat messages and tooltips; QA H10)
+QA.Register("reskin-rename", { title = "Blizzard Reskin: the new name everywhere (H10)", qa = "H10", order = 271, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin|r.\n\n|cffffd100Expect:|r the tab reads Blizzard Reskin; its first row Overview has the switch |cffffd100Enable Blizzard Reskin|r.",
+        setup = function() Open("reskin") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local ns = NS(); local name = ns and ns.OptionsApi and ns.OptionsApi.RESKIN_SWITCH
+            local top = RowWith("reskin")
+            local label
+            for _, t in ipairs(Shown(top)) do if t.value == "reskin" then label = TabText(t) end end
+            return label == "Blizzard Reskin" and name == "Enable Blizzard Reskin", ("tab: %s; switch: %s"):format(tostring(label), tostring(name))
+        end },
+    { text = "Type |cff88ccff/xui chat|r and |cff88ccff/xui shop|r in chat.\n\n|cffffd100Expect:|r wherever a line names the tab, it says Blizzard Reskin (never Blizzard UI Reskin). Note anything that still says the old name.",
+        noVerdict = true },
+} })

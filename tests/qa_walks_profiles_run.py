@@ -53,6 +53,14 @@ stepCheck("7: Profiles > Recycle Bin opens", 7)
 db.ui.selStyle = "bar"
 w.steps[8].setup()
 check("8: the last step puts the Selection style back", db.ui.selStyle == "text", db.ui.selStyle)
+-- H10 (Dev Assist 0.7.33): the rename walkthrough
+local w2 = QA.walks["reskin-rename"]
+check("reskin-rename: registered, pre-fill on", w2 ~= nil and w2.prefill == true and type(w2.steps[1].check) == "function" and w2.steps[2].noVerdict == true)
+if w2 then
+  w2.steps[1].setup(); W.tick(0.2, 4)
+  local ok, v, note = pcall(w2.steps[1].check)
+  check("reskin-rename 1: the tab reads Blizzard Reskin and the switch Enable Blizzard Reskin  (" .. tostring(note) .. ")", ok and v == true, note)
+end
 return R
 end
 '''
