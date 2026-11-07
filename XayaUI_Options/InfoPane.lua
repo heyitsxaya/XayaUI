@@ -32,7 +32,6 @@ P.INFO = {
     { key = "credits", label = "Credits + Acknowledgements" },
 }
 P.state = { tab = "patch", sel = { patch = "whatsnew", info = "version" } }   -- session only
-local shut = {}   -- collapsed credit sections, session only (as on the old Acknowledgements page)
 
 -- colours -------------------------------------------------------------------
 local function Tok(name, fb)
@@ -156,22 +155,17 @@ local function Input(label, value, x, y, w)
     return h + 2 + 20
 end
 
-local function ArrowButton(open, x, y, w, label, onClick)
-    local b = Take(W.btnPool)
-    b:ClearAllPoints(); b:SetPoint("TOPLEFT", W.child, "TOPLEFT", x, -y); b:SetSize(w, ROW_H)
-    b.text:SetText(label)
-    b.arrow:SetTexture(open and ARROW_OPEN or ARROW_COLLAPSED)
-    b:SetScript("OnClick", onClick)
-    b:Show()
-    return ROW_H
-end
+-- (Options 0.6.64, B6: the credits sections no longer collapse, so their arrow rows, ArrowButton and its button pool, are gone)
+-- the space after one credits section's box: the gutter plus 10 px (Xaya, ATTR-1: "increase the gutter by 10px"; it was the gutter)
+local CREDITS_GUTTER = G + 10
+P.CREDITS_GUTTER = CREDITS_GUTTER   -- (tests)
 
 local function Render()
     if not W then return end
     ResetPool(W.fsPool, function(o) o:Hide() end)
     ResetPool(W.editPool, function(o) o:Hide() end)
-    ResetPool(W.btnPool, function(o) o:Hide() end)
     ResetPool(W.boxPool, HideBox)
+    W.recs = {}   -- (Options 0.6.64) what the credits page placed: its h2s, rows and boxes (the tests and Dev Assist's QA walkthrough read it)
     local width = math.max(200, (W.scroll:GetWidth() or (WIDTH - NAV_W - 3 * M)) - 8)
     W.child:SetWidth(width)
     local y = 4
@@ -215,29 +209,35 @@ local function Render()
             else
                 local _, h = Text("dev", b[3], ind + 14, y, width - ind - 14, DEV); y = y + h + 4
             end
-        elseif k == "section" then
-            -- one credits category: header row (title, count, arrow on the right), its sub line, one square box per credit
-            local id, title, count, sub, entries = b[2], b[3], b[4], b[5], b[6]
-            y = y + 10
-            y = y + ArrowButton(not shut[id], 0, y, width, Hex(ACCENT_TEXT()) .. title .. "|r   " .. Hex(MUTED()) .. "(" .. count .. ")|r",
-                function() shut[id] = (not shut[id]) or nil; Render() end) + 4
-            if not shut[id] then
-                local _, h = Text("small", sub, 0, y, width, MUTED()); y = y + h + 8
-                for _, e in ipairs(entries or {}) do
-                    local top, pad, inner = y, 8, width - 16
-                    local box = Take(W.boxPool)
-                    y = y + pad
-                    local _, h1 = Text("p", e.name, pad, y, inner, ACCENT_TEXT()); y = y + h1 + 3
-                    local _, h2 = Text("p", e.who, pad, y, inner, TEXT()); y = y + h2 + 3
-                    if e.note and e.note ~= "" then local _, h3 = Text("p", e.note, pad, y, inner, MUTED()); y = y + h3 + 3 end
-                    for _, l in ipairs(e.links or {}) do y = y + Input(l[1], l[2], pad, y, inner) + 3 end
-                    y = y + pad
-                    local bg = Col("xui-pane", "bg", { 0.1, 0.1, 0.1, 0.6 })
-                    PlaceBox(box, 0, top, width, y - top, { bg[1], bg[2], bg[3], math.min(1, (bg[4] or 0.6) + 0.1) },
-                        Col("xui-pane", "border", { 0.3, 0.3, 0.3, 1 }))
-                    y = y + G
-                end
+        elseif k == "credits" then
+            -- (Options 0.6.64; REQUEST-LOG B6 / ATTR-1, reading taken) one credits section: a plain h2 in normal case (no arrow, no
+            -- collapsing, no count, no line under it), its sub line, then ONE square (unrounded) box for the whole section, each credit a
+            -- row inside it (name, who, note, its copyable links; rows one under the other, no columns), the box's background 10% more
+            -- opaque than the pane's; after the box the gutter plus 10 px (her "increase the gutter by 10px")
+            local title, sub, entries = b[2], b[3], b[4]
+            y = y + 10   -- (the room above a section heading, as before)
+            local _, hh = Text("h2", title, 0, y, width, ACCENT_TEXT())
+            W.recs[#W.recs + 1] = { kind = "h2", text = title, y = y, h = hh }
+            y = y + hh + 3
+            if sub and sub ~= "" then local _, h = Text("small", sub, 0, y, width, MUTED()); y = y + h + 8 end
+            local box = Take(W.boxPool)
+            local top, pad, inner = y, 8, width - 16
+            y = y + pad
+            for i, e in ipairs(entries or {}) do
+                if i > 1 then y = y + pad end   -- (a row's room above the next one)
+                W.recs[#W.recs + 1] = { kind = "row", section = title, text = e.name, x = pad, y = y, w = inner }
+                local _, h1 = Text("p", e.name, pad, y, inner, ACCENT_TEXT()); y = y + h1 + 3
+                local _, h2 = Text("p", e.who, pad, y, inner, TEXT()); y = y + h2 + 3
+                if e.note and e.note ~= "" then local _, h3 = Text("p", e.note, pad, y, inner, MUTED()); y = y + h3 + 3 end
+                for _, l in ipairs(e.links or {}) do y = y + Input(l[1], l[2], pad, y, inner) + 3 end
             end
+            y = y + pad
+            local bg = Col("xui-pane", "bg", { 0.1, 0.1, 0.1, 0.6 })
+            local alpha = math.min(1, (bg[4] or 0.6) + 0.1)
+            PlaceBox(box, 0, top, width, y - top, { bg[1], bg[2], bg[3], alpha }, Col("xui-pane", "border", { 0.3, 0.3, 0.3, 1 }))
+            W.recs[#W.recs + 1] = { kind = "box", section = title, x = 0, y = top, w = width, h = y - top, alpha = alpha, paneAlpha = bg[4] or 0.6,
+                rows = #(entries or {}) }
+            y = y + CREDITS_GUTTER
         end
     end
     W.child:SetHeight(y + M)
@@ -440,16 +440,6 @@ local function Build()
         e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
         return e
     end)
-    f.btnPool = Pool(function()
-        local b = CreateFrame("Button", nil, f.child)
-        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal"); b.text:SetPoint("LEFT", 2, 0); b.text:SetJustifyH("LEFT")
-        b.arrow = b:CreateTexture(nil, "OVERLAY"); b.arrow:SetSize(16, 16); b.arrow:SetPoint("RIGHT", -2, 0)
-        b:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText("Expand or collapse this section."); GameTooltip:Show()
-        end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        return b
-    end)
     for _, k in ipairs({ f.navScroll, f.divider, f.scroll }) do f.body[#f.body + 1] = k end
     f.scroll:SetScript("OnSizeChanged", function() if f:IsShown() then Render() end end)
 
@@ -508,3 +498,15 @@ function P.OpenHelp() P.Open("info", "help") end
 function P.Close() if W then W:Hide() end end
 function P.IsShown() return W ~= nil and W:IsShown() end
 function P.Frame() return W end
+
+-- (Options 0.6.64) the pane through core's service list (Modules.lua ns.Provide), for XayaUI Dev Assist's QA walkthrough of the credits
+-- page (QAWalks-statcalc.lua, REQUEST-LOG B6): open a section, read what the last render placed (W.recs), close it. Exists only once
+-- this load-on-demand addon has loaded; nothing is built until Open.
+if ns.Provide then
+    ns.Provide("infoPane", {
+        Open = function(tab, key) P.Open(tab, key) end,
+        Close = function() P.Close() end,
+        IsShown = function() return P.IsShown() end,
+        Recs = function() return W and W.recs or nil end,
+    })
+end

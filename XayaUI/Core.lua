@@ -82,10 +82,21 @@ do
     local prevHandler = geterrorhandler()
     seterrorhandler(function(msg)
         local text = tostring(msg)
-        local okS, stack = pcall(debugstack, 2, 12, 0)
-        stack = (okS and type(stack) == "string") and stack or ""
-        local okF, folder = pcall(ns.ErrorFolder, text, stack)
-        folder = okF and folder or nil
+        -- (core 0.6.65, REQUEST-LOG A15 P-11) a message that names its own file decides the folder from the text alone; the stack is
+        -- read only for XayaUI's own errors (it is recorded with them) or when the text names no file. Another addon's error, even
+        -- one repeated on every nameplate update, costs a match and the previous handler, never a debugstack.
+        local stack, folder
+        if text:match("^%s*[^\n]-%.lua:%d+:") then
+            local okF, f = pcall(ns.ErrorFolder, text, nil)
+            folder = okF and f or nil
+            if folder then local okS, s = pcall(debugstack, 2, 12, 0); stack = (okS and type(s) == "string") and s or "" end
+        else
+            local okS, s = pcall(debugstack, 2, 12, 0)
+            stack = (okS and type(s) == "string") and s or ""
+            local okF, f = pcall(ns.ErrorFolder, text, stack)
+            folder = okF and f or nil
+        end
+        if not folder then ns.otherErrors = (ns.otherErrors or 0) + 1 end   -- other addons' errors this session (Dev Assist walkthrough J22)
         if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; nothing while it is off)
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         local mine = ok and on and folder ~= nil
@@ -106,6 +117,20 @@ end
 
 -- In-game event log (shown in the settings window's debug console tray).
 ns.logBuf = {}
+-- ns.LogWanted(kind): is a "rule" (fired / repeat / cleared) or "snapshot" line wanted now? Only while something shows or keeps it:
+-- the console window is open, the settings window's debug strip is shown (XayaUI_Options sets ns.LogTrayOn), or XayaUI Dev Assist's
+-- detailed record keeps that kind (ns.RecordOn). Otherwise the engine builds no such line (REQUEST-LOG A15 P-9; Xaya 2026-11-07, her
+-- console showed hundreds of these lines: "why do I have so much already in it?"; she was not asked, by her 06:00 rule: READING, the
+-- conservative one: nothing is lost that was being read). /xui debug status still prints every rule's state on demand.
+-- (the settings window's debug strip: XayaUI_Options replaces this when it loads; core's default says no strip is shown, so core never
+-- reaches into the other addon by name: the harness boundary rule)
+function ns.LogTrayOn() return false end
+function ns.LogWanted(kind)
+    if ns.ConsoleWindowOn and ns.ConsoleWindowOn() then return true end
+    if ns.LogTrayOn and ns.LogTrayOn() then return true end
+    if ns.RecordOn and ns.RecordOn(kind) then return true end
+    return false
+end
 -- ns.LogKind(kind, fmt, ...): the same, with the debug record's category for the line ("rule", "snapshot" ...; DebugRecord.lua)
 local logKind = "log"
 function ns.LogKind(kind, fmt, ...)
