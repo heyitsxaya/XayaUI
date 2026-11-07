@@ -43,6 +43,22 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Reworked how closing the settings window ends the previews and unlocks it started (a structure fix to the earlier change).
 - Once you have played a spec, its Auto-populate list shows that spec's Cooldown Manager auras and debuffs.
 
+### Chat 0.6.27
+
+**Chat History**
+- Added whisper tab lists: "In-game whisper tabs" and "Battle.net whisper tabs" (As the game / Individual tabs / Consolidated tab / Both), and a box to combine Battle.net and in-game whispers in the consolidated tab. Consolidated tabs are named In-Game Whispers, BNet Whispers, or Whispers when combined.
+  *Developers' notes: Not yet tested in game. With the combine box ticked and only one kind consolidated, the Whispers tab takes the other kind too; this is picked to revisit after you see it in game (QA D20).*
+- The /xui panel help now says "Chat Data Panel settings".
+
+### Quality of Life 0.7.36
+
+**Stat Calculator**
+- On-use and proc effects now read "Equipped: <item name>" or "Compared: <item name>", then a line break and the effect line.
+- Added a set line under each item: "Set: <name> (with <other equipped items in it>)" under the equipped item, and "Also in <name>" or "Not in <name>: replacing the equipped item breaks the set" under each compared item.
+- The armor row now reads "From mastery: <spell name> passive".
+- The Ability Scaling table now reads Spell Name | Talent Modifiers | % PSV | Computed Value, with Computed Value left-aligned, a divider line between spells, and each spell foldable by clicking its name.
+  *Developers' notes: Not yet tested in game. The set lines assume the game gives every piece of one set the same set number (QA E1z91, E1z92).*
+
 ### Options 0.6.59
 
 **Bar Cues (new)**
@@ -106,7 +122,29 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - New Sound cues now start on the SFX channel.
   *Developers' notes: Not yet tested in game.*
 
+### Chat 0.6.25
+
+**Chat Panel**
+- The chat tab names now sit at one height: every docked tab's name is placed at the same spot, and a whisper tab keeps its left alignment at the same height.
+  *Developers' notes: Not yet tested in game. No cause was found for "General" sitting lower; if it persists, /xui debug chatprobe lists its anchors (QA D19).*
+- Fixed an issue where the Chat Bar sat at the top after the chat was collapsed: collapsed, the bar now drops to the bottom edge and its arrow points up.
+- Renamed the Chat Bar to "Chat Data Panel". Added Left of the chat and Right of the chat to "Place the panel", and a panel width slider (40 to 200, default 90) for those sides.
+- Added a "The mouse over the chat brings it back" tick box to Fade and hide (on by default, as the mouse always did before).
+- Added a choice of click for quick ignore: pick from the free Alt / Ctrl / Shift combinations (plus Cmd on a Mac), or record your own, with a warning when the game also binds the click.
+  *Developers' notes: Not yet tested in game (QA D15 to D18). Fn is not offered because no game call reads it.*
+
+### Quality of Life 0.7.34
+
+**Character Pane**
+- The character window's text is laid out again once after a size change, so text no longer breaks after widening the window and bringing it back down. /xui reskin status gained a "Size change" line.
+  *Developers' notes: Not yet tested in game. The cause is an inference about the game giving old positions right after a resize.*
+
 ### Options 0.6.57
+
+**Settings Window**
+- Added even, thicker top tabs, no pane borders (a divider line instead), nested rows indented under their parent, and greyed-out settings and names under a feature that is switched off.
+- The Blizzard UI Reskin tab now starts with an Overview row. "Enable Blizzard UI Reskin" is a tick box on that page, with a Reload / Later prompt, and the reskins' own pages show once it is on. This replaces the "All reskins" tick box on the tab.
+  *Developers' notes: Not yet tested in game.*
 
 **Auto-populate**
 - Replaced the Auto-populate buttons with four per spec (and four for the class): Generate All Rules, Generate CD Tracking Rules, Generate Aura Tracking Rules and Generate Target Debuff Tracking Rules. A button filters the table below it, and nothing is made until you press Populate.
@@ -123,7 +161,21 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Pressing a rule row and moving the mouse now starts a drag, with a line or highlighted group showing where it lands.
   *Developers' notes: Not yet tested in game. The button width is an estimate, and the aura and debuff lists rely on an inference about the Cooldown Manager's fields.*
 
+### Options 0.6.56
+
+**Patch Notes and Info (new)**
+- Added a pane that opens when you click the version text in the settings window's bottom-left corner. It floats above the settings window, can be dragged by its title bar and reopens where you left it.
+  - Patch Notes: What's New (new features only, newest first, per addon) and one entry per update.
+  - Info: Version info, Readme, Help (FAQ) and Credits + Acknowledgements.
+- Added a ? button to the settings window's title bar, beside collapse and X. It opens Info > Help (FAQ); the pane has the same button.
+- Addon Info and Settings > Acknowledgements moved into the pane.
+- Esc closes the pane first, then the settings window.
+  *Developers' notes: Not yet tested in game (QA B197). In combat the game does not let addons hold Esc back, so one Esc closes both windows there.*
+
 ### Bonus Features 0.6.19
+
+**Data Panels**
+- Renamed Custom Data Panels and Bars to Data Panels.
 
 **Enhanced Tooltips**
 - The grey "via ..." source text at the end of an Aura ID line now shows only while Dev Assist is enabled.
