@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.46): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.15 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles and status bars in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.47): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.16 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles, status bars and minimap buttons in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -293,5 +293,25 @@ QA.Register("reskin-statusbars", { title = "Reskin: experience and reputation ba
     { text = "Hover the bar, gain some experience or reputation, and open Edit Mode once.\n\n|cffffd100Expect:|r the text, the fill and its colours work as before; in Edit Mode the bar moves and resizes as usual and keeps the look. Pass if so.",
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 10. Minimap buttons: zone bar and tracking button (Reskin 0.6.16)
+-------------------------------------------------------------------------------
+QA.Register("reskin-mmbuttons", { title = "Reskin: minimap zone bar and tracking button", area = "Reskin", qa = "RESKIN-Z", order = 309, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Minimap Buttons|r is switched on.\n\n|cffffd100Expect:|r the bar behind the zone name above the minimap and the round button behind the tracking icon are in the theme's colours. The zone name, the tracking icon, the calendar and the mail icon are as before.",
+        setup = function() Keep(); Set(function(c) c.mmbuttons = true end) end,
+        check = function()
+            local mc = rawget(_G, "MinimapCluster"); local bar = mc and mc.BorderTop; local want = ThemeBg()
+            if not (bar and bar.GetCenterColor and want) then return false, "the minimap's zone bar could not be read" end
+            local ok, r, g, b = pcall(bar.GetCenterColor, bar)
+            if not (ok and r) then return false, "the zone bar's colour could not be read" end
+            local good = Near(r, want[1]) and Near(g, want[2]) and Near(b, want[3])
+            return good, ("zone bar centre %.2f %.2f %.2f, theme window colour %.2f %.2f %.2f"):format(r, g, b, want[1], want[2], want[3])
+        end },
+    { text = "Click the tracking button and pick something; hover the zone name; click the calendar button.\n\n|cffffd100Expect:|r each works as before and reads well. Pass if so.",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's colours come back at once if Minimap Buttons was off).",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

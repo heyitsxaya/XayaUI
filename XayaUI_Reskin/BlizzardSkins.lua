@@ -1,7 +1,8 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.15): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles and the status bars. Look only: art, colour, border,
--- mask. Nothing is moved, resized, added or removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.16): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles, the status bars and the minimap's zone bar
+-- and tracking button. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed, and no Blizzard function
+-- is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
 -- of them (no functionality changes, just reskins of core blizzard UI)". Her lists named the windows below, "minimap (two options: square
@@ -108,7 +109,7 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars / mmbuttons = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
@@ -677,12 +678,77 @@ local function ApplyBars()
 end
 
 -------------------------------------------------------------------------------
+-- 9. Minimap buttons: the zone bar and the tracking button (her "tracking button and options", "minimap calendar button", "mail button")
+-------------------------------------------------------------------------------
+-- 12.1.5 (Gethe/wow-ui-source 297d7aa, read as data, Blizzard_Minimap/Mainline/Minimap.xml): MinimapCluster.BorderTop (:18-27, the bar
+-- behind the zone name) is a NineSliceCodeTemplate (NineSlicePanelMixin: Set/GetCenterColor, Set/GetBorderColor) with the texture kit
+-- "ui-hud-minimap-button"; MinimapCluster.Tracking.Background (:51-58) is the same kit's round button behind the tracking icon. Both take
+-- the theme's colours as a tint (centre / button: window colour; bar border: border colour), the colours they had are read first and given
+-- back. The calendar button (GameTimeFrame, GameTime.xml:3) and the mail icon (MiniMapMailIcon, Minimap.xml:99) have no frame art of their
+-- own (the day number and envelope are their atlases): they are left as they are (question RSK-Q14). The tracking menu is a Blizzard menu
+-- (the Menus page skins it).
+local liveMMB = false
+local MMBKEY = "minimapbuttons"
+local function PaintMinimapButtons()
+    local mc = rawget(_G, "MinimapCluster")
+    if type(mc) ~= "table" then return end
+    local m = M(MMBKEY)
+    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    local bar = mc.BorderTop
+    if type(bar) == "table" and type(bar.SetCenterColor) == "function" then
+        if not m.bar then
+            local cr, cg, cb, ca, br, bgr, bb, ba
+            if bar.GetCenterColor then cr, cg, cb, ca = bar:GetCenterColor() end
+            if bar.GetBorderColor then br, bgr, bb, ba = bar:GetBorderColor() end
+            local function n(v) return num(v) and v or 1 end
+            m.bar = { n(cr), n(cg), n(cb), n(ca), n(br), n(bgr), n(bb), n(ba) }
+        end
+        bar:SetCenterColor(bg[1], bg[2], bg[3], a)
+        if bar.SetBorderColor then bar:SetBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
+    end
+    local tb = type(mc.Tracking) == "table" and mc.Tracking.Background
+    if type(tb) == "table" and type(tb.SetVertexColor) == "function" then
+        if not m.track then
+            local r, g, b, aa
+            if tb.GetVertexColor then r, g, b, aa = tb:GetVertexColor() end
+            local function n(v) return num(v) and v or 1 end
+            m.track = { n(r), n(g), n(b), n(aa) }
+        end
+        tb:SetVertexColor(bg[1], bg[2], bg[3], a)
+    end
+    m.painted = true
+end
+BS.PaintMinimapButtons = PaintMinimapButtons
+local function UnpaintMinimapButtons()
+    local m = memo[MMBKEY]
+    local mc = rawget(_G, "MinimapCluster")
+    if not (m and type(mc) == "table") then return end
+    local bar, c = mc.BorderTop, m.bar
+    if c and type(bar) == "table" then
+        pcall(bar.SetCenterColor, bar, c[1], c[2], c[3], c[4])
+        if bar.SetBorderColor then pcall(bar.SetBorderColor, bar, c[5], c[6], c[7], c[8]) end
+    end
+    local tb, t = type(mc.Tracking) == "table" and mc.Tracking.Background, m.track
+    if t and type(tb) == "table" then pcall(tb.SetVertexColor, tb, t[1], t[2], t[3], t[4]) end
+    m.bar, m.track, m.painted = nil, nil, nil
+end
+local function ApplyMinimapButtons()
+    if PageOn("mmbuttons") then
+        liveMMB = true
+        Safe(PaintMinimapButtons)
+    elseif liveMMB then
+        liveMMB = false
+        UnpaintMinimapButtons()
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars); Safe(ApplyMinimapButtons)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, mmbuttons = liveMMB, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
     WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
@@ -690,7 +756,7 @@ ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, C
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars or r.mmbuttons) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -815,6 +881,16 @@ function BS.StatusBarsPage(Notify)
             "Restyles the frame of the experience, reputation and honor bars." .. OFFNOTE, Notify) }
 end
 
+function BS.MinimapButtonsPage(Notify)
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "The bar behind the zone name above the minimap and the round button behind the tracking icon take the theme's colours. The icons, the zone name and what each button does are unchanged. The calendar button and the mail icon have no frame of their own and stay as they are; the tracking menu follows the Menus page. Opacity: Blizzard Windows' Background opacity." },
+    }
+    return { type = "group", name = "Minimap Buttons", order = 12, args = args,
+        xuiSwitch = PageSwitch("mmbuttons", "Use the XayaUI look on the minimap buttons", "The zone bar and tracking button in the theme's colours.",
+            "Colours the minimap's zone bar and tracking button in the theme." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
@@ -823,3 +899,4 @@ ns.RegisterSettingsPage("reskin", "rsktoasts", BS.ToastsPage)
 ns.RegisterSettingsPage("reskin", "rskmenus", BS.MenusPage)
 ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)
 ns.RegisterSettingsPage("reskin", "rskstatusbars", BS.StatusBarsPage)
+ns.RegisterSettingsPage("reskin", "rskmmbuttons", BS.MinimapButtonsPage)
