@@ -2,7 +2,7 @@
 -- QAWalks-display.lua (XayaUI_DevAssist 0.7.11): in-game QA walkthroughs for the UI bugs session's work (branch
 -- claude/ui-bugs-focused): the display standard (UI-47 / UI-48: tab rows, off pages, switch hovers), the theme tie-in (UI-49 / UI-50),
 -- the Calculator page's info icon (UI-53), Release Guard (UI-57 / UI-58), the stat labels and the standard GCD (UI-62 to UI-64).
--- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78).
+-- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78); (0.7.21) when the Shopping List shows itself (UI-77 part 2).
 -- Standing rule V21 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough here sets prefill = true: the addon's own
 -- verdict is offered on "Accept", and nothing is recorded without her click. Steps the addon cannot judge say what to look at and are
@@ -475,4 +475,41 @@ QA.Register("ui-report-select", { title = "Debug report: Select string, then Ctr
             return (focus and hint:find("now press Ctrl+C", 1, true)) and true or false, (focus and "the string box has the focus" or "the string box does not have the focus") .. " | hint: " .. hint
         end },
     { text = "Your test: press Ctrl+C (Cmd+C on Mac), then click into a chat line and paste (Ctrl+V), without sending. Pass if the whole XUIREP1:... string arrives; Fail and say what came instead.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 12. Shopping List: when it shows itself (UI-77 part 2, O-139; QoL 0.7.42)
+-------------------------------------------------------------------------------
+local function ShopSvc() return Svc("shoppingList") end
+local function ShopPanel() return rawget(_G, "XayaUIShoppingList") end
+local function ShopState()
+    local S = ShopSvc(); if not S then return nil, "XayaUI QoL or the Shopping List is off" end
+    local c = S.Cfg(); local p = ShopPanel()
+    return c, (p and p:IsShown()) and true or false
+end
+QA.Register("ui-shop-autoshow", { title = "Shopping List: shows itself only at the Auction House or for missing enchants / gems", qa = "B233", order = 271, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the Shopping List and its panel are switched on, the panel opens, then it is closed as with its X.\n\n|cffffd100Expect:|r the panel is gone and the close is saved (it holds until your next Auction House visit).",
+        setup = function()
+            local S = ShopSvc(); if not S then return end
+            local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply(true)
+            local p = ShopPanel(); if p then c.closedTillAH = true; p:Hide() end
+        end,
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return (not shown) and c.closedTillAH == true, (shown and "the panel is showing" or "the panel is closed") .. (c.closedTillAH and ", the close is saved" or ", the close is NOT saved")
+        end },
+    { text = "Type |cffffd100/reload|r. When the game is back, open this walkthrough again and go to the next step.\n\n|cffffd100Expect:|r the Shopping List does not pop up at login.", noVerdict = true },
+    { text = "After the /reload: press |cffffd100Check|r.\n\n|cffffd100Expect:|r the panel is not showing and the close is still saved.",
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return (not shown) and c.closedTillAH == true, (shown and "the panel popped up" or "the panel stayed closed") .. (c.closedTillAH and ", the close is saved" or ", the close was lost")
+        end },
+    { text = "Go to an Auctioneer and open the Auction House, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the Shopping List opens by itself, and the close is forgotten.",
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return shown and c.closedTillAH ~= true, (shown and "the panel is showing" or "the panel is not showing") .. (c.closedTillAH and ", the close is still saved" or ", the close is forgotten")
+        end },
+    { text = "Close it with its X, then type |cffffd100/xui shop|r.\n\n|cffffd100Expect:|r /xui shop opens it again any time.",
+        check = function() local c, shown = ShopState(); if not c then return false, shown end; return shown, shown and "the panel is showing" or "the panel is not showing" end },
+    { text = "Your look: with nothing missing on your gear, does it now stay away until you visit the Auction House or ask for it? Pass if yes; Fail and say when it still popped up.", noVerdict = true },
 } })

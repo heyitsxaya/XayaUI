@@ -27,7 +27,7 @@ local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop
 -- (the Dev Assist QA walkthroughs reach the Shopping List through this service: a feature is never called by name from another addon)
-if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function() return Shop.Apply() end,
+if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function(show) return Shop.Apply(show) end,
     Recipes = function() return Shop.Recipes() end, Missing = function(c) return Shop.Missing(c) end }) end
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
@@ -46,6 +46,8 @@ local DEFAULTS = {
     free = { x = 360, y = 120 },   -- the panel's centre, from the screen's centre
     defaults = {},       -- your own default per slot key ("ench:<slot>", "gem"): { name, itemID }   (S7)
     buy = {},            -- the "To buy" list: { { name, itemID, need, key } }   (S10)
+    closedTillAH = false,   -- UI-77 (O-139, QoL 0.7.42): closed with its X (or /xui shop); stays closed across reloads until the next
+                            --   Auction House visit
     history = {},        -- per character: { ench = { [slot] = { [enchantID] = { n, last, name } } }, gems = { [gemID] = { n, last, name } },
                          --   lastEnch = { [slot] = enchantID or 0 }, lastGems = { [slot] = { [gemID] = count } } }   (S6)
 }
@@ -56,7 +58,7 @@ local function Cfg()
     local c = CueRulesDB.shoppingList
     if type(c) ~= "table" then c = {}; CueRulesDB.shoppingList = c end
     for k, v in pairs(DEFAULTS) do if c[k] == nil then c[k] = Copy(v) end end
-    for _, k in ipairs({ "enabled", "panel", "tracker" }) do c[k] = c[k] == true end
+    for _, k in ipairs({ "enabled", "panel", "tracker", "closedTillAH" }) do c[k] = c[k] == true end
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
     for _, k in ipairs({ "free", "defaults", "buy", "history" }) do if type(c[k]) ~= "table" then c[k] = Copy(DEFAULTS[k]) end end
     for i = #c.buy, 1, -1 do
@@ -794,7 +796,7 @@ local function BuildPanel()
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal"); panel.title:SetPoint("TOPLEFT", PAD, -PAD); panel.title:SetText("Shopping List")
     panel.ahNote = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.ahNote:SetPoint("TOPRIGHT", -(PAD + 22), -(PAD + 2))
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton"); close:SetSize(24, 24); close:SetPoint("TOPRIGHT", 2, 2)
-    close:SetScript("OnClick", function() panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end end)
+    close:SetScript("OnClick", function() local cc = Cfg(); if cc then cc.closedTillAH = true end; panel:Hide(); if popup then popup:Hide() end end)
     local scroll = CreateFrame("ScrollFrame", nil, panel)
     scroll:SetPoint("TOPLEFT", PAD, -(PAD + 24)); scroll:SetPoint("BOTTOMRIGHT", -PAD, PAD)
     content = CreateFrame("Frame", nil, scroll); content:SetSize(W, 10); scroll:SetScrollChild(content)
@@ -874,7 +876,21 @@ local function Refresh()
     pending = true
     C_Timer.After(0, function() pending = false; local c = Cfg(); if On(c) and panel and panel:IsShown() then Shop.Render() end end)
 end
-function Shop.Apply()
+-- When the panel shows itself (UI-77, O-139; her words: "shopping list keeps popping up but there's no reason for it to show").
+-- Conservative reading, flagged (O-108, no questions): never at login or on a settings / reskin switch by itself; it shows itself only
+-- when the Auction House opens, or when your worn gear is missing an enchant or a gem (S4-S5); a close (its X, or /xui shop) is saved
+-- and holds across reloads until the next Auction House visit. /xui shop, and switching the list or its panel on, still open it.
+local function MissingSomething(c)
+    local ok, miss = pcall(Shop.Missing, c)
+    return ok and type(miss) == "table" and miss[1] ~= nil
+end
+function Shop.AutoShowWanted(c) return c and c.panel and not c.closedTillAH and MissingSomething(c) or false end
+local function ShowPanel()
+    BuildPanel(); panel:Show(); Shop.Render()
+end
+-- show: true when the person asked for it (/xui shop, the list's or the panel's switch turned on); otherwise the panel stays as it is,
+-- unless your gear is missing something and it was not closed
+function Shop.Apply(show)
     local c = Cfg()
     if not c then return end
     if not On(c) then
@@ -890,6 +906,13 @@ function Shop.Apply()
             local cc = Cfg()
             if not On(cc) then return end
             if event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD" then Shop.Observe(cc) end
+            if event == "AUCTION_HOUSE_SHOW" then
+                cc.closedTillAH = false   -- the next Auction House visit: a close is forgotten, and the list shows itself
+                if cc.panel and not (panel and panel:IsShown()) then ShowPanel() end
+            elseif (event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD") and not (panel and panel:IsShown())
+                and Shop.AutoShowWanted(cc) then
+                ShowPanel()   -- worn gear misses an enchant or a gem (read again once the game has the items), and it was not closed
+            end
             if event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then Shop.ReadBrowse() end
             if event == "AUCTION_HOUSE_CLOSED" then browse.key, browse.results = nil, {} end
             if event == "ADDON_LOADED" then HookTracker() end
@@ -903,7 +926,8 @@ function Shop.Apply()
     if c.tracker then HookTracker(); RestyleTracker() end
     if c.panel then
         BuildPanel()
-        if not panel.userHidden then panel:Show(); Shop.Render() end
+        if show then c.closedTillAH = false end
+        if show or panel:IsShown() or Shop.AutoShowWanted(c) then panel:Show(); Shop.Render() end
     elseif panel then panel:Hide() end
 end
 function Shop.Toggle()
@@ -911,10 +935,9 @@ function Shop.Toggle()
     if not c then return end
     if not c.enabled then c.enabled, c.panel = true, true end
     if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard UI Reskin is off (Blizzard UI Reskin > Overview); it shows once that is on again."); return end
-    if panel and panel:IsShown() then panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end; return end
-    if panel then panel.userHidden = nil end
+    if panel and panel:IsShown() then c.closedTillAH = true; panel:Hide(); if popup then popup:Hide() end; return end
     c.panel = true
-    Shop.Apply()
+    Shop.Apply(true)
 end
 ns.RegisterReskin("shoppinglist", function() Shop.Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 function Shop.Drawn() return { panel = panel, popup = popup, layout = panel and panel.layout, buttons = btnPool, fonts = fsPool } end
@@ -927,14 +950,14 @@ ns.WhenReady(function() local raw = CueRulesDB and CueRulesDB.shoppingList; if t
 local SLOT_KEYS = { 1, 3, 5, 7, 8, 11, 16, 17 }
 function ns.BuildShoppingListPage(Notify)
     local function C() return Cfg() or DEFAULTS end
-    local function Changed() Shop.Apply(); if panel and panel:IsShown() then Shop.Render() end; if Notify then Notify() end end
+    local function Changed(show) Shop.Apply(show); if panel and panel:IsShown() then Shop.Render() end; if Notify then Notify() end end
     local function off() return not C().enabled end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your crafting shopping list: the recipes you track, with their reagents (have / need), and what is missing on your gear: an enchant on a slot that takes one, a gem for an empty socket, each with your usual choice. Click a name while the Auction House is open and it searches for it. Off by default." },
         panel = { type = "toggle", order = 2, width = "full", name = "XayaUI's Shopping List panel", disabled = off,
             desc = "A movable panel in the theme: Missing on your gear, To buy, and your tracked recipes. /xui shop shows or hides it.",
-            get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed() end },
+            get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed(v and true or nil) end },
         tracker = { type = "toggle", order = 3, width = "full", name = "Restyle Blizzard's Professions list (objective tracker)", disabled = off,
             desc = "The tracked recipes in Blizzard's objective tracker in the theme's colours: header, recipe names, reagents (finished ones muted). The rest of the objective tracker is untouched for now.",
             get = function() return C().tracker end, set = function(_, v) C().tracker = v and true or false; Changed() end },
@@ -968,7 +991,7 @@ function ns.BuildShoppingListPage(Notify)
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
-        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
+        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed(v and true or nil) end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end

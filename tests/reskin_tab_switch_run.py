@@ -120,7 +120,11 @@ local function greyed() local n = 0; for k in pairs(ROWS) do local d = tab.args[
 local function state()
   local gm = ns.GameMenuSkin_Live and ns.GameMenuSkin_Live()
   local sp = rawget(_G, "XayaUIShoppingList")
-  return { chat = ns.Chat.On(), char = ns.CharReskin_Active(), gm = gm and true or false, shop = (sp and sp:IsShown()) and true or false }
+  -- the Shopping List runs when its events are registered: since QoL 0.7.42 (UI-77, O-139) its panel no longer pops up on this switch
+  -- by itself (only at the Auction House, when worn gear misses an enchant / gem, or when asked for)
+  local shopEvents = 0
+  for _, o in ipairs(W.objects) do if rawget(o, "_owner") == FILES.shop then for _ in pairs(o._events or {}) do shopEvents = shopEvents + 1 end end end
+  return { chat = ns.Chat.On(), char = ns.CharReskin_Active(), gm = gm and true or false, shop = shopEvents > 0, shopShown = (sp and sp:IsShown()) and true or false }
 end
 local function fmt(s) return ("chat %s, character %s, esc menu %s, shopping %s"):format(tostring(s.chat), tostring(s.char), tostring(s.gm), tostring(s.shop)) end
 local function own() return CueRulesDB.chat2.enabled == true and CueRulesDB.characterReskin.enabled == true and CueRulesDB.ui.gm.skin == true and CueRulesDB.shoppingList.enabled == true end
@@ -139,6 +143,7 @@ check("  ...the reskins' row boxes are greyed (4 of 4)", greyed() == 4, greyed()
 all.set(nil, true); W.tick(0.1, 10); pcall(ns.DecorateTrees)
 local s1 = state()
 check("ticking Enable Blizzard UI Reskin starts every reskin whose own box is ticked", s1.chat and s1.char and s1.gm and s1.shop, fmt(s1))
+check("  ...the Shopping List starts without popping its panel up (UI-77; nothing is missing on the stand-in's gear)", not s1.shopShown)
 check("  ...and asks to reload (Reload / Later)", prompts == 1 and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD ~= nil and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button1 == "Reload"
   and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button2 == "Later", prompts)
 check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overview", shownNames(tab))
