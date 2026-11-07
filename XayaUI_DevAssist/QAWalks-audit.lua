@@ -11,6 +11,9 @@
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local PlatS = Settings("platform")
 local function Short(s, n) s = tostring(s or ""):gsub("|", "||"); return #s > (n or 60) and (s:sub(1, n or 60) .. "...") or s end
 
 -------------------------------------------------------------------------------
@@ -314,12 +317,12 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your current theme (the last step puts it back), changes one color (the accent: you are now on Custom) and then picks Light mode the way the Theme list does.\n\n|cffffd100Expect:|r a small window asks \"Discard your custom colors? ...\" with |cffffd100Discard|r and |cffffd100Cancel|r, and the theme has NOT changed yet. Then click |cffffd100Cancel|r in that window and press Check again: your colors are still there.",
         setup = function()
             local T = TH(); local args = Page(); if not args then error("the settings window (XayaUI Options) is not loaded") end
-            thw.saved = thw.saved or T.Export(); thw.base = thw.base or (CueRulesDB.theme and CueRulesDB.theme.base)
-            T.SetToken("accent", { 0.85, 0.2, 0.6, 1 }); thw.base0 = CueRulesDB.theme.base
+            thw.saved = thw.saved or T.Export(); thw.base = thw.base or (PlatS.theme and PlatS.theme.base)
+            T.SetToken("accent", { 0.85, 0.2, 0.6, 1 }); thw.base0 = PlatS.theme.base
             args.base.set(nil, "light")
         end,
         check = function()
-            local d = AskDlg(); local th = CueRulesDB.theme
+            local d = AskDlg(); local th = PlatS.theme
             if not thw.base0 then return false, "press Do it for me" end
             if d and d:IsShown() then
                 local ok = th.base == thw.base0 and Btn(1):GetText() == "Discard"
@@ -332,7 +335,7 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
         setup = function()
             local T = TH(); local args = Page(); if not args then error("the settings window (XayaUI Options) is not loaded") end
             T.Save(QA_THEME, true); thw.made = true
-            thw.first = CueRulesDB.themes[QA_THEME].tokens.accent and CueRulesDB.themes[QA_THEME].tokens.accent[1]
+            thw.first = PlatS.themes[QA_THEME].tokens.accent and PlatS.themes[QA_THEME].tokens.accent[1]
             T.SetToken("accent", { 0.2, 0.7, 0.3, 1 })
             args.saveName.set(nil, QA_THEME); args.save.func()
         end,
@@ -343,8 +346,8 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
                 local order = tostring(Btn(1):GetText()) .. " / " .. tostring(Btn(2):GetText()) .. " / " .. tostring(Btn(3):GetText())
                 return order == "Replace / Save As Copy / " .. (CANCEL or "Cancel"), "asking now: " .. order
             end
-            local copy = CueRulesDB.themes[QA_THEME .. " (1)"] ~= nil
-            local same = CueRulesDB.themes[QA_THEME] and CueRulesDB.themes[QA_THEME].tokens.accent and CueRulesDB.themes[QA_THEME].tokens.accent[1] == thw.first
+            local copy = PlatS.themes[QA_THEME .. " (1)"] ~= nil
+            local same = PlatS.themes[QA_THEME] and PlatS.themes[QA_THEME].tokens.accent and PlatS.themes[QA_THEME].tokens.accent[1] == thw.first
             return copy and same, ("copy saved: %s; the original unchanged: %s"):format(copy and "yes" or "no", same and "yes" or "no")
         end },
     { text = "Look at Settings > UI Options > Theme > |cffffd100Reset everything|r: hover it.\n\n|cffffd100Expect:|r it says \"Back to Class colors (the starting theme), ...\". The check reads the text.",
@@ -399,6 +402,6 @@ QA.Register("audit-engine", { title = "Combat tracking: hidden buffs are not gue
         noVerdict = true },   -- (0.7.53: the check said "by eye" and offered nothing; the step is yours to judge)
     { text = "Type |cffffd100/xui report|r and look at the errors part.\n\n|cffffd100Expect:|r a rule that failed shows there with code XUI-E010, and a cue migration problem with XUI-E011 (most players have none: then it lists none). The check counts what it finds in the error record.",
         noVerdict = true,
-        check = function() local db = CueRulesDB and CueRulesDB.errors or (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.errors); local n = type(db) == "table" and #db or 0
+        check = function() local db = PlatS.errors or (PlatS.ui and PlatS.ui.errors); local n = type(db) == "table" and #db or 0
             return true, ("%d error(s) recorded"):format(n) end },
 } })

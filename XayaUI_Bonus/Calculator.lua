@@ -17,6 +17,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI)
+local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local W, TITLE_H, KEY_H, LINE_H = 216, 20, 26, 22
 local HISTORY_LINES, HISTORY_KEPT = 3, 10
@@ -204,9 +205,9 @@ end
 -- Saved: CueRulesDB.calculator = { enabled, point, x, y, history = { "sum = answer", ... } } (enabled: false = off; nil or true = on)
 -------------------------------------------------------------------------------
 local function DB()
-    if type(CueRulesDB) ~= "table" then return nil end
-    local d = CueRulesDB.calculator
-    if type(d) ~= "table" then d = {}; CueRulesDB.calculator = d end
+    if not ns.SettingsReady() then return nil end
+    local d = BonusS.calculator
+    if type(d) ~= "table" then d = {}; BonusS.calculator = d end
     if type(d.history) ~= "table" then d.history = {} end
     while #d.history > HISTORY_KEPT do table.remove(d.history, 1) end
     return d
@@ -214,7 +215,7 @@ end
 
 -- on unless switched off (read without creating anything: the minimap list asks before the saved settings may exist)
 local function On()
-    local d = type(CueRulesDB) == "table" and CueRulesDB.calculator or nil
+    local d = BonusS.calculator or nil
     return not (type(d) == "table" and d.enabled == false)
 end
 ns.Calculator_IsOn = On

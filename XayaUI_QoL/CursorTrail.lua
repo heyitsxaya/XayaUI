@@ -16,6 +16,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local MAXC = 6          -- most colors a gradient can have
 local NPT  = 48         -- most dots on screen at once (all shapes except the smooth line)
@@ -83,9 +84,9 @@ end
 
 -- the saved table, with any missing keys filled from the defaults
 local function Ensure()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.cursorTrail
-    if type(c) ~= "table" then c = {}; CueRulesDB.cursorTrail = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.cursorTrail
+    if type(c) ~= "table" then c = {}; QolS.cursorTrail = c end
     for k, v in pairs(ns.CURSORTRAIL_DEFAULTS) do
         if c[k] == nil then c[k] = CopyVal(v) end
     end
@@ -209,8 +210,10 @@ local function Drop(x, y, limit, blend)
     lastDropX, lastDropY = x, y
 end
 
+local trailT, trailEp   -- (P2) the saved table, read again only when the settings epoch moves: no metamethod per frame
 local function OnUpdate()
-    local c = CueRulesDB and CueRulesDB.cursorTrail
+    if trailEp ~= ns.settingsEpoch then trailT, trailEp = QolS.cursorTrail, ns.settingsEpoch end
+    local c = trailT
     if not c or not stops then return end
     local now = GetTime()
     local life = math.max(0.1, c.length or 0.6)
@@ -333,7 +336,7 @@ end
 -- other gradient, a theme change does no trail work at all (rule V14).
 local themeListening = false
 local function OnThemeResolved()
-    local c = CueRulesDB and CueRulesDB.cursorTrail
+    local c = QolS.cursorTrail
     if frame and c and c.enabled and c.preset == "theme" then stops = Stops(c) end
 end
 local function ListenTheme(on)

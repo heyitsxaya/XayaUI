@@ -14,6 +14,9 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local PlatS = Settings("platform")
 local function Prof() local ns = NS(); return ns and ns.LoadOptions and ns.LoadOptions() and ns.OptionsApi and ns.OptionsApi.Profile end
 local function NP() local ns = NS(); return ns and ns.Service and ns.Service("nameplates") end
 local function ACD() return LibStub and LibStub("AceConfigDialog-3.0", true) end
@@ -125,7 +128,7 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
             st.scopedWin = T.Col("xui-window", "bg", "reskin.tooltips")
             T.SetScopeToken("reskin.tooltips", "buttonBg", nil)
             T.SetScopeClassColor("reskin", "xui-window", "bg", nil)
-            local th = rawget(_G, "CueRulesDB") and CueRulesDB.theme
+            local th = PlatS.theme
             st.left = th and th.scopes ~= nil
         end,
         check = function()

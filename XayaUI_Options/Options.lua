@@ -6,6 +6,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local CoreS, PlatS, QolS = ns.Settings("core"), ns.Settings("platform"), ns.Settings("qol")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local APP = "CueRules"
 local AceConfigRegistry = LibStub and LibStub("AceConfigRegistry-3.0", true)
@@ -1232,7 +1233,7 @@ function ns.CurrentSub()   -- the open sub-tab under Rules
     return (rt and rt.groups and rt.groups.selected) or "enabledTab"
 end
 function ns.SaveRulesSub()   -- remembered for next time the window opens
-    local ui = CueRulesDB and CueRulesDB.ui
+    local ui = PlatS.ui
     if ui and AceConfigDialog.GetStatusTable then ui.rulesSub = ns.CurrentSub() end
 end
 function ns.ScopePath(r, ctx)   -- where a rule's row is in the Enabled / Disabled lists
@@ -3443,18 +3444,18 @@ function ns.PageHidden(key)
 end
 
 -- Settings > Display Options / Debugging readers (used by the tree painting and the debug console tray)
-function ns.SelStyle() local u = CueRulesDB and CueRulesDB.ui; return (u and u.selStyle == "bar") and "bar" or "text" end
-function ns.ParentGradientOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.parentGradient == false) end
-function ns.SidebarSpellIcons() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.sidebarSpellIcons == false) end
+function ns.SelStyle() local u = PlatS.ui; return (u and u.selStyle == "bar") and "bar" or "text" end
+function ns.ParentGradientOn() local u = PlatS.ui; return not (u and u.parentGradient == false) end
+function ns.SidebarSpellIcons() local u = PlatS.ui; return not (u and u.sidebarSpellIcons == false) end
 function ns.GridOn() return true end   -- two-column grid is always on (no longer an option)
-function ns.CondensedOn() local u = CueRulesDB and CueRulesDB.ui; return u and u.condensedList == true or false end
+function ns.CondensedOn() local u = PlatS.ui; return u and u.condensedList == true or false end
 
 -- Window size override (Settings > UI Options > Window Size, issue #223). 0 = automatic (the built-in 780 x 860). A saved value is clamped to
 -- the screen and to a usable minimum. It is applied on the first open each session (see the Open hook) and immediately when changed.
 ns.PANE_DEFAULT_W, ns.PANE_DEFAULT_H = 780, 860
 ns.PANE_MIN_W, ns.PANE_MIN_H = 600, 400
 function ns.PaneSize()
-    local u = CueRulesDB and CueRulesDB.ui
+    local u = PlatS.ui
     local w, h = tonumber(u and u.paneW) or 0, tonumber(u and u.paneH) or 0
     local sw = UIParent and UIParent:GetWidth() or 1920
     local sh = UIParent and UIParent:GetHeight() or 1080
@@ -3470,11 +3471,11 @@ function ns.ApplyPaneSize()
     local of = ACD.OpenFrames and ACD.OpenFrames[APP]
     if of and of.frame then pcall(of.frame.SetSize, of.frame, w, h) end   -- and the open window, right now
 end
-function ns.DebugConsoleOn() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.hideTray) end
+function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) end
 
 -- Settings: the addon's own behavior, as opposed to any one rule's. Opened from the toolbar (cog, far right); has its own tabs.
 local function BuildAddonSettings()
-    local function Ui() CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
+    local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
     return { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -3505,13 +3506,13 @@ local function BuildAddonSettings()
             menuBtnHeader = { type = "header", name = "Menu button (ESC menu)", order = 23.5 },
             gameMenuButton = { type = "toggle", name = "Show a XayaUI button in the Game Menu (ESC menu)", order = 24, width = "full",
                 desc = "Adds a XayaUI entry to the ESC menu that opens this window. Off: the entry is removed the next time the menu opens.",
-                get = function() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.hideGameMenuButton) end,
+                get = function() return not (PlatS.ui and PlatS.ui.hideGameMenuButton) end,
                 set = function(_, v) Ui().hideGameMenuButton = (not v) or nil; if ns.GameMenu_OnOptionChanged then ns.GameMenu_OnOptionChanged() end end },
             gameMenuStyle = { type = "select", name = "Menu button style", order = 24.1, width = "double",
                 desc = "Gradient button: class-colored fill, solid text. Standard button: the UI's flat button with class-colored text.",
                 values = { gradient = "Gradient button, solid text", standard = "Standard button, gradient text" },
                 sorting = { "gradient", "standard" },
-                get = function() return (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.gameMenuStyle) or "gradient" end,
+                get = function() return (PlatS.ui and PlatS.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
             sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
                 desc = "Shows a tracked spell or buff's icon in the left-hand list instead of the type icon. Each rule can override it (Sidebar icon).",
@@ -3577,7 +3578,7 @@ local function BuildAddonSettings()
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
                 desc = "Records XayaUI's own errors and warnings for the debug report (/xui report) and sends its messages to the console window. On by default; it does nothing while nothing goes wrong.",
-                get = function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug and true or false end,
+                get = function() return PlatS.ui and PlatS.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
             msgDest = { type = "select", name = "XayaUI's messages", order = 11.1,
@@ -3725,9 +3726,9 @@ local VDH_AURAS = {
 local VDH_GROUP, VDH_SPEC = "VDH Test Rules", 581   -- 581 = Vengeance
 local creatorSel, creatorMsg, creatorOpen = {}, nil, false   -- ticks / message / list shown: this session only
 local function CreatorIDs()
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    CueRulesDB.ui.creatorIDs = CueRulesDB.ui.creatorIDs or {}   -- IDs she typed (kept with the profile); 0 = cleared
-    return CueRulesDB.ui.creatorIDs
+    PlatS.ui = PlatS.ui or {}
+    PlatS.ui.creatorIDs = PlatS.ui.creatorIDs or {}   -- IDs she typed (kept with the profile); 0 = cleared
+    return PlatS.ui.creatorIDs
 end
 local function AuraID(a)
     local v = CreatorIDs()[a.key]
@@ -4167,9 +4168,9 @@ local AUTO_SCOPE_VALUES = {
 }
 -- Settings live in CueRulesDB.ui.auto (one global set, used by the sidebar row "AUTO-POPULATE RULES"), not on each folder.
 function ns.AutoCfg()
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    local a = CueRulesDB.ui.auto
-    if not a then a = {}; CueRulesDB.ui.auto = a end
+    PlatS.ui = PlatS.ui or {}
+    local a = PlatS.ui.auto
+    if not a then a = {}; PlatS.ui.auto = a end
     if a.minCD == nil then a.minCD = 30 end
     if a.scope == nil then a.scope = "spec" end
     if a.talents == nil then a.talents = true end
@@ -4735,7 +4736,7 @@ local function BuildFolder(k, f)
         return { type = "execute", order = order, width = 0.8, hidden = hiddenFn,
             arg = { xuiTab = true, xuiTabSel = sel },
             name = function()
-                local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+                local skinOff = PlatS.ui and PlatS.ui.skinOff
                 return (sel() and skinOff) and ("|cffffd100" .. label .. "|r") or label
             end,
             func = function() ns.folderTab[f] = key; Notify() end }
@@ -4925,8 +4926,8 @@ local function BuildOptions()
                 get = function() return newOpts.visual end, set = function(_, v) newOpts.visual = v end },
             askSounds = { type = "toggle", name = "Ask before previewing many sounds at once", order = 4.5, width = "double",
                 desc = "Asks first when the headphone icon on a row covers several sounds.",
-                get = function() local u = CueRulesDB and CueRulesDB.ui; return not (u and u.skipSoundAllPrompt) end,
-                set = function(_, v) local u = CueRulesDB and CueRulesDB.ui; if u then u.skipSoundAllPrompt = (not v) or nil end end },
+                get = function() local u = PlatS.ui; return not (u and u.skipSoundAllPrompt) end,
+                set = function(_, v) local u = PlatS.ui; if u then u.skipSoundAllPrompt = (not v) or nil end end },
             unlock = { type = "execute", order = 5, width = "double",
                 name = function() return ns.unlocked and "Lock visuals" or "Unlock visuals (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
@@ -5159,14 +5160,14 @@ local function BuildOptions()
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars", "bar" .. #ns.bars)
                 end },
             layoutH = { type = "header", name = "Group Layout", order = 2 },
-            layout = Sel(CueRulesDB.barGroup, "layout", "Arrange the bars", 3, BAR_LAYOUT, BAR_LAYOUT_ORDER,
+            layout = Sel(CoreS.barGroup, "layout", "Arrange the bars", 3, BAR_LAYOUT, BAR_LAYOUT_ORDER,
                 function() ns.MarkDirty(); Notify() end, { width = "double" }),
-            spacing = Rng(CueRulesDB.barGroup, "spacing", "Spacing", 4, 0, 40, 1, function() ns.MarkDirty() end,
-                { disabled = function() return not ns.Val(CueRulesDB.barGroup.layout) end }),
-            gx = Rng(CueRulesDB.barGroup, "x", "Group X", 5, -1500, 1500, 1, function() ns.MarkDirty() end,
-                { disabled = function() return not ns.Val(CueRulesDB.barGroup.layout) end }),
-            gy = Rng(CueRulesDB.barGroup, "y", "Group Y", 6, -900, 900, 1, function() ns.MarkDirty() end,
-                { disabled = function() return not ns.Val(CueRulesDB.barGroup.layout) end }),
+            spacing = Rng(CoreS.barGroup, "spacing", "Spacing", 4, 0, 40, 1, function() ns.MarkDirty() end,
+                { disabled = function() return not ns.Val(CoreS.barGroup.layout) end }),
+            gx = Rng(CoreS.barGroup, "x", "Group X", 5, -1500, 1500, 1, function() ns.MarkDirty() end,
+                { disabled = function() return not ns.Val(CoreS.barGroup.layout) end }),
+            gy = Rng(CoreS.barGroup, "y", "Group Y", 6, -900, 900, 1, function() ns.MarkDirty() end,
+                { disabled = function() return not ns.Val(CoreS.barGroup.layout) end }),
             unlock = { type = "execute", order = 7, width = "double",
                 name = function() return ns.unlocked and "Lock (stop dragging)" or "Unlock (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },
@@ -5586,7 +5587,7 @@ function ns.OptionsApi.Toggle()
         -- tree (Tree.keep) and the redraw SelectGroup asked for is dropped (Open has just drawn it). One build instead of three.
         if firstOpen then
             firstOpen = false
-            local ui = CueRulesDB and CueRulesDB.ui
+            local ui = PlatS.ui
             local sub = ui and ui.rulesSub
             if sub ~= "smartTab" and sub ~= "draftsTab" and sub ~= "disabledTab" and sub ~= "creatorTab" then sub = "enabledTab" end   -- the last sub-tab used
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", sub)
@@ -5647,7 +5648,7 @@ local HEADER_H, BODY_H = 24, 190
 local tray
 
 local function TrayOpen()
-    return not (CueRulesDB and CueRulesDB.ui) or CueRulesDB.ui.trayOpen ~= false
+    return not (PlatS.ui) or PlatS.ui.trayOpen ~= false
 end
 
 local function ApplyTrayState()
@@ -5674,8 +5675,8 @@ local function BuildTray()
     t.check.text:SetPoint("LEFT", t.check, "RIGHT", 2, 0)
     t.check.text:SetText("Debug console")
     t.check:SetScript("OnClick", function(self)
-        CueRulesDB.ui = CueRulesDB.ui or {}
-        CueRulesDB.ui.trayOpen = self:GetChecked() and true or false
+        PlatS.ui = PlatS.ui or {}
+        PlatS.ui.trayOpen = self:GetChecked() and true or false
         ApplyTrayState()
     end)
 
@@ -5867,7 +5868,7 @@ end
 
 local soundAllDlg
 local function ConfirmAllSounds(count, cb)
-    local ui = CueRulesDB and CueRulesDB.ui
+    local ui = PlatS.ui
     if ui and ui.skipSoundAllPrompt then cb(); return end
     if not soundAllDlg then
         local f = CreateFrame("Frame", "XayaUISoundAllDialog", UIParent, "BackdropTemplate")
@@ -5888,7 +5889,7 @@ local function ConfirmAllSounds(count, cb)
         f.no:SetScript("OnClick", function() f:Hide() end)
         ns.FlatButton(f.yes, true); ns.FlatButton(f.no)
         f.yes:SetScript("OnClick", function()
-            if f.check:GetChecked() and CueRulesDB and CueRulesDB.ui then CueRulesDB.ui.skipSoundAllPrompt = true end
+            if f.check:GetChecked() and PlatS.ui then PlatS.ui.skipSoundAllPrompt = true end
             f:Hide()
             if f.cb then local c = f.cb; f.cb = nil; c() end
         end)
@@ -6066,7 +6067,7 @@ function ns.DragPlace(kind, obj, target, anchor, where)
         if anchor and ns.NormalizeFolderOrder then ns.NormalizeFolderOrder() end   -- folders keep list order from the first move on
         if obj.parent ~= target then
             obj.parent = target; changed = true
-            if not anchor and CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.folderOrdered then   -- nested into a group: last of its groups
+            if not anchor and PlatS.ui and PlatS.ui.folderOrdered then   -- nested into a group: last of its groups
                 for _, f in ipairs(ns.folders) do if f ~= obj and drag.DragFolderKey(f) == drag.DragFolderKey(obj) then anchor = f end end
                 where = "after"
             end
@@ -6239,12 +6240,12 @@ local function FolderParentKey(f) return (f.parent and FolderById(f.parent)) and
 -- Until the first move, top-level order is the legacy one (default categories fixed, the rest by list position). The first
 -- move bakes that order into ns.folders and switches ui.folderOrdered on, so list position is the order from then on.
 function ns.FolderSortOrder(f, k, dpos)
-    local ui = CueRulesDB and CueRulesDB.ui
+    local ui = PlatS.ui
     if ui and ui.folderOrdered then return 100 + k end
     return dpos and (10 + dpos) or (100 + k)
 end
 local function NormalizeFolderOrder()
-    local ui = CueRulesDB and CueRulesDB.ui
+    local ui = PlatS.ui
     if not ui or ui.folderOrdered then return end
     local keyed = {}
     for k, f in ipairs(ns.folders) do
@@ -7205,19 +7206,19 @@ local ROW_TOGGLES = {
     allqol = { title = "Stat Tracking on / off",
         tip = "Unticked: every stats box is hidden on screen and nothing is listed here. Your boxes are kept.",
         get = function() return ns.QoLOn() end,
-        set = function(v) CueRulesDB.qol = CueRulesDB.qol or {}; CueRulesDB.qol.enabled = v; pcall(ns.QoL_RefreshAll) end },
+        set = function(v) QolS.qol = QolS.qol or {}; QolS.qol.enabled = v; pcall(ns.QoL_RefreshAll) end },
     allcursor = { title = "Cursor Tracker on / off",
         tip = "Ticked: a texture follows your mouse cursor (off by default). Your settings are kept when unticked.",
         get = function() return ns.CursorOn() end,
-        set = function(v) CueRulesDB.cursor = CueRulesDB.cursor or {}; CueRulesDB.cursor.enabled = v; if ns.Cursor_Apply then ns.Cursor_Apply() end end },
+        set = function(v) QolS.cursor = QolS.cursor or {}; QolS.cursor.enabled = v; if ns.Cursor_Apply then ns.Cursor_Apply() end end },
     ["allcursor\001reminders"] = { title = "At-Cursor Reminders on / off",
         tip = "Ticked: the spell icons of your rules' displays are shown next to the mouse cursor (which rules: see this pane). Off by default; your choices are kept when unticked.",
-        get = function() return CueRulesDB.cursor and CueRulesDB.cursor.remOn and true or false end,
-        set = function(v) CueRulesDB.cursor = CueRulesDB.cursor or {}; CueRulesDB.cursor.remOn = v; if ns.CursorReminders_Apply then ns.CursorReminders_Apply() end end },
+        get = function() return QolS.cursor and QolS.cursor.remOn and true or false end,
+        set = function(v) QolS.cursor = QolS.cursor or {}; QolS.cursor.remOn = v; if ns.CursorReminders_Apply then ns.CursorReminders_Apply() end end },
     allbars = { title = "Buff Bars on / off",
         tip = "Unticked: every buff bar is hidden on screen and nothing is listed here. Your bars are kept.",
         get = function() return ns.BarsOn() end,
-        set = function(v) CueRulesDB.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
+        set = function(v) CoreS.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
 }
 
 -- Sidebar switches (Options 0.6.40; Xaya, 2026-11-05: "move all enable/disable toggles onto the sidebar instead for all bonus

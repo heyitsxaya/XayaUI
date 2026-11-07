@@ -5,6 +5,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local PlatS = ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local APP = "CueRules"
 local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
 if not ACD then return end
@@ -45,11 +46,11 @@ local function LightFont(b, fs, c)
     fs:SetShadowOffset(0, 0)
 end
 local function RestoreLF(b) if b and b.xuiLFRest then pcall(b.xuiLFRest, b); b.xuiLFRest = nil end end
-local function SkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
+local function SkinOn() return not (PlatS.ui and PlatS.ui.skinOff) end
 -- window opacity (0.1 - 1). /xuiskin alpha 0.4 changes it; takes effect on the next redraw / reopen.
-local function Pad() local u = CueRulesDB and CueRulesDB.ui; return math.max(0, math.min(30, tonumber(u and u.skinPad) or 8)) end
+local function Pad() local u = PlatS.ui; return math.max(0, math.min(30, tonumber(u and u.skinPad) or 8)) end
 local function A()
-    local u = CueRulesDB and CueRulesDB.ui
+    local u = PlatS.ui
     local a = (u and tonumber(u.skinAlpha)) or 0.62
     if TH and TH.IsLight and TH.IsLight() then a = a * 0.85 end   -- light themes: a further 15% more see-through (Xaya, 2026-11-01)
     return a

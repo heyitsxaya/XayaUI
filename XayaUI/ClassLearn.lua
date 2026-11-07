@@ -8,6 +8,7 @@
 -- Midnight: all game reads are pcall'd and secret values skipped; learning is skipped in combat and re-tried afterwards.
 -------------------------------------------------------------------------------
 local _, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = _G.XayaUI_NS or ns
 local CL = {}
 ns.ClassLearn = CL
@@ -15,8 +16,8 @@ ns.ClassLearn = CL
 local isSecret = issecretvalue or function() return false end
 
 local function DB()
-    local root = _G.CueRulesDB
-    if type(root) ~= "table" then return nil end
+    if not ns.SettingsReady() then return nil end
+    local root = CoreS
     local okB, _, bn = pcall(GetBuildInfo)
     local build = okB and bn or "?"
     local d = root.classLearn

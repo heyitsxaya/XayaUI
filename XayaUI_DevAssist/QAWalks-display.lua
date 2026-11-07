@@ -15,6 +15,10 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local function SettingsOn() local cns = NS(); return cns and cns.SettingsReady and cns.SettingsReady() or false end
+local PlatS, BonusS = Settings("platform"), Settings("bonus")
 local function ACD() return LibStub and LibStub("AceConfigDialog-3.0", true) end
 local function Root() local a = ACD(); return a and a.OpenFrames and a.OpenFrames["CueRules"] end
 local function Svc(name) local ns = NS(); return ns and ns.Service and ns.Service(name) end
@@ -74,9 +78,9 @@ local function CheckRules(wantH)
 end
 local function DPTabs() return Find(function(w) if w.type ~= "TabGroup" then return false end
     local u = w.GetUserDataTable and w:GetUserDataTable(); local p = u and u.path; return p and p[1] == "bonus" and p[#p] == "datapanels" end) end
-local function DPOn() local db = rawget(_G, "CueRulesDB"); local d = db and db.dataPanels; return d and d.general and d.general.enabled end
+local function DPOn() local d = BonusS.dataPanels; return d and d.general and d.general.enabled end
 local function SetDP(v)
-    local db = rawget(_G, "CueRulesDB"); local d = db and db.dataPanels; if not (d and d.general) then return end
+    local d = BonusS.dataPanels; if not (d and d.general) then return end
     d.general.enabled = v and true or false
     local ns = NS(); if ns and ns.Fire then ns.Fire("CONFIG_CHANGED") end
 end
@@ -84,7 +88,7 @@ end
 QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, text size", qa = "B213, B215, B220", order = 260, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r (your Data Panels and Theme text size are remembered; the last step puts them back).\n\n|cffffd100Expect:|r under the top tabs, Smart Categories, Enabled, Disabled and Drafts are the same width side by side with small even gaps (27 px tall, outlined names), and |cffffd100Auto-Generate Rules|r sits apart at the far right.",
         setup = function()
-            Remember({ dp = function() return DPOn() end, size = function() local db = rawget(_G, "CueRulesDB"); return db and db.theme and db.theme.size end })
+            Remember({ dp = function() return DPOn() end, size = function() local th = PlatS.theme; return th and th.size end })
             Open("cooldowns", "smartTab")
         end,
         check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
@@ -113,8 +117,8 @@ QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, te
         end },
     { text = "Press |cffffd100Do it for me|r: the Theme's |cffffd100Text size|r is set to Large and the Rules tab opens.\n\n|cffffd100Expect:|r the Rules sub-tabs are taller and their names larger than at Medium (about 31 px instead of 27).",
         setup = function()
-            local db = rawget(_G, "CueRulesDB"); if not db then return end
-            db.theme = db.theme or {}; db.theme.size = "L"
+            if not SettingsOn() then return end
+            local th = PlatS.theme or {}; PlatS.theme = th; th.size = "L"
             local ns = NS(); if ns and ns.Theme and ns.Theme.Changed then ns.Theme.Changed() end
             Open("cooldowns", "smartTab")
         end,
@@ -123,7 +127,7 @@ QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, te
         setup = function()
             if not saved then return end
             SetDP(saved.dp)
-            local db = rawget(_G, "CueRulesDB"); if db and db.theme then db.theme.size = saved.size end
+            local th = PlatS.theme; if th then th.size = saved.size end
             local ns = NS(); if ns and ns.Theme and ns.Theme.Changed then ns.Theme.Changed() end
             saved.done = true
         end,
@@ -415,7 +419,7 @@ local function FlatCheck(frame, label)
     local ns = NS()
     local T = ns and ns.Theme
     local want = T and T.Col and T.Col("xui-button", "text", { 1, 0.82, 0, 1 }) or { 1, 0.82, 0, 1 }
-    local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+    local skinOff = PlatS.ui and PlatS.ui.skinOff
     if skinOff then return false, "the flat skin is switched off (/xuiskin): switch it on and try again" end
     local bad, n = {}, 0
     for _, b in ipairs(Kids(frame)) do

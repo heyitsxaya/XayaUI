@@ -42,10 +42,18 @@ local SCHEMA = 1
 -------------------------------------------------------------------------------
 -- Storage (inside the existing CueRulesDB so no new SavedVariable is needed)
 -------------------------------------------------------------------------------
+-- (core 0.6.75, P2 settings seam) the same CueRulesDB.auraModel, through the core settings view; kept in an upvalue and looked up
+-- again only when the settings epoch moves (Modules.lua section 0b: no metamethod per aura event)
+local CoreS = ns.Settings("core")
+local dbT, dbEp
 local function DB()
-    if type(CueRulesDB) ~= "table" then return nil end
-    local d = CueRulesDB.auraModel
-    if type(d) ~= "table" then d = {}; CueRulesDB.auraModel = d end
+    local d = dbT
+    if dbEp ~= ns.settingsEpoch or type(d) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        d = CoreS.auraModel
+        if type(d) ~= "table" then d = {}; CoreS.auraModel = d end
+        dbT, dbEp = d, ns.settingsEpoch
+    end
     d.v = d.v or SCHEMA
     d.specs = d.specs or {}
     d.settings = d.settings or {}
@@ -443,7 +451,7 @@ function M.Resolve(auraID)
         M.cache[auraID] = res
         return res
     end
-    local L = type(CueRulesDB) == "table" and CueRulesDB.learnedAuraDur
+    local L = CoreS.learnedAuraDur
     if type(L) == "table" and type(L[auraID]) == "number" and L[auraID] > 0 then
         res.seconds, res.source, res.confidence = L[auraID], "legacy-learned", "low"
         res.notes[#res.notes + 1] = "seen readable earlier; loadout at that time unknown"

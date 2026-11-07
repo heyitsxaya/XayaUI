@@ -11,6 +11,9 @@
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local CoreS = Settings("core")
 local function OD()
     local ns = NS()
     if ns and ns.LoadOptions and not (ns.Service and ns.Service("optionsDebug")) then pcall(ns.LoadOptions) end
@@ -249,9 +252,9 @@ QA.Register("audit-opt-inputs", { title = "Typos keep values; Restore asks; soun
     { text = "Drafts off. Press |cffffd100Do it for me|r: XayaUI stores a draft of the test rule. Open Rules > Drafts and press |cffffd100Restore|r on it.\n\n|cffffd100Expect:|r a question first that says it replaces the rule right away and keeps it. Press No. The check reads the question text.",
         setup = function()
             local ns = Need(); local r = Rule(); if not r then error("press Do it for me on step 1 first") end
-            CueRulesDB.drafts = CueRulesDB.drafts or {}
+            CoreS.drafts = CoreS.drafts or {}
             local d = ns.Copy(r); d.qaAuditOpt = true
-            table.insert(CueRulesDB.drafts, 1, { id = "qaAuditOpt", uid = r.uid, name = r.name, ts = time(), rules = { d } })
+            table.insert(CoreS.drafts, 1, { id = "qaAuditOpt", uid = r.uid, name = r.name, ts = time(), rules = { d } })
             local od = OD(); if od and od.Notify then od.Notify() end
         end,
         check = function()
@@ -264,9 +267,9 @@ QA.Register("audit-opt-inputs", { title = "Typos keep values; Restore asks; soun
         end },
     { text = "Remove the test draft: press |cffffd100Do it for me|r. Then (by hand) give any of your rules' Sound cues a different Sound and press Ctrl+Z; double-click a rule row, empty the name and press Enter; move a rule with Info > Group.\n\n|cffffd100Expect:|r Ctrl+Z brings the old sound back; the empty name keeps the old one; the display follows the new group at once. These are yours to judge.",
         noVerdict = true,
-        setup = function() for i = #(CueRulesDB.drafts or {}), 1, -1 do if CueRulesDB.drafts[i].id == "qaAuditOpt" then table.remove(CueRulesDB.drafts, i) end end end,
+        setup = function() for i = #(CoreS.drafts or {}), 1, -1 do if CoreS.drafts[i].id == "qaAuditOpt" then table.remove(CoreS.drafts, i) end end end,
         check = function()
-            for _, d in ipairs(CueRulesDB.drafts or {}) do if d.id == "qaAuditOpt" then return false, "the test draft is still there" end end
+            for _, d in ipairs(CoreS.drafts or {}) do if d.id == "qaAuditOpt" then return false, "the test draft is still there" end end
             return true, "the test draft is gone"
         end },
     LAST,

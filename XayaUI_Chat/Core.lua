@@ -8,6 +8,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local ChatS = ns.Settings("chat")   -- (Chat 0.6.41, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local C = { errors = {}, applied = {}, mods = {}, hooked = {}, stats = { suppressed = 0, protected = 0 } }
 ns.Chat = C
@@ -455,10 +456,10 @@ function C.Schedule()
 end
 
 function ns.Chat_OnDBReady()
-    CueRulesDB.chat = CueRulesDB.chat or {}                        -- privacy cover settings (kept as they are)
-    ns.chatDB = CueRulesDB.chat
-    CueRulesDB.chat2 = CueRulesDB.chat2 or {}                      -- the new Chat Panel (old chat settings are not read)
-    local s = CueRulesDB.chat2
+    ChatS.chat = ChatS.chat or {}                        -- privacy cover settings (kept as they are)
+    ns.chatDB = ChatS.chat
+    ChatS.chat2 = ChatS.chat2 or {}                      -- the new Chat Panel (old chat settings are not read)
+    local s = ChatS.chat2
     if s.enabled == nil then s.enabled = C.DEFAULTS.enabled end
     ns.chat2 = s
     -- "Cover the chat at every login" (Privacy.lua): up to Chat 0.6.13 read on the first loading screen by a frame of its own
@@ -468,7 +469,7 @@ function ns.Chat_OnDBReady()
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
     -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
     -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
-    ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
+    ns.Merge(ChatS.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
 end

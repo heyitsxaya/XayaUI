@@ -13,6 +13,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local PlatS = ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local P = {}
 ns.InfoPane = P
@@ -311,15 +312,15 @@ local function SavePos()
     local cx, cy = W:GetCenter()
     local ux, uy = UIParent:GetCenter()
     if not (cx and ux) then return end
-    if type(CueRulesDB) == "table" then
-        CueRulesDB.ui = CueRulesDB.ui or {}
-        CueRulesDB.ui.infoPanePos = { math.floor(cx - ux + 0.5), math.floor(cy - uy + 0.5) }
+    if ns.SettingsReady() then
+        PlatS.ui = PlatS.ui or {}
+        PlatS.ui.infoPanePos = { math.floor(cx - ux + 0.5), math.floor(cy - uy + 0.5) }
     end
 end
 
 local function Place()
     W:ClearAllPoints()
-    local pos = type(CueRulesDB) == "table" and type(CueRulesDB.ui) == "table" and CueRulesDB.ui.infoPanePos
+    local pos = type(PlatS.ui) == "table" and PlatS.ui.infoPanePos
     if type(pos) == "table" and tonumber(pos[1]) and tonumber(pos[2]) then
         W:SetPoint("CENTER", UIParent, "CENTER", pos[1], pos[2])
         return

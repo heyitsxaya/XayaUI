@@ -11,6 +11,10 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local function SettingsOn() local cns = NS(); return cns and cns.SettingsReady and cns.SettingsReady() or false end
+local PlatS = Settings("platform")
 local function Prof() local ns = NS(); return ns and ns.OptionsApi and ns.OptionsApi.Profile end
 local function ACD() return LibStub and LibStub("AceConfigDialog-3.0", true) end
 local function Root() local a = ACD(); return a and a.OpenFrames and a.OpenFrames["CueRules"] end
@@ -57,8 +61,8 @@ local saved
 QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs at the top, and the Profiles tab (H6-H9)", qa = "H6, H7, H8, H9", order = 270, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r.\n\n|cffffd100Expect:|r no row of buttons above the tabs (no New Rule / Import / Export / Recycle Bin / Settings cog); the top tabs read " .. WANT .. ", evenly across the row.",
         setup = function()
-            local db = rawget(_G, "CueRulesDB")
-            saved = { sel = db and db.ui and db.ui.selStyle }
+            local ui = PlatS.ui
+            saved = { sel = ui and ui.selStyle }
             Open("cooldowns", "smartTab")
         end,
         check = CheckTop },
@@ -101,7 +105,7 @@ QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs
         end },
     { text = "Press |cffffd100Do it for me|r: a profile with only |cffffd100Settings|r is made from your setup (your Selection style is remembered), your Selection style is then changed, and the profile is imported back with Settings ticked.\n\n|cffffd100Expect:|r a Reload / Later prompt (press Later); the Selection style is back as it was.",
         setup = function()
-            local ns, db, P = NS(), rawget(_G, "CueRulesDB"), Prof()
+            local ns, db, P = NS(), SettingsOn() and PlatS, Prof()
             if not (ns and P and ns.Share and db) then return end
             db.ui = db.ui or {}
             saved.sel = db.ui.selStyle
@@ -111,8 +115,8 @@ QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs
             if data and def then def.Apply(data, { inc = { settings = true }, rules = "add" }) end
         end,
         check = function()
-            local db = rawget(_G, "CueRulesDB")
-            local now = db and db.ui and db.ui.selStyle
+            local ui = PlatS.ui
+            local now = ui and ui.selStyle
             return now == saved.sel, ("Selection style after the import: %s (before: %s)"):format(tostring(now), tostring(saved.sel))
         end },
     { text = "Press |cffffd100Do it for me|r: |cffffd100Profiles > Recycle Bin|r opens.\n\n|cffffd100Expect:|r the Recycle Bin page (what you deleted, with Restore and Delete now, or \"The Recycle Bin is empty\").",
@@ -125,7 +129,7 @@ QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs
             return sel == "bin", "the Profiles sub-tab picked: " .. tostring(sel)
         end },
     { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Selection style back as it was. Anything look wrong in this walkthrough (a name, a size, where + New Rule sits)? Write it in the note. Then press |cffffd100Done|r (no verdict: a note is kept, nothing is recorded as Pass or Fail).",
-        setup = function() local db = rawget(_G, "CueRulesDB"); if db and db.ui and saved then db.ui.selStyle = saved.sel end end,
+        setup = function() local ui = PlatS.ui; if ui and saved then ui.selStyle = saved.sel end end,
         noVerdict = true },
 } })
 

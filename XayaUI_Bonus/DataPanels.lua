@@ -15,6 +15,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local ChatS, BonusS = ns.Settings("chat"), ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 -- the block engine and the data types, shared with the Chat Bar (XayaUI_Chat): a library both addons carry (LibStub runs one copy)
 local B = LibStub("XayaDataBlocks-1.0")
@@ -83,8 +84,8 @@ end
 function ns.DataPanels_MasterOn() local db = DB(); return db and db.general and db.general.enabled and true or false end
 
 function ns.DataPanels_OnDBReady()
-    CueRulesDB.dataPanels = CueRulesDB.dataPanels or {}
-    local dp = CueRulesDB.dataPanels
+    BonusS.dataPanels = BonusS.dataPanels or {}
+    local dp = BonusS.dataPanels
     dp.customs = dp.customs or {}
     -- 0.5.47: Top Data Bar, Custom Panel and Custom Bar were folded into Center Panel and the custom panels list. The old tables are kept in dp.legacy.
     if dp.top or dp.panel or dp.bar then
@@ -111,12 +112,12 @@ function ns.DataPanels_OnDBReady()
     if dp.general and dp.general.enabled == nil then
         for _, k in ipairs({ "bl", "br", "center" }) do if type(dp[k]) == "table" and dp[k].enabled then dp.general.enabled = true; break end end
         for _, c in pairs(dp.customs) do if type(c) == "table" and c.enabled then dp.general.enabled = true; break end end
-        local oldChat = CueRulesDB.chat   -- saved settings only (the Chat addon may be off): an old chat info bar counts too
+        local oldChat = ChatS.chat   -- saved settings only (the Chat addon may be off): an old chat info bar counts too
         if type(oldChat) == "table" and (oldChat.panelOn or oldChat.rpanelOn) then dp.general.enabled = true end
     end
     ns.Merge(dp, ns.DATAPANEL_DEFAULTS)
     for _, c in pairs(dp.customs) do if type(c) == "table" then ns.Merge(c, CustomDef()) end end   -- custom panels get any setting added since they were made
-    ns.dataPanelDB = CueRulesDB.dataPanels
+    ns.dataPanelDB = BonusS.dataPanels
     ns.DataPanels_Sync()   -- the driver, only when the master switch and a panel are on (V14)
 end
 

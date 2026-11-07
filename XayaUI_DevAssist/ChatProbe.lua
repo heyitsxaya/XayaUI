@@ -9,6 +9,7 @@
 -- (Dev Assist 0.7.5: moved here from XayaUI_Chat/Probe.lua; REQUEST-LOG #81, Xaya 2026-11-06: "Move all of them". Unchanged otherwise.)
 local ns = rawget(_G, "XayaUI_NS")   -- XayaUI core's namespace; without XayaUI there is nothing to register into
 if type(ns) ~= "table" or type(ns.RegisterDebugCommand) ~= "function" then return end
+local DevS = ns.Settings("devassist")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local MAX_LINES = 1400
 local lines
@@ -255,8 +256,7 @@ local function Run()
     Head("shown frames in the top-left 420x420 of the screen (" .. #topLeft .. ")")
     for i, s in ipairs(topLeft) do if i <= 80 then Add(s) end end
 
-    CueRulesDB = CueRulesDB or {}
-    CueRulesDB.chatProbe = { when = date("%Y-%m-%d %H:%M:%S"), lines = lines }
+    DevS.chatProbe = { when = date("%Y-%m-%d %H:%M:%S"), lines = lines }
     return #lines, topLeftShown
 end
 

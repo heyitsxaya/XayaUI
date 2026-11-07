@@ -20,6 +20,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SRC = open(os.path.join(ROOT, "XayaUI_QoL", "CursorTrail.lua"), encoding="utf-8").read()
 # QoL 0.7.17: the gradients live in core (XayaUI/Theme.lua, ns.Theme.CURSOR_PRESETS); core loads first in the game, so here too
 THEME_SRC = open(os.path.join(ROOT, "XayaUI", "Theme.lua"), encoding="utf-8").read()
+MODULES_SRC = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
 REPORT = "--report" in sys.argv
 BUDGET = {"calls_avg": 760, "calls_max": 980, "live_max": 345}
 GAP_RATIO = 0.5   # nearest shown neighbour within half the dot's own width
@@ -91,6 +92,8 @@ def run(src, speed, moving=60, still=0, look=0):
     lua.globals().SRC = src
     lua.globals().THEME_SRC = THEME_SRC
     lua.execute(WORLD)
+    lua.globals().MODULES_SRC = MODULES_SRC
+    lua.execute('assert(loadstring(MODULES_SRC, "@Modules.lua"))("XayaUI", XayaUI_NS)')   # (core 0.6.75) the settings seam
     lua.execute('local ns = XayaUI_NS; ns.Share = { RegisterKind = function() end }; assert(loadstring(THEME_SRC, "@Theme.lua"))("XayaUI", ns)')
     lua.execute('local ns = XayaUI_NS; assert(loadstring(SRC, "@CursorTrail.lua"))("XayaUI_QoL", ns); ns.CursorTrail_Apply()')
     if lua.eval("XayaUI_NS.CURSORTRAIL_PRESETS.fel ~= nil") is not True:

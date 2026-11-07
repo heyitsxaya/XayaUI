@@ -2,6 +2,7 @@
 -- each condition's THEN lists cue keys. Under the hood a cue is a hidden child rule (rule.isCue, rule.parentUid, rule.cueKey, rule.cueKind),
 -- so the existing sound / display engine and editors are reused. A cue fires while ANY enabled condition that lists it is true.
 local addonName, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "bar", "custom" }   -- bar: BarCue.lua (RM-BARS, Xaya 2026-11-06)
 local KIND_OK = {}
@@ -270,7 +271,7 @@ end
 
 -- Version 2 (one time): every enabled sound / display of a condition becomes a cue of its parent; the condition now points at them.
 function ns.MigrateCues()
-    local DB = CueRulesDB
+    local DB = ns.SettingsReady() and CoreS
     if not DB or not ns.rules or (DB.cuesVer or 0) >= 2 then return 0 end
     if not DB.backupPreCues then DB.backupPreCues = ns.Copy(DB.rules) end   -- full in-game copy of every rule before the first migration
     -- repair cue keys that normalization cleared

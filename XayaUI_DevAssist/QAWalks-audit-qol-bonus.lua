@@ -12,6 +12,10 @@
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local function SettingsOn() local cns = NS(); return cns and cns.SettingsReady and cns.SettingsReady() or false end
+local PlatS = Settings("platform")
 local function SV(name) local ns = NS(); return ns and ns.Service and ns.Service(name) end
 local function Short(s, n) s = tostring(s or ""):gsub("|", "||"); return #s > (n or 60) and (s:sub(1, n or 60) .. "...") or s end
 local function Copy(v) if type(v) ~= "table" then return v end; local t = {}; for k, x in pairs(v) do t[k] = Copy(x) end; return t end
@@ -75,7 +79,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: each character keep
         setup = function()
             local S, c = ShopCfg()
             c.enabled, c.panel = false, false; S.Apply()
-            local db = rawget(_G, "CueRulesDB")
+            local db = SettingsOn() and PlatS
             local was = db and db.reskinTabOff
             if db then db.reskinTabOff = true end
             local ok, err = pcall(S.Toggle)

@@ -6,6 +6,9 @@
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local ReskinS = Settings("reskin")
 local fcSaved
 -- XayaUI Blizzard Reskin is reached only through its service (Modules.lua ns.Service; FriendColors.lua provides "friendColors")
 local function Svc() local ns = NS(); return ns and ns.Service and ns.Service("friendColors") end
@@ -20,8 +23,8 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
     { text = "Press |cffffd100Do it for me|r: |cffffd100Friend class colors|r (Blizzard Reskin) is switched on and your friends list opens. You need at least one friend online in World of Warcraft.\n\n|cffffd100Expect:|r online character friends show their name in their class color; Battle.net friends playing WoW show the name in brackets in their class color; offline friends stay grey.",
         setup = function()
             local ns = NS(); if not ns then return end
-            CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.friendColors = CueRulesDB.ui.friendColors or {}
-            local t = CueRulesDB.ui.friendColors
+            ReskinS.friendColors = ReskinS.friendColors or {}
+            local t = ReskinS.friendColors
             if fcSaved == nil then fcSaved = { on = t.on } end
             t.on = true
             local sv = Svc(); if sv then sv.Apply() end
@@ -42,7 +45,7 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
     { done = true, text = "Last step: press |cffffd100Do it for me|r to put the setting back as it was. Then press |cffffd100Done|r.",
         setup = function()
             local ns = NS()
-            if fcSaved and CueRulesDB.ui and CueRulesDB.ui.friendColors then CueRulesDB.ui.friendColors.on = fcSaved.on end
+            if fcSaved and ReskinS.friendColors then ReskinS.friendColors.on = fcSaved.on end
             fcSaved = nil
             local sv = Svc(); if sv then sv.Apply() end
         end,

@@ -5,6 +5,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local PlatS = ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local S = ns.ThemeShared
 local DB, T, floor, max, min = S.DB, S.T, S.floor, S.max, S.min
 
@@ -153,11 +154,11 @@ function T.BuildArgs(refresh)
     surf("border", "Borders", "Window and pane outlines.", true)
     cust.args.opacity = { type = "range", order = cx(), width = "double", name = "Window opacity", min = 0.1, max = 1, step = 0.01, isPercent = true,
         desc = "How solid the window background is. Takes effect when the window is next redrawn or reopened.",
-        get = function() local u = CueRulesDB and CueRulesDB.ui; return tonumber(u and u.skinAlpha) or 0.62 end,
+        get = function() local u = PlatS.ui; return tonumber(u and u.skinAlpha) or 0.62 end,
         set = function(_, v)
-            if not CueRulesDB then return end
-            CueRulesDB.ui = CueRulesDB.ui or {}
-            CueRulesDB.ui.skinAlpha = math.max(0.1, math.min(1, v))
+            if not ns.SettingsReady() then return end
+            PlatS.ui = PlatS.ui or {}
+            PlatS.ui.skinAlpha = math.max(0.1, math.min(1, v))
             T.Changed(); refresh()
         end }
     cust.args.clear = { type = "execute", order = cx(), width = "normal", name = "Clear my colors",
@@ -180,9 +181,9 @@ function T.BuildArgs(refresh)
         desc = "Offers more theme options: tab colors, tree bars and per-class color overrides. Off by default.",
         get = function() return T.Advanced() end,
         set = function(_, v)
-            if not CueRulesDB then return end
-            CueRulesDB.ui = CueRulesDB.ui or {}
-            CueRulesDB.ui.themeAdvanced = v and true or nil
+            if not ns.SettingsReady() then return end
+            PlatS.ui = PlatS.ui or {}
+            PlatS.ui.themeAdvanced = v and true or nil
             T.Changed(); refresh()
         end }
 
@@ -264,7 +265,7 @@ function T.BuildArgs(refresh)
         end }
     args.delete = { type = "execute", order = nx(), width = "half", name = "Delete saved",
         desc = "Deletes the saved theme with the name typed in the box.",
-        func = function() if CueRulesDB.themes[saveName] then T.Delete(saveName); say("Deleted '" .. saveName .. "'.") else say("No saved theme called '" .. saveName .. "'.") end end }
+        func = function() if PlatS.themes[saveName] then T.Delete(saveName); say("Deleted '" .. saveName .. "'.") else say("No saved theme called '" .. saveName .. "'.") end end }
     local exportText = ""
     args.export = { type = "execute", order = nx(), width = "normal", name = "Export current theme",
         func = function() exportText = T.Export(); say("Copy the text from the box below (Ctrl+A, Ctrl+C).") end }

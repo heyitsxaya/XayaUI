@@ -14,8 +14,11 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local PlatS = Settings("platform")
 local function DRI() local ns = NS(); return ns and ns.DebugRecordInfo end
-local function Lines() local r = type(CueRulesDB) == "table" and CueRulesDB.debugRecord; return (type(r) == "table" and type(r.lines) == "table") and r.lines or {}, r end
+local function Lines() local r = PlatS.debugRecord; return (type(r) == "table" and type(r.lines) == "table") and r.lines or {}, r end
 
 
 -- lines of the record since the newest "recorded run starts" marker (written by the removed prompt), else the whole record

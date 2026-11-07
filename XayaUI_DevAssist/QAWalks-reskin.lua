@@ -12,6 +12,10 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end
+local function SettingsOn() local cns = NS(); return cns and cns.SettingsReady and cns.SettingsReady() or false end
+local PlatS, ReskinS = Settings("platform"), Settings("reskin")
 local function BS() local ns = NS(); return ns and ns.Service and ns.Service("blizzardSkins") end
 local function Need() local s = BS(); if not s then return nil, "XayaUI Blizzard Reskin is not loaded (enable it in the AddOns list)" end; return s end
 local function Copy(t) if type(t) ~= "table" then return t end; local o = {}; for k, v in pairs(t) do o[k] = Copy(v) end; return o end
@@ -20,21 +24,19 @@ local function Near(a, b, tol) return type(a) == "number" and type(b) == "number
 -- her settings, copied at the start of a walkthrough and put back at its end
 local kept, keptTab
 local function Keep()
-    local db = rawget(_G, "CueRulesDB")
-    kept = Copy(db and db.ui and db.ui.rsk)
-    keptTab = db and db.reskinTabOff
+    kept = Copy(ReskinS.rsk)
+    keptTab = PlatS.reskinTabOff
 end
 local function PutBack()
     local s = BS(); if not s then return end
-    local db = rawget(_G, "CueRulesDB"); if not db then return end
-    db.ui = db.ui or {}
-    db.ui.rsk = Copy(kept)
-    db.reskinTabOff = keptTab
+    if not SettingsOn() then return end
+    ReskinS.rsk = Copy(kept)   -- (kept in CueRulesDB.ui.rsk, as before)
+    PlatS.reskinTabOff = keptTab
     s.Apply()
 end
 local function Set(fn)   -- change her reskin settings for a step (the Reskin tab switch on, then fn(cfg)), and apply
     local s = Need(); if not s then return end
-    local db = rawget(_G, "CueRulesDB"); if db then db.reskinTabOff = nil end
+    if SettingsOn() then PlatS.reskinTabOff = nil end
     fn(s.Cfg()); s.Apply()
 end
 local function Painted(f) local s = BS(); local m = s and f and s.memo[f]; return m and m.painted and true or false end

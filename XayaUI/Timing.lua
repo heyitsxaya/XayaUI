@@ -26,10 +26,18 @@ ns.Timing = T
 local issecret = issecretvalue or function() return false end
 local CDM_EVENT = Enum and Enum.CooldownViewerAlertEventType or {}
 
+-- (core 0.6.75, P2 settings seam) the same CueRulesDB keys, through the core settings view; the tables are kept here and looked up
+-- again only when the settings epoch moves (Modules.lua section 0b: no metamethod per hook call)
+local CoreS = ns.Settings("core")
+local storeT, storeEp = {}, nil
 local function Store(key)
-    if type(CueRulesDB) ~= "table" then return nil end
-    local t = CueRulesDB[key]
-    if type(t) ~= "table" then t = {}; CueRulesDB[key] = t end
+    if storeEp ~= ns.settingsEpoch then wipe(storeT); storeEp = ns.settingsEpoch end
+    local t = storeT[key]
+    if t then return t end
+    if not ns.SettingsReady() then return nil end
+    t = CoreS[key]
+    if type(t) ~= "table" then t = {}; CoreS[key] = t end
+    storeT[key], storeEp = t, ns.settingsEpoch
     return t
 end
 function T.LearnedAura() return Store("learnedAuraDur") end

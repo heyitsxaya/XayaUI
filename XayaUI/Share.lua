@@ -13,6 +13,7 @@
 -- (ns.Share_SnapshotAll) is the base for the Backup feature on the roadmap (#87); there is no "export everything" button.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local MAX_LEN, MAX_DEPTH = 2 * 1024 * 1024, 16
 local Share = { kinds = {}, byPrefix = {} }
@@ -214,7 +215,7 @@ function ns.Share_SnapshotAll(include, name)
     -- Buff bars and QoL elements are switched off for now (their files are not loaded): nothing of them is exported
     if include.bars and ns.BarsOn then
         snap.bars = ns.Copy(ns.bars)
-        snap.barGroup = ns.Copy(CueRulesDB.barGroup)
+        snap.barGroup = ns.Copy(CoreS.barGroup)
     end
     if include.qol and ns.QoLOn then snap.qol = ns.Copy(ns.qolBoxes) end
     return snap
@@ -515,9 +516,9 @@ function ns.Share_ApplyRules(snap, mode)
             end
         end
         if replace and IsTbl(snap.barGroup) then
-            wipe(CueRulesDB.barGroup)
-            for k, v in pairs(snap.barGroup) do CueRulesDB.barGroup[k] = v end
-            ns.Merge(CueRulesDB.barGroup, ns.BAR_GROUP_DEFAULTS)
+            wipe(CoreS.barGroup)
+            for k, v in pairs(snap.barGroup) do CoreS.barGroup[k] = v end
+            ns.Merge(CoreS.barGroup, ns.BAR_GROUP_DEFAULTS)
         end
     end
 

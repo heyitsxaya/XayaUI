@@ -167,7 +167,7 @@ OPTNS = setmetatable({}, { __index = function(_, k) local v = NS[k]; if v ~= nil
   __newindex = function(_, k, v) NS[k] = v end })
 OPTENV = setmetatable({ ns = OPTNS }, { __index = function(_, k) local v = _G[k]; if v ~= nil then return v end; return stub end })
 ''')
-build = L.eval("function(src) local f, e = loadstring('local ns = ns\\n' .. src .. '\\nreturn BuildAddonSettings()', '@Options.lua(BuildAddonSettings)');"
+build = L.eval("function(src) local f, e = loadstring('local ns = ns; local CoreS, PlatS, QolS = ns.Settings(\"core\"), ns.Settings(\"platform\"), ns.Settings(\"qol\")\\n' .. src .. '\\nreturn BuildAddonSettings()', '@Options.lua(BuildAddonSettings)');"
                " if not f then error(e) end; setfenv(f, OPTENV); return f() end")
 dbg = build(opt[i:j])["args"]["debug"]["args"]
 L.globals().DBG = dbg
@@ -203,7 +203,7 @@ L.execute("SET('advancedDebug', false)")
 check("Settings: unticking Advanced Debugging stops the probe it started", E("UI().advancedDebug == false and PROBE.on == false"))
 
 # 9. categories (core 0.6.22, Xaya: "discrete functionality toggles", "cpu friendly"): each kind of line has its own switch
-L.execute("CueRulesDB.debugRecord = nil; UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; NS.DebugSettingsChanged()")
+L.execute("NS.Settings('platform').debugRecord = nil; UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; NS.DebugSettingsChanged()")
 check("defaults: rules, snapshots, auras, glows, sounds, game, engine, messages on; trigger detail, displays, performance off",
       E("NS.RecCatOn('rules') and NS.RecCatOn('snapshots') and NS.RecCatOn('auras') and NS.RecCatOn('glows') and NS.RecCatOn('sounds') "
         "and NS.RecCatOn('game') and NS.RecCatOn('engine') and NS.RecCatOn('messages') and not NS.RecCatOn('triggers') "
@@ -230,11 +230,11 @@ check("Advanced Debugging off: every category reads off, but each keeps its own 
 L.execute("UI().advancedDebug = true")
 
 # 10. size: 1000 / 3000 / 10000 lines
-L.execute("CueRulesDB.debugRecord = nil; UI().recordMax = 1000; for i = 1, 1300 do NS.LogKind('rule', 'fill ' .. i) end")
+L.execute("NS.Settings('platform').debugRecord = nil; UI().recordMax = 1000; for i = 1, 1300 do NS.LogKind('rule', 'fill ' .. i) end")
 check("'Lines kept' 1000: the record keeps about the newest 1000", E("RECN() >= 1000 and RECN() <= 1200 and REC():find('fill 1300') ~= nil"))
 L.execute("UI().recordMax = 777")
 check("  ...a value that is not one of the choices falls back to 3000", E("NS.DebugRecordInfo.MaxLines() == 3000"))
-L.execute("UI().recordMax = nil; CueRulesDB.debugRecord = nil")
+L.execute("UI().recordMax = nil; NS.Settings('platform').debugRecord = nil")
 
 # 11. game state (category "game"): what the game was doing
 L.execute(r"""
@@ -320,14 +320,14 @@ check("  ...the developer addon's file is listed only when it says which file it
       E("NS.SendText():find('XayaUI_DevAssist.lua', 1, true) == nil"))
 L.execute("NS.Provide('gameDataProbe', { On = function() end, Off = function() end, Active = function() return false end, savedFile = 'XayaUI_DevTest.lua', savedWhat = 'test captures' })")
 check("  ...and then it is", E("NS.SendText():find('XayaUI_DevTest.lua  (test captures)', 1, true) ~= nil"))
-L.execute("CueRulesDB.debugRecord = nil; NS.LogKind('rule', 'FIRED readable')")
+L.execute("NS.Settings('platform').debugRecord = nil; NS.LogKind('rule', 'FIRED readable')")
 TXT = E("NS.RecordText()")
 check("'View the debug record': what each label means, the lines, and what to send",
       "Categories:" in TXT and "Snapshot" in TXT and "FIRED readable" in TXT and "WHAT TO SEND" in TXT and "(off now)" in TXT, TXT[:300])
 
 
 # 15. the real Settings > Debugging controls for the categories, presets, size, rule picker and "What to send" (Options.lua)
-L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; UI().msgDest = 'console'; NS.DebugSettingsChanged(); CueRulesDB.debugRecord = nil")
+L.execute("UI().advancedDebug = true; UI().recordOff = nil; UI().recCats = nil; UI().msgDest = 'console'; NS.DebugSettingsChanged(); NS.Settings('platform').debugRecord = nil")
 # (Options 0.6.55 / Dev Assist 0.7.5: the category boxes, presets, size and rule picker are Dev Assist's settings page "devrecord")
 L.execute("W = DBG.devPages.args.devrecord.args; SEND = DBG.send.args")
 check("Settings: one tick box per category, each with its cost in the label", E("W.cat_auras ~= nil and W.cat_perf ~= nil and W.cat_triggers ~= nil and W.cat_game ~= nil "

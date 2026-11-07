@@ -20,7 +20,7 @@ L.execute("SECRET = {}; function issecretvalue(v) return v ~= nil and SECRET[v] 
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 COND = os.environ.get("XUI_CONDITIONS", os.path.join(ROOT, "XayaUI", "Conditions.lua"))   # (a negative control can point at an older copy)
-for f in ("XayaUI/Compat.lua", "XayaUI/Core.lua", COND):
+for f in ("XayaUI/Compat.lua", "XayaUI/Core.lua", "XayaUI/Modules.lua", COND):
     path = f if os.path.isabs(f) else os.path.join(ROOT, f)
     load(open(path, encoding="utf-8").read(), f, ns)
 L.execute(r'''

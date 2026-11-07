@@ -54,10 +54,18 @@ local OVERSTAY_GRACE = 3          -- seconds past the expected end before an amb
 -------------------------------------------------------------------------------
 -- Storage (inside CueRulesDB, no new SavedVariable)
 -------------------------------------------------------------------------------
+-- (core 0.6.75, P2 settings seam) the same CueRulesDB.auraTracker, through the core settings view; read on every aura event, so the
+-- table is kept in an upvalue and looked up again only when the settings epoch moves (Modules.lua section 0b)
+local CoreS = ns.Settings("core")
+local dbT, dbEp
 local function DB()
-    if type(CueRulesDB) ~= "table" then return nil end
-    local d = CueRulesDB.auraTracker
-    if type(d) ~= "table" then d = { v = 1 }; CueRulesDB.auraTracker = d end
+    local d = dbT
+    if dbEp ~= ns.settingsEpoch or type(d) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        d = CoreS.auraTracker
+        if type(d) ~= "table" then d = { v = 1 }; CoreS.auraTracker = d end
+        dbT, dbEp = d, ns.settingsEpoch
+    end
     d.settings = d.settings or {}
     d.shadow = d.shadow or {}
     d.consumers = d.consumers or {}

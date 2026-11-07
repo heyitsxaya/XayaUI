@@ -17,15 +17,15 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
+local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local issecret = _G.issecretvalue or function() return false end
 local function Ok(v) return v ~= nil and not issecret(v) end
 
 local function DB()
-    if type(CueRulesDB) ~= "table" then return { on = true } end
-    CueRulesDB.ui = CueRulesDB.ui or {}
-    local t = CueRulesDB.ui.friendColors
-    if type(t) ~= "table" then t = {}; CueRulesDB.ui.friendColors = t end
+    if not ns.SettingsReady() then return { on = true } end
+    local t = ReskinS.friendColors   -- (kept in CueRulesDB.ui.friendColors, as before: Modules.lua section 0b)
+    if type(t) ~= "table" then t = {}; ReskinS.friendColors = t end
     return t
 end
 -- on unless switched off (nothing is saved until the tick box is used), and the Blizzard UI Reskin tab on

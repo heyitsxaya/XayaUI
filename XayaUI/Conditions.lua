@@ -6,6 +6,7 @@
 -- rule that depends on an unknown input does NOT fire (silent, never wrong).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
+local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 
 local issecret = issecretvalue or function() return false end
 ns.IsSecret = issecret
@@ -627,10 +628,16 @@ end
 --         extended while up (no appear event happens), so it is never on by default.
 -------------------------------------------------------------------------------
 local presentSince, seenAbsent = {}, {}
+local learnedT, learnedEp   -- (P2) kept in an upvalue; looked up again only when the settings epoch moves (Modules.lua section 0b)
 local function LearnedTable()
-    if type(CueRulesDB) ~= "table" then return nil end
-    if type(CueRulesDB.learnedAuraDur) ~= "table" then CueRulesDB.learnedAuraDur = {} end
-    return CueRulesDB.learnedAuraDur
+    local t = learnedT
+    if learnedEp ~= ns.settingsEpoch or type(t) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        t = CoreS.learnedAuraDur
+        if type(t) ~= "table" then t = {}; CoreS.learnedAuraDur = t end
+        learnedT, learnedEp = t, ns.settingsEpoch
+    end
+    return t
 end
 
 -- returns expiration, totalDuration (either may be nil), note
@@ -805,14 +812,19 @@ local function GlowButtons()
     end
     return glowButtons
 end
+local glowT, glowEp   -- (P2) kept in an upvalue; looked up again only when the settings epoch moves (Modules.lua section 0b)
 local function GlowSeenDB()
-    if type(CueRulesDB) ~= "table" then return nil end
-    local g = CueRulesDB.procGlowSeen
+    local g = glowT
+    if glowEp ~= ns.settingsEpoch or type(g) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        g = CoreS.procGlowSeen
+    end
     -- a new table build can pair buttons differently: start counting again
     if type(g) ~= "table" or g.build ~= ns.PROC_GLOW_BUILD or type(g.auras) ~= "table" then
         g = { build = ns.PROC_GLOW_BUILD, auras = {} }
-        CueRulesDB.procGlowSeen = g
+        CoreS.procGlowSeen = g
     end
+    glowT, glowEp = g, ns.settingsEpoch
     return g.auras
 end
 -- The aura's state from a source that does not depend on the glow: the aura API, or a live Cooldown Manager icon. nil = unknown.
@@ -2102,10 +2114,16 @@ end
 -------------------------------------------------------------------------------
 do
 local MIN_SEEN = 2
+local stacksT, stacksEp   -- (P2) kept in an upvalue; looked up again only when the settings epoch moves (Modules.lua section 0b)
 local function Store()
-    if type(CueRulesDB) ~= "table" then return nil end
-    if type(CueRulesDB.learnedAuraStacks) ~= "table" then CueRulesDB.learnedAuraStacks = {} end
-    return CueRulesDB.learnedAuraStacks
+    local t = stacksT
+    if stacksEp ~= ns.settingsEpoch or type(t) ~= "table" then
+        if not ns.SettingsReady() then return nil end
+        t = CoreS.learnedAuraStacks
+        if type(t) ~= "table" then t = {}; CoreS.learnedAuraStacks = t end
+        stacksT, stacksEp = t, ns.settingsEpoch
+    end
+    return t
 end
 local lastIid = {}   -- spellID -> auraInstanceID last counted (session only)
 -- Called by the aura reader with the spell ID it asked for and the aura table it got back (readable numbers only).

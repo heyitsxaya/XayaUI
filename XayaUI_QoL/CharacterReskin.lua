@@ -37,6 +37,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local CM = ns.CharModel
 
 -- booleans are switches; numbers are the wider window's extra width (px) and the background's opacity (0.5 - 1)
@@ -56,9 +57,9 @@ local LIST_TABLES = { "statHide", "statOrder", "statMode", "statName", "statColo
 local GOOD, WARN = { 0.5, 1, 0.5, 1 }, { 1, 0.56, 0.25, 1 }   -- the Character Toolkit's good / warn tones
 ns.CHARRESKIN_DEFAULTS = DEFAULTS
 local function Cfg()
-    if not CueRulesDB then return nil end
-    local c = CueRulesDB.characterReskin
-    if type(c) ~= "table" then c = {}; CueRulesDB.characterReskin = c end
+    if not ns.SettingsReady() then return nil end
+    local c = QolS.characterReskin
+    if type(c) ~= "table" then c = {}; QolS.characterReskin = c end
     -- (QoL 0.7.27) once per install: QoL 0.7.21-0.7.23 saved their default extra width, 240, into the settings, so the 0.7.24 default
     -- (42: 380 / 582) never reached an install that had run them (Xaya 2026-11-06: "surely this isn't 380px?", REQUEST-LOG #58-#59;
     -- her answer: a saved 240, the old default, becomes 42 once; any other saved number stays; a 240 picked after this stays too)

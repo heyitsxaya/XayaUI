@@ -6,12 +6,13 @@
 -- Not counted as changes (they follow what you do in the sidebar, not what the rule does): on / off, name, group, collapse state, sidebar icon, edit lock.
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local baseline = {}      -- [rootUid] = { sig = string, rules = { deep copies }, isNew = true when the rule was made in this window and never saved }
 local windowOpen = false
 local MAX_DRAFTS = 30   -- default; Settings > UI Options > Rule Creation > "Keep up to" (ui.draftsMax, 5 to 100)
 -- Draft settings (0.6.4, Settings > UI Options > Rule Creation). All default to the behavior before they existed.
-local function DUi() return (CueRulesDB and CueRulesDB.ui) or {} end
+local function DUi() return (PlatS.ui) or {} end
 function ns.DraftsMax() local n = tonumber(DUi().draftsMax) or MAX_DRAFTS; return math.max(5, math.min(100, math.floor(n))) end
 function ns.DraftsConfirmDiscard() return DUi().draftsConfirmDiscard ~= false end
 function ns.DraftsConfirmDelete() return DUi().draftsConfirmDelete ~= false end
@@ -108,9 +109,9 @@ local function RemoveGroup(uid)
 end
 
 local function Drafts()
-    if not CueRulesDB then return {} end
-    CueRulesDB.drafts = CueRulesDB.drafts or {}
-    return CueRulesDB.drafts
+    if not ns.SettingsReady() then return {} end
+    CoreS.drafts = CoreS.drafts or {}
+    return CoreS.drafts
 end
 
 -------------------------------------------------------------------------------
@@ -120,7 +121,7 @@ local cache = { t = -1 }
 -- "Prompt for saving and enable drafts" (Settings > UI Options). Off by default: edits are kept as you make them, there is no save bar,
 -- and closing the window never moves anything to Drafts. On: the behaviour described in the guide (section 12.2).
 function ns.DraftsEnabled()
-    local ui = CueRulesDB and CueRulesDB.ui
+    local ui = PlatS.ui
     return ui ~= nil and ui.promptSave == true
 end
 function ns.DraftDirty(rule)
@@ -637,7 +638,7 @@ function ns.BuildDraftsPage()
             name = function() return ns.DraftsEnabled() and "Turn drafts off" or "Turn drafts on" end,
             desc = "Turning drafts on counts the rules as they are now as saved. Turning them off keeps every edit and every draft.",
             func = function()
-                local ui = CueRulesDB and CueRulesDB.ui
+                local ui = PlatS.ui
                 if not ui then return end
                 ui.promptSave = not ns.DraftsEnabled()
                 if ns.DraftsApplySetting then ns.DraftsApplySetting() end

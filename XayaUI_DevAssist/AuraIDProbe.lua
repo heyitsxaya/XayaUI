@@ -11,6 +11,7 @@
 -- (Dev Assist 0.7.5: moved here from core's Combat/AuraIDProbe.lua; REQUEST-LOG #81. /xui debug probe ids: CoreDebug.lua.)
 local ns = rawget(_G, "XayaUI_NS")   -- shares XayaUI core's namespace; without XayaUI it has nothing to report on
 if type(ns) ~= "table" then return end
+local DevS = ns.Settings("devassist")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
 -- XayaUI_CombatEngine folder (installed before 0.6.0) finds this and steps aside (no double load).
@@ -37,14 +38,14 @@ local function Log(line)
     -- identical consecutive lines (e.g. a refused call repeating every cast) are counted, not stored 300 times
     if line == lastLine then repeats = repeats + 1; return end
     if repeats > 0 then
-        local db0 = _G.CueRulesDB
-        if type(db0) == "table" and db0.idProbe then db0.idProbe[#db0.idProbe + 1] = "   (previous line repeated " .. repeats .. " more times)" end
+        local db0 = ns.SettingsReady() and DevS
+        if db0 and db0.idProbe then db0.idProbe[#db0.idProbe + 1] = "   (previous line repeated " .. repeats .. " more times)" end
         repeats = 0
     end
     lastLine = line
     ns.Print("[idprobe] " .. line)
-    local db = _G.CueRulesDB
-    if type(db) == "table" then
+    local db = ns.SettingsReady() and DevS
+    if db then
         db.idProbe = db.idProbe or {}
         db.idProbe[#db.idProbe + 1] = (date and date("%H:%M:%S ") or "") .. line
         while #db.idProbe > 300 do table.remove(db.idProbe, 1) end
@@ -202,8 +203,8 @@ end
 -- Offline we can then ask: does a removal event line up with the expected end of a buff cast earlier?
 local flagTotals = { A = 0, U = 0, R = 0, n = 0 }
 local function Stream(line)
-    local db = _G.CueRulesDB
-    if type(db) ~= "table" then return end
+    if not ns.SettingsReady() then return end
+    local db = DevS
     local s = db.idProbeStream
     if not s then s = {}; db.idProbeStream = s end
     s[#s + 1] = line
@@ -382,7 +383,7 @@ local function Arm(on)
         f:RegisterUnitEvent("UNIT_AURA", "player")
         uaLogged, uaCount = { ooc = 0, combat = 0 }, { ooc = 0, combat = 0 }
         flagTotals = { A = 0, U = 0, R = 0, n = 0 }
-        if _G.CueRulesDB then _G.CueRulesDB.idProbeStream = {} end
+        if ns.SettingsReady() then DevS.idProbeStream = {} end
         local have = {}
         for _, n in ipairs(CANDIDATES) do
             have[#have + 1] = n .. "=" .. ((C_UnitAuras and C_UnitAuras[n]) and "yes" or "no")
@@ -408,7 +409,7 @@ end
 function ns.IDProbe(arg)
     arg = (arg or ""):lower()
     if arg == "log" then
-        local db = _G.CueRulesDB
+        local db = ns.SettingsReady() and DevS
         local n = db and db.idProbe and #db.idProbe or 0
         ns.Print("[idprobe] " .. n .. " saved lines")
         for i = math.max(1, n - 25), n do ns.Print(db.idProbe[i]) end

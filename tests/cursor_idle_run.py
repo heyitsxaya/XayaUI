@@ -37,6 +37,7 @@ XayaUI_NS = { RegisterSettingsPage = function() end, WhenReady = function(fn) fn
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI_QoL', ns) end")
 ns = L.eval("XayaUI_NS")
+load(open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read(), "XayaUI/Modules.lua", ns)   # (core 0.6.75) the settings seam
 load(open(os.path.join(ROOT, "XayaUI", "Theme.lua"), encoding="utf-8").read(), "XayaUI/Theme.lua", ns)
 load(open(os.path.join(ROOT, "XayaUI_QoL", "CursorHighlight.lua"), encoding="utf-8").read(), "XayaUI_QoL/CursorHighlight.lua", ns)
 load(open(os.path.join(ROOT, "XayaUI_QoL", "CursorTrail.lua"), encoding="utf-8").read(), "XayaUI_QoL/CursorTrail.lua", ns)

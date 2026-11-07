@@ -115,7 +115,7 @@ end
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Conditions.lua", "XayaUI/Outcomes.lua", "XayaUI/Cues.lua", "XayaUI/Visual.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Conditions.lua", "XayaUI/Outcomes.lua", "XayaUI/Cues.lua", "XayaUI/Visual.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS

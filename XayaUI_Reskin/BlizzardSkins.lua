@@ -35,6 +35,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
+local QolS, ReskinS = ns.Settings("qol"), ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local BS = { diag = { painted = 0, restored = 0, deferred = 0, lastError = nil } }
 ns.BlizzardSkins = BS
@@ -113,11 +114,10 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
-local function Saved() local ui = rawget(_G, "CueRulesDB") and CueRulesDB.ui; local r = ui and ui.rsk; return type(r) == "table" and r or nil end
+local function Saved() local r = ReskinS.rsk; return type(r) == "table" and r or nil end
 local function Cfg()
-    CueRulesDB = CueRulesDB or {}; CueRulesDB.ui = CueRulesDB.ui or {}
-    local r = CueRulesDB.ui.rsk
-    if type(r) ~= "table" then r = {}; CueRulesDB.ui.rsk = r end
+    local r = ReskinS.rsk   -- (kept in CueRulesDB.ui.rsk, as before: Modules.lua section 0b)
+    if type(r) ~= "table" then r = {}; ReskinS.rsk = r end
     if type(r.winOff) ~= "table" then r.winOff = {} end
     if type(r.otOff) ~= "table" then r.otOff = {} end
     if type(r.toastOff) ~= "table" then r.toastOff = {} end
@@ -132,7 +132,7 @@ local function SecOn(s)
     local r = Saved()
     if not PageOn("tracker") or (r.otOff and r.otOff[s.key]) then return false end
     if s.key == "professions" then   -- the Shopping List restyles this section while its tracker part is on: it keeps it
-        local sl = rawget(_G, "CueRulesDB") and CueRulesDB.shoppingList
+        local sl = QolS.shoppingList
         if type(sl) == "table" and sl.enabled == true and sl.tracker == true then return false end
     end
     return true

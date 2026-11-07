@@ -114,12 +114,12 @@ check("stacks NOT offered for an aura that cannot stack (game says 1); seconds l
 cond.when.list[2].ref = "n:x2s"
 v1 = ns.RefChoicesFor(B)
 check("a stacks check already in use stays listed", v1["n:x2s"] ~= nil)
-CueRulesDB.learnedAuraStacks = { [3002] = { max = 3, seen = 4 } }
+ns.Settings("core").learnedAuraStacks = { [3002] = { max = 3, seen = 4 } }
 check("an aura seen above 1 stack counts as stacking even if the game says 1", ns.AuraMayStack(3002) == true)
-CueRulesDB.learnedAuraStacks = {}
+ns.Settings("core").learnedAuraStacks = {}
 C_Spell.GetSpellMaxCumulativeAuraApplications = nil
 check("no answer from the game and never seen: may stack (not hidden on a guess)", ns.AuraMayStack(4242) == true)
-CueRulesDB.learnedAuraStacks = { [4243] = { max = 1, seen = 3 } }
+ns.Settings("core").learnedAuraStacks = { [4243] = { max = 1, seen = 3 } }
 check("no answer from the game, seen 3 times never above 1: does not stack", ns.AuraMayStack(4243) == false)
 C_Spell.GetSpellMaxCumulativeAuraApplications = function(id) return maxStacks[id] or 0 end
 local C2 = ns.NewRule(); C2.useBuff = true; C2.buffID = 3002; C2.buffState = "present"

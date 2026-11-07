@@ -9,6 +9,9 @@
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local ns = rawget(_G, "XayaUI_NS")
+-- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
+local function Settings(m) local cns = rawget(_G, "XayaUI_NS"); return cns and cns.Settings and cns.Settings(m) or {} end
+local PlatS = Settings("platform")
 if type(ns) ~= "table" then return end
 
 local function debugNames()
@@ -77,7 +80,7 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
     -- audit D36 (Dev Assist 0.7.19): the test error does not stay in your saved errors or later reports
     { done = true, text = "Last step: press |cffffd100Do it for me|r to remove this walkthrough's test error from your saved errors (your real errors stay). Then press |cffffd100Done|r.",
       setup = function()
-          local l = type(CueRulesDB) == "table" and CueRulesDB.errorLog
+          local l = PlatS.errorLog
           if type(l) == "table" then
               for i = #l, 1, -1 do local e = l[i]; if type(e) == "table" and tostring(e.msg):find("QA walkthrough test error", 1, true) then table.remove(l, i) end end
           end
