@@ -305,7 +305,7 @@ end
 local function AskDlg() return rawget(_G, "XayaUIThemeAsk") end
 local function Btn(i) local d = AskDlg(); return d and d.btns and d.btns[i] end
 local function Press(i) local b = Btn(i); if b and b:IsShown() then b:GetScript("OnClick")(b) end end
-QA.Register("audit-theme", { title = "Theme: asks before throwing your colors away; Replace / Save As Copy (FA-4, FA-8, FA-13)", qa = "B251, B252", order = 308, prefill = true, steps = {
+QA.Register("audit-theme", { title = "Theme: asks before throwing your colors away; Replace / Save As Copy (FA-4, FA-8, FA-13)", qa = "B260, B261", order = 308, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your current theme (the last step puts it back), changes one color (the accent: you are now on Custom) and then picks Light mode the way the Theme list does.\n\n|cffffd100Expect:|r a small window asks \"Discard your custom colors? ...\" with |cffffd100Discard|r and |cffffd100Cancel|r, and the theme has NOT changed yet. Then click |cffffd100Cancel|r in that window and press Check again: your colors are still there.",
         setup = function()
             local T = TH(); local args = Page(); if not args then error("the settings window (XayaUI Options) is not loaded") end
@@ -362,7 +362,7 @@ QA.Register("audit-theme", { title = "Theme: asks before throwing your colors aw
 -------------------------------------------------------------------------------
 -- Recycle Bin keep time asks first (FA-14); /xui words of a switched-off addon (D8)
 -------------------------------------------------------------------------------
-QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui words name their addon (FA-14, D8)", qa = "B253", order = 309, prefill = true, steps = {
+QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui words name their addon (FA-14, D8)", qa = "B262", order = 309, prefill = true, steps = {
     { text = "Rules > Recycle Bin. If something is in it that is older than 36 hours (delete a test rule a day early, or Skip), pick |cffffd100Keep deleted items for: 36 hours|r.\n\n|cffffd100Expect:|r a question says how many items are older than that and will be removed for good, with Yes / No; No keeps them. With nothing older, it changes at once with no question. The check shows how many items 36 hours would remove now.",
         noVerdict = true,
         check = function() local ns = NS(); if not (ns and ns.RecycleWouldPurge) then return false, "XayaUI is not loaded" end
@@ -378,7 +378,7 @@ QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui
 -------------------------------------------------------------------------------
 -- Engine: estimate setting off means unknown (D28); a deleted active rule's glow stops (D56); errors recorded (D57)
 -------------------------------------------------------------------------------
-QA.Register("audit-engine", { title = "Engine: estimate off, glow stops on delete, errors in /xui report (D28, D56, D57)", qa = "B254, B255", order = 312, prefill = true, steps = {
+QA.Register("audit-engine", { title = "Engine: estimate off, glow stops on delete, errors in /xui report (D28, D56, D57)", qa = "B263, B264", order = 312, prefill = true, steps = {
     { text = "Press |cffffd100Check again|r: with Settings > UI Options > Rule Creation > Combat Tracking Setup > |cffffd100Estimate buffs the game hides in combat|r unticked, the tracker must leave a hidden buff unknown. The addon reads its setting and asks the tracker about a test aura it was told is up.\n\n|cffffd100Expect:|r with the box unticked: unknown. (Ticked: the check only reports.)",
         check = function()
             local ns = NS(); local T, M = ns and ns.AuraTracker, ns and ns.AuraModel
