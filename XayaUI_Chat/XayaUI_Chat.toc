@@ -20,6 +20,7 @@ Locate.lua
 Messages.lua
 History.lua
 Sounds.lua
+Whispers.lua
 Options.lua
 Privacy.lua
 Sidebar.lua

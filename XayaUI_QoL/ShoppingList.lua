@@ -1010,7 +1010,7 @@ function ns.BuildShoppingListPage(Notify)
         fontSize = { type = "range", order = 4, name = "Text size", min = 8, max = 16, step = 1, disabled = off,
             get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
         defHdr = { type = "header", order = 10, name = "Your defaults",
-            desc = "Sets the suggested enchant or gem here: type a name or shift-click an item. Empty uses the one seen most." },
+            desc = "Sets this slot's suggested enchant or gem, kept for this character only; empty uses the one XayaUI has seen most. Type a name, or shift-click an item into the box." },
         histHdr = { type = "header", order = 30, name = "History" },
         forget = { type = "execute", order = 31, name = "Forget what this character used", disabled = off,
             desc = "Clears the counts of enchants and gems XayaUI has seen on this character's gear (your defaults stay). What you wear now is not counted again until you change it.",

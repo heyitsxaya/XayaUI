@@ -157,7 +157,7 @@ ec96bc59c4743c9b10cc4a05b1901e5b  XayaUI_Chat/Scroll.lua
 89310d84a4fdb3b158d8c79a97abca2f  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 0b25e4d4acccd35a4855b2c7fe691f0d  XayaUI_Chat/Whispers.lua
-76748f015a66f841279d1f0cd8233b11  XayaUI_Chat/XayaUI_Chat.toc
+3b405feb8bf9d0471977cb688b0f538f  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 712b6c841be26382331cc3a76959f06f  XayaUI_DevAssist/AuraCatalogue.lua
 d580499354412d7ae85a86c9eed84350  XayaUI_DevAssist/AuraIDProbe.lua
@@ -189,7 +189,7 @@ f0c1a05a9936801bfeea8a60c919137d  XayaUI_DevAssist/QAWalks-profiles.lua
 88653725abec812e843d4b38d078d387  XayaUI_DevAssist/QAWalks-review.lua
 c9228f262fe161232dd355ea92e02a2e  XayaUI_DevAssist/QAWalks-statcalc.lua
 f5668874e611a3bc713bc0494f323ec7  XayaUI_DevAssist/QAWalks.lua
-d94707a8a8c07be47376f9b2f7d0a73b  XayaUI_DevAssist/XayaUI_DevAssist.toc
+d1203c7297a9ba90c6b3587eb3c42129  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -292,7 +292,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 4c109ffc49c66eef2a841942449e53a4  XayaUI_QoL/ReleaseGuard.lua
-f5ebf7d853c106dd235f95b47fb8fe18  XayaUI_QoL/ShoppingList.lua
+4fbc19f7b4bd634b1574046a5ffae16f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 ce610e887b813d84d6c7a5703f79a05c  XayaUI_QoL/XayaUI_QoL.toc
 1fd066592dde2614a193f6cf3d2c13f9  XayaUI_Reskin/FriendColors.lua
@@ -928,7 +928,7 @@ ebe540c653fb3ed1e9116081f1e852d9  tests/qa_walk_run.py
 3f0fbb8de92404446cfdbc8e785d0324  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 eee388d9920cc739b2bf83ba328234c8  tests/settings_restructure_run.py
-d180fb110e7258206e99c4416de5ad4f  tests/shopping_list_run.py
+ed225905cbcb0aefd20f3d7b75839dc6  tests/shopping_list_run.py
 74013242fe542c50dac6a6d9be9f79e9  tests/sidebar_icon_columns_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py

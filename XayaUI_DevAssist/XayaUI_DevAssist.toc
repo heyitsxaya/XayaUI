@@ -24,13 +24,16 @@ QAWalks-chat.lua
 QAWalks-friends.lua
 QAWalks-display.lua
 QAWalks-profiles.lua
-QAWalks-perf.lua
 QAWalks-generate.lua
+QAWalks-perf.lua
 QAWalks-bars.lua
 QAWalks-externals.lua
 QAWalks-nameplates.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
+QAWalks-audit.lua
+QAWalks-audit-qol-bonus.lua
+QAWalks-audit-options.lua
 QAWalks-statcalc.lua
 QAReview.lua
 QAQuestions.lua
