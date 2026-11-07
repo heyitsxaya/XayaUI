@@ -10,8 +10,8 @@ measurements of the same code before and after; real in-game numbers have to com
 
 | Branch | Head | Contains | Suite |
 |---|---|---|---|
-| claude/perf-landing-2 | 2fa2c8a (+ boundary fix, see below) | main 7b830cf + RunRecord removed + log gate (core 0.6.63) + no closures (0.6.64) + error handler (0.6.65) + load-first (0.6.66) + J19-J23 | Full suite on 2fa2c8a: one FAIL, static boundary: "XayaUI/Core.lua:127 (XayaUI) uses ns.LogTrayOn, which belongs to XayaUI_Options". Everything else passed |
-| claude/perf-options | 11ad2da | everything in perf-landing-2 + qol-idle (QoL 0.7.41, J24) + tooltip (XayaDataBlocks MINOR 2, Chat 0.6.32, Bonus 0.6.26, J25) + settings window (Options 0.6.68, J27) + the boundary fix (core default `ns.LogTrayOn` returning false) | Full suite running at handoff; see the status message to the lander / hub for the result |
+| claude/perf-landing-2 | 54ba7c1 (2fa2c8a + boundary fix) | main 7b830cf + RunRecord removed + log gate (core 0.6.63) + no closures (0.6.64) + error handler (0.6.65) + load-first (0.6.66) + J19-J23 | Full suite on 2fa2c8a: one FAIL, static boundary: "XayaUI/Core.lua:127 (XayaUI) uses ns.LogTrayOn, which belongs to XayaUI_Options". Everything else passed. 54ba7c1: harness static + full combination RESULT PASS |
+| claude/perf-options | 11ad2da | everything in perf-landing-2 + qol-idle (QoL 0.7.41, J24) + tooltip (XayaDataBlocks MINOR 2, Chat 0.6.32, Bonus 0.6.26, J25) + settings window (Options 0.6.68, J27) + the boundary fix (core default `ns.LogTrayOn` returning false) | Full suite: ALL CHECKS PASS (181 ok; harness RESULT PASS, 33 combinations; 1 warn: CueRulesDB.debugRecord.lines 301 -> 307 on reload, the recorder appending; INFERENCE) |
 | claude/perf-handoff | (this commit) | 11ad2da + two docs-only PERF-CODE-NOTES commits from perf-qol-idle + this file | docs only |
 
 Agreed order (hubs): perf-landing-2 alone first, then perf-qol-idle + perf-options stacked. perf-landing-2 needs the boundary
@@ -105,7 +105,12 @@ settings-restructure 8558687; generate-buttons 90c7c043.
 Received at handoff (09:05-09:19 UTC): function audit claude/function-audit-land 44ad9a67 (QoL CharacterToolkit events only
 while "Show the panel" is on; Bonus Tooltips aura lookup only while "Aura IDs" is on; ShoppingList reads AH results only for its
 own query; *Debug service tables at load); lander: main = bfc79ef (QoL 0.7.40 Stat Calculator rows, Options 0.6.64 credits page,
-Dev Assist 0.7.13 QAWalks-statcalc.lua). The lander will merge 11ad2da onto bfc79ef and relabel versions. The successor reads each commit and adds a row with its test impact.
+Dev Assist 0.7.13 QAWalks-statcalc.lua). The lander will merge 11ad2da onto bfc79ef and relabel versions.
+Also: rule generation 12745b10 (Options sets ns.OptionsApi.AutoPicker once at load; no runtime cost); UI bugs a06a418 (QoL 0.7.42
+ShoppingList: AUCTION_HOUSE_SHOW shows the panel; Shop.Missing once on PLAYER_EQUIPMENT_CHANGED / PLAYER_ENTERING_WORLD while hidden)
+and ee5362c (desc strings only); function audit claude/function-audit-land-2 (Options.lua, Drafts.lua, OutcomesEditor.lua,
+TriggersEditor.lua, DisplayTab.lua, Skin.lua, RecycleBin.lua: click / setter paths only; may conflict with dcd1dc8 in Options.lua /
+Skin.lua when merged). Version clashes told to the lander: Bonus 0.6.26 (UI bugs + this tooltip change), Options 0.6.68 (UI bugs range). The successor reads each commit and adds a row with its test impact.
 
 ## 8. Commands
 
@@ -122,4 +127,6 @@ Dev Assist 0.7.13 QAWalks-statcalc.lua). The lander will merge 11ad2da onto bfc7
 1. Confirm the lander has landed perf-landing-2 (+ boundary fix) and 11ad2da, or re-send.
 2. Write the section 7 notes into PERF-CODE-NOTES.md.
 3. If Xaya answers Q-PERF-5 yes: the editor-only build (section 5).
-4. When her M+ recording arrives (DevRecord file), run tools/perf_report.py on it and compare with section 4.
+4. Options memory items handed over by the UI bugs session (09:39 UTC): T.Col builds a table per call; GreyWhileOff makes
+   closures. Measure with tests/options_open_cost_run.py before / after.
+5. When her M+ recording arrives (DevRecord file), run tools/perf_report.py on it and compare with section 4.
