@@ -1,4 +1,4 @@
-# 2026-11-06 23:50 UTC: QA walkthroughs for the old chat issues, with a pre-filled answer (XayaUI_DevAssist 0.7.7)
+# 2026-11-06 23:50 UTC: QA walkthroughs for the old chat issues, with a pre-filled answer (XayaUI_DevAssist 0.7.9)
 
 Session 014bN6tSjceDcH6FdJCeukZG (chat-issue review, sub-session of "Outstanding items 11-06"). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 
@@ -18,7 +18,7 @@ Session 014bN6tSjceDcH6FdJCeukZG (chat-issue review, sub-session of "Outstanding
   "Accept: Fail" button; clicking records it with the addon's reading as the note (a typed note is kept). Nothing is recorded without
   the click. No Accept when the check errors or on a step with `noVerdict = true` (#296's last step is her decision). Walkthroughs
   without `prefill` are unchanged ("you still decide").
-- `XayaUI_DevAssist.toc`: 0.7.7 (0.7.6 is taken by bundle-2300); QAWalks-chat.lua listed after QAWalks.lua.
+- `XayaUI_DevAssist.toc`: 0.7.9 (0.7.6 is on main; 0.7.7 and 0.7.8 are taken on other branches); QAWalks-chat.lua listed after QAWalks.lua.
 - QA-CHECKLIST D21 (D20 is in use on another branch); QAWalks-Checklist.lua regenerated.
 
 ## Scope (V4)

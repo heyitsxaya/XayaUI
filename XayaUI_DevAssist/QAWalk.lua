@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalk.lua (XayaUI_DevAssist 0.7.7): in-game QA walkthroughs, /xui dev qa (also /xuidev qa)
+-- QAWalk.lua (XayaUI_DevAssist 0.7.9): in-game QA walkthroughs, /xui dev qa (also /xuidev qa)
 -- Xaya 2026-11-06 (standing rule): "For all things you need me to debug or QA in game — wherever possible, design and implement a test
 -- script or walkthrough that fires in the game side so it removes all friction for a less technical friend. All they should have to do
 -- is open up /xui dev qa and pick an item and have the addon walk them through steps with as limited console interaction as possible".
@@ -13,7 +13,7 @@
 -- Back. The end screen: a summary, Screenshot (the game's own screenshot key action), Export code (a text code to paste into chat),
 -- Import code (paste a code someone sent: their results show here), Run again. Every result is kept in XayaUIDevAssistDB.qa.
 -- No names or realms are stored or exported. V14: nothing is built until the window opens. UNTESTED IN GAME.
--- Pre-fill (Dev Assist 0.7.7; Xaya 2026-11-06, REQUEST-LOG A14 CHATREV-6: "ensure qa has a handler that can automatically generate an
+-- Pre-fill (Dev Assist 0.7.9; Xaya 2026-11-06, REQUEST-LOG A14 CHATREV-6: "ensure qa has a handler that can automatically generate an
 -- answer", and her answer on how: "Pre-fill, I confirm"): a walkthrough registered with prefill = true offers the addon's own verdict on
 -- one button, "Accept: Pass" / "Accept: Fail", which records it with the check's note. Nothing is recorded without that click; Pass /
 -- Fail / Skip still work. No Accept when the check could not run, or on a step marked noVerdict = true (a question for the person).

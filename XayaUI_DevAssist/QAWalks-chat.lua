@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.7): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.9): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is

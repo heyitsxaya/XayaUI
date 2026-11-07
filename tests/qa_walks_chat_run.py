@@ -1,4 +1,4 @@
-# In-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250, #296 (XayaUI_DevAssist 0.7.7; REQUEST-LOG A14,
+# In-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250, #296 (XayaUI_DevAssist 0.7.9; REQUEST-LOG A14,
 # CHATREV-6). Xaya 2026-11-06: "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 # how: "Pre-fill, I confirm".
 # Runs every step of the four walkthroughs on the real XayaUI_Chat code in the stand-in world (tests/chat_world.lua, real anchor
