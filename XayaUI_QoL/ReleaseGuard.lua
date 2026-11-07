@@ -74,7 +74,8 @@ local function ModDown(c)
 end
 
 local box, ev, hooked
-local state = { dialog = nil, death = 0 }
+local STRATA = "FULLSCREEN_DIALOG"
+local state = { dialog = nil, death = 0, why = "no death seen yet" }
 ns.ReleaseGuardState = state   -- (tests)
 
 local function Hide()
@@ -90,7 +91,11 @@ end
 local function Build()
     if box then return box end
     box = CreateFrame("Button", "XayaUIReleaseGuard", UIParent)
-    box:SetFrameStrata("DIALOG")
+    -- (QoL 0.7.37; REQUEST-LOG UI-57, Insivius: "Release guard doesn't seem to work outside of instances") one strata above the game's
+    -- dialogs: StaticPopup_OnShow raises the death window to the top of the DIALOG strata (Blizzard_StaticPopup/StaticPopup.lua:582,
+    -- dialog:Raise()), and a frame level set beside it does not survive every raise, so in DIALOG the box could sit behind the window.
+    -- INFERENCE (not seen in the game): the cause is that layering; `/xui releaseguard` reports it after a death.
+    box:SetFrameStrata(STRATA)
     box:EnableMouse(true)
     if box.RegisterForClicks then box:RegisterForClicks("AnyUp", "AnyDown") end
     box:SetScript("OnClick", function() end)   -- the click lands here, not on Release
@@ -105,10 +110,13 @@ end
 -- the box over the shown DEATH dialog's Release button (the text: hers, and this death's flavour under it)
 local function Cover(dialog)
     local c = Cfg()
-    if not (c and c.enabled) or Ghost() or not LoadsHere(c) then Hide(); return end
+    if not (c and c.enabled) then Hide(); state.why = "off"; return end
+    if Ghost() then Hide(); state.why = "a ghost"; return end
+    if not LoadsHere(c) then Hide(); state.why = "not loaded here (Where: " .. tostring(LOADS[c.load]) .. ")"; return end
     local b1 = dialog and dialog.GetButton1 and dialog:GetButton1()
-    if type(b1) ~= "table" then Hide(); return end
+    if type(b1) ~= "table" then Hide(); state.why = "the death window has no Release button"; return end
     local f = Build()
+    f:SetFrameStrata(STRATA)
     f:ClearAllPoints()
     f:SetAllPoints(b1)
     if f.SetFrameLevel and dialog.GetFrameLevel then f:SetFrameLevel((dialog:GetFrameLevel() or 1) + 20) end
@@ -119,6 +127,7 @@ local function Cover(dialog)
     f.text:SetTextColor(col[1], col[2], col[3], 1)
     f.flavor = flav
     state.dialog = dialog
+    state.why = "covered"
     if ModDown(c) then f:Hide() else f:Show() end
     ev:RegisterEvent("MODIFIER_STATE_CHANGED")
     if dialog.HookScript and not dialog.xuiReleaseHooked then
@@ -202,3 +211,17 @@ function ns.BuildReleaseGuardPage(Notify)
     }
 end
 ns.RegisterSettingsPage("qol", "releaseguard", ns.BuildReleaseGuardPage)
+
+-- /xui releaseguard: what it did at the last death and what the game shows now (UI-57: to settle the inference above in the game)
+ns.RegisterCommand({ "releaseguard", "rg" }, function()
+    local c = Cfg()
+    if not c then return end
+    local inInst, kind = R(IsInInstance)
+    local d = FindDeath()
+    local function lv(fr) if not fr then return "-" end; local ok, st = pcall(fr.GetFrameStrata, fr); local ok2, l = pcall(fr.GetFrameLevel, fr)
+        return ("%s %s"):format(ok and tostring(st) or "?", ok2 and tostring(l) or "?") end
+    ns.Print(("Release Guard: %s; where %s; here: %s; ghost %s; key %s held %s."):format(c.enabled and "on" or "off", tostring(LOADS[c.load]),
+        IsSecret(inInst) and "unknown" or (inInst and tostring(kind) or "not in an instance"), tostring(Ghost()), tostring(MODS[c.modifier]), tostring(ModDown(c))))
+    ns.Print(("  last death: %s; deaths seen %d; death window %s (%s); box %s (%s)."):format(tostring(state.why), state.death,
+        d and (d:IsShown() and "shown" or "hidden") or "not shown", lv(d), box and (box:IsVisible() and "visible" or "hidden") or "never made", lv(box)))
+end, "releaseguard: Release Guard status (what it did at the last death)")

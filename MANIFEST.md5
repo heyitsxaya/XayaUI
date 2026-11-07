@@ -266,7 +266,7 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-a1cbdd95f7897091bbd93ad28a1fa924  XayaUI_QoL/ReleaseGuard.lua
+4c2fb96b59dd76a1b778017d00a55096  XayaUI_QoL/ReleaseGuard.lua
 a5c40335616f852afab4106afc62955d  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 f8d7af558fe9db9f68486f0439dabb39  XayaUI_QoL/XayaUI_QoL.toc
@@ -544,8 +544,9 @@ f2ab2c6149d77a1489dc842a2fb341fe  debug-log/2026-11-06-2228-chat-whisper-tab-lis
 68099c949ab0866ca4ce86d8f7f950c7  debug-log/2026-11-06-2255-ability-scaling-columns-fold-dividers-qol-0.7.36.md
 064774082fccf68102056cb6ecc1bbd7  debug-log/2026-11-06-2256-panel-command-text-chat-0.6.27.md
 8ad5e5022bfcf78e8946b463f958ce30  debug-log/2026-11-06-2333-display-standard-ns-style-tabs-hover-ui47.md
+ecb2d4b806401c4cdd010e66379115d3  debug-log/2026-11-07-0010-release-guard-strata-qol-0.7.37.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-b9bd0b2cd5437870286bda6f553fca74  docs/QA-CHECKLIST.md
+cbf512ca2fec577493c8e205a5e66057  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
 440dd6e803fde1ca0f467d3a7638e2da  docs/ROADMAP.md
 db8f1a60c45274fe25e884a7a426aa50  docs/SESSION-START-SUMMARY.md
@@ -585,7 +586,7 @@ dfcbabf9d31c1dd77c47bb51963267db  docs/process/QUESTIONS-engine-session.md
 d142966e66f8d7ba8331b3f76f14f5d5  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 464423c7fb4d67b104141acdce9d4ea3  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-5cf94912b34e35cefa00a0df0eb6ab73  docs/process/REQUEST-LOG.md
+d352eea734412537819d954d8f036efa  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
@@ -750,7 +751,7 @@ e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
 13d8e9af25cd13fee68d7ba6c4b165cc  tests/qa_walk_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
-c60fc0af61b41509cb3f736457a4e59e  tests/release_guard_run.py
+3f834d794bf22bfb06e72c761b588d1a  tests/release_guard_run.py
 1d5722f074201f2ab3628d3e1b0d2160  tests/reskin_tab_run.py
 3e61113c4348b185c0dcc3476a2ae58f  tests/reskin_tab_switch_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py

@@ -98,7 +98,11 @@ checkp("the defaults: \"NO RELEASE\", her five flavour texts in order, Shift, ra
 die()
 local b = box() or mk("Button")
 checkp("dead in a raid: a black box over the DEATH window's Release button (its size and place), above the window", function()
-  return b and b.shown and b.allPoints == BUTTON1 and b.strata == "DIALOG" and b.level > DIALOG.level and b.bg.color and b.bg.color[1] == 0 and b.bg.color[4] == 1 end)
+  return b and b.shown and b.allPoints == BUTTON1 and b.bg.color and b.bg.color[1] == 0 and b.bg.color[4] == 1 end)
+-- (QoL 0.7.37, UI-57: "Release guard doesn't seem to work outside of instances") the game raises the death window to the top of the
+-- DIALOG strata when it shows (StaticPopup_OnShow: dialog:Raise()); a box in that strata can end up behind it. The box is one strata up.
+checkp("  ...in the strata above the game's dialogs (FULLSCREEN_DIALOG), so the window raising itself cannot cover it (UI-57)", function()
+  return b.strata == "FULLSCREEN_DIALOG", b.strata end)
 checkp("  ...reading \"NO RELEASE\" with the first flavour text under it (BAD MONKEY)", function() return b.text.text == "NO RELEASE\nBAD MONKEY", b and b.text.text end)
 released = 0
 checkp("  ...a click there lands on the box: she is not released", function() return clickRelease() == "box" and released == 0 end)
@@ -138,6 +142,14 @@ checkp("  ...outside an instance: no box; set to everywhere: the box shows", fun
   local off = not b.shown
   DIALOG:Hide(); c.load = "all"; die()
   return off and b.shown end)
+-- /xui releaseguard (UI-57): what it did at the last death, to settle the layering in the game
+local said = {}
+local oldPrint = ns.Print; ns.Print = function(t) said[#said + 1] = tostring(t) end
+if ns.RunCommand then pcall(ns.RunCommand, "releaseguard", "") end
+ns.Print = oldPrint
+checkp("/xui releaseguard: on, where, here, and the last death's outcome (covered) with the box's state", function()
+  local t = table.concat(said, " / ")
+  return t:find("Release Guard: on", 1, true) ~= nil and t:find("Everywhere", 1, true) ~= nil and t:find("last death: covered", 1, true) ~= nil, t end)
 DIALOG:Hide()
 c.enabled = false; if ns.ReleaseGuard_Apply then ns.ReleaseGuard_Apply() end
 local reg = 0
