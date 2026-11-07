@@ -135,7 +135,7 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 0805ba82ac517f199eb9e04257af40f0  XayaUI_Bonus/Media/UI/Notepad/src/right.svg
 3bf002e271f0dd81925d669349f6fc48  XayaUI_Bonus/Media/UI/Notepad/src/trash.svg
 2a22ac682397b06e682d4cc0a0cd7abc  XayaUI_Bonus/Media/UI/Notepad/trash.png
-8639d74abc474a545c645df40834c2b0  XayaUI_Bonus/Notepad.lua
+0115cdc56fbf8e107a40ee0b860482bf  XayaUI_Bonus/Notepad.lua
 4f459a199b089bb7ee8385c02b7401ed  XayaUI_Bonus/NotepadShare.lua
 4ba5ef764a47d4a1fb7dac4c559bed14  XayaUI_Bonus/Tooltips.lua
 9a827ec8c0651be5fd87594567a7ae86  XayaUI_Bonus/TooltipsUI.lua
@@ -149,7 +149,7 @@ ed794d04c6709f11bc22bddee51ac7f5  XayaUI_Chat/Fade.lua
 2db92a427ac459460d35533c667d4ce5  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f258d41d39bb1bd3a2f2c8cbac1c9a14  XayaUI_Chat/Locate.lua
 44407ac4644e1aef4abef50b9d7bcdf8  XayaUI_Chat/Messages.lua
-1978ca6c32575e41b5ca229daebe66b0  XayaUI_Chat/Options.lua
+4ddf213d31f0654dc376ea241b78f559  XayaUI_Chat/Options.lua
 86dc467d2b90d16b472e543bd8276866  XayaUI_Chat/Privacy.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 2228f8470cda84fbea4268eb62226a05  XayaUI_Chat/Skin.lua
@@ -227,7 +227,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-68fa820088de45d582b894db9804dd8a  XayaUI_Options/Options.lua
+9e842ed910f31e8200641bf99e44c045  XayaUI_Options/Options.lua
 45a3d70826b422ac6be7fcf6221ccd61  XayaUI_Options/OutcomesEditor.lua
 dd139dff4eb8c4ffe6544b00c7195de2  XayaUI_Options/Profiles.lua
 ad6749d26245c811361b35449597e4a1  XayaUI_Options/RuleSearch.lua
@@ -587,7 +587,7 @@ ce817ce955d8250f87ea68ce225ae6e4  debug-log/2026-11-07-0742-usage-tooltip-memory
 bce866f714d1b56ed482dba81584f5cf  debug-log/2026-11-07-0758-rules-subtabs-smaller-narrower-options-0.6.66.md
 5b1b639403f543e092346ae09ddcc2a5  debug-log/2026-11-07-0821-core-flat-buttons-after-reload-core-0.6.68.md
 ad06c27afba094b812a18a7e83365a1c  debug-log/2026-11-07-0832-report-select-string-core-0.6.69.md
-5841864ce8ddb6324eeff32adfdec4fc  debug-log/2026-11-07-0846-settings-toplevel-profiles-options-0.6.72.md
+e6ff97d6ebebbd12f7898fe5fc125c96  debug-log/2026-11-07-0846-settings-toplevel-profiles-options-0.6.72.md
 1b7416c11b53f41dff9e9ea9f76f68da  debug-log/2026-11-07-0846-shopping-list-autoshow-qol-0.7.42.md
 2fe6630ef06b2f2b6364eaa1b09d4ac9  debug-log/2026-11-07-0900-blizzard-reskin-name-options-0.6.72.md
 0eab928fdd0dc3ec40072ff2d5413250  debug-log/2026-11-07-0902-settings-window-one-build-options-0.6.68.md

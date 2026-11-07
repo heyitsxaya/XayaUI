@@ -3909,7 +3909,7 @@ local function BuildProfiles(binTab)
             disabled = function() return importDef and importDef.kind == "profile" and not importInc.rules end,
             get = function() return importRulesMode end, set = function(_, v) importRulesMode = v; Notify() end },
         importGo = { type = "execute", name = "Import", order = 30, width = "half",
-            desc = "Imports the ticked parts. Settings from a profile replace yours one by one (what the profile does not have stays as it is); a reload then puts them to work. During combat it waits until combat ends.",
+            desc = "Imports the ticked parts; settings from a profile replace yours one by one and a reload puts them to work. During combat it waits until combat ends.",
             disabled = function() return not anyTicked() end,
             confirm = function() return importRulesMode == "replace" and held("rules") and (importDef.kind == "rules" or importInc.rules) and true or false end,
             confirmText = "Replace all your rules and groups with the imported ones? Your current ones are removed and do not go to the Recycle Bin: export or back them up first.",

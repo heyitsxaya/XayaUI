@@ -539,7 +539,7 @@ function ns.BuildChatTab(Notify)
         -- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-10, Xaya 2026-11-07: "creating new whisper tabs by sending a new message don't
         -- automatically shift to a new whisper window from general tab"; her setting "Both"; her answer "Yes, as an option") Whispers.lua
         whisperSelect = tog("Switch to a new whisper tab I start", "whisperSelect", 31,
-            "When you whisper someone who has no tab yet and the game opens one, the chat switches to it. With the game's New Whispers set to New Tab the game does this itself; this makes it happen with Both too. (In-line makes no whisper tabs.)"),
+            "When you whisper someone and the game opens a new tab for them, the chat switches to it. Needed only with the game's New Whispers set to Both (New Tab does it itself; In-line makes no tabs)."),
     } }
     mv(layout, "tabs", chatTabs, 11); mv(layout, "tabH", chatTabs, 12)
     o = 13

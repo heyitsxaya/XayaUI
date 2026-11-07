@@ -59,3 +59,6 @@ debug-log 2026-11-07-0900). Merged 29532e5 into `claude/settings-restructure`: C
 takes UI-76's 90% share per tab (each tab is 90% of its even slot of the row after the button); ns.SkinPlainButton is UI bugs' call to
 core ns.PaintFlatButton (the New Rule button uses it); rules_subtabs_compact_run checks both (start after the button, 90% share).
 Shopping List and Esc Menu tooltips: UI bugs' new wording with "Blizzard Reskin". QAWalks-display's two "Blizzard UI Reskin" texts renamed.
+After merging main as well: UI bugs' short-hover check (UI-65, qa_walks_display_run) read four hovers over two sentences: this round's
+Profiles > Import button, Chat's "Switch to a new whisper tab I start", Notepad's "Formatting tools" and "Accept notes shared by other
+XayaUI users" (the last three came in from main). Each shortened to two sentences, same facts (desc strings only).
