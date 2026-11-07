@@ -1408,12 +1408,12 @@ CM.GearSummaryItems = GearSummaryItems
 -- style chosen on the settings page (Panel > Layout > Gear Summary style; CM.GEAR_SUM_STYLES below). Default: Split bars (DECISION: the
 -- first design she was shown; she can change it).
 CM.GEAR_SUM_STYLES = {
-    { "bars", "Split bars", "One bar per stat in its color, as long as your rating: the solid part is from gear, the lighter part from elsewhere; the numbers at its end." },
-    { "tiles", "Stat tiles", "A small tile per stat: its name in its color, the total large, the gear part and what comes from elsewhere small under it." },
-    { "stacked", "One stacked bar", "One bar split by each stat's share of the ratings listed, in the stats' colors, with a legend under it." },
-    { "columns", "Columns", "One upright column per stat, as tall as your rating: gear solid at the bottom, elsewhere lighter on top; the total above it, the name under it." },
-    { "share", "Gear share", "One full-width bar per stat: how much of your rating comes from gear (solid) and from elsewhere (lighter), with the gear percent." },
-    { "table", "Table", "The table as before: Gear, Character, Elsewhere." },
+    { "bars", "Split bars", "One bar per stat: gear solid, the rest lighter." },
+    { "tiles", "Stat tiles", "A small tile per stat with its total and gear part." },
+    { "stacked", "One stacked bar", "One bar split by each stat's share, with a legend." },
+    { "columns", "Columns", "One column per stat: gear solid, the rest lighter." },
+    { "share", "Gear share", "One bar per stat with its gear percent." },
+    { "table", "Table", "A table of Gear, Character and Elsewhere." },
 }
 CM.GEAR_SUM_DEFAULT = "bars"
 local GEAR_SUM_OK = {}

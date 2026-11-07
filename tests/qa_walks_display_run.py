@@ -24,7 +24,7 @@ local QA = rawget(_G, "XayaUI_DevQA")
 local ns = rawget(_G, "XayaUI_NS")
 check("Dev Assist has the QA walkthroughs", QA and QA.walks ~= nil)
 if not QA then return R end
-local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd" }
+local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons", "ui-autogen-layout", "ui-core-flat-buttons", "ui-report-select", "ui-shop-autoshow", "ui-short-hovers" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local okSteps = w ~= nil
@@ -63,6 +63,30 @@ if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
 stepCheck("release guard 1: Where has no Everywhere", "ui-release-guard", 1, false)
 stepCheck("release guard 2: with no death window, the check says so (no verdict)", "ui-release-guard", 2, false, false)
 stepCheck("stat labels: GCD, Movement Speed, Critical Strike Effectiveness", "ui-stat-gcd", 1, false)
+stepCheck("nesting (UI-69): Layout's name 8 px right of Chat Panel's", "ui-nesting", 1, true)
+stepCheck("row icons (UI-70): every icon in its column on Rules > Enabled", "ui-row-icons", 1, true)
+stepCheck("auto-generate (UI-71): one icon per spec, four buttons as four lines", "ui-autogen-layout", 1, true)
+stepCheck("core flat buttons (UI-77) 1: the console's buttons are flat", "ui-core-flat-buttons", 1, true)
+stepCheck("core flat buttons (UI-77) 4: the copy box and the debug report too", "ui-core-flat-buttons", 4, true)
+CueRulesDB.ui.skinOff = true
+stepCheck("core flat buttons (UI-77): with the skin off the check says so (fails)", "ui-core-flat-buttons", 3, false, false)
+CueRulesDB.ui.skinOff = nil
+stepCheck("report select (UI-78) 1: the button says Select string, the hint names the keys", "ui-report-select", 1, true)
+stepCheck("report select (UI-78) 2: pressed, the string is selected and the hint says Ctrl+C", "ui-report-select", 2, true)
+if ns.SetReskinTab then pcall(ns.SetReskinTab, true) end
+stepCheck("shopping list (UI-77) 1: switched on, opened, closed with the close saved", "ui-shop-autoshow", 1, true)
+local shopSvc = ns.Service and ns.Service("shoppingList")
+if shopSvc then shopSvc.Apply() end   -- what login calls
+stepCheck("shopping list (UI-77) 3: login does not pop it up, the close is kept", "ui-shop-autoshow", 3, false)
+W.fire("AUCTION_HOUSE_SHOW"); W.tick(0.1, 2)
+stepCheck("shopping list (UI-77) 4: the Auction House opens it and forgets the close", "ui-shop-autoshow", 4, false)
+do  -- (UI-65) only Bonus Notepad's two are left: Notepad.lua belongs to the function-audit session (UI-59 / UI-60), left out of this pass
+  local v, note = step("ui-short-hovers", 1, true)
+  local rest = tostring(note):match("longer than two sentences: (.*)$") or ""
+  rest = rest:gsub("Accept notes shared by other XayaUI users", ""):gsub("Formatting tools", ""):gsub("[,%s]", "")
+  check("short hovers (UI-65): 500+ hover texts read, none over two sentences except Notepad's two  (" .. tostring(note) .. ")",
+    tonumber(tostring(note):match("^(%d+) hover")) and tonumber(tostring(note):match("^(%d+) hover")) > 500 and rest == "", note)
+end
 return R
 end
 '''

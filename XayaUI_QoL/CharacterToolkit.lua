@@ -2611,9 +2611,9 @@ function ns.BuildCharToolkitPage(Notify)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "The Ability Scaling tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
             spellsAll = Toggle("spellsAll", 1.5, "List spells without numbers",
-                "Also list spellbook spells whose description has no amount to measure (they show \"none in the description\").", "full"),
+                "Also lists spellbook spells with no numbers in their description.", "full"),
             add = { type = "input", order = 2, width = "double", name = "Add a spell",
-                desc = "A spell ID, a spell name you know, or a shift-clicked spell link.",
+                desc = "Adds a spell by ID, name or shift-clicked link. Up to 20.",
                 get = function() return addBuf end,
                 set = function(_, v)
                     local id = ResolveSpell(v)
@@ -2639,7 +2639,7 @@ function ns.BuildCharToolkitPage(Notify)
                     get = function() local s = S(); return s and s.base or "ap" end,
                     set = function(_, v) local s = S(); if s then s.base = v; Changed() end end },
                 coeff = { type = "input", order = 2, name = "Coefficient %",
-                    desc = "Optional. From a database such as Wowhead: the spell's percent of attack power or spell power. Leave empty to show only what the game measures.",
+                    desc = "Optional: the spell's percent of attack or spell power, from a database such as Wowhead. Leave empty to show only what the game measures.",
                     get = function() local s = S(); return (s and num(s.coeff)) and tostring(s.coeff) or "" end,
                     set = function(_, v)
                         local s = S(); if not s then return end
@@ -2650,7 +2650,7 @@ function ns.BuildCharToolkitPage(Notify)
                 kind = { type = "select", order = 2.5, name = "Filter",
                     values = { auto = "From its description", offense = "Offense", defense = "Defense", both = "Offense and Defense", utility = "Utility" },
                     sorting = { "auto", "offense", "defense", "both", "utility" },
-                    desc = "Which of the Ability Scaling tab's filters show this spell. \"From its description\" sorts by its words (damage, or absorb / heal / armor / damage taken).",
+                    desc = "Sets which Ability Scaling filters show this spell. \"From its description\" sorts it by its wording.",
                     get = function() local s = S(); return (s and s.kind) or "auto" end,
                     set = function(_, v) local s = S(); if s then s.kind = (v ~= "auto") and v or nil; Changed() end end },
                 remove = { type = "execute", order = 3, width = "half", name = "Remove",
@@ -2674,15 +2674,15 @@ function ns.BuildCharToolkitPage(Notify)
                 fontSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
                 resetSize = { type = "execute", order = 5.5, name = "Reset size",
-                    desc = "The panel goes back to its default width and both heights to 440 and 760 (drag its bottom-right corner to resize it).",
+                    desc = "Resets the panel to its default width and heights (440 and 760).",
                     func = function() local c = C(); c.size = nil; c.heightSmall = 440; c.heightLarge = 760; Changed() end },
                 -- the Min / Max button's two heights (QoL 0.7.23; Xaya: "two configured sizes -- one smaller and one larger (NOT full
                 -- screen, just longer)")
                 heightSmall = { type = "range", order = 5.6, name = "Smaller height", min = MIN_H, max = MAX_H, step = 10,
-                    desc = "The panel's height after the Min button (the title row's Min / Max). Dragging the corner while it is small sets this too.",
+                    desc = "Sets the panel's height after Min. Dragging the corner while it is small sets it too.",
                     get = function() return C().heightSmall end, set = function(_, v) C().heightSmall = v; Changed() end },
                 heightLarge = { type = "range", order = 5.7, name = "Larger height", min = MIN_H, max = MAX_H, step = 10,
-                    desc = "The panel's height after the Max button. Dragging the corner while it is large sets this too.",
+                    desc = "Sets the panel's height after Max. Dragging the corner while it is large sets it too.",
                     get = function() return C().heightLarge end, set = function(_, v) C().heightLarge = v; Changed() end },
                 -- (QoL 0.7.28; Xaya 2026-11-06: "provide all three visual options this round for me to consider; volunteer more if
                 -- possible") how the Stats tab's Gear Summary is drawn
@@ -2690,19 +2690,19 @@ function ns.BuildCharToolkitPage(Notify)
                     values = (function() local t = {}; for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[st[1]] = st[2] end; return t end)(),
                     sorting = (function() local t = {}; for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[#t + 1] = st[1] end; return t end)(),
                     desc = (function()
-                        local t = { "How the Gear Summary at the top of the Stats tab is drawn." }
+                        local t = { "Sets how the Gear Summary at the top of the Stats tab is drawn." }
                         for _, st in ipairs(CM.GEAR_SUM_STYLES) do t[#t + 1] = st[2] .. ": " .. st[3] end
                         return table.concat(t, "\n")
                     end)(),
                     get = function() return CM.GearSumStyle(C()) end, set = function(_, v) C().gearSumStyle = v; Changed() end },
                 opacity = { type = "range", order = 6, name = "Background", min = 0, max = 1, step = 0.05, isPercent = true,
-                    desc = "Opacity of the panel's background. Colors and font follow the XayaUI theme.",
+                    desc = "Sets the panel background's opacity.",
                     get = function() return C().opacity end, set = function(_, v) C().opacity = v; Changed() end },
             } },
             values = { type = "group", name = "Your numbers", order = 2, args = {
                 -- (QoL 0.7.23: the All ratings amount is gone; Xaya 2026-11-05: "remove "all ratings" as an entry option")
                 clear = { type = "execute", order = 2, name = "Clear all",
-                    desc = "Every number you typed in a Change box on the Stats tab goes back to yours.",
+                    desc = "Resets every number you typed in a Change box on the Stats tab.",
                     func = function() local c = C(); c.whatIf = 0; c.whatIfStats = {}; c.whatIfPrimary = nil; Changed() end },
                 -- (QoL 0.7.40, B2: "Reset line flips" is gone with the per-line flip)
             } },
@@ -2723,13 +2723,13 @@ function ns.BuildCharToolkitPage(Notify)
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Ticked to start with: the slots this expansion's enchants cover (head, shoulders, chest, legs, feet, both rings, main hand, and off hand when it holds a weapon). Change any tick and your own choice is kept. A ticked slot with no enchant shows E? (orange); an enchanted one shows E (green)." },
         reset = { type = "execute", order = 99, name = "This expansion's slots",
-            desc = "Back to the slots this expansion's enchants cover: head, shoulders, chest, legs (spellthread or armor kit), feet, both rings, main hand, and off hand when it holds a weapon. Taken from the expansion's enchant items in Blizzard's game data; the game has no call that says it.",
+            desc = "Resets to the slots this expansion's enchants cover.",
             func = function() local c = C(); c.enchantSlots = {}; c.enchantSlotsSet = nil; Changed() end },
     }
     for i, s in ipairs(CM.SLOTS) do
         local slot = s[1]
         slotToggles["slot" .. slot] = { type = "toggle", order = i, name = CM.SlotLabel(slot),
-            desc = "Flag this slot on the character window when its item has no enchant (read from the item link).",
+            desc = "Flags this slot on the character window when its item has no enchant.",
             get = function() return CM.EnchantSlots(C())[slot] and true or false end,
             set = function(_, v)
                 local c = C()
@@ -2747,9 +2747,9 @@ function ns.BuildCharToolkitPage(Notify)
         xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", nil, nil, "Shows marks on the character window's item slots."),
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
-                ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
-                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "How many of the item's sockets have no gem in them (for example 2S), at the top. Left out while the Character Reskin draws the sockets."),
-                ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "E? on a ticked slot with no enchant, E when it has one. This expansion's enchantable slots are ticked until you pick your own on the Enchant Slots tab."),
+                ovIlvl = Toggle("ovIlvl", 2, "Item level", "Shows the item level at the bottom of the slot."),
+                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top. Hidden while the Character Reskin draws sockets."),
+                ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "Shows E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab."),
                 ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
                     get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
             } },

@@ -44,7 +44,7 @@ end
 local function Ready()
     local C = Ch()
     if not C then return false, "XayaUI Chat is not loaded" end
-    if not (C.On and C.On()) then return false, "the Chat Panel is off (Blizzard UI Reskin > Chat Panel tick box)" end
+    if not (C.On and C.On()) then return false, "the Chat Panel is off (Blizzard Reskin > Chat Panel tick box)" end
     if not (C.Container and C.Container()) then return false, "the Chat Panel has not been built yet" end
     return true
 end
@@ -388,7 +388,7 @@ end
 -- chat behaves on QoL > Improved Chat (her item list, "Yes, as listed")
 local function TabsOf(t, key) local g = t and t.args and t.args[key]; return g and (Kids(g)) or nil end
 QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs behaviour (UI-18 / UI-21, #246)", qa = "#246, D24, D25", order = 235, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard UI Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane only General, Chat Tabs and Layout (how chat looks). General's tabs: Font options, Color + display options.",
+    { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane only General, Chat Tabs and Layout (how chat looks). General's tabs: Font options, Color + display options.",
         setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("general") end end,
         check = function()
             local t = Tree(); if not t then return false, "the Chat Panel's settings could not be read" end
@@ -445,7 +445,7 @@ local function SplitSet(enabled, improved)
     C.Refresh()
 end
 QA.Register("chat-improved-split", { title = "Chat: Chat Panel and Improved Chat switch on and off apart (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the |cffffd100Chat Panel|r (Blizzard UI Reskin) is switched |cffffd100off|r, |cffffd100Improved Chat|r (QoL) stays on, with the Chat Data Panel shown. Your switches are remembered; the last step puts them back.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it; the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
+    { text = "Press |cffffd100Do it for me|r: the |cffffd100Chat Panel|r (Blizzard Reskin) is switched |cffffd100off|r, |cffffd100Improved Chat|r (QoL) stays on, with the Chat Data Panel shown. Your switches are remembered; the last step puts them back.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it; the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
         setup = function() SplitSet(false, true) end,
         check = function()
             local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
@@ -498,7 +498,7 @@ local function InRects()
 end
 local function InGlued(i, e) return i and e and Near(i.l, e.l) and Near(i.b, e.b) and Near(i.w, e.w) end
 QA.Register("chat-input-position", { title = "Chat: input line top, bottom or free move (UI-15)", qa = "D26", order = 239, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: Blizzard UI Reskin > Chat Panel > Layout > |cffffd100Input line|r is set to |cffffd100Top, under the tabs|r (yours is remembered).\n\n|cffffd100Expect:|r the tabs, then the line you type in, then the chat text. Press Enter: you type in that top line.",
+    { text = "Press |cffffd100Do it for me|r: Blizzard Reskin > Chat Panel > Layout > |cffffd100Input line|r is set to |cffffd100Top, under the tabs|r (yours is remembered).\n\n|cffffd100Expect:|r the tabs, then the line you type in, then the chat text. Press Enter: you type in that top line.",
         setup = function() InPos("TOP") end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end

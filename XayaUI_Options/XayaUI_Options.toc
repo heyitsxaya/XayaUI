@@ -17,6 +17,7 @@ InfoPaneData.lua
 InfoPane.lua
 Drafts.lua
 ImportWindow.lua
+Profiles.lua
 TriggersEditor.lua
 OutcomesEditor.lua
 DisplayTab.lua

@@ -130,7 +130,7 @@ function ns.FriendColors_Active() return active end
 -- (what XayaUI Dev Assist's QA walkthrough reads, through Modules.lua's service table: features are never called by name across addons)
 if ns.Provide then ns.Provide("friendColors", { Apply = function() ns.FriendColors_Apply() end, Active = function() return active end, Stats = stats }) end
 
-ns.RegisterReskin("friendcolors", function() ns.FriendColors_Apply() end)   -- the Blizzard UI Reskin tab's own switch walks these
+ns.RegisterReskin("friendcolors", function() ns.FriendColors_Apply() end)   -- the Blizzard Reskin tab's own switch walks these
 ns.WhenReady(function() if On() then ns.FriendColors_Apply() end end)       -- V14: saved off, nothing is made at login
 
 -- settings: Blizzard UI Reskin > Friend Colors (its on / off is the tick box on its row in the left pane)

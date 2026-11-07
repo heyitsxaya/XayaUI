@@ -20,13 +20,14 @@ function ns.BuildTooltipsTab(Notify)
         return { type = "toggle", order = order, name = name, desc = desc, width = "full",
                  get = get(path), set = set(path), disabled = disabled }
     end
-    -- (V14, Bonus 0.6.12) said under each of the four main switches
-    local OFF = " With Enhanced Tooltips off (the tick box on its row on the left), or IDs, Item level, Enemy forces, Formulas and Type colors all off, nothing of the tooltip features is installed or runs. Once one was on, its tooltip hooks stay until you /reload but do nothing."
+    -- (V14, Bonus 0.6.12) once a sentence under each of the four main switches; empty since UI-65 (Bonus 0.6.26: hovers at most two sentences)
+    -- (the text it held: off, nothing of the tooltip features runs; hooks placed while on stay until /reload, doing nothing)
+    local OFF = ""
     local idsOff = function() return not TT.DB().ids.enabled end
     local ids = {
-        enabled = toggle(1, "Show IDs on tooltips", "Master switch for the ID lines below." .. OFF, { "ids", "enabled" }),
-        npc = toggle(2, "NPC IDs", "Read from the unit's GUID. Skipped when the game hides the GUID.", { "ids", "npc" }, idsOff),
-        auraHint = toggle(4, "Say \"not known yet\" when a spell's aura is not known", "Under a spell that lasts for some seconds. The aura's name and ID appear after you cast the spell once out of combat, or hover it while the aura is on you.", { "ids", "auraHint" }, idsOff),
+        enabled = toggle(1, "Show IDs on tooltips", "Shows the ID lines below." .. OFF, { "ids", "enabled" }),
+        npc = toggle(2, "NPC IDs", "Shows the NPC's ID. Skipped when the game hides it.", { "ids", "npc" }, idsOff),
+        auraHint = toggle(4, "Say \"not known yet\" when a spell's aura is not known", "Shows a note under a spell with a duration until its aura is known. Cast it once out of combat, or hover it while the aura is on you.", { "ids", "auraHint" }, idsOff),
         icon = toggle(3, "Icon IDs (under spell, aura and item lines)", nil, { "ids", "icon" }, idsOff),
     }
     for i, kind in ipairs(TT.ID_KINDS) do
@@ -37,12 +38,12 @@ function ns.BuildTooltipsTab(Notify)
     return {
         type = "group", name = "Enhanced Tooltips", order = 2, childGroups = "tab",
         xuiSwitch = { type = "toggle", name = "Enhanced Tooltips", tip = "Adds IDs, item level, enemy forces, formulas and type colors to game tooltips.",
-            desc = "Turns the enhanced tooltips on or off as a whole (IDs, Item level, Enemy forces, Formulas, Type colors). Off: nothing of them is installed or runs, whatever their own switches say; their settings are kept. Once it was on, its tooltip hooks stay until you /reload but do nothing.",
+            desc = "Turns all enhanced tooltips on or off (IDs, Item level, Enemy forces, Formulas, Type colors). Off, none of them runs; their settings are kept.",
             get = get({ "enabled" }), set = set({ "enabled" }) },
         args = {
             ids = { type = "group", name = "IDs", order = 1, args = ids },
             ilvl = { type = "group", name = "Item level", order = 2, args = {
-                enabled = toggle(1, "Show player item level on hover", "Yourself: equipped average. Others: via Inspect, cached." .. OFF, { "ilvl", "enabled" }),
+                enabled = toggle(1, "Show player item level on hover", "Shows your equipped average, and other players' item level from Inspect." .. OFF, { "ilvl", "enabled" }),
                 inspect = toggle(2, "Inspect other players", "Sends one inspect request at a time. Not in combat.", { "ilvl", "inspect" },
                     function() return not TT.DB().ilvl.enabled end),
                 cacheSecs = { type = "range", order = 3, name = "Cache seconds", min = 30, max = 600, step = 10, width = "full",
@@ -50,7 +51,7 @@ function ns.BuildTooltipsTab(Notify)
                     disabled = function() return not TT.DB().ilvl.enabled end },
             } },
             forces = { type = "group", name = "Enemy forces", order = 3, args = {
-                enabled = toggle(1, "Show count and % on hostile units", "Read live from the game; shown only when the game returns it." .. OFF, { "forces", "enabled" }),
+                enabled = toggle(1, "Show count and % on hostile units", "Shown only when the game gives it." .. OFF, { "forces", "enabled" }),
                 onlyInDungeon = toggle(2, "Only inside dungeons and raids", nil, { "forces", "onlyInDungeon" },
                     function() return not TT.DB().forces.enabled end),
                 onlyMythicPlus = toggle(3, "Only in an active Mythic+ run", nil, { "forces", "onlyMythicPlus" },
@@ -59,15 +60,15 @@ function ns.BuildTooltipsTab(Notify)
             } },
             formulas = { type = "group", name = "Formulas", order = 4, args = {
                 enabled = toggle(1, "Show formula lines on spell tooltips", "Out of combat only: the game hides stats and cooldown details in combat." .. OFF, { "formulas", "enabled" }),
-                cooldown = toggle(2, "Cooldown and recharge", "The game's cooldown or recharge time divided by its rate (haste, when the rate matches your haste), checked against the time the tooltip prints. A spell that is not on cooldown shows only its base time: the game reports the rate only while it runs.", { "formulas", "cooldown" },
+                cooldown = toggle(2, "Cooldown and recharge", "Shows the cooldown or recharge time divided by its rate (such as haste). A spell not on cooldown shows only its base time.", { "formulas", "cooldown" },
                     function() return not TT.DB().formulas.enabled end),
-                damage = toggle(3, "Damage ratio", "Each damage number in the spell's text divided by your attack power (strength and agility characters) or spell power (intellect). The ratio already holds every bonus in that number (versatility, talents, auras), so it is not Blizzard's own coefficient. English game text only.", { "formulas", "damage" },
+                damage = toggle(3, "Damage ratio", "Shows each damage number divided by your attack power or spell power, bonuses included. English game text only.", { "formulas", "damage" },
                     function() return not TT.DB().formulas.enabled end),
                 note = { type = "description", order = 9, name = "Built only from numbers the game reports while you play. Blizzard's own spell coefficients are not readable by addons." },
             } },
             -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10) damage school and dispel type words coloured
             typeColors = { type = "group", name = "Type colors", order = 5, args = {
-                enabled = toggle(1, "Color damage schools and dispel types", "On spell and aura tooltips: \"fire damage\" becomes \"Fire Damage\" in the game's Fire color, a dispel type in brackets after it (\"(Magic)\") or at an aura tooltip's top right in its dispel color. The game's own colors. English game text only." .. OFF, { "typeColors", "enabled" }),
+                enabled = toggle(1, "Color damage schools and dispel types", "Colors damage schools and dispel types on spell and aura tooltips in the game's colors. English game text only." .. OFF, { "typeColors", "enabled" }),
             } },
         },
     }

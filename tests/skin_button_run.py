@@ -1,14 +1,21 @@
-# Checks ns.SkinPlainButton (Skin.lua) against stand-in frames: first 164 lines of Skin.lua are loaded (helpers + the function).
+# Checks the flat button look against stand-in frames. UI-77 (core 0.6.68): the look is core's (Core.lua ns.PaintFlatButton, loaded
+# here with its helpers); the settings addon's ns.SkinPlainButton (Skin.lua) calls it, so that is checked through the same frames.
 import os
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lua51 as lupa   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 L = lupa.runtime(unpack_returned_tuples=True)
-src = open(os.path.join(ROOT, 'XayaUI_Options/Skin.lua'), encoding='utf-8').read().split('\n')
-end_line = next(i for i, l in enumerate(src) if l.startswith('function ns.SkinPlainButton'))
+src = open(os.path.join(ROOT, 'XayaUI/Core.lua'), encoding='utf-8').read().split('\n')
+start = next(i for i, l in enumerate(src) if l.startswith('local FLAT_GOLD'))
+end_line = next(i for i, l in enumerate(src) if l.startswith('function ns.PaintFlatButton'))
 while src[end_line] != 'end': end_line += 1
-chunk = '\n'.join(src[:end_line + 1])
+chunk = 'local addonName, ns = ...\n' + '\n'.join(src[start:end_line + 1])
+skin = open(os.path.join(ROOT, 'XayaUI_Options/Skin.lua'), encoding='utf-8').read().split('\n')
+s0 = next(i for i, l in enumerate(skin) if l.startswith('function ns.SkinPlainButton'))
+s1 = s0
+while skin[s1] != 'end': s1 += 1
+chunk += '\n' + '\n'.join(skin[s0:s1 + 1])
 L.execute(r'''
 function LibStub() return {} end
 SlashCmdList = {}
@@ -32,7 +39,7 @@ function newButton()
   function b:HookScript(n, f) self.hooks[n] = f end
   return b end
 ''')
-L.eval('function(src, ns) return load(src, "XayaUI_Options/Skin.lua")("XayaUI", ns) end')(chunk, L.eval('(function() XayaUI_NS = {} return XayaUI_NS end)()'))
+L.eval('function(src, ns) return load(src, "XayaUI/Core.lua + Skin.lua")("XayaUI", ns) end')(chunk, L.eval('(function() XayaUI_NS = {} return XayaUI_NS end)()'))
 fails = 0
 def check(n, c):
     global fails

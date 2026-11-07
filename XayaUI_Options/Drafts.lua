@@ -635,7 +635,7 @@ function ns.BuildDraftsPage()
             end },
         toggle = { type = "execute", order = -2,
             name = function() return ns.DraftsEnabled() and "Turn drafts off" or "Turn drafts on" end,
-            desc = "Turning drafts on starts from a clean slate: the rules as they are now count as saved. Turning them off keeps every edit you have made. Drafts already on this tab stay here either way.",
+            desc = "Turning drafts on counts the rules as they are now as saved. Turning them off keeps every edit and every draft.",
             func = function()
                 local ui = CueRulesDB and CueRulesDB.ui
                 if not ui then return end

@@ -24,7 +24,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-07 — What Changed Overnight
 
-### XayaUI 0.6.71
+### XayaUI 0.6.72
 
 **Engine and Performance**
 - Rule and snapshot log lines are now built only while something reads them (the console window, the debug strip, or the record).
@@ -33,13 +33,17 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   *Developers' notes: Measured on stand-ins only, not in game.*
 - An aura the game hides now reads "hidden by the game right now ...", and the rule status says whether the game's container still draws the display.
 
-### Options 0.6.71
+### Options 0.6.72
 
 **Settings Window**
+- Added new top tabs: Rules, QoL, Bonus Features, Blizzard Reskin, Profiles and Settings. The toolbar is gone: "+ New Rule" is at the left of the Rules row, and the Settings cog is now the Settings tab. The Blizzard UI Reskin tab is now called Blizzard Reskin everywhere.
+- Added Profiles, with sub-tabs Import, Export and Recycle Bin. Export has one tick box per component (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin); anything beyond Rules and groups makes a profile string. Import lists only what the string holds, each with a tick box.
+- Hover texts are now at most two sentences.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: which settings each Profiles component holds, and what is never exported (Notepad, Shopping List, Recycle Bin, backups, drafts, logs, learned aura data).*
 - The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
   *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
 
-### Chat 0.6.37
+### Chat 0.6.38
 
 **Improved Chat (new)**
 - Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
@@ -47,7 +51,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Q-CR-1 to Q-CR-10.*
 
 **Chat Panel**
-- Blizzard UI Reskin > Chat Panel now holds only how chat looks.
+- Blizzard Reskin > Chat Panel now holds only how chat looks.
 - Fixed an issue where the collapse arrow, the privacy eye and the sidebar did not fade with the chat. Hovering them now brings the chat back.
 - Added an Input line choice: Bottom, Top under the tabs, Top above the tabs, or Free move (with /xui chat move).
 - With the whisper tabs set to Both, a whisper you send now selects its window.
@@ -55,7 +59,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - The game's own fade of old chat lines now comes back when Improved Chat is turned off, or when both it and the Chat Panel are off.
 - The addon's usage tooltip reads memory once per hover and says "Includes the cost of reading these numbers."
 
-### Quality of Life 0.7.42
+### Quality of Life 0.7.45
 
 **Stat Calculator**
 - Each stat now has rows showing what feeds it ("from Agility +2,616"); every stat starts folded, and the Influences column is now Modifies.
@@ -76,14 +80,14 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Cursor**
 - A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
 
-### Blizzard Reskin 0.6.9
+### Blizzard Reskin 0.6.10
 
 **Blizzard Windows (new)**
 - Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
   *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
 
 **Friend Colors (new)**
-- Added Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in their class colour. The new Social friends list is not coloured yet.
+- Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class colour. The new Social friends list is not coloured yet.
 
 ### Nameplates 0.2.1
 
@@ -93,7 +97,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
   *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
 
-### Dev Assist 0.7.40
+### Dev Assist 0.7.41
 
 **QA Review (new)**
 - Added a QA review window that opens when you first load into the game after an update, listing the walkthroughs that are new or changed since the last build you acknowledged. "Don't show again until the next update" acknowledges the build.
