@@ -678,7 +678,7 @@ ac1ae4b05663fe09fe2760520105eb7e  tests/aura_display_run.py
 d465354d6a4ff62d06780f83b74e1c9c  tests/aura_gaps_run.py
 80c84f1f7ef017e7f04a6c3be28a3910  tests/aura_sources_run.py
 6af15e26dd6d1af2f1201a79321c94eb  tests/auras_cmd_run.py
-170830ad0e319024fa9075f9c07d5aef  tests/auto_picker_run.py
+11f6bef56493e7818e0239c449fd9851  tests/auto_picker_run.py
 a6a009b4d86f1ef5e6509ea87653f62c  tests/auto_table_layout_run.py
 a670c26901264452ff6d73ce0982a344  tests/bar_cue_run.py
 85b42e051f93867990bead97395d8ac3  tests/build_content_run.py
