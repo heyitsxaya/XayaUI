@@ -102,7 +102,7 @@ check("  ...each answer is saved with its checklist item (steps shift when the l
 local bk = QA.ImportCode(QA.ExportCode("chk-bugs"))
 check("  ...and the export code carries it", bk and bk.steps[1].k == br.steps[1].k and bk.steps[2].k == br.steps[2].k, bk and bk.steps[1].k)
 -- this round's hand-written walkthroughs (B177-B179c): every Do it for me and check runs without an error, and the last step cleans up
-for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align" }) do
+for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align", "sidebar-names" }) do
   local def = QA.walks[id]
   local okAll, why = def ~= nil, "not registered"
   if def then
@@ -119,6 +119,12 @@ for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group
   end
   check("walkthrough " .. id .. ": every step's Do it for me and check run, and it cleans up", okAll, why)
 end
+-- V21 data capture: what the addon's check saw is saved with each answer and travels in the export code
+local sres = QA.DB().results["sidebar-names"]
+check("V21: each answer keeps the addon's own verdict and data (sidebar width, tightest name)", sres and sres.steps[1].a ~= nil and type(sres.steps[1].d) == "string"
+  and sres.steps[1].d:find("sidebar", 1, true) ~= nil, sres and sres.steps[1].d)
+local sback = QA.ImportCode(QA.ExportCode("sidebar-names"))
+check("  ...and the export code carries it", sback and sback.steps[1].a == sres.steps[1].a and sback.steps[1].d == sres.steps[1].d, sback and sback.steps[1].d)
 -- list status after a run
 QA.Toggle(); QA.Toggle()
 local gp

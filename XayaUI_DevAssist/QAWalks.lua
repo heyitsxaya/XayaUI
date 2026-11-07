@@ -206,3 +206,61 @@ QA.Register("dynamic-limit-align", { title = "Dynamic group: Limit and Align", q
         check = function() local f = TestGroup(); return f ~= nil, f and ("Limit: %s"):format(tostring(f.cLimit or "none")) or "no test group" end },
     Cleanup(),
 } })
+
+-- R31 / task #30 (Xaya: "rule sidebar continues to bug out and clip itself after any rule change is made"): not reproduced in the
+-- stand-in game on 0.6.57 (the sidebar keeps its width and every name keeps at least 80 px across renames and enable / disable). This
+-- walkthrough measures it on her screen before and after a change; the numbers are saved with her answers (V21 data capture).
+local function SidebarRoom()
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    local root = ACD and ACD.OpenFrames and ACD.OpenFrames["CueRules"]
+    if not root then return nil, "the settings window is not open" end
+    local best
+    local function walk(w)
+        if not w then return end
+        if w.type == "TreeGroup" and w.buttons then
+            local st = w.status or w.localstatus or {}
+            local minRoom, who, n = nil, nil, 0
+            for _, b in ipairs(w.buttons) do
+                local txt = b.text and b.text.GetText and b.text:GetText()
+                if b:IsShown() and type(txt) == "string" and txt ~= "" then
+                    n = n + 1
+                    local room = (b:GetWidth() or 0) - (b.xuiTextL or 0) - (b.xuiTextR or 0)
+                    local fits = (b.text.GetStringWidth and b.text:GetStringWidth() or 0) <= ((b.text.GetWidth and b.text:GetWidth()) or 0) + 1
+                    if not minRoom or room < minRoom then minRoom, who = room, txt:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+                    if not fits then who = (who or "") .. " (cut off)" end
+                end
+            end
+            if n > 0 and (not best or n > best.n) then best = { n = n, width = st.treewidth, manual = st.xuiManualWidth, room = minRoom, who = who } end
+        end
+        for _, c in ipairs(w.children or {}) do walk(c) end
+    end
+    walk(root)
+    if not best then return nil, "no sidebar rows are showing" end
+    return best
+end
+local function SidebarCheck()
+    local b, why = SidebarRoom()
+    if not b then return false, why end
+    return (b.room or 0) >= 80, ("sidebar %s px%s; %d rows; the tightest name has %d px (%s)"):format(tostring(b.width), b.manual and " (set by hand)" or "", b.n, b.room or 0, tostring(b.who))
+end
+QA.Register("sidebar-names", { title = "Rules sidebar: names after a rule change (R31)", qa = "B179d", order = 119, steps = {
+    { text = "Press |cffffd100Do it for me|r: a QA test group with two nested groups and a rule with a long name is made, and the rule opens.\n\n|cffffd100Expect:|r in the Rules sidebar every name is readable (at least a few words; the full name shows on mouse-over). The addon measures the sidebar below.",
+        setup = function()
+            local ns = NS(); local f = MakeTestGroup(false)
+            local a = ns.NewFolder("QA nested one", f.id); local b = ns.NewFolder("QA nested two with a long name", a.id)
+            local r = ns.NewRule(); r.name = "QA rule with a rather long name for the sidebar"; r.folder = b.id; r.enabled = true
+            ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
+            if ns.MarkDirty then ns.MarkDirty() end
+            OpenRule(r)
+        end,
+        check = SidebarCheck },
+    { text = "Change the rule: untick |cffffd100Enabled|r, tick it again, then rename it (any change you would normally make).\n\n|cffffd100Expect:|r the sidebar keeps its width and the names stay readable after each change. If a name is cut off, press |cffffd100Check again|r before you answer: the measurement is saved with your answer.",
+        check = SidebarCheck },
+    { text = "Last step: press |cffffd100Do it for me|r to delete the QA test group, its nested groups and the rule (they go to the Recycle Bin). Then Pass.",
+        setup = function()
+            local ns = NS(); local f = TestGroup()
+            if f and ns.LoadOptions then ns.LoadOptions() end
+            if f and ns.OptionsApi and ns.OptionsApi.DeleteFolderAll then ns.OptionsApi.DeleteFolderAll(f.id) end
+        end,
+        check = function() return TestGroup() == nil, TestGroup() and "the QA test group is still there" or "the QA test group is gone" end },
+} })
