@@ -101,6 +101,19 @@ local br = QA.DB().results["chk-bugs"]
 check("  ...each answer is saved with its checklist item (steps shift when the list changes)", br and br.steps[1].k == QA.walks["chk-bugs"].steps[1].key and br.steps[1].k:find("^bug%d+$"), br and br.steps[1].k)
 local bk = QA.ImportCode(QA.ExportCode("chk-bugs"))
 check("  ...and the export code carries it", bk and bk.steps[1].k == br.steps[1].k and bk.steps[2].k == br.steps[2].k, bk and bk.steps[1].k)
+-- V22 pre-fill (Xaya 2026-11-07: "pre-fill confirmation options or data capturing"): every hand-written walkthrough of this session
+local mine = { "group-page", "group-box", "group-nested", "sidebar-drag", "reskin-switches", "shopping-list", "display-points",
+  "mover-session", "group-arrange", "group-fit", "dynamic-limit-align", "sidebar-names" }
+local nopf = {}
+for _, id in ipairs(mine) do if not (QA.walks[id] and QA.walks[id].prefill) then nopf[#nopf + 1] = id end end
+check("V22: every hand-written walkthrough of this session offers the pre-filled verdict", #nopf == 0, table.concat(nopf, ", "))
+QA.Start("display-points"); QA.DoSetup(); W.tick(0.4, 3); QA.RunCheck()
+local pst = QA.State()
+check("  ...after its check, Accept offers the addon's verdict", Wn.accept:IsShown() and Wn.accept:GetText():find("Accept", 1, true) ~= nil, Wn.accept:GetText())
+QA.Accept()
+check("  ...Accept records it, with the addon's note and its data", pst.steps[1] and pst.steps[1].r == "P" and pst.steps[1].note:find("addon:", 1, true) ~= nil
+  and pst.steps[1].a == "Y" and type(pst.steps[1].d) == "string", pst.steps[1] and (tostring(pst.steps[1].r) .. " / " .. tostring(pst.steps[1].note)))
+for _ = 2, #QA.walks["display-points"].steps do QA.DoSetup(); W.tick(0.1, 2); QA.Answer("S") end
 -- this round's hand-written walkthroughs (B177-B179c): every Do it for me and check runs without an error, and the last step cleans up
 for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align", "sidebar-names" }) do
   local def = QA.walks[id]

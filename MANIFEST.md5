@@ -172,7 +172,7 @@ f54b7db2a69b6a507758d0220c71957f  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
 bf1b1573d5271378ce31fc10948cd43e  XayaUI_DevAssist/QAWalks-display.lua
 a105c0f5551383b652134bec6f898ab7  XayaUI_DevAssist/QAWalks-perf.lua
-414a57ea7a25b0aee286e29675220280  XayaUI_DevAssist/QAWalks.lua
+adbe5a4b2131194dcc4510dec360aed5  XayaUI_DevAssist/QAWalks.lua
 eeddd5c6837ec0e6ad5eeb4f0bdc35e2  XayaUI_DevAssist/RunRecord.lua
 d788c690bbd3793e5c7b27b4471cdd98  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -610,7 +610,7 @@ f88a1f7c079bf0ac268a5d5ade211771  docs/process/PERF-AUDIT-2026-11-07.md
 f057f7212267aabd551a1ca79b40569c  docs/process/QUESTIONS-engine-session.md
 40c3d124b802a5725d47ba2923820e87  docs/process/REQUEST-LOG-CROSS-CHAT.md
 73cc522e33eac291f5a18cb3cb13c6e8  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
-e30c07533d9c4fc5528065290f10a240  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
+02ca0997448d2ca0904be2435a2d91db  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 f2fa31ac21c4a1101f7fb13a72c08285  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
@@ -800,7 +800,7 @@ fb1c1f19da3520085ebcb7a94d35e7e8  tests/precheck_run.py
 e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
 cf93c863d353050305e5a15faf19d724  tests/qa_perf_walks_run.py
-58d545c7298bbe5606c5a3a62a532aff  tests/qa_walk_run.py
+6549fe75f0ccc2ee5cb77e50cb8d521d  tests/qa_walk_run.py
 af9c61485a8a24ffc2ac273ffbf48dc1  tests/qa_walks_chat_run.py
 15c2fad1e92c15d59b152b3f07541126  tests/qa_walks_display_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
