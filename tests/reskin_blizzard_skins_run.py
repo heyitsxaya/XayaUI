@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.9, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.14, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -12,6 +12,12 @@ reskins). What the player sees, in the stand-in game:
   * Objective Tracker: the tracker header and a section header lose Blizzard's header art and take the label colour; a section's quest
     titles take the text colour after Blizzard's layout; a section left out is given back; the Professions section is left to the
     Shopping List while its tracker part is on; labels are the game's own heading strings;
+  * Toasts and Pop-ups (0.6.11): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
+    faded under our background; each part has its own box;
+  * Loot rolls (0.6.12, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
+  * Menus (0.6.13): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
+    placed only when ticked); nothing added to the pooled menu frame;
+  * Chat bubbles (0.6.14): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -44,6 +50,11 @@ local SP = Window("SettingsPanel")
 local CF1 = Window("ContainerFrame1")
 local WM = CreateFrame("Frame", "WorldMapFrame", UIParent); WM.BorderFrame = Window(nil, WM)
 local TF = Window("TradeFrame"); TF.IsProtected = function() return true, true end
+-- a loot roll (GroupLootFrameTemplate: art on Background and Border; Blizzard tints Border in the item's quality colour on each show)
+local GL1 = CreateFrame("Frame", "GroupLootFrame1", UIParent)
+GL1.Background = GL1:CreateTexture(nil, "BACKGROUND"); GL1.Border = GL1:CreateTexture(nil, "BORDER")
+GL1:SetScript("OnShow", function(self) self.Border:SetVertexColor(self._q[1], self._q[2], self._q[3]) end)
+GL1._q = { 0.64, 0.21, 0.93 }; GL1:Hide()
 -- minimap (GetMinimapShape is not a Blizzard function in 12.1.5: not in its UI source nor docs/reference/api; the stand-in
 -- world defines one for other tests, so it is cleared here to start as the real game does)
 GetMinimapShape = nil
@@ -79,6 +90,28 @@ end
 local QOT = Module("QuestObjectiveTracker")
 local PRT = Module("ProfessionsRecipeTracker")
 TRACKER_HEADER_QUESTS = "Quests (game string)"
+-- Battle.net toast (SocialToastTemplate: BackdropTemplate, no backdrop colour of its own) and a pop-up dialog (StaticPopup: art on child "BG")
+local BNT = CreateFrame("Frame", "BNToastFrame", UIParent); BNT:Hide()
+local SP1 = CreateFrame("Frame", "StaticPopup1", UIParent); SP1.BG = CreateFrame("Frame", nil, SP1); SP1:Hide()
+-- Blizzard_Menu: the default menu style attaches one background texture (atlas common-dropdown-bg, alpha 0.925) each time a menu is built;
+-- Blizzard mixes the style into a pooled frame and calls Generate (SecureGenerate), so the mixin's function is copied at each build
+MenuStyle1Mixin = { Generate = function(self) local t = self:CreateTexture(nil, "BACKGROUND"); t:SetAtlas("common-dropdown-bg"); t:SetAlpha(0.925); self._bg = t end }
+-- chat bubbles: C_ChatBubbles.GetAllChatBubbles(false) lists the bubbles addons may touch; each holds a ChatBubbleTemplate child
+-- (NineSlicePanel: Set/GetCenterColor, Set/GetBorderColor; String; Tail)
+local function Bubble()
+  local b = CreateFrame("Frame", nil, UIParent)
+  local p = CreateFrame("Frame", nil, b)
+  p.String = p:CreateFontString(nil, "ARTWORK"); p.Tail = p:CreateTexture(nil, "ARTWORK")
+  p.SetCenterColor = function(self, r, g, bb, a) self._center = { r, g, bb, a or 1 } end
+  p.GetCenterColor = function(self) local c = self._center or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+  p.SetBorderColor = function(self, r, g, bb, a) self._border = { r, g, bb, a or 1 } end
+  p.GetBorderColor = function(self) local c = self._border or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+  b.panel = p
+  return b
+end
+local BUB = { Bubble() }
+C_ChatBubbles = { GetAllChatBubbles = function(includeForbidden) if includeForbidden then error("forbidden bubbles asked for") end; return BUB end }
+local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); f:CreateFontString(nil, "OVERLAY"); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
@@ -114,6 +147,19 @@ check("windows waiting for Blizzard to load one: the watcher listens for ADDON_L
 local MF = Window("MacroFrame")
 W.fire("ADDON_LOADED", "Blizzard_MacroUI")
 check("a window Blizzard loads later (Macros) is skinned when it loads", MF.NineSlice:GetAlpha() == 0 and BS.memo[MF] and BS.memo[MF].bg:IsShown())
+-- loot rolls (0.6.12): Background and Border faded, our border in the item's quality colour after Blizzard's OnShow
+GL1:Show()
+local gm = BS.memo[GL1]
+local e1 = gm and gm.edges and gm.edges[1] and gm.edges[1]._color
+check("loot roll: Blizzard's Background and Border are faded and our background shows", GL1.Background:GetAlpha() == 0 and GL1.Border:GetAlpha() == 0 and gm.bg:IsShown())
+check("loot roll: our border takes the item's quality colour (epic purple)", e1 and near(e1[1], 0.64) and near(e1[2], 0.21) and near(e1[3], 0.93), e1 and table.concat(e1, ","))
+GL1:Hide(); GL1._q = { 0.0, 0.44, 0.87 }; GL1:Show()
+e1 = gm.edges[1]._color
+check("loot roll: the next roll's quality colour (rare blue) reaches our border", near(e1[1], 0.0) and near(e1[3], 0.87), table.concat(e1, ","))
+check("a window without art keys keeps its own Background / Border keys untouched (they are not in the generic list)", SP.NineSlice ~= nil and BS.memo[SP].faded[SP.Background or {}] == nil)
+page.args.list.args.lootroll.set(nil, false)
+check("loot rolls left out: Blizzard's Background and Border are back", GL1.Background:GetAlpha() == 1 and GL1.Border:GetAlpha() == 1 and not gm.bg:IsShown())
+page.args.list.args.lootroll.set(nil, true)
 -- one window left out
 page.args.list.args.bags.set(nil, false)
 check("a window left out on the page is given back (Bags)", CF1.NineSlice:GetAlpha() == 1 and not BS.memo[CF1].bg:IsShown())
@@ -208,6 +254,82 @@ check("  ...windows, minimap and tracker have Blizzard's look back", SP.NineSlic
 check("  ...each keeps its own tick box", CueRulesDB.ui.rsk.windows == true and CueRulesDB.ui.rsk.tracker == true)
 ns.SetReskinTab(true)
 check("Blizzard UI Reskin on again: the ticked skins come back", SP.NineSlice:GetAlpha() == 0 and MM._mask == BS.SQUARE_MASK and OTF.Header.Background:GetAlpha() == 0)
+-- 6. Battle.net toasts and pop-up dialogs (Reskin 0.6.11)
+ns.SetReskinTab(true)
+check("toasts page off: the toast's colours and the pop-up's art are Blizzard's", BNT._bdcolor == nil and SP1.BG:GetAlpha() == 1 and not BS.Live().toasts)
+local tsp = BS.ToastsPage(nil)
+check("toasts page has a box per part (Battle.net toasts, pop-up dialogs)", tsp.args.list.args.bnet ~= nil and tsp.args.list.args.popups ~= nil)
+tsp.xuiSwitch.set(nil, true)
+c = BNT._bdcolor
+check("toasts on: the Battle.net toast takes the theme's window colour at the opacity", c and near(c[1], bg[1]) and near(c[3], bg[3]) and near(c[4], 0.7), c and table.concat(c, ","))
+check("toasts on: its border takes the theme's border colour", BNT._bdborder and near(BNT._bdborder[1], bd[1]) and near(BNT._bdborder[3], bd[3]))
+check("toasts on: the pop-up's art (BG) is faded and our background shows", SP1.BG:GetAlpha() == 0 and BS.memo[SP1].bg:IsShown() and BS.memo[SP1].edges[4]:IsShown())
+SP1.BG:SetAlpha(1); SP1:Show()
+check("a pop-up shown again is faded again", SP1.BG:GetAlpha() == 0)
+tsp.args.list.args.popups.set(nil, false)
+check("pop-ups left out: Blizzard's art back, the toast keeps the look", SP1.BG:GetAlpha() == 1 and not BS.memo[SP1].bg:IsShown() and near(BNT._bdcolor[1], bg[1]))
+check("  ...saved only as a leave-out", CueRulesDB.ui.rsk.toastOff.popups == true)
+tsp.args.list.args.popups.set(nil, true)
+tsp.xuiSwitch.set(nil, false)
+c = BNT._bdcolor
+check("toasts off: the toast's own colours are back (white tint, as Blizzard draws it)", near(c[1], 0) and near(c[4], 1) and near(BNT._bdborder[1], 1) and near(BNT._bdborder[4], 1), c and table.concat(c, ","))
+check("toasts off: the pop-up's art is back and our pieces hide", SP1.BG:GetAlpha() == 1 and not BS.memo[SP1].bg:IsShown())
+BNT:Show()
+check("toasts off: a toast shown again is not changed", near(BNT._bdcolor[1], 0) and not BS.Live().toasts)
+tsp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: the toast skin stops too", not BS.Live().toasts and SP1.BG:GetAlpha() == 1)
+ns.SetReskinTab(true)
+-- 7. Menus (Reskin 0.6.13)
+local menuHooksBefore = 0
+for _, n in ipairs(W.hooks) do if n == "Generate" then menuHooksBefore = menuHooksBefore + 1 end end
+check("menus page off: no hook on Blizzard's menu style (V14), a built menu keeps Blizzard's background", menuHooksBefore == 0 and BuildMenu()._bg._color == nil and not BS.Live().menus)
+local mnp = BS.MenusPage(nil)
+mnp.xuiSwitch.set(nil, true)
+local mn = BuildMenu()
+c = mn._bg._color
+check("menus on: a menu Blizzard builds has its own background in the theme's window colour", c and near(c[1], bg[1]) and near(c[2], bg[2]) and near(c[3], bg[3]), c and table.concat(c, ","))
+check("menus on: at the Background opacity (70%)", near(mn._bg:GetAlpha(), 0.7), mn._bg:GetAlpha())
+check("menus on: nothing is added to Blizzard's menu frame (no texture, frame or script of ours)", mn:GetNumRegions() == 2 and BS.memo[mn] == nil)
+local other = CreateFrame("Frame", nil, UIParent); local ot = other:CreateTexture(); ot:SetAtlas("some-other-atlas")
+BS.PaintMenu(other)
+check("only the menu background atlas is recoloured, nothing else", ot._color == nil)
+mnp.xuiSwitch.set(nil, true)
+local n2 = 0
+for _, n in ipairs(W.hooks) do if n == "Generate" then n2 = n2 + 1 end end
+check("the hook is placed once (ticking again adds none)", n2 == 1, n2)
+mnp.xuiSwitch.set(nil, false)
+mn = BuildMenu()
+check("menus off: the next menu is Blizzard's own (background untouched, alpha 0.925)", mn._bg._color == nil and near(mn._bg:GetAlpha(), 0.925) and not BS.Live().menus)
+mnp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+mn = BuildMenu()
+check("Blizzard UI Reskin off: menus are Blizzard's", mn._bg._color == nil and not BS.Live().menus)
+ns.SetReskinTab(true)
+-- 8. Chat bubbles (Reskin 0.6.14)
+local b1 = BUB[1]
+check("bubbles page off: no event frame, a bubble keeps Blizzard's colours (V14)", not BS.Live().bubbles and not BS.Live().bubbleEvents and b1.panel._center == nil)
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("  ...a chat message changes nothing while off", b1.panel._center == nil)
+local bbp = BS.BubblesPage(nil)
+bbp.xuiSwitch.set(nil, true)
+c = b1.panel._center
+check("bubbles on: a bubble already on screen takes the theme's window colour at the opacity", c and near(c[1], bg[1]) and near(c[3], bg[3]) and near(c[4], 0.7), c and table.concat(c, ","))
+check("bubbles on: its border takes the border colour and its tail the window colour", b1.panel._border and near(b1.panel._border[1], bd[1]) and b1.panel.Tail._vc and near(b1.panel.Tail._vc[1], bg[1]))
+local b2 = Bubble(); BUB[2] = b2
+check("a new bubble is not painted before a chat message", b2.panel._center == nil)
+W.fire("CHAT_MSG_MONSTER_YELL", "Charge!", "An NPC"); W.tick(0.05, 2)
+check("after a chat message (NPC yell) the new bubble is painted on the next frame", b2.panel._center and near(b2.panel._center[1], bg[1]))
+check("forbidden bubbles (instances) are never asked for (includeForbidden false)", #W.errors == 0)
+b2.panel:SetCenterColor(0.5, 0.5, 0.5, 1); BUB[2] = nil
+bbp.xuiSwitch.set(nil, false)
+c = b1.panel._center
+check("bubbles off: Blizzard's own colours are back (centre, border, tail)", near(c[1], 1) and near(c[4], 1) and near(b1.panel._border[1], 1) and near(b1.panel.Tail._vc[1], 1), table.concat(c, ","))
+check("bubbles off: the event frame stops listening", not BS.Live().bubbleEvents)
+BUB[2] = b2; b2.panel._center = nil
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("bubbles off: a chat message paints nothing", b2.panel._center == nil)
+bbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: bubbles stop and get Blizzard's colours back", not BS.Live().bubbles and near(b1.panel._center[1], 1))
+ns.SetReskinTab(true)
 return R
 end
 '''

@@ -39,7 +39,7 @@ if MODE == "all" then
     tab and tab.name)
   -- (QoL 0.7.32: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: the tab's own switch is a tick box on the tab itself, Xaya 2026-11-06; tests/reskin_tab_switch_run.py checks it works)
-  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips)", names(tab) == "Overview | Blizzard Windows | Character Pane | Chat Panel | Esc Menu | Friend Colors | Minimap | Objective Tracker | Shopping List | Tooltips", names(tab))
+  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips; 0.6.11 Toasts and Pop-ups; 0.6.13 Menus; 0.6.14 Chat Bubbles)", names(tab) == "Overview | Blizzard Windows | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Objective Tracker | Shopping List | Toasts and Pop-ups | Tooltips", names(tab))
   check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch
     and tab.args.charreskin.args.chrome and tab.args.gamemenu.xuiSwitch ~= nil and tab.args.gamemenu.args.match ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)

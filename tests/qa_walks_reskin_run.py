@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.9's BlizzardSkins.lua (XayaUI_DevAssist 0.7.40, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.14's BlizzardSkins.lua (XayaUI_DevAssist 0.7.45, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
-Checks, on the real addons in the stand-in game: the four walkthroughs (windows, minimap, tooltips, tracker) are registered with prefill on
+Checks, on the real addons in the stand-in game: the eight walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles) are registered with prefill on
 and every step has a check or is a question (noVerdict); their own checks give the right verdict on the stand-in (a bag window skinned,
 then given back; the square minimap, then round; a tooltip in the theme's window colour; the tracker header in the label colour, then
 the Quests section given back); and her reskin settings are put back exactly as they were at the end of each walkthrough.
@@ -36,6 +36,19 @@ function SharedTooltip_SetBackdropStyle(tip) tip.NineSlice:SetCenterColor(0.1, 0
 local function Header(p) local h = CreateFrame("Frame", nil, p); h.Background = h:CreateTexture(nil, "BACKGROUND"); h.Text = h:CreateFontString(nil, "OVERLAY"); return h end
 local OTF = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent); OTF.Header = Header(OTF)
 local QOT = CreateFrame("Frame", "QuestObjectiveTracker", OTF); QOT.Header = Header(QOT); QOT.EndLayout = function() end
+-- Battle.net toast (backdrop) and the pop-up dialogs (art on child "BG"); StaticPopup_Show shows the first free one and sets .which
+local BNT = CreateFrame("Frame", "BNToastFrame", UIParent); BNT:Hide()
+for i = 1, 4 do local p = CreateFrame("Frame", "StaticPopup" .. i, UIParent); p.BG = CreateFrame("Frame", nil, p); p:Hide() end
+StaticPopupDialogs = {}
+MenuStyle1Mixin = { Generate = function(self) local t = self:CreateTexture(nil, "BACKGROUND"); t:SetAtlas("common-dropdown-bg"); self._bg = t end }
+local BP = CreateFrame("Frame", nil, CreateFrame("Frame", nil, UIParent)); BP.String = BP:CreateFontString(nil, "ARTWORK")
+BP.SetCenterColor = function(self, r, g, b, a) self._c = { r, g, b, a } end
+C_ChatBubbles = { GetAllChatBubbles = function() return {} end }
+local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
+local GL = CreateFrame("Frame", "GroupLootFrame1", UIParent); GL.Background = GL:CreateTexture(nil, "BACKGROUND"); GL.Border = GL:CreateTexture(nil, "BORDER")
+GL:SetScript("OnShow", function(self) self.Border:SetVertexColor(0.64, 0.21, 0.93) end); GL:Hide()
+function StaticPopup_Show(which) if not StaticPopupDialogs[which] then return end; StaticPopup1.which = which; StaticPopup1:Show(); return StaticPopup1 end
+function StaticPopup_Hide(which) if StaticPopup1.which == which then StaticPopup1:Hide() end end
 
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 5)
@@ -49,7 +62,7 @@ CueRulesDB.ui.rsk = { tracker = true, winOff = { bank = true }, otOff = {} }
 local before = "tracker=true bank-out"
 local function Same() local r = CueRulesDB.ui.rsk; return r and r.tracker == true and r.winOff and r.winOff.bank == true and not r.windows and not r.minimap and not r.tooltips and not r.shape end
 
-local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker" }
+local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll", "reskin-menus", "reskin-bubbles" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local good = w ~= nil and w.prefill == true and w.area == "Reskin"
@@ -94,6 +107,54 @@ ok, why = run("reskin-tracker", 2)
 check("tracker 2: the Quests section left out has Blizzard's header back", ok, why)
 run("reskin-tracker", 4)
 check("tracker: her settings are put back (Quests not left out)", Same() and not CueRulesDB.ui.rsk.otOff.quests, before)
+
+-- toasts and pop-ups (Reskin 0.6.11)
+ok, why = run("reskin-toasts", 1)
+check("toasts 1: Toasts and Pop-ups switches on", ok, why)
+ok, why = run("reskin-toasts", 2)
+check("toasts 2: our test pop-up opens and carries the XayaUI look", ok and StaticPopup1.which == "XAYAUI_QA_RESKIN_POPUP" and StaticPopupDialogs.XAYAUI_QA_RESKIN_POPUP.button1 ~= nil, why)
+ok, why = run("reskin-toasts", 4)
+check("toasts 4: the Battle.net toast's colour is read and matches the theme", ok and why:find("toast colour", 1, true), why)
+ok, why = run("reskin-toasts", 5)
+check("toasts 5: switched off, the pop-up has Blizzard's art back", ok, why)
+run("reskin-toasts", 6)
+check("toasts: the test pop-up is closed and her settings are put back", Same() and not CueRulesDB.ui.rsk.toasts and not StaticPopup1:IsShown(), before)
+
+-- loot rolls (Reskin 0.6.12)
+ok, why = run("reskin-lootroll", 1)
+check("lootroll 1: Blizzard Windows on with Loot rolls", ok, why)
+ok, why = run("reskin-lootroll", 2)
+check("lootroll 2: no roll on screen: the check says so (not a pass)", ok == false and why:find("no loot roll", 1, true), why)
+GL:Show()
+ok, why = run("reskin-lootroll", 2)
+check("lootroll 2: a roll showing is skinned, our border in the item's quality colour", ok, why)
+run("reskin-lootroll", 4)
+check("lootroll: her settings are put back", Same(), before)
+
+-- menus (Reskin 0.6.13)
+ok, why = run("reskin-menus", 1)
+check("menus 1: Menus switches on", ok, why)
+ok, why = run("reskin-menus", 2)
+check("menus 2: no menu opened yet: the check says so (not a pass)", ok == false, why)
+BuildMenu()
+ok, why = run("reskin-menus", 2)
+check("menus 2: a menu built since then took the look: the check counts it", ok and why:find("1 menu", 1, true), why)
+ok, why = run("reskin-menus", 4)
+check("menus 4: switched off", ok, why)
+run("reskin-menus", 5)
+check("menus: her settings are put back", Same() and not CueRulesDB.ui.rsk.menus, before)
+
+-- chat bubbles (Reskin 0.6.14)
+ok, why = run("reskin-bubbles", 1)
+check("bubbles 1: Chat Bubbles switches on", ok, why)
+ok, why = run("reskin-bubbles", 2)
+check("bubbles 2: no bubble yet: the check says so (not a pass)", ok == false, why)
+C_ChatBubbles.GetAllChatBubbles = function() return { BP:GetParent() } end
+W.fire("CHAT_MSG_SAY", "hello", "Me"); W.tick(0.05, 2)
+ok, why = run("reskin-bubbles", 2)
+check("bubbles 2: after /s the bubble took the look: the check counts it", ok and why:find("1 bubble", 1, true) and BP._c ~= nil, why)
+run("reskin-bubbles", 4)
+check("bubbles: her settings are put back", Same() and not CueRulesDB.ui.rsk.bubbles, before)
 return R
 end
 '''
