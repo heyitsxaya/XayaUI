@@ -244,15 +244,17 @@ QA.Register("ui-calc-infobox", { title = "Calculator page: summary and info icon
 -------------------------------------------------------------------------------
 local function RG() return Svc("releaseGuard") end
 QA.Register("ui-release-guard", { title = "Release Guard: where it works, the box on the death window", qa = "E1z93, E1z82", order = 264, prefill = true, steps = {
-    { text = "Open QoL > Release Guard and tick its box on the left if it is not ticked.\n\n|cffffd100Expect:|r |cffffd100Where|r offers Raids only and Raids and dungeons, and no Everywhere.",
+    -- (D8, Dev Assist 0.7.27: Release Guard moved to Rules > Raid Rules; its old "Where" list became the rule Load tab, so this step
+    -- now checks that no Where / Everywhere list is left and reads its Load table)
+    { text = "Open |cffffd100Rules > Smart Categories > RAID RULES > Release Guard|r and tick |cffffd100Enabled|r on its Settings tab if it is not ticked.\n\n|cffffd100Expect:|r no Where list and no Everywhere choice; where it works is on its |cffffd100Load|r tab (by default: in an instance, Raid, at least 20 people in your group).",
         check = function()
             local s = RG(); if not s then return false, "XayaUI QoL is not loaded" end
-            local loads, c = s.Loads(), s.Cfg()
-            local n = 0; for _ in pairs(loads or {}) do n = n + 1 end
-            local good = n == 2 and loads.raid and loads.group and not loads.all and c and c.load ~= "all"
-            return good and true or false, ("%d choices; Where is %s; the guard is %s"):format(n, tostring(loads and loads[c and c.load or ""]), (c and c.enabled) and "on" or "off")
+            local c = s.Cfg()
+            local L = c and c.load
+            local good = type(L) == "table" and not s.Loads
+            return good and true or false, ("Load: %s; the guard is %s"):format(s.LoadText and s.LoadText(L) or tostring(L), (c and c.enabled) and "on" or "off")
         end },
-    { text = "In a raid (or a dungeon with Raids and dungeons), die, and while the death window shows, press |cffffd100Check|r.\n\n|cffffd100Expect:|r a black NO RELEASE box over Release Spirit; a click on it does nothing; holding Shift lets the click through. The addon reads where the box and the death window sit.",
+    { text = "Where its Load tab allows it (by default a raid with at least 20 people), die, and while the death window shows, press |cffffd100Check|r.\n\n|cffffd100Expect:|r a black NO RELEASE box over Release Spirit; a click on it does nothing; holding Shift lets the click through. The addon reads where the box and the death window sit.",
         check = function()
             local s = RG(); if not s then return false, "XayaUI QoL is not loaded" end
             local st, box, d = s.State(), s.Box(), s.Death()
@@ -261,7 +263,7 @@ QA.Register("ui-release-guard", { title = "Release Guard: where it works, the bo
             local good = st and st.why == "covered" and box and box:IsVisible() and strata == "FULLSCREEN_DIALOG"
             return good and true or false, ("outcome %s; box %s, strata %s"):format(tostring(st and st.why), box and (box:IsVisible() and "visible" or "hidden") or "never made", tostring(strata))
         end },
-    { text = "Die outside any instance (the open world).\n\n|cffffd100Expect:|r no box (Release Guard only works in raids, or raids and dungeons). Press |cffffd100Check|r while dead.",
+    { text = "Die outside any instance (the open world).\n\n|cffffd100Expect:|r no box (its default Load works only in a raid instance). Press |cffffd100Check|r while dead.",
         check = function()
             local s = RG(); if not s then return false, "XayaUI QoL is not loaded" end
             local st, box, d = s.State(), s.Box(), s.Death()

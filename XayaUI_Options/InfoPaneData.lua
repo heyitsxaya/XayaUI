@@ -381,7 +381,7 @@ ns.InfoPaneData = {
     { "b", 1, "**Character Reskin.** Blizzard's character window in XayaUI's look: item levels coloured by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`." },
     { "b", 1, "**Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. QoL > Character Toolkit, or `/xui stats`." },
     { "b", 1, "**Shopping List.** What your gear is missing and what your tracked recipes need. Blizzard UI Reskin > Shopping List, or `/xui shop`." },
-    { "b", 1, "**Release Guard.** Covers the Release Spirit button when you die so a misclick does not release you. QoL > Release Guard." },
+    { "b", 1, "**Release Guard.** Covers the Release Spirit button when you die so a misclick does not release you. Rules > Raid Rules > Release Guard (its own Load tab; by default in a raid with at least 20 people)." },
     { "b", 1, "**Cursor Highlight and Trail.** A coloured shape at the cursor and a trail of gradient dots, to find the mouse easily. Both off by default. QoL > Cursor, or `/xui cursor`." },
     { "b", 1, "**Enhanced Tooltips.** ID lines for spells, items, auras and NPCs (more if you turn them on), and Aura ID lines for the effects an item or spell describes. Bonus Features > Enhanced Tooltips." },
     { "b", 1, "**Notepad and Calculator.** Bonus Features > Utilities, or `/notes` and `/calc`." },
