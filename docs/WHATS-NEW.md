@@ -25,13 +25,13 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
 `/xui reskin status` reports what it is doing; `/xui reskin options` opens its settings. Every part below has its own switch.
 
 - **Solid background.** The whole window, the stats list and the added width included, gets a solid fill in your theme's window
-  colour, so the game world no longer shows through. **Background opacity** (50% to 100%, default 95%) sets how solid it is.
-- **Clean window.** Blizzard's frame art (portrait, stone frame, backdrop picture) is replaced by a thin border, the theme's colours
+  color, so the game world no longer shows through. **Background opacity** (50% to 100%, default 95%) sets how solid it is.
+- **Clean window.** Blizzard's frame art (portrait, stone frame, backdrop picture) is replaced by a thin border, the theme's colors
   for title, tabs and stats list, and plain item slots.
-- **One item level per slot, coloured by upgrade track.** Veteran green, Champion blue, Hero purple, Myth orange, Explorer and
+- **One item level per slot, colored by upgrade track.** Veteran green, Champion blue, Hero purple, Myth orange, Explorer and
   Adventurer grey; dimmer at the first upgrade step, full at the last. If another addon already shows an item level on a slot,
   XayaUI's stays hidden there so you never see two (`/xui reskin status` names the other addon's text). Track names are read in
-  English; on other game languages the number uses the item's quality colour.
+  English; on other game languages the number uses the item's quality color.
 - **Enchant names beside each slot.** The enchant's own name in green, wrapped, without the "Enchant Ring - " prefix; "No enchant"
   in orange on a slot that should have one. Hover the line to see what the enchant does, as far as the game tells addons
   ("Effect text not given by the game." when it gives only the name).
@@ -40,7 +40,7 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
 - **Gems and sockets.** One row per socket under the enchant: the gem's icon (16 px; 12 px only where 16 does not fit) and its name;
   an empty socket shows its type ("Prismatic Socket") in orange. Hover a gem for its tooltip.
 - **Wider window.** On by default. The Character tab is **Extra width** wider (0 to 300 px, default 42: 380 px without the stats
-  list, 582 with it, where Blizzard's are 338 and 540). The model stays its size and centred. When a slot's text has too little room
+  list, 582 with it, where Blizzard's are 338 and 540). The model stays its size and centered. When a slot's text has too little room
   beside the model, it runs over the model's edges rather than disappearing (QoL 0.7.28); raise Extra width to keep it clear of the
   model (240 fits every enchant name of this expansion). Long lines that still do not fit are cut at a word with "...": hover for
   the whole line. The width changes only out of combat; a change made in a fight applies when the fight ends.
@@ -50,14 +50,14 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
   made in a fight applies when it ends.
 - **Full stat list (QoL 0.7.31).** The character window's stats pane can show every line of the Stat Calculator's Character Stats:
   the headings Core Stats, Primary, General, Offensive, Defensive, Secondaries and Tertiaries and every stat under them, each name
-  in its stat colour, with the same numbers the Stat Calculator shows (numbers you typed there are left out). Hover a line for the
+  in its stat color, with the same numbers the Stat Calculator shows (numbers you typed there are left out). Hover a line for the
   Stat Calculator's hover. On with the reskin, every line shown to start with. Arrange it on **Character Pane > Stat list**: per
   stat Show, Up / Down (its place in its group), Shows (Percent, Rating, or Both as "528 / 22.48%", for secondary and tertiary
-  stats), Name, Colour and Default colour; per heading Name and Colour; and **Reset the list**. Turn the part off ("Full stat
+  stats), Name, Color and Default color; per heading Name and Color; and **Reset the list**. Turn the part off ("Full stat
   list") for Blizzard's own list.
 - **Upgrade fix (QoL 0.7.27).** If you used QoL 0.7.21-0.7.23, your window kept those versions' 240 px extra width. It now changes
   once to the new 42 px default; any other width you chose is kept.
-- **Stats list styling.** Theme-coloured headers with a thin rule, muted labels, and a faint stripe on every other row.
+- **Stats list styling.** Theme-colored headers with a thin rule, muted labels, and a faint stripe on every other row.
 - **Safety.** Turning a part off gives Blizzard's look back at once (out of combat). If anything goes wrong while the reskin applies,
   it turns itself off until `/reload` and says so in chat.
 
@@ -85,7 +85,7 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 - **One "Character Stats" section.** Core Stats (Primary; General: health, your resource, global cooldown, movement speed;
   Offensive: attack and spell power, attack speed, weapon damage per second, weapon damage, critical strike effectiveness;
   Defensive: armor, dodge, parry, block, stagger for Brewmasters), then Secondaries, then Tertiaries.
-- **Category bars.** Primary, General, Offensive and Defensive are drawn as thin bands in your theme's accent colour, with the stats
+- **Category bars.** Primary, General, Offensive and Defensive are drawn as thin bands in your theme's accent color, with the stats
   indented under them.
 - **Critical strike effectiveness.** No game call gives it, so XayaUI adds up every "critical strike effectiveness by N%" in your
   equipped items' tooltip text (English only; talents and buffs are not included). Hover it to see which items it came from.
@@ -93,7 +93,7 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 - **Influences column.** The names of what a stat feeds (Agility: Attack power, Dodge, Armor) and, marked "from", what feeds it
   (Attack Power: from Agility). Hover a name for its value, its per-point value and the new value.
 - **Try a different number.** Type a number in a stat's **Change** box (the box at the far right of its row) and press Enter.
-  Every number it moves shows the new value with its sign underneath ("+2,800") in the accent colour; the Rating cell shows your
+  Every number it moves shows the new value with its sign underneath ("+2,800") in the accent color; the Rating cell shows your
   rating with the change beside it ("528 +172"). Empty the box, or type your own number, to put it back. The old "All ratings" box
   is gone. Panel > Your numbers > **Clear all** resets every box.
 - **Ability lists moved.** The "Abilities (per 100)" and "Ability Scaling" lists left the Agility / Strength card; they now live on
@@ -105,12 +105,12 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   full, and L, the rating lost to diminishing returns (on two lines); and what the stat feeds now.
 - Hover a row for a sentence such as "Haste decreases Global cooldown by 0.34 s". An amount the game does not give reads
   "not given". This is not a simulated damage-per-point weight.
-- Column titles are never cut and sit centred over their columns (widths are measured from the game's own text widths). On a narrow
+- Column titles are never cut and sit centered over their columns (widths are measured from the game's own text widths). On a narrow
   panel the influences go under each row; at 580 px wide or more they get their own column.
 
 **Gear tab**
 - **Click an equipped item to compare it;** click it again to let it go. The picked item now has a clearly visible frame in your
-  theme's accent colour (before, the frame was drawn but too dark to see).
+  theme's accent color (before, the frame was drawn but too dark to see).
 - **Slots named clearly:** Ring slot #1 / #2, Trinket slot #1 / #2, Main-hand, Off-hand.
 - **Your bag items as icons,** best item level first. Click to pick up to 3 to compare side by side; click again to let one go.
   With two rings, trinkets or one-hand weapons, choose which one they replace.
@@ -138,14 +138,14 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 
 **Settings summary**
 - Blizzard UI Reskin > Character Pane: every Character Reskin switch, Background opacity, Extra width, Extra height.
-- Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colours.
+- Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colors.
 - QoL > Character Toolkit (tick box in the left pane), with Panel, Slot Overlays, Spell Math and Tooltip lines under it.
 - Panel > Layout: side, detail level, rating lines, text size, Gear Summary style, background, Smaller / Larger height, Reset size.
 
 ### Also in this round: Release Guard (QoL 0.7.31)
 Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default, and while off nothing of it loads or listens).
 - When you die, a black box covers the death window's **Release Spirit** button so a misclick does not release you. It reads
-  **NO RELEASE** (you can change the text), with a flavour line under it that changes each death: to start, "BAD MONKEY",
+  **NO RELEASE** (you can change the text), with a flavor line under it that changes each death: to start, "BAD MONKEY",
   "death comes for us all", "NOPE", "Disagree", "WTB Rez" (edit the list; one per line, each on or off).
 - Hold the click-through key (Shift to start; Ctrl or Alt in settings) and the box steps aside so your click reaches Release; let go
   and it is back. It hides once you are a ghost or the window closes.
@@ -183,7 +183,7 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   - Enchants you add are counted by the enchant scrolls in your bags whose name holds the enchant's name: **not yet confirmed in
     game.**
   - **Click a name** while the Auction House is open to search for it there; Shift-click links the item.
-  - Blizzard's own Professions list in the objective tracker takes your theme's colours (its own switch: "Restyle Blizzard's
+  - Blizzard's own Professions list in the objective tracker takes your theme's colors (its own switch: "Restyle Blizzard's
     Professions list"). The rest of the objective tracker is unchanged for now.
   - Settings: **Your defaults** (one per enchantable slot and one for gems) and **History** (forget what this character used;
     empty To buy).
@@ -199,10 +199,10 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   stay idle until `/reload`.
 - **Faster console switches; clickable version text; tidier Rules tabs** (XayaUI 0.6.45, Options 0.6.39). The console switches in
   settings no longer pause while the whole window rebuilds. The version text at the bottom of the settings window replaces the
-  Addon Info button: click it to open Addon Info; it uses your theme colours. The Rules sub-tab row stays compact instead of
+  Addon Info button: click it to open Addon Info; it uses your theme colors. The Rules sub-tab row stays compact instead of
   stretching across the row.
 - **`/xui help` is readable and shorter** (XayaUI 0.6.46, 0.6.50). One command per line, with the command in your theme's
-  accent colour. Since XayaUI 0.6.50 it is much shorter: only the commands a player uses (17 lines with the Shopping List's
+  accent color. Since XayaUI 0.6.50 it is much shorter: only the commands a player uses (17 lines with the Shopping List's
   `/xui shop`; it was 29), with option lists such as [on|off].
 - **Type commands in the console** (XayaUI 0.6.50). Open the console with `/xui console`; the line along its bottom takes any
   XayaUI command, with or without `/xui` (for example "debug status"). Press Enter: the command is echoed in grey and its output
@@ -224,9 +224,9 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   loses that letter. Example: the `/xui chat` status line used to read "on|off|eset|move|..." and now reads
   "on|off|reset|move|history|wrap|indent|whispers|settings". **Not yet tested in game** (QA D13); what Ctrl+C pastes, one "|" or
   two, is also still unchecked (QA D12).
-- **Cursor colours as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
+- **Cursor colors as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
   Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme ("Match the UI theme"), and the Cursor Highlight
-  can use your theme's accent colour.
+  can use your theme's accent color.
 - **Chat history: opens where you are; whisper tabs** (Chat 0.6.15, 0.6.16). The history window opens on the chat tab you are on,
   with All moved to the end. Whisper conversations get their own tabs, following the game's New Whispers setting, or all in one
   Whispers tab (History > Whisper tabs). People with the same name on different realms get separate tabs.
@@ -284,7 +284,7 @@ appeared at core 0.6.55-0.6.56 / Options 0.6.54-0.6.55). Nothing here has been r
 - **Tabs:** Group | Display | Load | Config, with Group first. Config holds the name, an Enabled switch (for all rules inside), the group
   type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character> (made here / imported, date)".
 - **Size** (Group tab): Auto (fits what is showing) or Set (width and height, optional Clip). Border and Background have tick boxes with
-  colour, texture and padding; in Auto the box follows the displays that are showing.
+  color, texture and padding; in Auto the box follows the displays that are showing.
 - **Nested groups:** "Anchored to: The parent group / The screen".
 - **Static groups, Align & Arrange:** Horizontal and Vertical choices (Align left / center / right, Distribute, Space with a gap). The
   choice is now saved: a display you drag, nudge, add or resize goes back into line; None places them freely.
@@ -334,6 +334,12 @@ feature in section 2. **Not tested in game.**
 - **A spec you are not in:** the Aura and Target Debuff buttons list nothing and say: "Auras and target debuffs are read from your
   Cooldown Manager for the spec you are in now. Switch to <Spec>, then press the button again." (the Cooldown Manager answers for the
   current spec only). Empty-list messages now show as text instead of hiding behind the (i) icon.
+- **In-game QA for these buttons** (main 9853d85, Dev Assist 0.7.33): `/xui dev qa` lists "Auto-Generate Rules: Generate buttons, filtered list,
+  Select all" (12 steps; QA B160, B151, B152). You press the real Generate buttons and tick Select all; after each step the addon reads
+  what the table lists and offers its verdict on "Accept" (nothing is recorded without your click). It checks the exact wording of all 16
+  buttons, that no list shows before a press, that each filter lists only its own kind, that Select all ticks and unticks only the rows
+  shown, another spec's Aura list and the class lists; one step is a question that captures the button widths into the note; the last
+  step unticks everything and closes the list. Not tested in game; the buttons' clicks are emulated in the test.
 - *Developers' notes:* the button width (3.0) is an estimate: check that no label is cut off and how the buttons wrap. The aura and
   debuff lists rely on an inference about the Cooldown Manager's fields. Not yet asked of Xaya: whether to keep the header-row tick box
   beside Select all, keep the spec icon on spec buttons, name the pressed button in the table title (still "Auto-populate: <Spec>"),
@@ -350,7 +356,7 @@ From engine session 2 (core 0.6.57, Options 0.6.57). Not seen in game yet.
     from.
   - A row that could not be finished stays in the table, with the popup "error issue making the following rules: [...]". Rows that
     were made leave the table.
-  - On-screen cues are placed in rows of 3, centred on the screen: centre, below, above.
+  - On-screen cues are placed in rows of 3, centered on the screen: center, below, above.
   - A switch, "Hide / Show already generated rules (can potentially cause duplicates)".
   - Buttons: Advanced, Populate, Reload list, Close.
 - **Cooldown Manager warning wording.** "This aura (name) requires Blizzard's Cooldown Manager ..." and, where the game offers no
@@ -379,20 +385,20 @@ From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, 
 - **What a bar tracks:** Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges.
   Maximum 0 uses the game's own maximum; if there is none, the bar stays empty and never guesses.
 - **Fill and look.** Drain toward left, right, bottom or top, or "Fill up instead of draining". Icon left, right or none. Spark on or
-  off with colour and width. Background, border and opacity.
-- **Automatic colour.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
-  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Colour section's
-  "Now:" line names the type in its colour, for example "Fire Damage (Magic)". Or pick a fixed colour.
-- **Colour style per bar:** Blizzard default (the game's own colours), Neon, Pastel, Muted / Dark, or Custom (a colour picker for each
-  of 12 types). A group's Display tab has **Every bar: colour style**: with "Force on every bar in this group" ticked the group's style
+  off with color and width. Background, border and opacity.
+- **Automatic color.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
+  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Color section's
+  "Now:" line names the type in its color, for example "Fire Damage (Magic)". Or pick a fixed color.
+- **Color style per bar:** Blizzard default (the game's own colors), Neon, Pastel, Muted / Dark, or Custom (a color picker for each
+  of 12 types). A group's Display tab has **Every bar: color style**: with "Force on every bar in this group" ticked the group's style
   wins; unticked, choosing a style copies it to every bar once, and the label says how many bars it changes.
 - **Bar textures:** Flat, Blizzard, Raid frame; the game's own power-bar art ("Blizzard power: Health, Mana, Rage, Fury, Insanity,
   ...", read from the game); every texture other addons share through LibSharedMedia; or your own file. Each texture is listed once.
   XayaUI's own bar fills are planned for later (roadmap RM-BARFILLS).
 - **In combat.** Aura-time and stacks bars are drawn by the game's own aura buttons, so they keep moving while the game hides aura
   numbers; each member of a dynamic group is its own bar. Cooldown bars are driven by the game from the cooldown's duration.
-- **Type colours in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colours", on by default. On spell and aura
-  tooltips "fire damage" becomes "Fire Damage" in the game's Fire colour, and a dispel type such as "Magic" takes its dispel colour.
+- **Type colors in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colors", on by default. On spell and aura
+  tooltips "fire damage" becomes "Fire Damage" in the game's Fire color, and a dispel type such as "Magic" takes its dispel color.
   English game text only.
 - **Smart Categories > Progress Bars** now lists rules with a Bar cue.
 - *Developers' notes:* the weakest part is the combat drawing (built from Blizzard's 12.1.5 source, tested on a stand-in only).

@@ -54,15 +54,15 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
       setup = function()
           local f = loadstring("error('QA walkthrough test error')", "@Interface/AddOns/XayaUI/QAWalk.lua")
           if f then xpcall(f, function(e) local h = geterrorhandler(); if h then pcall(h, e) end end) end
-          local g = loadstring("error('QA walkthrough, not XayaUI')", "@Interface/AddOns/NotXayaUI/QAWalk.lua")
-          if g then xpcall(g, function(e) local h = geterrorhandler(); if h then pcall(h, e) end end) end
+          -- audit D36 (Dev Assist 0.7.19): the "not XayaUI" case is checked on XayaUI's own classifier (below) instead of being raised
+          -- through the game's error handler, where it could show the game's Lua error window or be kept by an error-collecting addon
       end,
       check = function()
-          local mine, other = nil, false
+          local mine = nil
           for _, e in ipairs(ns.ErrorEntries()) do
               if e.msg:find("QA walkthrough test error", 1, true) then mine = e end
-              if e.msg:find("not XayaUI", 1, true) then other = true end
           end
+          local other = ns.ErrorFolder and ns.ErrorFolder("Interface/AddOns/NotXayaUI/QAWalk.lua:1: QA walkthrough, not XayaUI") ~= nil
           return mine ~= nil and mine.code == "XUI-E001" and not other,
               (mine and ("recorded as " .. tostring(mine.code) .. " x" .. tostring(mine.n)) or "not recorded") .. (other and "; the other one was recorded too" or "")
       end },
@@ -73,5 +73,17 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
           local text, str = w and w.text:GetText() or "", w and w.str:GetText() or ""
           return text:find("XUI-E001", 1, true) ~= nil and str:find("^XUIREP1:") ~= nil, ("summary %s; string %d characters"):format(
               text:find("XUI-E001", 1, true) and "names XUI-E001" or "has no XUI-E001", #str)
+      end },
+    -- audit D36 (Dev Assist 0.7.19): the test error does not stay in your saved errors or later reports
+    { text = "Last step: press |cffffd100Do it for me|r to remove this walkthrough's test error from your saved errors (your real errors stay). Then Pass.",
+      setup = function()
+          local l = type(CueRulesDB) == "table" and CueRulesDB.errorLog
+          if type(l) == "table" then
+              for i = #l, 1, -1 do local e = l[i]; if type(e) == "table" and tostring(e.msg):find("QA walkthrough test error", 1, true) then table.remove(l, i) end end
+          end
+      end,
+      check = function()
+          for _, e in ipairs(ns.ErrorEntries()) do if e.msg:find("QA walkthrough test error", 1, true) then return false, "the test error is still saved" end end
+          return true, "the test error is gone"
       end },
 } })

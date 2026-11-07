@@ -435,7 +435,7 @@ function ns.Share_ApplyRules(snap, mode)
 
     if IsTbl(snap.rules) then
         if replace then
-            for _, r in ipairs(ns.rules) do ns.DropVisual(r) end
+            for _, r in ipairs(ns.rules) do if ns.EndRule then pcall(ns.EndRule, r) end; ns.DropVisual(r) end   -- (audit D56)
             wipe(ns.rules); wipe(ns.folders)
         end
         local used, map = {}, {}
@@ -450,11 +450,18 @@ function ns.Share_ApplyRules(snap, mode)
             ns.folders[#ns.folders + 1] = wrap
             counts.folders = counts.folders + 1
         end
-        local added = {}
+        local added, keptDefault = {}, {}
         for _, f in ipairs(IsTbl(snap.folders) and snap.folders or {}) do
             if IsTbl(f) and type(f.id) == "string" then
                 local nf = ns.Copy(f)                      -- keep the group's own settings (container type, overrides, ...)
-                nf.default = nil                           -- a built-in category flag must not be duplicated here
+                -- A built-in category flag must not be duplicated by an "add" import. A replace (Load a backup) swaps every folder out,
+                -- so it keeps the flag of a top-level category once each (audit D40, core 0.6.67): without it Display Cues / Sound Cues
+                -- became plain folders and every rule's kind changed (EnsureDefaultFolders does not run again once its version is set).
+                local d = nf.default
+                nf.default = nil
+                if replace and type(d) == "string" and not keptDefault[d] and f.parent == nil and ns.DefaultFolderInfo and ns.DefaultFolderInfo(d) then
+                    nf.default, keptDefault[d] = d, true
+                end
                 -- who made it stays the exporter's record (plain text only); without one it reads "imported"
                 nf.origin = ns.CleanOrigin and ns.CleanOrigin(f.origin) or nil
                 if nf.origin then nf.origin.imported = time and time() or true else nf.origin = { how = "imported", at = time and time() or nil } end

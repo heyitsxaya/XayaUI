@@ -795,6 +795,7 @@ local function InitDB()
     ns.rules = CueRulesDB.rules
     if ns.MigrateCues then
         local ok, n = pcall(ns.MigrateCues)
+        if not ok and ns.RecordError then pcall(ns.RecordError, "XayaUI cue migration: " .. tostring(n), nil, "XayaUI", "XUI-E011") end   -- (audit D57)
         if ok and n and n > 0 then ns.Print(n .. " existing sounds / displays were moved into Cues (each condition now lists them under THEN; a full backup of your rules was saved first).") end
     end
     CueRulesDB.qol = CueRulesDB.qol or {}

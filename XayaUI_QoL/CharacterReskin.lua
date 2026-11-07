@@ -1385,9 +1385,9 @@ function ns.BuildCharReskinPage(Notify)
     local function Col(t) if type(t) == "table" then return t[1], t[2], t[3], 1 end end
     local listArgs = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), coloured. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and colour; for each group: its heading's name and colour. An empty name or \"Default colour\" gives the Stat Calculator's back." },
+            name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), colored. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and color; for each group: its heading's name and color. An empty name or \"Default color\" gives the Stat Calculator's back." },
         reset = { type = "execute", order = 1, name = "Reset the list", disabled = listOff,
-            desc = "Every stat shown again, in Character Stats' order, as a percent, with its own name and colour; every heading's own name and colour.",
+            desc = "Every stat shown again, in Character Stats' order, as a percent, with its own name and color; every heading's own name and color.",
             func = function() local c = C(); for _, k in ipairs(LIST_TABLES) do c[k] = {} end; Changed() end },
     }
     for gi, g in ipairs(groups) do
@@ -1396,10 +1396,10 @@ function ns.BuildCharReskinPage(Notify)
             args = {
                 name = { type = "input", order = 1, name = "Heading", disabled = listOff, desc = "The heading's text (empty: '" .. g.label .. "').",
                     get = function() return C().groupName[gk] or "" end, set = function(_, v) v = tostring(v or ""); C().groupName[gk] = (v ~= "") and v or nil; Changed() end },
-                color = { type = "color", order = 2, name = "Colour", disabled = listOff,
+                color = { type = "color", order = 2, name = "Color", disabled = listOff,
                     get = function() local t = C().groupColor[gk]; if t then return Col(t) end; local l = TC("xui-label", "text", { 1, 0.82, 0, 1 }); return l[1], l[2], l[3], 1 end,
                     set = function(_, r, gg, b) C().groupColor[gk] = { r, gg, b }; Changed() end },
-                plain = { type = "execute", order = 3, name = "Default colour", width = "half", disabled = listOff,
+                plain = { type = "execute", order = 3, name = "Default color", width = "half", disabled = listOff,
                     func = function() C().groupColor[gk] = nil; Changed() end },
             } }
         for i = 1, #g.stats do
@@ -1430,7 +1430,7 @@ function ns.BuildCharReskinPage(Notify)
                     name = { type = "input", order = 5, name = "Name", disabled = listOff,
                         get = function() local k = Key(); return (k and C().statName[k]) or "" end,
                         set = function(_, v) local k = Key(); if k then v = tostring(v or ""); C().statName[k] = (v ~= "") and v or nil; Changed() end end },
-                    color = { type = "color", order = 6, name = "Colour", disabled = listOff,
+                    color = { type = "color", order = 6, name = "Color", disabled = listOff,
                         get = function()
                             local k, it = Key(), Item()
                             local t = k and C().statColor[k]
@@ -1439,7 +1439,7 @@ function ns.BuildCharReskinPage(Notify)
                             return d[1], d[2], d[3], 1
                         end,
                         set = function(_, r, gg, b) local k = Key(); if k then C().statColor[k] = { r, gg, b }; Changed() end end },
-                    plain = { type = "execute", order = 7, name = "Default colour", width = "half", disabled = listOff,
+                    plain = { type = "execute", order = 7, name = "Default color", width = "half", disabled = listOff,
                         func = function() local k = Key(); if k then C().statColor[k] = nil; Changed() end end },
                 } }
         end
@@ -1454,20 +1454,20 @@ function ns.BuildCharReskinPage(Notify)
         args = {
             statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot coloured by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
-            chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane colour behind the stat list, theme-coloured title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
-            ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, coloured by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colours) and brighter with each upgrade step. Items without a track show their quality colour. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
+                name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot colored by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
+            chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane color behind the stat list, theme-colored title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
+            ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, colored by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colors) and brighter with each upgrade step. Items without a track show their quality color. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
             enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
             gems = T("gems", 5, "Gems and sockets beside the slots", "One row per socket under the enchant: the gem's icon (16 px; 12 on a slot where 16 does not fit) and its name, or the empty socket's type in orange. Hover a gem for its tooltip. The Character Toolkit's slot overlays leave out their empty-socket mark while this is on.", "full", isOff),
-            stats = T("stats", 6, "Stat list", "The stat list's headers, labels and values in the theme's colours, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
-            wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centres the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
+            stats = T("stats", 6, "Stat list", "The stat list's headers, labels and values in the theme's colors, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
+            wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centers the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             -- (QoL 0.7.31; Xaya: "character pane option should also allow for extra height"; her answer "either one": spread the slots)
             tallPx = R("tallPx", 8.5, "Extra height", "How much taller than Blizzard's window, in pixels (default 0: Blizzard's height). The two slot columns spread out evenly over it (the same extra gap between every two slots), the model grows taller with them, the weapons move down, and each slot's enchant, embellishment and gem lines may use the extra room. Changed only out of combat, as the width.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
-            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "The stats pane shows every line of the Stat Calculator's Character Stats, Core Stats (Primary, General, Offensive, Defensive), Secondaries and Tertiaries, with each stat's name in its colour, on a list of XayaUI's own over Blizzard's. Choose what shows, the order, percent / rating / both, names and colours on its Stat list page. Off: Blizzard's own list.", "full", isOff),
+            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "The stats pane shows every line of the Stat Calculator's Character Stats, Core Stats (Primary, General, Offensive, Defensive), Secondaries and Tertiaries, with each stat's name in its color, on a list of XayaUI's own over Blizzard's. Choose what shows, the order, percent / rating / both, names and colors on its Stat list page. Off: Blizzard's own list.", "full", isOff),
         },
     }
 end

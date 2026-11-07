@@ -541,7 +541,7 @@ function ns.BuildDataPanelsTab(Notify)
                 local n, i = nBlocks(), cur(); if n <= 1 then return end
                 for j = i, n - 1 do swap(j, j + 1) end
                 cfg["slot" .. n], cfg["text" .. n] = nil, ""; if cfg.blocks then cfg.blocks[n] = nil end
-                cfg.slots = n - 1; if editIdx[key] > n - 1 then editIdx[key] = n - 1 end
+                cfg.slots = n - 1; if (editIdx[key] or 1) > n - 1 then editIdx[key] = n - 1 end   -- (D50: nil until "Editing block" was used)
                 Both(key) end },
         } }
         args.reset = { type = "execute", order = 30, name = "Reset this panel", confirm = true,
@@ -612,6 +612,25 @@ function ns.BuildDataPanelsTab(Notify)
     return out
 end
 
+-- (function audit 2026-11-07, D50) the Data Panels' service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit-qol-bonus.lua):
+-- RemoveBlockFresh runs "Remove block" on a freshly built settings tab, where "Editing block" was never used (the D50 path)
+if ns.Provide then
+    ns.Provide("dataPanelsDebug", {
+        Cfg = function(key) return Cfg(key) end,
+        Refresh = function(key) if ns.DataPanels_Refresh then ns.DataPanels_Refresh(key) end; if ns.DataPanels_Sync then ns.DataPanels_Sync() end end,
+        RemoveBlockFresh = function(key)
+            local keepChanged, keepRemove = ns.DataPanels_Changed, ns.DataPanels_RemoveSection   -- (the settings window's own tab keeps its hooks)
+            local tab = ns.BuildDataPanelsTab(nil)
+            ns.DataPanels_Changed, ns.DataPanels_RemoveSection = keepChanged, keepRemove
+            local gen = tab and tab.args and tab.args.general and tab.args.general.args
+            local sec = gen and ((key == "bl" and gen.left) or (key == "br" and gen.right) or (key == "center" and gen.center))
+            local fn = sec and sec.args.blocks and sec.args.blocks.args.remove and sec.args.blocks.args.remove.func
+            if not fn then return false, "no Remove block for that panel" end
+            return pcall(fn)
+        end,
+    })
+end
+
 function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "general"
     ns.OpenSettingsPage("bonus", "datapanels", tab)
 end
@@ -621,5 +640,6 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.DataPanels_OnDBReady)
 ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (custom data panels and bars)")
-ns.RegisterLauncher({ "data", "Custom data panels", "Open the custom data panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
+-- O-100 (Bonus 0.6.27): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
+ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)

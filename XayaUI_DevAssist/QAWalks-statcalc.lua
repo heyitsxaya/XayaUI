@@ -126,7 +126,7 @@ QA.Register("statcalc-rows", { title = "Stat Calculator: contribution rows, fold
           local vals = #Under(s.d, AP, "pairValue")
           return s.mark == "-" and from >= 1 and vals >= 1, ("mark %s; rows: %s"):format(tostring(s.mark), table.concat(s.rows, ", "))
       end },
-    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in the accent colour (as on the other lines). Clear the box afterwards.",
+    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in the accent color (as on the other lines). Clear the box afterwards.",
       check = function()
           local s, why = APState(); if not s then return false, why end
           local ch = Under(s.d, AP, "pairChange")
@@ -181,7 +181,7 @@ QA.Register("statcalc-compare-highlight", { title = "Stat Calculator: the picked
           end
           return slot ~= nil and cands > 0, slot and (cands .. " item(s) in your bags listed") or "no equipped item picked yet"
       end },
-    { text = "Click one of the items in that row.\n\n|cffffd100Expect:|r the item you clicked has the same clear frame as the equipped one: 3 px in the theme's accent colour, all round, on top of the icon. (Until QoL 0.7.39 it showed no frame.)",
+    { text = "Click one of the items in that row.\n\n|cffffd100Expect:|r the item you clicked has the same clear frame as the equipped one: 3 px in the theme's accent color, all round, on top of the icon. (Until QoL 0.7.39 it showed no frame.)",
       check = function()
           local list = Picked()
           if #list == 0 then return false, "no bag item is marked as picked" end

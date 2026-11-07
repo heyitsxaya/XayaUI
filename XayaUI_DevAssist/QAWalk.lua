@@ -95,6 +95,7 @@ function QA.ExportCode(id)
     for i, s in ipairs(r.steps or {}) do
         lines[#lines + 1] = ("%d=%s:%s"):format(i, Clean(s.r, 1), Clean(s.note, 160))
         if s.k then lines[#lines + 1] = ("k%d=%s"):format(i, Clean(s.k, 20)) end   -- (the checklist item: steps shift when the list changes)
+        if s.a then lines[#lines + 1] = ("a%d=%s:%s"):format(i, Clean(s.a, 1), Clean(s.d, 200)) end   -- (what the addon saw: V22)
     end
     return "XUIQA1:" .. enc64(table.concat(lines, "\n"))
 end
@@ -116,6 +117,9 @@ function QA.ImportCode(code)
             if res then r.steps[tonumber(k)] = { r = res, note = Clean(note, 160) } end
         elseif k:match("^k%d+$") and r.steps[tonumber(k:sub(2))] then
             r.steps[tonumber(k:sub(2))].k = Clean(v, 20)
+        elseif k:match("^a%d+$") and r.steps[tonumber(k:sub(2))] then
+            local a, d = v:match("^([YN%?]):(.*)$")
+            if a then r.steps[tonumber(k:sub(2))].a, r.steps[tonumber(k:sub(2))].d = a, Clean(d, 200) end
         end
     end
     if not r.id then return nil, "the code has no walkthrough in it" end
@@ -256,6 +260,10 @@ function QA.RunCheck()
     local st = def and def.steps[run.i]
     if not (st and st.check) then W.check:SetText(""); return end
     local ok, good, note = pcall(st.check)
+    -- V22 (Xaya 2026-11-07: "... in game qa test walk through with pre-fill confirmation options or data capturing"): what the addon
+    -- saw is kept with the answer (its verdict and its note), so a result carries the data, not only Pass / Fail
+    run.seen = run.seen or {}
+    run.seen[run.i] = { a = (not ok) and "?" or (good and "Y" or "N"), d = Clean(ok and note or good, 200) }
     run.suggest = nil
     W.accept:Hide()
     if not ok then W.check:SetText("|cffffaa00The addon could not check this one itself (" .. Clean(good, 120) .. "). Look and decide.|r")
@@ -306,7 +314,9 @@ function QA.Answer(r)
     if not run then return end
     local def = QA.walks[run.id]
     local key = def.steps[run.i] and def.steps[run.i].key
-    run.steps[run.i] = { r = r, note = Clean(W.note:GetText(), 160), k = key and Clean(key, 20) or nil }
+    local seen = run.seen and run.seen[run.i]
+    run.steps[run.i] = { r = r, note = Clean(W.note:GetText(), 160), k = key and Clean(key, 20) or nil,
+        a = seen and seen.a or nil, d = seen and seen.d or nil }   -- (a / d: the addon's own check at that step: verdict, data)
     if run.i < #def.steps then run.i = run.i + 1; ShowStep()
     else
         DB().results[run.id] = { when = time and time() or 0, v = def.version, steps = run.steps, fp = QA.Fingerprint(def) }
@@ -323,7 +333,8 @@ function ShowEnd(res, def, imported)
     for i, st in ipairs(res.steps or {}) do
         local mark = st.r == "P" and "|cff60ff60Pass|r" or st.r == "F" and "|cffff6060Fail|r" or "|cff999999Skip|r"
         if st.r == "P" then p = p + 1 elseif st.r == "F" then f = f + 1 else s = s + 1 end
-        lines[#lines + 1] = ("%d. %s%s"):format(i, mark, (st.note and st.note ~= "") and ("  " .. st.note) or "")
+        lines[#lines + 1] = ("%d. %s%s%s"):format(i, mark, (st.note and st.note ~= "") and ("  " .. st.note) or "",
+            (st.d and st.d ~= "") and ("  |cff999999(the addon saw: " .. st.d .. ")|r") or "")
     end
     W.summary:SetText(("%d passed, %d failed, %d skipped.\n\n%s\n\nTo send these: press Export code and copy the code (Ctrl+C), or take a Screenshot. They are also kept in the saved file (XayaUIDevAssistDB.qa)."):format(
         p, f, s, table.concat(lines, "\n")))
