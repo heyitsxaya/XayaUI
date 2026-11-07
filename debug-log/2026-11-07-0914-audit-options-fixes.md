@@ -3,8 +3,9 @@ Logged 2026-11-07 09:14 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx, branch `claude/fu
 Audit table: docs/process/FUNCTION-AUDIT-2026-11-07.md. Not run in the game. No `## Version` bumped and MANIFEST not rebuilt (the parent
 session does both, and adds XayaUI_DevAssist/QAWalks-audit-options.lua to the toc and regenerates QAWalks-Checklist.lua).
 
-Test: `tests/audit_options_run.py` (new, real addons in the stand-in game, settings window open for the last three parts): 69 checks.
-Negative control: the same test run on a copy of ae88fc3 (git archive HEAD + the new test): every row below fails there except where noted.
+Test: `tests/audit_options_run.py` (new, real addons in the stand-in game, settings window open for the last three parts). Negative
+control: the same test on a copy of ae88fc3 (git archive + the new test). Without the window part (XUI_TEST_NOWINDOW=1, fast): 59 checks
+pass on the fixed code; on ae88fc3, 31 of 48 fail (the FA-11 part stops at its first restore there) and every row's check is among them.
 Walkthrough test: `tests/qa_walks_audit_options_run.py` (new) runs every step of the new walkthroughs.
 
 ## Rows
@@ -43,8 +44,8 @@ Walkthrough test: `tests/qa_walks_audit_options_run.py` (new) runs every step of
   every display's visual table (and the group's forced bar colors); a `set` equal to the start color puts each copy back; the copy is
   dropped once the picker is closed. Fail-before: 1 check (A 1,0,0 B 1,0,0).
 - **D45** number inputs. Change: OutcomesEditor compare value and TriggersEditor spell / talent / item ID boxes: text that is not a number
-  keeps the old value (chat line); an empty box is 0. Fail-before: compare value fails; **the spell-ID check passed on the old code too**
-  (not a valid negative control; cause not found in the time available: flagged).
+  keeps the old value (chat line); an empty box is 0. Fail-before: 2 checks (compare value 0; spell ID 0). (A first version of the
+  spell-ID check read the wrong field for the trigger type it picked and passed on the old code; corrected to read the type's own key.)
 - **D46** sidebar rename to an empty name keeps the old name. Fail-before: 1 check.
 - **D47** save-bar buttons report an error through geterrorhandler (as the file does elsewhere). Test: DraftSave raising an error.
 - **FA-11** (Xaya: "Recycle Bin, no prompt (Recommended)"). Core RecycleBin.lua: ns.RecycleChild (cue / condition: its place among its

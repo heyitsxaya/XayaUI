@@ -328,12 +328,14 @@ section("D45", function()
   check("D45 compare value: '7' is stored", byUid(cond.uid).when.list[1].num == 7)
   local p = byUid(P.uid)
   local row = p.extra.list[1]
-  local id
-  for _, f in ipairs(ns.TRIGGER_TYPES[row.type].fields) do if f.kind == "spell" then id = f.key .. "ID" end end
+  local id, fk
+  for _, f in ipairs(ns.TRIGGER_TYPES[row.type].fields) do if f.kind == "spell" and not fk then fk = f.key; id = f.key .. "ID" end end
+  row[fk] = 3003
   local box = find(find(RuleNode(Tree(), p), "x1"), id)
   check("D45 the extra trigger's spell ID box is there", box ~= nil, id)
   box.set(nil, "1o")
-  check("D45 spell ID: '1o' keeps 3003", byUid(P.uid).extra.list[1].spellID == 3003, byUid(P.uid).extra.list[1].spellID)
+  check("D45 spell ID: '1o' keeps 3003", byUid(P.uid).extra.list[1][fk] == 3003, byUid(P.uid).extra.list[1][fk])
+  box.set(nil, "3003")
   c.when.list[1].ref = "cd"
 end)
 
@@ -457,7 +459,7 @@ section("D41", function()
   local function walk(f, d)
     if not f or d > 60 or lockBtn then return end
     local e = f.xuiEdit
-    if type(e) == "table" and e.xuiObjs and e.IsShown and e:IsShown() and not e.xuiFolder then
+    if type(e) == "table" and e.xuiObjs and e.IsShown and e:IsShown() and not e.xuiFolder and tostring(f.uniquevalue or ""):match("rule(%d+)$") == tostring(idx(byUid(P.uid))) then
       for _, o in ipairs(e.xuiObjs) do if o == byUid(cue.uid) or o == byUid(P.uid) then lockBtn = e end end
     end
     for _, ch in ipairs(f.GetChildren and { f:GetChildren() } or {}) do walk(ch, d + 1) end

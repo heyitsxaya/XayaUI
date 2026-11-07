@@ -24,6 +24,19 @@ local function Need()
     return ns, od
 end
 local function cycle(v) if v == true then return nil elseif v == nil then return false end return true end   -- AceGUI's tri-state click
+-- the group's own Enabled box (not a rule's Enabled inside the group), and a rule's embedded condition ("oc<k>" on its Conditions tab)
+local function GroupEnabled(node, d)
+    d = d or 0
+    if type(node) ~= "table" or d > 14 then return nil end
+    for k, c in pairs(node.args or {}) do
+        if k == "enabled" and type(c) == "table" and type(c.desc) == "string" and c.desc:find("every rule in this group", 1, true) then return c end
+        if type(c) == "table" and c.type == "group" and not tostring(k):match("^rule%d") then local hit = GroupEnabled(c, d + 1); if hit then return hit end end
+    end
+end
+local function CondNode(od, node)
+    local c = od.Find(node, "conditions")
+    for k, v in pairs(c and c.args or {}) do if tostring(k):match("^oc%d+$") then return v end end
+end
 
 -- tagged test data: one group, a rule in it, a sound cue and a condition of that rule
 local D = {}
@@ -132,7 +145,7 @@ QA.Register("audit-opt-group", { title = "Group Enabled keeps a switched-off con
         setup = function()
             local _, od = Need(); MakeData()
             Live(D.cond).enabled = false
-            local en = od.Find(od.FolderNode(D.f), "enabled"); if not en then error("the group's Enabled box was not found") end
+            local en = GroupEnabled(od.FolderNode(D.f)); if not en then error("the group's Enabled box was not found") end
             en.set(nil, false); en.set(nil, true)
         end,
         check = function()
@@ -201,7 +214,7 @@ QA.Register("audit-opt-inputs", { title = "Typos keep values; Restore asks; soun
         setup = function()
             local _, od = Need(); MakeData()
             local k = Live(D.cond); k.when.list[1].ref = "n:cd"; k.when.list[1].num = 5
-            local n1 = od.Find(od.Find(od.RuleNode(Rule()), "oc1"), "n1"); if not n1 then error("the value box was not found") end
+            local n1 = od.Find(CondNode(od, od.RuleNode(Rule())), "n1"); if not n1 then error("the value box was not found") end
             n1.set(nil, "1o")
         end,
         check = function() local k = Live(D.cond); if not k then return false, "press Do it for me" end
