@@ -155,6 +155,13 @@ do
   ns.SetPreview({ A, B }, "visual", false)
   A.enabled, B.enabled = false, false
 end
+-- D8: every /xui word of a feature addon is listed, so with that addon off the command says which addon to turn on
+do
+  local want = { stats = "XayaUI_QoL", shop = "XayaUI_QoL", reskin = "XayaUI_QoL", releaseguard = "XayaUI_QoL", calc = "XayaUI_Bonus", calculator = "XayaUI_Bonus" }
+  local bad = {}
+  for w, a in pairs(want) do local m = ns.ModuleOfCommand and ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
+  check("D8 /xui stats, shop, reskin, releaseguard, calc, calculator name their addon", #bad == 0, table.concat(bad, ","))
+end
 -- O-100 / FA-15 (Bonus 0.6.25, QoL 0.7.40; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
 -- the data panels row is named "Data Panels"
 do

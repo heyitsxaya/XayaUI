@@ -538,12 +538,52 @@ function T.SavedNames()
     table.sort(n)
     return n
 end
-function T.Save(name)
+-- A name a theme can be saved under (1-40 characters, not a built-in theme's key). Returns the trimmed name, or nil and why.
+function T.CheckName(name)
     name = tostring(name or ""):gsub("^%s+", ""):gsub("%s+$", "")
-    if name == "" or T.IsBase(name) or #name > 40 then return false, "Pick a name (1-40 characters, not a built-in theme name)." end
+    if name == "" or T.IsBase(name) or #name > 40 then return nil, "Pick a name (1-40 characters, not a built-in theme name)." end
+    return name
+end
+function T.SavedExists(name) local n = T.CheckName(name); return n ~= nil and CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[n] ~= nil end
+-- FA-8 (core 0.6.62; Xaya 2026-11-07: "1 or add as name (1) name (2) etc", then "Replace, Save As Copy, Cancel"): the first free
+-- "Name (1)", "Name (2)", ... (the base is shortened so the result stays within 40 characters)
+function T.CopyName(name)
+    local n = T.CheckName(name) or "Theme"
+    local themes = CueRulesDB and CueRulesDB.themes or {}
+    for i = 1, 999 do
+        local suf = (" (%d)"):format(i)
+        local c = n:sub(1, 40 - #suf) .. suf
+        if not themes[c] then return c end
+    end
+    return nil
+end
+-- audit D6 (core 0.6.62): a name that is already saved is refused unless replace is true (before: it was replaced silently and the
+-- message said "Saved"). The Theme page asks first: Replace / Save As Copy / Cancel.
+function T.Save(name, replace)
+    local n, why = T.CheckName(name)
+    if not n then return false, why end
     local th = DB(); if not th then return false end
-    CueRulesDB.themes[name] = Snapshot()
+    if CueRulesDB.themes[n] and not replace then return false, "exists" end
+    CueRulesDB.themes[n] = Snapshot()
     th.base = th.base
+    return true, n
+end
+-- FA-4 (core 0.6.62; Xaya: "Ask first"): are there colors of your own that switching or resetting would throw away? Colors identical
+-- to a theme you saved are not "unsaved" (picking a saved theme copies its colors in).
+local function Same(a, b)
+    if type(a) ~= type(b) then return false end
+    if type(a) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not Same(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+function T.UnsavedColors()
+    local th = DB(); if not th then return false end
+    if not (next(th.tokens or {}) or next(th.classes or {})) then return false end
+    local now = Snapshot()
+    for _, sv in pairs(CueRulesDB and CueRulesDB.themes or {}) do
+        if type(sv) == "table" and Same(now.tokens or {}, sv.tokens or {}) and Same(now.classes or {}, sv.classes or {}) then return false end
+    end
     return true
 end
 function T.Load(name)
@@ -586,14 +626,21 @@ local function CheckTheme(data)
 end
 
 -- apply a checked theme; opts.saveAs (optional) also keeps it under that name. Returns true or false, message.
+-- audit D5 (core 0.6.62): the name is checked BEFORE anything changes; a refused name or (without opts.replace) a name already saved
+-- leaves the current theme and the saved one as they were (before: the current theme was replaced first, then the save could fail,
+-- or silently replace a saved theme of that name). Returns true or false, message ("exists" for a name already saved).
 local function ApplyTheme(data, opts)
     local th = DB(); if not th then return false, "Not ready yet." end
-    th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = data.base, data.under, data.classPick, data.tokens, data.classes, data.font, data.size
     local saveAs = type(opts) == "table" and opts.saveAs or nil
-    if saveAs and saveAs ~= "" then
-        local ok, e2 = T.Save(saveAs)
-        if not ok then T.Changed(); return false, e2 end
+    if saveAs == "" then saveAs = nil end
+    if saveAs then
+        local n, why = T.CheckName(saveAs)
+        if not n then return false, why end
+        if CueRulesDB.themes[n] and not opts.replace then return false, "exists" end
+        saveAs = n
     end
+    th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = data.base, data.under, data.classPick, data.tokens, data.classes, data.font, data.size
+    if saveAs then T.Save(saveAs, true) end
     T.Changed()
     return true
 end
@@ -614,10 +661,10 @@ end
 function T.Decode(str) return ns.Share.Read(str, "theme") end
 
 -- Applies an imported theme; saveAs (optional) also keeps it under that name.
-function T.Import(str, saveAs)
+function T.Import(str, saveAs, replace)
     local data, err = ns.Share.Read(str, "theme")
     if not data then return false, err end
-    return ApplyTheme(data, { saveAs = saveAs })
+    return ApplyTheme(data, { saveAs = saveAs, replace = replace })
 end
 
 -------------------------------------------------------------------------------

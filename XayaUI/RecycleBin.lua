@@ -50,6 +50,15 @@ function ns.RecycleKeepLabel()
 end
 -- The sentence every delete prompt ends with.
 function ns.RecycleBinNote() return "It goes to the Recycle Bin for " .. ns.RecycleKeepLabel() .. " (Rules > Recycle Bin)." end
+-- FA-14 (core 0.6.62; Xaya: "Ask first (Recommended)"): how many items a keep time of h hours would remove for good right now
+function ns.RecycleWouldPurge(h, at)
+    local b = ns.RecycleDB()
+    if not (b and validKeep(h)) then return 0 end
+    local limit = (at or now()) - h * 3600
+    local n = 0
+    for _, it in ipairs(b.items) do local d = it.deletedAt; if type(d) ~= "number" or d <= limit then n = n + 1 end end
+    return n
+end
 function ns.SetRecycleKeepHours(h)
     local b = ns.RecycleDB()
     if b and validKeep(h) then b.keepHours = h; ns.RecyclePurge() end

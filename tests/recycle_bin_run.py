@@ -154,6 +154,10 @@ ns.RecycleRule(ns.rules[1])
 NOW = NOW + 37 * 3600
 ns.SetRecycleKeepHours(336)
 check("keep: 14 days keeps a 37 h old item", #ns.RecycleItems() == 1)
+-- FA-14 (core 0.6.62; Xaya: "Ask first"): the page asks with this count before a shorter time removes anything
+check("FA-14 RecycleWouldPurge: 36 hours would remove the 37 h old item, 72 hours none, and nothing is removed by asking",
+  ns.RecycleWouldPurge and ns.RecycleWouldPurge(36) == 1 and ns.RecycleWouldPurge(72) == 0 and #ns.RecycleItems() == 1,
+  ns.RecycleWouldPurge and ns.RecycleWouldPurge(36))
 ns.SetRecycleKeepHours(36)
 check("keep: switching to 36 hours removes a 37 h old item at once", #ns.RecycleItems() == 0 and ns.RecycleKeepLabel() == "36 hours")
 
@@ -205,6 +209,11 @@ for name, pat, want in [
     if want not in b or "table.remove(ns.rules" in b or "table.remove(ns.folders" in b:
         wiring_fail += 1
         print("FAIL: %s does not go through the Recycle Bin" % name)
+wiring_n += 1
+keep = body_of(r'name = "Keep deleted items for"', 1600)
+if "RecycleWouldPurge" not in keep or "XAYAUI_CONFIRM" not in keep:
+    wiring_fail += 1
+    print("FAIL: FA-14 the keep time does not ask before removing items for good")
 wiring_n += 1
 if "not built yet (GitHub issue #88)" in src:
     wiring_fail += 1

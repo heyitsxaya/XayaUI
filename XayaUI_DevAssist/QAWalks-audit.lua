@@ -288,3 +288,89 @@ QA.Register("audit-spelling", { title = "American spelling in the addon's texts 
     { text = "Look around the settings window (Display tab of a bar cue, Character Pane > Stat list, Release Guard, Enhanced Tooltips) and the What's New pane.\n\n|cffffd100Expect:|r \"color\", \"center\", \"catalog\", \"flavor\", and \"grey\" everywhere. Note any word that still looks British.",
         noVerdict = true, check = function() return true, "by eye: note anything you find" end },
 } })
+
+-------------------------------------------------------------------------------
+-- Theme page asks first (FA-4, FA-8, FA-13; audit D5, D6, D7) - XayaUI core's ns.Theme; the page's builder is added by XayaUI_Options
+-------------------------------------------------------------------------------
+local thw = {}
+local QA_THEME = "QA audit theme"
+local function TH() local ns = NS(); return ns and ns.Theme end
+local function Page()
+    local ns, T = NS(), TH()
+    if ns and ns.LoadOptions then pcall(ns.LoadOptions) end
+    if not (T and T.BuildArgs and T.Ask) then return nil end
+    thw.args = thw.args or T.BuildArgs(function() end)
+    return thw.args
+end
+local function AskDlg() return rawget(_G, "XayaUIThemeAsk") end
+local function Btn(i) local d = AskDlg(); return d and d.btns and d.btns[i] end
+local function Press(i) local b = Btn(i); if b and b:IsShown() then b:GetScript("OnClick")(b) end end
+QA.Register("audit-theme", { title = "Theme: asks before throwing your colors away; Replace / Save As Copy (FA-4, FA-8, FA-13)", qa = "B251, B252", order = 308, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: XayaUI remembers your current theme (the last step puts it back), changes one color (the accent: you are now on Custom) and then picks Light mode the way the Theme list does.\n\n|cffffd100Expect:|r a small window asks \"Discard your custom colors? ...\" with |cffffd100Discard|r and |cffffd100Cancel|r, and the theme has NOT changed yet. Then click |cffffd100Cancel|r in that window and press Check again: your colors are still there.",
+        setup = function()
+            local T = TH(); local args = Page(); if not args then error("the settings window (XayaUI Options) is not loaded") end
+            thw.saved = thw.saved or T.Export(); thw.base = thw.base or (CueRulesDB.theme and CueRulesDB.theme.base)
+            T.SetToken("accent", { 0.85, 0.2, 0.6, 1 }); thw.base0 = CueRulesDB.theme.base
+            args.base.set(nil, "light")
+        end,
+        check = function()
+            local d = AskDlg(); local th = CueRulesDB.theme
+            if not thw.base0 then return false, "press Do it for me" end
+            if d and d:IsShown() then
+                local ok = th.base == thw.base0 and Btn(1):GetText() == "Discard"
+                return ok, ("asking now (buttons: %s / %s); the theme is still %s"):format(tostring(Btn(1):GetText()), tostring(Btn(2):GetText()), tostring(th.base))
+            end
+            local kept = th.base == thw.base0 and th.tokens and th.tokens.accent ~= nil
+            return kept, kept and "the window is closed and your colors are still there (Cancel kept them)" or ("the theme changed to " .. tostring(th.base))
+        end },
+    { text = "Press |cffffd100Do it for me|r: XayaUI saves your colors as \"QA audit theme\", changes the accent again, and presses |cffffd100Save|r with that same name.\n\n|cffffd100Expect:|r the window says a theme with that name is already saved, with three buttons in this order: |cffffd100Replace|r, |cffffd100Save As Copy|r, |cffffd100Cancel|r. Click |cffffd100Save As Copy|r, then Check again: \"QA audit theme (1)\" is saved and \"QA audit theme\" is unchanged.",
+        setup = function()
+            local T = TH(); local args = Page(); if not args then error("the settings window (XayaUI Options) is not loaded") end
+            T.Save(QA_THEME, true); thw.made = true
+            thw.first = CueRulesDB.themes[QA_THEME].tokens.accent and CueRulesDB.themes[QA_THEME].tokens.accent[1]
+            T.SetToken("accent", { 0.2, 0.7, 0.3, 1 })
+            args.saveName.set(nil, QA_THEME); args.save.func()
+        end,
+        check = function()
+            local d = AskDlg()
+            if not thw.made then return false, "press Do it for me" end
+            if d and d:IsShown() then
+                local order = tostring(Btn(1):GetText()) .. " / " .. tostring(Btn(2):GetText()) .. " / " .. tostring(Btn(3):GetText())
+                return order == "Replace / Save As Copy / " .. (CANCEL or "Cancel"), "asking now: " .. order
+            end
+            local copy = CueRulesDB.themes[QA_THEME .. " (1)"] ~= nil
+            local same = CueRulesDB.themes[QA_THEME] and CueRulesDB.themes[QA_THEME].tokens.accent and CueRulesDB.themes[QA_THEME].tokens.accent[1] == thw.first
+            return copy and same, ("copy saved: %s; the original unchanged: %s"):format(copy and "yes" or "no", same and "yes" or "no")
+        end },
+    { text = "Look at Settings > UI Options > Theme > |cffffd100Reset everything|r: hover it.\n\n|cffffd100Expect:|r it says \"Back to Class colors (the starting theme), ...\". The check reads the text.",
+        check = function() local args = Page(); local d = args and args.resetPal and args.resetPal.desc; return type(d) == "string" and d:find("Class colors", 1, true) ~= nil, "Reset everything says: " .. Short(d, 80) end },
+    { text = "Last step: press |cffffd100Do it for me|r to delete the QA saved themes and put your theme back exactly as it was before this walkthrough. Then Accept or Pass.",
+        setup = function()
+            local T = TH(); if not T then return end
+            if AskDlg() then AskDlg():Hide() end
+            for _, n in ipairs(T.SavedNames()) do if n == QA_THEME or n:find("^" .. QA_THEME .. " %(%d+%)$") then T.Delete(n) end end
+            if thw.saved then T.Import(thw.saved) end
+            thw.done = true; thw.saved, thw.made, thw.base0 = nil, nil, nil
+        end,
+        check = function()
+            local T = TH(); if not T then return false, "no theme" end
+            for _, n in ipairs(T.SavedNames()) do if n:find("^" .. QA_THEME) then return false, "a QA saved theme is still there" end end
+            return thw.done == true, thw.done and "the QA themes are gone and your theme is back" or "press Do it for me"
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- Recycle Bin keep time asks first (FA-14); /xui words of a switched-off addon (D8)
+-------------------------------------------------------------------------------
+QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui words name their addon (FA-14, D8)", qa = "B253", order = 309, prefill = true, steps = {
+    { text = "Rules > Recycle Bin. If something is in it that is older than 36 hours (delete a test rule a day early, or Skip), pick |cffffd100Keep deleted items for: 36 hours|r.\n\n|cffffd100Expect:|r a question says how many items are older than that and will be removed for good, with Yes / No; No keeps them. With nothing older, it changes at once with no question. The check shows how many items 36 hours would remove now.",
+        noVerdict = true,
+        check = function() local ns = NS(); if not (ns and ns.RecycleWouldPurge) then return false, "XayaUI is not loaded" end
+            return true, ("keep time now: %s; items 36 hours would remove: %d"):format(ns.RecycleKeepLabel(), ns.RecycleWouldPurge(36)) end },
+    { text = "Press |cffffd100Check again|r: the addon looks up which addon owns /xui stats, shop, reskin, releaseguard, calc and calculator.\n\n|cffffd100Expect:|r XayaUI QoL for the first four, XayaUI Bonus Features for calc / calculator. (With that addon switched off, typing the word says which addon to turn on.)",
+        check = function() local ns = NS(); if not (ns and ns.ModuleOfCommand) then return false, "XayaUI is not loaded" end
+            local want = { stats = "XayaUI_QoL", shop = "XayaUI_QoL", reskin = "XayaUI_QoL", releaseguard = "XayaUI_QoL", calc = "XayaUI_Bonus", calculator = "XayaUI_Bonus" }
+            local bad = {}
+            for w, a in pairs(want) do local m = ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
+            return #bad == 0, #bad == 0 and "every word names its addon" or ("not listed: " .. table.concat(bad, ", ")) end },
+} })

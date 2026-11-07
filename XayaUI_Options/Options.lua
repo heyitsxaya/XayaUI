@@ -4888,11 +4888,19 @@ local function BuildOptions()
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
-            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes.",
+            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes; a shorter time that would remove items now asks first.",
             values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
             sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
             get = function() return ns.RecycleKeepHours() end,
-            set = function(_, v) ns.SetRecycleKeepHours(v); Notify() end },
+            -- FA-14 (Options 0.6.64; Xaya: "Ask first (Recommended)"): a shorter time that removes items for good now asks first
+            set = function(_, v)
+                local n = ns.RecycleWouldPurge and ns.RecycleWouldPurge(v) or 0
+                if n == 0 then ns.SetRecycleKeepHours(v); Notify(); return end
+                local label = v
+                for _, k in ipairs(ns.RECYCLE_KEEP) do if k[1] == v then label = k[2] end end
+                StaticPopup_Show("XAYAUI_CONFIRM", ("Keep deleted items for %s? %d item(s) in the Recycle Bin are older than that and will be removed for good now."):format(tostring(label), n),
+                    nil, { cb = function() ns.SetRecycleKeepHours(v); Notify() end })
+            end },
         empty = { type = "execute", order = 2, width = "normal", name = "Empty Recycle Bin",
             desc = "Removes everything in the Recycle Bin for good.",
             disabled = function() return #ns.RecycleItems() == 0 end,

@@ -126,6 +126,8 @@ def fmt(c): return "(" + ", ".join("%.4f" % float(x) for x in c) + ")" if c is n
 # ---- the sessions (Lua) ---------------------------------------------------------------------------------------------------------
 LUA = r'''
 return function(W, L, MODE)
+local pickArgs   -- (FA-4) the Theme page's args, set once they are built; pick() answers the "Ask first" dialog with Discard
+local function pick(v) pickArgs.base.set(nil, v); local d = rawget(_G, "XayaUIThemeAsk"); if d and d:IsShown() then d.btns[1]:GetScript("OnClick")(d.btns[1]) end end
 local R = { log = {} }
 local function put(k, v) R[k] = v end
 L.startup()
@@ -188,6 +190,8 @@ if MODE == "main" then
   local n0 = nListeners()   -- the settings window's own listeners are in from here on
   put("n0", n0)
   local okA, args = pcall(T.BuildArgs, function() end)
+  -- (FA-4, Options 0.6.64; Xaya: "Ask first"): picking another theme with unsaved colors of your own asks first; this test answers Discard
+  pickArgs = args
   if not okA then put("buildArgsErr", tostring(args)); return R end
   local vals, sorting, under, usort = args.base.values(), args.base.sorting(), args.custom.args.under.values(), args.custom.args.under.sorting()
   put("baseValues", vals); put("baseSorting", sorting); put("underValues", under); put("underSorting", usort)
@@ -199,7 +203,7 @@ if MODE == "main" then
   -- pick every cursor theme through the page; theme changes while the cursor features are off
   local picked = {}
   for _, k in ipairs({ "fel", "fire", "ocean", "aurora", "sunset", "vapor", "rainbow", "gold", "ice" }) do
-    args.base.set(nil, "cursor_" .. k); W.tick(0.05, 2)
+    pick("cursor_" .. k); W.tick(0.05, 2)
     picked[k] = { base = CueRulesDB.theme.base, cur = cur() }
   end
   put("picked", picked)
@@ -210,7 +214,7 @@ if MODE == "main" then
   if okP and dark then local d = {} for k, v in pairs(dark) do d[k] = rgba(v) end; put("darkPal", d) end
 
   -- Gradient Cursor Trail: "Match the UI theme" in its gradient list
-  args.base.set(nil, "default"); W.tick(0.05, 2)
+  pick("default"); W.tick(0.05, 2)
   local tr = ns.BuildCursorTab(function() end)
   local pr = tr.args.colors.args.preset
   put("trailValues", pr.values); put("trailSorting", pr.sorting)
@@ -223,17 +227,17 @@ if MODE == "main" then
   put("trail_default", trailAt({ 0, 0.5, 0.9 }))
   put("preview_default", tr.args.colors.args.preview.name())
   -- a theme change recolors the trail (the trail's settings untouched)
-  args.base.set(nil, "cursor_ocean"); W.tick(0.05, 2)
+  pick("cursor_ocean"); W.tick(0.05, 2)
   put("trail_ocean", trailAt({ 0, 1 / 3, 2 / 3, 0.95 }))
   put("preview_ocean", tr.args.colors.args.preview.name())
-  args.base.set(nil, "cursor_rainbow"); W.tick(0.05, 2)
+  pick("cursor_rainbow"); W.tick(0.05, 2)
   put("trail_rainbow", trailAt({ 0, 0.2, 0.4, 0.6, 0.8 }))
   -- a Custom theme on a cursor theme with its accent changed: the trail takes the theme's colors, not the gradient
   T.SetToken("accent", { 1, 0, 0, 1 }); W.tick(0.05, 2)
   put("customCur", cur())
   put("trail_custom", trailAt({ 0, 0.5 }))
   -- a Custom theme on a cursor theme with only the window color changed: still exactly the gradient
-  args.base.set(nil, "cursor_gold"); W.tick(0.05, 2)
+  pick("cursor_gold"); W.tick(0.05, 2)
   T.SetToken("windowBg", { 0.1, 0.1, 0.12, 1 }); W.tick(0.05, 2)
   put("customBase", CueRulesDB.theme.base); put("customUnder", CueRulesDB.theme.under)
   put("trail_customGold", trailAt({ 0, 0.5 }))
@@ -245,7 +249,7 @@ if MODE == "main" then
   CueRulesDB.cursorTrail.enabled = false; ns.CursorTrail_Apply(); W.tick(0.05, 2)
   put("n_trailOff", nListeners())
   local before = trailCalls
-  args.base.set(nil, "cursor_fel"); W.tick(0.05, 2)
+  pick("cursor_fel"); W.tick(0.05, 2)
   put("trailCallsWhileOff", trailCalls - before)
 
   -- Cursor Highlight: "Use the UI theme's accent"
@@ -261,13 +265,13 @@ if MODE == "main" then
     put("hl_pickerDisabled", hl.args.look.args.color.disabled and hl.args.look.args.color.disabled() or false)
     put("n_hlTheme", nListeners())
     put("hl_theme_fel", hlColor()); put("accent_fel", rgba(T.cur.accent))
-    args.base.set(nil, "cursor_fire"); W.tick(0.05, 2)
+    pick("cursor_fire"); W.tick(0.05, 2)
     put("hl_theme_fire", hlColor()); put("accent_fire", rgba(T.cur.accent))
     -- hidden (Only show in combat, out of combat) stays hidden through a theme change
     CueRulesDB.cursorHighlight.combatOnly = true; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
     local fr = frameAt(70)
     put("hl_hiddenBefore", fr and fr._alpha)
-    args.base.set(nil, "cursor_ocean")
+    pick("cursor_ocean")
     put("hl_hiddenAfter", fr and fr._alpha)
     CueRulesDB.cursorHighlight.combatOnly = false; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
     opt.set(nil, false); W.tick(0.05, 2)
@@ -285,8 +289,8 @@ elseif MODE == "qol_off" then
   if ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 3)
   ns = rawget(_G, "XayaUI_NS"); T = ns.Theme
   local okA, args = pcall(T.BuildArgs, function() end)
-  if okA then put("baseValues", args.base.values()) end
-  if okA then args.base.set(nil, "cursor_vapor"); W.tick(0.05, 2); put("curVapor", cur()) end
+  if okA then put("baseValues", args.base.values()); pickArgs = args end
+  if okA then pick("cursor_vapor"); W.tick(0.05, 2); put("curVapor", cur()) end
 elseif MODE == "existing" then
   put("n_login", nListeners())
   put("base", CueRulesDB.theme.base); put("under", CueRulesDB.theme.under)

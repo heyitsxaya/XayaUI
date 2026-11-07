@@ -24,7 +24,7 @@ L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local QA, ns = rawget(_G, "XayaUI_DevQA"), rawget(_G, "XayaUI_NS")
 if not QA then check("Dev Assist QA framework", false); return R end
-local ids = { "audit-notepad-format", "audit-notepad-restore", "audit-minimap-rows", "audit-groups", "audit-backup-replace", "audit-talents-init", "audit-chat", "audit-spelling" }
+local ids = { "audit-notepad-format", "audit-notepad-restore", "audit-minimap-rows", "audit-groups", "audit-backup-replace", "audit-talents-init", "audit-chat", "audit-spelling", "audit-theme", "audit-bin-words" }
 for _, id in ipairs(ids) do
   local d = QA.walks[id]
   check(id .. ": registered with prefill", d ~= nil and d.prefill == true and #d.steps >= 1, d and d.prefill)
@@ -56,6 +56,24 @@ check("  ...no sample rule left in a QA audit group", left == 0, left)
 v, n = V("audit-backup-replace", 1); check("D40 built-in categories present on a fresh profile: verdict Pass", v == true, n)
 v, n = V("audit-chat", 1); check("D37 whole-word filter: verdict Pass", v == true, n)
 v, n = V("audit-spelling", 1); check("FA-16 no British spelling in the texts it reads: verdict Pass", v == true, n)
+-- the theme walkthrough: asks, Cancel keeps, Save As Copy, cleanup puts the theme back
+do
+  local before = ns.Theme.Export()
+  local d = QA.walks["audit-theme"]
+  local function step(i) if d.steps[i].setup then pcall(d.steps[i].setup) end; W.tick(0.05, 2); return d.steps[i].check() end
+  local function click(i) local dlg = rawget(_G, "XayaUIThemeAsk"); local b = dlg and dlg.btns[i]; if b then b:GetScript("OnClick")(b) end end
+  local v1, n1 = step(1)
+  check("FA-4 theme walkthrough step 1: the ask dialog is up, theme unchanged (verdict Pass)", v1 == true, n1)
+  click(2); local v1b, n1b = d.steps[1].check()
+  check("FA-4 ...after Cancel: colors kept (verdict Pass)", v1b == true, n1b)
+  local v2, n2 = step(2)
+  check("FA-8 step 2: Replace / Save As Copy / Cancel in that order (verdict Pass)", v2 == true, n2)
+  click(2); local v2b, n2b = d.steps[2].check()
+  check("FA-8 ...after Save As Copy: the copy is saved, the original unchanged (verdict Pass)", v2b == true, n2b)
+  local v3, n3 = step(3); check("FA-13 step 3: Reset everything names Class colors (verdict Pass)", v3 == true, n3)
+  local v4, n4 = step(4); check("theme walkthrough last step: QA themes gone, theme back", v4 == true and ns.Theme.Export() == before, n4)
+end
+local vb, nb = QA.walks["audit-bin-words"].steps[2].check(); check("D8 words walkthrough: verdict Pass", vb == true, nb)
 -- the Notepad walkthrough's last step puts the Notepad back
 local db = ns.notepadDB
 if db then
