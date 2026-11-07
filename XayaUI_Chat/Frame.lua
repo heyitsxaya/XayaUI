@@ -110,9 +110,22 @@ function C.InputPos() local s = S(); local v = s and s.inputPos; return INPUT_PO
 -- window to its right, from the bottom of its input line to the top of its tab row. Read again at every refresh (the game's own moves of
 -- its chat are hooked below). nil when a number cannot be read (a secret or a frame without a place yet): the block is then hidden.
 local function N(v) v = tonumber(v); if v == nil or issecret(v) then return nil end return v end
+-- is o placed relative to one of the block's own frames? (then reading its place would go round in a circle: never read it then)
+local function OnOurs(o)
+    if not (o and o.GetNumPoints) then return false end
+    local ok, n = pcall(o.GetNumPoints, o)
+    for i = 1, (ok and n or 0) do
+        local ok2, _, rel = pcall(o.GetPoint, o, i)
+        if ok2 and rel and (rel == textA or rel == tabsA or rel == inputA or rel == pane or rel == container) then return true end
+    end
+    return false
+end
 function C.HostRect()
     local cf = C.Main()
     if not (cf and cf.GetLeft) then return nil end
+    -- (Chat 0.6.36) Blizzard's chat still glued into the pane (the game has not taken it back yet): no host place this time; the next
+    -- refresh reads it once it is free. Reading it now would read our own frames, which are about to be placed from it.
+    if OnOurs(cf) or OnOurs(_G.GeneralDockManager) or OnOurs(C.EditBoxOf(cf)) then return nil end
     local l, r, t, b = N(cf:GetLeft()), N(cf:GetRight()), N(cf:GetTop()), N(cf:GetBottom())
     if not (l and r and t and b) or r <= l or t <= b then return nil end
     local ct, cb = t, b
@@ -217,8 +230,10 @@ function C.Layout()
     if host then
         -- Improved Chat alone: the text area is Blizzard's own window, the tab row is what is above it, and there is no input strip of ours
         -- (Blizzard's input line takes its own clicks); the slow-scrolling bar goes right of Blizzard's window
-        local cf = C.Main()
-        textA:SetPoint("TOPLEFT", cf, "TOPLEFT", 0, 0); textA:SetPoint("BOTTOMRIGHT", cf, "BOTTOMRIGHT", 0, 0)
+        -- placed from the numbers read above, never anchored to Blizzard's window: a frame of ours anchored to it, while it is anchored to
+        -- ours, would make each one's place depend on the other (an endless loop in the game's layout)
+        textA:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", host.l, host.textTop)
+        textA:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", host.l + host.w, host.textBottom)
         tabsA:SetHeight(math.max(1, (host.b + host.h) - host.textTop))
         inputA:Hide(); hint:Hide()
     else

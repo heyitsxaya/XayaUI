@@ -144,7 +144,7 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 3154ebb06be02ceedf39ef61f37506db  XayaUI_Chat/Bar.lua
 0199d2329b5e5e25ea0a9cdb523e1465  XayaUI_Chat/Core.lua
 cd51f223ae8d11819381690e887570ff  XayaUI_Chat/Fade.lua
-de40dd7e10fa13f50140f1f516b66a82  XayaUI_Chat/Frame.lua
+891c6f04643f90926664500890582e1b  XayaUI_Chat/Frame.lua
 f64024a9ab29909ae1dd70bd0b71657f  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f258d41d39bb1bd3a2f2c8cbac1c9a14  XayaUI_Chat/Locate.lua
@@ -783,7 +783,7 @@ e419bc6fcc002cffc52e4a48a97807a8  tests/harness/build_framexml_index.py
 6f6d8a592b30903806cc446181eef8f5  tests/harness/loader.lua
 a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 9de9e7a08f41cb1724a50f5dfc1a8eec  tests/harness/scenario.lua
-2a91f90a18bc2c518a3264bce9dda6cd  tests/harness/world.lua
+010812dc680648ef38e2affbc467b4fe  tests/harness/world.lua
 7f8e06958cff5b6defb1058572578426  tests/harness_enum_values_run.py
 54ac3f5374107845cd76a8303a1e4a90  tests/header_chevron_run.py
 52415ac2ab3eae856593c419e3877b9b  tests/icon_cue_text_run.py
