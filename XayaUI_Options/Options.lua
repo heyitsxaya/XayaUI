@@ -5252,7 +5252,7 @@ local function BuildOptions()
     return out
 end
 -- (Options 0.6.69, REQUEST-LOG A15 P-16 click cost) While one build of the tree or one redraw of the sidebar rows runs, the rule list
--- does not change, so a rule's cues are looked up from one pass over the rules instead of a pass per call (ns.CuesOf outside the
+-- does not change, so a rule's cues (and a cue's parent, below) are looked up from one pass over the rules instead of a pass per call (ns.CuesOf outside the
 -- engine step reads every rule: with 313 rules, asked for every rule, that was a fifth of a click). The lookup gives the same list,
 -- in the same order, as ns.CuesOf, and a new copy each time (a caller may change its copy). Only for the length of that one call:
 -- ns.CuesOf is put back after it, even on an error; nested calls share the outer one; inside an engine step the step index answers.
@@ -5277,11 +5277,30 @@ function ns.OptionsApi.WithCueMemo(fn, ...)
         if l then for i = 1, #l do if l[i] ~= p then out[#out + 1] = l[i] end end end
         return out
     end
+    -- the same for a cue's / condition's parent rule (ns.FindParentRule: the first rule in list order with that uid and no parent of
+    -- its own; outside a step it reads every rule, and the sidebar's up / down arrows asked it for every rule, for every row)
+    local origP, pmap = ns.FindParentRule, nil
+    local function memoP(rule)
+        if type(rule) ~= "table" then return origP(rule) end
+        local uid = rule.parentUid
+        if type(uid) ~= "string" or uid == "" then return nil end
+        if not pmap then
+            pmap = {}
+            for _, r in ipairs(ns.rules or {}) do
+                if not r.parentUid and type(r.uid) == "string" and pmap[r.uid] == nil then pmap[r.uid] = r end
+            end
+        end
+        return pmap[uid]
+    end
     ns.OptionsApi.cueMemoOn = true
+    ns.OptionsApi.memo = {}   -- per-pass answers other code may keep for the length of this call (Siblings, the sidebar arrows)
     ns.CuesOf = memo
+    if type(origP) == "function" then ns.FindParentRule = memoP end
     local res = { pcall(fn, ...) }
     if ns.CuesOf == memo then ns.CuesOf = orig end
+    if ns.FindParentRule == memoP then ns.FindParentRule = origP end
     ns.OptionsApi.cueMemoOn = nil
+    ns.OptionsApi.memo = nil
     if not res[1] then error(res[2], 0) end
     return unpack(res, 2, table.maxn(res))
 end
@@ -6092,34 +6111,76 @@ local function Siblings(uv)
     -- in the Loaded / Not Loaded views only the rows shown there count as neighbors (so an arrow always moves the row visibly)
     local first = tostring(uv or ""):match("^([^\001]+)")
     local scope = (first == "loaded" or first == "notloaded" or first == "disabled") and first or nil
+    -- (Options 0.6.69, REQUEST-LOG A15 P-16) while one redraw of the sidebar rows runs (ns.OptionsApi.memo, set by WithCueMemo) the
+    -- rules do not change: each rule's scope, group and parent are read once for all the rows instead of once per row (every row read
+    -- every rule: three quarters of a click with 313 rules). Same lists, same order; each row gets its own copy.
+    local M = ns.OptionsApi.memo
+    local MS
+    if M then
+        local mk = "sib:" .. tostring(scope)
+        MS = M[mk]
+        if not MS then
+            MS = { inScope = {}, nested = {}, gkey = {}, lists = {}, has = {} }
+            if scope then MS.okc, MS.ctx = pcall(ns.ReadContext) end
+            M[mk] = MS
+        end
+    end
     local okc, ctx
-    if scope then okc, ctx = pcall(ns.ReadContext) end
-    local function RuleInScope(r)
+    if MS then okc, ctx = MS.okc, MS.ctx elseif scope then okc, ctx = pcall(ns.ReadContext) end
+    local function RuleInScope0(r)
         if not scope then return true end
         return okc and ns.RuleScope(r, ctx) == scope or false
     end
+    local function RuleInScope(r)
+        if not MS then return RuleInScope0(r) end
+        local v = MS.inScope[r]
+        if v == nil then v = RuleInScope0(r); MS.inScope[r] = v end
+        return v
+    end
+    local function Nested(r)
+        if not MS then return IsNestedOutcome(r) end
+        local v = MS.nested[r]
+        if v == nil then v = IsNestedOutcome(r); MS.nested[r] = v end
+        return v
+    end
+    local function GKey(r)
+        if not MS then return RuleGroupKey(r) end
+        local v = MS.gkey[r]
+        if v == nil then v = RuleGroupKey(r); MS.gkey[r] = v end
+        return v
+    end
     local function FolderInScope(f)
         if not scope then return true end
-        local function has(fid, depth)
+        local function has0(fid, depth)
             if depth > 16 then return false end
             for _, r in ipairs(ns.rules or {}) do
-                if r.folder == fid and not IsNestedOutcome(r) and RuleInScope(r) then return true end
+                if r.folder == fid and not Nested(r) and RuleInScope(r) then return true end
             end
             for _, x in ipairs(ns.folders or {}) do
-                if x.parent == fid and has(x.id, depth + 1) then return true end
+                if x.parent == fid and has0(x.id, depth + 1) then return true end
             end
             return false
         end
-        return has(f.id, 0)
+        if not MS then return has0(f.id, 0) end
+        local v = MS.has[f.id]
+        if v == nil then v = has0(f.id, 0); MS.has[f.id] = v end
+        return v
     end
     local n = last:match("^rule(%d+)$")
     if n then
-        local rule = ns.rules and ns.rules[tonumber(n)]
-        if not rule or IsNestedOutcome(rule) then return end
-        local key, list, pos = RuleGroupKey(rule), {}, nil
-        for i, r in ipairs(ns.rules) do
-            if not IsNestedOutcome(r) and RuleGroupKey(r) == key and RuleInScope(r) then list[#list + 1] = i; if r == rule then pos = #list end end
+        local idx = tonumber(n)
+        local rule = ns.rules and ns.rules[idx]
+        if not rule or Nested(rule) then return end
+        local key, list, pos = GKey(rule), {}, nil
+        local all = MS and MS.lists[key]
+        if not all then
+            all = {}
+            for i, r in ipairs(ns.rules) do
+                if not Nested(r) and GKey(r) == key and RuleInScope(r) then all[#all + 1] = i end
+            end
+            if MS then MS.lists[key] = all end
         end
+        for j = 1, #all do list[j] = all[j]; if ns.rules[all[j]] == rule then pos = j end end
         return "rule", rule, list, pos
     end
     local f = last:match("^f%d") and FolderById(last)
@@ -8256,7 +8317,7 @@ end
 
 function ns.DecorateTrees(root)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
-    if root then pcall(Walk, root, 0); pcall(ns.OptionsApi.PaintTabSwitches, root) end
+    if root then ns.OptionsApi.WithCueMemo(function() pcall(Walk, root, 0) end); pcall(ns.OptionsApi.PaintTabSwitches, root) end   -- (0.6.69) one rule lookup pass for every row
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do

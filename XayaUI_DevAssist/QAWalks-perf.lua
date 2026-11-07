@@ -364,3 +364,45 @@ QA.Register("perf-settings-window", { title = "Performance: the settings window 
             return mb < 30, ("closed and cleaned up: XayaUI_Options %.1f MB"):format(mb)
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- J28: a click in the settings window with a rule open (Options 0.6.69; REQUEST-LOG A15 P-16: "clicking off options causes a 2s
+-- delay between click and actualization"; her target < 100 ms). The window now builds each rule's sidebar row only and the editor of
+-- the rule on screen when it is drawn. Data capture: the window's own timing of its last redraw (ns.perf: build + draw ms, skin ms).
+-------------------------------------------------------------------------------
+local function OnScreenRule()
+    local n = NS() or {}
+    local tree = n.OptionsApi and n.OptionsApi.LastTree and n.OptionsApi.LastTree()
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    if not (tree and ACD) then return nil end
+    local st = ACD:GetStatusTable("CueRules", { "cooldowns", n.CurrentSub and n.CurrentSub() or "enabledTab" })
+    local sel = st and st.groups and st.groups.selected
+    local key = sel and tostring(sel):match("(rule%d+)$")
+    if not key then return nil end
+    local g = tree
+    for _, k in ipairs({ "cooldowns", n.CurrentSub and n.CurrentSub() or "enabledTab" }) do g = g and g.args and g.args[k] end
+    for k in tostring(sel):gmatch("[^\001]+") do g = g and g.args and g.args[k] end
+    return key, g
+end
+QA.Register("perf-settings-click", { title = "Performance: a click with a rule open (J28)", area = "Dev Assist", qa = "J28", order = 310, prefill = true, steps = {
+    { text = "Open the settings window (|cff88ccff/xui|r), Rules tab, and click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw: under 100 ms is the goal (before: about 1.4 s per click with your rules).",
+        check = function()
+            local p = Perf()
+            if not (p and p.n and p.n > 0) then return false, "no redraw seen yet: open /xui and click a switch" end
+            local key = OnScreenRule()
+            if not key then return false, "no rule is selected in the sidebar: click a rule first" end
+            local ms = (p.build or 0) + (p.skin or 0)
+            return ms < 100, ("last redraw with %s open: %.0f ms (%.0f ms build and draw + %.0f ms skin)"):format(key, ms, p.build or 0, p.skin or 0)
+        end },
+    { text = "Click a different rule in the sidebar, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r that rule's own editor shows straight away (its name, its Display / Trigger / Cues tabs), never an empty page or the previous rule's settings.",
+        check = function()
+            local key, g = OnScreenRule()
+            if not key then return false, "no rule is selected in the sidebar" end
+            if type(g) ~= "table" then return false, key .. " is selected but not in the window's last tree" end
+            local tabs = 0
+            for _, v in pairs(type(g.args) == "table" and g.args or {}) do if type(v) == "table" and v.type == "group" then tabs = tabs + 1 end end
+            return g.xuiStub == nil and tabs > 0, ("%s: editor built with %d tab(s)%s"):format(key, tabs, g.xuiStub and " (NOT built: report this)" or "")
+        end },
+    { text = "In the open rule, type a word in its search box above the tabs (for example |cffffd100glow|r) and click one of the results.\n\n|cffffd100Expect:|r the rule's tab with that option opens. Then rename the rule (Info tab > Name) and check the sidebar row shows the new name.", noVerdict = true },
+    { text = "Drag the window's right edge to make it as narrow as it goes, with a rule open on its Display tab.\n\n|cffffd100Expect:|r the dropdowns still fit (nothing cut off). The narrowest width now follows the dropdowns of what the window has shown (it used to scan every rule's editor up front); a rule with longer dropdown entries can widen it when you open that rule.", noVerdict = true },
+} })

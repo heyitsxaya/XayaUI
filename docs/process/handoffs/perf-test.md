@@ -81,6 +81,14 @@ The lander relabels on landing.
 
 ## 5. Known gap: click < 100 ms
 
+UPDATE (successor session_014bN6tTqaMKxGcnwALJ4CoU, 2026-11-07 ~11:00 UTC): built on claude/perf-click (Options 0.6.69, Dev Assist 0.7.19,
+J28; debug-log 2026-11-07-1053). Stand-in, 313 rules, a rule open: a click 1,715 -> 114 ms of Lua, 239.8 -> 17.2 MB garbage. Proven by
+tests/options_click_cost_run.py (parity of saved data, of the whole Rules tab tree, of rows, cue / parent / neighbour lookups; window
+checks incl. rename / delete / move). Whether < 100 ms holds in game: J28. Options items from UI bugs measured (per click with a rule
+open: GreyWhileOff 0.33 of 11.9 MB, T.Col 237 calls): not changed.
+
+(Original text:)
+
 One full build of the settings tree remains per click (~0.5 s in the stand-in; her machine's speed unknown). The plan (not built):
 build only the selected rule's editor instead of the whole tree, keeping the tree from the last build. Risk: medium-high —
 AceConfigDialog expects the whole options table; the Skin / ScanDropdowns / DecorateTrees passes and the Tree.last / Tree.keep

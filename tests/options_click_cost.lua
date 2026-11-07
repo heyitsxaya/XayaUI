@@ -274,9 +274,41 @@ do
   end)
   check("parity: during a build every rule's cue list is ns.CuesOf's, in order (" .. n .. " rules with cues)", same and n > 0)
   check("each call gets its own copy", copies)
+  local origP, pSame, pn = ns.FindParentRule, true, 0
+  local plainP = {}
+  for i, r in ipairs(ns.rules) do plainP[i] = origP(r) end
+  WCM(function() for i, r in ipairs(ns.rules) do if ns.FindParentRule(r) ~= plainP[i] then pSame = false end; if plainP[i] then pn = pn + 1 end end end)
+  check("parity: during a build every cue's / condition's parent is ns.FindParentRule's (" .. pn .. " with a parent)", pSame and pn > 0)
+  check("ns.FindParentRule is put back after the build", ns.FindParentRule == origP)
   check("ns.CuesOf is put back after the build", ns.CuesOf == orig)
   pcall(WCM, function() error("x") end)
   check("... and after an error in it", ns.CuesOf == orig and not A.cueMemoOn)
+end
+
+------------------------------------------------------------------ 3b. the sidebar arrows' neighbours (Siblings) during a redraw = outside one
+do
+  local S = ns.SiblingsForTest
+  local t = reg:GetOptionsTable(APP)("dialog", "AceConfigDialog-3.0").args.cooldowns.args
+  local uvs = {}
+  local function w(g, path, d)
+    if d > 10 or type(g) ~= "table" or type(g.args) ~= "table" then return end
+    for k, v in pairs(g.args) do
+      if type(v) == "table" and v.type == "group" then
+        path[#path + 1] = k; uvs[#uvs + 1] = table.concat(path, "\001")
+        if not tostring(k):match("^rule%d+$") then w(v, path, d + 1) end
+        path[#path] = nil
+      end
+    end
+  end
+  w(t.enabledTab, {}, 0); w(t.disabledTab, {}, 0); w(t.smartTab, {}, 0)
+  local function sig(kind, obj, list, pos) return tostring(kind) .. "|" .. tostring(obj) .. "|" .. table.concat(list or {}, ",") .. "|" .. tostring(pos) end
+  local plain = {}
+  for i, uv in ipairs(uvs) do plain[i] = sig(S(uv)) end
+  local same, withPos = true, 0
+  local WCM = A.WithCueMemo or function(fn) return fn() end
+  WCM(function() for i, uv in ipairs(uvs) do local g = sig(S(uv)); if g ~= plain[i] then same = false end; if not g:find("|nil$") then withPos = withPos + 1 end end end)
+  check("parity: every sidebar row's up / down neighbours are the same during one redraw as outside it (" .. #uvs .. " rows, " .. withPos .. " with arrows)", same and withPos > 0)
+  check("the per-redraw answers are dropped after it", A.memo == nil)
 end
 
 ------------------------------------------------------------------ 4. the window: open, a rule on screen, clicks (her shape: 313 rules)
