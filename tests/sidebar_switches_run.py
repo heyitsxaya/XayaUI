@@ -67,7 +67,8 @@ local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>
   "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist",
   -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
   "qol>nameplates",
-  "qol>improvedchat" }   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
+  "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
+  "reskin>friendcolors" }   -- (Reskin 0.6.8, CHAT-5)
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
 check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
