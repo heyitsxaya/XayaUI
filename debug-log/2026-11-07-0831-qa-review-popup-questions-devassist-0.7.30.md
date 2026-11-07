@@ -34,7 +34,7 @@ know what you had to execute blindly and need feedback on."
     and a note. Back / Skip / Next (Next needs a choice or a note on an unanswered question), a count, and Copy answers (a selected
     multi-line box).
   - Commands: `/xui dev review`, `/xui dev questions` (also `/xuidev review`, `/xuidev questions`).
-- `QAQuestions.lua` (new): the ONE question data file, 180 questions. They were transcribed from the entries that 18 sessions sent
+- `QAQuestions.lua` (new): the ONE question data file, 187 questions. They were transcribed from the entries that 18 sessions sent
   between 08:26 and 08:38 UTC: D8 (first, per the hub: O-109), externals, the hub (H1/H2/H3 = O-128/O-139/O-146), performance, chat
   review, chat follow-ups, rule generation, function audit, nameplates, S1, S8 bar cues, Additional Concepts, games/RPPM, roadmap
   items, S3 (mover / group page), chat round, Reskin elements, the hub's LFG-Q1 for the archived LFG / Wordle
