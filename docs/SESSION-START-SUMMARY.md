@@ -168,9 +168,9 @@ the QA steps above in game.
   sorted into filters by English words; listed spells use spell power for Intellect specs, attack power otherwise.
 
 Backlog in Xaya's priority order (work the first one not blocked; see the rule in section 2):
-- A. **Progress bars as a display kind**: BUILT 2026-11-06 by session 014bN6tX7AoZQrGX246YSXjC on `claude/dreamy-edison-pvb3i1`
-  (core 0.6.58 / Options 0.6.59, `XayaUI/BarCue.lua`, QA B200-B207, debug-log 2026-11-06-0615). Her answers: REQUEST-LOG S8-1 to S8-4.
-  Waits on: landing on `main` with the next bundle, her CONFIRM items (S8-5), and in-game checks (engine bars, dispel colouring).
+- A. **Progress bars as a display kind**: ON MAIN 28380a96 (PR #417; core 0.6.58 / Options 0.6.59 / Bonus 0.6.20, `XayaUI/BarCue.lua`,
+  QA B200-B210 and F21, debug-logs 2026-11-06-0615 / -1757 / -2018 / -2306). Her answers: REQUEST-LOG section A11 (S8-1 to S8-13).
+  Waits on: in-game checks (engine bars, dispel colouring, preset strengths: QA B204). XayaUI's own bar fills: roadmap RM-BARFILLS.
 - B. **Spell trigger options:** B1-B3 done (count GCD, remaining / charge comparisons, lockout). Open: exact spell ID (memo key and
   charge-watcher design first), track auto / charges / cooldown, track if not known. Not blocked.
 - C. **Load conditions:** done on rules (core 0.6.28) and groups (core 0.6.33). Raid role (MT / MA) dropped (Xaya, 2026-11-04:
