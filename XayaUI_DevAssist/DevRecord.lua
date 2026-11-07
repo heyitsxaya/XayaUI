@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- DevRecord.lua (XayaUI Dev Assist 0.7.5): the detailed debug record and Dev Assist's own settings, moved out of XayaUI core.
+-- DevRecord.lua (XayaUI Dev Assist 0.7.8): the detailed debug record and Dev Assist's own settings, moved out of XayaUI core.
 -- Xaya, 2026-11-06 (REQUEST-LOG #82, her answer "Errors + warnings only"): players keep error and warning entries (core DebugRecord.lua,
 -- with codes and /xui report); the 11 kinds of line (rules, snapshots, auras, triggers, displays, glows, sounds, game state, engine,
 -- performance, messages) are recorded only while this addon is enabled. REQUEST-LOG #81, row A20: the switch "Also run the game-data
@@ -324,6 +324,60 @@ local function SessionLines(why)
 end
 DR.SessionLines = SessionLines
 
+-- The game's own per-addon CPU meter (C_AddOnProfiler), one line per loaded XayaUI addon plus all addons together and the whole
+-- game (Dev Assist 0.7.8, REQUEST-LOG A15 P-1 / P-5: the per-addon baseline for the performance test). Read only at combat end and
+-- boss end, and only while the Perf category is on (V14). API 12.1.5 (docs/reference/api/api.json, quoted in full):
+--   C_AddOnProfiler.GetAddOnMetric(name: cstring, metric: AddOnProfilerMetric) -> result: number   [SecretArguments=AllowedWhenUntainted]
+--   C_AddOnProfiler.GetOverallMetric(metric: AddOnProfilerMetric) -> result: number               [SecretArguments=AllowedWhenUntainted]
+--   C_AddOnProfiler.GetApplicationMetric(metric: AddOnProfilerMetric) -> result: number           [SecretArguments=AllowedWhenUntainted]
+--   C_AddOnProfiler.IsEnabled() -> enabled: bool
+--   Enum.AddOnProfilerMetric: SessionAverageTime 0, RecentAverageTime 1, EncounterAverageTime 2, LastTime 3, PeakTime 4,
+--   CountTimeOver1Ms 5, 5Ms 6, 10Ms 7, 50Ms 8, 100Ms 9, 500Ms 10, 1000Ms 11.
+-- The documentation has no text for any of them. INFERENCE: times are milliseconds per frame (core Engine.lua reads them the same
+-- way); "Overall" = all addons together, "Application" = the whole game; CountTimeOverNMs = frames in which the addon took more than
+-- N ms. Returns are not marked secret; each is still checked (a secret or non-number value is written as "?", never guessed).
+local METER = { { "SessionAverageTime", "sess", "%.4f" }, { "RecentAverageTime", "recent", "%.4f" }, { "EncounterAverageTime", "enc", "%.4f" },
+    { "PeakTime", "peak", "%.3f" }, { "CountTimeOver5Ms", "n5", "%d" }, { "CountTimeOver10Ms", "n10", "%d" },
+    { "CountTimeOver50Ms", "n50", "%d" }, { "CountTimeOver100Ms", "n100", "%d" } }
+local function MeterText(get)
+    local M = Enum and Enum.AddOnProfilerMetric
+    local parts = {}
+    for _, m in ipairs(METER) do
+        local id = M and M[m[1]]
+        local v
+        if id ~= nil then local ok, r = pcall(get, id); if ok then v = r end end
+        parts[#parts + 1] = m[2] .. "=" .. ((type(v) == "number" and not issecret(v)) and m[3]:format(v) or "?")
+    end
+    return table.concat(parts, " ")
+end
+function DR.AddonMeterLines(tag)
+    local P = C_AddOnProfiler
+    if not (P and P.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return { ("meter %s | not available here"):format(tostring(tag)) } end
+    local okE, en = pcall(function() return P.IsEnabled and P.IsEnabled() end)
+    if okE and en == false then return { ("meter %s | the game's addon meter is switched off"):format(tostring(tag)) } end
+    local out = {}
+    if C_AddOns and C_AddOns.GetNumAddOns and C_AddOns.GetAddOnInfo then
+        local okN, total = pcall(C_AddOns.GetNumAddOns)
+        for i = 1, (okN and tonumber(total)) or 0 do
+            local okI, name = pcall(C_AddOns.GetAddOnInfo, i)
+            if okI and type(name) == "string" and name:find("^XayaUI") then
+                local okL, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
+                if okL and loaded then
+                    out[#out + 1] = ("meter %s | %s %s"):format(tostring(tag), name, MeterText(function(id) return P.GetAddOnMetric(name, id) end))
+                end
+            end
+        end
+    end
+    if P.GetOverallMetric then out[#out + 1] = ("meter %s | (all addons) %s"):format(tostring(tag), MeterText(P.GetOverallMetric)) end
+    if P.GetApplicationMetric then out[#out + 1] = ("meter %s | (whole game) %s"):format(tostring(tag), MeterText(P.GetApplicationMetric)) end
+    return out
+end
+local function RecordMeter(tag)
+    if not ns.RecCatOn("perf") then return end
+    for _, l in ipairs(DR.AddonMeterLines(tag)) do ns.RecordLine("perf", l) end
+end
+DR.RecordMeter = RecordMeter
+
 local combatN, combatT0, perfByDebug, lastGroup = 0, nil, false, nil
 local function Game(text) if ns.RecCatOn("game") then ns.RecordLine("game", text) end end
 -- (V14: every handler checks its switch before it reads the game or builds text; the events themselves are registered only while
@@ -356,6 +410,7 @@ function handlers.ENCOUNTER_END(id, name, diff, size, success)
     if not ns.RecCatOn("game") then return end
     local res = (success == 1) and "kill" or ((success == 0) and "wipe" or S(success))
     Game(("boss encounter %s '%s' ends: %s (difficulty %s, %s players)"):format(S(id), S(name), res, S(diff), S(size)))
+    RecordMeter("boss " .. S(id))
 end
 function handlers.CHALLENGE_MODE_START(mapID)
     if not ns.RecCatOn("game") then return end
@@ -392,6 +447,7 @@ function handlers.PLAYER_REGEN_ENABLED()
         if ns.RecCatOn("perf") and ns.perfOn and ns.PerfCommand then
             for _, l in ipairs(ns.CaptureOutput(ns.PerfCommand, "")) do ns.RecordLine("perf", l) end
         end
+        RecordMeter("combat " .. combatN)
     end
     if perfByDebug and ns.PerfCommand then ns.CaptureOutput(ns.PerfCommand, "off"); perfByDebug = false; DR.SyncEvents() end
 end
