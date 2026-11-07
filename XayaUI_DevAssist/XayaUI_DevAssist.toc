@@ -21,6 +21,7 @@ RunRecord.lua
 QAWalk.lua
 QAWalks.lua
 QAWalks-chat.lua
-## Version: 0.7.12
+QAWalks-display.lua
+QAWalks-perf.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
