@@ -200,7 +200,7 @@ QA.Register("group-fit", { title = "Scale items to fit the box (and the question
     Cleanup(),
 } })
 
-QA.Register("dynamic-limit-align", { title = "Dynamic group: Limit and Align", qa = "B179c", order = 118, steps = {
+QA.Register("dynamic-limit-align", { title = "Dynamic group: Limit and Align", qa = "B179c", order = 118, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the QA test group becomes a dynamic group (growing Right) with three samples, the third smaller; its Group tab opens.\n\n|cffffd100Expect:|r |cffffd100Limit (show at most)|r and |cffffd100Align|r beside Sort and Spacing; the three samples in a row, the small one centered.",
         setup = function()
             local ns = NS(); local f = MakeTestGroup(true); f.cType, f.cGrowth = "dynamic", "RIGHT"

@@ -249,18 +249,20 @@ QA.Register("audit-chat", { title = "Chat: fade given back, ignore message, whol
             local r = { W("wts! cheap", "wts!"), W("only $gold here", "$gold"), not W("golden rings", "gold"), W("x " .. cyr .. " y", cyr), not W(cyrLong, cyr) }
             local ok = r[1] and r[2] and r[3] and r[4] and r[5]
             return ok and true or false, ("wts!: %s, $gold: %s, gold not in golden: %s, Cyrillic word: %s, not inside a longer word: %s"):format(tostring(r[1]), tostring(r[2]), tostring(r[3]), tostring(r[4]), tostring(r[5])) end },
-    { text = "With the Chat Panel on, press |cffffd100Do it for me|r: XayaUI notes Blizzard's own fade of old chat lines (kept when the Chat Panel first set it) and turns the Chat Panel off (/xui chat off). The last step turns it back on.\n\n|cffffd100Expect:|r Blizzard's chat comes back, and its old lines fade exactly as they did before the Chat Panel was on.",
+    { text = "With the Chat Panel on, press |cffffd100Do it for me|r: XayaUI notes Blizzard's own fade of old chat lines (kept when XayaUI first set it) and turns the Chat Panel off (/xui chat off) and Improved Chat off (QoL > Improved Chat: the fade of old lines is Improved Chat's setting). The next step turns both back on.\n\n|cffffd100Expect:|r Blizzard's chat comes back, and its old lines fade exactly as they did before XayaUI changed them.",
         setup = function() local C = Chat(); if not (C and C.On and C.On()) then error("the Chat Panel is off: turn it on first") end
             local cf = rawget(_G, "ChatFrame1"); ch.wasOn = true; ch.game = cf and cf._xuiFade and { cf._xuiFade[1], cf._xuiFade[2] }
-            C.Command("off") end,
+            local s = (NS() or {}).chat2; ch.impWas = s and s.improvedOn
+            C.Command("off"); if s then s.improvedOn = false; C.Refresh() end end,
         check = function() local cf = rawget(_G, "ChatFrame1"); if not (cf and cf.GetFading) then return false, "no chat window" end
             if not ch.wasOn then return false, "press Do it for me" end
-            if not ch.game then return true, "the Chat Panel never changed the fade this session, so there was nothing to give back" end
+            if not ch.game then return true, "XayaUI never changed the fade this session, so there was nothing to give back" end
             local f, t = cf:GetFading(), cf:GetTimeVisible()
             local ok = (f and true or false) == (ch.game[1] and true or false) and t == ch.game[2]
-            return ok, ("Blizzard's fade now: %s, %s s (before the Chat Panel: %s, %s s)"):format(tostring(f), tostring(t), tostring(ch.game[1]), tostring(ch.game[2])) end },
-    { text = "Press |cffffd100Do it for me|r to turn the Chat Panel back on (it was on). Then, if you have someone on your Ignore list, use the ignore click (Settings > Chat) on that player's name in chat.\n\n|cffffd100Expect:|r the Chat Panel is back. The ignore click on an already ignored player says \"Could not ignore <name>: the game did not add them ...\" (before: always \"Ignoring <name>\"). The addon cannot see the chat line, so you judge that part.",
-        setup = function() local C = Chat(); if C and ch.wasOn and not (C.On and C.On()) then C.Command("on") end; ch.wasOn = nil end,
+            return ok, ("Blizzard's fade now: %s, %s s (before XayaUI: %s, %s s)"):format(tostring(f), tostring(t), tostring(ch.game[1]), tostring(ch.game[2])) end },
+    { text = "Press |cffffd100Do it for me|r to turn the Chat Panel and Improved Chat back on (as they were). Then, if you have someone on your Ignore list, use the ignore click (Settings > Chat) on that player's name in chat.\n\n|cffffd100Expect:|r the Chat Panel is back. The ignore click on an already ignored player says \"Could not ignore <name>: the game did not add them ...\" (before: always \"Ignoring <name>\"). The addon cannot see the chat line, so you judge that part.",
+        setup = function() local C = Chat(); local s = (NS() or {}).chat2
+            if C and ch.wasOn then if s then s.improvedOn = ch.impWas end; if not (C.On and C.On()) then C.Command("on") else C.Refresh() end end; ch.wasOn, ch.impWas = nil, nil end,
         check = function() local C = Chat(); local on = C and C.On and C.On(); return on and true or false, on and "the Chat Panel is on again" or "the Chat Panel is still off" end },
 } })
 

@@ -336,9 +336,22 @@ end
 -- The game's own functions then lay the windows out again.
 -- (Chat 0.6.33) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
 -- fade alpha back, the block hidden). C.Teardown does both; the Chat Panel turned off with Improved Chat still on does the first only.
+-- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before XayaUI set it. The fade is Improved Chat's (UI-18 / UI-21),
+-- so this runs when Improved Chat stops (Fade.lua) and at the full teardown, not when only the Chat Panel's look is taken off.
+function C.RestoreTextFade()
+    for _, f in ipairs(C.Frames()) do
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
+end
 function C.Teardown()
     if not C.active then return end
     C.TeardownSkin()
+    C.RestoreTextFade()
     C.active = false
     C.master, C.fade = 1, 1
     for _, el in ipairs(C.alphaEls) do
@@ -385,14 +398,6 @@ function C.TeardownSkin()
     end
     for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
         if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
-    end
-    for _, f in ipairs(C.Frames()) do   -- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before the Chat Panel set it
-        local o = f._xuiFade
-        if o ~= nil then
-            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
-            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
-            f._xuiFade = nil
-        end
     end
     for _, f in ipairs(C.Frames()) do
         local tab = C.TabOf(f)

@@ -35,7 +35,7 @@ local function TextFade(s)
 end
 
 local function Refresh(s)
-    if not C.ImprovedOn() then return end   -- (Chat 0.6.33) Improved Chat's ("Fade and hide")
+    if not C.ImprovedOn() then C.RestoreTextFade(); return end   -- (Chat 0.6.33) Improved Chat's ("Fade and hide"); off: the game's fade back (D31)
     TextFade(s)
     if not s.fadeOn then
         if C.fade ~= 1 then C.fade = 1; C.ApplyAlpha() end
