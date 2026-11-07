@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-8f83d14ac42e1a1bfce826c1e47ee6cf  PATCH-NOTES.md
+a26973ddc3da15bfa1a1c67b3b7c0a10  PATCH-NOTES.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 520392370443f58cab21a14d845de46a  XayaUI/Actions.lua
@@ -208,7 +208,7 @@ f08c4c72b8c5c7feb783f3278364d773  XayaUI_Options/DisplayTab.lua
 5d357bf97b282a22f22719f77ab18eaf  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 1a2f756b13b4286ea8196bcd775899a4  XayaUI_Options/InfoPane.lua
-654fb7200dc143f13dbf8bdefe7a905c  XayaUI_Options/InfoPaneData.lua
+4f301d8459777d0d7a1f9616c014604f  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -251,7 +251,7 @@ ad6749d26245c811361b35449597e4a1  XayaUI_Options/RuleSearch.lua
 cc95cc559c081f3058555119152cebb2  XayaUI_Options/Skin.lua
 46c16efc2149c0b39227c00db614c4dd  XayaUI_Options/ThemeEditor.lua
 7cfb834f8b437dbdd6619f8f84783c80  XayaUI_Options/TriggersEditor.lua
-66fdcaa9a2d2a04885e913f02cb3a541  XayaUI_Options/XayaUI_Options.toc
+cdd820ae30354d562a24f8fa1314a285  XayaUI_Options/XayaUI_Options.toc
 95b491078d9005fcd9372b4a4bb4f81b  XayaUI_QoL/CharacterModel.lua
 2408e0585ff97b570fcfcde174fbbddf  XayaUI_QoL/CharacterReskin.lua
 a694ec662f2c1f3855d6f6a949ec6650  XayaUI_QoL/CharacterToolkit.lua
@@ -665,7 +665,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 2edfd954de3e0f9b0ecffe4974a91398  docs/issue-screenshots/toolkit-what-if-tab.png
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
-0f5ea93fb3533a9bd0ae5dac878d5588  docs/plans/BLIZZARD-RESKIN-CANDIDATES-2026-11-06.md
+15bbaff34ba8f23f5d4e39c9a1876cfd  docs/plans/BLIZZARD-RESKIN-CANDIDATES-2026-11-06.md
 5b76c3620cb5e2f1e3997e604b5a4c9a  docs/plans/CDM-TRACKING-REVIEW-2026-11-06.md
 46e7925eac2f7f3568c5ff46a1336781  docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md
 e62439d6b9c7a0a6eac69d3d5735b088  docs/plans/DEBUG-TO-DEVASSIST-2026-11-06.md
@@ -712,7 +712,7 @@ ba484bd6279bcc1fd5a17a8d1929c865  docs/process/handoffs/d8-raid-rules.md
 3eafda425d81574aecc595a6645c5587  docs/process/handoffs/nameplates.md
 1aefab10a361a807d52ee317923401f7  docs/process/handoffs/new-features-reskins.md
 f27b44b683fe244f573244a026520870  docs/process/handoffs/perf-test.md
-4526198ed59cc7117626e8ff4921ae96  docs/process/handoffs/reskin-elements.md
+f7acca7ff9f4f3a3c73f96adee69218c  docs/process/handoffs/reskin-elements.md
 21cd84e9bef5b3d58c26756ae4bd7e43  docs/process/handoffs/ui-bugs.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
 fbd3ef6f3e1dbc3fe97c8918886f3073  docs/reference/GCD-RESEARCH-2026-11-07.md
