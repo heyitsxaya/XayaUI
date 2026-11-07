@@ -2,7 +2,7 @@
 -- QAWalks-display.lua (XayaUI_DevAssist 0.7.11): in-game QA walkthroughs for the UI bugs session's work (branch
 -- claude/ui-bugs-focused): the display standard (UI-47 / UI-48: tab rows, off pages, switch hovers), the theme tie-in (UI-49 / UI-50),
 -- the Calculator page's info icon (UI-53), Release Guard (UI-57 / UI-58), the stat labels and the standard GCD (UI-62 to UI-64).
--- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77).
+-- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78).
 -- Standing rule V21 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough here sets prefill = true: the addon's own
 -- verdict is offered on "Accept", and nothing is recorded without her click. Steps the addon cannot judge say what to look at and are
@@ -449,4 +449,30 @@ QA.Register("ui-core-flat-buttons", { title = "Console, copy box, debug report: 
             local ok2, n2 = FlatCheck(rawget(_G, "XayaUIDebugReport"), "the debug report")
             return ok1 and ok2, n1 .. " | " .. n2
         end },
+} })
+
+-------------------------------------------------------------------------------
+-- 11. Debug report: Select string, then Ctrl+C (UI-78, O-128; core 0.6.69)
+-------------------------------------------------------------------------------
+local function Report() local ns = NS(); return ns and ns.DebugReportWindow and ns.DebugReportWindow() end
+QA.Register("ui-report-select", { title = "Debug report: Select string, then Ctrl+C", qa = "B232", order = 270, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the debug report (/xui report) opens.\n\n|cffffd100Expect:|r the button beside the string says Select string, and the hint at the top says to press it, then Ctrl+C (Cmd+C on Mac). (An addon cannot copy by itself: the game keeps the clipboard to its own code.)",
+        setup = function() local ns = NS(); if ns and ns.ShowDebugReport then ns.ShowDebugReport() end end,
+        check = function()
+            local w = Report()
+            if not (w and w:IsShown()) then return false, "the debug report is not open: press Do it for me" end
+            local label, hint = w.copy and w.copy:GetText() or "?", w.hint and w.hint:GetText() or ""
+            local ok = label == "Select string" and hint:find("Select string", 1, true) ~= nil and hint:find("Cmd+C", 1, true) ~= nil
+            return ok, "button: " .. label .. " | hint: " .. hint
+        end },
+    { text = "Press |cffffd100Do it for me|r (it presses Select string for you).\n\n|cffffd100Expect:|r the whole string is highlighted, and the hint says: now press Ctrl+C (Cmd+C on Mac) to copy it, then paste it to Xaya.",
+        setup = function() local w = Report(); local f = w and w.copy and w.copy:GetScript("OnClick"); if f then f(w.copy, "LeftButton") end end,
+        check = function()
+            local w = Report()
+            if not (w and w:IsShown()) then return false, "the debug report is not open: go back one step" end
+            local hint = w.hint and w.hint:GetText() or ""
+            local focus = w.str and w.str.HasFocus and w.str:HasFocus()
+            return (focus and hint:find("now press Ctrl+C", 1, true)) and true or false, (focus and "the string box has the focus" or "the string box does not have the focus") .. " | hint: " .. hint
+        end },
+    { text = "Your test: press Ctrl+C (Cmd+C on Mac), then click into a chat line and paste (Ctrl+V), without sending. Pass if the whole XUIREP1:... string arrives; Fail and say what came instead.", noVerdict = true },
 } })

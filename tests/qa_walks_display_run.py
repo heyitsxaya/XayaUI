@@ -24,7 +24,7 @@ local QA = rawget(_G, "XayaUI_DevQA")
 local ns = rawget(_G, "XayaUI_NS")
 check("Dev Assist has the QA walkthroughs", QA and QA.walks ~= nil)
 if not QA then return R end
-local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons", "ui-autogen-layout", "ui-core-flat-buttons" }
+local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons", "ui-autogen-layout", "ui-core-flat-buttons", "ui-report-select" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local okSteps = w ~= nil
@@ -71,6 +71,8 @@ stepCheck("core flat buttons (UI-77) 4: the copy box and the debug report too", 
 CueRulesDB.ui.skinOff = true
 stepCheck("core flat buttons (UI-77): with the skin off the check says so (fails)", "ui-core-flat-buttons", 3, false, false)
 CueRulesDB.ui.skinOff = nil
+stepCheck("report select (UI-78) 1: the button says Select string, the hint names the keys", "ui-report-select", 1, true)
+stepCheck("report select (UI-78) 2: pressed, the string is selected and the hint says Ctrl+C", "ui-report-select", 2, true)
 return R
 end
 '''
