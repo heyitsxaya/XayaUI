@@ -60,6 +60,84 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **In-game QA**
 - Added the Bar cue walkthroughs to /xui dev qa (QA B200-B210, F21).
 
+## 2026-11-06 — Debug Report, Group Page and Auto-populate Buttons
+
+### XayaUI 0.6.57
+
+**Debug Report (new)**
+- Added error codes and a debug report. XayaUI now records only errors and warnings, each with a code (XUI-E...), and only when they happen, so it costs nothing otherwise.
+  - /xui report opens a readable summary you can screenshot, with a Copy string you can send.
+  - The detailed record kinds (rule snapshots, aura answers and so on) now live in Dev Assist.
+  *Developers' notes: Not yet tested in game.*
+
+**Developer Tools**
+- The developer diagnostics now exist only while Dev Assist is installed and enabled: /xui debug probe, timing, model, tracker, mods, groups, icons, media, seed, map, gamemenu, chatprobe, widthprobe, perf ui, debuffs and loc, /xuitt probe, lines and aura, /xui chat wrap, indent and whispers, /xuiskin pad and alpha, and /xuiengine auto, on, off and reset.
+- Players keep /xui debug perf, /xui debug loader, /xui status, /xui auras, /xuiskin (turns the window skin off), and /xuiengine full and refresh.
+  *Developers' notes: Not yet tested in game.*
+
+**Group Page**
+- Added the tabs Group, Display, Load and Config to a group's page, with Group first.
+  - Config holds the name, an Enabled switch, the group type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character>".
+- Added a group Size (Auto or Set, with optional Clip), and Border and Background tick boxes with colour, texture and padding.
+- Added "Anchored to: The parent group / The screen" for nested groups.
+- Added Align & Arrange to static groups (Align left / center / right, Distribute, Space with a gap). The choice is saved: a display you drag, nudge, add or resize goes back into line.
+- Added "Scale items to fit the box" for static groups with a Set size. Making the box smaller than its items asks "Scale the items to fit?" once.
+- Added Limit (show at most N) and Align (Top / Center / Bottom, or Left / Center / Right) to dynamic groups.
+- A rule's display position now reads "Anchor point", then "Anchored to:", then "To <target>'s point", and changing either no longer moves the display.
+- Fixed an issue where "Outside" with a corner anchor acted as "Inside".
+  *Developers' notes: Not yet tested in game.*
+
+**Mover View**
+- Added arrow-key nudging of the display or group you last clicked: 1 pixel, 10 with Shift. Not in combat.
+- Added a small lock on each group's name tab that locks the group for now so you can reach what is under it. Nothing is saved.
+- Leaving the mover view after moving something now asks Save moves or Cancel moves; Cancel puts everything back. Moves left by a /reload or logout without Save are offered back at login.
+- The same prompt now shows when the settings window closes after it unlocked the displays and something moved.
+  *Developers' notes: Not yet tested in game. A game crash cannot keep unsaved moves: the game writes saved data only at logout or /reload.*
+
+**Settings Window**
+- Closing the settings window now ends every preview, sidebar movement unlock, group unlock, preview pause and window-made unlock.
+- Fixed an issue where previews stayed on screen after the settings window closed.
+  *Developers' notes: Not yet tested in game.*
+
+**Rules**
+- Added the trigger choice Player State "Dead, not released".
+- A rule that is switched off now costs nothing: no engine work and no display frame. Preview still works, and the rule is not shown in the unlock view.
+- A talent in a rule's Load tab now clicks through Known (green), Not known (red) and Not set.
+- New Sound cues now start on the SFX channel.
+  *Developers' notes: Not yet tested in game.*
+
+### Options 0.6.57
+
+**Auto-populate**
+- Replaced the Auto-populate buttons with four per spec (and four for the class): Generate All Rules, Generate CD Tracking Rules, Generate Aura Tracking Rules and Generate Target Debuff Tracking Rules. A button filters the table below it, and nothing is made until you press Populate.
+  - Added a Select all tick box above the table that ticks only the rows shown.
+  - For a spec you are not in, the Aura and Target Debuff buttons list nothing and tell you to switch to that spec first.
+- Added a titled auto-populate table: rows grouped under Spell CD, Aura and Debuff, a Spec column when listing every spec, and each spell's icon.
+  - Added a Cue set-up column: Speech has a "Customize" box, and Sound and pictures have a picker you must choose from.
+  - A row that could not be made stays in the table with an error popup; made rows leave it.
+  - On-screen cues are placed in rows of 3 centred on the screen.
+  - Added a "Hide / Show already generated rules" switch.
+- The Cooldown Manager warning now reads "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably." where the game offers no tracking.
+- Combat Tracking Setup moved from the Debugging page to Settings > UI Options > Rule Creation.
+- Added the sidebar look: XayaUI's own eye and headphone icons, a flat padlock and a gold move arrow, "Delete (N)", "Move (N)" and "Deselect (N)", and "Link N Selected (move together)" in the right-click menu.
+- Pressing a rule row and moving the mouse now starts a drag, with a line or highlighted group showing where it lands.
+  *Developers' notes: Not yet tested in game. The button width is an estimate, and the aura and debuff lists rely on an inference about the Cooldown Manager's fields.*
+
+### Bonus Features 0.6.19
+
+**Enhanced Tooltips**
+- The grey "via ..." source text at the end of an Aura ID line now shows only while Dev Assist is enabled.
+  *Developers' notes: Not yet tested in game.*
+
+### Dev Assist 0.7.5
+
+**In-game QA (new)**
+- Added /xui dev qa (also /xui qa test and /xui qatest): a window of walkthroughs, one step at a time, each with Do it for me and the addon's own check, which never decides for you. Answer Pass / Fail / Skip with a note.
+  - Results are saved. The end screen has Screenshot, an Export code and Import a code, and Run again.
+  - The list holds every open QA checklist item and every open unverified bug (34 walkthroughs, 330 items).
+- Added /xuidev report, which reads back a player's debug report string.
+  *Developers' notes: Not yet tested in game.*
+
 ## 2026-11-06 — Character Pane, Shopping List and All Reskins
 
 ### Chat 0.6.19

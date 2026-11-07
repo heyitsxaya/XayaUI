@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-f16a64cd1468ea7009d83b3a564c2e23  PATCH-NOTES.md
+047abd276a5147963d5b0e487a8cd429  PATCH-NOTES.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
@@ -184,7 +184,7 @@ a7618f47b1dcc3424834ce73878ebfa4  XayaUI_Options/AutoPicker.lua
 d6254cdbc4c4e62855c3d5ec727d3373  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 a4e3768100dcd843a512a4c769765a3d  XayaUI_Options/InfoPane.lua
-3ade4b856e9c686aa391312259482af9  XayaUI_Options/InfoPaneData.lua
+ab6142c887b3d72bafc840fc1f993a7e  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
