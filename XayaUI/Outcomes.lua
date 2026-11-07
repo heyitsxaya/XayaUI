@@ -388,6 +388,8 @@ function ns.ExplainRule(rule, ctx)
     parts[#parts + 1] = "talents=" .. tv(pi.talentOK)
     local s = (rule.parentUid and "outcome of '" .. tostring(p.name) .. "': " or "triggers: ") .. table.concat(parts, "  ")
     if pi.extraDetail and pi.extraOK ~= true then s = s .. "  | extra: " .. tostring(pi.extraDetail) end
+    local hidden = ns.HiddenAuraNote and ns.HiddenAuraNote(p, pi)   -- the game hides the aura: what the player sees (externals, 2026-11-07)
+    if hidden then s = s .. "  | " .. hidden end
     if rule.parentUid then
         local _, oi = ns.Evaluate(rule, ctx)
         s = s .. "  | combination=" .. tv(oi and oi.whenOK) .. " (" .. tostring(oi and oi.whenDetail) .. ")"

@@ -24,6 +24,7 @@ QAWalks-chat.lua
 QAWalks-display.lua
 QAWalks-perf.lua
 QAWalks-bars.lua
+QAWalks-externals.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
 QAWalks-statcalc.lua
