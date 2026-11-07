@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-game QA walkthrough for the Generate buttons, the filtered list and Select all (XayaUI_DevAssist 0.7.13, QAWalks-generate.lua; the
+"""In-game QA walkthrough for the Generate buttons, the filtered list and Select all (XayaUI_DevAssist 0.7.14, QAWalks-generate.lua; the
 feature: XayaUI_Options AutoPicker.lua, on main since 687b624, QA B160). Standing rule V22 (Xaya, 2026-11-07): "make sure every feature or
 significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data
 capturing".
