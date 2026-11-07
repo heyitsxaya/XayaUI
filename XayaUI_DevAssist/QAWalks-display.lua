@@ -2,6 +2,7 @@
 -- QAWalks-display.lua (XayaUI_DevAssist 0.7.11): in-game QA walkthroughs for the UI bugs session's work (branch
 -- claude/ui-bugs-focused): the display standard (UI-47 / UI-48: tab rows, off pages, switch hovers), the theme tie-in (UI-49 / UI-50),
 -- the Calculator page's info icon (UI-53), Release Guard (UI-57 / UI-58), the stat labels and the standard GCD (UI-62 to UI-64).
+-- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77); (0.7.20) the debug report's Select string (UI-78); (0.7.21) when the Shopping List shows itself (UI-77 part 2); (0.7.22) brief hover texts (UI-65).
 -- Standing rule V21 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough here sets prefill = true: the addon's own
 -- verdict is offered on "Accept", and nothing is recorded without her click. Steps the addon cannot judge say what to look at and are
@@ -81,14 +82,14 @@ local function SetDP(v)
 end
 
 QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, text size", qa = "B213, B215, B220", order = 260, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r (your Data Panels and Theme text size are remembered; the last step puts them back).\n\n|cffffd100Expect:|r under the top tabs, Smart Categories, Enabled, Disabled and Drafts are the same width side by side, taller than before with outlined names, and |cffffd100Auto-Generate Rules|r sits apart at the far right.",
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r (your Data Panels and Theme text size are remembered; the last step puts them back).\n\n|cffffd100Expect:|r under the top tabs, Smart Categories, Enabled, Disabled and Drafts are the same width side by side with small even gaps (27 px tall, outlined names), and |cffffd100Auto-Generate Rules|r sits apart at the far right.",
         setup = function()
             Remember({ dp = function() return DPOn() end, size = function() local db = rawget(_G, "CueRulesDB"); return db and db.theme and db.theme.size end })
             Open("cooldowns", "smartTab")
         end,
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Click each Rules sub-tab in turn (Enabled, Disabled, Drafts), then press |cffffd100Check|r.\n\n|cffffd100Expect:|r nothing moves or changes width; no name is cut off (the last one is for your eyes).",
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Press |cffffd100Do it for me|r: Data Panels is switched off and its page opens (Bonus Features > Data Panels).\n\n|cffffd100Expect:|r one line, \"Shows info panels on your screen: time, gold, frame rate and more.\", and no tab row or empty box under it.",
         setup = function() SetDP(false); Open("bonus", "datapanels") end,
         check = function()
@@ -110,14 +111,14 @@ QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, te
             end
             return true, ("%d section tab(s), %d px tall, even"):format(#tabs, want)
         end },
-    { text = "Press |cffffd100Do it for me|r: the Theme's |cffffd100Text size|r is set to Large and the Rules tab opens.\n\n|cffffd100Expect:|r the Rules sub-tabs are taller and their names larger than at Medium (about 32 px instead of 28).",
+    { text = "Press |cffffd100Do it for me|r: the Theme's |cffffd100Text size|r is set to Large and the Rules tab opens.\n\n|cffffd100Expect:|r the Rules sub-tabs are taller and their names larger than at Medium (about 31 px instead of 27).",
         setup = function()
             local db = rawget(_G, "CueRulesDB"); if not db then return end
             db.theme = db.theme or {}; db.theme.size = "L"
             local ns = NS(); if ns and ns.Theme and ns.Theme.Changed then ns.Theme.Changed() end
             Open("cooldowns", "smartTab")
         end,
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Last step: press |cffffd100Do it for me|r to put Data Panels and the Theme text size back as they were.",
         setup = function()
             if not saved then return end
@@ -137,7 +138,7 @@ local function BonusRow(uv)
     for _, b in ipairs(tree and tree.buttons or {}) do if b:IsShown() and b.uniquevalue == uv then return b end end
 end
 
-QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme colours", qa = "B214, B219", order = 261, prefill = true, steps = {
+QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme colors", qa = "B214, B219", order = 261, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on Bonus Features > Data Panels. Then hover the tick box on the Data Panels row (left pane) and press |cffffd100Check|r: the addon hovers it once more itself and reads what the hover writes.\n\n|cffffd100Expect:|r three lines: the row's name, one short sentence, and Enabled or Disabled. No \"Off: ...\" text.",
         setup = function() Open("bonus", "datapanels") end,
         check = function()
@@ -159,13 +160,13 @@ QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme c
         end },
     { text = "Hover the tick boxes of a few other rows yourself (Release Guard, Esc Menu, Chat Panel).\n\n|cffffd100Expect:|r each says in plain words what it does, in one sentence. Pass if every one reads clearly to you; Fail and say which one if not.",
         noVerdict = true },
-    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that colour. The addon checks that the grey it uses is the theme's Muted text colour.",
+    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that color. The addon checks that the grey it uses is the theme's Muted text color.",
         check = function()
             local ns = NS(); local api = ns and ns.OptionsApi
             if not (api and api.Muted and ns.Theme and ns.Theme.Col) then return false, "the settings window has not been opened yet" end
             local a, b = api.Muted(), ns.Theme.Col("xui-text-muted", "text")
             local same = Near(a[1], b[1], 0.001) and Near(a[2], b[2], 0.001) and Near(a[3], b[3], 0.001)
-            return same, same and "the grey is the theme's Muted text colour" or "the grey is not the theme's Muted text colour"
+            return same, same and "the grey is the theme's Muted text color" or "the grey is not the theme's Muted text color"
         end },
 } })
 
@@ -186,21 +187,21 @@ local function AdvOpt()
 end
 local function Adv() local ns = NS(); return ns and ns.Theme and ns.Theme.Advanced and ns.Theme.Advanced() end
 QA.Register("ui-theme-advanced", { title = "Theme: Advanced customization", qa = "B221", order = 262, prefill = true, steps = {
-    { text = "Open Settings > Theme (the toolbar's Settings button, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colours or Class overrides.",
+    { text = "Open Settings > Theme (the toolbar's Settings button, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colors or Class overrides.",
         setup = function() local ns = NS(); if ns and ns.LoadOptions then ns.LoadOptions() end; saved = { adv = Adv() } end,
         check = function()
             local o = AdvOpt()
             if not o then return false, "no Advanced customization switch found (open the settings window once)" end
             local ns = NS()
             local parked = ns.Theme.Parked and ns.Theme.Parked("tabBg")
-            return (not Adv()) and parked == true, ("Advanced customization is %s; tab colours %s"):format(Adv() and "on" or "off", parked and "not offered" or "offered")
+            return (not Adv()) and parked == true, ("Advanced customization is %s; tab colors %s"):format(Adv() and "on" or "off", parked and "not offered" or "offered")
         end },
-    { text = "Press |cffffd100Do it for me|r (or tick it yourself).\n\n|cffffd100Expect:|r the Tab, Selected tab and Tree bars colours and a Class overrides box appear. Change |cffffd100Tab|r: the tabs take that colour.",
+    { text = "Press |cffffd100Do it for me|r (or tick it yourself).\n\n|cffffd100Expect:|r the Tab, Selected tab and Tree bars colors and a Class overrides box appear. Change |cffffd100Tab|r: the tabs take that color.",
         setup = function() local o = AdvOpt(); if o and o.set then o.set({}, true) end end,
         check = function()
             local ns = NS()
             local open = Adv() and ns.Theme.Parked and ns.Theme.Parked("tabBg") == false
-            return open == true, open and "on: the tab colours are offered and applied" or "still off"
+            return open == true, open and "on: the tab colors are offered and applied" or "still off"
         end },
     { text = "Last step: press |cffffd100Do it for me|r to put Advanced customization back as it was.",
         setup = function() local o = AdvOpt(); if o and o.set and saved then o.set({}, saved.adv and true or false) end end,
@@ -301,4 +302,252 @@ QA.Register("ui-stat-gcd", { title = "Stat list labels and the GCD", qa = "E1z94
             local match = math.abs(calc - live.dur) <= 0.02
             return match, ("rule %s: %.2f s; the game: %.2f s%s"):format(tostring(why), calc, live.dur, match and "" or " (differs: a buff or talent may change it; say which in the note)")
         end },
+} })
+
+-------------------------------------------------------------------------------
+-- 7. Nesting in the left pane (UI-8 "Parent's name + 8 px"; UI-69, Xaya: "indents are now TOO large")
+-------------------------------------------------------------------------------
+local function ReskinRow(uv)
+    local tree = Find(function(w) local u = w.type == "TreeGroup" and w:GetUserDataTable(); return u and u.path and u.path[1] == "reskin" and #u.path == 1 end)
+    for _, b in ipairs(tree and tree.buttons or {}) do if b:IsShown() and b.uniquevalue == uv then return b end end
+end
+QA.Register("ui-nesting", { title = "Settings: parts nested 8 px under their feature", qa = "B218", order = 266, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the Blizzard Reskin tab opens on Chat Panel, with its parts listed.\n\n|cffffd100Expect:|r Layout, Appearance, Chat Data Panel ... start just a little right of where \"Chat Panel\" starts (8 px), with no wide gap; Stat list sits the same way under Character Pane.",
+        setup = function() Open("reskin", "chatpanel") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local p, c = ReskinRow("chatpanel"), ReskinRow("chatpanel\001layout")
+            if not (p and c and p.xuiTextL and c.xuiTextL) then return false, "Chat Panel and its Layout row are not on screen (is the Blizzard Reskin tab on?)" end
+            local d = c.xuiTextL - p.xuiTextL
+            return math.abs(d - 8) < 0.5, ("Layout's name starts %d px right of Chat Panel's (want 8)"):format(d)
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- 8. The rule list's icons (Options 0.6.64; UI-70: "icons still not appropriately handled and display irregularly"; UI-72: "copy the WA
+-- format w/ toggle being under group as previously suggested")
+-------------------------------------------------------------------------------
+local function RuleRows()
+    local out = {}
+    local function walk(f, d) if not f or d > 60 then return end
+        if f.uniquevalue and f.IsShown and f:IsShown() and not f.xuiTwoRow then out[#out + 1] = f end
+        for _, c in ipairs(f.GetChildren and { f:GetChildren() } or {}) do walk(c, d + 1) end end
+    walk(UIParent, 0)
+    return out
+end
+local function Off(b) if not (b and b:IsShown()) then return nil end local p, _, rp, x = b:GetPoint(1); if p == "RIGHT" and rp == "RIGHT" then return -(x or 0) end end
+QA.Register("ui-row-icons", { title = "Rules list: icons in fixed columns (WeakAuras layout)", qa = "B228", order = 267, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Rules > Enabled opens.\n\n|cffffd100Expect:|r on every row the icons stand in the same columns, from the right: the open / close button (headers only), the eye (or the headphone on a sound-only row), the note, the lock. LOADED's open / close button is at the far right with the eye just left of it; nothing overlaps; a group's open / close sits under its icon.",
+        setup = function() Open("cooldowns", "enabledTab") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local ns = NS(); local C = ns and ns.OptionsApi and ns.OptionsApi.SIDE_COL
+            if not C then return false, "the settings window is not loaded" end
+            local bad, n = {}, 0
+            for _, b in ipairs(RuleRows()) do
+                n = n + 1
+                local name = tostring(b.uniquevalue):match("([^\001]+)$")
+                for fr, col in pairs({ [b.xuiEye or 0] = C.preview, [b.xuiHead or 1] = C.preview, [b.xuiEdit or 2] = C.note, [b.xuiMove or 3] = C.lock }) do
+                    if type(fr) == "table" then local o = Off(fr); if o and o ~= col then bad[#bad + 1] = name end end
+                end
+                if b.xuiChev and b.xuiChev:IsShown() and Off(b.xuiChev) and Off(b.xuiChev) ~= C.expand then bad[#bad + 1] = name .. " (open / close)" end
+            end
+            if n == 0 then return false, "no rows on screen" end
+            return #bad == 0, #bad == 0 and (n .. " rows, every icon in its column") or ("out of column: " .. table.concat(bad, ", "):sub(1, 200))
+        end },
+    { text = "Look through Smart Categories and Disabled too.\n\n|cffffd100Expect:|r the same columns everywhere; tell us in the note if any row still looks off.",
+        noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 9. Auto-Generate Rules: one icon, four buttons (Options 0.6.65; UI-71: "this needs work, it's too noisy. one icon, four buttons";
+-- her answer "icon | four lines")
+-------------------------------------------------------------------------------
+local function CreatorArgs()
+    local reg = LibStub and LibStub("AceConfigRegistry-3.0", true)
+    local t = reg and reg:GetOptionsTable("CueRules", "dialog", "AceConfigDialog-3.0")
+    if type(t) == "function" then t = t("dialog", "AceConfigDialog-3.0") end
+    local found
+    local function walk(g, d) if type(g) ~= "table" or d > 12 or found then return end
+        if g.type == "group" and g.name == "Auto-Generate Rules" then found = g; return end
+        for _, o in pairs(type(g.args) == "table" and g.args or {}) do walk(o, d + 1) end end
+    walk(t, 0)
+    return found and found.args
+end
+QA.Register("ui-autogen-layout", { title = "Auto-Generate Rules: one icon, four buttons per spec", qa = "B229", order = 268, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Rules > Auto-Generate Rules opens.\n\n|cffffd100Expect:|r for each spec: its icon once at the left, and its four buttons (Generate All Rules for <spec>, CD Tracking, Aura Tracking, Target Debuff Tracking) as four lines beside it; the buttons carry no icon of their own. Your class's four buttons the same, without an icon.",
+        setup = function() Open("cooldowns", "creatorTab") end,
+        check = function()
+            local a = CreatorArgs()
+            if not a then return false, "the Auto-Generate Rules page was not found (open the settings window once)" end
+            local specs, bad = 0, {}
+            for i = 1, 4 do
+                local p = "apSpec" .. i
+                if a[p .. "all"] then
+                    specs = specs + 1
+                    if not (a[p .. "Ic1"] and a[p .. "Ic1"].image) then bad[#bad + 1] = p .. ": no icon" end
+                    for j = 2, 4 do if a[p .. "Ic" .. j] and a[p .. "Ic" .. j].image then bad[#bad + 1] = p .. ": a second icon" end end
+                    for _, f in ipairs({ "all", "cd", "aura", "debuff" }) do
+                        if tostring(a[p .. f] and a[p .. f].name):find("|T", 1, true) then bad[#bad + 1] = p .. f .. ": icon on the button" end
+                    end
+                end
+            end
+            if specs == 0 then return false, "no spec buttons found" end
+            return #bad == 0, #bad == 0 and (specs .. " spec(s): one icon each, four buttons as four lines") or table.concat(bad, "; ")
+        end },
+    { text = "Your look: is it calm enough now? Pass if yes; Fail and say what is still noisy.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 10. Core windows' flat buttons after a /reload (UI-77, O-139; core 0.6.68)
+-------------------------------------------------------------------------------
+local function Kids(frame)
+    local out = {}
+    if not (frame and frame.GetChildren) then return out end
+    for _, k in ipairs({ frame:GetChildren() }) do
+        if k.GetObjectType and k:GetObjectType() == "Button" and k.GetText and k:GetText() then out[#out + 1] = k end
+    end
+    return out
+end
+-- every text button of the frame has the flat look in the theme's button text colour
+local function FlatCheck(frame, label)
+    if not (frame and frame:IsShown()) then return false, label .. " is not open: press Do it for me" end
+    local ns = NS()
+    local T = ns and ns.Theme
+    local want = T and T.Col and T.Col("xui-button", "text", { 1, 0.82, 0, 1 }) or { 1, 0.82, 0, 1 }
+    local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+    if skinOff then return false, "the flat skin is switched off (/xuiskin): switch it on and try again" end
+    local bad, n = {}, 0
+    for _, b in ipairs(Kids(frame)) do
+        n = n + 1
+        local fs = b.GetFontString and b:GetFontString()
+        local r, g, bl = 0, 0, 0
+        if fs then r, g, bl = fs:GetTextColor() end
+        if not b.xuiFlatBtn then bad[#bad + 1] = b:GetText() .. ": Blizzard look"
+        elseif not (Near(r, want[1], 0.02) and Near(g, want[2], 0.02) and Near(bl, want[3], 0.02)) then bad[#bad + 1] = b:GetText() .. ": not the theme's button colour" end
+    end
+    if n == 0 then return false, label .. ": no buttons found" end
+    local loaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("XayaUI_Options")
+    local where = loaded and " (the settings addon is loaded now, so this is not the after-/reload case)" or " (the settings addon is not loaded: the after-/reload case)"
+    return #bad == 0, (#bad == 0 and (label .. ": all " .. n .. " buttons flat") or table.concat(bad, "; ")) .. where
+end
+QA.Register("ui-core-flat-buttons", { title = "Console, copy box, debug report: flat buttons after /reload", qa = "B231", order = 269, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the XayaUI console opens.\n\n|cffffd100Expect:|r What to send, Copy, Clear and Bug report are flat (a dark box, text in your theme's button colour), not Blizzard's red buttons. The close X keeps Blizzard's red X on purpose, like the settings window's.",
+        setup = function() local ns = NS(); if ns and ns.ConsoleWindow then ns.ConsoleWindow(true) end end,
+        check = function() return FlatCheck(rawget(_G, "XayaUIConsoleWindow"), "the console") end },
+    { text = "The case you reported: leave the console open and type |cffffd100/reload|r. When the game is back, the console reopens by itself; open this walkthrough again and go to the next step. (Do not open the settings window first: the bug only showed while it had not been opened.)", noVerdict = true },
+    { text = "After the /reload, with the console open: press |cffffd100Check|r.\n\n|cffffd100Expect:|r the console's four buttons are flat, and the note says the settings addon is not loaded.",
+        check = function() return FlatCheck(rawget(_G, "XayaUIConsoleWindow"), "the console") end },
+    { text = "Press |cffffd100Do it for me|r: the copy box (What to send) and the debug report open.\n\n|cffffd100Expect:|r Select all (copy box) and the string button (debug report) are flat too.",
+        setup = function()
+            local ns = NS(); if not ns then return end
+            if ns.ShowCopyBox and ns.SendText then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end
+            if ns.ShowDebugReport then ns.ShowDebugReport() end
+        end,
+        check = function()
+            local ok1, n1 = FlatCheck(rawget(_G, "XayaUICopyBox"), "the copy box")
+            local ok2, n2 = FlatCheck(rawget(_G, "XayaUIDebugReport"), "the debug report")
+            return ok1 and ok2, n1 .. " | " .. n2
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- 11. Debug report: Select string, then Ctrl+C (UI-78, O-128; core 0.6.69)
+-------------------------------------------------------------------------------
+local function Report() local ns = NS(); return ns and ns.DebugReportWindow and ns.DebugReportWindow() end
+QA.Register("ui-report-select", { title = "Debug report: Select string, then Ctrl+C", qa = "B232", order = 270, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the debug report (/xui report) opens.\n\n|cffffd100Expect:|r the button beside the string says Select string, and the hint at the top says to press it, then Ctrl+C (Cmd+C on Mac). (An addon cannot copy by itself: the game keeps the clipboard to its own code.)",
+        setup = function() local ns = NS(); if ns and ns.ShowDebugReport then ns.ShowDebugReport() end end,
+        check = function()
+            local w = Report()
+            if not (w and w:IsShown()) then return false, "the debug report is not open: press Do it for me" end
+            local label, hint = w.copy and w.copy:GetText() or "?", w.hint and w.hint:GetText() or ""
+            local ok = label == "Select string" and hint:find("Select string", 1, true) ~= nil and hint:find("Cmd+C", 1, true) ~= nil
+            return ok, "button: " .. label .. " | hint: " .. hint
+        end },
+    { text = "Press |cffffd100Do it for me|r (it presses Select string for you).\n\n|cffffd100Expect:|r the whole string is highlighted, and the hint says: now press Ctrl+C (Cmd+C on Mac) to copy it, then paste it to Xaya.",
+        setup = function() local w = Report(); local f = w and w.copy and w.copy:GetScript("OnClick"); if f then f(w.copy, "LeftButton") end end,
+        check = function()
+            local w = Report()
+            if not (w and w:IsShown()) then return false, "the debug report is not open: go back one step" end
+            local hint = w.hint and w.hint:GetText() or ""
+            local focus = w.str and w.str.HasFocus and w.str:HasFocus()
+            return (focus and hint:find("now press Ctrl+C", 1, true)) and true or false, (focus and "the string box has the focus" or "the string box does not have the focus") .. " | hint: " .. hint
+        end },
+    { text = "Your test: press Ctrl+C (Cmd+C on Mac), then click into a chat line and paste (Ctrl+V), without sending. Pass if the whole XUIREP1:... string arrives; Fail and say what came instead.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 12. Shopping List: when it shows itself (UI-77 part 2, O-139; QoL 0.7.42)
+-------------------------------------------------------------------------------
+local function ShopSvc() return Svc("shoppingList") end
+local function ShopPanel() return rawget(_G, "XayaUIShoppingList") end
+local function ShopState()
+    local S = ShopSvc(); if not S then return nil, "XayaUI QoL or the Shopping List is off" end
+    local c = S.Cfg(); local p = ShopPanel()
+    return c, (p and p:IsShown()) and true or false
+end
+QA.Register("ui-shop-autoshow", { title = "Shopping List: shows itself only at the Auction House or for missing enchants / gems", qa = "B233", order = 271, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the Shopping List and its panel are switched on, the panel opens, then it is closed as with its X.\n\n|cffffd100Expect:|r the panel is gone and the close is saved (it holds until your next Auction House visit).",
+        setup = function()
+            local S = ShopSvc(); if not S then return end
+            local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply(true)
+            local p = ShopPanel(); if p then c.closedTillAH = true; p:Hide() end
+        end,
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return (not shown) and c.closedTillAH == true, (shown and "the panel is showing" or "the panel is closed") .. (c.closedTillAH and ", the close is saved" or ", the close is NOT saved")
+        end },
+    { text = "Type |cffffd100/reload|r. When the game is back, open this walkthrough again and go to the next step.\n\n|cffffd100Expect:|r the Shopping List does not pop up at login.", noVerdict = true },
+    { text = "After the /reload: press |cffffd100Check|r.\n\n|cffffd100Expect:|r the panel is not showing and the close is still saved.",
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return (not shown) and c.closedTillAH == true, (shown and "the panel popped up" or "the panel stayed closed") .. (c.closedTillAH and ", the close is saved" or ", the close was lost")
+        end },
+    { text = "Go to an Auctioneer and open the Auction House, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the Shopping List opens by itself, and the close is forgotten.",
+        check = function()
+            local c, shown = ShopState(); if not c then return false, shown end
+            return shown and c.closedTillAH ~= true, (shown and "the panel is showing" or "the panel is not showing") .. (c.closedTillAH and ", the close is still saved" or ", the close is forgotten")
+        end },
+    { text = "Close it with its X, then type |cffffd100/xui shop|r.\n\n|cffffd100Expect:|r /xui shop opens it again any time.",
+        check = function() local c, shown = ShopState(); if not c then return false, shown end; return shown, shown and "the panel is showing" or "the panel is not showing" end },
+    { text = "Your look: with nothing missing on your gear, does it now stay away until you visit the Auction House or ask for it? Pass if yes; Fail and say when it still popped up.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 13. Brief hover texts (UI-65; every changed addon's version bumped, Dev Assist 0.7.22)
+-------------------------------------------------------------------------------
+-- sentences in a hover text: the first line only (lines after it are a list of the choices, one per line), and a "?" right after a lone
+-- capital (the "E?" mark) does not end one
+local function Sentences(s)
+    s = tostring(s or ""):match("^[^\n]*"):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("(%f[%w]%u)%?", "%1")
+    s = s:gsub("e%.g%.", "eg"):gsub("i%.e%.", "ie"):gsub("etc%.", "etc"):gsub("vs%.", "vs"):gsub("(%d)%.(%d)", "%1%2")
+    local n = 0
+    for _ in (s .. " "):gmatch("[%.!?]%s") do n = n + 1 end
+    if not s:match("[%.!?]%s*$") and s:match("%S") then n = n + 1 end
+    return n
+end
+QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two sentences", qa = "B234", order = 272, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens and every option's hover text is read.\n\n|cffffd100Expect:|r none has more than two sentences (the note lists any that do).",
+        setup = function() local ns = NS(); if ns and ns.LoadOptions then ns.LoadOptions() end end,
+        check = function()
+            local ns = NS()
+            local reg = LibStub and LibStub("AceConfigRegistry-3.0", true)
+            local t = reg and reg:GetOptionsTable("CueRules", "dialog", "AceConfigDialog-3.0")
+            if type(t) == "function" then t = t("dialog", "AceConfigDialog-3.0") end
+            if type(t) ~= "table" then return false, "the settings window's options were not found (open it once)" end
+            local n, long, seen = 0, {}, {}
+            local function walk(node, d)
+                if type(node) ~= "table" or d > 12 or seen[node] then return end
+                seen[node] = true
+                if type(node.desc) == "string" and node.desc ~= "" then
+                    n = n + 1
+                    if Sentences(node.desc) > 2 and #long < 6 then long[#long + 1] = tostring(node.name or "?") end
+                end
+                if type(node.args) == "table" then for _, c in pairs(node.args) do walk(c, d + 1) end end
+            end
+            walk(t, 0)
+            return #long == 0, n .. " hover texts read" .. (#long > 0 and ("; longer than two sentences: " .. table.concat(long, ", ")) or "")
+        end },
+    { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },
 } })

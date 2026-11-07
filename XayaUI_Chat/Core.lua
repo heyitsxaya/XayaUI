@@ -336,9 +336,22 @@ end
 -- The game's own functions then lay the windows out again.
 -- (Chat 0.6.33) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
 -- fade alpha back, the block hidden). C.Teardown does both; the Chat Panel turned off with Improved Chat still on does the first only.
+-- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before XayaUI set it. The fade is Improved Chat's (UI-18 / UI-21),
+-- so this runs when Improved Chat stops (Fade.lua) and at the full teardown, not when only the Chat Panel's look is taken off.
+function C.RestoreTextFade()
+    for _, f in ipairs(C.Frames()) do
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
+end
 function C.Teardown()
     if not C.active then return end
     C.TeardownSkin()
+    C.RestoreTextFade()
     C.active = false
     C.master, C.fade = 1, 1
     for _, el in ipairs(C.alphaEls) do
@@ -453,7 +466,8 @@ function ns.Chat_OnDBReady()
     -- V14: the Chat Panel saved off (or the Reskin tab off) and Improved Chat saved off: nothing more is built, registered or run
     if not ((s.enabled and ns.ReskinTabOn()) or s.improvedOn ~= false) then return end
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
+    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
@@ -491,7 +505,7 @@ function C.Command(arg)
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
     if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
-    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload)."))
+    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)."))
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
         C.Refresh(); ns.Print("Chat Panel: position and size reset.")
@@ -502,7 +516,7 @@ function C.Command(arg)
         -- (XayaUI Dev Assist's: wrap, indent, whispers; Chat 0.6.20)
     else
         local why = C.BlockedReason()
-        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
+        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard Reskin is off: Blizzard Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
         local extra = {}
         for _, h in ipairs(ns.SubcommandHelp and ns.SubcommandHelp("chat") or {}) do extra[#extra + 1] = h:match("^(%S+)") end
         ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|" .. (#extra > 0 and (table.concat(extra, "|") .. "|") or "") .. "settings"):gsub("|", "||")))

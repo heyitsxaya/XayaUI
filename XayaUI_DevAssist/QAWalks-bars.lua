@@ -117,18 +117,18 @@ local steps = {
           if T.v0 and (GetTime() - (T.t0 or 0)) > 0.3 and Near(v, T.v0, 0.0001) then return false, "the value has not changed since Do it for me" end
           return true, ("value %.2f, moving"):format(v)
       end },
-    { text = "Look at the bar's colour. Open the test rule's Cues tab (Rules list) > Bar Options > Colour: the |cffffd100Now:|r line says which colour it uses and why (the type the tooltip names, e.g. \"Fire Damage\", else the aura's dispel type, else blue). "
-        .. "|cffffd100Expect:|r the bar has that colour.",
+    { text = "Look at the bar's color. Open the test rule's Cues tab (Rules list) > Bar Options > Color: the |cffffd100Now:|r line says which color it uses and why (the type the tooltip names, e.g. \"Fire Damage\", else the aura's dispel type, else blue). "
+        .. "|cffffd100Expect:|r the bar has that color.",
       check = function()
           local ns, fr = NS(), Frame()
           if not (fr and fr.barF) then return false, "no test bar (step 1)" end
           local r, g, b, _, why, t = ns.BarCueColor(T.cue, nil)
           local dr, dg, db = DrawnColor(fr)
-          if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar is not drawn in the colour XayaUI chose" end
-          local what = (why == "tooltip" and ("named in the tooltip: " .. tostring(t))) or (why == "dispel" and ("the aura's dispel type: " .. tostring(t))) or (why == "fixed" and "a fixed colour") or "no type found: the fixed blue"
-          return true, "drawn in the chosen colour (" .. what .. ")"
+          if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar is not drawn in the color XayaUI chose" end
+          local what = (why == "tooltip" and ("named in the tooltip: " .. tostring(t))) or (why == "dispel" and ("the aura's dispel type: " .. tostring(t))) or (why == "fixed" and "a fixed color") or "no type found: the fixed blue"
+          return true, "drawn in the chosen color (" .. what .. ")"
       end },
-    { text = "Press |cffffd100Do it for me|r: the test bar's |cffffd100Colour style|r is set to Neon. |cffffd100Expect:|r the bar turns brighter and stronger in the same colour family (a bar with no type stays the fixed blue: styles change type colours only).",
+    { text = "Press |cffffd100Do it for me|r: the test bar's |cffffd100Color style|r is set to Neon. |cffffd100Expect:|r the bar turns brighter and stronger in the same color family (a bar with no type stays the fixed blue: styles change type colors only).",
       setup = function() local ns = NS(); if T.cue and ns then ns.BarCueSettings(T.cue.visual).style = "neon"; pcall(ns.RefreshVisual, T.cue); ns.MarkDirty() end end,
       check = function()
           local ns, fr = NS(), Frame()
@@ -137,16 +137,16 @@ local steps = {
           if st ~= "neon" then return false, "the cue's style is " .. tostring(st) .. ", not Neon" end
           local r, g, b, _, why, t = ns.BarCueColor(T.cue, nil)
           local dr, dg, db = DrawnColor(fr)
-          if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar was not repainted in the Neon colour" end
+          if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar was not repainted in the Neon color" end
           if why == "tooltip" or why == "dispel" then
               local br, bg, bb = ns.BarTypeColor(t, "blizzard")
-              if br and Near(br, r, 0.005) and Near(bg, g, 0.005) and Near(bb, b, 0.005) then return false, "Neon gives the same colour as Blizzard default" end
+              if br and Near(br, r, 0.005) and Near(bg, g, 0.005) and Near(bb, b, 0.005) then return false, "Neon gives the same color as Blizzard default" end
               return true, "Neon " .. tostring(t) .. " drawn"
           end
-          return true, "no type colour on this aura: the fixed blue is kept (styles change type colours only)"
+          return true, "no type color on this aura: the fixed blue is kept (styles change type colors only)"
       end },
-    { text = "Press |cffffd100Do it for me|r: a test group, \"" .. GROUP_NAME .. "\", takes the test rule and forces |cffffd100Muted / Dark|r on every bar in it (the group's Display tab > Every bar: colour style > Force). "
-        .. "|cffffd100Expect:|r the bar turns duller and darker; on the bar's own Colour section the style is greyed out and names the group.",
+    { text = "Press |cffffd100Do it for me|r: a test group, \"" .. GROUP_NAME .. "\", takes the test rule and forces |cffffd100Muted / Dark|r on every bar in it (the group's Display tab > Every bar: color style > Force). "
+        .. "|cffffd100Expect:|r the bar turns duller and darker; on the bar's own Color section the style is greyed out and names the group.",
       setup = function()
           local ns = NS()
           if not (T.rule and ns.NewFolder) then return end
@@ -200,17 +200,17 @@ local steps = {
           return owns and true or false, owns and "the combat engine draws this bar" or "the combat engine does not draw this bar (see /xuiengine for the reason)"
       end },
     { text = "Hover a spell whose tooltip says \"... fire damage ...\" (for example on your action bars or in the spellbook), and a buff of yours that says \"Magic\" at the top right. "
-        .. "|cffffd100Expect:|r \"Fire Damage\" in the game's Fire colour (orange), \"Magic\" in blue (Bonus Features > Enhanced Tooltips > Type colours; English game text only).",
+        .. "|cffffd100Expect:|r \"Fire Damage\" in the game's Fire color (orange), \"Magic\" in blue (Bonus Features > Enhanced Tooltips > Type colors; English game text only).",
       check = function()
           local ns = NS()
           -- (XayaUI_Bonus is reached only through its service: Modules.lua ns.Service; Bonus Tooltips.lua provides "tooltipsDebug")
           local sv = ns and ns.Service and ns.Service("tooltipsDebug")
           local TT = sv and sv.TT
           if not (TT and TT.SectionOn) then return false, "XayaUI Bonus Features (Enhanced Tooltips) is not loaded" end
-          if not TT.SectionOn("typeColors") then return false, "Type colours is switched off (or Enhanced Tooltips is off)" end
+          if not TT.SectionOn("typeColors") then return false, "Type colors is switched off (or Enhanced Tooltips is off)" end
           local s = ns.BarColorizeTypes and ns.BarColorizeTypes("Deals 10 fire damage.")
-          if not (s and s:find("|cff", 1, true) and s:find("Fire Damage", 1, true)) then return false, "the colouring does not work on a sample line" end
-          return true, "Type colours is on and colours a sample line"
+          if not (s and s:find("|cff", 1, true) and s:find("Fire Damage", 1, true)) then return false, "the coloring does not work on a sample line" end
+          return true, "Type colors is on and colors a sample line"
       end },
     { text = "Last step: press |cffffd100Do it for me|r to remove the test rule, its Bar cue and the test group. Nothing else was changed.",
       setup = RemoveAll,

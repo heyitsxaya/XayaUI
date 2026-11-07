@@ -26,21 +26,21 @@ DR.CATS = {
     { key = "snapshots", label = "Snapshot", name = "Rule snapshots in combat", default = true, cost = "small",
       desc = "Every switched-on rule's answer at the start and end of each combat, and the ones that changed, every 5 seconds in combat." },
     { key = "auras", label = "Aura", name = "Aura answers", default = true, cost = "small",
-      desc = "One line when an aura's answer (present, missing, unknown) or the source that gave it changes: the aura list, the Cooldown Manager, a proc glow, a set bonus, an estimate." },
+      desc = "Records a line when an aura's answer (present, missing, unknown) or its source changes." },
     { key = "triggers", label = "Trigger", name = "Trigger detail for chosen rules", default = false, cost = "small for each chosen rule",
-      desc = "For the rules you pick below: one line each time the rule's answer or any part of it changes (cooldown, aura and its source, talent, extra triggers, combination, load), with why it does not fire." },
+      desc = "Records a line each time a rule picked below, or any part of it, changes, with why it does not fire." },
     { key = "displays", label = "Display", name = "Displays shown and hidden", default = false, cost = "small",
       desc = "One line each time a rule's display appears or goes, and whether XayaUI or the combat engine draws it." },
     { key = "glows", label = "Glow", name = "Proc glows", default = true, cost = "tiny",
       desc = "Each proc-glow sighting used to pair a button's glow with an aura, and what the aura was at that moment." },
     { key = "sounds", label = "Sound", name = "Sounds", default = true, cost = "tiny",
-      desc = "Each sound a rule plays (which sound, channel, volume, what the game answered) and the set-up of sounds the game plays itself." },
+      desc = "Records each sound a rule plays and how the game's own sounds are set up." },
     { key = "game", label = "Game", name = "Game state", default = true, cost = "tiny",
-      desc = "Login and /reload (versions, game build, screen size, UI scale), spec, talent and gear changes, zone and instance (difficulty, instance ID, map ID), boss encounters (ID, difficulty, group size, kill or wipe), Mythic+ start and end (map and level), group size, and what the game hides from addons at each combat start." },
+      desc = "Records login and /reload details, spec, talent and gear changes, zones, boss encounters, Mythic+ runs and group size. Also what the game hides from addons at each combat start." },
     { key = "engine", label = "Engine", name = "Combat engine status at combat end", default = true, cost = "tiny",
       desc = "What /xuiengine prints, collected at the end of each combat." },
     { key = "perf", label = "Perf", name = "Performance", default = false, cost = "a small timer on every engine step, in combat only",
-      desc = "Times XayaUI's engine during each combat and records, at its end, the cost per second (rules, displays, bars, effects), the slowest rules, memory, and the game's own per-addon CPU meter." },
+      desc = "Times XayaUI's engine in each combat and records its cost per second, slowest rules and memory at the end." },
     { key = "messages", label = "Message", name = "XayaUI's messages", default = true, cost = "tiny",
       desc = "Every message XayaUI shows you. Messages that name another player are never kept." },
 }
@@ -487,7 +487,7 @@ if ns.RegisterSettingsPage then
     ns.RegisterSettingsPage("debugging", "devprobe", function()
         return { type = "group", inline = true, name = "Game-data probe", order = 1, args = {
             debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Dev Assist)", order = 1, width = "full",
-                desc = "Switch Dev Assist's event probe on together with Advanced Debugging (it records what the game lets addons read, for the run sheet in docs/process). It goes off again with Advanced Debugging if this switched it on.",
+                desc = "Turns on Dev Assist's event probe with Advanced Debugging, recording what the game lets addons read. It turns off again with Advanced Debugging.",
                 disabled = function() return not Ui().advancedDebug end,
                 get = function() return Ui().debugProbe ~= false end,
                 set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; SyncProbe() end },
@@ -497,7 +497,7 @@ if ns.RegisterSettingsPage then
         Notify = Notify or function() end
         local a = {
             recordOn = { type = "toggle", name = "Keep the detailed record", order = 1, width = "full",
-                desc = "On (default with Advanced Debugging): the kinds of line chosen below are kept. Off: none is (XayaUI's errors and warnings are still kept for /xui report).",
+                desc = "Keeps the kinds of line chosen below (on by default with Advanced Debugging). Off still keeps errors and warnings for /xui report.",
                 disabled = function() return not Ui().advancedDebug end,
                 get = function() return Ui().recordOff ~= true end,
                 set = function(_, v) Ui().recordOff = (not v) and true or nil; Changed(); Notify() end },
@@ -550,7 +550,7 @@ if ns.RegisterSettingsPage then
                         n, tostring(start), drop > 0 and (" (" .. drop .. " older lines dropped)") or "")
                 end },
             recordView = { type = "execute", name = "View the detailed record", order = 97,
-                desc = "Opens the whole record as text you can read and copy: what each kind of line means, the lines (newest at the bottom), and what to send.",
+                desc = "Opens the whole record as text you can read and copy, newest lines at the bottom.",
                 func = function() if ns.ShowCopyBox then ns.ShowCopyBox("XayaUI detailed debug record", ns.RecordText()) end end },
             recordClear = { type = "execute", name = "Clear the detailed record", order = 98,
                 confirm = true, confirmText = "Delete every line of the detailed debug record?",

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.44): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.13 (BlizzardSkins.lua): Blizzard's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.45): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.14 (BlizzardSkins.lua): Blizzard's
 -- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus and chat bubbles in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
@@ -45,7 +45,7 @@ local function Alpha(r) if r and r.GetAlpha then local ok, a = pcall(r.GetAlpha,
 -------------------------------------------------------------------------------
 local function OpenBag() local f = rawget(_G, "ContainerFrameCombinedBags"); if f and f:IsShown() then return f end; for i = 1, 13 do local c = rawget(_G, "ContainerFrame" .. i); if c and c:IsShown() then return c end end end
 QA.Register("reskin-windows", { title = "Reskin: Blizzard's windows in the XayaUI look", area = "Reskin", qa = "RESKIN-W", order = 300, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Blizzard Windows|r is switched on (every window in its list).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Blizzard Windows|r is switched on (every window in its list).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
         setup = function() Keep(); Set(function(c) c.windows = true end) end,
         check = function() local s, why = Need(); if not s then return false, why end; return s.Live().windows, s.Live().windows and "Blizzard Windows is on" or "Blizzard Windows did not switch on" end },
     { text = "Press |cffffd100Do it for me|r: your bags open.\n\n|cffffd100Expect:|r the bag window has a solid dark background in the theme's window colour, a thin border and its title in the theme's title colour, with no Blizzard frame art or portrait ring. Your items, buttons and the gold line work as before.",
@@ -81,7 +81,7 @@ QA.Register("reskin-windows", { title = "Reskin: Blizzard's windows in the XayaU
 -- 2. The minimap: Square or Circle
 -------------------------------------------------------------------------------
 QA.Register("reskin-minimap", { title = "Reskin: minimap shape (Square / Circle)", area = "Reskin", qa = "RESKIN-M", order = 301, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Minimap|r is switched on with |cffffd100Square|r.\n\n|cffffd100Expect:|r the minimap is square with a thin border; Blizzard's round frame is gone. The zone name, clock, calendar, tracking and mail buttons are where they were and still work.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Minimap|r is switched on with |cffffd100Square|r.\n\n|cffffd100Expect:|r the minimap is square with a thin border; Blizzard's round frame is gone. The zone name, clock, calendar, tracking and mail buttons are where they were and still work.",
         setup = function() Keep(); Set(function(c) c.minimap = true; c.shape = "SQUARE" end) end,
         check = function()
             local s, why = Need(); if not s then return false, why end
@@ -112,7 +112,7 @@ local function TipCenter()
     if c and c.GetVertexColor then local ok, r, g, b = pcall(c.GetVertexColor, c); if ok then return r, g, b end end
 end
 QA.Register("reskin-tooltips", { title = "Reskin: tooltips in the theme's colours", area = "Reskin", qa = "RESKIN-T", order = 302, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Tooltips|r is switched on. Then hover any player, NPC or item and keep the pointer there while you press |cffffd100Check|r.\n\n|cffffd100Expect:|r the tooltip's background is the theme's window colour and its border the theme's border colour. Its text is unchanged.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Tooltips|r is switched on. Then hover any player, NPC or item and keep the pointer there while you press |cffffd100Check|r.\n\n|cffffd100Expect:|r the tooltip's background is the theme's window colour and its border the theme's border colour. Its text is unchanged.",
         setup = function() Keep(); Set(function(c) c.tooltips = true end) end,
         check = function()
             local ns = NS(); local gt = rawget(_G, "GameTooltip")
@@ -137,7 +137,7 @@ local function HeaderCol(frame)
     if t and t.GetTextColor then local ok, r, g, b = pcall(t.GetTextColor, t); if ok then return r, g, b, Alpha(h.Background) end end
 end
 QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a box per section)", area = "Reskin", qa = "RESKIN-O", order = 303, prefill = true, steps = {
-    { text = "Track at least one quest first. Then press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Objective Tracker|r is switched on (every section).\n\n|cffffd100Expect:|r the tracker's header and each section's header (Quests, Campaign, ...) lose Blizzard's header bar and show in the theme's label colour; quest titles and lines are in the theme's text colours, finished lines muted. Nothing moves.",
+    { text = "Track at least one quest first. Then press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Objective Tracker|r is switched on (every section).\n\n|cffffd100Expect:|r the tracker's header and each section's header (Quests, Campaign, ...) lose Blizzard's header bar and show in the theme's label colour; quest titles and lines are in the theme's text colours, finished lines muted. Nothing moves.",
         setup = function() Keep(); Set(function(c) c.tracker = true end) end,
         check = function()
             local ns = NS(); local want = ns and ns.Theme and ns.Theme.Col and ns.Theme.Col("xui-label", "text", { 1, 0.82, 0, 1 })
@@ -153,7 +153,7 @@ QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a b
             if a == nil then return false, "the Quests section could not be read" end
             return a ~= 0, a ~= 0 and "Quests has Blizzard's header bar back" or "Quests still has the XayaUI look"
         end },
-    { text = "Open |cffffd100Blizzard UI Reskin > Objective Tracker|r and read the section names.\n\n|cffffd100Expect:|r the names are the headings the game shows in your tracker (Quests, Campaign, World Quests, ...). Pass if they match; Fail and say which reads wrong.",
+    { text = "Open |cffffd100Blizzard Reskin > Objective Tracker|r and read the section names.\n\n|cffffd100Expect:|r the names are the headings the game shows in your tracker (Quests, Campaign, World Quests, ...). Pass if they match; Fail and say which reads wrong.",
         setup = function() local ns = NS(); if ns and ns.OpenSettingsPage then pcall(ns.OpenSettingsPage, "reskin", "objtracker") end end,
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
@@ -161,7 +161,7 @@ QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a b
 } })
 
 -------------------------------------------------------------------------------
--- 5. Battle.net toasts and pop-up dialogs (Reskin 0.6.10)
+-- 5. Battle.net toasts and pop-up dialogs (Reskin 0.6.11)
 -------------------------------------------------------------------------------
 local POPUP = "XAYAUI_QA_RESKIN_POPUP"
 local function ShowPopup()   -- our own harmless dialog: text and one OK button; nothing happens on OK
@@ -176,7 +176,7 @@ local function OpenPopup()
 end
 local function ThemeBg() local ns = NS(); return ns and ns.Theme and ns.Theme.Col and ns.Theme.Col("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }) end
 QA.Register("reskin-toasts", { title = "Reskin: Battle.net toasts and pop-up dialogs", area = "Reskin", qa = "RESKIN-P", order = 304, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Toasts and Pop-ups|r is switched on (both parts).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Toasts and Pop-ups|r is switched on (both parts).\n\n|cffffd100Expect:|r nothing on screen changes yet.",
         setup = function() Keep(); Set(function(c) c.toasts = true end) end,
         check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().toasts; return on, on and "Toasts and Pop-ups is on" or "Toasts and Pop-ups did not switch on" end },
     { text = "Press |cffffd100Do it for me|r: a test pop-up from XayaUI opens (one OK button; pressing it does nothing else).\n\n|cffffd100Expect:|r the pop-up has a solid dark background in the theme's window colour and a thin border, with no Blizzard dialog art. Its text and OK button are as usual.",
@@ -210,11 +210,11 @@ QA.Register("reskin-toasts", { title = "Reskin: Battle.net toasts and pop-up dia
 } })
 
 -------------------------------------------------------------------------------
--- 6. Loot rolls (Reskin 0.6.11, a Blizzard Windows entry)
+-- 6. Loot rolls (Reskin 0.6.12, a Blizzard Windows entry)
 -------------------------------------------------------------------------------
 local function OpenRoll() for i = 1, 4 do local f = rawget(_G, "GroupLootFrame" .. i); if f and f:IsShown() then return f end end end
 QA.Register("reskin-lootroll", { title = "Reskin: loot rolls (Need, Greed, Transmog)", area = "Reskin", qa = "RESKIN-L", order = 305, prefill = true, steps = {
-    { text = "This one needs a loot roll: do it in a dungeon or raid group (a Follower dungeon works). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Blizzard Windows|r is switched on with |cffffd100Loot rolls|r ticked.",
+    { text = "This one needs a loot roll: do it in a dungeon or raid group (a Follower dungeon works). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Blizzard Windows|r is switched on with |cffffd100Loot rolls|r ticked.",
         setup = function() Keep(); Set(function(c) c.windows = true; c.winOff.lootroll = nil end) end,
         check = function() local s, why = Need(); if not s then return false, why end; local on = s.WinOn and s.WinOn({ key = "lootroll" }); return on and true or false, on and "Loot rolls are on" or "Loot rolls did not switch on" end },
     { text = "When a loot roll shows, press |cffffd100Check|r while it is on screen (before you roll).\n\n|cffffd100Expect:|r the roll has a solid dark background and a thin border in the item's quality colour (purple for epic, blue for rare), no Blizzard loot frame art. The item name, icon, timer and the Need / Greed / Transmog / Pass buttons are as before.",
@@ -236,12 +236,12 @@ QA.Register("reskin-lootroll", { title = "Reskin: loot rolls (Need, Greed, Trans
 } })
 
 -------------------------------------------------------------------------------
--- 7. Menus (Reskin 0.6.12)
+-- 7. Menus (Reskin 0.6.13)
 -------------------------------------------------------------------------------
 local menusAtStart = 0
 local function MenusPainted() local s = BS(); return (s and s.diag and s.diag.menus) or 0 end
 QA.Register("reskin-menus", { title = "Reskin: right-click and dropdown menus", area = "Reskin", qa = "RESKIN-N", order = 306, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Menus|r is switched on.\n\n|cffffd100Expect:|r nothing on screen changes yet.",
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Menus|r is switched on.\n\n|cffffd100Expect:|r nothing on screen changes yet.",
         setup = function() Keep(); Set(function(c) c.menus = true end); menusAtStart = MenusPainted() end,
         check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().menus; return on, on and "Menus is on" or "Menus did not switch on" end },
     { text = "Right-click your own portrait, then close that menu. Open a dropdown too (for example the chat tab's right-click menu, or a dropdown in Esc > Options). Then press |cffffd100Check|r.\n\n|cffffd100Expect:|r each menu's background is the theme's window colour (solid, no Blizzard menu art); entries, checks and arrows read as before.",
@@ -259,12 +259,12 @@ QA.Register("reskin-menus", { title = "Reskin: right-click and dropdown menus", 
 } })
 
 -------------------------------------------------------------------------------
--- 8. Chat bubbles (Reskin 0.6.13)
+-- 8. Chat bubbles (Reskin 0.6.14)
 -------------------------------------------------------------------------------
 local bubblesAtStart = 0
 local function BubblesPainted() local s = BS(); return (s and s.diag and s.diag.bubbles) or 0 end
 QA.Register("reskin-bubbles", { title = "Reskin: chat bubbles", area = "Reskin", qa = "RESKIN-B", order = 307, prefill = true, steps = {
-    { text = "Do this outside a dungeon or raid (the game keeps instance bubbles away from addons). Check that chat bubbles are on in the game (Esc > Options > Social > Chat Bubbles). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Chat Bubbles|r is switched on.",
+    { text = "Do this outside a dungeon or raid (the game keeps instance bubbles away from addons). Check that chat bubbles are on in the game (Esc > Options > Social > Chat Bubbles). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Chat Bubbles|r is switched on.",
         setup = function() Keep(); Set(function(c) c.bubbles = true end); bubblesAtStart = BubblesPainted() end,
         check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().bubbles; return on, on and "Chat Bubbles is on" or "Chat Bubbles did not switch on" end },
     { text = "Type |cff88ccff/s hello|r in chat (the game only lets you send this yourself), then press |cffffd100Check|r while the bubble is over your head.\n\n|cffffd100Expect:|r the bubble is in the theme's window colour with its border in the theme's border colour; its tail matches; your words read as before.",

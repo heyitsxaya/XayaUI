@@ -41,7 +41,8 @@ ns.WhenReady(ns.Minimap_OnDBReady)
 
 -- The quick-access rows come from ns.RegisterLauncher (Modules.lua): each feature adds its own row, so a feature that is switched off
 -- leaves no dead button. Row = { key, label, tooltip, action, optional state text, order = n }. Core adds only Settings.
-ns.RegisterLauncher({ "settings", "Settings", "Open the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
+-- FA-12 (core 0.6.67; Xaya 2026-11-07, "1, XayaUI Settings"): it toggles, so the texts say so; the row is named "XayaUI Settings".
+ns.RegisterLauncher({ "settings", "XayaUI Settings", "Open or close the XayaUI settings window", function() if ns.ToggleUI then ns.ToggleUI() end end, order = 20 })
 local function Shown(db, key) return db.entries[key] ~= false end
 -- (core 0.6.49) an entry whose feature is switched off (its available() says false) has no row; read each time the list opens
 local function Available(e)
@@ -228,7 +229,7 @@ local function BuildButton()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("XayaUI", 1, 0.82, 0)
         GameTooltip:AddLine("Left-click: quick-access list", 1, 1, 1)
-        GameTooltip:AddLine("Right-click: settings", 1, 1, 1)
+        GameTooltip:AddLine("Right-click: open or close the XayaUI settings", 1, 1, 1)
         local db = DB()
         if db and not db.locked then GameTooltip:AddLine("Drag: move around the minimap", 0.6, 0.6, 0.6) end
         GameTooltip:Show()
@@ -289,14 +290,14 @@ function ns.BuildMinimapTab(Notify)
         close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
         angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },
         size = { type = "range", order = 4.5, name = "Button size (pixels)", min = MIN_SIZE, max = MAX_SIZE, step = 1,
-            desc = "From " .. MIN_SIZE .. " to " .. MAX_SIZE .. " pixels (the default is " .. BASE_SIZE .. "). The ring, the icon, and its backing scale together, and the icon is clipped to a circle.",
+            desc = "Sets the button size, from " .. MIN_SIZE .. " to " .. MAX_SIZE .. " pixels (default " .. BASE_SIZE .. ").",
             disabled = function() return DB().hide end, get = function() return DB().size or BASE_SIZE end,
             set = function(_, v) DB().size = math.max(MIN_SIZE, math.min(MAX_SIZE, tonumber(v) or BASE_SIZE)); ns.Minimap_Refresh() end },
         iconH = { type = "header", order = 5, name = "Button icon" },
         iconPreview = { type = "description", order = 5.1, width = "half", name = "",
             image = function() return (ns.Minimap_ResolveIcon(DB().iconOverride)) end, imageWidth = 32, imageHeight = 32 },
         icon = { type = "input", order = 5.2, width = "double", name = "Icon override (file ID, icon name, or spell:ID)",
-            desc = "Leave empty for the built-in icon. Accepts: a file ID such as 1390944; an icon name such as INV_Misc_Note_01; spell:ID (for example spell:187827) to borrow a spell's icon; or a full texture path.",
+            desc = "Sets the button's icon: a file ID, an icon name, spell:ID or a texture path. Leave empty for the built-in icon.",
             disabled = function() return DB().hide end,
             get = function() return DB().iconOverride or "" end,
             set = function(_, v) DB().iconOverride = tostring(v or ""):gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", ""); ns.Minimap_Refresh(); if Notify then Notify() end end },

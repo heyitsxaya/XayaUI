@@ -1,4 +1,4 @@
-# Battle.net toasts and pop-up dialogs in the XayaUI look (Reskin 0.6.10, Dev Assist 0.7.41)
+# Battle.net toasts and pop-up dialogs in the XayaUI look (Reskin 0.6.11, Dev Assist 0.7.42)
 
 Logged 2026-11-07 12:41 UTC. Session 014bN6tSvVzc2HRgXhwF3J2L (successor of 014bN6tUPG6SDvkoa3i3tMu5, O-152), branch
 `claude/determined-cerf-981pn8`. Request row RESKIN-3, her words: "bnet alert toasts + popups". Item 1 of the unbuilt list in
@@ -45,3 +45,7 @@ until /reload and do nothing.
 ## Not verified in game
 All of it. Most at risk: whether a toast's backdrop is re-applied by Blizzard on some path (that would put the untinted art back until the
 next show); whether the dark tint reads well on the toast's own background texture (the tint multiplies Blizzard's toast texture).
+
+## Renumbered at the main merge (2026-11-07 13:0x UTC)
+Main took Reskin 0.6.10 and Dev Assist 0.7.41 for other work, so these items are Reskin 0.6.11-0.6.14 and Dev Assist 0.7.42-0.7.45; the
+commit messages before that merge carry the old numbers.

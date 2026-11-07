@@ -6,7 +6,7 @@
 # Checks: off costs nothing (V14); history (most used, per character); suggestions for a slot with no enchant and for empty sockets;
 # your own default wins; Select other (used before, bags, the Auction House's list); + Add / To buy / remove; have / need; the tracked
 # recipes as Blizzard's tracker counts them; a name click searches the Auction House only while it is open; Blizzard's Professions
-# section restyled after its layout; the settings page; layout bounds.
+# section restyled after its layout; the settings page; layout bounds; when the panel shows itself (UI-77).
 # Run from the repo root: python3 tests/shopping_list_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Every item, recipe, enchant and number below is a TEST STAND-IN (made-up IDs 7001-9100; no game data).
 import os, sys
@@ -78,6 +78,8 @@ assert(loadfile(__SL__))("XayaUI_QoL", ns)
 ns.FireReady()
 local Shop = ns.Shop
 local c = Shop.Cfg()
+-- this character's defaults (FA-7: per character; before it, the one account-wide D())
+local function D() return Shop.Defaults and Shop.Defaults(c) or c.defaults end
 
 -- 1. Off costs nothing (V14) ----------------------------------------------------------------------------------------------------
 check("off by default", c.enabled == false)
@@ -105,7 +107,7 @@ check("  ...the most used wins", Shop.EnchantSuggestion(c, 11).name == "Eyes of 
 h.ench[11][7100].n = 1; h.ench[11][7100].last = 999999999
 check("  ...a tie goes to the most recent", Shop.EnchantSuggestion(c, 11).name == "Eyes of the Eagle")
 h.ench[11][7100] = nil
-c.defaults["ench:1"] = { name = "Hex of Leeching" }
+D()["ench:1"] = { name = "Hex of Leeching" }
 check("your own default for a slot wins (S7)", Shop.EnchantSuggestion(c, 1) and Shop.EnchantSuggestion(c, 1).name == "Hex of Leeching" and Shop.EnchantSuggestion(c, 1).src == "default")
 
 -- 3. Have / need ---------------------------------------------------------------------------------------------------------------
@@ -177,7 +179,7 @@ local chosen = row1 and row1.text.text
 if row1 then row1.scripts.OnClick(row1) end
 check("  ...a click picks it for now (and searches the Auction House)", Shop.GemSuggestion(c).name == chosen and Shop.GemSuggestion(c).src == "picked" and searched[#searched] == chosen, chosen)
 if row1 then row1.def.scripts.OnClick(row1.def) end
-check("  ...'Default' makes it your default", c.defaults.gem and c.defaults.gem.name == chosen and Shop.GemSuggestion(c).src == "default")
+check("  ...'Default' makes it your default", D().gem and D().gem.name == chosen and Shop.GemSuggestion(c).src == "default")
 AuctionHouseFrame.shown = false
 
 -- 8. Blizzard's Professions section restyled (S3) -------------------------------------------------------------------------------
@@ -251,10 +253,10 @@ check("  ...none seen yet: no suggestion (Select other)", find2("diamond", 1).su
 h.gems[8100] = { n = 2, last = 5, name = "Powerful Eversong Diamond" }
 check("  ...seen on your gear before: it is suggested", Shop.DiamondSuggestion(c) and Shop.DiamondSuggestion(c).name == "Powerful Eversong Diamond")
 check("  ...and never as your normal gem", Shop.GemSuggestion(c) and Shop.GemSuggestion(c).name ~= "Powerful Eversong Diamond")
-c.defaults.diamond = { name = "Stoic Eversong Diamond", itemID = 8101 }
+D().diamond = { name = "Stoic Eversong Diamond", itemID = 8101 }
 check("  ...your own default for it wins (her answer: \"Give the diamond a default too\")", Shop.DiamondSuggestion(c) and Shop.DiamondSuggestion(c).name == "Stoic Eversong Diamond"
   and Shop.DiamondSuggestion(c).src == "default")
-c.defaults.diamond = nil
+D().diamond = nil
 check("  ...Select other for it lists only one-per-character gems", has(Shop.Options(c, "diamond"), "Powerful Eversong Diamond") and has(Shop.Options(c, "diamond"), "Deadly Peridot") == nil)
 Shop.Render(); d = Shop.Drawn()
 check("  ...the panel: 'Head: Powerful Eversong Diamond (one per character)' with 0 / 1", texts():find("Head: Powerful Eversong Diamond (one per character)", 1, true) ~= nil, texts())
@@ -263,9 +265,9 @@ local dpop = rawget(_G, "XayaUIShoppingListOther")
 local drow
 for _, r in ipairs(dpop and dpop.rows or {}) do if r.shown and r.def and r.text and r.text.text == "Powerful Eversong Diamond" then drow = r end end
 if drow and drow.def.scripts.OnClick then drow.def.scripts.OnClick(drow.def) end
-check("  ...its Select other has a Default button that makes it your default", c.defaults.diamond and c.defaults.diamond.name == "Powerful Eversong Diamond"
+check("  ...its Select other has a Default button that makes it your default", D().diamond and D().diamond.name == "Powerful Eversong Diamond"
   and Shop.DiamondSuggestion(c).src == "default")
-c.defaults.diamond = nil
+D().diamond = nil
 check("  ...and the settings page a box for it", (function() local pg = ns.BuildShoppingListPage(function() end)
   for _, t in pairs(pg.args) do if type(t) == "table" and t.args and t.args.defDiamond then return true end end; return pg.args.defDiamond ~= nil end)())
 if dpop then dpop:Hide() end
@@ -279,11 +281,126 @@ local page = ns.BuildShoppingListPage(function() end)
 local function arg(k) if page.args[k] then return page.args[k] end; for _, tab in pairs(page.args) do if type(tab) == "table" and tab.args and tab.args[k] then return tab.args[k] end end end
 check("settings: Blizzard UI Reskin > Shopping List with its switch, the panel and the Blizzard-list switch", page.name == "Shopping List" and page.xuiSwitch and arg("enabled") == nil and arg("panel") and arg("tracker"))
 arg("def11").set(nil, "|cff0070dd|Hitem:9100::::::::90:::::|h[Enchant Ring - Amani Mastery]|h|r")
-check("  ...a default set by shift-clicking an item: its name and item ID", c.defaults["ench:11"] and c.defaults["ench:11"].name == "Enchant Ring - Amani Mastery" and c.defaults["ench:11"].itemID == 9100)
+check("  ...a default set by shift-clicking an item: its name and item ID", D()["ench:11"] and D()["ench:11"].name == "Enchant Ring - Amani Mastery" and D()["ench:11"].itemID == 9100)
 arg("def11").set(nil, "")
-check("  ...empty goes back to the most used", c.defaults["ench:11"] == nil)
+check("  ...empty goes back to the most used", D()["ench:11"] == nil)
 page.xuiSwitch.set(nil, false)
 check("switched off: the panel hides and its events are let go", not XayaUIShoppingList.shown)
+
+-- 11. Function audit 2026-11-07 (FA-7, D13, D14, D15, D16) ----------------------------------------------------------------------
+page.xuiSwitch.set(nil, true)
+Shop.picks.gem = nil
+-- FA-7 (Xaya: "Per character (Recommended)"): saved as before FA-7: one account-wide table, no per-character ones yet
+c.defaults = { gem = { name = "Old Shared Gem", itemID = 8001 } }; c.charDefaults = nil
+check("FA-7: a character with no defaults of its own starts from the old shared ones", Shop.GemSuggestion(c) and Shop.GemSuggestion(c).name == "Old Shared Gem"
+  and Shop.GemSuggestion(c).src == "default")
+arg("defGem").set(nil, "Xaya Gem")
+UnitName = function() return "Altchar" end
+check("  ...a default set on one character does not reach another (the alt still starts from the old shared one)", Shop.GemSuggestion(c).name == "Old Shared Gem",
+  Shop.GemSuggestion(c).name)
+arg("defGem").set(nil, "Alt Gem")
+check("  ...the settings box shows the alt's own default", arg("defGem").get() == "Alt Gem", arg("defGem").get())
+UnitName = function() return "Xaya" end
+check("  ...back on the first character: its own default, not the alt's", Shop.GemSuggestion(c).name == "Xaya Gem", Shop.GemSuggestion(c).name)
+check("  ...the old shared table is kept unchanged (nothing lost)", c.defaults.gem and c.defaults.gem.name == "Old Shared Gem")
+arg("defGem").set(nil, "")
+check("  ...emptied on this character: its own most used gem again (Deadly Peridot), the alt keeps its own", Shop.GemSuggestion(c).name == "Deadly Peridot"
+  and c.charDefaults and c.charDefaults["Altchar-Stormrage"] and c.charDefaults["Altchar-Stormrage"].gem.name == "Alt Gem", Shop.GemSuggestion(c).name)
+local defNote; for _, tab in pairs(ns.BuildShoppingListPage(function() end).args) do if type(tab) == "table" and tab.name == "Your defaults" and tab.args and tab.args.sectionNote then defNote = tab.args.sectionNote.name end end
+check("  ...the settings text says the defaults are per character", (defNote or ""):find("this character only", 1, true) ~= nil, defNote)
+
+-- D13: "Forget what this character used" clears the counts only; what is worn now is not re-counted as "used 1x" at once
+h = Shop.History(c)
+check("D13: before: the ring's enchant and gem are counted", h.ench[11] and h.ench[11][7000] and h.gems[8001] ~= nil)
+arg("forget").func()
+h = Shop.History(c)
+check("  ...after Forget (and the look at your gear it triggers): no enchant counted", next(h.ench) == nil, h.ench[11] and h.ench[11][7000] and h.ench[11][7000].n)
+check("  ...no gem counted", next(h.gems) == nil, h.gems[8001] and h.gems[8001].n)
+check("  ...so the ring's enchant is not offered as 'used 1x'", has(Shop.Options(c, "ench:11"), "Amani Mastery", "used") == nil)
+SOCKETS.Helm = { 8001 }
+Shop.Observe(c)
+check("  ...a gem newly put in a socket afterwards is counted (1x)", h.gems[8001] and h.gems[8001].n == 1, h.gems[8001] and h.gems[8001].n)
+SOCKETS.Helm = { 0 }; Shop.Observe(c)
+
+-- D14: the same item from two rows: To buy holds the needs added; the same row twice does not double
+c.buy = {}
+Shop.AddToBuy(c, "Deadly Peridot", 8001, 1, "gem", "missgem1")
+Shop.AddToBuy(c, "Deadly Peridot", 8001, 2, "gem", "missgem5")
+check("D14: one gem from the helm row + two from the chest row: need 3", #c.buy == 1 and c.buy[1].need == 3, c.buy[1] and c.buy[1].need)
+Shop.AddToBuy(c, "Deadly Peridot", 8001, 2, "gem", "missgem5")
+check("  ...+ Add on the chest row again: still 3", c.buy[1].need == 3, c.buy[1].need)
+c.buy = {}
+Shop.Render(); d = Shop.Drawn()
+local add1 = button("+ Add", "missgem1")
+if add1 then add1.scripts.OnClick(add1); add1 = button("+ Add", "missgem1"); if add1 then add1.scripts.OnClick(add1) end end
+check("  ...the panel's + Add twice on one row: need 1", #c.buy == 1 and c.buy[1].need == 1, c.buy[1] and c.buy[1].need)
+c.buy = {}
+
+-- D15: /xui shop while Blizzard UI Reskin is off changes nothing
+page.xuiSwitch.set(nil, false)
+c.panel = false
+CueRulesDB.reskinTabOff = true
+ns.RunCommand("shop", "")
+check("D15: /xui shop with the Reskin tab off: the Shopping List stays off", c.enabled == false and c.panel == false, ("enabled %s panel %s"):format(tostring(c.enabled), tostring(c.panel)))
+CueRulesDB.reskinTabOff = nil
+ns.RunCommand("shop", "")
+check("  ...with it on again: /xui shop switches it on and shows the panel", c.enabled == true and c.panel == true and XayaUIShoppingList.shown)
+
+-- D16: only the answer to our own Auction House query is read
+AuctionHouseFrame.shown = true
+check("D16: our query sent", Shop.Browse("ench:11"))
+Shop.ReadBrowse()
+check("  ...its answer is read (Eyes of the Eagle)", has(Shop.Options(c, "ench:11"), "Enchant Ring - Eyes of the Eagle", "Auction House"))
+local baseRes = C_AuctionHouse.GetBrowseResults
+C_AuctionHouse.GetBrowseResults = function() return { { itemKey = { itemID = 9200 }, minPrice = 5 } } end   -- the player's own later search
+fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+check("  ...a later Auction House search (same event) does not replace the slot's list", has(Shop.Options(c, "ench:11"), "Enchant Ring - Eyes of the Eagle", "Auction House")
+  and has(Shop.Options(c, "ench:11"), "Quick Peridot", "Auction House") == nil)
+C_AuctionHouse.GetBrowseResults = baseRes
+AuctionHouseFrame.shown = false
+page.xuiSwitch.set(nil, false)
+-- 12. When the panel shows itself (UI-77, O-139, QoL 0.7.42; her words: "shopping list keeps popping up but there's no reason for it to
+-- show"; conservative reading, flagged): never at login or on a switch by itself; at the Auction House, or when worn gear misses an
+-- enchant or a gem; a close (its X, or /xui shop) is saved until the next Auction House visit; /xui shop still opens it ------------
+local SL = XayaUIShoppingList
+local closeBtn
+for _, f in ipairs(created) do if f.parent == SL and f.w == 24 and f.h == 24 and f.scripts.OnClick then closeBtn = f end end
+local helmLink = GEAR[1]
+local function gearComplete() GEAR[1] = helmLink:gsub("item:(%d+):", "item:%1:7000:", 1); TIP[1] = { { type = 15, leftText = "Enchanted: Amani Mastery" } }; SOCKETS.Helm = { 8001 } end
+local function gearMissing() GEAR[1] = helmLink; TIP[1] = nil; SOCKETS.Helm = { 0 } end
+local function shown() return SL.shown == true end
+gearComplete()
+c.enabled = true; c.closedTillAH = false; SL:Hide()
+do local m = Shop.Missing(c); local t = {}; for _, x in ipairs(m) do t[#t+1] = x.kind .. ":" .. tostring(x.slot) end; DBGM = table.concat(t, ",") end
+check("auto-show: with nothing missing on the gear, Missing is empty (the case she reported: only a tracked recipe)", Shop.Missing(c)[1] == nil, DBGM)
+Shop.Apply()   -- what login (ns.WhenReady) and the Blizzard UI Reskin switch call
+check("  ...login / the reskin switch: the panel does not pop up", not shown())
+fire("PLAYER_ENTERING_WORLD", false, true)
+check("  ...a loading screen: still not", not shown())
+fire("AUCTION_HOUSE_SHOW")
+check("the Auction House opens: the panel shows itself", shown())
+check("its X closes it, and the close is saved", closeBtn ~= nil and (closeBtn.scripts.OnClick(closeBtn) or true) and not shown() and c.closedTillAH == true)
+gearMissing()
+Shop.Apply()   -- a reload: the saved close holds even with something missing
+check("  ...after a reload it stays closed, even with the helm missing its enchant", not shown())
+fire("PLAYER_EQUIPMENT_CHANGED", 1, false)
+check("  ...and putting on gear that misses something does not reopen it", not shown())
+fire("AUCTION_HOUSE_SHOW")
+check("the next Auction House visit opens it and forgets the close", shown() and c.closedTillAH == false)
+SL:Hide()   -- (hidden without a close, as after the Auction House)
+fire("PLAYER_EQUIPMENT_CHANGED", 1, false)
+check("not closed, and the worn gear misses an enchant or a gem: it shows itself", shown())
+Shop.Toggle()
+check("/xui shop closes it (saved like the X)", not shown() and c.closedTillAH == true)
+Shop.Toggle()
+check("/xui shop opens it any time, and forgets the close", shown() and c.closedTillAH == false)
+gearComplete(); SL:Hide()
+local pg2 = ns.BuildShoppingListPage(function() end)
+local function arg2(k) if pg2.args[k] then return pg2.args[k] end; for _, tab in pairs(pg2.args) do if type(tab) == "table" and tab.args and tab.args[k] then return tab.args[k] end end end
+arg2("fontSize").set(nil, 12)
+check("a setting changed (text size) does not pop it up", not shown())
+arg2("panel").set(nil, false); arg2("panel").set(nil, true)
+check("the panel's own switch turned on shows it (you asked for it)", shown())
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__SL__", P("XayaUI_QoL/ShoppingList.lua")))

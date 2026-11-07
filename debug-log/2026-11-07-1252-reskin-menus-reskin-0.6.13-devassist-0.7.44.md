@@ -1,4 +1,4 @@
-# Right-click and dropdown menus in the XayaUI look (Reskin 0.6.12, Dev Assist 0.7.43)
+# Right-click and dropdown menus in the XayaUI look (Reskin 0.6.13, Dev Assist 0.7.44)
 
 Logged 2026-11-07 12:52 UTC. Session 014bN6tSvVzc2HRgXhwF3J2L (reskin successor), branch `claude/determined-cerf-981pn8`. Request rows
 RESKIN-3 ("menus") and RESKIN-4 (Q12 "all"). Item 3 of the unbuilt list in `docs/process/handoffs/reskin-elements.md`.
@@ -40,3 +40,7 @@ RESKIN-3 ("menus") and RESKIN-4 (Q12 "all"). Item 3 of the unbuilt list in `docs
 
 ## Not verified in game
 All of it, and the taint question above is the main risk.
+
+## Renumbered at the main merge (2026-11-07 13:0x UTC)
+Main took Reskin 0.6.10 and Dev Assist 0.7.41 for other work, so these items are Reskin 0.6.11-0.6.14 and Dev Assist 0.7.42-0.7.45; the
+commit messages before that merge carry the old numbers.

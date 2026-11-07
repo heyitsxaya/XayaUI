@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.13, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.14, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -12,12 +12,12 @@ reskins). What the player sees, in the stand-in game:
   * Objective Tracker: the tracker header and a section header lose Blizzard's header art and take the label colour; a section's quest
     titles take the text colour after Blizzard's layout; a section left out is given back; the Professions section is left to the
     Shopping List while its tracker part is on; labels are the game's own heading strings;
-  * Toasts and Pop-ups (0.6.10): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
+  * Toasts and Pop-ups (0.6.11): a Battle.net toast's backdrop takes the theme colours and gets its own back; a pop-up's BG art is
     faded under our background; each part has its own box;
-  * Loot rolls (0.6.11, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
-  * Menus (0.6.12): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
+  * Loot rolls (0.6.12, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
+  * Menus (0.6.13): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
     placed only when ticked); nothing added to the pooled menu frame;
-  * Chat bubbles (0.6.13): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
+  * Chat bubbles (0.6.14): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -147,7 +147,7 @@ check("windows waiting for Blizzard to load one: the watcher listens for ADDON_L
 local MF = Window("MacroFrame")
 W.fire("ADDON_LOADED", "Blizzard_MacroUI")
 check("a window Blizzard loads later (Macros) is skinned when it loads", MF.NineSlice:GetAlpha() == 0 and BS.memo[MF] and BS.memo[MF].bg:IsShown())
--- loot rolls (0.6.11): Background and Border faded, our border in the item's quality colour after Blizzard's OnShow
+-- loot rolls (0.6.12): Background and Border faded, our border in the item's quality colour after Blizzard's OnShow
 GL1:Show()
 local gm = BS.memo[GL1]
 local e1 = gm and gm.edges and gm.edges[1] and gm.edges[1]._color
@@ -254,7 +254,7 @@ check("  ...windows, minimap and tracker have Blizzard's look back", SP.NineSlic
 check("  ...each keeps its own tick box", CueRulesDB.ui.rsk.windows == true and CueRulesDB.ui.rsk.tracker == true)
 ns.SetReskinTab(true)
 check("Blizzard UI Reskin on again: the ticked skins come back", SP.NineSlice:GetAlpha() == 0 and MM._mask == BS.SQUARE_MASK and OTF.Header.Background:GetAlpha() == 0)
--- 6. Battle.net toasts and pop-up dialogs (Reskin 0.6.10)
+-- 6. Battle.net toasts and pop-up dialogs (Reskin 0.6.11)
 ns.SetReskinTab(true)
 check("toasts page off: the toast's colours and the pop-up's art are Blizzard's", BNT._bdcolor == nil and SP1.BG:GetAlpha() == 1 and not BS.Live().toasts)
 local tsp = BS.ToastsPage(nil)
@@ -279,7 +279,7 @@ check("toasts off: a toast shown again is not changed", near(BNT._bdcolor[1], 0)
 tsp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 check("Blizzard UI Reskin off: the toast skin stops too", not BS.Live().toasts and SP1.BG:GetAlpha() == 1)
 ns.SetReskinTab(true)
--- 7. Menus (Reskin 0.6.12)
+-- 7. Menus (Reskin 0.6.13)
 local menuHooksBefore = 0
 for _, n in ipairs(W.hooks) do if n == "Generate" then menuHooksBefore = menuHooksBefore + 1 end end
 check("menus page off: no hook on Blizzard's menu style (V14), a built menu keeps Blizzard's background", menuHooksBefore == 0 and BuildMenu()._bg._color == nil and not BS.Live().menus)
@@ -304,7 +304,7 @@ mnp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 mn = BuildMenu()
 check("Blizzard UI Reskin off: menus are Blizzard's", mn._bg._color == nil and not BS.Live().menus)
 ns.SetReskinTab(true)
--- 8. Chat bubbles (Reskin 0.6.13)
+-- 8. Chat bubbles (Reskin 0.6.14)
 local b1 = BUB[1]
 check("bubbles page off: no event frame, a bubble keeps Blizzard's colours (V14)", not BS.Live().bubbles and not BS.Live().bubbleEvents and b1.panel._center == nil)
 W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.13's BlizzardSkins.lua (XayaUI_DevAssist 0.7.44, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.14's BlizzardSkins.lua (XayaUI_DevAssist 0.7.45, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
 Checks, on the real addons in the stand-in game: the eight walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles) are registered with prefill on
@@ -108,7 +108,7 @@ check("tracker 2: the Quests section left out has Blizzard's header back", ok, w
 run("reskin-tracker", 4)
 check("tracker: her settings are put back (Quests not left out)", Same() and not CueRulesDB.ui.rsk.otOff.quests, before)
 
--- toasts and pop-ups (Reskin 0.6.10)
+-- toasts and pop-ups (Reskin 0.6.11)
 ok, why = run("reskin-toasts", 1)
 check("toasts 1: Toasts and Pop-ups switches on", ok, why)
 ok, why = run("reskin-toasts", 2)
@@ -120,7 +120,7 @@ check("toasts 5: switched off, the pop-up has Blizzard's art back", ok, why)
 run("reskin-toasts", 6)
 check("toasts: the test pop-up is closed and her settings are put back", Same() and not CueRulesDB.ui.rsk.toasts and not StaticPopup1:IsShown(), before)
 
--- loot rolls (Reskin 0.6.11)
+-- loot rolls (Reskin 0.6.12)
 ok, why = run("reskin-lootroll", 1)
 check("lootroll 1: Blizzard Windows on with Loot rolls", ok, why)
 ok, why = run("reskin-lootroll", 2)
@@ -131,7 +131,7 @@ check("lootroll 2: a roll showing is skinned, our border in the item's quality c
 run("reskin-lootroll", 4)
 check("lootroll: her settings are put back", Same(), before)
 
--- menus (Reskin 0.6.12)
+-- menus (Reskin 0.6.13)
 ok, why = run("reskin-menus", 1)
 check("menus 1: Menus switches on", ok, why)
 ok, why = run("reskin-menus", 2)
@@ -144,7 +144,7 @@ check("menus 4: switched off", ok, why)
 run("reskin-menus", 5)
 check("menus: her settings are put back", Same() and not CueRulesDB.ui.rsk.menus, before)
 
--- chat bubbles (Reskin 0.6.13)
+-- chat bubbles (Reskin 0.6.14)
 ok, why = run("reskin-bubbles", 1)
 check("bubbles 1: Chat Bubbles switches on", ok, why)
 ok, why = run("reskin-bubbles", 2)

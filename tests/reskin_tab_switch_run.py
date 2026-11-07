@@ -89,7 +89,7 @@ end
 check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Blizzard Windows | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Objective Tracker | Shopping List | Toasts and Pop-ups | Tooltips", names(tab))
 local ov = tab.args.reskinOverview
 local all = ov and ov.args and ov.args.enable
-check("  ...the switch is on the Overview page (right pane): Enable Blizzard UI Reskin", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard UI Reskin"
+check("  ...the switch is on the Overview page (right pane): Enable Blizzard Reskin (Options 0.6.72 name)", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard Reskin"
   and type(all.get) == "function" and type(all.set) == "function")
 if not all then return R end
 check("  ...no tab switch is defined for the tab row any more", next(ns.OptionsApi.TAB_SWITCHES) == nil)
@@ -111,9 +111,9 @@ local ROWS = { charreskin = "Character Reskin", chatpanel = "Enable Chat Panel",
   -- (Reskin 0.6.8, BlizzardSkins.lua)
   blizzwindows = "Use the XayaUI look on Blizzard's windows", minimapshape = "Use the XayaUI minimap shape", rsktooltips = "Use the XayaUI look on tooltips",
   objtracker = "Use the XayaUI look on the objective tracker",
-  rsktoasts = "Use the XayaUI look on toasts and pop-ups",   -- (Reskin 0.6.10)
-  rskmenus = "Use the XayaUI look on menus",   -- (Reskin 0.6.12)
-  rskbubbles = "Use the XayaUI look on chat bubbles" }   -- (Reskin 0.6.13)
+  rsktoasts = "Use the XayaUI look on toasts and pop-ups",   -- (Reskin 0.6.11)
+  rskmenus = "Use the XayaUI look on menus",   -- (Reskin 0.6.13)
+  rskbubbles = "Use the XayaUI look on chat bubbles" }   -- (Reskin 0.6.14)
 local bad = {}
 for k, nm in pairs(ROWS) do local sw = tab.args[k] and tab.args[k].xuiSwitch; if not (sw and sw.name == nm) then bad[#bad + 1] = k end end
 table.sort(bad)
@@ -126,7 +126,11 @@ local function greyed() local n = 0; for k in pairs(ROWS) do local d = tab.args[
 local function state()
   local gm = ns.GameMenuSkin_Live and ns.GameMenuSkin_Live()
   local sp = rawget(_G, "XayaUIShoppingList")
-  return { chat = ns.Chat.On(), char = ns.CharReskin_Active(), gm = gm and true or false, shop = (sp and sp:IsShown()) and true or false }
+  -- the Shopping List runs when its events are registered: since QoL 0.7.42 (UI-77, O-139) its panel no longer pops up on this switch
+  -- by itself (only at the Auction House, when worn gear misses an enchant / gem, or when asked for)
+  local shopEvents = 0
+  for _, o in ipairs(W.objects) do if rawget(o, "_owner") == FILES.shop then for _ in pairs(o._events or {}) do shopEvents = shopEvents + 1 end end end
+  return { chat = ns.Chat.On(), char = ns.CharReskin_Active(), gm = gm and true or false, shop = shopEvents > 0, shopShown = (sp and sp:IsShown()) and true or false }
 end
 local function fmt(s) return ("chat %s, character %s, esc menu %s, shopping %s"):format(tostring(s.chat), tostring(s.char), tostring(s.gm), tostring(s.shop)) end
 local function own() return CueRulesDB.chat2.enabled == true and CueRulesDB.characterReskin.enabled == true and CueRulesDB.ui.gm.skin == true and CueRulesDB.shoppingList.enabled == true end
@@ -139,12 +143,13 @@ check("the tab saved off: the switch reads off", all.get() == false and ns.Reski
 check("  ...the tab lists Overview only: the reskins' rows are not listed while it was off at load", shownNames(tab) == "Overview", shownNames(tab))
 local s0 = state()
 check("  ...every reskin is off although its own switch is on", not s0.chat and not s0.char and not s0.gm and not s0.shop and own(), fmt(s0))
-check("  ...the reskins' row boxes are greyed (11 of 11; Reskin 0.6.10 adds Toasts and Pop-ups, 0.6.12 Menus, 0.6.13 Chat Bubbles)", greyed() == 11, greyed())
+check("  ...the reskins' row boxes are greyed (11 of 11; Reskin 0.6.11 adds Toasts and Pop-ups, 0.6.13 Menus, 0.6.14 Chat Bubbles)", greyed() == 11, greyed())
 
 -- ticked on the Overview page: all four start, and a reload is offered
 all.set(nil, true); W.tick(0.1, 10); pcall(ns.DecorateTrees)
 local s1 = state()
 check("ticking Enable Blizzard UI Reskin starts every reskin whose own box is ticked", s1.chat and s1.char and s1.gm and s1.shop, fmt(s1))
+check("  ...the Shopping List starts without popping its panel up (UI-77; nothing is missing on the stand-in's gear)", not s1.shopShown)
 check("  ...and asks to reload (Reload / Later)", prompts == 1 and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD ~= nil and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button1 == "Reload"
   and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button2 == "Later", prompts)
 check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overview", shownNames(tab))
@@ -170,7 +175,7 @@ ns.Print = function(m) said[#said + 1] = tostring(m) end
 ns.RunCommand("chat", "on"); ns.RunCommand("reskin", "status")
 ns.Print = rawPrint
 local joined = table.concat(said, " / ")
-check("/xui chat on and /xui reskin status say the reskins wait on Blizzard UI Reskin, and where its switch is (Overview)", select(2, joined:gsub("Blizzard UI Reskin > Overview", "")) >= 2, joined)
+check("/xui chat on and /xui reskin status say the reskins wait on Blizzard UI Reskin, and where its switch is (Overview)", select(2, joined:gsub("Blizzard Reskin > Overview", "")) >= 2, joined)
 return R
 end
 '''

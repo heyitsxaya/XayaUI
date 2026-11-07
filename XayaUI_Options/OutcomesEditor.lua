@@ -97,7 +97,12 @@ local function ConditionBody(rule, H)
         args["n" .. j] = { type = "input", order = o + 0.03, width = "relative", relWidth = 0.2, name = "",
             hidden = function() return collapsed() or not IsNumRef(t.ref) end,
             get = function() return tostring(t.num or 0) end,
-            set = function(_, v) t.num = tonumber(v) or 0; onN() end, disabled = locked }
+            set = function(_, v)   -- audit D45: text that is not a number keeps the old value (it used to store 0); an empty box is 0
+                v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
+                local n = (v == "") and 0 or tonumber(v)
+                if n == nil then ns.Print("'" .. v .. "' is not a number: the value is unchanged"); (H.NotifyTwice or H.Notify)(); return end
+                t.num = n; onN()
+            end, disabled = locked }
         args["s" .. j] = { type = "description", order = o + 0.035, width = "relative", relWidth = 0.04, fontSize = "medium", hidden = collapsed,
             name = function()
                 local p = ns.FindParentRule(rule)
@@ -168,7 +173,7 @@ local function ConditionBody(rule, H)
         end
         args["tc" .. i] = { type = "select", order = o + 0.001, width = "relative", relWidth = (i == 1) and 0.88 or 0.74, name = "", arg = { xuiTextLeft = true },
             hidden = function() return not rowShown(i) end,
-            desc = "A cue that plays while this condition is true. To play more than one, use + add cue... below.",
+            desc = "A cue that plays while this condition is true. For more than one, use + add cue below.",
             values = function() local v = cueChoices((rule.thenCues or {})[i]); return v end,
             sorting = function() local _, od = cueChoices((rule.thenCues or {})[i]); return od end,
             get = function() return (rule.thenCues or {})[i] end,
@@ -244,7 +249,7 @@ local function ConditionBody(rule, H)
         local o = 70 + i / 100 + 0.003
         args["tm" .. i] = { type = "toggle", order = o, width = "full", name = "Modify this cue for this condition set",
             hidden = function() return noRow(i) end,
-            desc = "Tick to change how this cue looks while THIS condition is true: color tint, desaturate, glow, opacity and frame strata. Each setting stays 'no change' until you set it. Unticking keeps your values but stops applying them.",
+            desc = "Changes how this cue looks while this condition is true (tint, desaturate, glow, opacity, strata). Unticking keeps your values but stops applying them.",
             get = function() return modsOn(i) end,
             set = function(_, v)
                 if v then mset(i, "on", true)
@@ -264,7 +269,7 @@ local function ConditionBody(rule, H)
         args["md" .. i] = triSel(i, "desat", "Desaturate", "Desaturate: on", "Desaturate: off (full color)", o + 0.0003, 0.3)
         args["mg" .. i] = triSel(i, "glow", "Glow", "Glow: on", "Glow: off", o + 0.0004, 0.26)
         args["ma" .. i] = { type = "select", order = o + 0.0005, width = "relative", relWidth = 0.3, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
-            desc = "Replace the cue's opacity (alpha: 0 invisible, 100 solid) while this condition is true. Alpha and opacity are the same setting in WoW, so there is one box for both.",
+            desc = "Replaces the cue's opacity (0 invisible, 100 solid) while this condition is true.",
             values = { keep = "Opacity: no change", set = "Opacity: set..." }, sorting = { "keep", "set" },
             get = function() local m = mget(i); return (m and m.alpha ~= nil) and "set" or "keep" end,
             set = function(_, v) mset(i, "alpha", (v == "set") and (((mget(i) or {}).alpha) or 0.5) or nil) end, disabled = locked }
@@ -362,11 +367,15 @@ local function CopyOutcome(rule)
     ns.MarkDirty(); (ns.UI.NotifyTwice or ns.UI.Notify)()
 end
 local function RemoveOutcome(rule)
+    if ns.IsEditLocked and ns.IsEditLocked(rule) then return end
     local parent = ns.FindParentRule(rule)   -- only this cue / condition goes; its rule stays and stays open
-    if rule.isCue then ns.DeleteCue(rule)
-    else
-        for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
-        pcall(ns.DropVisual, rule)
+    -- FA-11 (Xaya: "Recycle Bin, no prompt (Recommended)"): the red X sends it to the Recycle Bin, restorable with Restore
+    if not (ns.RecycleChild and ns.RecycleChild(rule)) then
+        if rule.isCue then ns.DeleteCue(rule)
+        else
+            for i, r in ipairs(ns.rules) do if r == rule then table.remove(ns.rules, i); break end end
+            pcall(ns.DropVisual, rule)
+        end
     end
     ns.MarkDirty()
     if parent and ns.ReselectRule then ns.ReselectRule(parent) end   -- before the rebuild, so the pane does not fall back to another page
@@ -376,7 +385,7 @@ end
 local OPEN = "|TInterface\\Buttons\\Arrow-Down-Up:16:16|t"
 local CLOSED = "|TInterface\\ChatFrame\\ChatFrameExpandArrow:16:16|t"
 local function Header(rule, titleFn, edit)
-    return { type = "execute", order = 0.05, width = "full",
+    local h = { type = "execute", order = 0.05, width = "full",
         arg = { xuiLeft = true, xuiHeadOut = ns.BODY_INDENT or 20, xuiEdit = edit, xuiChevron = function() return not rule.ocCollapsed end, xuiSub = (edit and edit.title) and function() return " " end or nil, xuiActions = function()
             local list, pos = SiblingList(rule), nil
             for i, r in ipairs(list) do if r == rule then pos = i end end
@@ -394,6 +403,9 @@ local function Header(rule, titleFn, edit)
         end,
         desc = "Expand or collapse.",
         func = function() rule.ocCollapsed = (not rule.ocCollapsed) or nil; ns.MarkDirty(); ns.UI.Notify() end }
+    -- audit D26 / D44: while the cue / condition (or its rule) is edit-locked, Move / Duplicate / Remove are grayed out and the name box refuses
+    if ns.LockHeaderArg then ns.LockHeaderArg(h.arg, function() return ns.IsEditLocked and ns.IsEditLocked(rule) or false end) end
+    return h
 end
 
 local function EmbedCondition(pg, rule, k)

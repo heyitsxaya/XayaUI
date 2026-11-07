@@ -1,4 +1,4 @@
-# Loot rolls in the XayaUI look (Reskin 0.6.11, Dev Assist 0.7.42)
+# Loot rolls in the XayaUI look (Reskin 0.6.12, Dev Assist 0.7.43)
 
 Logged 2026-11-07 12:47 UTC. Session 014bN6tSvVzc2HRgXhwF3J2L (reskin successor), branch `claude/determined-cerf-981pn8`. Request row
 RESKIN-2, her words: "loot roll / need, greed, transmog". Item 2 of the unbuilt list in `docs/process/handoffs/reskin-elements.md`.
@@ -35,3 +35,7 @@ RESKIN-2, her words: "loot roll / need, greed, transmog". Item 2 of the unbuilt 
 ## Not verified in game
 All of it. Risk: Blizzard's roll animation (NeedRollAnim) sits above the art and is unchanged; whether the dark background reads well
 behind it is for her eyes.
+
+## Renumbered at the main merge (2026-11-07 13:0x UTC)
+Main took Reskin 0.6.10 and Dev Assist 0.7.41 for other work, so these items are Reskin 0.6.11-0.6.14 and Dev Assist 0.7.42-0.7.45; the
+commit messages before that merge carry the old numbers.

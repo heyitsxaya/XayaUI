@@ -1,4 +1,4 @@
-# Chat bubbles in the XayaUI look (Reskin 0.6.13, Dev Assist 0.7.44)
+# Chat bubbles in the XayaUI look (Reskin 0.6.14, Dev Assist 0.7.45)
 
 Logged 2026-11-07 12:56 UTC. Session 014bN6tSvVzc2HRgXhwF3J2L (reskin successor), branch `claude/determined-cerf-981pn8`. Request row
 RESKIN-3, her words: "chat bubbles". Item 4 of the unbuilt list in `docs/process/handoffs/reskin-elements.md`.
@@ -37,3 +37,7 @@ Off: no event frame, no scan. Unticked: events unregistered, painted bubbles get
 
 ## Not verified in game
 All of it.
+
+## Renumbered at the main merge (2026-11-07 13:0x UTC)
+Main took Reskin 0.6.10 and Dev Assist 0.7.41 for other work, so these items are Reskin 0.6.11-0.6.14 and Dev Assist 0.7.42-0.7.45; the
+commit messages before that merge carry the old numbers.

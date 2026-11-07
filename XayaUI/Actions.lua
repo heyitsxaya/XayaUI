@@ -209,7 +209,7 @@ function ns.ActionsPane(rule, Notify, extra)
                 get = On(phase, "msgOn"), set = function(_, v) put(phase, "msgOn", v and true or nil); Notify() end },
             msgType = { type = "select", order = 11, width = "double", name = "Message type", values = CHAT_TYPES, sorting = CHAT_ORDER,
                 hidden = Off(phase, "msgOn"),
-                desc = "Print, red text, and read-aloud only ever reach you. Say / Yell / Group send to other players: WoW blocks automated messages to Say and Yell outside instances, and in Midnight addons cannot send chat during a Mythic+ run, a PvP match, or a boss encounter (alpha notes; not re-checked on the live client).",
+                desc = "Print, red text and read-aloud reach only you; Say, Yell and Group reach other players. The game blocks Say and Yell outside instances, and addon chat during Mythic+ runs, PvP matches and boss encounters.",
                 get = function() return get(phase, "msgType") or "PRINT" end, set = function(_, v) put(phase, "msgType", v) end },
             msg = { type = "input", order = 12, width = "full", name = "Message  (%n = rule name, %s = spell name, %b = buff name)",
                 hidden = Off(phase, "msgOn"),
@@ -217,7 +217,7 @@ function ns.ActionsPane(rule, Notify, extra)
             -- glow -------------------------------------------------------
             glowOn = { type = "toggle", order = 20, width = "full",
                 name = (phase == "finish") and "Stop a glow on a frame" or "Glow a frame",
-                desc = "Uses the LibCustomGlow library that other addons, such as ElvUI and BigWigs, install. If none of them is loaded there is nothing to glow with.",
+                desc = "Needs LibCustomGlow from another addon, such as ElvUI or BigWigs. Without one loaded, nothing glows.",
                 get = On(phase, "glowOn"), set = function(_, v) put(phase, "glowOn", v and true or nil); Notify() end },
             glowTarget = { type = "select", order = 21, width = "double", name = "Glow",
                 values = { self = "This rule's own display (and its cues)", frame = "Another frame (type its name)" }, sorting = { "self", "frame" },
@@ -243,7 +243,7 @@ function ns.ActionsPane(rule, Notify, extra)
                 end },
             -- code -------------------------------------------------------
             codeOn = { type = "toggle", order = 40, width = "full", name = "Run custom code",
-                desc = "Lua that runs as you, at this moment only. It is never kept when you import a profile, so you only ever run code you typed or pasted in yourself. In Midnight, combat numbers are secret values: code that reads or compares them errors.",
+                desc = "Runs this Lua code at this moment. Imported profiles never keep it, and code that reads or compares combat numbers errors.",
                 get = On(phase, "codeOn"), set = function(_, v) put(phase, "codeOn", v and true or nil); Notify() end },
             code = { type = "input", multiline = 8, order = 41, width = "full", name = "Code  (the rule is passed in as ...)",
                 hidden = Off(phase, "codeOn"),
@@ -273,7 +273,7 @@ function ns.ActionsPane(rule, Notify, extra)
             local moved, pix, ac, btn, proc = typeIs("pixel", "autocast", "proc"), typeIs("pixel"), typeIs("autocast"), typeIs("button"), typeIs("proc")
             args.glowX = Num("glowX", 24.1, "Offset X", "Moves the glow left (negative) or right, in pixels. The button glow cannot be moved.", moved)
             args.glowY = Num("glowY", 24.2, "Offset Y", "Moves the glow down (negative) or up, in pixels. The button glow cannot be moved.", moved)
-            args.glowLevel = Num("glowLevel", 24.3, "Layer", "Frame level of the glow: higher draws above more of the frame's own parts. Default 8.",
+            args.glowLevel = Num("glowLevel", 24.3, "Layer", "Higher draws the glow above more of the frame. Default 8.",
                 typeIs("button", "pixel", "autocast", "proc"))
             args.pixN = Num("pixN", 24.4, "Lines", "How many moving lines. Default 8.", pix)
             args.pixFreq = Num("pixFreq", 24.5, "Speed", "Laps per second. Negative runs the lines the other way; 0 = default (0.25).", pix)

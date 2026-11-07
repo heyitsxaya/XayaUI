@@ -49,7 +49,9 @@ ns.Style = {
     -- tab rows: top tabs [1.5] "32 px, 14 pt, outlined"; Rules sub-tabs [UI-45] "28 px, 12 pt, outlined" (16 px before the tab kept
     -- apart: session); section tabs inside a page [UI-48] "24 px, 11 pt, even row"
     tabTop = { h = 32, font = 14, outline = true },
-    tabSub = { h = 28, font = 12, outline = true, apartGap = 16 },
+    -- (UI-76, O-146, her words "make these tabs a little narrower and maybe 3-5% smaller": 4% smaller, 28 -> 27 px and 12 -> 11.5 pt;
+    -- each of the four tabs 90% of its even share, the rest as equal gaps: the session's conservative reading, adjustable)
+    tabSub = { h = 27, font = 11.5, outline = true, apartGap = 16, share = 0.9 },
     tabSection = { h = 24, font = 11, outline = true, minW = 60 },   -- minW: under it a row keeps AceGUI's layout (session)
     -- left pane: a child row starts this far right of where its parent's name starts [2.5] "Parent's name + 8 px"; WeakAuras-style
     -- nesting step [2.7] 8 px per level
@@ -208,8 +210,9 @@ end
 ns.MODULES = {
     -- (core 0.6.56: chatprobe and widthprobe are XayaUI Dev Assist's now, REQUEST-LOG #81; without it they do not exist)
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
-    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
+    -- (core 0.6.67, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
+    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
 }
@@ -511,7 +514,7 @@ end
 -------------------------------------------------------------------------------
 -- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
 -- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenu.lua);
--- "buttonSkin" (XayaUI_Options) answers Apply(button, primary), the flat button look core's own windows use (Core.lua ns.FlatButton).
+-- (UI-77, core 0.6.68: the "buttonSkin" service is gone; the flat button look is core's own, Core.lua ns.PaintFlatButton.)
 -------------------------------------------------------------------------------
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end

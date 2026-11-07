@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.13): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.14): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
 -- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus and chat bubbles. Look only: art, colour, border, mask. Nothing is
 -- moved, resized, added or removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
@@ -77,7 +77,7 @@ BS.WINDOWS = {
     { key = "trainer",      label = "Trainer",                  frames = { "ClassTrainerFrame" }, lod = "Blizzard_TrainerUI" },
     { key = "dressup",      label = "Dressing room",            frames = { "DressUpFrame" } },
     { key = "itemtext",     label = "Books and letters",        frames = { "ItemTextFrame" } },
-    -- (0.6.11, her "loot roll / need, greed, transmog") GroupLootFrameTemplate draws its art on its own keys Background and Border
+    -- (0.6.12, her "loot roll / need, greed, transmog") GroupLootFrameTemplate draws its art on its own keys Background and Border
     -- (12.1.5 Blizzard_UIPanels_Game/Mainline/GroupLootFrame.xml:290-307); Border is tinted in the item's quality colour on every show
     -- (GroupLootFrame.lua:172-177), so our border takes that colour (read after Blizzard's OnShow) and the quality stays visible.
     -- These two keys are only faded here: other windows use Background / Border for content, so they are not in the generic ART list.
@@ -637,7 +637,7 @@ local function ApplyBubbles()
 end
 
 -------------------------------------------------------------------------------
--- On / off: each page's tick box and the Blizzard UI Reskin tab's own switch call this
+-- On / off: each page's tick box and the Blizzard Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
     Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles)
@@ -656,7 +656,7 @@ ns.WhenReady(function()
 end)
 
 -------------------------------------------------------------------------------
--- Settings: four pages of the Blizzard UI Reskin tab, each with its own tick box in the left pane (xuiSwitch)
+-- Settings: pages of the Blizzard Reskin tab, each with its own tick box in the left pane (xuiSwitch)
 -------------------------------------------------------------------------------
 local function re(Notify) BS.Apply(); if Notify then Notify() end end
 local function PageSwitch(page, name, tip, desc, Notify)
@@ -665,7 +665,7 @@ local function PageSwitch(page, name, tip, desc, Notify)
         set = function(_, v) Cfg()[page] = v and true or nil; re(Notify) end,
         disabled = function() return not TabOn() end }
 end
-local OFFNOTE = " Off: nothing of it is made or runs. Switched off after it was on, Blizzard's look comes back at once; its hooks stay until you /reload but do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."
+local OFFNOTE = " Off: nothing of it is made or runs. Switched off after it was on, Blizzard's look comes back at once; its hooks stay until you /reload but do nothing. Greyed while Blizzard Reskin is off (this tab's Overview)."
 
 function BS.WindowsPage(Notify)
     local off = function() return not PageOn("windows") end
@@ -719,7 +719,7 @@ function BS.TrackerPage(Notify)
     for i, s in ipairs(BS.SECTIONS) do
         local isProf = s.key == "professions"
         args.list.args[s.key] = { type = "toggle", order = i, name = function() return BS.SectionLabel(s) end, disabled = off,
-            desc = isProf and "While the Shopping List's tracker part is on (Blizzard UI Reskin > Shopping List), the Shopping List restyles this section and this box has no effect." or nil,
+            desc = isProf and "While the Shopping List's tracker part is on (Blizzard Reskin > Shopping List), the Shopping List restyles this section and this box has no effect." or nil,
             get = function() local r = Saved(); return not (r and r.otOff and r.otOff[s.key]) end,
             set = function(_, v) Cfg().otOff[s.key] = (not v) and true or nil; re(Notify) end }
     end
