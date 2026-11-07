@@ -18,7 +18,6 @@ AuraIDProbe.lua
 ChatProbe.lua
 CharacterWidthProbe.lua
 DevRecord.lua
-RunRecord.lua
 QAWalk.lua
 QAWalks.lua
 QAWalks-chat.lua
