@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-154d3fe79a03f91bfd6720cedb71672c  PATCH-NOTES.md
+4bee2d97bb4ceb953cea48eff2fc5d73  PATCH-NOTES.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 520392370443f58cab21a14d845de46a  XayaUI/Actions.lua
@@ -208,7 +208,7 @@ f08c4c72b8c5c7feb783f3278364d773  XayaUI_Options/DisplayTab.lua
 5d357bf97b282a22f22719f77ab18eaf  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 1a2f756b13b4286ea8196bcd775899a4  XayaUI_Options/InfoPane.lua
-62bc5e24b5f2219c198c9c9288dd6ad8  XayaUI_Options/InfoPaneData.lua
+d21fe5f6e122466cd60b5a760a215d75  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -251,7 +251,7 @@ ad6749d26245c811361b35449597e4a1  XayaUI_Options/RuleSearch.lua
 cc95cc559c081f3058555119152cebb2  XayaUI_Options/Skin.lua
 46c16efc2149c0b39227c00db614c4dd  XayaUI_Options/ThemeEditor.lua
 7cfb834f8b437dbdd6619f8f84783c80  XayaUI_Options/TriggersEditor.lua
-9e0852d0e4e4fe939b39a29f9718dbac  XayaUI_Options/XayaUI_Options.toc
+f4b9c9bbdca927cb532d5119a5223b98  XayaUI_Options/XayaUI_Options.toc
 95b491078d9005fcd9372b4a4bb4f81b  XayaUI_QoL/CharacterModel.lua
 2408e0585ff97b570fcfcde174fbbddf  XayaUI_QoL/CharacterReskin.lua
 a694ec662f2c1f3855d6f6a949ec6650  XayaUI_QoL/CharacterToolkit.lua
@@ -684,14 +684,14 @@ e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 c303a99e884d75226da5ecac171965bd  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-05.md
 0d9591958c2388041894092b0921d397  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
 08487822040dfba940699388dc7a08e8  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
-6f00241dff96f66f84b54640c63dab78  docs/process/BRANCHES-2026-11-07.md
+5cf08a28c3a6c0cf0331ad1b56e38f7b  docs/process/BRANCHES-2026-11-07.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 0e6f505ca76ce1a9f019a5d67b9a4f6d  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 c26bb038def46ae46c7073a1d7286cbc  docs/process/FUNCTION-AUDIT-2026-11-07.md
 73561333af02ead2f887d248a930fdc3  docs/process/HUB-HANDOFF-2026-11-07.md
 d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 46a9fdb8adb718c66995dbb80565e98c  docs/process/OUTSTANDING-2026-11-06.md
-afbd4194c8b7156e377f39ea16af18c8  docs/process/OVERNIGHT-STATUS-2026-11-07.md
+9f7ca1f1e8bd6a4a91d7da6398474559  docs/process/OVERNIGHT-STATUS-2026-11-07.md
 f88a1f7c079bf0ac268a5d5ade211771  docs/process/PERF-AUDIT-2026-11-07.md
 3b80fa6ec4d1603a0fb533a4a3a9961b  docs/process/PERF-CODE-NOTES.md
 70c785999f3d6a268a50d623ecab47cc  docs/process/PUSH-PROCESS-REVIEW-2026-11-06.md
@@ -704,9 +704,10 @@ e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-1389b880fc0edd56c7b7b2dc5edb5005  docs/process/REQUEST-LOG.md
+df33380a4eb9f1bbc35eabe1a57eed7c  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 09a7314016fdc0383c32f5f6e438bf70  docs/process/VERIFICATION.md
+7ddf29d610c4c5e2d40039b371b360f8  docs/process/WAKEUP-SUMMARY-2026-11-07.md
 1e94015a6bbc6df04beba4c8e3d8b12c  docs/process/handoffs/bar-cues.md
 248f0fc438b5174dcd9b29362c14c26d  docs/process/handoffs/character-pane.md
 309179f1a93a212af450b63cd877fc72  docs/process/handoffs/chat-issue-review.md

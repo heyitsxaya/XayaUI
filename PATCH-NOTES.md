@@ -84,7 +84,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Cursor**
 - A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
 
-### Blizzard Reskin 0.6.17
+### Blizzard Reskin 0.6.19
 
 **Blizzard Windows (new)**
 - Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
@@ -108,12 +108,12 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
   *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
 
-### Dev Assist 0.7.49
+### Dev Assist 0.7.51
 
 **QA Review (new)**
-- Added a QA review window that opens when you first load into the game after an update, listing the walkthroughs that are new or changed since the last build you acknowledged. "Don't show again until the next update" acknowledges the build.
-- Added a question flow: one question per screen, with your words, "What we did without asking", Keep it and its choices, and a note. Copy answers copies them all. /xui dev review and /xui dev questions open them.
-  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: REVIEW-1 to REVIEW-4 (it comes back at every login until the box is ticked).*
+- Added a "Review: what's new to test" window. It opens by itself a moment after you load in, on the first login or /reload after an update, and never in combat (it waits for the fight to end). It lists the QA walkthroughs that are new or changed since the build you last acknowledged, grouped by area, each with its last result and an Open button. The first time it lists all 148 walkthroughs. "Don't show again until the next update" acknowledges the build; /xui dev review reopens it.
+- Added a question flow, opened by /xui dev questions or the Questions button: one question per screen with your own words, "What we did without asking", Keep it and its choices, and a note, plus Back, Skip and Next. Answers are kept with the time and version and survive a /reload. Copy answers shows a text box you can copy. It holds 207 questions from 19 sessions.
+  *Developers' notes: Not yet tested in game: how the two windows look and where they sit, Escape closing them, the 2-second delay after the loading screen, copying from the box, and how long question texts wrap. Chosen for you, change it in the Questions flow: REVIEW-1 to REVIEW-4 (it comes back at every login until the box is ticked).*
 - Added performance walkthroughs J20 to J31 to /xui dev qa.
 
 ## 2026-11-07 — Chat QA Walkthroughs
