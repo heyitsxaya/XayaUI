@@ -36,8 +36,8 @@ Written by the overnight hub (session_014bN6tWMaSvKkwjeonHvvch). Main = **52d07b
 
 ## Sessions
 
-- Archived (all work on main or recorded in a handoff file): 20.
-- Still open: the lander; the QA flow (owns the questions); feature summary (your V18 notes); perf successor (owns PERF-CODE-NOTES); UI bugs successor; reskin successor (waits on RSK-Q11..Q15); branch cleanup.
+- Archived (all work on main or recorded in a handoff file): 21, including the old lander and the old 11-06 hub.
+- Still open: the NEW lander session_014bN6tTqpzJRGoByn311ErR (only it pushes main; brief in docs/process/handoffs/lander.md); the overnight hub session_014bN6tWMaSvKkwjeonHvvch; the QA flow (owns the questions); feature summary (your V18 notes); perf successor (owns PERF-CODE-NOTES); UI bugs successor; reskin successor (waits on RSK-Q11..Q15); branch cleanup.
 
 ## Counts used above (sources)
 
