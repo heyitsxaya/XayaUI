@@ -24,7 +24,11 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-07 — What Changed Overnight
 
-### XayaUI 0.6.72
+### XayaUI 0.6.73
+
+**Commands**
+- /xui help now lists "/xui data (Data Panels)" in place of "custom data panels and bars".
+  *Developers' notes: The hovers of the minimap button, the mover's group tabs and the chat's privacy, history and collapse buttons now share one helper; they read and look as before (QA B279). Not yet tested in game.*
 
 **Engine and Performance**
 - Rule and snapshot log lines are now built only while something reads them (the console window, the debug strip, or the record).
@@ -43,7 +47,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
   *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
 
-### Chat 0.6.38
+### Chat 0.6.39
 
 **Improved Chat (new)**
 - Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
@@ -80,15 +84,18 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Cursor**
 - A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
 
-### Blizzard Reskin 0.6.14
+### Blizzard Reskin 0.6.17
 
 **Blizzard Windows (new)**
 - Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
   *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
 
 **More Blizzard Reskins (new)**
-- Added four reskin pages, each with its own switch and off until ticked: Toasts and Pop-ups (Battle.net toasts and Blizzard's pop-up dialogs), Loot rolls (the four group loot windows), Menus (the background of Blizzard's own menus), and Chat Bubbles (outside instances; in instances the game keeps bubbles to itself).
-  *Developers' notes: Not yet tested in game (QA G9 to G12). Chosen for you, change it in the Questions flow: "pop-ups" means Blizzard's pop-up dialogs, menus change the background only with no border, and a bubble's tail takes the window color.*
+- Added reskin pages, each with its own switch and off until ticked. Four are Blizzard windows and messages: Toasts and Pop-ups (Battle.net toasts and Blizzard's pop-up dialogs), Loot rolls (the four group loot windows), Menus (the background of Blizzard's own menus), and Chat Bubbles (outside instances; in instances the game keeps bubbles to itself).
+- Added Status Bars: the experience and reputation bars lose Blizzard's frame art and get a theme background and a thin border; their fill colors are unchanged.
+- Added Minimap Buttons: the zone-name bar and the tracking button take the theme's colors; the calendar and mail icons are unchanged because they have no frame of their own.
+- Added Buttons: Blizzard's red panel buttons inside the listed Blizzard windows take XayaUI's flat button look. Text, hover and clicks stay Blizzard's. Close buttons, scroll bars, tabs and dropdown arrows are not restyled.
+  *Developers' notes: Not yet tested in game (QA G9 to G12; each page has a walkthrough in /xui dev qa under Reskin). Chosen for you, change it in the Questions flow: Buttons only inside the listed Blizzard windows, never other addons' windows; "pop-ups" means Blizzard's pop-up dialogs, menus change the background only with no border, and a bubble's tail takes the window color.*
 
 **Friend Colors (new)**
 - Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class color. The new Social friends list is not colored yet.
@@ -101,7 +108,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
   *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
 
-### Dev Assist 0.7.45
+### Dev Assist 0.7.49
 
 **QA Review (new)**
 - Added a QA review window that opens when you first load into the game after an update, listing the walkthroughs that are new or changed since the last build you acknowledged. "Don't show again until the next update" acknowledges the build.
