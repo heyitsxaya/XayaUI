@@ -13,11 +13,15 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
-local function Cfg() local ns = NS(); return ns and ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg() end
+-- XayaUI_QoL's Release Guard and XayaUI_Options' Raid Rules entry are reached only through their services (Modules.lua)
+local function Svc(name) local ns = NS(); return ns and ns.Service and ns.Service(name) end
+local function Cfg() local sv = Svc("releaseGuard"); return sv and sv.Cfg and sv.Cfg() end
+local function Scope() local sv = Svc("raidRules"); return sv and sv.Scope and sv.Scope() end
+local function LoadsHere() local sv = Svc("releaseGuard"); return sv and sv.LoadsHere and sv.LoadsHere() end
 local function Need() local c = Cfg(); if not c then error("XayaUI QoL is not loaded (Release Guard lives there)") end return c end
 local function R(fn, ...) if type(fn) ~= "function" then return nil end local ok, a, b = pcall(fn, ...); if ok then return a, b end end
 local function Secret(v) return type(issecretvalue) == "function" and issecretvalue(v) == true end
-local function Apply() local ns = NS(); if ns and ns.ReleaseGuard_Apply then pcall(ns.ReleaseGuard_Apply) end; if ns and ns.MarkDirty then pcall(ns.MarkDirty) end end
+local function Apply() local sv, ns = Svc("releaseGuard"), NS(); if sv and sv.Apply then pcall(sv.Apply) end; if ns and ns.MarkDirty then pcall(ns.MarkDirty) end end
 -- the Load table in words (what the check line shows)
 local function LoadText(L)
     if type(L) ~= "table" then return "not a Load table (" .. tostring(L) .. ")" end
@@ -63,23 +67,22 @@ QA.Register("d8-raid-rules", { title = "Raid Rules: Release Guard as a built-in 
     { text = "(B230) Type |cffffd100/xui|r, open |cffffd100Rules|r, then the |cffffd100Smart Categories|r sub-tab.\n\n|cffffd100Expect:|r a |cffffd100RAID RULES|r group in the sidebar with |cffffd100Release Guard|r in it. Click it: two tabs, |cffffd100Settings|r (Enabled, the text, the flavour texts, the key) and |cffffd100Load|r (the same Load tab as a rule). The row has no eye or headphone. The QoL tab has no Release Guard row any more.",
         noVerdict = true,
         check = function()
-            local ns = NS()
-            local ok = ns and ns.RAID_RULES_KEY and ns.ReleaseGuardScope
-            return ok and true or false, ok and "the Raid Rules entry is loaded (XayaUI Options)" or "XayaUI Options not opened yet: open /xui first, then Check again"
+            local ok = Svc("raidRules") ~= nil
+            return ok, ok and "the Raid Rules entry is loaded (XayaUI Options)" or "XayaUI Options not opened yet: open /xui first, then Check again"
         end },
     { text = "(B232) Press |cffffd100Do it for me|r: Release Guard is switched on.\n\n|cffffd100Expect:|r its row is under |cffffd100Rules > Enabled|r (Loaded if you are in a raid with at least 20 people, else Not Loaded), no longer under Disabled.",
         setup = function() local c = Need(); c.enabled = true; Apply() end,
         check = function()
-            local c, ns = Need(), NS()
-            local sc = ns and ns.ReleaseGuardScope and ns.ReleaseGuardScope()
+            local c = Need()
+            local sc = Scope()
             return c.enabled == true and (sc == "loaded" or sc == "notloaded"), "on: " .. tostring(c.enabled) .. "; listed under: " .. tostring(sc)
         end },
     { text = "(B233) Join or stand in a raid instance with at least 20 people in your group (or in fewer, or outside: the addon checks either way). Then press Check.\n\n|cffffd100Expect:|r the addon's own answer matches the game: works only in a raid instance with 20 or more (with the default Load).",
         check = function()
-            local c, ns = Need(), NS()
+            local c = Need()
             local inInst, kind, n = Place()
             if inInst == nil or n == nil then error("the game did not say where you are or how many are in your group") end
-            local here = ns.ReleaseGuard_LoadsHere and ns.ReleaseGuard_LoadsHere()
+            local here = LoadsHere()
             local L = c.load or {}
             local note = ("instance: %s (%s), people: %d, works here: %s; Load: %s"):format(tostring(inInst), tostring(kind), n, tostring(here), LoadText(L))
             local types = L.instanceTypes or {}
@@ -102,8 +105,8 @@ QA.Register("d8-raid-rules", { title = "Raid Rules: Release Guard as a built-in 
     { text = "(B236) Press |cffffd100Do it for me|r: Release Guard is switched off.\n\n|cffffd100Expect:|r its row moves to |cffffd100Rules > Disabled|r; when you die nothing covers Release (nothing of it listens while off).",
         setup = function() local c = Need(); c.enabled = false; Apply() end,
         check = function()
-            local c, ns = Need(), NS()
-            local sc = ns and ns.ReleaseGuardScope and ns.ReleaseGuardScope()
+            local c = Need()
+            local sc = Scope()
             local box = rawget(_G, "XayaUIReleaseGuard")
             local hidden = not (box and box.IsShown and box:IsShown())
             return c.enabled == false and sc == "disabled" and hidden, "on: " .. tostring(c.enabled) .. "; listed under: " .. tostring(sc) .. "; cover hidden: " .. tostring(hidden)

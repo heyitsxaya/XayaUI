@@ -4717,10 +4717,14 @@ end
 -- key), a right-click menu with Enable / Disable only. Its page: Settings (on / off, text, flavour texts, key) and the rule Load tab
 -- (BuildLoadArgs on its own load table). Shown only while XayaUI_QoL is loaded (its code lives there).
 ns.RAID_RULES_KEY, ns.RELEASE_GUARD_KEY = "raidrules", "releaseguard"
+local function RGSvc() return ns.Service and ns.Service("releaseGuard") end   -- XayaUI_QoL's Release Guard (Modules.lua service)
+local function RGCfg() local sv = RGSvc(); return sv and sv.Cfg and sv.Cfg() end
+local function RGApply() local sv = RGSvc(); if sv and sv.Apply then pcall(sv.Apply) end end
 local function BuildReleaseGuardEntry()
-    local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
-    if not (c and ns.BuildReleaseGuardPage) then return nil end
-    local settings = ns.BuildReleaseGuardPage(function() Notify() end)
+    local sv = RGSvc()
+    local c = RGCfg()
+    if not (c and sv and sv.Page) then return nil end
+    local settings = sv.Page(function() Notify() end)
     local sw = settings.xuiSwitch
     settings.xuiSwitch = nil
     if type(sw) == "table" then
@@ -4737,11 +4741,13 @@ local function BuildReleaseGuardEntry()
 end
 -- where the entry is listed (like a rule): "disabled" while it is off, else "loaded" / "notloaded" by its Load tab
 function ns.ReleaseGuardScope(ctx)
-    local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
+    local c = RGCfg()
     if not c then return nil end
     if not c.enabled then return "disabled" end
     return (ns.LoadAllows and ns.LoadAllows(c, ctx)) and "loaded" or "notloaded"
 end
+
+ns.Provide("raidRules", { Scope = function(ctx) return ns.ReleaseGuardScope(ctx) end })   -- (Dev Assist's walkthrough reads it)
 
 local function BuildOptions()
     ---------------------------------------------------------- Cooldown + Aura Tracking
@@ -6307,12 +6313,12 @@ end
 local function RowMenu(button, root)
     local last = LastKey(button.uniquevalue) or ""
     if last == ns.RELEASE_GUARD_KEY then   -- D8: built in: on / off only (no rename, duplicate, export, move or delete)
-        local c = ns.ReleaseGuard_Cfg and ns.ReleaseGuard_Cfg()
+        local c = RGCfg()
         if not c then return false end
         root:CreateTitle("Release Guard")
         root:CreateButton(c.enabled and "Disable" or "Enable", function()
             c.enabled = not c.enabled
-            if ns.ReleaseGuard_Apply then pcall(ns.ReleaseGuard_Apply) end
+            RGApply()
             ns.MarkDirty(); Notify()
         end)
         return true

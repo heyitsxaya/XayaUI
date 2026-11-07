@@ -216,4 +216,11 @@ function ns.BuildReleaseGuardPage(Notify)
         },
     }
 end
--- (not registered on the QoL tab any more: Options shows it under Rules > Raid Rules, D8)
+-- (not registered on the QoL tab any more: Options shows it under Rules > Raid Rules, D8). Other addons (Options, Dev Assist) reach it
+-- only through this service (Modules.lua ns.Provide / ns.Service).
+ns.Provide("releaseGuard", {
+    Cfg = Cfg,
+    Page = function(notify) return ns.BuildReleaseGuardPage(notify) end,
+    Apply = function() return ns.ReleaseGuard_Apply() end,
+    LoadsHere = function() return ns.ReleaseGuard_LoadsHere() end,
+})

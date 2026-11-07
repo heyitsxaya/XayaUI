@@ -170,7 +170,7 @@ d1bc45421a3341cec7efd8daf8370225  XayaUI_DevAssist/QAWalk.lua
 d302602612f082de613f77fee885ee59  XayaUI_DevAssist/QAWalks-Checklist.lua
 f54b7db2a69b6a507758d0220c71957f  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
-7d9a47bb7b4ff5f5f7c9462d651e0fd6  XayaUI_DevAssist/QAWalks-raidrules.lua
+025bb7ac2d14ef54cb1eab29167cf09e  XayaUI_DevAssist/QAWalks-raidrules.lua
 ba170eccb1f9763d18212ecf63c91545  XayaUI_DevAssist/QAWalks.lua
 ec5f2a2dbffdf56eb516596cec3bad59  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -222,7 +222,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-10c9573c074a9079693caf1928702a9a  XayaUI_Options/Options.lua
+251e127ee58c986e3087159f52658239  XayaUI_Options/Options.lua
 88577b4bd85ae026304c40bb017d2cea  XayaUI_Options/OutcomesEditor.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
 abdae05ed3e4b73e9f7969a75da21fd3  XayaUI_Options/Skin.lua
@@ -269,7 +269,7 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-a54fbb10c3a37b15abdb65810e29f45b  XayaUI_QoL/ReleaseGuard.lua
+505e57759d3f4260e0af71e8c331f5ed  XayaUI_QoL/ReleaseGuard.lua
 e7ac02582c3fa3bb7348602e72a20a27  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 6f3efb2815a0df6c434ee2bb8e89d099  XayaUI_QoL/XayaUI_QoL.toc
@@ -560,7 +560,7 @@ e7718e351b8d6138ae5c830f5185550e  debug-log/2026-11-06-2230-c1-spec-aura-learner
 91c8d3bbc459636840aa4e6429ee7d65  debug-log/2026-11-06-2306-bar-cues-merge-main-relabel-core-0.6.58-options-0.6.59-bonus-0.6.20.md
 a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-devassist-0.7.9.md
 ac5198418be0665571e9c20bcdfc21d9  debug-log/2026-11-07-0022-load-people-in-group-core-0.6.62.md
-f9fc2c9c364f321a0914e4439c8b5a69  debug-log/2026-11-07-0625-d8-raid-rules-release-guard-core-0.6.62-options-0.6.64-qol-0.7.40.md
+9496a17a1828f798eaec9d175768299f  debug-log/2026-11-07-0625-d8-raid-rules-release-guard-core-0.6.62-options-0.6.64-qol-0.7.40.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 b502a20b01f71c2f4d02220b84532586  docs/QA-CHECKLIST.md
 c25151f74afd3add5085ab3b8d4a60f1  docs/README-INGAME.md
@@ -601,7 +601,7 @@ d0ff704e071e6fbdecc39a83dee02b50  docs/process/IN-GAME-DATA-2026-11-05.md
 73cc522e33eac291f5a18cb3cb13c6e8  docs/process/REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md
 bb5088703a6b483e0d538059b37c13a3  docs/process/REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md
 c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
-1be0211100a222844baa9bcaaf783aa6  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
+8feec662277a9a249e58446e9a6173d6  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
@@ -730,7 +730,7 @@ a988d0843e5594fd1d2e777772e4b56a  tests/devassist_instance_run.py
 beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
 5db2ab5175ba50d516fbad5b42ac943e  tests/devassist_rename_run.py
 34c1a9b79e38200c3b30e8bf0fd4b85f  tests/disabled_costs_nothing_run.py
-35083b11f4eb421e42d452fce068a8ea  tests/disabled_tree_run.py
+303a7cb1a3de3038131c5fc93917dff3  tests/disabled_tree_run.py
 8dedc659862c325c740085e5d6b8d919  tests/display_points_run.py
 8733250db1f432ffe3692a1b3ae1e0c1  tests/display_tab_run.py
 79340b1faeb574b0dd0dd28d6f8915e4  tests/drafts_run.py
@@ -768,7 +768,7 @@ a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 9ee3a5ef6e001570cc4e59cc2b0864d2  tests/layout_parity_run.py
 91298476cb23d39cc306ecb03e60e45e  tests/load_alloc_run.py
 29531928447b66a93dc7fed6ddbf0d36  tests/load_class_run.py
-18a02446a02c991378d858614d6ca10e  tests/load_group_size_run.py
+a6e23974fbf4a91a31120b789d01199a  tests/load_group_size_run.py
 6e92b8201fedcf5655092b9bd49106ef  tests/load_ids_options_run.py
 be2a40ff7d3167cccf271f960e0f70a1  tests/load_ids_run.py
 77132f082006e60b78f5bbdc7cc3c57f  tests/lua51.py

@@ -34,7 +34,10 @@ local function find(t, d)
   if t.args and t.args.groupMin and t.args.groupMin.type == "range" then ctl = t.args.groupMin; return end
   for _, v in pairs(t.args or {}) do find(v, d + 1) end
 end
-find(built, 0)
+-- the rule's own row (D8: Release Guard's Load tab under Raid Rules has the same control, so look under the rule only)
+local cd = built.args and built.args.cooldowns
+local all = cd and cd.args.smartTab and cd.args.smartTab.args.all
+find(all and all.args and all.args.rule1, 0)
 check("the rule Load tab has 'People in my group: at least (0 = any)'", ctl ~= nil and tostring(ctl.name):find("People in my group", 1, true) ~= nil)
 if ctl then
   ctl.set(nil, 20)

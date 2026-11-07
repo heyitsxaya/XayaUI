@@ -4,8 +4,8 @@ D8 session (session_014bN6tTZroPi49dAYwBbeGp), branch claude/d8-raid-rules-main 
 Spec and her words: docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md. Built without asking her the open proposals: her relayed words
 (2026-11-07 ~06:00 UTC) "for the love of everything, ship everything I asked for today and stop asking me questions until everything
 that is more than 6h old is completed and on main". The conservative readings taken are listed in the spec ("Conservative readings").
-Her direct answer to this session a few minutes earlier ("Hold the rule load condition changes and pass all other things that don't
-overlap with it that pass") is superseded by that later message (the coordinator's reading); this is said in the report to her.
+HELD (corrected 06:16 UTC by the coordinator): her direct answer to this session a few minutes earlier ("Hold the rule load condition changes and pass all other things that don't
+overlap with it that pass") stands; the broadcast stops questions only. D8 is load-condition work: built, tested, held until she says go.
 
 ## What changed
 - core Conditions.lua: ns.LoadAllows(rec, ctx): a rule's Load answer (CheckContext memo + CheckTalents) for a non-rule feature. Plus the
@@ -42,3 +42,9 @@ and when the options window lists the entry. tests/raid_rules_run.py: off, build
 - tests/release_guard_run.py: Load now stubbed (LOADOK); "where" checks replaced by "Load tab says no / yes"; page has no "Where".
 - tests/sidebar_switches_run.py: qol>releaseguard removed from the expected rows (113 checks pass).
 - tests/load_group_size_run.py (6 checks).
+
+## Full suite
+- First run on 9fad28e: 3 groups failed. disabled_tree (DISABLED count now includes Release Guard while it is off: test updated to the
+  rows shown), load_group_size (its control search found Release Guard's Load tab first: now searches the rule only), and the static
+  cross-addon check (Options / Dev Assist called QoL's ns.ReleaseGuard_* and Options' ns.ReleaseGuardScope directly: now through
+  Modules.lua services "releaseGuard" (QoL) and "raidRules" (Options)).
