@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.17, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.19, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -105,7 +105,7 @@ local function Bubble()
   local b = CreateFrame("Frame", nil, UIParent)
   local p = CreateFrame("Frame", nil, b)
   p.String = p:CreateFontString(nil, "ARTWORK"); p.Tail = p:CreateTexture(nil, "ARTWORK")
-  p.SetCenterColor = function(self, r, g, bb, a) self._center = { r, g, bb, a or 1 } end
+  p.SetCenterColor = function(self, r, g, bb, a) self._center = { r, g, bb, a or 1 }; self._sets = (self._sets or 0) + 1 end
   p.GetCenterColor = function(self) local c = self._center or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
   p.SetBorderColor = function(self, r, g, bb, a) self._border = { r, g, bb, a or 1 } end
   p.GetBorderColor = function(self) local c = self._border or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
@@ -341,6 +341,18 @@ check("a new bubble is not painted before a chat message", b2.panel._center == n
 W.fire("CHAT_MSG_MONSTER_YELL", "Charge!", "An NPC"); W.tick(0.05, 2)
 check("after a chat message (NPC yell) the new bubble is painted on the next frame", b2.panel._center and near(b2.panel._center[1], bg[1]))
 check("forbidden bubbles (instances) are never asked for (includeForbidden false)", #W.errors == 0)
+-- (Reskin 0.6.19, perf) a bubble that already shows our colours is not repainted; a change of opacity (or theme) repaints it
+local sets1, sets2 = b1.panel._sets, b2.panel._sets
+W.fire("CHAT_MSG_PARTY", "pull", "Tank"); W.tick(0.05, 2)
+check("a second scan does not repaint bubbles that already carry the look", b1.panel._sets == sets1 and b2.panel._sets == sets2, (b1.panel._sets or 0) .. "/" .. tostring(sets1))
+page.args.bgAlpha.set(nil, 0.8)
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("after an opacity change the next scan repaints them at the new opacity", b1.panel._sets == sets1 + 1 and near(b1.panel._center[4], 0.8), b1.panel._center and b1.panel._center[4])
+b1.panel:SetCenterColor(1, 1, 1, 1); sets1 = b1.panel._sets
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("a bubble the game set back to its own colours is painted again", b1.panel._sets == sets1 + 1 and near(b1.panel._center[1], bg[1]))
+page.args.bgAlpha.set(nil, 0.7)
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
 b2.panel:SetCenterColor(0.5, 0.5, 0.5, 1); BUB[2] = nil
 bbp.xuiSwitch.set(nil, false)
 c = b1.panel._center
