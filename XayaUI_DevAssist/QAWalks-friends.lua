@@ -7,7 +7,9 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
 local fcSaved
-local function Stats() local ns = NS(); return ns and ns.FriendColorsStats end
+-- XayaUI Blizzard Reskin is reached only through its service (Modules.lua ns.Service; FriendColors.lua provides "friendColors")
+local function Svc() local ns = NS(); return ns and ns.Service and ns.Service("friendColors") end
+local function Stats() local sv = Svc(); return sv and sv.Stats end
 local function OpenFriends()
     local f = rawget(_G, "ToggleFriendsFrame")
     local ff = rawget(_G, "FriendsFrame")
@@ -22,14 +24,14 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
             local t = CueRulesDB.ui.friendColors
             if fcSaved == nil then fcSaved = { on = t.on } end
             t.on = true
-            if ns.FriendColors_Apply then ns.FriendColors_Apply() end
+            local sv = Svc(); if sv then sv.Apply() end
             local st = Stats(); if st then st.rows, st.colored = 0, 0 end
             OpenFriends()
         end,
         check = function()
-            local ns, st = NS(), Stats()
-            if not (ns and ns.FriendColors_Active) then return false, "XayaUI Blizzard Reskin is not loaded" end
-            if not ns.FriendColors_Active() then return false, "the feature is off (Blizzard UI Reskin tab off?)" end
+            local sv, st = Svc(), Stats()
+            if not sv then return false, "XayaUI Blizzard Reskin is not loaded" end
+            if not sv.Active() then return false, "the feature is off (Blizzard UI Reskin tab off?)" end
             local social = false
             pcall(function() social = C_SocialUI and C_SocialUI.IsSystemEnabled and C_SocialUI.IsSystemEnabled() and true or false end)
             if social then return false, "your game shows Blizzard's new Social friends list, which is not colored yet" end
@@ -42,7 +44,7 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
             local ns = NS()
             if fcSaved and CueRulesDB.ui and CueRulesDB.ui.friendColors then CueRulesDB.ui.friendColors.on = fcSaved.on end
             fcSaved = nil
-            if ns and ns.FriendColors_Apply then ns.FriendColors_Apply() end
+            local sv = Svc(); if sv then sv.Apply() end
         end,
         check = function() return fcSaved == nil, fcSaved == nil and "put back" or "not put back yet" end },
 } })

@@ -171,7 +171,7 @@ d1bc45421a3341cec7efd8daf8370225  XayaUI_DevAssist/QAWalk.lua
 f54b7db2a69b6a507758d0220c71957f  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
 bf1b1573d5271378ce31fc10948cd43e  XayaUI_DevAssist/QAWalks-display.lua
-fdb6b4d881bb91bb29623ef5f819aed4  XayaUI_DevAssist/QAWalks-friends.lua
+443ba399d0a1b57f1b199516b5c0d754  XayaUI_DevAssist/QAWalks-friends.lua
 a105c0f5551383b652134bec6f898ab7  XayaUI_DevAssist/QAWalks-perf.lua
 ba170eccb1f9763d18212ecf63c91545  XayaUI_DevAssist/QAWalks.lua
 eeddd5c6837ec0e6ad5eeb4f0bdc35e2  XayaUI_DevAssist/RunRecord.lua
@@ -276,7 +276,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 a39263cf4d03dedeb2991412e569829f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 2f4523962e9cbc50add20d41bcd7a0e5  XayaUI_QoL/XayaUI_QoL.toc
-9a69c2e1952b081398eba6d82b745d38  XayaUI_Reskin/FriendColors.lua
+1fd066592dde2614a193f6cf3d2c13f9  XayaUI_Reskin/FriendColors.lua
 364bb50f1d78cc4f0ae2fcd80b6e6fe1  XayaUI_Reskin/GameMenuSkin.lua
 c6834a5cfc12992f14d9ef07d993d9ca  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -818,7 +818,7 @@ a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
-0b9388aa2312aadd0f825b643298b9cd  tests/sidebar_switches_run.py
+6da3db4d2b107b97cd93de8445b19af1  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py
 2ab0305057bc1ba469131f702de0799c  tests/sound_cue_channel_run.py
