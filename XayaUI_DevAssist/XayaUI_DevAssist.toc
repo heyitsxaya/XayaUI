@@ -4,6 +4,7 @@
 ## Author: Xaya
 ## Group: XayaUI
 ## Version: 0.7.33
+## X-Date: 2026-11-07
 ## SavedVariables: XayaUIDevAssistDB
 ## OptionalDeps: XayaUI, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin
 
@@ -26,3 +27,4 @@ QAWalks-profiles.lua
 QAWalks-perf.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
+QAWalks-statcalc.lua

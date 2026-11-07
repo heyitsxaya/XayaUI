@@ -89,7 +89,7 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     for _, k in ipairs(ADD_KINDS) do ADD_VALUES[k[1]] = k[2]; ADD_ORDER[#ADD_ORDER + 1] = k[1] end
     args.shows.width = "normal"
     args.add = { type = "select", order = 1.2, width = "normal", name = "Add a display cue", values = ADD_VALUES, sorting = ADD_ORDER,
-        desc = "Adds a new icon, texture, or text cue to this rule. It takes this tab's settings (such as the hover tooltip) and is edited on the Cues tab. A new cue plays only when a condition on the Conditions tab lists it (or always, while the rule has no conditions).",
+        desc = "Adds a new icon, texture or text cue to this rule, edited on the Cues tab. It plays only when a condition lists it, or always while the rule has no conditions.",
         get = function() return nil end,
         set = function(_, kind)
             local before = list()
@@ -102,7 +102,7 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     ---------------------------------------------------------------- behavior of all displays
     args.behH = { type = "header", order = 2, name = "All display cues", hidden = none }
     args.hoverTip = { type = "toggle", order = 2.1, width = "double", name = "Show tooltip on hover", hidden = none,
-        desc = "Hovering any display of this rule shows the tooltip of the spell or item it is about (a cue's icon source, else the rule's first trigger). While on, the displays see the mouse pointer, but clicks still pass through to what is behind them.",
+        desc = "Shows the spell or item's tooltip when you hover any display of this rule. Clicks still pass through.",
         get = function() local l = list(); return #l > 0 and CountOn(l, "hoverTip") == #l end,
         set = function(_, v) local l = list(); for _, d in ipairs(l) do d.visual.hoverTip = v and true or false end; done(l) end }
     args.hoverMixed = { type = "description", order = 2.15, width = "full", fontSize = "small",
@@ -149,11 +149,11 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     end
     local function setAll(key, v) local l = list(); for _, d in ipairs(l) do d.visual[key] = v end; done(l) end
     args.alpha = { type = "range", order = 4.1, name = "Opacity", min = 0, max = 1, step = 0.05, isPercent = true, hidden = none,
-        desc = "Overall opacity of every display of this rule (each cue's own setting, written to all of them).",
+        desc = "Sets the opacity of every display of this rule.",
         get = function() local _, v = same("alpha", 1); return v or 1 end,
         set = function(_, v) setAll("alpha", v) end }
     args.oocAlpha = { type = "range", order = 4.2, name = "Out of combat", min = 0, max = 1, step = 0.05, isPercent = true, hidden = none,
-        desc = "Opacity multiplier while you are out of combat (100% = the same as in combat), for every display of this rule.",
+        desc = "Scales every display's opacity out of combat (100% = as in combat).",
         get = function() local _, v = same("oocAlpha", 1); return v or 1 end,
         set = function(_, v) setAll("oocAlpha", v) end }
     args.lookMixed = { type = "description", order = 4.3, width = "full", fontSize = "small",
@@ -265,7 +265,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     -- behavior of every display
     local beh = {
         hoverTip = U.Tog(V, "hoverTip", "Show tooltip on hover", 1, on, { width = "double",
-            desc = "Hovering a display shows the tooltip of the spell or item it is about. While on, the display sees the mouse pointer, but clicks still pass through to what is behind it." }),
+            desc = "Shows the spell or item's tooltip when you hover the display. Clicks still pass through." }),
         requireOnBar = U.Tog(V, "requireOnBar", "Only show while on an action bar", 2, on, { width = "double",
             desc = "Hides a display whenever its rule's spell is not placed on any of your action bars." }),
     }
@@ -325,7 +325,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     local function nBars() return #bars() end
     local bst = {
         force = { type = "toggle", order = 1, width = "full", name = "Force on every bar in this group",
-            desc = "Ticked: every Bar cue in this group (and its nested groups) uses this group's colour style, whatever its own is set to. Unticked: each bar keeps its own style; a choice below is copied to every bar once.",
+            desc = "Makes every Bar cue in this group use this group's colour style. Off: each bar keeps its own; a choice below is copied to every bar once.",
             get = function() return forced() end,
             set = function(_, v)
                 if v and not ns.BAR_STYLE_LABEL[f.barStyle] then f.barStyle = styleNow() end

@@ -114,7 +114,7 @@ QA.Register("reskin-switches", { title = "Blizzard Reskin: All reskins and each 
 local function Shop() local ns = NS(); return ns and ns.Service and ns.Service("shoppingList") end   -- (QoL provides it; nil while QoL is off)
 QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 121, steps = {
     { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on and its panel opens.\n\n|cffffd100Expect:|r a movable panel \"Shopping List\" with Missing on your gear, To buy, and your tracked recipes.",
-        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply() end,
+        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply(true) end,   -- (true: asked for; QoL 0.7.42 no longer pops it up by itself)
         check = function() local p = rawget(_G, "XayaUIShoppingList"); return (p and p:IsShown()) and true or false, (p and p:IsShown()) and "the panel is showing" or "the panel is not showing" end },
     { text = "Open your profession window and |cffffd100track a recipe|r you are one reagent short of (the star / Track box).\n\n|cffffd100Expect:|r the recipe shows in the panel with each reagent and have / need, the same numbers as Blizzard's objective tracker.",
         check = function() local S = Shop(); local n = S and #S.Recipes() or 0; return n > 0, n .. " tracked recipe(s) read" end },

@@ -1,4 +1,4 @@
-# Settings window: new top tabs, toolbar gone, Profiles with components (Options 0.6.71, Dev Assist 0.7.31)
+# Settings window: new top tabs, toolbar gone, Profiles with components (Options 0.6.72, Dev Assist 0.7.31)
 
 Session 014bN6tWsQ4qcob9VPKD7PV5, branch `claude/settings-restructure` (from `main` 7b830cf). REQUEST-LOG A8 UI-23 to UI-27, A16 SR-1 to SR-3.
 
@@ -52,3 +52,10 @@ components' CueRulesDB keys. The toolbar frame is no longer made.
 - `tests/qa_walks_profiles_run.py` (new, 11 checks): the walkthrough's checks on the stand-in.
 - `tests/reskin_tab_run.py` updated (3 checks: label, the Esc-menu line, Settings no longer hides the tab).
 - Not run in game.
+
+## Merge with the UI bugs chain (2026-11-07 ~11:35 UTC)
+The UI bugs session's 29532e5 also used Options 0.6.71, so this round lands as Options 0.6.72 (with the "Blizzard Reskin" rename,
+debug-log 2026-11-07-0900). Merged 29532e5 into `claude/settings-restructure`: CompactRulesTabs keeps "+ New Rule" at the left end and
+takes UI-76's 90% share per tab (each tab is 90% of its even slot of the row after the button); ns.SkinPlainButton is UI bugs' call to
+core ns.PaintFlatButton (the New Rule button uses it); rules_subtabs_compact_run checks both (start after the button, 90% share).
+Shopping List and Esc Menu tooltips: UI bugs' new wording with "Blizzard Reskin". QAWalks-display's two "Blizzard UI Reskin" texts renamed.

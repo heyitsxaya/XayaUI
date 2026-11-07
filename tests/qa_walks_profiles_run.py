@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-game QA walkthrough for the settings window's new top level (XayaUI_DevAssist 0.7.31, QAWalks-profiles.lua; Options 0.6.71,
+"""In-game QA walkthrough for the settings window's new top level (XayaUI_DevAssist 0.7.31, QAWalks-profiles.lua; Options 0.6.72,
 REQUEST-LOG UI-23 to UI-27; QA H6 to H9). Standing rule V22 (Xaya 2026-11-07): every change lands with an in-game walkthrough with
 pre-fill. Checks, on the real addons in the stand-in game: the walkthrough is registered with prefill on and every step has a check or is
 a question (noVerdict); its checks give the right verdict: the top tabs and no toolbar (Rules open, then Settings open), + New Rule at

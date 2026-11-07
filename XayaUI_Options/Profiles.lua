@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Profiles.lua : the components of a profile, for Profiles > Import / Export (Options 0.6.71).
+-- Profiles.lua : the components of a profile, for Profiles > Import / Export (Options 0.6.72).
 -- (REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06, her words: "profiles is expanded as a category bucket to include all user-created
 -- customizations, settings, etc"; "individual components can be selected to toggle (review EUI and ElvUI profiling)".)
 -- A profile string (share kind "profile", prefix XUIPROFILE1, the same codec as rules and themes: Share.lua) carries the components

@@ -18,10 +18,10 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 3. Ideas checked against WeakAuras, ElvUI or EUI: behaviour only, our own design and code [0.8].
 
 ### A2. Settings window: tab rows
-1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built in Options 0.6.71, UI-23..27: no
+1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built in Options 0.6.72, UI-23..27: no
    toolbar above them; "+ New Rule" is a flat button at the left end of the Rules row; Profiles = Import | Export | Recycle Bin).
 2. Top tabs share the row evenly edge to edge, 32 px tall, 14 pt outlined, clearly the parent level [1.4, 1.5, 11.3].
-3. Rules sub-tabs: 28 px, 12 pt outlined; Smart Categories, Enabled, Disabled, Drafts share the row evenly; "Auto-Generate Rules" apart
+3. Rules sub-tabs: 27 px, 11.5 pt outlined (UI-76: "a little narrower and maybe 3-5% smaller"), each 90% of its even share; Smart Categories, Enabled, Disabled, Drafts share the row evenly; "Auto-Generate Rules" apart
    at the far right [1.9, 11.3; UI-45].
 4. Tabs are tabs, not buttons [1.1]. Clicking a tab never resizes the panes [1.2].
 5. No tick box on a tab button; a tab's own switch is on its first left-pane row, "Overview", with a reload prompt [3.7].
@@ -100,7 +100,8 @@ are at the theme's Medium text size (A8.5). The grey is only the fallback when t
 |---|---|---|
 | margin, gutter | 10, 10 (session) | #351 [5.1] |
 | tabTop.h, tabTop.font, tabTop.outline | 32, 14, true | [1.5] |
-| tabSub.h, tabSub.font, tabSub.outline, tabSub.apartGap | 28, 12, true, 16 (gap: session) | [UI-45] |
+| tabSub.h, tabSub.font, tabSub.outline, tabSub.apartGap | 27, 11.5, true, 16 (gap: session) | [UI-45]; 4% smaller [UI-76] (her "3-5% smaller": session's reading) |
+| tabSub.share | 0.9 (session) | [UI-76] "a little narrower": each tab 90% of its even share |
 | nest.child | 8 | [2.5] |
 | nest.level (WeakAuras) | 8 | [2.7] |
 | switch.size | 16 (session) | |

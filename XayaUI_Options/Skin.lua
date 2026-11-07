@@ -98,40 +98,11 @@ local function ShowRegions(f)
     for _, p in ipairs(f.xuiHidden) do p[1]:SetAlpha(p[2]) end
     f.xuiHidden = nil
 end
--- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget): the red Blizzard art is hidden, the theme's "xui-button"
--- (or "xui-button-primary") colors are painted, text is gold and white on hover. Safe to call again (colors are re-read each time, so a
--- theme change shows); with the skin off the Blizzard look is restored.
+-- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget). UI-77 (Options 0.6.67): the look lives in core
+-- (Core.lua ns.PaintFlatButton) so core's windows have it without this addon loaded; this name stays for the settings addon's callers.
 function ns.SkinPlainButton(b, primary)
-    if not b or not b.GetFontString then return end
-    if not SkinOn() then
-        if b.xuiFlatBtn then ShowRegions(b); FlatHide(b); local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(1) end end
-        return
-    end
-    if not b.xuiFlatBtn then
-        b.xuiFlatBtn = true
-        HideRegions(b, nil)
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-        local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then local c = TC("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end end)
-        b:HookScript("OnLeave", function(self)
-            local f = self:GetFontString()
-            if f and self.xuiFlatBtn then local c = self.xuiBtnText or GOLD; f:SetTextColor(c[1], c[2], c[3]) end
-        end)
-    elseif b.xuiHidden == nil then
-        HideRegions(b, nil)   -- returning from skin-off: hide the Blizzard art again
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-    end
-    local cl = primary and "xui-button-primary" or "xui-button"
-    Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }))
-    local fs = b:GetFontString()
-    if fs then
-        local c = TC(cl, "text", GOLD)
-        b.xuiBtnText = c
-        fs:SetTextColor(c[1], c[2], c[3]); TF(fs)
-    end
+    if ns.PaintFlatButton then return ns.PaintFlatButton(b, primary) end
 end
--- core's own windows (console, popups) take this look through the "buttonSkin" service (Modules.lua), never by calling this file
-if ns.Provide then ns.Provide("buttonSkin", { Apply = function(b, primary) return ns.SkinPlainButton(b, primary) end }) end
 
 -- run restoreFn once when the widget is released (the wrapper is installed only once per widget)
 local function OnRelease(w, restoreFn)
@@ -169,7 +140,7 @@ local function AddRest(w, key, fn)
 end
 
 -------------------------------------------------------------------------------
--- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.71).
+-- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.72).
 -------------------------------------------------------------------------------
 ns.treeFilter = ""
 local filterStamp = 0
@@ -233,7 +204,7 @@ local function MakeSearchBox(parent)
     return sb
 end
 
--- (Options 0.6.71; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: "I believe these almost exclusively belong to rules so they should be
+-- (Options 0.6.72; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: "I believe these almost exclusively belong to rules so they should be
 -- put under the rules tab and the Rules / QOL / Bonus Features / Reskin / Settings should be at the top level now instad"; "Cog goes")
 -- The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, the hidden Lock Positions, the Settings cog) is gone: "+ New Rule"
 -- is on the Rules tab's top row (CompactRulesTabs), Import / Export / Recycle Bin are sub-tabs of Profiles, Settings is a top tab.
@@ -314,7 +285,7 @@ local function SkinFrame(of)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
     -- (AceGUI's status bar under the content is hidden by Options.lua EnsureChrome: this window does not use it. A flat "band" that
     -- was meant to replace it here never ran: it looked for of.statusbg, which AceGUI's Frame widget does not keep.)
-    -- no toolbar any more (Options 0.6.71): the content starts right under the title strip, where the toolbar was
+    -- no toolbar any more (Options 0.6.72): the content starts right under the title strip, where the toolbar was
     if fr.xuiToolbar then fr.xuiToolbar:Hide() end
     local c = of.content
     local p1 = { c:GetPoint(1) }
@@ -445,9 +416,11 @@ local function CompactRulesTabs(w)
     local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
     local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
     cw = math.min(cw, math.floor(width / 3))
-    -- (Options 0.6.71; UI-25, her words: New Rule goes on the "Rules tab's top row") "+ New Rule" is a flat button at the left end of
-    -- the row, as wide as its name plus 24 px, SUB_GAP before the tabs; the tabs share what is left evenly. (Where on the row was not
-    -- given by her: left end chosen while she was away, 2026-11-07; in her QA question flow, key UI-25-newrule.)
+    -- (Options 0.6.72; UI-25, her words: New Rule goes on the "Rules tab's top row") "+ New Rule" is a flat button at the left end of
+    -- the row, as wide as its name plus 24 px, SUB_GAP before the tabs. (Where on the row was not given by her: left end chosen while she
+    -- was away, 2026-11-07; in her QA question flow, key UI-25-newrule.)
+    -- (Options 0.6.66; UI-76, O-146: "make these tabs a little narrower and maybe 3-5% smaller") each tab ns.Style.tabSub.share (90%) of
+    -- its even share of what is left of the row, the spare width as equal gaps after each tab
     local nb = ns.RulesNewRuleButton(w)
     local nw = 0
     if nb then
@@ -456,9 +429,10 @@ local function CompactRulesTabs(w)
         nw = math.min(nw, math.floor(width / 5))
     end
     local left = nb and (nw + SUB_GAP) or 0
-    local each = (#others > 0) and ((width - left - cw - SUB_GAP) / #others) or 0
+    local slot = (#others > 0) and ((width - left - cw - SUB_GAP) / #others) or 0
+    local each = slot * (ns.Style.tabSub.share or 1)
     local slots = {}
-    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, left + (i - 1) * each, each } end
+    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, left + (i - 1) * slot, each } end
     slots[#slots + 1] = { creator, width - cw, cw }
     LayTabRow(w, slots, SUB_TAB_H, SUB_TAB_FONT)
     if nb then
@@ -504,7 +478,7 @@ local TOP_TAB_H, TOP_TAB_FONT = ns.Style.tabTop.h, ns.Style.tabTop.font   -- (co
 local function IsTopRow(w)
     local K = ns.OptionsApi and ns.OptionsApi.TOP_KEYS
     if not (K and w and w.tabs) then return false end
-    -- (Options 0.6.71) the top row holds Rules, the feature tabs, Profiles and Settings; a row whose tabs are all top keys is the top
+    -- (Options 0.6.72) the top row holds Rules, the feature tabs, Profiles and Settings; a row whose tabs are all top keys is the top
     -- row (Profiles' own sub-tabs, import / export / bin, are not top keys)
     local any = false
     for _, tab in ipairs(w.tabs) do
