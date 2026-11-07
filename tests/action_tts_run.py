@@ -6,6 +6,7 @@ action now speaks through the speech cue's helper (Sound.lua ns.Speak) at volume
 is installed, the first installed voice otherwise, and nothing when no voice is installed.
 Run: python3 tests/action_tts_run.py   Needs: pip install lupa."""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -27,7 +28,7 @@ PlaySoundFile = function() end; PlaySound = function() end
 LibStub = function() return nil end
 ''')
 for f in ("Sound.lua", "Actions.lua"):
-    L.execute('assert(loadfile(%r))("XayaUI", ns)' % os.path.join(ROOT, "XayaUI", f).replace("\\", "/"))
+    L.execute('assert(loadfile(%r))("XayaUI", ns)' % XP.core_file(ROOT, f).replace("\\", "/"))
 L.execute(r'''
 local rule = { name = "Speak test", actions = { start = { msgOn = true, msgType = "TTS", msg = "Shield up" } } }
 ns.RunActions(rule, "start")

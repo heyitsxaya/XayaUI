@@ -157,7 +157,7 @@ FRAME_METHODS.SetScript = function(self, n, fn) SetScript0(self, n, fn); if n ==
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Compat.lua", "XayaUI/Conditions.lua", "XayaUI/Timing.lua", "XayaUI/Triggers.lua", "XayaUI/Outcomes.lua", "XayaUI/Cues.lua", "XayaUI/Actions.lua", "XayaUI/Sound.lua", "XayaUI/Visual.lua", "XayaUI/Engine.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/Compat.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua", "XayaUI_Rules/Cues.lua", "XayaUI_Rules/Actions.lua", "XayaUI/Sound.lua", "XayaUI_Rules/Visual.lua", "XayaUI_Rules/Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 # (core 0.6.56, REQUEST-LOG #81: /xui debug timing, the coverage report, is XayaUI Dev Assist's: the real function from
 # XayaUI_DevAssist/CoreDebug.lua, set where the test calls it)

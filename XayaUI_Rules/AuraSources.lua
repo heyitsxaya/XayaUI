@@ -11,7 +11,7 @@
 -- Nothing is shipped: the map is built on the user's own client from the game's own data.
 -- Midnight: every tooltip read is pcall'd and secret values are skipped; the pass pauses in combat.
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = _G.XayaUI_NS or ns
 local AS = {}

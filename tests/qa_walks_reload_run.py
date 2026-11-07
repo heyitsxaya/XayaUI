@@ -198,7 +198,7 @@ def main():
     print(("PASS " if ok else "FAIL ") + "no new saved key in XayaUIDevAssistDB (only qa.results holds the runs)" + ("" if ok else "  [%s / %s / %s]" % (extraTop, qaKeys, str(da)[:300])))
     bad += 0 if ok else 1
     ca, cp = keypaths(sv(saved, "XayaUI", "CueRulesDB"), maxd=1), keypaths(sv(plain, "XayaUI", "CueRulesDB"), maxd=1)
-    # (.auraModel: the combat tracker makes its own store on its first settings read, XayaUI/Combat/AuraModel.lua DB(); whether a short
+    # (.auraModel: the combat tracker makes its own store on its first settings read, XayaUI_Rules/Combat/AuraModel.lua DB(); whether a short
     # session reads it depends on what ran, not on the walkthroughs)
     extra = sorted(ca - cp - {".auraModel"})
     ok = len(extra) == 0

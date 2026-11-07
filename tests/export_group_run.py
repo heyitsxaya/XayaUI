@@ -16,6 +16,7 @@ _G.XayaUI_NS = ns
 ns.Print = ns.Print or function() end
 assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + r'''"))("XayaUI", ns)   -- core contract: ns.Fire (0.6.0)
 assert(loadfile("''' + os.path.join(ROOT, "XayaUI/Share.lua").replace("\\", "/") + r'''"))("XayaUI", ns)
+assert(loadfile("''' + os.path.join(ROOT, "XayaUI_Rules/RuleShare.lua").replace("\\", "/") + r'''"))("XayaUI_Rules", ns)   -- (P4) the rules side of sharing
 function ns.OutcomesOf(p) local o = {} if not p.uid then return o end for _, r in ipairs(ns.rules) do if r ~= p and r.parentUid == p.uid then o[#o + 1] = r end end return o end
 ns.qolBoxes = {}; ns.bars = {}
 ns.folders = { { id = "f1", name = "Other" }, { id = "f2", name = "Personal Buff Tracking", cType = "dynamic" }, { id = "f3", name = "Kid", parent = "f2" }, { id = "f4", name = "Elsewhere", parent = "f1" } }

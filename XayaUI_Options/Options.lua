@@ -511,10 +511,15 @@ end
 function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) end
 
 -- Settings: the addon's own behavior, as opposed to any one rule's. Opened from the toolbar (cog, far right); has its own tabs.
+-- (Options 0.6.84, P4) XayaUI Rules is loaded: its "rules" service is there (XayaUI_Rules/RuleDefaults.lua). Off: the Rules tab, the rule
+-- list rows and the Rule Creation tab of Settings, and the rule backups under Profiles > Export are left out (nothing of the rule editor
+-- is built); the rest of the window is the same.
+local function RulesOn() return (ns.Service and ns.Service("rules")) and true or false end
 local function BuildAddonSettings()
     local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
-    local dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)   -- (P3) the rule list and Rule Creation rows (RuleEditor/RuleSettings.lua)
+    local dispRows, ruleRows = {}, nil
+    if RulesOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (RuleEditor/RuleSettings.lua)
     local page = { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
@@ -718,7 +723,9 @@ local function BuildProfiles(binTab)
         if profInc[c.key] == nil then profInc[c.key] = true end   -- (Options 0.6.80) a registered part starts ticked, as every part did
         e["inc_" .. c.key] = Tog(profInc, c.key, c.label, 1 + i, function() end, { width = "double" })
     end
-    for idx, p in ipairs(ns.Backups()) do
+    -- (Options 0.6.84, P4) the backups are copies of the rules (XayaUI_Rules/RuleShare.lua): left out while XayaUI Rules is off
+    if not RulesOn() then e.savedH, e.backupIntro, e.saveName, e.savePick, e.save = nil, nil, nil, nil, nil end
+    for idx, p in ipairs(RulesOn() and ns.Backups() or {}) do
         e["p" .. idx] = {
             type = "group", inline = true, order = 40 + idx, name = p.name,
             args = {
@@ -913,7 +920,8 @@ function ns.InfoPass(root)
 end
 local function BuildOptions()
     ---------------------------------------------------------- Rules (RuleEditor/RulesTree.lua; P3)
-    local track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab()
+    local track, allQol, allBars
+    if RulesOn() then track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab() end   -- (P4) none while XayaUI Rules is off
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
@@ -987,7 +995,7 @@ local function BuildOptions()
     dispArgs.intro = sa.intro
     local setUi = { type = "group", name = "UI Options", order = 1, childGroups = "tab", args = {
         display = { type = "group", name = "Display", order = 1, args = dispArgs },
-        rules = { type = "group", name = "Rule Creation", order = 1.5, args = sa.rules.args },
+        rules = sa.rules and { type = "group", name = "Rule Creation", order = 1.5, args = sa.rules.args } or nil,   -- (P4) none while XayaUI Rules is off
         theme = { type = "group", name = "Theme", order = 2, args = sa.theme.args },
     } }
     local setDbg = { type = "group", name = "Debugging", order = 2, args = sa.debug.args }

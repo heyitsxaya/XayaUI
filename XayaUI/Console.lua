@@ -103,10 +103,11 @@ function ns.BuildBugReport(description, includeAddons)
     add("XayaUI bug report")
     add(("XayaUI version: %s | game %s (build %s, %s, interface %s)"):format(AddonVersion(), tostring(gv), tostring(gb), tostring(gd), tostring(toc)))
     add(("Report made: %s (local time)"):format(date("%Y-%m-%d %H:%M:%S")))
-    local spec = ns.CurrentSpecID and ns.CurrentSpecID() or nil
+    local R = ns.Service and ns.Service("rules")   -- (P4) XayaUI Rules' "rules" service; nil while it is switched off
+    local spec = R and R.CurrentSpecID() or nil
     add(("Spec ID: %s | in combat: %s | locale: %s"):format(tostring(spec), tostring((UnitAffectingCombat and UnitAffectingCombat("player")) and true or false), tostring(GetLocale and GetLocale() or "?")))
     local nr, nc, ncond = 0, 0, 0
-    for _, r in ipairs(ns.rules or {}) do
+    for _, r in ipairs(R and R.Rules() or {}) do
         if r.isCue then nc = nc + 1 elseif r.parentUid then ncond = ncond + 1 else nr = nr + 1 end
     end
     add(("Rules: %d | cues: %d | conditions: %d | skin on: %s"):format(nr, nc, ncond, (ns.Options and tostring(ns.Options.SkinOn()) or "window not loaded")))

@@ -453,7 +453,7 @@ end
 function T.Changed()
     T.Resolve()
     T.Defer(T.UINotify)
-    if ns.MarkDirty then ns.MarkDirty() end
+    local R = ns.Service and ns.Service("rules"); if R then R.MarkDirty() end   -- (P4) the displays redraw (XayaUI Rules, when on)
 end
 
 -- Switch to Custom: the current look stays exactly as it is (the old base becomes "Start from", color changes are kept).

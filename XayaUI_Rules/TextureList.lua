@@ -1,6 +1,6 @@
 -- Blizzard spell-alert texture FileDataIDs (public game assets, referenced by ID; nothing is bundled).
 -- Some IDs may render blank on a given build; use the manual ID box for anything else.
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 ns.TextureList = {
     { 449486, "Arcane Missiles" },
     { 1027131, "Arcane Missiles 1" },

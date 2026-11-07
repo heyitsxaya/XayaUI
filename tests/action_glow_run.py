@@ -30,7 +30,7 @@ local lib = {
 LibStub = function(name, silent) if name == "LibCustomGlow-1.0" then return lib end end
 TestFrame = { GetObjectType = function() return "Frame" end }
 ''')
-L.execute('assert(loadfile(%r))("XayaUI", ns)' % os.path.join(ROOT, "XayaUI", "Actions.lua").replace("\\", "/"))
+L.execute('assert(loadfile(%r))("XayaUI", ns)' % os.path.join(ROOT, "XayaUI_Rules", "Actions.lua").replace("\\", "/"))
 L.execute(r'''
 local rule = { name = "Glow test", actions = { start = { glowOn = true, glowTarget = "frame", glowFrame = "TestFrame" } } }
 local pane = ns.ActionsPane(rule, function() end)

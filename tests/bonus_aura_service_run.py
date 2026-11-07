@@ -67,7 +67,7 @@ def main():
     L.execute("local s, h = '3,7', 5381; for i = 1, #s do h = (h * 33 + s:byte(i)) % 4294967296 end; WANTHASH = ('%08x'):format(h)")
     check("B: the talent hash reads the talent list from the AuraModel service", L.eval("ERR") is None and L.eval("HASH") == L.eval("WANTHASH"), (L.eval("ERR"), L.eval("HASH")))
     # C. the real AuraSources.lua provides itself
-    L = make(["XayaUI/AuraSources.lua"])
+    L = make(["XayaUI_Rules/AuraSources.lua"])
     L.execute("NAMES = { [500] = 'Shield', [501] = 'Shield Buff' }; XayaUI_NS.AuraSources = nil")
     got, err = lines(L, "posts[1](GameTooltip, { id = 500, lines = { %s } })" % nested)
     check("C: AuraSources.lua offers itself as the service; its effect-block reader fills the tooltip", got == ["Spell ID: 500", "Aura ID: 501  (Shield Buff)"] and err is None, (got, err))

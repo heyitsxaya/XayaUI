@@ -165,7 +165,7 @@ r = step(R21, 1); check("J21 when a collection ran in between: Fail, says why", 
 # J22: other addons' errors (core counts them; the report's entries must not hold another addon's error)
 L.execute("NS.otherErrors = 7; ENTRIES = {}; NS.DebugReportData = function() return { entries = ENTRIES } end")
 r = step("perf-other-errors", 1); check("J22 with 7 other addons' errors and a clean record: Pass, gives the count", r[0] == "P" and "this session: 7" in r[1])
-L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI/Engine.lua:2: mine' } }")
+L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI_Rules/Engine.lua:2: mine' } }")
 r = step("perf-other-errors", 1); check("J22 when the record holds another addon's error: Fail naming it", r[0] == "F" and "1 recorded entries" in r[1])
 # (Dev Assist 0.7.53, B6) no other addon raised an error yet: nothing was passed on, so not tested (before: a Pass)
 L.execute("NS.otherErrors = 0; ENTRIES = {}")

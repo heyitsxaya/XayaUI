@@ -27,8 +27,17 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
-# made by --golden in a checkout of main 2faeda5 (the code before the seam); see the docstring
+# (P4) made by --golden in a checkout of main 8ced2e3 (the code before the platform split), with the saved variables merged across
+# addon folders (canon below): XayaUITalentDB is declared by XayaUI_Rules since P4 instead of XayaUI, so the same data sits under
+# another folder name; "core only" is the old XayaUI folder, i.e. XayaUI + XayaUI_Rules (+ XayaUI_Media) now.
 GOLDEN = {
+    "all on: play session": "1b08cc0ea14304c0a73f991822050a4127a1cac9389a0e7be120f235d4cc3039",
+    "all on: reload": "c40a90a6ecea2fe4643e3425aacf020d2040bd30321bedefde003f8635475845",
+    "core only: play session": "719d8932a1e2c4cca3e4e45416945f5a5a5d5dd219c842154b7f126664b35db8",
+    "core only: reload": "719d8932a1e2c4cca3e4e45416945f5a5a5d5dd219c842154b7f126664b35db8",
+}
+# (P2, kept for the record) the hashes per addon folder, made in a checkout of main 2faeda5 (the code before the seam); 8ced2e3 matched them
+GOLDEN_P2 = {
     "all on: play session": "92a578439513886e35eb3782bd23996ac273ae74d0390336da81ef4dadc4ea07",
     "all on: reload": "7d12f59a3828ffb556747e983ea057f7339bfbe981bc6109a8b95b805acc7125",
     "core only: play session": "d24424c40ec56fda2d7dc2d8776aa1fc3a40c10d37998dc4e43607764a7961b7",
@@ -39,7 +48,7 @@ GOLDEN = {
 PLATFORM = {
     "XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Theme.lua", "XayaUI/Share.lua", "XayaUI/RecycleBin.lua",
     "XayaUI/Sound.lua", "XayaUI/LocalSounds.lua", "XayaUI/LocalGraphics.lua", "XayaUI/UserMedia.lua", "XayaUI/Console.lua",
-    "XayaUI/DebugRecord.lua", "XayaUI/Compat.lua", "XayaUI/MinimapButton.lua", "XayaUI/GameMenu.lua", "XayaUI_Options/Profiles.lua",
+    "XayaUI/DebugRecord.lua", "XayaUI/Compat.lua", "XayaUI/MinimapButton.lua", "XayaUI/GameMenuButton.lua", "XayaUI_Options/Profiles.lua",
 }
 SV_INIT = {"XayaUI/Core.lua", "XayaUI/Modules.lua"}   # saved-variable set-up, the seam itself, the profile parts
 
@@ -161,13 +170,21 @@ def play(folders, enabled, saved, quick):
 
 
 def canon(saved):
-    return re.sub(r"0x[0-9a-f]+", "0x", json.dumps(saved, sort_keys=True))
+    # (P4) the saved variables merged across addon folders ({variable: value}; every variable name is declared by one folder only)
+    merged = {}
+    for addon in sorted(saved):
+        for var, val in (saved[addon] or {}).items():
+            merged[var] = val
+    text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
+    # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
+    # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
+    return text.replace(", XayaUI_Rules 0", "").replace(";XayaUI_Rules=0", "")
 
 
 def sessions(root_folders):
     folders = root_folders
     every = set(folders)
-    core_only = {n for n in folders if n in ("XayaUI", "XayaUI_Media")}
+    core_only = {n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media")}   # (P4) the old XayaUI folder
     out = {}
     for tag, en in (("all on", every), ("core only", core_only)):
         s1, e1, u1 = play(folders, en, {}, False)
@@ -390,6 +407,16 @@ def main():
         check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN.get(tag), h)
         check("B: %s: no Lua error" % tag, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
         check("B: %s: no view was asked for a key its module does not own" % tag, unknown == "", unknown)
+    # (P4) XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, and nothing of the rules is saved
+    for tag, en in (("Rules off, Platform only", {n for n in folders if n in ("XayaUI", "XayaUI_Media")}),
+                    ("Rules off, every other addon on", {n for n in folders if n != "XayaUI_Rules"})):
+        s1, e1, u1 = play(folders, en, {}, False)
+        s2, e2, u2 = play(folders, en, s1, True)
+        db = (s2.get("XayaUI") or {}).get("CueRulesDB") or {}
+        check("B: %s: play session and reload: no Lua error" % tag, not e1 and not e2, "; ".join(str(e)[:300] for e in (e1 + e2)[:3]))
+        check("B: %s: no view was asked for a key its module does not own" % tag, (u1 or "") == "" and (u2 or "") == "", (u1, u2))
+        check("B: %s: nothing of XayaUI Rules is saved (no rules, groups, buff bars; no XayaUITalentDB)" % tag,
+              not any(k in db for k in ("rules", "folders", "bars", "barGroup")) and "XayaUI_Rules" not in s2, sorted(db))
     # C
     L, world, loader = runtime(lambda n: n not in ("XayaUI_Nameplates",))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(HELD_LUA, world, loader)

@@ -58,6 +58,7 @@ GetRuneCooldown = function(i) local r = RUNES[i]; if r then return r[1], r[2], r
 TIPS = {}
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIPS[slot] or {} } end
 assert(loadfile(__MOD__))("XayaUI", ns)
+ns.Provide("rules", { BuildSpellList = function(...) return ns.BuildSpellList(...) end, BuildTalentList = function(...) return ns.BuildTalentList(...) end, ForgetSpellLists = function() ns.spellList, ns.talentList = nil, nil end })   -- (P4) XayaUI Rules' "rules" service, as XayaUI_Rules/RuleDefaults.lua offers it
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 -- the XayaUI minimap button (core's MinimapButton.lua), so the test opens its list as the player does
 ns.Merge = ns.Merge or function(t, d) for k, v in pairs(d) do if t[k] == nil then t[k] = v end end end

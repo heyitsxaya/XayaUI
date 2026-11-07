@@ -7,7 +7,7 @@
 -- "Unsorted" (the optional SPEC_SORT folders in Options.lua still apply).
 -- Midnight: all game reads are pcall'd and secret values skipped; learning is skipped in combat and re-tried afterwards.
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = _G.XayaUI_NS or ns
 local CL = {}

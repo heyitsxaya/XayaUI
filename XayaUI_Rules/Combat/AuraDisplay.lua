@@ -31,7 +31,7 @@
 -- cannot draw; a cue that a condition lists shows only while that condition is true (0.6.19, #260), with its opacity, grey and tint
 -- changes drawn on a single slot (not inside a dynamic group; glow and strata not at all). includeSpellIDs is real in Blizzard's code but
 -- absent from the generated API docs: every container call is pcall'd and a failure hands the display back to XayaUI (no gap).
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 ns = XayaUI_NS or ns
 

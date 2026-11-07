@@ -1,7 +1,7 @@
 -- XayaUI: Cues. A CUE is a named thing that happens (sound, text, texture, icon, custom). A rule that has conditions owns its cues;
 -- each condition's THEN lists cue keys. Under the hood a cue is a hidden child rule (rule.isCue, rule.parentUid, rule.cueKey, rule.cueKind),
 -- so the existing sound / display engine and editors are reused. A cue fires while ANY enabled condition that lists it is true.
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "bar", "custom" }   -- bar: BarCue.lua (RM-BARS, Xaya 2026-11-06)

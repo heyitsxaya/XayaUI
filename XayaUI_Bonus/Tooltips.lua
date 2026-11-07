@@ -309,7 +309,8 @@ end
 -- tooltip, title-cased and coloured by core's ns.BarColorizeTypes (BarCue.lua; Blizzard's own colours read from the game). A line the
 -- game hands over as a secret is left as it is. English game text only (the words are matched in English).
 function TT.ColorTypes(tooltip)
-    if not ns.BarColorizeTypes then return end
+    local RS = ns.Service and ns.Service("rules")   -- (Bonus 0.6.32, P4) XayaUI Rules' "rules" service; off: no colouring, as before without it
+    if not RS then return end
     local okn, name = pcall(tooltip.GetName, tooltip)
     if not (okn and type(name) == "string") then return end
     local okl, n = pcall(tooltip.NumLines, tooltip)
@@ -319,7 +320,7 @@ function TT.ColorTypes(tooltip)
         if fs and fs.GetText then
             local ok, tx = pcall(fs.GetText, fs)
             if ok and readable(tx) and type(tx) == "string" then
-                local nt = ns.BarColorizeTypes(tx)
+                local nt = RS.BarColorizeTypes(tx)
                 if nt and nt ~= tx then pcall(fs.SetText, fs, nt) end
             end
         end
@@ -328,7 +329,7 @@ function TT.ColorTypes(tooltip)
     if r1 and r1.GetText then
         local ok, tx = pcall(r1.GetText, r1)
         if ok and readable(tx) and type(tx) == "string" then
-            local nt = ns.BarColorizeTypes(tx, true)
+            local nt = RS.BarColorizeTypes(tx, true)
             if nt and nt ~= tx then pcall(r1.SetText, r1, nt) end
         end
     end

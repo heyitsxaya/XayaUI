@@ -19,7 +19,7 @@
 --
 -- Hooks are post-hooks (hooksecurefunc): they only note GetTime(), never change or call anything of Blizzard's.
 -------------------------------------------------------------------------------
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local T = {}
 ns.Timing = T
 

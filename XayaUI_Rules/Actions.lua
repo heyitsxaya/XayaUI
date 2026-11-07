@@ -7,7 +7,7 @@
 --   acN, acFreq, acScale; btnFreq; procDur, procStart. A setting left empty (nil) uses LibCustomGlow's own default.
 --   glowKeep (start only), snd (finish only, same shape as rule.sound), codeOn, code.
 -- Midnight (12.x) notes are in the option descriptions; see the design doc for sources.
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 
 ns.ACTION_PHASES = { "init", "start", "finish" }
 local CHAT_TYPES = {
@@ -107,13 +107,13 @@ local function DoChat(rule, a)
             if ns.Speak then ns.Speak({ value = msg, voice = vid, rate = 0, ttsVolume = 100 }) end
         end)
     elseif t == "SAY" or t == "YELL" then
-        if IsInInstance() then pcall(ns.Compat.SendChatMessage, msg, t) end
+        if IsInInstance() and ns.Compat then pcall(ns.Compat.SendChatMessage, msg, t) end   -- (P4: ns.Compat is the Platform's)
     elseif t == "GROUP" then
         local ch
         if UnitInBattleground and UnitInBattleground("player") then ch = "INSTANCE_CHAT"
         elseif IsInRaid() then ch = (IsInGroup(LE_PARTY_CATEGORY_INSTANCE) and "INSTANCE_CHAT") or "RAID"
         elseif IsInGroup() then ch = (IsInGroup(LE_PARTY_CATEGORY_INSTANCE) and "INSTANCE_CHAT") or "PARTY" end
-        if ch then pcall(ns.Compat.SendChatMessage, msg, ch) end
+        if ch and ns.Compat then pcall(ns.Compat.SendChatMessage, msg, ch) end   -- (P4: ns.Compat is the Platform's)
     end
 end
 

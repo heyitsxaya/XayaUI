@@ -33,6 +33,7 @@ C_Spell.GetSpellDescription = function(id) return DESC[id] end
 loadAsked = {}
 C_Spell.RequestLoadSpellData = function(id) loadAsked[#loadAsked + 1] = id end
 assert(loadfile(__MOD__))("XayaUI", ns)
+ns.Provide("rules", { BuildSpellList = function(...) return ns.BuildSpellList(...) end, BuildTalentList = function(...) return ns.BuildTalentList(...) end, ForgetSpellLists = function() ns.spellList, ns.talentList = nil, nil end })   -- (P4) XayaUI Rules' "rules" service, as XayaUI_Rules/RuleDefaults.lua offers it
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 listCalls = 0
 function ns.BuildSpellList()

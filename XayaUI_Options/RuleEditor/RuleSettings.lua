@@ -62,7 +62,7 @@ function ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)
             get = function() return ns.CondensedOn() end,
             set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
         -- The talent scan (Options 0.6.40; Xaya, 2026-11-05: "scan belongs in Settings"; it was in Rules > Class/Spec Rule Creator).
-        -- Here because what it saves (XayaUITalentDB, XayaUI/TalentDump.lua) is read only by rule creation: the talent search of
+        -- Here because what it saves (XayaUITalentDB, XayaUI_Rules/TalentDump.lua) is read only by rule creation: the talent search of
         -- the rule editor's talent requirement lists every spec and hero tree from it. The last message stays under the button.
         talHdr = { type = "header", name = "All talents (every class and spec)", order = 30 },
         talInfo = { type = "description", order = 30.1, width = "full", fontSize = "medium",

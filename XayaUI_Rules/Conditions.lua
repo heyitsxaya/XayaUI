@@ -5,7 +5,7 @@
 -- before it is compared. Anything unreadable becomes nil ("unknown"), and a
 -- rule that depends on an unknown input does NOT fire (silent, never wrong).
 -------------------------------------------------------------------------------
-local addonName, ns = ...
+local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
 
 local issecret = issecretvalue or function() return false end
@@ -1293,6 +1293,7 @@ end
 local actionBarSpells = {}
 -- C_ActionBar.HasAction (12.x); the old global only through Compat.lua
 local function SlotHasAction(slot)
+    if not ns.Compat then return false end   -- (P4: Compat.lua is the Platform's now; tests/lua_pitfalls_run.py)
     local ok, v = pcall(ns.Compat.HasAction, slot)
     return ok and v or false
 end

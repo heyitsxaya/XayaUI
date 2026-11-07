@@ -44,8 +44,8 @@ for _, k in ipairs({ "After", "NewTimer", "NewTicker" }) do
   local raw = C_Timer[k]
   C_Timer[k] = function(...) timers[#timers + 1] = owner(); return raw(...) end
 end
-local GM, SKIN, DBG, SND, MINI, CON = "XayaUI/GameMenu.lua", "XayaUI_Reskin/GameMenuSkin.lua", "XayaUI/DebugRecord.lua",
-  "XayaUI/AuraSound.lua", "XayaUI/MinimapButton.lua", "XayaUI/Console.lua"
+local GM, SKIN, DBG, SND, MINI, CON = "XayaUI/GameMenuButton.lua", "XayaUI_Reskin/GameMenuSkin.lua", "XayaUI/DebugRecord.lua",
+  "XayaUI_Rules/AuraSound.lua", "XayaUI/MinimapButton.lua", "XayaUI/Console.lua"
 local function frames(file) local n = 0; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then n = n + 1 end end; return n end
 local function events(file)
   local set, list = {}, {}
@@ -379,7 +379,7 @@ def world(mode):
     folders = H.find_addons()
     # (core 0.6.56, REQUEST-LOG #82: the record's kinds of line are XayaUI Dev Assist's, so it is loaded here for the debug record's
     # checks; what a player has without it is tests/devassist_debug_tools_run.py)
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_DevAssist")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_DevAssist")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

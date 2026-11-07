@@ -45,7 +45,7 @@ EssentialCooldownViewer = CreateFrame("Frame"); function EssentialCooldownViewer
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/Conditions.lua", "XayaUI/Timing.lua", "XayaUI/Triggers.lua", "XayaUI/Outcomes.lua"):
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS
@@ -135,9 +135,9 @@ check("'has a charge' with the count unknown is unknown, not TRUE", ev("NS.Check
 check("'not ready' with readiness unknown is unknown", ev("NS.CheckCooldownState(RULE(500, 'notReady'), { known = true, max = 3, atMax = nil })") is None)
 
 # --- 8. wiring ---
-trig = open(os.path.join(ROOT, "XayaUI", "Triggers.lua"), encoding="utf-8").read()
+trig = open(os.path.join(ROOT, "XayaUI_Rules", "Triggers.lua"), encoding="utf-8").read()
 check("your casts reach the charge counter (Triggers.lua UNIT_SPELLCAST_SUCCEEDED -> ns.NoteChargeCast)", "ns.NoteChargeCast(spellID, now)" in trig)
-tim = open(os.path.join(ROOT, "XayaUI", "Timing.lua"), encoding="utf-8").read()
+tim = open(os.path.join(ROOT, "XayaUI_Rules", "Timing.lua"), encoding="utf-8").read()
 check("the Cooldown Manager's ChargeGained alerts are recorded on its icon (Timing.lua)", re.search(r"CDM_EVENT\.ChargeGained.*?xuiChargeGains", tim, re.S) is not None)
 
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

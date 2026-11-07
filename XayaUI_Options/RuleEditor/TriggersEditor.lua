@@ -7,6 +7,7 @@
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local S = ns.TriggerShared
+if not S then return end   -- (Options 0.6.84, P4) XayaUI Rules is switched off: no rule editor is built, so this file defines nothing
 local Call, MAX_ROWS, ORDER, TYPES = S.Call, S.MAX_ROWS, S.ORDER, S.TYPES
 local unpack = unpack or table.unpack
 

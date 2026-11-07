@@ -116,7 +116,7 @@ if ns.TT and (ns.TT.AuraReport or ns.TT.Probe or ns.TT.DumpLines) then loaded[#l
 if ns.Chat and (ns.Chat.IndentReport or ns.Chat.WhisperReport or ns.Chat.WhisperFacts or ns.Chat.whispers) then loaded[#loaded + 1] = "chat reports" end
 check("A the moved code is not loaded without Dev Assist", #loaded == 0, table.concat(loaded, ", "))
 local files = {}
-for _, f in ipairs({ "XayaUI/Combat/AuraIDProbe.lua", "XayaUI_Chat/Probe.lua", "XayaUI_QoL/CharacterWidthProbe.lua" }) do
+for _, f in ipairs({ "XayaUI_Rules/Combat/AuraIDProbe.lua", "XayaUI_Chat/Probe.lua", "XayaUI_QoL/CharacterWidthProbe.lua" }) do
   if L.fileLoaded and L.fileLoaded(f) then files[#files + 1] = f end
 end
 check("A the moved files are not in core, Chat or QoL", #files == 0, table.concat(files, ", "))
@@ -196,7 +196,7 @@ local function entry(code) for _, e in ipairs(CueRulesDB.errorLog) do if e.code 
 local spy0 = #spyCalls
 -- (as the game does: the active error handler gets the error's message)
 local function raiseFrom(path, msg) local f = loadstring("error('" .. msg .. "')", "@Interface/AddOns/" .. path); xpcall(f, function(e) return geterrorhandler()(e) end) end
-raiseFrom("XayaUI/Engine.lua", "boom in core")
+raiseFrom("XayaUI_Rules/Engine.lua", "boom in core")
 raiseFrom("XayaUI_Chat/Frame.lua", "boom in chat")
 raiseFrom("XayaUI_QoL/StatMath.lua", "boom in qol")
 raiseFrom("SomeOtherAddon/Main.lua", "boom elsewhere")
@@ -209,7 +209,7 @@ for _, e in ipairs(CueRulesDB.errorLog) do if e.msg:find("boom elsewhere", 1, tr
 check("E an error from another addon's file is not recorded", other == nil)
 check("E the handler set before XayaUI was called for every error (4 of 4)", #spyCalls - spy0 == 4, #spyCalls - spy0)
 check("E ... with the same message", spyCalls[#spyCalls] ~= nil and spyCalls[#spyCalls]:find("boom elsewhere", 1, true) ~= nil, spyCalls[#spyCalls])
-raiseFrom("XayaUI/Engine.lua", "boom in core")
+raiseFrom("XayaUI_Rules/Engine.lua", "boom in core")
 check("E the same error again counts on the same entry", entry("XUI-E001").n == 2 and #CueRulesDB.errorLog == 3, (function() local t = {}; for _, e in ipairs(CueRulesDB.errorLog) do t[#t + 1] = e.code .. " x" .. e.n .. " " .. e.msg end; return table.concat(t, " || ") end)())
 -- the engine's safety stops (the game's meter says Blizzard's aura containers cost 5 ms)
 local realMetric = C_AddOnProfiler.GetAddOnMetric
@@ -262,16 +262,16 @@ SAVED_REPORT = str
 -- Advanced Debugging off: nothing is recorded
 ui.advancedDebug = false; ns.DebugSettingsChanged()
 local n0 = #CueRulesDB.errorLog
-raiseFrom("XayaUI/Visual.lua", "boom while off")
+raiseFrom("XayaUI_Rules/Visual.lua", "boom while off")
 W.fire("ADDON_ACTION_BLOCKED", "XayaUI", "X()")
 check("E Advanced Debugging off: nothing is recorded", #CueRulesDB.errorLog == n0, #CueRulesDB.errorLog)
 check("E Advanced Debugging off: the record's frame lets its events go", next(ns.DebugRecordInfo.EventsOn()) == nil)
 ui.advancedDebug = true; ns.DebugSettingsChanged()
 -- the cap: the newest 50
-for i = 1, 60 do raiseFrom("XayaUI/Engine.lua", "distinct error " .. i) end
+for i = 1, 60 do raiseFrom("XayaUI_Rules/Engine.lua", "distinct error " .. i) end
 check("E the record keeps the newest 50", #CueRulesDB.errorLog == 50 and CueRulesDB.errorLog[1].msg:find("distinct error 60", 1, true) ~= nil, #CueRulesDB.errorLog)
 -- (F, control: the counter does see the record when an error happens, so its 0 above is a measurement)
-drCalls = 0; countDR(true); raiseFrom("XayaUI/Engine.lua", "boom counted"); countDR(false)
+drCalls = 0; countDR(true); raiseFrom("XayaUI_Rules/Engine.lua", "boom counted"); countDR(false)
 check("F (control) the call counter sees the record work when an error happens", drCalls > 0, drCalls)
 return R
 end

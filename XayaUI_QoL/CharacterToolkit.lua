@@ -657,7 +657,8 @@ function ns.CharToolkit_Action(action)
     local c = Cfg(); if not c then return end
     if action == "configureSpells" then c.advanced = true end
     if action == "configureSpells" or action == "refreshSpells" then
-        ns.spellList, ns.talentList = nil, nil   -- core's cached spellbook and talent lists (Conditions.lua) are read again
+        local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' cached spellbook and talent lists (Conditions.lua) are read again
+        if RS then RS.ForgetSpellLists() end
         CM.ClearTalents(); CM.ResetSpellRequests()
     end
     ns.CharToolkit_Render()

@@ -323,7 +323,7 @@ def saved_for(mode):
 
 def world(mode):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

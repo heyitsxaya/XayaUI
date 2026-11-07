@@ -2,7 +2,7 @@
 -- Source: Blizzard's client data tables for build 12.1.5.70783 as published by wago.tools (SpellActivationOverlay,
 -- SpellClassOptions, ChrClasses, SkillLineAbility, TraitDefinition), built by docs/reference/build_procs.py --lua on 2026-11-04.
 -- Facts only (spell IDs). How the buttons are matched is the community's reading of these columns; see docs/reference/procs.md.
-local _, ns = ...
+local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 ns.PROC_GLOW_BUILD = "12.1.5.70783"
 ns.PROC_GLOW_AURAS = {
     [5302] = { 6572 },   -- Revenge! -> Revenge

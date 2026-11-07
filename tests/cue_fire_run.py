@@ -9,6 +9,7 @@ player gets: which cue sounds are played, when, and how often. Spell / aura IDs 
   - the rule not loaded, its trigger unknown, or the cue switched off: nothing fires.
 Run: python3 tests/cue_fire_run.py   (needs: pip install lupa)"""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
@@ -30,7 +31,7 @@ PlaySoundFile = function(f) PLAYED[#PLAYED + 1] = tostring(f); return true end
 PlaySound = function(id) PLAYED[#PLAYED + 1] = "kit:" .. tostring(id); return true end
 C_Timer.After = function() end
 ''')
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources", "Combat/")
@@ -40,7 +41,7 @@ for f in toc:
     if f.startswith(skip) or not f.endswith(".lua"):
         continue
     try:
-        load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns)
+        load(open(XP.core_file(ROOT, f), encoding="utf-8").read(), f, ns)
     except Exception as e:
         failed.append((f, str(e)[:200]))
 

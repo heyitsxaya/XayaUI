@@ -10,6 +10,7 @@ cooldown reads (ns.ReadCooldown), aura reads (ns.BuffPresentAny) and trigger-row
 Negative control: core 0.6.65 makes 222 cooldown reads per step for the 222 not-loaded rules (first check FAILS).
 Run: python3 tests/load_first_run.py   (needs: pip install lupa)"""
 import os, sys
+import sys as _sys; _sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.abspath(__file__))); import xui_paths as XP  # (P4) core = XayaUI + XayaUI_Rules
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
@@ -26,14 +27,14 @@ rs.append('{ name = "Cue parent", enabled = true, spellID = 300003, uid = "u231"
 rs.append('{ name = "Cue", enabled = true, uid = "u232", parentUid = "u231", isCue = true, visual = { enabled = true, trigger = "buffActive" } }')
 L.execute("CueRulesDB = { rules = { %s }, folders = {} }" % ",\n".join(rs))
 L.execute(bench[a:b])
-toc = [l.strip() for l in open(os.path.join(ROOT, "XayaUI", "XayaUI.toc")) if l.strip() and not l.startswith("#")]
+toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources")
 for f in toc:
     f = f.replace("\\", "/")
     if f.startswith(skip) or not f.endswith(".lua"): continue
-    load(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read(), f, ns)
+    load(open(XP.core_file(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS
 ns.rules = CueRulesDB.rules; ns.folders = CueRulesDB.folders or {}
