@@ -35,3 +35,6 @@ not exist (section G errors).
 
 ## Not verified in game
 All of it (K5 and the walkthrough).
+
+## 0.2.1 (2026-11-07 ~10:15 UTC): found by the full suite on 2b1bbb6
+- `display_standard_run.py` check 3 and `sidebar_switches_run.py` A: the Target colour row switch had no `tip` (the left-pane hover; UI-42 wants one sentence without "Off") and was not in the sidebar test's list of rows with a switch. Core.lua now gives `tip` = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal)."; `qol>nameplates` added to the test's WANT list (the row exists only while the addon is enabled). Both tests fail on 2b1bbb6 and pass now. Version 0.2.1.

@@ -50,7 +50,8 @@ local function BuildPage(Notify)
     return {
         type = "group", name = "Nameplates", order = 40,
         xuiSwitch = { type = "toggle", name = "Target colour",
-            desc = "Your target's health bar on Blizzard's nameplates in the colour below (default teal). Off: nothing of it is made or runs.",
+            desc = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
+            tip = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
             get = function() return NP.DB().targetColor end,
             set = function(_, v) NP.DB().targetColor = v and true or false; Changed() end },
         args = {
