@@ -24,7 +24,7 @@ local QA = rawget(_G, "XayaUI_DevQA")
 local ns = rawget(_G, "XayaUI_NS")
 check("Dev Assist has the QA walkthroughs", QA and QA.walks ~= nil)
 if not QA then return R end
-local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting" }
+local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local okSteps = w ~= nil
@@ -64,6 +64,7 @@ stepCheck("release guard 1: Where has no Everywhere", "ui-release-guard", 1, fal
 stepCheck("release guard 2: with no death window, the check says so (no verdict)", "ui-release-guard", 2, false, false)
 stepCheck("stat labels: GCD, Movement Speed, Critical Strike Effectiveness", "ui-stat-gcd", 1, false)
 stepCheck("nesting (UI-69): Layout's name 8 px right of Chat Panel's", "ui-nesting", 1, true)
+stepCheck("row icons (UI-70): every icon in its column on Rules > Enabled", "ui-row-icons", 1, true)
 return R
 end
 '''

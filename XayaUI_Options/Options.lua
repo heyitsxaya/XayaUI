@@ -6773,7 +6773,7 @@ function ns.MakeSideToggle(button, kind)
     return b
 end
 
--- The rule list's right-hand columns, from the row's right edge (Options 0.6.63; REQUEST-LOG UI-70: "icons still not appropriately
+-- The rule list's right-hand columns, from the row's right edge (Options 0.6.64; REQUEST-LOG UI-70: "icons still not appropriately
 -- handled and display irregularly"; UI-72, her answer "copy the WA format w/ toggle being under group as previously suggested"): every
 -- row keeps the same slots, left to right [lock][note][preview][open / close], each empty where the row has nothing of that kind, so
 -- the icons line up; a header's open / close button is the far-right one with the preview just left of it (WeakAuras); a group's
@@ -7269,7 +7269,7 @@ local function DecorateButton(button)
         if isRootRow then          -- root headers: round toggle at the right end
             chevMode = "right"
             button.xuiChev:SetSize(16, 16)
-            -- (Options 0.6.63; UI-70 / UI-72, her answer "copy the WA format": a header's open / close button at the far right end, the
+            -- (Options 0.6.64; UI-70 / UI-72, her answer "copy the WA format": a header's open / close button at the far right end, the
             -- preview just left of it; it sat 46 px in before, on top of the eye and headphone columns)
             button.xuiChev:SetPoint("RIGHT", button, "RIGHT", -ns.OptionsApi.SIDE_COL.expand, 0)
         elseif tw > 0 then         -- groups: toggle sits under the group's icon
@@ -7342,7 +7342,7 @@ local function DecorateButton(button)
             if vis and #vis > 0 then button.xuiHead:Hide() else paint(button.xuiHead, snd, "sound", 4 + 19 * 3) end
             button.xuiIconR = 4 + 17 + 3
         else
-            -- (Options 0.6.63; UI-70 / UI-72, "copy the WA format") one preview column, just left of the open / close slot: the eye, or
+            -- (Options 0.6.64; UI-70 / UI-72, "copy the WA format") one preview column, just left of the open / close slot: the eye, or
             -- the headphone when the row only plays sounds (as on two-row rows); every row keeps the same columns
             local col = ns.OptionsApi.SIDE_COL.preview
             paint(button.xuiEye, vis, "visual", col)

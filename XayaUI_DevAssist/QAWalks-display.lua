@@ -321,3 +321,39 @@ QA.Register("ui-nesting", { title = "Settings: parts nested 8 px under their fea
             return math.abs(d - 8) < 0.5, ("Layout's name starts %d px right of Chat Panel's (want 8)"):format(d)
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- 8. The rule list's icons (Options 0.6.64; UI-70: "icons still not appropriately handled and display irregularly"; UI-72: "copy the WA
+-- format w/ toggle being under group as previously suggested")
+-------------------------------------------------------------------------------
+local function RuleRows()
+    local out = {}
+    local function walk(f, d) if not f or d > 60 then return end
+        if f.uniquevalue and f.IsShown and f:IsShown() and not f.xuiTwoRow then out[#out + 1] = f end
+        for _, c in ipairs(f.GetChildren and { f:GetChildren() } or {}) do walk(c, d + 1) end end
+    walk(UIParent, 0)
+    return out
+end
+local function Off(b) if not (b and b:IsShown()) then return nil end local p, _, rp, x = b:GetPoint(1); if p == "RIGHT" and rp == "RIGHT" then return -(x or 0) end end
+QA.Register("ui-row-icons", { title = "Rules list: icons in fixed columns (WeakAuras layout)", qa = "B228", order = 267, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Rules > Enabled opens.\n\n|cffffd100Expect:|r on every row the icons stand in the same columns, from the right: the open / close button (headers only), the eye (or the headphone on a sound-only row), the note, the lock. LOADED's open / close button is at the far right with the eye just left of it; nothing overlaps; a group's open / close sits under its icon.",
+        setup = function() Open("cooldowns", "enabledTab") end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local ns = NS(); local C = ns and ns.OptionsApi and ns.OptionsApi.SIDE_COL
+            if not C then return false, "the settings window is not loaded" end
+            local bad, n = {}, 0
+            for _, b in ipairs(RuleRows()) do
+                n = n + 1
+                local name = tostring(b.uniquevalue):match("([^\001]+)$")
+                for fr, col in pairs({ [b.xuiEye or 0] = C.preview, [b.xuiHead or 1] = C.preview, [b.xuiEdit or 2] = C.note, [b.xuiMove or 3] = C.lock }) do
+                    if type(fr) == "table" then local o = Off(fr); if o and o ~= col then bad[#bad + 1] = name end end
+                end
+                if b.xuiChev and b.xuiChev:IsShown() and Off(b.xuiChev) and Off(b.xuiChev) ~= C.expand then bad[#bad + 1] = name .. " (open / close)" end
+            end
+            if n == 0 then return false, "no rows on screen" end
+            return #bad == 0, #bad == 0 and (n .. " rows, every icon in its column") or ("out of column: " .. table.concat(bad, ", "):sub(1, 200))
+        end },
+    { text = "Look through Smart Categories and Disabled too.\n\n|cffffd100Expect:|r the same columns everywhere; tell us in the note if any row still looks off.",
+        noVerdict = true },
+} })
