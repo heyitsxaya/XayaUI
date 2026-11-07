@@ -169,7 +169,7 @@ e8301ad57f35da661e15c253b4e5ae91  XayaUI_DevAssist/CharacterWidthProbe.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
-babb5f92d9469f95fd4e91773a8ba7e4  XayaUI_DevAssist/QAQuestions.lua
+e3c578c3c0599d608eb185a5fc8acd64  XayaUI_DevAssist/QAQuestions.lua
 b6fcf322839c4b3340cc700962a42889  XayaUI_DevAssist/QAReview.lua
 9e3d47f0eca47ca0edb07b7f1f966dea  XayaUI_DevAssist/QAWalk.lua
 3cfea0166243d2e0f7ccd369df19aeae  XayaUI_DevAssist/QAWalks-Checklist.lua
@@ -190,7 +190,7 @@ d43cfdac5923d6164ffd2a9da21735b8  XayaUI_DevAssist/QAWalks-reskin.lua
 88653725abec812e843d4b38d078d387  XayaUI_DevAssist/QAWalks-review.lua
 c9228f262fe161232dd355ea92e02a2e  XayaUI_DevAssist/QAWalks-statcalc.lua
 f5668874e611a3bc713bc0494f323ec7  XayaUI_DevAssist/QAWalks.lua
-7315eb803200a32bea5ae336c3b63dec  XayaUI_DevAssist/XayaUI_DevAssist.toc
+9eb555a4403ddd9a532fb3d54459dfc6  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -620,7 +620,7 @@ ae2e62984bd5bfd45f9d6f8263d3c7ff  debug-log/2026-11-07-0800-externals-in-combat-
 5b1b639403f543e092346ae09ddcc2a5  debug-log/2026-11-07-0821-core-flat-buttons-after-reload-core-0.6.68.md
 734061302f633dca51c4bed4a765b949  debug-log/2026-11-07-0828-chat-sidebar-chat-0.6.35-core-0.6.68.md
 207f1e926c5f32d20753eac978570aff  debug-log/2026-11-07-0831-generate-buttons-qa-walk-dev-assist-0.7.19.md
-f3dbc7653b6020bf76b11670a34b95d1  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
+11ca1bd15a4b20683787044d31d1cac0  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
 103ad0d8335e96ca23cf3fdc9c00cfc5  debug-log/2026-11-07-0832-chat-icons-fade-with-chat-chat-0.6.36.md
 3876d05956571380cd7065a3c1091106  debug-log/2026-11-07-0832-nameplates-blizzard-options-0.2.0.md
 ad06c27afba094b812a18a7e83365a1c  debug-log/2026-11-07-0832-report-select-string-core-0.6.69.md
@@ -637,6 +637,7 @@ a326b79c14425ada983114c7b164d151  debug-log/2026-11-07-0846-settings-toplevel-pr
 46f10dce61f84964111b5b1ae99b7084  debug-log/2026-11-07-0915-brief-hover-texts-ui-65.md
 9d9fba6ecf478eef1ca84b0a9af34fc7  debug-log/2026-11-07-1053-settings-window-click-options-0.6.69.md
 b2033cc18f684d0683c7b256af55a309  debug-log/2026-11-07-1206-tooltip-helper-core-0.6.71.md
+092b3a4ba6d047f76c08aae1a5d409c5  debug-log/2026-11-07-1237-qa-questions-final-data-devassist-0.7.51.md
 bc4848c9195746ee73b35ed92e0170bf  debug-log/2026-11-07-1240-j31-checklist-text-devassist-0.7.34.md
 b47ae00e5b8610a69cdf2f171a506aed  debug-log/2026-11-07-1241-reskin-toasts-popups-reskin-0.6.11-devassist-0.7.42.md
 01e0e9ab2dcd137f36cfebad5e11508f  debug-log/2026-11-07-1247-reskin-loot-rolls-reskin-0.6.12-devassist-0.7.43.md
