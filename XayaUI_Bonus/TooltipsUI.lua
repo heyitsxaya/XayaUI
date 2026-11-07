@@ -36,7 +36,7 @@ function ns.BuildTooltipsTab(Notify)
     -- the tick box on its row in the left pane (xuiSwitch, as every other feature's); the four section switches stay on the page
     return {
         type = "group", name = "Enhanced Tooltips", order = 2, childGroups = "tab",
-        xuiSwitch = { type = "toggle", name = "Enhanced Tooltips",
+        xuiSwitch = { type = "toggle", name = "Enhanced Tooltips", tip = "Adds IDs, item level, enemy forces, formulas and type colours to game tooltips.",
             desc = "Turns the enhanced tooltips on or off as a whole (IDs, Item level, Enemy forces, Formulas, Type colours). Off: nothing of them is installed or runs, whatever their own switches say; their settings are kept. Once it was on, its tooltip hooks stay until you /reload but do nothing.",
             get = get({ "enabled" }), set = set({ "enabled" }) },
         args = {

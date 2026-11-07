@@ -12,7 +12,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 
 - **XayaUI** holds the rules (cooldown, aura and other triggers), cues, conditions and actions, combat aura tracking, sharing and backups, themes, the console, the minimap button and the Esc-menu button. Every other XayaUI addon needs it.
 - **XayaUI Options** is the settings window. It loads the first time you open it, so it costs nothing until then.
-- **XayaUI Chat** holds the Chat Panel, the Chat Bar, message filters and sounds, history and the privacy cover.
+- **XayaUI Chat** holds the Chat Panel, the Chat Data Panel, message filters and sounds, history and the privacy cover.
 - **XayaUI QoL** holds the cursor highlight and trail, the Character Toolkit (Stat Calculator), the Character Reskin, the Shopping List and Release Guard.
 - **XayaUI Bonus Features** holds tooltip additions, the Notepad, the Calculator and custom data panels.
 - **XayaUI Blizzard Reskin** puts XayaUI's look on Blizzard's frames without changing what they do (today: the Esc menu).
@@ -30,8 +30,8 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 
 ## Features at a glance
 
-- **Class/Spec Rule Creator.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Class/Spec Rule Creator.
-- **Chat Panel.** Reskins Blizzard's chat in place, with a Chat Bar, filters, history, per-tab sounds and a privacy cover. Blizzard UI Reskin > Chat Panel, or `/xui chat settings`.
+- **Auto-Generate Rules.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Auto-Generate Rules.
+- **Chat Panel.** Reskins Blizzard's chat in place, with a Chat Data Panel, filters, history, per-tab sounds and a privacy cover. Blizzard UI Reskin > Chat Panel, or `/xui chat settings`.
 - **Character Reskin.** Blizzard's character window in XayaUI's look: item levels coloured by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`.
 - **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. QoL > Character Toolkit, or `/xui stats`.
 - **Shopping List.** What your gear is missing and what your tracked recipes need. Blizzard UI Reskin > Shopping List, or `/xui shop`.
@@ -53,7 +53,7 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - `/xui unlock` lets you drag displays and groups; type it again to lock.
 - `/xui bug` makes a bug report.
 - `/xui debug` lists the diagnostic commands.
-- `/xui chat`, `/xui panel`, `/xui privacy` for the Chat Panel, the Chat Bar and the privacy cover.
+- `/xui chat`, `/xui panel`, `/xui privacy` for the Chat Panel, the Chat Data Panel and the privacy cover.
 - `/xui reskin`, `/xui stats`, `/xui shop`, `/xui cursor` for the QoL features.
 - `/xui notes`, `/xui calc`, `/xui data` for the Bonus Features.
 

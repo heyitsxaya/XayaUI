@@ -904,31 +904,33 @@ local function OffenseSections(ctx, out)
     out[#out + 1] = wp
 
     local tm = { key = "timing", title = "Timing and resources", items = {} }
-    it = Item("gcd", "Global Cooldown")
+    -- (QoL 0.7.39; UI-62 "GCD"; UI-63 / UI-64: the standard rule, CM.GcdFor, with the live reading as a check)
+    it = Item("gcd", "GCD")
     local g = CM.gcd
-    if CM.gcdHidden then
-        SetValue(it, HIDDEN)
-        if g then Pair(it, "Last read", F(g.dur, 2) .. " s", nil, true) end
-        Tip(it, "The game hides cooldown details while cooldowns are restricted (in combat); the last readable value is listed.")
-    elseif g then
-        it.value = F(g.dur, 2) .. " s"
-        Pair(it, "Read", "live, from the game", nil, true)
-        if num(g.haste) then
-            local unh = g.dur * (1 + g.haste / 100)
-            Pair(it, "Haste then", P(g.haste))
-            Pair(it, "Unhasted (estimate)", F(unh, 2) .. " s")
-            local step = 0.01
-            local target = (unh / (g.dur - step) - 1) * 100
-            local need = HasteRatingFor(target)
-            Pair(it, "For -0.01 s", ("%s haste = %s rating"):format(SP(target - g.haste), need and Big(need) or UNAV))
-            if math.abs(g.dur - 1.0) < 0.005 and g.haste > 1 then Pair(it, "Note", "looks like a fixed 1 s GCD: haste may not shorten it", "warn") end
+    do
+        local base, hasted, why = CM.GcdRule()
+        local hz = N(GetHaste)
+        local now = CM.GcdFor(hz)
+        if num(now) then
+            it.value = F(now, 2) .. " s"
+            Pair(it, "Rule", why, nil, true)
+        elseif hasted and hz == HIDDEN then
+            SetValue(it, HIDDEN)   -- (haste hidden in combat: the rule cannot be worked out)
+            Pair(it, "Rule", why, nil, true)
+        else
+            SetValue(it, nil)
+            Pair(it, "Rule", "not readable right now", "mute", true)
         end
-        Tip(it, "Read from the game's global cooldown (spell 61304, C_Spell.GetSpellCooldown) each time one runs, in or out of combat, while the game shows it.")
-        Tip(it, "Estimate: the unhasted figure assumes GCD = unhasted GCD / (1 + haste) and that haste sources multiply. A lower limit, if any, is not read from the game.")
-    else
-        SetValue(it, nil)
-        Pair(it, "Read", "cast any spell to read it", "mute", true)
-        Tip(it, "Read from the game's global cooldown (spell 61304) the next time one runs.")
+        if CM.gcdHidden then
+            Pair(it, "Live reading", g and num(g.dur) and ("last read " .. F(g.dur, 2) .. " s") or HID, "mute", true)
+        elseif g and num(g.dur) then
+            local exp = CM.GcdFor(g.haste)
+            local off = num(exp) and math.abs(exp - g.dur) > 0.02
+            Pair(it, "Live reading", F(g.dur, 2) .. " s" .. (off and (" (the rule gives " .. F(exp, 2) .. " s: a buff, a talent or the ability's own GCD)") or ""), off and "warn" or nil, true)
+        else
+            Pair(it, "Live reading", "cast any spell to read it", "mute", true)
+        end
+        Tip(it, "The standard GCD: most are 1.5 s, shortened by haste as a cast time is (1.5 / (1 + haste)), never below 0.75 s; rogues, druids in Cat Form, Brewmaster and Windwalker monks have a fixed 1.0 s that haste does not shorten. The live reading is the game's own (spell 61304, C_Spell.GetSpellCooldown) the last time one ran.")
     end
     tm.items[#tm.items + 1] = it
 
@@ -978,6 +980,48 @@ function CM.ReadGCD()
     end
     return false
 end
+
+-- The standard GCD calculation (QoL 0.7.39; REQUEST-LOG UI-63 / UI-64; Xaya: "GCD is generally universal in my understanding and is
+-- modified by haste except for energy-resource classes ... If so, this should be a standardized calculation", her answer "Formula +
+-- live check"). Research, with sources: docs/reference/GCD-RESEARCH-2026-11-07.md. Most GCDs are 1.5 s, shortened by haste as a cast
+-- time is (1.5 / (1 + haste)), never below 0.75 s (warcraft.wiki.gg "Global Cooldown" and "Haste"); energy melee have a fixed 1.0 s that
+-- haste does not shorten: rogues, druids in Cat Form, Brewmaster and Windwalker monks (warcraft.wiki.gg; Mistweaver is on the 1.5 s).
+-- A few buffs, talents and abilities differ (e.g. Outlaw's Adrenaline Rush, 0.8 s): the live reading (CM.ReadGCD) shows those, and the
+-- line says when it differs from the rule.
+-- Calls: UnitClass (globals.md), C_SpecializationInfo.GetSpecializationInfo (spec ID first), C_UnitAuras.GetPlayerAuraBySpellID(768)
+-- (Cat Form, wowhead spell=768; namespaces.md:5334, may be secret while auras are restricted: then the rule is unknown).
+CM.GCD_BASE, CM.GCD_FIXED, CM.GCD_FLOOR = 1.5, 1.0, 0.75
+local FIXED_GCD_SPECS = { [268] = "Brewmaster", [269] = "Windwalker" }
+local CAT_FORM = 768
+-- returns base, hasted (true: haste shortens it), why (text); nil when the rule cannot be read now
+function CM.GcdRule()
+    local _, classFile = R(UnitClass, "player")
+    if classFile == HIDDEN or type(classFile) ~= "string" then return nil end
+    if classFile == "ROGUE" then return CM.GCD_FIXED, false, "Rogue: a fixed 1.0 s (energy)" end
+    if classFile == "MONK" then
+        local spec = SpecIndex()
+        local id = spec and SpecInfo(spec)[1]
+        if num(id) and FIXED_GCD_SPECS[id] then return CM.GCD_FIXED, false, FIXED_GCD_SPECS[id] .. ": a fixed 1.0 s (energy)" end
+    end
+    if classFile == "DRUID" then
+        local aura = (C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID) and R(C_UnitAuras.GetPlayerAuraBySpellID, CAT_FORM) or nil
+        if aura == HIDDEN or (aura ~= nil and type(issecretvalue) == "function" and issecretvalue(aura)) then return nil end
+        if type(aura) == "table" then return CM.GCD_FIXED, false, "Cat Form: a fixed 1.0 s (energy)" end
+    end
+    return CM.GCD_BASE, true, "1.5 s / (1 + haste), never below 0.75 s"
+end
+-- the GCD by the rule at a haste percent (nil when the rule or the haste is unknown)
+function CM.GcdFor(haste)
+    local base, hasted = CM.GcdRule()
+    if not base then return nil end
+    if not hasted then return base end
+    if not num(haste) then return nil end
+    return math.max(CM.GCD_FLOOR, base / (1 + haste / 100))
+end
+-- (QoL 0.7.39; standing rule V21) read-only for Dev Assist's QA walkthrough (QAWalks-display.lua), through core's services
+if ns.Provide then ns.Provide("statModel", { GcdRule = function() return CM.GcdRule() end, GcdFor = function(h) return CM.GcdFor(h) end,
+    Live = function() return CM.gcd, CM.gcdHidden end,
+    Model = function(tab) return ns.CharToolkit_Model and ns.CharToolkit_Model(tab) or nil end }) end
 
 -------------------------------------------------------------------------------
 -- Gear: per slot (one reader for the Gear tab and the slot overlays), totals, durability and repair
@@ -2909,39 +2953,60 @@ local function StatMapSections(ctx, out)
     for _, it in ipairs(PowerItems(ptCur)) do Add(it) end
     local g = CM.gcd
     do
-        local it = Item("map_gcd", "Global cooldown")
+        -- (QoL 0.7.39; UI-62: "GCD"; UI-63 / UI-64, her answer "Formula + live check") the GCD by the standard rule (CM.GcdRule /
+        -- CM.GcdFor) at your haste now (and with your typed numbers), the rule it follows, and the live reading as a check
+        local it = Item("map_gcd", "GCD")
         it.bigPairs = true
-        if CM.gcdHidden then
-            SetValue(it, HIDDEN)
-            if g and num(g.dur) then MapNote(it, "Last read", F(g.dur, 2) .. " s") end
-        elseif g and num(g.dur) then
-            local g2 = Hasted(g.dur)
-            it.value = Was(g.dur, g2, function(v) return F(v, 2) .. " s" end)
-            MapNote(it, "From Haste", num(g.haste) and P(g.haste) or "", nil, "haste",
-                { note = num(g.haste) and ("haste when read" .. (g2 and ("; with your numbers about " .. F(g2, 2) .. " s (estimate)") or "")) or "read live" })
-            if num(g.haste) then
-                local unh = g.dur * (1 + g.haste / 100)
-                local need = (g.dur > 0.01) and HasteRatingFor((unh / (g.dur - 0.01) - 1) * 100) or nil
-                MapNote(it, "Unhasted (estimate)", F(unh, 2) .. " s", nil, nil, need and { note = Big(need) .. " more haste rating for -0.01 s" } or nil)
-                if math.abs(g.dur - 1.0) < 0.005 and g.haste > 1 then MapNote(it, "Note", "", "warn", nil, { note = "looks like a fixed 1 s GCD: haste may not shorten it" }) end
+        local base, hasted, why = CM.GcdRule()
+        local function S2(v) return F(v, 2) .. " s" end
+        local now = CM.GcdFor(h0)
+        local after = (num(h1) and num(h0) and math.abs(h1 - h0) > 0.0005) and CM.GcdFor(h1) or nil
+        if hasted and h0 == HIDDEN then
+            SetValue(it, HIDDEN)   -- (haste hidden in combat: the rule cannot be worked out)
+            MapNote(it, "Rule", "", nil, nil, { note = why })
+        elseif num(now) then
+            it.value = Was(now, after, S2)
+            MapNote(it, "Rule", "", nil, nil, { note = why })
+            if hasted then
+                MapNote(it, "From Haste", num(h0) and P(h0) or "", nil, "haste")
+                if now > CM.GCD_FLOOR + 0.005 then
+                    local need = HasteRatingFor((base / (now - 0.01) - 1) * 100)
+                    if need then MapNote(it, "For -0.01 s", "", nil, nil, { note = Big(need) .. " more haste rating" }) end
+                else
+                    MapNote(it, "Floor", "", "mute", nil, { note = "at the 0.75 s floor: more haste does not shorten it" })
+                end
             end
-            Tip(it, "Read from the game's global cooldown (spell 61304, C_Spell.GetSpellCooldown) each time one runs. Unhasted and with-your-numbers figures are estimates: GCD = unhasted / (1 + haste).")
         else
             SetValue(it, nil)
-            MapNote(it, "Read", "", "mute", nil, { note = "cast any spell to read it" })
+            MapNote(it, "Rule", "", "mute", nil, { note = "not readable right now (class, spec or form hidden)" })
         end
+        if CM.gcdHidden then
+            MapNote(it, "Live reading", HID, "mute", nil, (g and num(g.dur)) and { note = "last read " .. S2(g.dur) } or nil)
+        elseif g and num(g.dur) then
+            local exp = CM.GcdFor(g.haste)
+            local off = num(exp) and math.abs(exp - g.dur) > 0.02
+            MapNote(it, "Live reading", S2(g.dur), off and "warn" or nil, nil,
+                off and { note = "differs from the rule (" .. S2(exp) .. "): a buff, a talent or the ability's own GCD" } or nil)
+        else
+            MapNote(it, "Live reading", "", "mute", nil, { note = "cast any spell to read it" })
+        end
+        Tip(it, "The standard GCD: most are 1.5 s, shortened by haste as a cast time is (1.5 / (1 + haste)), never below 0.75 s; rogues, druids in Cat Form, Brewmaster and Windwalker monks have a fixed 1.0 s that haste does not shorten. The live reading is the game's own (spell 61304) the last time one ran; a buff or talent can make it differ.")
         Add(it)
     end
-    if g and num(g.dur) and num(g.haste) and not CM.gcdHidden then
-        Feeds("haste", "Global cooldown", "GCD", F(g.dur * (1 + g.haste / 100) - g.dur, 2) .. " s", false, true)
-    else Feeds("haste", "Global cooldown", "GCD", nil) end
+    -- haste feeds the GCD only where the rule says haste shortens it
+    do
+        local base, hasted = CM.GcdRule()
+        local now = CM.GcdFor(h0)
+        if hasted and num(now) and num(base) then Feeds("haste", "GCD", "GCD", F(base - now, 2) .. " s", false, false)
+        elseif not base then Feeds("haste", "GCD", "GCD", nil) end   -- (a fixed 1.0 s: haste does not feed it, so it is not listed)
+    end
     do
         -- GetUnitSpeed(unit: UnitToken) → currentSpeed: number, runSpeed: number, flightSpeed: number, swimSpeed: number ·
         -- SecretArguments=AllowedWhenUntainted, SecretWhenUnitStatsRestricted (globals.md:308); a percent of BASE_MOVEMENT_SPEED (7, the
         -- character window's own reading; constants.md)
         local cur, run = R(GetUnitSpeed, "player")
         local base = num(BASE_MOVEMENT_SPEED) and BASE_MOVEMENT_SPEED or 7
-        local it = Item("map_movespeed", "Movement speed")
+        local it = Item("map_movespeed", "Movement Speed")   -- (UI-62: every line in title case)
         it.bigPairs = true
         if cur == HIDDEN then SetValue(it, HIDDEN)
         elseif num(run) and run > 0 then
@@ -3065,7 +3130,7 @@ local function StatMapSections(ctx, out)
         Add(dmg)
     end
     do
-        local ce = Item("map_critfx", "Critical strike effectiveness")
+        local ce = Item("map_critfx", "Critical Strike Effectiveness")   -- (QoL 0.7.39; UI-62, Xaya: "title cased like every other line")
         ce.bigPairs = true
         local total, src = CritEffect()
         if total == nil then NotGiven(ce)
@@ -3204,11 +3269,15 @@ local function StatMapSections(ctx, out)
     end
     if hst then
         Add(MapRating(ctx, hst, "haste", function(it, src, w)
-            if g and num(g.dur) then
-                local est = (num(h0) and num(h1)) and g.dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                MapNote(it, "» Global cooldown", WasAbout(g.dur, est, function(v) return F(v, 2) .. " s" end))
-            elseif CM.gcdHidden then MapNote(it, "» Global cooldown", HID, "mute")
-            else MapNote(it, "» Global cooldown", "", "mute", nil, { note = "cast any spell to read it" }) end
+            -- (QoL 0.7.39; UI-62 / UI-63 / UI-64) the GCD by the standard rule, now and with your typed haste
+            do
+                local _, hasted = CM.GcdRule()
+                local gNow = CM.GcdFor(h0)
+                local gAfter = (num(h1) and num(h0) and math.abs(h1 - h0) > 0.0005) and CM.GcdFor(h1) or nil
+                if hasted and num(gNow) then MapNote(it, "» GCD", Was(gNow, gAfter, function(v) return F(v, 2) .. " s" end))
+                elseif hasted == false then MapNote(it, "» GCD", "", "mute", nil, { note = "a fixed 1.0 s: haste does not shorten it" })
+                else MapNote(it, "» GCD", "", "mute", nil, { note = "not readable right now" }) end
+            end
             local mh = N(UnitAttackSpeed, "player")
             if num(mh) then
                 local est = (num(h0) and num(h1)) and mh * (1 + h0 / 100) / (1 + h1 / 100) or nil
