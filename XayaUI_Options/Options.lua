@@ -232,6 +232,36 @@ function ns.OptionsApi.GreyWhileOff(g, offs)
         for i, f in ipairs(offs) do mine[i] = f end
         mine[#mine + 1] = function(info) local ok, v = pcall(sw.get, info); return ok and not v end
     end
+    -- (Options 0.6.63; UI-46: "clicking on a deactivated item should just show the summary without a nested box"; UI-48: "If the
+    -- item is not enabled no additional fill should exist") while off, a page's section tabs (childGroups "tab") are not drawn: no tab
+    -- row and no box under it, only the page's own text. Parts listed in the left pane (childGroups "tree") stay, greyed.
+    if #mine > 0 and g.childGroups == "tab" then
+        -- a page whose text is all inside its section tabs (Data Panels, Enhanced Tooltips) would be empty while off: it shows its
+        -- switch's one sentence (Options 0.6.63, UI-46 "just show the summary"; which text is the summary is a session choice)
+        local own = false
+        for _, o in pairs(type(g.args) == "table" and g.args or {}) do
+            if type(o) == "table" and (o.type ~= "group" or o.inline) then own = true; break end
+        end
+        if not own and type(sw) == "table" and type(g.args) == "table" and not g.args.xuiOffSummary then
+            local offs2 = mine
+            g.args.xuiOffSummary = { type = "description", order = 0, width = "full", fontSize = "medium",
+                name = function(info) local f = ns.OptionsApi.SwitchSentence; return f and f(sw, info) or "" end,
+                hidden = function(info) for _, off in ipairs(offs2) do if off(info) then return false end end return true end }
+        end
+        for _, o in pairs(type(g.args) == "table" and g.args or {}) do
+            if type(o) == "table" and o.type == "group" and not o.inline and not o.xuiOffHidden then
+                o.xuiOffHidden = true
+                local oldH = o.hidden
+                if type(oldH) ~= "string" then
+                    o.hidden = function(info, ...)
+                        for _, off in ipairs(mine) do if off(info) then return true end end
+                        if type(oldH) == "function" then return oldH(info, ...) end
+                        return oldH
+                    end
+                end
+            end
+        end
+    end
     for _, o in pairs(type(g.args) == "table" and g.args or {}) do
         if type(o) == "table" then
             if o.type == "group" and not o.inline then ns.OptionsApi.GreyWhileOff(o, mine)
@@ -267,7 +297,7 @@ function ns.OptionsApi.NestX(button, level, x0)
     local tree = ns.OptionsApi.FeatureRow(button)
     local parent = tree and tostring(button.uniquevalue or ""):match("^(.+)\001[^\001]+$")
     local pl = parent and tree.xuiNameL and tree.xuiNameL[parent]
-    return pl and (pl + 8) or x0
+    return pl and (pl + ns.Style.nest.child) or x0
 end
 function ns.OptionsApi.NoteNameL(button)
     local tree = ns.OptionsApi.FeatureRow(button)
@@ -276,7 +306,13 @@ function ns.OptionsApi.NoteNameL(button)
     tree.xuiNameL[tostring(button.uniquevalue or "")] = button.xuiTextL
 end
 -- an unticked feature's row (or a part of one) shows its name in grey
-ns.OptionsApi.GREY = { 0.5, 0.5, 0.5 }
+ns.OptionsApi.GREY = ns.Style.grey   -- (core ns.Style, UI-47)
+-- (Options 0.6.63; UI-49 "theme has to tie into the skin.lua in some way") the grey is the theme's Muted text colour ("Hints and
+-- disabled items"); ns.Style.grey only when the theme is missing
+function ns.OptionsApi.Muted()
+    local TH = ns.Theme
+    return (TH and TH.Col) and TH.Col("xui-text-muted", "text", ns.OptionsApi.GREY) or ns.OptionsApi.GREY
+end
 function ns.OptionsApi.RowOff(button)
     local tree, user = ns.OptionsApi.FeatureRow(button)
     if not tree then return false end
@@ -301,7 +337,7 @@ function ns.OptionsApi.GreyRow(button)
     if not (fs and ns.OptionsApi.RowOff(button)) then return end
     local t = fs:GetText()
     if type(t) == "string" and t:find("|c", 1, true) then fs:SetText((t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))) end
-    local c = ns.OptionsApi.GREY
+    local c = ns.OptionsApi.Muted()
     fs:SetTextColor(c[1], c[2], c[3])
 end
 
@@ -3725,7 +3761,7 @@ function BuildClassCreator()
     end
     -- Xaya 2026-11-05: the auto-populate table (AutoPicker.lua): the list of the button pressed, ticked and set up before anything is made
     if ns.AutoPicker and ns.AutoPicker.Args then for k, v in pairs(ns.AutoPicker.Args(Notify, Tree.Keep)) do args[k] = v end end
-    return { type = "group", name = "Class/Spec Rule Creator", order = 2, hidden = ns.PageHidden("creator"), args = args }
+    return { type = "group", name = "Auto-Generate Rules", order = 2, hidden = ns.PageHidden("creator"), args = args }
 end
 end   -- do (class/spec creator)
 
@@ -4897,7 +4933,7 @@ local function BuildOptions()
     local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = binArgs }
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
-    creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Class/Spec Rule Creator"
+    creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Auto-Generate Rules"   -- (Options 0.6.63, UI-45: her name; was "Class/Spec Rule Creator")
     local track = { type = "group", name = "Rules", order = 1, childGroups = "tab", args = {
         enabledTab = enabledTab, draftsTab = draftsTab, smartTab = smartTab, disabledTab = disabledTab, creatorTab = creatorTab } }
 
@@ -5159,9 +5195,28 @@ local function BuildOptions()
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
+    pcall(ns.OptionsApi.HalfInputs, out)
     return out
 end
 ns.BuildOptionsTable = BuildOptions
+-- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for text inputs: "Half width, two per row") every one-line text input that
+-- would take a whole row or most of it (width "full", none given, or "double": 340 px, the Shopping List's "Enchant: Head" in her
+-- screenshot) is half the row (AceConfigDialog's relative width; 0.49 so two fit beside the
+-- gap). Multi-line boxes stay full width; an input drawn by its own widget (dialogControl: the spell search and the like) keeps its own
+-- size (a session choice, listed in docs/design/DISPLAY-RULES.md for her look).
+function ns.OptionsApi.HalfInputs(t, depth)
+    depth = depth or 0
+    if type(t) ~= "table" or depth > 14 then return end
+    for _, o in pairs(type(t.args) == "table" and t.args or {}) do
+        if type(o) == "table" then
+            if o.type == "input" and not o.multiline and not o.dialogControl and (o.width == nil or o.width == "full" or o.width == "double") then
+                o.width, o.relWidth = "relative", 0.49
+            elseif o.type == "group" then
+                ns.OptionsApi.HalfInputs(o, depth + 1)
+            end
+        end
+    end
+end
 
 -- skipValidation: the options tree is very large (every rule repeats in several lists); Ace's one-off type check of it can exceed
 -- the game's script time limit ("script ran too long") when the window first opens.
@@ -6793,7 +6848,7 @@ local ROW_TOGGLES = {
 -- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
 -- the parts are hidden too, so the box never moves under the mouse when it is clicked.
 -- Only rows of the feature tabs are looked at (the Rules trees skip at once: the window repaints every row 4 times a second).
-Tree.SWITCH_W, Tree.SWITCH_GAP = 16, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
+Tree.SWITCH_W, Tree.SWITCH_GAP = ns.Style.switch.size, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
 function Tree.RowSwitch(button)
     local tree = button and button.obj
     local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
@@ -6820,7 +6875,7 @@ function Tree.RowSwitch(button)
             if type(c) == "table" and c.type == "group" and not c.inline then parts = true; break end
         end
     end
-    return sw, info, parts
+    return sw, info, parts, g
 end
 -- A click on a row's tick box: the switch's own set, then exactly one redraw. That redraw reuses the tree drawn last (Tree.Keep):
 -- a switch's state is read only by functions inside the tree (get / hidden / disabled / name), never while the tree is built, so a
@@ -6842,14 +6897,33 @@ function Tree.SwitchClick(box)
     pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
     Tree.keep = nil
 end
+-- Hover on a row's tick box (Options 0.6.63; REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default.
+-- all should just show a one-sentence description and an enabled/disabled status"): the feature's name (its row's), one sentence
+-- (the switch's tip; without one, the first sentence of its desc), and Enabled / Disabled. Never an "Off: ..." text.
+function Tree.OneSentence(sw, info)
+    local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
+    local t = val(sw.tip)
+    if type(t) ~= "string" or t == "" then
+        local d = val(sw.desc)
+        t = type(d) == "string" and (d:match("^(.-[%.!?])%s") or d) or ""
+        if t:match("^Off[:%s]") then t = "" end
+    end
+    return t
+end
+ns.OptionsApi.SwitchSentence = Tree.OneSentence
 function Tree.SwitchTip(box)
-    local sw, info = Tree.RowSwitch(box:GetParent())
+    local sw, info, _, g = Tree.RowSwitch(box:GetParent())
     if not sw then return end
     local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
+    local on = false
+    if type(sw.get) == "function" then local ok, v = pcall(sw.get, info); on = ok and v and true or false end
     GameTooltip:SetOwner(box, "ANCHOR_RIGHT")
-    GameTooltip:SetText(tostring(val(sw.name) or ""))
-    local d = val(sw.desc)
-    if type(d) == "string" and d ~= "" then GameTooltip:AddLine(d, 1, 1, 1, true) end
+    GameTooltip:SetText(tostring(val(g and g.name) or val(sw.name) or ""))
+    local t = Tree.OneSentence(sw, info)
+    if t ~= "" then GameTooltip:AddLine(t, 1, 1, 1, true) end
+    -- the status in theme colours (UI-49): Enabled in the theme's body text, Disabled in its muted text
+    local c = on and ((ns.Theme and ns.Theme.Col) and ns.Theme.Col("xui-text", "text", { 1, 1, 1, 1 }) or { 1, 1, 1, 1 }) or ns.OptionsApi.Muted()
+    GameTooltip:AddLine(on and "Enabled" or "Disabled", c[1], c[2], c[3])
     GameTooltip:Show()
 end
 -- Called by DecorateButton for every row (toggleCfg: the row already has a ROW_TOGGLES box; x0: where the row's arrow slot starts;
@@ -7275,6 +7349,12 @@ local function DecorateButton(button)
         local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
         local iconSlots = toggleCfg and 26 or swShift   -- only an on / off tick box sits left of the label now
         local lead = (tw > 0) and tw or ((chevMode == "right") and 0 or CHEV_W)   -- icon column, or the left chevron slot
+        -- (Options 0.6.63; UI-47 / UI-8: "Parent's name + 8 px") a feature tab's child row with no tick box and no open / close button
+        -- keeps no empty slot: its name itself starts 8 px right of its parent's name (it started 27 px in: the empty 16 px slot + 3)
+        if (button.level or 1) >= 2 and tw == 0 and not canExpand and not toggleCfg and swShift == 0
+            and not (button.xuiSwitchBox and button.xuiSwitchBox:IsShown()) and ns.OptionsApi.FeatureRow(button) then
+            lead = -3
+        end
         if tw > 0 then
             local h = math.max(button:GetHeight() or 0, ns.TYPE_ICON_SIDEBAR_H + 6)
             if math.abs((button:GetHeight() or 0) - h) > 0.5 then button:SetHeight(h) end

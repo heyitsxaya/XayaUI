@@ -96,7 +96,7 @@ function ns.BuildChatTab(Notify)
             hidden = function() return C.BlockedReason() == nil end,
             name = function() return "|cffff5555Blocked:|r " .. tostring(C.BlockedReason()) end },
         intro = note("Chat Panel restyles Blizzard's own chat window in place and puts it in one block: the tabs, the text, and the line you type in are inside the pane, and the Chat Data Panel is part of the same block. /xui chat shows what ran and what failed.", 2),
-        enabled = { type = "toggle", name = "Enable Chat Panel", order = 3, width = "full",
+        enabled = { type = "toggle", name = "Enable Chat Panel", order = 3, width = "full", tip = "Restyles Blizzard's chat into one clean block; untick to get Blizzard's chat back.",
             desc = "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing.",
             get = function() return S().enabled and true or false end,
             set = function(_, v) local s = ns.chat2; if s then s.enabled = v and true or false end; Re() end },
