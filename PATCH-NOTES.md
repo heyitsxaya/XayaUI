@@ -22,6 +22,16 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — Chat QA Walkthroughs
+
+### Dev Assist 0.7.10
+
+**In-game QA**
+- Added four Chat walkthroughs to /xui dev qa for the old chat issues: move, resize and hide the chat (#210); arrow, button strip, panel and bottom edge (#229); hiding keeps the panel's size with no outlines (#250); one arrow, and the panel follows the chat (#296).
+  - "Do it for me" does the setup, the addon reads the chat's real frames, and the last step puts your chat back as it was.
+- After the check, these walkthroughs offer an "Accept: Pass" or "Accept: Fail" button with the addon's verdict. Nothing is recorded until you click it, and Pass, Fail and Skip still work.
+  *Developers' notes: Not yet tested in game (QA D21). The last step of #296 is a decision for you and has no Accept.*
+
 ## 2026-11-07 — Bar Cues
 
 ### XayaUI 0.6.58

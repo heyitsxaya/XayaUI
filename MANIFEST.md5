@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-395cb2037674f357ba21efe4c7af7957  PATCH-NOTES.md
+9fd82e605f1ad6f89fcffb721a3c0c40  PATCH-NOTES.md
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
@@ -185,7 +185,7 @@ a7618f47b1dcc3424834ce73878ebfa4  XayaUI_Options/AutoPicker.lua
 d6254cdbc4c4e62855c3d5ec727d3373  XayaUI_Options/Drafts.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 a4e3768100dcd843a512a4c769765a3d  XayaUI_Options/InfoPane.lua
-544e3ce679068ff7f6bd68e9e0d6910b  XayaUI_Options/InfoPaneData.lua
+9bfa5f477f4d9711050ba196bd1f37ed  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -227,7 +227,7 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 abdae05ed3e4b73e9f7969a75da21fd3  XayaUI_Options/Skin.lua
 eac6760f4421c937a3ce3171912561df  XayaUI_Options/ThemeEditor.lua
 19bfbdfc5f8dfe8de4c2f9f437ce955b  XayaUI_Options/TriggersEditor.lua
-457b334eb8e7e37c117892a3d97bbea1  XayaUI_Options/XayaUI_Options.toc
+fb277f251990cdce1d5a46a99a9a5dde  XayaUI_Options/XayaUI_Options.toc
 c5fab0ea598691a041872b61a749f51c  XayaUI_QoL/CharacterModel.lua
 9a778ac3bac6684e0a310244548fbab3  XayaUI_QoL/CharacterReskin.lua
 a812df94ff9392d7b04710ed94a533d5  XayaUI_QoL/CharacterToolkit.lua
@@ -564,7 +564,7 @@ a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-
 df0b0db8c4ec95be10546f6a19bef400  docs/ROADMAP.md
 83b0df21d9813f58d0a4290b48e16cd5  docs/SESSION-START-SUMMARY.md
 afcc38a3ac15d7ea9f3c2511eb714955  docs/USER-GUIDE.md
-c8fc4bbf66335cd4b564da20d22683be  docs/WHATS-NEW.md
+8c12783f20b227d22fe30ce24d61d9ad  docs/WHATS-NEW.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
 026a22d0a31095631a2889170262099c  docs/issue-screenshots/insivius-tts-no-sound-channel.png
