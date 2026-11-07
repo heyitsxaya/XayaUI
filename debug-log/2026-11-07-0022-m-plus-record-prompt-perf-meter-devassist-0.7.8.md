@@ -44,3 +44,15 @@ Logged 2026-11-07 00:22 UTC. Nothing here has run in the game.
 - Per-addon numbers only (the game's meter); per-feature numbers wait for the CLEAN-6 dispatcher (UI bugs session).
 - Measuring costs CPU; the engine timer runs per combat only while Perf is on.
 - "Automatic" = records by itself; someone has to run the key.
+
+## Addendum 2026-11-07 06:20 UTC: V21 walkthroughs (Dev Assist 0.7.12)
+- Rule V21 (relayed, REQUEST-LOG A15 P-6): every feature gets an in-game walkthrough "with pre-fill confirmation options or data capturing".
+- `XayaUI_DevAssist/QAWalks-perf.lua` (new): "Performance: the \"Record this run?\" prompt (J17)" (6 steps), "Performance: after Confirm
+  (J17 part 2)" (1 step, run after the reload: a walkthrough in progress does not survive a reload, INFERENCE from QAWalk.lua keeping
+  the run in a local), "Performance: send back a recorded run (J18)" (counts fights, bosses ended, meter readings, markers; the
+  upload step is a question, noVerdict). All prefill = true. J17's first step remembers the Debugging settings in
+  XayaUIDevAssistDB.qa.perfBefore so part 2 can compare them.
+- `RunRecord.lua`: read-only accessors RR.State, RR.Declined. Removal note now names both J17 walkthroughs.
+- `tests/qa_perf_walks_run.py`: 21 checks; each step's check is tried in the done and not-done state (Pass and Fail both seen).
+  First run caught two counting faults (a fight and a boss each write two lines; a meter reading writes one line per addon); fixed.
+- Version 0.7.12: 0.7.10 is on main, 0.7.11 is the lander's b51d3b9.

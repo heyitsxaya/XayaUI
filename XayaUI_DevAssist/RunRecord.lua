@@ -1,10 +1,11 @@
 -------------------------------------------------------------------------------
--- RunRecord.lua (XayaUI Dev Assist 0.7.8): "Record this run?" for Mythic 0 and Mythic+ dungeons.
+-- RunRecord.lua (XayaUI Dev Assist 0.7.12): "Record this run?" for Mythic 0 and Mythic+ dungeons.
 --
 -- ONE-PUSH FEATURE. Xaya, 2026-11-07 (REQUEST-LOG A12 CLEAN-10, A15 P-4): "For exactly one main push for the time being, have dev
 -- assist pre-loaded with a prompt that auto-pops when it detects a player has entered a m+/m0 instance. Suggest recording the run.
 -- "Accept" button will turn on every dev assist tool reasonably required to assess performance and functionality." Her answer:
--- "Ships once, then removed". REMOVE THIS FILE (and its line in XayaUI_DevAssist.toc, its QA step and tests/run_record_run.py) in the
+-- "Ships once, then removed". REMOVE THIS FILE (and its line in XayaUI_DevAssist.toc, QA J17, the J17 walkthrough in
+-- QAWalks-perf.lua and tests/run_record_run.py) in the
 -- landing AFTER the one that ships it. The recording tools themselves stay (DevRecord.lua, incl. the per-addon meter lines).
 --
 -- What it does (her answers, A15 P-4 / P-5):
@@ -55,6 +56,7 @@ local function Ui()
     return CueRulesDB.ui
 end
 local function State() local u = Ui(); return type(u.runRecord) == "table" and u.runRecord or nil end
+RR.State = State   -- (read by QAWalks-perf.lua)
 local function Clean(v) if v == nil or issecret(v) then return nil end return v end
 local function InCombat()
     local ok, c = pcall(function() return (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player")) end)
@@ -166,6 +168,7 @@ local function Hide() if W then W:Hide() end end
 -- When to ask
 -------------------------------------------------------------------------------
 local declined, pending = nil, nil   -- declined: the instance answered "Not now" this visit; pending: a check waiting for combat end
+function RR.Declined() return declined end   -- (read by QAWalks-perf.lua)
 local function AskStart(kind, instID, name)
     Show("Record this run?",
         ("%s: %s. Dev Assist can record this run for the performance test: rule and display activity, the engine's timing per fight and the game's CPU meter per addon. Accept turns on what a dungeon needs and lists it; it stays off: %s.")
