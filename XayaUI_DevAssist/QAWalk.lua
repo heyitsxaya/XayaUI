@@ -17,6 +17,8 @@
 -- answer", and her answer on how: "Pre-fill, I confirm"): a walkthrough registered with prefill = true offers the addon's own verdict on
 -- one button, "Accept: Pass" / "Accept: Fail", which records it with the check's note. Nothing is recorded without that click; Pass /
 -- Fail / Skip still work. No Accept when the check could not run, or on a step marked noVerdict = true (a question for the person).
+-- The list (Dev Assist 0.7.52; Xaya 2026-11-07, REQUEST-LOG PS-16..PS-18): a table, Codes | Title | Area | Status | New | Open, with a
+-- search box, tag chips and sortable columns (QATable.lua, shared with the review popup); the window widens to 900 x 560 for it.
 -------------------------------------------------------------------------------
 local QA = { walks = {}, list = {} }
 XayaUI_DevQA = QA
@@ -131,6 +133,8 @@ end
 -------------------------------------------------------------------------------
 local W
 local ACC = { 0.55, 0.35, 0.95 }
+-- the window's size: the list page is wider and taller, for the table (0.7.52); the step and end pages keep 660 x 440
+local LIST_W, LIST_H, STEP_W, STEP_H = 900, 560, 660, 440
 local function Btn(parent, label, w, onClick)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetSize(w or 90, 22); b:SetText(label)
@@ -153,7 +157,7 @@ local ShowList, ShowStep, ShowEnd
 local function Build()
     if W then return end
     W = CreateFrame("Frame", "XayaUIDevQAWindow", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-    W:SetSize(660, 440); W:SetPoint("CENTER"); W:SetFrameStrata("DIALOG"); W:SetClampedToScreen(true)
+    W:SetSize(STEP_W, STEP_H); W:SetPoint("CENTER"); W:SetFrameStrata("DIALOG"); W:SetClampedToScreen(true)
     W:EnableMouse(true); W:SetMovable(true); W:RegisterForDrag("LeftButton")
     W:SetScript("OnDragStart", W.StartMoving); W:SetScript("OnDragStop", W.StopMovingOrSizing)
     if W.SetBackdrop then
@@ -162,16 +166,9 @@ local function Build()
     end
     W.title = W:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); W.title:SetPoint("TOPLEFT", 14, -12)
     local close = CreateFrame("Button", nil, W, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", 2, 2)
-    -- list page: a scrolling list (the walkthroughs do not fit the window)
-    W.rows = {}
-    W.listScroll = CreateFrame("ScrollFrame", nil, W)
-    W.listScroll:SetPoint("TOPLEFT", 14, -40); W.listScroll:SetPoint("BOTTOMRIGHT", -14, 14)
-    W.listChild = CreateFrame("Frame", nil, W.listScroll); W.listChild:SetSize(630, 10); W.listScroll:SetScrollChild(W.listChild)
-    W.listScroll:EnableMouseWheel(true)
-    W.listScroll:SetScript("OnMouseWheel", function(self, d)
-        local maxS = math.max(0, (W.listChild:GetHeight() or 0) - (self:GetHeight() or 0))
-        self:SetVerticalScroll(math.max(0, math.min(maxS, (self:GetVerticalScroll() or 0) - d * 48)))
-    end)
+    -- list page (0.7.52): the walkthrough table with search, tag chips and sortable columns (QATable.lua), in a wider window
+    W.tbl = QA.Table and QA.Table.Create(W, { left = 14, top = 40, bottom = 14, width = LIST_W - 28, onOpen = function(id) QA.Start(id) end })
+    W.rows = W.tbl and W.tbl.rows or {}
     -- step page
     W.stepNo = W:CreateFontString(nil, "OVERLAY", "GameFontDisable"); W.stepNo:SetPoint("TOPLEFT", 14, -40)
     -- the step's text scrolls when it is long (some checklist items are over 1000 characters)
@@ -217,33 +214,21 @@ local function ShowOnly(list)
     for _, k in ipairs(list or {}) do want[k] = true end
     for _, k in ipairs(STEP_WIDGETS) do W[k]:SetShown(want[k] and true or false) end
     for _, k in ipairs(END_WIDGETS) do W[k]:SetShown(want[k] and true or false) end
-    for _, r in ipairs(W.rows) do r:Hide() end
-    if W.listScroll then W.listScroll:Hide() end
+    if W.tbl then W.tbl:SetShown(false) end
+    W:SetSize(STEP_W, STEP_H)
 end
 
 function ShowList()
     Build()
     ShowOnly({})
+    W:SetSize(LIST_W, LIST_H)
     W.title:SetText("XayaUI QA walkthroughs")
-    for i, id in ipairs(QA.list) do
-        local def = QA.walks[id]
-        local r = W.rows[i]
-        if not r then
-            r = CreateFrame("Button", nil, W.listChild)
-            r:SetSize(630, 22)
-            r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); r.text:SetPoint("LEFT", 6, 0); r.text:SetJustifyH("LEFT")
-            r.status = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); r.status:SetPoint("RIGHT", -6, 0)
-            local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(r); hl:SetColorTexture(1, 1, 1, 0.08)
-            W.rows[i] = r
-        end
-        r:ClearAllPoints(); r:SetPoint("TOPLEFT", W.listChild, "TOPLEFT", 0, -(i - 1) * 24)
-        r.text:SetText(("%s%s  |cff999999(%d steps)|r"):format(def.qa and ("[" .. def.qa .. "] ") or "", tostring(def.title), #def.steps))
-        r.status:SetText(Status(id))
-        r:SetScript("OnClick", function() QA.Start(id) end)
-        r:Show()
+    if W.tbl then
+        local states, list = QA.Table.States(), {}
+        for _, id in ipairs(QA.list) do list[#list + 1] = { id = id, state = states[id] } end
+        W.tbl:SetShown(true)
+        W.tbl:SetEntries(list)
     end
-    W.listChild:SetHeight(math.max(10, #QA.list * 24))
-    W.listScroll:Show(); W.listScroll:SetVerticalScroll(0)
     W.list = true
     W:Show()
 end

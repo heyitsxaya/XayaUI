@@ -104,7 +104,7 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
 -- audit D34 (Dev Assist 0.7.19): what a walkthrough's "Do it for me" changed is put back by its last step
 local reskinWas, shopWas
-QA.Register("reskin-switches", { title = "Blizzard Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, prefill = true, steps = {
+QA.Register("reskin-switches", { title = "Blizzard Reskin: the switch for all restyled Blizzard windows, and the switch for each one", qa = "E2e", order = 120, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
         setup = function() local ns = NS(); if ns.ReskinTabOn and reskinWas == nil then reskinWas = ns.ReskinTabOn() and true or false end; if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },

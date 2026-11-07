@@ -384,7 +384,7 @@ local function OnScreenRule()
     for k in tostring(sel):gmatch("[^\001]+") do g = g and g.args and g.args[k] end
     return key, g
 end
-QA.Register("perf-settings-click", { title = "Performance: a click with a rule open (J31)", area = "Dev Assist", qa = "J31", order = 310, prefill = true, steps = {
+QA.Register("perf-settings-click", { title = "Speed: how fast a click reacts while a rule is open (J31)", area = "Dev Assist", qa = "J31", order = 310, prefill = true, steps = {
     { text = "Open the settings window (|cff88ccff/xui|r), Rules tab, and click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw: under 100 ms is the goal (before: about 1.4 s per click with your rules).",
         check = function()
             local p = Perf()
