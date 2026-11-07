@@ -193,7 +193,7 @@ check("A21 (sanity) no module errors", len(list(run("return C.errors").keys())) 
 # ===================================================================================================================================
 ALL_OFF = """CueRulesDB.chat2 = { enabled = true, barOn = false, fadeOn = false, histOn = false, histConsole = false, soundsOn = false,
   whisperSoundsOn = false, spamRepeat = false, spamPhrases = '', links = false, ignoreClick = false, histButton = false, scrollOwn = false,
-  inputHint = false, useTheme = false }
+  inputHint = false, useTheme = false, whisperSelect = false }
 CueRulesDB.chat = { privBtn = false, privOn = false, privReveal = false }"""
 lua, W, run, frames = world(ALL_OFF)
 cnt, names = both(run, "ONUPDATES")
@@ -210,6 +210,12 @@ check("B4 history, tab sounds, whisper overrides and wake-on-message off: no cha
 # devassist_debug_tools_run.py runs the report with it. Without it no frame of the Chat Panel listens to the whisper events.)
 check("B4b without XayaUI Dev Assist no Chat Panel frame counts whispers (the /xui chat whispers counters are Dev Assist's)",
       n(run, "DIAGFRAMES") == 0, n(run, "DIAGFRAMES"))
+# (Chat 0.6.31, CHATREV-10) "Switch to a new whisper tab I start": on registers exactly the two sent-whisper events, off none again
+run("ns.chat2.whisperSelect = true; C.Refresh(); W.flush()")
+check("B4c whisper-tab switch on: only the two sent-whisper events are registered for it",
+      both(run, "BUSEVENTS") == (2, "CHAT_MSG_BN_WHISPER_INFORM,CHAT_MSG_WHISPER_INFORM"), both(run, "BUSEVENTS"))
+run("ns.chat2.whisperSelect = false; C.Refresh(); W.flush()")
+check("B4d whisper-tab switch off again: no chat message event registered", n(run, "BUSEVENTS") == 0, both(run, "BUSEVENTS"))
 s0 = run("return SNAP()")
 run("SAY('hello there'); W.fireEvent('CHAT_MSG_WHISPER', 'hi', 'Kai-R'); W.fireEvent('CHAT_MSG_PARTY', 'pull', 'Tank-R')")
 d = run("return DELTA(...)", s0)

@@ -33,7 +33,7 @@ The hub decided (2026-11-07 ~08:35 UTC): no successor tonight; this session is a
 
 ## Versions claimed
 - On main from this session: core 0.6.55-0.6.56, Options 0.6.54-0.6.55, QoL 0.7.33 (shipped as 0.6.57 / 0.6.57 / 0.7.34 in the bundle).
-- On the branch: Dev Assist 0.7.13 (the lander may relabel; see the hub's version registry).
+- On the branch: Dev Assist 0.7.15 (the lander may relabel; see the hub's version registry).
 
 ## Questions sent to the QA flow (session_014bN6tUZLKHa2NXorHRJghL)
 S3-Q1 nudge step and target; Q2 exit prompt buttons / Escape; Q3 lock per group; Q4 crash draft; Q5 G7 labels and scope; Q6 G9 fit
