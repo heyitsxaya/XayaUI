@@ -1,6 +1,6 @@
 # Platform split: design (2026-11-07)
 
-Status: **DESIGN, not approved.** No code moves until Xaya approves this file (open questions in section 9).
+Status: **APPROVED to proceed** (Xaya, 2026-11-07: "Go ahead with sorting out how you want to refactor / reorganize the codebase -- it's going to need extensive debugging either way"). Execution order: section 15. Open questions that must be answered before a given phase are listed there.
 Written by session_014bN6tWwZM5hKvbZkMFd4zN on branch `claude/lucid-mayer-pv4ytn`, against main `b777793`.
 Every count below was measured on `b777793`; how each was taken is in section 11.
 
@@ -332,3 +332,37 @@ No time estimate yet: P2 is the first phase large enough to measure the pace on.
 - Options.lua: 9,033 lines, 291 lines starting `function` / `local function`; 42 of 190 non-merge code commits since 2026-11-01
   touch it.
 - Test paths: `git grep -l` in `tests/` and `tools/` for `XayaUI/<tracking file>` (16) and `XayaUI/(Core|Modules|Theme|Share|Console).lua` (58).
+
+## 15. Execution order (decided 2026-11-07)
+
+Her words: "At this point, it seems to me most things don't actually work. Go ahead with sorting out how you want to refactor /
+reorganize the codebase -- it's going to need extensive debugging either way".
+
+**Baseline result (closed early; enough evidence).** Run on main f3fbc4b:
+
+| Walkthrough | Result | Issues |
+|---|---|---|
+| bars-cues | 4 pass, 4 fail, 1 skip | #461, #462 |
+| perf-settings-click (J31) | 2 pass, 2 fail (rule editor click 136-221 ms) | #467, #482, #483 |
+| reskin-switches | 1 pass, 3 fail | #480 |
+| chat-improved-split | 2 pass, 1 fail | #480 |
+| settings-toplevel | 6 pass, 2 fail | #484 |
+| audit-opt-bin | 0 pass, 4 fail | #485, #487 |
+| audit-engine | deferred by her | |
+| audit-backup-replace, audit-shopping-list, statcalc-rows | not run (baseline closed) | |
+
+About a third of the failures were the walkthroughs themselves (passing on a saved setting, stale menu locations, lost state, no
+reload). The walkthroughs are the regression tool for the split, so they are fixed first.
+
+| Order | Phase | Scope | Needs from her before it starts |
+|---|---|---|---|
+| 1 | **P0.5 Testing tools** | Dev Assist only: no check passes without testing the thing (#461 steps 4/5/9, #467 J31, #480 E2e/D25 around a reload, #485 state and cleanup, cleanup steps not Pass/Fail (#484), all-skipped runs show Skipped); navigation and state (#465); title wrap and opaque windows (#481); search row (#466); the two comma-splice titles (#486) | nothing |
+| 2 | **P1 Platform services** | `RegisterProfilePart`, `RegisterBinKind`, theme scopes with two levels (module, element; element-only use still works, so Q7 does not block), services for Bonus; built next to the old code, nothing removed | nothing (A11 decides import mode; built as a parameter) |
+| 3 | **P2 Settings seam** | `ns.Settings(module)`, all 490 references, area by area | nothing |
+| 4 | **P3 Options split** | rule editor and page code out of Options.lua into files; Options stays load-on-demand | Q1 (proposed answer used unless she objects) |
+| 5 | **P4 Code move** | `XayaUI_<name>` folder, Core.lua / Share.lua / RecycleBin.lua cut, GameMenuButton.lua, test paths | **B2 (module name), B3 / D8** |
+| 6 | **P5 / P6 Migration** | per-module saved variables, copy not move, rules last | A11 |
+| 7 | **Debugging** | #461-#487 by area, on the new structure, each with a fixed walkthrough | the A-row answers per issue |
+
+One worker at a time on the split (every phase touches shared files). Each phase lands on main as one step through the lander's
+gate (full suite, pitfalls, precheck on the exact commit). Bug fixes wait for their area's debugging pass unless they block her play.

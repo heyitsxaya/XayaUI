@@ -616,6 +616,9 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-44 | "the window is also broken" (walkthrough runner: title past the edge, see-through) | OPEN; title overflow is a regression from 0.7.52 | #481 |
 | PS-45 | "how do I navigate back to another walkthrough from the window?" | ANSWERED (X, then /xui dev qa); fix in #465 | #465 |
 | PS-46 | "save this for later, this will be very time consuming from a practical standpoint" (baseline audit-engine) | DONE: deferred in PLATFORM-SPLIT 8.1 | |
+| PS-47 | J31 rerun, settings-toplevel and audit-opt-bin results; "clicked later -- unsure if it should say fail" / "last step see no difference" / "import button has wrong alignment, otherwise good" / "where is rules, recycle bin?" / "????" (picker over Drafts) | OPEN | #482-#485, #487 |
+| PS-48 | "comma splice -- make a note to review ALL user-facing text and create "localization" text files that includes all text within a module that acts as the central hub to edit data (like an app)" | OPEN, roadmap; C12 | #486 |
+| PS-49 | "At this point, it seems to me most things don't actually work. Go ahead with sorting out how you want to refactor / reorganize the codebase -- it's going to need extensive debugging either way" | APPROVED: PLATFORM-SPLIT section 15; P0.5 started | |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
