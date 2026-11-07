@@ -15,6 +15,10 @@ section 15 = the execution order), then `.claude/skills/xayaui-change/SKILL.md`.
 - Next: P1 (platform services), then P2, P3, P4 (needs her answers B2 = module name, B3 = Release Guard / D8), P5/P6, then debugging.
 
 ## How Xaya wants to work (her words and rules; all binding)
+- She has stepped away (2026-11-07): "Ping me from a single appropriate source when you need something from me. Otherwise, I'm
+  stepping away and not interfering". Single source = **one push notification** when a phase needs her (e.g. B2 / B3 before P4,
+  or a landing she must test); put the details in the Open Questions doc, not in several places. Archive finished sessions yourself
+  ("If you can, please do that on your own ... Same with archiving whenever it makes sense").
 - Questions go into the **"XayaUI Open Questions"** Claude Doc (https://claude.ai/artifact/2ALU9A6Z3TpFeexwuBuKUj), not chat:
   "please compile all your questions and keep them stashed in a doc". Rows A (block next fixes), B (block the split), C (after the
   split), D (notes not understood). Add rows there; tell her in one line.
