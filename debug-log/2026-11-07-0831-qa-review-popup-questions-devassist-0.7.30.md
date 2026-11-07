@@ -34,14 +34,14 @@ know what you had to execute blindly and need feedback on."
     and a note. Back / Skip / Next (Next needs a choice or a note on an unanswered question), a count, and Copy answers (a selected
     multi-line box).
   - Commands: `/xui dev review`, `/xui dev questions` (also `/xuidev review`, `/xuidev questions`).
-- `QAQuestions.lua` (new): the ONE question data file, 174 questions. They were transcribed from the entries that 18 sessions sent
+- `QAQuestions.lua` (new): the ONE question data file, 179 questions. They were transcribed from the entries that 18 sessions sent
   between 08:26 and 08:38 UTC: D8 (first, per the hub: O-109), externals, the hub (H1/H2/H3 = O-128/O-139/O-146), performance, chat
   review, chat follow-ups, rule generation, function audit, nameplates, S1, S8 bar cues, Additional Concepts, games/RPPM, roadmap
   items, S3 (mover / group page), chat round, Reskin elements, the hub's LFG-Q1 for the archived LFG / Wordle
   session, plus this build's REVIEW-1..4 (last).
   - Her words are copied exactly as sent.
   - Entries with several parts are split into one question each (CHAT-3d, CHAT-5, S3-Q11). Duplicates are merged: H4 = FA-16-scope,
-    H5 = D8-Q1, H7 = Q-PERF-3, Q-PERF-2 = EXT-Q3.
+    H5 = D8-Q1, H7 = Q-PERF-3, Q-PERF-2 = EXT-Q3; the hub's H1 / H2 / H3 replaced by the UI-bugs session's Q-UIB-3 / 2 / 4.
   - A question with no words from her shows "(no words of yours: ...)". A question where nothing was decided yet has
     `keep = "Leave it undecided for now"`.
   - CHAT-3a: its session said no bar display ships; main holds the Bar cue kind (XayaUI/BarCue.lua, RM-BARS, on main since 28380a96,
