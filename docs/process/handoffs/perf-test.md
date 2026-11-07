@@ -105,7 +105,7 @@ checks the tree after rename / delete / move, and a walkthrough. Sent to the QA 
 - Q-PERF-6: RunRecord ("Record this run?") removed after its one push — confirm.
 - Q-PERF-7: combat lists in the settings window are not updated during a fight (they catch up after) — OK?
 
-## 7. CLEAN-8 notes received, not yet written into PERF-CODE-NOTES.md
+## 7. CLEAN-8 notes received (written into PERF-CODE-NOTES.md by the successor, 11-07 ~11:05 UTC; 16 rows, Test impact INFERENCE)
 
 externals 318c8b2 (J26, based on perf-landing-2, PR #444); chat round (Chat 0.6.33-0.6.36, Sidebar.lua, PR #443, #449);
 nameplates 2b1bbb6; UI bugs 5ce2d2b (RepaintFlatButtons); function audit fc702c2; S3 5c093e2; reskin 6225059;
