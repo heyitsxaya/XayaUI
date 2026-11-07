@@ -22,6 +22,18 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — Walkthrough Tables
+
+### Dev Assist 0.7.52
+
+**In-game QA**
+- The "Review: what's new to test" window and All walkthroughs (/xui dev qa) are now tables with the columns Codes, Title, Area, Status, New and Open, in larger windows (900 x 560).
+  - Click a column header to sort, and click again to reverse.
+  - Added a search box that matches titles, ids, QA codes, area names and step text.
+  - Added clickable tags that filter the list (Baseline, each Area, Not run, Passed, Failed, New or changed), with a match count and a Clear button.
+  - The 10 baseline walkthroughs carry a gold "Baseline" mark and plain-language titles.
+  *Developers' notes: Not yet tested in game (walkthrough J32). Known limits, issue #465: no button back from All walkthroughs to the review list, and search, tags and sort reset when a window opens.*
+
 ## 2026-11-07 — What Changed Overnight
 
 ### XayaUI 0.6.73
