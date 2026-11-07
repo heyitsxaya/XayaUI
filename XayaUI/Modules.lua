@@ -36,7 +36,36 @@ end
 -- and what is inside it. UI_GUTTER: the least space between two controls side by side. Defined here once, in core, so every addon
 -- has them (each one depends on XayaUI). Windows that already leave more room keep it; segmented rows (tabs, filter buttons, icon
 -- toolbars) keep their 2 px seams; title-bar close buttons and corner resize grips sit at the edge, as in Blizzard's windows.
-ns.UI_MARGIN, ns.UI_GUTTER = 10, 10
+-- (core 0.6.58; REQUEST-LOG UI-47, Xaya 2026-11-06: "make sure every single display type is correctly standardized ... refactor all
+-- code appropriately") ns.Style: the one place for the numbers every XayaUI window and settings page lays itself out with. The rules
+-- and her words behind each value: docs/design/DISPLAY-RULES.md (section C lists these keys) and docs/design/DISPLAY-RULINGS.md. A
+-- window or page reads a value from here and never repeats the number. "session" = chosen by a session, not by her.
+-- (Here, in Modules.lua, so every addon and every test that loads the core contract has it.)
+ns.Style = {
+    -- #351 [DISPLAY-RULINGS 5.1]: the least space between a container's edge and what is inside it, and between two controls side
+    -- by side (10 / 10: session)
+    margin = 10,
+    gutter = 10,
+    -- tab rows: top tabs [1.5] "32 px, 14 pt, outlined"; Rules sub-tabs [UI-45] "28 px, 12 pt, outlined" (16 px before the tab kept
+    -- apart: session); section tabs inside a page [UI-48] "24 px, 11 pt, even row"
+    tabTop = { h = 32, font = 14, outline = true },
+    tabSub = { h = 28, font = 12, outline = true, apartGap = 16 },
+    tabSection = { h = 24, font = 11, outline = true, minW = 60 },   -- minW: under it a row keeps AceGUI's layout (session)
+    -- left pane: a child row starts this far right of where its parent's name starts [2.5] "Parent's name + 8 px"; WeakAuras-style
+    -- nesting step [2.7] 8 px per level
+    nest = { child = 8, level = 8 },
+    -- the tick box on a left-pane row (session), the grey of an unticked feature's name [3.8, 3.9] (grey value: session)
+    switch = { size = 16 },
+    grey = { 0.5, 0.5, 0.5 },
+    -- divider lines [6.3, 6.6]: 1 px, in the theme's pane border colour (session)
+    divider = { size = 1 },
+    -- trigger / cue / condition panes: everything under the header indented by this much (session)
+    bodyIndent = 20,
+    -- text inputs [UI-48] "Half width, two per row"
+    input = { width = "half" },
+}
+
+ns.UI_MARGIN, ns.UI_GUTTER = ns.Style.margin, ns.Style.gutter   -- (the older names; kept so nothing that reads them changes)
 
 -------------------------------------------------------------------------------
 -- 1. Saved settings ready. Core.lua calls ns.FireReady() once, at XayaUI's own ADDON_LOADED, right after the saved settings are set
@@ -323,6 +352,37 @@ function ns.SectionTabs(group)
         args["tab_" .. tostring(h.key)] = tabs[i]
     end
     group.childGroups = "tab"
+    return group
+end
+
+-- A page's summary with an info icon that opens / closes the page's full description in a box (core 0.6.61; REQUEST-LOG UI-53, her
+-- answer: "isolated to an info icon that opens/closes a description box -- try this out for one text-heavy segment and confirm POC
+-- before proceeding for all"; first used on Bonus Features > Utilities > Calculator only, until she confirms).
+-- ns.InfoBox(group, id, summary, keys): the page shows `summary` (up to two sentences, UI-53) with the icon beside it; the description
+-- entries named in `keys` move into a box under it, shown while the icon is toggled open (closed at first; kept for the session).
+ns.infoBoxOpen = ns.infoBoxOpen or {}
+function ns.InfoBox(group, id, summary, keys)
+    local args = type(group) == "table" and group.args
+    if type(args) ~= "table" then return group end
+    local box = { type = "group", inline = true, name = "Description", order = 0.03, args = {},   -- (a titled inline group: AceConfigDialog draws an untitled one with no box)
+        hidden = function() return not ns.infoBoxOpen[id] end }
+    for i, k in ipairs(keys) do
+        local e = args[k]
+        if type(e) == "table" then
+            e.order = i
+            e.arg = type(e.arg) == "table" and e.arg or {}
+            e.arg.xuiKeep = true   -- (not folded into a heading's (i) by the settings window's info pass)
+            box.args[k] = e
+            args[k] = nil
+        end
+    end
+    args.xuiSummary = { type = "description", order = 0.01, width = "relative", relWidth = 0.88, fontSize = "medium", name = summary,
+        arg = { xuiKeep = true } }
+    args.xuiInfoToggle = { type = "execute", order = 0.02, width = "relative", relWidth = 0.1, name = "Description",
+        desc = function() return ns.infoBoxOpen[id] and "Hides this page's full description." or "Shows this page's full description." end,
+        image = "Interface\\common\\help-i", imageWidth = 22, imageHeight = 22, arg = { xuiInfoToggle = true },
+        func = function() ns.infoBoxOpen[id] = not ns.infoBoxOpen[id] or nil; if ns.Fire then ns.Fire("CONFIG_CHANGED") end end }
+    args.xuiInfoBox = box
     return group
 end
 
