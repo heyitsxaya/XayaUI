@@ -45,3 +45,7 @@ B223, B224, B225.
   ns.NewUID), so Restore moves them all back. Before: only rules that already had a uid (from a cue or condition) went back.
 - Tests: `tests/audit_core_run.py` D54 (4 checks) and D55 (2): 3 fail on 28380a9. `tests/recycle_bin_run.py` passes (59).
 - QA B226.
+- `XayaUI/Visual.lua` (D27): the mover view's group name tab, on mouse down, selects the group for arrow-key nudges (QA B178) and,
+  for a group locked for now, starts no drag (comment Visual.lua: "its tag does not drag"); the click still opens its settings.
+  Same two checks as the sidebar handle. Tests: `tests/audit_core_run.py` D27 (2 of 3 fail on 28380a9); mover_session (29) and
+  mover_view (22) pass. QA B227.

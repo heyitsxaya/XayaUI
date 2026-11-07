@@ -121,6 +121,40 @@ do
   for _, x in ipairs(ns.folders) do if x.name == "BinGroup" then back = x end end
   check("D55 Restore brings the rule (no cue, no condition) back into the group", back and r.folder == back.id, tostring(r.folder) .. " / " .. tostring(back and back.id))
 end
+-- D27: the mover view's group name tab: a click selects the group for arrow-key nudges; a group locked for now does not drag
+do
+  local f = ns.NewFolder("TabTest"); f.cX, f.cY = 100, 50
+  local A, B = mk(f, "TA", -60, 0, 40, 40), mk(f, "TB", 60, 0, 40, 40)
+  ns.runtime = ns.runtime or {}; ns.runtime[A] = { active = true, lastPlay = 0, visualWanted = true }; ns.runtime[B] = { active = true, lastPlay = 0, visualWanted = true }
+  ns.SetPreview({ A, B }, "visual", true); ns.RefreshAllVisuals(); W.tick(0.1, 2)
+  ns.ToggleUnlock(); W.tick(0.1, 3)
+  local tag = ns.GroupTagFor and ns.GroupTagFor(f.id)
+  check("D27 the group has a name tab in the mover view", tag ~= nil)
+  if tag then
+    local other = A; ns.MoverSelect("display", other)
+    tag:GetScript("OnMouseDown")(tag, "LeftButton")
+    local saveDown = rawget(_G, "IsMouseButtonDown"); IsMouseButtonDown = function() return false end
+    tag:GetScript("OnUpdate")(tag); IsMouseButtonDown = saveDown
+    local y0, ax0 = f.cY, A.visual.y
+    ns.MoverNudge(0, 1)
+    check("D27 clicking the tab then nudging moves the group, not the display clicked before", f.cY == y0 + 1 and A.visual.y == ax0, f.cY .. " / " .. tostring(A.visual.y))
+    ns.SetMoverTempLock(f, true)
+    local x0 = f.cX
+    local saveCur = GetCursorPosition
+    tag:GetScript("OnMouseDown")(tag, "LeftButton")
+    GetCursorPosition = function() return 1200, 700 end
+    IsMouseButtonDown = function() return true end
+    tag:GetScript("OnUpdate")(tag)
+    IsMouseButtonDown = function() return false end
+    tag:GetScript("OnUpdate")(tag)
+    GetCursorPosition = saveCur; IsMouseButtonDown = saveDown
+    check("D27 a group locked for now does not move when its tab is dragged", f.cX == x0, tostring(x0) .. " -> " .. tostring(f.cX))
+    ns.SetMoverTempLock(f, false)
+  end
+  if ns.unlocked then ns.MoverExit("cancel") end
+  ns.SetPreview({ A, B }, "visual", false)
+  A.enabled, B.enabled = false, false
+end
 -- O-100 / FA-15 (Bonus 0.6.23, QoL 0.7.38; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
 -- the data panels row is named "Data Panels"
 do

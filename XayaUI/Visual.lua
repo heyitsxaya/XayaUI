@@ -1314,6 +1314,10 @@ local function GroupTag(f)
         if btn ~= "LeftButton" then return end
         local fo = ns.FolderById(self.fid)
         if not fo then return end
+        -- audit D27 (core 0.6.60): like the sidebar handle: a click selects the group for arrow-key nudges (QA B178), and a group
+        -- locked for now does not drag ("its tag does not drag"); the click still opens its settings (OnMouseUp)
+        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+        if ns.IsMoverTempLocked(fo) then self.drag = { locked = true }; return end
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0, moved = false }
     end)
@@ -1330,7 +1334,9 @@ local function GroupTag(f)
         local fo = ns.FolderById(self.fid)
         if not TagWanted(fo) then self.drag = nil; self:Hide(); self.box:Hide(); return end
         local d = self.drag
-        if d then
+        if d and d.locked then
+            if not IsMouseButtonDown("LeftButton") then self.drag = nil end
+        elseif d then
             if not IsMouseButtonDown("LeftButton") then
                 self.drag = nil
                 if d.moved then GroupPosChanged(fo) end
