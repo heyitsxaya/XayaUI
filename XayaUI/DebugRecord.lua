@@ -17,7 +17,7 @@
 --    Cost while nothing goes wrong: none. Nothing is created per frame or per event: the error handler runs only on an error, and the
 --    one event frame (made only while Advanced Debugging is on) listens to the two events the game raises when it blocks an action.
 --  * The debug report (/xui report, and the button on Settings > Debugging): a window with a readable summary for a screenshot (codes,
---    what happened, addon versions, game build, when) and a "Copy string" box with the same entries as one text (XUIREP1:...), which
+--    what happened, addon versions, game build, when) and a "Select string" box with the same entries as one text (XUIREP1:...), which
 --    XayaUI Dev Assist reads back (/xuidev report).
 --  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the XayaUI console window, Console.lua) or "both".
 --  * What to send (ns.SendText / ns.SavedFilePath): the saved-data files to upload and where they are, as copyable text.
@@ -194,7 +194,7 @@ function ns.SendText()
     local t = {}
     local function add(s) t[#t + 1] = s end
     add("WHAT TO SEND")
-    add("Quickest: /xui report, then send a screenshot of it, or press Copy string and paste the text to Xaya.")
+    add("Quickest: /xui report, then send a screenshot of it, or press Select string, then Ctrl+C (Cmd+C on Mac), and paste the text to Xaya.")
     add("The files (when Xaya asks for them):")
     add("1. Type /reload (or log out). The game writes the files only then.")
     add("2. Open this folder (copy the path, then replace <YOUR ACCOUNT FOLDER>):")
@@ -395,7 +395,11 @@ function ns.DebugReportRead(str)
     return out
 end
 
--- The window (made the first time it opens). Top: the summary, framed for a screenshot. Bottom: the string, and "Copy string".
+-- The window (made the first time it opens). Top: the summary, framed for a screenshot. Bottom: the string, and "Select string".
+-- UI-78 (O-128, core 0.6.69; her words: "copy string button doesn't copy"): an addon cannot put text on the clipboard (CopyToClipboard is
+-- protected: secure code only), so the button is named for what it does: it selects the string, and the hint then says which keys copy it.
+local HINT = "Send Xaya a screenshot of this window, or press Select string, then Ctrl+C (Cmd+C on Mac), and paste the text to her."
+local HINT_SELECTED = "The string is selected: now press Ctrl+C (Cmd+C on Mac) to copy it, then paste it to Xaya."
 local win
 local function BuildWindow()
     local f = CreateFrame("Frame", "XayaUIDebugReport", UIParent, "BackdropTemplate")
@@ -416,12 +420,12 @@ local function BuildWindow()
     f.hint:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
     f.hint:SetPoint("RIGHT", f, "RIGHT", -(M + 24), 0)
     f.hint:SetJustifyH("LEFT")
-    f.hint:SetText("Send Xaya a screenshot of this window, or press Copy string and paste the text to her.")
+    f.hint:SetText(HINT)
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -2, -2)
     -- the string row along the bottom: a one-line box with the string and the button
     local copy = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    copy:SetSize(110, 24); copy:SetPoint("BOTTOMRIGHT", -M, M); copy:SetText("Copy string")
+    copy:SetSize(110, 24); copy:SetPoint("BOTTOMRIGHT", -M, M); copy:SetText("Select string")
     if ns.FlatButton then ns.FlatButton(copy, true) end
     local sbox = CreateFrame("EditBox", nil, f, "BackdropTemplate")
     sbox:SetHeight(24)
@@ -432,7 +436,9 @@ local function BuildWindow()
     sbox:SetAutoFocus(false); sbox:SetMaxLetters(0)
     sbox:SetScript("OnEscapePressed", function() f:Hide() end)
     sbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    copy:SetScript("OnClick", function() sbox:SetFocus(); sbox:HighlightText() end)
+    -- a click inside the box would drop the selection: select it all again, so Ctrl+C always copies the whole string
+    sbox:SetScript("OnMouseUp", function(self) self:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
+    copy:SetScript("OnClick", function() sbox:SetFocus(); sbox:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
     f.str, f.copy = sbox, copy
     -- the summary
     local sf = CreateFrame("ScrollFrame", "XayaUIDebugReportScroll", f, "UIPanelScrollFrameTemplate")
@@ -452,6 +458,7 @@ function ns.ShowDebugReport()
     local d = ns.DebugReportData()
     win.text:SetText(ns.DebugReportText(d))
     win.str:SetText(ns.DebugReportString(d) or "")
+    win.hint:SetText(HINT)
     win:Show()
     return win
 end

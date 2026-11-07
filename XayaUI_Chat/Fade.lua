@@ -25,6 +25,8 @@ local function TextFade(s)
     for _, f in ipairs(C.Frames()) do
         if f == C.Main() or f.isDocked then
             C.Try("textfade", function()
+                -- audit D31 (Chat 0.6.33): the game's own values first, so turning the Chat Panel off gives them back (C.Teardown)
+                if f._xuiFade == nil and f.GetFading and f.GetTimeVisible then f._xuiFade = { f:GetFading(), f:GetTimeVisible() } end
                 if f.SetFading then f:SetFading(s.textFade and true or false) end
                 if s.textFade and f.SetTimeVisible then f:SetTimeVisible(tonumber(s.textFadeAfter) or 120) end
             end)
@@ -33,7 +35,7 @@ local function TextFade(s)
 end
 
 local function Refresh(s)
-    if not C.ImprovedOn() then return end   -- (Chat 0.6.33) Improved Chat's ("Fade and hide")
+    if not C.ImprovedOn() then C.RestoreTextFade(); return end   -- (Chat 0.6.33) Improved Chat's ("Fade and hide"); off: the game's fade back (D31)
     TextFade(s)
     if not s.fadeOn then
         if C.fade ~= 1 then C.fade = 1; C.ApplyAlpha() end

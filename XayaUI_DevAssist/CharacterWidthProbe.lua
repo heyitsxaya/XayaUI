@@ -56,7 +56,7 @@ function ns.CharWidthProbe_Run(arg)
     -- (QoL 0.7.22) the Character Reskin's "Wider window" is built on what this probe tested; the two would widen the window twice
     local wide = ns.Service and ns.Service("characterReskin")   -- (XayaUI QoL's, through the service list)
     if wide and wide.WideOn and wide.WideOn() then
-        Say("the Character Reskin's wider window is on (Blizzard UI Reskin > Character Pane); turn it off there first."); return
+        Say("the Character Reskin's wider window is on (Blizzard Reskin > Character Pane); turn it off there first."); return
     end
     if InCombatLockdown and InCombatLockdown() then Say("not in combat: try again out of combat."); return end
     local cf, mdl, mh = _G.CharacterFrame, _G.CharacterModelScene, _G.CharacterMainHandSlot
@@ -92,7 +92,7 @@ function ns.CharWidthProbe_Run(arg)
         Step("panel placement", function() UpdateUIPanelPositions(cf) end)
     end
     Say(("on, %d px wider (%d -> %d). %s."):format(px, math.floor(w0 + 0.5), math.floor(cf:GetWidth() + 0.5), table.concat(steps, ", ")))
-    Say("1) Look: right-hand slots and the stats pane moved out, model wider, weapons centred?")
+    Say("1) Look: right-hand slots and the stats pane moved out, model wider, weapons centered?")
     Say("2) With it open, press P (spellbook) and N (talents): do they sit beside it without overlapping?")
     Say("3) Fight a training dummy; open and close your bags, the spellbook and the map in combat; leave combat.")
     Say("4) Watch chat for 'width probe: ADDON_ACTION_...' lines or Blizzard's 'Interface action failed because of an AddOn'.")

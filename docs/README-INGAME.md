@@ -32,15 +32,15 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 
 - **Auto-Generate Rules.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Auto-Generate Rules.
 - **Chat Panel.** Reskins Blizzard's chat in place, with a Chat Data Panel, filters, history, per-tab sounds and a privacy cover. Blizzard UI Reskin > Chat Panel, or `/xui chat settings`.
-- **Character Reskin.** Blizzard's character window in XayaUI's look: item levels coloured by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`.
+- **Character Reskin.** Blizzard's character window in XayaUI's look: item levels colored by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`.
 - **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. QoL > Character Toolkit, or `/xui stats`.
 - **Shopping List.** What your gear is missing and what your tracked recipes need. Blizzard UI Reskin > Shopping List, or `/xui shop`.
 - **Release Guard.** Covers the Release Spirit button when you die so a misclick does not release you. QoL > Release Guard.
-- **Cursor Highlight and Trail.** A coloured shape at the cursor and a trail of gradient dots, to find the mouse easily. Both off by default. QoL > Cursor, or `/xui cursor`.
+- **Cursor Highlight and Trail.** A colored shape at the cursor and a trail of gradient dots, to find the mouse easily. Both off by default. QoL > Cursor, or `/xui cursor`.
 - **Enhanced Tooltips.** ID lines for spells, items, auras and NPCs (more if you turn them on), and Aura ID lines for the effects an item or spell describes. Bonus Features > Enhanced Tooltips.
 - **Notepad and Calculator.** Bonus Features > Utilities, or `/notes` and `/calc`.
 - **Data Panels.** Your own panels and bars of live information. `/xui data`.
-- **Themes.** Colours and fonts for every XayaUI window. Settings > UI Options > Theme.
+- **Themes.** Colors and fonts for every XayaUI window. Settings > UI Options > Theme.
 - **Debugging.** Advanced Debugging records what is needed to find a problem. Settings > Debugging.
 
 ## Slash commands

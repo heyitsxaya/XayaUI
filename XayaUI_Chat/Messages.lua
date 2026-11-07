@@ -94,11 +94,26 @@ local function Phrases(s)
     return cacheList
 end
 
+-- "Match whole words only" (audit D37, Chat 0.6.33): a phrase matches where it is not part of a longer word. A side needs a word
+-- boundary only when the phrase starts / ends with a letter or digit there; bytes of non-ASCII characters (Cyrillic, accents, ...)
+-- count as letters. Before, %f[%w] / %f[%W] (ASCII only) meant "wts!", "$gold" and any Cyrillic phrase could never match.
+local function WordByte(b) return b ~= nil and (b >= 128 or (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122)) end
+local function WholeWord(lower, ph)
+    local needL, needR = WordByte(ph:byte(1)), WordByte(ph:byte(#ph))
+    local init = 1
+    while true do
+        local i, j = lower:find(ph, init, true)
+        if not i then return false end
+        if (not needL or not WordByte(lower:byte(i - 1))) and (not needR or not WordByte(lower:byte(j + 1))) then return true end
+        init = i + 1
+    end
+end
+ns.Chat_WholeWord = WholeWord
+C.WholeWord = WholeWord   -- (for Dev Assist's QA walkthrough, through the "chatDebug" service: Core.lua)
 local function HasPhrase(s, lower)
     for _, ph in ipairs(Phrases(s)) do
         if s.spamWord then
-            local pat = "%f[%w]" .. (ph:gsub("%p", "%%%0")) .. "%f[%W]"
-            if lower:find(pat) then return true end
+            if WholeWord(lower, ph) then return true end
         elseif lower:find(ph, 1, true) then
             return true
         end
@@ -332,10 +347,15 @@ local function OnItemRef(link, text, button)
     if s.ignoreClick and a == "player" and C.ComboNow(button) == C.IgnoreCombo() then
         local name = strsplit(":", link:sub(8))
         if name and name ~= "" and not IsMe(name) and C_FriendList and C_FriendList.AddIgnore then
-            pcall(C_FriendList.AddIgnore, name)
+            local ok, added = pcall(C_FriendList.AddIgnore, name)
             -- (names another player: never kept in XayaUI's debug record)
             local say = ns.PrintPrivate or ns.Print
-            say("Ignoring " .. name .. " (" .. C.ComboName(C.IgnoreCombo()) .. "). Remove them in the social window's Ignore list.")
+            -- audit D32 (Chat 0.6.33): AddIgnore returns added: bool (namespaces.md); say so only when it was added
+            if ok and added then
+                say("Ignoring " .. name .. " (" .. C.ComboName(C.IgnoreCombo()) .. "). Remove them in the social window's Ignore list.")
+            else
+                say("Could not ignore " .. name .. ": the game did not add them (already ignored, or the Ignore list is full).")
+            end
         end
     end
 end

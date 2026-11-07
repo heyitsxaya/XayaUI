@@ -1263,13 +1263,11 @@ end
 local function TagTooltip(t)
     local fo = ns.FolderById(t.fid)
     if not (fo and GameTooltip) then return end
-    GameTooltip:SetOwner(t, "ANCHOR_TOP")
-    GameTooltip:AddLine("Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0)
-    GameTooltip:AddLine(ShownIn(fo) .. " display(s) on screen", 1, 1, 1)
-    GameTooltip:AddLine("Click: open this group's settings", 0.6, 0.85, 1)
-    GameTooltip:AddLine("Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1)
-    GameTooltip:AddLine("Drag this tab: move the whole group", 0.6, 0.85, 1)
-    GameTooltip:Show()
+    ns.Tip.Show(t, "ANCHOR_TOP", { "Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0, add = true }, {
+        { ShownIn(fo) .. " display(s) on screen", 1, 1, 1 },
+        { "Click: open this group's settings", 0.6, 0.85, 1 },
+        { "Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1 },
+        { "Drag this tab: move the whole group", 0.6, 0.85, 1 } })
 end
 local function GroupTag(f)
     local t = groupTags[f.id]
@@ -1298,12 +1296,10 @@ local function GroupTag(f)
     end)
     t.lock:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0)
-        GameTooltip:AddLine("While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true)
-        GameTooltip:Show()
+        ns.Tip.Show(self, "ANCHOR_TOP", { ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0, add = true },
+            { { "While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true } })
     end)
-    t.lock:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    t.lock:SetScript("OnLeave", function() ns.Tip.Hide() end)
     local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
     t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
     t:SetScript("OnLeave", function(self)
@@ -1314,6 +1310,10 @@ local function GroupTag(f)
         if btn ~= "LeftButton" then return end
         local fo = ns.FolderById(self.fid)
         if not fo then return end
+        -- audit D27 (core 0.6.67): like the sidebar handle: a click selects the group for arrow-key nudges (QA B178), and a group
+        -- locked for now does not drag ("its tag does not drag"); the click still opens its settings (OnMouseUp)
+        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+        if ns.IsMoverTempLocked(fo) then self.drag = { locked = true }; return end
         local cx, cy = GetCursorPosition()
         self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0, moved = false }
     end)
@@ -1330,7 +1330,9 @@ local function GroupTag(f)
         local fo = ns.FolderById(self.fid)
         if not TagWanted(fo) then self.drag = nil; self:Hide(); self.box:Hide(); return end
         local d = self.drag
-        if d then
+        if d and d.locked then
+            if not IsMouseButtonDown("LeftButton") then self.drag = nil end
+        elseif d then
             if not IsMouseButtonDown("LeftButton") then
                 self.drag = nil
                 if d.moved then GroupPosChanged(fo) end
@@ -1562,7 +1564,10 @@ end
 -- ns.ArrangeList is also what the one-shot Align / Distribute / Space buttons use.
 local Place   -- (defined below; the arrangement places frames with it)
 local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128) end
-local function ArrR(n) return math.floor(n + 0.5) end
+-- audit D18 (core 0.6.67): centres stay exact here and are rounded once, when X / Y are stored (SetVisualCenterOffset). Rounding the
+-- centre too moved a display 1 px per apply whenever its centre fell on a half pixel (odd size with a corner anchor, ...), and the
+-- arrangement is re-applied on every refresh: displays crept and the mover view reported moves nobody made.
+local function ArrR(n) return n end
 function ns.ArrangeList(l, xMode, yMode, gap)
     if #l < 2 or not (xMode or yMode) then return false end
     gap = tonumber(gap) or 8
@@ -1698,9 +1703,10 @@ function ns.SnapToTarget(rule, key, pos)
     if not key then
         v.snap = nil
     else
+        -- audit D19 (core 0.6.67): check the frame first; a missing frame changes nothing (before, X / Y were zeroed and the snap saved)
+        if not SnapFrame({ snap = { target = key } }) then ns.Print("that frame does not exist in this client, so the aura keeps its own position."); return end
         v.snap = { target = key, pos = pos or "TOP_CENTER" }
         v.x, v.y = 0, 0
-        if not SnapFrame(v) then ns.Print("that frame does not exist in this client, so the aura keeps its own position.") end
     end
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")

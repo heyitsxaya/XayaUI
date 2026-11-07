@@ -188,7 +188,7 @@ for _, f in ipairs(FRAMES) do if f.events.PLAYER_REGEN_ENABLED and f.onOnEvent t
 check("  ...and carries on when combat ends", GD.Catalogue.paused == nil)
 PUMP(100000, true)
 local c = XayaUIDevAssistDB.catalogue
-check("finished and saved", type(c) == "table" and not GD.Catalogue.running and SAID("aura catalogue done") ~= nil, SAID("aura catalogue done"))
+check("finished and saved", type(c) == "table" and not GD.Catalogue.running and SAID("aura catalog done") ~= nil, SAID("aura catalog done"))   -- (FA-16: American spelling in what the player sees)
 check("build recorded", c.build and c.build.build == "70783")
 check("no character name or realm stored", not (function() local function walk(t, d) if d > 6 then return false end for k, v in pairs(t) do if v == "Xaya" or v == "Realm" or k == "Xaya" then return true end; if type(v) == "table" and walk(v, d + 1) then return true end end end return walk(XayaUIDevAssistDB, 0) end)())
 -- 1) Cooldown Manager
@@ -263,7 +263,7 @@ check("aura log: other units ignored", s.auras[1300040] == nil)
 SlashCmdList.XAYAUIDEV("seen")
 check("aura log: off says how many", SAID("aura log OFF") ~= nil)
 SlashCmdList.XAYAUIDEV("status")
-check("status mentions the catalogue and the aura log", said[#said]:find("catalogue:", 1, true) ~= nil and said[#said]:find("aura log:", 1, true) ~= nil, said[#said])
+check("status mentions the catalogue and the aura log", said[#said]:find("catalog:", 1, true) ~= nil and said[#said]:find("aura log:", 1, true) ~= nil, said[#said])
 io.write(("%d checks, %d failed\n"):format(n, fails))
 '''.replace("__GD__", P("XayaUI_DevAssist/DevAssist.lua")).replace("__API__", P("XayaUI_DevAssist/ApiInventory.lua")).replace("__CAT__", P("XayaUI_DevAssist/AuraCatalogue.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

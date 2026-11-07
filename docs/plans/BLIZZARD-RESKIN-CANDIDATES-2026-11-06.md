@@ -439,3 +439,50 @@ Request: "what can be reskinned"
 - **Not verified:** any in-game behaviour, including whether a texture change on a protected frame taints in combat. The first build
   of any tier-C skin starts with an in-game check.
 - The player-facing names ("Great Vault", "Quick Join") are my labels for Blizzard's frames, not Blizzard's display strings.
+
+## 12. Built 2026-11-07 (Reskin 0.6.9; REQUEST-LOG RESKIN-5)
+
+The reskins were built on Xaya's overnight order, relayed through the 11-06 hub. Where she had not chosen, the conservative reading
+was taken, and each such choice went to the QA question flow as RSK-Q1 to RSK-Q10. All of it is in `XayaUI_Reskin/BlizzardSkins.lua`.
+Nothing is checked in game; QA G4-G8 and `/xui dev qa` (area "Reskin") cover it.
+
+Built, each a page of the Blizzard UI Reskin tab with its own tick box, off until ticked:
+
+| Page | What it skins | Rows of this list |
+|---|---|---|
+| Blizzard Windows | 33 windows on one page, each with a box to leave it out (see the list below) | 0.3 (not the character window, which has its own reskin), 3.x and her L-items |
+| Minimap | Square / Circle (L6) | 2.19 |
+| Tooltips | GameTooltip, item links, comparison tooltips | 1.10 |
+| Objective Tracker | one box for the tracker, then one per section (11 sections; Q11) | 0.4, M1, M3 |
+
+The 33 windows: Options, Bags, Bank, Mail, Trade, Merchant, Quest and gossip dialogs, Map frame, Friends list, Guild and communities,
+Guild bank, Group finder, Addon list, Loot window, Ready check frame, Talents and spellbook, Professions and crafting, Crafting orders,
+Auction house, Adventure Guide, Achievements, Calendar, Great Vault, Macros, Inspect frame, Catalyst frame, Gem socketing, Item upgrading,
+Collections, Trainer, Dressing room, Books and letters.
+
+**Not built tonight.** Each item below is in the question flow:
+- **Combat frames (RSK-Q4):** action bars, unit, party and raid frames, nameplates, cast bars.
+- **Smaller elements (RSK-Q1):** right-click and dropdown menus, chat bubbles, Battle.net toasts, micro menu, bag bar, status bars and
+  toolbars, loot rolls, the minimap's calendar, tracking and mail buttons, the shared building blocks of section 4 (buttons,
+  scrollbars, tabs), and the older-expansion windows of section 7.
+- **Skyriding (RSK-Q6).**
+
+## 12b. Built 2026-11-07, second round (Reskin 0.6.11 - 0.6.17; reskin successor session 014bN6tSvVzc2HRgXhwF3J2L)
+
+The "not built tonight" items of section 12, in the handoff's order (`docs/process/handoffs/reskin-elements.md`). Each is its own page
+(or, for loot rolls, a Blizzard Windows entry) with its own tick box, off until ticked; QA G9-G15; walkthroughs under `/xui dev qa`.
+
+| Version | Page | What it skins | On main |
+|---|---|---|---|
+| 0.6.11 | Toasts and Pop-ups | Battle.net toasts (BNToastFrame, TimeAlertFrame) and StaticPopup1-4, a box each | 5c7b372 |
+| 0.6.12 | Blizzard Windows > Loot rolls | GroupLootFrame1-4, border in the item's quality colour | 5c7b372 |
+| 0.6.13 | Menus | every Blizzard_Menu menu's own background (post-hook on MenuStyle1Mixin.Generate) | 5c7b372 |
+| 0.6.14 | Chat Bubbles | bubbles outside instances (C_ChatBubbles.GetAllChatBubbles(false)) | 5c7b372 |
+| 0.6.15 | Status Bars | experience / reputation bar frame art | ac0ca79 |
+| 0.6.16 | Minimap Buttons | the zone bar (MinimapCluster.BorderTop) and the tracking button, tinted | ac0ca79 |
+| 0.6.17 | Buttons | red panel buttons inside the listed Blizzard windows only | sent to the lander (340b418) |
+
+Still not built, each with a question in the flow: micro menu, bag bar, minimap calendar button and mail icon (RSK-Q14: no frame art
+of their own); close buttons, tabs, scroll bars, dropdown arrows, and anything in other addons' windows (RSK-Q15); combat frames
+(RSK-Q4); skyriding (RSK-Q6). The older-expansion windows of section 7 are not in her request lists and were not built. The shop
+cannot be reskinned (section 8).

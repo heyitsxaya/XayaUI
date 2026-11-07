@@ -49,7 +49,9 @@ ns.Style = {
     -- tab rows: top tabs [1.5] "32 px, 14 pt, outlined"; Rules sub-tabs [UI-45] "28 px, 12 pt, outlined" (16 px before the tab kept
     -- apart: session); section tabs inside a page [UI-48] "24 px, 11 pt, even row"
     tabTop = { h = 32, font = 14, outline = true },
-    tabSub = { h = 28, font = 12, outline = true, apartGap = 16 },
+    -- (UI-76, O-146, her words "make these tabs a little narrower and maybe 3-5% smaller": 4% smaller, 28 -> 27 px and 12 -> 11.5 pt;
+    -- each of the four tabs 90% of its even share, the rest as equal gaps: the session's conservative reading, adjustable)
+    tabSub = { h = 27, font = 11.5, outline = true, apartGap = 16, share = 0.9 },
     tabSection = { h = 24, font = 11, outline = true, minW = 60 },   -- minW: under it a row keeps AceGUI's layout (session)
     -- left pane: a child row starts this far right of where its parent's name starts [2.5] "Parent's name + 8 px"; WeakAuras-style
     -- nesting step [2.7] 8 px per level
@@ -208,8 +210,9 @@ end
 ns.MODULES = {
     -- (core 0.6.56: chatprobe and widthprobe are XayaUI Dev Assist's now, REQUEST-LOG #81; without it they do not exist)
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
-    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
+    -- (core 0.6.67, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
+    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
 }
@@ -511,7 +514,7 @@ end
 -------------------------------------------------------------------------------
 -- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
 -- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenu.lua);
--- "buttonSkin" (XayaUI_Options) answers Apply(button, primary), the flat button look core's own windows use (Core.lua ns.FlatButton).
+-- (UI-77, core 0.6.68: the "buttonSkin" service is gone; the flat button look is core's own, Core.lua ns.PaintFlatButton.)
 -------------------------------------------------------------------------------
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
@@ -526,6 +529,39 @@ ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and 
         ns.Print("the QA walkthroughs are part of XayaUI Dev Assist: switch it on in the AddOns list (character select or Esc > AddOns), then /reload and type /xui dev qa again.")
     end
 end)
+
+-------------------------------------------------------------------------------
+-- 8b. Tooltips: one helper draws XayaUI's own hover texts (core 0.6.73; REQUEST-LOG UI-51 / UI-52, BUILD-RULES.md B3: "one shared
+-- helper draws every XayaUI tooltip"; order UI-55 "Baseline, refactor, test"). It only forwards to GameTooltip, in the same order
+-- the units called it before, so no tooltip changes (tests/tooltip_parity_run.py records every call before and after). No state,
+-- no frames, no events: it costs nothing until something is hovered. Game-object tooltips (SetSpellByID, SetItemByID, ...) stay
+-- direct calls.
+--   ns.Tip.Show(owner, anchor, title, lines)
+--     title: "text" -> SetText(text); { text, r, g, b } -> SetText(text, r, g, b); { text, r, g, b, add = true } -> AddLine(...)
+--     lines: list of "text" -> AddLine(text), or { text, r, g, b, wrap } -> AddLine(text, r, g, b, wrap)
+--   ns.Tip.Hide()
+-------------------------------------------------------------------------------
+ns.Tip = ns.Tip or {}
+local function TipLine(tip, l, set)
+    if type(l) == "table" then
+        if set and not l.add then
+            if l[2] ~= nil then tip:SetText(l[1], l[2], l[3], l[4]) else tip:SetText(l[1]) end
+        elseif l[5] ~= nil then tip:AddLine(l[1], l[2], l[3], l[4], l[5])
+        elseif l[2] ~= nil then tip:AddLine(l[1], l[2], l[3], l[4])
+        else tip:AddLine(l[1]) end
+    elseif l ~= nil then
+        if set then tip:SetText(l) else tip:AddLine(l) end
+    end
+end
+function ns.Tip.Show(owner, anchor, title, lines)
+    local tip = GameTooltip
+    if not tip then return end
+    tip:SetOwner(owner, anchor)
+    if title ~= nil then TipLine(tip, title, true) end
+    if type(lines) == "table" then for i = 1, #lines do TipLine(tip, lines[i], false) end end
+    tip:Show()
+end
+function ns.Tip.Hide() if GameTooltip then GameTooltip:Hide() end end
 
 -------------------------------------------------------------------------------
 -- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon

@@ -1,4 +1,4 @@
-# QA question flow: final data landing (XayaUI_DevAssist 0.7.34)
+# QA question flow: final data landing (XayaUI_DevAssist 0.7.51; numbered 0.7.34 until main moved to 0.7.50)
 Review-popup build session, branch `qa-review-popup`. This is a follow-up to the first landing, 302331b (Dev Assist 0.7.30, on main).
 Only data changed: `XayaUI_DevAssist/QAQuestions.lua`. No code changed.
 
@@ -23,3 +23,8 @@ Only data changed: `XayaUI_DevAssist/QAQuestions.lua`. No code changed.
 
 ## Untested in game
 The question screens with the new texts (length and wrapping).
+
+## Merge with main (14:00 UTC cut)
+- Main is at Dev Assist 0.7.50; this landing is 0.7.51.
+- Main had renamed "Blizzard UI Reskin" to "Blizzard Reskin" in the question areas and choices (settings-restructure, UI-24). The
+  regenerated file follows that rename in our text (areas, "did", choices). Her quoted words are unchanged.

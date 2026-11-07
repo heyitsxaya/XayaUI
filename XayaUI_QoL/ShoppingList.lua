@@ -27,8 +27,13 @@ local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop
 -- (the Dev Assist QA walkthroughs reach the Shopping List through this service: a feature is never called by name from another addon)
-if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function() return Shop.Apply() end,
-    Recipes = function() return Shop.Recipes() end, Missing = function(c) return Shop.Missing(c) end }) end
+if ns.Provide then ns.Provide("shoppingList", { Cfg = function() return Shop.Cfg() end, Apply = function(show) return Shop.Apply(show) end,
+    Recipes = function() return Shop.Recipes() end, Missing = function(c) return Shop.Missing(c) end,
+    -- (audit QA walkthroughs, FA-7 / D13-D16)
+    Defaults = function(c) return Shop.Defaults(c) end, History = function(c) return Shop.History(c) end, Observe = function(c) return Shop.Observe(c) end,
+    AddToBuy = function(c, name, itemID, need, key, from) return Shop.AddToBuy(c, name, itemID, need, key, from) end,
+    Toggle = function() return Shop.Toggle() end, BrowsePending = function() return Shop.browse.pending == true end,
+    Forget = function(c) return Shop.Forget(c) end }) end
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
 local function isSecret(v) return CM and CM.IsSecret and CM.IsSecret(v) end
@@ -44,8 +49,12 @@ local DEFAULTS = {
     tracker = true,      -- Blizzard's Professions section restyled (S3)
     fontSize = 11,
     free = { x = 360, y = 120 },   -- the panel's centre, from the screen's centre
-    defaults = {},       -- your own default per slot key ("ench:<slot>", "gem"): { name, itemID }   (S7)
+    defaults = {},       -- (before FA-7) the account-wide defaults; kept as they were, read only as each character's starting copy
+    charDefaults = {},   -- FA-7 (Xaya 2026-11-07, "Per character (Recommended)"): per character (CharKey(), like the history), your own
+                         --   default per slot key ("ench:<slot>", "gem", "diamond"): { name, itemID }   (S7)
     buy = {},            -- the "To buy" list: { { name, itemID, need, key } }   (S10)
+    closedTillAH = false,   -- UI-77 (O-139, QoL 0.7.42): closed with its X (or /xui shop); stays closed across reloads until the next
+                            --   Auction House visit
     history = {},        -- per character: { ench = { [slot] = { [enchantID] = { n, last, name } } }, gems = { [gemID] = { n, last, name } },
                          --   lastEnch = { [slot] = enchantID or 0 }, lastGems = { [slot] = { [gemID] = count } } }   (S6)
 }
@@ -56,13 +65,16 @@ local function Cfg()
     local c = CueRulesDB.shoppingList
     if type(c) ~= "table" then c = {}; CueRulesDB.shoppingList = c end
     for k, v in pairs(DEFAULTS) do if c[k] == nil then c[k] = Copy(v) end end
-    for _, k in ipairs({ "enabled", "panel", "tracker" }) do c[k] = c[k] == true end
+    for _, k in ipairs({ "enabled", "panel", "tracker", "closedTillAH" }) do c[k] = c[k] == true end
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
-    for _, k in ipairs({ "free", "defaults", "buy", "history" }) do if type(c[k]) ~= "table" then c[k] = Copy(DEFAULTS[k]) end end
+    for _, k in ipairs({ "free", "defaults", "charDefaults", "buy", "history" }) do if type(c[k]) ~= "table" then c[k] = Copy(DEFAULTS[k]) end end
     for i = #c.buy, 1, -1 do
         local b = c.buy[i]
         if type(b) ~= "table" or type(b.name) ~= "string" or b.name == "" then table.remove(c.buy, i)
-        else b.need = math.max(1, math.floor(tonumber(b.need) or 1)); if not num(b.itemID) then b.itemID = nil end end
+        else
+            b.need = math.max(1, math.floor(tonumber(b.need) or 1)); if not num(b.itemID) then b.itemID = nil end
+            if type(b.from) ~= "table" then b.from = nil end
+        end
     end
     return c
 end
@@ -85,6 +97,25 @@ function Shop.History(c)
     if type(h) ~= "table" then h = {}; c.history[k] = h end
     for _, f in ipairs({ "ench", "gems", "lastEnch", "lastGems" }) do if type(h[f]) ~= "table" then h[f] = {} end end
     return h
+end
+-- "Forget what this character used" (D13): clears the counts only. What each slot wears now (lastEnch / lastGems) is kept, so the next
+-- look at your gear does not count everything worn as "used 1x" at once; an enchant or gem counts again when it newly appears on a slot.
+function Shop.Forget(c)
+    c = c or Cfg()
+    if not c then return end
+    local h = Shop.History(c)
+    h.ench, h.gems = {}, {}
+end
+-- this character's own defaults (FA-7, her answer "Per character (Recommended)"). A character with none of its own yet starts from a
+-- copy of the account-wide table saved before FA-7 (c.defaults, never changed again), so no default set earlier is lost; from then on
+-- a default is saved for this character only.
+function Shop.Defaults(c)
+    c = c or Cfg()
+    if type(c.charDefaults) ~= "table" then c.charDefaults = {} end
+    local k = CharKey()
+    local d = c.charDefaults[k]
+    if type(d) ~= "table" then d = Copy(type(c.defaults) == "table" and c.defaults or {}); c.charDefaults[k] = d end
+    return d
 end
 
 -------------------------------------------------------------------------------
@@ -156,7 +187,7 @@ end
 function Shop.EnchantSuggestion(c, slot)
     local key = "ench:" .. SlotKey(slot)
     if picks[key] then return picks[key] end
-    local d = c.defaults[key]
+    local d = Shop.Defaults(c)[key]
     if type(d) == "table" and type(d.name) == "string" and d.name ~= "" then return { name = d.name, itemID = d.itemID, src = "default" } end
     local best, id = MostUsed(Shop.History(c).ench[SlotKey(slot)])
     if best and best.name then return { name = best.name, enchantID = id, src = "used", count = best.n } end
@@ -187,7 +218,7 @@ end
 -- diamond a default too")
 function Shop.DiamondSuggestion(c)
     if picks.diamond then return picks.diamond end
-    local d = c.defaults.diamond
+    local d = Shop.Defaults(c).diamond
     if type(d) == "table" and type(d.name) == "string" and d.name ~= "" then return { name = d.name, itemID = d.itemID, src = "default" } end
     local best, id = MostUsed(GemsOf(Shop.History(c).gems, true))
     if best then
@@ -197,7 +228,7 @@ function Shop.DiamondSuggestion(c)
 end
 function Shop.GemSuggestion(c)
     if picks.gem then return picks.gem end
-    local d = c.defaults.gem
+    local d = Shop.Defaults(c).gem
     if type(d) == "table" and type(d.name) == "string" and d.name ~= "" then return { name = d.name, itemID = d.itemID, src = "default" } end
     local best, id = MostUsed(GemsOf(Shop.History(c).gems, false))
     if best then
@@ -370,7 +401,7 @@ function Shop.SearchAH(text)
     return ok
 end
 -- "Select other" while the Auction House is open: what it lists for that slot (item class 8 + the slot's subclass; gems: class 3)
-local browse = { key = nil, results = {} }
+local browse = { key = nil, results = {}, pending = false }   -- pending: our own query is out, its answer not read yet (D16)
 Shop.browse = browse
 function Shop.Browse(key)
     if not (Shop.AHOpen() and C_AuctionHouse and C_AuctionHouse.SendBrowseQuery) then return false end
@@ -383,9 +414,15 @@ function Shop.Browse(key)
     if #filters == 0 then return false end
     local order = (Enum and Enum.AuctionHouseSortOrder and Enum.AuctionHouseSortOrder.Price) or 0
     browse.key, browse.results = key, {}
-    return pcall(C_AuctionHouse.SendBrowseQuery, { searchString = "", sorts = { { sortOrder = order, reverseSort = false } }, itemClassFilters = filters })
+    local ok = pcall(C_AuctionHouse.SendBrowseQuery, { searchString = "", sorts = { { sortOrder = order, reverseSort = false } }, itemClassFilters = filters })
+    browse.pending = ok and true or false
+    return ok
 end
+-- reads the answer to our own query only (D16): AUCTION_HOUSE_BROWSE_RESULTS_UPDATED also fires for the player's own searches in the
+-- Auction House (INFERENCE: the event names no query), so a result is read once after Shop.Browse sent ours, and never again until the next one
 function Shop.ReadBrowse()
+    if not browse.pending then return end
+    browse.pending = false
     if not (C_AuctionHouse and C_AuctionHouse.GetBrowseResults) then return end
     local res = R(C_AuctionHouse.GetBrowseResults)
     local out = {}
@@ -433,12 +470,22 @@ end
 -------------------------------------------------------------------------------
 -- The "To buy" list (S10)
 -------------------------------------------------------------------------------
-function Shop.AddToBuy(c, name, itemID, need, key)
+-- from = the panel row that asked (its row key, e.g. "missgem1"; D14): the same item from two rows adds their needs (1 + 2 = 3); the same
+-- row again replaces its own share instead of doubling it. A line saved before D14 (no from) keeps its need as the share of no row.
+function Shop.AddToBuy(c, name, itemID, need, key, from)
     if type(name) ~= "string" or name == "" then return end
+    need = math.max(1, math.floor(tonumber(need) or 1))
     for _, b in ipairs(c.buy) do
-        if (itemID and b.itemID == itemID) or (not itemID and not b.itemID and b.name == name) then b.need = math.max(b.need, need or 1); return b end
+        if (itemID and b.itemID == itemID) or (not itemID and not b.itemID and b.name == name) then
+            if from == nil then b.need = math.max(b.need, need); return b end
+            b.from = b.from or {}
+            local old = tonumber(b.from[from])
+            b.need = math.max(1, b.need - (old or 0) + need)
+            b.from[from] = need
+            return b
+        end
     end
-    local b = { name = name, itemID = itemID, need = math.max(1, need or 1), key = key }
+    local b = { name = name, itemID = itemID, need = need, key = key, from = from and { [from] = need } or nil }
     c.buy[#c.buy + 1] = b
     return b
 end
@@ -668,7 +715,7 @@ function Shop.Render()
             end
             if r.actions and r.actions.add then
                 local a = r.actions.add
-                SmallButton(right - BTN_W, y, BTN_W, rowH - 2, "+ Add", "Put it in the To buy list", function() Shop.AddToBuy(c, a.name, a.itemID, a.need, a.key); Shop.Render() end, r)
+                SmallButton(right - BTN_W, y, BTN_W, rowH - 2, "+ Add", "Put it in the To buy list", function() Shop.AddToBuy(c, a.name, a.itemID, a.need, a.key, r.key); Shop.Render() end, r)
                 right = right - BTN_W - 4
             end
             if r.actions and r.actions.other then
@@ -746,7 +793,7 @@ function OpenPopup(key, anchor)
             Shop.Render()
         end)
         r.def:SetScript("OnClick", function()
-            c.defaults[key] = { name = o.name, itemID = o.itemID }
+            Shop.Defaults(c)[key] = { name = o.name, itemID = o.itemID }
             picks[key] = nil
             Shop.Render()
         end)
@@ -794,7 +841,7 @@ local function BuildPanel()
     panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal"); panel.title:SetPoint("TOPLEFT", PAD, -PAD); panel.title:SetText("Shopping List")
     panel.ahNote = panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); panel.ahNote:SetPoint("TOPRIGHT", -(PAD + 22), -(PAD + 2))
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton"); close:SetSize(24, 24); close:SetPoint("TOPRIGHT", 2, 2)
-    close:SetScript("OnClick", function() panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end end)
+    close:SetScript("OnClick", function() local cc = Cfg(); if cc then cc.closedTillAH = true end; panel:Hide(); if popup then popup:Hide() end end)
     local scroll = CreateFrame("ScrollFrame", nil, panel)
     scroll:SetPoint("TOPLEFT", PAD, -(PAD + 24)); scroll:SetPoint("BOTTOMRIGHT", -PAD, PAD)
     content = CreateFrame("Frame", nil, scroll); content:SetSize(W, 10); scroll:SetScrollChild(content)
@@ -874,7 +921,21 @@ local function Refresh()
     pending = true
     C_Timer.After(0, function() pending = false; local c = Cfg(); if On(c) and panel and panel:IsShown() then Shop.Render() end end)
 end
-function Shop.Apply()
+-- When the panel shows itself (UI-77, O-139; her words: "shopping list keeps popping up but there's no reason for it to show").
+-- Conservative reading, flagged (O-108, no questions): never at login or on a settings / reskin switch by itself; it shows itself only
+-- when the Auction House opens, or when your worn gear is missing an enchant or a gem (S4-S5); a close (its X, or /xui shop) is saved
+-- and holds across reloads until the next Auction House visit. /xui shop, and switching the list or its panel on, still open it.
+local function MissingSomething(c)
+    local ok, miss = pcall(Shop.Missing, c)
+    return ok and type(miss) == "table" and miss[1] ~= nil
+end
+function Shop.AutoShowWanted(c) return c and c.panel and not c.closedTillAH and MissingSomething(c) or false end
+local function ShowPanel()
+    BuildPanel(); panel:Show(); Shop.Render()
+end
+-- show: true when the person asked for it (/xui shop, the list's or the panel's switch turned on); otherwise the panel stays as it is,
+-- unless your gear is missing something and it was not closed
+function Shop.Apply(show)
     local c = Cfg()
     if not c then return end
     if not On(c) then
@@ -890,8 +951,15 @@ function Shop.Apply()
             local cc = Cfg()
             if not On(cc) then return end
             if event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD" then Shop.Observe(cc) end
+            if event == "AUCTION_HOUSE_SHOW" then
+                cc.closedTillAH = false   -- the next Auction House visit: a close is forgotten, and the list shows itself
+                if cc.panel and not (panel and panel:IsShown()) then ShowPanel() end
+            elseif (event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD") and not (panel and panel:IsShown())
+                and Shop.AutoShowWanted(cc) then
+                ShowPanel()   -- worn gear misses an enchant or a gem (read again once the game has the items), and it was not closed
+            end
             if event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then Shop.ReadBrowse() end
-            if event == "AUCTION_HOUSE_CLOSED" then browse.key, browse.results = nil, {} end
+            if event == "AUCTION_HOUSE_CLOSED" then browse.key, browse.results, browse.pending = nil, {}, false end
             if event == "ADDON_LOADED" then HookTracker() end
             Refresh()
         end)
@@ -903,18 +971,19 @@ function Shop.Apply()
     if c.tracker then HookTracker(); RestyleTracker() end
     if c.panel then
         BuildPanel()
-        if not panel.userHidden then panel:Show(); Shop.Render() end
+        if show then c.closedTillAH = false end
+        if show or panel:IsShown() or Shop.AutoShowWanted(c) then panel:Show(); Shop.Render() end
     elseif panel then panel:Hide() end
 end
 function Shop.Toggle()
     local c = Cfg()
     if not c then return end
+    -- (D15) the Reskin tab's switch first: while it is off the command changes nothing
+    if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard Reskin is off (Blizzard Reskin > Overview); it shows once that is on again."); return end
     if not c.enabled then c.enabled, c.panel = true, true end
-    if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard UI Reskin is off (Blizzard UI Reskin > Overview); it shows once that is on again."); return end
-    if panel and panel:IsShown() then panel.userHidden = true; panel:Hide(); if popup then popup:Hide() end; return end
-    if panel then panel.userHidden = nil end
+    if panel and panel:IsShown() then c.closedTillAH = true; panel:Hide(); if popup then popup:Hide() end; return end
     c.panel = true
-    Shop.Apply()
+    Shop.Apply(true)
 end
 ns.RegisterReskin("shoppinglist", function() Shop.Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 function Shop.Drawn() return { panel = panel, popup = popup, layout = panel and panel.layout, buttons = btnPool, fonts = fsPool } end
@@ -927,37 +996,38 @@ ns.WhenReady(function() local raw = CueRulesDB and CueRulesDB.shoppingList; if t
 local SLOT_KEYS = { 1, 3, 5, 7, 8, 11, 16, 17 }
 function ns.BuildShoppingListPage(Notify)
     local function C() return Cfg() or DEFAULTS end
-    local function Changed() Shop.Apply(); if panel and panel:IsShown() then Shop.Render() end; if Notify then Notify() end end
+    local function Changed(show) Shop.Apply(show); if panel and panel:IsShown() then Shop.Render() end; if Notify then Notify() end end
     local function off() return not C().enabled end
     local args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Your crafting shopping list: the recipes you track, with their reagents (have / need), and what is missing on your gear: an enchant on a slot that takes one, a gem for an empty socket, each with your usual choice. Click a name while the Auction House is open and it searches for it. Off by default." },
         panel = { type = "toggle", order = 2, width = "full", name = "XayaUI's Shopping List panel", disabled = off,
-            desc = "A movable panel in the theme: Missing on your gear, To buy, and your tracked recipes. /xui shop shows or hides it.",
-            get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed() end },
+            desc = "Shows a movable panel of what your gear is missing, what to buy and your tracked recipes. /xui shop shows or hides it.",
+            get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed(v and true or nil) end },
         tracker = { type = "toggle", order = 3, width = "full", name = "Restyle Blizzard's Professions list (objective tracker)", disabled = off,
-            desc = "The tracked recipes in Blizzard's objective tracker in the theme's colours: header, recipe names, reagents (finished ones muted). The rest of the objective tracker is untouched for now.",
+            desc = "Colors the tracked recipes in the objective tracker with the theme. Finished reagents are muted.",
             get = function() return C().tracker end, set = function(_, v) C().tracker = v and true or false; Changed() end },
         fontSize = { type = "range", order = 4, name = "Text size", min = 8, max = 16, step = 1, disabled = off,
             get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
         defHdr = { type = "header", order = 10, name = "Your defaults",
-            desc = "One suggestion per slot: the default you set here, else the enchant (gem) XayaUI has seen most on it. Type a name, or shift-click an item into the box. Empty = back to the most used." },
+            desc = "Sets this slot's suggested enchant or gem, kept for this character only; empty uses the one XayaUI has seen most. Type a name, or shift-click an item into the box." },
         histHdr = { type = "header", order = 30, name = "History" },
         forget = { type = "execute", order = 31, name = "Forget what this character used", disabled = off,
-            desc = "Clears the counts of enchants and gems XayaUI has seen on this character's gear (your defaults stay).",
-            func = function() local c = Cfg(); c.history[CharKey()] = nil; Changed() end },
+            desc = "Clears the counts of enchants and gems XayaUI has seen on this character's gear (your defaults stay). What you wear now is not counted again until you change it.",
+            func = function() Shop.Forget(Cfg()); Changed() end },
         clearBuy = { type = "execute", order = 32, name = "Empty the To buy list", disabled = off,
             func = function() Cfg().buy = {}; Changed() end },
     }
     local function DefInput(key, order, name)
         return { type = "input", order = order, name = name, disabled = off, width = "double",
-            get = function() local d = C().defaults[key]; return (type(d) == "table" and d.name) or "" end,
+            get = function() local c = Cfg(); local d = c and Shop.Defaults(c)[key]; return (type(d) == "table" and d.name) or "" end,
             set = function(_, v)
+                local c = Cfg(); if not c then return end
                 v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
-                if v == "" then C().defaults[key] = nil; Changed(); return end
+                if v == "" then Shop.Defaults(c)[key] = nil; Changed(); return end
                 local id = tonumber(v:match("|Hitem:(%d+)") or "")
                 local nm = v:match("%[(.-)%]") or v
-                C().defaults[key] = { name = nm, itemID = id }
+                Shop.Defaults(c)[key] = { name = nm, itemID = id }
                 Changed()
             end }
     end
@@ -966,9 +1036,9 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on. While it is off nothing is created or read. Greyed while Blizzard UI Reskin is off (this tab's Overview).",
+    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on; off, nothing of it runs. Greyed while Blizzard Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
-        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed() end }
+        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed(v and true or nil) end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end
@@ -980,7 +1050,7 @@ ns.RegisterCommand("shop", function(arg)
         local c = Cfg()
         if not c then return end
         ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",
             c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, Shop.TrackerHooked() and "yes" or "no"))
         return
     end

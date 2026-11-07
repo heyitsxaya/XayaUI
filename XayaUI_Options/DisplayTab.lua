@@ -89,7 +89,7 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     for _, k in ipairs(ADD_KINDS) do ADD_VALUES[k[1]] = k[2]; ADD_ORDER[#ADD_ORDER + 1] = k[1] end
     args.shows.width = "normal"
     args.add = { type = "select", order = 1.2, width = "normal", name = "Add a display cue", values = ADD_VALUES, sorting = ADD_ORDER,
-        desc = "Adds a new icon, texture, or text cue to this rule. It takes this tab's settings (such as the hover tooltip) and is edited on the Cues tab. A new cue plays only when a condition on the Conditions tab lists it (or always, while the rule has no conditions).",
+        desc = "Adds a new icon, texture or text cue to this rule, edited on the Cues tab. It plays only when a condition lists it, or always while the rule has no conditions.",
         get = function() return nil end,
         set = function(_, kind)
             local before = list()
@@ -102,7 +102,7 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     ---------------------------------------------------------------- behavior of all displays
     args.behH = { type = "header", order = 2, name = "All display cues", hidden = none }
     args.hoverTip = { type = "toggle", order = 2.1, width = "double", name = "Show tooltip on hover", hidden = none,
-        desc = "Hovering any display of this rule shows the tooltip of the spell or item it is about (a cue's icon source, else the rule's first trigger). While on, the displays see the mouse pointer, but clicks still pass through to what is behind them.",
+        desc = "Shows the spell or item's tooltip when you hover any display of this rule. Clicks still pass through.",
         get = function() local l = list(); return #l > 0 and CountOn(l, "hoverTip") == #l end,
         set = function(_, v) local l = list(); for _, d in ipairs(l) do d.visual.hoverTip = v and true or false end; done(l) end }
     args.hoverMixed = { type = "description", order = 2.15, width = "full", fontSize = "small",
@@ -149,11 +149,11 @@ function ns.BuildDisplayTab(rule, Notify, Changed)
     end
     local function setAll(key, v) local l = list(); for _, d in ipairs(l) do d.visual[key] = v end; done(l) end
     args.alpha = { type = "range", order = 4.1, name = "Opacity", min = 0, max = 1, step = 0.05, isPercent = true, hidden = none,
-        desc = "Overall opacity of every display of this rule (each cue's own setting, written to all of them).",
+        desc = "Sets the opacity of every display of this rule.",
         get = function() local _, v = same("alpha", 1); return v or 1 end,
         set = function(_, v) setAll("alpha", v) end }
     args.oocAlpha = { type = "range", order = 4.2, name = "Out of combat", min = 0, max = 1, step = 0.05, isPercent = true, hidden = none,
-        desc = "Opacity multiplier while you are out of combat (100% = the same as in combat), for every display of this rule.",
+        desc = "Scales every display's opacity out of combat (100% = as in combat).",
         get = function() local _, v = same("oocAlpha", 1); return v or 1 end,
         set = function(_, v) setAll("oocAlpha", v) end }
     args.lookMixed = { type = "description", order = 4.3, width = "full", fontSize = "small",
@@ -265,7 +265,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     -- behavior of every display
     local beh = {
         hoverTip = U.Tog(V, "hoverTip", "Show tooltip on hover", 1, on, { width = "double",
-            desc = "Hovering a display shows the tooltip of the spell or item it is about. While on, the display sees the mouse pointer, but clicks still pass through to what is behind it." }),
+            desc = "Shows the spell or item's tooltip when you hover the display. Clicks still pass through." }),
         requireOnBar = U.Tog(V, "requireOnBar", "Only show while on an action bar", 2, on, { width = "double",
             desc = "Hides a display whenever its rule's spell is not placed on any of your action bars." }),
     }
@@ -325,7 +325,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     local function nBars() return #bars() end
     local bst = {
         force = { type = "toggle", order = 1, width = "full", name = "Force on every bar in this group",
-            desc = "Ticked: every Bar cue in this group (and its nested groups) uses this group's colour style, whatever its own is set to. Unticked: each bar keeps its own style; a choice below is copied to every bar once.",
+            desc = "Makes every Bar cue in this group use this group's color style. Off: each bar keeps its own; a choice below is copied to every bar once.",
             get = function() return forced() end,
             set = function(_, v)
                 if v and not ns.BAR_STYLE_LABEL[f.barStyle] then f.barStyle = styleNow() end
@@ -335,7 +335,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
         style = { type = "select", order = 2, width = "double",
             name = function()
                 local n = nBars()
-                return "Colour style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
+                return "Color style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
             end,
             values = ns.BAR_STYLE_LABEL, sorting = ns.BAR_STYLES,
             get = function() return styleNow() end,
@@ -447,8 +447,8 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             for i, d in ipairs(l) do local st = ns.BarCueSettings(d.visual).style; if i == 1 then first = st elseif st ~= first then return false end end
             return true
         end,
-        name = "|cff999999Differs between bars: Colour style. The control shows the first bar's style; a change makes them all the same.|r" }
-    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: colour style", 5.5, function() return nBars() > 0 end, bst)
+        name = "|cff999999Differs between bars: Color style. The control shows the first bar's style; a change makes them all the same.|r" }
+    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: color style", 5.5, function() return nBars() > 0 end, bst)
 
     -- the three text elements, each its own section (what to change is the section you open, not a tick list)
     local STYLE = { { "font", "Font" }, { "size", "Text size" }, { "outline", "Outline" }, { "color", "Text color" }, { "place", "Placement" },
@@ -488,5 +488,44 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             hideZero = U.Tog(P, "hideZero", "Hide when zero", 4, on),
         }
     end)
+    -- Audit D43: Cancel in the color picker calls `set` with the color the swatch started from, which here is the FIRST display's color, and
+    -- the setter wrote it to every display: Cancel overwrote the others. Now the first change made while a picker is open keeps a copy of
+    -- every display's settings (and the group's forced bar colors); a `set` that brings back the start color (Cancel, or dragging back to
+    -- it) puts each display's own copy back instead. The copy is dropped once the picker is closed.
+    local pick
+    local function Picking() local P = rawget(_G, "ColorPickerFrame"); return (P and P.IsShown and P:IsShown()) and true or false end
+    local function Near(a, b) return math.abs((tonumber(a) or 1) - (tonumber(b) or 1)) < 0.0005 end
+    local function Same(x, y)
+        if type(x) ~= "table" or type(y) ~= "table" then return x == y end
+        for k, v in pairs(x) do if not Same(v, y[k]) then return false end end
+        for k in pairs(y) do if x[k] == nil then return false end end
+        return true
+    end
+    local function GuardColor(o)
+        local set, get = o.set, o.get
+        o.set = function(info, r, g, b, a)
+            if not pick or pick.o ~= o then
+                local s = { o = o, start = { get(info) }, vis = {}, barCustom = type(f.barCustom) == "table" and ns.Copy(f.barCustom) or nil }
+                for _, d in ipairs(list()) do s.vis[d] = ns.Copy(d.visual) end
+                pick = s
+            end
+            local s = pick
+            local st = s.start
+            if Near(st[1], r) and Near(st[2], g) and Near(st[3], b) and Near(st[4], a) then
+                for d, snap in pairs(s.vis) do
+                    local v = d.visual
+                    for k in pairs(v) do if snap[k] == nil then v[k] = nil end end
+                    for k, x in pairs(snap) do if not Same(v[k], x) then v[k] = (type(x) == "table") and ns.Copy(x) or x end end
+                end
+                f.barCustom = s.barCustom and ns.Copy(s.barCustom) or nil
+                on()
+            else
+                set(info, r, g, b, a)
+            end
+            if not Picking() then pick = nil end
+        end
+    end
+    local function GuardAll(t) for _, o in pairs(t or {}) do if type(o) == "table" then if o.type == "color" and o.set then GuardColor(o) elseif o.args then GuardAll(o.args) end end end end
+    GuardAll(args)
     return args
 end
