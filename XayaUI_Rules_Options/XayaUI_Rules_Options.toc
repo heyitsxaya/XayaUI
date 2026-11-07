@@ -1,0 +1,24 @@
+## Interface: 120100
+## Title: XayaUI Rules Options
+## Notes: The rule editor of the XayaUI settings window (the Rules tab). Loads when the settings window opens while XayaUI Rules is on, so it costs nothing until then. Needs XayaUI, XayaUI Rules and XayaUI Options.
+## Author: Xaya
+## Version: 0.6.77
+## X-Date: 2026-11-07
+## Dependencies: XayaUI, XayaUI_Rules, XayaUI_Options
+## LoadOnDemand: 1
+## Group: XayaUI
+
+Drafts.lua
+TriggersEditor.lua
+OutcomesEditor.lua
+DisplayTab.lua
+RuleSearch.lua
+AutoPicker.lua
+TreeHelpers.lua
+Editor.lua
+ShelvedElements.lua
+RulesTree.lua
+Sidebar.lua
+SpellSearch.lua
+SaveBar.lua
+RuleSettings.lua

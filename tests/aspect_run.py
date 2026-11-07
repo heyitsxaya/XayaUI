@@ -5,7 +5,7 @@ import lupa.lua51 as l
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 vis = open(os.path.join(ROOT, "XayaUI_Rules/Visual.lua")).read()
-opt = open(os.path.join(ROOT, "XayaUI_Options/RuleEditor/Editor.lua")).read()
+opt = open(os.path.join(ROOT, "XayaUI_Rules_Options/Editor.lua")).read()
 vblock = vis[vis.index("local function GraphicSize"):vis.index("\nend\n", vis.index("function ns.ArtNativeRatio")) + 5]
 oblock = opt[opt.index("local artSeen"):opt.index("\nend\n", opt.index("function ns.ArtAspectSet")) + 5]
 

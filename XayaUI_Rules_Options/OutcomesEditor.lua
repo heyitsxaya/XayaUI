@@ -4,6 +4,8 @@
 -- option rows: each condition's IF rows and THEN picker, each cue's header, Move up / Move down, Copy, and Remove.
 -- Called from Options.lua BuildRule; H = ns.UI (the shared option builders). Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
+-- (P4b, XayaUI_Rules_Options 0.6.77) Moved unchanged from XayaUI_Options/RuleEditor/ into the rule editor's own load-on-demand addon,
+-- loaded by the settings window when it opens while XayaUI Rules is on; with XayaUI Rules off none of its files is read.
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local S = ns.OutcomeShared

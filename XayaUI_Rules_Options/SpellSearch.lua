@@ -1,9 +1,11 @@
 -------------------------------------------------------------------------------
--- RuleEditor/SpellSearch.lua : Spell / item search boxes in the rule editor, the widget walker that attaches them, and DecorateTrees.
+-- XayaUI_Rules_Options/SpellSearch.lua : Spell / item search boxes in the rule editor and the talent icons' spell tooltips (attached by the window's widget walker, XayaUI_Options/TreePaint.lua).
 -- Part of the rule editor, moved out of Options.lua unchanged in the platform split P3 (Options 0.6.83;
 -- docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1: the rule module owns its editor). This folder talks to the rest of the
 -- settings window only through ns.OptionsApi: ns.OptionsApi.Shared (what Options.lua lends it) in, ns.OptionsApi.RuleEditor (what
 -- Options.lua asks of it) out; its files share their own parts through ns.OptionsApi.RuleEditorParts.
+-- Since P4b (XayaUI_Rules_Options 0.6.77) this folder is its own load-on-demand addon: the settings window loads it when it opens
+-- while XayaUI Rules is on (XayaUI_Options/Options.lua ns.OptionsApi.LoadRuleEditor); with XayaUI Rules off none of its files is read.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -11,7 +13,7 @@ if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua
 local O = ns.OptionsApi.Shared
 local APP, AceConfigDialog = O.APP, O.AceConfigDialog
 local P = ns.OptionsApi.RuleEditorParts
-local DecorateTree, SpellTex = P.DecorateTree, P.SpellTex
+local SpellTex = P.SpellTex
 
 
 -- Full Blizzard spell tooltip on the talent icon (an AceGUI Icon whose option carries arg.xuiSpell = the talent row).
@@ -583,77 +585,9 @@ local function AttachSpellTip(w)
     end
 end
 
--- Left-aligned section headers: AceGUI centers Heading text between two lines and Button text. Only widgets inside XayaUI's
--- own window are touched, and everything is put back when the widget is released (AceGUI recycles widgets across addons).
-function ns.LeftRestore(w)
-    if w.type == "Heading" and w.label then
-        w.label:ClearAllPoints(); w.label:SetPoint("TOP"); w.label:SetPoint("BOTTOM"); w.label:SetJustifyH("CENTER")
-        w.left:Show()
-        w.left:ClearAllPoints(); w.left:SetPoint("LEFT", 3, 0); w.left:SetPoint("RIGHT", w.label, "LEFT", -5, 0)
-        w.right:ClearAllPoints(); w.right:SetPoint("RIGHT", -3, 0); w.right:SetPoint("LEFT", w.label, "RIGHT", 5, 0)
-        if w.frame and w.frame.xuiInfoIcon then w.frame.xuiInfoIcon:Hide() end
-    elseif w.type == "Button" and w.text then
-        w.text:SetJustifyH("CENTER")
-    end
-    w.xuiLeftOn = nil
-end
-function ns.HookRelease(w)
-    if w.xuiRelHook then return end
-    w.xuiRelHook = true
-    local orig = w.OnRelease
-    w.OnRelease = function(self, ...)
-        if self.xuiLeftOn then ns.LeftRestore(self) end
-        if orig then return orig(self, ...) end
-    end
-end
-function ns.LeftAlign(w)
-    if w.type == "Heading" and w.label and w.left and w.right then
-        local t = w.label:GetText()
-        if not t or t == "" then return end
-        if w.xuiLeftOn and not w.right:IsShown() then w.xuiLeftOn = nil end   -- re-acquired with new text: lay it out again
-        if w.xuiLeftOn then return end
-        ns.HookRelease(w)
-        w.xuiLeftOn = true
-        local hoptC = w.GetUserData and w:GetUserData("option")
-        w.label:ClearAllPoints()
-        local lx = (hoptC and type(hoptC.arg) == "table" and hoptC.arg.xuiCollapse) and 24 or 4   -- room for the open / close button (Skin.lua)
-        w.label:SetPoint("TOPLEFT", w.frame, "TOPLEFT", lx, 0); w.label:SetPoint("BOTTOMLEFT", w.frame, "BOTTOMLEFT", lx, 0)
-        w.label:SetJustifyH("LEFT")
-        w.left:Hide()
-        w.right:ClearAllPoints()
-        w.right:SetPoint("RIGHT", w.frame, "RIGHT", -3, 0); w.right:SetPoint("LEFT", w.label, "RIGHT", 8, 0)
-        w.right:Show()
-        local hopt = w.GetUserData and w:GetUserData("option")
-        if hopt and hopt.xuiInfo and ns.GetInfoIcon then   -- (i) next to the heading: hover for the explanation, click to pin it
-            local ic = ns.GetInfoIcon(w.frame)
-            ic.xuiText = hopt.xuiInfo; ic.xuiTitle = t
-            ic:ClearAllPoints(); ic:SetPoint("LEFT", w.label, "RIGHT", 6, 0); ic:Show()
-            w.right:ClearAllPoints()
-            w.right:SetPoint("RIGHT", w.frame, "RIGHT", -3, 0); w.right:SetPoint("LEFT", ic, "RIGHT", 8, 0)
-        elseif w.frame.xuiInfoIcon then
-            w.frame.xuiInfoIcon:Hide()
-        end
-    elseif w.type == "Button" and w.text then
-        local opt = w.GetUserData and w:GetUserData("option")
-        if opt and type(opt.arg) == "table" and opt.arg.xuiLeft then
-            if not w.xuiLeftOn then ns.HookRelease(w); w.xuiLeftOn = true; w.text:SetJustifyH("LEFT") end
-        elseif w.xuiLeftOn then
-            ns.LeftRestore(w)
-        end
-    end
-end
-
-local function Walk(w, depth)
-    if not w or depth > 14 then return end
-    if w.type == "Heading" or w.type == "Button" then ns.LeftAlign(w) end
+-- (P4b) the window's widget walker (XayaUI_Options/TreePaint.lua ns.DecorateTrees) hands every Icon and EditBox widget here: the
+-- talent icons' spell tooltips and the spell / item search boxes are the rule editor's (Sidebar.lua made TreePaint.rules)
+ns.OptionsApi.TreePaint.rules.Widget = function(w)
     if w.type == "Icon" then AttachSpellTip(w) end
     if w.type == "EditBox" then AttachSearch(w) end
-    if w.type == "TreeGroup" then DecorateTree(w) end
-    for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end
-
-function ns.DecorateTrees(root)
-    root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
-    if root then ns.OptionsApi.WithCueMemo(function() pcall(Walk, root, 0) end); pcall(ns.OptionsApi.PaintTabSwitches, root) end   -- (0.6.69) one rule lookup pass for every row
-end
--- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass

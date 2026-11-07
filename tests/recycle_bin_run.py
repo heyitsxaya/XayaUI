@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
-def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (XayaUI_Options/RuleEditor/)
+def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (P4b: XayaUI_Rules_Options/)
     d = os.path.join(ROOT, "XayaUI_Options")
-    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(d, "RuleEditor", "*.lua"))))
+    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(ROOT, "XayaUI_Rules_Options", "*.lua"))))
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''

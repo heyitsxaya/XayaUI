@@ -20,10 +20,10 @@ GOLDEN = os.path.join(HERE, "tooltip_parity_golden.json")
 
 LUA = r'''
 return function(W, L)
--- (P4) the stand-in has one more addon folder since the split (XayaUI_Rules); it reports 0 KB for it, so the latency hover's memory list
+-- (P4) the stand-in has one more addon folder since the split (XayaUI_Rules; P4b: and XayaUI_Rules_Options); it reports 0 KB for them, so the latency hover's memory list
 -- (the eight biggest, all 1.0 MB in the stand-in) shows the same addons and total as the golden. The hover's own code is unchanged.
 do local realMem = GetAddOnMemoryUsage
-  GetAddOnMemoryUsage = function(a) local n = type(a) == "number" and C_AddOns.GetAddOnInfo(a) or a; if n == "XayaUI_Rules" then return 0 end; return realMem(a) end end
+  GetAddOnMemoryUsage = function(a) local n = type(a) == "number" and C_AddOns.GetAddOnInfo(a) or a; if n == "XayaUI_Rules" or n == "XayaUI_Rules_Options" then return 0 end; return realMem(a) end end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
 local ns = rawget(_G, "XayaUI_NS")

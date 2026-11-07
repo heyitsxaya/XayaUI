@@ -5,7 +5,9 @@
 -- Since the platform split P3 (Options 0.6.83; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7) this file is the window's plumbing:
 -- the top tabs, the shared helpers (ns.OptionsApi), the feature tabs built from the pages each module registers, and the Platform
 -- pages (Settings, Profiles with the Recycle Bin, the minimap button, Debugging). The rule editor and the rules tree (the Rules tab)
--- live in RuleEditor/; they reach this file only through ns.OptionsApi.Shared, and it reaches them through ns.OptionsApi.RuleEditor.
+-- live in the rule editor (P3: XayaUI_Options/RuleEditor/); they reach this file only through ns.OptionsApi.Shared, and it reaches them through ns.OptionsApi.RuleEditor.
+-- Since P4b (Options 0.6.87) that folder is its own load-on-demand addon, XayaUI_Rules_Options: ns.OptionsApi.LoadRuleEditor (below)
+-- loads it when the window opens while XayaUI Rules is on; the row painting every tab shares is TreePaint.lua.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -22,7 +24,11 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
-ns.OptionsApi.AutoPicker = ns.AutoPicker   -- published for Dev Assist's QA walkthrough (QAWalks-generate.lua, V22): the harness lets an addon read only what another publishes through here
+-- (P3) what this window asks of the rule editor (XayaUI_Rules_Options since P4b; filled when it loads, empty while XayaUI Rules is off):
+-- BuildRulesTab, SettingsRows, SelectedRule, StatusText, and the editor's hooks the window calls (published at the end of
+-- XayaUI_Rules_Options/RuleSettings.lua); every call checks the entry is there
+ns.OptionsApi.RuleEditor = {}
+local RE = ns.OptionsApi.RuleEditor
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
 -- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
 -- Blizzard UI Reskin (Options 0.6.38; Xaya 2026-11-05: "Take all reskins and put them into a new tab: Blizzard UI Reskin. Currently
@@ -30,7 +36,7 @@ ns.OptionsApi.AutoPicker = ns.AutoPicker   -- published for Dev Assist's QA walk
 -- "reskin": the Chat Panel (XayaUI_Chat), the Character Pane (XayaUI_QoL) and the Esc Menu (XayaUI_Reskin). The Chat tab is gone with
 -- it (the Chat Panel was its only page); a tab with no pages is not drawn.
 -- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
-function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
+function ns.OptionsApi.DeleteFolderAll(id) if RE.DeleteFolderAllById then return RE.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
     bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard Reskin", order = 5.3 } }
 -- (Options 0.6.72; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: tab label "Blizzard Reskin"; the toolbar goes and the top row reads
@@ -393,7 +399,7 @@ function Tree.ViewChanged()
 end
 -- Tree.hold: a sidebar tick box is running its switch's set (Tree.SwitchClick); a redraw that set asks for is dropped and the click
 -- makes the one redraw itself.
-local function Notify() if Tree.hold then return end Tree.keep, Tree.view = nil, nil; if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end if ns.SmartOpen then pcall(ns.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if ns.FixSelection then pcall(ns.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
+local function Notify() if Tree.hold then return end Tree.keep, Tree.view = nil, nil; if RE.SaveRulesSub then pcall(RE.SaveRulesSub) end if RE.SmartOpen then pcall(RE.SmartOpen) end if ns.FeatureTreesOpen then pcall(ns.FeatureTreesOpen) end if RE.FixSelection then pcall(RE.FixSelection) end AceConfigRegistry:NotifyChange(APP) end
 
 
 -------------------------------------------------------------------------------
@@ -426,13 +432,12 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
 end
 -- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
 -- a rebuild that grows or shrinks the page needs a second pass a moment later, or the scroll area keeps its old height (content clips, no scrollbar)
-ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) RuleEditor/Editor.lua adds Changed, SpellName, SpellTex, SearchBox
+ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) the rule editor (XayaUI_Rules_Options/Editor.lua) adds Changed, SpellName, SpellTex, SearchBox
 -- (Options 0.6.83, P3 options split; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7) The rule editor and the rules tree live in
--- RuleEditor/ (loaded after this file). What they use of this window, their only way in:
+-- XayaUI_Rules_Options (loaded after this addon, P4b). What they use of this window, their only way in:
 ns.OptionsApi.Shared = { APP = APP, AceConfigRegistry = AceConfigRegistry, AceConfigDialog = AceConfigDialog, Tree = Tree, Notify = Notify,
     CoreS = CoreS, PlatS = PlatS, QolS = QolS, Col = Col, Rng = Rng, Tog = Tog, Sel = Sel }
--- ...and what this file asks of them: BuildRulesTab (the Rules tab), SelectedRule and StatusText (the debug console strip)
-ns.OptionsApi.RuleEditor = {}
+-- ...and what this file asks of them: ns.OptionsApi.RuleEditor (RE, made at the top of this file)
 -------------------------------------------------------------------------------
 -- Import / Export tab: export rules as text, import rules from text, and backups of your rules saved on this computer (Share.lua).
 -- Themes have their own import and export (Settings > UI Options > Theme).
@@ -515,11 +520,38 @@ function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) e
 -- list rows and the Rule Creation tab of Settings, and the rule backups under Profiles > Export are left out (nothing of the rule editor
 -- is built); the rest of the window is the same.
 local function RulesOn() return (ns.Service and ns.Service("rules")) and true or false end
+-- (Options 0.6.87, P4b; plan section 7 / Q1) The rule editor is the load-on-demand addon XayaUI_Rules_Options (## Dependencies:
+-- XayaUI, XayaUI_Rules, XayaUI_Options). It is loaded once per session, after this addon finished loading: by core's ns.LoadOptions
+-- (Modules.lua, through ns.Options.AfterLoad) and, for a caller that loaded this addon some other way, by Toggle; only while XayaUI
+-- Rules is on, so with it off none of its files is read (V14). C_AddOns.LoadAddOn(name: uiAddon) -> loaded: bool?, value: string?
+-- (docs/reference/api/namespaces.md:164, SecretArguments=AllowedWhenUntainted); core loads this addon the same way (Modules.lua).
+-- EditorOn: the Rules tab and the rule rows of Settings are built only when the editor is there (XayaUI Rules on, editor loaded).
+ns.OptionsApi.RULE_EDITOR_ADDON = "XayaUI_Rules_Options"
+local function EditorOn() return RulesOn() and ns.OptionsApi.RuleEditor.BuildRulesTab ~= nil end
+function ns.OptionsApi.LoadRuleEditor()
+    if ns.OptionsApi.ruleEditorTried or not RulesOn() then return EditorOn() end
+    ns.OptionsApi.ruleEditorTried = true
+    local A = C_AddOns
+    local ok, loaded, reason = false, nil, nil
+    if A and A.LoadAddOn then ok, loaded, reason = pcall(A.LoadAddOn, ns.OptionsApi.RULE_EDITOR_ADDON) end
+    if not (ok and loaded and EditorOn()) then
+        local state = ns.ModuleState and ns.ModuleState(ns.OptionsApi.RULE_EDITOR_ADDON)
+        if state == "disabled" then
+            ns.Print("the rule editor (XayaUI Rules Options) is switched off in the game's AddOns list: the Rules tab is left out. Turn it on, then /reload.")
+        elseif state == "missing" then
+            ns.Print("the rule editor (XayaUI Rules Options) is not installed: the XayaUI_Rules_Options folder belongs next to XayaUI in Interface\\AddOns. The Rules tab is left out.")
+        else
+            ns.Print("the rule editor could not load (" .. tostring(ok and reason or loaded) .. "): the Rules tab is left out. /xui bug shows errors.")
+        end
+    end
+    return EditorOn()
+end
+ns.OptionsApi.AfterLoad = ns.OptionsApi.LoadRuleEditor   -- called by core right after this addon loaded (Modules.lua ns.LoadOptions)
 local function BuildAddonSettings()
     local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
     local dispRows, ruleRows = {}, nil
-    if RulesOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (RuleEditor/RuleSettings.lua)
+    if EditorOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (XayaUI_Rules_Options/RuleSettings.lua)
     local page = { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
@@ -547,7 +579,7 @@ local function BuildAddonSettings()
                 get = function() return (PlatS.ui and PlatS.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
         } },
-        rules = ruleRows,   -- (P3) the Rule Creation tab: RuleEditor/RuleSettings.lua
+        rules = ruleRows,   -- (P3) the Rule Creation tab: XayaUI_Rules_Options/RuleSettings.lua
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
@@ -828,6 +860,7 @@ end
 ns.UI.Refresh = Notify   -- redraw the options window in place (used by the Import window)
 function ns.OpenPage(key)
     if key == "drafts" or key == "creator" then   -- Drafts and the Class/Spec Rule Creator are sub-tabs of Rules now, not pages of their own
+        if not EditorOn() then return end   -- (P4b) no Rules tab (XayaUI Rules off, or its editor missing): nothing to open
         ns.pageOpen = nil; ns.infoOpen = false
         Notify()
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", key == "drafts" and "draftsTab" or "creatorTab")
@@ -844,6 +877,7 @@ end
 ns.UI.Creator = function() ns.OpenPage("creator") end
 -- Settings > UI Options > Rule Creation (the draft settings live there)
 function ns.OpenDraftSettings()
+    if not EditorOn() then return end   -- (P4b) no Rule Creation tab without the rule editor
     ns.OpenPage("settings")
     local skinned = ns.SkinRows and ns.SkinRows()
     if skinned then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "set", "ui", "rules")
@@ -919,9 +953,9 @@ function ns.InfoPass(root)
     walk(root)
 end
 local function BuildOptions()
-    ---------------------------------------------------------- Rules (RuleEditor/RulesTree.lua; P3)
+    ---------------------------------------------------------- Rules (XayaUI_Rules_Options/RulesTree.lua; P3)
     local track, allQol, allBars
-    if RulesOn() then track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab() end   -- (P4) none while XayaUI Rules is off
+    if EditorOn() then track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab() end   -- (P4) none while XayaUI Rules is off (P4b: or its editor is missing)
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
@@ -1017,9 +1051,9 @@ local function BuildOptions()
     end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
         args = { cooldowns = track, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(binTab), settings = settings, set = setPage } }
-    pcall(ns.SmartOpen)
+    pcall(RE.SmartOpen)
     pcall(ns.FeatureTreesOpen)
-    pcall(ns.ApplyTreeFilter, out)
+    pcall(RE.ApplyTreeFilter, out)
     if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, out) end   -- the info icons are part of the skin
     pcall(ns.OptionsApi.HalfInputs, out)
     return out
@@ -1112,6 +1146,7 @@ end)
 
 local firstOpen = true
 function ns.OptionsApi.Toggle()
+    ns.OptionsApi.LoadRuleEditor()   -- (P4b) once per session; already done by core's ns.LoadOptions in the usual case
     if RulesOn() and not ns.rules then ns.Print("saved data is not ready yet (rules table is nil).") return end   -- (P4: only while XayaUI Rules is on)
     if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP] then
         AceConfigDialog:Close(APP)
@@ -1119,7 +1154,7 @@ function ns.OptionsApi.Toggle()
         -- (Options 0.6.68, REQUEST-LOG A15 P-16: her first open made 3 full builds, 2603 + 739 + 650 ms) The first opening picks the
         -- Rules sub-tab BEFORE the window opens: SelectGroup builds the tree once and only asks for a redraw; Open then reuses that same
         -- tree (Tree.keep) and the redraw SelectGroup asked for is dropped (Open has just drawn it). One build instead of three.
-        if firstOpen and not RulesOn() then firstOpen = false end   -- (P4) no Rules tab: the window opens on its first tab
+        if firstOpen and not EditorOn() then firstOpen = false end   -- (P4) no Rules tab: the window opens on its first tab
         if firstOpen then
             firstOpen = false
             local ui = PlatS.ui
@@ -1151,14 +1186,14 @@ do
             Tree.DropPending()
             LowerWindow()
             if not ns.paneSizeApplied then ns.paneSizeApplied = true; if ns.ApplyPaneSize then pcall(ns.ApplyPaneSize) end end   -- saved size override, once per session
-            if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
+            if RE.DraftsOnOpen then pcall(RE.DraftsOnOpen) end   -- remember every rule's saved version
             if Tree.DriverStart then Tree.DriverStart() end   -- the window's driver runs while it is open, never while closed (V14)
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
                 of.frame:HookScript("OnHide", function()
-                    if ns.DraftsOnClose then pcall(ns.DraftsOnClose) end
-                    if ns.SearchOnClose then pcall(ns.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
+                    if RE.DraftsOnClose then pcall(RE.DraftsOnClose) end
+                    if RE.SearchOnClose then pcall(RE.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
                     if Tree.Closed then pcall(Tree.Closed) end   -- stop the driver; clear previews, the kept tree, the strips (Options 0.6.41)
                 end)
             end
@@ -1167,7 +1202,7 @@ do
         -- undo state here, before it can be edited (Drafts.lua ns.UndoFirstState; Options 0.6.41, instead of copying every rule)
         hooksecurefunc(AceConfigDialog, "FeedGroup", function(_, app)
             if app == APP then Tree.decorateDue = true end   -- a pane was drawn (a tab or row click): the next tick decorates it
-            if app == APP and ns.UndoFirstState then pcall(ns.UndoFirstState) end
+            if app == APP and RE.UndoFirstState then pcall(RE.UndoFirstState) end
         end)
         -- any widget made (a dropdown's list, a pane's controls, a scrolled-in row): the next tick decorates it (Options 0.6.68)
         local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
@@ -1302,8 +1337,9 @@ do
         return a, b, c
     end
 end
--- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (RuleEditor/Sidebar.lua, Editor.lua)
-local function SelectedRule() return ns.OptionsApi.RuleEditor.SelectedRule() end
+-- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (XayaUI_Rules_Options/Sidebar.lua, Editor.lua)
+-- (P4b) nil while the rule editor is not loaded (XayaUI Rules off): the strip then reads as with no rule selected
+local function SelectedRule() local f = ns.OptionsApi.RuleEditor.SelectedRule; return f and f() end
 local function StatusText(rule) return ns.OptionsApi.RuleEditor.StatusText(rule) end
 
 local ARROW_OPEN, ARROW_COLLAPSED = "Interface\\Buttons\\Arrow-Up-Up", "Interface\\Buttons\\Arrow-Down-Up"
@@ -1444,8 +1480,8 @@ local function EnsureChrome(of)
             fr:EnableKeyboard(true)
             fr:HookScript("OnKeyDown", function(self, key)
                 local handled = false
-                if key == "DELETE" then handled = ns.DeleteKey()
-                elseif (key == "Z" or key == "Y") and IsControlKeyDown() and ns.UndoKey then handled = ns.UndoKey(key == "Y" or IsShiftKeyDown()) end
+                if key == "DELETE" then handled = RE.DeleteKey and RE.DeleteKey() or false   -- (P4b) the rule editor's; absent while XayaUI Rules is off
+                elseif (key == "Z" or key == "Y") and IsControlKeyDown() and RE.UndoKey then handled = RE.UndoKey(key == "Y" or IsShiftKeyDown()) end
                 if self.SetPropagateKeyboardInput and not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
             end)
         end
@@ -1456,7 +1492,7 @@ local function EnsureChrome(of)
         c.delSel:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.delSel.text = c.delSel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         c.delSel.text:SetPoint("LEFT", 0, 0); c.delSel.text:SetTextColor(1, 0.3, 0.3)
-        c.delSel:SetScript("OnClick", function() ns.MultiDelete() end)
+        c.delSel:SetScript("OnClick", function() if RE.MultiDelete then RE.MultiDelete() end end)
         c.delSel:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
             GameTooltip:SetText("Ctrl+click rule rows to select, Shift+click for a range")
@@ -1468,16 +1504,16 @@ local function EnsureChrome(of)
         c.clr:SetFrameLevel(fr:GetFrameLevel() + 10)
         c.clr.text = c.clr:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
         c.clr.text:SetPoint("LEFT", 0, 0); c.clr.text:SetText("Clear selection")
-        c.clr:SetScript("OnClick", function() ns.MultiClear() end)
+        c.clr:SetScript("OnClick", function() if RE.MultiClear then RE.MultiClear() end end)
         c.delSel:Hide(); c.clr:Hide()
 
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
         of.OnRelease = function(self, ...)
-            pcall(ns.SaveRulesSub)
+            pcall(RE.SaveRulesSub)
             SetCollapsed(self, false)
             ns.infoOpen = false; ns.pageOpen = nil
-            ns.MultiReset()
+            if RE.MultiReset then RE.MultiReset() end   -- (P4b) the rule editor's; absent while XayaUI Rules is off
             c.delSel:Hide(); c.clr:Hide()
             c.info:Hide()
             if c.ver then c.ver:Hide() end
@@ -1514,7 +1550,7 @@ local function EnsureChrome(of)
         if anyTab then ns.sessionCollapsed = true; Notify() end
     end
     if c.delSel then
-        local n = ns.MultiCount and ns.MultiCount() or 0
+        local n = RE.MultiCount and RE.MultiCount() or 0
         if n > 0 and not c.collapsed then
             c.delSel.text:SetText(("Delete %d selected rule%s"):format(n, n == 1 and "" or "s"))
             c.delSel:SetWidth(c.delSel.text:GetStringWidth() + 4)
@@ -1552,7 +1588,7 @@ end
 function ns.UpdateTrayNow()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
-    Tree.PlaceTray(of, fr, fr and fr:IsShown() and ns.SaveBarUpdate and ns.SaveBarUpdate(fr) or nil)
+    Tree.PlaceTray(of, fr, fr and fr:IsShown() and RE.SaveBarUpdate and RE.SaveBarUpdate(fr) or nil)
 end
 
 -- The window's driver (dresses the window, keeps the strips under it, re-reads which rules are loaded). V14 (Options 0.6.41; Xaya
@@ -1572,8 +1608,8 @@ function Tree.Closed()
     if ns.SetWindowOpen then ns.SetWindowOpen(false) end
     -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
     if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
-    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
-    if ns.SaveBarUpdate then ns.SaveBarUpdate(nil) end
+    if RE.SaveRulesSub then pcall(RE.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    if RE.SaveBarUpdate then RE.SaveBarUpdate(nil) end
     Tree.PlaceTray(nil, nil, nil)
 end
 function Tree.Tick(_, e)
@@ -1584,7 +1620,7 @@ function Tree.Tick(_, e)
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     local fr = of and of.frame
     if not (fr and fr:IsShown()) then Tree.Closed(); return end   -- (closed without the OnHide hook seeing it)
-    if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
+    if RE.SaveRulesSub then pcall(RE.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     pcall(EnsureChrome, of)
     -- (Options 0.6.68, A15 P-16) the decorate / skin pass walks every widget and frame of the window: only when something new was drawn
     -- (an AceGUI widget made or a pane fed since the last pass), not every 0.25 s (it ran ~4x a second while the window was open)
@@ -1617,7 +1653,7 @@ function Tree.Tick(_, e)
             if changed then Notify() end
         end
     end
-    local sbar = ns.SaveBarUpdate and ns.SaveBarUpdate(fr)
+    local sbar = RE.SaveBarUpdate and RE.SaveBarUpdate(fr)
     Tree.PlaceTray(of, fr, sbar)
 end
 function Tree.DriverStart()
@@ -1650,10 +1686,10 @@ do
         end,
         FolderNode = function(f) return f and FindKey(BuildOptions(), f.id, 0) end,
         Find = function(node, key) return FindKey(node, key, 0) end,
-        DraftsPage = function() return ns.BuildDraftsPage and ns.BuildDraftsPage() end,
-        IsEditLocked = function(x) return ns.IsEditLocked(x) end,
-        DraftsEnabled = function() return ns.DraftsEnabled and ns.DraftsEnabled() end,
-        DraftDirty = function(r) return ns.DraftDirty and ns.DraftDirty(r) end,
+        DraftsPage = function() return RE.BuildDraftsPage and RE.BuildDraftsPage() end,
+        IsEditLocked = function(x) return RE.IsEditLocked and RE.IsEditLocked(x) end,
+        DraftsEnabled = function() return RE.DraftsEnabled and RE.DraftsEnabled() end,
+        DraftDirty = function(r) return RE.DraftDirty and RE.DraftDirty(r) end,
         Notify = function() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end,
     }) end
 end

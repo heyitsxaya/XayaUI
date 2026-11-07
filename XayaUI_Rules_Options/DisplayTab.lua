@@ -6,6 +6,8 @@
 -- a setting here writes the same field on every display of the rule, and shows when the displays disagree.
 -- A rule from before cues existed (its own display, no cues) counts as one display.
 -------------------------------------------------------------------------------
+-- (P4b, XayaUI_Rules_Options 0.6.77) Moved unchanged from XayaUI_Options/RuleEditor/ into the rule editor's own load-on-demand addon,
+-- loaded by the settings window when it opens while XayaUI Rules is on; with XayaUI Rules off none of its files is read.
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 

@@ -122,7 +122,7 @@ def main():
     if "--export" in sys.argv:
         src = load_export(sys.argv[sys.argv.index("--export") + 1])
     folders = H.find_addons()
-    enabled = ["XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Options"]
+    enabled = ["XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Options", "XayaUI_Rules_Options"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), H.to_lua(L, {}))
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(

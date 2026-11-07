@@ -541,7 +541,12 @@ function ns.LoadOptions()
     local A = C_AddOns
     if not (A and A.LoadAddOn) then return false end
     local ok, loaded, reason = pcall(A.LoadAddOn, ns.OPTIONS_ADDON)
-    if ok and loaded and ns.Options then return true end
+    if ok and loaded and ns.Options then
+        -- (XayaUI 0.6.77, P4b) the window's own parts that are separate load-on-demand addons (the rule editor, XayaUI_Rules_Options,
+        -- while XayaUI Rules is on) load now, after XayaUI_Options has finished loading; the window decides which (ns.Options.AfterLoad)
+        if ns.Options.AfterLoad then Call(ns.Options.AfterLoad) end
+        return true
+    end
     if not optionsWarned then
         optionsWarned = true
         local state = ns.ModuleState(ns.OPTIONS_ADDON)

@@ -47,7 +47,7 @@ local function ncalls(name, file) return (calls[name] and calls[name][file]) or 
 meter(C_AddOns, "DoesAddOnExist", "DoesAddOnExist")
 meter(C_ChatInfo, "RegisterAddonMessagePrefix", "RegisterPrefix")
 local TT_, TTUI, DP, NP, NS, CALC, OPT, DR = "XayaUI_Bonus/Tooltips.lua", "XayaUI_Bonus/TooltipsUI.lua", "XayaUI_Bonus/DataPanels.lua",
-  "XayaUI_Bonus/Notepad.lua", "XayaUI_Bonus/NotepadShare.lua", "XayaUI_Bonus/Calculator.lua", "XayaUI_Options/Options.lua", "XayaUI_Options/RuleEditor/Drafts.lua"
+  "XayaUI_Bonus/Notepad.lua", "XayaUI_Bonus/NotepadShare.lua", "XayaUI_Bonus/Calculator.lua", "XayaUI_Options/Options.lua", "XayaUI_Rules_Options/Drafts.lua"
 local function owned(file) local l = {}; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then l[#l + 1] = o end end; return l end
 local function frames(file) return #owned(file) end
 local function events(file)
@@ -61,7 +61,9 @@ local function liveOnUpdates(prefix)   -- OnUpdate scripts that run now (set, on
   local n = 0
   for _, o in ipairs(W.objects) do
     local f = rawget(o, "_owner") or ""
-    if f:sub(1, #prefix) == prefix and o._scripts.OnUpdate and o:IsVisible() then n = n + 1 end
+    -- (P4b) the settings window's rule editor is its own folder now (XayaUI_Rules_Options): it counts as the window's
+    local mine = f:sub(1, #prefix) == prefix or (prefix == "XayaUI_Options/" and f:sub(1, 21) == "XayaUI_Rules_Options/")
+    if mine and o._scripts.OnUpdate and o:IsVisible() then n = n + 1 end
   end
   return n
 end
@@ -323,7 +325,7 @@ def saved_for(mode):
 
 def world(mode):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Bonus", "XayaUI_Options", "XayaUI_Rules_Options")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
-OPTIONS = os.path.join(HERE, "..", "XayaUI_Options", "RuleEditor", "SpellSearch.lua")   # (P3 options split: the search moved out of Options.lua)
+OPTIONS = os.path.join(HERE, "..", "XayaUI_Rules_Options", "SpellSearch.lua")   # (P3 options split: the search moved out of Options.lua)
 
 LUA = r'''
 return function(W, L)
@@ -98,7 +98,7 @@ def run(options_src=None):
         L.execute(r'''
 local realOpen = io.open
 io.open = function(path, mode)
-  if type(path) == "string" and path:find("XayaUI_Options[/\\]RuleEditor[/\\]SpellSearch%.lua$") then
+  if type(path) == "string" and path:find("XayaUI_Rules_Options[/\\]SpellSearch%.lua$") then
     return { read = function() return BROKEN_OPTIONS end, close = function() end, lines = function() return BROKEN_OPTIONS:gmatch("[^\n]*\n?") end }
   end
   return realOpen(path, mode)

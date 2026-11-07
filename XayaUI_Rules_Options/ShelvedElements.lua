@@ -1,10 +1,12 @@
 -------------------------------------------------------------------------------
--- RuleEditor/ShelvedElements.lua : The shelved QoL Elements' pages (stats text boxes and buff bars; their files are in shelved/, not loaded, so nothing here is
+-- XayaUI_Rules_Options/ShelvedElements.lua : The shelved QoL Elements' pages (stats text boxes and buff bars; their files are in shelved/, not loaded, so nothing here is
 -- drawn today: ns.QoLOn and ns.BarsOn are nil). Kept beside the rules tree, which lists them.
 -- Part of the rule editor, moved out of Options.lua unchanged in the platform split P3 (Options 0.6.83;
 -- docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1: the rule module owns its editor). This folder talks to the rest of the
 -- settings window only through ns.OptionsApi: ns.OptionsApi.Shared (what Options.lua lends it) in, ns.OptionsApi.RuleEditor (what
 -- Options.lua asks of it) out; its files share their own parts through ns.OptionsApi.RuleEditorParts.
+-- Since P4b (XayaUI_Rules_Options 0.6.77) this folder is its own load-on-demand addon: the settings window loads it when it opens
+-- while XayaUI Rules is on (XayaUI_Options/Options.lua ns.OptionsApi.LoadRuleEditor); with XayaUI Rules off none of its files is read.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)

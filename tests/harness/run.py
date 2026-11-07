@@ -26,7 +26,10 @@ CORE = "XayaUI"
 # (P4) XayaUI Rules (rule and aura tracking) is a module a player switches on and off like the others: every combination is run with it
 # on and with it off (the Platform and every other module must load and work without it)
 FEATURES = ["XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
-ALWAYS = ["XayaUI_Media"]
+# (P4b) XayaUI_Rules_Options (the rule editor) is load-on-demand like XayaUI_Options and needs XayaUI Rules and XayaUI Options: it is
+# switched on in every combination, so it is loaded (when the window opens) exactly where both are on, and nothing of it anywhere else;
+# one more combination below has everything but it (a player who did not copy the folder)
+ALWAYS = ["XayaUI_Media", "XayaUI_Rules_Options"]
 
 
 def find_addons():
@@ -312,6 +315,8 @@ def main():
         # (P4) and everything with XayaUI Rules off: Dev Assist and Nameplates too (Dev Assist names XayaUI Rules as an optional dependency)
         if "XayaUI_Rules" in features:
             combos.append(tuple(always) + tuple(f for f in features if f != "XayaUI_Rules") + tuple(tools))
+        if "XayaUI_Rules_Options" in always:
+            combos.append(tuple(a for a in always if a != "XayaUI_Rules_Options") + tuple(features) + tuple(tools))
     datasets = [("fresh install", {})]
     if args.saved:
         real = read_saved(args.saved)

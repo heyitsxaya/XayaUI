@@ -9,9 +9,9 @@ import glob, os, sys, re
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
-def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (XayaUI_Options/RuleEditor/)
+def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (P4b: XayaUI_Rules_Options/)
     d = os.path.join(ROOT, "XayaUI_Options")
-    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(d, "RuleEditor", "*.lua"))))
+    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(ROOT, "XayaUI_Rules_Options", "*.lua"))))
 
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
 a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')", a)

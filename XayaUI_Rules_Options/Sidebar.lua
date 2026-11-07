@@ -1,10 +1,13 @@
 -------------------------------------------------------------------------------
--- RuleEditor/Sidebar.lua : The Rules sidebar: preview toggles, drag and drop, reorder arrows, copy / paste of rule settings, right-click menus, row
--- painting and decoration, and the selected rule / group and the Del key.
+-- XayaUI_Rules_Options/Sidebar.lua : The Rules sidebar: preview toggles, drag and drop, reorder arrows, copy / paste of rule settings, right-click menus, row
+-- the rules tree's part of the row painting (ns.OptionsApi.TreePaint.rules; every tab's rows are painted by XayaUI_Options/TreePaint.lua),
+-- and the selected rule / group and the Del key.
 -- Part of the rule editor, moved out of Options.lua unchanged in the platform split P3 (Options 0.6.83;
 -- docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1: the rule module owns its editor). This folder talks to the rest of the
 -- settings window only through ns.OptionsApi: ns.OptionsApi.Shared (what Options.lua lends it) in, ns.OptionsApi.RuleEditor (what
 -- Options.lua asks of it) out; its files share their own parts through ns.OptionsApi.RuleEditorParts.
+-- Since P4b (XayaUI_Rules_Options 0.6.77) this folder is its own load-on-demand addon: the settings window loads it when it opens
+-- while XayaUI Rules is on (XayaUI_Options/Options.lua ns.OptionsApi.LoadRuleEditor); with XayaUI Rules off none of its files is read.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -225,28 +228,6 @@ local function MakeToggle(button, kind)
         local what = (self.kind == "visual") and "Preview the texture / bar" or "Loop the sound"
         GameTooltip:SetText(what .. " (temporary)")
         GameTooltip:AddLine("Applies to everything under this row. Ignores conditions; never changes the rule.", 1, 1, 1, true)
-        GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    return b
-end
-
-local function MakeChevron(button)
-    local b = CreateFrame("Button", nil, button)
-    b:SetSize(16, 16)
-    b:SetFrameLevel(button:GetFrameLevel() + 3)
-    b:SetScript("OnClick", function(self)
-        local tree = button.obj
-        local st = tree and (tree.status or tree.localstatus)
-        local uv = button.uniquevalue
-        if st and st.groups and uv then
-            st.groups[uv] = not st.groups[uv]
-            tree:RefreshTree()
-        end
-    end)
-    b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Expand / collapse the list under this row")
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1395,22 +1376,6 @@ end
 local BANNER_TINT = {
     root = { 1, 0.78, 0 }, loaded = { 0.1, 0.85, 0.75 }, notloaded = { 0.95, 0.2, 0.2 }, disabled = { 0.55, 0.55, 0.6 }, display = { 0.1, 0.5, 1 }, sound = { 0.1, 0.75, 0.3 }, hybrid = { 1, 0.5, 0.1 }, advanced = { 0.75, 0.25, 1 }, smart = { 0.3, 0.8, 1 }, cursor = { 0.95, 0.35, 0.75 }, other = { 0.7, 0.7, 0.75 },
 }
--- Sidebar highlight: every category / folder row is neutral gray; the selected row, its parent groups and the rows inside the
--- selected group take the purple of the Advanced Cue Tracking banner. (Row sizes and fonts still follow BannerTint.)
-ns.NEUTRAL_TINT = { 0.2, 0.2, 0.24 }
-function ns.SelectedUV(button)
-    local tree = button and button.obj
-    local st = tree and (tree.status or tree.localstatus)
-    return st and st.selected and tostring(st.selected) or nil
-end
-function ns.HotPath(sel, prefix)   -- prefix is the selected path, above it, or inside it
-    if not sel or not prefix then return false end
-    -- only the selected row itself (never its parents or the rows inside it); the root rows (All Rules, Loaded, ...) never light up
-    local last = sel:match("([^\001]+)$")
-    if last == "all" or last == "loaded" or last == "notloaded" or last == "disabled" or last == "smart" or last == "autopop"
-        or last == "allbars" or last == "allqol" or last == "allcursor" then return false end
-    return sel == prefix
-end
 local function BannerTint(uv)
     local last = uv and tostring(uv):match("([^\001]*)$")
     if last == "all" or last == "allbars" or last == "allqol" or last == "allcursor" or last == "autopop" then return BANNER_TINT.root end
@@ -1423,155 +1388,14 @@ local function BannerTint(uv)
         return (type(f.default) == "string" and BANNER_TINT[f.default]) or BANNER_TINT.other
     end
 end
--- Row text and selection look (2026-10-31 UI pass). One deterministic style per tier, re-applied on every pass, so rows can no
--- longer drift apart: AceGUI swaps the button's font object (gold normal / white highlight) on select and hover, and the old
--- code captured whichever one it saw first. Tiers: root headers (outlined), top-level categories, sub-categories, rules.
--- Capitals only on ALL RULES, LOADED, NOT LOADED and SMART CATEGORIES.
-do
-local TREE_TXT = { 0.96, 0.96, 0.98 }     -- unselected rows
-local TREE_SEL = { 0.78, 0.62, 1.0 }      -- selected row, "alternate text color" style
-ns.TREE_GRAD = { 0.30, 0.08, 0.45 }       -- parent-group gradient: dark purple (left) to black (right)
-ns.TREE_BAR = { 0.34, 0.34, 0.40 }
-do local TH = ns.Theme   -- style sheet: these tables are filled in place whenever the theme changes
-   if TH then TH.Bind("text", TREE_TXT); TH.Bind("accentText", TREE_SEL); TH.Bind("gradStart", ns.TREE_GRAD); TH.Bind("treeBar", ns.TREE_BAR) end end        -- every folder-tree bar (banner edge bar and guide bars) shares this muted color
-local ROOT_KEYS = { all = true, allbars = true, allqol = true, allcursor = true, loaded = true, notloaded = true, disabled = true, smart = true, autopop = true }
-local UPPER_ROOTS = { all = true, loaded = true, notloaded = true, disabled = true, smart = true }
-
-local function RowTier(button)
-    local uv = button.uniquevalue and tostring(button.uniquevalue) or ""
-    local lastKey = uv:match("([^\001]+)$") or ""
-    local isRoot = ROOT_KEYS[uv] and true or false
-    local fld = lastKey:match("^f%d") and ns.FolderById and ns.FolderById(lastKey) or nil
-    local isSub = ((fld and fld.parent and true) or lastKey:match("^smart_") ~= nil or (fld and uv:find("\001smart\001", 1, true) ~= nil)) and true or false
-    local isCue = (not isRoot) and (not isSub) and BannerTint(uv) ~= nil
-    local base = select(2, GameFontNormal:GetFont()) or 12
-    local catSize = math.floor(base * 1.15 * 1.2 * 0.85 * 10 + 0.5) / 10
-    local subSize = math.floor(base * 1.2 * 0.85 * 10 + 0.5) / 10
-    local size, flags = base, ""
-    if isRoot then size = math.floor(catSize * 1.15 * 10 + 0.5) / 10; flags = "OUTLINE"
-    elseif isCue then size = catSize
-    elseif isSub then size = subSize end
-    return { uv = uv, isRoot = isRoot, isCue = isCue, isSub = isSub, catSize = catSize, subSize = subSize, size = size, flags = flags }
+function ns.HotPath(sel, prefix)   -- prefix is the selected path, above it, or inside it
+    if not sel or not prefix then return false end
+    -- only the selected row itself (never its parents or the rows inside it); the root rows (All Rules, Loaded, ...) never light up
+    local last = sel:match("([^\001]+)$")
+    if last == "all" or last == "loaded" or last == "notloaded" or last == "disabled" or last == "smart" or last == "autopop"
+        or last == "allbars" or last == "allqol" or last == "allcursor" then return false end
+    return sel == prefix
 end
-
-function ns.PaintRowText(button)
-    local fs = button.text
-    if not (fs and fs.SetFont) then return end
-    local t = RowTier(button)
-    do
-        local TH = ns.Theme
-        local fp = TH and TH.FontPath()
-        if fp and pcall(fs.SetFont, fs, fp, TH.Size(t.size), t.flags) then else fs:SetFont((GameFontNormal:GetFont()), TH and TH.Size(t.size) or t.size, t.flags) end
-    end
-    local sel = ns.SelectedUV(button)
-    local col = (sel ~= nil and sel == t.uv and ns.SelStyle() == "text") and TREE_SEL or TREE_TXT
-    fs:SetTextColor(col[1], col[2], col[3], 1)
-    fs:SetAlpha(1)
-    if t.isRoot and UPPER_ROOTS[t.uv] then
-        local text = fs:GetText() or ""
-        local up = text:upper()
-        if up ~= text then fs:SetText(up) end
-    end
-    return t
-end
-
--- hover swaps the button's font object (and with it the color) outside our passes: repaint right after
-function ns.HookRowHover(button)
-    if button.xuiTxtHook then return end
-    button.xuiTxtHook = true
-    local function again(self)
-        if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) or not self.xuiFontDone then return end
-        ns.PaintRowText(self)
-        C_Timer.After(0, function() if self.xuiFontDone then ns.PaintRowText(self) end end)
-    end
-    button:HookScript("OnEnter", again)
-    button:HookScript("OnLeave", again)
-end
-end   -- do (row text helpers)
-
-local function PaintBanner(button)
-    local c = BannerTint(button.uniquevalue)
-    local t = ns.PaintRowText(button)
-    if t then
-        button.xuiFontDone = true
-        ns.HookRowHover(button)
-        if not button.xuiH0 then button.xuiH0 = button:GetHeight() end
-        local want = button.xuiH0
-        if t.isRoot then want = math.max(button.xuiH0, math.floor(t.catSize * 1.15 + 8))
-        elseif t.isCue then want = math.max(button.xuiH0, math.floor(t.catSize + 8))
-        elseif t.isSub then want = math.max(button.xuiH0, math.floor(t.subSize + 8)) end
-        if math.abs(button:GetHeight() - want) > 0.5 then button:SetHeight(want) end
-        for _, seg in ipairs(button.xuiSC and button.xuiSC.segs or {}) do seg:Hide() end
-    end
-    -- selected row, "highlighted bar" style: purple fading to black toward the right. Never on mouse-over.
-    do
-        local su = ns.SelectedUV(button)
-        local mine = su ~= nil and su == (button.uniquevalue and tostring(button.uniquevalue) or "")
-        if mine and ns.SelStyle() == "bar" then
-            if not button.xuiSelTex then
-                button.xuiSelTex = button:CreateTexture(nil, "BACKGROUND", nil, 0)
-                button.xuiSelTex:SetAllPoints()
-            end
-            local st = button.xuiSelTex
-            st:SetColorTexture(0.75, 0.25, 1, 0.6)
-            pcall(st.SetGradient, st, "HORIZONTAL", CreateColor(0.75, 0.25, 1, 0.6), CreateColor(0, 0, 0, 0.15))
-            st:Show()
-        elseif button.xuiSelTex then
-            button.xuiSelTex:Hide()
-        end
-    end
-    -- blank divider row between All Rules and the Loaded / Not Loaded filters: a thin line, no text
-    local isSpacer = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or ""):match("^spacer") ~= nil
-    -- the two spacer rows around NOT LOADED keep their height but draw no line (Xaya, 2026-11-02)
-    local spKey = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or "") or ""
-    if spKey == "spacer" or spKey == "spacer1" then isSpacer = false end
-    if isSpacer then
-        if not button.xuiDivider then
-            button.xuiDivider = button:CreateTexture(nil, "ARTWORK")
-            button.xuiDivider:SetHeight(1)
-            button.xuiDivider:SetColorTexture(0.6, 0.6, 0.65, 0.45)
-        end
-        button.xuiDivider:ClearAllPoints()
-        button.xuiDivider:SetPoint("LEFT", button, "LEFT", 6, 0)
-        button.xuiDivider:SetPoint("RIGHT", button, "RIGHT", -6, 0)
-        button.xuiDivider:Show()
-    elseif button.xuiDivider then
-        button.xuiDivider:Hide()
-    end
-    -- parent-group gradient: when the selection is nested (root > group > ... > item), only the TOPMOST group of the chain
-    -- (the row right under the root) gets a dark purple to black left-to-right gradient. Settings > Display Options turns it off.
-    local uvStr = button.uniquevalue and tostring(button.uniquevalue) or ""
-    local selUV = ns.SelectedUV(button)
-    local nestTop = false
-    if selUV and ns.ParentGradientOn() then
-        local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
-        if s3 and uvStr == (s1 .. "\001" .. s2) then nestTop = true end
-    end
-    if not c and not nestTop then
-        if button.xuiBanner then button.xuiBanner:Hide(); button.xuiBannerBar:Hide() end
-        return
-    end
-    if not button.xuiBanner then
-        button.xuiBanner = button:CreateTexture(nil, "BACKGROUND", nil, -2)
-        button.xuiBanner:SetAllPoints()
-        button.xuiBannerBar = button:CreateTexture(nil, "BACKGROUND", nil, -1)
-        button.xuiBannerBar:SetPoint("TOPLEFT"); button.xuiBannerBar:SetPoint("BOTTOMLEFT"); button.xuiBannerBar:SetWidth(6)
-    end
-    local b, bar = button.xuiBanner, button.xuiBannerBar
-    if nestTop then
-        local g = ns.TREE_GRAD
-        b:SetColorTexture(g[1], g[2], g[3], 0.95)
-        pcall(b.SetGradient, b, "HORIZONTAL", CreateColor(g[1], g[2], g[3], 0.95), CreateColor(0, 0, 0, 0.95))
-    else
-        local col = ns.NEUTRAL_TINT   -- selection is drawn by xuiSelTex / the text color, not by this banner
-        local ba = 0.45
-        b:SetColorTexture(col[1], col[2], col[3], 0.5 * ba)
-        pcall(b.SetGradient, b, "HORIZONTAL", CreateColor(col[1], col[2], col[3], 0.85 * ba), CreateColor(col[1], col[2], col[3], 0.2 * ba))
-    end
-    bar:Hide()   -- the old edge bar clipped outside the sidebar; folder-tree bars are drawn under the +/- toggles (PaintGuides)
-    b:Show()
-end
-
 -- Tree-chart guide bars: every row inside a top-level folder repeats that folder's color as a vertical bar at the
 -- left edge (a continuation of the folder's own banner bar), and each deeper folder level adds one more, lighter
 -- and thinner bar, indented one step. Rows directly under the Loaded / Not Loaded roots continue that root's color.
@@ -1671,12 +1495,6 @@ function ns.MakeSideToggle(button, kind)
     return b
 end
 
--- The rule list's right-hand columns, from the row's right edge (Options 0.6.64; REQUEST-LOG UI-70: "icons still not appropriately
--- handled and display irregularly"; UI-72, her answer "copy the WA format w/ toggle being under group as previously suggested"): every
--- row keeps the same slots, left to right [lock][note][preview][open / close], each empty where the row has nothing of that kind, so
--- the icons line up; a header's open / close button is the far-right one with the preview just left of it (WeakAuras); a group's
--- sits under its icon. Two-row rows (a rule with its type icon) keep their own: the preview on the top row, the locks under it.
-ns.OptionsApi.SIDE_COL = { expand = 4, preview = 4 + 19, note = 4 + 19 * 2, lock = 4 + 19 * 3 }
 function ns.PaintSide(button, rules, vis, folder)
     local showEdit = folder ~= nil or #rules > 0
     local showMove = vis and #vis > 0
@@ -1736,130 +1554,6 @@ local ROW_TOGGLES = {
         get = function() return ns.BarsOn() end,
         set = function(v) CoreS.barGroup.enabled = v; pcall(ns.Bars_RefreshAll) end },
 }
-
--- Sidebar switches (Options 0.6.40; Xaya, 2026-11-05: "move all enable/disable toggles onto the sidebar instead for all bonus
--- features and QoL items"). A feature page, or one of its parts (a node under it in the left pane), that has one on / off carries
--- it as group.xuiSwitch: an ordinary AceConfig toggle (name, desc, get, set; hidden / disabled optional) that is NOT in its args, so
--- the page no longer shows it. Its row in a feature tab's left pane gets a tick box left of its name (placement below) that shows
--- get() and calls set() (the same function the in-page switch called, so every side effect stays). get / set receive the info table AceConfigDialog
--- would give a toggle at that place (path, then "xuiSwitch"). The box's tooltip is the switch's name and desc. A click on the box
--- is the box's own: it never selects or opens the row (the game hands a click to the topmost mouse-enabled frame under the cursor,
--- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
--- API documentation). Rows whose page has no single on / off (Utilities, Cursor) get no box.
--- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
--- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
--- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
--- the parts are hidden too, so the box never moves under the mouse when it is clicked.
--- Only rows of the feature tabs are looked at (the Rules trees skip at once: the window repaints every row 4 times a second).
-Tree.SWITCH_W, Tree.SWITCH_GAP = ns.Style.switch.size, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
-function Tree.RowSwitch(button)
-    local tree = button and button.obj
-    local user = tree and tree.GetUserDataTable and tree:GetUserDataTable()
-    local path = user and user.path
-    if type(path) ~= "table" or not ns.OptionsApi.TABS[path[1] or ""] or #path ~= 1 then return nil end
-    local g = user.option
-    for seg in tostring(button.uniquevalue or ""):gmatch("[^\001]+") do
-        g = type(g) == "table" and type(g.args) == "table" and g.args[seg] or nil
-    end
-    local sw = type(g) == "table" and g.xuiSwitch or nil
-    if type(sw) ~= "table" or type(sw.get) ~= "function" or type(sw.set) ~= "function" then return nil end
-    local info = { path[1] }
-    for seg in tostring(button.uniquevalue):gmatch("[^\001]+") do info[#info + 1] = seg end
-    info[#info + 1] = "xuiSwitch"
-    info.options, info.option, info.appName, info.type, info.uiType, info.uiName = user.options, sw, APP, "toggle", "dialog", "AceConfigDialog-3.0"
-    local hid = sw.hidden
-    if type(hid) == "function" then local ok, h = pcall(hid, info); hid = ok and h end
-    if hid then return nil end
-    -- parts: the node lists parts under it in the left pane (so it has the open / close arrow), even while they are hidden (the
-    -- Character Toolkit hides its parts while it is off): the box keeps one place whether the arrow shows or not
-    local parts = false
-    if (g.childGroups or "tree") == "tree" then
-        for _, c in pairs(type(g.args) == "table" and g.args or {}) do
-            if type(c) == "table" and c.type == "group" and not c.inline then parts = true; break end
-        end
-    end
-    return sw, info, parts, g
-end
--- A click on a row's tick box: the switch's own set, then exactly one redraw. That redraw reuses the tree drawn last (Tree.Keep):
--- a switch's state is read only by functions inside the tree (get / hidden / disabled / name), never while the tree is built, so a
--- fresh build would give the same tree; tests/sidebar_switches_run.py builds the whole tree with every switch off and on and
--- compares the two. The redraws the set asks for (Notify, CONFIG_CHANGED) are dropped while it runs (Tree.hold, see Notify), and a
--- console "view" redraw waiting for the next frame (Tree.ViewChanged) is cancelled: this redraw shows that change too.
-function Tree.SwitchClick(box)
-    local sw, info = Tree.RowSwitch(box:GetParent())
-    if not sw then return end
-    Tree.hold = true
-    local ok, err = pcall(sw.set, info, box:GetChecked() and true or false)
-    Tree.hold = nil
-    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
-    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
-    if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end   -- closed, or a fresh redraw already on its way
-    local user = of:GetUserDataTable()
-    Tree.view = nil
-    Tree.Keep()
-    pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
-    Tree.keep = nil
-end
--- Hover on a row's tick box (Options 0.6.63; REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default.
--- all should just show a one-sentence description and an enabled/disabled status"): the feature's name (its row's), one sentence
--- (the switch's tip; without one, the first sentence of its desc), and Enabled / Disabled. Never an "Off: ..." text.
-function Tree.OneSentence(sw, info)
-    local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
-    local t = val(sw.tip)
-    if type(t) ~= "string" or t == "" then
-        local d = val(sw.desc)
-        t = type(d) == "string" and (d:match("^(.-[%.!?])%s") or d) or ""
-        if t:match("^Off[:%s]") then t = "" end
-    end
-    return t
-end
-ns.OptionsApi.SwitchSentence = Tree.OneSentence
-function Tree.SwitchTip(box)
-    local sw, info, _, g = Tree.RowSwitch(box:GetParent())
-    if not sw then return end
-    local function val(v) if type(v) == "function" then local ok, r = pcall(v, info); return ok and r or nil end return v end
-    local on = false
-    if type(sw.get) == "function" then local ok, v = pcall(sw.get, info); on = ok and v and true or false end
-    GameTooltip:SetOwner(box, "ANCHOR_RIGHT")
-    GameTooltip:SetText(tostring(val(g and g.name) or val(sw.name) or ""))
-    local t = Tree.OneSentence(sw, info)
-    if t ~= "" then GameTooltip:AddLine(t, 1, 1, 1, true) end
-    -- the status in theme colours (UI-49): Enabled in the theme's body text, Disabled in its muted text
-    local c = on and ((ns.Theme and ns.Theme.Col) and ns.Theme.Col("xui-text", "text", { 1, 1, 1, 1 }) or { 1, 1, 1, 1 }) or ns.OptionsApi.Muted()
-    GameTooltip:AddLine(on and "Enabled" or "Disabled", c[1], c[2], c[3])
-    GameTooltip:Show()
-end
--- Called by DecorateButton for every row (toggleCfg: the row already has a ROW_TOGGLES box; x0: where the row's arrow slot starts;
--- arrow: the row shows its open / close arrow in that slot). Returns how far the name must move right for the box (0 when the box
--- sits in the empty arrow slot).
-function ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, arrow)
-    local sw, info, parts
-    if not toggleCfg then sw, info, parts = Tree.RowSwitch(button) end
-    arrow = arrow or parts
-    local box = button.xuiSwitchBox
-    if not sw then if box then box:Hide() end return 0 end
-    if not box then
-        box = CreateFrame("CheckButton", nil, button, "UICheckButtonTemplate")
-        box:SetSize(Tree.SWITCH_W, Tree.SWITCH_W)
-        box:EnableMouse(true)   -- (a button takes the mouse anyway; stated, since the box must take the click instead of the row)
-        box:SetScript("OnClick", Tree.SwitchClick)
-        box:SetScript("OnEnter", Tree.SwitchTip)
-        box:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        button.xuiSwitchBox = box
-    end
-    box:SetFrameLevel(button:GetFrameLevel() + 3)
-    local ok, on = pcall(sw.get, info)
-    box:SetChecked((ok and on) and true or false)
-    local dis = sw.disabled
-    if type(dis) == "function" then local okD, d = pcall(dis, info); dis = okD and d end
-    box:SetEnabled(not dis)
-    box:ClearAllPoints()
-    local x, shift = x0 or 6, 0
-    if arrow then x = x + Tree.SWITCH_W + Tree.SWITCH_GAP; shift = Tree.SWITCH_W + Tree.SWITCH_GAP end   -- (the arrow slot is SWITCH_W wide)
-    box:SetPoint("LEFT", button, "LEFT", x, 0)
-    box:Show()
-    return shift
-end
 
 -- Left cluster, in order:  [collapse arrow] [eye] [headphone]  text
 -- Multi-select delete: Ctrl+click toggles a rule row, Shift+click selects the visible rule rows between the last clicked row and
@@ -2064,31 +1758,44 @@ function ns.SidebarRenameLater(button)
     return true
 end
 
-local function DecorateButton(button)
-    button.xuiTextL, button.xuiTextR = nil, nil   -- #369: set again below for this row (a reused button never keeps another row's)
-    do   -- the tree reuses its row buttons: when one now shows a different row, drop what the previous row left on it (height, note, type icons)
-        local uvnow = tostring(button.uniquevalue or "")
-        if button.xuiLastUV ~= uvnow then
-            button.xuiLastUV = uvnow
-            if button.xuiH0 and not button.xuiGone and (button:GetHeight() or 0) > button.xuiH0 + 0.5 then button:SetHeight(button.xuiH0) end
-            button.xuiNoteH = nil
-            for _, k in ipairs({ "xuiSub", "xuiType", "xuiType2" }) do if button[k] and button[k].Hide then button[k]:Hide() end end
-        end
-    end
-    PaintBanner(button)
+-- (P4b; Options 0.6.87 / XayaUI_Rules_Options 0.6.77) What the rules tree adds to the window's row painting (XayaUI_Options/TreePaint.lua
+-- DecorateButton, which paints every tab's rows): moved here unchanged from the old DecorateButton, in the same order, as the hooks
+-- TreePaint calls (ns.OptionsApi.TreePaint.rules, set at the end of this block). Without this addon (XayaUI Rules off) the window
+-- paints its rows with none of these.
+do
+local R = {}
+local ROOT_KEYS = { all = true, allbars = true, allqol = true, allcursor = true, loaded = true, notloaded = true, disabled = true, smart = true, autopop = true }
+local UPPER_ROOTS = { all = true, loaded = true, notloaded = true, disabled = true, smart = true }
+-- a row's tier (TreePaint RowTier): a root header, a sub-category (a nested group, a Smart Category), and whether its name is in capitals
+-- (only ALL RULES, LOADED, NOT LOADED and SMART CATEGORIES)
+function R.RowKind(uv, lastKey)
+    local isRoot = ROOT_KEYS[uv] and true or false
+    local fld = lastKey:match("^f%d") and ns.FolderById and ns.FolderById(lastKey) or nil
+    local isSub = ((fld and fld.parent and true) or lastKey:match("^smart_") ~= nil or (fld and uv:find("\001smart\001", 1, true) ~= nil)) and true or false
+    return isRoot, isSub, UPPER_ROOTS[uv] and true or false
+end
+R.BannerTint = BannerTint
+-- the blank divider rows between All Rules and the Loaded / Not Loaded filters; the two spacer rows around NOT LOADED keep their
+-- height but draw no line (Xaya, 2026-11-02)
+function R.Spacer(button)
+    local isSpacer = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or ""):match("^spacer") ~= nil
+    local spKey = button.uniquevalue and (tostring(button.uniquevalue):match("([^\001]+)$") or "") or ""
+    if spKey == "spacer" or spKey == "spacer1" then isSpacer = false end
+    return isSpacer
+end
+-- cue kinds: the eye only covers rules that have a display, the headphone only rules that have a sound
+local function only(list, what)
+    if not list then return list end
+    local o = {}
+    for _, x in ipairs(list) do if ns.KindHas(x, what) then o[#o + 1] = x end end
+    return o
+end
+function R.Begin(button)
     PaintGuides(button)
     ns.MultiPaint(button)
     local vis, snd = Resolve(button.uniquevalue)
     local rawObjs = vis
-    -- cue kinds: the eye only covers rules that have a display, the headphone only rules that have a sound
-    local function only(list, what)
-        if not list then return list end
-        local o = {}
-        for _, x in ipairs(list) do if ns.KindHas(x, what) then o[#o + 1] = x end end
-        return o
-    end
     vis, snd = only(vis, "visual"), only(snd, "sound")
-    local tree = button.obj
     local suv = tostring(button.uniquevalue or "")
     local inSC = (suv == "all" or suv:sub(1, 4) == "all\001")
     if inSC and (suv == "all" or suv == "all\001smart") then
@@ -2098,12 +1805,20 @@ local function DecorateButton(button)
         for _, k in ipairs({ "xuiChev", "xuiEye", "xuiHead", "xuiEdit", "xuiUp", "xuiDown", "xuiMove", "xuiBanner", "xuiBannerBar", "xuiSelTex", "xuiDivider", "xuiType", "xuiType2", "xuiSub", "xuiStatCheck", "xuiSwitchBox" }) do
             if button[k] and button[k].Hide then button[k]:Hide() end
         end
-        return
+        return vis, snd, rawObjs, inSC, false, false, true
     end
-    if button.xuiGone then
-        button.xuiGone = nil
-        button:SetHeight(18); button:SetAlpha(1); button:EnableMouse(true)
+    local hasIcons = (vis and #vis > 0) or (snd and #snd > 0)
+    -- top-level roots (All Rules / Disabled / Smart Categories) carry no eye or headphone; their lock icons stay. Loaded and Not Loaded
+    -- carry the eye (Resolve above; Xaya 2026-11-06)
+    do
+        local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
+        if rootKey == "all" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
     end
+    local rk0 = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
+    return vis, snd, rawObjs, inSC, hasIcons, isRootRow, false
+end
+function R.Hooks(button)
     if button.obj and not (button.obj.treeframe and button.obj.treeframe.xuiBlankHook) then pcall(ns.HookSidebarBlank, button.obj) end
     if not button.xuiDrag then
         button.xuiDrag = true
@@ -2127,67 +1842,15 @@ local function DecorateButton(button)
             C_Timer.After(0.15, function() if button:IsShown() and ns.SidebarRename then ns.SidebarRename(button) end end)
         end
     end
-    local level = (button.level or 1) - (inSC and 2 or 0)
-    if level < 1 then level = 1 end
-    local canExpand = button.toggle and button.toggle:IsShown() and true or false
-    local hasIcons = (vis and #vis > 0) or (snd and #snd > 0)
-    -- top-level roots (All Rules / Disabled / Smart Categories) carry no eye or headphone; their lock icons stay. Loaded and Not Loaded
-    -- carry the eye (Resolve above; Xaya 2026-11-06)
-    do
-        local rootKey = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        if rootKey == "all" or rootKey == "disabled" or rootKey == "smart" then hasIcons = false end
-    end
-    if button.text then
-        button.text:SetWordWrap(false)
-        button.text:SetPoint("RIGHT", button, "RIGHT", -4, 2)
-        button.xuiTextR = 4
-    end
-    -- Every row of a level uses the same fixed slots: [arrow 16][eye 17][headphone 17][text]. A row without an arrow or
-    -- without icons keeps its (empty) slots, so the text of all rows on one level lines up. Blizzard's tiny +/- is hidden
-    -- (still "shown", so canExpand stays readable) because our arrow replaces it on every expandable row.
-    local CHEV_W, ICON_W = 16, 17
-    -- left gutter (4px wider than before). Root headers and first-level groups start at the same x (flush with the sidebar wall);
-    -- each deeper level steps in by 8px as before.
-    local x0 = (level <= 1) and 6 or (8 * level - 9)
-    x0 = ns.OptionsApi.NestX(button, level, x0)   -- (Options 0.6.55) a feature tab's part: its parent's name + 8 px
+end
+function R.Reorder(button, level, x0)
     ns.PaintReorder(button, level, x0)
     if button.xuiReorderOn then x0 = x0 + ns.REORDER_W + 11 end   -- chevron and text sit right of the arrows
-    if button.toggle then
-        button.toggle:SetAlpha(canExpand and 0 or 1)
-        button.toggle:EnableMouse(not canExpand)
-    end
-    local tw = ns.PaintTypeIcon and ns.PaintTypeIcon(button, x0) or 0   -- icon at the left of the row (0 = none)
-    button.xuiTwoRow = (tw > 0 and not (ns.CondensedOn and ns.CondensedOn())) and true or false
-    local rk0 = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
-    local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
-    local chevMode = "left"
-    if canExpand then
-        if not button.xuiChev then button.xuiChev = MakeChevron(button) end
-        local st = tree and (tree.status or tree.localstatus)
-        local expanded = st and st.groups and st.groups[button.uniquevalue]
-        button.xuiChev:SetNormalTexture(expanded and 130821 or 130838)
-        button.xuiChev:SetPushedTexture(expanded and 130820 or 130836)
-        button.xuiChev:ClearAllPoints()
-        if isRootRow then          -- root headers: round toggle at the right end
-            chevMode = "right"
-            button.xuiChev:SetSize(16, 16)
-            -- (Options 0.6.64; UI-70 / UI-72, her answer "copy the WA format": a header's open / close button at the far right end, the
-            -- preview just left of it; it sat 46 px in before, on top of the eye and headphone columns)
-            button.xuiChev:SetPoint("RIGHT", button, "RIGHT", -ns.OptionsApi.SIDE_COL.expand, 0)
-        elseif tw > 0 then         -- groups: toggle sits under the group's icon
-            chevMode = "icon"
-            button.xuiChev:SetSize(14, 14)
-            button.xuiChev:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", x0 - 2, 0)
-        else
-            button.xuiChev:SetSize(16, 16)
-            button.xuiChev:SetPoint("LEFT", button, "LEFT", x0, 0)
-        end
-        button.xuiChev:SetFrameLevel(button:GetFrameLevel() + 4)
-        button.xuiChev:Show()
-    elseif button.xuiChev then
-        button.xuiChev:Hide()
-    end
-    -- QoL rows (Stat Tracking, Buff Bars): a left-aligned tick box is the on/off switch for the whole element
+    return x0
+end
+-- QoL rows (Stat Tracking, Buff Bars): a left-aligned tick box is the on/off switch for the whole element
+function R.RowToggle(button, x0)
+    local CHEV_W = 16
     local toggleCfg = ROW_TOGGLES[tostring(button.uniquevalue or "")]
     if toggleCfg then
         if not button.xuiStatCheck then
@@ -2219,7 +1882,10 @@ local function DecorateButton(button)
     elseif button.xuiStatCheck then
         button.xuiStatCheck:Hide()
     end
-    button.xuiIconR = 0
+    return toggleCfg
+end
+function R.Icons(button, vis, snd, hasIcons)
+    local ICON_W = 17
     if hasIcons then
         if not button.xuiEye then
             button.xuiEye = MakeToggle(button, "visual")
@@ -2254,121 +1920,43 @@ local function DecorateButton(button)
     elseif button.xuiEye then
         button.xuiEye:Hide(); button.xuiHead:Hide()
     end
-    if chevMode == "right" then button.xuiIconR = math.max(button.xuiIconR or 0, ns.OptionsApi.SIDE_COL.expand + 16 + 3) end
-    -- a feature's on / off as a tick box in the row's arrow slot, or right after the arrow (Options 0.6.40)
-    local swShift = ns.OptionsApi.PaintRowSwitch(button, toggleCfg, x0, canExpand and chevMode == "left")
-    do
-        local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
-        local iconSlots = toggleCfg and 26 or swShift   -- only an on / off tick box sits left of the label now
-        local lead = (tw > 0) and tw or ((chevMode == "right") and 0 or CHEV_W)   -- icon column, or the left chevron slot
-        -- (Options 0.6.63; UI-47 / UI-8: "Parent's name + 8 px") a feature tab's child row with no tick box and no open / close button
-        -- keeps no empty slot: its name itself starts 8 px right of its parent's name (it started 27 px in: the empty 16 px slot + 3)
-        if (button.level or 1) >= 2 and tw == 0 and not canExpand and not toggleCfg and swShift == 0
-            and not (button.xuiSwitchBox and button.xuiSwitchBox:IsShown()) and ns.OptionsApi.FeatureRow(button) then
-            lead = -3
-        end
-        if tw > 0 then
-            local h = math.max(button:GetHeight() or 0, ns.TYPE_ICON_SIDEBAR_H + 6)
-            if math.abs((button:GetHeight() or 0) - h) > 0.5 then button:SetHeight(h) end
-        end
-        -- Smart Categories: a small note under the rule's name says which of the regular groups it is in
-        local note
-        local rn = inSC and rk:match("^rule(%d+)$")
-        if rn then
-            local rr = ns.rules and ns.rules[tonumber(rn)]
-            local ff = rr and rr.folder and ns.FolderById(rr.folder)
-            if ff then
-                local names = {}
-                for _, c in ipairs(FolderChain(ff)) do if not ns.CueTransparent(c) then names[#names + 1] = tostring(c.name) end end
-                note = (#names > 0) and table.concat(names, " / ") or "Top level"
-            elseif rr then note = "Top level" end
-        end
-        if button.text then button.text:SetPoint("LEFT", button, "LEFT", x0 + lead + iconSlots + 3, note and 8 or 2) end
-        button.xuiTextL = x0 + lead + iconSlots + 3   -- #369: the name's left inset (Skin.lua ns.EnsureNameRoom)
-        ns.OptionsApi.NoteNameL(button)
-        if note then
-            if not button.xuiSub then
-                button.xuiSub = button:CreateFontString(nil, "OVERLAY")
-                button.xuiSub:SetFont((GameFontNormal:GetFont()), 10, "")
-                button.xuiSub:SetJustifyH("LEFT"); button.xuiSub:SetWordWrap(false)
-                button.xuiSub:SetTextColor(0.6, 0.6, 0.65)
-            end
-            local sf = button.xuiSub
-            sf:SetText("in " .. note)
-            sf:ClearAllPoints()
-            sf:SetPoint("TOPLEFT", button.text, "BOTTOMLEFT", 0, -1)
-            sf:SetPoint("RIGHT", button, "RIGHT", -((button.xuiIconR or 0) + 8), 0)
-            sf:Show()
-            if (button:GetHeight() or 0) < 30 then button:SetHeight(30); button.xuiNoteH = true end
-        else
-            if button.xuiSub then button.xuiSub:Hide() end
-            if button.xuiNoteH and tw == 0 then button:SetHeight(18) end
-            button.xuiNoteH = nil
-        end
-    end
-    -- right side: movement lock + edit lock (rule, folder and all-rules rows only)
-    do
-        local rules = {}
-        for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
-        local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
-        -- audit D41: a rule whose displays are its cues listed only the cues here, so its lock left the rule itself editable
-        local rn = lastKey:match("^rule(%d+)$")
-        local own = rn and ns.rules and ns.rules[tonumber(rn)]
-        if own then
-            local has = false
-            for _, o in ipairs(rules) do if o == own then has = true; break end end
-            if not has then table.insert(rules, 1, own) end
-        end
-        local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
-        local vr = {}
-        for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
-        ns.PaintSide(button, rules, vr, folder)
-    end
 end
-
--- A decoration error must never abort AceGUI's tree layout (that blanks the whole window). Errors are kept, printed once per kind.
-function ns.SafeDecorate(b)
-    local ok, err = pcall(DecorateButton, b)
-    if ok then ok, err = pcall(ns.OptionsApi.GreyRow, b) end   -- (Options 0.6.55) after every colour the row gets
-    if not ok then
-        ns.lastTreeErr = tostring(err)
-        if not ns.treeErrShown or ns.treeErrShown ~= ns.lastTreeErr then
-            ns.treeErrShown = ns.lastTreeErr
-            ns.Print("sidebar decoration error (please report): " .. ns.lastTreeErr)
-        end
+-- Smart Categories: a small note under the rule's name says which of the regular groups it is in
+function R.Note(button, inSC)
+    local rk = tostring(button.uniquevalue or ""):match("([^\001]+)$")
+    local note
+    local rn = inSC and rk:match("^rule(%d+)$")
+    if rn then
+        local rr = ns.rules and ns.rules[tonumber(rn)]
+        local ff = rr and rr.folder and ns.FolderById(rr.folder)
+        if ff then
+            local names = {}
+            for _, c in ipairs(FolderChain(ff)) do if not ns.CueTransparent(c) then names[#names + 1] = tostring(c.name) end end
+            note = (#names > 0) and table.concat(names, " / ") or "Top level"
+        elseif rr then note = "Top level" end
     end
+    return note
 end
-
-local function DecorateTree(tree)
-    if not tree.xuiHooked then
-        tree.xuiHooked = true
-        local orig = tree.RefreshTree
-        tree.RefreshTree = function(self, ...)
-            orig(self, ...)
-            ns.OptionsApi.WithCueMemo(function()   -- (Options 0.6.69) one cue lookup pass for all the visible rows
-                for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
-            end)
-            if ns.EnsureNameRoom then pcall(ns.EnsureNameRoom, self) end   -- #369: room for every visible name
-        end
-        local status = tree.status or tree.localstatus
-        if status and not status.xuiWide then
-            status.xuiWide = true
-            if (status.treewidth or 0) <= 175 then pcall(tree.SetTreeWidth, tree, 270, true) end
-        end
+-- right side: movement lock + edit lock (rule, folder and all-rules rows only)
+function R.Side(button, rawObjs, vis)
+    local rules = {}
+    for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
+    local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+    -- audit D41: a rule whose displays are its cues listed only the cues here, so its lock left the rule itself editable
+    local rn = lastKey:match("^rule(%d+)$")
+    local own = rn and ns.rules and ns.rules[tonumber(rn)]
+    if own then
+        local has = false
+        for _, o in ipairs(rules) do if o == own then has = true; break end end
+        if not has then table.insert(rules, 1, own) end
     end
-    for _, b in ipairs(tree.buttons or {}) do
-        if b:IsShown() then ns.SafeDecorate(b)
-        else
-            if b.xuiEye then b.xuiEye:Hide(); b.xuiHead:Hide() end
-            if b.xuiEdit then b.xuiEdit:Hide() end
-            if b.xuiUp then b.xuiUp:Hide(); b.xuiDown:Hide() end
-            if b.xuiMove then b.xuiMove:Hide() end
-            if b.xuiBanner then b.xuiBanner:Hide(); b.xuiBannerBar:Hide() end
-            if b.xuiSelTex then b.xuiSelTex:Hide() end
-            if b.xuiDivider then b.xuiDivider:Hide() end
-            if b.xuiSwitchBox then b.xuiSwitchBox:Hide() end
-        end
-    end
+    local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
+    local vr = {}
+    for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
+    ns.PaintSide(button, rules, vr, folder)
+end
+ns.OptionsApi.TreePaint = ns.OptionsApi.TreePaint or {}
+ns.OptionsApi.TreePaint.rules = R
 end
 
 local function SelectedRule()
@@ -2426,6 +2014,6 @@ end
 -------------------------------------------------------------------------------
 
 -- for the other files of this folder (ns.OptionsApi.RuleEditorParts)
-P.DecorateTree, P.SelectedRule = DecorateTree, SelectedRule
+P.SelectedRule = SelectedRule
 -- for Options.lua (ns.OptionsApi.RuleEditor): the rule selected in the Rules sidebar (the debug console strip shows its status)
 ns.OptionsApi.RuleEditor.SelectedRule = SelectedRule
