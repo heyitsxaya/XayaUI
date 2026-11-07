@@ -438,6 +438,7 @@ Reskin successor (session 014bN6tSvVzc2HRgXhwF3J2L; branch `claude/determined-ce
 - RESKIN-3 "chat bubbles": BUILT on branch (Reskin 0.6.14, page Chat Bubbles, outside instances only; QA G12). Not on main yet.
 - RESKIN-2 "toolbars" (Q6 "all"): status bars BUILT on branch (Reskin 0.6.15, page Status Bars; QA G13). "micro bar / micro menu" and the bag bar: NOT BUILT, question RSK-Q14 (their art is Blizzard's button art itself).
 - RESKIN-2 "tracking button and options", "calendar (+ minimap calendar button)", "mail + mail button": zone bar and tracking button BUILT on branch (Reskin 0.6.16, page Minimap Buttons; QA G14); calendar button and mail icon have no frame art: part of RSK-Q14. Tracking options = a Blizzard menu (Menus page).
+- RESKIN-4 Q10 "everything" (plan section 4, shared building blocks): red panel buttons inside the listed Blizzard windows BUILT on branch (Reskin 0.6.17, page Buttons; QA G15). Close buttons, scroll bars, tabs, dropdown arrows NOT BUILT (new art needed; question RSK-Q15).
 
 ## A11. Session S8 = session 014bN6tX7AoZQrGX246YSXjC (branch `claude/dreamy-edison-pvb3i1`; progress bar cues, RM-BARS)
 

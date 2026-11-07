@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.16's BlizzardSkins.lua (XayaUI_DevAssist 0.7.47, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.17's BlizzardSkins.lua (XayaUI_DevAssist 0.7.48, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
-Checks, on the real addons in the stand-in game: the ten walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles, status bars, minimap buttons) are registered with prefill on
+Checks, on the real addons in the stand-in game: the eleven walkthroughs (windows, minimap, tooltips, tracker, toasts and pop-ups, loot rolls, menus, chat bubbles, status bars, minimap buttons, buttons) are registered with prefill on
 and every step has a check or is a question (noVerdict); their own checks give the right verdict on the stand-in (a bag window skinned,
 then given back; the square minimap, then round; a tooltip in the theme's window colour; the tracker header in the label colour, then
 the Quests section given back); and her reskin settings are put back exactly as they were at the end of each walkthrough.
@@ -47,6 +47,8 @@ C_ChatBubbles = { GetAllChatBubbles = function() return {} end }
 local MC = CreateFrame("Frame", "MinimapCluster", UIParent); MC.BorderTop = CreateFrame("Frame", nil, MC)
 MC.BorderTop.SetCenterColor = function(self, r, g, b, a) self._c = { r, g, b, a } end
 MC.BorderTop.GetCenterColor = function(self) local c = self._c or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+local MACF = CreateFrame("Frame", "MacroFrame", UIParent); MACF.NineSlice = CreateFrame("Frame", nil, MACF); MACF:Hide()
+for i = 1, 2 do local b = CreateFrame("Button", nil, MACF); b.Left = b:CreateTexture(); b.Middle = b:CreateTexture(); b.Right = b:CreateTexture() end
 local MSB = CreateFrame("Frame", "MainStatusTrackingBarContainer", UIParent); MSB.BarFrameTexture = MSB:CreateTexture(nil, "OVERLAY"); MSB:Hide()
 local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 local GL = CreateFrame("Frame", "GroupLootFrame1", UIParent); GL.Background = GL:CreateTexture(nil, "BACKGROUND"); GL.Border = GL:CreateTexture(nil, "BORDER")
@@ -66,7 +68,7 @@ CueRulesDB.ui.rsk = { tracker = true, winOff = { bank = true }, otOff = {} }
 local before = "tracker=true bank-out"
 local function Same() local r = CueRulesDB.ui.rsk; return r and r.tracker == true and r.winOff and r.winOff.bank == true and not r.windows and not r.minimap and not r.tooltips and not r.shape end
 
-local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll", "reskin-menus", "reskin-bubbles", "reskin-statusbars", "reskin-mmbuttons" }
+local IDS = { "reskin-windows", "reskin-minimap", "reskin-tooltips", "reskin-tracker", "reskin-toasts", "reskin-lootroll", "reskin-menus", "reskin-bubbles", "reskin-statusbars", "reskin-mmbuttons", "reskin-buttons" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local good = w ~= nil and w.prefill == true and w.area == "Reskin"
@@ -174,6 +176,17 @@ ok, why = run("reskin-mmbuttons", 1)
 check("mmbuttons 1: the zone bar is read in the theme's window colour", ok and why:find("zone bar centre", 1, true), why)
 run("reskin-mmbuttons", 3)
 check("mmbuttons: her settings are put back and the zone bar's colour is Blizzard's again", Same() and not CueRulesDB.ui.rsk.mmbuttons and MC.BorderTop._c[1] == 1, before)
+
+-- buttons (Reskin 0.6.17)
+ok, why = run("reskin-buttons", 1)
+check("buttons 1: Buttons switches on", ok, why)
+ok, why = run("reskin-buttons", 2)
+check("buttons 2: Macros not open: the check says so (not a pass)", ok == false and why:find("not open", 1, true), why)
+MACF:Show()
+ok, why = run("reskin-buttons", 2)
+check("buttons 2: the Macros window's red buttons carry the flat look (2 of 2)", ok and why:find("2 of 2", 1, true), why)
+run("reskin-buttons", 4)
+check("buttons: her settings are put back", Same() and not CueRulesDB.ui.rsk.buttons, before)
 return R
 end
 '''

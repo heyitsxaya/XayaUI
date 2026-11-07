@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.16): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles, the status bars and the minimap's zone bar
--- and tracking button. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed, and no Blizzard function
--- is called to do anything. Own code, Blizzard's frames only.
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.17): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles, the status bars, the minimap's zone bar and tracking
+-- button, and the red buttons inside Blizzard's windows. Look only: art, colour, border, mask. Nothing is moved, resized, added or
+-- removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
 -- of them (no functionality changes, just reskins of core blizzard UI)". Her lists named the windows below, "minimap (two options: square
@@ -109,7 +109,7 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars / mmbuttons = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars / mmbuttons / buttons = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
@@ -743,20 +743,104 @@ local function ApplyMinimapButtons()
 end
 
 -------------------------------------------------------------------------------
+-- 10. Buttons: Blizzard's red panel buttons inside the windows of the Blizzard Windows list (her Q10 "everything", plan section 4)
+-------------------------------------------------------------------------------
+-- 12.1.5 (Gethe/wow-ui-source 297d7aa, read as data): UIPanelButtonNoTooltipTemplate (Blizzard_SharedXML/SecureUIPanelTemplates.xml:39-80)
+-- draws a red button from three BACKGROUND textures Left / Middle / Right; its scripts swap their texture for pressed / disabled
+-- (SecureUIPanelTemplates.lua:44-80), which does not change their alpha. Those three are faded and XayaUI's flat button look is drawn
+-- under them: a background and 1 px border in the theme's xui-button colours (the look XayaUI's own windows use, Core.lua
+-- ns.PaintFlatButton). The text, its gold / white / grey states, the hover highlight and what a click does stay Blizzard's.
+-- Only buttons inside the windows of BS.WINDOWS are touched (found by walking the window's children each time it is shown), never other
+-- addons' windows (question RSK-Q1: shared templates). Close buttons, scroll bars, tabs and dropdown arrows are not restyled (they would
+-- need new art; question RSK-Q15). A protected button is never painted in combat (it waits for combat to end).
+local liveBtn = false
+local hookedBtnWin = {}
+local btnPainted = setmetatable({}, { __mode = "k" })
+local function BtnBg() return TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }) end
+local function BtnBorder() return TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }) end
+local function IsPanelButton(b)
+    if type(b) ~= "table" or type(b.GetObjectType) ~= "function" then return false end
+    local ok, t = pcall(b.GetObjectType, b)
+    if not (ok and t == "Button") then return false end
+    return type(b.Left) == "table" and type(b.Middle) == "table" and type(b.Right) == "table" and type(b.Left.SetAlpha) == "function"
+end
+BS.IsPanelButton = IsPanelButton
+local function PaintButton(b)
+    if Blocked(b) then Later(function() if liveBtn then PaintButton(b) end end); return end
+    Fade(b, b.Left); Fade(b, b.Middle); Fade(b, b.Right)
+    local m = M(b)
+    if not m.bg then
+        m.bg = b:CreateTexture(nil, "BACKGROUND", nil, -8)
+        m.bg:SetAllPoints(b)
+        m.own[#m.own + 1] = m.bg
+    end
+    local c = BtnBg()
+    m.bg:SetColorTexture(c[1], c[2], c[3], c[4] or 1); m.bg:Show()
+    PaintEdges(Edges(b, b), BtnBorder())
+    m.painted = true
+    btnPainted[b] = true
+end
+BS.PaintButton = PaintButton
+local function WalkButtons(f, depth)
+    if type(f) ~= "table" or type(f.GetChildren) ~= "function" or depth > 8 then return end
+    for _, c in ipairs({ f:GetChildren() }) do
+        if IsPanelButton(c) then Safe(PaintButton, c) end
+        WalkButtons(c, depth + 1)
+    end
+end
+BS.WalkButtons = WalkButtons
+local btnLodFrame, btnLodOn = nil, false
+local function HookBtnWindow(name)
+    local f = rawget(_G, name)
+    if type(f) ~= "table" then return false end
+    if not hookedBtnWin[f] and type(f.HookScript) == "function" then
+        hookedBtnWin[f] = true
+        f:HookScript("OnShow", function(self) if liveBtn then WalkButtons(self, 1) end end)
+    end
+    if liveBtn then WalkButtons(f, 1) end
+    return true
+end
+local function BtnWatchLoad(on)
+    if on and not btnLodFrame then
+        btnLodFrame = CreateFrame("Frame")
+        btnLodFrame:SetScript("OnEvent", function(_, _, name)
+            if not liveBtn then return end
+            for _, e in ipairs(BS.WINDOWS) do if e.lod == name then for _, n in ipairs(e.frames) do HookBtnWindow(n) end end end
+        end)
+    end
+    if btnLodFrame then if on then btnLodFrame:RegisterEvent("ADDON_LOADED") else btnLodFrame:UnregisterEvent("ADDON_LOADED") end end
+    btnLodOn = (on and btnLodFrame) and true or false
+end
+local function ApplyButtons()
+    if PageOn("buttons") then
+        liveBtn = true
+        local needLoad = false
+        for _, e in ipairs(BS.WINDOWS) do
+            for _, n in ipairs(e.frames) do if not HookBtnWindow(n) and e.lod then needLoad = true end end
+        end
+        BtnWatchLoad(needLoad)
+    elseif liveBtn then
+        liveBtn = false
+        BtnWatchLoad(false)
+        for b in pairs(btnPainted) do Restore(b); btnPainted[b] = nil end
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars); Safe(ApplyMinimapButtons)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars); Safe(ApplyMinimapButtons); Safe(ApplyButtons)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, mmbuttons = liveMMB, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, mmbuttons = liveMMB, buttons = liveBtn, buttonsLodWatch = btnLodOn, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
-    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
+    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, IsPanelButton = IsPanelButton, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars or r.mmbuttons) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars or r.mmbuttons or r.buttons) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -891,6 +975,16 @@ function BS.MinimapButtonsPage(Notify)
             "Colours the minimap's zone bar and tracking button in the theme." .. OFFNOTE, Notify) }
 end
 
+function BS.ButtonsPage(Notify)
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "The red buttons inside Blizzard's windows (the windows listed on the Blizzard Windows page: Mail's Send, the Auction House's Buy, Talents' Apply ...) take XayaUI's flat button look: a background and thin border in the theme's button colours instead of Blizzard's red art. Their text, its colour when a button is greyed out, the hover glow and what a click does are unchanged. Buttons in other addons' windows are not touched. Close buttons, scroll bars, tabs and dropdown arrows keep Blizzard's look." },
+    }
+    return { type = "group", name = "Buttons", order = 13, args = args,
+        xuiSwitch = PageSwitch("buttons", "Use the XayaUI look on buttons in Blizzard's windows", "Blizzard's red buttons in XayaUI's flat look.",
+            "Restyles the red buttons inside Blizzard's windows." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
@@ -900,3 +994,4 @@ ns.RegisterSettingsPage("reskin", "rskmenus", BS.MenusPage)
 ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)
 ns.RegisterSettingsPage("reskin", "rskstatusbars", BS.StatusBarsPage)
 ns.RegisterSettingsPage("reskin", "rskmmbuttons", BS.MinimapButtonsPage)
+ns.RegisterSettingsPage("reskin", "rskbuttons", BS.ButtonsPage)
