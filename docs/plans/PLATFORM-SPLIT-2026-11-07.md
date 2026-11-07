@@ -289,7 +289,7 @@ Phases marked "in game" add walkthroughs and wait for Xaya's Accept before the n
 | P0 | Freeze, baseline walkthroughs on `b777793`, answers to Q1-Q6 | no | yes (baseline) |
 | P1 | Platform services: `RegisterProfilePart`, `RegisterBinKind`, Theme scopes (6.6), Core-side services for Bonus; Profiles reads registered parts | no | yes |
 | P2 | Settings seam: `ns.Settings(module)`, all 490 references, the "no direct CueRulesDB" test | no | regression only |
-| P3 | Options pages cut into `Pages/<Module>.lua` | no | regression only |
+| P3 | Rule editor and rules tree cut out of Options.lua into `XayaUI_Options/RuleEditor/` (moves as one unit in P4); no feature page was left in Options.lua (done 2026-11-07, Options 0.6.83) | no | regression only |
 | P4 | Code move: `XayaUI_Core` folder, the 23 files, Core.lua / Share.lua / RecycleBin.lua cut, `GameMenuButton.lua`, test and tool paths (16 files name tracking files, 58 name platform files) | no | yes (full regression) |
 | P5 | Settings migration, one module per step, rules last (section 5) | yes, copy only | yes, per module |
 | P6 | Remove old `CueRulesDB` keys, module by module, after her confirmation | yes | yes |
