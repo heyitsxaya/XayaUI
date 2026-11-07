@@ -819,7 +819,7 @@ a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
-0b9388aa2312aadd0f825b643298b9cd  tests/sidebar_switches_run.py
+98228c3dd2526e8fcc4ce6234715e9f6  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py
 2ab0305057bc1ba469131f702de0799c  tests/sound_cue_channel_run.py
