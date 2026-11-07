@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- QAWalks-perf.lua (XayaUI_DevAssist 0.7.12): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
--- Standing rule V21 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
+-- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
 --       its verdict on Accept; nothing is recorded without her click. ONE-PUSH: remove both J17 walkthroughs with RunRecord.lua.

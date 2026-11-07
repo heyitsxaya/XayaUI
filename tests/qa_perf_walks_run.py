@@ -1,4 +1,4 @@
-"""V21 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V21): J17 (two
+"""V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
 walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question). Loads the real QAWalk.lua
 framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
 it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
