@@ -82,7 +82,9 @@ function C.History_Lines()
     -- (the search box gives a typed "|" back doubled, as the game's edit boxes do: INFERENCE; matched against C.Plain's single "|")
     local out, q = {}, (query:gsub("||", "|")):lower()
     for _, e in ipairs(List()) do
+        local wk = e.wkey and e.wkey:sub(1, 1)
         if tabKey == "ALL" or tabKey == "CONSOLE" or (e.frames and e.frames[tabKey]) or (tabKey == "WHISPERS" and e.wkey)
+            or (tabKey == "WHISPERS_W" and wk == "W") or (tabKey == "WHISPERS_B" and wk == "B")
             or (e.wkey and e.wkey == tabKey) then
             local body = e.text and C.Plain(e.text) or "[protected message]"
             local line = ("[%s] %s%s%s"):format(date("%H:%M:%S", e.t), e.tag and (e.tag .. " ") or "", e.who and (e.who .. ": ") or "", body)
@@ -117,14 +119,48 @@ end
 -- A conversation is keyed by the other person: a character by "name-realm", lowercased ("W:ann-realm"; a name without a realm is on
 -- your realm, see CharKey); a Battle.net friend by the message's Battle.net ID ("B:id"). Own code. UNTESTED in game.
 local WHISPER_EV = { CHAT_MSG_WHISPER = "W", CHAT_MSG_WHISPER_INFORM = "W", CHAT_MSG_BN_WHISPER = "B", CHAT_MSG_BN_WHISPER_INFORM = "B" }
-function C.History_WhisperMode()
-    local s = S()
-    if s and s.histWhispers == "one" then return "one" end
+-- (Chat 0.6.26; REQUEST-LOG UI-13 / UI-16 / UI-17 / UI-30 / UI-31, Xaya 2026-11-06: "allow for multi select options"; her design:
+-- "in-game whispers - dropdown menu of "individual tabs, consolidated tabs, both" / bnet whispers - same drop down menu / tick box
+-- combine both bnet whispers and in-game whispers into the consolidated tab"; default "Follow the game"; names "In-Game Whispers /
+-- BNet Whispers", combined "Whispers"). Settings: histWhispersW, histWhispersB = nil (follow the game) / "each" / "one" / "both";
+-- histWhispersCombine. The 0.6.15 setting histWhispers = "one" (every whisper in one tab) still reads as both "one" and combined.
+-- REVISIT (her "pick one and mark as a point to revisit after I see in game"): with only one kind consolidated and combine ticked,
+-- that one tab ("Whispers") takes the other kind's whispers too.
+local function GameMode()
     local get = (_G.C_CVar and _G.C_CVar.GetCVar) or _G.GetCVar
     if get then
         local ok, v = pcall(get, "whisperMode")
         if ok and type(v) == "string" and not issecret(v) and (v == "popout" or v == "popout_and_inline") then return "each" end
     end
+    return "none"
+end
+function C.History_WhisperModes()
+    local s = S() or {}
+    local legacyOne = (s.histWhispers == "one")
+    local function pick(v)
+        if v == "each" or v == "one" or v == "both" then return v end
+        if legacyOne then return "one" end
+        return GameMode()
+    end
+    local w, b = pick(s.histWhispersW), pick(s.histWhispersB)
+    local combine = s.histWhispersCombine
+    if combine == nil then combine = legacyOne end
+    return w, b, combine and true or false
+end
+local function Has(mode, part) return mode == part or mode == "both" end
+-- the consolidated tab a kind ("W" in-game, "B" Battle.net) goes to, or nil
+function C.History_ConsolidatedTab(kind)
+    local w, b, combine = C.History_WhisperModes()
+    local mine, other = (kind == "B") and b or w, (kind == "B") and w or b
+    if combine and (Has(w, "one") or Has(b, "one")) then return "WHISPERS" end
+    if Has(mine, "one") then return (kind == "B") and "WHISPERS_B" or "WHISPERS_W" end
+    return nil
+end
+-- (kept for callers of 0.6.15-0.6.25) "one" when every whisper goes to one tab, "each" when in-game whispers get their own tabs, else "none"
+function C.History_WhisperMode()
+    local w, b, combine = C.History_WhisperModes()
+    if combine and Has(w, "one") and Has(b, "one") then return "one" end
+    if Has(w, "each") then return "each" end
     return "none"
 end
 -- the realm part as the game writes it in "Name-Realm" (no spaces), lowercased for the key
@@ -277,14 +313,20 @@ local function RebuildTabButtons()
     -- order (Chat 0.6.15): the chat tabs, the whisper tabs, Console, then All last (Xaya: "All" is not the default pane)
     local list = {}
     for _, w in ipairs(Windows()) do list[#list + 1] = w end
-    local mode = C.History_WhisperMode()
-    if mode == "one" then
-        list[#list + 1] = { id = "WHISPERS", name = "Whispers" }
-    elseif mode == "each" then
-        local seen = {}
-        for _, e in ipairs(hist) do
-            if e.wkey and not seen[e.wkey] then seen[e.wkey] = true; list[#list + 1] = { id = e.wkey, name = wname[e.wkey] or "Whisper" } end
+    -- (Chat 0.6.26) per kind: one tab per conversation ("each" / "both"), and the consolidated tab(s) after them
+    local w, b = C.History_WhisperModes()
+    local seen = {}
+    for _, e in ipairs(hist) do
+        local k = e.wkey and e.wkey:sub(1, 1)
+        if k and not seen[e.wkey] and Has((k == "B") and b or w, "each") then
+            seen[e.wkey] = true; list[#list + 1] = { id = e.wkey, name = wname[e.wkey] or "Whisper" }
         end
+    end
+    local names = { WHISPERS = "Whispers", WHISPERS_W = "In-Game Whispers", WHISPERS_B = "BNet Whispers" }
+    local added = {}
+    for _, kind in ipairs({ "W", "B" }) do
+        local id = C.History_ConsolidatedTab(kind)
+        if id and not added[id] then added[id] = true; list[#list + 1] = { id = id, name = names[id] } end
     end
     local s = S()
     if s and s.histConsole ~= false then list[#list + 1] = { id = "CONSOLE", name = "Console" } end
@@ -451,14 +493,14 @@ function C.History_ActiveKey()
     local f = C.ScrollTarget and C.ScrollTarget()
     if type(f) ~= "table" then return nil end
     if f.isTemporary then
-        local mode = C.History_WhisperMode()
-        if mode == "one" then return "WHISPERS" end
-        if mode == "each" then
-            local ct, tgt = f.chatType, f.chatTarget
-            if ct == "WHISPER" then return (CharKey(tgt)) end
-            if ct == "BN_WHISPER" then return (BNKey(tonumber(tgt))) end
+        local w, b = C.History_WhisperModes()
+        local ct, tgt = f.chatType, f.chatTarget
+        local kind = (ct == "BN_WHISPER") and "B" or ((ct == "WHISPER") and "W" or nil)
+        if not kind then return nil end
+        if Has((kind == "B") and b or w, "each") then
+            if kind == "W" then return (CharKey(tgt)) else return (BNKey(tonumber(tgt))) end
         end
-        return nil
+        return C.History_ConsolidatedTab(kind)
     end
     return f.GetID and f:GetID() or nil
 end

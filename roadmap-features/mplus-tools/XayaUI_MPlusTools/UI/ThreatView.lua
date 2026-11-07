@@ -1,0 +1,5 @@
+-------------------------------------------------------------------------------
+-- UI/ThreatView.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- The tank's view: per mob in combat, my threat state (and value where readable). Shown on nameplates or in its own frame: to propose.
+-- Overlaps RM-RAIDTOOLS-TANKS (tank frame) only in name: that one watches the tanks' auras, this one watches the mobs' threat.
+-------------------------------------------------------------------------------
