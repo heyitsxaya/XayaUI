@@ -384,14 +384,8 @@ end
 
 -- Puts an item back. A group it belonged to that no longer exists means top level. A clash with an ID now in use gets a new ID
 -- (and everything pointing at the old one follows). Returns true and a short note for the player.
-function ns.RecycleRestore(id)
-    local it, idx, b = findItem(id)
-    if not it then return false, "that item is no longer in the Recycle Bin" end
-    if it.kind == "cue" or it.kind == "condition" or it.kind == "trigger" then   -- FA-11
-        local ok, note = (it.kind == "trigger" and restoreTrigger or restoreChild)(it)
-        if ok then table.remove(b.items, idx); if ns.MarkDirty then ns.MarkDirty() end end
-        return ok, note
-    end
+-- (core 0.6.74) the restore of the kinds "rule", "group" and "groupAll" (the bin item holds rules and groups). Returns ok, note.
+local function restoreRules(it)
     local notes = {}
     -- groups first, so rules can find them
     local remap = {}
@@ -447,9 +441,39 @@ function ns.RecycleRestore(id)
         for _, r in ipairs(ns.rules) do if type(r.uid) == "string" and ru[r.uid] and r.folder == from then r.folder = g.id end end
         for _, f in ipairs(ns.folders) do if fo[f.id] and f.parent == from and f ~= g then f.parent = g.id end end
     end
-    table.remove(b.items, idx)
-    if ns.MarkDirty then ns.MarkDirty() end
     return true, table.concat(notes, "; ")
+end
+
+-- (core 0.6.74; plan 6.3) the line the page shows for an item whose kind no module registered (its module is switched off): the item
+-- stays in the bin as it is
+local function unknownText(it) return "(" .. tostring(it and it.kind) .. ": module not loaded)" end
+ns.RecycleUnknownText = unknownText
+
+-- what the page says an item is, from its registered kind
+function ns.RecycleDescribe(it)
+    local k = type(it) == "table" and ns.BinKind and ns.BinKind(it.kind)
+    if not (k and type(k.describe) == "function") then return unknownText(it) end
+    local ok, txt = pcall(k.describe, it)
+    if ok and type(txt) == "string" then return txt end
+    return unknownText(it)
+end
+
+-- Puts an item back through its registered kind. Returns ok, note. An item whose kind is not registered stays where it is.
+function ns.RecycleRestore(id)
+    local it, _, b = findItem(id)
+    if not it then return false, "that item is no longer in the Recycle Bin" end
+    local k = ns.BinKind and ns.BinKind(it.kind)
+    if not k then return false, unknownText(it) end
+    local okC, ok, note = pcall(k.restore, it)
+    if not okC then
+        local h = geterrorhandler and geterrorhandler(); if h then h(ok) end
+        return false, "it could not be restored (an error was recorded; /xui bug)"
+    end
+    if ok then
+        for i, x in ipairs(b.items) do if x == it then table.remove(b.items, i); break end end
+        if ns.MarkDirty then ns.MarkDirty() end
+    end
+    return ok and true or false, note
 end
 
 function ns.RecycleDeleteNow(id)
@@ -490,7 +514,7 @@ function ns.RecycleItems(at)
         local nr = 0
         for _, r in ipairs(it.rules or {}) do if not r.parentUid then nr = nr + 1 end end
         out[#out + 1] = { id = it.id, kind = it.kind, name = it.name, rules = nr, groups = #(it.folders or {}), owner = it.owner,
-            deletedAt = it.deletedAt, hoursLeft = math.max(0, ((it.deletedAt or 0) + keep - t) / 3600) }
+            deletedAt = it.deletedAt, hoursLeft = math.max(0, ((it.deletedAt or 0) + keep - t) / 3600), what = ns.RecycleDescribe(it) }
     end
     table.sort(out, function(a, c) return (a.deletedAt or 0) > (c.deletedAt or 0) end)
     return out
@@ -504,4 +528,22 @@ if CreateFrame then
         pcall(ns.RecyclePurge)
         if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1800, function() pcall(ns.RecyclePurge) end) end
     end)
+end
+
+-------------------------------------------------------------------------------
+-- (core 0.6.74; plan 6.3) the rule kinds, registered by the rule-tracking side through the Platform's ns.RegisterBinKind (Modules.lua).
+-- This block moves to Core with the rules in P4; the bin above keeps the storage, the keep times and the page. The page's wording for
+-- each kind is what Options.lua showed before (moved here unchanged).
+-------------------------------------------------------------------------------
+local function topRules(it) local n = 0; for _, r in ipairs(it.rules or {}) do if not r.parentUid then n = n + 1 end end; return n end
+local CHILD_WORD = { cue = "Cue", condition = "Condition", trigger = "Trigger" }   -- FA-11: removed with the red X in a rule
+local function childLine(it) return CHILD_WORD[it.kind] .. " of the rule '" .. tostring(it.owner or "?") .. "'" end
+if ns.RegisterBinKind then
+    ns.RegisterBinKind({ kind = "rule", label = "Rule", describe = function() return "Rule" end, restore = restoreRules })
+    ns.RegisterBinKind({ kind = "group", label = "Group", describe = function() return "Group (its contents had moved up one level)" end, restore = restoreRules })
+    ns.RegisterBinKind({ kind = "groupAll", label = "Group with its contents",
+        describe = function(it) return ("Group with its contents: %d rule(s), %d group(s)"):format(topRules(it), #(it.folders or {})) end, restore = restoreRules })
+    ns.RegisterBinKind({ kind = "cue", label = "Cue", describe = childLine, restore = restoreChild })
+    ns.RegisterBinKind({ kind = "condition", label = "Condition", describe = childLine, restore = restoreChild })
+    ns.RegisterBinKind({ kind = "trigger", label = "Trigger", describe = childLine, restore = restoreTrigger })
 end

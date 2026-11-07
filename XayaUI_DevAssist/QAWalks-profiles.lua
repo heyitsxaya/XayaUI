@@ -95,8 +95,9 @@ QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs
             local got = table.concat(names, ", ")
             if got ~= "Import, Export, Recycle Bin" then return false, "Profiles' sub-tabs read: " .. got end
             local P = Prof()
-            if not (P and #P.COMPONENTS == 6) then return false, "the profile components are not loaded" end
-            return true, "sub-tabs: " .. got .. "; 6 components to tick"
+            -- (Dev Assist 0.7.54) parts are registered by their modules since Options 0.6.80: the six, plus Nameplates while it is on
+            if not (P and #P.COMPONENTS >= 6) then return false, "the profile components are not loaded" end
+            return true, "sub-tabs: " .. got .. "; " .. #P.COMPONENTS .. " components to tick"
         end },
     { text = "Press |cffffd100Do it for me|r: a profile with only |cffffd100Settings|r is made from your setup (your Selection style is remembered), your Selection style is then changed, and the profile is imported back with Settings ticked.\n\n|cffffd100Expect:|r a Reload / Later prompt (press Later); the Selection style is back as it was.",
         setup = function()

@@ -1012,3 +1012,19 @@ ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)
 ns.RegisterSettingsPage("reskin", "rskstatusbars", BS.StatusBarsPage)
 ns.RegisterSettingsPage("reskin", "rskmmbuttons", BS.MinimapButtonsPage)
 ns.RegisterSettingsPage("reskin", "rskbuttons", BS.ButtonsPage)
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of each page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.blizzwindows", label = "Blizzard Windows", parent = "reskin" })
+    TS({ id = "reskin.minimap", label = "Minimap", parent = "reskin" })
+    TS({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })
+    TS({ id = "reskin.tracker", label = "Objective Tracker", parent = "reskin" })
+    TS({ id = "reskin.toasts", label = "Toasts and Pop-ups", parent = "reskin" })
+    TS({ id = "reskin.menus", label = "Menus", parent = "reskin" })
+    TS({ id = "reskin.bubbles", label = "Chat Bubbles", parent = "reskin" })
+    TS({ id = "reskin.statusbars", label = "Status Bars", parent = "reskin" })
+    TS({ id = "reskin.mmbuttons", label = "Minimap Buttons", parent = "reskin" })
+    TS({ id = "reskin.buttons", label = "Buttons", parent = "reskin" })
+end
+

@@ -116,7 +116,16 @@ end
 -- The aura (or spell effect) an item or spell tooltip describes: TT.EmbeddedAuras reads Blizzard's embedded effect block. The reader
 -- lives in core (AuraSources.lua, AS.EmbeddedAuras) because the rule editor's "source" column needs it even when tooltips are off;
 -- this name stays so every caller and test keeps working.
-function TT.EmbeddedAuras(data, skipID) return ns.AuraSources.EmbeddedAuras(data, skipID) end
+-- (Bonus 0.6.30; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.4) the rule-tracking side's readers are reached only through the
+-- Platform's service registry (ns.Service "AuraSources" / "AuraModel"); with it absent (rule tracking switched off), the tooltip adds
+-- nothing from them and nothing errors.
+local function AS() return ns.Service and ns.Service("AuraSources") end
+local function AM() return ns.Service and ns.Service("AuraModel") end
+function TT.EmbeddedAuras(data, skipID)
+    local as = AS()
+    if not (as and as.EmbeddedAuras) then return {} end
+    return as.EmbeddedAuras(data, skipID)
+end
 
 local function SpellNameOf(id)
     local ok, nm = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) end)
@@ -213,9 +222,10 @@ function TT.AurasFor(kind, id, data)
         if src and not e.src[src] then e.src[src] = true end
     end
     for _, a in ipairs(TT.EmbeddedAuras(data, id)) do add(a.id, a.name, "this tooltip") end
-    if #out > 0 and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, kind, id, out) end   -- feeds the search's "source" column
-    if ns.AuraSources and ns.AuraSources.AurasOf then
-        local ok, list = pcall(ns.AuraSources.AurasOf, kind, id)
+    local as, am = AS(), AM()
+    if #out > 0 and as and as.Note then pcall(as.Note, kind, id, out) end   -- feeds the search's "source" column
+    if as and as.AurasOf then
+        local ok, list = pcall(as.AurasOf, kind, id)
         if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name, "recorded earlier") end end
     end
     if kind == "spell" then
@@ -224,8 +234,8 @@ function TT.AurasFor(kind, id, data)
             for _, aid in ipairs(link.auras) do if aid == id then same = true else add(aid, nil, "Cooldown Manager") end end
             if link.own then same = true end
         end
-        if ns.AuraModel and ns.AuraModel.AurasForCast then
-            local ok, list = pcall(ns.AuraModel.AurasForCast, id)
+        if am and am.AurasForCast then
+            local ok, list = pcall(am.AurasForCast, id)
             if ok and type(list) == "table" then for _, a in ipairs(list) do add(a.id, a.name, "your casts") end end
         end
         local nm = SpellNameOf(id)
@@ -237,13 +247,13 @@ function TT.AurasFor(kind, id, data)
             elseif sid and readable(sid) and type(sid) == "number" then
                 local new = not seen[sid]
                 add(sid, nm, "buff on you")
-                if new and ns.AuraSources and ns.AuraSources.Note then pcall(ns.AuraSources.Note, "spell", id, { { id = sid } }) end
+                if new and as and as.Note then pcall(as.Note, "spell", id, { { id = sid } }) end
             end
         end
         local known = SelfAuraIDs()
         if not same and known[id] then same = true end
-        if not same and ns.AuraModel and ns.AuraModel.CastAppliesSelf then
-            local ok, yes = pcall(ns.AuraModel.CastAppliesSelf, id)
+        if not same and am and am.CastAppliesSelf then
+            local ok, yes = pcall(am.CastAppliesSelf, id)
             if ok and yes then same = true end
         end
         if not same and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
@@ -521,8 +531,9 @@ local X_LABEL = { ap = "attack power", sp = "spell power", heal = "healing power
 -- same djb2 hash as XayaUI_DevAssist/FormulaCapture.lua (FC.Hash) over the sorted active talent spell IDs
 function TT.TalentHash()
     local list = {}
-    if ns.AuraModel and ns.AuraModel.ActiveTalentSpells then
-        local ok, l = pcall(ns.AuraModel.ActiveTalentSpells)
+    local am = AM()
+    if am and am.ActiveTalentSpells then
+        local ok, l = pcall(am.ActiveTalentSpells)
         if ok and type(l) == "table" then for i, v in ipairs(l) do list[i] = v end end
     end
     table.sort(list)

@@ -1043,6 +1043,13 @@ function ns.BuildShoppingListPage(Notify)
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end
 ns.RegisterSettingsPage("reskin", "shoppinglist", ns.BuildShoppingListPage)
+-- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Shopping List page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.shoppinglist", label = "Shopping List", parent = "reskin" })
+end
+
 ns.RegisterCommand("shop", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     if arg == "options" or arg == "settings" then ns.OpenSettingsPage("reskin", "shoppinglist"); return end

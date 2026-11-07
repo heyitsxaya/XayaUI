@@ -135,6 +135,8 @@ B.globals().DATA = data
 B.execute("XayaUI_NS = {}; CueRulesDB = {}")
 for f in ("XayaUI/Modules.lua", "XayaUI_Bonus/Tooltips.lua", "XayaUI/AuraSources.lua", "XayaUI_Bonus/TooltipsUI.lua"):
     B.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f), encoding='utf-8').read(), f)("XayaUI", B.eval("XayaUI_NS"))
+# (Bonus 0.6.30 reads AuraSources / AuraModel through ns.Service; this test sets ns.AuraSources / ns.AuraModel directly, so the lookup answers with them)
+B.execute('local real = XayaUI_NS.Service; XayaUI_NS.Service = function(n) if n == "AuraSources" then return XayaUI_NS.AuraSources elseif n == "AuraModel" then return XayaUI_NS.AuraModel end return real(n) end')
 # the stand-in talent list matches the capture (spell IDs 1000 and 1010)
 B.execute("XayaUI_NS.AuraModel = { ActiveTalentSpells = function() return { 1010, 1000 } end }")
 B.execute("XayaUI_NS.TT.DB(); XayaUI_NS.TT.Init(); XayaUI_NS.TT.DB().ids.enabled = false; XayaUI_NS.TT.LoadClassData()")

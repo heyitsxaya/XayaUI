@@ -682,5 +682,12 @@ function ns.BuildImprovedChatTab(Notify) return Build(Notify, "improved") end
 -- new tab: Blizzard UI Reskin"; the Chat Panel restyles Blizzard's chat)
 ns.RegisterSettingsPage("reskin", "chatpanel", ns.BuildChatTab)
 ns.RegisterSettingsPage("qol", "improvedchat", ns.BuildImprovedChatTab)   -- (Chat 0.6.33; UI-18 / UI-19 / UI-21)
+-- (Chat 0.6.40; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Chat Panel page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.chatpanel", label = "Chat Panel", parent = "reskin" })
+end
+
 ns.RegisterLauncher({ "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() C.OpenSettings() end, order = 40 })
 ns.RegisterLauncher({ "improvedchat", "Improved Chat", "Open the Improved Chat settings", function() C.OpenSettings("improved") end, order = 41 })

@@ -46,6 +46,8 @@ L.execute("XayaUI_NS = {}; CueRulesDB = {}")
 # loads it)
 for f in ("XayaUI/Modules.lua","XayaUI_Bonus/Tooltips.lua","XayaUI/AuraSources.lua","XayaUI_Bonus/TooltipsUI.lua","XayaUI_DevAssist/CoreDebug.lua"):   # 0.5.108: core contract + the embedded-aura reader now in core
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
+# (Bonus 0.6.30 reads AuraSources / AuraModel through ns.Service; this test sets ns.AuraSources / ns.AuraModel directly, so the lookup answers with them)
+L.execute('local real = XayaUI_NS.Service; XayaUI_NS.Service = function(n) if n == "AuraSources" then return XayaUI_NS.AuraSources elseif n == "AuraModel" then return XayaUI_NS.AuraModel end return real(n) end')
 # AuraSources is core and always loaded in game; these checks test Tooltips alone, so keep only its embedded-aura reader (0.5.108)
 L.execute("REAL_AS = XayaUI_NS.AuraSources; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, NestedType = REAL_AS.NestedType }")
 # Bonus 0.6.18: aura sources show only while XayaUI Dev Assist is loaded (core ns.DevAssistOn; Xaya 2026-11-06 "Tooltip, Dev Assist on");

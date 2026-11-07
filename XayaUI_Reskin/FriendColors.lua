@@ -150,3 +150,10 @@ function ns.FriendColors_Options(Notify)
     } }
 end
 ns.RegisterSettingsPage("reskin", "friendcolors", ns.FriendColors_Options)
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Friend Colors page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.friendcolors", label = "Friend Colors", parent = "reskin" })
+end
+

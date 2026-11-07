@@ -2,8 +2,8 @@
 ## Title: XayaUI Bonus Features
 ## Notes: XayaUI extras: enhanced tooltips (IDs, item level, enemy forces), the Notepad, a little calculator, and custom data panels. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.29
-## X-Date: 2026-11-06
+## Version: 0.6.30
+## X-Date: 2026-11-07
 ## Dependencies: XayaUI
 ## Group: XayaUI
 
@@ -16,3 +16,4 @@ Notepad.lua
 NotepadShare.lua
 Calculator.lua
 Utilities.lua
+ProfilePart.lua

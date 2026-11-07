@@ -56,6 +56,8 @@ def make(src):
     for f, text in files:
         text = text if text is not None else open(os.path.join(ROOT, f), encoding="utf-8").read()
         L.eval("function(src, n) return assert(loadstring(src, n)) end")(text, f)("XayaUI", L.eval("XayaUI_NS"))
+    # (Bonus 0.6.30 reads AuraSources / AuraModel through ns.Service; this test sets ns.AuraSources / ns.AuraModel directly, so the lookup answers with them)
+    L.execute('local real = XayaUI_NS.Service; XayaUI_NS.Service = function(n) if n == "AuraSources" then return XayaUI_NS.AuraSources elseif n == "AuraModel" then return XayaUI_NS.AuraModel end return real(n) end')
     # AuraSources is core; keep its embedded-aura reader and give each check its own record (as tests/tooltips_run.py does)
     L.execute("REAL_AS = XayaUI_NS.AuraSources; RECORDED = {}; XayaUI_NS.AuraSources = { EmbeddedAuras = REAL_AS.EmbeddedAuras, "
               "NestedType = REAL_AS.NestedType, AurasOf = function(k, id) return RECORDED[k .. id] or {} end }")

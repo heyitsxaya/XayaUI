@@ -3422,6 +3422,10 @@ local function ParseImport()
     end
 end
 ns.OptionsApi.ProfileState = function() return { profInc = profInc, importInc = importInc, importDef = importDef, importSnap = importSnap, importErr = importErr } end
+-- (Options 0.6.80) for XayaUI Dev Assist's platform walkthrough (QAWalks-platform.lua): paste a text into Profiles > Import as the box
+-- would, and read the Profiles tab as the window builds it
+ns.OptionsApi.SetImportText = function(t) importText = tostring(t or ""); ParseImport(); if ns.Fire then ns.Fire("CONFIG_CHANGED") end end
+ns.OptionsApi.ProfilesTable = function() local b = ns.BuildOptionsTable and ns.BuildOptionsTable(); return b and b.args and b.args.profiles end
 
 local function AddonVersion()
     local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
@@ -3930,6 +3934,7 @@ local function BuildProfiles(binTab)
             end },
     }
     for i, c in ipairs(PR and PR.COMPONENTS or {}) do
+        if profInc[c.key] == nil then profInc[c.key] = true end   -- (Options 0.6.80) a registered part starts ticked, as every part did
         e["inc_" .. c.key] = Tog(profInc, c.key, c.label, 1 + i, function() end, { width = "double" })
     end
     for idx, p in ipairs(ns.Backups()) do
@@ -4015,6 +4020,13 @@ local function BuildProfiles(binTab)
     for i, c in ipairs(PR and PR.COMPONENTS or {}) do
         m["imp_" .. c.key] = Tog(importInc, c.key, c.label, 4 + i, function() Notify() end,
             { width = "double", hidden = function() return not (importDef and importDef.kind == "profile" and held(c.key)) end })
+    end
+    -- (Options 0.6.80; plan 6.1: Import shows them as "needs XayaUI Chat" and skips them) parts of the pasted profile whose module is not
+    -- loaded here: one line each, never imported
+    if PR and PR.Missing and importSnap and importDef and importDef.kind == "profile" then
+        for i, miss in ipairs(PR.Missing(importSnap)) do
+            m["needs_" .. miss.key] = { type = "description", order = 19 + i * 0.01, width = "full", name = "needs " .. miss.title }
+        end
     end
     local args = {
         import = { type = "group", name = "Import", order = 1, args = m },
@@ -5104,11 +5116,9 @@ local function BuildOptions()
         name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups, and cues, conditions and triggers removed with the red X, wait here so they can be restored."
             or ("\n%d item(s). Each is removed for good %s after it was deleted."):format(#binItems, ns.RecycleKeepLabel()) }
     for i, it in ipairs(binItems) do
-        local KIND_WORD = { cue = "Cue", condition = "Condition", trigger = "Trigger" }   -- FA-11: removed with the red X in a rule
-        local what = (it.kind == "rule") and "Rule"
-            or (it.kind == "groupAll") and ("Group with its contents: %d rule(s), %d group(s)"):format(it.rules, it.groups)
-            or KIND_WORD[it.kind] and (KIND_WORD[it.kind] .. " of the rule '" .. tostring(it.owner or "?") .. "'")
-            or "Group (its contents had moved up one level)"
+        -- (Options 0.6.80; plan 6.3) what an item is comes from its registered bin kind (core RecycleBin.lua ns.RecycleDescribe); an item
+        -- whose module is off reads "(<kind>: module not loaded)" and stays in the bin
+        local what = it.what or (ns.RecycleDescribe and ns.RecycleDescribe(it)) or tostring(it.kind)
         binArgs["item" .. i] = { type = "group", inline = true, order = 10 + i, name = tostring(it.name), args = {
             info = { type = "description", order = 1, width = "relative", relWidth = 0.7, fontSize = "medium",
                 name = ("%s. Deleted %s; removed for good in %s."):format(what, date("%Y-%m-%d %H:%M", it.deletedAt or 0), binLeft(it.hoursLeft or 0)) },
