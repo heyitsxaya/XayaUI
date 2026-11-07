@@ -57,6 +57,7 @@ ns.Provide("nameplates"), ns.Print. No core change. The harness (`tests/harness/
   check: no hide on removal (C4), anchored to the bar instead of the fill (B3), a UnitIsUnit call (D3 and an error).
 - `tests/lua_pitfalls_run.py` FAILS 0; harness `--only XayaUI_Nameplates XayaUI_DevAssist --fresh-only` PASS (1 warning, the existing
   debugRecord drift).
+- `tests/console_commands_run.py`: /xui help now has 19 lines (/xui nameplates added); expectation updated and a check that it is listed. Found by the full suite.
 - Full suite and precheck: see the commit.
 
 ## Not verified in game
