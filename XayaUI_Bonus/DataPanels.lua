@@ -639,7 +639,7 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.DataPanels_OnDBReady)
-ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (custom data panels and bars)")
+ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (Data Panels)")   -- (Bonus 0.6.29: her name, UI-5 / DISPLAY-RULES A7.2)
 -- O-100 (Bonus 0.6.27): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
 ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)

@@ -1263,13 +1263,11 @@ end
 local function TagTooltip(t)
     local fo = ns.FolderById(t.fid)
     if not (fo and GameTooltip) then return end
-    GameTooltip:SetOwner(t, "ANCHOR_TOP")
-    GameTooltip:AddLine("Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0)
-    GameTooltip:AddLine(ShownIn(fo) .. " display(s) on screen", 1, 1, 1)
-    GameTooltip:AddLine("Click: open this group's settings", 0.6, 0.85, 1)
-    GameTooltip:AddLine("Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1)
-    GameTooltip:AddLine("Drag this tab: move the whole group", 0.6, 0.85, 1)
-    GameTooltip:Show()
+    ns.Tip.Show(t, "ANCHOR_TOP", { "Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0, add = true }, {
+        { ShownIn(fo) .. " display(s) on screen", 1, 1, 1 },
+        { "Click: open this group's settings", 0.6, 0.85, 1 },
+        { "Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1 },
+        { "Drag this tab: move the whole group", 0.6, 0.85, 1 } })
 end
 local function GroupTag(f)
     local t = groupTags[f.id]
@@ -1298,12 +1296,10 @@ local function GroupTag(f)
     end)
     t.lock:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0)
-        GameTooltip:AddLine("While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true)
-        GameTooltip:Show()
+        ns.Tip.Show(self, "ANCHOR_TOP", { ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0, add = true },
+            { { "While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true } })
     end)
-    t.lock:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    t.lock:SetScript("OnLeave", function() ns.Tip.Hide() end)
     local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
     t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
     t:SetScript("OnLeave", function(self)
