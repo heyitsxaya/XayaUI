@@ -300,6 +300,13 @@ end
 -- small API for NotepadShare.lua (share, export, import) ---------------------------------------------------------------------
 ns.Notepad_MAX_CHARS = MAX_CHARS
 function ns.Notepad_CurrentText() local n = Cur(); return n and n.text or "" end
+-- (D53) the Share window keeps the note it named when it opened, by its id, and sends that one
+function ns.Notepad_CurrentID() local n = Cur(); return n and n.id end
+function ns.Notepad_TextOf(id)   -- the note's text, or nil when no note has that id (deleted)
+    if id == nil then return nil end
+    local _, n = IndexOf(id)
+    return n and (n.text or "") or nil
+end
 function ns.Notepad_AllTexts() local db = DB(); local out = {}; if db then for i, n in ipairs(db.notes) do out[i] = n.text or "" end end; return out end
 function ns.Notepad_AddNote(text)   -- adds a note at the end without switching to it; returns its position, or nil
     local db = DB(); if not db then return nil end
@@ -1197,5 +1204,9 @@ if ns.Provide then
         DB = function() return ns.notepadDB end, On = function() return On() end, Frame = function() return frame end,
         SetShown = ns.Notepad_SetShown, ToggleFormat = ns.Notepad_ToggleFormat, New = ns.Notepad_New, Delete = ns.Notepad_Delete,
         Next = ns.Notepad_Next, SetView = ns.Notepad_SetView, Render = ns.Notepad_Render, CurrentText = ns.Notepad_CurrentText,
+        -- (audit QA walkthroughs, D53) the Share window: open it, read the note it will send, and what it sent
+        OpenShare = function() if ns.NotepadShare_OpenShare then ns.NotepadShare_OpenShare() end end,
+        ShareNoteText = function() return ns.NotepadShare_ShareText and ns.NotepadShare_ShareText() end,
+        Prev = ns.Notepad_Prev,
     })
 end
