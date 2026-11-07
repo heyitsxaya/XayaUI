@@ -498,7 +498,8 @@ run("ns.chat2.whisperSounds.list = {}; ns.chat2.whisperSounds.fav = nil; C_Battl
 opt = run("return ns.BuildChatTab(function() end)")
 check("options table builds", opt is not None)
 tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do out[#out+1]=k end table.sort(out) return table.concat(out,',')")
-check("all tabs present", all(t in str(tabs) for t in ["layout","look","bar","behavior","filters","history","sounds","privacy"]), tabs)
+# (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya's #246 words) General and Chat Tabs replace Appearance, Fade and hide and History
+check("all tabs present", all(t in str(tabs) for t in ["general","tabs","layout","bar","filters","sounds","privacy"]) and not any(t in str(tabs).split(",") for t in ["look","behavior","history"]), tabs)
 bad = run("""
 local bad = {}
 local function walk(t, path)
@@ -530,7 +531,7 @@ local headers = 0
 local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
 walk(o)
 out[#out+1] = 'headers:' .. headers
-for _, k in ipairs({ 'layout', 'look', 'bar', 'behavior', 'filters', 'history', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
+for _, k in ipairs({ 'general', 'tabs', 'layout', 'bar', 'filters', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
 out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
 out[#out+1] = 'layoutTop:' .. tostring(o.args.layout.args.enabled == nil and o.args.layout.args.theme == nil)
 local p = o.args.privacy.args
@@ -539,8 +540,8 @@ out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn ==
 out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
 return table.concat(out, ' ')
 """)
-want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "layout:tab", "look:tab", "bar:tab", "behavior:tab", "filters:tab",
-        "history:tab", "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
+want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "general:tab", "tabs:tab", "layout:tab", "bar:tab", "filters:tab",
+        "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
 check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
 opened = []
 run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")

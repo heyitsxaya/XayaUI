@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.9): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is
@@ -320,4 +320,176 @@ QA.Register("chat-296-panel-follows", { title = "Chat: one arrow; the panel foll
             return true, ("Fade the Chat Data Panel too is %s; idle fade is %s"):format(s.fadeBar and "ticked" or "unticked (the default)", s.fadeOn and "on" or "off")
         end },
     PutBackStep(),
+} })
+
+-------------------------------------------------------------------------------
+-- (Dev Assist 0.7.13, Chat 0.6.31; REQUEST-LOG A14 CHATREV-10 / CHATREV-11; standing rule V22) the whisper-tab switch and the Chat Panel
+-- settings laid out from Xaya's #246 words. Both with pre-fill; the timestamp step remembers and puts back the game's setting.
+-------------------------------------------------------------------------------
+local function CVar(n) local cv = rawget(_G, "C_CVar"); local ok, v = pcall(function() return cv.GetCVar(n) end); if ok and type(v) == "string" and not Secret(v) then return v end end
+local function SelectedWindow()
+    local dock = rawget(_G, "GENERAL_CHAT_DOCK")
+    local get = rawget(_G, "FCFDock_GetSelectedWindow")
+    if not (dock and type(get) == "function") then return nil end
+    local ok, f = pcall(get, dock)
+    return ok and f or nil
+end
+local MODE_NAME = { popout = "New Tab", popout_and_inline = "Both", inline = "In-line" }
+
+QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start opens (CHATREV-10)", qa = "D24", order = 234, prefill = true, steps = {
+    { text = "This checks the new tick box |cffffd100Switch to a new whisper tab I start|r (Chat Panel > Chat Tabs > Whisper tabs) and the game's own setting Options > Social > |cffffd100New Whispers|r.\n\n|cffffd100Expect:|r the tick box is on (the default) and New Whispers is Both or New Tab.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local s, C = S(), Ch()
+            local m = CVar("whisperMode")
+            local on = s.whisperSelect and C.on and C.on.whisperSelect
+            return (on and (m == "popout" or m == "popout_and_inline")) and true or false,
+                ("tick box %s; New Whispers: %s"):format(on and "on" or "OFF", MODE_NAME[m] or tostring(m))
+        end },
+    { text = "Stay on the |cffffd100General|r tab. Whisper someone you have |cffffd100no whisper tab with yet|r (a friend, or /w yourself). Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r a new tab with their name opens and the chat switches to it, showing your whisper.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local f = SelectedWindow()
+            if not f then return false, "the game did not say which tab is selected" end
+            local isW = f.chatType == "WHISPER" or f.chatType == "BN_WHISPER"
+            return isW and true or false, isW and ("the selected tab is a %s whisper tab"):format(f.chatType == "BN_WHISPER" and "Battle.net" or "character")
+                or "the selected tab is not a whisper tab"
+        end },
+    { text = "Click |cffffd100General|r again, then reply in General to the same person (/r).\n\n|cffffd100Expect:|r the chat stays on General (a whisper to someone who already has a tab never pulls you away).",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local f = SelectedWindow()
+            if not f then return false, "the game did not say which tab is selected" end
+            local stay = not (f.chatType == "WHISPER" or f.chatType == "BN_WHISPER")
+            return stay, stay and "still on a non-whisper tab" or "it switched to the whisper tab"
+        end },
+} })
+
+local tsBefore
+local function Tree() local sv = Svc(); local ok, t = pcall(function() return sv.Options() end); return ok and t or nil end
+local function Kids(t)
+    local list = {}
+    for _, v in pairs(t and t.args or {}) do if type(v) == "table" and v.type == "group" then list[#list + 1] = v end end
+    table.sort(list, function(a, b) return (tonumber(a.order) or 0) < (tonumber(b.order) or 0) end)
+    local n = {}
+    for _, v in ipairs(list) do n[#n + 1] = tostring(v.name) end
+    return table.concat(n, " | "), list
+end
+QA.Register("chat-settings-layout", { title = "Chat: settings laid out as asked in #246 (CHATREV-11)", qa = "#246, D24", order = 235, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane: General, Chat Tabs, Layout, Chat Data Panel, Filters, Sounds, Privacy (no Appearance, Fade and hide or History).",
+        setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("general") end end,
+        check = function()
+            local t = Tree(); if not t then return false, "the Chat Panel's settings could not be read" end
+            local names = Kids(t)
+            local want = "General | Chat Tabs | Layout | Chat Data Panel | Filters | Sounds | Privacy"
+            return names == want, "parts: " .. names
+        end },
+    { text = "Look at the tabs across the top of General.\n\n|cffffd100Expect:|r Font options, Color + display options, Scroll and fade options, Chat history, and Timestamp, copying, and links, in that order. Click through them: each has its settings.",
+        check = function()
+            local t = Tree(); local g = t and t.args and t.args.general
+            if not g then return false, "no General page" end
+            local names = Kids(g)
+            local want = "Font options | Color + display options | Scroll and fade options | Chat history | Timestamp, copying, and links"
+            return names == want, "tabs: " .. names
+        end },
+    { text = "Click |cffffd100Chat Tabs|r in the left pane.\n\n|cffffd100Expect:|r the tab row's settings (show, height, font, colors, backgrounds) and a Whisper tabs section with |cffffd100Switch to a new whisper tab I start|r.",
+        setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("tabs") end end,
+        check = function()
+            local t = Tree(); local p = t and t.args and t.args.tabs
+            if not p then return false, "no Chat Tabs page" end
+            local found = false
+            local function walk(x) for k, v in pairs(x.args or {}) do if k == "whisperSelect" then found = true end; if type(v) == "table" and v.type == "group" then walk(v) end end end
+            walk(p)
+            return found, found and ("Chat Tabs page: " .. Kids(p)) or "the whisper switch is not on the Chat Tabs page"
+        end },
+    { text = "Press |cffffd100Do it for me|r: Timestamps (General > Timestamp, copying, and links) is set to 24-hour hours and minutes; your own setting is remembered. Then say something in chat.\n\n|cffffd100Expect:|r your new line starts with the time, like \"15:27\". Options > Social > Chat Timestamps shows the same choice.",
+        setup = function()
+            local cv = rawget(_G, "C_CVar"); tsBefore = tsBefore or CVar("showTimestamps") or "none"
+            local fmt = rawget(_G, "TIMESTAMP_FORMAT_HHMM_24HR") or "%H:%M "
+            pcall(function() cv.SetCVar("showTimestamps", fmt) end)
+        end,
+        check = function()
+            local v = CVar("showTimestamps")
+            local want = rawget(_G, "TIMESTAMP_FORMAT_HHMM_24HR") or "%H:%M "
+            return v == want, "the game's Chat Timestamps setting is " .. tostring(v)
+        end },
+    { text = "Last step: press |cffffd100Do it for me|r to put your Chat Timestamps setting back as it was.",
+        setup = function() local cv = rawget(_G, "C_CVar"); if tsBefore then pcall(function() cv.SetCVar("showTimestamps", tsBefore) end) end end,
+        check = function()
+            if not tsBefore then return false, "nothing was remembered (run step 4 first)" end
+            local v = CVar("showTimestamps")
+            return v == tsBefore, "Chat Timestamps is " .. tostring(v) .. " (was " .. tostring(tsBefore) .. ")"
+        end },
+} })
+
+-- #430 (from #229 item 5, "Clicking the chat box in mover mode should open exact X/Y entry + cardinal arrows"; Chat 0.6.31)
+local yMark
+QA.Register("chat-position-box", { title = "Chat: exact X / Y position from the mover (#430)", qa = "#430, D24", order = 236, prefill = true, steps = {
+    Start("Press |cffffd100Do it for me|r: XayaUI remembers your chat's place and settings (the last step puts them back)."),
+    { text = "Type |cffffd100/xui chat move|r and |cffffd100click|r the blue box once without dragging (or press |cffffd100Do it for me|r).\n\n|cffffd100Expect:|r a small \"Chat position\" box above the chat with X and Y filled in, and four arrow buttons.",
+        setup = function() local C = Ch(); if not C.unlocked then C.ToggleMover() end; C.PositionBox_Toggle(true) end,
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local C, s = Ch(), S(); local b = C.PositionBox and C.PositionBox()
+            if not (b and Shown(b)) then return false, "the position box is not showing" end
+            local fx, fy = b.x:GetText(), b.y:GetText()
+            local filled = tonumber(fx) == tonumber(s.x) and tonumber(fy) == tonumber(s.y)
+            return filled, ("box shows X %s, Y %s (saved place %s, %s)"):format(tostring(fx), tostring(fy), tostring(s.x), tostring(s.y))
+        end },
+    { text = "In the box, type |cffffd100200|r in X and press Enter.\n\n|cffffd100Expect:|r the chat jumps so its left edge is 200 pixels from the screen's left edge.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local C, s = Ch(), S(); local c = Rect(C.Container())
+            local good = s.x == 200 and c and Near(c.l, 200, 1)
+            return good and true or false, ("saved X %s; the chat's left edge at %s"):format(tostring(s.x), c and tostring(math.floor(c.l + 0.5)) or "?")
+        end },
+    { text = "Click the |cffffd100>|r arrow once.\n\n|cffffd100Expect:|r the chat moves 1 pixel right (X reads 201).",
+        check = function()
+            local s = S(); if not s then return false, "XayaUI Chat is not loaded" end
+            yMark = s.y
+            return s.x == 201, "X is " .. tostring(s.x)
+        end },
+    { text = "Hold |cffffd100Shift|r and click the |cffffd100^|r arrow once.\n\n|cffffd100Expect:|r the chat moves 10 pixels up.",
+        check = function()
+            local s = S(); if not (s and yMark) then return false, "do the step before first" end
+            return s.y == yMark + 10, ("Y went from %s to %s"):format(tostring(yMark), tostring(s.y))
+        end },
+    PutBackStep(),
+} })
+
+-- CHATREV-12 (Chat 0.6.31): every chat tab at one height (General / Combat Log and the tabs in the scrolling part of the row)
+local function TabMids()
+    local dock = rawget(_G, "GeneralDockManager")
+    local list = dock and dock.DOCKED_CHAT_FRAMES
+    if type(list) ~= "table" then return nil end
+    local out = {}
+    for _, f in ipairs(list) do
+        local okN, n = pcall(f.GetName, f)
+        local tab = okN and n and _G[n .. "Tab"]
+        local r = Rect(tab)
+        if r and Shown(tab) then out[#out + 1] = { static = f.isStaticDocked and true or false, mid = r.b + r.h / 2 } end
+    end
+    return out
+end
+QA.Register("chat-tab-row", { title = "Chat: every tab at one height (CHATREV-12)", qa = "D24", order = 237, prefill = true, steps = {
+    { text = "Have at least one tab besides General and Combat Log (Guild, Self, a whisper tab ...). Look at the tab row.\n\n|cffffd100Expect:|r every tab's name sits on one line: General and Combat Log are not lower than the others.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local m = TabMids()
+            if not m or #m == 0 then return false, "the tab row could not be read" end
+            local hasDyn = false
+            local lo, hi = m[1].mid, m[1].mid
+            for _, t in ipairs(m) do if not t.static then hasDyn = true end; lo = math.min(lo, t.mid); hi = math.max(hi, t.mid) end
+            if not hasDyn then return false, "only General / Combat Log are docked: open another tab first" end
+            return (hi - lo) < 1, ("%d tabs; centres differ by %.1f px at most"):format(#m, hi - lo)
+        end },
+    { text = "Whisper someone new (a whisper tab opens), then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the new tab is on the same line too.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local m = TabMids()
+            if not m or #m == 0 then return false, "the tab row could not be read" end
+            local lo, hi = m[1].mid, m[1].mid
+            for _, t in ipairs(m) do lo = math.min(lo, t.mid); hi = math.max(hi, t.mid) end
+            return (hi - lo) < 1, ("%d tabs; centres differ by %.1f px at most"):format(#m, hi - lo)
+        end },
 } })

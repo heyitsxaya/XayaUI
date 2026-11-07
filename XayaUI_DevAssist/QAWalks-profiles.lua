@@ -141,6 +141,6 @@ QA.Register("reskin-rename", { title = "Blizzard Reskin: the new name everywhere
             for _, t in ipairs(Shown(top)) do if t.value == "reskin" then label = TabText(t) end end
             return label == "Blizzard Reskin" and name == "Enable Blizzard Reskin", ("tab: %s; switch: %s"):format(tostring(label), tostring(name))
         end },
-    { text = "Type |cff88ccff/xui chat|r and |cff88ccff/xui shop|r in chat.\n\n|cffffd100Expect:|r wherever a line names the tab, it says Blizzard Reskin (never Blizzard UI Reskin). Note anything that still says the old name.",
+    { text = "Type |cff88ccff/xui chat|r and |cff88ccff/xui shop|r in chat.\n\n|cffffd100Expect:|r wherever a line names the tab, it says Blizzard Reskin (never the old name with UI in it). Note anything that still says the old name.",
         noVerdict = true },
 } })
