@@ -14,6 +14,8 @@
 --    words, what was done without asking, "Keep it" plus the alternatives, a note; Back / Skip / Next and a count. Answers are kept in
 --    XayaUIDevAssistDB.questions (with the time and Dev Assist's version). "Copy answers" puts them in a text box to copy (Ctrl+C; an
 --    addon cannot write the clipboard). Reopen: /xui dev questions.
+-- 3. (0.7.52; Xaya 2026-11-07, REQUEST-LOG PS-16..PS-18) the list is a table, Codes | Title | Area | Status | New | Open, with a search
+--    box, tag chips and sortable columns (QATable.lua, shared with All walkthroughs); the window is 900 x 560 for it.
 -- V14: no window is made until one opens; at load only one small event frame exists, and it stops listening after the first
 -- PLAYER_ENTERING_WORLD (or after combat ends, when it had to wait). UNTESTED IN GAME.
 -------------------------------------------------------------------------------
@@ -228,11 +230,11 @@ local RW
 local fromReview = false   -- a walkthrough opened from the review: when the runner closes, the review comes back
 local function BuildReview()
     if RW then return end
-    RW = Window("XayaUIDevReviewWindow", 700, 480)
-    RW.sub = RW:CreateFontString(nil, "OVERLAY", "GameFontDisable"); RW.sub:SetPoint("TOPLEFT", 14, -36); RW.sub:SetWidth(670); RW.sub:SetJustifyH("LEFT")
-    RW.scroll, RW.child = Scroll(RW, 670)
-    RW.scroll:SetPoint("TOPLEFT", 14, -58); RW.scroll:SetPoint("BOTTOMRIGHT", -14, 70)
-    RW.headers, RW.rows = {}, {}
+    RW = Window("XayaUIDevReviewWindow", 900, 560)
+    RW.sub = RW:CreateFontString(nil, "OVERLAY", "GameFontDisable"); RW.sub:SetPoint("TOPLEFT", 14, -36); RW.sub:SetWidth(870); RW.sub:SetJustifyH("LEFT")
+    -- (0.7.52) the table with search, tag chips and sortable columns (QATable.lua, shared with All walkthroughs)
+    RW.tbl = QA.Table.Create(RW, { left = 14, top = 56, bottom = 70, width = 872, onOpen = function(id) RV.OpenWalk(id) end })
+    RW.rows, RW.headers = RW.tbl.rows, RW.tbl.headers
     RW.dont = CreateFrame("CheckButton", nil, RW, "UICheckButtonTemplate"); RW.dont:SetSize(24, 24); RW.dont:SetPoint("BOTTOMLEFT", 10, 38)
     RW.dontLabel = RW:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); RW.dontLabel:SetPoint("LEFT", RW.dont, "RIGHT", 4, 0)
     RW.dontLabel:SetText("Don't show again until the next update")
@@ -241,54 +243,13 @@ local function BuildReview()
     RW.all = Btn(RW, "All walkthroughs", 140, function() RW:Hide(); if QA.Toggle then QA.Toggle() end end); RW.all:SetPoint("LEFT", RW.questions, "RIGHT", 8, 0)
     RW.close = Btn(RW, "Close", 90, function() RW:Hide() end); RW.close:SetPoint("BOTTOMRIGHT", -14, 10)
 end
-local function Header(i)
-    local h = RW.headers[i]
-    if not h then
-        h = RW.child:CreateFontString(nil, "OVERLAY", "GameFontNormal"); h:SetJustifyH("LEFT"); h:SetWidth(660)
-        RW.headers[i] = h
-    end
-    return h
-end
-local function Row(i)
-    local r = RW.rows[i]
-    if not r then
-        r = CreateFrame("Frame", nil, RW.child); r:SetSize(660, 22)
-        r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); r.text:SetPoint("LEFT", 10, 0); r.text:SetWidth(440); r.text:SetJustifyH("LEFT")
-        r.status = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall"); r.status:SetPoint("RIGHT", -80, 0); r.status:SetWidth(150); r.status:SetJustifyH("RIGHT")
-        r.open = Btn(r, "Open", 64, function() RV.OpenWalk(r.id) end); r.open:SetPoint("RIGHT", -4, 0)
-        RW.rows[i] = r
-    end
-    return r
-end
 function RV.Fill()
     BuildReview()
-    for _, h in ipairs(RW.headers) do h:Hide() end
-    for _, r in ipairs(RW.rows) do r:Hide() end
     local list, first = RV.Changed()
     RW.title:SetText("Review: what's new to test")
     RW.sub:SetText(first and ("First time: every walkthrough is listed (%d). Tick the box below once you have looked, and the next update lists only what is new or changed."):format(#list)
         or (#list == 0 and "Nothing new or changed since the build you acknowledged." or ("%d walkthrough(s) new or changed since the build you acknowledged."):format(#list)))
-    local y, hi, ri, area = 0, 0, 0, nil
-    local counts = {}
-    for _, e in ipairs(list) do counts[e.area] = (counts[e.area] or 0) + 1 end
-    for _, e in ipairs(list) do
-        if e.area ~= area then
-            area = e.area; hi = hi + 1
-            local h = Header(hi)
-            h:ClearAllPoints(); h:SetPoint("TOPLEFT", RW.child, "TOPLEFT", 0, -y - 4)
-            h:SetText(("%s (%d)"):format(Esc(area), counts[area])); h:Show()
-            y = y + 24
-        end
-        ri = ri + 1
-        local r, def = Row(ri), QA.walks[e.id]
-        r.id = e.id
-        r:ClearAllPoints(); r:SetPoint("TOPLEFT", RW.child, "TOPLEFT", 0, -y)
-        r.text:SetText(("|cff999999[%s]|r %s  |cff%s%s|r"):format(Esc(def.qa or e.id), Esc(def.title), e.state == "new" and "60c0ff" or "ffd100", e.state))
-        r.status:SetText(RV.Verdict(e.id))
-        r:Show()
-        y = y + 24
-    end
-    RW.child:SetHeight(math.max(10, y)); RW.scroll:SetVerticalScroll(0)
+    RW.tbl:SetEntries(list)
     RW.questions:SetText(("Questions (%d)"):format(RV.OpenCount()))
     RW.dont:SetChecked(RV.Acknowledged())
     RW.list = list

@@ -444,7 +444,7 @@ local function SplitSet(enabled, improved)
     if improved then s.barOn = true end
     C.Refresh()
 end
-QA.Register("chat-improved-split", { title = "Chat: Chat Panel and Improved Chat switch on and off apart (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
+QA.Register("chat-improved-split", { title = "Chat: Chat Panel (the new look) and Improved Chat (the extra features) switch on and off separately (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the |cffffd100Chat Panel|r (Blizzard Reskin) is switched |cffffd100off|r, |cffffd100Improved Chat|r (QoL) stays on, with the Chat Data Panel shown. Your switches are remembered; the last step puts them back.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it; the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
         setup = function() SplitSet(false, true) end,
         check = function()

@@ -54,7 +54,7 @@ local function CheckTop()
 end
 
 local saved
-QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Profiles (H6-H9)", qa = "H6, H7, H8, H9", order = 270, prefill = true, steps = {
+QA.Register("settings-toplevel", { title = "Settings window: the new row of tabs at the top, and the Profiles tab (H6-H9)", qa = "H6, H7, H8, H9", order = 270, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r.\n\n|cffffd100Expect:|r no row of buttons above the tabs (no New Rule / Import / Export / Recycle Bin / Settings cog); the top tabs read " .. WANT .. ", evenly across the row.",
         setup = function()
             local db = rawget(_G, "CueRulesDB")
