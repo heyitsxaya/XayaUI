@@ -27,3 +27,16 @@ standardized calculation".
 Reads the live GCD (spell 61304) when one runs, then estimates "unhasted" as reading x (1 + haste) and the GCD "with your numbers" by
 the same scaling, for every class. For energy melee this is wrong (a 1.0 s fixed GCD with 20% haste would show 1.20 s unhasted, and
 typed haste would seem to shorten it); a "looks like a fixed 1 s GCD" note is the only guard.
+
+## DejaCharacterStats (UI-67, Xaya: "Review Deja character stats as well because they also track GCs")
+Read for behaviour only (standing rule: nothing of its code or text is copied). Source: github.com/dejoblue/DejaCharacterStats
+(archived by its owner on 5 Aug 2023); its newest branch there is `800beta`, 2019-01-28, `## Interface: 80100` (Battle for
+Azeroth 8.1). The current CurseForge release was not read (its code is not in that repository).
+- Same formula and floor as ours: GCD = 1.5 / (1 + haste), never below 0.75 s.
+- Fixed 1.0 s: druids in Cat Form, and every spec whose primary stat is Agility except Hunters, Shamans and Demon Hunters, which leaves
+  rogues and the Agility monks (Brewmaster, Windwalker): the same list as ours. Its notes say each group was tested in game (e.g.
+  Enhancement Shaman moved to the hasted group after testing; the 2018 `master` still had it on 1.0 s).
+- Bear Form uses the hasted 1.5 s (ours too: only Cat Form is fixed).
+- It shows the calculated value only; ours also lists the game's live reading and flags a difference.
+Conclusion: DejaCharacterStats agrees with the standard rule (UI-64); no change needed. Its data is from 2019; the live reading is the
+check for anything Blizzard changed since.
