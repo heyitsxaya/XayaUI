@@ -2041,6 +2041,12 @@ local function BuildRule(i, rule)
     loadArgs.instanceTypes = TriGroup("Instance Type", 61, noMatch,
         function() rule.load.instanceTypes = rule.load.instanceTypes or {}; return rule.load.instanceTypes end,
         instChoices, function() Changed(rule); Notify() end)
+    -- D8 (core 0.6.59): people in my group, at least N (0 = any)
+    loadArgs.groupMin = { type = "range", order = 62, width = "double", min = 0, max = 40, step = 1, hidden = noMatch,
+        name = "People in my group: at least (0 = any)",
+        desc = "Loads only while your group has at least this many players (you included). 0: any group size, solo too.",
+        get = function() return tonumber(rule.load.groupMin) or 0 end,
+        set = function(_, v) rule.load.groupMin = (v and v > 1) and math.floor(v) or nil; Changed(rule); Notify() end }
     loadArgs.classHeader = { type = "header", name = "Class / Specialization / Role", order = 0.55, hidden = noMatch }
     local function LoadSet(field, legacy, legacyOK)
         local ld = rule.load
@@ -2119,7 +2125,7 @@ local function BuildRule(i, rule)
                     hidden = function() return not ns.ArrowOpen(rule, "loadIds") end, args = body },
             } }
     end
-    local lockKeys = { "instanceTypes", "classes", "specs", "roles", "heroes" }
+    local lockKeys = { "instanceTypes", "groupMin", "classes", "specs", "roles", "heroes" }
     for _, k in ipairs(loadModeKeys) do lockKeys[#lockKeys + 1] = k end
     for _, c in ipairs(ns.LOAD_TRI) do lockKeys[#lockKeys + 1] = "tri_" .. c.key end
     for _, k in ipairs(lockKeys) do

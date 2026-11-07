@@ -243,3 +243,7 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
   instance, type Raid, 20+ in group; no "driven by a rule / own Load" setting): "It belongs in "Raid Tools" under rules for now".
 - Where "Raid Tools" goes: "A group in the sidebar". Correction (her next message): "Sorry, “Raid Rules”" — the group is named "Raid Rules" (a fixed "Raid Tools" entry in the Rules sidebar, like a Smart Category, with Release
   Guard inside it as an item to click and edit).
+- Correction: the group is "Raid Rules" (her: "Sorry, “Raid Rules”").
+- Build approach: "Yes, built-in entry" (a fixed "Release Guard" entry inside a fixed "Raid Rules" group; same Load tab as rules; its
+  switch is the guard's on/off; its own settings page (text, flavour texts, modifier key) instead of Trigger / Cues; listed under
+  Enabled / Disabled like a rule; not deletable or exportable; no eye / headphone).

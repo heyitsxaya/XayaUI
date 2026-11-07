@@ -172,6 +172,7 @@ Each of these cycles on every click: **ignored** (unselected) -> **yes** (green)
 These are sets: with nothing ticked there is no restriction. Ticking items means "must be one of these"; the red "not" state means "must not be this."
 
 - **Instance type:** Open world, Dungeon, Raid, Battleground, Arena, Scenario.
+- **People in my group: at least** (core 0.6.59): a number from 0 to 40. The rule loads only while your group has at least that many players, you included (solo counts as 1). 0 means any group size. If the game will not say how many are in your group, the rule does not load.
 - **Class:** tick any of the 13 classes; the rule loads only on a character of one of the ticked classes. Every class is always listed, whatever character you are logged in on, so a rule can be set up for any class from any character. With no class ticked the rule loads on every class. A group's Load tab has the same Class list and is checked before each rule's own.
 - **Specialization** and **Role**: both have an explicit "All" choice that restricts nothing. Specialization lists every specialization of every class (shown as class and spec), whatever character you are logged in on, and you can tick several. Role allows one choice.
 - **Hero talents:** the active hero talent tree. Only matches when a hero tree is actually chosen.
