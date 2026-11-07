@@ -28,4 +28,5 @@ QAWalks-Checklist.lua
 QAWalks-debug.lua
 QAWalks-audit.lua
 QAWalks-audit-qol-bonus.lua
+QAWalks-audit-options.lua
 QAWalks-statcalc.lua
