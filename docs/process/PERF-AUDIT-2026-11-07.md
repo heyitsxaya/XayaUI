@@ -8,13 +8,16 @@ Scope: the shipping addon folders XayaUI, XayaUI_Options, XayaUI_Chat, XayaUI_Qo
 Third-party libraries under `*/Libs/` (LibStub; Ace3 AceConfig / AceGUI / CallbackHandler in XayaUI_Options; XayaDataBlocks-1.0 in
 Bonus and Chat) exist and are counted only in the "+Libs" column. XayaUI_Media is skipped.
 
-Code base: commit `687b624` (origin/main). Branch `claude/perf-test-m-plus` at `091f784` has the same Lua (`git diff --stat
+Code base: commit `687b624` (origin/main at audit start). Branch `claude/perf-test-m-plus` at `091f784` (audit start) had the same Lua (`git diff --stat
 687b624 HEAD -- '*.lua'` is empty). While this audit was written the working tree held uncommitted Dev Assist changes by another
 session (DevRecord.lua, RunRecord.lua, tools/perf_report.py); all counts and line numbers below are for `687b624`, not the working tree.
 
-Two branches not on main are reviewed where named:
+Two branches that were not on main at 687b624 are reviewed where named. While this audit was being written, origin/main moved to
+`28380a9` and this branch merged it (`f2378b5`): both commits below are now on main and in this branch (`git merge-base
+--is-ancestor` checked). Their findings therefore apply to main now; their line numbers stay those of the named commits, and the
+34 Lua files changed between 687b624 and 28380a9 were not re-audited line by line (counts in section 1 are for 687b624).
 
-| Branch | Commit | What | Where on the remote |
+| Branch | Commit | What | Where on the remote (at audit start) |
 |---|---|---|---|
 | D4 event routing | `ba4ec01` "D4 / #115 / #309: event routing, the next-frame re-check (core 0.6.56)" | Engine.lua | `origin/bundle-2300`, `origin/claude/fervent-cerf-hldtwn` |
 | S8 bar cues | `9c5e201` (tip of `origin/claude/dreamy-edison-pvb3i1`) | new XayaUI/BarCue.lua, Visual.lua hooks, Bonus Type colours | that branch, and bundle-2300 |
@@ -258,7 +261,7 @@ How a step happens (code facts):
   step, plus the pcalls inside the reads.
 - In combat every 5 s (:382-387): `ns.LogStatusSnapshot("combat tick")`.
 
-D4 routing (ba4ec01, not on main): OnEvent returns early for SPELL_UPDATE_COOLDOWN / SPELL_UPDATE_CHARGES (`routed.cd`) and UNIT_AURA
+D4 routing (ba4ec01; not on main at 687b624, on main since 28380a9): OnEvent returns early for SPELL_UPDATE_COOLDOWN / SPELL_UPDATE_CHARGES (`routed.cd`) and UNIT_AURA
 (`routed.aura`). On the next frame, if no full step is due, a routed Step runs with `stepFilter`: it reuses `lastCtx` (no
 ReadContext), but still runs IndexedStep (Timing.ClearDeadline, BeginStepIndex, BeginVisualStep, FlushLayouts, EndStepIndex),
 increments `ns.tickID`, and walks **every** rule in `ns.rules` calling `ns.RuleOff` and `Deps(rule)` to decide whether to step it.
@@ -358,7 +361,7 @@ Assist (checked: `git grep -nE 'COMBAT_LOG_EVENT|NAME_PLATE_UNIT|UNIT_AURA' 687b
 | Same pattern for dynamic groups (not reported) | **Found.** RefreshVisual calls `LayoutDynamic(dyn)` (:2249) for every member of a dynamic group, and LayoutDynamic loops all rules twice (:611, :615). So RefreshAllVisuals is O(dynamic members × rules) too. Fix for both: during RefreshAllVisuals mark groups dirty and lay out / arrange each group once at the end. |
 | S3 G9: Scale to fit with cFit loops all rules per Container(f) | **Confirmed.** Container (:450-484) calls `ns.GroupFitScale(f)` when `f.cFit` (:453) → GroupFitNeeded → ItemsExtent (:423-438), a loop over all rules. Container runs for every RefreshVisual of a member (ParentFor :493-503), recursively for every child group (:457-458: a child's Container calls its parent's), from LayoutDynamic (:692) and, while dragging a group handle or mover tag, every frame (:1196, :1343). In combat: a dynamic group nested in a static fit group re-measures on every member show / hide (LayoutDynamic → Container(df) → Container(parent)). Fix: memo the fit factor per group per `configVersion` (positions change only through edits / drags, which bump it or can clear it). |
 | S3: group auto-size 0.2 s OnUpdate watcher | **Confirmed.** Visual.lua:852-874. Runs while at least one group has a border or background and Auto size; stops itself otherwise (V14 holds). Runs in combat. Per tick per such group: GroupBounds over all display frames with a folder-chain walk each, a new backdrop table and SetBackdrop when a border is on. |
-| Engine D4 routed re-checks may run every frame while aura events stream | **Confirmed on ba4ec01 (not on main).** OnEvent sets `routed.aura` / `routed.cd` and returns (Engine.lua:408-410 at ba4ec01); the OnUpdate runs a routed Step on the next frame when no full step is due (:441-447 at ba4ec01). At most one per frame, but nothing limits it below the frame rate. Each routed step walks all rules (Deps is cached; the loop is not), bumps `ns.tickID` (resets evalCache, StepMemo, HasOutcomes) and runs the step-index setup. The commit message reports a stand-in benchmark (not in game); no in-game number exists. |
+| Engine D4 routed re-checks may run every frame while aura events stream | **Confirmed on ba4ec01 (on main since 28380a9).** OnEvent sets `routed.aura` / `routed.cd` and returns (Engine.lua:408-410 at ba4ec01); the OnUpdate runs a routed Step on the next frame when no full step is due (:441-447 at ba4ec01). At most one per frame, but nothing limits it below the frame rate. Each routed step walks all rules (Deps is cached; the loop is not), bumps `ns.tickID` (resets evalCache, StepMemo, HasOutcomes) and runs the step-index setup. The commit message reports a stand-in benchmark (not in game); no in-game number exists. |
 | Bar cues: per moving bar an effects OnUpdate ~30/s out of combat | **Confirmed, with detail.** `BarCueUpdate` (BarCue.lua:742-780 on 9c5e201) returns true only for a readable fraction (`f ~= nil`), which keeps FxOnUpdate running (Visual.lua diff: `wantsFx ... or barMoving`); with secret times in combat the bar is driven by `SetTimerDuration` and returns false, so no FX (**INFERENCE**: in M+ combat most player aura times are secret). Per FX frame per bar: `ns.BarCueSource` → `OwnerOf` → `ns.FindParentRule` outside a step = a linear scan of `ns.rules` (Outcomes.lua:24-33), once in BarCueUpdate and once more in the `wantsTenths` test when decimals are on; `SetMinMaxValues(0, 1)` and `SetShown` on every frame (SetValue :719-726). Fix: cache the owner per cue per `configVersion`; set min / max once at layout. |
 | Bonus "Type colours" line scan per hover | **Confirmed.** `TT.ColorTypes` (Tooltips.lua on 9c5e201) runs on every spell and aura tooltip post-call while the section is on (default on in that branch): GetName, NumLines, then per line a string concat (`name .. "TextLeft" .. i`), a `_G` lookup, GetText, and `ns.BarColorizeTypes` (returns at once when the line has no "damage"; otherwise gmatch, a table and `table.concat`). Runs in combat on hover. Cost class low per hover; higher if the game refreshes the same tooltip repeatedly (**INFERENCE**). Fix: skip when `data` and line count are unchanged for the same tooltip, cache the font string list per tooltip name. |
 
