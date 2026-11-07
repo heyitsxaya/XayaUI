@@ -22,6 +22,85 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — What Changed Overnight
+
+### XayaUI 0.6.71
+
+**Engine and Performance**
+- Rule and snapshot log lines are now built only while something reads them (the console window, the debug strip, or the record).
+- Rules that are not loaded are no longer read during engine steps, except for a buff a display on that rule needs.
+- Removed closures that the engine created for every rule read, and most errors from other addons no longer cost a call-stack read.
+  *Developers' notes: Measured on stand-ins only, not in game.*
+- An aura the game hides now reads "hidden by the game right now ...", and the rule status says whether the game's container still draws the display.
+
+### Options 0.6.71
+
+**Settings Window**
+- The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
+  *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
+
+### Chat 0.6.37
+
+**Improved Chat (new)**
+- Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
+- Added a chat sidebar, on by default: side left, right, top or bottom, shown always or on mouseover, with "Fade with the chat" and "Hide in combat". It holds the privacy eye, Blizzard's chat menu, channels and voice buttons, history, chat windows and newest message.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Q-CR-1 to Q-CR-10.*
+
+**Chat Panel**
+- Blizzard UI Reskin > Chat Panel now holds only how chat looks.
+- Fixed an issue where the collapse arrow, the privacy eye and the sidebar did not fade with the chat. Hovering them now brings the chat back.
+- Added an Input line choice: Bottom, Top under the tabs, Top above the tabs, or Free move (with /xui chat move).
+- With the whisper tabs set to Both, a whisper you send now selects its window.
+  *Developers' notes: Chosen for you, change it in the Questions flow: this whisper switch is on by default (CHATREV-10).*
+- The game's own fade of old chat lines now comes back when Improved Chat is turned off, or when both it and the Chat Panel are off.
+- The addon's usage tooltip reads memory once per hover and says "Includes the cost of reading these numbers."
+
+### Quality of Life 0.7.42
+
+**Stat Calculator**
+- Each stat now has rows showing what feeds it ("from Agility +2,616"); every stat starts folded, and the Influences column is now Modifies.
+- Gear compare differences are shown in brackets after the value, "1,405 (-12)", and the picked item gets a clear accent frame.
+- The header shows "Equipped" and "Max (bags)" item levels. The "% / rating" switch is gone.
+- The stat list now reads "GCD", "Critical Strike Effectiveness" and "Movement Speed".
+- The GCD now follows a standard rule: 1.5 s reduced by haste to a floor of 0.75 s, or a fixed 1.0 s for rogues, some monks and cat-form druids, with the game's own reading shown beside it.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Movement Speed is title-cased on the same reading as the other two.*
+
+**Release Guard**
+- The box now sits above the death window. "Where" offers Raids only or Raids and dungeons; "Everywhere" is gone, and a saved "Everywhere" becomes Raids only. /xui releaseguard prints what happened.
+  *Developers' notes: Chosen for you, change it in the Questions flow: saved "Everywhere" becomes Raids only.*
+
+**Wording**
+- The function audit made wording and hover fixes, including US spelling, across the addons.
+  *Developers' notes: Not yet tested in game (QA D22, D23, D30).*
+
+**Cursor**
+- A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
+
+### Blizzard Reskin 0.6.9
+
+**Blizzard Windows (new)**
+- Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
+
+**Friend Colors (new)**
+- Added Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in their class colour. The new Social friends list is not coloured yet.
+
+### Nameplates 0.2.1
+
+**Nameplates (new)**
+- Added XayaUI Nameplates, disabled by default in the AddOns list. It works on Blizzard's own nameplates and shows nothing while Plater replaces them.
+- Your target's health bar turns teal (change it in QoL > Nameplates).
+- Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
+  *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
+
+### Dev Assist 0.7.40
+
+**QA Review (new)**
+- Added a QA review window that opens when you first load into the game after an update, listing the walkthroughs that are new or changed since the last build you acknowledged. "Don't show again until the next update" acknowledges the build.
+- Added a question flow: one question per screen, with your words, "What we did without asking", Keep it and its choices, and a note. Copy answers copies them all. /xui dev review and /xui dev questions open them.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: REVIEW-1 to REVIEW-4 (it comes back at every login until the box is ticked).*
+- Added performance walkthroughs J20 to J31 to /xui dev qa.
+
 ## 2026-11-07 — Chat QA Walkthroughs
 
 ### Dev Assist 0.7.10
