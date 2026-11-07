@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.12): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts, pop-up dialogs, loot rolls and menus. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed,
--- and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.13): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus and chat bubbles. Look only: art, colour, border, mask. Nothing is
+-- moved, resized, added or removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
 -- of them (no functionality changes, just reskins of core blizzard UI)". Her lists named the windows below, "minimap (two options: square
@@ -108,7 +108,7 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker / toasts / menus = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   windows / minimap / tooltips / tracker / toasts / menus / bubbles = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
@@ -557,20 +557,100 @@ local function ApplyMenus()
 end
 
 -------------------------------------------------------------------------------
+-- 7. Chat bubbles (her "chat bubbles")
+-------------------------------------------------------------------------------
+-- 12.1.5: C_ChatBubbles.GetAllChatBubbles(includeForbidden = false) lists the bubbles on screen (docs/reference/api/namespaces.md:801).
+-- Each bubble holds one child built from ChatBubbleTemplate (Blizzard_ChatBubble/ChatBubbleTemplates.xml:3-13, read as data): a
+-- NineSlicePanel (SetCenterColor / SetBorderColor, Blizzard_SharedXML/NineSlice.lua:258-283) with a String and a Tail. The game makes no
+-- event when a bubble appears, so after each chat message that can show one (say, yell, NPC say / yell / party, party) the bubbles are
+-- read on the next frame and any not yet painted take the theme's colours (centre and tail: window colour at Background opacity; border:
+-- border colour). The game reuses bubbles, so a painted one keeps the look. Bubbles in dungeons, raids and other instances are forbidden
+-- to addons (includeForbidden stays false): they stay Blizzard's. The text and its colour are Blizzard's.
+BS.BUBBLE_EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" }
+local liveBubble, bubbleFrame, bubbleQueued = false, nil, false
+local bubbles = setmetatable({}, { __mode = "k" })   -- [bubble's panel] = true while it carries the look
+local function BubblePanel(bubble)
+    if type(bubble) ~= "table" or type(bubble.GetChildren) ~= "function" then return end
+    for _, c in ipairs({ bubble:GetChildren() }) do
+        if type(c) == "table" and type(c.SetCenterColor) == "function" and c.String then return c end
+    end
+end
+local function PaintBubble(bubble)
+    local p = BubblePanel(bubble)
+    if not p then return end
+    local m = M(p)
+    if not m.nine then
+        local cr, cg, cb, ca, br, bgr, bb, ba
+        if p.GetCenterColor then cr, cg, cb, ca = p:GetCenterColor() end
+        if p.GetBorderColor then br, bgr, bb, ba = p:GetBorderColor() end
+        local tr, tg, tb, ta
+        if p.Tail and p.Tail.GetVertexColor then tr, tg, tb, ta = p.Tail:GetVertexColor() end
+        local function n(v) return num(v) and v or 1 end
+        m.nine = { n(cr), n(cg), n(cb), n(ca), n(br), n(bgr), n(bb), n(ba), n(tr), n(tg), n(tb), n(ta) }
+    end
+    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    p:SetCenterColor(bg[1], bg[2], bg[3], a)
+    if p.SetBorderColor then p:SetBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
+    if p.Tail and p.Tail.SetVertexColor then p.Tail:SetVertexColor(bg[1], bg[2], bg[3], a) end
+    m.painted = true
+    bubbles[p] = true
+    BS.diag.bubbles = (BS.diag.bubbles or 0) + 1
+end
+BS.PaintBubble = PaintBubble
+local function UnpaintBubble(p)
+    local m = memo[p]
+    local c = m and m.nine
+    if c then
+        pcall(p.SetCenterColor, p, c[1], c[2], c[3], c[4])
+        if p.SetBorderColor then pcall(p.SetBorderColor, p, c[5], c[6], c[7], c[8]) end
+        if p.Tail and p.Tail.SetVertexColor then pcall(p.Tail.SetVertexColor, p.Tail, c[9], c[10], c[11], c[12]) end
+        m.nine, m.painted = nil, nil
+    end
+    bubbles[p] = nil
+end
+local function ScanBubbles()
+    bubbleQueued = false
+    if not liveBubble then return end
+    local api = rawget(_G, "C_ChatBubbles")
+    if not (api and api.GetAllChatBubbles) then return end
+    local ok, list = pcall(api.GetAllChatBubbles, false)
+    if not (ok and type(list) == "table") then return end
+    for _, b in ipairs(list) do Safe(PaintBubble, b) end
+end
+BS.ScanBubbles = ScanBubbles
+local function ApplyBubbles()
+    if PageOn("bubbles") then
+        liveBubble = true
+        if not bubbleFrame then
+            bubbleFrame = CreateFrame("Frame")
+            bubbleFrame:SetScript("OnEvent", function()
+                if liveBubble and not bubbleQueued then bubbleQueued = true; C_Timer.After(0, ScanBubbles) end
+            end)
+        end
+        for _, ev in ipairs(BS.BUBBLE_EVENTS) do bubbleFrame:RegisterEvent(ev) end
+        ScanBubbles()
+    elseif liveBubble then
+        liveBubble = false
+        if bubbleFrame then bubbleFrame:UnregisterAllEvents() end
+        for p in pairs(bubbles) do UnpaintBubble(p) end
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard UI Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
-    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
+    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -675,9 +755,20 @@ function BS.MenusPage(Notify)
             "Recolours Blizzard's right-click and dropdown menus." .. OFFNOTE, Notify) }
 end
 
+function BS.BubblesPage(Notify)
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Chat bubbles over players and NPCs take the theme's window colour (with their tail) and border colour. What they say and its colour are unchanged. Opacity: Blizzard Windows' Background opacity. In dungeons, raids and other instances the game does not let addons change chat bubbles: there they stay Blizzard's." },
+    }
+    return { type = "group", name = "Chat Bubbles", order = 10, args = args,
+        xuiSwitch = PageSwitch("bubbles", "Use the XayaUI look on chat bubbles", "Chat bubbles in the theme's colours.",
+            "Colours chat bubbles in the theme (outside instances)." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
 ns.RegisterSettingsPage("reskin", "objtracker", BS.TrackerPage)
 ns.RegisterSettingsPage("reskin", "rsktoasts", BS.ToastsPage)
 ns.RegisterSettingsPage("reskin", "rskmenus", BS.MenusPage)
+ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)

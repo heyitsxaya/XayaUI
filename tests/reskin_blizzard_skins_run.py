@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XayaUI Blizzard Reskin 0.6.12, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
+"""XayaUI Blizzard Reskin 0.6.13, BlizzardSkins.lua (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya 2026-11-07 overnight order: build the
 reskins). What the player sees, in the stand-in game:
   * off (a fresh install): nothing is made: no saved table, no watcher frame, Blizzard's art untouched (V14);
   * Blizzard Windows ticked: a window's frame art is faded (alpha 0), our background in the theme's window colour and a 1 px border
@@ -17,6 +17,7 @@ reskins). What the player sees, in the stand-in game:
   * Loot rolls (0.6.11, a Blizzard Windows entry): Background and Border faded, our border in the item's quality colour;
   * Menus (0.6.12): each menu Blizzard builds has its own background texture recoloured (post-hook on MenuStyle1Mixin.Generate,
     placed only when ticked); nothing added to the pooled menu frame;
+  * Chat bubbles (0.6.13): bubbles on screen and those after a chat message take the theme colours, forbidden ones never asked for;
   * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -95,6 +96,21 @@ local SP1 = CreateFrame("Frame", "StaticPopup1", UIParent); SP1.BG = CreateFrame
 -- Blizzard_Menu: the default menu style attaches one background texture (atlas common-dropdown-bg, alpha 0.925) each time a menu is built;
 -- Blizzard mixes the style into a pooled frame and calls Generate (SecureGenerate), so the mixin's function is copied at each build
 MenuStyle1Mixin = { Generate = function(self) local t = self:CreateTexture(nil, "BACKGROUND"); t:SetAtlas("common-dropdown-bg"); t:SetAlpha(0.925); self._bg = t end }
+-- chat bubbles: C_ChatBubbles.GetAllChatBubbles(false) lists the bubbles addons may touch; each holds a ChatBubbleTemplate child
+-- (NineSlicePanel: Set/GetCenterColor, Set/GetBorderColor; String; Tail)
+local function Bubble()
+  local b = CreateFrame("Frame", nil, UIParent)
+  local p = CreateFrame("Frame", nil, b)
+  p.String = p:CreateFontString(nil, "ARTWORK"); p.Tail = p:CreateTexture(nil, "ARTWORK")
+  p.SetCenterColor = function(self, r, g, bb, a) self._center = { r, g, bb, a or 1 } end
+  p.GetCenterColor = function(self) local c = self._center or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+  p.SetBorderColor = function(self, r, g, bb, a) self._border = { r, g, bb, a or 1 } end
+  p.GetBorderColor = function(self) local c = self._border or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
+  b.panel = p
+  return b
+end
+local BUB = { Bubble() }
+C_ChatBubbles = { GetAllChatBubbles = function(includeForbidden) if includeForbidden then error("forbidden bubbles asked for") end; return BUB end }
 local function BuildMenu() local f = CreateFrame("Frame", nil, UIParent); f:CreateFontString(nil, "OVERLAY"); for k, v in pairs(MenuStyle1Mixin) do f[k] = v end; f:Generate(); return f end
 
 L.startup()
@@ -287,6 +303,32 @@ check("menus off: the next menu is Blizzard's own (background untouched, alpha 0
 mnp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 mn = BuildMenu()
 check("Blizzard UI Reskin off: menus are Blizzard's", mn._bg._color == nil and not BS.Live().menus)
+ns.SetReskinTab(true)
+-- 8. Chat bubbles (Reskin 0.6.13)
+local b1 = BUB[1]
+check("bubbles page off: no event frame, a bubble keeps Blizzard's colours (V14)", not BS.Live().bubbles and not BS.Live().bubbleEvents and b1.panel._center == nil)
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("  ...a chat message changes nothing while off", b1.panel._center == nil)
+local bbp = BS.BubblesPage(nil)
+bbp.xuiSwitch.set(nil, true)
+c = b1.panel._center
+check("bubbles on: a bubble already on screen takes the theme's window colour at the opacity", c and near(c[1], bg[1]) and near(c[3], bg[3]) and near(c[4], 0.7), c and table.concat(c, ","))
+check("bubbles on: its border takes the border colour and its tail the window colour", b1.panel._border and near(b1.panel._border[1], bd[1]) and b1.panel.Tail._vc and near(b1.panel.Tail._vc[1], bg[1]))
+local b2 = Bubble(); BUB[2] = b2
+check("a new bubble is not painted before a chat message", b2.panel._center == nil)
+W.fire("CHAT_MSG_MONSTER_YELL", "Charge!", "An NPC"); W.tick(0.05, 2)
+check("after a chat message (NPC yell) the new bubble is painted on the next frame", b2.panel._center and near(b2.panel._center[1], bg[1]))
+check("forbidden bubbles (instances) are never asked for (includeForbidden false)", #W.errors == 0)
+b2.panel:SetCenterColor(0.5, 0.5, 0.5, 1); BUB[2] = nil
+bbp.xuiSwitch.set(nil, false)
+c = b1.panel._center
+check("bubbles off: Blizzard's own colours are back (centre, border, tail)", near(c[1], 1) and near(c[4], 1) and near(b1.panel._border[1], 1) and near(b1.panel.Tail._vc[1], 1), table.concat(c, ","))
+check("bubbles off: the event frame stops listening", not BS.Live().bubbleEvents)
+BUB[2] = b2; b2.panel._center = nil
+W.fire("CHAT_MSG_SAY", "hi", "Someone"); W.tick(0.05, 2)
+check("bubbles off: a chat message paints nothing", b2.panel._center == nil)
+bbp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
+check("Blizzard UI Reskin off: bubbles stop and get Blizzard's colours back", not BS.Live().bubbles and near(b1.panel._center[1], 1))
 ns.SetReskinTab(true)
 return R
 end

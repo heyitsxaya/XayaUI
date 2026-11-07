@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.43): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.12 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls and menus in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.44): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.13 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus and chat bubbles in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -255,5 +255,25 @@ QA.Register("reskin-menus", { title = "Reskin: right-click and dropdown menus", 
         setup = function() Set(function(c) c.menus = nil end) end,
         check = function() local s, why = Need(); if not s then return false, why end; local off = not s.Live().menus; return off, off and "Menus is off: the next menu Blizzard builds is its own" or "Menus is still on" end },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 8. Chat bubbles (Reskin 0.6.13)
+-------------------------------------------------------------------------------
+local bubblesAtStart = 0
+local function BubblesPainted() local s = BS(); return (s and s.diag and s.diag.bubbles) or 0 end
+QA.Register("reskin-bubbles", { title = "Reskin: chat bubbles", area = "Reskin", qa = "RESKIN-B", order = 307, prefill = true, steps = {
+    { text = "Do this outside a dungeon or raid (the game keeps instance bubbles away from addons). Check that chat bubbles are on in the game (Esc > Options > Social > Chat Bubbles). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard UI Reskin > Chat Bubbles|r is switched on.",
+        setup = function() Keep(); Set(function(c) c.bubbles = true end); bubblesAtStart = BubblesPainted() end,
+        check = function() local s, why = Need(); if not s then return false, why end; local on = s.Live().bubbles; return on, on and "Chat Bubbles is on" or "Chat Bubbles did not switch on" end },
+    { text = "Type |cff88ccff/s hello|r in chat (the game only lets you send this yourself), then press |cffffd100Check|r while the bubble is over your head.\n\n|cffffd100Expect:|r the bubble is in the theme's window colour with its border in the theme's border colour; its tail matches; your words read as before.",
+        check = function()
+            local n = BubblesPainted() - bubblesAtStart
+            return n > 0, n > 0 and ("%d bubble(s) took the XayaUI look since this walkthrough switched Chat Bubbles on"):format(n) or "no bubble took the look yet: /s something outside an instance and press Check again"
+        end },
+    { text = "Stand near NPCs that talk, or players saying things, for a while.\n\n|cffffd100Expect:|r their bubbles have the same look and stay readable. Pass if so; Fail if a bubble looks wrong or unreadable (say where).",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Bubbles on screen get Blizzard's colours back at once.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
