@@ -948,6 +948,7 @@ d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
 34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py
 9218d9a33ff044bf7354f5701fb7ddd1  tests/theme_audit_run.py
 d61ddff1e632235c3ce9006b279dd0f9  tests/timing_run.py
+b47b22d116c919edc43027abf68a4454  tests/toc_files_run.py
 d41c47a7c982e113295cf6fe9c82478f  tests/tooltip_aura_source_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
 2de8ed42448c155c93f000dfd55d1484  tests/tooltips_run.py
