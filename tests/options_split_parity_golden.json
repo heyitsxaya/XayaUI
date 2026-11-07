@@ -1,0 +1,294 @@
+{
+ "all-on": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "4a2edac2aa9ce3e0",
+    6855
+   ],
+   "profiles": [
+    "8b8d50d9ff34aae5",
+    41
+   ],
+   "qol": [
+    "6780c0ef17aaf644",
+    548
+   ],
+   "reskin": [
+    "aea8082185264df5",
+    500
+   ],
+   "set": [
+    "63545d0c3c48dbe1",
+    221
+   ],
+   "settings": [
+    "a9d9ae6bafc83d9f",
+    219
+   ]
+  }
+ },
+ "off-XayaUI_Bonus": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus= reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "cooldowns": [
+    "be0be6f12963c50b",
+    6855
+   ],
+   "profiles": [
+    "4e0fd242e8cd9a85",
+    39
+   ],
+   "qol": [
+    "6780c0ef17aaf644",
+    548
+   ],
+   "reskin": [
+    "aea8082185264df5",
+    500
+   ],
+   "set": [
+    "6f1a0a1c290aebf5",
+    218
+   ],
+   "settings": [
+    "eb08598b12a19c6d",
+    216
+   ]
+  }
+ },
+ "off-XayaUI_Chat": {
+  "registered": "chat= qol=chartoolkit,cursor,nameplates,releaseguard bonus=datapanels,tooltips,utilities reskin=blizzwindows,charreskin,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "d26c0f4145ce5e11",
+    6855
+   ],
+   "profiles": [
+    "8b8d50d9ff34aae5",
+    41
+   ],
+   "qol": [
+    "0d6ac8b5d794a1eb",
+    207
+   ],
+   "reskin": [
+    "d5886863018dd223",
+    443
+   ],
+   "set": [
+    "446a5c3140619867",
+    218
+   ],
+   "settings": [
+    "26cd1b1f34d4fd61",
+    216
+   ]
+  }
+ },
+ "off-XayaUI_DevAssist": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging= nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "05359f0a2a9791f4",
+    6855
+   ],
+   "profiles": [
+    "8b8d50d9ff34aae5",
+    41
+   ],
+   "qol": [
+    "6780c0ef17aaf644",
+    548
+   ],
+   "reskin": [
+    "aea8082185264df5",
+    500
+   ],
+   "set": [
+    "4bf1dc29ebe0b6c6",
+    196
+   ],
+   "settings": [
+    "4a1c863a4755e90a",
+    194
+   ]
+  }
+ },
+ "off-XayaUI_Media": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "5f42fd88c9051cac",
+    6855
+   ],
+   "profiles": [
+    "8b8d50d9ff34aae5",
+    41
+   ],
+   "qol": [
+    "6780c0ef17aaf644",
+    548
+   ],
+   "reskin": [
+    "aea8082185264df5",
+    500
+   ],
+   "set": [
+    "204fe0cc955c132e",
+    221
+   ],
+   "settings": [
+    "4752cccc28f52868",
+    219
+   ]
+  }
+ },
+ "off-XayaUI_Nameplates": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,releaseguard bonus=datapanels,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "c5e129085040ada0",
+    6855
+   ],
+   "profiles": [
+    "33ce47debfd4925b",
+    39
+   ],
+   "qol": [
+    "e10fcccd92be6323",
+    540
+   ],
+   "reskin": [
+    "aea8082185264df5",
+    500
+   ],
+   "set": [
+    "24116a09face8299",
+    221
+   ],
+   "settings": [
+    "636eecd21c54c7a0",
+    219
+   ]
+  }
+ },
+ "off-XayaUI_QoL": {
+  "registered": "chat= qol=improvedchat,nameplates bonus=datapanels,tooltips,utilities reskin=blizzwindows,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktoasts,rsktooltips debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "c8f906ec125aa3b6",
+    6855
+   ],
+   "profiles": [
+    "9208708274987029",
+    39
+   ],
+   "qol": [
+    "b18fb687381575af",
+    350
+   ],
+   "reskin": [
+    "e47be1f584f75a78",
+    173
+   ],
+   "set": [
+    "13557168eb94de02",
+    220
+   ],
+   "settings": [
+    "f5d7b13ab727d1cb",
+    218
+   ]
+  }
+ },
+ "off-XayaUI_Reskin": {
+  "registered": "chat= qol=chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,tooltips,utilities reskin=charreskin,chatpanel,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "7d58b744dcd1fe01",
+    385
+   ],
+   "cooldowns": [
+    "a457d1f911ef51b7",
+    6855
+   ],
+   "profiles": [
+    "8b8d50d9ff34aae5",
+    41
+   ],
+   "qol": [
+    "6780c0ef17aaf644",
+    548
+   ],
+   "reskin": [
+    "d22bae091e8a8a1b",
+    388
+   ],
+   "set": [
+    "3a63c19fcee849f2",
+    220
+   ],
+   "settings": [
+    "0e8268e3d2963c1e",
+    219
+   ]
+  }
+ }
+}
