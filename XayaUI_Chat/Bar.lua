@@ -242,7 +242,7 @@ end
 local last
 local function Place()
     local bar, s = C.Bar(), S()
-    if not (bar and s and last and s.barOn and C.active) then return end
+    if not (bar and s and last and C.BarOn() and C.active) then return end
     local vert = (s.barSide == "LEFT" or s.barSide == "RIGHT")   -- (Chat 0.6.23) a strip beside the chat: blocks top to bottom
     B.Layout(bar, slots, { n = last.n, sizing = last.sizing, lead = C.ArrowLead(), get = last.get, vert = vert })
     -- AUTO sizing measures the text, so lay out again once the strings have their widths
@@ -250,7 +250,7 @@ local function Place()
 end
 
 local function Refresh(s)
-    if not (C.On() and s.barOn and C.Bar()) then return end   -- the bar's frame is built by C.Layout the first time the bar is on
+    if not (C.active and C.BarOn() and C.Bar()) then return end   -- (Chat 0.6.32) Improved Chat's   -- the bar's frame is built by C.Layout the first time the bar is on
     local bar = C.Bar()
     Style(s)
     local n = Count(s)

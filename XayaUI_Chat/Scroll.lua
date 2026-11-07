@@ -164,7 +164,7 @@ function C.ScrollBar() return bar end
 function C.ScrollBar_Layout()
     local s, textA = S(), C.TextArea()
     if not (s and textA) then return end
-    if not (s.scrollOwn and C.On()) then
+    if not (C.active and C.OwnScroll()) then   -- (Chat 0.6.32) Improved Chat's (the slow-scrolling scroll bar)
         if bar then bar:Hide(); bar:SetScript("OnUpdate", nil) end
         return
     end

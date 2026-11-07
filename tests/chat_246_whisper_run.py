@@ -40,20 +40,28 @@ C = ns.Chat
 R = lua.eval(r'''function(W, ns, C)
   local out = { names = {}, oks = {}, notes = {} }
   local function rec(n, ok, note) out.names[#out.names + 1] = n; out.oks[#out.oks + 1] = ok and true or false; out.notes[#out.notes + 1] = tostring(note) end
-  local o = ns.BuildChatTab(function() end)
-  local parts = {}
-  for k, v in pairs(o.args) do if type(v) == "table" and v.type == "group" then parts[#parts + 1] = { k, v.order or 0, v.name } end end
-  table.sort(parts, function(a, b) return a[2] < b[2] end)
-  local names = {}
-  for _, p in ipairs(parts) do names[#names + 1] = p[3] end
-  rec("parts in order: General, Chat Tabs, Layout, Chat Data Panel, Filters, Sounds, Privacy", table.concat(names, "|") == "General|Chat Tabs|Layout|Chat Data Panel|Filters|Sounds|Privacy", table.concat(names, "|"))
-  local g = o.args.general
-  local tabs = {}
-  for k, v in pairs(g and g.args or {}) do if v.type == "group" then tabs[#tabs + 1] = { v.order or 0, v.name } end end
-  table.sort(tabs, function(a, b) return a[1] < b[1] end)
-  local tn = {}
-  for _, t in ipairs(tabs) do tn[#tn + 1] = t[2] end
-  rec("General's tabs, her words and order", table.concat(tn, "|") == "Font options|Color + display options|Scroll and fade options|Chat history|Timestamp, copying, and links", table.concat(tn, "|"))
+  -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) her #246 parts, split over Blizzard UI Reskin > Chat Panel (the look) and QoL > Improved Chat
+  local o = W.allChatOptions()
+  local function partNames(page)
+    local parts = {}
+    for k, v in pairs(page.args) do if type(v) == "table" and v.type == "group" then parts[#parts + 1] = { k, v.order or 0, v.name } end end
+    table.sort(parts, function(a, b) return a[2] < b[2] end)
+    local names = {}
+    for _, p in ipairs(parts) do names[#names + 1] = p[3] end
+    return table.concat(names, "|")
+  end
+  local function tabNames(g)
+    local tabs = {}
+    for k, v in pairs(g and g.args or {}) do if v.type == "group" then tabs[#tabs + 1] = { v.order or 0, v.name } end end
+    table.sort(tabs, function(a, b) return a[1] < b[1] end)
+    local tn = {}
+    for _, t in ipairs(tabs) do tn[#tn + 1] = t[2] end
+    return table.concat(tn, "|")
+  end
+  rec("Chat Panel parts in order: General, Chat Tabs, Layout", partNames(o.args.chatpanel) == "General|Chat Tabs|Layout", partNames(o.args.chatpanel))
+  rec("Improved Chat parts in order: General, Chat Data Panel, Filters, Sounds, Privacy", partNames(o.args.improvedchat) == "General|Chat Data Panel|Filters|Sounds|Privacy", partNames(o.args.improvedchat))
+  rec("Chat Panel General's tabs, her words and order (the look)", tabNames(o.args.chatpanel.args.general) == "Font options|Color + display options", tabNames(o.args.chatpanel.args.general))
+  rec("Improved Chat General's tabs, her words and order (behaviour)", tabNames(o.args.improvedchat.args.general) == "Scroll and fade options|Chat history|Timestamp, copying, and links", tabNames(o.args.improvedchat.args.general))
   -- leaves: every control in the whole Chat Panel tree, by name
   local where, count = {}, {}
   local function walk(t, path)
@@ -67,7 +75,7 @@ R = lua.eval(r'''function(W, ns, C)
       end
     end
   end
-  walk(o, "chat")
+  walk(o.args.chatpanel, "chat"); walk(o.args.improvedchat, "qol")
   -- each control once among the parts that were rearranged (the Chat Data Panel, Sounds and Privacy have their own controls with the
   -- same names, such as "Background color", and per-block / per-tab rows repeat by design)
   local seen, dup = {}, {}
@@ -81,25 +89,27 @@ R = lua.eval(r'''function(W, ns, C)
       end
     end
   end
-  for _, k in ipairs({ "general", "tabs", "layout", "filters" }) do walk2(o.args[k]) end
+  for _, k in ipairs({ "general", "tabs", "layout" }) do walk2(o.args.chatpanel.args[k]) end
+  for _, k in ipairs({ "general", "filters" }) do walk2(o.args.improvedchat.args[k]) end
   rec("every control exists once in General, Chat Tabs, Layout and Filters", #dup == 0, table.concat(dup, ", "))
-  local function under(n, part) return where[n] and where[n]:find("^chat/" .. part) ~= nil end
+  local function under(n, part) return where[n] and where[n]:find("^" .. part) ~= nil end
   local expect = {
-    { "Font", "general/tab_fontHdr" }, { "Font size", "general/tab_fontHdr" },
-    { "Draw a background", "general/tab_colorHdr" }, { "Input background", "general/tab_colorHdr" }, { "Show a hint in the empty input line", "general/tab_colorHdr" },
-    { "Chat Panel scroll bar (slow scrolling)", "general/tab_scrollHdr" }, { "Back-to-newest arrow", "general/tab_scrollHdr" },
-    { "Fade the chat when it is idle", "general/tab_scrollHdr" }, { "Fade old lines away", "general/tab_scrollHdr" }, { "Fade the Chat Data Panel too", "general/tab_scrollHdr" },
-    { "Keep recent messages for the history window", "general/tab_histHdr" }, { "In-game whisper tabs", "general/tab_histHdr" },
-    { "Battle.net whisper tabs", "general/tab_histHdr" }, { "Keep console lines in a Console tab", "general/tab_histHdr" },
-    { "Timestamps", "general/tab_tsHdr" }, { "Make web addresses clickable", "general/tab_tsHdr" }, { "Link color", "general/tab_tsHdr" },
-    { "Open the history window", "general/tab_tsHdr" }, { "Show the small history button at the end of the tab row", "general/tab_tsHdr" },
-    { "Show the tab row", "tabs" }, { "Tab font", "tabs" }, { "Selected tab background", "tabs" }, { "Switch to a new whisper tab I start", "tabs" },
-    { "Chat hidden (collapsed)", "layout" }, { "Width (pixels)", "layout" }, { "Hide repeated messages", "filters" },
+    { "Font", "chat/general/tab_fontHdr" }, { "Font size", "chat/general/tab_fontHdr" },
+    { "Draw a background", "chat/general/tab_colorHdr" }, { "Input background", "chat/general/tab_colorHdr" }, { "Show a hint in the empty input line", "chat/general/tab_colorHdr" },
+    { "Chat Panel scroll bar (slow scrolling)", "qol/general/tab_scrollHdr" }, { "Back-to-newest arrow", "chat/layout" },
+    { "Fade the chat when it is idle", "qol/general/tab_scrollHdr" }, { "Fade old lines away", "qol/general/tab_scrollHdr" }, { "Fade the Chat Data Panel too", "qol/general/tab_scrollHdr" },
+    { "Keep recent messages for the history window", "qol/general/tab_histHdr" }, { "In-game whisper tabs", "qol/general/tab_histHdr" },
+    { "Battle.net whisper tabs", "qol/general/tab_histHdr" }, { "Keep console lines in a Console tab", "qol/general/tab_histHdr" },
+    { "Timestamps", "qol/general/tab_tsHdr" }, { "Make web addresses clickable", "qol/general/tab_tsHdr" }, { "Link color", "qol/general/tab_tsHdr" },
+    { "Open the history window", "qol/general/tab_tsHdr" }, { "Show the small history button at the end of the tab row", "qol/general/tab_tsHdr" },
+    { "Show the tab row", "chat/tabs" }, { "Tab font", "chat/tabs" }, { "Selected tab background", "chat/tabs" }, { "Switch to a new whisper tab I start", "qol/general/tab_histHdr" },
+    { "Chat hidden (collapsed)", "qol/general/tab_scrollHdr" }, { "Width (pixels)", "chat/layout" }, { "Hide repeated messages", "qol/filters" },
+    { "Blizzard button strip", "chat/layout" }, { "Social button", "chat/layout" }, { "Indent wrapped lines", "chat/layout" },
   }
   local bad = {}
   for _, e in ipairs(expect) do if not under(e[1], e[2]) then bad[#bad + 1] = e[1] .. " @ " .. tostring(where[e[1]]) end end
   rec("each moved control is where her words put it", #bad == 0, table.concat(bad, "; "))
-  rec("the combine box (Chat 0.6.26) moved with the whisper lists", where["Combine Battle.net and in-game whispers in the consolidated tab"] ~= nil and under("Combine Battle.net and in-game whispers in the consolidated tab", "general/tab_histHdr"), where["Combine Battle.net and in-game whispers in the consolidated tab"])
+  rec("the combine box (Chat 0.6.26) moved with the whisper lists", where["Combine Battle.net and in-game whispers in the consolidated tab"] ~= nil and under("Combine Battle.net and in-game whispers in the consolidated tab", "qol/general/tab_histHdr"), where["Combine Battle.net and in-game whispers in the consolidated tab"])
   -- timestamps: the game's own setting
   local ts
   local function find(t) for k, v in pairs(t.args or {}) do if k == "timestamps" then ts = v end; if type(v) == "table" and v.type == "group" then find(v) end end end
@@ -116,7 +126,7 @@ R = lua.eval(r'''function(W, ns, C)
   C.OpenSettings("history"); local b = got
   C.OpenSettings("bar", "tab_blocksHdr"); local c = got
   ns.OpenSettingsPage = realOpen
-  rec("old part names open General; the Chat Data Panel's own address is unchanged", a == "reskin>chatpanel>general" and b == "reskin>chatpanel>general" and c == "reskin>chatpanel>bar>tab_blocksHdr", tostring(a) .. " " .. tostring(b) .. " " .. tostring(c))
+  rec("old part names: Appearance opens the Chat Panel's General, History Improved Chat's General; the Chat Data Panel is Improved Chat's", a == "reskin>chatpanel>general" and b == "qol>improvedchat>general" and c == "qol>improvedchat>bar>tab_blocksHdr", tostring(a) .. " " .. tostring(b) .. " " .. tostring(c))
 
   -- whispers ------------------------------------------------------------------------------------------------------------------
   local s = ns.chat2

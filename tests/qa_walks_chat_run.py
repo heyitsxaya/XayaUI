@@ -137,15 +137,25 @@ R = lua.eval(r'''function(W, ns, C, root)
   sel = ChatFrame1
   rec("whisper walk step 3: back on General", chk(id, 3))
   id = "chat-settings-layout"
-  local okS1, nS1 = run(id, 1); rec("layout walk step 1: the seven parts", okS1, nS1)
-  local okS2, nS2 = chk(id, 2); rec("layout walk step 2: General's tabs", okS2, nS2)
-  local okS3, nS3 = run(id, 3); rec("layout walk step 3: Chat Tabs has the whisper switch", okS3, nS3)
+  local okS1, nS1 = run(id, 1); rec("layout walk step 1: Chat Panel = General, Chat Tabs, Layout (the look)", okS1, nS1)
+  local okS2, nS2 = run(id, 2); rec("layout walk step 2: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy (behaviour)", okS2, nS2)
+  local okS3, nS3 = run(id, 3); rec("layout walk step 3: the whisper switch is on Improved Chat > General > Chat history", okS3, nS3)
   local okS4, nS4 = run(id, 4); rec("layout walk step 4: timestamps set", okS4, nS4)
   local okS5, nS5 = run(id, 5); rec("layout walk step 5: timestamps put back", okS5 and C_CVar.v.showTimestamps == "none", nS5)
   local realTree = ns.Service("chatDebug").Options
   ns.Service("chatDebug").Options = function() local t = realTree(); t.args.look = { type = "group", name = "Appearance", order = 1.5, args = {} }; return t end
   rec("layout walk negative: an Appearance part back gives Fail", not chk(id, 1))
   ns.Service("chatDebug").Options = realTree
+
+  -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) the two switches apart
+  id = "chat-improved-split"
+  local okI1, nI1 = run(id, 1); rec("split walk step 1: Chat Panel off, Improved Chat on: the block and Chat Data Panel around Blizzard's chat", okI1, nI1)
+  local cbar = C.Bar(); cbar:Hide()
+  rec("split walk negative: no Chat Data Panel under the chat gives Fail", not chk(id, 1)); C.Layout()
+  local okI2, nI2 = run(id, 2); rec("split walk step 2: Chat Panel on, Improved Chat off: none of its pieces show", okI2, nI2)
+  ns.chat2.improvedOn = true; C.Refresh(); W.flush()
+  rec("split walk negative: Improved Chat back on gives Fail at step 2", not chk(id, 2))
+  local okI3, nI3 = run(id, 3); rec("split walk last step: switches put back", okI3 and ns.chat2.enabled == true and ns.chat2.improvedOn ~= false, nI3)
 
   -- #430 walkthrough
   id = "chat-position-box"

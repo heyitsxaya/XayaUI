@@ -232,7 +232,7 @@ function ns.ChatPrivacy_Refresh()
     local s = Store()
     if not s then return end
     local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
-    local canShow = (Target() and ns.Chat.On() and not collapsed) and true or false
+    local canShow = (Target() and ns.Chat.active and ns.Chat.ImprovedOn and ns.Chat.ImprovedOn() and not collapsed) and true or false   -- (Chat 0.6.32) Improved Chat's
     local wantBtn = canShow and s.privBtn ~= false
     if wantBtn then BuildButton() end
     if btn then

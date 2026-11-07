@@ -33,7 +33,7 @@ local function TextFade(s)
 end
 
 local function Refresh(s)
-    if not C.On() then return end
+    if not C.ImprovedOn() then return end   -- (Chat 0.6.32) Improved Chat's ("Fade and hide")
     TextFade(s)
     if not s.fadeOn then
         if C.fade ~= 1 then C.fade = 1; C.ApplyAlpha() end

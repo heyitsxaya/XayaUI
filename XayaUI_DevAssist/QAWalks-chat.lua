@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is
@@ -33,6 +33,13 @@ local function Alpha(f) if not (f and f.GetAlpha) then return nil end local ok, 
 local function Overlap(a, b) return a and b and a.l < b.r - 0.5 and b.l < a.r - 0.5 and a.b < b.t - 0.5 and b.b < a.t - 0.5 end
 local function Fmt(rc) return rc and ("%d,%d %dx%d"):format(rc.l, rc.b, rc.w, rc.h) or "?" end
 
+-- (Chat 0.6.32; UI-18 / UI-19 / UI-21) "is Improved Chat on?" (the whisper switch is Improved Chat's: it runs with the Chat Panel off too)
+local function ReadyImproved()
+    local C = Ch()
+    if not C then return false, "XayaUI Chat is not loaded" end
+    if not (C.ImprovedOn and C.ImprovedOn()) then return false, "Improved Chat is off (QoL > Improved Chat tick box)" end
+    return true
+end
 -- "is the Chat Panel there?" (every check starts here: with it off nothing below can be read)
 local function Ready()
     local C = Ch()
@@ -337,9 +344,9 @@ end
 local MODE_NAME = { popout = "New Tab", popout_and_inline = "Both", inline = "In-line" }
 
 QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start opens (CHATREV-10)", qa = "D24", order = 234, prefill = true, steps = {
-    { text = "This checks the new tick box |cffffd100Switch to a new whisper tab I start|r (Chat Panel > Chat Tabs > Whisper tabs) and the game's own setting Options > Social > |cffffd100New Whispers|r.\n\n|cffffd100Expect:|r the tick box is on (the default) and New Whispers is Both or New Tab.",
+    { text = "This checks the new tick box |cffffd100Switch to a new whisper tab I start|r (QoL > Improved Chat > General > Chat history) and the game's own setting Options > Social > |cffffd100New Whispers|r.\n\n|cffffd100Expect:|r the tick box is on (the default) and New Whispers is Both or New Tab.",
         check = function()
-            local ok, why = Ready(); if not ok then return false, why end
+            local ok, why = ReadyImproved(); if not ok then return false, why end
             local s, C = S(), Ch()
             local m = CVar("whisperMode")
             local on = s.whisperSelect and C.on and C.on.whisperSelect
@@ -348,7 +355,7 @@ QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start open
         end },
     { text = "Stay on the |cffffd100General|r tab. Whisper someone you have |cffffd100no whisper tab with yet|r (a friend, or /w yourself). Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r a new tab with their name opens and the chat switches to it, showing your whisper.",
         check = function()
-            local ok, why = Ready(); if not ok then return false, why end
+            local ok, why = ReadyImproved(); if not ok then return false, why end
             local f = SelectedWindow()
             if not f then return false, "the game did not say which tab is selected" end
             local isW = f.chatType == "WHISPER" or f.chatType == "BN_WHISPER"
@@ -357,7 +364,7 @@ QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start open
         end },
     { text = "Click |cffffd100General|r again, then reply in General to the same person (/r).\n\n|cffffd100Expect:|r the chat stays on General (a whisper to someone who already has a tab never pulls you away).",
         check = function()
-            local ok, why = Ready(); if not ok then return false, why end
+            local ok, why = ReadyImproved(); if not ok then return false, why end
             local f = SelectedWindow()
             if not f then return false, "the game did not say which tab is selected" end
             local stay = not (f.chatType == "WHISPER" or f.chatType == "BN_WHISPER")
@@ -367,6 +374,8 @@ QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start open
 
 local tsBefore
 local function Tree() local sv = Svc(); local ok, t = pcall(function() return sv.Options() end); return ok and t or nil end
+-- (Chat 0.6.32; UI-18 / UI-19 / UI-21) QoL > Improved Chat's tree
+local function ITree() local sv = Svc(); local ok, t = pcall(function() return sv.ImprovedOptions() end); return ok and t or nil end
 local function Kids(t)
     local list = {}
     for _, v in pairs(t and t.args or {}) do if type(v) == "table" and v.type == "group" then list[#list + 1] = v end end
@@ -375,34 +384,37 @@ local function Kids(t)
     for _, v in ipairs(list) do n[#n + 1] = tostring(v.name) end
     return table.concat(n, " | "), list
 end
-QA.Register("chat-settings-layout", { title = "Chat: settings laid out as asked in #246 (CHATREV-11)", qa = "#246, D24", order = 235, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard UI Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane: General, Chat Tabs, Layout, Chat Data Panel, Filters, Sounds, Privacy (no Appearance, Fade and hide or History).",
+-- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21) the #246 layout split over two pages: the look on Blizzard UI Reskin > Chat Panel, how
+-- chat behaves on QoL > Improved Chat (her item list, "Yes, as listed")
+local function TabsOf(t, key) local g = t and t.args and t.args[key]; return g and (Kids(g)) or nil end
+QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs behaviour (UI-18 / UI-21, #246)", qa = "#246, D24, D25", order = 235, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard UI Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane only General, Chat Tabs and Layout (how chat looks). General's tabs: Font options, Color + display options.",
         setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("general") end end,
         check = function()
             local t = Tree(); if not t then return false, "the Chat Panel's settings could not be read" end
-            local names = Kids(t)
-            local want = "General | Chat Tabs | Layout | Chat Data Panel | Filters | Sounds | Privacy"
-            return names == want, "parts: " .. names
+            local names, tabs = Kids(t), TabsOf(t, "general")
+            return names == "General | Chat Tabs | Layout" and tabs == "Font options | Color + display options", "parts: " .. names .. "; General's tabs: " .. tostring(tabs)
         end },
-    { text = "Look at the tabs across the top of General.\n\n|cffffd100Expect:|r Font options, Color + display options, Scroll and fade options, Chat history, and Timestamp, copying, and links, in that order. Click through them: each has its settings.",
+    { text = "Press |cffffd100Do it for me|r: the settings open on QoL > |cffffd100Improved Chat|r.\n\n|cffffd100Expect:|r a tick box on its row in the left pane, a note that it likely displays better with a chat reskin, and under it: General, Chat Data Panel, Filters, Sounds, Privacy. General's tabs: Scroll and fade options, Chat history, Timestamp, copying, and links.",
+        setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("improved") end end,
         check = function()
-            local t = Tree(); local g = t and t.args and t.args.general
-            if not g then return false, "no General page" end
-            local names = Kids(g)
-            local want = "Font options | Color + display options | Scroll and fade options | Chat history | Timestamp, copying, and links"
-            return names == want, "tabs: " .. names
+            local t = ITree(); if not t then return false, "Improved Chat's settings could not be read" end
+            local names, tabs = Kids(t), TabsOf(t, "general")
+            local ok = names == "General | Chat Data Panel | Filters | Sounds | Privacy" and tabs == "Scroll and fade options | Chat history | Timestamp, copying, and links"
+                and t.xuiSwitch ~= nil and t.args.reskinNote ~= nil
+            return ok, "parts: " .. names .. "; General's tabs: " .. tostring(tabs) .. (t.xuiSwitch and "" or "; no switch on its row")
         end },
-    { text = "Click |cffffd100Chat Tabs|r in the left pane.\n\n|cffffd100Expect:|r the tab row's settings (show, height, font, colors, backgrounds) and a Whisper tabs section with |cffffd100Switch to a new whisper tab I start|r.",
-        setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("tabs") end end,
+    { text = "Click Improved Chat > General > |cffffd100Chat history|r.\n\n|cffffd100Expect:|r the whisper tab lists, the combine box, and |cffffd100Switch to a new whisper tab I start|r.",
+        setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("history") end end,
         check = function()
-            local t = Tree(); local p = t and t.args and t.args.tabs
-            if not p then return false, "no Chat Tabs page" end
+            local t = ITree(); local p = t and t.args and t.args.general and t.args.general.args and t.args.general.args.tab_histHdr
+            if not p then return false, "no Chat history tab on Improved Chat > General" end
             local found = false
             local function walk(x) for k, v in pairs(x.args or {}) do if k == "whisperSelect" then found = true end; if type(v) == "table" and v.type == "group" then walk(v) end end end
             walk(p)
-            return found, found and ("Chat Tabs page: " .. Kids(p)) or "the whisper switch is not on the Chat Tabs page"
+            return found, found and "the whisper switch is on Improved Chat > General > Chat history" or "the whisper switch is not on the Chat history tab"
         end },
-    { text = "Press |cffffd100Do it for me|r: Timestamps (General > Timestamp, copying, and links) is set to 24-hour hours and minutes; your own setting is remembered. Then say something in chat.\n\n|cffffd100Expect:|r your new line starts with the time, like \"15:27\". Options > Social > Chat Timestamps shows the same choice.",
+    { text = "Press |cffffd100Do it for me|r: Timestamps (Improved Chat > General > Timestamp, copying, and links) is set to 24-hour hours and minutes; your own setting is remembered. Then say something in chat.\n\n|cffffd100Expect:|r your new line starts with the time, like \"15:27\". Options > Social > Chat Timestamps shows the same choice.",
         setup = function()
             local cv = rawget(_G, "C_CVar"); tsBefore = tsBefore or CVar("showTimestamps") or "none"
             local fmt = rawget(_G, "TIMESTAMP_FORMAT_HHMM_24HR") or "%H:%M "
@@ -419,6 +431,56 @@ QA.Register("chat-settings-layout", { title = "Chat: settings laid out as asked 
             if not tsBefore then return false, "nothing was remembered (run step 4 first)" end
             local v = CVar("showTimestamps")
             return v == tsBefore, "Chat Timestamps is " .. tostring(v) .. " (was " .. tostring(tsBefore) .. ")"
+        end },
+} })
+
+-- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21) two independent switches: the Chat Panel (the look) and QoL > Improved Chat (behaviour).
+-- Her answer "1" (independent switches) and "should support other chat reskin options": Improved Chat runs with the Chat Panel off too.
+local splitSaved
+local function SplitSet(enabled, improved)
+    local s, C = S(), Ch(); if not (s and C) then return end
+    if not splitSaved then splitSaved = { enabled = s.enabled, improvedOn = s.improvedOn, barOn = s.barOn, collapsed = s.collapsed } end
+    s.enabled, s.improvedOn, s.collapsed = enabled, improved, false
+    if improved then s.barOn = true end
+    C.Refresh()
+end
+QA.Register("chat-improved-split", { title = "Chat: Chat Panel and Improved Chat switch on and off apart (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the |cffffd100Chat Panel|r (Blizzard UI Reskin) is switched |cffffd100off|r, |cffffd100Improved Chat|r (QoL) stays on, with the Chat Data Panel shown. Your switches are remembered; the last step puts them back.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it; the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
+        setup = function() SplitSet(false, true) end,
+        check = function()
+            local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
+            if C.On and C.On() then return false, "the Chat Panel is still on" end
+            if not (C.ImprovedOn and C.ImprovedOn()) then return false, "Improved Chat is off" end
+            local cf, pane, bar = Rect(C.Main()), Rect(C.Pane()), Rect(C.Bar and C.Bar())
+            if not (cf and pane) then return false, "the chat's place could not be read" end
+            local over = Near(pane.l, cf.l) and Near(pane.w, cf.w)
+            local under = bar and Shown(C.Bar()) and bar.t <= pane.b + 0.5 and Near(bar.w, pane.w)
+            local eye = Shown(rawget(_G, "XayaUIChatPrivacyButton"))
+            return (over and under and eye) and true or false,
+                ("block over Blizzard's chat: %s (chat %s, block %s); Chat Data Panel under it: %s; eye button: %s"):format(over and "yes" or "NO", Fmt(cf), Fmt(pane), under and "yes" or "NO", eye and "shown" or "NOT shown")
+        end },
+    { text = "Press |cffffd100Do it for me|r: the Chat Panel is switched back |cffffd100on|r and Improved Chat |cffffd100off|r.\n\n|cffffd100Expect:|r the restyled chat in its place; no Chat Data Panel, no collapse arrow, no slow-scrolling bar right of the text, no history button at the end of the tab row, no privacy eye button.",
+        setup = function() SplitSet(true, false) end,
+        check = function()
+            local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
+            local ok, why = Ready(); if not ok then return false, why end
+            local left = {}
+            if Shown(C.Bar and C.Bar()) then left[#left + 1] = "Chat Data Panel" end
+            if Shown(rawget(_G, "XayaUIChatArrow")) then left[#left + 1] = "collapse arrow" end
+            if Shown(C.ScrollBar and C.ScrollBar()) then left[#left + 1] = "slow-scrolling bar" end
+            if Shown(rawget(_G, "XayaUIChatHistoryButton")) then left[#left + 1] = "history button" end
+            if Shown(rawget(_G, "XayaUIChatPrivacyButton")) then left[#left + 1] = "privacy button" end
+            return #left == 0, #left == 0 and "the Chat Panel is on and none of Improved Chat's pieces show" or ("still showing: " .. table.concat(left, ", "))
+        end },
+    { text = "Last step: press |cffffd100Do it for me|r to put both switches (and the Chat Data Panel) back as they were.",
+        setup = function()
+            local s, C = S(), Ch()
+            if s and C and splitSaved then for k, v in pairs(splitSaved) do s[k] = v end; splitSaved = nil; C.Refresh() end
+        end,
+        check = function()
+            if splitSaved then return false, "not put back yet" end
+            local s = S()
+            return s ~= nil, ("Chat Panel %s, Improved Chat %s"):format(s and s.enabled and "on" or "off", s and s.improvedOn ~= false and "on" or "off")
         end },
 } })
 
