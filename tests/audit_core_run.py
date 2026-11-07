@@ -173,6 +173,68 @@ do
   end
   check("O-100 minimap row 'data' is named Data Panels", by.data and by.data[2] == "Data Panels", by.data and by.data[2])
 end
+-- D57: a rule whose evaluation fails is recorded for /xui report; a cue migration that fails on one condition leaves it as it was
+do
+  local recs = {}
+  local origRec = ns.RecordError
+  ns.RecordError = function(msg, st, folder, code) recs[#recs + 1] = code .. " " .. tostring(msg) end
+  local f = ns.NewFolder("ErrTest")
+  local r = mk(f, "Broken", 0, 0, 40, 40)
+  local origEval = ns.Evaluate
+  ns.Evaluate = function(rule, ...) if rule == r then error("boom") end return origEval(rule, ...) end
+  W.tick(0.2, 6)
+  ns.Evaluate = origEval
+  local got = false; for _, x in ipairs(recs) do if x:find("XUI-E010", 1, true) and x:find("Broken", 1, true) then got = true end end
+  check("D57 an evaluation error is recorded (XUI-E010) for /xui report", got, table.concat(recs, " | "))
+  r.enabled = false
+  -- migration: a condition with both a sound and a display; the display's cue fails
+  local parent = mk(f, "Parent", 0, 0, 40, 40); parent.uid = parent.uid or ns.NewUID()
+  local child = ns.NewRule(); child.name = "Cond"; child.parentUid = parent.uid; child.sound = { enabled = true, file = "x" }; child.visual = { enabled = true }
+  child.thenCues = { "keep" }
+  ns.rules[#ns.rules + 1] = child
+  local n0 = #ns.rules
+  CueRulesDB.cuesVer = nil
+  local origNew = ns.NewCueRule
+  ns.NewCueRule = function(p, kind) if kind == "texture" then error("no texture") end return origNew(p, kind) end
+  local ok = pcall(ns.MigrateCues)
+  ns.NewCueRule = origNew
+  local rec = false; for _, x in ipairs(recs) do if x:find("XUI-E011", 1, true) then rec = true end end
+  check("D57 migration: the failing condition is recorded (XUI-E011) and the migration finishes once", ok and rec and CueRulesDB.cuesVer == 2, tostring(ok) .. " " .. tostring(CueRulesDB.cuesVer))
+  check("D57 migration: the failing condition is left as it was (no new cue, its sound on, its THEN list back)", #ns.rules == n0 and child.sound.enabled == true and child.thenCues and child.thenCues[1] == "keep", #ns.rules - n0)
+  ns.RecordError = origRec
+end
+-- D28: with "Estimate buffs the game hides in combat" off, the tracker leaves a hidden buff unknown (no seeded / linked estimate)
+do
+  local T, M = ns.AuraTracker, ns.AuraModel
+  if T and M and T.Resolve and M.SetSetting then
+    local was = M.PresenceEnabled()
+    -- an exact read before combat: present, 60 s left (what step 3 of Resolve seeds from)
+    T.Observe(987001, true, "test", { expiration = GetTime() + 60, duration = 60, instanceID = 4242 })
+    local hOn, pOn = T.Resolve(987001)
+    check("D28 (guard) with the estimate on, the seeded read answers present", hOn == true and pOn == true, tostring(hOn) .. "/" .. tostring(pOn))
+    M.SetSetting("presence", false)
+    local handled = T.Resolve(987001)
+    check("D28 presence estimate off: Resolve leaves the buff unknown (no seeded estimate)", handled == false, handled)
+    M.SetSetting("presence", was)
+  else
+    check("D28 tracker and model are loaded", false)
+  end
+end
+-- D56: a rule taken out while active finishes what it started (After It Ends actions run, a During glow stops)
+do
+  local f = ns.NewFolder("EndTest")
+  local r = mk(f, "Active", 0, 0, 40, 40)
+  ns.runtime = ns.runtime or {}; ns.runtime[r] = { active = true, lastPlay = 0 }
+  local fin = {}
+  local orig = ns.RunActions
+  ns.RunActions = function(rule, phase) if phase == "finish" then fin[rule] = (fin[rule] or 0) + 1 end end
+  ns.RecycleRule(r)
+  check("D56 deleting an active rule to the Recycle Bin runs its finish actions once", fin[r] == 1, fin[r])
+  local r2 = mk(f, "Active2", 0, 0, 40, 40); ns.runtime[r2] = { active = true, lastPlay = 0 }
+  ns.Share_ApplyRules({ v = 1, rules = {}, folders = {} }, "replace")
+  check("D56 Load (replace) runs the finish actions of an active rule it swaps out", fin[r2] == 1, fin[r2])
+  ns.RunActions = orig
+end
 return R
 end
 '''

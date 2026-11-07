@@ -79,7 +79,11 @@ local function StepEnabled(rule, rt, ctx, now)
     if not ok then
         local err = result
         result, info = false, nil
-        if not rt.errored then rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err)) end
+        if not rt.errored then
+            rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err))
+            -- audit D57 (core 0.6.62): recorded for /xui report too (the file's header promises the error log), like the action errors
+            if ns.RecordError then pcall(ns.RecordError, "XayaUI rule '" .. tostring(rule.name) .. "' (evaluate): " .. tostring(err), nil, "XayaUI", "XUI-E010") end
+        end
     end
     rt.info = info
     if ns.RecTrigger then ns.RecTrigger(rule, result, info) end   -- trigger detail for chosen rules (DebugRecord.lua; one test when off)
@@ -125,6 +129,16 @@ local function StepEnabled(rule, rt, ctx, now)
         Guarded(rule, rt, ns.UpdateVisualText, rule, info)
     end
     if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
+end
+
+-- audit D56 (core 0.6.62): a rule taken out of the list (deleted to the Recycle Bin, or swapped out by Load (replace)) finishes what it
+-- started, as a switched-off rule does (StepDisabled): its After It Ends actions run and a "During" glow stops (before: the glow stayed
+-- until /reload). Called by RecycleBin.lua and Share.lua before they remove the rule.
+function ns.EndRule(rule)
+    local rt = rule and ns.runtime and ns.runtime[rule]
+    if not rt then return end
+    if rt.active and not rule.parentUid and ns.RunActions then pcall(ns.RunActions, rule, "finish") end
+    rt.active, rt.inited = false, nil
 end
 
 -- One disabled rule: finish what it started and hide its display (once).

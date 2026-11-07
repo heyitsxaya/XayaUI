@@ -374,3 +374,25 @@ QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui
             for w, a in pairs(want) do local m = ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
             return #bad == 0, #bad == 0 and "every word names its addon" or ("not listed: " .. table.concat(bad, ", ")) end },
 } })
+
+-------------------------------------------------------------------------------
+-- Engine: estimate setting off means unknown (D28); a deleted active rule's glow stops (D56); errors recorded (D57)
+-------------------------------------------------------------------------------
+QA.Register("audit-engine", { title = "Engine: estimate off, glow stops on delete, errors in /xui report (D28, D56, D57)", qa = "B254, B255", order = 312, prefill = true, steps = {
+    { text = "Press |cffffd100Check again|r: with Settings > UI Options > Rule Creation > Combat Tracking Setup > |cffffd100Estimate buffs the game hides in combat|r unticked, the tracker must leave a hidden buff unknown. The addon reads its setting and asks the tracker about a test aura it was told is up.\n\n|cffffd100Expect:|r with the box unticked: unknown. (Ticked: the check only reports.)",
+        check = function()
+            local ns = NS(); local T, M = ns and ns.AuraTracker, ns and ns.AuraModel
+            if not (T and M and T.Resolve and T.Observe) then return false, "the combat tracker is not loaded" end
+            local id = 987654321
+            T.Observe(id, true, "qa", { expiration = GetTime() + 30, duration = 30, instanceID = 77 })
+            local h, p = T.Resolve(id)
+            if M.PresenceEnabled() then return true, ("the box is ticked; the tracker answers %s (tick it off and check again)"):format(h and (p and "present" or "absent") or "unknown") end
+            return h == false, h == false and "the box is off and the hidden buff stays unknown" or "the box is off but the tracker still estimated it"
+        end },
+    { text = "Make a rule with an Actions tab |cffffd100During|r glow on an action button and make it active (its trigger true), so the button glows. Then delete the rule (it goes to the Recycle Bin).\n\n|cffffd100Expect:|r the glow stops at once (before: it stayed until /reload). Restore it from the Recycle Bin afterwards if you want it back. The addon cannot see a glow, so you judge.",
+        noVerdict = true, check = function() return true, "by eye" end },
+    { text = "Type |cffffd100/xui report|r and look at the errors part.\n\n|cffffd100Expect:|r a rule that failed shows there with code XUI-E010, and a cue migration problem with XUI-E011 (most players have none: then it lists none). The check counts what it finds in the error record.",
+        noVerdict = true,
+        check = function() local db = CueRulesDB and CueRulesDB.errors or (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.errors); local n = type(db) == "table" and #db or 0
+            return true, ("%d error(s) recorded"):format(n) end },
+} })

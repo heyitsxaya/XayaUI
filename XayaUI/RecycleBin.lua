@@ -93,6 +93,7 @@ local function takeRules(list)
         for _, r in ipairs(withDescendants(top)) do
             if removeFrom(ns.rules, r) then
                 taken[#taken + 1] = r
+                if ns.EndRule then pcall(ns.EndRule, r) end   -- (audit D56) its actions finish, a glow stops
                 if ns.DropVisual then pcall(ns.DropVisual, r) end
             end
         end

@@ -435,7 +435,7 @@ function ns.Share_ApplyRules(snap, mode)
 
     if IsTbl(snap.rules) then
         if replace then
-            for _, r in ipairs(ns.rules) do ns.DropVisual(r) end
+            for _, r in ipairs(ns.rules) do if ns.EndRule then pcall(ns.EndRule, r) end; ns.DropVisual(r) end   -- (audit D56)
             wipe(ns.rules); wipe(ns.folders)
         end
         local used, map = {}, {}

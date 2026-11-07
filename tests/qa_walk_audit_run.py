@@ -24,7 +24,7 @@ L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local QA, ns = rawget(_G, "XayaUI_DevQA"), rawget(_G, "XayaUI_NS")
 if not QA then check("Dev Assist QA framework", false); return R end
-local ids = { "audit-notepad-format", "audit-notepad-restore", "audit-minimap-rows", "audit-groups", "audit-backup-replace", "audit-talents-init", "audit-chat", "audit-spelling", "audit-theme", "audit-bin-words" }
+local ids = { "audit-notepad-format", "audit-notepad-restore", "audit-minimap-rows", "audit-groups", "audit-backup-replace", "audit-talents-init", "audit-chat", "audit-spelling", "audit-theme", "audit-bin-words", "audit-engine" }
 for _, id in ipairs(ids) do
   local d = QA.walks[id]
   check(id .. ": registered with prefill", d ~= nil and d.prefill == true and #d.steps >= 1, d and d.prefill)
@@ -74,6 +74,11 @@ do
   local v4, n4 = step(4); check("theme walkthrough last step: QA themes gone, theme back", v4 == true and ns.Theme.Export() == before, n4)
 end
 local vb, nb = QA.walks["audit-bin-words"].steps[2].check(); check("D8 words walkthrough: verdict Pass", vb == true, nb)
+do
+  local M = ns.AuraModel; local was = M.PresenceEnabled(); M.SetSetting("presence", false)
+  local ve, ne = QA.walks["audit-engine"].steps[1].check(); check("D28 engine walkthrough with the box off: verdict Pass", ve == true, ne)
+  M.SetSetting("presence", was)
+end
 -- the Notepad walkthrough's last step puts the Notepad back
 local db = ns.notepadDB
 if db then

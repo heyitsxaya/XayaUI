@@ -29,3 +29,16 @@ FA-13 "Reword to Class colors (Recommended)"; FA-14 "Ask first (Recommended)". A
 
 ## QA
 B251, B252, B253.
+
+## Added: engine rows D28, D56, D57 (core 0.6.62)
+- `XayaUI/Combat/AuraTracker.lua` (D28): T.Resolve returns "unknown" while "Estimate buffs the game hides in combat" is off (the aura-ID
+  link and the seeded last read estimated anyway). The reviewer's V14 part does not hold: the cast events also feed the out-of-combat
+  duration learning, so they stay.
+- `XayaUI/Engine.lua` ns.EndRule, called by `RecycleBin.lua` takeRules and `Share.lua` replace (D56): an active rule's finish actions run
+  (a During glow stops) when it leaves the list, as when it is switched off.
+- `XayaUI/Engine.lua` (D57): the first evaluate error of a rule is recorded (XUI-E010) as well as printed. `XayaUI/Cues.lua` MigrateCues:
+  each condition under its own guard; a failing one is recorded (XUI-E011), its new cues removed again and its THEN list put back, the
+  rest go on, and the migration is marked done once (a half-moved condition could gain its cue twice at the next login). `Core.lua`
+  records a whole-migration failure.
+- Tests: `tests/audit_core_run.py` D28 (2, the guard included), D56 (2), D57 (3): 6 fail on 7b830cf. aura_display, aura_gaps,
+  engine_routing, engine_text, debug_record_engine, charges_combat, class_learn_auras pass. Walkthrough audit-engine. QA B254, B255.

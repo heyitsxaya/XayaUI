@@ -418,6 +418,10 @@ function T.Resolve(id)
     s.queriedAt, s.unknownAt = now, now
     local M = Model()
     if not M then s.lastKind = "none"; return false end
+    -- audit D28 (core 0.6.62): "Estimate buffs the game hides in combat" unticked: no estimate of any kind (the aura-ID link, the
+    -- seeded last read and the cast window all estimate); the answer stays unknown, as the tick box says. Before, only the cast-window
+    -- estimate was switched off. (The cast events stay: they also feed the out-of-combat duration learning.)
+    if M.PresenceEnabled and not M.PresenceEnabled() then s.lastKind = "off"; return false end
 
     if not T.Enabled() then            -- tracker off: behave exactly like the plain model
         local okM, eP, eRef, eNote = pcall(M.EstimatePresent, id)
