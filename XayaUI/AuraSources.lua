@@ -15,6 +15,9 @@ local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local AS = {}
 ns.AuraSources = AS
+-- (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.4) offered to other modules as a service: XayaUI Bonus reads it only
+-- through ns.Service("AuraSources") and shows nothing extra without it. ns.AuraSources stays for the rule-tracking code itself.
+if ns.Provide then ns.Provide("AuraSources", AS) end
 
 local isSecret = issecretvalue or function() return false end
 local function readable(v) return v ~= nil and not isSecret(v) end

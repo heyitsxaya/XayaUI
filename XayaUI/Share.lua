@@ -579,6 +579,23 @@ Share.RegisterKind({
     Apply = function(snap, mode) return ns.Share_ApplyRules(snap, mode) end,
 })
 
+-- (core 0.6.74; plan 6.1) the profile part "Rules and groups": the rules snapshot (rules, groups; buff bars and QoL boxes while their
+-- files are loaded), applied with Add or Replace like a rules string. Registered by the rule-tracking side (moves with it to Core in P4).
+-- mode: "add" (default, today's Import window) | "replace".
+if ns.RegisterProfilePart then
+    ns.RegisterProfilePart({ key = "rules", label = "Rules and groups", module = "XayaUI", order = 10, version = 1, reload = false,
+        snapshot = function(name) return ns.Share_SnapshotAll({ rules = true, bars = true, qol = true }, name) end,
+        check = function(part)
+            local rk = Share.kinds.rules
+            local okR, rr = pcall(rk.Check, part)
+            if okR and type(rr) == "table" then return rr end
+        end,
+        strip = function(part) local rk = Share.kinds.rules; if rk and rk.Strip then rk.Strip(part) end end,
+        describe = function(part) return ns.Share_DescribeRules(part) end,
+        apply = function(part, mode) return ns.Share_ApplyRules(part, mode == "replace" and "replace" or "add") end,
+    })
+end
+
 -------------------------------------------------------------------------------
 -- Backups: copies of your rules saved inside XayaUI (CueRulesDB.profiles, the key it always had: renaming the saved key would
 -- hide your backups from an older XayaUI if you went back to one). Load (add), Load (replace), show as text, delete.

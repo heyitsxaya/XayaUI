@@ -1474,6 +1474,13 @@ end
 -- module "reskin": the page is the Blizzard UI Reskin tab's Character Pane (Xaya 2026-11-05: "Take all reskins and put them into a new
 -- tab: Blizzard UI Reskin. Currently applies to: chat, character pane, Esc menu")
 ns.RegisterSettingsPage("reskin", "charreskin", ns.BuildCharReskinPage)
+-- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the character window (page Character Pane), under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.charreskin", label = "Character Pane", parent = "reskin" })
+end
+
 ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()

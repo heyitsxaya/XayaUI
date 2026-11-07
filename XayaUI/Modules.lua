@@ -591,3 +591,151 @@ function ns.MapTraceCounts() return mapTrace end   -- (tests)
 function ns.MapTraceOrder() return mapOrder end
 -- (core 0.6.56; REQUEST-LOG #81, Xaya 2026-11-06 "Move all of them": the report itself, /xui debug map, is in XayaUI Dev Assist,
 -- XayaUI_DevAssist/CoreDebug.lua; the counter above stays, as XayaUI's own calls are counted whether or not Dev Assist is there)
+
+-------------------------------------------------------------------------------
+-- 9. Profile parts (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.1, PS-6, Xaya 2026-11-07: "Does sharer / import /
+-- export have "universal plumbing" configured for each model to tie into? If not, it should — it should support sharing across all
+-- modules a user has installed."). Each module registers the part of a profile (Profiles > Import / Export, XayaUI_Options/Profiles.lua)
+-- it owns; Profiles only walks this list. A module that is switched off registers nothing, so its part is not offered; a pasted profile
+-- keeps the part and Import says "needs <addon title>".
+--   ns.RegisterProfilePart{ key, label, module, snapshot(name) -> table, apply(data, mode, fromVersion) -> result,
+--       check(data) -> clean table or nil, describe(data) -> text (optional), never = {...}, version = 1, order = number,
+--       reload = false (the part takes effect without a reload; default: a reload puts it to work) }
+--   or, for a part that is a list of CueRulesDB keys (every settings part today): db = { keys }, bools = { [key] = true } (a key that
+--   may only be true), and the Platform builds snapshot / check / apply exactly as Profiles.lua did before 0.6.74:
+--     snapshot: a copy of each key, without keys starting with "_" and without what `never` names;
+--     apply (mode "merge", the only settings mode today): each saved value in the profile replaces yours; values the profile does not
+--       have stay as they are.
+--   never = { [sub key] = true (left out) | "name" (that sub-table's field "name" left out) | { ... } (the same rules one level down) }.
+-- Every snapshot / check / apply runs through pcall (one module's error never stops another's part).
+-------------------------------------------------------------------------------
+local profileParts, profilePartByKey = {}, {}
+
+local function StripUnderscore(t, depth)
+    if type(t) ~= "table" or depth > 16 then return end
+    for k, v in pairs(t) do
+        if type(k) == "string" and k:sub(1, 1) == "_" then t[k] = nil
+        elseif type(v) == "table" then StripUnderscore(v, depth + 1) end
+    end
+end
+-- removes what `never` names from t (in place); returns t
+local function StripNever(t, never, depth)
+    if type(t) ~= "table" or type(never) ~= "table" or (depth or 1) > 16 then return t end
+    for k, how in pairs(never) do
+        if how == true then t[k] = nil
+        elseif type(how) == "string" and type(t[k]) == "table" then t[k][how] = nil
+        elseif type(how) == "table" and type(t[k]) == "table" then StripNever(t[k], how, (depth or 1) + 1) end
+    end
+    return t
+end
+ns.ProfileStripNever = StripNever
+-- one saved table as it goes into a profile: no "_" keys, nothing `never` names (sub rules for this key)
+local function StripDbTable(v, never)
+    if type(v) ~= "table" then return v end
+    StripUnderscore(v, 1)
+    if type(never) == "table" then
+        for k, how in pairs(never) do
+            if how == true then v[k] = nil
+            elseif type(how) == "string" and type(v[k]) == "table" then v[k][how] = nil
+            elseif type(how) == "table" and type(v[k]) == "table" then StripNever(v[k], how, 2) end
+        end
+    end
+    return v
+end
+
+local function DbPart(def)
+    local keys, bools, never = def.db, def.bools or {}, def.never or {}
+    def.snapshot = def.snapshot or function()
+        local part = {}
+        for _, k in ipairs(keys) do
+            local v = CueRulesDB and CueRulesDB[k]
+            if v ~= nil then part[k] = StripDbTable(ns.Copy(v), never[k]) end
+        end
+        return part
+    end
+    def.check = def.check or function(part)
+        local cp = {}
+        for _, k in ipairs(keys) do
+            local v = part[k]
+            if bools[k] then cp[k] = (v == true) or nil
+            elseif type(v) == "table" then cp[k] = StripDbTable(v, never[k]) end
+        end
+        return cp
+    end
+    def.apply = def.apply or function(part)
+        if type(CueRulesDB) ~= "table" then return nil end
+        for _, k in ipairs(keys) do
+            local v = part[k]
+            if bools[k] then
+                if v == true then CueRulesDB[k] = true end
+            elseif type(v) == "table" then
+                local mine = CueRulesDB[k]
+                if type(mine) ~= "table" then mine = {}; CueRulesDB[k] = mine end
+                for kk, vv in pairs(v) do mine[kk] = ns.Copy(vv) end
+            end
+        end
+        return { reload = true }
+    end
+    return def
+end
+
+function ns.RegisterProfilePart(def)
+    local ok, err = pcall(function()
+        if type(def) ~= "table" or type(def.key) ~= "string" or def.key == "" or type(def.label) ~= "string" then return end
+        if type(def.db) == "table" then DbPart(def) end
+        if type(def.snapshot) ~= "function" or type(def.apply) ~= "function" then return end
+        def.version = tonumber(def.version) or 1
+        def.check = def.check or function(part) return part end
+        local old = profilePartByKey[def.key]
+        if old then for i, p in ipairs(profileParts) do if p == old then table.remove(profileParts, i); break end end end
+        profileParts[#profileParts + 1] = def
+        profilePartByKey[def.key] = def
+        table.sort(profileParts, function(a, b)
+            local oa, ob = tonumber(a.order) or 100, tonumber(b.order) or 100
+            if oa ~= ob then return oa < ob end
+            return a.key < b.key
+        end)
+    end)
+    if not ok then Report(err) end
+end
+-- the registered parts in window order (a live list: the same table every time) and by key
+function ns.ProfileParts() return profileParts end
+function ns.ProfilePartsByKey() return profilePartByKey end
+-- the title of a module's addon as the AddOns list shows it ("XayaUI Chat"), or nil
+function ns.AddonTitle(addon)
+    if type(addon) ~= "string" then return nil end
+    for _, m in ipairs(ns.MODULES or {}) do if m.addon == addon then return m.title end end
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if get then local ok, t = pcall(get, addon, "Title"); if ok and type(t) == "string" and t ~= "" then return t end end
+    return nil
+end
+
+-- The Platform's own parts (the keys live in CueRulesDB, declared by this folder). "Settings" holds the window and minimap button
+-- settings. "Blizzard Reskin" holds keys of three modules (chat2 / chat: XayaUI Chat; characterReskin: XayaUI QoL; reskinTabOff: the
+-- Platform's Blizzard Reskin switch, Modules.lua ns.ReskinTabOn): it stays one part, registered here where its data lives, so a profile
+-- string is byte-for-byte what it was before 0.6.74 (plan 6.1 keeps Chat's keys where they are; tests/profile_parts_run.py).
+ns.RegisterProfilePart({ key = "settings", label = "Settings", module = "XayaUI", order = 30, version = 1,
+    db = { "ui", "minimap" },
+    never = { ui = { defaultFolders = true, defaultFoldersV = true, folderOrdered = true, hybridMigrated = true, progressMigrated = true,
+        infoPanePos = true, trayOpen = true, consoleOpen = true, console = true, rulesSub = true, cur = true, fwd = true,
+        creatorIDs = true, recCats = true } } })
+ns.RegisterProfilePart({ key = "reskin", label = "Blizzard Reskin", module = "XayaUI", order = 60, version = 1,
+    db = { "chat2", "chat", "characterReskin", "reskinTabOff" }, bools = { reskinTabOff = true },
+    never = { chat2 = { whisperSounds = "list" } } })   -- the per-sender whisper sounds name other players: the list is left out
+
+-------------------------------------------------------------------------------
+-- 10. Recycle Bin kinds (core 0.6.74; plan section 6.3, PS-4, Xaya 2026-11-07: "Recycle Bin can be moved to XayaUI "core" and not "rule
+-- tracking," because it houses more than one type of file delete"). The bin (RecycleBin.lua) keeps the storage, the keep times and the
+-- page; what an item IS comes from the kind its module registered:
+--   ns.RegisterBinKind{ kind, label, describe(item) -> the page's line, restore(item) -> ok, note }
+-- An item whose kind is not registered (its module is switched off) stays in the bin untouched and reads "(<kind>: module not loaded)".
+-------------------------------------------------------------------------------
+local binKinds = {}
+function ns.RegisterBinKind(def)
+    local ok, err = pcall(function()
+        if type(def) ~= "table" or type(def.kind) ~= "string" or type(def.restore) ~= "function" then return end
+        binKinds[def.kind] = def
+    end)
+    if not ok then Report(err) end
+end
+function ns.BinKind(kind) return binKinds[kind] end

@@ -669,6 +669,182 @@ function T.Import(str, saveAs, replace)
 end
 
 -------------------------------------------------------------------------------
+-- Scopes (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6, PS-24, Xaya 2026-11-07: "I think we also need to enable
+-- individual element themeing and overrides somewhere -- let's make that part of our rebuild as we configure proper plumbing. ... The
+-- XayaUI Settings Theme can be the initial fallback but users can customize at different levels of granularity?"). Plumbing only:
+-- nothing paints with a scope yet and there is no page for them (the UI comes with the module moves, P3 / P4).
+--   T.RegisterScope{ id, label, parent }      an element ("reskin.tooltips") or a module ("reskin") that can carry its own theme
+--   T.Col(class, prop, scope [, fallback])    first match wins:
+--       1. the element's own overrides (a class colour, then a token colour)
+--       2. the element's chosen theme (a built-in or saved theme's name), if it picked one instead of inheriting
+--       3. the same two for its parent (the module), and so on up
+--       4. the global theme (Settings > Theme): exactly today's T.Col
+--     T.Col(class, prop) and T.Col(class, prop, fallbackTable) are today's calls and give today's answer.
+-- Stored sparse: only what a scope overrides, CueRulesDB.theme.scopes[id] = { theme = name or nil, tokens = {...}, classes = {...} };
+-- nothing is written for a scope with no override, so a profile or theme without scopes is byte-for-byte what it was. They travel in
+-- the Themes profile part (it holds CueRulesDB.theme). Resolved scope colours are cached and the cache is dropped on every Resolve.
+-------------------------------------------------------------------------------
+T.scopes, T.scopeList = {}, {}
+local scopeCache = {}
+function T.RegisterScope(def)
+    local ok, err = pcall(function()
+        if type(def) ~= "table" or type(def.id) ~= "string" or def.id == "" then return end
+        if not T.scopes[def.id] then T.scopeList[#T.scopeList + 1] = def.id end
+        T.scopes[def.id] = { id = def.id, label = type(def.label) == "string" and def.label or def.id,
+            parent = (type(def.parent) == "string" and def.parent ~= def.id) and def.parent or nil }
+        scopeCache = {}
+    end)
+    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+end
+function T.Scope(id) return T.scopes[id] end
+T.OnResolve(function() scopeCache = {} end)
+
+local function IsCol(c) return type(c) == "table" and type(c[1]) == "number" and type(c[2]) == "number" and type(c[3]) == "number" end
+local function ScopeData(id, make)
+    local th = CueRulesDB and CueRulesDB.theme
+    if type(th) ~= "table" then if not make then return nil end th = DB(); if not th then return nil end end
+    local all = th.scopes
+    if type(all) ~= "table" then if not make then return nil end all = {}; th.scopes = all end
+    local s = all[id]
+    if type(s) ~= "table" then if not make then return nil end s = {}; all[id] = s end
+    return s
+end
+T.ScopeData = function(id) return ScopeData(id, false) end
+-- a scope's chosen theme as a palette (built-in, class or saved; "custom" means nothing on its own here)
+local function ScopePalette(name)
+    local key = "\2pal\1" .. name
+    local pal = scopeCache[key]
+    if pal == nil then
+        pal = (name ~= "custom" and T.IsBase(name) or (CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[name])) and T.BasePalette(name) or false
+        scopeCache[key] = pal
+    end
+    return pal or nil
+end
+local function FromScope(id, class, prop, tok)
+    local s = ScopeData(id, false)
+    if not s then return nil end
+    local parked = tok and T.Parked(tok)
+    local cl = type(s.classes) == "table" and type(s.classes[class]) == "table" and s.classes[class][prop]
+    if IsCol(cl) and not parked then return cl end
+    local tk = tok and type(s.tokens) == "table" and s.tokens[tok]
+    if IsCol(tk) and not parked then return tk end
+    if type(s.theme) == "string" and s.theme ~= "" then
+        local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[s.theme]
+        local sc = type(saved) == "table" and type(saved.classes) == "table" and type(saved.classes[class]) == "table" and saved.classes[class][prop]
+        if IsCol(sc) and not parked then return sc end
+        local pal = tok and ScopePalette(s.theme)
+        if pal and IsCol(pal[tok]) then return pal[tok] end
+    end
+end
+
+-- today's T.Col (global theme only)
+local function GlobalCol(class, prop, fallback)
+    local th = CueRulesDB and CueRulesDB.theme
+    local def = T.CLASS[class]
+    local tok = def and def[3][prop]
+    local o = th and th.classes and th.classes[class] and th.classes[class][prop]
+    if type(o) == "table" and not (tok and T.Parked(tok)) then return Copy4(o) end
+    if tok and T.cur[tok] then return Copy4(T.cur[tok]) end
+    return fallback and Copy4(fallback) or { 1, 1, 1, 1 }
+end
+T.GlobalCol = GlobalCol
+function T.Col(class, prop, scope, fallback)
+    if type(scope) ~= "string" then return GlobalCol(class, prop, scope) end   -- no scope: exactly as before 0.6.74
+    local key = scope .. "\1" .. tostring(class) .. "\1" .. tostring(prop)
+    local c = scopeCache[key]
+    if c == nil then
+        local def = T.CLASS[class]
+        local tok = def and def[3][prop]
+        local id, seen = scope, {}
+        while id and not seen[id] do
+            seen[id] = true
+            local hit = FromScope(id, class, prop, tok)
+            if hit then c = Copy4(hit); break end
+            local s = T.scopes[id]
+            id = s and s.parent
+        end
+        scopeCache[key] = c or false
+    end
+    if c then return Copy4(c) end
+    return GlobalCol(class, prop, fallback)
+end
+-- where a scope's colour comes from: the scope id that decided it, or "global" (for tests and the later "Comes from" column)
+function T.ColFrom(class, prop, scope)
+    local def = T.CLASS[class]
+    local tok = def and def[3][prop]
+    local id, seen = scope, {}
+    while type(id) == "string" and not seen[id] do
+        seen[id] = true
+        if FromScope(id, class, prop, tok) then return id end
+        local s = T.scopes[id]
+        id = s and s.parent
+    end
+    return "global"
+end
+
+-- writing a scope's overrides (sparse: emptied tables are removed again)
+local function Tidy(id)
+    local th = CueRulesDB and CueRulesDB.theme
+    local all = type(th) == "table" and th.scopes
+    if type(all) ~= "table" then return end
+    local s = all[id]
+    if type(s) == "table" then
+        if type(s.classes) == "table" then
+            for cls, props in pairs(s.classes) do if type(props) ~= "table" or next(props) == nil then s.classes[cls] = nil end end
+            if next(s.classes) == nil then s.classes = nil end
+        end
+        if type(s.tokens) == "table" and next(s.tokens) == nil then s.tokens = nil end
+        if s.theme == nil and s.tokens == nil and s.classes == nil then all[id] = nil end
+    end
+    if next(all) == nil then th.scopes = nil end
+end
+local function CleanCol(c) return { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) } end
+function T.SetScopeTheme(id, name)
+    if type(id) ~= "string" then return end
+    if name ~= nil and type(name) ~= "string" then return end
+    local s = ScopeData(id, name ~= nil)
+    if s then s.theme = name end
+    Tidy(id); T.Changed()
+end
+function T.SetScopeToken(id, key, c)
+    if type(id) ~= "string" or not T.TOKEN[key] then return end
+    local s = ScopeData(id, c ~= nil)
+    if s then
+        if IsCol(c) then s.tokens = type(s.tokens) == "table" and s.tokens or {}; s.tokens[key] = CleanCol(c)
+        elseif type(s.tokens) == "table" then s.tokens[key] = nil end
+    end
+    Tidy(id); T.Changed()
+end
+function T.SetScopeClassColor(id, class, prop, c)
+    if type(id) ~= "string" or not (T.CLASS[class] and T.CLASS[class][3][prop]) then return end
+    local s = ScopeData(id, c ~= nil)
+    if s then
+        if IsCol(c) then
+            s.classes = type(s.classes) == "table" and s.classes or {}
+            s.classes[class] = type(s.classes[class]) == "table" and s.classes[class] or {}
+            s.classes[class][prop] = CleanCol(c)
+        elseif type(s.classes) == "table" and type(s.classes[class]) == "table" then s.classes[class][prop] = nil end
+    end
+    Tidy(id); T.Changed()
+end
+function T.ResetScope(id)
+    local th = CueRulesDB and CueRulesDB.theme
+    if type(th) == "table" and type(th.scopes) == "table" then th.scopes[id] = nil end
+    Tidy(id); T.Changed()
+end
+
+-- The Platform's own scopes: the Blizzard Reskin tab as a whole (the parent of its pages; the tab and its switch are the Platform's,
+-- Modules.lua ns.ReskinTabOn, so the parent exists whichever module adds a page) and the settings window. The pages register their
+-- own scopes from the module that owns each page.
+T.RegisterScope({ id = "reskin", label = "Blizzard Reskin" })
+T.RegisterScope({ id = "settings", label = "Settings window" })
+
+-- (core 0.6.74; plan 6.1) the profile part "Themes": the active theme (with its scopes) and the saved themes
+if ns.RegisterProfilePart then
+    ns.RegisterProfilePart({ key = "themes", label = "Themes", module = "XayaUI", order = 20, version = 1, db = { "theme", "themes" } })
+end
+
+-------------------------------------------------------------------------------
 -- Boot: resolve once the saved variables exist, and again when the class is known
 -------------------------------------------------------------------------------
 local ev = CreateFrame("Frame")

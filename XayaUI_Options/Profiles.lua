@@ -16,74 +16,65 @@ ns = _G.XayaUI_NS or ns
 local P = {}
 ns.Profile = P
 
--- key, label, saved tables (CueRulesDB keys). "rules" is special: it is the rules snapshot (rules, groups; buff bars and QoL boxes
--- while their files are loaded), applied with Add or Replace like a rules string.
-P.COMPONENTS = {
-    { key = "rules",  label = "Rules and groups" },
-    { key = "themes", label = "Themes",          db = { "theme", "themes" } },
-    { key = "settings", label = "Settings",      db = { "ui", "minimap" } },
-    { key = "qol",    label = "QoL",             db = { "cursorHighlight", "cursorTrail", "characterToolkit", "releaseGuard", "cursor" } },
-    { key = "bonus",  label = "Bonus Features",  db = { "dataPanels", "tooltips", "calculator" } },
-    { key = "reskin", label = "Blizzard Reskin", db = { "chat2", "chat", "characterReskin", "reskinTabOff" } },
+-- (Options 0.6.80; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.1, PS-6) The parts of a profile are no longer a fixed list here:
+-- each module registers its own with ns.RegisterProfilePart (core Modules.lua), and this file only walks what is registered. A module
+-- that is switched off registers nothing: its part is not offered under Export, and Import keeps it in the pasted profile, shows
+-- "needs <addon title>" and skips it. Who registers what today (the keys are unchanged, so a profile string is byte-for-byte what it
+-- was before for the same setup; tests/profile_parts_run.py):
+--   Rules and groups  core Share.lua (the rule-tracking side)     Themes          core Theme.lua (theme, themes; also theme scopes)
+--   Settings          core Modules.lua (ui, minimap)              QoL             XayaUI_QoL/ProfilePart.lua
+--   Bonus Features    XayaUI_Bonus/ProfilePart.lua                Blizzard Reskin core Modules.lua (chat2, chat, characterReskin,
+--   Nameplates        XayaUI_Nameplates/Core.lua (new)                            reskinTabOff: three modules' keys, kept as one part)
+-- Never in a profile (personal data stays local): the Notepad's text, the Shopping List, the Recycle Bin, backups, drafts, logs,
+-- learned aura data (no part holds them); inside a part, keys starting with "_" and what the part's `never` names.
+P.COMPONENTS = ns.ProfileParts and ns.ProfileParts() or {}     -- the registered parts, in window order (a live list)
+P.BY_KEY = ns.ProfilePartsByKey and ns.ProfilePartsByKey() or {}
+-- (kept for readers of the old name) every part's `never`, by part key
+P.NEVER = setmetatable({}, { __index = function(_, k) local c = P.BY_KEY[k]; return c and c.never end })
+
+-- Parts a profile string could hold before parts carried their own information (format 1, before Options 0.6.80): which addon each
+-- belongs to, so Import can say which addon a part needs when that addon is not loaded. Newer parts carry it in the string
+-- (data.partInfo[key] = { v = version, module = folder, title = addon title, label = label }); these six carry none, so their
+-- strings stay exactly as before.
+P.LEGACY = {
+    rules = { module = "XayaUI", title = "XayaUI", label = "Rules and groups" },
+    themes = { module = "XayaUI", title = "XayaUI", label = "Themes" },
+    settings = { module = "XayaUI", title = "XayaUI", label = "Settings" },
+    qol = { module = "XayaUI_QoL", title = "XayaUI QoL", label = "QoL" },
+    bonus = { module = "XayaUI_Bonus", title = "XayaUI Bonus Features", label = "Bonus Features" },
+    reskin = { module = "XayaUI", title = "XayaUI", label = "Blizzard Reskin" },
 }
-P.BY_KEY = {}
-for _, c in ipairs(P.COMPONENTS) do P.BY_KEY[c.key] = c end
-
--- Never in a profile (personal data stays local; runtime state and one-time upgrade flags would break the other setup):
---   the Notepad's text, the Shopping List, the Recycle Bin, backups, drafts, logs, learned aura data (they are not in any component);
---   inside a component's tables: keys starting with "_", and the keys below.
-P.NEVER = {
-    ui = { defaultFolders = true, defaultFoldersV = true, folderOrdered = true, hybridMigrated = true, progressMigrated = true,
-        infoPanePos = true, trayOpen = true, consoleOpen = true, console = true, rulesSub = true, cur = true, fwd = true,
-        creatorIDs = true, recCats = true },
-    calculator = { history = true, point = true, x = true, y = true },
-    tooltips = { selfAura = true },          -- learned from your own buffs on this computer
-    chat2 = { whisperSounds = "list" },      -- the per-sender whisper sounds name other players: the list is left out, the rest stays
-}
-
-local function StripUnderscore(t, depth)
-    if type(t) ~= "table" or depth > 16 then return end
-    for k, v in pairs(t) do
-        if type(k) == "string" and k:sub(1, 1) == "_" then t[k] = nil
-        elseif type(v) == "table" then StripUnderscore(v, depth + 1) end
-    end
+local function Report(err) local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+local function PartInfo(data, key)
+    local i = type(data) == "table" and type(data.partInfo) == "table" and data.partInfo[key]
+    if type(i) == "table" then return i end
+    return P.LEGACY[key]
 end
-local function StripTable(dbKey, v)
-    if type(v) ~= "table" then return v end
-    StripUnderscore(v, 1)
-    local never = P.NEVER[dbKey]
-    if never then
-        for k, how in pairs(never) do
-            if how == true then v[k] = nil
-            elseif type(how) == "string" and type(v[k]) == "table" then v[k][how] = nil end
-        end
-    end
-    return v
-end
+-- the format version a pasted part was written in (1 when the string says nothing)
+function P.PartVersion(data, key) local i = PartInfo(data, key); return (type(i) == "table" and tonumber(i.v)) or 1 end
 
--- inc = { [component key] = true }; returns the profile data (not yet encoded)
+-- inc = { [part key] = true }; returns the profile data (not yet encoded)
 function P.Snapshot(inc, name)
     local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
     local okV, ver = pcall(get, ns.name or "XayaUI", "Version")
     local data = { v = 1, name = name or "", addonVersion = (okV and ver) or "", parts = {} }
     for _, c in ipairs(P.COMPONENTS) do
         if inc[c.key] then
-            if c.key == "rules" then
-                data.parts.rules = ns.Share_SnapshotAll({ rules = true, bars = true, qol = true }, name)
-            else
-                local part = {}
-                for _, k in ipairs(c.db) do
-                    local v = CueRulesDB and CueRulesDB[k]
-                    if v ~= nil then part[k] = StripTable(k, ns.Copy(v)) end
-                end
+            local ok, part = pcall(c.snapshot, name)
+            if ok and type(part) == "table" then
                 data.parts[c.key] = part
-            end
+                -- a part that is not one of the six format-1 parts, or a newer version of one, says what it is and which addon reads it
+                if not P.LEGACY[c.key] or c.version ~= 1 then
+                    data.partInfo = data.partInfo or {}
+                    data.partInfo[c.key] = { v = c.version, module = c.module, title = ns.AddonTitle and ns.AddonTitle(c.module) or c.module, label = c.label }
+                end
+            elseif not ok then Report(part) end
         end
     end
     return data
 end
 
--- the components a profile holds, in window order
+-- the registered parts a profile holds, in window order
 function P.Held(data)
     local out = {}
     local parts = type(data) == "table" and type(data.parts) == "table" and data.parts or {}
@@ -91,68 +82,87 @@ function P.Held(data)
     return out
 end
 
+-- the parts a profile holds that no loaded module registered: { key, label, title } in key order (Import: "needs <title>")
+function P.Missing(data)
+    local out = {}
+    local parts = type(data) == "table" and type(data.parts) == "table" and data.parts or {}
+    for key in pairs(parts) do
+        if not P.BY_KEY[key] then
+            local i = PartInfo(data, key) or {}
+            out[#out + 1] = { key = key, label = tostring(i.label or key), title = tostring(i.title or i.module or key) }
+        end
+    end
+    table.sort(out, function(a, b) return a.key < b.key end)
+    return out
+end
+
 function P.Describe(data)
     local names = {}
     for _, c in ipairs(P.Held(data)) do
-        if c.key == "rules" then names[#names + 1] = c.label .. " (" .. ns.Share_DescribeRules(data.parts.rules) .. ")"
+        if c.describe then
+            local ok, d = pcall(c.describe, data.parts[c.key])
+            names[#names + 1] = (ok and type(d) == "string") and (c.label .. " (" .. d .. ")") or c.label
         else names[#names + 1] = c.label end
     end
     if #names == 0 then return "an empty profile" end
     return "a profile with: " .. table.concat(names, "; ")
 end
 
--- never trust what was pasted: only known components, only their own saved tables, only tables (reskinTabOff: true or nothing)
+-- never trust what was pasted: each registered part cleans its own data; a part of a module that is not loaded is kept as it came
+-- (only when it names its addon, or is one of the format-1 parts) and is never applied; anything else is dropped
 function P.Check(data)
     if type(data.parts) ~= "table" then return nil, "This profile holds nothing XayaUI can read." end
-    local clean = {}
+    local clean, info = {}, {}
     for key, part in pairs(data.parts) do
         local c = P.BY_KEY[key]
-        if c and type(part) == "table" then
-            if key == "rules" then
-                local rk = ns.Share.kinds.rules
-                local okR, rr = pcall(rk.Check, part)
-                if okR and type(rr) == "table" then clean.rules = rr end
+        if type(key) == "string" and type(part) == "table" then
+            if c then
+                local ok, cp = pcall(c.check, part)
+                if ok and type(cp) == "table" then clean[key] = cp elseif not ok then Report(cp) end
             else
-                local cp = {}
-                for _, k in ipairs(c.db) do
-                    local v = part[k]
-                    if k == "reskinTabOff" then cp[k] = (v == true) or nil
-                    elseif type(v) == "table" then cp[k] = StripTable(k, v) end
-                end
-                clean[key] = cp
+                local i = type(data.partInfo) == "table" and data.partInfo[key]
+                if type(i) == "table" and type(i.module) == "string" then clean[key] = part
+                elseif P.LEGACY[key] then clean[key] = part end
+            end
+        end
+    end
+    if type(data.partInfo) == "table" then
+        for key, i in pairs(data.partInfo) do
+            if clean[key] ~= nil and type(i) == "table" then
+                local s = function(v) return (type(v) == "string" and #v <= 80) and v or nil end
+                info[key] = { v = tonumber(i.v), module = s(i.module), title = s(i.title), label = s(i.label) }
             end
         end
     end
     data.parts = clean
+    data.partInfo = next(info) and info or nil
     return data
 end
 
--- inc = { [component key] = true } (nil = every component the profile holds); rulesMode = "add" | "replace"
--- Settings components are MERGED: each saved value in the profile replaces yours; values the profile does not have stay as they are.
--- Returns { done = { labels }, rules = counts or nil, reload = true when a settings component was applied }
-function P.Apply(data, inc, rulesMode)
-    local res = { done = {} }
+-- inc = { [part key] = true } (nil = every part the profile holds); rulesMode = "add" | "replace" (the mode of the "rules" part);
+-- modes = { [part key] = mode } for any other part (nil: the part's default; every settings part today merges).
+-- Settings parts are MERGED: each saved value in the profile replaces yours; values the profile does not have stay as they are.
+-- Returns { done = { labels }, rules = counts or nil, reload = true when a part that needs a reload was applied,
+--   skipped = { addon titles } for held parts whose module is not loaded }
+function P.Apply(data, inc, rulesMode, modes)
+    local res = { done = {}, skipped = {} }
     local parts = data.parts or {}
     for _, c in ipairs(P.COMPONENTS) do
         local part = parts[c.key]
         if part ~= nil and (inc == nil or inc[c.key]) then
-            if c.key == "rules" then
-                res.rules = ns.Share_ApplyRules(part, rulesMode == "replace" and "replace" or "add")
+            local mode = (type(modes) == "table" and modes[c.key]) or (c.key == "rules" and rulesMode) or nil
+            local ok, r = pcall(c.apply, part, mode, P.PartVersion(data, c.key))
+            if ok then
+                if c.key == "rules" then res.rules = r end
+                if c.reload ~= false then res.reload = true end
+                res.done[#res.done + 1] = c.label
             else
-                for _, k in ipairs(c.db) do
-                    local v = part[k]
-                    if k == "reskinTabOff" then
-                        if v == true then CueRulesDB.reskinTabOff = true end
-                    elseif type(v) == "table" then
-                        local mine = CueRulesDB[k]
-                        if type(mine) ~= "table" then mine = {}; CueRulesDB[k] = mine end
-                        for kk, vv in pairs(v) do mine[kk] = ns.Copy(vv) end
-                    end
-                end
-                res.reload = true
+                Report(r)
             end
-            res.done[#res.done + 1] = c.label
         end
+    end
+    for _, m in ipairs(P.Missing(data)) do
+        if inc == nil or inc[m.key] then res.skipped[#res.skipped + 1] = m.title end
     end
     return res
 end
@@ -161,18 +171,20 @@ ns.Share.RegisterKind({
     kind = "profile", prefix = "XUIPROFILE1", version = 1, label = "a profile", changesSecureFrames = true,
     where = "Profiles are imported under Profiles > Import.",
     Strip = function(data)
-        local rk = ns.Share.kinds.rules
-        if type(data.parts) == "table" and type(data.parts.rules) == "table" and rk and rk.Strip then rk.Strip(data.parts.rules) end
+        if type(data.parts) ~= "table" then return end
+        for _, c in ipairs(P.COMPONENTS) do
+            if c.strip and type(data.parts[c.key]) == "table" then local ok, err = pcall(c.strip, data.parts[c.key]); if not ok then Report(err) end end
+        end
     end,
     Check = function(data) return P.Check(data) end,
     Describe = function(data) return P.Describe(data) end,
     -- mode: nil (the Import window: every component, rules added) or { inc = {...}, rules = "add" | "replace" }
     Apply = function(data, mode)
         local m = type(mode) == "table" and mode or {}
-        local r = P.Apply(data, m.inc, m.rules)
+        local r = P.Apply(data, m.inc, m.rules, m.modes)
         if r.reload then P.AskReload() end
         local c = r.rules or {}
-        return { rules = c.rules or 0, folders = c.folders or 0, bars = c.bars or 0, qol = c.qol or 0, done = r.done, reload = r.reload }
+        return { rules = c.rules or 0, folders = c.folders or 0, bars = c.bars or 0, qol = c.qol or 0, done = r.done, reload = r.reload, skipped = r.skipped }
     end,
 })
 

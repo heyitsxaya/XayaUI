@@ -137,7 +137,7 @@ section("D: Profiles", function()
   table.sort(ticks, function(a, b) return a.o < b.o end)
   local tn = {}
   for _, t in ipairs(ticks) do tn[#tn + 1] = t.n end
-  check("D: Export: one tick box per component", table.concat(tn, ", ") == "Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin", table.concat(tn, ", "))
+  check("D: Export: one tick box per component", table.concat(tn, ", ") == "Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin, Nameplates", table.concat(tn, ", "))   -- (Options 0.6.80: parts are registered by their modules; XayaUI Nameplates is on in this run and adds its own, plan 6.1)
   check("D: the Recycle Bin page is there (its Empty button)", p.args.bin and p.args.bin.args and (p.args.bin.args.empty ~= nil or p.args.bin.args.summary ~= nil))
   local picked = {}
   local realSelect = ACD.SelectGroup
@@ -153,7 +153,7 @@ end)
 
 section("E: the profile codec", function()
   local P = ns.Profile
-  check("E: the profile component list exists", P ~= nil and #P.COMPONENTS == 6)
+  check("E: the profile component list exists (the six parts plus Nameplates, which is on in this run; Options 0.6.80)", P ~= nil and #P.COMPONENTS == 7, P and #P.COMPONENTS)
   local DB = CueRulesDB
   DB.chat2 = DB.chat2 or {}
   DB.chat2.fadeMarker = 7

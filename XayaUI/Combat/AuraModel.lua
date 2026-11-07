@@ -27,6 +27,9 @@ if ns.engineFiles.AuraModel then return end
 ns.engineFiles.AuraModel = true
 local M = {}
 ns.AuraModel = M
+-- (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.4) offered to other modules as a service: XayaUI Bonus reads it only
+-- through ns.Service("AuraModel") and shows nothing extra without it. ns.AuraModel stays for the rule-tracking code itself.
+if ns.Provide then ns.Provide("AuraModel", M) end
 
 local issecret = issecretvalue or function() return false end
 local GetTime = GetTime

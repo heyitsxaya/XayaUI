@@ -107,6 +107,37 @@ loader:SetScript("OnEvent", function(self, _, name)
 end)
 
 ns.RegisterSettingsPage("qol", "nameplates", BuildPage)
+-- (0.2.2; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.1: "Nameplates registers its own part (fixes today's gap)") this addon's part
+-- of a profile (Profiles > Import / Export). It holds the target colour switch and colour. Left out: blizzBefore (the game's own
+-- nameplate options as they were on this computer before Match, for Put back). Applied by merging, like every settings part.
+local function CleanColor(c)
+    if type(c) ~= "table" then return nil end
+    local out = {}
+    for i = 1, 3 do local v = tonumber(c[i]); if not v then return nil end; out[i] = math.max(0, math.min(1, v)) end
+    return out
+end
+if ns.RegisterProfilePart then
+    ns.RegisterProfilePart({ key = "nameplates", label = "Nameplates", module = ADDON, order = 70, version = 1,
+        never = { blizzBefore = true },
+        snapshot = function()
+            local d = NP.DB()
+            return { targetColor = d.targetColor and true or false, color = CleanColor(d.color) }
+        end,
+        check = function(part)
+            local cp = {}
+            if type(part.targetColor) == "boolean" then cp.targetColor = part.targetColor end
+            cp.color = CleanColor(part.color)
+            return cp
+        end,
+        apply = function(part)
+            local d = NP.DB()
+            if type(part.targetColor) == "boolean" then d.targetColor = part.targetColor end
+            local c = CleanColor(part.color)
+            if c then d.color = c end
+            return { reload = true }
+        end,
+    })
+end
 -- for XayaUI Dev Assist's QA walkthrough (QAWalks-nameplates.lua): NP.DB, NP.Color, NP.TEAL, NP.Replacer, NP.TargetColor, NP.BlizzardOptions
 ns.Provide("nameplates", NP)
 ns.RegisterCommand("nameplates", Status, "/xui nameplates - XayaUI Nameplates: what is on, and whether your target's nameplate was found")

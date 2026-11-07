@@ -568,3 +568,10 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Esc Menu page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
+-- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+local TS = ns.Theme and ns.Theme.RegisterScope
+if TS then
+    TS({ id = "reskin.gamemenu", label = "Esc Menu", parent = "reskin" })
+end
+
