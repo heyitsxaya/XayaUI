@@ -366,7 +366,7 @@ QA.Register("perf-settings-window", { title = "Performance: the settings window 
 } })
 
 -------------------------------------------------------------------------------
--- J28: a click in the settings window with a rule open (Options 0.6.69; REQUEST-LOG A15 P-16: "clicking off options causes a 2s
+-- J31 (was J28 on its branch; the function audit holds J28): a click in the settings window with a rule open (Options 0.6.69; REQUEST-LOG A15 P-16: "clicking off options causes a 2s
 -- delay between click and actualization"; her target < 100 ms). The window now builds each rule's sidebar row only and the editor of
 -- the rule on screen when it is drawn. Data capture: the window's own timing of its last redraw (ns.perf: build + draw ms, skin ms).
 -------------------------------------------------------------------------------
@@ -384,7 +384,7 @@ local function OnScreenRule()
     for k in tostring(sel):gmatch("[^\001]+") do g = g and g.args and g.args[k] end
     return key, g
 end
-QA.Register("perf-settings-click", { title = "Performance: a click with a rule open (J28)", area = "Dev Assist", qa = "J28", order = 310, prefill = true, steps = {
+QA.Register("perf-settings-click", { title = "Performance: a click with a rule open (J31)", area = "Dev Assist", qa = "J31", order = 310, prefill = true, steps = {
     { text = "Open the settings window (|cff88ccff/xui|r), Rules tab, and click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw: under 100 ms is the goal (before: about 1.4 s per click with your rules).",
         check = function()
             local p = Perf()
