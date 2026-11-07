@@ -81,14 +81,14 @@ local function SetDP(v)
 end
 
 QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, text size", qa = "B213, B215, B220", order = 260, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r (your Data Panels and Theme text size are remembered; the last step puts them back).\n\n|cffffd100Expect:|r under the top tabs, Smart Categories, Enabled, Disabled and Drafts are the same width side by side, taller than before with outlined names, and |cffffd100Auto-Generate Rules|r sits apart at the far right.",
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r (your Data Panels and Theme text size are remembered; the last step puts them back).\n\n|cffffd100Expect:|r under the top tabs, Smart Categories, Enabled, Disabled and Drafts are the same width side by side with small even gaps (27 px tall, outlined names), and |cffffd100Auto-Generate Rules|r sits apart at the far right.",
         setup = function()
             Remember({ dp = function() return DPOn() end, size = function() local db = rawget(_G, "CueRulesDB"); return db and db.theme and db.theme.size end })
             Open("cooldowns", "smartTab")
         end,
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Click each Rules sub-tab in turn (Enabled, Disabled, Drafts), then press |cffffd100Check|r.\n\n|cffffd100Expect:|r nothing moves or changes width; no name is cut off (the last one is for your eyes).",
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Press |cffffd100Do it for me|r: Data Panels is switched off and its page opens (Bonus Features > Data Panels).\n\n|cffffd100Expect:|r one line, \"Shows info panels on your screen: time, gold, frame rate and more.\", and no tab row or empty box under it.",
         setup = function() SetDP(false); Open("bonus", "datapanels") end,
         check = function()
@@ -110,14 +110,14 @@ QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, te
             end
             return true, ("%d section tab(s), %d px tall, even"):format(#tabs, want)
         end },
-    { text = "Press |cffffd100Do it for me|r: the Theme's |cffffd100Text size|r is set to Large and the Rules tab opens.\n\n|cffffd100Expect:|r the Rules sub-tabs are taller and their names larger than at Medium (about 32 px instead of 28).",
+    { text = "Press |cffffd100Do it for me|r: the Theme's |cffffd100Text size|r is set to Large and the Rules tab opens.\n\n|cffffd100Expect:|r the Rules sub-tabs are taller and their names larger than at Medium (about 31 px instead of 27).",
         setup = function()
             local db = rawget(_G, "CueRulesDB"); if not db then return end
             db.theme = db.theme or {}; db.theme.size = "L"
             local ns = NS(); if ns and ns.Theme and ns.Theme.Changed then ns.Theme.Changed() end
             Open("cooldowns", "smartTab")
         end,
-        check = function() return CheckRules(math.floor(28 * Scale() + 0.5)) end },
+        check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
     { text = "Last step: press |cffffd100Do it for me|r to put Data Panels and the Theme text size back as they were.",
         setup = function()
             if not saved then return end

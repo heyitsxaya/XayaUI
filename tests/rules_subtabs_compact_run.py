@@ -5,7 +5,7 @@ Rules""), and a page's section tabs (UI-48, her answer "24 px, 11 pt, even row";
 (Before, Options 0.6.39: every Rules tab as wide as its text; this file kept its name.)
 Checks, for each Rules sub-tab selected and for a narrow row (where AceGUI would stretch the tabs): Smart Categories, Enabled,
 Disabled, Drafts share the row evenly from its left edge; Auto-Generate Rules sits apart at the far right (16 px after the others);
-every tab 28 px tall with its name at 12 pt, outlined; the same widths and places whichever sub-tab is selected.
+every tab 27 px tall with its name at 11.5 pt, outlined, each 90% of its even share (UI-76, O-146); the same widths and places whichever sub-tab is selected.
 Section tabs (Bonus Features > Data Panels): while Data Panels is off, no tab and no fill under the page (only its one sentence);
 while on, its tabs share the row evenly, 24 px tall, 11 pt, outlined.
 Limits of the stand-in: its tab labels measure 0 px wide (Auto-Generate Rules' width is then the 24 px padding, which the check allows);
@@ -60,20 +60,21 @@ local function sizeOK(lay, H, PT)
   end
   return true
 end
--- Smart Categories .. Drafts even and side by side from the left edge; Auto-Generate Rules at the right edge, 16 px after them
+-- Smart Categories .. Drafts: each 90% of an even share of the row (UI-76, O-146: "a little narrower"), from the left edge, equal gaps;
+-- Auto-Generate Rules at the right edge, 16 px after the last share
 local function rulesRow(w, lay)
   local W0 = w.frame.width or w.frame:GetWidth()
   local others, cr = {}, nil
   for _, e in ipairs(lay) do if e.value == "creatorTab" then cr = e else others[#others + 1] = e end end
   if not cr or #others ~= 4 then return false, "tabs: " .. #others .. (cr and " + creator" or " no creator") end
+  local slot = (W0 - cr.w - 16) / 4
   for i, e in ipairs(others) do
-    if math.abs(e.w - others[1].w) > 0.5 or math.abs(e.x - (i - 1) * others[1].w) > 0.5 then
-      return false, ("%s %.1f wide at %.1f (first %.1f)"):format(tostring(e.text), e.w, e.x, others[1].w)
+    if math.abs(e.w - slot * 0.9) > 0.5 or math.abs(e.x - (i - 1) * slot) > 0.5 then
+      return false, ("%s %.1f wide at %.1f (want %.1f at %.1f)"):format(tostring(e.text), e.w, e.x, slot * 0.9, (i - 1) * slot)
     end
   end
-  local lastR = others[4].x + others[4].w
   if math.abs(cr.x + cr.w - W0) > 0.5 then return false, ("creator ends at %.1f, row %.1f"):format(cr.x + cr.w, W0) end
-  if math.abs(cr.x - lastR - 16) > 0.5 then return false, ("gap before creator %.1f"):format(cr.x - lastR) end
+  if math.abs(cr.x - 4 * slot - 16) > 0.5 then return false, ("gap before creator %.1f"):format(cr.x - 3 * slot - others[4].w) end
   if cr.text ~= "Auto-Generate Rules" then return false, tostring(cr.text) end
   return true
 end
@@ -85,9 +86,9 @@ for _, sub in ipairs({ "smartTab", "enabledTab", "disabledTab", "draftsTab" }) d
   if not w then return R end
   local lay = layout(w)
   local ok, why = rulesRow(w, lay)
-  check(sub .. " selected: four tabs share the row evenly, Auto-Generate Rules apart at the far right", ok, why)
-  ok, why = sizeOK(lay, 28, 12)
-  check(sub .. " selected: every tab 28 px tall, its name 12 pt outlined", ok, why)
+  check(sub .. " selected: four even tabs, each 90% of its share (UI-76), Auto-Generate Rules apart at the far right", ok, why)
+  ok, why = sizeOK(lay, 27, 11.5)
+  check(sub .. " selected: every tab 27 px tall, its name 11.5 pt outlined (UI-76: 4% smaller)", ok, why)
   if not first then first = lay
   else
     local same, why2 = #lay == #first, ""
@@ -128,8 +129,8 @@ do
   CueRulesDB.theme.size = "L"
   ACD:SelectGroup("CueRules", "cooldowns", "draftsTab"); W.tick(0.3, 3)
   local rw = findRow(ACD.OpenFrames["CueRules"])
-  local ok2, why2 = sizeOK(rw and layout(rw) or {}, 32, 13.8)
-  check("theme text size Large: Rules tabs 32 px, names 13.8 pt (UI-50)", rw ~= nil and ok2, why2)
+  local ok2, why2 = sizeOK(rw and layout(rw) or {}, 31, 13.2)
+  check("theme text size Large: Rules tabs 31 px, names 13.2 pt (UI-50: 27 x 1.15, 11.5 x 1.15)", rw ~= nil and ok2, why2)
   CueRulesDB.theme.size = keep
   ACD:SelectGroup("CueRules", "cooldowns", "smartTab"); W.tick(0.3, 3)
 end

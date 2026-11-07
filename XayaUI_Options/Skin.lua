@@ -510,9 +510,12 @@ local function CompactRulesTabs(w)
     local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
     local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
     cw = math.min(cw, math.floor(width / 3))
-    local each = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
+    -- (Options 0.6.66; UI-76, O-146: "make these tabs a little narrower and maybe 3-5% smaller") each tab ns.Style.tabSub.share (90%) of
+    -- its even share of the row, from the left edge, the spare width as equal gaps after each tab
+    local slot = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
+    local each = slot * (ns.Style.tabSub.share or 1)
     local slots = {}
-    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, (i - 1) * slot, each } end
     slots[#slots + 1] = { creator, width - cw, cw }
     LayTabRow(w, slots, SUB_TAB_H, SUB_TAB_FONT)
 end
