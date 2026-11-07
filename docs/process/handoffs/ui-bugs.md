@@ -3,29 +3,24 @@ Written for O-152 (HUB-HANDOFF-2026-11-07.md protocol). Branch: claude/ui-bugs-f
 Successor: read this file, then `git log --oneline origin/main..origin/claude/ui-bugs-focused`, then docs/process/REQUEST-LOG.md
 section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/DISPLAY-RULES.md + BUILD-RULES.md.
 
-## 1. State right now
-- Branch tip a06a418, linear on top of main 7b830cf. Commits not on main (oldest first):
-  - 045e36d: UI-70, row icons (Options 0.6.64, Dev Assist 0.7.13).
-  - 05e3c99: UI-71, Auto-Generate (Options 0.6.65, Dev Assist 0.7.14).
-  - da43f11: docs only.
-  - 6be9033: UI-76 (core 0.6.67, Options 0.6.66, Dev Assist 0.7.18).
-  - 0acb900: checklist walks regenerated for B228-B230 (fixes the qa_walk_run sync fail found on 045e36d / 05e3c99 / 6be9033).
-  - b150613 + c3eee1f (MANIFEST): UI-77 part 1 (core 0.6.68, Options 0.6.67, Dev Assist 0.7.19).
-  - b4cc411: UI-78 (core 0.6.69, Dev Assist 0.7.20).
-  - 5ce2d2b: UI-77 follow-up (repaint from Theme.Resolve, not a theme listener).
-  - a06a418: UI-77 part 2 (QoL 0.7.42, Dev Assist 0.7.21).
-  - 00ef0d4: this handoff (docs only).
-  - ee5362c: UI-65, hover texts (core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8, Dev Assist 0.7.22).
-- Full suites:
-  - 0acb900 and 5ce2d2b running when written (scratchpad snapshots, both 0 FAIL at ~75-80%).
-  - a06a418 not started separately: run the suite on ee5362c (the tip), which holds a06a418 and UI-65.
-  - Each green hash goes to the lander session_014bN6tSZh6UFB2WcRuyXqBZ with the suite result and versions. Only the lander pushes main.
-- UI-65 is committed (ee5362c). Its old -> new list: docs/reference/HOVER-REWRITES-UI-65-2026-11-07.md. Bonus Notepad.lua's long texts
-  were left out on purpose (the function-audit session owns that file); the walkthrough ui-short-hovers lists them.
-- Version clashes for the lander / registry (UI-65 took numbers above every registry claim: core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8):
-  - Core: the registry gives this session 0.6.67 only (used by UI-76), but 0.6.68 (UI-77) and 0.6.69 (UI-78) are taken by the chat round and externals.
-  - Options: 0.6.64 vs d8-raid-rules-main / function-audit-land; 0.6.65 vs perf-*; 0.6.66 vs settings-restructure 8558687 (asked them to renumber).
-  - Dev Assist: 0.7.13-0.7.21, contested; the lander relabels.
+## 1. State right now (updated 2026-11-07 ~11:45 UTC)
+- Branch claude/ui-bugs-focused tip f8d88a6 = all of this session's work merged with main bf2ce6a. It holds UI-65 (hover texts),
+  UI-70 (row icons), UI-71 (Auto-Generate), UI-76 (Rules sub-tab sizes, O-146), UI-77 (flat buttons from core + Shopping List
+  auto-show, O-139) and UI-78 (Select string, O-128).
+  - 29532e5 is the same work merged with main bfc79ef. The commits before it (045e36d ... ee5362c) are in both merges; do not land them alone.
+- Landing 5 (the last before Xaya wakes), as the hub decided:
+  - The top tabs branch's fcb8bc3 contains 29532e5 (merged with main, Skin.lua resolved, 4 more long hovers fixed). The lander lands fcb8bc3 if its suite passes; 29532e5 alone is the fallback; f8d88a6 was also sent with precheck + 22 targeted tests passing.
+  - Full suite on 29532e5: see SUITE RESULT below.
+- Versions on f8d88a6:
+  - core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.27, Reskin 0.6.8, Dev Assist 0.7.22;
+  - the lander relabels clashes.
+- SUITE RESULT (29532e5): PENDING
+- UI-65's old -> new list: docs/reference/HOVER-REWRITES-UI-65-2026-11-07.md. Bonus Notepad.lua's long texts were left out on purpose
+  (the function-audit session owns that file); the walkthrough ui-short-hovers lists them.
+- Working tree clean; nothing uncommitted.
+- After landing, check on main:
+  - `git log origin/main --oneline | grep -i "UI-65\|UI-7[0-8]"`, or the versions above in the tocs;
+  - if the tocs carry other numbers, the lander relabelled them.
 
 ## 2. Questions sent to the QA flow (session_014bN6tUZLKHa2NXorHRJghL), 2026-11-07 ~09:00 UTC
 - Q-UIB-1: console close X stays Blizzard's (UI-77).
@@ -38,12 +33,12 @@ section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/
 - Q-UIB-8: hover-text wording (UI-65).
 
 ## 3. Next steps (cold start)
-1. Land the chain:
+1. (Done by this session: sent to the lander; see section 1.) If none of fcb8bc3 / 29532e5 / f8d88a6 is on main when you start, land the chain:
    - 0acb900 when its suite is green (UI-70/71/76).
    - Then 5ce2d2b (UI-77 part 1, UI-78).
    - Then a06a418 (UI-77 part 2): run `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` on that exact commit, plus `python3 tools/precheck.py --base origin/main` (must be FAILS 0).
    If main moved: merge main in, rerun the suite on the merge commit, then send it.
-2. UI-65: committed at ee5362c; full suite on ee5362c, then send it to the lander.
+2. UI-65: committed (ee5362c) and in the merges above.
 3. UI-47 step 3: a tab-by-tab audit of every settings page against DISPLAY-RULES.md, for display types with no ruling yet. Fix what a rule covers. Send each new choice to the QA flow (no questions to her, O-108 / O-150).
 4. UI-51 / UI-52 (shared tooltip helper + services refactor, BUILD-RULES A/B) only after the perf session's baseline (UI-55: "Baseline, refactor, test").
 5. Map #30 / B150: mark "resolved: game setting (miniWorldMap CVar), workaround given, no code change" in the logs.
@@ -126,17 +121,17 @@ Nothing here has been seen in game unless it says so.
 | UI-62 | "Global Cooldown should be GCD / Critical strike effectiveness should be title cased like every other line" [screenshot: the character window's stat list: General > Health, Mana, Holy Power, Global cooldown, Movement speed; Offensive > ... Critical strike effectiveness] | on main 7b830cf (baee9ac; not seen in game) |
 | UI-63 | "GCD is generally universal in my understanding and is modified by haste except for energy-resource classes — confirm on wowhead first and then look into GCD scaling to see if it’s universally uniform where haste reduces the GCD. If so, this should be a standardized calculation" | on main 7b830cf (baee9ac; not seen in game) |
 | UI-64 | Her answer (question box) to UI-63, after the research (docs/reference/GCD-RESEARCH-2026-11-07.md): "Formula + live check (Recommended)" (one shared GCD calculation: 1.5 s / (1 + haste) with a 0.75 s floor, or 1.0 s fixed for energy melee: Rogue, Cat Form Feral, Brewmaster, Windwalker; the live reading still shown, and the line says so when it differs) | on main 7b830cf (baee9ac; not seen in game) |
-| UI-65 | "Reiterating need for briefer, more direct, more user-legible tooltips" [screenshot of Discord: Insivius "this tooltip is hilarious" on the Enable Chat Panel hover (v0.6.57: "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."); Xaya "lol how come?"; Insivius "It's just very wordy"; Insivius: "Put something like "Uncheck to restore Blizzard default chat. /reload to clear XUI settings from the panel after deactivating.""] | branch claude/ui-bugs-focused@ee5362c (core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8, Dev Assist 0.7.22; QA B234) |
+| UI-65 | "Reiterating need for briefer, more direct, more user-legible tooltips" [screenshot of Discord: Insivius "this tooltip is hilarious" on the Enable Chat Panel hover (v0.6.57: "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."); Xaya "lol how come?"; Insivius "It's just very wordy"; Insivius: "Put something like "Uncheck to restore Blizzard default chat. /reload to clear XUI settings from the panel after deactivating.""] | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
 | UI-66 | (relayed 2026-11-07 ~00:20 UTC by the coordinator 014bN6tSStpdmmCXviFAqPdQ; her words) "Coordinate with the new session to be able to finish up work in ui bugs session and push to main so the new session can review the new work on top of the old work" | process: finish + land (in progress) |
 | UI-67 | "Review Deja character stats as well because they also track GCs" (after UI-63 / UI-64, the standard GCD) | on main 7b830cf (baee9ac; not seen in game) |
 | UI-68 | (standing rule V21, relayed 2026-11-07 ~05:55 UTC by the coordinator; her words) "As a standing rule, make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing"; to the landing session: only branches that "still land cleanly and have qa test scripting for in game confirmation prompting available" land this round | on main 7b830cf (baee9ac; not seen in game) |
 | UI-69 | "indents are now TOO large" [screenshot: the Blizzard UI Reskin tab's left pane: Overview; (-) tick Character Pane, its part Stat list far to the right of the parent's name; (-) tick Chat Panel, its parts Layout, Appearance, Chat Data Panel, Fade and hide, Filters, History, Sounds, Privacy far to the right; Esc Menu, Shopping List] | on main 7b830cf (the code fix: Options 0.6.63, a part with no tick box keeps no empty slot); test + walkthrough on the branch |
-| UI-70 | "icons still not appropriately handled and display irregularly" [4 screenshots, Rules tab: Smart Categories rows Icons (94), Progress Textures (9), Text (96), Sounds (4) each with eye (crossed), a red + overlapping it, a crossed speaker, lock, note; Textures (1) shows only the red +; Enabled: LOADED (7) header with eye and a red - then lock, note; group VDH (7) with up/down arrows and a + at its left, eye, crossed speaker, lock, note; NOT LOADED (... header with eye and + overlapping, lock, note; Disabled: DISABLED (84) header with only a red - then lock, note; groups with + at the left, eye, sometimes a crossed speaker, lock, note] | branch claude/ui-bugs-focused@0acb900 (Options 0.6.64; full suite running, to lander when green) |
-| UI-71 | "this needs work, it's too noisy. one icon, four buttons" [screenshot: Rules > Auto-Generate Rules, "Auto-populate my class / spec": per spec (Havoc, Vengeance, Devourer) four long buttons each with the spec icon ("Generate All Rules for Havoc", "Generate CD Tracking Rules for Havoc", "Generate Aura Tracking Rules for Havoc", "Generate Target Debuff Tracking Rules for Havoc"), then four for "my class" without an icon] | branch claude/ui-bugs-focused@0acb900 (Options 0.6.65) |
-| UI-72 | Her answers (question box): row icons (UI-70): "copy the WA format w/ toggle being under group as previously suggested"; Auto-Generate Rules buttons (UI-71): "icon | branch claude/ui-bugs-focused@0acb900 (both parts built: UI-70, UI-71) |
+| UI-70 | "icons still not appropriately handled and display irregularly" [4 screenshots, Rules tab: Smart Categories rows Icons (94), Progress Textures (9), Text (96), Sounds (4) each with eye (crossed), a red + overlapping it, a crossed speaker, lock, note; Textures (1) shows only the red +; Enabled: LOADED (7) header with eye and a red - then lock, note; group VDH (7) with up/down arrows and a + at its left, eye, crossed speaker, lock, note; NOT LOADED (... header with eye and + overlapping, lock, note; Disabled: DISABLED (84) header with only a red - then lock, note; groups with + at the left, eye, sometimes a crossed speaker, lock, note] | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
+| UI-71 | "this needs work, it's too noisy. one icon, four buttons" [screenshot: Rules > Auto-Generate Rules, "Auto-populate my class / spec": per spec (Havoc, Vengeance, Devourer) four long buttons each with the spec icon ("Generate All Rules for Havoc", "Generate CD Tracking Rules for Havoc", "Generate Aura Tracking Rules for Havoc", "Generate Target Debuff Tracking Rules for Havoc"), then four for "my class" without an icon] | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
+| UI-72 | Her answers (question box): row icons (UI-70): "copy the WA format w/ toggle being under group as previously suggested"; Auto-Generate Rules buttons (UI-71): "icon | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
 | UI-73 | "most ui feedback items I've delivered today are still missing. catch literally everything you've missed please and stop dropping the ball on my requests. I shouldn't have to tell you this every day, multiple times a day" | process: this status pass |
 | UI-74 | (reply to "Most of today's work is still on my branch and has missed three landing rounds") "why does this keep happening? it needs to stop happening. this is a consistent issue for today and yesteday" | standing (one request = one landing) |
 | UI-75 | (relayed by the coordinator, O-108, 2026-11-07 ~06:00 UTC; her words) "for the love of everything, ship everything I asked for today and stop asking me questions until everything that is more than 6h old is completed and on main" | standing (no questions; conservative readings to the QA flow) |
-| UI-76 | (relayed O-146) "make these tabs a little narrower and maybe 3-5% smaller" [screenshot: the Rules sub-tab row: Smart Categories, Enabled, Disabled (selected), Drafts; Auto-Generate Rules apart at the right] | branch claude/ui-bugs-focused@0acb900 (core 0.6.67, Options 0.6.66) |
-| UI-77 | (relayed O-139) "reloading with console open failed to reskin buttons and shopping list keeps popping up but there's no reason for it to show" [screenshot: the console's What to send / Copy / Clear / Bug report buttons and its close X in Blizzard's red look; the Shopping List showing only "Recraft: Silvermoon Agent's Handwraps" 0/x] | part 1 branch claude/ui-bugs-focused@5ce2d2b (core 0.6.68, Options 0.6.67); part 2 @a06a418 (QoL 0.7.42); suites: 5ce2d2b running, a06a418 next |
-| UI-78 | (relayed O-128) "copy string button doesn't copy" (/xui report window) | branch claude/ui-bugs-focused@5ce2d2b (core 0.6.69) |
+| UI-76 | (relayed O-146) "make these tabs a little narrower and maybe 3-5% smaller" [screenshot: the Rules sub-tab row: Smart Categories, Enabled, Disabled (selected), Drafts; Auto-Generate Rules apart at the right] | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
+| UI-77 | (relayed O-139) "reloading with console open failed to reskin buttons and shopping list keeps popping up but there's no reason for it to show" [screenshot: the console's What to send / Copy / Clear / Bug report buttons and its close X in Blizzard's red look; the Shopping List showing only "Recraft: Silvermoon Agent's Handwraps" 0/x] | branch claude/ui-bugs-focused@f8d88a6, both parts (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
+| UI-78 | (relayed O-128) "copy string button doesn't copy" (/xui report window) | branch claude/ui-bugs-focused@f8d88a6 (sent to the lander for landing 5; in fcb8bc3 via 29532e5) |
