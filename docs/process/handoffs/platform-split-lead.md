@@ -14,6 +14,12 @@ section 15 = the execution order), then `.claude/skills/xayaui-change/SKILL.md`.
   branch has uncommitted Dev Assist changes and no worker is running, the worker was lost: check `git status` and finish or redo it.
 - Next: P1 (platform services), then P2, P3, P4 (needs her answers B2 = module name, B3 = Release Guard / D8), P5/P6, then debugging.
 
+## State update (2026-11-07 ~22:30 UTC, lead session_014bN6tX5sAfcgMXdDw6XsNU)
+- On main: P0.5 c00811e, P1 2d075a5, P2 bd03eb5, P3 8ced2e3, P4 232552d (module "XayaUI Rules", folder `XayaUI_Rules`, B2 answered PS-51; D8 parked). Patch Notes up to 767b498.
+- Waiting on Xaya: H14 in-game test of P4 (push sent). P5 also needs A11 and B8-B11 (Open Questions doc).
+- Built, held until H14 passes: P4b (rule editor in load-on-demand `XayaUI_Rules_Options`), commit 98467fb, draft PR #493.
+- Archiving sessions is blocked by the permission classifier (C16 in the doc).
+
 ## How Xaya wants to work (her words and rules; all binding)
 - She has stepped away (2026-11-07): "Ping me from a single appropriate source when you need something from me. Otherwise, I'm
   stepping away and not interfering". Single source = **one push notification** when a phase needs her (e.g. B2 / B3 before P4,
