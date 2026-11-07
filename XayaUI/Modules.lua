@@ -531,6 +531,39 @@ ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and 
 end)
 
 -------------------------------------------------------------------------------
+-- 8b. Tooltips: one helper draws XayaUI's own hover texts (core 0.6.73; REQUEST-LOG UI-51 / UI-52, BUILD-RULES.md B3: "one shared
+-- helper draws every XayaUI tooltip"; order UI-55 "Baseline, refactor, test"). It only forwards to GameTooltip, in the same order
+-- the units called it before, so no tooltip changes (tests/tooltip_parity_run.py records every call before and after). No state,
+-- no frames, no events: it costs nothing until something is hovered. Game-object tooltips (SetSpellByID, SetItemByID, ...) stay
+-- direct calls.
+--   ns.Tip.Show(owner, anchor, title, lines)
+--     title: "text" -> SetText(text); { text, r, g, b } -> SetText(text, r, g, b); { text, r, g, b, add = true } -> AddLine(...)
+--     lines: list of "text" -> AddLine(text), or { text, r, g, b, wrap } -> AddLine(text, r, g, b, wrap)
+--   ns.Tip.Hide()
+-------------------------------------------------------------------------------
+ns.Tip = ns.Tip or {}
+local function TipLine(tip, l, set)
+    if type(l) == "table" then
+        if set and not l.add then
+            if l[2] ~= nil then tip:SetText(l[1], l[2], l[3], l[4]) else tip:SetText(l[1]) end
+        elseif l[5] ~= nil then tip:AddLine(l[1], l[2], l[3], l[4], l[5])
+        elseif l[2] ~= nil then tip:AddLine(l[1], l[2], l[3], l[4])
+        else tip:AddLine(l[1]) end
+    elseif l ~= nil then
+        if set then tip:SetText(l) else tip:AddLine(l) end
+    end
+end
+function ns.Tip.Show(owner, anchor, title, lines)
+    local tip = GameTooltip
+    if not tip then return end
+    tip:SetOwner(owner, anchor)
+    if title ~= nil then TipLine(tip, title, true) end
+    if type(lines) == "table" then for i = 1, #lines do TipLine(tip, lines[i], false) end end
+    tip:Show()
+end
+function ns.Tip.Hide() if GameTooltip then GameTooltip:Hide() end end
+
+-------------------------------------------------------------------------------
 -- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon
 -- world map full screen], 2026-11-06: it happens "only with XayaUI on"). NOT a fix: the cause was not found offline (debug log of QoL
 -- 0.7.24). What decides it in Blizzard's code (12.1.5 source, read 2026-11-06): the map opens maximized (full screen, black around it)

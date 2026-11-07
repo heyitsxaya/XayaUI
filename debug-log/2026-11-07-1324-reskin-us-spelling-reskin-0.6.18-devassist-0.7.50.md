@@ -1,4 +1,4 @@
-# Reskin player-facing text in US spelling (Reskin 0.6.18, Dev Assist 0.7.49)
+# Reskin player-facing text in US spelling (Reskin 0.6.18, Dev Assist 0.7.50; main took 0.7.49 when it merged 340b418)
 
 Logged 2026-11-07 13:24 UTC. Session 014bN6tSvVzc2HRgXhwF3J2L (reskin successor), branch `claude/determined-cerf-981pn8`. The lander
 reminded this session that player-facing text is US spelling (the qa_walk_audit FA-16 rule).

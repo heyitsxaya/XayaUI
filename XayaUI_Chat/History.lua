@@ -521,8 +521,8 @@ local function Refresh(s)
         end
         btn:SetAlpha(0.35)
         btn:SetScript("OnClick", function() C.History_Toggle() end)
-        btn:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Chat history"); GameTooltip:AddLine("Copy recent messages", 1, 1, 1); GameTooltip:Show() end)
-        btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
+        btn:SetScript("OnEnter", function(self) self:SetAlpha(1); ns.Tip.Show(self, "ANCHOR_LEFT", "Chat history", { { "Copy recent messages", 1, 1, 1 } }) end)
+        btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); ns.Tip.Hide() end)
     end
     -- at the right end of the tab row, where the tabs stop short of it (Frame.lua, C.HIST_RESERVE). Not under the tab row: the
     -- Chat Panel's scroll bar starts there and its up arrow was covered. With the tab row hidden: the text area's top-right corner,

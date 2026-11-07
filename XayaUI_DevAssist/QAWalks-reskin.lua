@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.49): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.18 (BlizzardSkins.lua): Blizzard's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.50): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.18 (BlizzardSkins.lua): Blizzard's
 -- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles, status bars, minimap buttons and the buttons inside Blizzard's windows in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
