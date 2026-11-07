@@ -357,3 +357,42 @@ QA.Register("ui-row-icons", { title = "Rules list: icons in fixed columns (WeakA
     { text = "Look through Smart Categories and Disabled too.\n\n|cffffd100Expect:|r the same columns everywhere; tell us in the note if any row still looks off.",
         noVerdict = true },
 } })
+
+-------------------------------------------------------------------------------
+-- 9. Auto-Generate Rules: one icon, four buttons (Options 0.6.65; UI-71: "this needs work, it's too noisy. one icon, four buttons";
+-- her answer "icon | four lines")
+-------------------------------------------------------------------------------
+local function CreatorArgs()
+    local reg = LibStub and LibStub("AceConfigRegistry-3.0", true)
+    local t = reg and reg:GetOptionsTable("CueRules", "dialog", "AceConfigDialog-3.0")
+    if type(t) == "function" then t = t("dialog", "AceConfigDialog-3.0") end
+    local found
+    local function walk(g, d) if type(g) ~= "table" or d > 12 or found then return end
+        if g.type == "group" and g.name == "Auto-Generate Rules" then found = g; return end
+        for _, o in pairs(type(g.args) == "table" and g.args or {}) do walk(o, d + 1) end end
+    walk(t, 0)
+    return found and found.args
+end
+QA.Register("ui-autogen-layout", { title = "Auto-Generate Rules: one icon, four buttons per spec", qa = "B229", order = 268, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Rules > Auto-Generate Rules opens.\n\n|cffffd100Expect:|r for each spec: its icon once at the left, and its four buttons (Generate All Rules for <spec>, CD Tracking, Aura Tracking, Target Debuff Tracking) as four lines beside it; the buttons carry no icon of their own. Your class's four buttons the same, without an icon.",
+        setup = function() Open("cooldowns", "creatorTab") end,
+        check = function()
+            local a = CreatorArgs()
+            if not a then return false, "the Auto-Generate Rules page was not found (open the settings window once)" end
+            local specs, bad = 0, {}
+            for i = 1, 4 do
+                local p = "apSpec" .. i
+                if a[p .. "all"] then
+                    specs = specs + 1
+                    if not (a[p .. "Ic1"] and a[p .. "Ic1"].image) then bad[#bad + 1] = p .. ": no icon" end
+                    for j = 2, 4 do if a[p .. "Ic" .. j] and a[p .. "Ic" .. j].image then bad[#bad + 1] = p .. ": a second icon" end end
+                    for _, f in ipairs({ "all", "cd", "aura", "debuff" }) do
+                        if tostring(a[p .. f] and a[p .. f].name):find("|T", 1, true) then bad[#bad + 1] = p .. f .. ": icon on the button" end
+                    end
+                end
+            end
+            if specs == 0 then return false, "no spec buttons found" end
+            return #bad == 0, #bad == 0 and (specs .. " spec(s): one icon each, four buttons as four lines") or table.concat(bad, "; ")
+        end },
+    { text = "Your look: is it calm enough now? Pass if yes; Fail and say what is still noisy.", noVerdict = true },
+} })

@@ -3729,13 +3729,21 @@ function BuildClassCreator()
     -- class; each loads its own list into the table below and nothing is listed before one is pressed. Spec buttons keep the spec's own
     -- icon (specs come from the game, so any class works). Width 3.0 (about 460 px; ESTIMATE from the old 1.6-wide button, about 246 px in her screenshot) holds the longest label, a Target Debuff label with an 11-letter spec; buttons wrap to the next line when the pane is narrow.
     local FILTER_DESC = { all = "cooldowns, auras and target debuffs", cd = "cooldowns", aura = "auras on you", debuff = "target debuffs" }
+    -- (Options 0.6.65; REQUEST-LOG UI-71, Xaya 2026-11-07: "this needs work, it's too noisy. one icon, four buttons"; her answer UI-72
+    -- "icon | four lines") per spec: its icon once, at the left, and its four buttons as four lines beside it (each button has her
+    -- label, verbatim, GEN-3; before: the icon on every button and two buttons per line). The class's four the same, with no icon.
+    local ICON_W, BTN_W = 0.08, 0.88   -- (icon column; the button wide enough for the longest label at the default window width, ESTIMATE)
     local function GenButtons(prefix, base, target, icon, specID)
         for j, f in ipairs(ns.AutoPicker.FILTERS) do
-            args[prefix .. f.filter] = { type = "execute", order = base + j * 0.001, width = 3.0, xuiCenter = true,
-                name = (icon and ("|T" .. icon .. ":16|t ") or "") .. ns.AutoPicker.ButtonLabel(f.filter, target),
+            local o = base + j * 0.001
+            args[prefix .. "Ic" .. j] = { type = "description", order = o - 0.0005, width = "relative", relWidth = ICON_W, name = " ",
+                image = (j == 1) and icon or nil, imageWidth = 24, imageHeight = 24, arg = { xuiKeep = true } }
+            args[prefix .. f.filter] = { type = "execute", order = o, width = "relative", relWidth = BTN_W,
+                name = ns.AutoPicker.ButtonLabel(f.filter, target),
                 desc = "Lists the " .. FILTER_DESC[f.filter] .. " of " .. (specID == "all" and "every spec of your class" or (tostring(target) .. " (" .. (UnitClass("player") or "your class") .. ")"))
                     .. " in the table below (nothing is made yet).",
                 func = function() ns.AutoPicker.Load(specID, f.filter); Notify() end }
+            args[prefix .. "Br" .. j] = { type = "description", order = o + 0.0004, width = "full", name = "", fontSize = "small", arg = { xuiKeep = true } }
         end
     end
     for i = 1, (GetNumSpecializations and GetNumSpecializations() or 0) do
