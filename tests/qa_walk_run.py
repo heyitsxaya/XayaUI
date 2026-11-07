@@ -33,7 +33,7 @@ local Wn = QA.Window()
 check("/xui dev qa opens the list", Wn and Wn:IsShown() and Wn.title:GetText() == "XayaUI QA walkthroughs")
 local shown = 0
 for _, r in ipairs(Wn.rows) do if r:IsShown() then shown = shown + 1 end end
-check("  ...one row per walkthrough, each with its status", shown == #QA.list and Wn.rows[1].status:GetText():find("not run", 1, true) ~= nil, shown)
+check("  ...one row per walkthrough, each with its status", shown == #QA.list and Wn.rows[1].status:GetText():find("Not run", 1, true) ~= nil, shown)
 QA.Toggle()
 check("  ...and closes again", not Wn:IsShown())
 SlashCmdList.XAYAUIDEV("qa")
@@ -141,8 +141,8 @@ check("  ...and the export code carries it", sback and sback.steps[1].a == sres.
 -- list status after a run
 QA.Toggle(); QA.Toggle()
 local gp
-for i, id in ipairs(QA.list) do if id == "group-page" then gp = Wn.rows[i] end end
-check("the list shows the last result of a walkthrough", gp and gp.status:GetText():find("1 failed", 1, true) ~= nil, gp and gp.status:GetText())
+for _, r in ipairs(Wn.rows) do if r:IsShown() and r.id == "group-page" then gp = r end end
+check("the list shows the last result of a walkthrough", gp and gp.status:GetText():find("Failed", 1, true) ~= nil, gp and gp.status:GetText())
 -- audit D35 (Dev Assist 0.7.19): a group of the player's own called "QA test group" is never reused or deleted by a walkthrough
 do
   local mine = ns.NewFolder("QA test group")

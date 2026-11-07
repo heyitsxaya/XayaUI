@@ -206,7 +206,7 @@ QA.Register("audit-groups", { title = "Groups: arrangement holds still, Snap, mo
 -------------------------------------------------------------------------------
 -- Backup Load (replace) keeps the built-in categories (D40): only checked, never run for you (it replaces your rules)
 -------------------------------------------------------------------------------
-QA.Register("audit-backup-replace", { title = "Backups: Load (replace) keeps the built-in categories (D40)", qa = "B223", order = 304, prefill = true, steps = {
+QA.Register("audit-backup-replace", { title = "Backups: loading a backup in place of your rules keeps the built-in rule categories (D40)", qa = "B223", order = 304, prefill = true, steps = {
     { text = "This one you do by hand, because Load (replace) swaps out all your rules. Settings > Import / Export > Backups: |cffffd100Save|r a backup, then |cffffd100Load (replace)|r that same backup. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r Display Cues, Sound Cues, Hybrid Cues, Advanced Cue Tracking and Mouse Cursor Cues are still the built-in categories (a rule in Display Cues has no sound options). The check counts the categories it finds.",
         check = function()
             local ns = NS(); if not ns then return false, "XayaUI is not loaded" end
@@ -380,7 +380,7 @@ QA.Register("audit-bin-words", { title = "Recycle Bin keep time asks first; /xui
 -------------------------------------------------------------------------------
 -- Engine: estimate setting off means unknown (D28); a deleted active rule's glow stops (D56); errors recorded (D57)
 -------------------------------------------------------------------------------
-QA.Register("audit-engine", { title = "Engine: estimate off, glow stops on delete, errors in /xui report (D28, D56, D57)", qa = "B263, B264", order = 312, prefill = true, steps = {
+QA.Register("audit-engine", { title = "Combat tracking: hidden buffs are not guessed when that box is off, a glow stops when its rule is deleted, errors show in /xui report (D28, D56, D57)", qa = "B263, B264", order = 312, prefill = true, steps = {
     { text = "Press |cffffd100Check again|r: with Settings > UI Options > Rule Creation > Combat Tracking Setup > |cffffd100Estimate buffs the game hides in combat|r unticked, the tracker must leave a hidden buff unknown. The addon reads its setting and asks the tracker about a test aura it was told is up.\n\n|cffffd100Expect:|r with the box unticked: unknown. (Ticked: the check only reports.)",
         check = function()
             local ns = NS(); local T, M = ns and ns.AuraTracker, ns and ns.AuraModel

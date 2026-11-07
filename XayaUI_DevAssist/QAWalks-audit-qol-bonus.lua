@@ -23,7 +23,7 @@ local TAG = "QA audit"
 local sl = {}   -- remembered: { enabled, panel, gem (this character's gem default), shared (the old shared gem), ench, gems, done }
 local function Shop() return SV("shoppingList") end
 local function ShopCfg() local S = Shop(); if not S then error("XayaUI QoL is off") end; return S, S.Cfg() end
-QA.Register("audit-shopping-list", { title = "Shopping List: per-character defaults, Forget, To buy, /xui shop (FA-7, D13-D15)", qa = "E1z221, E1z222, E1z223, E1z224", order = 330, prefill = true, steps = {
+QA.Register("audit-shopping-list", { title = "Shopping List: each character keeps its own defaults, Forget clears what it used, To buy adds amounts up, /xui shop does not switch it on (FA-7, D13-D15)", qa = "E1z221, E1z222, E1z223, E1z224", order = 330, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your Shopping List settings and this character's gem default, then sets a test gem default \"" .. TAG .. " gem\" for THIS character only.\n\n|cffffd100Expect:|r this character's gem default is the test gem; the old account-wide defaults (kept from before defaults became per character) are unchanged.",
         setup = function()
             local S, c = ShopCfg()

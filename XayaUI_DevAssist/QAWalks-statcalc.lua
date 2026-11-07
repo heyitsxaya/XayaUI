@@ -94,7 +94,7 @@ local function APState()
     for _, r in ipairs(Under(d, AP, "pairLabel")) do rows[#rows + 1] = r.text end
     return { d = d, mark = FoldMark(d, AP), rows = rows, open = SC().Cfg().statOpen.map_ap == true }
 end
-QA.Register("statcalc-rows", { title = "Stat Calculator: contribution rows, folding, Modifies column", qa = "E1z195", order = 190, prefill = true, steps = {
+QA.Register("statcalc-rows", { title = "Stat Calculator: open a stat with + to see what adds to it, and the Modifies column", qa = "E1z195", order = 190, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on its |cffffd100Stats|r tab (XayaUI remembers how it was, to put it back at the end).\n\n|cffffd100Expect:|r the column heads read Stat | Current value | Pt value | Change | |cffffd100Modifies|r (no \"Influences\", no \"Modified By\").",
       setup = function()
           Remember(); Open("stats")

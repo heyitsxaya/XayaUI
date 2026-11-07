@@ -176,7 +176,7 @@ QA.Register("audit-opt-group", { title = "Group Enabled keeps a switched-off con
 } })
 
 -------------------------------------------------------------------------------
-QA.Register("audit-opt-bin", { title = "Red X to the Recycle Bin; Buff Remove clears Seconds left (FA-11, D25)", qa = "B278, B270", order = 313, prefill = true, steps = {
+QA.Register("audit-opt-bin", { title = "A cue deleted with the red X goes to the Recycle Bin; removing a buff trigger also clears its time-left setting (FA-11, D25)", qa = "B278, B270", order = 313, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes the test rule and presses the red X on its sound cue.\n\n|cffffd100Expect:|r the cue is gone with no question and Rules > Recycle Bin lists \"Cue of the rule 'QA audit options rule'\".",
         setup = function()
             local _, od = Need(); MakeData()

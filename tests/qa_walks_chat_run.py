@@ -29,6 +29,7 @@ R = lua.eval(r'''function(W, ns, C, root)
   _G.XayaUI_NS = _G.XayaUI_NS or ns
   XayaUIDevAssistDB = {}
   dofile(root .. "/XayaUI_DevAssist/QAWalk.lua")
+  dofile(root .. "/XayaUI_DevAssist/QATable.lua")   -- (Dev Assist 0.7.52: the list's table)
   dofile(root .. "/XayaUI_DevAssist/QAWalks-chat.lua")
   local QA = XayaUI_DevQA
   local out = { names = {}, oks = {}, notes = {} }

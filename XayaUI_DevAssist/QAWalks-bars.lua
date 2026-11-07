@@ -222,5 +222,5 @@ local steps = {
       end },
 }
 
-QA.Register("bars-cues", { title = "Bar cues (progress bars)", area = "Bar cues", qa = "B200", order = 240, prefill = true, steps = steps })
+QA.Register("bars-cues", { title = "Bar cues: progress bars that show how much time a buff has left", area = "Bar cues", qa = "B200", order = 240, prefill = true, steps = steps })
 QA.BarsTest = T   -- (tests)

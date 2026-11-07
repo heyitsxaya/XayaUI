@@ -5,7 +5,7 @@ when I first load into the game and I want all outstanding questions to be neste
 had to execute blindly and need feedback on."
 Three game sessions in the stand-in game (the saved file carried across like a /reload or a new login):
  1. first install: V14 (no window before it opens); it opens by itself once after the loading screen, listing every walkthrough (none
-    acknowledged yet), grouped by area, each with its verdict and Open; a zone change does not open it again; the tick box acknowledges
+    acknowledged yet), grouped by area, as a table (Codes | Title | Area | Status | New | Open, 0.7.52) with Open; a zone change does not open it again; the tick box acknowledges
     the build; the question flow (Next needs an answer, Skip, Back, saves with the time and version, Copy answers);
  2. same versions: it stays shut; the answers survived; /xui dev review and /xui dev questions open them;
  3. a XayaUI version changed while in combat: it waits for combat to end, then lists exactly the walkthrough added and the one whose text
@@ -40,18 +40,21 @@ local w = RV.Window()
 check("opens by itself after the first load of a new install", w and w:IsShown() and w.title:GetText() == "Review: what's new to test")
 check("  ...recorded as opened for the update, not in combat", XayaUIDevAssistDB.review.lastShown.why == "update" and XayaUIDevAssistDB.review.lastShown.combat == false)
 check("  ...no build acknowledged yet: every walkthrough is listed", #w.list == #QA.list and w.sub:GetText():find("First time", 1, true) ~= nil, #w.list .. " of " .. #QA.list)
-local rows, heads = 0, 0
+local rows = 0
 for _, r in ipairs(w.rows) do if r:IsShown() then rows = rows + 1 end end
-for _, h in ipairs(w.headers) do if h:IsShown() then heads = heads + 1 end end
-check("  ...one row per walkthrough, under area headings", rows == #QA.list and heads >= 3, rows .. " rows, " .. heads .. " headings")
+local heads = {}
+for _, h in ipairs(w.headers) do heads[#heads + 1] = h.text:GetText() end
+check("  ...one table row per walkthrough, under the header Codes | Title | Area | Status | New | Open (0.7.52)", rows == #QA.list
+  and table.concat(heads, "|") == "Codes|Title|Area|Status|New|Open", rows .. " rows, header " .. table.concat(heads, "|"))
 local devRow
 for _, r in ipairs(w.rows) do if r.id == "review-window" then devRow = r end end
-check("  ...a row shows key, title, new/changed and its verdict, with Open", devRow and devRow.text:GetText():find("J30", 1, true)
-  and devRow.text:GetText():find("new", 1, true) and devRow.status:GetText():find("not run", 1, true) and devRow.open:IsShown(), devRow and devRow.text:GetText())
+check("  ...a row shows its codes, title, new/changed and its status, with Open", devRow and devRow.codes:GetText() == "J30"
+  and devRow.title:GetText():find("Review window and questions (part 1)", 1, true) and devRow.new:GetText():find("new", 1, true)
+  and devRow.status:GetText():find("Not run", 1, true) and devRow.open:IsShown(), devRow and devRow.title:GetText())
 local hdr = {}
-for _, h in ipairs(w.headers) do if h:IsShown() then hdr[#hdr + 1] = h:GetText() end end
-check("  ...areas include Dev Assist, Chat and the QA checklist", table.concat(hdr, "|"):find("Dev Assist", 1, true) and table.concat(hdr, "|"):find("Chat (", 1, true)
-  and table.concat(hdr, "|"):find("QA checklist", 1, true), table.concat(hdr, "|"))
+for _, r in ipairs(w.rows) do if r:IsShown() then hdr[#hdr + 1] = r.area:GetText() end end
+check("  ...areas include Dev Assist, Chat and the QA checklist", table.concat(hdr, "|"):find("Dev Assist", 1, true) and table.concat(hdr, "|"):find("|Chat|", 1, true)
+  and table.concat(hdr, "|"):find("QA checklist", 1, true), table.concat(hdr, "|"):sub(1, 300))
 check("  ...Questions (N) counts the open questions", w.questions:GetText() == ("Questions (%d)"):format(#QA.questions) and #QA.questions >= 1, w.questions:GetText())
 check("  ...the tick box starts unticked", not w.dont:GetChecked())
 w:Hide()
@@ -156,11 +159,11 @@ check("lists exactly the walkthrough added and the ones whose text changed", ids
 local st = {}
 for _, e in ipairs(w.list) do st[e.id] = e.state end
 check("  ...marked new and changed", st["test-new-walk"] == "new" and st["group-page"] == "changed")
-check("  ...grouped by area", w.headers[1]:GetText():find("Groups and displays (2)", 1, true) and w.headers[2]:GetText():find("Test area (1)", 1, true),
-  tostring(w.headers[1]:GetText()) .. " / " .. tostring(w.headers[2] and w.headers[2]:GetText()))
+check("  ...in area order (the table's Area column)", w.rows[1].area:GetText() == "Groups and displays" and w.rows[2].area:GetText() == "Groups and displays"
+  and w.rows[3].area:GetText() == "Test area" and not (w.rows[4] and w.rows[4]:IsShown()), tostring(w.rows[1].area:GetText()) .. " / " .. tostring(w.rows[3].area:GetText()))
 local box
 for _, r in ipairs(w.rows) do if r:IsShown() and r.id == "group-box" then box = r end end
-check("a result recorded against the old text says to run it again", box and box.status:GetText():find("before it changed", 1, true) ~= nil, box and box.status:GetText())
+check("a result recorded against the old text says to run it again", box and box.status:GetText():find("(rerun)", 1, true) ~= nil, box and box.status:GetText())
 check("the box is unticked (this build is not acknowledged)", not w.dont:GetChecked() and not RV.Acknowledged())
 -- Open: the runner, and back
 box.open:GetScript("OnClick")(box.open)
