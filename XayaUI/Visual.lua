@@ -1562,7 +1562,10 @@ end
 -- ns.ArrangeList is also what the one-shot Align / Distribute / Space buttons use.
 local Place   -- (defined below; the arrangement places frames with it)
 local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumber(v.y) or 0, math.max(8, tonumber(v.w) or 128), math.max(8, tonumber(v.h) or 128) end
-local function ArrR(n) return math.floor(n + 0.5) end
+-- audit D18 (core 0.6.60): centres stay exact here and are rounded once, when X / Y are stored (SetVisualCenterOffset). Rounding the
+-- centre too moved a display 1 px per apply whenever its centre fell on a half pixel (odd size with a corner anchor, ...), and the
+-- arrangement is re-applied on every refresh: displays crept and the mover view reported moves nobody made.
+local function ArrR(n) return n end
 function ns.ArrangeList(l, xMode, yMode, gap)
     if #l < 2 or not (xMode or yMode) then return false end
     gap = tonumber(gap) or 8
@@ -1698,9 +1701,10 @@ function ns.SnapToTarget(rule, key, pos)
     if not key then
         v.snap = nil
     else
+        -- audit D19 (core 0.6.60): check the frame first; a missing frame changes nothing (before, X / Y were zeroed and the snap saved)
+        if not SnapFrame({ snap = { target = key } }) then ns.Print("that frame does not exist in this client, so the aura keeps its own position."); return end
         v.snap = { target = key, pos = pos or "TOP_CENTER" }
         v.x, v.y = 0, 0
-        if not SnapFrame(v) then ns.Print("that frame does not exist in this client, so the aura keeps its own position.") end
     end
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")
