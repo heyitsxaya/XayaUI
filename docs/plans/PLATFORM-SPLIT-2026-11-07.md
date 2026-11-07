@@ -178,6 +178,40 @@ Today `Engine.lua` registers its events unconditionally (lines 404-405, includin
 OnUpdate (line 448). Not checked: whether that handler returns early with zero rules. After the split a player who never uses rules
 switches Core off; separately, Core should register nothing until it has one active rule (rule V14).
 
+### 6.6 Theme scopes: per-module and per-element themes and overrides (PS-24)
+
+Her words (2026-11-07): "I think we also need to enable individual element themeing and overrides somewhere -- let's make that part
+of our rebuild as we configure proper plumbing. Perhaps Blizzard Reskin has a theme selector that compiles all elements that are
+overhauled and each has a theme override? The XayaUI Settings Theme can be the initial fallback but users can customize at
+different levels of granularity?"
+
+What exists (`XayaUI/Theme.lua`): TOKENS (the palette) and CLASSES (element kinds: xui-window, xui-button, xui-heading ...). Every
+class can already be overridden on its own; `T.Col(class, prop)` resolves a color; `T.OnResolve` tells listeners to repaint. There is
+no notion of *where*: one theme applies everywhere.
+
+Added: a **scope** layer. Resolution, first match wins:
+
+1. the element's own overrides (e.g. Blizzard Reskin > Tooltips)
+2. the element's chosen theme, if it picks one instead of "Inherit"
+3. the module's overrides and chosen theme (e.g. Blizzard Reskin as a whole)
+4. the global theme in Settings > Theme (today's behavior, the final fallback)
+
+- **Registration:** modules declare scopes through the Platform, e.g. `ns.Theme.RegisterScope{ id = "reskin.tooltips", label =
+  "Tooltips", parent = "reskin" }`. The 13 reskin pages, Chat Panel, the character window and the settings window itself each
+  register one. `T.Col(class, prop, scope)` takes the scope; code that passes none gets the global theme, so nothing breaks before it
+  adopts scopes.
+- **Storage:** sparse. Only overrides are saved, in the Platform's theme store (`CueRulesDB.theme.scopes[id] = { theme = name or
+  nil, tokens = {...}, classes = {...} }`). They travel in the Themes profile part (6.1) and, optionally, in a theme share string.
+- **UI (her idea):** Blizzard Reskin gets a **Theme** page: a table of every restyled element with the columns Element | Theme
+  (Inherit / any built-in or saved theme) | Overrides (count, Edit) | Comes from (Global / Blizzard Reskin / this element) | Reset.
+  Each element's own page also gets one "Theme" row linking to it. Settings > Theme stays the global fallback.
+- **Same resolver for later color work:** a color value can be solid, a gradient (#460) or "Inherit"; the game-type palette (#464) is
+  one more scope; an element handed to another addon by the conflict check (#469) shows "handled by <addon>" instead of a theme.
+- **Cost:** every painted element must pass its scope. That is why this belongs in P1: modules adopt scopes while their files move in
+  P3 / P4, so their paint code is touched once. Resolved colors are cached per scope and dropped on `OnResolve`.
+
+Decisions for her: section 9, Q7-Q9. Tracking issue: #472.
+
 ## 7. Options
 
 Options stays its own folder. Its toc says it "Loads the first time you open it ... so it costs nothing until then"
@@ -239,6 +273,9 @@ their own characters, since a different class and setup catches what one setup m
 | Q4 | D8 in plain terms: should Release Guard switch itself on automatically in raids with 20 or more players? It is built and passes the suite, untested in game, held by her O-109. Her answer: "unsure ... I'm thinking top down, not bottom-up" (re-asked top-down 2026-11-07) | If yes: land it before the move and put its walkthrough in the baseline. If no or not now: park it; it is redone on the new layout later |
 | Q5 | Character pane. Her answer (2026-11-07, verbatim): "The Advanced Character Stats pane window is a Bonus feature; a diminishing returns element is a either a bonus feature or a qol feature; the simple character/dressing room UI with the ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the reskin" | Settled except diminishing returns; section 4.2. Proposed: diminishing returns goes to Bonus, with the advanced stats it explains; waits for her pick |
 | Q6 | Freeze. Her answer (2026-11-07): "a freeze sounds fine — do you want this to include even my going through the qa walk throughs?" | **Approved.** Yes, it includes the 148-walkthrough backlog: she runs only the baseline (Q3) and anything that blocks her own play |
+| Q7 | Theme scopes: two levels (module, then element) or only per element? | Two levels: "all of Blizzard Reskin in theme X" is one change, and single elements can still differ |
+| Q8 | What an override can be: pick a whole theme, edit single colors, or both? | Both: pick a theme for the element, then adjust single colors on top |
+| Q9 | Where the controls live: only the central Blizzard Reskin > Theme table, or also a row on each element's page? | Both: the table for the overview, a row on each page to find it where you are |
 
 ## 10. Phases
 
@@ -248,7 +285,7 @@ Phases marked "in game" add walkthroughs and wait for Xaya's Accept before the n
 | Phase | What | Moves data? | In game |
 |---|---|---|---|
 | P0 | Freeze, baseline walkthroughs on `b777793`, answers to Q1-Q6 | no | yes (baseline) |
-| P1 | Platform services: `RegisterProfilePart`, `RegisterBinKind`, Core-side services for Bonus; Profiles reads registered parts | no | yes |
+| P1 | Platform services: `RegisterProfilePart`, `RegisterBinKind`, Theme scopes (6.6), Core-side services for Bonus; Profiles reads registered parts | no | yes |
 | P2 | Settings seam: `ns.Settings(module)`, all 490 references, the "no direct CueRulesDB" test | no | regression only |
 | P3 | Options pages cut into `Pages/<Module>.lua` | no | regression only |
 | P4 | Code move: `XayaUI_Core` folder, the 23 files, Core.lua / Share.lua / RecycleBin.lua cut, `GameMenuButton.lua`, test and tool paths (16 files name tracking files, 58 name platform files) | no | yes (full regression) |
@@ -269,6 +306,7 @@ No time estimate yet: P2 is the first phase large enough to measure the pace on.
 | R6 | Old share strings stop importing | String formats do not change; a test imports a pre-split string of each kind |
 | R7 | `LocalSounds.lua` says some sounds were "copied from the BigWigs addon" with their license files; the standing rules forbid copying assets from other addons. Precheck already warns that 229 listed sound files and 149 graphics are not in the repository | Already tracked as issues #333 / #290; settle them before the media lists move into Platform |
 | R8 | The 9,033-line Options.lua cut breaks a settings page | P3 lands alone and gets a regression pass; pages compared before and after by the existing Options tests |
+| R9 | Theme scopes multiply where a color can come from; users lose track of why something is a color | The "Comes from" column, a Reset per element, and one "Reset all overrides" |
 
 ## 12. Alternatives considered
 
