@@ -34,7 +34,7 @@ know what you had to execute blindly and need feedback on."
     and a note. Back / Skip / Next (Next needs a choice or a note on an unanswered question), a count, and Copy answers (a selected
     multi-line box).
   - Commands: `/xui dev review`, `/xui dev questions` (also `/xuidev review`, `/xuidev questions`).
-- `QAQuestions.lua` (new): the ONE question data file, 167 questions. They were transcribed from the entries that 18 sessions sent
+- `QAQuestions.lua` (new): the ONE question data file, 174 questions. They were transcribed from the entries that 18 sessions sent
   between 08:26 and 08:38 UTC: D8 (first, per the hub: O-109), externals, the hub (H1/H2/H3 = O-128/O-139/O-146), performance, chat
   review, chat follow-ups, rule generation, function audit, nameplates, S1, S8 bar cues, Additional Concepts, games/RPPM, roadmap
   items, S3 (mover / group page), chat round, Reskin elements, the hub's LFG-Q1 for the archived LFG / Wordle
@@ -46,7 +46,6 @@ know what you had to execute blindly and need feedback on."
     `keep = "Leave it undecided for now"`.
   - CHAT-3a: its session said no bar display ships; main holds the Bar cue kind (XayaUI/BarCue.lua, RM-BARS, on main since 28380a96,
     checked with git grep), so the question was reworded against main and says so (its session is archived; the hub asked for this).
-  - Not received yet: Top tabs + Profiles UI-25.
 - `QAWalks-review.lua` (new, V22): three walkthroughs, all prefill = true (J19).
 - `QAWalk.lua`: `QA.Fingerprint`, `QA.StatusText`; a finished run's result keeps `fp`.
 - `DevAssist.lua`: `/xuidev review` and `/xuidev questions`; the help line lists qa / review / questions.
