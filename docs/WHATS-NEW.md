@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 6 (below) cover the debug round, the group page / QA round, the auto-populate buttons and the engine session's changes that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 7 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -367,6 +367,39 @@ From engine session 2 (core 0.6.57, Options 0.6.57). Not seen in game yet.
 - **New Sound cues start on the SFX channel.**
 - *Coming next, not on `main` yet:* a per-spec aura and debuff learner, a change so sounds play one frame after the event (measured
   in the test setup only), and a structure fix.
+
+## 7. Bar cues (progress bars) (landed on `main` 2026-11-07 00:30 UTC, main 28380a9; core 0.6.58, Options 0.6.59, Bonus 0.6.20, Dev Assist 0.7.6)
+
+From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, all in `/xui dev qa`).
+
+- **A new cue kind, Bar.** Make one with New Rule > Progress Bar, or Add a cue > Bar on any rule. It starts at 220 x 22: black background at
+  20%, 1 px black border, flat texture, draining from right to left. The spell's icon is at the left, its name at the left inside the
+  bar, the time at the right, and a spark marks the moving edge. Everything is set in the cue's **Bar Options** box.
+- **What a bar tracks:** Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges.
+  Maximum 0 uses the game's own maximum; if there is none, the bar stays empty and never guesses.
+- **Fill and look.** Drain toward left, right, bottom or top, or "Fill up instead of draining". Icon left, right or none. Spark on or
+  off with colour and width. Background, border and opacity.
+- **Automatic colour.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
+  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Colour section's
+  "Now:" line names the type in its colour, for example "Fire Damage (Magic)". Or pick a fixed colour.
+- **Colour style per bar:** Blizzard default (the game's own colours), Neon, Pastel, Muted / Dark, or Custom (a colour picker for each
+  of 12 types). A group's Display tab has **Every bar: colour style**: with "Force on every bar in this group" ticked the group's style
+  wins; unticked, choosing a style copies it to every bar once, and the label says how many bars it changes.
+- **Bar textures:** Flat, Blizzard, Raid frame; the game's own power-bar art ("Blizzard power: Health, Mana, Rage, Fury, Insanity,
+  ...", read from the game); every texture other addons share through LibSharedMedia; or your own file. Each texture is listed once.
+  XayaUI's own bar fills are planned for later (roadmap RM-BARFILLS).
+- **In combat.** Aura-time and stacks bars are drawn by the game's own aura buttons, so they keep moving while the game hides aura
+  numbers; each member of a dynamic group is its own bar. Cooldown bars are driven by the game from the cooldown's duration.
+- **Type colours in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colours", on by default. On spell and aura
+  tooltips "fire damage" becomes "Fire Damage" in the game's Fire colour, and a dispel type such as "Magic" takes its dispel colour.
+  English game text only.
+- **Smart Categories > Progress Bars** now lists rules with a Bar cue.
+- *Developers' notes:* the weakest part is the combat drawing (built from Blizzard's 12.1.5 source, tested on a stand-in only).
+  Tooltip words are matched in English only.
+
+**Also landed in that push, details not received yet:** QoL 0.7.35 and 0.7.36 (Stat Calculator proc and set lines, the Ability Scaling
+table), Chat 0.6.26 and 0.6.27 (whisper tabs per kind, a combine box), and engine changes in core 0.6.58 (each spec's Cooldown Manager
+auras and debuffs remembered for the Rule Creator, event routing, window-close handling).
 
 *Not in this list yet:* Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6, and the Info pane / Patch Notes, chat changes and settings window look from
 other sessions. Their sessions send their own notes; they are added here only once they arrive and are checked against `main`.

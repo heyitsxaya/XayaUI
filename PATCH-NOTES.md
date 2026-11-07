@@ -22,6 +22,38 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — Bar Cues
+
+### XayaUI 0.6.58
+
+**Bar Cues (new)**
+- Added a Bar cue: a progress bar that tracks an aura's time left, a spell's cooldown or recharge, stacks, or charges. Make one with New Rule > Progress Bar, or Add a cue > Bar on any rule.
+  - A new bar is 220 x 22 with a black 20% background, a 1 px border and a flat texture, draining from right to left, with the spell's icon on the left, its name inside the bar, the time on the right and a spark on the moving edge.
+  - Tracks: Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges. Maximum 0 uses the game's own maximum; if the game gives none, the bar stays empty.
+  - Drain toward the left, right, bottom or top, or fill up instead. The icon can sit left, right or be hidden. The spark can be turned off and recoloured.
+  - Automatic colour follows the type the spell's tooltip names (a school written as "<school> damage", or a dispel type), then the aura's dispel type, then blue.
+  - Colour style per bar: Blizzard default, Neon, Pastel, Muted / Dark, or Custom with a colour for each of 12 types. A group's Display tab has "Every bar: colour style", with "Force on every bar in this group" to override each bar's own choice.
+  - Bar textures: Flat, Blizzard, Raid frame, the game's own power-bar art, any texture shared through LibSharedMedia, or your own file.
+  - In combat, aura-time and stacks bars are drawn by the game's own aura buttons and keep moving while the game hides aura numbers. Cooldown bars are driven by the game from the cooldown's duration.
+  *Developers' notes: Not yet tested in game (QA B200-B210). The combat drawing is built from Blizzard's 12.1.5 source and tested on a stand-in only.*
+
+### Options 0.6.59
+
+**Bar Cues (new)**
+- Added a Bar Options box on each Bar cue, and "Every bar: colour style" on a group's Display tab.
+- Smart Categories > Progress Bars now lists rules that have a Bar cue.
+
+### Bonus Features 0.6.20
+
+**Enhanced Tooltips**
+- Added a "Type colours" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's colour for that school, and a dispel type such as "Magic" takes its dispel colour.
+  *Developers' notes: Matches English game text only. Not yet tested in game.*
+
+### Dev Assist 0.7.6
+
+**In-game QA**
+- Added the Bar cue walkthroughs to /xui dev qa (QA B200-B210, F21).
+
 ## 2026-11-06 — Character Pane, Shopping List and All Reskins
 
 ### Chat 0.6.19
