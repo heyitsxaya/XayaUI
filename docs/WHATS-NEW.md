@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 7 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 8 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -162,6 +162,7 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   Character Pane and Esc Menu. The old Chat tab is gone. The old shortcuts still open the moved pages: `/xui chat settings`,
   `/xui reskin options`, and the Chat Panel's own settings buttons. The XayaUI button in the Esc menu stays under
   Settings > UI Options > Display.
+- **(Superseded the same evening, see section 8: the "All reskins" tick box on the tab button was replaced by an Overview row.)**
 - **All reskins, and a tick box per reskin** (XayaUI 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4). The Blizzard UI Reskin
   tab button has its own tick box, **All reskins**: untick it and every reskin in the tab is off at once, with Blizzard's own look
   back. Each reskin (Chat Panel, Character Pane, Esc Menu, Shopping List) has its own tick box on its row in the left pane, greyed
@@ -408,8 +409,26 @@ From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, 
 **Also landed in that push, details not received yet:** QoL 0.7.35 and 0.7.36 (Stat Calculator proc and set lines, the Ability Scaling
 table) and Chat 0.6.26 and 0.6.27 (whisper tabs per kind, a combine box).
 
-*Not in this list yet:* Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6, and the Info pane / Patch Notes, chat changes and settings window look from
-other sessions. Their sessions send their own notes; they are added here only once they arrive and are checked against `main`.
+## 8. UI fixes, chat and Stat Calculator changes (UI bugs session; landed 2026-11-06 evening and 2026-11-07 00:30 UTC)
+
+Read from that session's debug logs on `main` (Chat 0.6.20 to 0.6.27, QoL 0.7.33 to 0.7.36, Options 0.6.55); the session itself has not sent a note. Not tested in game.
+
+- **Blizzard UI Reskin switch moved.** The tab now starts with an **Overview** row. "Enable Blizzard UI Reskin" is a tick box on that page
+  with a Reload / Later prompt, and the reskins' own pages appear once it is on. This replaces the "All reskins" box on the tab button.
+- **Settings window look:** even, thicker top tabs; no pane borders, a divider line instead; nested rows indented under their parent;
+  settings and names greyed under a feature that is off. Custom Data Panels and Bars is now **Data Panels**.
+- **Chat tabs** names sit at one height; collapsing the chat drops the bar to the bottom; the **Chat Bar is now the Chat Data Panel**, and can
+  sit left or right of the chat (width 40 to 200, default 90); a tick box for the mouse over the chat bringing it back; a chosen click for
+  quick ignore (free Alt / Ctrl / Shift combinations, or record your own).
+- **Whisper tabs** (7 Nov): in-game and Battle.net whisper tab lists (As the game / Individual / Consolidated / Both) and a combine box;
+  consolidated tabs are In-Game Whispers, BNet Whispers or Whispers.
+- **Character window** text is laid out again after a size change (QoL 0.7.33 / 0.7.34).
+- **Stat Calculator** (7 Nov, QoL 0.7.35 / 0.7.36): proc lines read "Equipped: <item>" / "Compared: <item>"; set lines under each item; the armor
+  row reads "From mastery: <spell> passive"; the Ability Scaling table is Spell Name | Talent Modifiers | % PSV | Computed Value, with
+  dividers and foldable spells.
+
+*Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
+They are added here only once they arrive and are checked against `main`.
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
