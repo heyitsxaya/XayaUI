@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.18): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.19): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
 -- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles, the status bars, the minimap's zone bar and tracking
 -- button, and the red buttons inside Blizzard's windows. Look only: art, colour, border, mask. Nothing is moved, resized, added or
 -- removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
@@ -570,16 +570,33 @@ end
 BS.BUBBLE_EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" }
 local liveBubble, bubbleFrame, bubbleQueued = false, nil, false
 local bubbles = setmetatable({}, { __mode = "k" })   -- [bubble's panel] = true while it carries the look
+local panelOf = setmetatable({}, { __mode = "k" })   -- [bubble] = its ChatBubbleTemplate child, found once (the game reuses bubbles)
 local function BubblePanel(bubble)
+    local p = panelOf[bubble]
+    if p then return p end
     if type(bubble) ~= "table" or type(bubble.GetChildren) ~= "function" then return end
     for _, c in ipairs({ bubble:GetChildren() }) do
-        if type(c) == "table" and type(c.SetCenterColor) == "function" and c.String then return c end
+        if type(c) == "table" and type(c.SetCenterColor) == "function" and c.String then panelOf[bubble] = c; return c end
     end
 end
+local function near(a, b) return num(a) and num(b) and math.abs(a - b) < 0.002 end
+-- (perf, hub review 13:26 UTC) a bubble that already shows these exact colours is skipped: the scan runs after each chat message (party
+-- chat too), so most scans only read one colour per bubble. The colours are compared, not just remembered, so a theme or opacity change,
+-- or the game resetting a reused bubble (INFERENCE: not seen in the source), still repaints it.
 local function PaintBubble(bubble)
     local p = BubblePanel(bubble)
     if not p then return end
     local m = M(p)
+    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    if bubbles[p] and m.nine and p.GetCenterColor then
+        local r, g, b, ca = p:GetCenterColor()
+        local pb = m.paintedBorder
+        if near(r, bg[1]) and near(g, bg[2]) and near(b, bg[3]) and near(ca, a)
+            and pb and pb[1] == bd[1] and pb[2] == bd[2] and pb[3] == bd[3] and pb[4] == (bd[4] or 1) then
+            BS.diag.bubbleSkips = (BS.diag.bubbleSkips or 0) + 1
+            return
+        end
+    end
     if not m.nine then
         local cr, cg, cb, ca, br, bgr, bb, ba
         if p.GetCenterColor then cr, cg, cb, ca = p:GetCenterColor() end
@@ -589,10 +606,10 @@ local function PaintBubble(bubble)
         local function n(v) return num(v) and v or 1 end
         m.nine = { n(cr), n(cg), n(cb), n(ca), n(br), n(bgr), n(bb), n(ba), n(tr), n(tg), n(tb), n(ta) }
     end
-    local bg, bd, a = WinBg(), WinBorder(), Alpha()
     p:SetCenterColor(bg[1], bg[2], bg[3], a)
     if p.SetBorderColor then p:SetBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
     if p.Tail and p.Tail.SetVertexColor then p.Tail:SetVertexColor(bg[1], bg[2], bg[3], a) end
+    m.paintedBorder = { bd[1], bd[2], bd[3], bd[4] or 1 }
     m.painted = true
     bubbles[p] = true
     BS.diag.bubbles = (BS.diag.bubbles or 0) + 1
@@ -605,7 +622,7 @@ local function UnpaintBubble(p)
         pcall(p.SetCenterColor, p, c[1], c[2], c[3], c[4])
         if p.SetBorderColor then pcall(p.SetBorderColor, p, c[5], c[6], c[7], c[8]) end
         if p.Tail and p.Tail.SetVertexColor then pcall(p.Tail.SetVertexColor, p.Tail, c[9], c[10], c[11], c[12]) end
-        m.nine, m.painted = nil, nil
+        m.nine, m.painted, m.paintedBorder = nil, nil, nil
     end
     bubbles[p] = nil
 end
