@@ -5,16 +5,99 @@ local addonName, ns = ...
 
 ns.name = addonName; XayaUI_NS = ns -- deliberate global: sibling addons (XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_Reskin, XayaUI_Options) share this namespace; they plug in through Modules.lua
 -- #286: a button built from Blizzard's red UIPanelButtonTemplate takes XayaUI's flat look now and every time it is shown, so it also
--- follows the skin switch. The look comes from the "buttonSkin" service (Modules.lua ns.Service), which the settings addon provides;
--- core never calls the settings addon by name. Without it (not loaded yet, or switched off) the button keeps Blizzard's look.
+-- follows the skin switch. UI-77 (O-139, core 0.6.68): the look itself lives here in core (ns.PaintFlatButton), so core's windows
+-- (console, copy box, debug report) are flat after a /reload even though the settings addon (LoadOnDemand) is not loaded; the settings
+-- addon's ns.SkinPlainButton calls this same function, so there is one copy of the look.
+local FLAT_GOLD = { 1, 0.82, 0, 1 }
+local function FlatCol(class, prop, fb) local T = ns.Theme; if T and T.Col then return T.Col(class, prop, fb) end return fb end
+local function FlatSkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
+-- the 1px-bordered box drawn with plain textures (the same fields as the settings addon's Skin.lua Flat, so both can repaint it)
+local function FlatBox(f, bg, border)
+    local t = f.xuiFlat
+    if not t then
+        t = { bg = f:CreateTexture(nil, "BACKGROUND", nil, -3), e = {} }
+        for i = 1, 4 do t.e[i] = f:CreateTexture(nil, "BACKGROUND", nil, -2) end
+        f.xuiFlat = t
+    end
+    t.bg:ClearAllPoints(); t.bg:SetPoint("TOPLEFT", 0, 0); t.bg:SetPoint("BOTTOMRIGHT", 0, 0)
+    t.e[1]:ClearAllPoints(); t.e[1]:SetPoint("TOPLEFT", 0, 0); t.e[1]:SetPoint("TOPRIGHT", 0, 0); t.e[1]:SetHeight(1)
+    t.e[2]:ClearAllPoints(); t.e[2]:SetPoint("BOTTOMLEFT", 0, 0); t.e[2]:SetPoint("BOTTOMRIGHT", 0, 0); t.e[2]:SetHeight(1)
+    t.e[3]:ClearAllPoints(); t.e[3]:SetPoint("TOPLEFT", 0, 0); t.e[3]:SetPoint("BOTTOMLEFT", 0, 0); t.e[3]:SetWidth(1)
+    t.e[4]:ClearAllPoints(); t.e[4]:SetPoint("TOPRIGHT", 0, 0); t.e[4]:SetPoint("BOTTOMRIGHT", 0, 0); t.e[4]:SetWidth(1)
+    t.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1); t.bg:Show()
+    for _, e in ipairs(t.e) do e:SetColorTexture(border[1], border[2], border[3], border[4] or 1); e:Show() end
+end
+-- hide the Blizzard art (remembered in f.xuiHidden, so skin-off can put it back); the box's own textures are kept
+local function FlatHideArt(f)
+    if f.xuiHidden then return end
+    f.xuiHidden = {}
+    local own = {}
+    if f.xuiFlat then own[f.xuiFlat.bg] = true; for _, e in ipairs(f.xuiFlat.e) do own[e] = true end end
+    for _, rg in ipairs({ f:GetRegions() }) do
+        if rg.GetObjectType and rg:GetObjectType() == "Texture" and not own[rg] then
+            f.xuiHidden[#f.xuiHidden + 1] = { rg, rg:GetAlpha() }; rg:SetAlpha(0)
+        end
+    end
+end
+local function FlatShowArt(f)
+    if not f.xuiHidden then return end
+    for _, p in ipairs(f.xuiHidden) do p[1]:SetAlpha(p[2]) end
+    f.xuiHidden = nil
+end
+-- Flat look for a plain Blizzard-template Button: the red art hidden, the theme's "xui-button" (or "xui-button-primary") colors
+-- painted, text gold and white on hover. Safe to call again (colors are re-read, so a theme change shows); skin off restores Blizzard's.
+function ns.PaintFlatButton(b, primary)
+    if not b or not b.GetFontString then return end
+    if not FlatSkinOn() then
+        if b.xuiFlatBtn then
+            FlatShowArt(b)
+            local t = b.xuiFlat; if t then t.bg:Hide(); for _, e in ipairs(t.e) do e:Hide() end end
+            local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(1) end
+        end
+        return
+    end
+    if not b.xuiFlatBtn then
+        b.xuiFlatBtn = true
+        FlatHideArt(b)
+        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
+        local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
+        b:HookScript("OnEnter", function(self)
+            local f = self:GetFontString()
+            if f and self.xuiFlatBtn then local c = FlatCol("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end
+        end)
+        b:HookScript("OnLeave", function(self)
+            local f = self:GetFontString()
+            if f and self.xuiFlatBtn then local c = self.xuiBtnText or FLAT_GOLD; f:SetTextColor(c[1], c[2], c[3]) end
+        end)
+    elseif b.xuiHidden == nil then
+        FlatHideArt(b)   -- returning from skin-off: hide the Blizzard art again
+        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
+    end
+    local cl = primary and "xui-button-primary" or "xui-button"
+    FlatBox(b, FlatCol(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), FlatCol(cl, "border", { 0.25, 0.25, 0.25, 1 }))
+    local fs = b:GetFontString()
+    if fs then
+        local c = FlatCol(cl, "text", FLAT_GOLD)
+        b.xuiBtnText = c
+        fs:SetTextColor(c[1], c[2], c[3])
+        local T = ns.Theme; if T and T.Style then pcall(T.Style, fs, nil) end
+    end
+end
+-- the flat buttons made so far (weak keys: a button that is gone is not held) -> primary; repainted when the theme resolves, so a
+-- window built before the theme was applied at login (the console reopened after a /reload) takes the theme's colors at once
+local flatButtons, flatListening = setmetatable({}, { __mode = "k" }), false
+local function RepaintFlatButtons()
+    for b, primary in pairs(flatButtons) do
+        if b.IsShown and b:IsShown() then pcall(ns.PaintFlatButton, b, primary) end   -- hidden ones repaint on their next show
+    end
+end
 function ns.FlatButton(b, primary)
     if not b then return b end
-    local function apply(self)
-        local svc = ns.Service and ns.Service("buttonSkin")
-        if svc and type(svc.Apply) == "function" then pcall(svc.Apply, self, primary) end
-    end
+    local function apply(self) pcall(ns.PaintFlatButton, self, primary) end
     apply(b)
     if b.HookScript then b:HookScript("OnShow", apply) end
+    flatButtons[b] = primary and true or false
+    if not flatListening and ns.Theme and ns.Theme.OnResolve then flatListening = true; ns.Theme.OnResolve(RepaintFlatButtons) end
     return b
 end
 ns.rules = nil -- set at ADDON_LOADED to CueRulesDB.rules

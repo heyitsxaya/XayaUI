@@ -2,6 +2,7 @@
 -- QAWalks-display.lua (XayaUI_DevAssist 0.7.11): in-game QA walkthroughs for the UI bugs session's work (branch
 -- claude/ui-bugs-focused): the display standard (UI-47 / UI-48: tab rows, off pages, switch hovers), the theme tie-in (UI-49 / UI-50),
 -- the Calculator page's info icon (UI-53), Release Guard (UI-57 / UI-58), the stat labels and the standard GCD (UI-62 to UI-64).
+-- Also (Dev Assist 0.7.19): core windows' flat buttons after a /reload (UI-77).
 -- Standing rule V21 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough here sets prefill = true: the addon's own
 -- verdict is offered on "Accept", and nothing is recorded without her click. Steps the addon cannot judge say what to look at and are
@@ -395,4 +396,57 @@ QA.Register("ui-autogen-layout", { title = "Auto-Generate Rules: one icon, four 
             return #bad == 0, #bad == 0 and (specs .. " spec(s): one icon each, four buttons as four lines") or table.concat(bad, "; ")
         end },
     { text = "Your look: is it calm enough now? Pass if yes; Fail and say what is still noisy.", noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- 10. Core windows' flat buttons after a /reload (UI-77, O-139; core 0.6.68)
+-------------------------------------------------------------------------------
+local function Kids(frame)
+    local out = {}
+    if not (frame and frame.GetChildren) then return out end
+    for _, k in ipairs({ frame:GetChildren() }) do
+        if k.GetObjectType and k:GetObjectType() == "Button" and k.GetText and k:GetText() then out[#out + 1] = k end
+    end
+    return out
+end
+-- every text button of the frame has the flat look in the theme's button text colour
+local function FlatCheck(frame, label)
+    if not (frame and frame:IsShown()) then return false, label .. " is not open: press Do it for me" end
+    local ns = NS()
+    local T = ns and ns.Theme
+    local want = T and T.Col and T.Col("xui-button", "text", { 1, 0.82, 0, 1 }) or { 1, 0.82, 0, 1 }
+    local skinOff = CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff
+    if skinOff then return false, "the flat skin is switched off (/xuiskin): switch it on and try again" end
+    local bad, n = {}, 0
+    for _, b in ipairs(Kids(frame)) do
+        n = n + 1
+        local fs = b.GetFontString and b:GetFontString()
+        local r, g, bl = 0, 0, 0
+        if fs then r, g, bl = fs:GetTextColor() end
+        if not b.xuiFlatBtn then bad[#bad + 1] = b:GetText() .. ": Blizzard look"
+        elseif not (Near(r, want[1], 0.02) and Near(g, want[2], 0.02) and Near(bl, want[3], 0.02)) then bad[#bad + 1] = b:GetText() .. ": not the theme's button colour" end
+    end
+    if n == 0 then return false, label .. ": no buttons found" end
+    local loaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("XayaUI_Options")
+    local where = loaded and " (the settings addon is loaded now, so this is not the after-/reload case)" or " (the settings addon is not loaded: the after-/reload case)"
+    return #bad == 0, (#bad == 0 and (label .. ": all " .. n .. " buttons flat") or table.concat(bad, "; ")) .. where
+end
+QA.Register("ui-core-flat-buttons", { title = "Console, copy box, debug report: flat buttons after /reload", qa = "B231", order = 269, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the XayaUI console opens.\n\n|cffffd100Expect:|r What to send, Copy, Clear and Bug report are flat (a dark box, text in your theme's button colour), not Blizzard's red buttons. The close X keeps Blizzard's red X on purpose, like the settings window's.",
+        setup = function() local ns = NS(); if ns and ns.ConsoleWindow then ns.ConsoleWindow(true) end end,
+        check = function() return FlatCheck(rawget(_G, "XayaUIConsoleWindow"), "the console") end },
+    { text = "The case you reported: leave the console open and type |cffffd100/reload|r. When the game is back, the console reopens by itself; open this walkthrough again and go to the next step. (Do not open the settings window first: the bug only showed while it had not been opened.)", noVerdict = true },
+    { text = "After the /reload, with the console open: press |cffffd100Check|r.\n\n|cffffd100Expect:|r the console's four buttons are flat, and the note says the settings addon is not loaded.",
+        check = function() return FlatCheck(rawget(_G, "XayaUIConsoleWindow"), "the console") end },
+    { text = "Press |cffffd100Do it for me|r: the copy box (What to send) and the debug report open.\n\n|cffffd100Expect:|r Select all (copy box) and the string button (debug report) are flat too.",
+        setup = function()
+            local ns = NS(); if not ns then return end
+            if ns.ShowCopyBox and ns.SendText then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end
+            if ns.ShowDebugReport then ns.ShowDebugReport() end
+        end,
+        check = function()
+            local ok1, n1 = FlatCheck(rawget(_G, "XayaUICopyBox"), "the copy box")
+            local ok2, n2 = FlatCheck(rawget(_G, "XayaUIDebugReport"), "the debug report")
+            return ok1 and ok2, n1 .. " | " .. n2
+        end },
 } })

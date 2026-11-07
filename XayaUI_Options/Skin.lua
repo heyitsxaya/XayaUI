@@ -98,40 +98,11 @@ local function ShowRegions(f)
     for _, p in ipairs(f.xuiHidden) do p[1]:SetAlpha(p[2]) end
     f.xuiHidden = nil
 end
--- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget): the red Blizzard art is hidden, the theme's "xui-button"
--- (or "xui-button-primary") colors are painted, text is gold and white on hover. Safe to call again (colors are re-read each time, so a
--- theme change shows); with the skin off the Blizzard look is restored.
+-- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget). UI-77 (Options 0.6.67): the look lives in core
+-- (Core.lua ns.PaintFlatButton) so core's windows have it without this addon loaded; this name stays for the settings addon's callers.
 function ns.SkinPlainButton(b, primary)
-    if not b or not b.GetFontString then return end
-    if not SkinOn() then
-        if b.xuiFlatBtn then ShowRegions(b); FlatHide(b); local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(1) end end
-        return
-    end
-    if not b.xuiFlatBtn then
-        b.xuiFlatBtn = true
-        HideRegions(b, nil)
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-        local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then local c = TC("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end end)
-        b:HookScript("OnLeave", function(self)
-            local f = self:GetFontString()
-            if f and self.xuiFlatBtn then local c = self.xuiBtnText or GOLD; f:SetTextColor(c[1], c[2], c[3]) end
-        end)
-    elseif b.xuiHidden == nil then
-        HideRegions(b, nil)   -- returning from skin-off: hide the Blizzard art again
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-    end
-    local cl = primary and "xui-button-primary" or "xui-button"
-    Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }))
-    local fs = b:GetFontString()
-    if fs then
-        local c = TC(cl, "text", GOLD)
-        b.xuiBtnText = c
-        fs:SetTextColor(c[1], c[2], c[3]); TF(fs)
-    end
+    if ns.PaintFlatButton then return ns.PaintFlatButton(b, primary) end
 end
--- core's own windows (console, popups) take this look through the "buttonSkin" service (Modules.lua), never by calling this file
-if ns.Provide then ns.Provide("buttonSkin", { Apply = function(b, primary) return ns.SkinPlainButton(b, primary) end }) end
 
 -- run restoreFn once when the widget is released (the wrapper is installed only once per widget)
 local function OnRelease(w, restoreFn)

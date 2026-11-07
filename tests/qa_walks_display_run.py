@@ -24,7 +24,7 @@ local QA = rawget(_G, "XayaUI_DevQA")
 local ns = rawget(_G, "XayaUI_NS")
 check("Dev Assist has the QA walkthroughs", QA and QA.walks ~= nil)
 if not QA then return R end
-local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons", "ui-autogen-layout" }
+local IDS = { "ui-tab-rows", "ui-switch-hovers", "ui-theme-advanced", "ui-calc-infobox", "ui-release-guard", "ui-stat-gcd", "ui-nesting", "ui-row-icons", "ui-autogen-layout", "ui-core-flat-buttons" }
 for _, id in ipairs(IDS) do
   local w = QA.walks[id]
   local okSteps = w ~= nil
@@ -66,6 +66,11 @@ stepCheck("stat labels: GCD, Movement Speed, Critical Strike Effectiveness", "ui
 stepCheck("nesting (UI-69): Layout's name 8 px right of Chat Panel's", "ui-nesting", 1, true)
 stepCheck("row icons (UI-70): every icon in its column on Rules > Enabled", "ui-row-icons", 1, true)
 stepCheck("auto-generate (UI-71): one icon per spec, four buttons as four lines", "ui-autogen-layout", 1, true)
+stepCheck("core flat buttons (UI-77) 1: the console's buttons are flat", "ui-core-flat-buttons", 1, true)
+stepCheck("core flat buttons (UI-77) 4: the copy box and the debug report too", "ui-core-flat-buttons", 4, true)
+CueRulesDB.ui.skinOff = true
+stepCheck("core flat buttons (UI-77): with the skin off the check says so (fails)", "ui-core-flat-buttons", 3, false, false)
+CueRulesDB.ui.skinOff = nil
 return R
 end
 '''

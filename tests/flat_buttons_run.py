@@ -1,7 +1,6 @@
 """#286 (core 0.6.16 / Options 0.6.12): every button built from Blizzard's red UIPanelButtonTemplate takes XayaUI's flat look.
-Part 1 runs the real ns.FlatButton (Core.lua) with the real services contract (Modules.lua): styled at once when the settings addon
-provides "buttonSkin", again on every show (so it follows the skin switch), and left alone when it does not; core never calls the
-settings addon by name.
+Part 1 runs the real ns.FlatButton (Core.lua): styled at once by core's own look (UI-77, core 0.6.68: no longer a service of the
+settings addon), and again on every show (so it follows the skin switch); core never calls the settings addon by name.
 Part 2 scans every addon's Lua: each UIPanelButtonTemplate button must be styled (ns.FlatButton / ns.SkinPlainButton / the
 multi-select bar's own flat code) within a few lines of where it is made, or be on the short list of buttons that keep Blizzard's
 look on purpose (with the reason).
@@ -15,39 +14,39 @@ def check(name, ok, extra=""):
     if not ok:
         fails.append(name)
 
-# ---- part 1: the helper itself
+# ---- part 1: the helper itself. UI-77 (core 0.6.68): the look is core's own (ns.PaintFlatButton), so core's windows are flat
+# without the settings addon (LoadOnDemand); the "buttonSkin" service is gone. tests/core_flat_buttons_run.py runs it in the stand-in game.
 core = open(os.path.join(ROOT, "XayaUI", "Core.lua"), encoding="utf-8").read()
 m = re.search(r"^function ns\.FlatButton\(b, primary\)\n.*?^end\n", core, re.S | re.M)
 check("Core.lua defines ns.FlatButton", m is not None)
-mods = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
-svc = re.search(r"^local services = \{\}\n.*?^function ns\.Service\(name\).*?\n", mods, re.S | re.M)
-check("Modules.lua has the services contract (ns.Provide / ns.Service)", svc is not None)
-if m and svc:
+check("Core.lua defines the look itself (ns.PaintFlatButton)", re.search(r"^function ns\.PaintFlatButton\(b, primary\)", core, re.M) is not None)
+if m:
     L = LuaRuntime(unpack_returned_tuples=True)
-    L.execute("ns = {}\n" + svc.group(0) + m.group(0))
     L.execute(r'''
-    SKINNED = {}
+    ns = {}
+    PAINTED = {}
+    function ns.PaintFlatButton(b, primary) PAINTED[#PAINTED + 1] = { b = b, primary = primary } end
     function NewButton() local b = { hooks = {} }
       function b:HookScript(k, fn) self.hooks[k] = fn end
       return b end
     ''')
+    pre = core[:m.start()]
+    lst = re.search(r"^local flatButtons.*?^end\n", pre, re.S | re.M)
+    L.execute((lst.group(0) if lst else "") + m.group(0))
     L.execute("B = NewButton(); ns.FlatButton(B)")
-    check("settings addon not loaded: the button keeps Blizzard's look, no error", L.eval("next(SKINNED) == nil"))
-    L.execute("ns.Provide('buttonSkin', { Apply = function(b, primary) SKINNED[#SKINNED + 1] = { b = b, primary = primary } end })")
-    L.execute("B.hooks.OnShow(B)")
-    check("settings addon loaded later: styled when the button is next shown", L.eval("#SKINNED == 1 and SKINNED[1].b == B"))
-    L.execute("SKINNED = {}; P = NewButton(); ns.FlatButton(P, true)")
-    check("settings addon loaded: styled at once, and a primary button stays primary", L.eval("#SKINNED == 1 and SKINNED[1].primary == true"))
+    check("styled at once by core's own look (no settings addon needed)", L.eval("#PAINTED == 1 and PAINTED[1].b == B"))
+    L.execute("P = NewButton(); ns.FlatButton(P, true)")
+    check("a primary button stays primary", L.eval("PAINTED[2].primary == true"))
     L.execute("P.hooks.OnShow(P)")
-    check("styled again on every show (follows the skin switch)", L.eval("#SKINNED == 2"))
+    check("styled again on every show (follows the skin switch)", L.eval("#PAINTED == 3"))
 
-# ---- the contract: core asks the "buttonSkin" service; it never names the settings addon's function (Modules.lua rule)
+# ---- the contract: core never names the settings addon's function (Modules.lua rule); the settings addon calls core's look
 for path in glob.glob(os.path.join(ROOT, "XayaUI", "**", "*.lua"), recursive=True):
     txt = re.sub(r"--[^\n]*", "", open(path, encoding="utf-8").read())
     if "ns.SkinPlainButton" in txt:
         check("core file %s does not call ns.SkinPlainButton (XayaUI_Options) by name" % os.path.relpath(path, ROOT), False)
 skin = open(os.path.join(ROOT, "XayaUI_Options", "Skin.lua"), encoding="utf-8").read()
-check("the settings addon provides the buttonSkin service", 'ns.Provide("buttonSkin"' in skin)
+check("the settings addon's ns.SkinPlainButton uses core's look (one copy)", "ns.PaintFlatButton(b, primary)" in skin)
 
 # ---- part 2: every red-template button in the addons
 KEEP = {   # file name -> reason the button keeps Blizzard's look

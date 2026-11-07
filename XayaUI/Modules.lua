@@ -513,7 +513,7 @@ end
 -------------------------------------------------------------------------------
 -- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
 -- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenu.lua);
--- "buttonSkin" (XayaUI_Options) answers Apply(button, primary), the flat button look core's own windows use (Core.lua ns.FlatButton).
+-- (UI-77, core 0.6.68: the "buttonSkin" service is gone; the flat button look is core's own, Core.lua ns.PaintFlatButton.)
 -------------------------------------------------------------------------------
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
