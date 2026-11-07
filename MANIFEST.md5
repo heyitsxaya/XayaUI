@@ -539,7 +539,7 @@ a03fb1ade578e9f6b2a9f0d24b7a19f5  debug-log/2026-11-06-1858-generate-buttons-fil
 808b6b14d294ae6ebb8cbe3e8d0627b0  debug-log/2026-11-06-2018-bar-textures-power-art-fills-dedupe.md
 01cf62ff1a8877551540faef7718dfc2  debug-log/2026-11-06-2048-window-close-state-sidebar-icons-core-0.6.56-options-0.6.55.md
 e914f73febc514d6b619ce7fb742b91f  debug-log/2026-11-06-2050-chat-collapse-bar-drops-down-chat-0.6.22.md
-10bab950bde9289d0ffe308044b1b399  debug-log/2026-11-06-2100-blizzard-reskin-candidates-12.1.5.md
+e23e17964edfa30167e9762ba467a806  debug-log/2026-11-06-2100-blizzard-reskin-candidates-12.1.5.md
 d5302a5bc352146da2d333bd78d96906  debug-log/2026-11-06-2104-d7-disabled-rules-cost-nothing-core-0.6.56.md
 edfc9049418b68ab1cb0edc1a994ed1c  debug-log/2026-11-06-2117-player-state-dead-not-released-core-0.6.56.md
 da470104d689cf5e1d8deeb827454ffc  debug-log/2026-11-06-2120-issue-18-unset-load-no-bearing.md
@@ -561,7 +561,7 @@ a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 236ce871539f4cb7e3210d1e3a7e6478  docs/QA-CHECKLIST.md
 016d704744f94668de6d3e58e201e3ce  docs/README-INGAME.md
-df0b0db8c4ec95be10546f6a19bef400  docs/ROADMAP.md
+f4e2354d1e0dbd11b54f94cf515db96a  docs/ROADMAP.md
 83b0df21d9813f58d0a4290b48e16cd5  docs/SESSION-START-SUMMARY.md
 afcc38a3ac15d7ea9f3c2511eb714955  docs/USER-GUIDE.md
 c8fc4bbf66335cd4b564da20d22683be  docs/WHATS-NEW.md
@@ -574,7 +574,7 @@ d219067bc85426f02913fb1b3eece809  docs/issue-screenshots/toolkit-spells-id-place
 2edfd954de3e0f9b0ecffe4974a91398  docs/issue-screenshots/toolkit-what-if-tab.png
 a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.png
 58ad0a99081eea454e70a353255849e5  docs/plans/AURA-PLAN.md
-37f1d2f7ceb3ee09f3b9b63b018e2c72  docs/plans/BLIZZARD-RESKIN-CANDIDATES-2026-11-06.md
+9799597909a2e0bc1e3d3b2adda4165c  docs/plans/BLIZZARD-RESKIN-CANDIDATES-2026-11-06.md
 5b76c3620cb5e2f1e3997e604b5a4c9a  docs/plans/CDM-TRACKING-REVIEW-2026-11-06.md
 e62439d6b9c7a0a6eac69d3d5735b088  docs/plans/DEBUG-TO-DEVASSIST-2026-11-06.md
 2a03d88935103ce732b7e3e0d1eccbb9  docs/plans/GAMES-MODULE-2026-11-05.md
@@ -600,7 +600,7 @@ c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 f2fa31ac21c4a1101f7fb13a72c08285  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-5692c30a97503d4d26f1d183638ba588  docs/process/REQUEST-LOG.md
+c42ac87a37ee0efcf859d2807b057742  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json

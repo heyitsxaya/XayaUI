@@ -1,6 +1,6 @@
 # Blizzard UI elements XayaUI can reskin: candidate list (findings only, no code)
 
-Written 2026-11-06 21:00 UTC by session 014bN6tUPG6SDvkoa3i3tMu5 (branch `claude/determined-cerf-981pn8`). Request row: REQUEST-LOG A8, S8-1.
+Written 2026-11-06 21:00 UTC by session 014bN6tUPG6SDvkoa3i3tMu5 (branch `claude/determined-cerf-981pn8`). Request row: REQUEST-LOG A13, RESKIN-1.
 
 Xaya's request, her words: "Xaya UI Reskin elements: review what of blizzard's ui elements can be reskinned and generate a list of
 them (no functionality changes, just reskins of core blizzard UI)".
@@ -179,7 +179,7 @@ from the scan). This is the highest-leverage group: restyling a template once re
 | 3.43 | Help, report-player, colour picker | `Blizzard_HelpFrame`; `Blizzard_ReportFrame`; `Blizzard_ColorPickerFrame` | always | A |
 | 3.44 | Pet battle interface | `Blizzard_PetBattleUI` | always | A by scan (large: 3,799 lines) |
 
-## 6b. Xaya's own list (2026-11-06, REQUEST-LOG S8-2), matched to the source
+## 6b. Xaya's own list (2026-11-06, REQUEST-LOG RESKIN-2), matched to the source
 
 Her message: "things I can think of", 36 items, plus two screenshots.
 - **Screenshot 1:** Blizzard's Edit Mode frame list, with Frames / Combat / Misc tick boxes.
@@ -283,7 +283,7 @@ The list now has 93 + 9 = **102 rows**.
 
 1 + 1 + 4 + 30 = 36.
 
-### 6d. Her second list (2026-11-06, REQUEST-LOG S8-3)
+### 6d. Her second list (2026-11-06, REQUEST-LOG RESKIN-3)
 
 | # | Her words | What it is in 12.1.5 | Row | Tier | Note |
 |---|---|---|---|---|---|
@@ -360,6 +360,47 @@ mode, PTR feedback, commentator / spectator mode.
 | Q11 | Quest tracker / objectives pane (M1, M3) are one Blizzard frame: one tick box or several? | (a) One "Objective Tracker" reskin. (b) One tick box per section. |
 | Q12 | "menus" (M7) | (a) Right-click and dropdown menus. (b) Something else she names. |
 | Q13 | "skyriding" (M8) | A screenshot or `/fstack` name of the display she means. |
+
+### 9b. Her answers (2026-11-07, REQUEST-LOG RESKIN-4)
+
+Her words: "Q6: all q7: discussing blizzard reskins, so blizzard  q8: all q9: one q10: everything q11: single » multi toggle possible? Q12: all"
+
+| Q | Her answer | What it settles |
+|---|---|---|
+| Q6 | "all" | "Toolbars" covers all of them: the bag bar (2.7), the XP / reputation status bars (2.5), and the stance, pet and possess bars (in 2.1). |
+| Q7 | "discussing blizzard reskins, so blizzard" | "Options menu" is Blizzard's Settings window, `SettingsPanel` (3.34). |
+| Q8 | "all" | "Crafting" covers both: the crafting-orders window (`Blizzard_ProfessionsCustomerOrders`) and the crafting page of the Professions window (3.24). |
+| Q9 | "one" | Adventure guide and dungeon journal are **one** reskin, "Adventure Guide" (3.28). |
+| Q10 | "everything" | Scope is every reskinnable row (104), not only her 45 named items. X rows stay out because they cannot be done. |
+| Q11 | "single » multi toggle possible?" | **Yes, it is possible.** See the rest of this section. |
+| Q12 | "all" | "Menus" covers every menu: the right-click and dropdown menus (1.7), plus the Esc menu (0.1) and micro menu (2.6), which are already rows. |
+
+**Q11: why it is possible.** In 12.1.5 the objective tracker is one container, `ObjectiveTrackerFrame`, holding 11 sections. Each
+section is its own named frame in `Blizzard_ObjectiveTracker`:
+- `QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`, `WorldQuestObjectiveTracker`, `BonusObjectiveTracker`;
+- `AchievementObjectiveTracker`, `ProfessionsRecipeTracker`, `ScenarioObjectiveTracker`;
+- `MonthlyActivitiesObjectiveTracker`, `InitiativeTasksObjectiveTracker`, `AdventureObjectiveTracker`, `UIWidgetObjectiveTracker`.
+
+So a skin can address each section on its own. The proposed layout copies the "All reskins" pattern (C12):
+- One **Objective Tracker** tick box. It owns the container's look: its header, background and shared fonts.
+- Under it, one tick box per section. Each is greyed out while Objective Tracker is off.
+
+**Points for her before it is built:**
+- **Section labels.** Proposal: each tick box uses the heading Blizzard shows for that section in game. I have not read Blizzard's
+  heading strings, so the exact words are checked first.
+- **Professions overlap.** The Professions section (`ProfessionsRecipeTracker`) is already restyled by the Shopping List reskin
+  (RM-SHOP). Proposal: the Professions tick box under Objective Tracker is the same switch as Shopping List's tracker part, so the two
+  never fight over one frame.
+
+**Still open after her answers:**
+- Q1: the order of building.
+- Q2: does a reskin include size and spacing?
+- Q3: one theme for everything, or colours per element?
+- Q4: the combat HUD (tier C).
+- Q5: a global font change.
+- Q13: the skyriding frame (her screenshot or `/fstack` name).
+
+Q10 "everything" settles the scope part of Q1, but not the order.
 
 Each new reskin would get a row with its own tick box under the existing Blizzard UI Reskin tab, under "All reskins" (C12). Under
 V14 it does nothing until that box is ticked, and an on-demand window's skin waits for that window's `ADDON_LOADED`.
