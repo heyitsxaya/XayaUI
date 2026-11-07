@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- MinimapButton.lua : a minimap button with a quick-access list. Own code. UNTESTED in game.
---   Left-click   opens a small list of buttons: Notes, Settings, Custom data panels, Chat panel, Chat privacy cover.
+--   Left-click   opens a small list of buttons: Notes, Settings, Data Panels, Chat panel, Chat privacy cover.
 --   Right-click  opens the XayaUI settings window.
 --   Drag         moves the button around the minimap edge (unless locked).
 -- Which entries the list shows, the position, the size (16 to 48 pixels), and whether the button is shown at all are settings

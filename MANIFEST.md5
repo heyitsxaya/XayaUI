@@ -95,7 +95,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 658ce55fe96abe45fa773744424a3c58  XayaUI/Media/UI/xui_stgroup.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
-dcd0054deac063b5c16e569b76c31dce  XayaUI/MinimapButton.lua
+c9ccc9c52274fe6793d1ca7fdc8d9f5a  XayaUI/MinimapButton.lua
 470e1dd6a2dcc51c6ce43a460baf83c3  XayaUI/Modules.lua
 af50dc9d4e091e6dc803d69c18c9ed5c  XayaUI/Outcomes.lua
 ac819cb3c0f1c6bd28bdcd33566a74f8  XayaUI/ProcGlows.lua
@@ -112,7 +112,7 @@ de1b2eee30cf902a267508e1d8f3702d  XayaUI/Triggers.lua
 5cab3fc5cf434f55f21fa2c7353eeed7  XayaUI/Visual.lua
 88b340a0e4ab7ee96482e93974d68071  XayaUI/XayaUI.toc
 636230357dc2a01df71bc97e76d47652  XayaUI_Bonus/Calculator.lua
-eabc04686a834b340db9972459497f1d  XayaUI_Bonus/DataPanels.lua
+46f2c94ef1f52c969a022e1012a3b331  XayaUI_Bonus/DataPanels.lua
 2db92a427ac459460d35533c667d4ce5  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
 aefc177916735a5fd7bb33a748823f91  XayaUI_Bonus/Media/UI/Notepad/format.png
@@ -140,7 +140,7 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 4ba5ef764a47d4a1fb7dac4c559bed14  XayaUI_Bonus/Tooltips.lua
 9a827ec8c0651be5fd87594567a7ae86  XayaUI_Bonus/TooltipsUI.lua
 3a37261e12b91d6cb3d67fe5c00118ee  XayaUI_Bonus/Utilities.lua
-a59c534d9d36fe43068487d75420963c  XayaUI_Bonus/XayaUI_Bonus.toc
+7b8899b424ad7355c85d221f0eced044  XayaUI_Bonus/XayaUI_Bonus.toc
 18e2cea1fec4ac375e0e5ffaa7b93880  XayaUI_Chat/Bar.lua
 10cd194aab84304a023dbf52c19d35f8  XayaUI_Chat/Core.lua
 ed794d04c6709f11bc22bddee51ac7f5  XayaUI_Chat/Fade.lua
@@ -168,15 +168,15 @@ b5a92ec17bc645db493b24f51b63147f  XayaUI_DevAssist/CharacterWidthProbe.lua
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
 d1bc45421a3341cec7efd8daf8370225  XayaUI_DevAssist/QAWalk.lua
-af9d1f49591740afe60e78153a55a4a6  XayaUI_DevAssist/QAWalks-Checklist.lua
+94f3e942a35aba42c31a0f615fc934db  XayaUI_DevAssist/QAWalks-Checklist.lua
 ee2bc56f98a2fdfa7df23290df9b0c79  XayaUI_DevAssist/QAWalks-bars.lua
 f8b7e8e5ff4ea4801c35e381f2d0d4e5  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
-050f49ec8061449d2f4804bf94b9bf09  XayaUI_DevAssist/QAWalks-display.lua
+f064cb4a5d07c9cce75cc129843e1fa5  XayaUI_DevAssist/QAWalks-display.lua
 f757aafcd7b676c3727ef8b993d38bdc  XayaUI_DevAssist/QAWalks-perf.lua
 343717236e9be69b0c7324419317afb9  XayaUI_DevAssist/QAWalks-statcalc.lua
 904c5b6f2efe1ccd326c966c5e4cacaa  XayaUI_DevAssist/QAWalks.lua
-d8ccc33d57f7401a715335b3c5a007a9  XayaUI_DevAssist/XayaUI_DevAssist.toc
+5c1fa1de88d917801569c8bba8169888  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -588,8 +588,9 @@ ad06c27afba094b812a18a7e83365a1c  debug-log/2026-11-07-0832-report-select-string
 1b7416c11b53f41dff9e9ea9f76f68da  debug-log/2026-11-07-0846-shopping-list-autoshow-qol-0.7.42.md
 0eab928fdd0dc3ec40072ff2d5413250  debug-log/2026-11-07-0902-settings-window-one-build-options-0.6.68.md
 46f10dce61f84964111b5b1ae99b7084  debug-log/2026-11-07-0915-brief-hover-texts-ui-65.md
+98554bb21951a44b12821d1b278aaa7f  debug-log/2026-11-07-1206-tooltip-helper-core-0.6.71.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-d1d8bb8d1cba9cc6aaa768b047a2eaa6  docs/QA-CHECKLIST.md
+5f13814ce273f5e55f5efb5c92a0b320  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
 e161ff91bee0f228bd87a1541ff07459  docs/ROADMAP.md
 d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
@@ -641,7 +642,7 @@ c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-3afe3e0a7837781b2f52c8123e10ef4b  docs/process/REQUEST-LOG.md
+fba10595907cf1fd79f38b7a0b510eeb  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 09a7314016fdc0383c32f5f6e438bf70  docs/process/VERIFICATION.md
 1e94015a6bbc6df04beba4c8e3d8b12c  docs/process/handoffs/bar-cues.md
@@ -872,8 +873,8 @@ d46d3072cc36fb2d7c5ba243ba723416  tests/sidebar_switches_run.py
 d61ddff1e632235c3ce9006b279dd0f9  tests/timing_run.py
 d41c47a7c982e113295cf6fe9c82478f  tests/tooltip_aura_source_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
-e9c8a13a1c90464e8f050620a0a35809  tests/tooltip_parity_golden.json
-2d7e1d4c8abf706a67f5735965c2100a  tests/tooltip_parity_run.py
+fa4b801f1c6af0ccae79f902dbda70fb  tests/tooltip_parity_golden.json
+41c8d01a9ece1ce82ae2d048174cd575  tests/tooltip_parity_run.py
 2de8ed42448c155c93f000dfd55d1484  tests/tooltips_run.py
 1ebaefa53214e59997760360aa40c80f  tests/tracked_buff_run.py
 b8a468e591bd450e9d60af1c7ea2988c  tests/trigger_labels_run.py

@@ -140,6 +140,9 @@ def main():
     for label, text in COVERS:
         check("the recording covers %s" % label, any(text in g for g in logs))
     check("core has the shared tooltip helper ns.Tip (Show, Hide)", tip)
+    # DISPLAY-RULES A7.2 (her names everywhere; UI-5 "... to / Data Panels / Data Bars"): the minimap list row (Bonus 0.6.28)
+    check("the minimap list names the feature Data Panels (not the old 'Custom data panels')",
+          any("SetText|Data Panels|" in g for g in logs) and not any("ustom data panels" in g for g in logs))
     root = os.path.abspath(os.path.join(HERE, ".."))
     for rel in CONVERTED:
         code = "\n".join(l.split("--", 1)[0] for l in open(os.path.join(root, rel), encoding="utf-8").read().split("\n"))

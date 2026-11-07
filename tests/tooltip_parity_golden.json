@@ -7,7 +7,7 @@
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Chat Panel|1.000|0.820|0.000\nAddLine|Open the Chat Panel settings (also /xui chat settings)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Chat privacy\nAddLine|Click: cover the chat|1.000|1.000|1.000\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Chat privacy cover|1.000|0.820|0.000\nAddLine|Cover or show the chat (also /xui privacy)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
- "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Custom data panels|1.000|0.820|0.000\nAddLine|Open the custom data panels settings (also /xui data)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
+ "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Data Panels|1.000|0.820|0.000\nAddLine|Open the Data Panels settings (also /xui data)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Notes|1.000|0.820|0.000\nAddLine|Show or hide the notepad (also /xui notes)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Settings|1.000|0.820|0.000\nAddLine|Open the XayaUI settings window|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_TOP\nAddLine|Group: Advanced Cue Tracking|1.000|0.820|0.000\nAddLine|0 display(s) on screen|1.000|1.000|1.000\nAddLine|Click: open this group's settings|0.600|0.850|1.000\nAddLine|Right-click: X / Y, centering and anchoring|0.600|0.850|1.000\nAddLine|Drag this tab: move the whole group|0.600|0.850|1.000\nShow\n--leave--\nHide",

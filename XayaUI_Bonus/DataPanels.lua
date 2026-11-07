@@ -620,6 +620,7 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.DataPanels_OnDBReady)
-ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (custom data panels and bars)")
-ns.RegisterLauncher({ "data", "Custom data panels", "Open the custom data panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
+ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (Data Panels)")
+-- (Bonus 0.6.28: "Data Panels", her name for the feature: UI-5 "change the name Custom Data Panels and Bars ... to / Data Panels / Data Bars"; DISPLAY-RULES A7.2)
+ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)
