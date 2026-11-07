@@ -52,6 +52,10 @@ ns.InfoPaneData = {
   },
   patches = {
     { date = "2026-11-06", title = "Character Pane, Shopping List and All Reskins", blocks = {
+      { "h3", "Chat 0.6.19" },
+      { "grp", "Chat History" },
+      { "b", 1, "Fixed an issue where the chat history window dropped the letter after a literal \"||\" (r, n, c, T, H, A, K)." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA D12, D13)." },
       { "h3", "Quality of Life 0.7.32" },
       { "grp", "Shopping List (new)" },
       { "b", 1, "A panel that lists what your gear is missing and what your tracked recipes need. Off by default: turn it on with the tick box on the Shopping List row of the Blizzard UI Reskin tab. `/xui shop` shows or hides it (`/xui shop options`, `/xui shop status`)." },

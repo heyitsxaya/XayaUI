@@ -70,3 +70,12 @@ updated (its Acknowledgements and "opens Addon Info" checks described the old be
 **Not checked by tests (game only, QA B197):** real text heights and wrapping (the stand-in returns 12 px for every string), the
 "•" glyph in the game font (INFERENCE: Blizzard's fonts have it), scroll bars and mouse wheel, Esc order in the real key handling,
 theme repaint look.
+
+## Follow-up (Options 0.6.58, 2026-11-06 ~23:00 UTC, after the bundle landed #427 on main at 2f3a85e / 687b624)
+Two fixes the "feature update summary" session (014bN6tU26cuzQ9LarKYhZQx) set as conditions for agreeing to the PATCH-NOTES.md format:
+- Chat 0.6.19 entry added to the 2026-11-06 landing (it reached main ~21:20 UTC, after this pane's seed was written from c6ce899):
+  "Fixed an issue where the chat history window dropped the letter after a literal '|' (r, n, c, T, H, A, K)", Developers' note
+  "Not yet tested in game (QA D12, D13)". Source: debug-log/2026-11-06-1715-history-pipe-before-codes-chat-0.6.19.md.
+- "Dev Assist" and "Media" added to the addon names tools/build_info_pane_data.py accepts (and the PATCH-NOTES.md header).
+InfoPaneData.lua regenerated; tests/info_pane_run.py 43/43, lua_pitfalls 0 fails. Version 0.6.58: checked every origin branch's
+Options toc first (highest 0.6.57, on main).

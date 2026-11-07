@@ -1411,7 +1411,7 @@ local function RulePath(rule)
             -- Smart Categories lists a rule under each type it matches (the tree has no folder rows there)
             if ns.pickOrigin ~= "cooldowns" then
                 for _, c in ipairs(ns.SMART_CATS) do
-                    if c.key ~= "smart_bar" and ns.SmartMatch(r, c.key) then return "cooldowns", "smartTab", "all", "smart", c.key, "rule" .. idx end
+                    if ns.SmartMatch(r, c.key) then return "cooldowns", "smartTab", "all", "smart", c.key, "rule" .. idx end
                 end
             end
             -- no display type: it lives in Loaded / Not Loaded, nested under its (non-transparent) groups
@@ -2802,6 +2802,141 @@ local function BuildRule(i, rule)
         }, function() return (T.enabled or C.enabled or AB.enabled) and true or false end),
         sound = Banner("sound", "Sound", 3, soundEnable, soundBody, function() return rule.sound.enabled and true or false end),
     } }
+    -- A Bar cue's own options (BarCue.lua; RM-BARS, Xaya 2026-11-06, docs/process/REQUEST-LOG.md S8-1 .. S8-4). Built only for a Bar cue.
+    local barArgs, barTextArgs
+    if V.kind == "bar" and ns.BarCueSettings then
+        local B = ns.BarCueSettings(V)
+        local function bon() Changed(rule); Notify() end
+        local SRC = { auto = "Automatic", aura = "Aura time left", cooldown = "Spell cooldown / recharge", stacks = "Stacks", charges = "Charges" }
+        local SRC_ORDER = { "auto", "aura", "cooldown", "stacks", "charges" }
+        local DIR = { left = "Left (drains right to left)", right = "Right (drains left to right)", bottom = "Bottom (drains top to bottom)", top = "Top (drains bottom to top)" }
+        local DIR_ORDER = { "left", "right", "bottom", "top" }
+        local function counting() local sr = ns.BarCueSource(rule); return sr == "stacks" or sr == "charges" end
+        local function hdr(name, order) return { type = "header", name = name, order = order } end
+        barArgs = {
+            sizeH = hdr("Size", 1),
+            w = Rng(V, "w", "Width", 1.1, 20, 800, 1, bon),
+            h = Rng(V, "h", "Height", 1.2, 4, 200, 1, bon),
+            trackH = hdr("Tracks", 2),
+            source = Sel(B, "source", "Tracks", 2.1, SRC, SRC_ORDER, bon, { width = "double",
+                desc = "Automatic: the aura's time left when the rule watches an aura, else the spell's cooldown. Aura time and stacks are drawn by the game in combat; a cooldown bar is driven by the game from the cooldown's duration." }),
+            srcNow = { type = "description", order = 2.2, width = "full", fontSize = "medium",
+                name = function()
+                    local sr, id = ns.BarCueSource(rule), ns.BarCueSpell(rule)
+                    if id <= 0 then return "|cffffd100The rule has no " .. ((sr == "cooldown" or sr == "charges") and "cooldown spell" or "aura") .. " yet.|r Add one on the Trigger tab." end
+                    return "Now: " .. SRC[sr] .. " of " .. SpellName(id)
+                end },
+            max = Rng(B, "max", "Maximum (0 = what the game says)", 2.3, 0, 50, 1, bon, { width = "double", hidden = function() return not counting() end,
+                desc = "The value at which the bar is full. 0 uses the game's maximum: the aura's maximum stacks, or the spell's maximum charges." }),
+            maxNow = { type = "description", order = 2.4, width = "full", fontSize = "medium", hidden = function() return not counting() end,
+                name = function()
+                    local okc, cd = pcall(ns.ReadCooldown, rule)
+                    local m = ns.BarCueMax(rule, okc and cd or nil)
+                    if m then return "Full at " .. m end
+                    return "|cffffd100The game gives no maximum here: set Maximum.|r Until then the bar stays empty."
+                end },
+            fillH = hdr("Fill", 3),
+            dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
+            reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
+            texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
+                desc = "Flat, Blizzard and Raid frame; the game's own power-bar art (Blizzard power: ...); every status-bar texture other addons share through LibSharedMedia; or your own file. A texture is listed once. Power-bar art is already coloured: the bar colour tints it (Colour = Fixed, white, shows it as drawn).",
+                values = function() local vv = ns.BarTextureList(); return vv end,
+                sorting = function() local _, o = ns.BarTextureList(); return o end,
+                get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
+            texFile = { type = "input", name = "Texture ID / path", order = 3.4, width = "double", hidden = function() return B.texture ~= "file" end,
+                get = function() return tostring(B.texFile or "") end, set = function(_, x) B.texFile = tostring(x or ""); bon() end },
+            colH = hdr("Colour", 4),
+            colorMode = Sel(B, "colorMode", "Colour", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed colour" },
+                { "auto", "fixed" }, bon, { width = "double" }),
+            color = Col(B, "color", "Bar colour", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
+            colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
+                name = function()
+                    local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
+                    if not okc then return "" end
+                    local sw = ("|TInterface\\Buttons\\WHITE8X8:12:28:0:0:8:8:0:8:0:8:%d:%d:%d|t"):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b2 * 255 + 0.5))
+                    local st, cu = ns.BarCueStyle(rule)
+                    local what = (why == "tooltip") and (ns.BarTypeLabel(t, d, st, cu) .. ", named in the tooltip")
+                        or (why == "dispel") and (ns.BarTypeLabel(t, nil, st, cu) .. ", the aura's dispel type")
+                        or "the fixed blue (no type found yet; an aura's dispel type is read while it is up)"
+                    return "Now: " .. sw .. "  " .. what .. "."
+                end },
+            -- the colour style of THIS bar (Xaya S8-10: "Cue sets it, group overrides if forcibly set")
+            styleForced = { type = "description", order = 4.4, width = "full", fontSize = "medium",
+                hidden = function() local _, _, gf = ns.BarCueStyle(rule); return B.colorMode == "fixed" or gf == nil end,
+                name = function()
+                    local st, _, gf = ns.BarCueStyle(rule)
+                    return gf and ("|cffffd100Colour style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
+                end },
+            style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
+                hidden = function() return B.colorMode == "fixed" end,
+                disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
+                desc = "Blizzard default: the game's own colours. Neon, Pastel and Muted / Dark keep each colour's family and change its saturation and brightness. Custom: pick each type's colour below." }),
+            cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Magic"] = { r, g, b2, 1 }; bon() end },
+            cusCurse = { type = "color", name = "Curse", order = 4.61, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Curse", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Curse"] = { r, g, b2, 1 }; bon() end },
+            cusDisease = { type = "color", name = "Disease", order = 4.62, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Disease", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Disease"] = { r, g, b2, 1 }; bon() end },
+            cusPoison = { type = "color", name = "Poison", order = 4.63, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Poison", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Poison"] = { r, g, b2, 1 }; bon() end },
+            cusBleed = { type = "color", name = "Bleed", order = 4.64, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Bleed", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Bleed"] = { r, g, b2, 1 }; bon() end },
+            cusPhysical = { type = "color", name = "Physical", order = 4.65, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Physical", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Physical"] = { r, g, b2, 1 }; bon() end },
+            cusHoly = { type = "color", name = "Holy", order = 4.66, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Holy", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Holy"] = { r, g, b2, 1 }; bon() end },
+            cusFire = { type = "color", name = "Fire", order = 4.67, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Fire", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Fire"] = { r, g, b2, 1 }; bon() end },
+            cusNature = { type = "color", name = "Nature", order = 4.68, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Nature", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Nature"] = { r, g, b2, 1 }; bon() end },
+            cusFrost = { type = "color", name = "Frost", order = 4.69, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Frost", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Frost"] = { r, g, b2, 1 }; bon() end },
+            cusShadow = { type = "color", name = "Shadow", order = 4.70, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Shadow", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Shadow"] = { r, g, b2, 1 }; bon() end },
+            cusArcane = { type = "color", name = "Arcane", order = 4.71, hasAlpha = false,
+                hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
+                get = function() local r, g, b2 = ns.BarTypeColor("Arcane", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Arcane"] = { r, g, b2, 1 }; bon() end },
+            iconH = hdr("Icon and spark", 5),
+            icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
+                { desc = "On a vertical bar, left is the top end and right the bottom end." }),
+            spark = Tog(B.spark, "enabled", "Spark", 5.2, bon, { desc = "A bright mark on the moving edge of the fill." }),
+            sparkColor = Col(B.spark, "color", "Spark colour", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
+            sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, bon, { hidden = function() return not B.spark.enabled end }),
+            bgH = hdr("Background and border", 6),
+            bg = Tog(V.bg, "enabled", "Background", 6.1, bon),
+            bgColor = Col(V.bg, "color", "Background colour", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
+            border = Tog(V.border, "enabled", "Border", 6.3, bon),
+            borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, bon, { hidden = function() return not V.border.enabled end }),
+            borderColor = Col(V.border, "color", "Border colour", 6.5, bon, { hidden = function() return not V.border.enabled end }),
+            alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, bon),
+        }
+        local nameArgs = TextStyleArgs(B.name, bon, 10)
+        nameArgs.enabled = Tog(B.name, "enabled", "Show the spell / aura name", 1, bon)
+        barTextArgs = { name = Sub("cq_barname", "Name Text", 0.5, nameArgs) }
+    end
     -- Pieces the Cues tab re-uses, without the on/off tick boxes and +/- banners (a cue IS the thing, so it is always on)
     actions.xuiParts = {
         tex = tex.args,
@@ -2812,6 +2947,7 @@ local function BuildRule(i, rule)
         soundBody = soundBody,
         speechBody = speechBody,
         ensureText = function() if not (T.enabled or C.enabled or AB.enabled) then T.enabled = true end end,
+        barArgs = barArgs, barTextArgs = barTextArgs,
     }
     -- cue kinds: a Display rule has no sound banner, a Sound rule has no display / text banners
     actions.args.display.hidden = function() return not ns.KindHas(rule, "visual") end
@@ -3764,16 +3900,18 @@ function ns.SmartMatch(rule, key)
     local v = rule.visual
     if not (v and v.enabled and ns.KindHas(rule, "visual")) then return false end
     local isIcon = ns.Val(v.kind) == "spellicon"
+    local isBar = v.kind == "bar"   -- a Bar cue (BarCue.lua, RM-BARS)
     local fill = v.fill and v.fill.enabled and true or false
+    if key == "smart_bar" then return isBar end
     if key == "smart_icon" then return isIcon end
     if key == "smart_progtex" then return fill end
     if key == "smart_text" then return (v.text and v.text.enabled) and true or false end
-    if key == "smart_tex" then return (not isIcon) and (not fill) and (v.texAlpha == nil or v.texAlpha > 0) end
+    if key == "smart_tex" then return (not isIcon) and (not isBar) and (not fill) and (v.texAlpha == nil or v.texAlpha > 0) end
     return false
 end
 function ns.SmartAny(rule)
     for _, c in ipairs(ns.SMART_CATS) do
-        if c.key ~= "smart_bar" and ns.SmartMatch(rule, c.key) then return true end
+        if ns.SmartMatch(rule, c.key) then return true end
     end
     return false
 end
@@ -3783,7 +3921,8 @@ local picker = nil   -- { folder = id|nil } while the page is open
 -- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
 -- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
 -- One explicit cue kind per type. Returns the cue (nil when the rule holds the most cues it may) and its kind.
-ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture" }
+-- (Progress Bar -> a Bar cue since Options 0.6.59 / core 0.6.58, RM-BARS; before, it made a Buff Bar, whose code is shelved and drew nothing)
+ns.CUE_FOR_TYPE = { icon = "icon", text = "text", sound = "sound", speech = "speech", texture = "texture", progresstex = "texture", bar = "bar" }
 function ns.NewTypedCue(r, typ)
     local kind = ns.CUE_FOR_TYPE[typ] or "texture"
     r.uid = r.uid or ns.NewUID()
@@ -3943,14 +4082,7 @@ ns.UI.NewRule = function() StartNewRule(nil) end
 local function PickType(typ)
     local p = picker
     picker = nil
-    if typ == "bar" then
-        local b = ns.NewBar()
-        b.name = "Buff bar " .. (#ns.bars + 1)
-        ns.bars[#ns.bars + 1] = b
-        pcall(ns.Bars_Refresh, b)
-        ns.MarkDirty(); Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allbars", "bar" .. #ns.bars)
-    elseif typ == "dgroup" or typ == "sgroup" then
+    if typ == "dgroup" or typ == "sgroup" then
         -- a rule group is a folder (the container): nested inside the folder the picker was opened from, top level otherwise
         local nf = ns.NewFolder((typ == "dgroup" and "Dynamic Group" or "Static Group"), p and p.folder)
         if typ == "dgroup" then nf.cType = "dynamic" end
@@ -4697,7 +4829,7 @@ local function BuildOptions()
         all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function() return not picker end }
         local TI = ns.TypeIcon or function(_, f) return f end
         all.args.pickIcon = Entry(0.2, TI("icon", "Spell_Holy_PowerWordShield"), "Icon", "Shows a spell icon with an optional cooldown overlay", "icon")
-        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer, and icon (creates a Buff Bar)", "bar")
+        all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer, and icon", "bar")
         all.args.pickProg = Entry(0.5, TI("progresstex", "Spell_Nature_TimeStop"), "Progress Texture", "Shows a texture that changes based on duration", "progresstex")
         all.args.pickText = Entry(0.6, TI("text", "INV_Misc_Note_01"), "Text", "One or more lines of text, with dynamic information", "text")
         all.args.pickTex = Entry(0.3, TI("sttexture", "INV_Misc_Gem_Variety_01"), "Texture", "Shows a custom texture", "texture")
@@ -4847,21 +4979,19 @@ local function BuildOptions()
                 return (scope == "loaded" and loadedArgs[key] ~= nil) or (scope == "not" and notArgs[key] ~= nil)
             end
             smartArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Collects rules by what they actually do, without moving them out of their own groups. A rule that shows an icon and text appears under both. Buff bars are listed under Progress Bars. Lists update as you change rules; empty ones are hidden." }
+                name = "Collects rules by what they actually do, without moving them out of their own groups. A rule that shows an icon and text appears under both. Rules with a Bar cue are listed under Progress Bars. Lists update as you change rules; empty ones are hidden." }
             for k, cat in ipairs(ns.SMART_CATS) do
                 local args, n = {}, 0
-                if cat.key == "smart_bar" then
-                    if scope == "all" then
-                        for j = 1, #(ns.bars or {}) do
-                            local bg = allBars.args["bar" .. j]
-                            if bg then args["bar" .. j] = bg; n = n + 1 end
-                        end
-                        total = total + n
+                if cat.key == "smart_bar" and scope == "all" then   -- buff bars saved before Bars.lua was shelved (#103) stay listed
+                    local nb = 0
+                    for j = 1, #(ns.bars or {}) do
+                        local bg = allBars.args["bar" .. j]
+                        if bg then args["bar" .. j] = bg; n = n + 1; nb = nb + 1 end
                     end
-                else
-                    for i, rule in ipairs(ns.rules or {}) do
-                        if inScope(i) and ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
-                    end
+                    total = total + nb
+                end
+                for i, rule in ipairs(ns.rules or {}) do
+                    if inScope(i) and ns.SmartMatch(rule, cat.key) then args["rule" .. i] = ruleGroups[i]; n = n + 1 end
                 end
                 for _, ak in ipairs({ "newRule", "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickGap", "pickCancel" }) do
                     if all.args[ak] then args[ak] = all.args[ak] end
@@ -5366,11 +5496,6 @@ local function Resolve(uv)
         return l, l
     end
     if last == "smart" or last:match("^smart_") then
-        if last == "smart_bar" then
-            local l = {}
-            for _, b in ipairs(ns.bars or {}) do l[#l + 1] = b end
-            return l, nil
-        end
         local l = {}
         local scope = uv:match("^(loaded)\001") or uv:match("^(notloaded)\001") or uv:match("^(disabled)\001")
         local okx, ctx2 = false, nil
@@ -8416,7 +8541,7 @@ function Tree.Closed()
     driver:SetScript("OnUpdate", nil)
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
-    ns.optionsShown = nil
+    if ns.SetWindowOpen then ns.SetWindowOpen(false) end
     -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
     if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
     if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
@@ -8453,7 +8578,7 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
-    if of and of.frame and of.frame:IsShown() then ns.optionsShown = true end
+    if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
 

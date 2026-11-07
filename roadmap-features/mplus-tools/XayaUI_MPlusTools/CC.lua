@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+-- CC.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- Crowd control: "same for CC". Same route as Kicks.lua: my CC spells (SpellLists "cc") sent as used; the group's received.
+-- Whether the CC landed, its duration on the mob, and diminishing returns on the mob: enemy aura data is hidden in combat in
+--   restricted content (ROADMAP RM-INST weakest point). So: "used at T, cooldown until T+n" only.
+-- Grouping by CC kind (stun, incapacitate, disorient, knock): the game's diminishing-return categories exist (#278 item 5), but which
+--   spell is in which is not given by a documented call here: where the mapping comes from is Q9.
+-------------------------------------------------------------------------------

@@ -1,0 +1,9 @@
+-------------------------------------------------------------------------------
+-- SpellLists.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- Which spells count as interrupt, cc, offensive, defensive, raidcd.
+-- Source options (Q9), none chosen:
+--   (a) each player builds their own list (the "send" side only needs MY spells, so a list of my own class is enough)
+--   (b) learned from the game at runtime where it says so (spell descriptions are text; no documented "is an interrupt" flag was found)
+--   (c) a table from a named public source, with the source named next to it and kept current each patch (#290 allows it)
+-- No spell ID is listed in this outline on purpose: none has been checked.
+-------------------------------------------------------------------------------

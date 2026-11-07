@@ -30,6 +30,7 @@ RecycleBin.lua
 Actions.lua
 Sound.lua
 Visual.lua
+BarCue.lua
 Share.lua
 Theme.lua
 Engine.lua
