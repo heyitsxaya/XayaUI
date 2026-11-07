@@ -179,7 +179,7 @@ function ns.RuleSearchArgs(rule, ruleGroup, notify)
     local function empty() local q = query[rule]; return not (q and q:match("%S")) end
     local args = {
         xuiSearch = { type = "input", order = 0.001, width = "full", name = "Search this rule's options",
-            desc = "Words in any order find the options whose name, help text, section or tab has them; the start of a word or one letter off still counts. Text between slashes is a Lua pattern, e.g. /charge|stack/ or /^show/: like a regular expression, but Lua's own kind (. %a %d %s, [abc], * + - ?, ^ $), with | added here for \"or\". Click a result to open its tab.",
+            desc = "Finds options by name, help text, section or tab, words in any order. Text between slashes is a Lua pattern, e.g. /charge|stack/.",
             get = function() return query[rule] or "" end,
             set = function(_, v) v = tostring(v or ""):sub(1, 80); query[rule] = v:match("%S") and v or nil; notify() end },
         xuiSearchNote = { type = "description", order = 0.002, width = "full", fontSize = "small", hidden = empty,

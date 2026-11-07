@@ -31,6 +31,7 @@ C.DEFAULTS = {
     -- parts
     tabsShow = true, tabHeight = 24,
     inputH = 26, inputHint = true, inputHintText = "Press Enter to chat",
+    inputPos = "BOTTOM",   -- (Chat 0.6.34; UI-15) BOTTOM | TOP (under the tab row) | ABOVE (above it) | FREE (inputX / inputY / inputW, mover only)
     stripMode = "HIDE", stripX = 0, stripY = 0,       -- Blizzard's button strip: HIDE | LEFT | RIGHT of the pane
     socialMode = "HIDE", socialX = 0, socialY = 0,    -- the social / quick-join button: HIDE | SHOW (stays above the pane)
     toBottom = "SHOW",                                -- the back-to-newest arrow: SHOW | HIDE
@@ -69,6 +70,11 @@ C.DEFAULTS = {
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
     histOn = true, histSize = 300, histConsole = true, histWhispers = "game",   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
+    whisperSelect = true,   -- (Chat 0.6.31, CHATREV-10) switch to a whisper tab you start, also with New Whispers = Both (Whispers.lua)
+    -- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) QoL > Improved Chat's own switch: everything the addon adds to how chat behaves
+    -- (scroll bar, fade and hide, history, filters, links, sounds, whisper tab switch, privacy cover, Chat Data Panel, sidebar). On by
+    -- default, so a saved profile keeps what it had; independent of the Chat Panel switch (her answer: "1", two independent switches)
+    improvedOn = true,
 }
 C.MAX_SLOTS = 8
 
@@ -123,6 +129,11 @@ end
 -------------------------------------------------------------------------------
 C.on = {}          -- part name -> true while that part runs (the cached answer hooks read; never a settings read)
 local parts = {}
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) which switch a part belongs to. "skin": Blizzard UI Reskin > Chat Panel (the look, and the
+-- anchoring of Blizzard's chat into the pane); "improved": QoL > Improved Chat (behaviour the addon adds); "any": runs while either is on.
+-- A part not listed is a skin part.
+C.PART_GROUP = { panel = "any", bar = "improved", fade = "improved", console = "improved", messages = "improved", filter = "improved",
+    itemref = "improved", scroll = "improved", whisperSelect = "improved", sidebar = "improved", inputfree = "skin" }
 -- want(s): is the part wanted (the Chat Panel being on is checked by the caller); start(s) / stop(s); update(s): on every refresh while it runs
 function C.Part(name, want, start, stop, update)
     parts[#parts + 1] = { name = name, want = want, start = start, stop = stop, update = update }
@@ -139,8 +150,12 @@ local function RunPart(p, fn, s)
         end
     end
 end
-function C.SyncParts(s, live)
+-- skinLive / impLive: the Chat Panel (skin) and Improved Chat are on. Called with one argument (the old form), both take that value.
+function C.SyncParts(s, skinLive, impLive)
+    if impLive == nil then impLive = skinLive end
     for _, p in ipairs(parts) do
+        local g = C.PART_GROUP[p.name] or "skin"
+        local live = (g == "skin" and skinLive) or (g == "improved" and impLive) or (g == "any" and (skinLive or impLive))
         local w = (live and s and p.want(s)) and true or false
         if w and not C.on[p.name] then C.on[p.name] = true; RunPart(p, p.start, s)
         elseif w then RunPart(p, p.update, s)
@@ -185,6 +200,12 @@ end
 function C.On()
     local s = ns.chat2
     return s and s.enabled and ns.ReskinTabOn() and not Blocked() and true or false
+end
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat: its own switch only. It also runs beside another addon's chat skin (her words:
+-- "should support other chat reskin options"): with the Chat Panel off it places its pieces around Blizzard's chat where it is.
+function C.ImprovedOn()
+    local s = ns.chat2
+    return s and s.improvedOn ~= false and true or false
 end
 
 function C.Frames()
@@ -313,21 +334,26 @@ end
 
 -- everything we changed on the game's chat goes back: shown / hidden pieces, alpha, mouse, anchors, fonts, tab heights.
 -- The game's own functions then lay the windows out again.
+-- (Chat 0.6.33) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
+-- fade alpha back, the block hidden). C.Teardown does both; the Chat Panel turned off with Improved Chat still on does the first only.
+-- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before XayaUI set it. The fade is Improved Chat's (UI-18 / UI-21),
+-- so this runs when Improved Chat stops (Fade.lua) and at the full teardown, not when only the Chat Panel's look is taken off.
+function C.RestoreTextFade()
+    for _, f in ipairs(C.Frames()) do
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
+end
 function C.Teardown()
     if not C.active then return end
+    C.TeardownSkin()
+    C.RestoreTextFade()
     C.active = false
-    for o in pairs(C.suppressed) do pcall(C.Unsuppress, o) end
-    C.suppressed = {}
-    for _, f in ipairs(C.Frames()) do   -- the back-to-newest arrows: the game's own alpha and shown state (Frame.lua C.ToBottomUpdate)
-        if C.ToBottomRelease then pcall(C.ToBottomRelease, f.ScrollToBottomButton) end
-    end
-    for _, o in ipairs(C.raised) do     -- the tab row's window list back in its own layer (Frame.lua C.RaiseTabList)
-        if o._xuiStrata then pcall(o.SetFrameStrata, o, o._xuiStrata) end
-        o._xuiStrata = nil
-    end
-    C.raised = {}
     C.master, C.fade = 1, 1
-    C.inputFocus = false   -- the edit box's focus hooks are idle while the Chat Panel is off (Skin.lua); the next focus sets it again
     for _, el in ipairs(C.alphaEls) do
         pcall(function()
             el._xuiSetting = true
@@ -338,6 +364,25 @@ function C.Teardown()
         -- the SetAlpha hook (Frame.lua HookAlpha) is idle while off, so the game's value is read afresh when the Chat Panel comes back
         el._xuiBase = nil
     end
+    if C.unlocked and C.ToggleMover then C.ToggleMover() end
+    if C.Container() then C.Container():Hide() end
+    if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
+    if C.Sidebar_Refresh then pcall(C.Sidebar_Refresh) end
+end
+function C.TeardownSkin()
+    if not C.skin then return end
+    C.skin = false
+    for o in pairs(C.suppressed) do pcall(C.Unsuppress, o) end
+    C.suppressed = {}
+    for _, f in ipairs(C.Frames()) do   -- the back-to-newest arrows: the game's own alpha and shown state (Frame.lua C.ToBottomUpdate)
+        if C.ToBottomRelease then pcall(C.ToBottomRelease, f.ScrollToBottomButton) end
+    end
+    for _, o in ipairs(C.raised) do     -- the tab row's window list back in its own layer (Frame.lua C.RaiseTabList)
+        if o._xuiStrata then pcall(o.SetFrameStrata, o, o._xuiStrata) end
+        o._xuiStrata = nil
+    end
+    C.raised = {}
+    C.inputFocus = false   -- the edit box's focus hooks are idle while the Chat Panel is off (Skin.lua); the next focus sets it again
     for _, o in ipairs(C.remembered) do
         pcall(function()
             o:ClearAllPoints()
@@ -363,8 +408,6 @@ function C.Teardown()
         end
     end
     if C.unlocked and C.ToggleMover then C.ToggleMover() end
-    if C.Container() then C.Container():Hide() end
-    if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
     for _, fn in ipairs({ "FCF_DockUpdate", "FCF_UpdateButtonSide" }) do
         if type(_G[fn]) == "function" then pcall(_G[fn]) end
     end
@@ -385,17 +428,20 @@ function C.EnsureDefaults()
 end
 
 -- the refresh bus ----------------------------------------------------------------------------------------------------------
--- C.active: the Chat Panel is applied right now (set here, cleared by C.Teardown). Hooks the game cannot take back read it.
+-- C.active: the Chat Panel or Improved Chat is applied right now (set here, cleared by C.Teardown). C.skin: the Chat Panel (the skin) is
+-- applied (cleared by C.TeardownSkin). Hooks the game cannot take back read them.
 function C.Refresh()
     local s = ns.chat2
     if not s then return end
     if s.enabled then blocked = C.BlockedReason() or false end
-    if not C.On() then                               -- off (or blocked by another chat addon): give Blizzard's chat back, untouched,
-        C.Teardown(); C.SyncParts(s, false); return  -- and stop every driver, event and filter of it
+    local skin, imp = C.On(), C.ImprovedOn()
+    if not (skin or imp) then                               -- both off (or the skin blocked by another chat addon and Improved Chat off):
+        C.Teardown(); C.SyncParts(s, false, false); return  -- give Blizzard's chat back, untouched, and stop every driver, event and filter
     end
     C.EnsureDefaults()
-    C.active = true
-    C.SyncParts(s, true)
+    if not skin then C.TeardownSkin() end                   -- Improved Chat alone: Blizzard's chat back where the game puts it
+    C.active, C.skin = true, skin
+    C.SyncParts(s, skin, imp)
     for _, m in ipairs(C.mods) do C.Try(m.name, m.fn, s) end
 end
 
@@ -417,9 +463,11 @@ function ns.Chat_OnDBReady()
     ns.chat2 = s
     -- "Cover the chat at every login" (Privacy.lua): up to Chat 0.6.13 read on the first loading screen by a frame of its own
     if ns.chatDB.privStartHidden then ns.chatDB.privOn = true end
-    if not (s.enabled and ns.ReskinTabOn()) then return end       -- V14: saved off (or the Reskin tab off), nothing more is built, registered or run
+    -- V14: the Chat Panel saved off (or the Reskin tab off) and Improved Chat saved off: nothing more is built, registered or run
+    if not ((s.enabled and ns.ReskinTabOn()) or s.improvedOn ~= false) then return end
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
+    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
@@ -457,7 +505,7 @@ function C.Command(arg)
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
     if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
-    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload)."))
+    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)."))
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
         C.Refresh(); ns.Print("Chat Panel: position and size reset.")
@@ -468,7 +516,7 @@ function C.Command(arg)
         -- (XayaUI Dev Assist's: wrap, indent, whispers; Chat 0.6.20)
     else
         local why = C.BlockedReason()
-        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
+        local state = not s.enabled and "OFF" or (not ns.ReskinTabOn() and "OFF (Blizzard Reskin is off: Blizzard Reskin > Overview)") or (why and ("blocked: " .. why)) or "ON"
         local extra = {}
         for _, h in ipairs(ns.SubcommandHelp and ns.SubcommandHelp("chat") or {}) do extra[#extra + 1] = h:match("^(%S+)") end
         ns.Print((("Chat Panel: " .. state .. ". /xui chat on|off|reset|move|history|" .. (#extra > 0 and (table.concat(extra, "|") .. "|") or "") .. "settings"):gsub("|", "||")))
@@ -487,6 +535,8 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
-ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end })
+ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
+    Options = function() return ns.BuildChatTab and ns.BuildChatTab(function() end) end,   -- (Chat 0.6.31) the settings tree, for the QA walkthrough
+    ImprovedOptions = function() return ns.BuildImprovedChatTab and ns.BuildImprovedChatTab(function() end) end })   -- (Chat 0.6.33) QoL > Improved Chat's
 ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Data Panel settings)")

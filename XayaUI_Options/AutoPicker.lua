@@ -736,7 +736,7 @@ function AP.Args(notify, keep)
     T.help = { type = "description", order = O(), width = "full", fontSize = "medium", name = AP.HELP,
         arg = { xuiKeep = true } }   -- shown as text, as she accepted (not folded into an info icon: Options.lua info pass)
     T.showMade = { type = "toggle", order = O(), width = "full", name = AP.SHOW_MADE_LABEL,
-        desc = "Off (default): rows that already have a rule are left out. On: they are listed again, unticked; Populate makes a ticked one even though its rule already exists.",
+        desc = "Lists rows that already have a rule again, unticked; Populate makes a ticked one anyway. Off by default.",
         get = function() return AP.showMade and true or false end,
         set = function(_, v) AP.showMade = v and true or nil; AP.Load(view.spec, view.filter); notify() end }
     if #rows == 0 then
@@ -795,13 +795,13 @@ function AP.Args(notify, keep)
                     local tdef = AP.TRIG[c.kind]
                     T[id .. "tr"] = { type = "select", order = O(), width = "relative", relWidth = W.tr, name = "", arg = CELL_DD,
                         values = tdef.values, sorting = tdef.order,
-                        desc = (c.kind == "cd") and "When available / when ready: a charge is up (the spell can be cast). At max stacks: every charge is back. For a spell without charges both are the same."
+                        desc = (c.kind == "cd") and "When available / when ready: a charge is up. At max stacks: every charge is back (the same for a spell without charges)."
                             or ("When present: the rule is true while the " .. ((c.kind == "aura") and "aura is on you." or "debuff is on your target.") .. " When missing: while it is not."),
                         get = function() local _, trig = AP.Choice(c); return trig end,
                         set = function(_, v) AP.SetChoice(c, "trig", v); notify() end }   -- notify: the default speech text follows it
                     T[id .. "cu"] = { type = "select", order = O(), width = "relative", relWidth = W.cu, name = "", arg = CELL_DD,
                         values = AP.CUES.values, sorting = AP.CUES.order,
-                        desc = "The rule's main cue, and the group it goes in. Progress bar and Custom are (soonTM): a row ticked with one is not made.",
+                        desc = "Sets the rule's main cue and the group it goes in. Progress bar and Custom are not ready yet; a row ticked with one is not made.",
                         get = function() local _, _, cue = AP.Choice(c); return cue end,
                         set = function(_, v) AP.SetChoice(c, "cue", v); notify() end }
                     -- the Cue set-up cell: one control per cue that has a set-up (main cue first, then extra cues)
@@ -825,7 +825,7 @@ function AP.Args(notify, keep)
                                     if type(s) == "table" and s.custom then return AP.SayText(c) end
                                     return "Customize"
                                 end,
-                                desc = function() return "What the Speech cue says. Now: \"" .. AP.SayText(c) .. "\". Tick Customize to type your own text; untick it to go back to \"" .. AP.DefaultSay(c) .. "\"." end,
+                                desc = function() return "What the Speech cue says. Now: \"" .. AP.SayText(c) .. "\". Untick Customize to go back to \"" .. AP.DefaultSay(c) .. "\"." end,
                                 get = function() local s = AP.Setup(c, "speech"); return type(s) == "table" and s.custom and true or false end,
                                 set = function(_, v)
                                     if v then AP.AskSay(c, notify) else AP.SetSetup(c, "speech", nil); notify() end

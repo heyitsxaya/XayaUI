@@ -79,31 +79,37 @@ local function StepEnabled(rule, rt, ctx, now)
     if not ok then
         local err = result
         result, info = false, nil
-        if not rt.errored then rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err)) end
+        if not rt.errored then
+            rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err))
+            -- audit D57 (core 0.6.67): recorded for /xui report too (the file's header promises the error log), like the action errors
+            if ns.RecordError then pcall(ns.RecordError, "XayaUI rule '" .. tostring(rule.name) .. "' (evaluate): " .. tostring(err), nil, "XayaUI", "XUI-E010") end
+        end
     end
     rt.info = info
     if ns.RecTrigger then ns.RecTrigger(rule, result, info) end   -- trigger detail for chosen rules (DebugRecord.lua; one test when off)
     -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
     if not rule.parentUid and ns.RunActions and info then
-        if info.ctxOK then
+        -- audit D54 (core 0.6.67): "loaded" is the load conditions AND the talent requirement (ns.IsLoaded); before, a rule whose
+        -- talent requirement failed still ran its On Initialization actions
+        if info.ctxOK and info.talentOK == true then
             if not rt.inited then rt.inited = true; RunActionsSafe(rule, rt, "init") end
-        elseif info.ctxOK == false then rt.inited = nil end
+        elseif info.ctxOK == false or info.talentOK == false then rt.inited = nil end
     end
     if result and not rt.active then
         rt.active, rt.lastPlay = true, now
         if not rule.parentUid then RunActionsSafe(rule, rt, "start") end
         if HasSound(rule) then PlaySoundSafe(rule, rt) end
-        ns.LogKind("rule", "|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule))
+        if ns.LogWanted("rule") then ns.LogKind("rule", "|cff55ff55FIRED|r %s%s", tostring(rule.name), SoundNote(rule)) end
     elseif result then
         local rep = rule.repeatSec or 0
         if rep > 0 and (now - rt.lastPlay) >= rep then
             rt.lastPlay = now
             if HasSound(rule) then PlaySoundSafe(rule, rt) end
-            ns.LogKind("rule", "repeat  %s", tostring(rule.name))
+            if ns.LogWanted("rule") then ns.LogKind("rule", "repeat  %s", tostring(rule.name)) end
         end
     else
         if rt.active then
-            ns.LogKind("rule", "cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error")
+            if ns.LogWanted("rule") then ns.LogKind("rule", "cleared %s: %s", tostring(rule.name), info and ns.WhyNot(info) or "error") end
             if not rule.parentUid then RunActionsSafe(rule, rt, "finish") end
         end
         rt.active = false
@@ -123,6 +129,16 @@ local function StepEnabled(rule, rt, ctx, now)
         Guarded(rule, rt, ns.UpdateVisualText, rule, info)
     end
     if pv then local d = debugprofilestop() - pv; perf.visMs = perf.visMs + d; perf.rule[rule] = (perf.rule[rule] or 0) + d end
+end
+
+-- audit D56 (core 0.6.67): a rule taken out of the list (deleted to the Recycle Bin, or swapped out by Load (replace)) finishes what it
+-- started, as a switched-off rule does (StepDisabled): its After It Ends actions run and a "During" glow stops (before: the glow stayed
+-- until /reload). Called by RecycleBin.lua and Share.lua before they remove the rule.
+function ns.EndRule(rule)
+    local rt = rule and ns.runtime and ns.runtime[rule]
+    if not rt then return end
+    if rt.active and not rule.parentUid and ns.RunActions then pcall(ns.RunActions, rule, "finish") end
+    rt.active, rt.inited = false, nil
 end
 
 -- One disabled rule: finish what it started and hide its display (once).
@@ -387,7 +403,7 @@ for _, e in ipairs({
     "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED",
 }) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_AURA", "player")
-f:SetScript("OnEvent", function(_, event)
+f:SetScript("OnEvent", function(_, event, arg1)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
     if event == "UNIT_AURA" then ns.lastAuraEventAt = GetTime() end   -- (Conditions.lua stamps an aura's appearance with it)
     if event == "PLAYER_ENTERING_WORLD" then
@@ -395,6 +411,9 @@ f:SetScript("OnEvent", function(_, event)
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
+    -- audit D54 (core 0.6.67): On Initialization runs again after a spec change (USER-GUIDE Actions tab; Actions.lua), for every rule
+    -- (the event carries unitTarget, events.md 1215, and is registered for every unit: only the player's own spec change counts)
+    if event == "PLAYER_SPECIALIZATION_CHANGED" and arg1 == "player" then for _, rt in pairs(ns.runtime or {}) do rt.inited = nil end end
     -- auto-capture status into the ring-buffer log at combat start/end, since /xui debug status can't be typed mid-fight
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true

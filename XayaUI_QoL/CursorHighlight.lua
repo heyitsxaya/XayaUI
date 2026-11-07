@@ -211,6 +211,7 @@ local function Layout(c)
 end
 
 local hiddenNow = false
+local lastCX, lastCY, lastCS   -- the cursor position and UI scale the anchor was last placed at (nil: place it on the next frame)
 local function OnUpdate()
     local c = CueRulesDB and CueRulesDB.cursorHighlight
     if not c then return end
@@ -224,6 +225,9 @@ local function OnUpdate()
     if hide then return end
     local x, y = GetCursorPosition()
     local s = UIParent:GetEffectiveScale()
+    -- a still cursor moves nothing (QoL 0.7.41, REQUEST-LOG A15 P-13: idle QoL showed 1% "now"; the anchor was re-set every frame)
+    if x == lastCX and y == lastCY and s == lastCS then return end
+    lastCX, lastCY, lastCS = x, y, s
     anchor:ClearAllPoints()
     anchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / s, y / s)
 end
@@ -260,6 +264,7 @@ function ns.CursorHighlight_Apply()
     ListenTheme(c.useThemeColor)
     hiddenNow = false
     frame:Show()
+    lastCX, lastCY, lastCS = nil, nil, nil   -- (placed again on the first frame)
     frame:SetScript("OnUpdate", OnUpdate)
 end
 
@@ -301,12 +306,12 @@ function ns.BuildCursorHighlightTab(Notify)
                         get = function() return C().thickness end,
                         set = function(_, v) C().thickness = v; Changed() end },
                     art = { type = "select", order = 4, name = "Game cursor picture", values = function() local t = {}; for k, v in pairs(ART) do t[k] = v[1] end; return t end, sorting = ART_ORDER,
-                        desc = "A picture from the game's own Interface\\Cursor folder, drawn at the cursor IN ADDITION to the real pointer (an addon cannot hide the real pointer). Not yet checked in game: a green square means the path is wrong.",
+                        desc = "Draws a game cursor picture at the cursor, alongside the real pointer. A green square means the path is wrong.",
                         hidden = function() return C().shape ~= "art" end,
                         get = function() return C().art end,
                         set = function(_, v) C().art = v; Changed() end },
                     artPath = { type = "input", order = 5, name = "Picture path", width = "double",
-                        desc = "Any game texture: a full in-game path (Interface\\Cursor\\Taxi, Interface\\Icons\\Spell_Nature_Lightning), a numeric file ID, or an atlas name. Files inside Interface\\AddOns work too (.blp, .tga or .png with power-of-two sides).",
+                        desc = "Uses any game texture: a path, a file ID or an atlas name. Files in Interface\\AddOns work too (.blp, .tga or .png, power-of-two sides).",
                         hidden = function() return C().shape ~= "art" or C().art ~= "custom" end,
                         get = function() return C().artPath end,
                         set = function(_, v) C().artPath = tostring(v or ""):sub(1, 200); Changed() end },
@@ -320,7 +325,7 @@ function ns.BuildCursorHighlightTab(Notify)
                 type = "group", name = "Color and Size", order = 3, hidden = isOff,
                 args = {
                     useThemeColor = { type = "toggle", order = 0.5, width = "full", name = "Use the UI theme's accent",
-                        desc = "Colors the highlight with your UI theme's accent color (Settings > Theme) and follows it when you change the theme. Off: the color you pick here.",
+                        desc = "Uses your UI theme's accent color and follows theme changes. Off uses the color you pick here.",
                         get = function() return C().useThemeColor and true or false end,
                         set = function(_, v) C().useThemeColor = v and true or false; Changed() end },
                     color = { type = "color", order = 1, name = "Color", hasAlpha = true,   -- the picker's transparency is the Opacity setting below

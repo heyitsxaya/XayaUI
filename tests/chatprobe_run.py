@@ -120,7 +120,10 @@ check("message text is NEVER recorded", not has("SECRET-CHAT-TEXT"))
 check("message length is recorded instead", has("last message length=27"))
 check("suspect frame found by name", has("QuickJoinToastButton: QuickJoinToastButton [Button]"))
 check("suspect that is absent says so", has("FriendsMicroButton: not found"))
-check("top-left section lists the floating button with its text", has("QuickJoinToastButton [Button]") and has("text='251'"))
+-- audit D39 (Dev Assist 0.7.19): a frame's own text (it can be a character name) is shown in chat, never saved in the file players send
+check("top-left section lists the floating button", has("QuickJoinToastButton [Button]"))
+check("D39 no frame text is saved (a whisper tab's title can be a name)", not has("text='"), has("text='"))
+
 local inTop = false; local passed = false
 for _, l in ipairs(P.lines) do
   if l:find("== shown frames in the top-left", 1, true) then inTop = true

@@ -224,7 +224,7 @@ C.OnMessage(function(event, text, author, _, _, _, _, _, _, channelBase, _, _, _
 end, function(s) return s.histOn and C.MSG_ALL or nil end)   -- V14: no chat message reaches the history while "Keep recent messages" is off
 
 -- console lines ---------------------------------------------------------------------------------------------------------------
-local function ConsoleOn() local s = S(); return s and s.histOn and s.histConsole ~= false and C.On() end
+local function ConsoleOn() local s = S(); return s and s.histOn and s.histConsole ~= false and C.ImprovedOn() end
 function C.History_Console(tag, ...)            -- tag: "Print" or "System"; the rest are the printed values
     if not ConsoleOn() then return end
     local parts, protected = {}, false
@@ -508,7 +508,7 @@ end
 -- the small button in the pane's corner
 local btn
 local function Refresh(s)
-    if not C.On() or not C.Pane() then return end
+    if not (C.active and C.ImprovedOn()) or not C.Pane() then if btn then btn:Hide() end return end   -- (Chat 0.6.33) Improved Chat's
     if not btn then
         if not s.histButton then return end   -- V14: built the first time "Show the small history button" is on
         btn = CreateFrame("Button", "XayaUIChatHistoryButton", C.Pane())
@@ -521,19 +521,26 @@ local function Refresh(s)
         end
         btn:SetAlpha(0.35)
         btn:SetScript("OnClick", function() C.History_Toggle() end)
-        btn:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Chat history"); GameTooltip:AddLine("Copy recent messages", 1, 1, 1); GameTooltip:Show() end)
-        btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
+        btn:SetScript("OnEnter", function(self) self:SetAlpha(1); ns.Tip.Show(self, "ANCHOR_LEFT", "Chat history", { { "Copy recent messages", 1, 1, 1 } }) end)
+        btn:SetScript("OnLeave", function(self) self:SetAlpha(0.35); ns.Tip.Hide() end)
     end
     -- at the right end of the tab row, where the tabs stop short of it (Frame.lua, C.HIST_RESERVE). Not under the tab row: the
     -- Chat Panel's scroll bar starts there and its up arrow was covered. With the tab row hidden: the text area's top-right corner,
     -- which is left of the scroll bar.
     btn:ClearAllPoints()
     local tabs = C.TabsArea()
+    -- (Chat 0.6.35; UI-3) in the chat sidebar while it holds it (Sidebar.lua places it there; it follows the sidebar's showing)
+    local sb = C.Sidebar_Slot and C.Sidebar_Slot("hist")
+    if btn:GetParent() ~= (sb or C.Pane()) then btn:SetParent(sb or C.Pane()) end
+    if sb then
+        btn:SetShown(s.histButton and true or false)
+        return
+    end
     if tabs and s.tabsShow then
         btn:SetPoint("RIGHT", tabs, "RIGHT", -3, 0)
     else
         btn:SetPoint("TOPRIGHT", C.TextArea(), "TOPRIGHT", -3, -3)
     end
-    btn:SetShown(s.histButton and not s.collapsed and true or false)
+    btn:SetShown(s.histButton and not C.IsCollapsed() and true or false)
 end
 C.Register("history", Refresh)

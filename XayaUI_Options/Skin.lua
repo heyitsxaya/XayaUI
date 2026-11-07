@@ -98,40 +98,11 @@ local function ShowRegions(f)
     for _, p in ipairs(f.xuiHidden) do p[1]:SetAlpha(p[2]) end
     f.xuiHidden = nil
 end
--- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget): the red Blizzard art is hidden, the theme's "xui-button"
--- (or "xui-button-primary") colors are painted, text is gold and white on hover. Safe to call again (colors are re-read each time, so a
--- theme change shows); with the skin off the Blizzard look is restored.
+-- Flat addon look for a plain Blizzard-template Button (not an AceGUI widget). UI-77 (Options 0.6.67): the look lives in core
+-- (Core.lua ns.PaintFlatButton) so core's windows have it without this addon loaded; this name stays for the settings addon's callers.
 function ns.SkinPlainButton(b, primary)
-    if not b or not b.GetFontString then return end
-    if not SkinOn() then
-        if b.xuiFlatBtn then ShowRegions(b); FlatHide(b); local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(1) end end
-        return
-    end
-    if not b.xuiFlatBtn then
-        b.xuiFlatBtn = true
-        HideRegions(b, nil)
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-        local fs = b:GetFontString(); if fs then fs:ClearAllPoints(); fs:SetPoint("CENTER") end
-        b:HookScript("OnEnter", function(self) local f = self:GetFontString(); if f and self.xuiFlatBtn then local c = TC("xui-list-selected", "text", { 1, 1, 1, 1 }); f:SetTextColor(c[1], c[2], c[3]) end end)
-        b:HookScript("OnLeave", function(self)
-            local f = self:GetFontString()
-            if f and self.xuiFlatBtn then local c = self.xuiBtnText or GOLD; f:SetTextColor(c[1], c[2], c[3]) end
-        end)
-    elseif b.xuiHidden == nil then
-        HideRegions(b, nil)   -- returning from skin-off: hide the Blizzard art again
-        local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
-    end
-    local cl = primary and "xui-button-primary" or "xui-button"
-    Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }))
-    local fs = b:GetFontString()
-    if fs then
-        local c = TC(cl, "text", GOLD)
-        b.xuiBtnText = c
-        fs:SetTextColor(c[1], c[2], c[3]); TF(fs)
-    end
+    if ns.PaintFlatButton then return ns.PaintFlatButton(b, primary) end
 end
--- core's own windows (console, popups) take this look through the "buttonSkin" service (Modules.lua), never by calling this file
-if ns.Provide then ns.Provide("buttonSkin", { Apply = function(b, primary) return ns.SkinPlainButton(b, primary) end }) end
 
 -- run restoreFn once when the widget is released (the wrapper is installed only once per widget)
 local function OnRelease(w, restoreFn)
@@ -169,45 +140,12 @@ local function AddRest(w, key, fn)
 end
 
 -------------------------------------------------------------------------------
--- Toolbar: New Rule / Import / Lock Positions + search box (filters the rule list by name)
+-- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.72).
 -------------------------------------------------------------------------------
 ns.treeFilter = ""
 local filterStamp = 0
 
-local toolBtns = setmetatable({}, { __mode = "k" })
-local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color (white was invisible on a light theme)
-local function ToolButton(parent, icon, label, onClick)
-    local b = CreateFrame("Button", nil, parent)
-    b:SetHeight(20)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetSize(16, 16); b.icon:SetPoint("LEFT", 0, 0); b.icon:SetTexture(icon)
-    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    b.text:SetPoint("LEFT", b.icon, "RIGHT", 4, 0)
-    toolBtns[b] = true
-    b.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-    b:SetScript("OnClick", onClick)
-    b:SetScript("OnEnter", function(self) local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3]) end)
-    b:SetScript("OnLeave", function(self) if self.active then local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3]) else self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
-    function b:SetActive(on)
-        self.active = on and true or false
-        -- lit = the same boxed look as a selected tab (color alone was lost under the theme's text color)
-        if self.active then
-            Flat(self, TC("xui-tab-selected", "bg", { 0.12, 0.05, 0.2, 0.9 }), TC("xui-tab-selected", "border", { 0.75, 0.4, 1, 1 }), { -5, -5, -2, -2 })
-            local h = HoverCol(); self.text:SetTextColor(h[1], h[2], h[3])
-        else
-            FlatHide(self)
-            self.text:SetTextColor(GOLD[1], GOLD[2], GOLD[3])
-        end
-    end
-    function b:Recolor()   -- theme changed: repaint the lit box and the text
-        self:SetActive(self.active)
-    end
-    function b:SetLabel(t) self.text:SetText(t); self:SetWidth(20 + self.text:GetStringWidth() + 6) end
-    b:SetLabel(label)
-    return b
-end
-
-if TH and TH.OnResolve then TH.OnResolve(function() for b in pairs(toolBtns) do pcall(b.Recolor, b) end end) end
+local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color
 -- a theme change also repaints every rule-list row (their text color was set when the row was drawn: dark text from Light mode stayed on a dark theme)
 if TH and TH.OnResolve then TH.OnResolve(function() if C_Timer then C_Timer.After(0.05, function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end) end end) end
 ns.On("THEME_CHANGED", function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end)   -- live theme edits (Theme.lua)
@@ -266,43 +204,16 @@ local function MakeSearchBox(parent)
     return sb
 end
 
-local function EnsureToolbar(of)
-    local fr = of.frame
-    local bar = fr.xuiToolbar
-    if not bar then
-        bar = CreateFrame("Frame", nil, fr)
-        bar:SetFrameLevel(fr:GetFrameLevel() + 5)
-        bar:SetHeight(22)
-        local nr = ToolButton(bar, "Interface\\Buttons\\UI-PlusButton-Up", "New Rule", function() if ns.UI and ns.UI.NewRule then ns.UI.NewRule() end end)
-        nr:SetPoint("LEFT", bar, "LEFT", 0, 0)
-        local im = ToolButton(bar, "Interface\\Icons\\INV_Scroll_03", "Import", function() if ns.UI and ns.UI.Import then ns.UI.Import() end end)
-        im:SetPoint("LEFT", nr, "RIGHT", 14, 0)
-        -- no Class/Spec Rule Creator button: it is the last sub-tab under Rules now, at the far right of the tab row (2026-11-01)
-        local ex = ToolButton(bar, 132763, "Export", function() if ns.UI and ns.UI.Export then ns.UI.Export() end end)
-        ex:SetPoint("LEFT", im, "RIGHT", 14, 0)
-        -- no Drafts button: Drafts is a sub-tab under Rules now (2026-11-01). Recycle Bin sits next to Export.
-        local rb = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_recyclebin.tga", "Recycle Bin", function() if ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end)
-        rb:SetPoint("LEFT", ex, "RIGHT", 14, 0)
-        -- no Cursor button here: the Cursor options live only on the QoL tab (Xaya, 2026-11-01)
-        local lk = ToolButton(bar, "Interface\\AddOns\\XayaUI\\Media\\UI\\xui_lock.tga", "Lock Positions", function()
-            if ns.ToggleUnlock then ns.ToggleUnlock() end
-            if ns.UI and ns.UI.Notify then ns.UI.Notify() end
-        end)
-        lk:SetPoint("LEFT", rb, "RIGHT", 14, 0)
-        bar.lock = lk
-        lk:Hide()   -- the Unlock Positions button is gone from the top bar (every level has its own in-line unlock); the object stays so nothing that sets its label breaks
-        -- Settings sits at the far right of the same line, cog icon on its left
-        local st = ToolButton(bar, "Interface\\Icons\\INV_Misc_Gear_01", "Settings", function() if ns.UI and ns.UI.Settings then ns.UI.Settings() end end)
-        st:SetPoint("RIGHT", bar, "RIGHT", 0, 0)
-        bar.settingsBtn = st
-        fr.xuiToolbar = bar
-    end
-    return bar
-end
+-- (Options 0.6.72; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: "I believe these almost exclusively belong to rules so they should be
+-- put under the rules tab and the Rules / QOL / Bonus Features / Reskin / Settings should be at the top level now instad"; "Cog goes")
+-- The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, the hidden Lock Positions, the Settings cog) is gone: "+ New Rule"
+-- is on the Rules tab's top row (CompactRulesTabs), Import / Export / Recycle Bin are sub-tabs of Profiles, Settings is a top tab.
 
 -------------------------------------------------------------------------------
 -- Per-widget skins
 -------------------------------------------------------------------------------
+local CONTENT_TOP = -34   -- (was -62 under the toolbar)
+ns.OptionsContentTop = CONTENT_TOP
 local function SkinFrame(of)
     local fr = of.frame
     if not fr or not fr.SetBackdrop then return end
@@ -323,7 +234,7 @@ local function SkinFrame(of)
             for _, rg in ipairs({ f:GetRegions() }) do if rg.xuiWasTitle then rg:SetAlpha(1); rg.xuiWasTitle = nil end end
             if f.xuiTitleBar then f.xuiTitleBar:Hide() end
             if f.xuiDrag then f.xuiDrag:Hide() end
-            if f.xuiToolbar then f.xuiToolbar:Hide() end
+            if f.xuiToolbar then f.xuiToolbar:Hide() end   -- (a window skinned by an older Options before an in-session update)
             local c2 = self.content
             c2:ClearAllPoints()
             for _, p in ipairs(self.xuiOrigContent or {}) do c2:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
@@ -374,17 +285,12 @@ local function SkinFrame(of)
     do local tt = TC("xui-titlebar", "text", GOLD); of.titletext:SetTextColor(tt[1], tt[2], tt[3]); TF(of.titletext) end
     -- (AceGUI's status bar under the content is hidden by Options.lua EnsureChrome: this window does not use it. A flat "band" that
     -- was meant to replace it here never ran: it looked for of.statusbg, which AceGUI's Frame widget does not keep.)
-    -- toolbar (content moves down to make room)
-    local bar = EnsureToolbar(of)
-    bar:ClearAllPoints(); bar:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -34); bar:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -17, -34)
-    bar:SetShown(not collapsed)
-    if bar.cursorBtn then bar.cursorBtn:SetActive(ns.pageOpen == "cursor") end
-    if bar.settingsBtn then bar.settingsBtn:SetActive(ns.pageOpen == "settings") end   -- the Settings button is lit while the settings pages are open
-    bar.lock:SetLabel(ns.unlocked and "Lock Positions" or "Unlock Positions")
+    -- no toolbar any more (Options 0.6.72): the content starts right under the title strip, where the toolbar was
+    if fr.xuiToolbar then fr.xuiToolbar:Hide() end
     local c = of.content
     local p1 = { c:GetPoint(1) }
-    if p1[5] ~= -62 then
-        c:ClearAllPoints(); c:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, -62); c:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -17, 40)
+    if p1[5] ~= CONTENT_TOP then
+        c:ClearAllPoints(); c:SetPoint("TOPLEFT", fr, "TOPLEFT", 17, CONTENT_TOP); c:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -17, 40)
     end
 end
 
@@ -510,11 +416,57 @@ local function CompactRulesTabs(w)
     local tf = SUB_TAB_FONT * ((TH and TH.Scale and TH.Scale()) or 1)   -- (UI-50: the name's size at the theme's text size)
     local cw = math.ceil(sw * tf / math.max(1, tonumber(cur) or tf)) + 24
     cw = math.min(cw, math.floor(width / 3))
-    local each = (#others > 0) and ((width - cw - SUB_GAP) / #others) or 0
+    -- (Options 0.6.72; UI-25, her words: New Rule goes on the "Rules tab's top row") "+ New Rule" is a flat button at the left end of
+    -- the row, as wide as its name plus 24 px, SUB_GAP before the tabs. (Where on the row was not given by her: left end chosen while she
+    -- was away, 2026-11-07; in her QA question flow, key UI-25-newrule.)
+    -- (Options 0.6.66; UI-76, O-146: "make these tabs a little narrower and maybe 3-5% smaller") each tab ns.Style.tabSub.share (90%) of
+    -- its even share of what is left of the row, the spare width as equal gaps after each tab
+    local nb = ns.RulesNewRuleButton(w)
+    local nw = 0
+    if nb then
+        local nfs = nb:GetFontString()
+        nw = math.ceil((nfs and nfs.GetStringWidth and nfs:GetStringWidth() or 70)) + 24
+        nw = math.min(nw, math.floor(width / 5))
+    end
+    local left = nb and (nw + SUB_GAP) or 0
+    local slot = (#others > 0) and ((width - left - cw - SUB_GAP) / #others) or 0
+    local each = slot * (ns.Style.tabSub.share or 1)
     local slots = {}
-    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, (i - 1) * each, each } end
+    for i, tab in ipairs(others) do slots[#slots + 1] = { tab, left + (i - 1) * slot, each } end
     slots[#slots + 1] = { creator, width - cw, cw }
     LayTabRow(w, slots, SUB_TAB_H, SUB_TAB_FONT)
+    if nb then
+        local sc = (TH and TH.Scale and TH.Scale()) or 1
+        local hastitle = w.titletext and w.titletext:GetText() and w.titletext:GetText() ~= ""
+        nb:ClearAllPoints()
+        nb:SetPoint("TOPLEFT", w.frame, "TOPLEFT", 0, -(hastitle and 14 or 7))
+        nb:SetSize(nw, math.floor(SUB_TAB_H * sc + 0.5))
+        nb:Show()
+    end
+end
+
+-- the "+ New Rule" button of the Rules row: one per tab container, made the first time the Rules row is laid out, hidden when the
+-- container is released (AceGUI gives it to another tab row) or lays out any other row
+function ns.RulesNewRuleButton(w)
+    if not (w and w.frame and CreateFrame) then return nil end
+    local b = w.xuiNewRule
+    if not b then
+        b = CreateFrame("Button", nil, w.frame, "UIPanelButtonTemplate")
+        b:SetText("+ New Rule")
+        b:SetScript("OnClick", function() if ns.UI and ns.UI.NewRule then ns.UI.NewRule() end end)
+        b.xuiNewRuleBtn = true
+        w.xuiNewRule = b
+        AddRest(w, "newrule", function(self) if self.xuiNewRule then self.xuiNewRule:Hide() end end)
+    end
+    b:SetFrameLevel(w.frame:GetFrameLevel() + 3)
+    ns.SkinPlainButton(b, true)
+    local fs = b:GetFontString()
+    if fs then
+        local sc = (TH and TH.Scale and TH.Scale()) or 1
+        local path = (TH and TH.FontPath and TH.FontPath()) or fs:GetFont()
+        if path then pcall(fs.SetFont, fs, path, math.floor(SUB_TAB_FONT * sc * 10 + 0.5) / 10, "OUTLINE") end
+    end
+    return b
 end
 
 -- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Tabs at the highest level should be evenly distributed across the pane,
@@ -524,12 +476,18 @@ end
 -- or a click, which re-applies the button's font objects, keeps it). The box below starts under the taller row.
 local TOP_TAB_H, TOP_TAB_FONT = ns.Style.tabTop.h, ns.Style.tabTop.font   -- (core ns.Style, UI-47)
 local function IsTopRow(w)
-    local T = ns.OptionsApi and ns.OptionsApi.TABS
-    if not (T and w and w.tabs) then return false end
+    local K = ns.OptionsApi and ns.OptionsApi.TOP_KEYS
+    if not (K and w and w.tabs) then return false end
+    -- (Options 0.6.72) the top row holds Rules, the feature tabs, Profiles and Settings; a row whose tabs are all top keys is the top
+    -- row (Profiles' own sub-tabs, import / export / bin, are not top keys)
+    local any = false
     for _, tab in ipairs(w.tabs) do
-        if tab:IsShown() then for _, t in pairs(T) do if tab.value == t.key then return true end end end
+        if tab:IsShown() then
+            if not K[tab.value] then return false end
+            any = true
+        end
     end
-    return false
+    return any
 end
 -- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for tabs inside a page: "24 px, 11 pt, even row") every other tab row (a
 -- page's section tabs, the rule editor's tabs): even widths, ns.Style.tabSection. A row too crowded for that (under 60 px a tab) keeps
@@ -563,6 +521,9 @@ end
 
 -- which layout a tab row gets: the window's top row, the Rules row (it holds Auto-Generate Rules), or a section row
 function ns.SkinTabRow(w)
+    local isRules = false
+    for _, tab in ipairs(w and w.tabs or {}) do if tab:IsShown() and tab.value == "creatorTab" then isRules = true end end
+    if w and w.xuiNewRule and not isRules then w.xuiNewRule:Hide() end   -- the container now holds another tab row
     if IsTopRow(w) then return TopTabs(w) end
     for _, tab in ipairs(w.tabs or {}) do if tab:IsShown() and tab.value == "creatorTab" then return CompactRulesTabs(w) end end
     return SectionTabs(w)
@@ -1116,7 +1077,11 @@ local function PaintNameEdit(w, arg)
         do local c = TC("xui-pane", "border", { 0.35, 0.35, 0.35, 1 }); eb.line:SetColorTexture(c[1], c[2], c[3], 0.8) end
         eb:SetScript("OnEnter", function(self) local c = TC("xui-pane", "bg", { 0.1, 0.1, 0.1, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 0.9) end)
         eb:SetScript("OnLeave", function(self) if not self:HasFocus() then self.bg:SetColorTexture(0, 0, 0, 0) end end)
-        eb:SetScript("OnEditFocusGained", function(self) local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText() end)
+        eb:SetScript("OnEditFocusGained", function(self)
+            local sp = self.xuiSpec
+            if sp and sp.locked and sp.locked() then self.xuiCancel = true; self:ClearFocus(); return end   -- edit-locked (audit D44): no typing
+            local c = TC("xui-window", "bg", { 0, 0, 0, 1 }); self.bg:SetColorTexture(c[1], c[2], c[3], 1); self:HighlightText()
+        end)
         eb:SetScript("OnEscapePressed", function(self) self.xuiCancel = true; self:ClearFocus() end)
         eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
         eb:SetScript("OnEditFocusLost", function(self)
@@ -1130,6 +1095,7 @@ local function PaintNameEdit(w, arg)
         do local c = TC("xui-text-muted", "text", { 0.45, 0.45, 0.45, 1 }); f.xuiNameHint:SetTextColor(c[1], c[2], c[3]) end
     end
     eb.xuiSpec = ed
+    eb:SetAlpha((ed.locked and ed.locked()) and 0.5 or 1)   -- grayed while edit-locked
     eb:SetFrameLevel(f:GetFrameLevel() + 3)
     eb:ClearAllPoints()
     if ed.title then   -- number is the header title; this box (the optional name) goes beneath it, smaller and gray
@@ -2139,9 +2105,15 @@ end
 -- window minimum width: the widest option of ANY dropdown in the addon (scanned from the options table once per window) plus the
 -- fixed chrome around the rule pane. The window cannot be dragged narrower; the collapse toggle still shrinks it.
 local function ScanDropdowns()
-    if not ns.BuildOptionsTable then return 0 end
-    local ok, root = pcall(ns.BuildOptionsTable)
-    if not ok or type(root) ~= "table" then return 0 end
+    -- (Options 0.6.68, REQUEST-LOG A15 P-16) the tree the window was just drawn from; a build of its own only when none is kept (it was a
+    -- full extra build on every window's first decoration: ~450 ms and ~160 MB in the stand-in with 313 rules)
+    local root = ns.OptionsApi and ns.OptionsApi.LastTree and ns.OptionsApi.LastTree()
+    if type(root) ~= "table" then
+        if not ns.BuildOptionsTable then return 0 end
+        local ok, r = pcall(ns.BuildOptionsTable)
+        if not ok or type(r) ~= "table" then return 0 end
+        root = r
+    end
     local seen, mx = {}, 0
     local function walk(g, depth)
         if type(g) ~= "table" or seen[g] or depth > 30 then return end

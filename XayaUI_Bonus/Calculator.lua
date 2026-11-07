@@ -56,7 +56,9 @@ local function ReadNumber(s, i)
     local v = tonumber((text:gsub(",", "")))
     if not v then return nil, nil, ("%s is not a number"):format(text) end
     local suf = s:sub(j, j):lower()
-    if SUFFIX[suf] and not s:sub(j + 1, j + 1):match("%a") then v = v * SUFFIX[suf]; j = j + 1 end
+    local after = s:sub(j + 1, j + 1)
+    -- (D51) x / X after the suffix is a multiply ("12kx3" = 36,000); any other letter makes it a word ("12kg" stays refused)
+    if SUFFIX[suf] and (not after:match("%a") or after == "x" or after == "X") then v = v * SUFFIX[suf]; j = j + 1 end
     return v, j
 end
 
@@ -181,6 +183,23 @@ function ns.CalcFormat(v)
     return Group(int) .. frac
 end
 
+-- the answer as the typed line keeps it for the next sum (D49): every digit needed to read the same number back (the shortest of
+-- %.15g / %.16g / %.17g that does), written out in plain digits, never in e-notation (the line cannot read "1e-07"). The answer line
+-- and the history still show ns.CalcFormat's rounded answer.
+function ns.CalcExact(v)
+    if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then return "" end
+    if v == 0 then return "0" end
+    local s
+    for p = 15, 17 do s = ("%." .. p .. "g"):format(v); if tonumber(s) == v then break end end
+    local sign, mant, exp = s:match("^(%-?)([%d%.]+)e([%+%-]%d+)$")
+    if not mant then return s end
+    local int, frac = mant:match("^(%d*)%.?(%d*)$")
+    local digits, point = int .. frac, #int + tonumber(exp)   -- point: how many digits stand before the decimal point
+    if point <= 0 then return sign .. "0." .. ("0"):rep(-point) .. digits end
+    if point >= #digits then return sign .. digits .. ("0"):rep(point - #digits) end
+    return sign .. digits:sub(1, point) .. "." .. digits:sub(point + 1)
+end
+
 -------------------------------------------------------------------------------
 -- Saved: CueRulesDB.calculator = { enabled, point, x, y, history = { "sum = answer", ... } } (enabled: false = off; nil or true = on)
 -------------------------------------------------------------------------------
@@ -231,7 +250,7 @@ local function Work(line)
     Remember(("%s = %s"):format(line, answer))
     frame.result:SetText(answer)
     frame.result:SetTextColor(1, 1, 1)
-    frame.edit:SetText((answer:gsub(",", "")))   -- the next sum builds on the answer
+    frame.edit:SetText(ns.CalcExact(v))   -- the next sum builds on the answer, at full precision (D49)
     frame.edit:SetCursorPosition(#frame.edit:GetText())
     RefreshHistory()
 end
@@ -342,7 +361,7 @@ end
 function ns.BuildCalculatorPage()
     local page = { type = "group", name = "Calculator", order = 1,
       xuiSwitch = { type = "toggle", name = "Calculator", tip = "A small calculator window (also /calc).",
-          desc = "Turns the Calculator's window on or off. Off: no window and no Calculator row in the minimap button's list, and the window is never built; /xui calc with a sum still gives the answer in chat. Your last sums are kept.",
+          desc = "Turns the Calculator's window on or off; your last sums are kept. Off, /xui calc with a sum still answers in chat.",
           get = function() return On() end, set = function(_, v) ns.Calculator_SetEnabled(v) end },
       args = {
         about = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -374,11 +393,21 @@ local function Command(arg)
 end
 
 ns.Calculator_Command = Command   -- (Bonus 0.6.17) also /calc, registered by Utilities.lua when the word is free
+-- (function audit 2026-11-07, D49 / D51) the Calculator's service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit-qol-bonus.lua)
+if ns.Provide then
+    ns.Provide("calculatorDebug", {
+        On = function() return On() end, Eval = function(s) return ns.CalcEval(s) end, Format = function(v) return ns.CalcFormat(v) end,
+        Press = function(key) if On() then Build(); Press(key) end end,   -- (off: nothing is built, V14)
+        Result = function() return frame and frame.result:GetText() end, Line = function() return frame and frame.edit:GetText() end,
+        Shown = function() return (frame and frame:IsShown()) and true or false end, Hide = function() if frame then frame:Hide() end end,
+        History = function() local d = DB(); return d and d.history end,
+    })
+end
 if ns.RegisterCommand then
     ns.RegisterCommand({ "calc", "calculator" }, Command, "/xui calc [sum] (a sum: the answer in chat; nothing: show / hide the calculator)")
 end
 if ns.RegisterLauncher then
     ns.RegisterLauncher({ "calc", "Calculator", "Show or hide the calculator (also /xui calc)", function() ns.Calculator_Toggle() end,
-        function() return (frame and frame:IsShown()) and "on" or "off" end, order = 11,
+        nil, order = 11,   -- O-100 (Bonus 0.6.27, her answer "No word at all"): no "on" / "off" for shown / hidden
         available = function() return On() end })   -- (Bonus 0.6.16) no row while the Calculator is off (core 0.6.49: available())
 end

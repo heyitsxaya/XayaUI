@@ -129,6 +129,9 @@ local lastX, lastY
 local midX, midY             -- smooth line: the midpoint the last curve piece ended on
 local lastDropX, lastDropY   -- the dot dropped most recently
 local ringN, nDots = 0, 0    -- dots are reused in ring order, so the next slot is always the oldest
+-- live dots and whether the head is shown (QoL 0.7.41, REQUEST-LOG A15 P-13): with nothing live the per-frame loop over the pool and the
+-- head's Hide are skipped, so a still cursor costs a position read per frame (Xaya, idle: QoL 1% "now")
+local liveDots, capOn = 0, false
 local capT = 0               -- smooth line: when the cursor last moved (the round head fades from then)
 local curSh = SHAPES.star
 local curPath = SHAPES.star[2]   -- the texture of the current shape (the typed path for "game")
@@ -164,6 +167,7 @@ end
 -- does not use. Every hide goes through Off, so the flags cannot drift from what is on screen. (QoL 0.7.13: with Xaya's smooth line
 -- the loop made about 1,600 texture calls a frame at speed, four per live dot; tests/cursor_trail_cost_run.py measures it.)
 local function Off(d)
+    if d.on then liveDots = liveDots - 1 end
     d.on = false
     if d.shown then d.tex:Hide(); d.shown = false end
     if d.line and d.lineShown then d.line:Hide(); d.lineShown = false end
@@ -184,7 +188,9 @@ end
 local function ClearAll()
     if not dots then return end
     for i = 1, nDots do Off(dots[i]) end
+    liveDots = 0
     if cap then cap:Hide() end
+    capOn = false
     ringN, lastX, lastY, lastDropX, lastDropY, midX, midY = 0, nil, nil, nil, nil, nil, nil
     capT = 0
 end
@@ -193,6 +199,7 @@ end
 local function Drop(x, y, limit, blend)
     ringN = ringN % limit + 1
     local d = dots[ringN] or NewDot(ringN)
+    if not d.on then liveDots = liveDots + 1 end
     d.on = true; d.born = GetTime(); d.x, d.y = x, y
     local t = d.tex
     t:ClearAllPoints()
@@ -260,7 +267,7 @@ local function OnUpdate()
 
     -- age, color, fade and place every live dot
     local rev = c.reverse
-    for i = 1, nDots do
+    for i = 1, (liveDots > 0) and nDots or 0 do
         local d = dots[i]
         if d.on then
             local f = (now - d.born) / life
@@ -306,7 +313,7 @@ local function OnUpdate()
     if cap then
         local f = ribbon and not hidden and capT > 0 and (now - capT) / life or 1
         if f >= 1 then
-            cap:Hide()
+            if capOn then cap:Hide(); capOn = false end
         else
             local r, g, b = Grad(stops, rev and (1 - f) or f)
             local sz = size * (1 - 0.45 * f)
@@ -316,7 +323,7 @@ local function OnUpdate()
             cap:SetSize(sz, sz)
             cap:ClearAllPoints()
             cap:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-            cap:Show()
+            cap:Show(); capOn = true
         end
     end
 end
@@ -403,7 +410,7 @@ function ns.BuildCursorTab(Notify)
                 get = function() return C().customN end,
                 set = function(_, v) C().customN = v; Changed() end },
             copyFrom = { type = "select", order = 2, name = "Copy a preset into Custom", width = "double",
-                desc = "Replaces your custom colors with the chosen preset's colors (and the matching color count). Your custom colors are overwritten.",
+                desc = "Replaces your custom colors with the chosen preset's colors and color count.",
                 values = function() local t = {}; for _, k in ipairs(PRESET_ORDER) do t[k] = PRESETS[k][1] end; return t end,
                 sorting = PRESET_ORDER,
                 get = function() return nil end,
@@ -441,7 +448,7 @@ function ns.BuildCursorTab(Notify)
                 type = "group", name = "Colors", order = 2, hidden = isOff,
                 args = {
                     preset = { type = "select", order = 1, width = "double", name = "Gradient",
-                        desc = "A ready-made gradient; Match the UI theme (your UI theme's colors, following every theme change: a \"Cursor trail\" theme gives exactly its gradient, any other theme its selected-text, accent and glow colors); or Custom to choose your own colors (2 to 6).",
+                        desc = "Picks a ready-made gradient, your UI theme's colors (Match the UI theme), or Custom for 2 to 6 colors of your own.",
                         values = presetValues, sorting = presetSorting,
                         get = function() return C().preset end,
                         set = function(_, v) C().preset = v; Changed() end },
@@ -461,7 +468,7 @@ function ns.BuildCursorTab(Notify)
                         get = function() return C().shape end,
                         set = function(_, v) C().shape = v; Changed() end },
                     gamePath = { type = "input", order = 3.1, name = "Game texture", width = "double",
-                        desc = "Any texture the game client already has: a path such as Interface\\Icons\\Spell_Nature_Lightning, a numeric file ID, or an atlas name. Nothing needs to be added to XayaUI. A green square means the path was not found.",
+                        desc = "Uses any texture the game already has: a path, a file ID or an atlas name. A green square means it was not found.",
                         hidden = function() return C().shape ~= "game" end,
                         get = function() return C().gamePath or "" end,
                         set = function(_, v) C().gamePath = tostring(v or ""):sub(1, 200); Changed() end },

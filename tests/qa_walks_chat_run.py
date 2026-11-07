@@ -117,6 +117,106 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("#296 last step", run(id, 6))
   rec("no module errors", next(C.errors) == nil)
 
+  -- CHATREV-10 / CHATREV-11 walkthroughs (Chat 0.6.31)
+  C_CVar = { v = { whisperMode = "popout_and_inline", showTimestamps = "none" } }
+  function C_CVar.GetCVar(n) return C_CVar.v[n] end; function C_CVar.SetCVar(n, x) C_CVar.v[n] = x; return true end
+  TIMESTAMP_FORMAT_HHMM_24HR = "%H:%M "
+  ns.OpenSettingsPage = ns.OpenSettingsPage or function() end
+  ns.chat2.whisperSelect = true; C.Refresh(); W.flush()
+  id = "chat-whisper-switch"
+  local okW1, nW1 = chk(id, 1); rec("whisper walk step 1: option on, mode Both", okW1, nW1)
+  C_CVar.v.whisperMode = "inline"
+  rec("whisper walk negative: In-line gives Fail", not chk(id, 1)); C_CVar.v.whisperMode = "popout_and_inline"
+  GENERAL_CHAT_DOCK = GENERAL_CHAT_DOCK or {}
+  local sel = ChatFrame1
+  FCFDock_GetSelectedWindow = function() return sel end
+  rec("whisper walk negative: still on General gives Fail at step 2", not chk(id, 2))
+  sel = { chatType = "WHISPER" }
+  local okW2, nW2 = chk(id, 2); rec("whisper walk step 2: a whisper tab is selected", okW2, nW2)
+  rec("whisper walk negative: on the whisper tab gives Fail at step 3", not chk(id, 3))
+  sel = ChatFrame1
+  rec("whisper walk step 3: back on General", chk(id, 3))
+  id = "chat-settings-layout"
+  local okS1, nS1 = run(id, 1); rec("layout walk step 1: Chat Panel = General, Chat Tabs, Layout (the look)", okS1, nS1)
+  local okS2, nS2 = run(id, 2); rec("layout walk step 2: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar (behaviour)", okS2, nS2)
+  local okS3, nS3 = run(id, 3); rec("layout walk step 3: the whisper switch is on Improved Chat > General > Chat history", okS3, nS3)
+  local okS4, nS4 = run(id, 4); rec("layout walk step 4: timestamps set", okS4, nS4)
+  local okS5, nS5 = run(id, 5); rec("layout walk step 5: timestamps put back", okS5 and C_CVar.v.showTimestamps == "none", nS5)
+  local realTree = ns.Service("chatDebug").Options
+  ns.Service("chatDebug").Options = function() local t = realTree(); t.args.look = { type = "group", name = "Appearance", order = 1.5, args = {} }; return t end
+  rec("layout walk negative: an Appearance part back gives Fail", not chk(id, 1))
+  ns.Service("chatDebug").Options = realTree
+
+  -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) the two switches apart
+  id = "chat-improved-split"
+  local okI1, nI1 = run(id, 1); rec("split walk step 1: Chat Panel off, Improved Chat on: the block and Chat Data Panel around Blizzard's chat", okI1, nI1)
+  local cbar = C.Bar(); cbar:Hide()
+  rec("split walk negative: no Chat Data Panel under the chat gives Fail", not chk(id, 1)); C.Layout()
+  local okI2, nI2 = run(id, 2); rec("split walk step 2: Chat Panel on, Improved Chat off: none of its pieces show", okI2, nI2)
+  ns.chat2.improvedOn = true; C.Refresh(); W.flush()
+  rec("split walk negative: Improved Chat back on gives Fail at step 2", not chk(id, 2))
+  local okI3, nI3 = run(id, 3); rec("split walk last step: switches put back", okI3 and ns.chat2.enabled == true and ns.chat2.improvedOn ~= false, nI3)
+
+  -- (Chat 0.6.34; UI-15) the input line's place
+  id = "chat-input-position"
+  local okN1, nN1 = run(id, 1); rec("input walk step 1: Top under the tabs", okN1, nN1)
+  rec("input walk negative: Bottom gives Fail at step 1", (function() ns.chat2.inputPos = "BOTTOM"; C.Refresh(); W.flush(); local r = not chk(id, 1); ns.chat2.inputPos = "TOP"; C.Refresh(); W.flush(); return r end)())
+  local okN2, nN2 = run(id, 2); rec("input walk step 2: Top above the tabs", okN2, nN2)
+  local okN3, nN3 = run(id, 3); rec("input walk step 3: Free move, mover open", okN3 and C.unlocked, nN3)
+  ns.chat2.inputX = (ns.chat2.inputX or 0) + 50
+  rec("input walk negative: a saved place the line is not at gives Fail", not chk(id, 3)); C.Refresh(); W.flush()
+  local okN4, nN4 = run(id, 4); rec("input walk last step: put back, mover closed", okN4 and not C.unlocked and C.InputPos() == "BOTTOM", nN4)
+
+  -- (Chat 0.6.35; UI-3) the sidebar
+  id = "chat-sidebar"
+  local okB1, nB1 = run(id, 1); rec("sidebar walk step 1: on the left, eye in it", okB1, nB1)
+  local eye = XayaUIChatPrivacyButton; eye:SetParent(UIParent)
+  rec("sidebar walk negative: the eye not in the strip gives Fail", not chk(id, 1)); C.Refresh(); W.flush()
+  MouseIsOver = function() return false end
+  local okB2, nB2 = run(id, 2); W.update(0.2, 2); okB2, nB2 = chk(id, 2); rec("sidebar walk step 2: hidden with the mouse away", okB2, nB2)
+  MouseIsOver = function() return true end; W.update(0.2, 2)
+  rec("sidebar walk negative: the mouse over it gives Fail at step 2", not chk(id, 2)); MouseIsOver = nil
+  local okB3, nB3 = run(id, 3); rec("sidebar walk step 3: on the right", okB3, nB3)
+  local okB4, nB4 = run(id, 4); rec("sidebar walk step 4: out of combat, shown", okB4, nB4)
+  local okB5 = run(id, 5); rec("sidebar walk last step: put back", okB5 and ns.chat2.sbCombat ~= true)
+
+  -- (O-143) every icon fades with the chat
+  id = "chat-fade-controls"
+  run(id, 1)
+  rec("fade walk negative: not faded yet gives Fail", not chk(id, 1))
+  C.fade = 0; C.ApplyAlpha()
+  local okF1, nF1 = chk(id, 1); rec("fade walk step 1: chat faded, no icon at full strength", okF1, nF1)
+  XayaUIChatArrow:SetAlpha(1)
+  rec("fade walk negative: a chevron left at full strength gives Fail", not chk(id, 1))
+  C.fade = 1; C.ApplyAlpha()
+  local okF2, nF2 = chk(id, 2); rec("fade walk step 2: back with the chat", okF2, nF2)
+  local okF3 = run(id, 3); rec("fade walk last step: put back", okF3)
+
+  -- #430 walkthrough
+  id = "chat-position-box"
+  rec("position walk step 1", run(id, 1))
+  local okP2, nP2 = run(id, 2); rec("position walk step 2: box open and filled", okP2, nP2)
+  local box = C.PositionBox()
+  rec("position walk negative: X not typed yet gives Fail", not chk(id, 3))
+  box.x:SetText("200"); box.x:GetScript("OnEnterPressed")(box.x)
+  local okP3, nP3 = chk(id, 3); rec("position walk step 3: X 200", okP3, nP3)
+  box.right:GetScript("OnClick")(box.right)
+  local okP4, nP4 = chk(id, 4); rec("position walk step 4: one pixel right", okP4, nP4)
+  IsShiftKeyDown = function() return true end; box.up:GetScript("OnClick")(box.up); IsShiftKeyDown = function() return false end
+  local okP5, nP5 = chk(id, 5); rec("position walk step 5: Shift = 10 up", okP5, nP5)
+  local okP6, nP6 = run(id, 6); rec("position walk last step: put back, mover closed", okP6 and not C.unlocked and not box:IsShown(), nP6)
+
+  -- CHATREV-12 tab-row walkthrough: a docked tab moved off the line gives Fail, on the line Pass
+  GeneralDockManager.DOCKED_CHAT_FRAMES = { ChatFrame1, ChatFrame2 }
+  ChatFrame1.isStaticDocked, ChatFrame2.isStaticDocked = true, true
+  id = "chat-tab-row"
+  rec("tab-row walk: only static tabs -> asks for another tab (Fail)", not chk(id, 1))
+  ChatFrame2.isStaticDocked = nil
+  local t2 = ChatFrame2Tab; t2:ClearAllPoints(); t2:SetPoint("LEFT", ChatFrame1Tab, "RIGHT", 1, 6)
+  rec("tab-row walk negative: a tab 6 px higher gives Fail", not chk(id, 1))
+  t2:ClearAllPoints(); t2:SetPoint("LEFT", ChatFrame1Tab, "RIGHT", 1, 0)
+  local okT, nT = chk(id, 1); rec("tab-row walk: tabs on one line give Pass", okT, nT)
+
   -- pre-fill in the window
   QA.Start("chat-210-mover-collapse")
   local Wn = QA.Window()

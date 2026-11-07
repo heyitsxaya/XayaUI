@@ -197,7 +197,12 @@ do
   check("spell token: a pasted spell link resolves", id == 196718)
   check("spell token: unknown or empty gives nothing", ns.Notepad_SpellInfo("Nope") == nil and ns.Notepad_SpellInfo("") == nil)
   local r = ns.Notepad_Render("x {spell:Darkness} y {spell: 196718 } {spell:} {spell:Nope}")
-  check("render: icon and name for name and ID forms", select(2, r:gsub("|T1305154:14|t Darkness", "")) == 2)
+  check("render (FA-9): without a game link, plain [Name] and no icon", select(2, r:gsub("%[Darkness%]", "")) == 2 and not r:find("|T", 1, true))
+  -- FA-9 (Xaya 2026-11-07, "[Name] in link colour"): the formatted view shows the game's own spell link (C_Spell.GetSpellLink), no icon
+  C_Spell.GetSpellLink = function(id) if id == 196718 then return "LINK<196718>" end end
+  local r2 = ns.Notepad_Render("x {spell:Darkness} y {spell: 196718 }")
+  check("render (FA-9): the game's spell link for name and ID forms, no icon", select(2, r2:gsub("LINK<196718>", "")) == 2 and not r2:find("|T", 1, true))
+  C_Spell.GetSpellLink = nil
   check("render: empty and unknown tokens stay visible in grey", r:find("|cff888888{spell:}|r", 1, true) and r:find("|cff888888{spell:Nope}|r", 1, true))
 end
 out[#out+1] = fails == 0 and "ALL PASS" or ("FAILS: " .. fails)

@@ -332,9 +332,11 @@ function TT.OnIDData(tooltip, data, kind)
         if icon then AddLine(tooltip, "Icon ID:", tostring(icon)) end
     end
     -- items and spells: the aura / effect they apply, with its own name, ID (and icon ID when that option is on)
-    if kind.key == "item" or kind.key == "spell" then
+    -- (D52, V14) only while "Aura IDs" is on: off, the aura lookups (and the saved db.selfAura they keep) do not run on a hover
+    if (kind.key == "item" or kind.key == "spell") and db.ids.aura then
+        TT.auraLookups = (TT.auraLookups or 0) + 1   -- (how many hovers looked auras up; the QA walkthrough reads it)
         local auras, same = TT.AurasFor(kind.key, id, data)
-        if db.ids.aura then
+        do
             if same then AddLine(tooltip, "Aura ID:", tostring(id) .. "  (same as the spell)") end
             -- an aura icon that repeats the spell's own "Icon ID" line is left out (Xaya 2026-11-06, "Yes, build it": Fiery Brand showed
             -- 1344647 three times); proposed for spells only, so item tooltips keep every aura icon line

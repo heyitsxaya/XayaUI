@@ -18,10 +18,10 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 3. Ideas checked against WeakAuras, ElvUI or EUI: behaviour only, our own design and code [0.8].
 
 ### A2. Settings window: tab rows
-1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built today: Rules | QoL | Bonus Features |
-   Blizzard UI Reskin; the rest is the UI-23..27 round, not built yet).
+1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built in Options 0.6.72, UI-23..27: no
+   toolbar above them; "+ New Rule" is a flat button at the left end of the Rules row; Profiles = Import | Export | Recycle Bin).
 2. Top tabs share the row evenly edge to edge, 32 px tall, 14 pt outlined, clearly the parent level [1.4, 1.5, 11.3].
-3. Rules sub-tabs: 28 px, 12 pt outlined; Smart Categories, Enabled, Disabled, Drafts share the row evenly; "Auto-Generate Rules" apart
+3. Rules sub-tabs: 27 px, 11.5 pt outlined (UI-76: "a little narrower and maybe 3-5% smaller"), each 90% of its even share; Smart Categories, Enabled, Disabled, Drafts share the row evenly; "Auto-Generate Rules" apart
    at the far right [1.9, 11.3; UI-45].
 4. Tabs are tabs, not buttons [1.1]. Clicking a tab never resizes the panes [1.2].
 5. No tick box on a tab button; a tab's own switch is on its first left-pane row, "Overview", with a reload prompt [3.7].
@@ -74,7 +74,7 @@ location if they aren't already. / refactor all code appropriately. / priority: 
    Calculator page only, until she confirms).
 
 ## B. Gaps found in the audit (PROPOSED: each waits for her answer)
-Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. Each gap is asked through the question flow; the
+Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. The audit: [DISPLAY-AUDIT-UI-47-2026-11-07.md](DISPLAY-AUDIT-UI-47-2026-11-07.md). Each gap is asked through the question flow; the
 answer moves it to section A.
 
 | # | Display type | What differs today | Proposal | Status |
@@ -83,6 +83,14 @@ answer moves it to section A.
 | G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | built (Options 0.6.63), not seen by her |
 | G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | built (Options 0.6.63), waiting for her look |
 | G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | built (Options 0.6.63): no width, "full" and "double" inputs; not seen by her |
+| G5 | Sliders (190) | Blizzard track / thumb art + Skin.lua step arrows in Blizzard's page-arrow art | keep / flat theme-coloured track, thumb and arrows | PROPOSED: Q-UIB-9 (audit 3.1) |
+| G6 | Tick boxes inside pages (~310) | Blizzard's gold tick art; theme text colour only | keep / flat theme square, same as the switches | PROPOSED: Q-UIB-10 (audit 3.2) |
+| G7 | Colour swatches (148) | Blizzard swatch frame | keep / flat 1 px theme border | PROPOSED: Q-UIB-10 (audit 3.3) |
+| G8 | Multi-selects (16, Rules load conditions) | full-width block, one tick box per value | keep / dropdown with ticks | PROPOSED: Q-UIB-11 (audit 3.4) |
+| G9 | Small text blocks (41, Rules tab) | GameFontHighlightSmall beside medium elsewhere | keep / one size (medium) | PROPOSED: Q-UIB-12 (audit 3.5) |
+| G10 | Heading "Auto-populate my class / spec" | old feature name | keep / "Auto-Generate Rules for my class / spec" | PROPOSED: Q-UIB-13 (audit 3.6) |
+| G11 | Gear Summary style hover | 7 sentences (lists the six styles) | keep until she picks a style / one sentence | PROPOSED: Q-UIB-14 (audit 3.7) |
+| G12 | Info icons | older heading (i) (hover + pin) everywhere; UI-53 open / close box on Calculator only | keep both / one icon after the Calculator verdict | PROPOSED: Q-UIB-15 (audit 3.8; waits on Q-UIB-7) |
 
 ### Session choices made while building section B (each listed for her look; none is a ruling)
 | # | Where | Choice | Why |
@@ -100,7 +108,8 @@ are at the theme's Medium text size (A8.5). The grey is only the fallback when t
 |---|---|---|
 | margin, gutter | 10, 10 (session) | #351 [5.1] |
 | tabTop.h, tabTop.font, tabTop.outline | 32, 14, true | [1.5] |
-| tabSub.h, tabSub.font, tabSub.outline, tabSub.apartGap | 28, 12, true, 16 (gap: session) | [UI-45] |
+| tabSub.h, tabSub.font, tabSub.outline, tabSub.apartGap | 27, 11.5, true, 16 (gap: session) | [UI-45]; 4% smaller [UI-76] (her "3-5% smaller": session's reading) |
+| tabSub.share | 0.9 (session) | [UI-76] "a little narrower": each tab 90% of its even share |
 | nest.child | 8 | [2.5] |
 | nest.level (WeakAuras) | 8 | [2.7] |
 | switch.size | 16 (session) | |

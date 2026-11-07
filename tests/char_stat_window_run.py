@@ -129,8 +129,10 @@ checkp("panel on: the character window gets a Stat Calc button (64 x 18) on it, 
 checkp("  ...in the title row, a gutter left of Blizzard's close button (RIGHT to its LEFT, 4 px)", function()
   local pt = B.pts[#B.pts]
   return pt[1] == "RIGHT" and pt[2] == CharacterFrame.CloseButton and pt[3] == "LEFT" and pt[4] == -4 and pt[5] == 0, tostring(pt[1]) end)
-checkp("panel on: the minimap button's list shows a Stat Calculator row (its state reads off while the panel is closed)", function()
-  local e, r = launcher("stats"); return e ~= nil and r.fs.text == "Stat Calculator" and tostring(r.state.text):find("off", 1, true) ~= nil, e and e[2] end)
+-- (QoL 0.7.42; O-100, Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer
+-- "No word at all"): the row shows just its name, no on / off for shown / hidden
+checkp("panel on: the minimap button's list shows a Stat Calculator row with just its name (no on / off)", function()
+  local e, r = launcher("stats"); return e ~= nil and r.fs.text == "Stat Calculator" and (r.state.text == nil or r.state.text == "") and e[5] == nil, e and e[2] end)
 
 -- 1. The button opens and closes the panel; the state is kept for the next time ------------------------------------------------------
 openChar()
@@ -161,7 +163,7 @@ checkp("a click on the minimap row opens the panel with the character window clo
   clickRow("stats")
   local pt = Pn.pts[#Pn.pts]
   return Pn:IsShown() and not CharacterFrame:IsShown() and pt[1] == "CENTER" and pt[2] == UIParent and pt[4] == 120 and pt[5] == -40
-    and launcher("stats")[5]() == "on", pt and pt[1] end)
+    and launcher("stats")[5] == nil, pt and pt[1] end)
 openChar()
 checkp("  ...(guard) the character window opening docks it beside the window", function() local pt = Pn.pts[#Pn.pts]; return Pn:IsShown() and pt[2] == CharacterFrame end)
 closeChar()
@@ -290,6 +292,8 @@ checkp("Fury (a generator): its maximum 120, no generation rate; no note", funct
   local l = lineOf(d, "label", "Fury"); local m = CM.Build(c, "stats").byKey.map_power17
   return T(l.value) == "120" and l.note == nil and #m.pairs == 0, T(l.value) .. " / " .. T(l.note) end)
 PT = { 0, "MANA" }; POWERMAX = { [0] = 250000 }; REGEN = { [0] = { 1200.5, 2400 } }
+-- (QoL 0.7.40, REQUEST-LOG #88: a stat's lines show when it is opened, folded by default; the lines below are read with these two open)
+c.statOpen.map_power0, c.statOpen.map_power5 = true, true
 d = render()
 checkp("Mana (a drain type): the total 250,000 and its generation 1200.50/s (GetPowerRegenForPowerType); no note (\"total\", \"while casting 2400.00/s\" gone)", function()
   local l = lineOf(d, "label", "Mana"); local gen = lineOf(d, "pairLabel", "Generation")

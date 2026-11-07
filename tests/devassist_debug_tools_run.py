@@ -217,6 +217,12 @@ C_AddOnProfiler.GetAddOnMetric = function(name) if name == "Blizzard_AuraContain
 local D = ns.AuraDisplay
 for _ = 1, 3 do W.safecall(D.GuardCheck) end
 check("E engine safety stop, lean mode: warning XUI-W003", entry("XUI-W003") ~= nil and entry("XUI-W003").kind == "warning", #CueRulesDB.errorLog)
+-- core 0.6.69 (externals): a cost that does not fall after lean mode is the game's own frames: drawing stays on ("kept"), no W004
+for _ = 1, 3 do W.safecall(D.GuardCheck) end
+check("E engine safety stop, cost not lowered by lean mode: drawing kept on, no XUI-W004", entry("XUI-W004") == nil and D._guard.kept == true and not D._guard.off)
+-- lean mode handed displays back and the cost fell, but not below the limit: automatic drawing off, as before
+D._guard.kept, D._guard.leanHanded, D._guard.leanAt = nil, 1, 5
+C_AddOnProfiler.GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 3.5 end return 0.1 end
 for _ = 1, 3 do W.safecall(D.GuardCheck) end
 check("E engine safety stop, automatic drawing off: warning XUI-W004", entry("XUI-W004") ~= nil)
 local guardMsg = joined(ns.CaptureOutput(D.Status))

@@ -47,12 +47,12 @@ check("/xui qatest opens it too", Wn:IsShown())
 QA.Start("group-page")
 local st = QA.State()
 check("a walkthrough starts at step 1 with its text and Do it for me", st and st.i == 1 and Wn.text:GetText():find("Group, Display, Load, Config", 1, true) and Wn.doIt:IsShown())
-check("  ...the addon's own check says what it sees (no test group yet) without answering", Wn.check:GetText():find("Looks wrong", 1, true) ~= nil and st.steps[1] == nil, Wn.check:GetText())
+check("  ...the addon's own check says what it sees (no test group yet) without answering (V22 pre-fill: \"The addon says Fail\", nothing recorded until Accept)", (Wn.check:GetText():find("Looks wrong", 1, true) ~= nil or Wn.check:GetText():find("The addon says Fail", 1, true) ~= nil) and st.steps[1] == nil, Wn.check:GetText())
 QA.DoSetup(); W.tick(0.4, 3); QA.RunCheck()
 local tg
 for _, f in ipairs(ns.folders) do if f.name == "QA test group" then tg = f end end
 check("Do it for me made the QA test group", tg ~= nil)
-check("  ...and the check now looks right", Wn.check:GetText():find("Looks right", 1, true) ~= nil, Wn.check:GetText())
+check("  ...and the check now looks right", (Wn.check:GetText():find("Looks right", 1, true) ~= nil or Wn.check:GetText():find("The addon says Pass", 1, true) ~= nil), Wn.check:GetText())
 Wn.note:SetText("tabs |cffff0000look|r fine")
 QA.Answer("P")
 check("Pass moves to step 2 and keeps the note (colour codes removed)", st.i == 2 and st.steps[1].r == "P" and st.steps[1].note == "tabs cffff0000lookr fine", st.steps[1] and st.steps[1].note)
@@ -101,8 +101,21 @@ local br = QA.DB().results["chk-bugs"]
 check("  ...each answer is saved with its checklist item (steps shift when the list changes)", br and br.steps[1].k == QA.walks["chk-bugs"].steps[1].key and br.steps[1].k:find("^bug%d+$"), br and br.steps[1].k)
 local bk = QA.ImportCode(QA.ExportCode("chk-bugs"))
 check("  ...and the export code carries it", bk and bk.steps[1].k == br.steps[1].k and bk.steps[2].k == br.steps[2].k, bk and bk.steps[1].k)
+-- V22 pre-fill (Xaya 2026-11-07: "pre-fill confirmation options or data capturing"): every hand-written walkthrough of this session
+local mine = { "group-page", "group-box", "group-nested", "sidebar-drag", "reskin-switches", "shopping-list", "display-points",
+  "mover-session", "group-arrange", "group-fit", "dynamic-limit-align", "sidebar-names" }
+local nopf = {}
+for _, id in ipairs(mine) do if not (QA.walks[id] and QA.walks[id].prefill) then nopf[#nopf + 1] = id end end
+check("V22: every hand-written walkthrough of this session offers the pre-filled verdict", #nopf == 0, table.concat(nopf, ", "))
+QA.Start("display-points"); QA.DoSetup(); W.tick(0.4, 3); QA.RunCheck()
+local pst = QA.State()
+check("  ...after its check, Accept offers the addon's verdict", Wn.accept:IsShown() and Wn.accept:GetText():find("Accept", 1, true) ~= nil, Wn.accept:GetText())
+QA.Accept()
+check("  ...Accept records it, with the addon's note and its data", pst.steps[1] and pst.steps[1].r == "P" and pst.steps[1].note:find("addon:", 1, true) ~= nil
+  and pst.steps[1].a == "Y" and type(pst.steps[1].d) == "string", pst.steps[1] and (tostring(pst.steps[1].r) .. " / " .. tostring(pst.steps[1].note)))
+for _ = 2, #QA.walks["display-points"].steps do QA.DoSetup(); W.tick(0.1, 2); QA.Answer("S") end
 -- this round's hand-written walkthroughs (B177-B179c): every Do it for me and check runs without an error, and the last step cleans up
-for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align" }) do
+for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group-fit", "dynamic-limit-align", "sidebar-names" }) do
   local def = QA.walks[id]
   local okAll, why = def ~= nil, "not registered"
   if def then
@@ -119,11 +132,54 @@ for _, id in ipairs({ "display-points", "mover-session", "group-arrange", "group
   end
   check("walkthrough " .. id .. ": every step's Do it for me and check run, and it cleans up", okAll, why)
 end
+-- V22 data capture: what the addon's check saw is saved with each answer and travels in the export code
+local sres = QA.DB().results["sidebar-names"]
+check("V22: each answer keeps the addon's own verdict and data (sidebar width, tightest name)", sres and sres.steps[1].a ~= nil and type(sres.steps[1].d) == "string"
+  and sres.steps[1].d:find("sidebar", 1, true) ~= nil, sres and sres.steps[1].d)
+local sback = QA.ImportCode(QA.ExportCode("sidebar-names"))
+check("  ...and the export code carries it", sback and sback.steps[1].a == sres.steps[1].a and sback.steps[1].d == sres.steps[1].d, sback and sback.steps[1].d)
 -- list status after a run
 QA.Toggle(); QA.Toggle()
 local gp
 for i, id in ipairs(QA.list) do if id == "group-page" then gp = Wn.rows[i] end end
 check("the list shows the last result of a walkthrough", gp and gp.status:GetText():find("1 failed", 1, true) ~= nil, gp and gp.status:GetText())
+-- audit D35 (Dev Assist 0.7.19): a group of the player's own called "QA test group" is never reused or deleted by a walkthrough
+do
+  local mine = ns.NewFolder("QA test group")
+  local r = ns.NewRule(); r.name = "my own rule"; r.folder = mine.id; ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
+  local def = QA.walks["group-page"]
+  QA.Start("group-page")
+  for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end
+  local kept, ruleKept = false, false
+  for _, f in ipairs(ns.folders) do if f == mine then kept = true end end
+  for _, x in ipairs(ns.rules) do if x == r and x.folder == mine.id then ruleKept = true end end
+  check("D35 the player's own 'QA test group' and its rule survive a walkthrough's Cleanup", kept and ruleKept)
+  local tagged = 0
+  for _, f in ipairs(ns.folders) do if f.qaTest then tagged = tagged + 1 end end
+  check("D35 ...and the walkthrough's own tagged group is gone", tagged == 0, tagged)
+end
+-- audit D34 (Dev Assist 0.7.19): walkthroughs put back what Do it for me changed
+local function RunAll(id)
+  local def = QA.walks[id]; QA.Start(id)
+  for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end
+end
+if ns.SetReskinTab and ns.ReskinTabOn then
+  ns.SetReskinTab(false); W.tick(0.1, 2)
+  RunAll("reskin-switches")
+  check("D34 reskin walkthrough: All reskins is off again at the end (it was off before)", ns.ReskinTabOn() == false, tostring(ns.ReskinTabOn()))
+  ns.SetReskinTab(true); W.tick(0.1, 2)
+end
+do
+  local S = ns.Service and ns.Service("shoppingList")
+  if S then
+    local c = S.Cfg(); c.enabled, c.panel = false, false; S.Apply()
+    RunAll("shopping-list")
+    c = S.Cfg()
+    check("D34 Shopping List walkthrough: switched off again at the end (it was off before)", c.enabled == false and c.panel == false, tostring(c.enabled) .. "/" .. tostring(c.panel))
+  else
+    check("D34 Shopping List service available in the stand-in", false, "no shoppingList service")
+  end
+end
 return R
 end
 '''
