@@ -551,3 +551,29 @@ QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two s
         end },
     { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },
 } })
+
+-- UI-51 / UI-52 slice 1 (core 0.6.73, Chat 0.6.39, Bonus 0.6.29; Dev Assist 0.7.46): the shared tooltip helper ns.Tip draws the
+-- minimap button's hovers, the mover's group tags and the Chat privacy / history / collapse hovers (the same text as before), and the
+-- minimap list row says "Data Panels" (DISPLAY-RULES A7.2).
+QA.Register("ui-tooltip-helper", { title = "Hovers drawn by the shared helper; minimap row \"Data Panels\"", qa = "B279", order = 274, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the addon reads the minimap list and hovers the minimap button once by itself.\n\n|cffffd100Expect:|r the list has a \"Data Panels\" row (no \"Custom data panels\"), and the button's hover starts with \"XayaUI\" (the note lists what it read).",
+        check = function()
+            local ns = NS()
+            if not (ns and ns.Tip and ns.Tip.Show) then return false, "core's ns.Tip is missing (core older than 0.6.73?)" end
+            local label
+            for _, e in ipairs(ns.Launchers and ns.Launchers() or {}) do if e[1] == "data" then label = e[2] end end
+            local b = rawget(_G, "XayaUIMinimapButton")
+            local enter = b and b:GetScript("OnEnter")
+            local first, n = nil, 0
+            if enter then
+                pcall(enter, b)
+                n = GameTooltip and GameTooltip:NumLines() or 0
+                local fs = rawget(_G, "GameTooltipTextLeft1")
+                first = fs and fs.GetText and fs:GetText()
+                local leave = b:GetScript("OnLeave"); if leave then pcall(leave, b) end
+            end
+            local ok = label == "Data Panels" and first == "XayaUI"
+            return ok, "list row: " .. tostring(label or "(no Data Panels row: is XayaUI Bonus on?)") .. "; minimap hover: " .. tostring(first) .. " (" .. n .. " lines)"
+        end },
+    { text = "Your look: hover the minimap button, a row of its list, the chat's privacy button, its history button and its collapse arrow; then /xui unlock and hover a group's tab and its lock. Do they read and look exactly as before (same words, colours, place)? Pass if yes; Fail and name the one that changed.", noVerdict = true },
+} })

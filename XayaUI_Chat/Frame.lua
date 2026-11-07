@@ -81,11 +81,9 @@ local function BuildArrow()
     arrow.l1 = arrow:CreateLine(nil, "OVERLAY"); arrow.l2 = arrow:CreateLine(nil, "OVERLAY")
     arrow:SetScript("OnClick", function() C.SetCollapsed(not C.IsCollapsed()) end)
     arrow:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(C.IsCollapsed() and "Show the chat" or "Hide the chat")
-        GameTooltip:Show()
+        ns.Tip.Show(self, "ANCHOR_TOP", C.IsCollapsed() and "Show the chat" or "Hide the chat")
     end)
-    arrow:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    arrow:SetScript("OnLeave", function() ns.Tip.Hide() end)
 end
 
 local function DrawArrow(up)

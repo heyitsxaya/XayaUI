@@ -23,7 +23,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B1.** Type `/xui`. **Expect:** the XayaUI window opens (the first time can take a moment: the settings window loads now). Tabs along the top include Chat, QoL, Bonus Features, Import / Export.
 - [ ] **B2.** `/xui` again. **Expect:** the window closes.
 - [ ] **B3.** Open the game's Options > AddOns > XayaUI and press **Open XayaUI**. **Expect:** the game's options close and the XayaUI window opens.
-- [ ] **B4.** Minimap button: left-click. **Expect:** a list with Notes, Settings, Custom data panels, Chat Panel, Chat privacy cover. Right-click: the window opens.
+- [ ] **B4.** Minimap button: left-click. **Expect:** a list with Notes, Settings, Data Panels, Chat Panel, Chat privacy cover. Right-click: the window opens.
 - [ ] **B5.** Make a rule (for example a sound when a spell comes off cooldown) and trigger it. **Expect:** it plays as it did in 0.5.x.
 - [ ] **B6.** Your existing rules (if you had 0.5.x): all there, all still working.
 - [ ] **B7.** `/xui debug status` and `/xui unlock` (twice). **Expect:** a status printout; unlock shows movable displays, the second one locks them.
@@ -241,6 +241,7 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **B276.** (Options; function audit D46) Double-click a rule's row in the sidebar, delete the whole name, press Enter. **Expect:** the rule keeps its old name.
 - [ ] **B277.** (Options; function audit D47) Not testable by hand unless something fails: if Save changes, Add to drafts or Discard ever fails, a Lua error shows (with error display on) instead of nothing happening.
 - [ ] **B278.** (core, Options; FA-11, Xaya: "Recycle Bin, no prompt (Recommended)") In a rule, press the red X on a cue, on a condition, and on an additional trigger. **Expect:** each goes away at once with no question; Rules > Recycle Bin lists "Cue of the rule '...'", "Condition of the rule '...'", "Trigger of the rule '...'". Press **Restore** on each: it is back in its place in the rule; the condition plays the restored cue again and a condition row that read the trigger reads it again.
+- [ ] **B279.** (core 0.6.73, Chat 0.6.39, Bonus 0.6.29; UI-51 / UI-52 slice 1: one shared helper draws our hovers, BUILD-RULES B3) Hover the minimap button. **Expect:** "XayaUI" in gold, then "Left-click: quick-access list", "Right-click: open or close the XayaUI settings" (and "Drag: move around the minimap" in grey while unlocked), exactly as before. Left-click it and hover the **Data Panels** row: "Open the Data Panels settings (also /xui data)". Hover the chat's privacy button ("Chat privacy", "Click: cover the chat"), its history button and its collapse arrow ("Hide the chat"). `/xui unlock`, hover a group's tab ("Group: ...", the count, three blue lines) and its lock ("Lock this group for now" and one wrapped line). **Expect:** every one reads and looks as before. Type `/xui help`: the data line reads "/xui data (Data Panels)" (was "custom data panels and bars"). No Lua error. Walkthrough: Dev Assist > QA > "Hovers drawn by the shared helper; minimap row \"Data Panels\"".
 
 ## C. Settings window switched off
 
