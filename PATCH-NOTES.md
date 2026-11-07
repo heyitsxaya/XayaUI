@@ -22,6 +22,15 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — Platform Services
+
+### Options 0.6.80
+
+**Profiles**
+- Added a Nameplates part to Profiles: Export and Import carry your target color.
+- Import now skips a part whose addon is not loaded and shows "needs <addon>" for it, instead of dropping it silently.
+  *Developers' notes: Not yet tested in game (QA H11; walkthroughs "platform-services" and "platform-services-reload" in /xui dev qa). The rest of this landing is groundwork with nothing visible: profile parts and Recycle Bin kinds that each addon registers itself, theme scopes, and aura and tooltip services for Bonus Features.*
+
 ## 2026-11-07 — Trustworthy QA Walkthroughs
 
 ### Dev Assist 0.7.53
