@@ -797,16 +797,17 @@ end
 local function LineStart(prefix) Wrap(prefix, "", true) end
 ns.Notepad_LineStart, ns.Notepad_Insert = LineStart, Ins
 
+-- Hovers (UI-65, Xaya 2026-11-07: "briefer, more direct, more user-legible tooltips"): a title plus at most two plain sentences.
 local FMT = {
-    { w = 34, label = "View", tip = "Switch between typing (plain text) and the formatted view. Click the formatted text to edit it again.", act = function() ns.Notepad_SetView(not mode.view) end },
-    { w = 24, label = "H", tip = "Heading: starts the line with # (gold in the formatted view).", act = function() LineStart("# ") end },
-    { w = 24, label = "|cff99ccff-|r", tip = "Bullet: starts the line with - (a bullet in the formatted view).", act = function() LineStart("- ") end },
-    { w = 24, label = "[ ]", tip = "Checkbox: starts the line with [ ]. Change it to [x] when done (grey with a green mark in the formatted view).", act = function() LineStart("[ ] ") end },
-    { w = 24, label = "|cffff5555R|r", tip = "Red text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cffff5555", "|r") end },
-    { w = 24, label = "|cffffd100Y|r", tip = "Yellow text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cffffd100", "|r") end },
-    { w = 24, label = "|cff55dd55G|r", tip = "Green text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff55dd55", "|r") end },
-    { w = 24, label = "|cff66b3ffB|r", tip = "Blue text: colours the highlighted text, or type between the color code and the closing ||r.", act = function() Wrap("|cff66b3ff", "|r") end },
-    { w = 34, label = "Spell", tip = "Inserts {spell:} - type a spell ID, a spell name, or paste a spell link between the braces; the formatted view shows it as a spell link, [Name] in the link colour. With text highlighted, that text becomes the spell.", act = function() Wrap("{spell:", "}") end },
+    { w = 34, label = "View", title = "View / Edit", tip = "Switches between typing and the formatted view.", act = function() ns.Notepad_SetView(not mode.view) end },
+    { w = 24, label = "H", title = "Heading", tip = "Starts the line with # (gold in the formatted view). Highlighted text is kept.", act = function() LineStart("# ") end },
+    { w = 24, label = "|cff99ccff-|r", title = "Bullet", tip = "Starts the line with - (a bullet in the formatted view). Highlighted text is kept.", act = function() LineStart("- ") end },
+    { w = 24, label = "[ ]", title = "Checkbox", tip = "Starts the line with [ ]. Change it to [x] when done.", act = function() LineStart("[ ] ") end },
+    { w = 24, label = "|cffff5555R|r", title = "Red text", tip = "Turns the highlighted text red. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cffff5555", "|r") end },
+    { w = 24, label = "|cffffd100Y|r", title = "Yellow text", tip = "Turns the highlighted text yellow. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cffffd100", "|r") end },
+    { w = 24, label = "|cff55dd55G|r", title = "Green text", tip = "Turns the highlighted text green. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cff55dd55", "|r") end },
+    { w = 24, label = "|cff66b3ffB|r", title = "Blue text", tip = "Turns the highlighted text blue. With nothing highlighted, type between the color code and ||r.", act = function() Wrap("|cff66b3ff", "|r") end },
+    { w = 34, label = "Spell", title = "Spell link", tip = "Turns the highlighted spell name into a spell link. With nothing highlighted, type a spell ID, name or link between the braces.", act = function() Wrap("{spell:", "}") end },
 }
 
 BuildFormatBar = function(f)
@@ -821,7 +822,7 @@ BuildFormatBar = function(f)
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(0.2, 0.7, 1, 0.35)
         b.fs = b:CreateFontString(nil, "OVERLAY"); b.fs:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE"); b.fs:SetPoint("CENTER"); b.fs:SetText(def.label)
         b:SetScript("OnClick", def.act)
-        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def.tip, 1, 1, 1, 1, true); GameTooltip:Show() end)
+        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(def.title, 1, 0.82, 0); GameTooltip:AddLine(def.tip, 1, 1, 1, true); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         fb.btns[i] = b
     end

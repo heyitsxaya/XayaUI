@@ -150,6 +150,14 @@ local full = string.rep("a", ns.Notepad_MAX_CHARS - 3)
 setNote(full); select(0, 5); click(7)
 check("full note: text unchanged (nothing cut off)", eb.text == full, #eb.text)
 
+-- UI-65 hovers: a title plus at most two plain sentences
+for i, b in ipairs(f.fb.btns) do
+  tipText, tipDesc = nil, nil
+  b.scripts.OnEnter(b)
+  local n = 0; for _ in (tipDesc or ""):gmatch("[%.!?]%s") do n = n + 1 end; if (tipDesc or ""):match("[%.!?]$") then n = n + 1 end
+  check("button " .. i .. " hover: title + 1-2 sentences (" .. tostring(tipText) .. ")", tipText and #tipText > 0 and tipDesc and n >= 1 and n <= 2, tipDesc)
+end
+
 for _, l in ipairs(out) do print(l) end
 print(("%d checks, %d failed"):format(#out, fails))
 return fails
