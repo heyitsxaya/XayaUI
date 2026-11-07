@@ -936,7 +936,7 @@ function ns.BuildShoppingListPage(Notify)
             desc = "A movable panel in the theme: Missing on your gear, To buy, and your tracked recipes. /xui shop shows or hides it.",
             get = function() return C().panel end, set = function(_, v) C().panel = v and true or false; Changed() end },
         tracker = { type = "toggle", order = 3, width = "full", name = "Restyle Blizzard's Professions list (objective tracker)", disabled = off,
-            desc = "The tracked recipes in Blizzard's objective tracker in the theme's colours: header, recipe names, reagents (finished ones muted). The rest of the objective tracker is untouched for now.",
+            desc = "The tracked recipes in Blizzard's objective tracker in the theme's colors: header, recipe names, reagents (finished ones muted). The rest of the objective tracker is untouched for now.",
             get = function() return C().tracker end, set = function(_, v) C().tracker = v and true or false; Changed() end },
         fontSize = { type = "range", order = 4, name = "Text size", min = 8, max = 16, step = 1, disabled = off,
             get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },

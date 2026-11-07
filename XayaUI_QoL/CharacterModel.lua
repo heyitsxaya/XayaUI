@@ -1408,9 +1408,9 @@ CM.GearSummaryItems = GearSummaryItems
 -- style chosen on the settings page (Panel > Layout > Gear Summary style; CM.GEAR_SUM_STYLES below). Default: Split bars (DECISION: the
 -- first design she was shown; she can change it).
 CM.GEAR_SUM_STYLES = {
-    { "bars", "Split bars", "One bar per stat in its colour, as long as your rating: the solid part is from gear, the lighter part from elsewhere; the numbers at its end." },
-    { "tiles", "Stat tiles", "A small tile per stat: its name in its colour, the total large, the gear part and what comes from elsewhere small under it." },
-    { "stacked", "One stacked bar", "One bar split by each stat's share of the ratings listed, in the stats' colours, with a legend under it." },
+    { "bars", "Split bars", "One bar per stat in its color, as long as your rating: the solid part is from gear, the lighter part from elsewhere; the numbers at its end." },
+    { "tiles", "Stat tiles", "A small tile per stat: its name in its color, the total large, the gear part and what comes from elsewhere small under it." },
+    { "stacked", "One stacked bar", "One bar split by each stat's share of the ratings listed, in the stats' colors, with a legend under it." },
     { "columns", "Columns", "One upright column per stat, as tall as your rating: gear solid at the bottom, elsewhere lighter on top; the total above it, the name under it." },
     { "share", "Gear share", "One full-width bar per stat: how much of your rating comes from gear (solid) and from elsewhere (lighter), with the gear percent." },
     { "table", "Table", "The table as before: Gear, Character, Elsewhere." },
@@ -2628,7 +2628,7 @@ local function GridHead(key, ratingHead, changeHead)
     -- new value a typed number gives is drawn under the current one, with its sign (her answer "New value with sign")
     h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Influences" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
-    Tip(h, "Current value: the game's figure now; under it, in the accent colour, the new value your typed numbers give, with + when it is higher and - when lower.")
+    Tip(h, "Current value: the game's figure now; under it, in the accent color, the new value your typed numbers give, with + when it is higher and - when lower.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
     Tip(h, "Influences: what the stat feeds (Attack power, Dodge, Armor ...) and, marked \"from\", what feeds it. Hover a name for its value, its Pt value and the new value your typed numbers give.")
     if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every value it moves shows the new value under it. Clear it to go back to yours.") end

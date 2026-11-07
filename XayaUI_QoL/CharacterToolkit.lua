@@ -2382,7 +2382,7 @@ function ns.CharToolkit_UpdateButton()
 end
 if type(ns.RegisterLauncher) == "function" then
     ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
-        function() ns.CharToolkit_Toggle() end, function() return (panel and panel:IsShown()) and "on" or "off" end, order = 12,
+        function() ns.CharToolkit_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.40, her answer "No word at all"): no "on" / "off" for shown / hidden
         available = function() local c = Cfg(); return (c and c.enabled and c.panel) and true or false end })
 end
 function ns.CharToolkit_Apply()
