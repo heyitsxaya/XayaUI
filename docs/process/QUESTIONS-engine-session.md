@@ -222,3 +222,28 @@ Your sentence: "this _____ requires blizzard's cooldown manager to track it befo
   instead of QoL's own setting. Needs S1's agreement (S1 owns the cover).
 - D1 (Track: Auto / Charges / Spell cooldown as a forced choice): "unsure what this is -- defer for now unless flagged as an essential solve
   for functionality". Deferred; not essential (Auto is today's behaviour and works).
+
+## Round 6 answers (2026-11-06 ~22:30 UTC; question prompt)
+- D2 / #23 (how talent load is built in): first "is there a performance difference?"; told: no meaningful difference by reading the code
+  (not measured: the engine option is not built), the difference is visible-per-rule vs hidden-for-all. Then: "defer decision until other
+  engine testing is conducted". Deferred.
+- C1: "Build it" (per-spec aura / debuff learner; out of combat after login / spec change; saved per spec; used by the all-specs list).
+- #278 items 5/6: "1 + review EUI CDM manager buff tracking" = build the "CC on target / focus" shortcut (her own CC as Target Debuff rules,
+  grouped by effect) + the in-game QA step, and review how EllesmereUI's Cooldown Manager handling adds buff tracking (behaviour only; never
+  copy code, data or text).
+- #278 shortcut: told the game data gives no effect type (stun / slow / root) for a debuff -> "Skip the shortcut". Kept: the in-game QA step
+  and the EllesmereUI Cooldown Manager review (behaviour only).
+
+## Round 7 answers (2026-11-06 ~23:30 UTC; question prompt) — D8
+- Load of the DO NOT RELEASE cover: "Load conditions: in instance - raid party size => 20"; size = "People in my group" (a new load condition:
+  number of players in your group at least N).
+- Guard switch: "If it's not enabled it does not exist"; source: "It has to be enabled (it's not exactly a rule) and then the load conditions
+  are applied after enabling / disabling."
+- Restated design (Release Guard gets rule-style Load conditions replacing Raids only / Raids and dungeons / Everywhere; default in an
+  instance, type Raid, 20+ in group; no "driven by a rule / own Load" setting): "It belongs in "Raid Tools" under rules for now".
+- Where "Raid Tools" goes: "A group in the sidebar". Correction (her next message): "Sorry, “Raid Rules”" — the group is named "Raid Rules" (a fixed "Raid Tools" entry in the Rules sidebar, like a Smart Category, with Release
+  Guard inside it as an item to click and edit).
+- Correction: the group is "Raid Rules" (her: "Sorry, “Raid Rules”").
+- Build approach: "Yes, built-in entry" (a fixed "Release Guard" entry inside a fixed "Raid Rules" group; same Load tab as rules; its
+  switch is the guard's on/off; its own settings page (text, flavour texts, modifier key) instead of Trigger / Cues; listed under
+  Enabled / Disabled like a rule; not deletable or exportable; no eye / headphone).

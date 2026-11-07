@@ -1630,6 +1630,11 @@ function ns.ReadContext()
         if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
     end
     ReadPlace(ctx)
+    -- people in your group (D8, core 0.6.59; Xaya: "party size => 20" = "People in my group"). GetNumGroupMembers is NOT in the 12.1.5
+    -- reference (docs/reference/api): INFERENCE from Blizzard's own UI use and warcraft.wiki.gg: the number of members of your group
+    -- including you, 0 when solo. A non-number or secret value leaves it unknown (a rule that needs it does not load).
+    local okG, ng = pcall(function() return GetNumGroupMembers and GetNumGroupMembers() end)
+    if okG and type(ng) == "number" and not issecret(ng) then ctx.groupSize = math.max(1, ng) end
     -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo)
     local parts = {}
     for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
@@ -1637,6 +1642,7 @@ function ns.ReadContext()
     parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
     parts[#parts + 1] = tostring(ctx.mapID); parts[#parts + 1] = tostring(ctx.instanceID); parts[#parts + 1] = tostring(ctx.difficultyID)
     parts[#parts + 1] = tostring(ctx.instSize); parts[#parts + 1] = tostring(ctx.encounterID); parts[#parts + 1] = tostring(equipGen)
+    parts[#parts + 1] = tostring(ctx.groupSize)
     ctx.sig = table.concat(parts, "|")
     return ctx
 end
@@ -1788,6 +1794,11 @@ function CheckContextRaw(rule, ctx)
     end
     -- ID lists (zone, instance, difficulty, size, encounter, equipped item); an empty or missing list restricts nothing
     IdListChecks(load, ctx, checks)
+    -- people in my group: at least N (D8; 0 / unset = no bearing, her #18 answer)
+    local gmin = tonumber(load.groupMin)
+    if gmin and gmin > 1 then
+        checks[#checks + 1] = { key = "people in group", ok = known(ctx.groupSize, ctx.groupSize ~= nil and ctx.groupSize >= gmin) }
+    end
     if #checks == 0 then return true end
     if load.mode == "any" then
         local unknown
