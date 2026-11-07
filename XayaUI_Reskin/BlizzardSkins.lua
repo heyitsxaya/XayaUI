@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.17): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.19): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
 -- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles, the status bars, the minimap's zone bar and tracking
 -- button, and the red buttons inside Blizzard's windows. Look only: art, colour, border, mask. Nothing is moved, resized, added or
 -- removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
@@ -570,16 +570,33 @@ end
 BS.BUBBLE_EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER" }
 local liveBubble, bubbleFrame, bubbleQueued = false, nil, false
 local bubbles = setmetatable({}, { __mode = "k" })   -- [bubble's panel] = true while it carries the look
+local panelOf = setmetatable({}, { __mode = "k" })   -- [bubble] = its ChatBubbleTemplate child, found once (the game reuses bubbles)
 local function BubblePanel(bubble)
+    local p = panelOf[bubble]
+    if p then return p end
     if type(bubble) ~= "table" or type(bubble.GetChildren) ~= "function" then return end
     for _, c in ipairs({ bubble:GetChildren() }) do
-        if type(c) == "table" and type(c.SetCenterColor) == "function" and c.String then return c end
+        if type(c) == "table" and type(c.SetCenterColor) == "function" and c.String then panelOf[bubble] = c; return c end
     end
 end
+local function near(a, b) return num(a) and num(b) and math.abs(a - b) < 0.002 end
+-- (perf, hub review 13:26 UTC) a bubble that already shows these exact colours is skipped: the scan runs after each chat message (party
+-- chat too), so most scans only read one colour per bubble. The colours are compared, not just remembered, so a theme or opacity change,
+-- or the game resetting a reused bubble (INFERENCE: not seen in the source), still repaints it.
 local function PaintBubble(bubble)
     local p = BubblePanel(bubble)
     if not p then return end
     local m = M(p)
+    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    if bubbles[p] and m.nine and p.GetCenterColor then
+        local r, g, b, ca = p:GetCenterColor()
+        local pb = m.paintedBorder
+        if near(r, bg[1]) and near(g, bg[2]) and near(b, bg[3]) and near(ca, a)
+            and pb and pb[1] == bd[1] and pb[2] == bd[2] and pb[3] == bd[3] and pb[4] == (bd[4] or 1) then
+            BS.diag.bubbleSkips = (BS.diag.bubbleSkips or 0) + 1
+            return
+        end
+    end
     if not m.nine then
         local cr, cg, cb, ca, br, bgr, bb, ba
         if p.GetCenterColor then cr, cg, cb, ca = p:GetCenterColor() end
@@ -589,10 +606,10 @@ local function PaintBubble(bubble)
         local function n(v) return num(v) and v or 1 end
         m.nine = { n(cr), n(cg), n(cb), n(ca), n(br), n(bgr), n(bb), n(ba), n(tr), n(tg), n(tb), n(ta) }
     end
-    local bg, bd, a = WinBg(), WinBorder(), Alpha()
     p:SetCenterColor(bg[1], bg[2], bg[3], a)
     if p.SetBorderColor then p:SetBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
     if p.Tail and p.Tail.SetVertexColor then p.Tail:SetVertexColor(bg[1], bg[2], bg[3], a) end
+    m.paintedBorder = { bd[1], bd[2], bd[3], bd[4] or 1 }
     m.painted = true
     bubbles[p] = true
     BS.diag.bubbles = (BS.diag.bubbles or 0) + 1
@@ -605,7 +622,7 @@ local function UnpaintBubble(p)
         pcall(p.SetCenterColor, p, c[1], c[2], c[3], c[4])
         if p.SetBorderColor then pcall(p.SetBorderColor, p, c[5], c[6], c[7], c[8]) end
         if p.Tail and p.Tail.SetVertexColor then pcall(p.Tail.SetVertexColor, p.Tail, c[9], c[10], c[11], c[12]) end
-        m.nine, m.painted = nil, nil
+        m.nine, m.painted, m.paintedBorder = nil, nil, nil
     end
     bubbles[p] = nil
 end
@@ -861,7 +878,7 @@ function BS.WindowsPage(Notify)
     local off = function() return not PageOn("windows") end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "XayaUI's look on Blizzard's windows: a solid background in the theme's window colour, a thin border and the theme's title colour, in place of Blizzard's frame art. Nothing in a window moves or changes size. Windows Blizzard loads later (spellbook, professions, auction house ...) take the look when they first open." },
+            name = "XayaUI's look on Blizzard's windows: a solid background in the theme's window color, a thin border and the theme's title color, in place of Blizzard's frame art. Nothing in a window moves or changes size. Windows Blizzard loads later (spellbook, professions, auction house ...) take the look when they first open." },
         bgAlpha = { type = "range", order = 1, name = "Background opacity", min = 0.5, max = 1, step = 0.05, isPercent = true, disabled = off,
             desc = "How solid the windows' background is (50% to 100%).",
             get = function() return Alpha() end, set = function(_, v) Cfg().bgAlpha = v; re(Notify) end },
@@ -881,7 +898,7 @@ function BS.MinimapPage(Notify)
     local off = function() return not PageOn("minimap") end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The minimap's shape. Square: a square map with a thin border in the theme's colour (it shows a little more ground in its corners). Circle: Blizzard's own round minimap." },
+            name = "The minimap's shape. Square: a square map with a thin border in the theme's color (it shows a little more ground in its corners). Circle: Blizzard's own round minimap." },
         shape = { type = "select", order = 1, name = "Shape", disabled = off, values = { CIRCLE = "Circle", SQUARE = "Square" }, sorting = { "CIRCLE", "SQUARE" },
             get = function() local r = Saved(); return (r and r.shape == "SQUARE") and "SQUARE" or "CIRCLE" end,
             set = function(_, v) Cfg().shape = (v == "SQUARE") and "SQUARE" or nil; re(Notify) end },
@@ -893,17 +910,17 @@ end
 function BS.TooltipsPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Tooltips (the HUD tooltip, item links and item comparisons) take the theme's window colour and border colour. What a tooltip says is unchanged; its opacity is Blizzard Windows' Background opacity." },
+            name = "Tooltips (the HUD tooltip, item links and item comparisons) take the theme's window color and border color. What a tooltip says is unchanged; its opacity is Blizzard Windows' Background opacity." },
     }
     return { type = "group", name = "Tooltips", order = 6, args = args,
-        xuiSwitch = PageSwitch("tooltips", "Use the XayaUI look on tooltips", "Tooltips in the theme's colours.", "Colours tooltips in the theme." .. OFFNOTE, Notify) }
+        xuiSwitch = PageSwitch("tooltips", "Use the XayaUI look on tooltips", "Tooltips in the theme's colors.", "Colors tooltips in the theme." .. OFFNOTE, Notify) }
 end
 
 function BS.TrackerPage(Notify)
     local off = function() return not PageOn("tracker") end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The objective tracker: its header and each section's header in the theme's label colour without Blizzard's header art, and each section's quest titles and lines in the theme's text colours (finished lines muted). Nothing moves; what the tracker lists is unchanged." },
+            name = "The objective tracker: its header and each section's header in the theme's label color without Blizzard's header art, and each section's quest titles and lines in the theme's text colors (finished lines muted). Nothing moves; what the tracker lists is unchanged." },
         list = { type = "group", order = 10, inline = true, name = "Sections (untick one to leave it as Blizzard draws it)", args = {} },
     }
     for i, s in ipairs(BS.SECTIONS) do
@@ -914,7 +931,7 @@ function BS.TrackerPage(Notify)
             set = function(_, v) Cfg().otOff[s.key] = (not v) and true or nil; re(Notify) end }
     end
     return { type = "group", name = "Objective Tracker", order = 7, args = args,
-        xuiSwitch = PageSwitch("tracker", "Use the XayaUI look on the objective tracker", "The objective tracker in the theme's colours.",
+        xuiSwitch = PageSwitch("tracker", "Use the XayaUI look on the objective tracker", "The objective tracker in the theme's colors.",
             "Restyles the objective tracker; each section has its own box on this page." .. OFFNOTE, Notify) }
 end
 
@@ -922,7 +939,7 @@ function BS.ToastsPage(Notify)
     local off = function() return not PageOn("toasts") end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Battle.net toasts (the box that slides in when a friend comes online) and Blizzard's pop-up dialogs take the theme's window colour and a thin border in the theme's border colour, in place of Blizzard's art. What they say, their buttons and where they appear are unchanged. Opacity: Blizzard Windows' Background opacity." },
+            name = "Battle.net toasts (the box that slides in when a friend comes online) and Blizzard's pop-up dialogs take the theme's window color and a thin border in the theme's border color, in place of Blizzard's art. What they say, their buttons and where they appear are unchanged. Opacity: Blizzard Windows' Background opacity." },
         list = { type = "group", order = 10, inline = true, name = "Parts (untick one to leave it as Blizzard draws it)", args = {} },
     }
     for i, e in ipairs(BS.TOASTS) do
@@ -931,54 +948,54 @@ function BS.ToastsPage(Notify)
             set = function(_, v) Cfg().toastOff[e.key] = (not v) and true or nil; re(Notify) end }
     end
     return { type = "group", name = "Toasts and Pop-ups", order = 8, args = args,
-        xuiSwitch = PageSwitch("toasts", "Use the XayaUI look on toasts and pop-ups", "Battle.net toasts and pop-up dialogs in the theme's colours.",
+        xuiSwitch = PageSwitch("toasts", "Use the XayaUI look on toasts and pop-ups", "Battle.net toasts and pop-up dialogs in the theme's colors.",
             "Restyles Battle.net toasts and Blizzard's pop-up dialogs; each has its own box on this page." .. OFFNOTE, Notify) }
 end
 
 function BS.MenusPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Blizzard's right-click menus and dropdown lists take the theme's window colour in place of Blizzard's menu background, each time a menu opens. The entries, their text, checks and what a click does are unchanged. Opacity: Blizzard Windows' Background opacity. A menu that is open when you untick this keeps the look until it closes." },
+            name = "Blizzard's right-click menus and dropdown lists take the theme's window color in place of Blizzard's menu background, each time a menu opens. The entries, their text, checks and what a click does are unchanged. Opacity: Blizzard Windows' Background opacity. A menu that is open when you untick this keeps the look until it closes." },
     }
     return { type = "group", name = "Menus", order = 9, args = args,
-        xuiSwitch = PageSwitch("menus", "Use the XayaUI look on menus", "Right-click and dropdown menus in the theme's colour.",
-            "Recolours Blizzard's right-click and dropdown menus." .. OFFNOTE, Notify) }
+        xuiSwitch = PageSwitch("menus", "Use the XayaUI look on menus", "Right-click and dropdown menus in the theme's color.",
+            "Recolors Blizzard's right-click and dropdown menus." .. OFFNOTE, Notify) }
 end
 
 function BS.BubblesPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Chat bubbles over players and NPCs take the theme's window colour (with their tail) and border colour. What they say and its colour are unchanged. Opacity: Blizzard Windows' Background opacity. In dungeons, raids and other instances the game does not let addons change chat bubbles: there they stay Blizzard's." },
+            name = "Chat bubbles over players and NPCs take the theme's window color (with their tail) and border color. What they say and its color are unchanged. Opacity: Blizzard Windows' Background opacity. In dungeons, raids and other instances the game does not let addons change chat bubbles: there they stay Blizzard's." },
     }
     return { type = "group", name = "Chat Bubbles", order = 10, args = args,
-        xuiSwitch = PageSwitch("bubbles", "Use the XayaUI look on chat bubbles", "Chat bubbles in the theme's colours.",
-            "Colours chat bubbles in the theme (outside instances)." .. OFFNOTE, Notify) }
+        xuiSwitch = PageSwitch("bubbles", "Use the XayaUI look on chat bubbles", "Chat bubbles in the theme's colors.",
+            "Colors chat bubbles in the theme (outside instances)." .. OFFNOTE, Notify) }
 end
 
 function BS.StatusBarsPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The experience, reputation and honor bars at the bottom of the screen: Blizzard's frame art around them is replaced by a background in the theme's window colour and a thin border. The bars' fill colours, their text and where they sit (Edit Mode) are unchanged. Opacity: Blizzard Windows' Background opacity." },
+            name = "The experience, reputation and honor bars at the bottom of the screen: Blizzard's frame art around them is replaced by a background in the theme's window color and a thin border. The bars' fill colors, their text and where they sit (Edit Mode) are unchanged. Opacity: Blizzard Windows' Background opacity." },
     }
     return { type = "group", name = "Status Bars", order = 11, args = args,
-        xuiSwitch = PageSwitch("statusbars", "Use the XayaUI look on the status bars", "Experience / reputation bars in the theme's colours.",
+        xuiSwitch = PageSwitch("statusbars", "Use the XayaUI look on the status bars", "Experience / reputation bars in the theme's colors.",
             "Restyles the frame of the experience, reputation and honor bars." .. OFFNOTE, Notify) }
 end
 
 function BS.MinimapButtonsPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The bar behind the zone name above the minimap and the round button behind the tracking icon take the theme's colours. The icons, the zone name and what each button does are unchanged. The calendar button and the mail icon have no frame of their own and stay as they are; the tracking menu follows the Menus page. Opacity: Blizzard Windows' Background opacity." },
+            name = "The bar behind the zone name above the minimap and the round button behind the tracking icon take the theme's colors. The icons, the zone name and what each button does are unchanged. The calendar button and the mail icon have no frame of their own and stay as they are; the tracking menu follows the Menus page. Opacity: Blizzard Windows' Background opacity." },
     }
     return { type = "group", name = "Minimap Buttons", order = 12, args = args,
-        xuiSwitch = PageSwitch("mmbuttons", "Use the XayaUI look on the minimap buttons", "The zone bar and tracking button in the theme's colours.",
-            "Colours the minimap's zone bar and tracking button in the theme." .. OFFNOTE, Notify) }
+        xuiSwitch = PageSwitch("mmbuttons", "Use the XayaUI look on the minimap buttons", "The zone bar and tracking button in the theme's colors.",
+            "Colors the minimap's zone bar and tracking button in the theme." .. OFFNOTE, Notify) }
 end
 
 function BS.ButtonsPage(Notify)
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "The red buttons inside Blizzard's windows (the windows listed on the Blizzard Windows page: Mail's Send, the Auction House's Buy, Talents' Apply ...) take XayaUI's flat button look: a background and thin border in the theme's button colours instead of Blizzard's red art. Their text, its colour when a button is greyed out, the hover glow and what a click does are unchanged. Buttons in other addons' windows are not touched. Close buttons, scroll bars, tabs and dropdown arrows keep Blizzard's look." },
+            name = "The red buttons inside Blizzard's windows (the windows listed on the Blizzard Windows page: Mail's Send, the Auction House's Buy, Talents' Apply ...) take XayaUI's flat button look: a background and thin border in the theme's button colors instead of Blizzard's red art. Their text, its color when a button is greyed out, the hover glow and what a click does are unchanged. Buttons in other addons' windows are not touched. Close buttons, scroll bars, tabs and dropdown arrows keep Blizzard's look." },
     }
     return { type = "group", name = "Buttons", order = 13, args = args,
         xuiSwitch = PageSwitch("buttons", "Use the XayaUI look on buttons in Blizzard's windows", "Blizzard's red buttons in XayaUI's flat look.",
