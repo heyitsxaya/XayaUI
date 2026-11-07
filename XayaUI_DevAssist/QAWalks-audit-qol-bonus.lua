@@ -23,7 +23,7 @@ local TAG = "QA audit"
 local sl = {}   -- remembered: { enabled, panel, gem (this character's gem default), shared (the old shared gem), ench, gems, done }
 local function Shop() return SV("shoppingList") end
 local function ShopCfg() local S = Shop(); if not S then error("XayaUI QoL is off") end; return S, S.Cfg() end
-QA.Register("audit-shopping-list", { title = "Shopping List: each character keeps its own defaults, Forget clears what it used, To buy adds amounts up, /xui shop does not switch it on (FA-7, D13-D15)", qa = "E1z221, E1z222, E1z223, E1z224", order = 330, prefill = true, steps = {
+QA.Register("audit-shopping-list", { title = "Shopping List: each character keeps its own defaults; Forget clears what it used; To buy adds amounts up; /xui shop does not switch it on (FA-7, D13-D15)", qa = "E1z221, E1z222, E1z223, E1z224", order = 330, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your Shopping List settings and this character's gem default, then sets a test gem default \"" .. TAG .. " gem\" for THIS character only.\n\n|cffffd100Expect:|r this character's gem default is the test gem; the old account-wide defaults (kept from before defaults became per character) are unchanged.",
         setup = function()
             local S, c = ShopCfg()
@@ -85,7 +85,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: each character keep
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end
             local c = S.Cfg()
             return c.enabled == false and c.panel == false, ("Shopping List %s, panel %s"):format(c.enabled and "on" or "off", c.panel and "on" or "off") end },
-    { text = "Last step: press |cffffd100Do it for me|r to put everything back: this character's gem default, your enchant / gem counts, the Shopping List on / off and panel, and the test line removed from To buy. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put everything back: this character's gem default, your enchant / gem counts, the Shopping List on / off and panel, and the test line removed from To buy. Then press |cffffd100Done|r.",
         setup = function()
             local S = Shop(); if not S then return end
             local c = S.Cfg()
@@ -131,7 +131,7 @@ QA.Register("audit-char-toolkit-events", { title = "Character Toolkit: panel off
             local on = {}
             for _, e in ipairs({ "SPELL_UPDATE_COOLDOWN", "UNIT_STATS", "COMBAT_RATING_UPDATE", "MASTERY_UPDATE" }) do if T.Registered(e) then on[#on + 1] = e end end
             return #on == 0, #on == 0 and "no panel event is registered" or ("still registered: " .. table.concat(on, ", ")) end },
-    { text = "Last step: press |cffffd100Do it for me|r to put the panel part back as it was. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put the panel part back as it was. Then press |cffffd100Done|r.",
         setup = function() local T = CT(); if T and ct.panel ~= nil then local c = T.Cfg(); c.panel = ct.panel; T.Apply() end; ct = { done = true } end,
         check = function() local T = CT(); if not T then return false, "XayaUI QoL is off" end
             local c = T.Cfg()
@@ -168,7 +168,7 @@ QA.Register("audit-calculator", { title = "Calculator: chained sums, 12kx3 (D49,
             local a, ea = C.Eval("12kx3"); local b, eb = C.Eval("2mX2")
             calc.k = a and C.Format(a) or ("error: " .. tostring(ea)); calc.m = b and C.Format(b) or ("error: " .. tostring(eb)) end,
         check = function() return calc.k == "36,000" and calc.m == "4,000,000", ("12kx3 = %s; 2mX2 = %s"):format(Short(calc.k), Short(calc.m)) end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your saved sums back as they were (the test sums are dropped) and the window shown or hidden as before. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your saved sums back as they were (the test sums are dropped) and the window shown or hidden as before. Then press |cffffd100Done|r.",
         setup = function()
             local C = CALC(); if not C then return end
             if calc.history then
@@ -201,7 +201,7 @@ QA.Register("audit-data-panels-remove", { title = "Data Panels: Remove block wit
         check = function() local D = DP(); if not D then return false, "XayaUI Bonus is off" end
             local cfg = D.Cfg("bl") or {}
             return dp.ok == true and tonumber(cfg.slots) == dp.before, ("Remove block: %s; blocks now %s (before %s)"):format(dp.ok and "no error" or ("error: " .. Short(dp.err, 80)), tostring(cfg.slots), tostring(dp.before)) end },
-    { text = "Last step: press |cffffd100Do it for me|r to put the Left Panel back exactly as it was. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put the Left Panel back exactly as it was. Then press |cffffd100Done|r.",
         setup = function()
             local D = DP(); if not (D and dp.cfg) then dp = { done = true }; return end
             local cfg = D.Cfg("bl")
@@ -216,22 +216,34 @@ QA.Register("audit-data-panels-remove", { title = "Data Panels: Remove block wit
 -------------------------------------------------------------------------------
 local tt = {}   -- remembered: { aura, n0 }
 local function TTS() local s = SV("tooltipsDebug"); return s and s.TT end
+-- (Dev Assist 0.7.53) how many spell / item tooltips Enhanced Tooltips handled since a mark: 0 aura lookups only means something when
+-- there were hovers. A post-hook on its tooltip handler (TT.OnIDData, looked up by name on every hover), placed on the first "Do it
+-- for me"; the game cannot take a hook back, so it only counts.
+local hovers, hoverHooked = 0, false
+local function WatchHovers(T)
+    if hoverHooked or not (T and type(T.OnIDData) == "function" and hooksecurefunc) then return end
+    hoverHooked = true
+    hooksecurefunc(T, "OnIDData", function(_, _, kind) if type(kind) == "table" and (kind.key == "spell" or kind.key == "item") then hovers = hovers + 1 end end)
+end
+QA.TooltipHovers = function() return hovers end   -- (tests)
 QA.Register("audit-tooltips-aura-off", { title = "Enhanced Tooltips: Aura IDs off costs nothing on a hover (D52)", qa = "F28", order = 335, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your Aura IDs option and switches it off. Then hover two or three spells on your action bar and an item in your bags, and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r no \"Aura ID:\" line, and XayaUI looked up no aura for those hovers (the check counts them: 0).",
         setup = function()
             local T = TTS(); if not T then error("XayaUI Bonus is off") end
             local db = T.DB(); if tt.aura == nil then tt.aura = db.ids.aura and true or false end
             db.ids.aura = false; tt.n0 = T.auraLookups or 0
+            WatchHovers(T); tt.h0 = hovers
         end,
         check = function() local T = TTS(); if not T then return false, "XayaUI Bonus is off" end
-            local n = (T.auraLookups or 0) - (tt.n0 or 0)
-            return n == 0, ("aura lookups since this step: %d"):format(n) end },
+            local n, h = (T.auraLookups or 0) - (tt.n0 or 0), hovers - (tt.h0 or hovers)
+            if h == 0 then return nil, "no spell or item hover seen since Do it for me: hover two or three spells and an item, then Check again" end
+            return n == 0, ("aura lookups since this step: %d, for %d spell / item hover(s)"):format(n, h) end },
     { text = "Press |cffffd100Do it for me|r: Aura IDs is switched on. Hover a spell again and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the \"Aura ID:\" lines are back where the spell has an aura, and the check counts the lookups (1 or more).",
         setup = function() local T = TTS(); if not T then error("XayaUI Bonus is off") end; T.DB().ids.aura = true; tt.n1 = T.auraLookups or 0 end,
         check = function() local T = TTS(); if not T then return false, "XayaUI Bonus is off" end
             local n = (T.auraLookups or 0) - (tt.n1 or 0)
             return n > 0, ("aura lookups since this step: %d"):format(n) end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your Aura IDs option back as it was. Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Aura IDs option back as it was. Then press |cffffd100Done|r.",
         setup = function() local T = TTS(); if T and tt.aura ~= nil then T.DB().ids.aura = tt.aura end; tt = { done = true } end,
         check = function() return tt.done == true, tt.done and "Aura IDs is as it was" or "press Do it for me" end },
 } })
@@ -261,7 +273,7 @@ QA.Register("audit-notepad-share", { title = "Notepad Share: sends the note it o
         noVerdict = true,
         check = function() local s = NPS(); if not s then return false, "XayaUI Bonus is off" end
             return true, "the Share window would send: " .. Short(s.ShareNoteText() or "(window closed: sent or canceled)") end },
-    { text = "Last step: press |cffffd100Do it for me|r to close the Share window, delete both test notes (they go to Deleted notes) and put the Notepad back as it was (shown or hidden, the note you had open). Then Accept or Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to close the Share window, delete both test notes (they go to Deleted notes) and put the Notepad back as it was (shown or hidden, the note you had open). Then press |cffffd100Done|r.",
         setup = function()
             local s, db = NPS(), NDB(); if not (s and db) then ns53 = { done = true }; return end
             local w = rawget(_G, "XayaUINoteShare"); if w then w:Hide() end

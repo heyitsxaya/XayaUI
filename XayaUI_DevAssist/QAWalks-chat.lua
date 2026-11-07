@@ -62,7 +62,7 @@ local function PutBack()
     if C.Layout then C.Layout() end
 end
 local function PutBackStep()
-    return { text = "Last step: press |cffffd100Do it for me|r to put your chat back as it was before this walkthrough (place, size, Chat Data Panel, button strip, hidden or shown). Then Accept or Pass.",
+    return { done = true, text = "Last step: press |cffffd100Do it for me|r to put your chat back as it was before this walkthrough (place, size, Chat Data Panel, button strip, hidden or shown). Then press |cffffd100Done|r.",
         setup = PutBack,
         check = function()
             local s = S()
@@ -425,7 +425,7 @@ QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs beh
             local want = rawget(_G, "TIMESTAMP_FORMAT_HHMM_24HR") or "%H:%M "
             return v == want, "the game's Chat Timestamps setting is " .. tostring(v)
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your Chat Timestamps setting back as it was.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Chat Timestamps setting back as it was. Then press |cffffd100Done|r.",
         setup = function() local cv = rawget(_G, "C_CVar"); if tsBefore then pcall(function() cv.SetCVar("showTimestamps", tsBefore) end) end end,
         check = function()
             if not tsBefore then return false, "nothing was remembered (run step 4 first)" end
@@ -436,51 +436,101 @@ QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs beh
 
 -- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) two independent switches: the Chat Panel (the look) and QoL > Improved Chat (behaviour).
 -- Her answer "1" (independent switches) and "should support other chat reskin options": Improved Chat runs with the Chat Panel off too.
-local splitSaved
-local function SplitSet(enabled, improved)
-    local s, C = S(), Ch(); if not (s and C) then return end
-    if not splitSaved then splitSaved = { enabled = s.enabled, improvedOn = s.improvedOn, barOn = s.barOn, collapsed = s.collapsed } end
+-- (Dev Assist 0.7.53; Xaya's standing rule 2026-11-07: "none of these should be toggleable without a reload -- this is the standing
+-- convention for all UI overhaul addons"; issue #480) In three parts around two /reloads: each "Do it for me" saves the switches only
+-- (nothing is applied until the /reload; nothing claims an instant change), and the part after the reload reads the look. Part 1 keeps
+-- your own switches in its saved result ("was: ..."), which part 3 reads to put them back; no saved key of its own. A /reload is told
+-- apart by a flag that lives only until the reload.
+local splitPending   -- the switches were saved in this session (gone after a /reload)
+QA.ChatSplitPending = function() return splitPending end   -- (tests)
+local function B(v) return v and "1" or "0" end
+local function SplitSave(enabled, improved)
+    local s = S(); if not s then error("XayaUI Chat is not loaded") end
     s.enabled, s.improvedOn, s.collapsed = enabled, improved, false
     if improved then s.barOn = true end
-    C.Refresh()
+    splitPending = true
 end
-QA.Register("chat-improved-split", { title = "Chat: Chat Panel (the new look) and Improved Chat (the extra features) switch on and off separately (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the |cffffd100Chat Panel|r (Blizzard Reskin) is switched |cffffd100off|r, |cffffd100Improved Chat|r (QoL) stays on, with the Chat Data Panel shown. Your switches are remembered; the last step puts them back.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it; the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
-        setup = function() SplitSet(false, true) end,
+local function SplitAfterReload(prevId, label)
+    if splitPending then return nil, "not reloaded yet: type /reload, then come back and Check again" end
+    if not QA.SeenNote(prevId, 1) then return nil, label .. " has no record: run it to its end first (press Done before the /reload)" end
+    return true
+end
+QA.Register("chat-improved-split", { title = "Chat: Chat Panel (the new look) and Improved Chat (the extra features) switch on and off separately (part 1 of 3) (UI-19)", qa = "D25", order = 238, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: your two switches are remembered (in this walkthrough's result) and saved as |cffffd100Chat Panel off|r (Blizzard Reskin) and |cffffd100Improved Chat on|r (QoL), with the Chat Data Panel on. Nothing changes on screen yet: these switches apply on a /reload.\n\n|cffffd100Expect:|r your chat looks as it did (Pass) or it changed at once (Fail). The check shows what was remembered and what is saved now.",
+        noVerdict = true,   -- (the look before the reload is yours to judge; the saved switches alone prove nothing)
+        setup = function()
+            local s = S(); if not s then error("XayaUI Chat is not loaded") end
+            QA.ChatSplitWas = { enabled = s.enabled and true or false, improvedOn = s.improvedOn ~= false, barOn = s.barOn and true or false, collapsed = s.collapsed and true or false }
+            SplitSave(false, true)
+        end,
+        check = function()
+            local s, C, w = S(), Ch(), QA.ChatSplitWas
+            if not (s and C) then return false, "XayaUI Chat is not loaded" end
+            if not w then return false, "press Do it for me" end
+            local saved = s.enabled == false and s.improvedOn ~= false and s.barOn == true
+            return saved, ("was: panel=%s improved=%s bar=%s collapsed=%s; saved now: Chat Panel %s, Improved Chat %s; the chat's look now: %s art"):format(
+                B(w.enabled), B(w.improvedOn), B(w.barOn), B(w.collapsed), s.enabled and "on" or "off", s.improvedOn ~= false and "on" or "off", C.skin and "XayaUI" or "Blizzard")
+        end },
+    { done = true, text = "Press |cffffd100Done|r here first (so the record of your switches is kept), then type |cffffd100/reload|r. After the loading screen, open |cffffd100/xui dev qa|r and run \"Chat: Chat Panel off, Improved Chat on (part 2 of 3, after the /reload)\"." },
+} })
+QA.Register("chat-improved-split-reload", { title = "Chat: Chat Panel off, Improved Chat on (part 2 of 3, after the /reload)", qa = "D25", order = 238.1, prefill = true, steps = {
+    { text = "Run this after part 1 and its /reload.\n\n|cffffd100Expect:|r Blizzard's own chat, where the game puts it, looking as the game draws it (no XayaUI art); the Chat Data Panel right under it, as wide as it; the privacy eye button beside it.",
         check = function()
             local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
-            if C.On and C.On() then return false, "the Chat Panel is still on" end
+            local okR, why = SplitAfterReload("chat-improved-split", "part 1"); if not okR then return okR, why end
+            if C.On and C.On() then return false, "the Chat Panel is still switched on" end
             if not (C.ImprovedOn and C.ImprovedOn()) then return false, "Improved Chat is off" end
+            if C.skin then return false, "the chat still has the XayaUI art (the Chat Panel's look is applied)" end
             local cf, pane, bar = Rect(C.Main()), Rect(C.Pane()), Rect(C.Bar and C.Bar())
             if not (cf and pane) then return false, "the chat's place could not be read" end
             local over = Near(pane.l, cf.l) and Near(pane.w, cf.w)
             local under = bar and Shown(C.Bar()) and bar.t <= pane.b + 0.5 and Near(bar.w, pane.w)
             local eye = Shown(rawget(_G, "XayaUIChatPrivacyButton"))
             return (over and under and eye) and true or false,
-                ("block over Blizzard's chat: %s (chat %s, block %s); Chat Data Panel under it: %s; eye button: %s"):format(over and "yes" or "NO", Fmt(cf), Fmt(pane), under and "yes" or "NO", eye and "shown" or "NOT shown")
+                ("no XayaUI art; block over Blizzard's chat: %s (chat %s, block %s); Chat Data Panel under it: %s (%s); eye button: %s"):format(over and "yes" or "NO", Fmt(cf), Fmt(pane), under and "yes" or "NO", Fmt(bar), eye and "shown" or "NOT shown")
         end },
-    { text = "Press |cffffd100Do it for me|r: the Chat Panel is switched back |cffffd100on|r and Improved Chat |cffffd100off|r.\n\n|cffffd100Expect:|r the restyled chat in its place; no Chat Data Panel, no collapse arrow, no slow-scrolling bar right of the text, no history button at the end of the tab row, no privacy eye button.",
-        setup = function() SplitSet(true, false) end,
+    { text = "Press |cffffd100Do it for me|r: the switches are saved as |cffffd100Chat Panel on|r and |cffffd100Improved Chat off|r. Nothing changes on screen until the /reload.\n\n|cffffd100Expect:|r your chat still looks as in the step before (Pass) or it changed at once (Fail).",
+        noVerdict = true,
+        setup = function() SplitSave(true, false) end,
+        check = function()
+            local s = S(); if not s then return false, "XayaUI Chat is not loaded" end
+            return s.enabled == true and s.improvedOn == false, ("saved now: Chat Panel %s, Improved Chat %s"):format(s.enabled and "on" or "off", s.improvedOn ~= false and "on" or "off")
+        end },
+    { done = true, text = "Press |cffffd100Done|r here first, then type |cffffd100/reload|r and run \"Chat: Chat Panel on, Improved Chat off (part 3 of 3, after the second /reload)\"." },
+} })
+QA.Register("chat-improved-split-back", { title = "Chat: Chat Panel on, Improved Chat off (part 3 of 3, after the second /reload)", qa = "D25", order = 238.2, prefill = true, steps = {
+    { text = "Run this after part 2 and its /reload.\n\n|cffffd100Expect:|r the restyled chat (XayaUI art) in its place; no Chat Data Panel, no collapse arrow, no slow-scrolling bar right of the text, no history button at the end of the tab row, no privacy eye button.",
         check = function()
             local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
-            local ok, why = Ready(); if not ok then return false, why end
+            local okR, why = SplitAfterReload("chat-improved-split-reload", "part 2"); if not okR then return okR, why end
+            if C.ImprovedOn and C.ImprovedOn() then return false, "Improved Chat is still switched on" end
+            local ok, why2 = Ready(); if not ok then return false, why2 end
+            if not C.skin then return false, "the Chat Panel is on but its look (the XayaUI art) is not applied" end
             local left = {}
             if Shown(C.Bar and C.Bar()) then left[#left + 1] = "Chat Data Panel" end
             if Shown(rawget(_G, "XayaUIChatArrow")) then left[#left + 1] = "collapse arrow" end
             if Shown(C.ScrollBar and C.ScrollBar()) then left[#left + 1] = "slow-scrolling bar" end
             if Shown(rawget(_G, "XayaUIChatHistoryButton")) then left[#left + 1] = "history button" end
             if Shown(rawget(_G, "XayaUIChatPrivacyButton")) then left[#left + 1] = "privacy button" end
-            return #left == 0, #left == 0 and "the Chat Panel is on and none of Improved Chat's pieces show" or ("still showing: " .. table.concat(left, ", "))
+            return #left == 0, #left == 0 and "XayaUI art on the chat and none of Improved Chat's pieces show" or ("still showing: " .. table.concat(left, ", "))
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put both switches (and the Chat Data Panel) back as they were.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to save both switches and the Chat Data Panel back as they were before part 1 (from part 1's record). Then press |cffffd100Done|r and type |cffffd100/reload|r: your chat comes back as it was.",
         setup = function()
-            local s, C = S(), Ch()
-            if s and C and splitSaved then for k, v in pairs(splitSaved) do s[k] = v end; splitSaved = nil; C.Refresh() end
+            local s = S(); if not s then error("XayaUI Chat is not loaded") end
+            local note = QA.SeenNote("chat-improved-split", 1) or ""
+            local e, i, b, c = note:match("was: panel=(%d) improved=(%d) bar=(%d) collapsed=(%d)")
+            if not e then error("part 1's record of your switches is missing: set Blizzard Reskin > Chat Panel and QoL > Improved Chat yourself") end
+            s.enabled, s.improvedOn, s.barOn, s.collapsed = e == "1", i == "1", b == "1", c == "1"
+            splitPending = true
         end,
         check = function()
-            if splitSaved then return false, "not put back yet" end
-            local s = S()
-            return s ~= nil, ("Chat Panel %s, Improved Chat %s"):format(s and s.enabled and "on" or "off", s and s.improvedOn ~= false and "on" or "off")
+            local s = S(); if not s then return false, "XayaUI Chat is not loaded" end
+            local note = QA.SeenNote("chat-improved-split", 1) or ""
+            local e, i = note:match("was: panel=(%d) improved=(%d)")
+            if not e then return false, "part 1's record of your switches is missing" end
+            local ok = (s.enabled and "1" or "0") == e and (s.improvedOn ~= false and "1" or "0") == i
+            return ok, ("saved: Chat Panel %s, Improved Chat %s (before part 1: %s, %s); they apply on the /reload"):format(s.enabled and "on" or "off",
+                s.improvedOn ~= false and "on" or "off", e == "1" and "on" or "off", i == "1" and "on" or "off")
         end },
 } })
 
@@ -524,7 +574,7 @@ QA.Register("chat-input-position", { title = "Chat: input line top, bottom or fr
             return (placed and InGlued(i, e)) and true or false,
                 ("input line at %s (saved %s, %s; width %s)"):format(Fmt(i), tostring(s.inputX), tostring(s.inputY), tostring(s.inputW or "pane's"))
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your input line setting back and close the mover.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your input line setting back and close the mover. Then press |cffffd100Done|r.",
         setup = function()
             local s, C = S(), Ch()
             if s and C and inSaved then for k, v in pairs(inSaved) do s[k] = v end; inSaved = nil end
@@ -593,7 +643,7 @@ QA.Register("chat-sidebar", { title = "Chat: the chat sidebar (UI-3)", qa = "D27
             if inC then return not Shown(sb), "in combat: strip " .. (Shown(sb) and "SHOWN" or "hidden") end
             return Shown(sb), "out of combat: strip " .. (Shown(sb) and "shown" or "HIDDEN")
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your sidebar settings back as they were.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your sidebar settings back as they were. Then press |cffffd100Done|r.",
         setup = function()
             local s, C = S(), Ch()
             if s and C and sbSaved then for _, k in ipairs(SB_KEYS) do s[k] = sbSaved[k] end; sbSaved = nil; C.Refresh() end
@@ -626,6 +676,7 @@ QA.Register("chat-fade-controls", { title = "Chat: every icon fades with the cha
             if (C.fade or 1) > 0.05 then return false, ("the chat has not faded yet (opacity %.2f): move the mouse away and wait"):format(C.fade or 1) end
             local bright, seen = {}, {}
             for _, e in ipairs(FadeControls()) do seen[#seen + 1] = ("%s %.2f"):format(e[1], e[2]); if e[2] > 0.05 then bright[#bright + 1] = e[1] end end
+            if #seen == 0 then return false, "no icon of the chat was found to check" end
             return #bright == 0, (#bright == 0 and "all faded: " or "still showing: " .. table.concat(bright, ", ") .. "; ") .. table.concat(seen, ", ")
         end },
     { text = "Now move the mouse over the chat (or the sidebar). Then press |cffffd100Check again|r with the mouse still there.\n\n|cffffd100Expect:|r the chat comes back, and every icon with it.",
@@ -634,9 +685,10 @@ QA.Register("chat-fade-controls", { title = "Chat: every icon fades with the cha
             if (C.fade or 0) < 0.95 then return false, ("the chat is not back yet (opacity %.2f)"):format(C.fade or 0) end
             local dim, seen = {}, {}
             for _, e in ipairs(FadeControls()) do seen[#seen + 1] = ("%s %.2f"):format(e[1], e[2]); if e[2] < 0.5 then dim[#dim + 1] = e[1] end end
+            if #seen == 0 then return false, "no icon of the chat was found to check" end
             return #dim == 0, (#dim == 0 and "all back: " or "still faded: " .. table.concat(dim, ", ") .. "; ") .. table.concat(seen, ", ")
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put your fade settings back as they were.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your fade settings back as they were. Then press |cffffd100Done|r.",
         setup = function()
             local s, C = S(), Ch()
             if s and C and fdSaved then for k, v in pairs(fdSaved) do s[k] = v end; fdSaved = nil; C.Refresh() end

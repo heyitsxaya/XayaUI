@@ -47,7 +47,11 @@ check("/xui qatest opens it too", Wn:IsShown())
 QA.Start("group-page")
 local st = QA.State()
 check("a walkthrough starts at step 1 with its text and Do it for me", st and st.i == 1 and Wn.text:GetText():find("Group, Display, Load, Config", 1, true) and Wn.doIt:IsShown())
-check("  ...the addon's own check says what it sees (no test group yet) without answering (V22 pre-fill: \"The addon says Fail\", nothing recorded until Accept)", (Wn.check:GetText():find("Looks wrong", 1, true) ~= nil or Wn.check:GetText():find("The addon says Fail", 1, true) ~= nil) and st.steps[1] == nil, Wn.check:GetText())
+-- (Dev Assist 0.7.53, #461) before Do it for me the step's check means nothing: it says so, Pass and Accept wait, nothing is recorded
+check("  ...before Do it for me: \"Press Do it for me first\", no Accept, Pass greyed (Fail and Skip stay)", Wn.check:GetText():find("Do it for me first", 1, true) ~= nil
+  and not Wn.accept:IsShown() and not Wn.pass:IsEnabled() and Wn.fail:IsEnabled() and Wn.skip:IsEnabled() and st.steps[1] == nil, Wn.check:GetText())
+QA.Answer("P")
+check("  ...and Pass records nothing before it", st.i == 1 and st.steps[1] == nil)
 QA.DoSetup(); W.tick(0.4, 3); QA.RunCheck()
 local tg
 for _, f in ipairs(ns.folders) do if f.name == "QA test group" then tg = f end end
@@ -60,14 +64,17 @@ QA.Back()
 check("Back returns to step 1 with its note", st.i == 1 and Wn.note:GetText() == "tabs cffff0000lookr fine")
 QA.Answer("P"); QA.Answer("F"); QA.Answer("S"); QA.Answer("P")
 check("at the cleanup step: Do it for me deletes the QA test group", st.i == 5)
+check("  ...the cleanup step has Done, not Pass / Fail (#484), greyed until Do it for me", Wn.doneBtn:IsShown() and not Wn.doneBtn:IsEnabled() and not Wn.pass:IsShown() and not Wn.fail:IsShown())
+QA.Answer("P"); QA.Answer("F")
+check("  ...Pass and Fail record nothing on it", st.i == 5 and st.steps[5] == nil)
 QA.DoSetup(); W.tick(0.4, 2)
 local still = false
 for _, f in ipairs(ns.folders) do if f.name == "QA test group" then still = true end end
 check("  ...gone", not still)
-QA.Answer("P")
+QA.Answer("D")
 local res = QA.DB().results["group-page"]
-check("the end screen: summary with passes, fails and skips", Wn.summary:GetText():find("3 passed, 1 failed, 1 skipped", 1, true) ~= nil, Wn.summary:GetText())
-check("the result is saved in the Dev Assist file, without names or realms", res and #res.steps == 5 and res.steps[2].r == "F" and res.char == nil,
+check("the end screen: summary with passes, fails, skips and the Done step (no verdict)", Wn.summary:GetText():find("2 passed, 1 failed, 1 skipped, 1 done", 1, true) ~= nil, Wn.summary:GetText())
+check("the result is saved in the Dev Assist file, without names or realms", res and #res.steps == 5 and res.steps[2].r == "F" and res.steps[5].r == "D" and res.char == nil,
   res and ("%d steps: %s"):format(#res.steps, (function() local t = {}; for i, x in ipairs(res.steps) do t[i] = tostring(x.r) end; return table.concat(t, ",") end)()) or "no result")
 check("Screenshot, Export code, Import a code and Run again are offered", Wn.shot:IsShown() and Wn.export:IsShown() and Wn.import:IsShown() and Wn.again:IsShown())
 local shots = 0
@@ -78,7 +85,7 @@ QA.ShowCode()
 local code = Wn.code:GetText()
 check("Export code: a code starting XUIQA1: in a box ready to copy", code:sub(1, 7) == "XUIQA1:" and Wn.code:IsShown())
 local back, why = QA.ImportCode(code)
-check("  ...it imports back to the same results", back and back.id == "group-page" and #back.steps == 5 and back.steps[2].r == "F" and back.steps[1].note == res.steps[1].note, why)
+check("  ...it imports back to the same results (Done included)", back and back.id == "group-page" and #back.steps == 5 and back.steps[2].r == "F" and back.steps[5].r == "D" and back.steps[1].note == res.steps[1].note, why)
 QA.StartImport(); Wn.code:SetText(code); QA.FinishImport()
 check("Import a code shows those results", Wn.title:GetText():find("Imported results", 1, true) ~= nil)
 check("a code that is not ours is refused", QA.ImportCode("hello") == nil and QA.ImportCode("XUIQA1:" .. string.rep("A", 9000)) == nil)
@@ -163,12 +170,8 @@ local function RunAll(id)
   local def = QA.walks[id]; QA.Start(id)
   for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end
 end
-if ns.SetReskinTab and ns.ReskinTabOn then
-  ns.SetReskinTab(false); W.tick(0.1, 2)
-  RunAll("reskin-switches")
-  check("D34 reskin walkthrough: All reskins is off again at the end (it was off before)", ns.ReskinTabOn() == false, tostring(ns.ReskinTabOn()))
-  ns.SetReskinTab(true); W.tick(0.1, 2)
-end
+-- (Dev Assist 0.7.53) the reskin switch walkthrough is in three parts around two /reloads; its put-back is checked across real
+-- sessions in tests/qa_walks_reload_run.py
 do
   local S = ns.Service and ns.Service("shoppingList")
   if S then

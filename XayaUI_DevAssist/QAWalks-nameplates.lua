@@ -100,7 +100,7 @@ QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (Xa
         end },
     { text = "Look at a few enemy plates (Blizzard's own, now that Plater is off). Plater's \"Reorder Nameplate\" mod put the health bar in the middle, the cast bar right under it and the auras above it.\n\n|cffffd100Answer:|r is that the order you see on Blizzard's plates? Pass if yes; Fail and say what differs (sizes are expected to differ: Blizzard offers size steps, not pixels).",
         noVerdict = true },
-    { text = "Last step: press |cffffd100Do it for me|r to put your Nameplates settings back as they were before this walkthrough. To go back to Plater: enable it and disable XayaUI Nameplates in the AddOns list, then /reload.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Nameplates settings back as they were before this walkthrough. Then press |cffffd100Done|r. (To go back to Plater later: enable it and disable XayaUI Nameplates in the AddOns list, then /reload.)",
         setup = PutBack,
         check = function()
             local np = NP(); if not np then return false, "XayaUI Nameplates is not loaded" end

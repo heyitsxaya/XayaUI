@@ -99,6 +99,7 @@ local res = QA.DB().results
 res["audit-engine"] = { when = 1, steps = { { r = "P" }, { r = "F" } }, fp = QA.Fingerprint(QA.walks["audit-engine"]) }
 res["bars-cues"] = { when = 1, steps = { { r = "P" }, { r = "S" } }, fp = QA.Fingerprint(QA.walks["bars-cues"]) }
 res["group-box"] = { when = 1, steps = { { r = "P" } }, fp = "old" }
+res["group-nested"] = { when = 1, steps = { { r = "S" }, { r = "D" } }, fp = QA.Fingerprint(QA.walks["group-nested"]) }   -- (0.7.53: skipped through, clean-up Done)
 RV.Acknowledge(true)
 L.addons["XayaUI"].meta.Version = "9.9.99"   -- an update after the acknowledged build: new / changed count against it
 QA.walks["group-page"].steps[1].text = QA.walks["group-page"].steps[1].text .. " (changed)"
@@ -133,6 +134,8 @@ check("the 10 Baseline rows are marked Baseline in their Title cell, no other ro
 check("Status reads Failed / Passed / Not run, with (rerun) for a result against an older text", RowOf("audit-engine").status:GetText():find("Failed", 1, true)
   and RowOf("bars-cues").status:GetText():find("Passed", 1, true) and RowOf("zz-test-idonly").status:GetText():find("Not run", 1, true)
   and RowOf("group-box").status:GetText():find("Passed", 1, true) and RowOf("group-box").status:GetText():find("(rerun)", 1, true), RowOf("group-box").status:GetText())
+check("Status reads Skipped (not Passed) for a run with no Pass and no Fail (Dev Assist 0.7.53)", RowOf("group-nested").status:GetText():find("Skipped", 1, true) ~= nil
+  and not RowOf("group-nested").status:GetText():find("Passed", 1, true) and QA.Table.Status("group-nested") == "skipped", RowOf("group-nested").status:GetText())
 check("New reads new / changed against the acknowledged build", RowOf("zz-test-new").new:GetText():find("new", 1, true) and RowOf("group-page").new:GetText():find("changed", 1, true)
   and RowOf("group-box").new:GetText() == "", RowOf("group-page").new:GetText())
 local okOpen = RowOf("zz-test-idonly")

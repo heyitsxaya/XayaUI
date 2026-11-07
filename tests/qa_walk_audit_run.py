@@ -40,8 +40,10 @@ end
 for _, id in ipairs(ids) do
   local d = QA.walks[id]
   for i = 1, #d.steps do
-    local okS, errS, okC, v, note = Run(id, i)
-    check(("%s step %d: check runs"):format(id, i), okC, okC and "" or v)
+    if QA.walks[id].steps[i].check then
+      local okS, errS, okC, v, note = Run(id, i)
+      check(("%s step %d: check runs"):format(id, i), okC, okC and "" or v)
+    end
   end
 end
 -- the verdicts the stand-in can answer (fresh runs)
@@ -77,7 +79,40 @@ local vb, nb = QA.walks["audit-bin-words"].steps[2].check(); check("D8 words wal
 do
   local M = ns.AuraModel; local was = M.PresenceEnabled(); M.SetSetting("presence", false)
   local ve, ne = QA.walks["audit-engine"].steps[1].check(); check("D28 engine walkthrough with the box off: verdict Pass", ve == true, ne)
+  -- (Dev Assist 0.7.53, B6) with the box ticked the thing under test is not exercised: no verdict (nil), never a Pass
+  M.SetSetting("presence", true)
+  local vt, nt = QA.walks["audit-engine"].steps[1].check()
+  check("B6 D28 engine walkthrough with the box ticked: not tested (nil), not a Pass", vt == nil and tostring(nt):find("not tested", 1, true) ~= nil, tostring(vt) .. " " .. tostring(nt))
   M.SetSetting("presence", was)
+  check("B6 audit-engine step 2 (by eye) has no check that pretends to judge", QA.walks["audit-engine"].steps[2].check == nil and QA.walks["audit-engine"].steps[2].noVerdict == true)
+end
+-- (Dev Assist 0.7.53, B6) audit-chat D31: nothing to give back is not a Pass
+do
+  local st = QA.walks["audit-chat"].steps[2]
+  local C = ns.Service and ns.Service("chatDebug") and ns.Service("chatDebug").C
+  if C and C.On and not C.On() and C.Command then C.Command("on"); W.tick(0.05, 2) end
+  local cf = rawget(_G, "ChatFrame1"); if cf then cf._xuiFade = nil end
+  local okS = pcall(st.setup); W.tick(0.05, 2)
+  local v2, n2 = st.check()
+  check("B6 D31 audit-chat: XayaUI never changed the fade, so nothing was given back: not tested (nil), not a Pass", okS and v2 == nil and tostring(n2):find("not tested", 1, true) ~= nil, tostring(okS) .. " " .. tostring(v2) .. " " .. tostring(n2))
+  pcall(QA.walks["audit-chat"].steps[3].setup); W.tick(0.05, 2)
+end
+-- (Dev Assist 0.7.53, B6) the format bar with no buttons, and the spelling check with no text read, are not Passes
+do
+  local NPsv = ns.Service and ns.Service("notepadDebug")
+  local f = NPsv and NPsv.Frame and NPsv.Frame()
+  if f and f.fb then
+    local real = f.fb.btns; f.fb.btns = {}
+    local vf, nf = QA.walks["audit-notepad-format"].steps[5].check()
+    f.fb.btns = real
+    check("B6 Notepad format bar with no buttons: Fail, not 'all 0 buttons'", vf == false, tostring(vf) .. " " .. tostring(nf))
+  end
+  local realL, realS = ns.Launchers, ns.Service
+  ns.Launchers = function() return {} end
+  ns.Service = function(k) if k == "infoPaneData" then return nil end return realS(k) end
+  local vs, nsp = QA.walks["audit-spelling"].steps[1].check()
+  ns.Launchers, ns.Service = realL, realS
+  check("B6 spelling check with no text read: not tested (nil), not a Pass", vs == nil, tostring(vs) .. " " .. tostring(nsp))
 end
 -- audit D36 (Dev Assist 0.7.19): the debug-report walkthrough leaves no test error behind, and raises nothing through the game's handler
 do

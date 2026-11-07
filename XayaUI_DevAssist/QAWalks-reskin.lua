@@ -72,7 +72,7 @@ QA.Register("reskin-windows", { title = "Reskin: Blizzard's windows in the XayaU
             local ok = (not Painted(f)) and Alpha(f.NineSlice) ~= 0
             return ok, ok and "Blizzard's art is back on the bag window" or "the bag window still carries the XayaUI look"
         end },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end,
         check = function() return BS() ~= nil, "your settings are back" end },
 } })
@@ -100,7 +100,7 @@ QA.Register("reskin-minimap", { title = "Reskin: minimap shape (Square / Circle)
             local ok = not (s.memo.minimap and s.memo.minimap.painted) and Alpha(rawget(_G, "MinimapCompassTexture")) ~= 0
             return ok and true or false, ok and "round minimap and frame back" or "the square look is still on"
         end },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -125,7 +125,7 @@ QA.Register("reskin-tooltips", { title = "Reskin: tooltips in the theme's colors
         end },
     { text = "Hover an item in your bags and compare it with what you wear (Shift).\n\n|cffffd100Expect:|r both tooltips have the same look, the item's name keeps its quality color and every line is readable. Pass if so.",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -156,7 +156,7 @@ QA.Register("reskin-tracker", { title = "Reskin: objective tracker (one box, a b
     { text = "Open |cffffd100Blizzard Reskin > Objective Tracker|r and read the section names.\n\n|cffffd100Expect:|r the names are the headings the game shows in your tracker (Quests, Campaign, World Quests, ...). Pass if they match; Fail and say which reads wrong.",
         setup = function() local ns = NS(); if ns and ns.OpenSettingsPage then pcall(ns.OpenSettingsPage, "reskin", "objtracker") end end,
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -204,7 +204,7 @@ QA.Register("reskin-toasts", { title = "Reskin: Battle.net toasts and pop-up dia
             local ok = (not Painted(f)) and Alpha(f.BG) ~= 0
             return ok, ok and "Blizzard's art is back on the pop-up" or "the pop-up still carries the XayaUI look"
         end },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() local h = rawget(_G, "StaticPopup_Hide"); if type(h) == "function" then pcall(h, POPUP) end; PutBack() end,
         check = function() return BS() ~= nil, "your settings are back" end },
 } })
@@ -231,7 +231,7 @@ QA.Register("reskin-lootroll", { title = "Reskin: loot rolls (Need, Greed, Trans
         end },
     { text = "Roll on it (any choice).\n\n|cffffd100Expect:|r every button works as before and the roll closes as usual. Pass if so.",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -254,7 +254,7 @@ QA.Register("reskin-menus", { title = "Reskin: right-click and dropdown menus", 
     { text = "Press |cffffd100Do it for me|r: Menus is switched off. Right-click your portrait again.\n\n|cffffd100Expect:|r the menu has Blizzard's own look, without a /reload.",
         setup = function() Set(function(c) c.menus = nil end) end,
         check = function() local s, why = Need(); if not s then return false, why end; local off = not s.Live().menus; return off, off and "Menus is off: the next menu Blizzard builds is its own" or "Menus is still on" end },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -274,7 +274,7 @@ QA.Register("reskin-bubbles", { title = "Reskin: chat bubbles", area = "Reskin",
         end },
     { text = "Stand near NPCs that talk, or players saying things, for a while.\n\n|cffffd100Expect:|r their bubbles have the same look and stay readable. Pass if so; Fail if a bubble looks wrong or unreadable (say where).",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Bubbles on screen get Blizzard's colors back at once.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Bubbles on screen get Blizzard's colors back at once. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -292,7 +292,7 @@ QA.Register("reskin-statusbars", { title = "Reskin: experience and reputation ba
         end },
     { text = "Hover the bar, gain some experience or reputation, and open Edit Mode once.\n\n|cffffd100Expect:|r the text, the fill and its colors work as before; in Edit Mode the bar moves and resizes as usual and keeps the look. Pass if so.",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -312,7 +312,7 @@ QA.Register("reskin-mmbuttons", { title = "Reskin: minimap zone bar and tracking
         end },
     { text = "Click the tracking button and pick something; hover the zone name; click the calendar button.\n\n|cffffd100Expect:|r each works as before and reads well. Pass if so.",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's colors come back at once if Minimap Buttons was off).",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's colors come back at once if Minimap Buttons was off). Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })
 
@@ -346,6 +346,6 @@ QA.Register("reskin-buttons", { title = "Reskin: red buttons inside Blizzard's w
         end },
     { text = "Use a few buttons in other windows you open (Mail's Send, the Auction House's Buy, a vendor's Buyback, Talents' Apply).\n\n|cffffd100Expect:|r each has the flat look and does what it did before. Buttons in other addons' windows keep their own look. Pass if so; Fail and name the button if not.",
         noVerdict = true },
-    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's red art comes back at once if Buttons was off).",
+    { done = true, text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were (Blizzard's red art comes back at once if Buttons was off). Then press |cffffd100Done|r.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

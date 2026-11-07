@@ -55,7 +55,7 @@ local function RemoveTestGroup()
     if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end
 end
 local function Cleanup()
-    return { text = "Last step: press |cffffd100Do it for me|r to delete the QA test group and its two sample rules (they go to the Recycle Bin). Then Pass.",
+    return { done = true, text = "Last step: press |cffffd100Do it for me|r to delete the QA test group and its two sample rules (they go to the Recycle Bin). Then press |cffffd100Done|r.",
         setup = RemoveTestGroup, check = function() return TestGroup() == nil, TestGroup() and "the QA test group is still there" or "the QA test group is gone" end }
 end
 
@@ -102,21 +102,110 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 } })
 
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
--- audit D34 (Dev Assist 0.7.19): what a walkthrough's "Do it for me" changed is put back by its last step
-local reskinWas, shopWas
-QA.Register("reskin-switches", { title = "Blizzard Reskin: the switch for all restyled Blizzard windows, and the switch for each one", qa = "E2e", order = 120, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
-        setup = function() local ns = NS(); if ns.ReskinTabOn and reskinWas == nil then reskinWas = ns.ReskinTabOn() and true or false end; if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
-        check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
-    { text = "Untick |cffffd100All reskins|r on the tab (or press Do it for me).\n\n|cffffd100Expect:|r at once Blizzard's own chat comes back, the Esc menu (press Esc) and the character window (C) look like Blizzard's; the four tick boxes in the left pane stay ticked but greyed.",
-        setup = function() local ns = NS(); if ns.SetReskinTab then ns.SetReskinTab(false) end end,
-        check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == false, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
-    { text = "Tick |cffffd100All reskins|r again (or press Do it for me).\n\n|cffffd100Expect:|r the reskins whose own boxes are ticked come back without a /reload.",
-        setup = function() local ns = NS(); if ns.SetReskinTab then ns.SetReskinTab(true) end end,
-        check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
-    { text = "Last step: press |cffffd100Do it for me|r to put All reskins back the way it was before this walkthrough. Then Pass.",
-        setup = function() local ns = NS(); if reskinWas ~= nil and ns.SetReskinTab then ns.SetReskinTab(reskinWas) end; reskinWas = nil end,
-        check = function() return reskinWas == nil, reskinWas == nil and "All reskins is as it was" or "not put back yet" end },
+-- (Dev Assist 0.7.53; Xaya's standing rule, 2026-11-07: "none of these should be toggleable without a reload -- this is the standing
+-- convention for all UI overhaul addons"; issue #480) Three parts around two /reloads. Part 1 flips Enable Blizzard Reskin through the
+-- switch itself (Blizzard Reskin > Overview: it saves and asks "reload now?") and records the new value in its result; part 2, after the
+-- /reload, reads the look (XayaUI art on the chat, the Esc menu, the character window) against that value, then flips it back; part 3,
+-- after the second /reload, reads the look again. Nothing claims an instant change. No saved key of its own: each part reads what the
+-- one before recorded in its saved result (QA.SeenNote); a /reload is told apart by a flag that only lives until the reload.
+local shopWas
+local reskinPending   -- set when a part flips the switch; gone after a /reload (Lua state is rebuilt)
+QA.ReskinPending = function() return reskinPending end   -- (tests)
+local function ReskinSwitch()
+    local ns = NS()
+    local tree = ns and ns.OptionsApi and ns.OptionsApi.LastTree and ns.OptionsApi.LastTree()
+    local ov = tree and tree.args and tree.args.reskin and tree.args.reskin.args and tree.args.reskin.args.reskinOverview
+    return ov and ov.args and ov.args.enable
+end
+local function OpenReskin() local ns = NS(); if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "reskinOverview") end end
+local function FlipReskin()
+    local ns = NS()
+    OpenReskin()
+    local sw = ReskinSwitch()
+    if not (sw and sw.set and ns.ReskinTabOn) then error("the switch Enable Blizzard Reskin was not found: open /xui > Blizzard Reskin > Overview") end
+    local now = ns.ReskinTabOn() and true or false
+    sw.set(nil, not now)   -- (what a click on the tick box does: saves the choice and asks "reload now?")
+    reskinPending = { was = now }
+end
+-- the reload question: StaticPopup_Visible (Blizzard's FrameXML, not in the API documentation: INFERENCE) when the game has it, else
+-- whether XayaUI_Options defined the question this session (it does so only when it asks)
+local function ReloadAsked()
+    if type(StaticPopup_Visible) == "function" then local ok, v = pcall(StaticPopup_Visible, "XAYAUI_RESKIN_RELOAD"); return ok and v and true or false end
+    return type(StaticPopupDialogs) == "table" and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD ~= nil
+end
+local function FlipCheck()
+    local ns = NS()
+    if not reskinPending then return false, "the switch was not changed in this session: press Do it for me" end
+    local now = ns.ReskinTabOn() and true or false
+    local asked = ReloadAsked()
+    return (now ~= reskinPending.was and asked) and true or false,
+        ("switch now %s (was %s); saved: %s; the reload question: %s"):format(now and "ON" or "OFF", reskinPending.was and "ON" or "OFF",
+            now ~= reskinPending.was and "yes" or "NO", asked and "asked" or "NOT asked")
+end
+-- the look after a reload, against what the switches say: each reskin is drawn only when Enable Blizzard Reskin and its own box are on
+local function ReskinLook()
+    local ns = NS()
+    local parts, bad, unread = {}, {}, {}
+    local sv = ns.Service and ns.Service("chatDebug"); local C = sv and sv.C
+    if C and C.On then
+        local want, got = C.On() and true or false, C.skin and true or false
+        parts[#parts + 1] = ("chat: XayaUI art %s"):format(got and "present" or "absent")
+        if want ~= got then bad[#bad + 1] = ("chat should %s XayaUI art"):format(want and "have" or "not have") end
+    end
+    -- the Esc menu, through its service (Reskin's gameMenuSkin): its XayaUI panel is built on the first open after a load while the look
+    -- is on; with the menu open, the panel is what is drawn
+    local gm = ns.Service and ns.Service("gameMenuSkin")
+    if gm and gm.Active then
+        local want = gm.Active() and true or false
+        local panel, menu = rawget(_G, "XayaUI_GameMenuPanel"), rawget(_G, "GameMenuFrame")
+        if want and not panel then unread[#unread + 1] = "press Esc once (the Esc menu)"
+        else
+            local got = panel ~= nil
+            if panel and menu and menu.IsShown and menu:IsShown() then got = panel:IsShown() and true or false end
+            parts[#parts + 1] = ("Esc menu: XayaUI look %s"):format(got and "present" or "absent")
+            if want ~= got then bad[#bad + 1] = ("the Esc menu should %s the XayaUI look"):format(want and "have" or "not have") end
+        end
+    end
+    -- the character window: no addon service tells whether its XayaUI look is drawn, so it is yours to judge (the note says what to expect)
+    parts[#parts + 1] = ("character window: yours to judge (open C: %s)"):format(ns.ReskinTabOn() and "the XayaUI look if Character Pane's own box is ticked" or "Blizzard's own look")
+    return parts, bad, unread
+end
+local function AfterReload(prevId, label)
+    local ns = NS()
+    if reskinPending then return nil, "not reloaded yet: type /reload (or press Reload in the question), then come back and Check again" end
+    local note = QA.SeenNote(prevId, 2)
+    local want = note and note:match("switch now (%u+)")
+    if not want then return nil, ("%s has no record of the switch: run it to its end first"):format(label) end
+    local now = ns.ReskinTabOn() and "ON" or "OFF"
+    local parts, bad, unread = ReskinLook()
+    local head = ("switch %s (%s set %s)"):format(now, label, want)
+    if now ~= want then bad[#bad + 1] = "the switch is not what " .. label .. " set" end
+    if #bad > 0 then return false, head .. "; " .. table.concat(bad, "; ") .. (#parts > 0 and ("; seen: " .. table.concat(parts, ", ")) or "") end
+    if #unread > 0 then return nil, head .. "; to read the look: " .. table.concat(unread, ", ") .. ", then Check again" end
+    return true, head .. "; " .. table.concat(parts, ", ")
+end
+QA.Register("reskin-switches", { title = "Blizzard Reskin: the switch for all restyled Blizzard windows, and the switch for each one (part 1 of 3)", qa = "E2e", order = 120, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on Blizzard Reskin > |cffffd100Overview|r.\n\n|cffffd100Expect:|r its first row is the tick box |cffffd100Enable Blizzard Reskin|r. While it was on when the window first opened this session, the reskins are listed under Overview (Character Pane, Chat Panel, Esc Menu, Shopping List), each with its own tick box.",
+        setup = OpenReskin,
+        check = function()
+            local ns = NS(); local sw = ReskinSwitch()
+            if not sw then return false, "the switch Enable Blizzard Reskin is not in the settings window" end
+            return true, ("the switch is there; it is %s now"):format((ns.ReskinTabOn and ns.ReskinTabOn()) and "ON" or "OFF")
+        end },
+    { text = "Press |cffffd100Do it for me|r: |cffffd100Enable Blizzard Reskin|r is switched to the other setting (off if it is on), the way a click on it does.\n\n|cffffd100Expect:|r a question \"Blizzard Reskin: reload now ...?\" with Reload / Later. The new look comes with the reload, not before. Press |cffffd100Later|r for now.",
+        setup = FlipReskin, check = FlipCheck },
+    { done = true, text = "Press |cffffd100Done|r here first (so this part's record is kept), then type |cffffd100/reload|r. After the loading screen, open |cffffd100/xui dev qa|r and run \"Blizzard Reskin: ... (part 2 of 3, after the /reload)\"." },
+} })
+QA.Register("reskin-switches-reload", { title = "Blizzard Reskin: the switch for all restyled Blizzard windows (part 2 of 3, after the /reload)", qa = "E2e", order = 120.1, prefill = true, steps = {
+    { text = "Run this after part 1 and its /reload. Press |cffffd100Esc|r and close the menu, open the character window (|cffffd100C|r) and look at it, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the look follows the switch part 1 set. Off: Blizzard's own chat, Esc menu and character window. On: the XayaUI look on each reskin whose own box is ticked. The addon reads the chat and the Esc menu; the character window is yours to judge (Fail if it does not follow).",
+        check = function() return AfterReload("reskin-switches", "part 1") end },
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on Blizzard Reskin > Overview and |cffffd100Enable Blizzard Reskin|r is switched back.\n\n|cffffd100Expect:|r the question \"reload now?\" again. Press |cffffd100Later|r.",
+        setup = FlipReskin, check = FlipCheck },
+    { done = true, text = "Press |cffffd100Done|r here first, then type |cffffd100/reload|r and run \"Blizzard Reskin: ... (part 3 of 3, back as it was)\"." },
+} })
+QA.Register("reskin-switches-back", { title = "Blizzard Reskin: the switch for all restyled Blizzard windows (part 3 of 3, back as it was)", qa = "E2e", order = 120.2, prefill = true, steps = {
+    { text = "Run this after part 2 and its /reload. Press |cffffd100Esc|r and close the menu, open the character window (|cffffd100C|r) and look at it, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r Enable Blizzard Reskin is as it was before part 1, and the look follows it again (the character window is yours to judge).",
+        check = function() return AfterReload("reskin-switches-reload", "part 2") end },
 } })
 
 -- E2a / E2g / E2h: the Shopping List ---------------------------------------------------------------------------------------------
@@ -131,7 +220,7 @@ QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking ques
     { text = "If any of your gear has an empty socket and you wear no Eversong Diamond (or this expansion's one-per-character gem):\n\n|cffffd100Expect:|r the first empty socket's line reads \"<slot>: <diamond> (one per character)\" or \"one-per-character gem (none worn)\"; its |cffffd100Other|r list shows only such gems and has a Default button.\n\nNo empty socket: press Skip.",
         noVerdict = true,
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end; local d = 0; for _, m in ipairs(S.Missing(S.Cfg())) do if m.kind == "diamond" then d = d + 1 end end; return true, d > 0 and "a one-per-character gem line is there" or "no one-per-character gem line (none needed, or the game does not mark the gem: say so in the note)" end },
-    { text = "Last step: press |cffffd100Do it for me|r to put the Shopping List back the way it was before this walkthrough (on / off, panel shown or not). Then Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put the Shopping List back the way it was before this walkthrough (on / off, panel shown or not). Then press |cffffd100Done|r.",
         setup = function() local S = Shop(); if S and shopWas then local c = S.Cfg(); c.enabled, c.panel = shopWas[1], shopWas[2]; S.Apply() end; shopWas = nil end,
         check = function() return shopWas == nil, shopWas == nil and "the Shopping List is as it was" or "not put back yet" end },
 } })
@@ -272,7 +361,7 @@ QA.Register("sidebar-names", { title = "Rules sidebar: names after a rule change
         check = SidebarCheck },
     { text = "Change the rule: untick |cffffd100Enabled|r, tick it again, then rename it (any change you would normally make).\n\n|cffffd100Expect:|r the sidebar keeps its width and the names stay readable after each change. If a name is cut off, press |cffffd100Check again|r before you answer: the measurement is saved with your answer.",
         check = SidebarCheck },
-    { text = "Last step: press |cffffd100Do it for me|r to delete the QA test group, its nested groups and the rule (they go to the Recycle Bin). Then Pass.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to delete the QA test group, its nested groups and the rule (they go to the Recycle Bin). Then press |cffffd100Done|r.",
         setup = function()
             local ns = NS(); local f = TestGroup()
             if f and ns.LoadOptions then ns.LoadOptions() end

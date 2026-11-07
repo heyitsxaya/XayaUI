@@ -160,7 +160,9 @@ QA.Register("externals-combat", { title = "Externals and raid defensives in comb
         end },
     { text = "Did each external or raid defensive show its icon (with its time) while it was on you in combat? Pass if yes. Fail if any did not, and write its name in the note.",
         noVerdict = true },
-    { text = "Out of combat, get one of those buffs again (or any buff a rule watches) and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note lists IDs XayaUI learned under the same name (for a rule that lists a cast ID, its buff's own ID). Nothing learned is fine when your rules already list the buff's own ID.",
+    -- (0.7.53) whether anything should have been learned is not something the addon can know: data capture, your call (before: a Pass
+    -- whatever it found)
+    { noVerdict = true, text = "Out of combat, get one of those buffs again (or any buff a rule watches) and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note lists IDs XayaUI learned under the same name (for a rule that lists a cast ID, its buff's own ID). Nothing learned is fine when your rules already list the buff's own ID.",
         check = function()
             local t = {}
             for _, e in ipairs(AuraRules()) do

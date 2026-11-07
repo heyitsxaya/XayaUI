@@ -212,6 +212,8 @@ QA.Register("perf-other-errors", { title = "Performance: other addons' errors (J
             end
             local note = ("other addons' errors this session: %d (passed on to the game's error display, not recorded by XayaUI)"):format(other)
             if mine > 0 then return false, note .. ("; but %d recorded entries name a non-XayaUI folder"):format(mine) end
+            -- (0.7.53) with no error from another addon yet, nothing was passed on: not tested (before: a Pass)
+            if other == 0 then return nil, note .. "; nothing to check yet: play where another addon shows errors, then Check again" end
             return true, note
         end },
 } })
@@ -260,7 +262,7 @@ QA.Register("perf-load-first", { title = "Performance: rules that are not loaded
             if not avg then return false, "no timing yet: fight with the timer on (step 1)" end
             return true, ("%d switched on, %d loaded: engine %s ms per step on average, %s ms worst; Lua memory %s KB/s"):format(on, loaded, avg, tostring(worst), tostring(mem))
         end },
-    { text = "Press |cffffd100Do it for me|r to stop the timer again (if this walkthrough started it), then Pass.",
+    { done = true, text = "Press |cffffd100Do it for me|r to stop the timer again (if this walkthrough started it). Then press |cffffd100Done|r.",
         setup = function() local n = NS() or {}; if perfByWalk and n.PerfCommand and n.CaptureOutput then n.CaptureOutput(n.PerfCommand, "off"); perfByWalk = nil end end,
         noVerdict = true },
 } })
@@ -384,15 +386,118 @@ local function OnScreenRule()
     for k in tostring(sel):gmatch("[^\001]+") do g = g and g.args and g.args[k] end
     return key, g
 end
+-- (Dev Assist 0.7.53, #467) the window's own timing (ns.perf) is the LAST redraw, whatever page caused it. Each redraw is now recorded
+-- with the page it built: the Rules tab's selected rule (OnScreenRule) and whether that rule's editor was built (not a stub). Step 1
+-- counts only a redraw that built the open rule's editor; any other says "no rule-editor redraw measured yet". The record is kept in
+-- memory only (no saved key), from the first check or "Do it for me" after the settings addon is loaded (a post-hook on the dialog's
+-- Open, which XayaUI_Options wraps for its timing: the hook runs after that timing is written). The game cannot take a hook back:
+-- it returns at once for any other window. INFERENCE (no API entry: AceConfigDialog is a library): every redraw goes through
+-- AceConfigDialog:Open (its refresh calls it by name; Options.lua times it there).
+local redraws, redrawHooked = {}, false
+QA.PerfRedraws = redraws   -- (tests)
+local function WatchRedraws()
+    if redrawHooked then return true end
+    local n = NS() or {}
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    if not (n.OptionsApi and n.OptionsApi.LastTree and ACD and type(ACD.Open) == "function" and hooksecurefunc) then return false end
+    redrawHooked = true
+    hooksecurefunc(ACD, "Open", function(_, app)
+        if app ~= "CueRules" then return end
+        local p = (NS() or {}).perf
+        if not (p and p.n) then return end
+        local key, g = OnScreenRule()
+        redraws[#redraws + 1] = { n = p.n, build = p.build or 0, skin = p.skin or 0, rule = key, built = (type(g) == "table" and g.xuiStub == nil) or false }
+        while #redraws > 30 do table.remove(redraws, 1) end
+    end)
+    return true
+end
+local function OpenRules()
+    local n = NS() or {}
+    if not (n.LoadOptions and n.LoadOptions()) then error("the settings window addon could not be loaded") end
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    if not (ACD and ACD.OpenFrames and ACD.OpenFrames.CueRules) and n.ToggleUI then n.ToggleUI() end
+    if ACD and ACD.SelectGroup then pcall(ACD.SelectGroup, ACD, "CueRules", "cooldowns") end
+    WatchRedraws()
+end
+-- the selected tab of the open rule's editor (Info, Display, Trigger, ...) as the window's status table holds it
+local function RuleTabOpen()
+    local n = NS() or {}
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    if not ACD then return nil end
+    local sub = n.CurrentSub and n.CurrentSub() or "enabledTab"
+    local st0 = ACD:GetStatusTable("CueRules", { "cooldowns", sub })
+    local sel = st0 and st0.groups and st0.groups.selected
+    if type(sel) ~= "string" then return nil end
+    local segs = { "cooldowns", sub }
+    for seg in sel:gmatch("[^\001]+") do segs[#segs + 1] = seg end
+    local st = ACD:GetStatusTable("CueRules", segs)
+    return st and st.groups and st.groups.selected
+end
+-- the search's result buttons as the rule's editor shows them (its own options xuiSR1..: "Tab  >  section  >  option"), shown ones only
+local function SearchResults(g)
+    local out = {}
+    for i = 1, 12 do
+        local o = g.args and g.args["xuiSR" .. i]
+        if type(o) == "table" then
+            local hid = o.hidden; if type(hid) == "function" then local ok, v = pcall(hid); hid = ok and v end
+            local nm = o.name; if type(nm) == "function" then local ok, v = pcall(nm); nm = ok and v or nil end
+            if not hid and type(nm) == "string" and nm ~= "" then
+                local parts = {}
+                for seg in (nm .. "  >  "):gmatch("(.-)  >  ") do parts[#parts + 1] = seg end
+                out[#out + 1] = { tab = parts[1], name = parts[#parts] }
+            end
+        end
+    end
+    return out
+end
+-- is a widget labelled `name` on screen in the open window: shown, and inside the scrolling area that holds it (not scrolled away)?
+local function OptionOnScreen(names)
+    local ACD = LibStub and LibStub("AceConfigDialog-3.0", true)
+    local root = ACD and ACD.OpenFrames and ACD.OpenFrames.CueRules
+    if not root then return nil end
+    local want = {}
+    for _, nm in ipairs(names) do want[nm] = true end
+    local function Txt(o)
+        if not (o and o.GetText) then return nil end
+        local ok, t = pcall(o.GetText, o)
+        if not (ok and type(t) == "string") then return nil end
+        return (t:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):match("^%s*(.-)%s*$"))
+    end
+    local function Inside(f, sf)
+        if not sf then return true end
+        local t, b, st, sb = f:GetTop(), f:GetBottom(), sf:GetTop(), sf:GetBottom()
+        if not (t and b and st and sb) then return true end
+        return b < st and t > sb
+    end
+    local found, seen = nil, {}
+    local function walk(w, sf, d)
+        if found or type(w) ~= "table" or d > 40 or seen[w] then return end
+        seen[w] = true
+        sf = w.scrollframe or sf
+        if w.type ~= "TreeGroup" and w.frame and w.frame.IsVisible and w.frame:IsVisible() then
+            for _, k in ipairs({ "label", "text", "editbox" }) do
+                local t = Txt(w[k])
+                if t and want[t] and Inside(w.frame, sf) then found = t; return end
+            end
+        end
+        for _, c in ipairs(w.children or {}) do walk(c, sf, d + 1) end
+    end
+    walk(root, nil, 0)
+    return found or false
+end
+QA.PerfOptionOnScreen = OptionOnScreen   -- (tests)
 QA.Register("perf-settings-click", { title = "Speed: how fast a click reacts while a rule is open (J31)", area = "Dev Assist", qa = "J31", order = 310, prefill = true, steps = {
-    { text = "Open the settings window (|cff88ccff/xui|r), Rules tab, and click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw: under 100 ms is the goal (before: about 1.4 s per click with your rules).",
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r and the addon starts noting which page each redraw builds. Click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw that built this rule's editor (other pages' redraws do not count): under 100 ms is the goal (before: about 1.4 s per click with your rules).",
+        setup = OpenRules,
         check = function()
-            local p = Perf()
-            if not (p and p.n and p.n > 0) then return false, "no redraw seen yet: open /xui and click a switch" end
+            if not WatchRedraws() then return nil, "the settings window is not loaded: press Do it for me" end
             local key = OnScreenRule()
-            if not key then return false, "no rule is selected in the sidebar: click a rule first" end
-            local ms = (p.build or 0) + (p.skin or 0)
-            return ms < 100, ("last redraw with %s open: %.0f ms (%.0f ms build and draw + %.0f ms skin)"):format(key, ms, p.build or 0, p.skin or 0)
+            if not key then return nil, "no rule is selected in the sidebar: click a rule first" end
+            local last
+            for i = #redraws, 1, -1 do local r = redraws[i]; if r.rule == key and r.built then last = r; break end end
+            if not last then return nil, ("no rule-editor redraw measured yet for %s: click a switch in its editor, then Check again"):format(key) end
+            local ms = last.build + last.skin
+            return ms < 100, ("redraw #%d built %s's editor: %.0f ms (%.0f ms build and draw + %.0f ms skin)"):format(last.n, key, ms, last.build, last.skin)
         end },
     { text = "Click a different rule in the sidebar, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r that rule's own editor shows straight away (its name, its Display / Trigger / Cues tabs), never an empty page or the previous rule's settings.",
         check = function()
@@ -403,6 +508,38 @@ QA.Register("perf-settings-click", { title = "Speed: how fast a click reacts whi
             for _, v in pairs(type(g.args) == "table" and g.args or {}) do if type(v) == "table" and v.type == "group" then tabs = tabs + 1 end end
             return g.xuiStub == nil and tabs > 0, ("%s: editor built with %d tab(s)%s"):format(key, tabs, g.xuiStub and " (NOT built: report this)" or "")
         end },
-    { text = "In the open rule, type a word in its search box above the tabs (for example |cffffd100glow|r) and click one of the results.\n\n|cffffd100Expect:|r the rule's tab with that option opens. Then rename the rule (Info tab > Name) and check the sidebar row shows the new name.", noVerdict = true },
+    { text = "In the open rule, type a word in its search box above the tabs (for example |cffffd100glow|r), click one of the results, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the rule's tab with that option opens and the option itself is on screen (not only its tab: you can see it without scrolling).",
+        -- (0.7.53, #467) the option, not only the tab: one of the search's results on the tab that is open must be drawn and inside
+        -- the visible part of the window
+        check = function()
+            local key, g = OnScreenRule()
+            if not (key and type(g) == "table") then return nil, "no rule is open: click a rule in the sidebar first" end
+            local box = g.args and g.args.xuiSearch
+            local q = box and box.get and box.get() or ""
+            if not q:match("%S") then return nil, "nothing typed in the rule's search box yet" end
+            local res = SearchResults(g)
+            if #res == 0 then return nil, ("no option of %s matches \"%s\": try another word"):format(key, q) end
+            local tab = RuleTabOpen()
+            local tg = tab and g.args and g.args[tab]
+            local tabName = tg and tg.name; if type(tabName) == "function" then local ok, v = pcall(tabName); tabName = ok and v or nil end
+            local names = {}
+            for _, r in ipairs(res) do if r.tab == tabName then names[#names + 1] = r.name end end
+            if #names == 0 then return false, ("the open tab (%s) holds none of the %d result(s) for \"%s\": the click did not open the result's tab"):format(tostring(tabName or tab), #res, q) end
+            local on = OptionOnScreen(names)
+            if on == nil then return nil, "the settings window is not open" end
+            if not on then return false, ("tab %s is open, but none of its results (%s) is on screen"):format(tostring(tabName), table.concat(names, ", "):sub(1, 120)) end
+            return true, ("tab %s is open and \"%s\" is on screen"):format(tostring(tabName), on)
+        end },
+    { text = "Rename the rule (Info tab > Name) and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the sidebar row shows the new name at once.",
+        check = function()
+            local key = OnScreenRule()
+            local n = NS() or {}
+            local idx = key and tonumber(key:match("rule(%d+)$"))
+            local r = idx and n.rules and n.rules[idx]
+            if not r then return nil, "no rule is open: click a rule in the sidebar first" end
+            local rows = QA.WindowMentions and QA.WindowMentions(tostring(r.name or ""))
+            if rows == nil then return nil, "the settings window is not open" end
+            return rows > 0, rows > 0 and ("a sidebar row shows \"%s\""):format(tostring(r.name)) or ("no sidebar row shows \"%s\""):format(tostring(r.name))
+        end },
     { text = "Drag the window's right edge to make it as narrow as it goes, with a rule open on its Display tab.\n\n|cffffd100Expect:|r the dropdowns still fit (nothing cut off). The narrowest width now follows the dropdowns of what the window has shown (it used to scan every rule's editor up front); a rule with longer dropdown entries can widen it when you open that rule.", noVerdict = true },
 } })

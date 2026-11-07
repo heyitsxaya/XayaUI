@@ -63,7 +63,7 @@ ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute("XayaUI_NS = NS")
-for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua"):
+for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua", "XayaUI_DevAssist/QAWalks-bars.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS
@@ -88,7 +88,8 @@ RAIDM = { "Raid", "raid", 16, "Mythic", 20, 0, false, 2900, 20 }
 ''')
 
 L.execute(r"""
-function STEP(id, i) local ok, good, note = pcall(XayaUI_DevQA.walks[id].steps[i].check); if not ok then return 'ERR', tostring(good) end; return good and 'P' or 'F', tostring(note) end
+-- (Dev Assist 0.7.53) 'N': the check returned nil (not tested: no verdict offered)
+function STEP(id, i) local ok, good, note = pcall(XayaUI_DevQA.walks[id].steps[i].check); if not ok then return 'ERR', tostring(good) end; if good == nil then return 'N', tostring(note) end; return good and 'P' or 'F', tostring(note) end
 function SETUP(id, i) XayaUI_DevQA.walks[id].steps[i].setup() end
 """)
 fails = []
@@ -166,6 +167,9 @@ L.execute("NS.otherErrors = 7; ENTRIES = {}; NS.DebugReportData = function() ret
 r = step("perf-other-errors", 1); check("J22 with 7 other addons' errors and a clean record: Pass, gives the count", r[0] == "P" and "this session: 7" in r[1])
 L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI/Engine.lua:2: mine' } }")
 r = step("perf-other-errors", 1); check("J22 when the record holds another addon's error: Fail naming it", r[0] == "F" and "1 recorded entries" in r[1])
+# (Dev Assist 0.7.53, B6) no other addon raised an error yet: nothing was passed on, so not tested (before: a Pass)
+L.execute("NS.otherErrors = 0; ENTRIES = {}")
+r = step("perf-other-errors", 1); check("B6 J22 with no other addon's error yet: not tested (no verdict), not a Pass", r[0] == "N" and "nothing to check yet" in r[1])
 
 # J23: rules that are not loaded (stand-in engine timer: its two lines as /xui debug perf prints them)
 L.execute("""
@@ -224,6 +228,66 @@ L.execute("WIN_OPEN = false; OPT_KB = 1024 * 5; GARBAGE = 0; SETUP('perf-setting
 r = step(S27, 4); check("J27.4 closed and cleaned up, 5 MB: Pass", r[0] == "P" and "5.0 MB" in r[1])
 L.execute("OPT_KB = 1024 * 83")
 r = step(S27, 4); check("J27.4 83 MB kept (before the fix): Fail", r[0] == "F")
+
+# J31 (Dev Assist 0.7.53, #467): a redraw counts only when it built the open rule's editor; the search step reads the option on screen
+L.execute(r'''
+hooksecurefunc = function(t, k, fn) local orig = t[k]; t[k] = function(...) local a, b, c = orig(...); fn(...); return a, b, c end end
+local function Fr(t, b, vis) return { IsVisible = function() return vis end, IsShown = function() return vis end, GetTop = function() return t end, GetBottom = function() return b end } end
+local function FS(txt) local o = { t = txt }; function o:GetText() return self.t end; function o:SetText(v) self.t = v end; return o end
+SEL, TABSEL, Q, BUILD, SKIN = "folderX\001rule3", "display", "", 0, 0
+RULEG = { args = { display = { type = "group", name = "Display", args = {} }, trigger = { type = "group", name = "Trigger", args = {} }, xuiSearch = { get = function() return Q end },
+  xuiSR1 = { type = "execute", hidden = function() return Q == "" end, name = function() return "Display  >  Look  >  Maintain aspect ratio" end },
+  xuiSR2 = { type = "execute", hidden = function() return true end, name = function() return "" end } } }
+TREE = { args = { cooldowns = { args = { enabledTab = { args = { folderX = { args = { rule3 = RULEG } } } } } } } }
+SF = Fr(500, 100, true)
+OPTF = Fr(300, 280, true)
+ROWTEXT = FS("My rule")
+ROOT = { type = "Frame", children = { { type = "TreeGroup", buttons = { { IsShown = function() return true end, text = ROWTEXT } },
+  children = { { type = "ScrollFrame", scrollframe = SF, children = { { type = "CheckBox", frame = OPTF, text = FS("Maintain aspect ratio") } } } } } } }
+STATUS = {}
+ACD = { OpenFrames = { CueRules = ROOT }, SelectGroup = function() end,
+  Open = function(self, app) if app == "CueRules" then NS.perf.n = NS.perf.n + 1; NS.perf.build, NS.perf.skin = BUILD, SKIN end end,
+  GetStatusTable = function(self, app, path)
+    local k = table.concat(path, "/")
+    if k == "cooldowns/enabledTab" then return { groups = { selected = SEL } } end
+    if k == "cooldowns/enabledTab/folderX/rule3" then return { groups = { selected = TABSEL } } end
+    STATUS[k] = STATUS[k] or {}; return STATUS[k] end }
+LibStub = setmetatable({}, { __call = function(_, name) if name == "AceConfigDialog-3.0" then return ACD end; if name == "XayaDataBlocks-1.0" then return DBLIB end end })
+NS.perf = { n = 0 }
+NS.OptionsApi = { LastTree = function() return TREE end, IsOpen = function() return true end }
+NS.LoadOptions = function() return true end
+NS.ToggleUI = function() end
+NS.CurrentSub = function() return "enabledTab" end
+NS.CurrentTab = function() return "cooldowns" end
+NS.rules = { {}, {}, { name = "My rule" } }
+function REDRAW(sel, build, skin) local keep = SEL; SEL = sel; BUILD, SKIN = build, skin; ACD:Open("CueRules"); SEL = keep end
+''')
+J = "perf-settings-click"
+check("J31 step 1 has Do it for me (opens Rules and starts noting each redraw's page)", E("XayaUI_DevQA.walks['perf-settings-click'].steps[1].setup ~= nil"))
+L.execute("SETUP('perf-settings-click', 1)")
+r = step(J, 1); check("J31.1 no redraw yet: not tested, 'no rule-editor redraw measured yet'", r[0] == "N" and "no rule-editor redraw measured yet" in r[1])
+L.execute("REDRAW('folderX', 900, 30)")
+r = step(J, 1); check("J31.1 the last redraw built another page (900 ms): not counted, still not tested (before: Fail on that redraw)", r[0] == "N" and "no rule-editor redraw" in r[1])
+L.execute("REDRAW('folderX\\001rule3', 60, 10)")
+r = step(J, 1); check("J31.1 a redraw that built the open rule's editor, 70 ms: Pass with its ms", r[0] == "P" and "built rule3's editor: 70 ms" in r[1])
+L.execute("REDRAW('folderX', 1500, 40)")
+r = step(J, 1); check("J31.1 a later redraw of another page is ignored: still the editor's 70 ms", r[0] == "P" and "70 ms" in r[1])
+L.execute("RULEG.xuiStub = true; REDRAW('folderX\\001rule3', 20, 5); RULEG.xuiStub = nil")
+r = step(J, 1); check("J31.1 a redraw where the rule's editor was a stub (not built) does not count", r[0] == "P" and "70 ms" in r[1])
+L.execute("REDRAW('folderX\\001rule3', 140, 20)")
+r = step(J, 1); check("J31.1 a slow editor redraw (160 ms): Fail", r[0] == "F" and "160 ms" in r[1])
+r = step(J, 3); check("J31.3 nothing typed in the rule's search box: not tested", r[0] == "N" and "nothing typed" in r[1])
+L.execute("Q = 'aspect'")
+r = step(J, 3); check("J31.3 the result's tab is open and its option is on screen: Pass", r[0] == "P" and "Maintain aspect ratio" in r[1])
+L.execute("TABSEL = 'trigger'")
+r = step(J, 3); check("J31.3 another tab open (the click did not open the result's tab): Fail", r[0] == "F" and "holds none" in r[1])
+L.execute("TABSEL = 'display'; OPTF.GetTop = function() return 620 end; OPTF.GetBottom = function() return 600 end")
+r = step(J, 3); check("J31.3 the right tab, but the option is scrolled out of view: Fail (the tab alone is not enough)", r[0] == "F" and "on screen" in r[1])
+L.execute("OPTF.GetTop = function() return 300 end; OPTF.GetBottom = function() return 280 end")
+r = step(J, 4); check("J31.4 the sidebar row shows the rule's name: Pass", r[0] == "P")
+L.execute("NS.rules[3].name = 'Renamed rule'")
+r = step(J, 4); check("J31.4 renamed, but no row shows the new name: Fail", r[0] == "F")
+check("J31 the narrow-window step stays a question for her", E("XayaUI_DevQA.walks['perf-settings-click'].steps[5].noVerdict == true"))
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

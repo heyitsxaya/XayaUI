@@ -119,7 +119,7 @@ QA.Register("ui-tab-rows", { title = "Settings: tab rows, switched-off pages, te
             Open("cooldowns", "smartTab")
         end,
         check = function() return CheckRules(math.floor(((NS() and NS().Style and NS().Style.tabSub.h) or 27) * Scale() + 0.5)) end },
-    { text = "Last step: press |cffffd100Do it for me|r to put Data Panels and the Theme text size back as they were.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Data Panels and the Theme text size back as they were. Then press |cffffd100Done|r.",
         setup = function()
             if not saved then return end
             SetDP(saved.dp)
@@ -160,7 +160,7 @@ QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme c
         end },
     { text = "Hover the tick boxes of a few other rows yourself (Release Guard, Esc Menu, Chat Panel).\n\n|cffffd100Expect:|r each says in plain words what it does, in one sentence. Pass if every one reads clearly to you; Fail and say which one if not.",
         noVerdict = true },
-    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that color. The addon checks that the grey it uses is the theme's Muted text color.",
+    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > UI Options > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that color. The addon checks that the grey it uses is the theme's Muted text color.",
         check = function()
             local ns = NS(); local api = ns and ns.OptionsApi
             if not (api and api.Muted and ns.Theme and ns.Theme.Col) then return false, "the settings window has not been opened yet" end
@@ -187,7 +187,7 @@ local function AdvOpt()
 end
 local function Adv() local ns = NS(); return ns and ns.Theme and ns.Theme.Advanced and ns.Theme.Advanced() end
 QA.Register("ui-theme-advanced", { title = "Theme: Advanced customization", qa = "B221", order = 262, prefill = true, steps = {
-    { text = "Open Settings > Theme (the toolbar's Settings button, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colors or Class overrides.",
+    { text = "Open Settings > UI Options > Theme (the Settings tab at the top, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colors or Class overrides.",
         setup = function() local ns = NS(); if ns and ns.LoadOptions then ns.LoadOptions() end; saved = { adv = Adv() } end,
         check = function()
             local o = AdvOpt()
@@ -203,7 +203,7 @@ QA.Register("ui-theme-advanced", { title = "Theme: Advanced customization", qa =
             local open = Adv() and ns.Theme.Parked and ns.Theme.Parked("tabBg") == false
             return open == true, open and "on: the tab colors are offered and applied" or "still off"
         end },
-    { text = "Last step: press |cffffd100Do it for me|r to put Advanced customization back as it was.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Advanced customization back as it was. Then press |cffffd100Done|r.",
         setup = function() local o = AdvOpt(); if o and o.set and saved then o.set({}, saved.adv and true or false) end end,
         check = function() return saved ~= nil and (Adv() and true or false) == (saved.adv and true or false), "back as it was" end },
 } })
@@ -547,6 +547,7 @@ QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two s
                 if type(node.args) == "table" then for _, c in pairs(node.args) do walk(c, d + 1) end end
             end
             walk(t, 0)
+            if n == 0 then return false, "no hover text was found in the settings window's options" end
             return #long == 0, n .. " hover texts read" .. (#long > 0 and ("; longer than two sentences: " .. table.concat(long, ", ")) or "")
         end },
     { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },

@@ -148,15 +148,21 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("layout walk negative: an Appearance part back gives Fail", not chk(id, 1))
   ns.Service("chatDebug").Options = realTree
 
-  -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) the two switches apart
+  -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) the two switches apart. (Dev Assist 0.7.53, #480: three parts around two /reloads; part 1's
+  -- "Do it for me" only saves the switches: nothing is applied before the /reload. The parts after a reload are checked across real
+  -- sessions in tests/qa_walks_reload_run.py.)
   id = "chat-improved-split"
-  local okI1, nI1 = run(id, 1); rec("split walk step 1: Chat Panel off, Improved Chat on: the block and Chat Data Panel around Blizzard's chat", okI1, nI1)
-  local cbar = C.Bar(); cbar:Hide()
-  rec("split walk negative: no Chat Data Panel under the chat gives Fail", not chk(id, 1)); C.Layout()
-  local okI2, nI2 = run(id, 2); rec("split walk step 2: Chat Panel on, Improved Chat off: none of its pieces show", okI2, nI2)
-  ns.chat2.improvedOn = true; C.Refresh(); W.flush()
-  rec("split walk negative: Improved Chat back on gives Fail at step 2", not chk(id, 2))
-  local okI3, nI3 = run(id, 3); rec("split walk last step: switches put back", okI3 and ns.chat2.enabled == true and ns.chat2.improvedOn ~= false, nI3)
+  local skinBefore = C.skin
+  local refreshes = 0
+  local realRefresh = C.Refresh; C.Refresh = function(...) refreshes = refreshes + 1; return realRefresh(...) end
+  local okI1, nI1 = run(id, 1)
+  C.Refresh = realRefresh
+  rec("split walk part 1: Do it for me saves Chat Panel off / Improved Chat on and remembers yours (\"was: ...\")", ns.chat2.enabled == false and ns.chat2.improvedOn ~= false and tostring(nI1):find("was: panel=", 1, true) ~= nil, nI1)
+  rec("split walk part 1: nothing is applied before the /reload (no refresh, the look unchanged)", refreshes == 0 and C.skin == skinBefore, refreshes)
+  rec("split walk part 1: its last step is Done, then /reload (never an instant change)", step(id, 2).done == true and step(id, 2).text:find("/reload", 1, true) ~= nil)
+  local okP2, nP2 = QA.walks["chat-improved-split-reload"].steps[1].check()
+  rec("split walk part 2 before any /reload: not tested (nil), says to reload", okP2 == nil and tostring(nP2):find("reload", 1, true) ~= nil, tostring(okP2) .. " " .. tostring(nP2))
+  for k, v in pairs(orig) do s[k] = v end; C.Refresh(); W.flush()
 
   -- (Chat 0.6.34; UI-15) the input line's place
   id = "chat-input-position"
@@ -187,6 +193,13 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("fade walk negative: not faded yet gives Fail", not chk(id, 1))
   C.fade = 0; C.ApplyAlpha()
   local okF1, nF1 = chk(id, 1); rec("fade walk step 1: chat faded, no icon at full strength", okF1, nF1)
+  -- (Dev Assist 0.7.53, B6) no icon to look at is not "all faded"
+  local sbF = C.Sidebar and C.Sidebar()
+  local arrowShown, eyeShown, sbShown = XayaUIChatArrow:IsShown(), XayaUIChatPrivacyButton and XayaUIChatPrivacyButton:IsShown(), sbF and sbF:IsShown()
+  XayaUIChatArrow:Hide(); if XayaUIChatPrivacyButton then XayaUIChatPrivacyButton:Hide() end; if sbF then sbF:Hide() end
+  local okNone, nNone = chk(id, 1)
+  rec("B6 fade walk: no icon found to check gives Fail, not 'all faded'", okNone == false and tostring(nNone):find("no icon", 1, true) ~= nil, nNone)
+  if arrowShown then XayaUIChatArrow:Show() end; if eyeShown then XayaUIChatPrivacyButton:Show() end; if sbShown then sbF:Show() end
   XayaUIChatArrow:SetAlpha(1)
   rec("fade walk negative: a chevron left at full strength gives Fail", not chk(id, 1))
   C.fade = 1; C.ApplyAlpha()
@@ -221,14 +234,15 @@ R = lua.eval(r'''function(W, ns, C, root)
   -- pre-fill in the window
   QA.Start("chat-210-mover-collapse")
   local Wn = QA.Window()
-  rec("window: before Do it for me, step 1's verdict is Fail (settings not remembered yet)", Wn.accept:IsShown() and Wn.accept:GetText() == "Accept: Fail", Wn.accept:GetText())
+  -- (Dev Assist 0.7.53, #461) a step with Do it for me offers no verdict before it ran
+  rec("window: before Do it for me, no Accept and the check says to press it first", not Wn.accept:IsShown() and (Wn.check:GetText() or ""):find("Do it for me first", 1, true) ~= nil, Wn.check:GetText())
   QA.DoSetup(); QA.RunCheck()
   rec("window: Accept offers the addon's verdict", Wn.accept:IsShown() and Wn.accept:GetText() == "Accept: Pass", Wn.accept:GetText())
   rec("window: nothing recorded before the click", QA.State().steps[1] == nil)
   QA.Accept()
   local r1 = QA.State().steps[1]
   rec("window: Accept records Pass with the addon's note", r1 and r1.r == "P" and r1.note:find("^addon: ") ~= nil, r1 and r1.note)
-  Wn.note:SetText("my own note"); QA.RunCheck()
+  Wn.note:SetText("my own note"); QA.DoSetup(); QA.RunCheck()
   local verdict = QA.State().suggest and QA.State().suggest.r
   QA.Accept()
   local r2 = QA.State().steps[2]

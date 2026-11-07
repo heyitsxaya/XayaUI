@@ -11,7 +11,8 @@
 --    the qa field, de-duplicated, in full. Title = the title without those groups (only a group made entirely of codes is taken out:
 --    ordinary words in brackets stay). A header click sorts by that column, a second click reverses it; default = area, then the
 --    list's own order; ties keep the default order (stable).
---  - nothing of the search, chips or sort is saved (no saved-variable key: the suite is about to be restructured).
+--  - nothing of the search, chips or sort is saved (no saved-variable key: the suite is about to be restructured). Each window's table
+--    keeps them in memory for the rest of the session (0.7.53, #465: also across opening a walkthrough and coming back).
 -- No existing table helper fitted: the auto-populate table (XayaUI_Options/AutoPicker.lua) is AceGUI inside the load-on-demand
 -- settings addon, which Dev Assist does not load; XayaDataBlocks-1.0 lays out data-panel blocks, not rows. Own code, own design.
 -- V14: nothing here is made until one of the two windows opens. UNTESTED IN GAME.
@@ -79,16 +80,20 @@ end
 -------------------------------------------------------------------------------
 -- Entries, filter and sort (no frames: the tests drive these directly too)
 -------------------------------------------------------------------------------
-local STATUS_LABEL = { notrun = "Not run", passed = "Passed", failed = "Failed" }
-local STATUS_COLOUR = { notrun = "999999", passed = "60ff60", failed = "ff6060" }
+local STATUS_LABEL = { notrun = "Not run", passed = "Passed", failed = "Failed", skipped = "Skipped" }
+local STATUS_COLOUR = { notrun = "999999", passed = "60ff60", failed = "ff6060", skipped = "cccccc" }
 TB.STATUS_LABEL = STATUS_LABEL
--- the result of a walkthrough's last run: "notrun", "passed" (no step failed) or "failed"; stale = run against an older text
+-- the result of a walkthrough's last run: "notrun", "failed" (a step failed), "passed" (a step passed, none failed) or (0.7.53)
+-- "skipped" (no step passed or failed: every step skipped, or done without a verdict); stale = run against an older text
 function TB.Status(id)
     local r = QA.DB().results[id]
     if not r then return "notrun", false end
     local stale = (r.fp ~= nil and r.fp ~= QA.Fingerprint(QA.walks[id])) and true or false
-    for _, s in ipairs(r.steps or {}) do if s.r == "F" then return "failed", stale end end
-    return "passed", stale
+    local p, f = 0, 0
+    for _, s in ipairs(r.steps or {}) do if s.r == "F" then f = f + 1 elseif s.r == "P" then p = p + 1 end end
+    if f > 0 then return "failed", stale end
+    if p > 0 then return "passed", stale end
+    return "skipped", stale
 end
 local function AreaOf(def)
     if QA.Review and QA.Review.Area then return QA.Review.Area(def) end
@@ -229,6 +234,13 @@ function TB.Create(parent, cfg)
     return t
 end
 
+-- (0.7.53, #466 / #481) move the search row (and the chips and rows under it, at the next SetEntries) to start `top` px below the
+-- window's top: the windows measure the text above the table and call this, so nothing overlaps at any text size
+function T:SetTop(top)
+    top = math.floor(tonumber(top) or self.cfg.top)
+    self.cfg.top = top
+    self.searchLabel:ClearAllPoints(); self.searchLabel:SetPoint("TOPLEFT", self.parent, "TOPLEFT", self.cfg.left, -top - 3)
+end
 local PARTS = { "searchLabel", "search", "clear", "count", "head", "scroll" }
 function T:SetShown(on)
     for _, k in ipairs(PARTS) do self[k]:SetShown(on and true or false) end
