@@ -3,7 +3,7 @@ Review-popup build session, branch `qa-review-popup`. This is a follow-up to the
 Only data changed: `XayaUI_DevAssist/QAQuestions.lua`. No code changed.
 
 ## Change
-- Questions go from 187 (as landed) to 205. Each one is transcribed from the session that sent it (2026-11-07 09:22-12:36 UTC). Her
+- Questions go from 187 (as landed) to 206. Each one is transcribed from the session that sent it (2026-11-07 09:22-12:36 UTC). Her
   words are copied exactly as sent; where a question has none, the screen says so.
 - Added:
   - function audit: FA-D22, FA-D23 (informational), FA-D44-multi, FA-D41, FA-D42-count, FA-D45-empty, FA-11-builtin;
