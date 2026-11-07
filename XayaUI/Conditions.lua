@@ -40,7 +40,7 @@ end
 --   empty  : no charges (EXPERIMENTAL for multi-charge spells)
 --   why    : short note for /xui debug status
 -------------------------------------------------------------------------------
-local ReadCooldownRaw
+local ReadCooldownRaw, KnowsSpell
 function ns.ReadCooldown(rule)
     -- the same spell is often watched by several rules: read it once per engine step (the result is only ever read)
     local memo = ns.StepMemo and ns.StepMemo("cooldown")
@@ -224,6 +224,11 @@ if CreateFrame then
     if wf.SetScript then wf:SetScript("OnEvent", function() pcall(WatchCharges) end) end
 end
 
+-- C_SpellBook.IsSpellKnownOrInSpellBook(spellID, bank, includeOverrides): true / false, or nil when unreadable (secret, error)
+function KnowsSpell(x, bank)
+    local okK, v = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, x, bank, true)
+    if okK and not issecret(v) and type(v) == "boolean" then return v end
+end
 function ReadCooldownRaw(rule)
     local id = rule.spellID
     local r = { known = false, max = 1 }
@@ -233,15 +238,13 @@ function ReadCooldownRaw(rule)
     -- the game reports isActive = false for it, which read as ready). C_SpellBook.IsSpellKnownOrInSpellBook(spellID, bank,
     -- includeOverrides) has no secrecy flag (12.1.5); the player and the pet spellbook are both asked, and IsPlayerSpell too.
     if C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook then
-        local function Knows(x, bank)
-            local okK, v = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, x, bank, true)
-            if okK and not issecret(v) and type(v) == "boolean" then return v end
-        end
+        -- (KnowsSpell is a file-level function, and IsPlayerSpell is called directly: no closure per call; A15 P-10, per-step garbage)
         local petBank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet
-        local known = Knows(id) or (readID ~= id and Knows(readID)) or (petBank and Knows(id, petBank))
+        local known = KnowsSpell(id) or (readID ~= id and KnowsSpell(readID)) or (petBank and KnowsSpell(id, petBank))
         if known == nil and IsPlayerSpell then local okP, v = pcall(IsPlayerSpell, id); if okP and v == true then known = true end end
         if known == false then
-            local okP, v = pcall(IsPlayerSpell or function() return nil end, id)
+            local okP, v = false, nil
+            if IsPlayerSpell then okP, v = pcall(IsPlayerSpell, id) end
             if not (okP and v == true) then r.why = "spell not known (talent or specialization)"; return r end
         end
     end
@@ -658,18 +661,22 @@ local function SpellNameOf(id)
     end
     return n or nil
 end
+-- is aura ID a the spell sid itself, or does it have the spell's name?
+local function SameSpellOrName(a, sid, sname)
+    a = tonumber(a)
+    if not a or a <= 0 then return false end
+    if a == sid then return true end
+    return (sname ~= nil and SpellNameOf(a) == sname)
+end
 local function TrackedBuffOfSpell(spellID, mainID, alts)
     local sid = tonumber(spellID) or 0
     if sid <= 0 then return nil end
     local sname = SpellNameOf(sid)
-    local same = false
-    local function Test(a)
-        a = tonumber(a)
-        if not a or a <= 0 or same then return end
-        if a == sid or (sname and SpellNameOf(a) == sname) then same = true end
+    -- (no closure per call: A15 P-10, per-step garbage)
+    local same = SameSpellOrName(mainID, sid, sname)
+    if not same and type(alts) == "table" then
+        for _, a in ipairs(alts) do if SameSpellOrName(a, sid, sname) then same = true; break end end
     end
-    Test(mainID)
-    if type(alts) == "table" then for _, a in ipairs(alts) do Test(a) end end
     if not same then return nil end
     local fr, vname = FindTrackedBuffFrame(sid)
     if not fr then return nil end

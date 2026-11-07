@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
@@ -255,5 +255,36 @@ QA.Register("perf-log-gate", { title = "Performance: rule log only while it is r
             local snap, rule, new = Since(logMark)
             local note = ("console open, since the mark: %d log line(s), %d snapshot line(s), %d FIRED / cleared line(s)"):format(new, snap, rule)
             return snap > 0, note
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- J21: memory growth in combat (core 0.6.64: fewer closures per rule read; REQUEST-LOG A15 P-10). Data capture: all Lua memory
+-- (collectgarbage "count": every addon's, not XayaUI's alone) and XayaUI core's own (GetAddOnMemoryUsage "XayaUI") at the mark and
+-- after a fight, as KB per second. INFERENCE: a garbage collection in between lowers the numbers; the check says when memory fell.
+-------------------------------------------------------------------------------
+local growMark
+local function CoreKB()
+    pcall(UpdateAddOnMemoryUsage)
+    local ok, v = pcall(GetAddOnMemoryUsage, "XayaUI")
+    if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then return v end
+end
+QA.Register("perf-combat-memory", { title = "Performance: memory growth in combat (J21)", area = "Dev Assist", qa = "J21", order = 304, prefill = true, steps = {
+    { text = "Out of combat, press |cffffd100Do it for me|r (marks memory and time), then fight a training dummy for about 30 seconds and leave combat. Press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note gives XayaUI's memory growth in KB per second. Send it to Xaya.",
+        setup = function()
+            local ok, all = pcall(collectgarbage, "count")
+            growMark = { t = GetTime(), all = ok and all or nil, core = CoreKB() }
+        end,
+        check = function()
+            if not growMark then return false, "press Do it for me first" end
+            local secs = GetTime() - growMark.t
+            if secs < 10 then return false, ("only %.0f s since the mark; fight about 30 s"):format(secs) end
+            local ok, all = pcall(collectgarbage, "count")
+            local core = CoreKB()
+            local function Rate(a, b) return (type(a) == "number" and type(b) == "number") and ((b - a) / secs) or nil end
+            local rc, ra = Rate(growMark.core, core), Rate(growMark.all, ok and all or nil)
+            local note = ("over %.0f s: XayaUI core %s KB/s, all Lua %s KB/s"):format(secs, rc and ("%+.1f"):format(rc) or "?", ra and ("%+.1f"):format(ra) or "?")
+            if rc and rc < 0 then note = note .. " (memory fell: a garbage collection ran in between; repeat for a clean reading)" end
+            return rc ~= nil and rc >= 0, note
         end },
 } })
