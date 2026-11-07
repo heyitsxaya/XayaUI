@@ -1,4 +1,4 @@
-# "Blizzard Reskin" in every user-facing string (Options 0.6.72, Chat 0.6.37, QoL 0.7.45, Bonus 0.6.27, Reskin, Dev Assist 0.7.33)
+# "Blizzard Reskin" in every user-facing string (Options 0.6.72, Chat 0.6.37, QoL 0.7.45, Bonus 0.6.27, Reskin 0.6.30, Dev Assist 0.7.33)
 
 Session 014bN6tWsQ4qcob9VPKD7PV5, branch `claude/settings-restructure`, on top of 1906ad6 (UI-23 to UI-27). Her words (A8 UI-24): tab
 label "Blizzard Reskin". The hub (session_014bN6tWMaSvKkwjeonHvvch) gave this follow-up to this session; scope approved: user-facing
@@ -9,7 +9,7 @@ strings only, patch-note history (InfoPaneData) and quotes of her words stay as 
 - Chat: `/xui chat on` and status lines; the Chat Panel switch's tooltip.
 - QoL: Shopping List and Character Reskin messages and switch tooltips.
 - Bonus: the Data Panels page description.
-- Reskin: the Game Menu skin's "could not find the real button" message and the Esc Menu switch's tooltip.
+- Reskin 0.6.30: the Game Menu skin's "could not find the real button" message and the Esc Menu switch's tooltip.
 - Dev Assist: walkthrough texts (QAWalks.lua, QAWalks-chat.lua), CharacterWidthProbe's message; new walkthrough "reskin-rename" (H10).
 - Docs: open QA-CHECKLIST paths, USER-GUIDE (also the Profiles tab: Import / Export with components, Recycle Bin, no toolbar).
 
