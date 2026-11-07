@@ -113,7 +113,7 @@ local function creator()
   local built = ns.BuildOptionsTable()
   local function find(t, depth)
     if type(t) ~= "table" or depth > 30 then return nil end
-    if t.type == "group" and t.name == "Class/Spec Rule Creator" then return t end
+    if t.type == "group" and t.name == "Auto-Generate Rules" then return t end   -- (Options 0.6.63, UI-45: her name for the tab; was "Class/Spec Rule Creator")
     for _, v in pairs(t.args or {}) do local f = find(v, depth + 1); if f then return f end end
   end
   local G = find(built, 0)

@@ -95,7 +95,7 @@ check("  ...the crit card's rating for the Rating column: 528 (as text)", card("
 -- mastery: armor from mastery and armor per 1% mastery (her question)
 check("Mastery card: » Armor value +2,684, note 101.8% of Agility", cells("map_mastery", "» Armor") == "+2,684||101.8% of Agility", cells("map_mastery", "» Armor"))
 check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), note 16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery") == "+30||16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery"))
-check("Haste card: » Global cooldown 1.16 s, » Attack speed 2.00 s", line("map_haste", "» Global cooldown") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s")
+check("Haste card: » GCD 1.16 s (the standard rule, UI-64), » Attack speed 2.00 s", line("map_haste", "» GCD") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s", tostring(line("map_haste", "» GCD")))
 check("  » Abilities whose text names Haste, each on its own nested line with its recharge now", cells("map_haste", "» Abilities (their text names Haste)") == "||"
   and sub("map_haste", "» Abilities (their text names Haste)") == "Infernal Strike=9.6 s recharge", sub("map_haste", "» Abilities (their text names Haste)"))
 check("Versatility card: » Damage and healing done (every ability) +2.61%, » Damage taken -1.30% with Pt value 92.0 / 1%",
@@ -110,9 +110,11 @@ check("Offense: Attack Power 3,472, from Agility +2,637, » Damage per second +9
 check("  Spell Power 500 (GetSpellBonusDamage, lowest school)", card("map_sp") and card("map_sp").value == "500")
 check("  Damage 8,138 - 8,945, Attack Speed 2.00 s, Weapon DPS 4,270.7 ((8,138.2 + 8,944.6) / 2 / 2.00) (QoL 0.7.23: three lines, was one Main hand card)",
   card("map_damage").value == "8,138 - 8,945" and card("map_aspeed").value == "2.00 s" and card("map_wdps").value == "4,270.7", tostring(card("map_wdps") and card("map_wdps").value))
-check("  Global cooldown 1.16 s, from Haste 29.25% (note haste when read), unhasted 1.50 s (estimate; the rating for -0.01 s in its note)", card("map_gcd").value == "1.16 s"
-  and cells("map_gcd", "From Haste") == "29.25%||haste when read" and line("map_gcd", "Unhasted (estimate)") == "1.50 s"
-  and (select(2, line("map_gcd", "Unhasted (estimate)")).note or ""):find("^[%d,]+ more haste rating for %-0%.01 s$") ~= nil, cells("map_gcd", "Unhasted (estimate)"))
+check("  GCD 1.16 s by the standard rule (1.5 / 1.2925), its rule, from Haste 29.25%, the rating for -0.01 s, and the live reading as a check (UI-62 / UI-64)",
+  card("map_gcd").label == "GCD" and card("map_gcd").value == "1.16 s"
+  and (select(2, line("map_gcd", "Rule")).note or "") == "1.5 s / (1 + haste), never below 0.75 s" and line("map_gcd", "From Haste") == "29.25%"
+  and (select(2, line("map_gcd", "For -0.01 s")).note or ""):find("^[%d,]+ more haste rating$") ~= nil and line("map_gcd", "Live reading") ~= nil,
+  tostring(card("map_gcd").value) .. " / " .. tostring(line("map_gcd", "Live reading")))
 check("  #379: the GCD's 'From Haste' uses haste's colour", select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
 check("Defense > Armor: armor for the next 1% and base, buffs and talents", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
@@ -183,7 +185,7 @@ check("type 300 more haste: Infernal Strike's recharge 9.6 s with a lower one un
   (shows("map_haste", "Infernal Strike") or ""):find("^9%.6 s recharge => %-%d%.%d s recharge$") ~= nil, shows("map_haste", "Infernal Strike"))
 check("type 300 more haste: Attack Speed 2.00 s with -1.NN s under it (note: estimate), GCD 1.16 s with a lower one", (shows("map_aspeed") or ""):find("^2%.00 s => %-1%.%d%d s$") ~= nil
   and card("map_aspeed").note == "estimate" and (shows("map_gcd") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil
-  and (shows("map_haste", "» Global cooldown") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil, tostring(shows("map_aspeed")) .. " / " .. tostring(shows("map_gcd")) .. " / " .. tostring(shows("map_haste", "» Global cooldown")))
+  and (shows("map_haste", "» GCD") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil, tostring(shows("map_aspeed")) .. " / " .. tostring(shows("map_gcd")) .. " / " .. tostring(shows("map_haste", "» GCD")))
 ns.CharToolkit_SetInput("sv:haste", "")
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
 d = render()

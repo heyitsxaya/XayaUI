@@ -249,9 +249,9 @@ local function under(dd)
 end
 local g = under(d)
 checkp("Primary: Agility (the spec's primary stat), Stamina", function() return g.Primary == "Agility|Stamina", g.Primary end)
-checkp("General: Health, the resource (Fury), Global cooldown, Movement speed", function() return g.General == "Health|Fury|Global cooldown|Movement speed", g.General end)
-checkp("Offensive: Attack Power, Spell Power, Attack Speed, Weapon DPS, Damage, Critical strike effectiveness", function()
-  return g.Offensive == "Attack Power|Spell Power|Attack Speed|Weapon DPS|Damage|Critical strike effectiveness", g.Offensive end)
+checkp("General: Health, the resource (Fury), GCD, Movement Speed (QoL 0.7.39, UI-62: \"Global Cooldown should be GCD\"; title case)", function() return g.General == "Health|Fury|GCD|Movement Speed", g.General end)
+checkp("Offensive: Attack Power, Spell Power, Attack Speed, Weapon DPS, Damage, Critical Strike Effectiveness (UI-62: \"title cased like every other line\")", function()
+  return g.Offensive == "Attack Power|Spell Power|Attack Speed|Weapon DPS|Damage|Critical Strike Effectiveness", g.Offensive end)
 checkp("Defensive: Armor, Dodge, Parry, Block (Block listed with no shield: 0.00%)", function()
   return g.Defensive == "Armor|Dodge|Parry|Block" and T(lineOf(d, "label", "Block").value) == "0.00%", g.Defensive end)
 checkp("Secondaries: Critical Strike, Haste, Mastery, Versatility, with their boxes (Change) as before", function()
@@ -281,7 +281,7 @@ checkp("(guard) the column heads stay: Stat | Current value | Pt value | Change 
 checkp("Health: the game's maximum health 1,476,516 (UnitHealthMax)", function() return T(lineOf(d, "label", "Health").value) == "1,476,516" end)
 -- (QoL 0.7.24; Xaya, the Note column: "Remove it entirely": every line below keeps its value and draws no note)
 checkp("Movement speed: 100% (run speed 7 / base 7, GetUnitSpeed); no note (QoL 0.7.24: \"run\" is gone)", function()
-  local l = lineOf(d, "label", "Movement speed"); return T(l.value) == "100%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
+  local l = lineOf(d, "label", "Movement Speed"); return T(l.value) == "100%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 checkp("Attack Speed 2.00 s, Weapon DPS 4,270.7, Damage 8,138 - 8,945 (the weapon card is three lines)", function()
   return T(lineOf(d, "label", "Attack Speed").value) == "2.00 s" and T(lineOf(d, "label", "Weapon DPS").value) == "4,270.7"
     and T(lineOf(d, "label", "Damage").value) == "8,138 - 8,945" end)
@@ -301,7 +301,7 @@ PT = { 6, "RUNIC_POWER" }; POWERMAX = { [6] = 125, [5] = 6 }; RUNES = { { 0, 0, 
 d = render(); g = under(d)
 checkp("a class with two resources shows both (Death Knight): Runic Power max 125, then Runes 6 with one rune's recharge 8.5 s (GetRuneCooldown)", function()
   local rp, ru, rc = lineOf(d, "label", "Runic Power"), lineOf(d, "label", "Runes"), lineOf(d, "pairLabel", "One recharges in")
-  return g.General == "Health|Runic Power|Runes|Global cooldown|Movement speed" and T(rp.value) == "125" and rp.note == nil and T(ru.value) == "6"
+  return g.General == "Health|Runic Power|Runes|GCD|Movement Speed" and T(rp.value) == "125" and rp.note == nil and T(ru.value) == "6"
     and T(rc.pairValue) == "8.5 s", g.General end)
 PT = { 17, "FURY" }; POWERMAX = { [17] = SECRET }; RUNES = {}
 misuse = 0
@@ -319,7 +319,7 @@ TIPS = { [11] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle" }, 
          [12] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle, increasing critical strike effectiveness by 2%" } } }
 d = render()
 checkp("Critical strike effectiveness: +4% (2% + 2% read from two rings' tooltip text); no note", function()
-  local l = lineOf(d, "label", "Critical strike effectiveness"); return T(l.value) == "+4%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
+  local l = lineOf(d, "label", "Critical Strike Effectiveness"); return T(l.value) == "+4%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 checkp("  ...its hover lists each source: the slot, the line (colour codes taken out) and its +2%", function()
   local it = CM.Build(c, "stats").byKey.map_critfx
   return tipHas(it, "Finger: Equip: +40 Critical Strike, increasing critical strike effectiveness by 2%. (+2%)")
@@ -327,12 +327,12 @@ checkp("  ...its hover lists each source: the slot, the line (colour codes taken
     and tipHas(it, "read from your equipped items' own tooltip text") end)
 TIPS = {}
 d = render()
-checkp("  ...no such text on any item: none found (not a made-up 0)", function() return T(lineOf(d, "label", "Critical strike effectiveness").value) == "none found" end)
+checkp("  ...no such text on any item: none found (not a made-up 0)", function() return T(lineOf(d, "label", "Critical Strike Effectiveness").value) == "none found" end)
 local realTip = C_TooltipInfo
 C_TooltipInfo = nil
 d = render()
 checkp("  ...no tooltip data at all: no number and no note (the line shows its name)", function()
-  local l = lineOf(d, "label", "Critical strike effectiveness"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
+  local l = lineOf(d, "label", "Critical Strike Effectiveness"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
 C_TooltipInfo = realTip
 -- All ratings, durability and repair are gone
 c.whatIf = 500
@@ -368,7 +368,7 @@ checkp("its column heads (narrow panel): Stat | Rating (P / %) | PPP | DR Thresh
     texts(d, "wcolhead") end)
 checkp("its rows: Agility, Stamina, Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed", function()
   return texts(d, "wlabel") == "Agility|Stamina|Critical Strike|Haste|Mastery|Versatility|Avoidance|Leech|Speed", texts(d, "wlabel") end)
-local gcdAmt, asAmt = ("%.2f"):format(1.16 * 1.2925 - 1.16), ("%.2f"):format(2.0 * 1.2925 - 2.0)
+local gcdAmt, asAmt = ("%.2f"):format(1.5 - 1.5 / 1.2925), ("%.2f"):format(2.0 * 1.2925 - 2.0)   -- (GCD: the standard rule, UI-64)
 checkp("Haste: 1,200 / 29.25% | 46.0 / 1% | 1,380 | T: 1,200 [line break] L: 0.0 (her example row's columns; QoL 0.7.28: T/L in two lines)", function()
   local r = wrow(d, "Haste")
   return T(r.wrating) == "1,200 / 29.25%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 1,200" and T(r.wtl2) == "L: 0.0",
@@ -379,9 +379,9 @@ local function hover(dd, key)
   for _, b in ipairs(dd.buttons) do if b.shown and b.item and b.item.key == key then GameTooltip.lines = {}; b.scripts.OnEnter(b); return table.concat(GameTooltip.lines, "\n") end end
   return ""
 end
-checkp("  ...hovering the row: \"Haste decreases Global cooldown by " .. gcdAmt .. " s\" and \"Haste decreases Attack Speed by " .. asAmt .. " s\"", function()
+checkp("  ...hovering the row: \"Haste decreases GCD by " .. gcdAmt .. " s\" and \"Haste decreases Attack Speed by " .. asAmt .. " s\" (UI-62: GCD)", function()
   local h = hover(d, "w_haste")
-  return h:find("Haste decreases Global cooldown by " .. gcdAmt .. " s", 1, true) ~= nil and h:find("Haste decreases Attack Speed by " .. asAmt .. " s", 1, true) ~= nil, h end)
+  return h:find("Haste decreases GCD by " .. gcdAmt .. " s", 1, true) ~= nil and h:find("Haste decreases Attack Speed by " .. asAmt .. " s", 1, true) ~= nil, h end)
 checkp("Critical Strike: 528 / 22.48% | 46.0 / 1% | 1,380 | T: 528 [line break] L: 0.0 | Influences: Parry (+10.15%)", function()
   local r = wrow(d, "Critical Strike")
   return T(r.wrating) == "528 / 22.48%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 528" and T(r.wtl2) == "L: 0.0"
@@ -407,9 +407,14 @@ checkp("past a threshold (1,500 haste): PPP 46.0 / 1% with the DR rate under it 
 ratings[18] = 1200
 CM.gcd = nil
 d = render()
-checkp("an influence the game does not give reads not given: no GCD read yet -> GCD (not given); its hover says so", function()
-  return T(wrow(d, "Haste").winfl):find("GCD (not given)", 1, true) ~= nil and hover(d, "w_haste"):find("Haste -> Global cooldown: not given", 1, true) ~= nil,
-    T(wrow(d, "Haste").winfl) end)
+checkp("no GCD read yet: Haste still influences the GCD by the standard rule (UI-64: it no longer waits for a live reading)", function()
+  return T(wrow(d, "Haste").winfl):find("GCD (-" .. gcdAmt .. " s)", 1, true) ~= nil, T(wrow(d, "Haste").winfl) end)
+local keepClass = UnitClass
+UnitClass = function() return "Rogue", "ROGUE", 4 end
+d = render()
+checkp("a rogue (a fixed 1.0 s GCD): Haste's influences do not list the GCD (UI-63: haste does not shorten it)", function()
+  return T(wrow(d, "Haste").winfl):find("GCD", 1, true) == nil, T(wrow(d, "Haste").winfl) end)
+UnitClass = keepClass
 CM.gcd = { dur = 1.16, haste = 29.25 }
 d = render()
 checkp("collapsible: clicking its header folds it (+ Stat Weights, no rows), the fold is saved, Character Stats stays", function()
