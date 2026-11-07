@@ -46,7 +46,7 @@ know what you had to execute blindly and need feedback on."
     `keep = "Leave it undecided for now"`.
   - CHAT-3a: its session said no bar display ships; main holds the Bar cue kind (XayaUI/BarCue.lua, RM-BARS, on main since 28380a96,
     checked with git grep), so the question was reworded against main and says so (its session is archived; the hub asked for this).
-- `QAWalks-review.lua` (new, V22): three walkthroughs, all prefill = true (J19).
+- `QAWalks-review.lua` (new, V22): three walkthroughs, all prefill = true (J30; it was J19 on its branch, relabelled at landing: perf holds J19-J25).
 - `QAWalk.lua`: `QA.Fingerprint`, `QA.StatusText`; a finished run's result keeps `fp`.
 - `DevAssist.lua`: `/xuidev review` and `/xuidev questions`; the help line lists qa / review / questions.
 - V14: no window is made before it opens; one event frame stops listening after the first PLAYER_ENTERING_WORLD (or after the

@@ -13,7 +13,7 @@ local RV = QA.Review
 local function Shown(w) return (w and w:IsShown()) and true or false end
 local function NAnswers() local n = 0; for _ in pairs(RV.SV().questions.answers) do n = n + 1 end; return n end
 
-QA.Register("review-window", { title = "Review window and questions (part 1)", area = "Dev Assist", qa = "J19", order = 302, prefill = true, steps = {
+QA.Register("review-window", { title = "Review window and questions (part 1)", area = "Dev Assist", qa = "J30", order = 302, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r (or type |cffffd100/xui dev review|r).\n\n|cffffd100Expect:|r a window \"Review: what's new to test\": the walkthroughs new or changed since the build you last acknowledged, under area headings, each with its key in grey, its title, \"new\" or \"changed\", its last result and an |cffffd100Open|r button. At the bottom: the tick box \"Don't show again until the next update\", |cffffd100Questions (N)|r, All walkthroughs and Close.",
       setup = function() RV.Show("walkthrough") end,
       check = function()
@@ -46,7 +46,7 @@ QA.Register("review-window", { title = "Review window and questions (part 1)", a
       check = function() local r = RV.SV().review; return r.ack == nil and r.walkAnswers ~= nil, r.ack == nil and ("ready: %d answer(s) remembered; no build acknowledged"):format(r.walkAnswers or 0) or "press Do it for me" end },
 } })
 
-QA.Register("review-after-reload", { title = "Review window and questions (part 2, after the /reload)", area = "Dev Assist", qa = "J19", order = 302.5, prefill = true, steps = {
+QA.Register("review-after-reload", { title = "Review window and questions (part 2, after the /reload)", area = "Dev Assist", qa = "J30", order = 302.5, prefill = true, steps = {
     { text = "Run this after part 1's last step and the /reload in combat.\n\n|cffffd100Expect:|r the review window did NOT open while you were in combat and opened a moment after combat ended.",
       check = function()
           local r = RV.SV().review
@@ -66,7 +66,7 @@ QA.Register("review-after-reload", { title = "Review window and questions (part 
       end },
 } })
 
-QA.Register("review-open", { title = "Review window: Open a walkthrough from it (part 3)", area = "Dev Assist", qa = "J19", order = 302.7, prefill = true, steps = {
+QA.Register("review-open", { title = "Review window: Open a walkthrough from it (part 3)", area = "Dev Assist", qa = "J30", order = 302.7, prefill = true, steps = {
     { text = "Start this one from the review window: type |cffffd100/xui dev review|r and press |cffffd100Open|r on the row \"Review window: Open a walkthrough from it\" (under Dev Assist). If it is not listed (nothing changed since the build you acknowledged), press Open on any row, close that walkthrough, and come back here with /xui dev qa.\n\n|cffffd100Expect:|r the review window goes and the runner opens on the walkthrough you picked.",
       check = function()
           local id = RV.SV().review.lastOpened

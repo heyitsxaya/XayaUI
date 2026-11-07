@@ -39,7 +39,7 @@ if MODE == "all" then
     tab and tab.name)
   -- (QoL 0.7.32: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: the tab's own switch is a tick box on the tab itself, Xaya 2026-11-06; tests/reskin_tab_switch_run.py checks it works)
-  check("  ...its pages: Overview first, then Character Pane, Chat Panel, Esc Menu, Shopping List (in name order)", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Shopping List", names(tab))
+  check("  ...its pages: Overview first, then Character Pane, Chat Panel, Esc Menu, Friend Colors (Reskin 0.6.8, CHAT-5), Shopping List (in name order)", names(tab) == "Overview | Character Pane | Chat Panel | Esc Menu | Friend Colors | Shopping List", names(tab))
   check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch
     and tab.args.charreskin.args.chrome and tab.args.gamemenu.xuiSwitch ~= nil and tab.args.gamemenu.args.match ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)
@@ -73,8 +73,8 @@ if MODE == "all" then
   check("an old ('chat', 'chatpanel') address still lands on the moved page", last() == "reskin>chatpanel>bar", last())
   ns.OpenSettingsPage("qol", "charreskin")
   check("  ...and an old ('qol', 'charreskin') one", last() == "reskin>charreskin", last())
-  ns.Chat.OpenSettings("look")
-  check("the Chat Panel's own 'settings' buttons open it in the new tab", last() == "reskin>chatpanel>look", last())
+  ns.Chat.OpenSettings("look")   -- (Chat 0.6.31) Appearance moved into General: the old part name still opens it
+  check("the Chat Panel's own 'settings' buttons open it in the new tab", last() == "reskin>chatpanel>general", last())
   ns.RunCommand("reskin", "options")
   check("/xui reskin options opens it", last() == "reskin>charreskin", last())
   ns.OpenSettingsPage("qol", "chartoolkit")

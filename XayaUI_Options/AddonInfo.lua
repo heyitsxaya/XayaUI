@@ -25,8 +25,10 @@ local REPO_URL = "https://github.com/heyitsxaya/XayaUI"
 
 -- WHEN QoL ELEMENTS COMES BACK (QoL.lua, CursorTracker.lua, CursorReminders.lua, Bars.lua; see .gitignore): add this back to
 -- the EllesmereUI note: "The Buff Bars option set (Bars.lua) is styled after EllesmereUI's Tracking Bars." Re-check media credits too.
+-- (Options 0.6.64; REQUEST-LOG B6 / ATTR-1, reading taken: the section titles are her "subheaders (code, ideas and design, etc) h2", in
+-- normal case; until 0.6.63 they were capitals, "CODE", "IDEAS AND DESIGN", ...)
 local CREDITS = {
-    { title = "CODE", sub = "Libraries bundled in the Libs folder", entries = {
+    { title = "Code", sub = "Libraries bundled in the Libs folder", entries = {
         { name = "Ace3: AceGUI-3.0, AceConfig-3.0 (Registry, Cmd, Dialog)",
           who = "The Ace3 authors (WowAce). Recent files are committed by Nevcairiel, per their headers.",
           note = "BSD license. Copied unmodified (as far as is known) from the Libs folder of the BuzzardAuras addon.",
@@ -39,7 +41,7 @@ local CREDITS = {
           who = "Part of Ace3; the bundled copy's header names Nevcairiel.",
           note = "BSD license, same package as Ace3 above." },
     } },
-    { title = "IDEAS AND DESIGN", sub = "Inspiration only: concepts and layouts, no code copied", entries = {
+    { title = "Ideas and design", sub = "Inspiration only: concepts and layouts, no code copied", entries = {
         { name = "EllesmereUI",
           who = "Ellesmere (the Author field in its TOC; the license says 'copyrighted to their authors').",
           note = "Custom license, all rights reserved. The by-name target-debuff lookup follows the method EllesmereUI uses, and its Cooldown Manager is the in-game behavior reference. No EllesmereUI code is included.",
@@ -53,7 +55,7 @@ local CREDITS = {
           note = "Ideas only; no code copied. It is also where the Ace3 copy in Libs\\ came from.",
           links = { { "CurseForge (project 1541568)", "https://www.curseforge.com/projects/1541568" } } },
     } },
-    { title = "SOUNDS", sub = "Your local files only: personal use, never redistributed", entries = {
+    { title = "Sounds", sub = "Your local files only: personal use, never redistributed", entries = {
         { name = "BigWigs sound packs  ([BW] in the sound list)",
           who = "BigWigs authors: Funkeh, Nebula, Justwait, Delk (its TOC). Clip authors, from each license.txt: unfa, davidbain, tekgnosis (all CC0), and Timbre with original author Corsica_S and voice actress Amy (CC BY-NC 3.0).",
           note = "BigWigs itself is All Rights Reserved. The Heroes voice lines are (C) 2018 Blizzard Entertainment, Inc. Clips are hosted on freesound.org.",
@@ -71,24 +73,28 @@ local CREDITS = {
           who = "Xaya.",
           note = "" },
     } },
-    { title = "GAME ART", sub = "Blizzard Entertainment", entries = {
+    { title = "Game art", sub = "Blizzard Entertainment", entries = {
         { name = "Blizzard Entertainment",
           who = "Texture IDs in TextureList.lua are Blizzard's own game files, referenced by number. The local [Graphics] images are extracted Blizzard UI art (personal use, not redistributed).",
           note = "World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc. XayaUI is not affiliated with or endorsed by Blizzard." },
     } },
 }
 
--- Info > Credits + Acknowledgements, as blocks for InfoPane.lua: the same heading, intro, collapsible sections (title, count, arrow
--- on the right, open by default, session-only) and one square box per credit (title, who, note, one copyable box per link) as the
--- Settings > Acknowledgements page had (Xaya 2026-11-06: "Move as-is for now"; the B6 styling proposal stays a separate decision).
+-- Info > Credits + Acknowledgements, as blocks for InfoPane.lua. Options 0.6.64 (REQUEST-LOG B6, reading taken; her words, ATTR-1:
+-- "this attribution pane is very messy. let's do the following: / * increase the gutter by 10px / * credits and attribution are h1 /
+-- * subheaders (code, ideas and design, etc) h2 / * each section under a subheader should have an unrounded box with rows (no columns)
+-- on a slightly less transparent background (10%)"): "Credits and attribution" stays the h1; each section is a "credits" block: a plain
+-- h2 in normal case (no arrow, no collapsing, no count, no line under it), its sub line, then ONE square box for the whole section with
+-- each credit a row of it (name, who, note, one copyable box per link; no columns), the box's background 10% more opaque than the pane's;
+-- 10 px more gutter after each section's box. The intro paragraph is gone. (Before: "Move as-is" from Settings > Acknowledgements:
+-- the intro, capitalised collapsible section rows with a count, one box per credit.)
 function ns.CreditsBlocks()
     local out = {
         { "h1", "Credits and attribution" },
         { "rule" },
-        { "p", "XayaUI stands on other people's work. Everything below is credited as precisely as this project's own records allow; where a name is not on record, that is stated rather than guessed." },
     }
-    for i, sec in ipairs(CREDITS) do
-        out[#out + 1] = { "section", "info" .. i, sec.title, #sec.entries, sec.sub, sec.entries }
+    for _, sec in ipairs(CREDITS) do
+        out[#out + 1] = { "credits", sec.title, sec.sub, sec.entries }
     end
     return out
 end

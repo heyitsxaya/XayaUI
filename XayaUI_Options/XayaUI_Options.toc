@@ -2,8 +2,8 @@
 ## Title: XayaUI Options
 ## Notes: The XayaUI settings window. Loads the first time you open it (/xui, the minimap button, or the game's Options > AddOns > XayaUI), so it costs nothing until then.
 ## Author: Xaya
-## Version: 0.6.63
-## X-Date: 2026-11-06
+## Version: 0.6.70
+## X-Date: 2026-11-07
 ## Dependencies: XayaUI
 ## LoadOnDemand: 1
 ## Group: XayaUI

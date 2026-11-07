@@ -117,8 +117,8 @@ local function StyleEditBoxes(s)
                     eb._xuiFocusHook = true
                     -- HookScript cannot be taken back: idle while the Chat Panel is off (up to Chat 0.6.13 these restyled the hidden
                     -- input strip every time the chat was opened with the Chat Panel off)
-                    eb:HookScript("OnEditFocusGained", function() if not C.active then return end; C.inputFocus = true; C.StyleInput() end)
-                    eb:HookScript("OnEditFocusLost", function() if not C.active then return end; C.inputFocus = false; C.StyleInput() end)
+                    eb:HookScript("OnEditFocusGained", function() if not C.skin then return end; C.inputFocus = true; C.StyleInput() end)
+                    eb:HookScript("OnEditFocusLost", function() if not C.skin then return end; C.inputFocus = false; C.StyleInput() end)
                 end
             end)
         end
@@ -161,6 +161,49 @@ function C.RestoreTabText(tab)
     fs:ClearAllPoints()
     for _, p in ipairs(pts) do if p[1] then fs:SetPoint(p[1], p[2], p[3], p[4], p[5]) end end
     tab._xuiTextPts = nil
+end
+
+-- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-12, Xaya 2026-11-07 [screenshot: General and Combat Log lower than Guild, Self and the Talent
+-- whisper tab]: "chat is still not displaying tabs correctly -- I thought we said we would fix this"). Cause: Blizzard lays the tab row out
+-- in two groups (FCFDock_UpdateTabs, FloatingChatFrame.lua, wow-ui-source live): static tabs (General, Combat Log) at the dock's
+-- BOTTOMLEFT, the rest in the dock's scroll frame, LEFT of its scroll child 0, -1, i.e. centred on the scroll child. In the Chat Panel's
+-- shorter tab row the two centres differ, so the second group sat higher; 0.6.20 aligned each tab's NAME inside its tab, not the tabs.
+-- Now the first dynamic tab is moved up or down by the difference between its centre and the first static tab's centre (the static
+-- tabs are the ones that cannot be changed, so they set the height: her UI-4 answer "the ones that cannot be changed determine the
+-- rest"); the others are chained to it by the game and follow. Measured each time (Blizzard re-anchors on every lay-out), so it never
+-- adds up. Whole points on screen; secret or missing sizes leave the row as the game made it.
+local function Mid(f)
+    if not (f and f.GetTop and f.GetBottom and f.GetEffectiveScale) then return nil end
+    local ok, t, b, sc = pcall(function() return f:GetTop(), f:GetBottom(), f:GetEffectiveScale() end)
+    if not ok then return nil end
+    for _, v in ipairs({ t, b, sc }) do if type(v) ~= "number" or C.IsSecret(v) then return nil end end
+    return (t + b) / 2 * sc, sc
+end
+function C.AlignTabRow()
+    if not C.On() then return false end
+    local dock = _G.GeneralDockManager
+    local list = dock and dock.DOCKED_CHAT_FRAMES
+    if type(list) ~= "table" then return false end
+    local ref, dyn
+    for _, f in ipairs(list) do
+        local tab = C.TabOf(f)
+        if tab then
+            if f.isStaticDocked then ref = ref or tab elseif not dyn then dyn = tab end
+        end
+    end
+    if not (ref and dyn) then return false end
+    local rm = Mid(ref)
+    local dm, dsc = Mid(dyn)
+    if not (rm and dm and dsc and dsc > 0) then return false end
+    local dy = (rm - dm) / dsc
+    if math.abs(dy) < 0.5 then return false end
+    local ok = pcall(function()
+        local p, rel, rp, x, y = dyn:GetPoint(1)
+        if not p then return end
+        dyn:ClearAllPoints()
+        dyn:SetPoint(p, rel, rp, x or 0, (y or 0) + dy)
+    end)
+    return ok
 end
 
 function C.StyleTabs()
@@ -207,6 +250,7 @@ function C.StyleTabs()
             end)
         end
     end
+    C.Try("tabrow", C.AlignTabRow)
 end
 
 local function Refresh(s)
@@ -219,5 +263,7 @@ local function Refresh(s)
     for _, key in ipairs({ "FCF_SetChatWindowFontSize", "FCF_SelectDockFrame", "FCF_Tab_OnClick", "FCF_OpenNewWindow", "FCF_OpenTemporaryWindow" }) do
         C.HookOnce("skin:" .. key, key, nil, function() if C.active then C.Schedule() end end)   -- idle while the Chat Panel is off
     end
+    -- (Chat 0.6.31, CHATREV-12) the game lays the tab row out again (docking, a new whisper tab, resizing): even it out at once
+    C.HookOnce("skin:FCFDock_UpdateTabs", "FCFDock_UpdateTabs", nil, function() if C.skin then C.Try("tabrow", C.AlignTabRow) end end)
 end
 C.Register("skin", Refresh)

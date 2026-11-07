@@ -512,10 +512,10 @@ Q{ key = "UI-27-eui",
 Q{ key = "UI-24-label-scope",
    area = "Tab label \"Blizzard Reskin\"",
    order = 63,
-   since = "branch claude/settings-restructure @ 1906ad6 (Options 0.6.71)",
+   since = "Options 0.6.72 (claude/settings-restructure)",
    words = "Blizzard Reskin",
-   did = "The tab reads \"Blizzard Reskin\"; the switch on its Overview page still reads \"Enable Blizzard UI Reskin\" and other addons' chat messages / tooltips still say \"Blizzard UI Reskin > Overview\".",
-   choices = { "Rename everywhere (Chat, QoL, Bonus, Reskin addons, patch notes) to \"Blizzard Reskin\"" } }
+   did = "Renamed everywhere a player reads it: the tab, the Overview switch (Enable Blizzard Reskin), chat messages and tooltips in every addon. Older patch notes and your own quoted words keep the old name.",
+   choices = { "Also rename it in the older patch notes" } }
 
 -- from the function-audit session (014bN6tSfFULX4BSXzmZ1yCx)
 Q{ key = "FA-16-scope",

@@ -2,8 +2,8 @@
 ## Title: XayaUI
 ## Notes: Xaya's personal UI toolkit: rule-based sound cues and on-screen alerts (buff, cooldown, talent, load conditions) and combat aura tracking. Its feature addons (Chat, QoL, Bonus Features, Blizzard Reskin) and the settings window (Options) are separate entries you can switch on or off. Commands: /xui, /xayaui
 ## Author: Xaya
-## Version: 0.6.61
-## X-Date: 2026-11-06
+## Version: 0.6.70
+## X-Date: 2026-11-07
 ## SavedVariables: CueRulesDB, XayaUITalentDB
 ## OptionalDeps: LibSharedMedia-3.0, XayaUI_Media
 ## AddonCompartmentFunc: XayaUI_OnCompartmentClick
@@ -20,6 +20,7 @@ Compat.lua
 ProcGlows.lua
 SetBonusAuras.lua
 Conditions.lua
+AuraAlias.lua
 Timing.lua
 ClassLearn.lua
 TalentDump.lua
