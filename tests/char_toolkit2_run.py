@@ -85,11 +85,12 @@ check("theme: the theme's font is used", d.fonts[1].font[1] == "Fonts\\THEME.TTF
 
 -- 2. Rating / percent: the "Show: %" button is hidden (QoL 0.7.14, #382 "the toggle does nothing"): no tab draws rating lines; the
 -- stat map shows the percent and the rating together. The model's value modes still serve the character window's tooltips.
-check("the Show: % button is hidden", not XayaUICharacterToolkit.modeBtn.shown)
+-- (QoL 0.7.40, REQUEST-LOG B2: the toggle is removed in all three places; the button is no longer made)
+check("no Show: % button is made at all (B2)", XayaUICharacterToolkit.modeBtn == nil)
 local full = CM.Build(c, nil)
 check("the model's rating mode still gives the rating (crit 528) and percent mode the percent (22.48%)",
   (CM.ValueFor(full.byKey.crit, "rating")) == "528" and (CM.ValueFor(full.byKey.crit, "percent")) == "22.48%")
-ns.CharToolkit_SetValueMode("percent"); d = render("stats")
+d = render("stats")
 
 -- 3. Conversion hover and detail pairs (the model's hover, which the character window's stat tooltips show) ---------------------
 local function modelTip(key, mode)
@@ -107,7 +108,8 @@ check("crit hover: rating to percent through the game's converter, 46.0 per 1%",
 check("crit hover: linked conversion crit -> parry where the game reports it", linesHave(tl, "528 rating gives +10.15% parry through the game's parry converter"))
 check("crit hover: every threshold", linesHave(tl, "1,380 rating (30.00%): each further point counts 10% less"))
 check("crit hover: detail pairs", linesHave(tl, "Rating | 528") and linesHave(tl, "Next 1% costs | 46 rating") and linesHave(tl, "Parry from this rating | +10.15% (before DR)"))
-check("crit hover: says what a click does", linesHave(tl, "Click: show the rating on this line."))
+-- (QoL 0.7.40, B2: no per-line % / rating flip, so the hover no longer offers one)
+check("crit hover: no \"Click: show the rating on this line\" (the flip is gone, B2)", not linesHave(tl, "Click: show the rating") and not linesHave(tl, "Click: show the percent"))
 tl = modelTip("mastery")
 check("mastery hover: factor and the spec's mastery text from the game", linesHave(tl, "mastery factor 2.800") and linesHave(tl, "Fel Blood: Increases Armor by 101.8% of your Agility."))
 tl = modelTip("haste")
@@ -212,7 +214,7 @@ check("no Sheet tab, no What If tab: Stats, Gear, Spells", table.concat(tabKeys,
 d = render("sheet")
 check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Character Stats") and #recs(d, "cell") == 0, c.tab)
 check("a fresh profile starts on Stats", ns.CHARTOOLKIT_DEFAULTS.tab == "stats", ns.CHARTOOLKIT_DEFAULTS.tab)
-c.lineModes = {}
+check("(QoL 0.7.40, B2) the old value-mode keys are dropped from saved settings", c.lineModes == nil and c.valueMode == nil)
 
 -- 6. Layout (V11) ----------------------------------------------------------------------------------------------------------
 local LAY = ns.CHARTOOLKIT_LAYOUT
@@ -296,7 +298,8 @@ ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm
 local gm = CM.Build(c, "gear")
 -- (QoL 0.7.24: one "Changes" table, Equipped | each picked item with its change on the line under it; the stat map's lines that change are
 -- rows "gc_<card>" / "gc_<card>:<line>" with now in the Equipped column, then in the item's. These helpers read them in the old shape.)
-local function cells(key) local it = gm.byKey[key]; return it and (it.cells[1] .. "|" .. (it.cells[2] or "") .. "|" .. ((it.subs or {})[2] or "")), it end
+-- (QoL 0.7.40, #90: an item's difference is it.diffs, drawn in brackets beside its number; it was it.subs, the line under it)
+local function cells(key) local it = gm.byKey[key]; return it and (it.cells[1] .. "|" .. (it.cells[2] or "") .. "|" .. ((it.diffs or {})[2] or "")), it end
 local function eff(key)
   local it = gm.byKey["gc_" .. key]
   if not it then return nil end
@@ -310,8 +313,8 @@ local function effLine(key, label)
 end
 check("compare: it finds the slot it replaces (Head) and names it", gm.sections[2] and gm.sections[2].title == "Compare: Head", gm.sections[2] and gm.sections[2].title)
 check("compare: side by side item level 336 | 346 | +10", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
-check("compare: crit 300 | 400 | +100 (green), haste 200 | 0 | -200 (orange)", cells("gc_crit") == "300|400|+100" and gm.byKey.gc_crit.subTones[2] == "good"
-  and cells("gc_haste") == "200|0|-200" and gm.byKey.gc_haste.subTones[2] == "warn", cells("gc_haste"))
+check("compare: crit 300 | 400 | +100 (green), haste 200 | 0 | -200 (orange)", cells("gc_crit") == "300|400|+100" and gm.byKey.gc_crit.diffTones[2] == "good"
+  and cells("gc_haste") == "200|0|-200" and gm.byKey.gc_haste.diffTones[2] == "warn", cells("gc_haste"))
 check("compare: Agility 500 | 600 | +100, Stamina 0 | 900 | +900, armor 0 | 500 | +500", cells("gc_primary") == "500|600|+100"
   and cells("gc_stamina") == "0|900|+900" and cells("gc_armor") == "0|500|+500", cells("gc_armor"))
 check("compare: the column head names the item", gm.byKey.gearCols.cols[4] == "Better Helm", gm.byKey.gearCols.cols[4])
@@ -487,11 +490,9 @@ local function selectsShareRows(group)
 end
 check("settings: no dropdown takes a row alone", selectsShareRows(page))
 local lay = page.args.panelPart.args.layout.args
-lay.valueMode.set(nil, "rating")
-d = render("stats")
--- (QoL 0.7.14: no tab draws rating lines; the setting still picks what the character window's stat tooltips lead with)
-check("settings: Rating lines = Rating: the tooltips' rating lines lead with the rating (crit 528)", (CM.ValueFor(CM.Build(c, nil).byKey.crit, ns.CharToolkit_ModeFor(c, "crit"))) == "528" and d.modeText == "Show: rating")
-lay.valueMode.set(nil, "percent")
+-- (QoL 0.7.40, REQUEST-LOG B2, reading taken: the "% / rating" toggle is removed in all three places, the setting and its reset included)
+check("settings: no Rating lines setting and no Reset line flips (B2)", lay.valueMode == nil and page.args.panelPart.args.values.args.resetLines == nil
+  and page.args.panelPart.args.values.args.clear ~= nil)
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
@@ -632,7 +633,7 @@ local choices = {}
 for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and not it.pick then choices[#choices + 1] = it end end
 check("two rings equipped: both are offered to replace, the clicked one (Finger 1) marked as replaced", #choices == 2
   and ((choices[1].slot == 11 and choices[1].label == "Replacing") or (choices[2].slot == 11 and choices[2].label == "Replacing")), #choices)
-local function c3(it) return it and (it.cells[1] .. "|" .. it.cells[2] .. "|" .. tostring(it.subs[2])) end
+local function c3(it) return it and (it.cells[1] .. "|" .. it.cells[2] .. "|" .. tostring(it.diffs[2])) end   -- (QoL 0.7.40: diffs, #90)
 check("  ...side by side against Ring (crit 100 | 300 | +200, mastery 400 | 0 | -400)", c3(gm.byKey.gc_crit) == "100|300|+200"
   and c3(gm.byKey.gc_mastery) == "400|0|-400", c3(gm.byKey.gc_crit))
 ns.CharToolkit_SetCompareSlot(12)

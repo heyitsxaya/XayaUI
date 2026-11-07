@@ -75,7 +75,7 @@ end
 local d = render()
 check("Stats tab = the stat map: Gear Summary (QoL 0.7.28: first), Character Stats, Stat Weights (QoL 0.7.23)",
   table.concat(texts(d, "header"), "|") == "- Gear Summary|- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
-check("no Show: % button (#382: it did nothing)", not XayaUICharacterToolkit.modeBtn.shown)
+check("no Show: % button (#382: it did nothing; QoL 0.7.40, B2: not made at all)", XayaUICharacterToolkit.modeBtn == nil)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
 check("  » Attack power: value +2,637, Pt value 1.00 (1 Agility = 1.00 attack power), no note", cells("map_primary", "» Attack power") == "+2,637|1.00|", cells("map_primary", "» Attack power"))
 check("  » Dodge +5.00% (the game's figure from Agility)", line("map_primary", "» Dodge") == "+5.00%", line("map_primary", "» Dodge"))
@@ -89,8 +89,8 @@ check("the Stamina card: » Health value 1,476,516, Pt value 21.20", cells("map_
 check("Critical Strike card: 22.48%, its box 528, 46.0 / 1% in its own column", card("map_crit").value == "22.48%" and d.boxes["sv:crit"].text == "528" and card("map_crit").per == "46.0 / 1%")
 check("  » Parry: value +10.15%, Pt value 52.0 / 1% (52.0 crit rating = 1% parry), note before DR", cells("map_crit", "» Parry") == "+10.15%|52.0 / 1%|before DR", cells("map_crit", "» Parry"))
 check("  ...its words for the one-column readers: 52.0 crit rating = 1% parry", CM.PairText(select(2, line("map_crit", "» Parry"))) == "+10.15%  (52.0 crit rating = 1% parry); before DR", CM.PairText(select(2, line("map_crit", "» Parry"))))
-check("  column heads (QoL 0.7.20): Primary Stat | Current value | Pt value | Change | Influences (QoL 0.7.28; drawn between Pt value and Change); Secondary Stat | Rating | Current value | Pt value | Change | Influences",
-  table.concat(texts(d, "colhead"), "|"):find("^Stat|Current value|Pt value|Change|Influences|Stat|Rating|Current value|Pt value|Change|Influences|") ~= nil, table.concat(texts(d, "colhead"), "|"))
+check("  column heads (QoL 0.7.20): Primary Stat | Current value | Pt value | Change | Modifies (QoL 0.7.28 Influences, drawn between Pt value and Change; Modifies since 0.7.40, #88); Secondary Stat | Rating | Current value | Pt value | Change | Modifies",
+  table.concat(texts(d, "colhead"), "|"):find("^Stat|Current value|Pt value|Change|Modifies|Stat|Rating|Current value|Pt value|Change|Modifies|") ~= nil, table.concat(texts(d, "colhead"), "|"))
 check("  ...the crit card's rating for the Rating column: 528 (as text)", card("map_crit").ratingText == "528", card("map_crit").ratingText)
 -- mastery: armor from mastery and armor per 1% mastery (her question)
 check("Mastery card: » Armor value +2,684, note 101.8% of Agility", cells("map_mastery", "» Armor") == "+2,684||101.8% of Agility", cells("map_mastery", "» Armor"))
@@ -224,19 +224,15 @@ UnitClass = function(u) if u == "player" then return "Demon Hunter", "DEMONHUNTE
 C_ClassColor = { GetClassColor = function(f) if f == "DEMONHUNTER" then return { r = 0.64, g = 0.19, b = 0.79 } end end }
 local P = XayaUICharacterToolkit
 render()
-check("header: the name above the tabs", P.hName.text == "Xaya", P.hName.text)
-check("  ...spec and class under it, in the class colour (C_ClassColor)", P.hSpec.text == "Vengeance Demon Hunter" and P.hSpec.color
-  and math.abs(P.hSpec.color[1] - 0.64) < 0.001 and math.abs(P.hSpec.color[3] - 0.79) < 0.001, P.hSpec.text)
-check("  ...the equipped item level on the right, overall beside its label (GetAverageItemLevel 335.5 / 334.25)", P.hIlvl.text == ("%.1f"):format(334.25)
-  and P.hIlvlSub.text == "item level (overall 335.5)", tostring(P.hIlvl.text) .. " | " .. tostring(P.hIlvlSub.text))
-check("  ...no role, no movement in it (#383)", not tostring(P.hSpec.text):find("TANK", 1, true) and not tostring(P.hIlvlSub.text):lower():find("speed", 1, true))
+-- (QoL 0.7.40, REQUEST-LOG #91: "name, class, and spec not needed on stat calculator. Instead, set this section to display currently
+-- equipped ilvl and on the right side max ilvl (in bags)"; tests/char_stat_round2_run.py checks it in full)
+check("header: no name, spec or class any more (#91)", P.hName == nil and P.hSpec == nil and P.hIlvl == nil and P.hIlvlSub == nil)
+check("  ...equipped on the left, max (bags) on the right (GetAverageItemLevel 335.5 / 334.25)", P.hEq.text == "Equipped 334.2" or P.hEq.text == "Equipped 334.3",
+  tostring(P.hEq.text) .. " | " .. tostring(P.hMax.text))
+check("  ...no role, no movement in it (#383)", not tostring(P.hEq.text):find("TANK", 1, true) and not tostring(P.hMax.text):lower():find("speed", 1, true))
 local L0 = ns.CHARTOOLKIT_LAYOUT
-check("  ...the name stops short of the item level column", P.hName.w + 120 + L0.pad * 2 <= L0.width, P.hName.w)
 check("  ...the tabs sit under the header", (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] == -(L0.pad + L0.header - 20 - ns.UI_GUTTER) end)(),
   (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] end)())
-local okH = pcall(function() local u = UnitName; UnitName = function() return "SECRET_N" end; issecretvalue = function(v) return v == "SECRET_N" end
-  render(); UnitName = u; issecretvalue = function() return false end end)
-check("  ...a secret name is left out, not shown or compared", okH and P.hName.text == "", P.hName.text)
 render()
 -- the grip: drag to 500 x 450, the size is kept, the content reflows to 480 (QoL 0.7.23: the width in c.size, the height is the
 -- current Min / Max mode's, here the smaller one)
