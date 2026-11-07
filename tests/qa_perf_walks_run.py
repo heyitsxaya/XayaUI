@@ -1,5 +1,5 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
-walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in combat). Loads the real QAWalk.lua
+walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in combat), J22 (other addons' errors). Loads the real QAWalk.lua
 framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
 it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
 J17 parts go with RunRecord.lua (one push); J18 stays.
@@ -191,6 +191,12 @@ L.execute("NOW = NOW + 25; CORE_KB = CORE_KB + 1500; LUA_KB = LUA_KB + 3000")
 r = step(R21, 1); check("J21 after 30 s: Pass with the rates (+50.0 core, +100.0 all)", r[0] == "P" and "XayaUI core +50.0 KB/s, all Lua +100.0 KB/s" in r[1])
 L.execute("SETUP('perf-combat-memory', 1); NOW = NOW + 30; CORE_KB = CORE_KB - 30000")
 r = step(R21, 1); check("J21 when a collection ran in between: Fail, says why", r[0] == "F" and "garbage collection ran" in r[1])
+
+# J22: other addons' errors (core counts them; the report's entries must not hold another addon's error)
+L.execute("NS.otherErrors = 7; ENTRIES = {}; NS.DebugReportData = function() return { entries = ENTRIES } end")
+r = step("perf-other-errors", 1); check("J22 with 7 other addons' errors and a clean record: Pass, gives the count", r[0] == "P" and "this session: 7" in r[1])
+L.execute("ENTRIES = { { msg = 'Interface/AddOns/Plater/Plater.lua:1: boom' }, { msg = 'Interface/AddOns/XayaUI/Engine.lua:2: mine' } }")
+r = step("perf-other-errors", 1); check("J22 when the record holds another addon's error: Fail naming it", r[0] == "F" and "1 recorded entries" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

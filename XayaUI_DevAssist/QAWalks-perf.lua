@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
@@ -286,5 +286,30 @@ QA.Register("perf-combat-memory", { title = "Performance: memory growth in comba
             local note = ("over %.0f s: XayaUI core %s KB/s, all Lua %s KB/s"):format(secs, rc and ("%+.1f"):format(rc) or "?", ra and ("%+.1f"):format(ra) or "?")
             if rc and rc < 0 then note = note .. " (memory fell: a garbage collection ran in between; repeat for a clean reading)" end
             return rc ~= nil and rc >= 0, note
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- J22: other addons' errors cost XayaUI almost nothing (core 0.6.65: no stack read for them; REQUEST-LOG A15 P-11). Data capture:
+-- core counts the errors it passes on for other addons (ns.otherErrors); /xui report's entries are checked for any other addon's error.
+-------------------------------------------------------------------------------
+QA.Register("perf-other-errors", { title = "Performance: other addons' errors (J22)", area = "Dev Assist", qa = "J22", order = 305, prefill = true, steps = {
+    { text = "Play as usual (a Mythic+ key, or wherever another addon shows errors, for example a Plater mod in a key). Afterwards press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note says how many errors other addons raised this session; XayaUI passed them on and did not record or show them.",
+        check = function()
+            local n = NS() or {}
+            if n.otherErrors == nil and not n.ErrorFolder then return false, "this XayaUI is older than core 0.6.65" end
+            local other = n.otherErrors or 0
+            local mine = 0
+            local d = type(n.DebugReportData) == "function" and select(2, pcall(n.DebugReportData)) or nil
+            if type(d) == "table" and type(d.entries) == "table" then
+                -- (an entry whose message names another addon's file, by core's own rule ns.ErrorFolder, should never be recorded)
+                for _, e in ipairs(d.entries) do
+                    local msg = type(e) == "table" and tostring(e.msg or "") or ""
+                    if msg:match("^%s*[^\n]-%.lua:%d+:") and n.ErrorFolder and n.ErrorFolder(msg, nil) == nil then mine = mine + 1 end
+                end
+            end
+            local note = ("other addons' errors this session: %d (passed on to the game's error display, not recorded by XayaUI)"):format(other)
+            if mine > 0 then return false, note .. ("; but %d recorded entries name a non-XayaUI folder"):format(mine) end
+            return true, note
         end },
 } })

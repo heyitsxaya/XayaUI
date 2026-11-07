@@ -82,10 +82,21 @@ do
     local prevHandler = geterrorhandler()
     seterrorhandler(function(msg)
         local text = tostring(msg)
-        local okS, stack = pcall(debugstack, 2, 12, 0)
-        stack = (okS and type(stack) == "string") and stack or ""
-        local okF, folder = pcall(ns.ErrorFolder, text, stack)
-        folder = okF and folder or nil
+        -- (core 0.6.65, REQUEST-LOG A15 P-11) a message that names its own file decides the folder from the text alone; the stack is
+        -- read only for XayaUI's own errors (it is recorded with them) or when the text names no file. Another addon's error, even
+        -- one repeated on every nameplate update, costs a match and the previous handler, never a debugstack.
+        local stack, folder
+        if text:match("^%s*[^\n]-%.lua:%d+:") then
+            local okF, f = pcall(ns.ErrorFolder, text, nil)
+            folder = okF and f or nil
+            if folder then local okS, s = pcall(debugstack, 2, 12, 0); stack = (okS and type(s) == "string") and s or "" end
+        else
+            local okS, s = pcall(debugstack, 2, 12, 0)
+            stack = (okS and type(s) == "string") and s or ""
+            local okF, f = pcall(ns.ErrorFolder, text, stack)
+            folder = okF and f or nil
+        end
+        if not folder then ns.otherErrors = (ns.otherErrors or 0) + 1 end   -- other addons' errors this session (Dev Assist walkthrough J22)
         if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; nothing while it is off)
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         local mine = ok and on and folder ~= nil
