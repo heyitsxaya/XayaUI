@@ -311,6 +311,8 @@ ns.Notepad_OpenSettings(); settle()
 check("B: the Notepad's settings opener goes to Utilities > Notepad", selected("bonus") == "utilities\001notepad", tostring(selected("bonus")))
 check("A: the Notepad page has Show Notepad on it again (Bonus 0.6.14: the row's tick box is the whole Notepad)", findW(root(), function(w) return optName(w) == "Lock position and size" end) ~= nil
   and findW(root(), function(w) return w.type == "CheckBox" and optName(w) == "Show Notepad" end) ~= nil)
+-- (core 0.6.59, Bonus 0.6.21; UI-53) the page's long text is in its Description box, opened by the info icon: open it to read it
+if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = true end
 ACD:SelectGroup("CueRules", "bonus", "utilities", "calculator"); settle()
 local openBtn = findW(root(), function(w) return w.type == "Button" and optName(w) == "Open calculator" end)
 check("B: the Calculator page has an Open calculator button", openBtn ~= nil)
@@ -323,6 +325,7 @@ check("B: ...and its example answer is what the calculator gives (V5: page text 
 end)())
 if openBtn then openBtn:Fire("OnClick"); W.tick(0.1, 3) end
 check("B: Open calculator opens the calculator", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
+if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
 if _G.XayaUICalculator then _G.XayaUICalculator:Hide() end
 end)
 

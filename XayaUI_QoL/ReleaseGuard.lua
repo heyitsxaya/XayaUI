@@ -225,4 +225,4 @@ ns.RegisterCommand({ "releaseguard", "rg" }, function()
         IsSecret(inInst) and "unknown" or (inInst and tostring(kind) or "not in an instance"), tostring(Ghost()), tostring(MODS[c.modifier]), tostring(ModDown(c))))
     ns.Print(("  last death: %s; deaths seen %d; death window %s (%s); box %s (%s)."):format(tostring(state.why), state.death,
         d and (d:IsShown() and "shown" or "hidden") or "not shown", lv(d), box and (box:IsVisible() and "visible" or "hidden") or "never made", lv(box)))
-end, "releaseguard: Release Guard status (what it did at the last death)")
+end, "/xui releaseguard (Release Guard: what it did at the last death)")

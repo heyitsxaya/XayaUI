@@ -267,7 +267,7 @@ adf8cff0618432b3e10ee3d3091c09c1  XayaUI_QoL/Media/Cursor/HLRing_19.tga
 f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 08343552c22eb2676c663b0576e218c3  XayaUI_QoL/Media/Cursor/RingThick.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
-bbba61578b84f182cf78ce35408e507b  XayaUI_QoL/ReleaseGuard.lua
+ae67552518cc69535e5223756eb309bd  XayaUI_QoL/ReleaseGuard.lua
 a39263cf4d03dedeb2991412e569829f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 f8d7af558fe9db9f68486f0439dabb39  XayaUI_QoL/XayaUI_QoL.toc
@@ -800,7 +800,7 @@ a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
-86f181f57eb64b9ebaf3d65ecbd041b0  tests/sidebar_switches_run.py
+a90950fa59820de1e3f654a248a5d42e  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py
 2ab0305057bc1ba469131f702de0799c  tests/sound_cue_channel_run.py
