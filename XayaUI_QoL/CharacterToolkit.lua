@@ -344,7 +344,9 @@ local function Btn()
         b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         b:SetScript("OnClick", function(self)
             local it = self.item
-            if it and it.kind == "rating" then
+            if self.spellKey then   -- (QoL 0.7.36, UI-39) a spell row of the Ability Scaling table: fold / open it
+                ns.CharToolkit_ToggleSpell(self.spellKey)
+            elseif it and it.kind == "rating" then
                 ns.CharToolkit_FlipLine(it.key)
                 ns.CharToolkit_Render()
                 if self.IsMouseOver and self:IsMouseOver() then ShowTooltip(self, self.item) end
@@ -360,8 +362,17 @@ local function Btn()
         btnPool[nBtn] = b
     end
     if b.bg then b.bg:Hide() end   -- (only an action row shows its background)
+    b.spellKey = nil               -- (QoL 0.7.36: set again by the spell table for its rows)
     b:Show()
     return b
+end
+
+-- (QoL 0.7.36, UI-39) fold or open one spell of the Ability Scaling table ("spell:<item key>"), then draw again
+function ns.CharToolkit_ToggleSpell(key)
+    local c = Cfg(); if not (c and key) then return end
+    c.collapsed = c.collapsed or {}
+    c.collapsed[key] = (not c.collapsed[key]) and true or nil
+    ns.CharToolkit_Render()
 end
 
 local function Hdr()
@@ -897,6 +908,7 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     local h = (wrap and f:GetStringHeight()) or size
     if not num(h) or h < size then h = size end
     Rec(kind or "text", x, y, w, h, text, size)
+    layout[#layout].justify = justify or "LEFT"   -- (QoL 0.7.36: the tests read a column's alignment)
     return h
 end
 -- (QoL 0.7.28) a text with line breaks ("T: 1,430\nL: 12.2"): each line its own font string, one under the other; returns the height
@@ -1400,6 +1412,11 @@ end
 -- loses a word; then the percents and the values fit on one line; Spell Name takes the rest (Talent Modifiers up to 22% of it). Under the
 -- percents, one line per other stat that changes the number (Versatility, Mastery: CM SpellItem, her answer "Only stats that change the
 -- number"); under the first Computed Value, the new value a typed number gives, with its sign, in the accent colour (as on the Stats tab).
+-- (QoL 0.7.36; REQUEST-LOG UI-39, Xaya 2026-11-06: "put talent modifiers before % PSV for clarity / spell names should be collapsible
+-- and there should be divider lines between each ability to segmenrt more clearly / put the numbers to left-align to be closer to their
+-- %PSV calculations") Spell Name | Talent Modifiers | % PSV | Computed Value; a click on a spell's row folds it to its name ("- " open,
+-- "+ " folded, as the section heads; every spell open until folded, kept in c.collapsed["spell:<key>"]); a 1 px line between two spells;
+-- Computed Value left-aligned. The column widths are worked out as before (by meaning: spec[2] is still % PSV, spec[3] Talent Modifiers).
 local SPELL_HEADS = { "Spell Name", "% PSV", "Talent Modifiers", "Computed Value" }
 local function SpellCols(size, items)
     local hs = size - 1
@@ -1423,9 +1440,9 @@ local function SpellCols(size, items)
         w[1], w[3] = w[1] - move, w[3] + move
     end
     local g = { name = w[1], psv = w[2], tm = w[3], val = w[4] }
-    g.px = g.name + GUT
-    g.tx = g.px + g.psv + GUT
-    g.vx = g.tx + g.tm + GUT
+    g.tx = g.name + GUT          -- Talent Modifiers right after the name (QoL 0.7.36)
+    g.px = g.tx + g.tm + GUT     -- then % PSV
+    g.vx = g.px + g.psv + GUT    -- then Computed Value
     return g
 end
 ns.CharToolkit_SpellCols = SpellCols   -- (tests)
@@ -1441,29 +1458,40 @@ local function RenderSpells(c, items, y)
     local g = SpellCols(size, items)
     local hs = size - 1
     local h = PlaceFS(FS(), 0, y, g.name, hs, SPELL_HEADS[1], cMuted, "LEFT", true, "spellhead")
-    h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, SPELL_HEADS[2], cMuted, "LEFT", true, "spellhead"))
     h = math.max(h, PlaceFS(FS(), g.tx, y, g.tm, hs, SPELL_HEADS[3], cMuted, "LEFT", true, "spellhead"))
-    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, SPELL_HEADS[4], cMuted, "RIGHT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.px, y, g.psv, hs, SPELL_HEADS[2], cMuted, "LEFT", true, "spellhead"))
+    h = math.max(h, PlaceFS(FS(), g.vx, y, g.val, hs, SPELL_HEADS[4], cMuted, "LEFT", true, "spellhead"))
     local hb = Btn()
     hb.item = SPELL_HEAD
     hb:ClearAllPoints(); hb:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y); hb:SetSize(W, h + 1)
     Rec("hit", 0, y, W, h + 1, "spellCols")
     y = y + h + 4
+    local cLine = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
+    local spellsDrawn = 0
     for _, it in ipairs(items) do
         local top = y
+        local folded = false
         if it.kind == "action" then
             -- (QoL 0.7.28) the Configure / Refresh spell data item is the button above the sections: no row here
         elseif it.row then
             local r = it.row
-            local hn = PlaceFS(FS(), 0, y, g.name, size, it.label, it.labelColor or cText, "LEFT", true, "spellname")
+            if spellsDrawn > 0 then   -- the divider between this spell and the one above
+                local ln = Tex(); ln:SetColorTexture(cLine[1], cLine[2], cLine[3], 0.6)
+                ln:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -(y - 3)); ln:SetSize(W, 1)
+                Rec("divider", 0, y - 3, W, 1, it.key)
+            end
+            spellsDrawn = spellsDrawn + 1
+            folded = (c.collapsed and c.collapsed["spell:" .. tostring(it.key)]) and true or false
+            local hn = PlaceFS(FS(), 0, y, g.name, size, (folded and "+ " or "- ") .. tostring(it.label), it.labelColor or cText, "LEFT", true, "spellname")
+            if folded then y = y + hn + 2 else
             hn = hn + 1 + PlaceFS(FS(), 0, y + hn + 1, g.name, hs, r.idText, cMuted, "LEFT", true, "spellid")
             local hm = 0
             for _, e in ipairs(r.entries) do
                 local ey = y + hm
                 local hp = PlaceFS(FS(), g.px, ey, g.psv, size, e.pct, cText, "LEFT", true, "spellpct")
                 if e.per then hp = hp + 1 + PlaceFS(FS(), g.px, ey + hp + 1, g.psv, hs, e.per, cMuted, "LEFT", true, "spellper") end
-                local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "RIGHT", true, "spellvalue")
-                if e.newValue then hv = hv + 1 + PlaceFS(FS(), g.vx, ey + hv + 1, g.val, size, e.newValue, Accent(), "RIGHT", true, "spellchange") end
+                local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "LEFT", true, "spellvalue")
+                if e.newValue then hv = hv + 1 + PlaceFS(FS(), g.vx, ey + hv + 1, g.val, size, e.newValue, Accent(), "LEFT", true, "spellchange") end
                 hm = hm + math.max(hv, hp) + 2
             end
             for _, sm in ipairs(r.statMods or {}) do
@@ -1473,6 +1501,7 @@ local function RenderSpells(c, items, y)
             local ht = 0
             if mods ~= "" then ht = PlaceFS(FS(), g.tx, y, g.tm, size, mods, (#r.mods > 0) and ToneColor("good", cText) or cMuted, "LEFT", true, "spellmods") end
             y = y + math.max(hn, hm, ht) + 2
+            end
         else
             -- a note (spells without numbers, still loading, none in this filter): its label left, its value right
             local v = it.value or ""
@@ -1484,6 +1513,7 @@ local function RenderSpells(c, items, y)
         if it.kind ~= "action" then
             local b = Btn()
             b.item = it
+            if it.row then b.spellKey = "spell:" .. tostring(it.key) end   -- (QoL 0.7.36) a click folds / opens the spell
             b:ClearAllPoints(); b:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -top); b:SetSize(W, math.max(1, y - top))
             Rec("hit", 0, top, W, y - top, it.key)
             y = y + 4

@@ -237,7 +237,7 @@ local fl = drawn().model.byKey.spell9001
 check("#380: a spell's name, and \"Spell ID: N\" with it (no \"#N\" at the right edge)", fl and fl.label == "Flame Ring" and fl.row.idText == "Spell ID: 9001"
   and fl.value == "", fl and (fl.label .. " | " .. tostring(fl.row and fl.row.idText)))
 local lab, idr
-for _, r in ipairs(recs(d, "spellname")) do if r.text == "Flame Ring" then lab = r end end
+for _, r in ipairs(recs(d, "spellname")) do if r.text == "- Flame Ring" then lab = r end end   -- (QoL 0.7.36: "- " open / "+ " folded)
 for _, r in ipairs(recs(d, "spellid")) do if r.text == "Spell ID: 9001" then idr = r end end
 check("  ...drawn in the Spell Name column, the ID under the name", lab ~= nil and idr ~= nil and idr.x == lab.x and idr.y > lab.y, lab and lab.w)
 local big, small = 0, 0

@@ -1,0 +1,10 @@
+-------------------------------------------------------------------------------
+-- Cooldowns.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
+-- "party major offensives, defensives, and raid CDs": "track party defensives through the aforementioned way of tracking interrupts, cc".
+-- Mine: SpellLists kinds "offensive", "defensive", "raidcd". On use -> Comms CD (spell, start, duration); on ready -> CDREADY.
+--   Duration from my own cooldown read (the engine already reads my cooldowns), not a table, so talents and haste are included.
+-- The group's: received only. Another player's cooldown is not readable from the game in a group (the only documented per-unit
+--   cooldown call is C_Commentator.GetPlayerCooldownInfoByUnit, namespaces.md:1178, spectator mode; INFERENCE that it is unusable here).
+-- Her rule: "all cooldowns must be communicated by the addon on the user's behalf, but they don't need to choose to display or track
+--   others'": send = MPlus.lua's send switch (Q1); show = per kind, per player, per spell, chosen in UI/Options.lua.
+-------------------------------------------------------------------------------

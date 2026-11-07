@@ -421,7 +421,7 @@ end
 MEASURE = "est"; c.size = nil
 d = render("spells")
 local function rowOf(dd, name)
-  local L = find(dd, "spellname", name)
+  local L = find(dd, "spellname", "- " .. name) or find(dd, "spellname", "+ " .. name)   -- (QoL 0.7.36: "- " open / "+ " folded)
   local out = { name = L }
   if not L then return out end
   for _, r in ipairs(dd.layout) do
@@ -436,7 +436,7 @@ checkp("Fracture (Physical damage): under its percents one line per other stat t
 local is = rowOf(d, "Infernal Strike")
 checkp("Infernal Strike (Fire damage): Versatility: +2.61% and Mastery: +20.0% (the mastery text names Fire damage)", function()
   return tx(is.spellstat) == "Versatility: +2.61%|Mastery: +20.0%", tx(is.spellstat) end)
-checkp("(guard) Demon Spikes (no numbers but a percent) is not listed", function() return find(d, "spellname", "Demon Spikes") == nil end)
+checkp("(guard) Demon Spikes (no numbers but a percent) is not listed", function() return find(d, "spellname", "- Demon Spikes") == nil and find(d, "spellname", "+ Demon Spikes") == nil end)
 ns.CharToolkit_SetInput("sv:primary", "2737")
 d = render("spells")
 fr = rowOf(d, "Fracture")
