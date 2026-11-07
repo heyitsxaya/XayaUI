@@ -466,3 +466,23 @@ Collections, Trainer, Dressing room, Books and letters.
   toolbars, loot rolls, the minimap's calendar, tracking and mail buttons, the shared building blocks of section 4 (buttons,
   scrollbars, tabs), and the older-expansion windows of section 7.
 - **Skyriding (RSK-Q6).**
+
+## 12b. Built 2026-11-07, second round (Reskin 0.6.11 - 0.6.17; reskin successor session 014bN6tSvVzc2HRgXhwF3J2L)
+
+The "not built tonight" items of section 12, in the handoff's order (`docs/process/handoffs/reskin-elements.md`). Each is its own page
+(or, for loot rolls, a Blizzard Windows entry) with its own tick box, off until ticked; QA G9-G15; walkthroughs under `/xui dev qa`.
+
+| Version | Page | What it skins | On main |
+|---|---|---|---|
+| 0.6.11 | Toasts and Pop-ups | Battle.net toasts (BNToastFrame, TimeAlertFrame) and StaticPopup1-4, a box each | 5c7b372 |
+| 0.6.12 | Blizzard Windows > Loot rolls | GroupLootFrame1-4, border in the item's quality colour | 5c7b372 |
+| 0.6.13 | Menus | every Blizzard_Menu menu's own background (post-hook on MenuStyle1Mixin.Generate) | 5c7b372 |
+| 0.6.14 | Chat Bubbles | bubbles outside instances (C_ChatBubbles.GetAllChatBubbles(false)) | 5c7b372 |
+| 0.6.15 | Status Bars | experience / reputation bar frame art | ac0ca79 |
+| 0.6.16 | Minimap Buttons | the zone bar (MinimapCluster.BorderTop) and the tracking button, tinted | ac0ca79 |
+| 0.6.17 | Buttons | red panel buttons inside the listed Blizzard windows only | sent to the lander (340b418) |
+
+Still not built, each with a question in the flow: micro menu, bag bar, minimap calendar button and mail icon (RSK-Q14: no frame art
+of their own); close buttons, tabs, scroll bars, dropdown arrows, and anything in other addons' windows (RSK-Q15); combat frames
+(RSK-Q4); skyriding (RSK-Q6). The older-expansion windows of section 7 are not in her request lists and were not built. The shop
+cannot be reskinned (section 8).
