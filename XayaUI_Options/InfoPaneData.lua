@@ -155,6 +155,16 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-07", title = "Walkthrough Tables", blocks = {
+      { "h3", "Dev Assist 0.7.52" },
+      { "grp", "In-game QA" },
+      { "b", 1, "The \"Review: what's new to test\" window and All walkthroughs (/xui dev qa) are now tables with the columns Codes, Title, Area, Status, New and Open, in larger windows (900 x 560)." },
+      { "b", 2, "Click a column header to sort, and click again to reverse." },
+      { "b", 2, "Added a search box that matches titles, ids, QA codes, area names and step text." },
+      { "b", 2, "Added clickable tags that filter the list (Baseline, each Area, Not run, Passed, Failed, New or changed), with a match count and a Clear button." },
+      { "b", 2, "The 10 baseline walkthroughs carry a gold \"Baseline\" mark and plain-language titles." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (walkthrough J32). Known limits, issue #465: no button back from All walkthroughs to the review list, and search, tags and sort reset when a window opens." },
+    } },
     { date = "2026-11-07", title = "What Changed Overnight", blocks = {
       { "h3", "XayaUI 0.6.73" },
       { "grp", "Commands" },
