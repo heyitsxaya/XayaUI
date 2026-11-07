@@ -300,7 +300,7 @@ def main():
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     kb, loaded = data_memory_kb(L)
-    results.append(("the generated text loads; it adds %.1f KB of Lua memory once the settings window addon loads" % kb, loaded and kb < 120))
+    results.append(("the generated text loads; it adds %.1f KB of Lua memory once the settings window addon loads" % kb, loaded and kb < 200))   # cap raised from 120 (2026-11-07): every patch note stays in game; only loaded with the settings window
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
