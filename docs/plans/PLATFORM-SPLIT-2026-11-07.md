@@ -82,6 +82,24 @@ Its header: "namespace, saved variables, rule defaults, slash commands". Today i
 table. Core takes: rule defaults and the rule shape upgrade, buff bar defaults, group ids and sources, the engine's step index, folder
 load overrides, the default categories, the folder-enforced sound channel, and the QoL "stats text" box defaults (those go to QoL).
 
+### 4.2 Character pane: split across three modules (Q5)
+
+Today all of it is QoL: CharacterModel.lua (3,573 lines, the stat model), CharacterToolkit.lua (2,799: the docked panel with Stats /
+Gear / Ability Scaling tabs, slot overlays, extra stat tooltip lines), CharacterReskin.lua (1,505: the character window in XayaUI's
+look) and StatMath.lua (225: rating math, including diminishing-returns thresholds). Her split, mapped to that code (the mapping is an
+INFERENCE from the file headers; the worker on this area confirms it piece by piece):
+
+| Her piece | Module | Today's code (inferred) |
+|---|---|---|
+| Advanced Character Stats pane window | Bonus | CharacterToolkit's docked panel and tabs |
+| Diminishing returns | Bonus or QoL (her pick; proposed Bonus) | StatMath's threshold math and where the panel shows it |
+| Simple character / dressing room UI with a customizable stat display | QoL | the slot overlays and stat display options in CharacterToolkit / CharacterReskin |
+| Clean reskin as the visual base | Reskin | the look half of CharacterReskin.lua |
+
+CharacterModel.lua is used by every piece; it stays one model, offered as the existing `statModel` service by the module that owns
+the base stat display (QoL), and read by Bonus through the service. This is its own phase-sized job (about 8,100 lines across three
+addons), scheduled after P4 so it is done on the new layout once.
+
 ## 5. Settings: every module keeps its own
 
 Today QoL, Chat, Bonus and Reskin have no saved variables of their own: their settings are keys of `CueRulesDB`. There are 490 direct
@@ -167,11 +185,16 @@ Options stays its own folder. Its toc says it "Loads the first time you open it 
 
 - **Platform part:** the window, top tabs, shared helpers (`ns.OptionsApi`), Skin.lua, Profiles.lua, ImportWindow.lua, InfoPane,
   AddonInfo.lua, ThemeEditor.lua, the Ace libraries.
-- **Core's pages:** TriggersEditor.lua, OutcomesEditor.lua, DisplayTab.lua, RuleSearch.lua, AutoPicker.lua, Drafts.lua (INFERENCE
-  from its name), and the rules-tree part of Options.lua. Hidden when Core is off.
-- **Feature pages:** cut out of the 9,033-line Options.lua (291 top-level functions, touched by 42 of 190 code commits since 11-01)
-  into one file per module, `XayaUI_Options/Pages/<Module>.lua`. They stay inside Options so they still cost nothing until the window
-  opens; each module's area owns its page file. Moving pages into the feature addons was rejected: they would then load at login.
+- **Feature pages already live in their own modules.** 25 pages are registered with `ns.RegisterSettingsPage` from the feature
+  addons themselves: Reskin 13 (including GameMenuSkin.lua), QoL 5, Bonus 3, Chat 2, DevAssist 2, Nameplates 1. None of those addons
+  is load-on-demand, so their page code is already read at login; only the page tables are built when the window opens. That is the
+  established pattern, and the split keeps it. (An earlier draft of this section proposed moving pages into
+  `XayaUI_Options/Pages/<Module>.lua`; that contradicted the pattern and is withdrawn.)
+- **Core's editor is the exception today:** TriggersEditor.lua, OutcomesEditor.lua, DisplayTab.lua, RuleSearch.lua,
+  AutoPicker.lua, Drafts.lua (INFERENCE from its name) and the rules-tree part of the 9,033-line Options.lua (291 top-level functions,
+  touched by 42 of 190 code commits since 11-01) live inside Options. Q1 decides where they go.
+- **What else is left in Options.lua** after the rule editor leaves (QoL is named there 69 times) is checked in P3: page code moves
+  to its module; window plumbing stays.
 
 ## 8. Freeze while the split runs (PS-8)
 
@@ -189,12 +212,12 @@ Testing everything now and again after the split is double work, and every branc
 
 | Q | Question | Recommendation |
 |---|---|---|
-| Q1 | Do Core's editor pages stay inside `XayaUI_Options` (hidden when Core is off), or get their own load-on-demand folder? | Inside Options: one window, one loader, and they still cost nothing until it opens |
-| Q2 | Titles "XayaUI Platform" for the `XayaUI` folder and "XayaUI Core" for `XayaUI_Core`? | Yes |
-| Q3 | Which ~10 walkthroughs form the baseline? | A worker proposes the list from the 148; she picks |
-| Q4 | D8: release before the move, or rebase after it? | Answer D8-Q1 first; if "release", land it before P4 |
-| Q5 | `characterReskin`: QoL or Reskin? | Where the file is (QoL), unless she sees it as a reskin |
-| Q6 | Approve the freeze in section 8? | Yes, reviewed after P2 |
+| Q1 | Where does the rule editor go? Every other module already owns its pages (section 7). | **Rule module owns it, in its own load-on-demand folder** (e.g. `XayaUI_Rules_Options`) that the settings window loads when it opens and the rule module is on. Same ownership as every other module, and the biggest editor still costs nothing until opened. Her answer (2026-11-07): asked where the other pages live; this row now answers that |
+| Q2 | Name for the tracking module. Her answer (2026-11-07): "XayaUI" (platform) and "XayaUI Core" — "unless you think that the core should be renamed in this process to more directly account for its functionality and purpose." | **Proposed: "XayaUI Rules", folder `XayaUI_Rules`**: it matches the Rules tab players already use, and switching off something named "Core" reads as breaking the addon. Waits for her pick |
+| Q3 | Baseline check: before any code moves, she runs about 10 walkthroughs on today's main once, so a bug found after the split can be told apart from one that was already there. Her answer: "unsure what this refers to" (explained 2026-11-07) | A worker picks the 10 and sends them as one list; she only runs them |
+| Q4 | D8 in plain terms: should Release Guard switch itself on automatically in raids with 20 or more players? It is built and passes the suite, untested in game, held by her O-109. Her answer: "unsure ... I'm thinking top down, not bottom-up" (re-asked top-down 2026-11-07) | If yes: land it before the move and put its walkthrough in the baseline. If no or not now: park it; it is redone on the new layout later |
+| Q5 | Character pane. Her answer (2026-11-07, verbatim): "The Advanced Character Stats pane window is a Bonus feature; a diminishing returns element is a either a bonus feature or a qol feature; the simple character/dressing room UI with the ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the reskin" | Settled except diminishing returns; section 4.2. Proposed: diminishing returns goes to Bonus, with the advanced stats it explains; waits for her pick |
+| Q6 | Freeze. Her answer (2026-11-07): "a freeze sounds fine — do you want this to include even my going through the qa walk throughs?" | **Approved.** Yes, it includes the 148-walkthrough backlog: she runs only the baseline (Q3) and anything that blocks her own play |
 
 ## 10. Phases
 
@@ -233,7 +256,7 @@ No time estimate yet: P2 is the first phase large enough to measure the pace on.
 | Keep every module's settings in `CueRulesDB` | Rejected (PS-7) | One store means one bad write can damage everything; Platform would know every module's keys; Nameplates shows the separate pattern works |
 | New `XayaUI_Platform` folder, `XayaUI` stays tracking | Rejected | Saved variables follow the folder name: all settings would stay attached to tracking |
 | Fold Options into `XayaUI` | Rejected | Loses load-on-demand: every player pays for the settings window at login |
-| Move feature pages into the feature addons | Rejected | Same reason: pages would load at login |
+| Move every feature page into Options (`Pages/<Module>.lua`) | Withdrawn | 25 pages already live in their own modules; that is the established pattern (section 7) |
 | Move code and data in one release | Rejected | A failure could not be traced to either change, and the rules are in that data |
 | Test the 148-walkthrough backlog first, split later | Rejected (PS-8) | Most of that testing would have to be repeated after the move |
 | Folder-per-session context with no area split inside `XayaUI` | Superseded | The split itself makes Platform and Core separate areas |

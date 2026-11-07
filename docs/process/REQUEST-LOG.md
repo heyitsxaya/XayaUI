@@ -578,6 +578,11 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-6 | "Does sharer / import / export have "universal plumbing" configured for each model to tie into? If not, it should — it should support sharing across all modules a user has installed." | DESIGN: ns.RegisterProfilePart | section 6.1 |
 | PS-7 | "I imagine we want individual modules to hold their own settings, correct?" | DESIGN: own saved variables per module, staged copy-not-move migration | section 5 |
 | PS-8 | "Yes, I think we need to prioritize this." | DESIGN: freeze proposal, open question Q6 | section 8 |
+| PS-9 | "where do the other editor pages live? I imagine this might influence the decision process" | ANSWERED: 25 pages already live in their own modules; plan corrected; Q1 re-proposed (rule editor in its own load-on-demand folder) | PLATFORM-SPLIT sections 7, 9 |
+| PS-10 | ""XayaUI" (platform) and "XayaUI Core" — unless you think that the core should be renamed in this process to more directly account for its functionality and purpose." | needs her confirmation: proposed "XayaUI Rules" | Q2 |
+| PS-11 | "unsure what this refers to" (Q3, baseline) / "also unsure, since I'm not in the weeds and still am not at my computer. I'm thinking top down, not bottom-up." (Q4, D8) | ANSWERED / re-asked top-down | Q3, Q4 |
+| PS-12 | "The Advanced Character Stats pane window is a Bonus feature; a diminishing returns element is a either a bonus feature or a qol feature; the simple character/dressing room UI with the ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the reskin" | DESIGN; diminishing returns needs her pick | section 4.2, Q5 |
+| PS-13 | "a freeze sounds fine — do you want this to include even my going through the qa walk throughs? You said I should do that" | APPROVED (freeze); backlog walkthroughs paused, baseline only | section 8, Q6 |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
