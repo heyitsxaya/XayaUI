@@ -13,6 +13,9 @@ def check(name, cond, extra=""):
     global fails
     print(("PASS " if cond else "FAIL ") + name + ((" :: " + str(extra)) if (extra != "" and not cond) else ""))
     if not cond: fails += 1
+# (Chat 0.6.35; UI-3) these checks place the privacy and history buttons beside the chat and in the tab row, where they are without the
+# chat sidebar; the sidebar (on by default) holds them otherwise: tests/chat_sidebar_run.py
+lua.execute("CueRulesDB.chat2 = { sbOn = false }")
 S = W.start()
 check("started with chat2 table", S is not None)
 
@@ -173,7 +176,7 @@ check("fade, hover unticked: faded again after idle", pane.GetAlpha(pane) < 0.05
 W.mouseX, W.mouseY = cr[0] + 10, cr[1] + 10
 W.update(0.2, 10)
 check("fade, hover unticked: the mouse over the chat does NOT bring it back", pane.GetAlpha(pane) < 0.05, pane.GetAlpha(pane))
-hov = lua.eval("function(ns) local t = ns.BuildChatTab(function() end); local found; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'hoverWake' and type(v) == 'table' and v.type == 'toggle' then found = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); return found end")(W.ns)
+hov = lua.eval("function(ns) local t = ns.BuildImprovedChatTab(function() end); local found; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'hoverWake' and type(v) == 'table' and v.type == 'toggle' then found = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); return found end")(W.ns)
 check("fade: the option reads 'The mouse over the chat brings it back' and is ticked when nothing is saved",
       hov is not None and hov.name == "The mouse over the chat brings it back" and lua.eval("function(o, ns) ns.chat2.fadeHover = nil; return o.get() end")(hov, W.ns) == True,
       hov.name if hov is not None else None)
@@ -356,7 +359,7 @@ check("[Chat 0.6.26] combined: one Whispers tab", lab == "General,Combat Log,Tra
 run("ns.chat2.histWhispersW = 'both'; ns.chat2.histWhispersCombine = false; ns.chat2.histWhispersB = nil")
 lab = reopen()
 check("[Chat 0.6.26] in-game Both (Battle.net as the game, In-line): a tab per conversation and In-Game Whispers", lab == "General,Combat Log,Trade,Ann,Bob-Other,Ann-Other,In-Game Whispers,Console,All", lab)
-dis = run("local t = ns.BuildChatTab(function() end); local o; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'whispersCombine' then o = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); if not o then return 'missing' end; ns.chat2.histWhispersW = 'each'; local a = o.disabled(); ns.chat2.histWhispersW = 'one'; local b = o.disabled(); return tostring(a) .. ',' .. tostring(b)")
+dis = run("local t = ns.BuildImprovedChatTab(function() end); local o; local function f(g, d) for k, v in pairs(g.args or {}) do if k == 'whispersCombine' then o = v end; if type(v) == 'table' and v.type == 'group' and d < 5 then f(v, d + 1) end end end; f(t, 0); if not o then return 'missing' end; ns.chat2.histWhispersW = 'each'; local a = o.disabled(); ns.chat2.histWhispersW = 'one'; local b = o.disabled(); return tostring(a) .. ',' .. tostring(b)")
 check("[Chat 0.6.26] the combine box is greyed unless a list has Consolidated or Both", str(dis) == "true,false", dis)
 run("ns.chat2.histWhispersW = nil; ns.chat2.histWhispersB = nil; ns.chat2.histWhispersCombine = nil; _G.__wm = 'popout'")
 lab = reopen()
@@ -478,7 +481,7 @@ check("tab sounds off, an override still plays", fired("CHAT_MSG_WHISPER", "hi",
 check("tab sounds off, an unlisted whisper plays nothing", fired("CHAT_MSG_WHISPER", "hi", "Bob-R") == [])
 run("ns.chat2.soundsOn = true")
 check("a SAY from a listed name still plays the tab sound (overrides are for whispers)", fired("CHAT_MSG_SAY", "hi", "Kai-R") == ["kit|3081"])
-wopt = run("""local t = ns.BuildChatTab(function() end); local snd
+wopt = run("""local t = ns.BuildImprovedChatTab(function() end); local snd
 for _, part in pairs(t.args) do if type(part) == 'table' and part.args and part.args.wAdd then snd = part end end
 if not snd then for _, part in pairs(t.args) do for _, p2 in pairs(part.args or {}) do if type(p2) == 'table' and p2.args and p2.args.wAdd then snd = p2 end end end end
 if not snd then return 'no sounds group' end
@@ -497,9 +500,12 @@ run("ns.chat2.whisperSounds.list = {}; ns.chat2.whisperSounds.fav = nil; C_Battl
 # ---- options --------------------------------------------------------------------------------------------------------------
 opt = run("return ns.BuildChatTab(function() end)")
 check("options table builds", opt is not None)
-tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do out[#out+1]=k end table.sort(out) return table.concat(out,',')")
-# (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya's #246 words) General and Chat Tabs replace Appearance, Fade and hide and History
-check("all tabs present", all(t in str(tabs) for t in ["general","tabs","layout","bar","filters","sounds","privacy"]) and not any(t in str(tabs).split(",") for t in ["look","behavior","history"]), tabs)
+tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do if v.type == 'group' then out[#out+1]=k end end table.sort(out) return table.concat(out,',')")
+itabs = run("local out={} for k,v in pairs(ns.BuildImprovedChatTab(function() end).args) do if v.type == 'group' then out[#out+1]=k end end table.sort(out) return table.concat(out,',')")
+# (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya's #246 words) General and Chat Tabs replace Appearance, Fade and hide and History;
+# (Chat 0.6.33; UI-18 / UI-19 / UI-21) the behaviour parts are on QoL > Improved Chat
+check("all tabs present: Chat Panel = General, Chat Tabs, Layout", str(tabs) == "general,layout,tabs", tabs)
+check("all tabs present: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar", all(t in str(itabs).split(",") for t in ["general","bar","filters","sounds","privacy"]), itabs)
 bad = run("""
 local bad = {}
 local function walk(t, path)
@@ -517,6 +523,7 @@ local function walk(t, path)
   end
 end
 walk(ns.BuildChatTab(function() end), 'chat')
+walk(ns.BuildImprovedChatTab(function() end), 'improved')
 return table.concat(bad, '\\n')
 """)
 check("every option has name/get/set and its getters run", str(bad) == "", bad)
@@ -531,23 +538,27 @@ local headers = 0
 local function walk(t) for _, v in pairs(t.args or {}) do if v.type == 'header' then headers = headers + 1 end if v.type == 'group' then walk(v) end end end
 walk(o)
 out[#out+1] = 'headers:' .. headers
-for _, k in ipairs({ 'general', 'tabs', 'layout', 'bar', 'filters', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
-out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
+for _, k in ipairs({ 'general', 'tabs', 'layout' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
 out[#out+1] = 'layoutTop:' .. tostring(o.args.layout.args.enabled == nil and o.args.layout.args.theme == nil)
+o = ns.BuildImprovedChatTab(function() end)   -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat
+out[#out+1] = (o.xuiSwitch and o.xuiSwitch.name == 'Improved Chat') and 'irow:switch' or 'missing:irow-switch'
+for _, k in ipairs({ 'general', 'bar', 'filters', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
+out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
 local p = o.args.privacy.args
 out[#out+1] = 'privOrder:' .. tostring(p.tab_lookHdr.order < p.tab_btnHdr.order and p.tab_btnHdr.order < p.tab_areaHdr.order)
 out[#out+1] = 'privTop:' .. tostring(p.on ~= nil and p.start ~= nil and p.btn == nil and p.tab_btnHdr.args.btn ~= nil)
 out[#out+1] = 'blocks:' .. tostring(o.args.bar.args.tab_blocksHdr ~= nil and o.args.bar.args.tab_blocksHdr.args.slot1 ~= nil and o.args.bar.args.on ~= nil)
 return table.concat(out, ' ')
 """)
-want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "general:tab", "tabs:tab", "layout:tab", "bar:tab", "filters:tab",
-        "privacy:tab", "sounds:nil", "layoutTop:true", "privOrder:true", "privTop:true", "blocks:true"]
+want = ["tree", "row:enabled", "top:theme", "top:intro", "headers:0", "general:tab", "tabs:tab", "layout:tab", "layoutTop:true",
+        "irow:switch", "general:tab", "bar:tab", "filters:tab", "privacy:tab", "sounds:nil", "privOrder:true", "privTop:true", "blocks:true"]
 check("Chat Panel: parts under it, panel switches on its own page, sections as tabs (Privacy: Look, Button, Area)", str(shape).split() == want, shape)
 opened = []
 run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")
 run("C.OpenSettings('bar', 'tab_blocksHdr')")
 # Chat 0.6.13: the Chat Panel's page is in the Blizzard UI Reskin tab (module "reskin"; Xaya 2026-11-05)
-check("right-click path opens Blizzard UI Reskin > Chat Panel > Chat Bar > Blocks", str(run("return table.concat(_G.__open, '>')")) == "reskin>chatpanel>bar>tab_blocksHdr")
+# Chat 0.6.33 (UI-18 / UI-19 / UI-21): the Chat Data Panel is QoL > Improved Chat's
+check("right-click path opens QoL > Improved Chat > Chat Data Panel > Blocks", str(run("return table.concat(_G.__open, '>')")) == "qol>improvedchat>bar>tab_blocksHdr", run("return table.concat(_G.__open, '>')"))
 
 # ---- settings changes through the option setters actually refresh the layout ----------------------------------------------
 run("""
@@ -673,13 +684,18 @@ check("off: button strip shown again", L.ChatFrame1ButtonFrame.IsShown(L.ChatFra
 check("off: social button shown again", L.QuickJoinToastButton.IsShown(L.QuickJoinToastButton) is True)
 check("off: scroll bar and border pieces shown again", sb.IsShown(sb) is True and L.ChatFrame1TopTexture.IsShown(L.ChatFrame1TopTexture) is True)
 check("off: chat alpha 1 and mouse on", cf1.GetAlpha(cf1) > 0.99 and L.ChatFrame1Tab.GetAlpha(L.ChatFrame1Tab) > 0.99)
-check("off: our container hidden", cont.IsShown(cont) is False)
-check("off: our privacy cover and button hidden", (L.XayaUIChatPrivacyButton is None) or L.XayaUIChatPrivacyButton.IsShown(L.XayaUIChatPrivacyButton) is False)
+# (Chat 0.6.33; UI-18 / UI-19 / UI-21) /xui chat off turns the Chat Panel (the skin) off; QoL > Improved Chat has its own switch and stays on:
+# its block lies over Blizzard's chat where the game put it (the tab row's top to the input line's bottom), the privacy button beside it
+pane = run("return C.Pane()")
+check("off (Improved Chat still on): our block lies over Blizzard's chat, from its tab row to its input line",
+      cont.IsShown(cont) is True and rect(pane)[0] == 30 and rect(pane)[2] == 430 and int(rect(pane)[1]) == 40 - 2 - 32 and int(rect(pane)[1] + rect(pane)[3]) == 196, rect(pane))
+check("off (Improved Chat still on): its privacy button stays", L.XayaUIChatPrivacyButton is not None and L.XayaUIChatPrivacyButton.IsShown(L.XayaUIChatPrivacyButton) is True)
 check("off: game's chat font is back", cf1._font[1] == "Fonts\\ARIALN.TTF" and cf1._font[2] == 14, (cf1._font[1], cf1._font[2]))
 check("off: tab height back", L.ChatFrame1Tab.GetHeight(L.ChatFrame1Tab) == 32, L.ChatFrame1Tab.GetHeight(L.ChatFrame1Tab))
 cf1.ClearAllPoints(cf1); cf1.SetPoint(cf1, "BOTTOMLEFT", L.UIParent, "BOTTOMLEFT", 300, 300)
 W.flush(); W.update(0.5, 3)
 check("off: the game can move its chat and we do not fight it", rect(cf1)[0] == 300, rect(cf1))
+check("off (Improved Chat still on): the block follows the game's chat to its new place", rect(pane)[0] == 300, rect(pane))
 run("C.Command('on')")
 W.flush(); W.update(0.4, 2)
 check("on again: glued to the container", rect(cf1) == rect(textA) and rect(L.ChatFrame1EditBox) == rect(inputA), (rect(cf1), rect(textA)))

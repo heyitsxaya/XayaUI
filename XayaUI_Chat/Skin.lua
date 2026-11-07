@@ -117,8 +117,8 @@ local function StyleEditBoxes(s)
                     eb._xuiFocusHook = true
                     -- HookScript cannot be taken back: idle while the Chat Panel is off (up to Chat 0.6.13 these restyled the hidden
                     -- input strip every time the chat was opened with the Chat Panel off)
-                    eb:HookScript("OnEditFocusGained", function() if not C.active then return end; C.inputFocus = true; C.StyleInput() end)
-                    eb:HookScript("OnEditFocusLost", function() if not C.active then return end; C.inputFocus = false; C.StyleInput() end)
+                    eb:HookScript("OnEditFocusGained", function() if not C.skin then return end; C.inputFocus = true; C.StyleInput() end)
+                    eb:HookScript("OnEditFocusLost", function() if not C.skin then return end; C.inputFocus = false; C.StyleInput() end)
                 end
             end)
         end
@@ -264,6 +264,6 @@ local function Refresh(s)
         C.HookOnce("skin:" .. key, key, nil, function() if C.active then C.Schedule() end end)   -- idle while the Chat Panel is off
     end
     -- (Chat 0.6.31, CHATREV-12) the game lays the tab row out again (docking, a new whisper tab, resizing): even it out at once
-    C.HookOnce("skin:FCFDock_UpdateTabs", "FCFDock_UpdateTabs", nil, function() if C.active then C.Try("tabrow", C.AlignTabRow) end end)
+    C.HookOnce("skin:FCFDock_UpdateTabs", "FCFDock_UpdateTabs", nil, function() if C.skin then C.Try("tabrow", C.AlignTabRow) end end)
 end
 C.Register("skin", Refresh)

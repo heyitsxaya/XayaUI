@@ -67,16 +67,21 @@ for m in ([[SetBackdrop SetBackdropColor SetBackdropBorderColor GetBackdrop GetB
   Init SetTitle SetPortraitToAsset SetPortraitTexture ContainsMessageGroup ContainsChannel GetMessageInfo]]):gmatch("%S+") do MIXIN[m] = true end
 
 local proto = {}
-local function rectOf(f, depth)
+-- memo: within one lookup each frame's rect is worked out once. Without it a chain of frames each anchored to the one before by two
+-- points (a settings tree's rows) cost 2^length: the walk re-did the whole chain for every point, and a long tree never finished
+-- (2026-11-07: sidebar_switches_run hung once QoL > Improved Chat added rows). The result is the same; only repeats are skipped.
+local function rectOf(f, depth, memo)
   depth = depth or 0
   if depth > 50 or f == nil then return { l = 0, b = 0, w = 0, h = 0 } end
   if f == UIParent or f._isScreen then return { l = 0, b = 0, w = screenW, h = screenH } end
+  memo = memo or {}
+  if memo[f] then return memo[f] end
   local left, right, bottom, top, cx, cy
   for _, pt in ipairs(f._pts) do
     local p, rel, rp, ox, oy = pt[1], pt[2], pt[3], pt[4], pt[5]
     if type(rel) == "string" then rel = _G[rel] end
     rel = rel or f._parent or UIParent
-    local rr = rectOf(rel, depth + 1)
+    local rr = rectOf(rel, depth + 1, memo)
     rp = rp or p
     local ax = rp:find("RIGHT") and rr.l + rr.w or (rp:find("LEFT") and rr.l or rr.l + rr.w / 2)
     local ay = rp:find("TOP") and rr.b + rr.h or (rp:find("BOTTOM") and rr.b or rr.b + rr.h / 2)
@@ -87,9 +92,11 @@ local function rectOf(f, depth)
   local w, h = f._w or 0, f._h or 0
   if left and right then w = right - left end
   if bottom and top then h = top - bottom end
-  return { l = left or (right and right - w) or (cx and cx - w / 2) or 0, b = bottom or (top and top - h) or (cy and cy - h / 2) or 0, w = w, h = h }
+  local r = { l = left or (right and right - w) or (cx and cx - w / 2) or 0, b = bottom or (top and top - h) or (cy and cy - h / 2) or 0, w = w, h = h }
+  memo[f] = r
+  return r
 end
-W.rect = rectOf
+W.rect = function(f) return rectOf(f) end
 
 local objMeta = {}
 objMeta.__index = function(t, k)
