@@ -149,12 +149,25 @@ C_Spell.GetSpellDescription = savedDesc
 local ap = row(m, "ap")
 check("attack power: 1 Agility = 1.00 attack power", pair(ap, "1 Agility =") == "1.00 attack power", pair(ap, "1 Agility ="))
 check("dodge: primary -> dodge per point marked not given", pair(row(m, "dodge"), "Agility -> dodge per point") == "not given by the game")
-check("gcd: unavailable before one is seen", row(m, "gcd").value == "unavailable", row(m, "gcd").value)
+-- (QoL 0.7.39; UI-62 "GCD"; UI-63 / UI-64, her answer "Formula + live check") the standard GCD: 1.5 / (1 + haste), never below 0.75 s;
+-- a fixed 1.0 s for rogues, Cat Form druids, Brewmaster and Windwalker monks; the live reading listed as a check
+local g0 = row(m, "gcd")
+check("gcd: named GCD; before any GCD ran, the rule's value (1.5 / 1.2925 = 1.16 s) and the live reading not yet seen",
+  g0.label == "GCD" and g0.value == "1.16 s" and pair(g0, "Rule") == "1.5 s / (1 + haste), never below 0.75 s" and pair(g0, "Live reading") == "cast any spell to read it",
+  tostring(g0.label) .. " / " .. tostring(g0.value) .. " / " .. tostring(pair(g0, "Live reading")))
 ns.CharToolkit_ReadGCD()
 local g = row(ns.CharToolkit_Model(), "gcd")
-check("gcd: read from the game's global cooldown", g.value == "1.16 s", g.value)
-check("gcd: unhasted estimate 1.50 s", pair(g, "Unhasted (estimate)") == "1.50 s", pair(g, "Unhasted (estimate)"))
-check("gcd: haste rating for -0.01 s", (pair(g, "For -0.01 s") or ""):find("haste = ", 1, true) ~= nil, pair(g, "For -0.01 s"))
+check("gcd: the live reading listed beside the rule (1.16 s, the same)", g.value == "1.16 s" and pair(g, "Live reading") == "1.16 s", tostring(pair(g, "Live reading")))
+local keepHaste, keepClass = GetHaste, UnitClass
+GetHaste = function() return 150 end
+check("gcd: never below 0.75 s (150% haste)", row(ns.CharToolkit_Model(), "gcd").value == "0.75 s", row(ns.CharToolkit_Model(), "gcd").value)
+GetHaste = keepHaste
+UnitClass = function() return "Rogue", "ROGUE", 4 end
+local gr = row(ns.CharToolkit_Model(), "gcd")
+check("gcd: a rogue's is a fixed 1.00 s whatever the haste (29.25%), and the live reading that differs is flagged",
+  gr.value == "1.00 s" and pair(gr, "Rule") == "Rogue: a fixed 1.0 s (energy)" and (pair(gr, "Live reading") or ""):find("the rule gives 1.00 s", 1, true) ~= nil,
+  tostring(gr.value) .. " / " .. tostring(pair(gr, "Live reading")))
+UnitClass = keepClass
 local spd = row(m, "speed")
 check("attack speed: unhasted estimate and haste for -0.01 s", pair(spd, "Unhasted (estimate)") == "2.58 s" and pair(spd, "Haste rating for -0.01 s") ~= nil)
 

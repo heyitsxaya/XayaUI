@@ -71,6 +71,14 @@ check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip l
   and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
   and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
   and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
+-- (Options 0.6.58, REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default. all should just show a
+-- one-sentence description and an enabled/disabled status") every switch has its one sentence (tip), never an "Off ..." text
+for _, k in ipairs(WANT) do
+  local sw = found[k]; local t = sw and sw.tip
+  local one = type(t) == "string" and t ~= "" and t:match("[%.!?]$") ~= nil and not t:sub(1, -2):find("[%.!?]%s") and not t:find("^Off")
+    and not t:find("Off:", 1, true)
+  check("A: the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)", one, t)
+end
 -- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
 -- overview switches' names)
 local names = { ["panel"] = true, ["cursor highlight"] = true, ["gradient cursor trail"] = true, ["tooltip lines"] = true }
@@ -233,16 +241,17 @@ do
     and r.xuiTextR == t.xuiTextR and r.xuiTextR == 4, tostring(r and r.xuiTextL) .. "/" .. tostring(r and r.xuiTextR) .. " vs " .. tostring(t and t.xuiTextL) .. "/" .. tostring(t and t.xuiTextR))
   check("A: the box ends before the name starts (no overlap, V11)", x and ox + x:GetWidth() <= r.xuiTextL - 2, tostring(ox) .. "+" .. tostring(x and x:GetWidth()) .. " vs " .. tostring(r.xuiTextL))
 end
-check("A: the box's hover says what it does (the switch's name and explanation)", (function()
+check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled; no \"Off\" text (UI-42)", (function()
   local said = {}
   local tip = GameTooltip
   local oS, oA = tip.SetText, tip.AddLine
-  tip.SetText = function(self, t) said[#said + 1] = t; return oS(self, t) end
+  tip.SetText = function(self, t) said = { t }; return oS(self, t) end
   tip.AddLine = function(self, t, ...) said[#said + 1] = t; return oA(self, t, ...) end
   local f = bD:GetScript("OnEnter"); if f then f(bD) end
   tip.SetText, tip.AddLine = oS, oA
   local s = table.concat(said, " | ")
-  return s:find("Enable Data Panels", 1, true) ~= nil and s:find("Master switch", 1, true) ~= nil, s
+  local want = CueRulesDB.dataPanels and CueRulesDB.dataPanels.general and CueRulesDB.dataPanels.general.enabled and "Enabled" or "Disabled"
+  return #said == 3 and said[1] == "Data Panels" and said[2] == "Shows info panels on your screen: time, gold, frame rate and more." and said[3] == want and not s:find("Off", 1, true), s
 end)())
 
 -- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked
@@ -302,6 +311,8 @@ ns.Notepad_OpenSettings(); settle()
 check("B: the Notepad's settings opener goes to Utilities > Notepad", selected("bonus") == "utilities\001notepad", tostring(selected("bonus")))
 check("A: the Notepad page has Show Notepad on it again (Bonus 0.6.14: the row's tick box is the whole Notepad)", findW(root(), function(w) return optName(w) == "Lock position and size" end) ~= nil
   and findW(root(), function(w) return w.type == "CheckBox" and optName(w) == "Show Notepad" end) ~= nil)
+-- (core 0.6.61, Bonus 0.6.24; UI-53) the page's long text is in its Description box, opened by the info icon: open it to read it
+if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = true end
 ACD:SelectGroup("CueRules", "bonus", "utilities", "calculator"); settle()
 local openBtn = findW(root(), function(w) return w.type == "Button" and optName(w) == "Open calculator" end)
 check("B: the Calculator page has an Open calculator button", openBtn ~= nil)
@@ -314,6 +325,7 @@ check("B: ...and its example answer is what the calculator gives (V5: page text 
 end)())
 if openBtn then openBtn:Fire("OnClick"); W.tick(0.1, 3) end
 check("B: Open calculator opens the calculator", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
+if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
 if _G.XayaUICalculator then _G.XayaUICalculator:Hide() end
 end)
 
@@ -444,7 +456,8 @@ local np = node(ns.BuildOptionsTable(), "bonus", "utilities", "notepad")
 local leaf
 for k, v in pairs(np and np.args or {}) do if type(v) == "table" and v.type ~= "group" and v.type ~= "description" and type(v.disabled) == "function" then leaf = k; break end end
 local function dis() local v = np.args[leaf]; return v.disabled({ "bonus", "utilities", "notepad", leaf }) and true or false end
-check("G: Notepad unticked: its row name is grey", n ~= nil and math.abs(r1 - 0.5) < 0.01 and math.abs(g1 - 0.5) < 0.01 and math.abs(b1 - 0.5) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
+local mg = ns.OptionsApi.Muted and ns.OptionsApi.Muted() or { -1, -1, -1 }   -- (UI-49: the grey is the theme's Muted text colour)
+check("G: Notepad unticked: its row name is grey (the theme's Muted text colour)", n ~= nil and math.abs(r1 - mg[1]) < 0.01 and math.abs(g1 - mg[2]) < 0.01 and math.abs(b1 - mg[3]) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
 check("G: ...and its settings are greyed (cannot be changed): " .. tostring(leaf), leaf ~= nil and dis() == true)
 click("bonus", "utilities\001notepad", true)
 n = row("bonus", "utilities\001notepad")

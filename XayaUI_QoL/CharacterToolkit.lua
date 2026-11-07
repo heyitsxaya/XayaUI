@@ -2505,8 +2505,8 @@ function ns.BuildCharToolkitPage(Notify)
     local function Changed() ns.CharToolkit_Apply(); if Notify then Notify() end end
     local isOff = function() return not C().enabled end
     local addBuf = ""
-    local function Toggle(key, order, name, desc, width, hidden)
-        return { type = "toggle", order = order, width = width, name = name, desc = desc, hidden = hidden,
+    local function Toggle(key, order, name, desc, width, hidden, tip)
+        return { type = "toggle", order = order, width = width, name = name, desc = desc, hidden = hidden, tip = tip,
             get = function() return C()[key] and true or false end,
             set = function(_, v) C()[key] = v and true or false; Changed() end }
     end
@@ -2515,7 +2515,7 @@ function ns.BuildCharToolkitPage(Notify)
     -- "move all enable/disable toggles onto the sidebar instead"), the same Toggle as the switch the page had
     local spells = {
         type = "group", name = "Spell Math", order = 30, hidden = isOff,
-        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Ability Scaling tab's spell math in the panel (advanced)."),
+        xuiSwitch = Toggle("advanced", 1, "Spell Math", "Shows the Ability Scaling tab's spell math in the panel (advanced).", nil, nil, "Shows the spell math on the Stat Calculator's Ability Scaling tab."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "The Ability Scaling tab lists every active spell of your current spec's spellbook that has numbers in its description, and the spells you add here first (any spell ID). For each: every number in its current description divided by your current attack power (or spell power), and what one point of your primary stat adds. This is the ratio right now, with talents and buffs already applied; it is not Blizzard's base coefficient. You can type a coefficient from a database such as Wowhead to compare." },
@@ -2570,7 +2570,7 @@ function ns.BuildCharToolkitPage(Notify)
 
     local panelPart = {
         type = "group", name = "Panel", order = 10, childGroups = "tab", hidden = isOff,
-        xuiSwitch = Toggle("panel", 1, "Show the panel", "The Stat Calculator: the Stat Calc button on the character window opens and closes it beside the window (it opens the same way next time); the XayaUI minimap button's Stat Calculator row and /xui stats open it on its own. Off: no panel, no button, no minimap row."),
+        xuiSwitch = Toggle("panel", 1, "Show the panel", "The Stat Calculator: the Stat Calc button on the character window opens and closes it beside the window (it opens the same way next time); the XayaUI minimap button's Stat Calculator row and /xui stats open it on its own. Off: no panel, no button, no minimap row.", nil, nil, "Shows the Stat Calculator beside the character window."),
         args = {
             layout = { type = "group", name = "Layout", order = 1, args = {
                 side = { type = "select", order = 2, name = "Side", values = { right = "Right", left = "Left" },
@@ -2627,7 +2627,7 @@ function ns.BuildCharToolkitPage(Notify)
     local TIP_TEXT = "Adds the toolkit's lines under the character window's own stat tooltips. The panel's own hover does not need this."
     local tipsPart = {
         type = "group", name = "Tooltip lines", order = 40, hidden = isOff,
-        xuiSwitch = Toggle("tooltips", 1, "Tooltip lines", TIP_TEXT),
+        xuiSwitch = Toggle("tooltips", 1, "Tooltip lines", TIP_TEXT, nil, nil, "Adds Stat Calculator lines to the character window's stat tooltips."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium", name = TIP_TEXT },
         },
@@ -2658,7 +2658,7 @@ function ns.BuildCharToolkitPage(Notify)
     end
     local overlayPart = {
         type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
-        xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default."),
+        xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", nil, nil, "Shows marks on the character window's item slots."),
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
                 ovIlvl = Toggle("ovIlvl", 2, "Item level", "The item's level, at the bottom of the slot."),
@@ -2673,7 +2673,7 @@ function ns.BuildCharToolkitPage(Notify)
 
     return {
         type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
-        xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read."),
+        xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", nil, nil, "Turns on the Stat Calculator and its character window tools."),
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "The Stat Calculator: a panel beside the character window (its Stat Calc button) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math, Tooltip lines) then show under it, each with its own tick box. Off by default." },
