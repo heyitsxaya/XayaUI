@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 10 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 12 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -456,6 +456,40 @@ Not tested in game. Where this changes how section 1 describes the Stat Calculat
 - **Info > Credits + Acknowledgements:** plain section headings, one box per section with its credits as rows, a slightly darker
   background, more space between sections, and no intro paragraph.
 - **In-game QA:** steps E1z195 to E1z200 in `/xui dev qa` (Dev Assist on).
+
+## 11. Chat settings split, input line, chat sidebar, friend class colours (chat-round session; main 72a7512)
+
+Chat 0.6.33 to 0.6.36, core 0.6.68, Reskin 0.6.8. Not tested in game. Choices made without you are in the QA question flow (Q-CR-1 to Q-CR-10, Q-CHAT5).
+
+- **Chat settings split (Chat 0.6.33).** Blizzard UI Reskin > Chat Panel now holds only how chat looks: fonts, colours, boxes, tab and input
+  look, size, position and mover, indent of wrapped lines, Blizzard's buttons and scroll bar. The new **QoL > Improved Chat** holds
+  everything the addon adds to how chat behaves: slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters,
+  sounds, privacy cover, Chat Data Panel and sidebar. Improved Chat has its own tick box and a note that it looks best with a chat reskin;
+  it also works with the Chat Panel off, placing its pieces around Blizzard's chat. Right-clicking a data block opens Improved Chat > Chat
+  Data Panel.
+- **Input line position (Chat 0.6.34).** Chat Panel > Layout > Input line: Bottom, Top under the tabs, Top above the tabs, or Free move. With Free
+  move the line is dragged and sized in the mover (`/xui chat move`).
+- **Chat sidebar (Chat 0.6.35, core 0.6.68).** Improved Chat > Sidebar, on by default, on the left of the chat with a background tinted in your
+  class colour. Side: left, right, top or bottom. Show: always or on mouseover, plus "Fade with the chat" (on) and "Hide in combat".
+  Buttons: the privacy eye (moved in from beside the chat), Blizzard's chat menu, channels and voice buttons, history, chat windows, and
+  newest message. XayaUI's own button appears there through Settings > Minimap Button > "Show it in", or when the minimap button is off.
+  The chat keeps its size unless you set "Width of the whole chat".
+- **Fade fix (Chat 0.6.36).** The collapse arrow, the privacy eye and the sidebar now fade with the chat, and hovering them brings it back.
+- **Friend class colours (Reskin 0.6.8).** Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in
+  their class colour. Blizzard's new Social friends list is not coloured yet.
+
+## 12. Faster settings window clicks (perf session; main 72a7512; Options 0.6.70, walkthrough J31)
+
+Not tested in game.
+
+- The settings window responds much faster to clicks when there are many rules. Ticking a switch, or picking a rule in the sidebar, no
+  longer rebuilds every rule's editor; only the rule on screen is built. (Your request A15 P-16: "clicking off options causes a 2s delay
+  between click and actualization".)
+- Measured offline only (test harness, 313 rules, a rule open): a click went from 1,715 ms to about 100-200 ms of Lua, and from about 240 MB
+  to 17 MB of temporary memory. The real click time is not measured in game.
+- Also visible: the window's narrowest width now follows the dropdowns of the rules you have opened, not every rule's (question Q-PERF-8 in
+  the QA flow).
+- Walkthrough J31, "Performance: a click with a rule open", in `/xui dev qa`, reads the window's own redraw time.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
