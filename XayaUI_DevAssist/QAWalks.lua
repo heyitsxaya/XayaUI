@@ -11,14 +11,17 @@ if not QA then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
 local TEST = "QA test group"
 
+-- audit D35 (Dev Assist 0.7.9): only the group a walkthrough made (tagged qaTest) is ever reused or deleted; a group of yours that
+-- happens to be called "QA test group" is never touched (before: matched by name, and Cleanup deleted it with all its rules).
 local function TestGroup()
     local ns = NS()
-    for _, f in ipairs(ns and ns.folders or {}) do if f.name == TEST then return f end end
+    for _, f in ipairs(ns and ns.folders or {}) do if f.name == TEST and f.qaTest == true then return f end end
 end
 local function MakeTestGroup(withIcons)
     local ns = NS()
     if not (ns and ns.NewFolder) then error("XayaUI is not loaded") end
-    local f = TestGroup() or ns.NewFolder(TEST)
+    local f = TestGroup()
+    if not f then f = ns.NewFolder(TEST); f.qaTest = true end
     if withIcons then
         local have = 0
         for _, r in ipairs(ns.rules or {}) do if r.folder == f.id then have = have + 1 end end
@@ -98,9 +101,11 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 } })
 
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
+-- audit D34 (Dev Assist 0.7.9): what a walkthrough's "Do it for me" changed is put back by its last step
+local reskinWas, shopWas
 QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard UI Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
-        setup = function() local ns = NS(); if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
+        setup = function() local ns = NS(); if ns.ReskinTabOn and reskinWas == nil then reskinWas = ns.ReskinTabOn() and true or false end; if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
     { text = "Untick |cffffd100All reskins|r on the tab (or press Do it for me).\n\n|cffffd100Expect:|r at once Blizzard's own chat comes back, the Esc menu (press Esc) and the character window (C) look like Blizzard's; the four tick boxes in the left pane stay ticked but greyed.",
         setup = function() local ns = NS(); if ns.SetReskinTab then ns.SetReskinTab(false) end end,
@@ -108,19 +113,25 @@ QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and ea
     { text = "Tick |cffffd100All reskins|r again (or press Do it for me).\n\n|cffffd100Expect:|r the reskins whose own boxes are ticked come back without a /reload.",
         setup = function() local ns = NS(); if ns.SetReskinTab then ns.SetReskinTab(true) end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
+    { text = "Last step: press |cffffd100Do it for me|r to put All reskins back the way it was before this walkthrough. Then Pass.",
+        setup = function() local ns = NS(); if reskinWas ~= nil and ns.SetReskinTab then ns.SetReskinTab(reskinWas) end; reskinWas = nil end,
+        check = function() return reskinWas == nil, reskinWas == nil and "All reskins is as it was" or "not put back yet" end },
 } })
 
 -- E2a / E2g / E2h: the Shopping List ---------------------------------------------------------------------------------------------
 local function Shop() local ns = NS(); return ns and ns.Service and ns.Service("shoppingList") end   -- (QoL provides it; nil while QoL is off)
 QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 121, steps = {
     { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on and its panel opens.\n\n|cffffd100Expect:|r a movable panel \"Shopping List\" with Missing on your gear, To buy, and your tracked recipes.",
-        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); c.enabled, c.panel = true, true; S.Apply() end,
+        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); if shopWas == nil then shopWas = { c.enabled, c.panel } end; c.enabled, c.panel = true, true; S.Apply() end,
         check = function() local p = rawget(_G, "XayaUIShoppingList"); return (p and p:IsShown()) and true or false, (p and p:IsShown()) and "the panel is showing" or "the panel is not showing" end },
     { text = "Open your profession window and |cffffd100track a recipe|r you are one reagent short of (the star / Track box).\n\n|cffffd100Expect:|r the recipe shows in the panel with each reagent and have / need, the same numbers as Blizzard's objective tracker.",
         check = function() local S = Shop(); local n = S and #S.Recipes() or 0; return n > 0, n .. " tracked recipe(s) read" end },
     { text = "Get the last reagent (buy, loot or take it from the bank).\n\n|cffffd100Expect:|r under the recipe's name: \"All reagents are in your bags. Stop tracking it?\" with |cffffd100Stop|r and |cffffd100Keep|r. Press Keep: the question goes. Then use the |cffffd100x|r on the recipe's title: the recipe leaves the panel AND Blizzard's tracker." },
     { text = "If any of your gear has an empty socket and you wear no Eversong Diamond (or this expansion's one-per-character gem):\n\n|cffffd100Expect:|r the first empty socket's line reads \"<slot>: <diamond> (one per character)\" or \"one-per-character gem (none worn)\"; its |cffffd100Other|r list shows only such gems and has a Default button.\n\nNo empty socket: press Skip.",
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end; local d = 0; for _, m in ipairs(S.Missing(S.Cfg())) do if m.kind == "diamond" then d = d + 1 end end; return true, d > 0 and "a one-per-character gem line is there" or "no one-per-character gem line (none needed, or the game does not mark the gem: say so in the note)" end },
+    { text = "Last step: press |cffffd100Do it for me|r to put the Shopping List back the way it was before this walkthrough (on / off, panel shown or not). Then Pass.",
+        setup = function() local S = Shop(); if S and shopWas then local c = S.Cfg(); c.enabled, c.panel = shopWas[1], shopWas[2]; S.Apply() end; shopWas = nil end,
+        check = function() return shopWas == nil, shopWas == nil and "the Shopping List is as it was" or "not put back yet" end },
 } })
 
 -- B177-B179c (core 0.6.55, Options 0.6.54): display points, the mover view's held moves, a group's saved arrangement, Scale items to
