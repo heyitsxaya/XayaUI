@@ -109,7 +109,7 @@ for _, t in ipairs(tabBtns()) do if t.xuiTabBox and t.xuiTabBox:IsShown() then b
 check("the window: no tab button carries a tick box (Blizzard UI Reskin included)", boxes == 0 and #tabBtns() > 0, boxes .. " of " .. #tabBtns())
 local ROWS = { charreskin = "Character Reskin", chatpanel = "Enable Chat Panel", gamemenu = "Use the XayaUI Game Menu look", shoppinglist = "Shopping List",
   -- (Reskin 0.6.8, BlizzardSkins.lua)
-  blizzwindows = "Use the XayaUI look on Blizzard's windows", minimapshape = "Use the XayaUI minimap shape", tooltips = "Use the XayaUI look on tooltips",
+  blizzwindows = "Use the XayaUI look on Blizzard's windows", minimapshape = "Use the XayaUI minimap shape", rsktooltips = "Use the XayaUI look on tooltips",
   objtracker = "Use the XayaUI look on the objective tracker" }
 local bad = {}
 for k, nm in pairs(ROWS) do local sw = tab.args[k] and tab.args[k].xuiSwitch; if not (sw and sw.name == nm) then bad[#bad + 1] = k end end

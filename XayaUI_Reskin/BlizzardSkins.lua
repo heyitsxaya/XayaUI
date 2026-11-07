@@ -518,5 +518,5 @@ end
 
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
-ns.RegisterSettingsPage("reskin", "tooltips", BS.TooltipsPage)
+ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
 ns.RegisterSettingsPage("reskin", "objtracker", BS.TrackerPage)

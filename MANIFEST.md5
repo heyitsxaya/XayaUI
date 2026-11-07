@@ -276,7 +276,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 a39263cf4d03dedeb2991412e569829f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 2f4523962e9cbc50add20d41bcd7a0e5  XayaUI_QoL/XayaUI_QoL.toc
-efbb091c99cea986d7fe022d36dd2bbb  XayaUI_Reskin/BlizzardSkins.lua
+bd548d5367e6d7914fe0e4f09b72030b  XayaUI_Reskin/BlizzardSkins.lua
 364bb50f1d78cc4f0ae2fcd80b6e6fe1  XayaUI_Reskin/GameMenuSkin.lua
 803c090c0e0606cd25bf088a66bc40e0  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
@@ -810,7 +810,7 @@ c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 2453982bb724f7a4377718d116b598cd  tests/release_guard_run.py
 7db54860bf3ac18c989cb25e93695bdc  tests/reskin_blizzard_skins_run.py
 38827713c51627052a80b62901729e25  tests/reskin_tab_run.py
-cedb314d150aaa1423cc354da455b441  tests/reskin_tab_switch_run.py
+d89d8238bd5784cf04cb23d67e8d5b0b  tests/reskin_tab_switch_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
 24def41130c94534cf81b2f7cd7cb8da  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
@@ -819,7 +819,7 @@ a7a9f991777bc6b3ff0c21af327b23d4  tests/shopping_list_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
-98228c3dd2526e8fcc4ce6234715e9f6  tests/sidebar_switches_run.py
+01e97e25a45b80fe183a413d38b6e915  tests/sidebar_switches_run.py
 d6281e3e5e837987c2fa9ebcaa2eb8bd  tests/skin_button_run.py
 2d82e30f220e19a9dfd2d9165907881f  tests/slash_words_run.py
 2ab0305057bc1ba469131f702de0799c  tests/sound_cue_channel_run.py
