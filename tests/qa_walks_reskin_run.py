@@ -120,7 +120,7 @@ check("toasts 1: Toasts and Pop-ups switches on", ok, why)
 ok, why = run("reskin-toasts", 2)
 check("toasts 2: our test pop-up opens and carries the XayaUI look", ok and StaticPopup1.which == "XAYAUI_QA_RESKIN_POPUP" and StaticPopupDialogs.XAYAUI_QA_RESKIN_POPUP.button1 ~= nil, why)
 ok, why = run("reskin-toasts", 4)
-check("toasts 4: the Battle.net toast's colour is read and matches the theme", ok and why:find("toast colour", 1, true), why)
+check("toasts 4: the Battle.net toast's colour is read and matches the theme", ok and why:find("toast color", 1, true), why)
 ok, why = run("reskin-toasts", 5)
 check("toasts 5: switched off, the pop-up has Blizzard's art back", ok, why)
 run("reskin-toasts", 6)
@@ -173,7 +173,7 @@ check("statusbars: her settings are put back", Same() and not CueRulesDB.ui.rsk.
 
 -- minimap buttons (Reskin 0.6.16)
 ok, why = run("reskin-mmbuttons", 1)
-check("mmbuttons 1: the zone bar is read in the theme's window colour", ok and why:find("zone bar centre", 1, true), why)
+check("mmbuttons 1: the zone bar is read in the theme's window colour", ok and why:find("zone bar center", 1, true), why)
 run("reskin-mmbuttons", 3)
 check("mmbuttons: her settings are put back and the zone bar's colour is Blizzard's again", Same() and not CueRulesDB.ui.rsk.mmbuttons and MC.BorderTop._c[1] == 1, before)
 
