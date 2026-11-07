@@ -92,7 +92,7 @@ function ns.CharWidthProbe_Run(arg)
         Step("panel placement", function() UpdateUIPanelPositions(cf) end)
     end
     Say(("on, %d px wider (%d -> %d). %s."):format(px, math.floor(w0 + 0.5), math.floor(cf:GetWidth() + 0.5), table.concat(steps, ", ")))
-    Say("1) Look: right-hand slots and the stats pane moved out, model wider, weapons centred?")
+    Say("1) Look: right-hand slots and the stats pane moved out, model wider, weapons centered?")
     Say("2) With it open, press P (spellbook) and N (talents): do they sit beside it without overlapping?")
     Say("3) Fight a training dummy; open and close your bags, the spellbook and the map in combat; leave combat.")
     Say("4) Watch chat for 'width probe: ADDON_ACTION_...' lines or Blizzard's 'Interface action failed because of an AddOn'.")

@@ -129,8 +129,10 @@ checkp("panel on: the character window gets a Stat Calc button (64 x 18) on it, 
 checkp("  ...in the title row, a gutter left of Blizzard's close button (RIGHT to its LEFT, 4 px)", function()
   local pt = B.pts[#B.pts]
   return pt[1] == "RIGHT" and pt[2] == CharacterFrame.CloseButton and pt[3] == "LEFT" and pt[4] == -4 and pt[5] == 0, tostring(pt[1]) end)
-checkp("panel on: the minimap button's list shows a Stat Calculator row (its state reads off while the panel is closed)", function()
-  local e, r = launcher("stats"); return e ~= nil and r.fs.text == "Stat Calculator" and tostring(r.state.text):find("off", 1, true) ~= nil, e and e[2] end)
+-- (QoL 0.7.42; O-100, Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer
+-- "No word at all"): the row shows just its name, no on / off for shown / hidden
+checkp("panel on: the minimap button's list shows a Stat Calculator row with just its name (no on / off)", function()
+  local e, r = launcher("stats"); return e ~= nil and r.fs.text == "Stat Calculator" and (r.state.text == nil or r.state.text == "") and e[5] == nil, e and e[2] end)
 
 -- 1. The button opens and closes the panel; the state is kept for the next time ------------------------------------------------------
 openChar()
@@ -161,7 +163,7 @@ checkp("a click on the minimap row opens the panel with the character window clo
   clickRow("stats")
   local pt = Pn.pts[#Pn.pts]
   return Pn:IsShown() and not CharacterFrame:IsShown() and pt[1] == "CENTER" and pt[2] == UIParent and pt[4] == 120 and pt[5] == -40
-    and launcher("stats")[5]() == "on", pt and pt[1] end)
+    and launcher("stats")[5] == nil, pt and pt[1] end)
 openChar()
 checkp("  ...(guard) the character window opening docks it beside the window", function() local pt = Pn.pts[#Pn.pts]; return Pn:IsShown() and pt[2] == CharacterFrame end)
 closeChar()

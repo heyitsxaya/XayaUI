@@ -372,7 +372,7 @@ local function ScanChunk(out, done)
         end
     end
     C.next = stop + 1
-    Progress(("aura catalogue: names %d / %d, %d matches"):format(math.min(C.next, C.upper), C.upper, C.nMatches))
+    Progress(("aura catalog: names %d / %d, %d matches"):format(math.min(C.next, C.upper), C.upper, C.nMatches))
     if C.next > C.upper then done() else C_Timer.After(0, function() ScanChunk(out, done) end) end
 end
 
@@ -432,7 +432,7 @@ local function StepFacts(out, done)
             end
         end
         i = stop + 1
-        Progress(("aura catalogue: facts %d / %d"):format(math.min(i - 1, #list), #list))
+        Progress(("aura catalog: facts %d / %d"):format(math.min(i - 1, #list), #list))
         if i <= #list then C_Timer.After(0, Batch)
         elseif pending <= 0 then Finish()
         else C_Timer.After(30, Finish) end   -- descriptions that never load do not hold the capture
@@ -456,14 +456,14 @@ local function Finish(out)
         errors = out.nErrors or 0 }
     DB().catalogue = out
     C.running = false
-    Say(("aura catalogue done: %d spells from current content, %d more IDs that share their names, %d raids/dungeons (%d bosses), %d recent IDs by name%s, %d errors.%s Click \"Save to disk\" (or /reload) to write it."):format(
+    Say(("aura catalog done: %d spells from current content, %d more IDs that share their names, %d raids/dungeons (%d bosses), %d recent IDs by name%s, %d errors.%s Click \"Save to disk\" (or /reload) to write it."):format(
         nS, nM, nInst, nEnc, #C.recentBuf, C.recentFrom and (" from " .. C.recentFrom) or "", out.nErrors or 0,
         out.usedStatic and "" or " (Run \"static\" first to include every class's talents.)"))
 end
 
 function GD.CaptureCatalogue(arg)
-    if C.running then Say("the aura catalogue is already running."); return end
-    if InCombatLockdown() then Say("the aura catalogue runs out of combat; try again after combat."); return end
+    if C.running then Say("the aura catalog is already running."); return end
+    if InCombatLockdown() then Say("the aura catalog runs out of combat; try again after combat."); return end
     local fromArg = tonumber(arg)
     local out = { at = date("%Y-%m-%d %H:%M"), version = "0.5.0", ej = { tiers = {}, instances = {}, scanned = {} },
         mplus = { maps = {}, affixes = {} }, sets = {}, seeds = {}, matches = {}, errors = {} }
@@ -472,7 +472,7 @@ function GD.CaptureCatalogue(arg)
     C.running, C.paused, C.resume = true, nil, nil
     C.nSeeds, C.maxID, C.nMatches, C.nNamed = 0, 0, 0, 0
     C.items, C.extraNames, C.raidSpells, C.dungeonSpells, C.recentBuf = {}, {}, {}, {}, {}
-    Say("aura catalogue: reading the Cooldown Manager, the Adventure Guide, Mythic+ and item sets...")
+    Say("aura catalog: reading the Cooldown Manager, the Adventure Guide, Mythic+ and item sets...")
     local steps = { { "cdm", StepCDM }, { "journal", StepJournal }, { "sets", StepSets } }
     for _, s in ipairs(steps) do
         local ok, e = pcall(s[2], out)
@@ -484,7 +484,7 @@ function GD.CaptureCatalogue(arg)
         C.recentFrom, C.recentHow = RecentFrom(fromArg)
         C.upper = C.testUpper or math.max(UPPER_MIN, C.maxID + TAIL)
         C.next = 1
-        Say(("aura catalogue: %d spells from current content; now reading spell names 1 to %d (a few seconds, out of combat)..."):format(C.nSeeds, C.upper))
+        Say(("aura catalog: %d spells from current content; now reading spell names 1 to %d (a few seconds, out of combat)..."):format(C.nSeeds, C.upper))
         ScanChunk(out, function()
             StepFacts(out, function() Finish(out) end)
         end)

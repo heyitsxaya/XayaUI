@@ -2462,7 +2462,7 @@ function ns.CharToolkit_UpdateButton()
 end
 if type(ns.RegisterLauncher) == "function" then
     ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
-        function() ns.CharToolkit_Toggle() end, function() return (panel and panel:IsShown()) and "on" or "off" end, order = 12,
+        function() ns.CharToolkit_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.42, her answer "No word at all"): no "on" / "off" for shown / hidden
         available = function() local c = Cfg(); return (c and c.enabled and c.panel) and true or false end })
 end
 function ns.CharToolkit_Apply()
@@ -2479,11 +2479,19 @@ function ns.CharToolkit_Apply()
         ev:SetScript("OnEvent", OnEvent)
     end
     ev:UnregisterAllEvents()
-    for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
-    for _, e in ipairs(UNIT_EVENTS) do
-        if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
+    -- (D17, V14) the panel's stat / unit events and the GCD read only while its "Show the panel" part is on; with it off, only what the
+    -- slot overlays need (while they are on) and the cache reset on a spec change / level up (the overlays and tooltip lines read it)
+    if c.panel then
+        for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
+        for _, e in ipairs(UNIT_EVENTS) do
+            if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
+        end
+        pcall(ev.RegisterEvent, ev, "SPELL_UPDATE_COOLDOWN")
+    else
+        pcall(ev.RegisterEvent, ev, "PLAYER_SPECIALIZATION_CHANGED")
+        pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
+        if c.overlays then for e in pairs(OVERLAY_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
     end
-    pcall(ev.RegisterEvent, ev, "SPELL_UPDATE_COOLDOWN")
     if not ownerHooked then
         local owner = Owner()
         if owner and owner.HookScript then
@@ -2561,6 +2569,9 @@ function ns.CharToolkit_SizeMode(mode)
 end
 
 ns.WhenReady(function() if Cfg() then ns.CharToolkit_Apply() end end)
+-- (audit QA walkthrough, D17) which of the toolkit's events are registered now; its settings, and Apply after changing them
+if ns.Provide then ns.Provide("charToolkitDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.CharToolkit_Apply() end,
+    Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end }) end
 
 -------------------------------------------------------------------------------
 -- Settings: QoL > Character Toolkit (a feature node; its parts Panel, Slot Overlays and Spell Math are nodes under it, and each

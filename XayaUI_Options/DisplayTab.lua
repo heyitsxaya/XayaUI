@@ -325,7 +325,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     local function nBars() return #bars() end
     local bst = {
         force = { type = "toggle", order = 1, width = "full", name = "Force on every bar in this group",
-            desc = "Makes every Bar cue in this group use this group's colour style. Off: each bar keeps its own; a choice below is copied to every bar once.",
+            desc = "Makes every Bar cue in this group use this group's color style. Off: each bar keeps its own; a choice below is copied to every bar once.",
             get = function() return forced() end,
             set = function(_, v)
                 if v and not ns.BAR_STYLE_LABEL[f.barStyle] then f.barStyle = styleNow() end
@@ -335,7 +335,7 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
         style = { type = "select", order = 2, width = "double",
             name = function()
                 local n = nBars()
-                return "Colour style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
+                return "Color style  |cff999999(" .. (forced() and "forced on " or "changes ") .. n .. " bar" .. (n == 1 and "" or "s") .. ")|r"
             end,
             values = ns.BAR_STYLE_LABEL, sorting = ns.BAR_STYLES,
             get = function() return styleNow() end,
@@ -447,8 +447,8 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             for i, d in ipairs(l) do local st = ns.BarCueSettings(d.visual).style; if i == 1 then first = st elseif st ~= first then return false end end
             return true
         end,
-        name = "|cff999999Differs between bars: Colour style. The control shows the first bar's style; a change makes them all the same.|r" }
-    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: colour style", 5.5, function() return nBars() > 0 end, bst)
+        name = "|cff999999Differs between bars: Color style. The control shows the first bar's style; a change makes them all the same.|r" }
+    args.barStyle = ns.GatedPane(f, "gdisp_barstyle", "Every bar: color style", 5.5, function() return nBars() > 0 end, bst)
 
     -- the three text elements, each its own section (what to change is the section you open, not a tick list)
     local STYLE = { { "font", "Font" }, { "size", "Text size" }, { "outline", "Outline" }, { "color", "Text color" }, { "place", "Placement" },
@@ -488,5 +488,44 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             hideZero = U.Tog(P, "hideZero", "Hide when zero", 4, on),
         }
     end)
+    -- Audit D43: Cancel in the color picker calls `set` with the color the swatch started from, which here is the FIRST display's color, and
+    -- the setter wrote it to every display: Cancel overwrote the others. Now the first change made while a picker is open keeps a copy of
+    -- every display's settings (and the group's forced bar colors); a `set` that brings back the start color (Cancel, or dragging back to
+    -- it) puts each display's own copy back instead. The copy is dropped once the picker is closed.
+    local pick
+    local function Picking() local P = rawget(_G, "ColorPickerFrame"); return (P and P.IsShown and P:IsShown()) and true or false end
+    local function Near(a, b) return math.abs((tonumber(a) or 1) - (tonumber(b) or 1)) < 0.0005 end
+    local function Same(x, y)
+        if type(x) ~= "table" or type(y) ~= "table" then return x == y end
+        for k, v in pairs(x) do if not Same(v, y[k]) then return false end end
+        for k in pairs(y) do if x[k] == nil then return false end end
+        return true
+    end
+    local function GuardColor(o)
+        local set, get = o.set, o.get
+        o.set = function(info, r, g, b, a)
+            if not pick or pick.o ~= o then
+                local s = { o = o, start = { get(info) }, vis = {}, barCustom = type(f.barCustom) == "table" and ns.Copy(f.barCustom) or nil }
+                for _, d in ipairs(list()) do s.vis[d] = ns.Copy(d.visual) end
+                pick = s
+            end
+            local s = pick
+            local st = s.start
+            if Near(st[1], r) and Near(st[2], g) and Near(st[3], b) and Near(st[4], a) then
+                for d, snap in pairs(s.vis) do
+                    local v = d.visual
+                    for k in pairs(v) do if snap[k] == nil then v[k] = nil end end
+                    for k, x in pairs(snap) do if not Same(v[k], x) then v[k] = (type(x) == "table") and ns.Copy(x) or x end end
+                end
+                f.barCustom = s.barCustom and ns.Copy(s.barCustom) or nil
+                on()
+            else
+                set(info, r, g, b, a)
+            end
+            if not Picking() then pick = nil end
+        end
+    end
+    local function GuardAll(t) for _, o in pairs(t or {}) do if type(o) == "table" then if o.type == "color" and o.set then GuardColor(o) elseif o.args then GuardAll(o.args) end end end end
+    GuardAll(args)
     return args
 end

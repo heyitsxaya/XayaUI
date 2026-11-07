@@ -9,6 +9,58 @@ local S = ns.ThemeShared
 local DB, T, floor, max, min = S.DB, S.T, S.floor, S.max, S.min
 
 -------------------------------------------------------------------------------
+-- Ask dialog (Options 0.6.69): one small window with up to three buttons, in the order given (left to right), so the choices read
+-- exactly as decided. Used for FA-4 / FA-13 (Xaya: "Ask first": switching or resetting throws your own colors away) and FA-8 (her
+-- answer for a name that is already saved: "Replace, Save As Copy, Cancel"). Esc and the last button close it doing nothing.
+-------------------------------------------------------------------------------
+local askDlg
+function T.Ask(text, buttons)   -- buttons = { { "Label", fn or nil }, ... } (up to 3; a nil fn just closes)
+    if not askDlg then
+        local f = CreateFrame("Frame", "XayaUIThemeAsk", UIParent, "BackdropTemplate")
+        f:SetSize(420, 130); f:SetPoint("CENTER"); f:SetFrameStrata("TOOLTIP"); f:EnableMouse(true)
+        if f.SetBackdrop then f:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 32, insets = { left = 11, right = 12, top = 12, bottom = 11 } }) end
+        f.text = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        f.text:SetPoint("TOP", 0, -24); f.text:SetWidth(370)
+        f.btns = {}
+        for i = 1, 3 do
+            local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+            b:SetSize(120, 24)
+            b:SetScript("OnClick", function(self) f:Hide(); local fn = self.fn; self.fn = nil; if fn then fn() end end)
+            if ns.FlatButton then ns.FlatButton(b, i == 1) end
+            f.btns[i] = b
+        end
+        if UISpecialFrames then tinsert(UISpecialFrames, "XayaUIThemeAsk") end
+        askDlg = f
+    end
+    local f = askDlg
+    f.text:SetText(text or "")
+    local n = math.min(3, #buttons)
+    local w, gap = 120, 8
+    local x0 = -((n * w + (n - 1) * gap) / 2) + w / 2
+    for i = 1, 3 do
+        local b = f.btns[i]
+        if i <= n then
+            b:SetText(buttons[i][1]); b.fn = buttons[i][2]
+            b:ClearAllPoints(); b:SetPoint("BOTTOM", f, "BOTTOM", x0 + (i - 1) * (w + gap), 20); b:Show()
+        else b.fn = nil; b:Hide() end
+    end
+    f:Show()
+    return f
+end
+-- run go now, or after "Discard" when your own colors would be thrown away (FA-4 / FA-13)
+local function AskDiscard(what, go)
+    if not T.UnsavedColors() then go(); return end
+    T.Ask(("Discard your custom colors? %s replaces the colors you set (save them first with a Name and Save to keep them)."):format(what),
+        { { "Discard", go }, { CANCEL or "Cancel" } })
+end
+-- a name that is already saved: Replace / Save As Copy / Cancel (FA-8)
+local function AskExisting(name, replace, copy)
+    T.Ask(('A theme called "%s" is already saved.'):format(name), { { "Replace", replace }, { "Save As Copy", copy }, { CANCEL or "Cancel" } })
+end
+T.AskDiscard, T.AskExisting = AskDiscard, AskExisting   -- (tests)
+
+-------------------------------------------------------------------------------
 -- Settings > Theme page (AceConfig args). Options.lua puts this under Settings.
 -------------------------------------------------------------------------------
 function T.BuildArgs(refresh)
@@ -44,9 +96,13 @@ function T.BuildArgs(refresh)
             return th.base
         end,
         set = function(_, v)
+            local th = DB(); if th and th.base == v then return end
             local n = v:match("^saved:(.+)$")
-            if n then T.Load(n) else T.SetBase(v, v == "class" and (DB() and DB().classPick) or nil) end
-            refresh()
+            if v == "custom" then T.SetBase(v); refresh(); return end   -- Custom keeps your colors: nothing to ask
+            AskDiscard(n and ("The saved theme '" .. n .. "'") or "Another theme", function()
+                if n then T.Load(n) else T.SetBase(v, v == "class" and (DB() and DB().classPick) or nil) end
+                refresh()
+            end)
         end }
     args.classPick = { type = "select", order = nx(), width = "double", name = "Class color source",
         desc = "Which class color drives the theme. Automatic uses the character you are playing.",
@@ -121,7 +177,7 @@ function T.BuildArgs(refresh)
         get = function() local th = DB(); return th and th.size or "M" end,
         set = function(_, v) T.SetSize(v); refresh() end }
     args.advanced = { type = "toggle", order = nx(), width = "full", name = "Advanced customization",
-        desc = "Offers more theme options: tab colours, tree bars and per-class colour overrides. Off by default.",
+        desc = "Offers more theme options: tab colors, tree bars and per-class color overrides. Off by default.",
         get = function() return T.Advanced() end,
         set = function(_, v)
             if not CueRulesDB then return end
@@ -156,9 +212,10 @@ function T.BuildArgs(refresh)
             end }
         end
     end
+    -- FA-13 (Options 0.6.69; Xaya: "Reword to Class colors (Recommended)"): it resets to Class colors, the theme a new install starts with
     args.resetPal = { type = "execute", order = nx(), width = "full", name = "Reset everything",
-        desc = "Back to the XUI default theme, game font, Medium size, and no class overrides.",
-        func = function() T.ResetAll(); refresh() end }
+        desc = "Back to Class colors (the starting theme), game font, Medium size, and no class overrides.",
+        func = function() AskDiscard("Reset everything", function() T.ResetAll(); refresh() end) end }
 
     -- class overrides
     local ov = { type = "group", order = nx(), name = "Class overrides", inline = true, args = {
@@ -197,7 +254,14 @@ function T.BuildArgs(refresh)
     local saveName = ""
     args.saveName = { type = "input", order = nx(), width = "normal", name = "Name", get = function() return saveName end, set = function(_, v) saveName = v end }
     args.save = { type = "execute", order = nx(), width = "half", name = "Save",
-        func = function() local ok, e = T.Save(saveName); say(ok and ("Saved '" .. saveName .. "'.") or e) end }
+        func = function()
+            local ok, e = T.Save(saveName)
+            if ok then say("Saved '" .. e .. "'."); return end
+            if e ~= "exists" then say(e); return end
+            local n = T.CheckName(saveName)
+            AskExisting(n, function() local ok2, n2 = T.Save(n, true); say(ok2 and ("Replaced '" .. n2 .. "'.") or n2) end,
+                function() local c = T.CopyName(n); local ok2, n2 = T.Save(c); say(ok2 and ("Saved as '" .. n2 .. "'.") or n2) end)
+        end }
     args.delete = { type = "execute", order = nx(), width = "half", name = "Delete saved",
         desc = "Deletes the saved theme with the name typed in the box.",
         func = function() if CueRulesDB.themes[saveName] then T.Delete(saveName); say("Deleted '" .. saveName .. "'.") else say("No saved theme called '" .. saveName .. "'.") end end }
@@ -210,8 +274,21 @@ function T.BuildArgs(refresh)
     args.import = { type = "execute", order = nx(), width = "normal", name = "Import theme from box",
         desc = "Applies the pasted theme (and saves it under the Name above if one is typed). Theme strings contain colors, a font name, and a size only.",
         func = function()
-            local ok, e = T.Import(exportText, saveName ~= "" and saveName or nil)
-            say(ok and "Theme imported." or e)
+            local name = saveName ~= "" and saveName or nil
+            if name then   -- audit D5: the name is checked before anything changes
+                local n, why = T.CheckName(name); if not n then say(why); return end
+                name = n
+            end
+            local data, err = T.Decode(exportText); if not data then say(err); return end
+            local function run(asName, replace)
+                AskDiscard("Importing this theme", function()
+                    local ok, e = T.Import(exportText, asName, replace)
+                    say(ok and (asName and ("Theme imported and saved as '" .. asName .. "'.") or "Theme imported.") or e)
+                end)
+            end
+            if name and T.SavedExists(name) then
+                AskExisting(name, function() run(name, true) end, function() run(T.CopyName(name)) end)
+            else run(name) end
         end }
     args.status = { type = "description", order = nx(), width = "full", fontSize = "medium", name = function() return msg end }
     return args

@@ -498,6 +498,8 @@ function P.OpenHelp() P.Open("info", "help") end
 function P.Close() if W then W:Hide() end end
 function P.IsShown() return W ~= nil and W:IsShown() end
 function P.Frame() return W end
+-- (Options 0.6.69) the Info pane's texts for XayaUI Dev Assist's spelling walkthrough (QAWalks-audit.lua), through XayaUI's service list
+if ns.Provide then ns.Provide("infoPaneData", { Data = function() return ns.InfoPaneData end }) end
 
 -- (Options 0.6.64) the pane through core's service list (Modules.lua ns.Provide), for XayaUI Dev Assist's QA walkthrough of the credits
 -- page (QAWalks-statcalc.lua, REQUEST-LOG B6): open a section, read what the last render placed (W.recs), close it. Exists only once

@@ -62,7 +62,12 @@ local function Points(o)
     return #out > 0 and table.concat(out, " ") or "none"
 end
 
+-- audit D39 (Dev Assist 0.7.19): a frame's own text can be a character name (a whisper tab is titled with the other player's name), and
+-- the saved lines go into XayaUI.lua, the file players send. So text is only added for the lines shown in chat (ns.PrintPrivate), never
+-- for the saved ones: withText is on only while those shown lines are built.
+local withText = false
 local function Texts(o)                                 -- visible text on the frame's own text regions (short; used to name buttons)
+    if not withText then return "" end
     local out = {}
     local regs = { try(o.GetRegions, o) }
     for _, r in ipairs(regs) do
@@ -215,6 +220,7 @@ local function Run()
     end
 
     local topLeft = {}                                  -- shown frames whose first anchor puts them in the top-left 420x420 of the screen
+    local topLeftShown = {}                             -- the same, with their own text, for the chat output only (never saved)
     local anchored = {}                                 -- frames with an anchor on a chat object
     local total = 0
     if type(EnumerateFrames) == "function" and type(sw) == "number" and type(sh) == "number" then
@@ -233,7 +239,8 @@ local function Run()
             if not secret(shown) and shown == true then
                 local l, t = try(f.GetLeft, f), try(f.GetTop, f)
                 if type(l) == "number" and type(t) == "number" and not secret(l) and not secret(t) and l < 420 and t > sh - 420 then
-                    topLeft[#topLeft + 1] = Describe(f) .. Texts(f)
+                    topLeft[#topLeft + 1] = Describe(f)
+                    withText = true; topLeftShown[#topLeftShown + 1] = Describe(f) .. Texts(f); withText = false
                 end
             end
             f = EnumerateFrames(f)
@@ -250,7 +257,7 @@ local function Run()
 
     CueRulesDB = CueRulesDB or {}
     CueRulesDB.chatProbe = { when = date("%Y-%m-%d %H:%M:%S"), lines = lines }
-    return #lines, topLeft
+    return #lines, topLeftShown
 end
 
 -- /xui debug chatprobe

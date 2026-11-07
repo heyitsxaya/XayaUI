@@ -1385,9 +1385,9 @@ function ns.BuildCharReskinPage(Notify)
     local function Col(t) if type(t) == "table" then return t[1], t[2], t[3], 1 end end
     local listArgs = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), coloured. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and colour; for each group: its heading's name and colour. An empty name or \"Default colour\" gives the Stat Calculator's back." },
+            name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), colored. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and color; for each group: its heading's name and color. An empty name or \"Default color\" gives the Stat Calculator's back." },
         reset = { type = "execute", order = 1, name = "Reset the list", disabled = listOff,
-            desc = "Shows every stat again in Character Stats' order as a percent, and resets every name and colour.",
+            desc = "Shows every stat again in Character Stats' order as a percent, and resets every name and color.",
             func = function() local c = C(); for _, k in ipairs(LIST_TABLES) do c[k] = {} end; Changed() end },
     }
     for gi, g in ipairs(groups) do
@@ -1396,10 +1396,10 @@ function ns.BuildCharReskinPage(Notify)
             args = {
                 name = { type = "input", order = 1, name = "Heading", disabled = listOff, desc = "The heading's text (empty: '" .. g.label .. "').",
                     get = function() return C().groupName[gk] or "" end, set = function(_, v) v = tostring(v or ""); C().groupName[gk] = (v ~= "") and v or nil; Changed() end },
-                color = { type = "color", order = 2, name = "Colour", disabled = listOff,
+                color = { type = "color", order = 2, name = "Color", disabled = listOff,
                     get = function() local t = C().groupColor[gk]; if t then return Col(t) end; local l = TC("xui-label", "text", { 1, 0.82, 0, 1 }); return l[1], l[2], l[3], 1 end,
                     set = function(_, r, gg, b) C().groupColor[gk] = { r, gg, b }; Changed() end },
-                plain = { type = "execute", order = 3, name = "Default colour", width = "half", disabled = listOff,
+                plain = { type = "execute", order = 3, name = "Default color", width = "half", disabled = listOff,
                     func = function() C().groupColor[gk] = nil; Changed() end },
             } }
         for i = 1, #g.stats do
@@ -1430,7 +1430,7 @@ function ns.BuildCharReskinPage(Notify)
                     name = { type = "input", order = 5, name = "Name", disabled = listOff,
                         get = function() local k = Key(); return (k and C().statName[k]) or "" end,
                         set = function(_, v) local k = Key(); if k then v = tostring(v or ""); C().statName[k] = (v ~= "") and v or nil; Changed() end end },
-                    color = { type = "color", order = 6, name = "Colour", disabled = listOff,
+                    color = { type = "color", order = 6, name = "Color", disabled = listOff,
                         get = function()
                             local k, it = Key(), Item()
                             local t = k and C().statColor[k]
@@ -1439,7 +1439,7 @@ function ns.BuildCharReskinPage(Notify)
                             return d[1], d[2], d[3], 1
                         end,
                         set = function(_, r, gg, b) local k = Key(); if k then C().statColor[k] = { r, gg, b }; Changed() end end },
-                    plain = { type = "execute", order = 7, name = "Default colour", width = "half", disabled = listOff,
+                    plain = { type = "execute", order = 7, name = "Default color", width = "half", disabled = listOff,
                         func = function() local k = Key(); if k then C().statColor[k] = nil; Changed() end end },
                 } }
         end
@@ -1454,12 +1454,12 @@ function ns.BuildCharReskinPage(Notify)
         args = {
             statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot coloured by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
-            chrome = T("chrome", 2, "Clean window", "Removes Blizzard's frame art for a thin border and theme colours. Off keeps Blizzard's art over the solid background.", "full", isOff),
-            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, coloured by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
+                name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot colored by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
+            chrome = T("chrome", 2, "Clean window", "Removes Blizzard's frame art for a thin border and theme colors. Off keeps Blizzard's art over the solid background.", "full", isOff),
+            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
             enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
             gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),
-            stats = T("stats", 6, "Stat list", "Colours the stat list with the theme, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
+            stats = T("stats", 6, "Stat list", "Colors the stat list with the theme, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Widens the Character tab so the enchant and gem lines sit between the slots and the model. Changes out of combat only.", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "Sets how much wider than Blizzard's window, in pixels (default 42). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
@@ -1467,7 +1467,7 @@ function ns.BuildCharReskinPage(Notify)
             tallPx = R("tallPx", 8.5, "Extra height", "Sets how much taller than Blizzard's window, in pixels (default 0); the slots spread out to fill it. Changes out of combat only.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
-            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line of the Stat Calculator in the stats pane. Pick what shows, the order, names and colours on its Stat list page.", "full", isOff),
+            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line of the Stat Calculator in the stats pane. Pick what shows, the order, names and colors on its Stat list page.", "full", isOff),
         },
     }
 end
