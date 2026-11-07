@@ -55,7 +55,7 @@ end
 
 C.Part("whisperSelect", function(s) return s.whisperSelect end,
     function()
-        C.HookOnce("whispers:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
+        C.HookOnce("whisperSelect:open", "FCF_OpenTemporaryWindow", nil, function(chatType)
             if not C.on.whisperSelect then return end
             if chatType == "WHISPER" or chatType == "BN_WHISPER" then opened = { t = GetTime(), kind = chatType } end
         end)

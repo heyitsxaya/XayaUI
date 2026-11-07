@@ -144,7 +144,7 @@ ded1de1be47477a60c0740ef7769629d  XayaUI_Bonus/Media/UI/Notepad/src/plus.svg
 ceb797d1b4fa5f81e39fe65e4420e315  XayaUI_Chat/Bar.lua
 10cd194aab84304a023dbf52c19d35f8  XayaUI_Chat/Core.lua
 ed794d04c6709f11bc22bddee51ac7f5  XayaUI_Chat/Fade.lua
-54deb3b8306a99fd555201d2f3882725  XayaUI_Chat/Frame.lua
+77ad5c43f2be441f47fc48fa230aab76  XayaUI_Chat/Frame.lua
 600c24a2ee533d80917bef683542d51c  XayaUI_Chat/History.lua
 152da2447043ebfd8f38a76eefe54dc7  XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f258d41d39bb1bd3a2f2c8cbac1c9a14  XayaUI_Chat/Locate.lua
@@ -154,7 +154,7 @@ cd477f33670cb3271c45ad04e04ddfb3  XayaUI_Chat/Options.lua
 271385b46e5eb6735ddf1295454bc596  XayaUI_Chat/Scroll.lua
 a5942eeea7535b00862d884eecdf2910  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
-bb02fc90563f7db89c2a6d8e1eb9b032  XayaUI_Chat/Whispers.lua
+0b25e4d4acccd35a4855b2c7fe691f0d  XayaUI_Chat/Whispers.lua
 2e96a0bb539563ab61fae828a77f47b1  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2927a47181fd6886394e1b61d1fc0faf  XayaUI_DevAssist/AuraCatalogue.lua
@@ -559,7 +559,7 @@ e7718e351b8d6138ae5c830f5185550e  debug-log/2026-11-06-2230-c1-spec-aura-learner
 064774082fccf68102056cb6ecc1bbd7  debug-log/2026-11-06-2256-panel-command-text-chat-0.6.27.md
 91c8d3bbc459636840aa4e6429ee7d65  debug-log/2026-11-06-2306-bar-cues-merge-main-relabel-core-0.6.58-options-0.6.59-bonus-0.6.20.md
 a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-devassist-0.7.9.md
-8b4c9081a5ca8e7cf894e4a88070911a  debug-log/2026-11-07-0620-chat-246-layout-whisper-switch-position-box-chat-0.6.31.md
+56cd3d17bdd9e0e630b7c9fdbbb7d363  debug-log/2026-11-07-0620-chat-246-layout-whisper-switch-position-box-chat-0.6.31.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 56629bf95bea221ca73bee94b2567d48  docs/QA-CHECKLIST.md
 016d704744f94668de6d3e58e201e3ce  docs/README-INGAME.md
@@ -700,7 +700,7 @@ a8e5c2bbdb81d4bb1a3dffb7e6c05a9c  tests/char_toolkit_run.py
 c47e8040ad73d44e4ddcb8295311a834  tests/chat_246_whisper_run.py
 b5fba1aa0deaaf3049d15fa46843378c  tests/chat_collapse_bar_run.py
 4632ee7a60dfe31993382bead4ad4837  tests/chat_data_panel_side_run.py
-fb25f035093a928c60f1e054b21dacee  tests/chat_off_costs_nothing_run.py
+4cc628620c6523fb5df7c1d6f1cdba15  tests/chat_off_costs_nothing_run.py
 71d3526a8ec4eb48720197b41d1b8ccd  tests/chat_pieces_run.py
 3fd648b071f8866d752eae9fba16bdfa  tests/chat_run.py
 48559d62f35d5c11d3d04547b997b458  tests/chat_tab_align_run.py

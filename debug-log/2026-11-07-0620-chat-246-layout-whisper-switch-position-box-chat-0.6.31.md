@@ -38,7 +38,12 @@ is the game's own behaviour for Both, not a XayaUI fault; nothing in XayaUI_Chat
 Callers of the moved option keys: tests/chat_run.py (part names; updated to the new structure), tests/reskin_tab_run.py (OpenSettings("look")
 now lands on General), Bar.lua / Core.lua OpenSettings("bar") unchanged. tests/chat_world.lua loads Whispers.lua.
 
-## Tests
+## Tests (and fixes from the first full run)
+- The hook key "whispers:open" was already Dev Assist's (its /xui chat whispers counter, CoreDebug.lua:738): with the same key, whichever loaded
+  first kept the hook and the other was never placed. Whispers.lua now uses "whisperSelect:open" (found by tests/chat_pieces_run.py).
+- The position box's arrows get XayaUI's flat button look (tests/flat_buttons_run.py).
+- tests/chat_off_costs_nothing_run.py: the new switch is off in its "every switch off" setup; new checks B4c / B4d (on: only the two sent-whisper
+  events; off: none).
 tests/chat_246_whisper_run.py (new), tests/qa_walks_chat_run.py (extended), tests/chat_run.py, tests/reskin_tab_run.py; full suite: see commit.
 
 ## Not verified

@@ -600,6 +600,7 @@ local function BuildPositionBox()
     local function Arrow(name, dx, dy, point, ox, oy)
         local b = CreateFrame("Button", nil, posBox, "UIPanelButtonTemplate")
         b:SetSize(24, 20); b:SetText(name); b:SetPoint(point, posBox, point, ox, oy)
+        if ns.FlatButton then ns.FlatButton(b) end   -- (#286: XayaUI's flat look)
         b:SetScript("OnClick", function()
             local s = S(); if not s then return end
             local k = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
