@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 12 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 13 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -490,6 +490,23 @@ Not tested in game.
 - Also visible: the window's narrowest width now follows the dropdowns of the rules you have opened, not every rule's (question Q-PERF-8 in
   the QA flow).
 - Walkthrough J31, "Performance: a click with a rule open", in `/xui dev qa`, reads the window's own redraw time.
+
+## 13. XayaUI Nameplates (new addon; nameplates session; main 72a7512, XayaUI_Nameplates 0.2.1)
+
+Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nameplates: target colour" and "Nameplates: match my Plater settings" (checklist K1 to K5).
+
+- **A new addon, "XayaUI Nameplates", disabled by default** in the game's AddOns list. To try it: tick it, disable Plater, `/reload`. It works on
+  Blizzard's own nameplates and shows nothing while Plater replaces them.
+- **Target colour:** your target's health bar turns teal (as in your Plater "Current Target Color" mod). Pick another colour or press Teal in
+  `/xui` > QoL > Nameplates; the row's tick box switches it off.
+- **Match my Plater settings** (same page): one button sets 12 of Blizzard's own nameplate options to what your Plater profile used: health
+  percent and amount, elite / rare icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on the
+  bar, threat flash off, enemy debuffs and crowd control. Out of combat only. "Put back" restores your earlier options.
+- **`/xui nameplates`** says what is on and whether your target's plate was found (and says so if Plater is loaded).
+- **Not yet:** Aura Reorder (sorting enemy auras by name is impossible in Mythic+ combat), your exact sizes and textures, and spell- or
+  NPC-keyed Plater scripts (impossible in Mythic+ for any addon). These are questions NP-Q1 to NP-Q8 in the QA question flow.
+- *Why:* cost. The addon only works when the target changes or a plate appears (no per-frame or per-tick work). The real comparison with
+  Plater is the perf session's A/B/C measurement, which has not been run.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
