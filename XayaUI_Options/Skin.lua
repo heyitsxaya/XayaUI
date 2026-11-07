@@ -2100,9 +2100,15 @@ end
 -- window minimum width: the widest option of ANY dropdown in the addon (scanned from the options table once per window) plus the
 -- fixed chrome around the rule pane. The window cannot be dragged narrower; the collapse toggle still shrinks it.
 local function ScanDropdowns()
-    if not ns.BuildOptionsTable then return 0 end
-    local ok, root = pcall(ns.BuildOptionsTable)
-    if not ok or type(root) ~= "table" then return 0 end
+    -- (Options 0.6.68, REQUEST-LOG A15 P-16) the tree the window was just drawn from; a build of its own only when none is kept (it was a
+    -- full extra build on every window's first decoration: ~450 ms and ~160 MB in the stand-in with 313 rules)
+    local root = ns.OptionsApi and ns.OptionsApi.LastTree and ns.OptionsApi.LastTree()
+    if type(root) ~= "table" then
+        if not ns.BuildOptionsTable then return 0 end
+        local ok, r = pcall(ns.BuildOptionsTable)
+        if not ok or type(r) ~= "table" then return 0 end
+        root = r
+    end
     local seen, mx = {}, 0
     local function walk(g, depth)
         if type(g) ~= "table" or seen[g] or depth > 30 then return end

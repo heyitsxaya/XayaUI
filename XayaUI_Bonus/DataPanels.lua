@@ -222,7 +222,7 @@ local function Build(key)
             if g.blockCombatClick and InCombat() then return end
             if b == "RightButton" then OpenSettings() end
         end)
-        local function ShowTip(self)
+        local function ShowTip(self, fresh)   -- fresh: the first show on hover (reads addon memory once; A15 P-14)
             local cfg = Cfg(key)
             if not cfg then return end
             local d = DT.by[cfg["slot" .. i] or "NONE"] or DT.by.NONE
@@ -236,7 +236,7 @@ local function Build(key)
             GameTooltip:SetText(lines[1] or "")
             for n = 2, #lines do GameTooltip:AddLine(lines[n], 1, 1, 1) end
             if d.usage and B.AddUsage then
-                local ok, err = pcall(B.AddUsage, GameTooltip, 8)
+                local ok, err = pcall(B.AddUsage, GameTooltip, 8, fresh)
                 if not ok then GameTooltip:AddLine("Addon usage unavailable: " .. tostring(err), 1, 0.4, 0.4) end
             end
             GameTooltip:AddLine("Right-click: panel settings", 0.6, 0.6, 0.6)
@@ -245,7 +245,7 @@ local function Build(key)
         s:SetScript("OnEnter", function(self)
             local cfg, g = Cfg(key), (DB() and DB().general or {})
             if not cfg or (g.blockCombatHover and InCombat()) then return end
-            ShowTip(self)
+            ShowTip(self, true)
             local d = DT.by[cfg["slot" .. i] or "NONE"] or DT.by.NONE
             if d.usage then   -- the CPU numbers move: redraw once a second while the mouse is on the block
                 local t = 0

@@ -69,6 +69,7 @@ C.DEFAULTS = {
     links = true, linkR = 0.4, linkG = 0.75, linkB = 1,
     histOn = true, histSize = 300, histConsole = true, histWhispers = "game",   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
+    whisperSelect = true,   -- (Chat 0.6.31, CHATREV-10) switch to a whisper tab you start, also with New Whispers = Both (Whispers.lua)
 }
 C.MAX_SLOTS = 8
 
@@ -487,6 +488,7 @@ end
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.Chat_OnDBReady)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
-ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end })
+ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
+    Options = function() return ns.BuildChatTab and ns.BuildChatTab(function() end) end })   -- (Chat 0.6.31) the settings tree, for the QA walkthrough
 ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Data Panel settings)")

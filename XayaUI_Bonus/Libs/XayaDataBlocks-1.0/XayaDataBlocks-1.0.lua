@@ -7,7 +7,7 @@
 -- one copy running: the first one loaded, or a newer MINOR if the other addon carries a newer file. Neither addon needs the other.
 -- Bump MINOR whenever this file changes (the sync checks that both copies are identical). Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
-local MAJOR, MINOR = "XayaDataBlocks-1.0", 1
+local MAJOR, MINOR = "XayaDataBlocks-1.0", 2
 local B = LibStub:NewLibrary(MAJOR, MINOR)
 if not B then return end   -- this copy or a newer one is already running
 
@@ -19,8 +19,11 @@ B.DEF = { gapL = 10, gapR = 10, fill = false, align = "CENTER", scale = 100,
 -------------------------------------------------------------------------------
 -- Addon usage for the FPS / latency tooltips: the same numbers the game's Addon List shows (C_AddOnProfiler: current / average / peak
 -- CPU as a share of the whole application, top addons by recent CPU) plus memory per addon (GetAddOnMemoryUsage, in KB).
--- B.UsageLines(topN) -> a list of tooltip lines (plain strings; a line starting "#" is a heading). Never errors: a missing API just
--- leaves its section out. Memory is a costly call, so it is re-read at most every 15 s (the game's own Addon List does the same).
+-- B.UsageLines(topN, readMemory) -> a list of tooltip lines (plain strings; a line starting "#" is a heading). Never errors: a missing
+-- API just leaves its section out. Memory (UpdateAddOnMemoryUsage: every addon's memory) is a costly call booked to the addon that
+-- makes it, so it is read only when readMemory is true (the tooltip's first show on hover), or when nothing was read yet (MINOR 2,
+-- REQUEST-LOG A15 P-14: her idle tooltip showed XayaUI_Chat at 9% "now" only while hovered; it was re-read every 15 s while hovered).
+-- The once-a-second redraws keep refreshing the cheap CPU numbers. The block ends with a grey line saying the reading has a cost.
 -------------------------------------------------------------------------------
 local issecret = _G.issecretvalue or function() return false end
 local function Number(v) v = tonumber(v); if v == nil or issecret(v) then return nil end return v end
@@ -31,7 +34,7 @@ end
 local function Mem(kb) if kb >= 1024 then return ("%.1f MB"):format(kb / 1024) end return ("%.0f KB"):format(kb) end
 local memCache, memAt
 
-function B.UsageLines(topN)
+function B.UsageLines(topN, readMemory)
     topN = math.max(1, math.min(15, tonumber(topN) or 8))
     local out = { "#AddOn usage" }
     local prof = _G.C_AddOnProfiler
@@ -72,8 +75,9 @@ function B.UsageLines(topN)
     if _G.GetAddOnMemoryUsage and _G.UpdateAddOnMemoryUsage and C_AddOns and C_AddOns.GetNumAddOns then
         pcall(function()
             local now = GetTime()
-            if not memCache or not memAt or now - memAt > 15 then
+            if not memCache or not memAt or (readMemory and now - memAt > 1) then
                 UpdateAddOnMemoryUsage()
+                B.memReads = (B.memReads or 0) + 1   -- (counted for Dev Assist walkthrough J25)
                 local list, total = {}, 0
                 for i = 1, C_AddOns.GetNumAddOns() do
                     local kb = Number(GetAddOnMemoryUsage(i))
@@ -99,11 +103,12 @@ function B.UsageLines(topN)
 end
 
 -- fills the game tooltip with `head` lines, then the usage lines; "#..." lines are gold headings
-function B.AddUsage(tooltip, topN)
+function B.AddUsage(tooltip, topN, readMemory)
     tooltip:AddLine(" ")
-    for _, l in ipairs(B.UsageLines(topN)) do
+    for _, l in ipairs(B.UsageLines(topN, readMemory)) do
         if l:sub(1, 1) == "#" then tooltip:AddLine(l:sub(2), 1, 0.82, 0) else tooltip:AddLine(l, 1, 1, 1) end
     end
+    tooltip:AddLine("Includes the cost of reading these numbers.", 0.6, 0.6, 0.6, true)
 end
 
 -- a slot: button with a background texture, a mouse-over highlight and a text. The caller adds its own scripts.
