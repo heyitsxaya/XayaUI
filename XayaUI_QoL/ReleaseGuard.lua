@@ -28,7 +28,7 @@ local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "W
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
     load = "raid", index = 0 }
 local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
--- (QoL 0.7.37; REQUEST-LOG UI-58, Xaya: "There also should not be an everywhere button") raids, or raids and dungeons; a saved
+-- (QoL 0.7.39; REQUEST-LOG UI-58, Xaya: "There also should not be an everywhere button") raids, or raids and dungeons; a saved
 -- "all" (Everywhere, QoL 0.7.31 to 0.7.36) becomes the default, raids only (Cfg below)
 local LOADS = { raid = "Raids only", group = "Raids and dungeons" }
 
@@ -92,7 +92,7 @@ end
 local function Build()
     if box then return box end
     box = CreateFrame("Button", "XayaUIReleaseGuard", UIParent)
-    -- (QoL 0.7.37; REQUEST-LOG UI-57, Insivius: "Release guard doesn't seem to work outside of instances") one strata above the game's
+    -- (QoL 0.7.39; REQUEST-LOG UI-57, Insivius: "Release guard doesn't seem to work outside of instances") one strata above the game's
     -- dialogs: StaticPopup_OnShow raises the death window to the top of the DIALOG strata (Blizzard_StaticPopup/StaticPopup.lua:582,
     -- dialog:Raise()), and a frame level set beside it does not survive every raise, so in DIALOG the box could sit behind the window.
     -- INFERENCE (not seen in the game): the cause is that layering; `/xui releaseguard` reports it after a death.
@@ -137,6 +137,10 @@ local function Cover(dialog)
     end
 end
 local function FindDeath() return type(StaticPopup_FindVisible) == "function" and StaticPopup_FindVisible("DEATH") or nil end
+-- (QoL 0.7.39; standing rule V21: every change has an in-game QA walkthrough) read-only state for Dev Assist's walkthrough
+-- (XayaUI_DevAssist/QAWalks-display.lua), reached through core's services, never by name
+if ns.Provide then ns.Provide("releaseGuard", { Cfg = function() return Cfg() end, Loads = function() return LOADS end,
+    State = function() return state end, Box = function() return box end, Death = function() return FindDeath() end }) end
 
 local function OnEvent(_, event)
     local c = Cfg()

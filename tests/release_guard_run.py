@@ -99,7 +99,7 @@ die()
 local b = box() or mk("Button")
 checkp("dead in a raid: a black box over the DEATH window's Release button (its size and place), above the window", function()
   return b and b.shown and b.allPoints == BUTTON1 and b.bg.color and b.bg.color[1] == 0 and b.bg.color[4] == 1 end)
--- (QoL 0.7.37, UI-57: "Release guard doesn't seem to work outside of instances") the game raises the death window to the top of the
+-- (QoL 0.7.39, UI-57: "Release guard doesn't seem to work outside of instances") the game raises the death window to the top of the
 -- DIALOG strata when it shows (StaticPopup_OnShow: dialog:Raise()); a box in that strata can end up behind it. The box is one strata up.
 checkp("  ...in the strata above the game's dialogs (FULLSCREEN_DIALOG), so the window raising itself cannot cover it (UI-57)", function()
   return b.strata == "FULLSCREEN_DIALOG", b.strata end)
@@ -140,7 +140,7 @@ checkp("  ...set to raids and dungeons: the box shows", function() return b.show
 DIALOG:Hide(); INST = { false, "none" }; die()
 checkp("  ...outside an instance: no box", function() return not b.shown end)
 DIALOG:Hide()
--- (QoL 0.7.37; UI-58, Xaya: "There also should not be an everywhere button")
+-- (QoL 0.7.39; UI-58, Xaya: "There also should not be an everywhere button")
 c.load = "all"; local c2 = ns.ReleaseGuard_Cfg()
 checkp("no Everywhere: a saved Everywhere becomes raids only (the default); outside an instance: no box", function()
   die(); local ok = c2.load == "raid" and not b.shown; DIALOG:Hide(); return ok, c2.load end)

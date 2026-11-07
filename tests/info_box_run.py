@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The page info icon (core 0.6.59, Bonus 0.6.21; REQUEST-LOG UI-53, her answers to the tooltip redesign UI-51: section-wide text
+"""The page info icon (core 0.6.61, Bonus 0.6.24; REQUEST-LOG UI-53, her answers to the tooltip redesign UI-51: section-wide text
 "isolated to an info icon that opens/closes a description box -- try this out for one text-heavy segment and confirm POC before
 proceeding for all"; tooltips "Up to two sentences", "Title + description"). The trial page: Bonus Features > Utilities > Calculator.
 Checks, on the real addons in the stand-in game: the page shows a short summary (at most two sentences) and an info icon with no name

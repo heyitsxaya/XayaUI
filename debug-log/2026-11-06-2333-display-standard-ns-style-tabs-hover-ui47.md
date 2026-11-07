@@ -1,4 +1,4 @@
-# Display standard: ns.Style, the Rules / section tab rows, switch hovers, off pages, group boxes, half-width inputs (core 0.6.59, Options 0.6.60, QoL 0.7.37, Bonus 0.6.21, Chat 0.6.28, Reskin 0.6.7)
+# Display standard: ns.Style, the Rules / section tab rows, switch hovers, off pages, group boxes, half-width inputs (core 0.6.61, Options 0.6.63, QoL 0.7.39, Bonus 0.6.24, Chat 0.6.30, Reskin 0.6.7)
 Session 014bN6tV7oStjTuVPEJbytBJ, branch `claude/ui-bugs-focused`. Nothing here has run in the game.
 
 ## Requests (verbatim in docs/process/REQUEST-LOG.md)

@@ -1,4 +1,4 @@
-# Stat list labels: GCD, Movement Speed, Critical Strike Effectiveness (XayaUI_QoL 0.7.37)
+# Stat list labels: GCD, Movement Speed, Critical Strike Effectiveness (XayaUI_QoL 0.7.39)
 Session 014bN6tV7oStjTuVPEJbytBJ, branch `claude/ui-bugs-focused`. Nothing here has run in the game.
 
 ## Request

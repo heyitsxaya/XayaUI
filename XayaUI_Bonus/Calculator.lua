@@ -354,7 +354,7 @@ function ns.BuildCalculatorPage()
         open = { type = "execute", order = 3, name = "Open calculator", func = function() ns.Calculator_Open() end,
             disabled = function() return not On() end },
     } }
-    -- (Bonus 0.6.21; REQUEST-LOG UI-53, the trial page for her "info icon that opens/closes a description box"): the summary with
+    -- (Bonus 0.6.24; REQUEST-LOG UI-53, the trial page for her "info icon that opens/closes a description box"): the summary with
     -- the icon; the three paragraphs above in the box it opens
     return ns.InfoBox and ns.InfoBox(page, "bonus.calculator", "A small calculator: a window with a typed line and a keypad. Open it with the button below or /calc.",
         { "about", "reads", "how" }) or page

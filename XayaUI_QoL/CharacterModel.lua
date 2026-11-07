@@ -904,7 +904,7 @@ local function OffenseSections(ctx, out)
     out[#out + 1] = wp
 
     local tm = { key = "timing", title = "Timing and resources", items = {} }
-    -- (QoL 0.7.37; UI-62 "GCD"; UI-63 / UI-64: the standard rule, CM.GcdFor, with the live reading as a check)
+    -- (QoL 0.7.39; UI-62 "GCD"; UI-63 / UI-64: the standard rule, CM.GcdFor, with the live reading as a check)
     it = Item("gcd", "GCD")
     local g = CM.gcd
     do
@@ -981,7 +981,7 @@ function CM.ReadGCD()
     return false
 end
 
--- The standard GCD calculation (QoL 0.7.37; REQUEST-LOG UI-63 / UI-64; Xaya: "GCD is generally universal in my understanding and is
+-- The standard GCD calculation (QoL 0.7.39; REQUEST-LOG UI-63 / UI-64; Xaya: "GCD is generally universal in my understanding and is
 -- modified by haste except for energy-resource classes ... If so, this should be a standardized calculation", her answer "Formula +
 -- live check"). Research, with sources: docs/reference/GCD-RESEARCH-2026-11-07.md. Most GCDs are 1.5 s, shortened by haste as a cast
 -- time is (1.5 / (1 + haste)), never below 0.75 s (warcraft.wiki.gg "Global Cooldown" and "Haste"); energy melee have a fixed 1.0 s that
@@ -1018,6 +1018,10 @@ function CM.GcdFor(haste)
     if not num(haste) then return nil end
     return math.max(CM.GCD_FLOOR, base / (1 + haste / 100))
 end
+-- (QoL 0.7.39; standing rule V21) read-only for Dev Assist's QA walkthrough (QAWalks-display.lua), through core's services
+if ns.Provide then ns.Provide("statModel", { GcdRule = function() return CM.GcdRule() end, GcdFor = function(h) return CM.GcdFor(h) end,
+    Live = function() return CM.gcd, CM.gcdHidden end,
+    Model = function(tab) return ns.CharToolkit_Model and ns.CharToolkit_Model(tab) or nil end }) end
 
 -------------------------------------------------------------------------------
 -- Gear: per slot (one reader for the Gear tab and the slot overlays), totals, durability and repair
@@ -2949,7 +2953,7 @@ local function StatMapSections(ctx, out)
     for _, it in ipairs(PowerItems(ptCur)) do Add(it) end
     local g = CM.gcd
     do
-        -- (QoL 0.7.37; UI-62: "GCD"; UI-63 / UI-64, her answer "Formula + live check") the GCD by the standard rule (CM.GcdRule /
+        -- (QoL 0.7.39; UI-62: "GCD"; UI-63 / UI-64, her answer "Formula + live check") the GCD by the standard rule (CM.GcdRule /
         -- CM.GcdFor) at your haste now (and with your typed numbers), the rule it follows, and the live reading as a check
         local it = Item("map_gcd", "GCD")
         it.bigPairs = true
@@ -3126,7 +3130,7 @@ local function StatMapSections(ctx, out)
         Add(dmg)
     end
     do
-        local ce = Item("map_critfx", "Critical Strike Effectiveness")   -- (QoL 0.7.37; UI-62, Xaya: "title cased like every other line")
+        local ce = Item("map_critfx", "Critical Strike Effectiveness")   -- (QoL 0.7.39; UI-62, Xaya: "title cased like every other line")
         ce.bigPairs = true
         local total, src = CritEffect()
         if total == nil then NotGiven(ce)
@@ -3265,7 +3269,7 @@ local function StatMapSections(ctx, out)
     end
     if hst then
         Add(MapRating(ctx, hst, "haste", function(it, src, w)
-            -- (QoL 0.7.37; UI-62 / UI-63 / UI-64) the GCD by the standard rule, now and with your typed haste
+            -- (QoL 0.7.39; UI-62 / UI-63 / UI-64) the GCD by the standard rule, now and with your typed haste
             do
                 local _, hasted = CM.GcdRule()
                 local gNow = CM.GcdFor(h0)

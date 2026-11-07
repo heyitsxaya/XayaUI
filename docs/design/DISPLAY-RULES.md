@@ -79,10 +79,10 @@ answer moves it to section A.
 
 | # | Display type | What differs today | Proposal | Status |
 |---|---|---|---|---|
-| G1 | Section tabs inside a page (third level, e.g. Shopping List: Your defaults / History) | small Blizzard-sized tabs, each as wide as its text | RULED [UI-48]: "24 px, 11 pt, even row" (outlined, as the other rows) | built (Options 0.6.60), not seen by her |
-| G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | built (Options 0.6.60), not seen by her |
-| G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | built (Options 0.6.60), waiting for her look |
-| G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | built (Options 0.6.60): no width, "full" and "double" inputs; not seen by her |
+| G1 | Section tabs inside a page (third level, e.g. Shopping List: Your defaults / History) | small Blizzard-sized tabs, each as wide as its text | RULED [UI-48]: "24 px, 11 pt, even row" (outlined, as the other rows) | built (Options 0.6.63), not seen by her |
+| G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | built (Options 0.6.63), not seen by her |
+| G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | built (Options 0.6.63), waiting for her look |
+| G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | built (Options 0.6.63): no width, "full" and "double" inputs; not seen by her |
 
 ### Session choices made while building section B (each listed for her look; none is a ruling)
 | # | Where | Choice | Why |

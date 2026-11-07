@@ -48,7 +48,7 @@ T.TOKENS = {
 -- See the project doc "XAYAUI-THEME-REVIEW-LATER".
 T.SHOW_OVERRIDES = false
 T.PARKED = { tabBg = true, tabBorder = true, tabSelBg = true, tabSelBorder = true, treeBar = true }   -- windowBg, paneBg, text un-parked 2026-11-01 (light mode / custom themes)
--- (core 0.6.59; REQUEST-LOG UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are
+-- (core 0.6.61; REQUEST-LOG UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are
 -- not offered") the Theme page's Advanced customization switch (CueRulesDB.ui.themeAdvanced, off by default): on, the parked tokens
 -- and the class overrides are offered and a parked token's own colour applies; off, they are neither offered nor applied.
 function T.Advanced() local u = CueRulesDB and CueRulesDB.ui; return (u and u.themeAdvanced) == true end

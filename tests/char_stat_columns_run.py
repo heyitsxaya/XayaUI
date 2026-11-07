@@ -290,7 +290,7 @@ check("  (QoL 0.7.28) Critical Strike's Influences: Parry; hover +10.15% (52.0 c
 local dr = lineCells(d, "pairLabel", "Diminishing returns")
 check("  Diminishing returns: value none yet; no note (\"next at 1,380 rating (852 away)\" is gone)", T(dr.value) == "none yet" and dr.note == nil
   and drawnText("next at 1,380 rating") == nil, T(dr.value) .. " | " .. T(dr.note))
-check("[0.7.28] Haste's Influences: GCD (QoL 0.7.37, UI-62), Attack speed, Abilities (their text names Haste); the ability and its recharge are in that name's hover, indented",
+check("[0.7.28] Haste's Influences: GCD (QoL 0.7.39, UI-62), Attack speed, Abilities (their text names Haste); the ability and its recharge are in that name's hover, indented",
   inflOn(d, "Haste") == "GCD, Attack speed, Abilities (their text names Haste)"
   and nameHover(d, "map_haste:» Abilities (their text names Haste)"):find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil,
   inflOn(d, "Haste"))

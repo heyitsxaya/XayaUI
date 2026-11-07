@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The display standard in code (core 0.6.59, Options 0.6.60; REQUEST-LOG UI-47, Xaya 2026-11-06: "review every single tab within the
+"""The display standard in code (core 0.6.61, Options 0.6.63; REQUEST-LOG UI-47, Xaya 2026-11-06: "review every single tab within the
 entire addon and make sure every single display type is correctly standardized. make sure all design and addon display rules are
 stored in their own file in the appropriate location if they aren't already. / refactor all code appropriately."; the rules:
 docs/design/DISPLAY-RULES.md, her words: docs/design/DISPLAY-RULINGS.md).

@@ -249,7 +249,7 @@ local function under(dd)
 end
 local g = under(d)
 checkp("Primary: Agility (the spec's primary stat), Stamina", function() return g.Primary == "Agility|Stamina", g.Primary end)
-checkp("General: Health, the resource (Fury), GCD, Movement Speed (QoL 0.7.37, UI-62: \"Global Cooldown should be GCD\"; title case)", function() return g.General == "Health|Fury|GCD|Movement Speed", g.General end)
+checkp("General: Health, the resource (Fury), GCD, Movement Speed (QoL 0.7.39, UI-62: \"Global Cooldown should be GCD\"; title case)", function() return g.General == "Health|Fury|GCD|Movement Speed", g.General end)
 checkp("Offensive: Attack Power, Spell Power, Attack Speed, Weapon DPS, Damage, Critical Strike Effectiveness (UI-62: \"title cased like every other line\")", function()
   return g.Offensive == "Attack Power|Spell Power|Attack Speed|Weapon DPS|Damage|Critical Strike Effectiveness", g.Offensive end)
 checkp("Defensive: Armor, Dodge, Parry, Block (Block listed with no shield: 0.00%)", function()

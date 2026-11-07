@@ -23,7 +23,7 @@ standardized calculation".
   talents change it (Outlaw's Adrenaline Rush: 0.8 s). Wowhead itself only confirms the 1.5 s base; the haste rules come from
   warcraft.wiki.gg and the guides above.
 
-## What XayaUI does today (QoL 0.7.37, XayaUI_QoL/CharacterModel.lua, map_gcd)
+## What XayaUI does today (QoL 0.7.39, XayaUI_QoL/CharacterModel.lua, map_gcd)
 Reads the live GCD (spell 61304) when one runs, then estimates "unhasted" as reading x (1 + haste) and the GCD "with your numbers" by
 the same scaling, for every class. For energy melee this is wrong (a 1.0 s fixed GCD with 20% haste would show 1.20 s unhasted, and
 typed haste would seem to shorten it); a "looks like a fixed 1 s GCD" note is the only guard.

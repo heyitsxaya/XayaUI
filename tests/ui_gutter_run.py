@@ -16,7 +16,7 @@ def check(name, ok, extra=""):
 # #351 phase 2: the values are defined once in core (XayaUI/Modules.lua); Skin.lua reads them (its 10s are only the fallback for
 # stand-in tests that load Skin.lua without core)
 modules = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
-# (core 0.6.59, UI-47) they live in core's ns.Style table (margin, gutter); ns.UI_MARGIN / ns.UI_GUTTER read from it
+# (core 0.6.61, UI-47) they live in core's ns.Style table (margin, gutter); ns.UI_MARGIN / ns.UI_GUTTER read from it
 m = re.search(r"^ns\.Style = \{.*?\bmargin = (\d+),.*?\bgutter = (\d+),", modules, re.S | re.M)
 check("the margin and the gutter are defined once, in core (XayaUI/Modules.lua: ns.Style, read by ns.UI_MARGIN / ns.UI_GUTTER)", m is not None
       and re.search(r"^ns\.UI_MARGIN, ns\.UI_GUTTER = ns\.Style\.margin, ns\.Style\.gutter\b", modules, re.M) is not None)

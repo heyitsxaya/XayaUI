@@ -443,11 +443,11 @@ local function TraceGroupFire(w, what)
     AddRest(w, "firetrace", function(self) rawset(self, "Fire", nil); self.xuiFireTraced = nil end)
 end
 
--- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.60 the Rules row): each slot = { tab, x, width }; every tab H px tall,
+-- One tab row drawn by hand (Options 0.6.55 top row; Options 0.6.63 the Rules row): each slot = { tab, x, width }; every tab H px tall,
 -- its name in the theme's font at SIZE pt with an outline (a font object per tab, so a hover or a click, which re-applies the button's
 -- font objects, keeps it); the box below starts under the row. Restored on release (SkinTabGroup's OnRelease, w.xuiTopRow).
 local function LayTabRow(w, slots, H, SIZE)
-    -- (Options 0.6.60; REQUEST-LOG UI-50, her answer "Scale with theme": her sizes are the theme's Medium text size; Small / Large
+    -- (Options 0.6.63; REQUEST-LOG UI-50, her answer "Scale with theme": her sizes are the theme's Medium text size; Small / Large
     -- scale the tab's height and its name by the same factor, Theme.Scale(): 0.88 / 1 / 1.15)
     local sc = (TH and TH.Scale and TH.Scale()) or 1
     H = math.floor(H * sc + 0.5)
@@ -465,7 +465,7 @@ local function LayTabRow(w, slots, H, SIZE)
         if fs then
             if fs.SetWidth then fs:SetWidth(math.max(1, each - 8)) end
             fs:ClearAllPoints(); fs:SetPoint("CENTER", tab, "CENTER", 0, 0)
-            -- (Options 0.6.60; UI-49 "theme has to tie into the skin.lua") the theme's font when one is set (Theme > Font), else the font
+            -- (Options 0.6.63; UI-49 "theme has to tie into the skin.lua") the theme's font when one is set (Theme > Font), else the font
             -- the tab already has; a theme font file that will not load (new fonts need a game restart) falls back the same way
             local path = TH and TH.FontPath and TH.FontPath()
             if path then local ok, res = pcall(fs.SetFont, fs, path, SIZE, "OUTLINE"); if not ok or res == false then path = nil end end
@@ -488,7 +488,7 @@ local function LayTabRow(w, slots, H, SIZE)
     w.xuiTopRow = true
 end
 
--- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.60; REQUEST-LOG UI-43 to
+-- The Rules sub-tab row (Smart Categories | Enabled | Disabled | Drafts ... Auto-Generate Rules). (Options 0.6.63; REQUEST-LOG UI-43 to
 -- UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not reflecting proposed changes as requested in subsequent
 -- comments"; her answers "28 px, 12 pt, outlined" and, for the Creator tab, "2 + call it "Auto-Generate Rules"" (it stays apart at the
 -- far right): the other tabs share the rest of the row evenly; Auto-Generate Rules is as wide as its name at 12 pt plus 24 px (at most a
@@ -531,7 +531,7 @@ local function IsTopRow(w)
     end
     return false
 end
--- (Options 0.6.60; REQUEST-LOG UI-47 / UI-48, her answer for tabs inside a page: "24 px, 11 pt, even row") every other tab row (a
+-- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for tabs inside a page: "24 px, 11 pt, even row") every other tab row (a
 -- page's section tabs, the rule editor's tabs): even widths, ns.Style.tabSection. A row too crowded for that (under 60 px a tab) keeps
 -- AceGUI's own layout, so no name is cut.
 local SECTION_MIN_W = ns.Style.tabSection.minW
@@ -571,7 +571,7 @@ end
 local function SkinTabGroup(w)
     TraceGroupFire(w, "tab")
     do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.6 }) end
-    -- (Options 0.6.60; UI-46 "clicking on a deactivated item should just show the summary without a nested box"; UI-48 "If the item is
+    -- (Options 0.6.63; UI-46 "clicking on a deactivated item should just show the summary without a nested box"; UI-48 "If the item is
     -- not enabled no additional fill should exist") a tab container with no tab shown (a switched-off feature hides its section tabs;
     -- AceConfigDialog still draws the empty container): no fill and no border, so the page shows its summary only
     do
@@ -1370,7 +1370,7 @@ local function SkinInline(w)
         if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }) else FlatHide(w.border) end
     else
         if w.border then FlatHide(w.border) end
-        -- (Options 0.6.60; UI-47 / UI-48, her answer for titled groups inside a page: "First try unbordered boxes (darker blocks) and
+        -- (Options 0.6.63; UI-47 / UI-48, her answer for titled groups inside a page: "First try unbordered boxes (darker blocks) and
         -- dividing lines") the group's darker fill without a border line, and a dividing line along the block's top edge
         do local pb = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 }); PaneFill(w.border, { pb[1], pb[2], pb[3], A() * 0.5 }) end
         if w.border and w.border.CreateTexture then

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Rules sub-tab row (Options 0.6.60; REQUEST-LOG UI-43 to UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not
+"""The Rules sub-tab row (Options 0.6.63; REQUEST-LOG UI-43 to UI-45, Xaya 2026-11-06: "rule tabs are too tiny"; "tabs are still not
 reflecting proposed changes as requested in subsequent comments"; her answers "28 px, 12 pt, outlined" and "2 + call it "Auto-Generate
 Rules""), and a page's section tabs (UI-48, her answer "24 px, 11 pt, even row"; the empty box of a switched-off page, UI-46 / UI-48).
 (Before, Options 0.6.39: every Rules tab as wide as its text; this file kept its name.)

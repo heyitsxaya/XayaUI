@@ -355,7 +355,7 @@ function ns.SectionTabs(group)
     return group
 end
 
--- A page's summary with an info icon that opens / closes the page's full description in a box (core 0.6.59; REQUEST-LOG UI-53, her
+-- A page's summary with an info icon that opens / closes the page's full description in a box (core 0.6.61; REQUEST-LOG UI-53, her
 -- answer: "isolated to an info icon that opens/closes a description box -- try this out for one text-heavy segment and confirm POC
 -- before proceeding for all"; first used on Bonus Features > Utilities > Calculator only, until she confirms).
 -- ns.InfoBox(group, id, summary, keys): the page shows `summary` (up to two sentences, UI-53) with the icon beside it; the description

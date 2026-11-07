@@ -1,4 +1,4 @@
-# The standard GCD calculation (XayaUI_QoL 0.7.37)
+# The standard GCD calculation (XayaUI_QoL 0.7.39)
 Session 014bN6tV7oStjTuVPEJbytBJ, branch `claude/ui-bugs-focused`. Nothing here has run in the game.
 
 ## Requests

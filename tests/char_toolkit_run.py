@@ -149,7 +149,7 @@ C_Spell.GetSpellDescription = savedDesc
 local ap = row(m, "ap")
 check("attack power: 1 Agility = 1.00 attack power", pair(ap, "1 Agility =") == "1.00 attack power", pair(ap, "1 Agility ="))
 check("dodge: primary -> dodge per point marked not given", pair(row(m, "dodge"), "Agility -> dodge per point") == "not given by the game")
--- (QoL 0.7.37; UI-62 "GCD"; UI-63 / UI-64, her answer "Formula + live check") the standard GCD: 1.5 / (1 + haste), never below 0.75 s;
+-- (QoL 0.7.39; UI-62 "GCD"; UI-63 / UI-64, her answer "Formula + live check") the standard GCD: 1.5 / (1 + haste), never below 0.75 s;
 -- a fixed 1.0 s for rogues, Cat Form druids, Brewmaster and Windwalker monks; the live reading listed as a check
 local g0 = row(m, "gcd")
 check("gcd: named GCD; before any GCD ran, the rule's value (1.5 / 1.2925 = 1.16 s) and the live reading not yet seen",

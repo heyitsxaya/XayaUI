@@ -53,7 +53,7 @@ for i = 2, #help do
 end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
 -- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1; core 0.6.56 adds /xui report, REQUEST-LOG #82: + 1)
-check("help: 19 lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report, and /xui releaseguard: QoL 0.7.37, UI-57)", #help - 1 == 19, #help - 1)
+check("help: 19 lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report, and /xui releaseguard: QoL 0.7.39, UI-57)", #help - 1 == 19, #help - 1)
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
 check("help: /xui shop is listed", (function() for _, c in ipairs(cmds) do if c == "/xui shop" then return true end end end)() == true, table.concat(cmds, " "))
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
