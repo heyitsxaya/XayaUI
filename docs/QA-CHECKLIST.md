@@ -438,6 +438,17 @@ For testers. Tick each box in order; when something does not match the **Expect*
 - [ ] **J26.** (core 0.6.69, Options 0.6.66, Dev Assist 0.7.26; REQUEST-LOG A17 X-1; walkthrough: `/xui dev qa` > "Externals and raid defensives in combat (J26)") Switch on the Externals rules, check out of combat. **Expect:** the note lists each aura rule, its IDs, whether the game's aura container draws it (or why not) and the guard state; send it to Xaya. Then get an external or raid defensive on you in combat and check while it is up. **Expect:** every rule whose aura the game hides is drawn by the container, and its icon with its time shows; the rule's status says "the game hides this aura now" in plain words. No Lua error.
 - [ ] **J28.** (Options 0.6.69, Dev Assist 0.7.19; REQUEST-LOG A15 P-16; walkthrough: `/xui dev qa` > "Performance: a click with a rule open (J28)") Open `/xui`, click a rule in the sidebar, click one switch in its editor on and off; click another rule; use the rule's search box and open a result; rename the rule; drag the window to its narrowest. **Expect:** the switch changes at once (the window's own redraw time under 100 ms; before: about 1.4 s per click), every rule shows its own editor straight away (never empty, never the previous rule's), the search result opens its tab, the renamed row updates, the dropdowns still fit at the narrowest width. No Lua error.
 
+## K. XayaUI Nameplates (XayaUI_Nameplates; plan docs/plans/NAMEPLATES-PLAN-2026-11-07.md)
+
+Walkthrough: `/xui dev qa` > "Nameplates: target colour (XayaUI Nameplates 0.1.0)" (Dev Assist 0.7.14) runs K1-K4 with the addon's own checks.
+
+- [ ] **K1.** (Nameplates 0.1.0) Fresh install: open the AddOns list. **Expect:** "XayaUI Nameplates" is listed and NOT ticked (disabled by default). Tick it, disable Plater, /reload, type `/xui nameplates`. **Expect:** "Nameplates: target colour on." and no line saying another nameplate addon is loaded.
+- [ ] **K2.** (Nameplates 0.1.0) Out of combat, target an enemy with a nameplate, then Tab to another. **Expect:** only the current target's health bar fill is teal; the previous one returns to its normal colour; the name and health text stay readable.
+- [ ] **K3.** (Nameplates 0.1.0) In a dungeon or Mythic+ pull, switch targets several times in combat. **Expect:** each new target turns teal at once; no "Interface action failed" or blocked-action message; `/xui nameplates` says "target nameplate found; colour shown".
+- [ ] **K4.** (Nameplates 0.1.0) /xui > QoL > Nameplates: pick another colour, then press Teal; untick Target colour. **Expect:** the target's bar takes the new colour at once, Teal puts teal back, unticked nothing is coloured. Untick XayaUI Nameplates in the AddOns list and /reload: **Expect:** Blizzard's plates as before, no Nameplates page in the settings.
+
+- [ ] **K5.** (Nameplates 0.2.0) Out of combat, /xui > QoL > Nameplates > **Match my Plater settings**. **Expect:** chat says how many of Blizzard's nameplate options changed; the page says "Now: 12 of 12 match"; enemy plates show health percent and amount, cast target names and highlighted important casts. Press it in combat: **Expect:** "not in combat". **Put back**: **Expect:** the options as they were before. (Walkthrough "Nameplates: match my Plater settings".)
+
 ## Reporting a problem
 
 Send, for each problem:
