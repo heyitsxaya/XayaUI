@@ -1,0 +1,22 @@
+# Code-update notes for the performance test (CLEAN-8)
+
+Xaya's rule (REQUEST-LOG A15 P-2, her words): "Make sure all active sessions communicate any code updates they make so the session
+designing the test can appropriately account for testing changes it might need to make".
+Kept by the performance test session (session_014bN6tTxYo6enpkMGsVkMqm). One row per note received; "Test impact" is this
+session's reading (INFERENCE) of what the M+ capture or the audit must cover. Safety net: `git log --all --since=<last check> -- 'XayaUI*'`.
+
+| Received (UTC) | From | Branch / commit | On main? | Addon / version | Runtime change (as sent) | Test impact |
+|---|---|---|---|---|---|---|
+| 11-07 00:05 | chat-issue review 014bN6tSjceDcH6FdJCeukZG | claude/chat-qa-walks eb39298 (PR #432) | no | Dev Assist 0.7.7 | QA Accept button, 4 chat walkthroughs; one C_Timer.After 0.3 s after "Do it for me" | none in combat |
+| 11-07 00:05 | UI bugs 014bN6tV7oStjTuVPEJbytBJ | 05503c8, 897d675, 4200bd1, 015677a | no | core 0.6.59, Options 0.6.60, QoL / Bonus / Chat / Reskin tips | settings window only; CueRulesDB.ui.themeAdvanced | none in combat |
+| 11-07 00:05 | S8 bar cues 014bN6tX7AoZQrGX246YSXjC | claude/dreamy-edison-pvb3i1 9c5e201 (in bundle-2300) | no | core 0.6.58, Options 0.6.59, Bonus 0.6.20 | Bar cues: StatusBar per Bar cue; effects OnUpdate ~30/s per moving readable bar out of combat; in combat the game drives bars (SetTimerDuration); Bonus "Type colours" line rewrite per spell / aura tooltip | measure: many Bar cues out of combat; tooltip hovers with Type colours on; combat engine bar buttons |
+| 11-07 00:05 | S1 014bN6tWZxqCW85vMEyHdfnt | 687b624 | yes | core, Dev Assist | DebugRecord errors only; error-handler hook (XayaUI stacks only); dev commands moved to Dev Assist | error handler: cost only when an error happens |
+| 11-07 00:05 | engine session 2 014bN6tT7n9v9sqt7pBjKmcc | claude/fervent-cerf-hldtwn (in bundle-2300 ba4ec01) | partly | core 0.6.58 | D4: SPELL_UPDATE_COOLDOWN / CHARGES / UNIT_AURA(player) re-check affected rules on the next frame; D7 off rules skipped; C1 ClassLearn out of combat | HOT PATH: per-frame cost in combat with many aura rules while aura events stream |
+| 11-07 00:05 | S3 (via coordinator) 014bN6tStyDJVemzE9tX7F38 | 687b624 | yes | core | group boxes; 0.2 s auto-size OnUpdate while an Auto-size group has a box; G7 arrangement loops all rules; G9 Scale to fit loops all rules per Container | measure: RefreshAllVisuals with arranged / fit groups |
+| 11-07 00:05 | chat follow-ups (via coordinator) 014bN6tV7wcxBdJHNGwnMXZP | 1834e68 | yes | Bonus 0.6.16-0.6.17 | /calc, /notes claims at login | none in combat |
+| 11-07 00:11 | UI bugs | claude/ui-bugs-focused 0d5e002 | no | QoL 0.7.37 | Release Guard box strata FULLSCREEN_DIALOG; /xui rg | none in combat (on death only) |
+| 11-07 00:14 | UI bugs | 95fef53 | no | QoL 0.7.37 | Release Guard "Where": IsInInstance once per death | none |
+| 11-07 00:16 | UI bugs | 2dfd291 | no | QoL 0.7.37 | stat-line label text | none |
+| 11-07 00:21 | function audit 014bN6tSfFULX4BSXzmZ1yCx | claude/function-audit 198d516 (PR #433) | no | Bonus (0.6.22 at rebase) | Notepad format bar click: one GetText + compare | none |
+| 11-07 00:23 | engine session 2 | claude/fervent-cerf-hldtwn 0f3151b | no | core 0.6.59 | ReadContext reads GetNumGroupMembers once per full step; load.groupMin | one call per full step (combat path) |
+| 11-07 00:23 | UI bugs | 104974e | no | QoL 0.7.37 | CM.GcdRule / GcdFor when the stat model is built | out of combat |
