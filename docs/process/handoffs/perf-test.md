@@ -81,6 +81,14 @@ The lander relabels on landing.
 
 ## 5. Known gap: click < 100 ms
 
+UPDATE (successor session_014bN6tTqaMKxGcnwALJ4CoU, 2026-11-07 ~11:00 UTC): built on claude/perf-click (Options 0.6.69, Dev Assist 0.7.19,
+J28; debug-log 2026-11-07-1053). Stand-in, 313 rules, a rule open: a click 1,715 -> 114 ms of Lua, 239.8 -> 17.2 MB garbage. Proven by
+tests/options_click_cost_run.py (parity of saved data, of the whole Rules tab tree, of rows, cue / parent / neighbour lookups; window
+checks incl. rename / delete / move). Whether < 100 ms holds in game: J28. Options items from UI bugs measured (per click with a rule
+open: GreyWhileOff 0.33 of 11.9 MB, T.Col 237 calls): not changed.
+
+(Original text:)
+
 One full build of the settings tree remains per click (~0.5 s in the stand-in; her machine's speed unknown). The plan (not built):
 build only the selected rule's editor instead of the whole tree, keeping the tree from the last build. Risk: medium-high —
 AceConfigDialog expects the whole options table; the Skin / ScanDropdowns / DecorateTrees passes and the Tree.last / Tree.keep
@@ -97,7 +105,7 @@ checks the tree after rename / delete / move, and a walkthrough. Sent to the QA 
 - Q-PERF-6: RunRecord ("Record this run?") removed after its one push — confirm.
 - Q-PERF-7: combat lists in the settings window are not updated during a fight (they catch up after) — OK?
 
-## 7. CLEAN-8 notes received, not yet written into PERF-CODE-NOTES.md
+## 7. CLEAN-8 notes received (written into PERF-CODE-NOTES.md by the successor, 11-07 ~11:05 UTC; 16 rows, Test impact INFERENCE)
 
 externals 318c8b2 (J26, based on perf-landing-2, PR #444); chat round (Chat 0.6.33-0.6.36, Sidebar.lua, PR #443, #449);
 nameplates 2b1bbb6; UI bugs 5ce2d2b (RepaintFlatButtons); function audit fc702c2; S3 5c093e2; reskin 6225059;

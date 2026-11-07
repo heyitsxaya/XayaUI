@@ -25,8 +25,11 @@ D.privTexture = "Interface\\DialogFrame\\UI-DialogBox-Background"
 D.privTile = false
 D.privImageChoice = ""           -- a picture picked from the list
 D.privPath = ""                  -- or a typed picture path (wins over the list)
-D.privBorder = true
-D.privShowText = true
+-- audit D38 (Chat 0.6.33): these two said true, but the merge that would apply them runs before this file fills the table (Core.lua),
+-- so every player has had no border and no label. FLAGGED reading: what players see is kept, and the defaults now say so (sent to her
+-- question flow). The label text falls back to "Chat hidden" when the label is ticked with no text typed (before: an empty label).
+D.privBorder = false
+D.privShowText = false
 D.privText = "Chat hidden"
 D.privCoverTabs = false
 D.privReveal = false             -- cover fades away while the mouse is over it
@@ -34,6 +37,7 @@ D.privReveal = false             -- cover fades away while the mouse is over it
 local function Store() return ns.chatDB end
 local BASE = "Interface\\AddOns\\XayaUI_Media\\"
 local cover, btn
+local BtnAlpha   -- (below)
 
 local BUILTIN_TEX = {
     { "Interface\\DialogFrame\\UI-DialogBox-Background", "Dialog background (dark)" },
@@ -123,7 +127,7 @@ local function Style(s)
     cover:SetBackdropBorderColor(0, 0, 0, ab)
     local path = ns.FontPath and ns.FontPath(s.font) or STANDARD_TEXT_FONT
     if not cover.label:SetFont(path or STANDARD_TEXT_FONT, 14, "OUTLINE") then cover.label:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE") end
-    cover.label:SetText(s.privShowText and (s.privText or "") or "")
+    cover.label:SetText(s.privShowText and ((s.privText and s.privText ~= "") and s.privText or D.privText) or "")
 end
 
 -- true while the pointer is inside the cover's whole rectangle (the tab row too, even though that part does not take clicks)
@@ -194,10 +198,29 @@ local function PlaceButton()
     local c = ns.Chat and ns.Chat.Container and ns.Chat.Container()
     if not c then return end
     local s2 = ns.chat2
+    -- (Chat 0.6.35; UI-3, her answer "Moves into sidebar") while the chat sidebar holds it, the sidebar places it and it follows its showing
+    local sb = ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy")
+    if btn:GetParent() ~= (sb or UIParent) then btn:SetParent(sb or UIParent) end
+    if sb then return end
+    btn:SetFrameStrata("MEDIUM"); btn:SetFrameLevel(60)
     btn:ClearAllPoints()
     -- beside the chat block, level with its top edge (the strip option "Right of the chat" uses the same side: move one with the offsets)
     local past = (s2 and s2.stripMode == "RIGHT") and 34 or 0   -- Blizzard's button strip may sit on that side: stay clear of it
     btn:SetPoint("TOPLEFT", c, "TOPRIGHT", 4 + past + (tonumber(s.privBtnX) or 0), (tonumber(s.privBtnY) or 0))
+end
+
+-- (O-143) the eye's resting opacity, times the chat's fade while it sits beside the chat (in the sidebar it fades with the sidebar)
+BtnAlpha = function()
+    local st = Store()
+    local a = (tonumber(st and st.privBtnAlpha) or 90) / 100
+    local C = ns.Chat
+    local inBar = C and C.Sidebar_Slot and C.Sidebar_Slot("privacy")
+    if C and not inBar then a = a * (C.fade or 1) end
+    return a
+end
+function ns.ChatPrivacy_Fade()
+    if not (btn and btn:IsShown()) then return end
+    btn:SetAlpha((btn.IsMouseOver and btn:IsMouseOver()) and 1 or BtnAlpha())   -- under the mouse: full, as its OnEnter does
 end
 
 local function BuildButton()
@@ -216,7 +239,7 @@ local function BuildButton()
         local s = Store()
         ns.Tip.Show(self, "ANCHOR_RIGHT", "Chat privacy", { { (s and s.privOn) and "Click: show the chat" or "Click: cover the chat", 1, 1, 1 } })
     end)
-    btn:SetScript("OnLeave", function(self) local st = Store(); self:SetAlpha((tonumber(st and st.privBtnAlpha) or 90) / 100); ns.Tip.Hide() end)
+    btn:SetScript("OnLeave", function(self) self:SetAlpha(BtnAlpha()); ns.Tip.Hide() end)
     btn:SetScript("OnClick", function() ns.ChatPrivacy_Set(not (Store() or {}).privOn) end)
     return btn
 end
@@ -229,13 +252,14 @@ function ns.ChatPrivacy_Refresh()
     local s = Store()
     if not s then return end
     local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
-    local canShow = (Target() and ns.Chat.On() and not collapsed) and true or false
+    local canShow = (Target() and ns.Chat.active and ns.Chat.ImprovedOn and ns.Chat.ImprovedOn() and not collapsed) and true or false   -- (Chat 0.6.33) Improved Chat's
     local wantBtn = canShow and s.privBtn ~= false
     if wantBtn then BuildButton() end
     if btn then
         local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
+        if ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy") then size = math.max(14, math.min(40, tonumber(ns.chat2 and ns.chat2.sbBtn) or 22)) end   -- (Chat 0.6.35) the sidebar's button size
         btn:SetSize(size, size)
-        if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
+        if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha(BtnAlpha()) end
         btn:SetShown(wantBtn)
         PlaceButton()
         DrawEye(btn, s.privOn)
@@ -246,6 +270,23 @@ function ns.ChatPrivacy_Refresh()
     elseif cover then
         cover:Hide()
         cover:SetScript("OnUpdate", nil)
+    end
+    -- (Chat 0.6.34; UI-15) the input line moved out of the pane (Free move): a second piece of the cover over it, same fill and opacity
+    local free = s.privOn and canShow and ns.Chat.InputPos and ns.Chat.InputPos() == "FREE" and ns.Chat.skin and ns.Chat.InputArea and ns.Chat.InputArea()
+    if free then
+        if not cover.free then
+            cover.free = CreateFrame("Frame", "XayaUIChatPrivacyInput", UIParent)
+            cover.free:EnableMouse(true)
+            cover.free.fill = cover.free:CreateTexture(nil, "BACKGROUND"); cover.free.fill:SetAllPoints()
+        end
+        local f = cover.free
+        f:SetFrameStrata("DIALOG"); f:SetFrameLevel(100)
+        f:ClearAllPoints(); f:SetAllPoints(free)
+        f.fill:SetColorTexture(s.privR or 0, s.privG or 0, s.privB or 0, (tonumber(s.privFillA) or 100) / 100)
+        f:SetAlpha((s.privAlpha or 100) / 100)
+        f:Show()
+    elseif cover and cover.free then
+        cover.free:Hide()
     end
 end
 
@@ -328,7 +369,7 @@ function ns.ChatPrivacy_Options(Notify)
                 return "No picture chosen: the cover shows the color." end },
         border = { type = "toggle", order = 20, name = "Border", get = get("privBorder"), set = set("privBorder") },
         showText = { type = "toggle", order = 21, name = "Show a label on the cover", get = get("privShowText"), set = set("privShowText") },
-        text = { type = "input", order = 22, name = "Label", get = get("privText"), set = set("privText") },
+        text = { type = "input", order = 22, name = "Label", get = function() local s = S(); return (s and s.privText and s.privText ~= "") and s.privText or D.privText end, set = set("privText") },
         areaHdr = { type = "header", order = 30, name = "Area and behavior" },
         tabs = { type = "toggle", order = 31, width = "full", name = "Also cover the chat tabs", get = get("privCoverTabs"), set = set("privCoverTabs") },
         reveal = { type = "toggle", order = 33, width = "full", name = "Cover fades away while the mouse is over it", get = get("privReveal"), set = set("privReveal") },

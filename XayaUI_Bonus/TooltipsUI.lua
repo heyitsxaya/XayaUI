@@ -37,8 +37,8 @@ function ns.BuildTooltipsTab(Notify)
     -- the tick box on its row in the left pane (xuiSwitch, as every other feature's); the four section switches stay on the page
     return {
         type = "group", name = "Enhanced Tooltips", order = 2, childGroups = "tab",
-        xuiSwitch = { type = "toggle", name = "Enhanced Tooltips", tip = "Adds IDs, item level, enemy forces, formulas and type colours to game tooltips.",
-            desc = "Turns all enhanced tooltips on or off (IDs, Item level, Enemy forces, Formulas, Type colours). Off, none of them runs; their settings are kept.",
+        xuiSwitch = { type = "toggle", name = "Enhanced Tooltips", tip = "Adds IDs, item level, enemy forces, formulas and type colors to game tooltips.",
+            desc = "Turns all enhanced tooltips on or off (IDs, Item level, Enemy forces, Formulas, Type colors). Off, none of them runs; their settings are kept.",
             get = get({ "enabled" }), set = set({ "enabled" }) },
         args = {
             ids = { type = "group", name = "IDs", order = 1, args = ids },
@@ -67,8 +67,8 @@ function ns.BuildTooltipsTab(Notify)
                 note = { type = "description", order = 9, name = "Built only from numbers the game reports while you play. Blizzard's own spell coefficients are not readable by addons." },
             } },
             -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10) damage school and dispel type words coloured
-            typeColors = { type = "group", name = "Type colours", order = 5, args = {
-                enabled = toggle(1, "Colour damage schools and dispel types", "Colours damage schools and dispel types on spell and aura tooltips in the game's colours. English game text only." .. OFF, { "typeColors", "enabled" }),
+            typeColors = { type = "group", name = "Type colors", order = 5, args = {
+                enabled = toggle(1, "Color damage schools and dispel types", "Colors damage schools and dispel types on spell and aura tooltips in the game's colors. English game text only." .. OFF, { "typeColors", "enabled" }),
             } },
         },
     }

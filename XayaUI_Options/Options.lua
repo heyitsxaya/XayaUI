@@ -18,6 +18,7 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
+ns.OptionsApi.AutoPicker = ns.AutoPicker   -- published for Dev Assist's QA walkthrough (QAWalks-generate.lua, V22): the harness lets an addon read only what another publishes through here
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
 -- 2026-11-02, #274); the older QoL Elements entries (shelved; qolExtra) come last.
 -- Blizzard UI Reskin (Options 0.6.38; Xaya 2026-11-05: "Take all reskins and put them into a new tab: Blizzard UI Reskin. Currently
@@ -27,7 +28,10 @@ ns.OptionsApi = {}
 -- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
 function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
-    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
+    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard Reskin", order = 5.3 } }
+-- (Options 0.6.72; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: tab label "Blizzard Reskin"; the toolbar goes and the top row reads
+-- Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings.) Every top tab key, for the top-row layout (Skin.lua IsTopRow).
+ns.OptionsApi.TOP_KEYS = { cooldowns = true, chat = true, qol = true, bonus = true, reskin = true, profiles = true, set = true, settings = true }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
 ns.OptionsApi.featureParents = {}   -- module -> { [page key] = true } for pages whose parts are left-pane nodes (filled by ModuleTabs)
 -- Feature tabs: a feature's node starts open, so its parts show in the left pane right away (Xaya, 2026-11-03). Only the first
@@ -75,7 +79,7 @@ function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t
 -- this settings addon loaded (it loads on the first open after a login or /reload), so they appear after a reload.
 ns.OptionsApi.TAB_SWITCHES = {}
 ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn and ns.ReskinTabOn() or false   -- the switch as it was when this addon loaded
-ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard UI Reskin"
+ns.OptionsApi.RESKIN_SWITCH = "Enable Blizzard Reskin"
 function ns.OptionsApi.ReskinOverview(args)
     for key, page in pairs(args) do
         if type(page) == "table" then
@@ -108,7 +112,7 @@ end
 function ns.OptionsApi.ReloadPrompt()
     if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then return end
     if not StaticPopupDialogs.XAYAUI_RESKIN_RELOAD then
-        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard UI Reskin: reload now to list the reskins as they are now?",
+        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard Reskin: reload now to list the reskins as they are now?",
             button1 = "Reload", button2 = "Later", OnAccept = function() local r = (C_UI and C_UI.Reload) or ReloadUI; if type(r) == "function" then r() end end,
             timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
     end
@@ -357,7 +361,11 @@ end
 function Tree.Get(...)
     if Tree.keep and Tree.last then Tree.keep = nil; return Tree.last end
     Tree.keep = nil
-    Tree.last = ns.BuildOptionsTable(...)
+    Tree.lazy = true   -- (Options 0.6.69) the window's build: rule editors only for what it draws (BuildOptions, ns.OptionsApi.FillRule)
+    local ok, t = pcall(ns.BuildOptionsTable, ...)
+    Tree.lazy = nil
+    if not ok then error(t, 0) end
+    Tree.last = t
     return Tree.last
 end
 -- AceConfigDialog keeps the apps waiting for its next-frame redraw in AceConfigDialog.frame.apps (AceConfigDialog-3.0.lua
@@ -868,8 +876,10 @@ function ns.LoadIdRows(ld, changed, locked, searchBox)
     return args
 end
 
+-- Each choice cycles selected -> NOT -> cleared (AceGUI's tri-state goes true -> nil -> false). An unset choice reads false (unticked);
+-- "none ticked = any" is shown by the All box. Audit D20: an unset box read true, so the first click stored NOT and "selected" could never
+-- be stored.
 local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
-    local function hasOn(set) for _, v in pairs(set) do if v == true then return true end end return false end
     local args = {
         all = { type = "toggle", name = "All", order = 0, width = "double",
             desc = "No restriction. Click a box below once to select it, twice for NOT, a third time to clear it.",
@@ -888,7 +898,6 @@ local function TriGroup(name, order, hiddenFn, getSet, choices, onChange)
                 local st = set[ch.id]
                 if st == true then return true end
                 if st == "not" then return nil end
-                if not hasOn(set) then return true end
                 return false
             end,
             set = function(_, v)
@@ -971,7 +980,8 @@ local function StatusText(rule)
     return warn .. table.concat({
         (info.result and "|cff55ff55FIRING|r" or "idle") .. "   " .. rule.name,
         "cooldown " .. tf(info.cdOK) .. "  (" .. cdWhy .. ")",
-        "buff " .. tf(info.buffOK) .. "  present=" .. tostring(info.present) .. "  via " .. tostring(info.buffSource),
+        "buff " .. tf(info.buffOK) .. "  present=" .. tostring(info.present) .. "  via " .. tostring(info.buffSource)
+            .. ((ns.HiddenAuraNote and ns.HiddenAuraNote(rule, info)) and ("\n|cffffaa00" .. ns.HiddenAuraNote(rule, info) .. "|r") or ""),
         "talent " .. tf(info.talentOK) .. "  (" .. tostring(info.talentDetail) .. ")   load " .. tf(info.ctxOK)
             .. (info.ctxFail and ("  failed: " .. info.ctxFail) or ""),
         ("ctx: combat=%s group=%s raid=%s instance=%s(%s) M+=%s encounter=%s mounted=%s spec=%s role=%s"):format(
@@ -1176,6 +1186,13 @@ end
 local function FolderRules(fid)
     local l = {}
     for _, r in ipairs(ns.rules or {}) do if r.folder and IsInFolder(r.folder, fid) then l[#l + 1] = r end end
+    return l
+end
+-- The rules of a group without the cues and conditions inside them (audit D42: the group's Enabled box and Enable / Disable All Rules
+-- Inside switched a condition the player had turned off back on; the Delete Group confirmation counted cue rows as rules).
+local function FolderTopRules(fid)
+    local l = {}
+    for _, r in ipairs(FolderRules(fid)) do if not r.parentUid then l[#l + 1] = r end end
     return l
 end
 -- Display / Sound / Hybrid / Advanced Cue Tracking default folders are sub-sections of Smart Categories inside All Rules
@@ -1755,6 +1772,33 @@ function ns.CollapsibleHeaders(rule, args, tag)
     end
 end
 
+-- A rule's row in the sidebar: hidden while the search box has text the name does not contain; grey name while switched off. Shared by
+-- the full editor (BuildRule) and the row-only entry the window builds for rules not on screen (Options 0.6.69, ns.OptionsApi.RuleStub).
+function ns.OptionsApi.RuleRowHidden(rule)
+    return function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end
+end
+function ns.OptionsApi.RuleRowName(rule)
+    return function()
+        local nm = tostring(rule.name or "")
+        if nm == "" then return "|cff888888Unnamed rule|r" end
+        return (rule.enabled and "" or "|cff888888") .. nm
+    end
+end
+-- What building a rule's editor writes into the rule's own data (BuildRule below), done also when only its row is built, so the saved
+-- data is the same either way (tests/options_click_cost_run.py compares them): the outline glow's defaults, icon cues always use the
+-- spell icon, and the art the rule shows now is noted for Maintain aspect ratio.
+function ns.OptionsApi.RuleDataFixes(rule)
+    local V = rule.visual
+    if type(V) ~= "table" then return end
+    local o = V.outline
+    if type(o) == "table" then
+        if o.style == nil then o.style = "auto" end
+        for k, dv in pairs({ borderOn = true, glowOn = true, glowSame = true, gap = 0, glowSize = 8, glowAlpha = 0.6 }) do if o[k] == nil then o[k] = dv end end
+        if not o.glowColor then o.glowColor = { 1, 0.82, 0, 1 } end
+    end
+    if rule.cueKind == "icon" and V.kind ~= "spellicon" then V.kind = "spellicon" end
+    ns.SeedArtAspect(V)
+end
 local function BuildRule(i, rule)
     local V = rule.visual
     local function on() Changed(rule) end
@@ -1889,6 +1933,8 @@ local function BuildRule(i, rule)
         desc = "Remove the Cooldown trigger: clears this rule's Cooldown spell, max charges, and state.",
         hidden = function() return not ns.CooldownUsed(rule) end,
         func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "cd") end   -- FA-11: to the Recycle Bin (no prompt), restorable
             rule.useCooldown = false; rule.spellID = 0; rule.maxCharges = 0; rule.cdState = nil
             rule.countGCD, rule.countLOC, rule.cdTimeOp, rule.cdTimeSec, rule.cdChargeOp, rule.cdChargeVal = nil, nil, nil, nil, nil, nil
             rule.exactSpell = nil
@@ -1897,7 +1943,13 @@ local function BuildRule(i, rule)
     trigger.args.buffRemove = { type = "execute", name = "Remove", order = 14, width = "half",
         desc = "Remove the Buff / Aura trigger: clears this rule's aura ID and state.",
         hidden = function() return not ns.BuffUsed(rule) end,
-        func = function() rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil; Changed(rule); Notify() end }
+        func = function()
+            if ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "buff") end   -- FA-11: to the Recycle Bin (no prompt), restorable
+            rule.useBuff = false; rule.buffID = 0; rule.buffAlt = nil; rule.buffState = nil
+            rule.buffTimeOp, rule.buffTimeSec = nil, nil   -- audit D25: re-adding the trigger no longer brings back an old "Seconds left" filter
+            Changed(rule); Notify()
+        end }
     -- Additional trigger rows (Triggers.lua). A failure there must never take the whole options tree down.
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
@@ -2323,7 +2375,7 @@ local function BuildRule(i, rule)
                 { disabled = function() return not V.flash.enabled end }),
             flashSpeed = Rng(V.flash, "speed", "Flash speed (pulses per second)", 36, 1, 8, 0.5, on,
                 { disabled = function() return not V.flash.enabled end }),
-            desatOnCD = Tog(V, "desatOnCD", "Gray out while the spell is on cooldown", 37, on, { width = "double" }),
+            desatOnCD = Tog(V, "desatOnCD", "Grey out while the spell is on cooldown", 37, on, { width = "double" }),
             hoverTip = Tog(V, "hoverTip", "Show tooltip on hover", 9.6, on, { width = "double", hidden = true,   -- set on the rule's Display tab (0.6.3)
                 desc = "Shows the spell or item's tooltip when you hover this cue. Clicks still pass through." }),
             requireOnBar = Tog(V, "requireOnBar", "Only show while this ability is on an action bar", 9.5, on, { width = "double",
@@ -2542,7 +2594,7 @@ local function BuildRule(i, rule)
     local sound = {
         type = "group", inline = true, name = "Sound", order = 3, args = {
             soundEnabled = { type = "toggle", name = "Play a sound", order = 1,
-                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v end },
+                get = function() return rule.sound.enabled end, set = function(_, v) rule.sound.enabled = v; ns.MarkDirty() end },
             sound = {
                 type = "select", name = "Sound", order = 2, width = "double",
                 values = function() EnsureSounds(); return soundValues end,
@@ -2554,9 +2606,9 @@ local function BuildRule(i, rule)
                     end
                 end,
                 set = function(_, v)
-                    if v == "0" then rule.sound.value = ""; return end
+                    if v == "0" then rule.sound.value = ""; ns.MarkDirty(); return end
                     local it = soundList[tonumber(v)]
-                    if it then rule.sound.source, rule.sound.value = it.source, it.value end
+                    if it then rule.sound.source, rule.sound.value = it.source, it.value; ns.MarkDirty() end
                 end,
             },
             test = { type = "execute", name = "Test sound", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
@@ -2574,9 +2626,9 @@ local function BuildRule(i, rule)
                 end },
             repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 4, width = "double",
                 min = 0, max = 10, step = 0.1,
-                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+                get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
             channel = { type = "select", name = "Sound channel", order = 5, values = CHANNEL_VALUES, sorting = CHANNEL_ORDER,
-                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v end },
+                get = function() return rule.sound.channel end, set = function(_, v) rule.sound.channel = v; ns.MarkDirty() end },
             -- #334 (Insivius): a volume on the cue's own sound, like Speech volume. The game allows it only for its own sound kits.
             cueVolume = { type = "range", order = 5.5, width = "double", min = 0, max = 100, step = 5,
                 name = function()
@@ -2647,7 +2699,7 @@ local function BuildRule(i, rule)
         text = { type = "input", name = "Text to speak", order = 1, width = "full",
             desc = "Spoken when the cue fires. Plain text; no tokens yet.",
             get = function() return rule.sound.value or "" end,
-            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200) end },
+            set = function(_, v) rule.sound.source = "tts"; rule.sound.value = tostring(v or ""):sub(1, 200); ns.MarkDirty() end },
         voice = { type = "select", name = "Voice", order = 2, width = "double",
             desc = "Voices come from the voice packs installed on this computer, so other players may see a different list.",
             values = function()
@@ -2661,14 +2713,14 @@ local function BuildRule(i, rule)
                 return s
             end,
             get = function() return tostring(rule.sound.voice or 0) end,
-            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil end },
+            set = function(_, v) v = tonumber(v); rule.sound.voice = (v and v ~= 0) and v or nil; ns.MarkDirty() end },
         test = { type = "execute", name = "Test speech", order = 3, width = "half", func = function() ns.PlaySoundPreview(rule.sound) end },
         rate = { type = "range", name = "Speed", order = 4, width = "double", min = -10, max = 10, step = 1,
-            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v end },
+            get = function() return rule.sound.rate or 0 end, set = function(_, v) rule.sound.rate = v; ns.MarkDirty() end },
         vol = { type = "range", name = "Speech volume", order = 5, width = "double", min = 0, max = 100, step = 5,
-            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v end },
+            get = function() return rule.sound.ttsVolume or 100 end, set = function(_, v) rule.sound.ttsVolume = v; ns.MarkDirty() end },
         repeatSec = { type = "range", name = "Repeat every (seconds, 0 = once)", order = 6, width = "double", min = 0, max = 10, step = 0.1,
-            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v end },
+            get = function() return rule.repeatSec or 0 end, set = function(_, v) rule.repeatSec = v; ns.MarkDirty() end },
         none = { type = "description", order = 7, fontSize = "small",
             hidden = function() return #ns.GetTtsVoices() > 0 end,
             name = "|cffff8800No text-to-speech voice is installed on this computer, so nothing will be spoken.|r" },
@@ -2841,16 +2893,16 @@ local function BuildRule(i, rule)
             dir = Sel(B, "dir", "Drains toward", 3.1, DIR, DIR_ORDER, bon, { width = "double" }),
             reverse = Tog(B, "reverse", "Fill up instead of draining", 3.2, bon, { width = "double", desc = "Time bars only. A stacks / charges bar always fills by the count." }),
             texture = { type = "select", name = "Bar texture", order = 3.3, width = "double",
-                desc = "Sets the bar texture: built-in, the game's power-bar art, other addons' shared textures, or your own file. Power-bar art is already coloured; Fixed white shows it as drawn.",
+                desc = "Sets the bar texture: built-in, the game's power-bar art, other addons' shared textures, or your own file. Power-bar art is already colored; Fixed white shows it as drawn.",
                 values = function() local vv = ns.BarTextureList(); return vv end,
                 sorting = function() local _, o = ns.BarTextureList(); return o end,
                 get = function() return B.texture or "flat" end, set = function(_, x) B.texture = x; bon() end },
             texFile = { type = "input", name = "Texture ID / path", order = 3.4, width = "double", hidden = function() return B.texture ~= "file" end,
                 get = function() return tostring(B.texFile or "") end, set = function(_, x) B.texFile = tostring(x or ""); bon() end },
-            colH = hdr("Colour", 4),
-            colorMode = Sel(B, "colorMode", "Colour", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed colour" },
+            colH = hdr("Color", 4),
+            colorMode = Sel(B, "colorMode", "Color", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed color" },
                 { "auto", "fixed" }, bon, { width = "double" }),
-            color = Col(B, "color", "Bar colour", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
+            color = Col(B, "color", "Bar color", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
             colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
                 name = function()
                     local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
@@ -2867,12 +2919,12 @@ local function BuildRule(i, rule)
                 hidden = function() local _, _, gf = ns.BarCueStyle(rule); return B.colorMode == "fixed" or gf == nil end,
                 name = function()
                     local st, _, gf = ns.BarCueStyle(rule)
-                    return gf and ("|cffffd100Colour style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
+                    return gf and ("|cffffd100Color style: " .. (ns.BAR_STYLE_LABEL[st] or st) .. ", forced by the group '" .. tostring(gf.name) .. "'.|r Untick 'Force on every bar in this group' on that group's Display tab to set this bar's own.") or ""
                 end },
-            style = Sel(B, "style", "Colour style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
+            style = Sel(B, "style", "Color style", 4.5, ns.BAR_STYLE_LABEL, ns.BAR_STYLES, bon, { width = "double",
                 hidden = function() return B.colorMode == "fixed" end,
                 disabled = function() local _, _, gf = ns.BarCueStyle(rule); return gf ~= nil end,
-                desc = "Sets the colours: Blizzard's own, a Neon, Pastel or Muted / Dark take on them, or Custom colours below." }),
+                desc = "Sets the colors: Blizzard's own, a Neon, Pastel or Muted / Dark take on them, or Custom colors below." }),
             cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
@@ -2925,14 +2977,14 @@ local function BuildRule(i, rule)
             icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
                 { desc = "On a vertical bar, left is the top end and right the bottom end." }),
             spark = Tog(B.spark, "enabled", "Spark", 5.2, bon, { desc = "A bright mark on the moving edge of the fill." }),
-            sparkColor = Col(B.spark, "color", "Spark colour", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
+            sparkColor = Col(B.spark, "color", "Spark color", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
             sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, bon, { hidden = function() return not B.spark.enabled end }),
             bgH = hdr("Background and border", 6),
             bg = Tog(V.bg, "enabled", "Background", 6.1, bon),
-            bgColor = Col(V.bg, "color", "Background colour", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
+            bgColor = Col(V.bg, "color", "Background color", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
             border = Tog(V.border, "enabled", "Border", 6.3, bon),
             borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, bon, { hidden = function() return not V.border.enabled end }),
-            borderColor = Col(V.border, "color", "Border colour", 6.5, bon, { hidden = function() return not V.border.enabled end }),
+            borderColor = Col(V.border, "color", "Border color", 6.5, bon, { hidden = function() return not V.border.enabled end }),
             alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, bon),
         }
         local nameArgs = TextStyleArgs(B.name, bon, 10)
@@ -3053,6 +3105,7 @@ local function BuildRule(i, rule)
                 get = function() return rule.folder or "none" end,
                 set = function(_, v)
                     rule.folder = (v ~= "none") and v or nil
+                    ns.MarkDirty(); pcall(ns.RefreshAllVisuals)   -- audit D24: as right-click > Move To (an undo step; displays follow the new group)
                     Notify()
                     ns.SelectKeep(RulePath(rule))
                 end,
@@ -3097,12 +3150,8 @@ local function BuildRule(i, rule)
     end
     local rg = {
         type = "group", childGroups = "tab", order = 1000 + i,
-        hidden = function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end,
-        name = function()
-            local nm = tostring(rule.name or "")
-            if nm == "" then return "|cff888888Unnamed rule|r" end
-            return (rule.enabled and "" or "|cff888888") .. nm
-        end,
+        hidden = ns.OptionsApi.RuleRowHidden(rule),
+        name = ns.OptionsApi.RuleRowName(rule),
         args = { display = displayTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load, rule = ruleTab },
     }
     -- a search box above the tabs (RuleSearch.lua; Xaya 2026-11-04). Not on cues / conditions, which show inside their rule.
@@ -3127,9 +3176,14 @@ function ns.SelectRuleTab(tabKey)
     Notify()
 end
 
--- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar.
+-- Edit lock: a rule (or a folder, which covers everything inside it) can be made read-only from the sidebar. A cue or condition follows
+-- its rule's lock too (audit D41: the rule row's lock covers the rule and everything shown inside it).
 function ns.IsEditLocked(x)
     if x and x.editLocked then return true end
+    if x and x.parentUid and ns.FindParentRule then
+        local p = ns.FindParentRule(x)
+        if p and p ~= x and p.editLocked then return true end
+    end
     local id, guard = x and x.folder, 0
     while id and guard < 32 do
         local f = ns.FolderById(id)
@@ -3139,10 +3193,36 @@ function ns.IsEditLocked(x)
     end
     return false
 end
+-- A header's own controls (Skin.lua: arg.xuiActions = Move up / Move down / Duplicate / Remove, arg.xuiEdit = the name box) are not
+-- AceConfig options, so `disabled` never reached them (audit D26 / D44). While locked() is true the action icons are drawn grayed out
+-- (false) and do nothing, and the name box refuses the edit. Wrapping twice is harmless.
+function ns.LockHeaderArg(a, locked)
+    if type(a) ~= "table" then return end
+    local acts = a.xuiActions
+    if acts ~= nil and not a.xuiLockWrapped then
+        a.xuiLockWrapped = true
+        a.xuiActions = function(...)
+            local spec = acts
+            if type(spec) == "function" then spec = spec(...) end
+            if type(spec) ~= "table" or not locked() then return spec end
+            local out = {}
+            for k, v in pairs(spec) do if v ~= nil then out[k] = false end end
+            return out
+        end
+    end
+    local ed = a.xuiEdit
+    if type(ed) == "table" and not ed.xuiLockWrapped then
+        ed.xuiLockWrapped = true
+        local set = ed.set
+        ed.locked = locked
+        ed.set = function(...) if locked() then return end; if set then return set(...) end end
+    end
+end
 -- disables every leaf option while locked() is true (collapse / expand controls stay usable; groups are left alone
 -- because a disabled group would also disable those controls)
 function ns.LockArgs(args, locked)
     for _, o in pairs(args or {}) do
+        if type(o) == "table" and o.arg then ns.LockHeaderArg(o.arg, locked) end
         if o.type == "group" then
             ns.LockArgs(o.args, locked)
         elseif not (type(o.desc) == "string" and o.desc:find("^Expand or collapse")) then
@@ -3323,13 +3403,25 @@ local exportInc = { rules = true, bars = true, qol = true }
 local exportText = ""
 local importText, importSnap, importErr = "", nil, nil
 local backupName, shareMsg = "", ""
+-- (Options 0.6.72; UI-26 / UI-27) Profiles > Export: one tick box per component (Profiles.lua); Profiles > Import: the components the
+-- pasted text holds, each ticked to start; rules are added as a new group or replace yours
+local profInc = { rules = true, themes = true, settings = true, qol = true, bonus = true, reskin = true }
+local importDef, importInc, importRulesMode = nil, {}, "add"
 
 local function ParseImport()
-    importSnap, importErr = nil, nil
+    importSnap, importErr, importDef = nil, nil, nil
+    importInc = {}
     if (importText or ""):match("%S") then
-        importSnap, importErr = ns.Share.Read(importText, "rules")
+        local data, defOrErr = ns.Share.Read(importText)
+        if data then
+            importSnap, importDef = data, defOrErr
+            if importDef.kind == "profile" and ns.Profile then for _, c in ipairs(ns.Profile.Held(data)) do importInc[c.key] = true end end
+        else
+            importErr = defOrErr
+        end
     end
 end
+ns.OptionsApi.ProfileState = function() return { profInc = profInc, importInc = importInc, importDef = importDef, importSnap = importSnap, importErr = importErr } end
 
 local function AddonVersion()
     local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
@@ -3340,8 +3432,10 @@ end
 -- Page switching (2026-10-31 UI pass): Class/Spec Rule Creator, Profiles (Export / Import) and Settings are not in the tab strip
 -- while the skin is on. The toolbar buttons open them (ns.pageOpen) and the tab goes away again as soon as another tab is picked.
 -- With the skin off (/xuiskin) they stay ordinary tabs, because the toolbar does not exist then.
+-- (Options 0.6.72; UI-23 to UI-27) Settings and Profiles are ordinary top tabs and the Recycle Bin is a sub-tab of Profiles, so no
+-- page is hidden any more; kept so an older caller still gets a valid "hidden" function.
 function ns.PageHidden(key)
-    return function() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen ~= key or false end
+    return function() return false end
 end
 
 -- Settings > Display Options / Debugging readers (used by the tree painting and the debug console tray)
@@ -3774,7 +3868,7 @@ function BuildClassCreator()
 end
 end   -- do (class/spec creator)
 
-local function BuildProfiles()
+local function BuildProfiles(binTab)
     local rulesKind = ns.Share.kinds.rules
     local function ApplyRules(snap, mode, okText)
         local now = ns.Share.Apply(rulesKind, snap, mode, function(c)
@@ -3784,73 +3878,63 @@ local function BuildProfiles()
         end)
         if not now then shareMsg = "Combat: this will happen as soon as combat ends."; Notify() end
     end
-    local a = {
+    local PR = ns.Profile
+    local function rulesInc() return { rules = profInc.rules, bars = profInc.rules, qol = profInc.rules } end
+    ------------------------------------------------------------------ Export
+    local e = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Your rules are personal. Nothing is shared unless you export it, and a fresh install starts empty. Export turns your rules into a text you can paste to a friend; they paste it under Import to add it to their own setup. A single rule or a group: right-click it in the list and pick Export. Themes are shared under Settings > UI Options > Theme." },
-        exportH = { type = "header", name = "Export rules", order = 1 },
-        incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their groups)", 2, function() end, { width = "double" }),
-        incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double", hidden = function() return not ns.BarsOn end }),
-        incQol = Tog(exportInc, "qol", "QoL elements", 4, function() end, { width = "double", hidden = function() return not ns.QoLOn end }),
-        gen = { type = "execute", name = "Generate export text", order = 5, width = "double",
+            name = "A profile is everything you made in XayaUI. Tick the parts to include, then make the text and paste it to a friend or another account; they paste it under Profiles > Import. Personal things (the Notepad, the Shopping List, other players' names) never go in. A single rule or a group: right-click it in the list and pick Export." },
+        exportH = { type = "header", name = "Export", order = 1 },
+        gen = { type = "execute", name = "Generate export text", order = 20, width = "double",
+            disabled = function() for _, v in pairs(profInc) do if v then return false end end return true end,
             func = function()
-                local txt, err = ns.Share.Encode("rules", ns.Share_SnapshotAll(exportInc, backupName))
+                local onlyRules = profInc.rules
+                for k, v in pairs(profInc) do if v and k ~= "rules" then onlyRules = false end end
+                local txt, err
+                if onlyRules then   -- rules alone: the rules string (XUI1), which older XayaUI versions also read
+                    txt, err = ns.Share.Encode("rules", ns.Share_SnapshotAll(rulesInc(), backupName))
+                else
+                    txt, err = ns.Share.Encode("profile", PR.Snapshot(profInc, backupName))
+                end
                 exportText = txt or ("Could not export: " .. tostring(err))
                 Notify()
             end },
-        exportBox = { type = "input", name = "Export text  (click, Ctrl+A, Ctrl+C)", order = 6, width = "full", multiline = 6,
+        exportBox = { type = "input", name = "Export text  (click, Ctrl+A, Ctrl+C)", order = 21, width = "full", multiline = 6,
             get = function() return exportText end, set = function() end },
-        importH = { type = "header", name = "Import rules", order = 10 },
-        importBox = { type = "input", name = "Paste exported rules (a rule, a group, or several rules) here, then press Accept", order = 11, width = "full", multiline = 6,
-            get = function() return importText end,
-            set = function(_, v) importText = v or ""; ParseImport(); Notify() end },
-        importInfo = { type = "description", order = 12, width = "full", fontSize = "medium",
-            name = function()
-                if importErr then return "|cffff5555" .. importErr .. "|r" end
-                if importSnap then
-                    local nm = (importSnap.name and importSnap.name ~= "") and ("'" .. importSnap.name .. "': ") or ""
-                    return "|cff55ff55Readable.|r " .. nm .. ns.Share_DescribeRules(importSnap)
-                end
-                return "Nothing pasted yet."
-            end },
-        importGo = { type = "execute", name = "Import", order = 14, width = "half",
-            desc = "Adds everything in the text as one new folder of its own; your existing rules are not touched. During combat it waits until combat ends.",
-            disabled = function() return not importSnap end,
-            func = function()
-                local snap = importSnap
-                importSnap, importText = nil, ""
-                ApplyRules(snap, "add", function(c) return ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol) end)
-            end },
-        msg = { type = "description", order = 15, width = "full", name = function() return shareMsg end },
-        savedH = { type = "header", name = "Backups saved on this computer", order = 20 },
-        backupIntro = { type = "description", order = 20.5, width = "full",
-            name = "A backup is a copy of the parts ticked under Export rules, kept inside XayaUI's saved settings on this computer. Loading one can add it to what you have or replace it." },
-        saveName = { type = "input", name = "Backup name", order = 21, width = "double",
+        msg = { type = "description", order = 22, width = "full", name = function() return shareMsg end },
+        savedH = { type = "header", name = "Backups saved on this computer", order = 30 },
+        backupIntro = { type = "description", order = 30.5, width = "full",
+            name = "A backup is a copy of your rules and groups, kept inside XayaUI's saved settings on this computer. Loading one can add it to what you have or replace it." },
+        saveName = { type = "input", name = "Backup name", order = 31, width = "double",
             get = function() return backupName end, set = function(_, v) backupName = v or "" end },
-        savePick = { type = "select", name = "Or pick a backup to overwrite", order = 21.5, width = "double",
+        savePick = { type = "select", name = "Or pick a backup to overwrite", order = 31.5, width = "double",
             values = function() local v = {}; for _, p in ipairs(ns.Backups()) do v[p.name] = p.name end return v end,
             sorting = function() local o = {}; for _, p in ipairs(ns.Backups()) do o[#o + 1] = p.name end table.sort(o, function(x, y) return tostring(x):lower() < tostring(y):lower() end) return o end,
             get = function() for _, p in ipairs(ns.Backups()) do if p.name == backupName then return p.name end end end,
             set = function(_, v) backupName = v or ""; Notify() end },
-        save = { type = "execute", order = 22, width = "double",
+        save = { type = "execute", order = 32, width = "double",
             name = function()
                 for _, p in ipairs(ns.Backups()) do if p.name == backupName then return "Save and overwrite '" .. backupName .. "'" end end
                 return "Save a backup"
             end,
-            desc = "Saves a copy of the parts ticked under Export rules. If the name matches an existing backup, that backup is replaced after you confirm.",
+            desc = "Saves a copy of your rules and groups. If the name matches an existing backup, that backup is replaced after you confirm.",
             confirm = function()
                 for _, p in ipairs(ns.Backups()) do if p.name == backupName then return true end end
                 return false
             end,
             confirmText = "Overwrite this backup with your current rules? Its old contents are lost.",
             func = function()
-                local ok, msg = ns.Backup_Save(backupName, exportInc)
+                local ok, msg = ns.Backup_Save(backupName, { rules = true, bars = true, qol = true })
                 shareMsg = ok and ("Backup '" .. backupName .. "' " .. msg .. ".") or ("|cffff5555" .. msg .. "|r")
                 Notify()
             end },
     }
+    for i, c in ipairs(PR and PR.COMPONENTS or {}) do
+        e["inc_" .. c.key] = Tog(profInc, c.key, c.label, 1 + i, function() end, { width = "double" })
+    end
     for idx, p in ipairs(ns.Backups()) do
-        a["p" .. idx] = {
-            type = "group", inline = true, order = 30 + idx, name = p.name,
+        e["p" .. idx] = {
+            type = "group", inline = true, order = 40 + idx, name = p.name,
             args = {
                 desc = { type = "description", order = 1, width = "full", name = ns.Share_DescribeRules(p.data) },
                 add = { type = "execute", name = "Load (add)", order = 2, width = "half",
@@ -3866,7 +3950,79 @@ local function BuildProfiles()
             },
         }
     end
-    return { type = "group", name = "Import / Export", order = 6, hidden = ns.PageHidden("profiles"), args = a }
+    ------------------------------------------------------------------ Import
+    local function held(key)
+        if not importSnap then return false end
+        if importDef and importDef.kind == "rules" then return key == "rules" end
+        return importDef and importDef.kind == "profile" and importSnap.parts and importSnap.parts[key] ~= nil or false
+    end
+    local function anyTicked()
+        if not importSnap then return false end
+        if importDef.kind ~= "profile" then return true end
+        for _, v in pairs(importInc) do if v then return true end end
+        return false
+    end
+    local m = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Paste a profile, rules or a theme. It is read as you paste; nothing changes until you press Import. Untick a part to leave it out." },
+        importH = { type = "header", name = "Import", order = 1 },
+        importBox = { type = "input", name = "Paste the text here, then press Accept", order = 2, width = "full", multiline = 6,
+            get = function() return importText end,
+            set = function(_, v) importText = v or ""; ParseImport(); Notify() end },
+        importInfo = { type = "description", order = 3, width = "full", fontSize = "medium",
+            name = function()
+                if importErr then return "|cffff5555" .. importErr .. "|r" end
+                if importSnap then
+                    local nm = (importSnap.name and importSnap.name ~= "") and ("'" .. importSnap.name .. "': ") or ""
+                    return "|cff55ff55Readable.|r " .. nm .. importDef.Describe(importSnap)
+                end
+                return "Nothing pasted yet."
+            end },
+        partsH = { type = "header", name = "Parts to import", order = 4, hidden = function() return not (importSnap and importDef.kind ~= "theme") end },
+        rulesMode = { type = "select", name = "Rules and groups", order = 20, width = "double",
+            values = { add = "Add them as a new group of their own", replace = "Replace my rules and groups" },
+            sorting = { "add", "replace" },
+            hidden = function() return not held("rules") end,
+            disabled = function() return importDef and importDef.kind == "profile" and not importInc.rules end,
+            get = function() return importRulesMode end, set = function(_, v) importRulesMode = v; Notify() end },
+        importGo = { type = "execute", name = "Import", order = 30, width = "half",
+            desc = "Imports the ticked parts; settings from a profile replace yours one by one and a reload puts them to work. During combat it waits until combat ends.",
+            disabled = function() return not anyTicked() end,
+            confirm = function() return importRulesMode == "replace" and held("rules") and (importDef.kind == "rules" or importInc.rules) and true or false end,
+            confirmText = "Replace all your rules and groups with the imported ones? Your current ones are removed and do not go to the Recycle Bin: export or back them up first.",
+            func = function()
+                local snap, def = importSnap, importDef
+                local mode
+                if def.kind == "rules" then mode = importRulesMode
+                elseif def.kind == "profile" then mode = { inc = ns.Copy(importInc), rules = importRulesMode } end
+                importSnap, importDef, importText, importInc = nil, nil, "", {}
+                local now = ns.Share.Apply(def, snap, mode, function(c)
+                    if def.kind == "rules" then
+                        shareMsg = ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol)
+                    elseif def.kind == "profile" then
+                        shareMsg = "Imported: " .. table.concat(c.done or {}, ", ") .. "." .. (c.reload and " Reload to put the imported settings to work." or "")
+                    else
+                        shareMsg = "Imported " .. def.label .. "."
+                    end
+                    ns.Print(shareMsg)
+                    if ns.MarkDirty then ns.MarkDirty() end
+                    Notify()
+                end)
+                if not now then shareMsg = "Combat: this will happen as soon as combat ends."; Notify() end
+            end },
+        msg = { type = "description", order = 31, width = "full", name = function() return shareMsg end },
+    }
+    for i, c in ipairs(PR and PR.COMPONENTS or {}) do
+        m["imp_" .. c.key] = Tog(importInc, c.key, c.label, 4 + i, function() Notify() end,
+            { width = "double", hidden = function() return not (importDef and importDef.kind == "profile" and held(c.key)) end })
+    end
+    local args = {
+        import = { type = "group", name = "Import", order = 1, args = m },
+        export = { type = "group", name = "Export", order = 2, args = e },
+    }
+    if binTab then binTab.order = 3; binTab.hidden = nil; args.bin = binTab end
+    -- (Options 0.6.72; UI-25 to UI-27) the Profiles top tab: Import, Export and the Recycle Bin as its sub-tabs
+    return { type = "group", name = "Profiles", order = 6, childGroups = "tab", args = args }
 end
 
 -------------------------------------------------------------------------------
@@ -3986,7 +4142,6 @@ local function StartNewRule(fid)
         ns.pickSub = (sub == "enabledTab" or sub == "draftsTab" or sub == "disabledTab" or sub == "smartTab") and sub or nil
     end
     picker = { folder = fid }
-    if ns.pageOpen == "settings" then ns.pageOpen = nil; ns.infoOpen = false end   -- a toolbar button other than Settings leaves the Settings pages
     Notify()
     ns.GoPicker()
 end
@@ -4102,16 +4257,17 @@ local function PickType(typ)
     elseif typ == "import" then
         Notify()   -- closes the type picker where it is; Import is a window of its own and does not change tabs
         if ns.OpenImportWindow then ns.OpenImportWindow() end
-    elseif typ == "profiles" then   -- the Profiles tab itself (Export button)
-        ns.pageOpen = "profiles"; ns.infoOpen = false
+    elseif typ == "profiles" then   -- Profiles > Export
+        ns.infoOpen = false
         Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles")
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", "export")
     else
         CreateRuleOfType(typ, p and p.folder)
     end
 end
 ns.UI.Import = function() PickType("import") end
--- toolbar buttons (Skin.lua): Import opens its own window; Export opens the Profiles page; Creator and Settings open their own page
+-- (Options 0.6.72) the toolbar is gone; these stay for the right-click menus, /xui commands and the type picker: Import opens its own
+-- window; Export opens Profiles > Export
 ns.UI.Export = function() PickType("profiles") end
 ns.UI.Refresh = Notify   -- redraw the options window in place (used by the Import window)
 function ns.OpenPage(key)
@@ -4121,9 +4277,12 @@ function ns.OpenPage(key)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", key == "drafts" and "draftsTab" or "creatorTab")
         return
     end
-    ns.pageOpen = key; ns.infoOpen = false
+    ns.pageOpen = nil; ns.infoOpen = false
     Notify()
     local skinned = ns.SkinRows and ns.SkinRows()
+    -- (Options 0.6.72; UI-25: the Recycle Bin is a sub-tab of Profiles; Import / Export are its other sub-tabs)
+    if key == "recyclebin" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", "bin"); return end
+    if key == "import" or key == "export" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", key); return end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
@@ -4135,7 +4294,10 @@ function ns.OpenDraftSettings()
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "settings", "rules") end
 end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
-ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
+ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- Profiles > Recycle Bin (Options 0.6.72; was a toolbar button)
+-- published for XayaUI Dev Assist's walkthroughs (feature addons never reach into ns.UI / ns.Profile directly)
+ns.OptionsApi.OpenRecycleBin = ns.UI.RecycleBin
+ns.OptionsApi.Profile = ns.Profile   -- Profiles.lua (loaded before this file): components, Snapshot, Held, Apply
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
 function ns.OptionsApi.OpenPage(module, key, ...)
@@ -4150,16 +4312,8 @@ function ns.OptionsApi.OpenPage(module, key, ...)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key)
     end
 end
-ns.UI.Settings = function()
-    -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
-    if ns.pageOpen == "settings" and ns.SkinRows and ns.SkinRows() then
-        ns.pageOpen = nil
-        Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns")
-    else
-        ns.OpenPage("settings")
-    end
-end
+-- (Options 0.6.72; UI-24 "Cog goes") Settings is a top tab; this opens it (no longer a switch that swaps the feature tabs out)
+ns.UI.Settings = function() ns.OpenPage("settings") end
 
 local function FolderRuleCount(f)
     return #FolderRules(f.id)
@@ -4334,13 +4488,13 @@ function ns.FolderContainerGroup(f)
     g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
     g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
         set = function(_, v) f.cBorder = v and true or nil; apply() end }
-    g.args.borderColor = { type = "color", name = "Border colour", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+    g.args.borderColor = { type = "color", name = "Border color", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
         get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
     g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
         set = function(_, v) f.cBg = v and true or nil; apply() end }
-    g.args.bgColor = { type = "color", name = "Background colour", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+    g.args.bgColor = { type = "color", name = "Background color", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
         get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
-    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the colour only)", order = 3.085, width = "full",
+    g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the color only)", order = 3.085, width = "full",
         hidden = function() return not f.cBg end,
         get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
         set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
@@ -4484,9 +4638,9 @@ local function BuildFolder(k, f)
                     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
                 end },
             enableAll = { type = "execute", name = "Enable all", order = 3, desc = "Switches on every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = true; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             disableAll = { type = "execute", name = "Disable all", order = 4, desc = "Switches off every rule in this group and its nested groups.",
-                func = function() for _, r in ipairs(FolderRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
+                func = function() for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end },
             pausePv = { type = "toggle", name = "Pause preview animations", order = 4.5, width = "double",
                 hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
                 desc = "Freezes the sample countdown, fades and flash in every preview, not only this group's. Untick to resume.",
@@ -4523,10 +4677,10 @@ local function BuildFolder(k, f)
         desc = "Switches every rule in this group and its nested groups on or off.",
         get = function()
             local any = false
-            for _, r in ipairs(FolderRules(f.id)) do any = true; if not r.enabled then return false end end
+            for _, r in ipairs(FolderTopRules(f.id)) do any = true; if not r.enabled then return false end end
             return any
         end,
-        set = function(_, v) for _, r in ipairs(FolderRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
+        set = function(_, v) for _, r in ipairs(FolderTopRules(f.id)) do r.enabled = v and true or false; ns.RefreshVisual(r) end; ns.MarkDirty(); Notify() end }
     if container and container.args then
         local any = false
         for k, v in pairs(container.args) do
@@ -4641,10 +4795,20 @@ function ns.InfoPass(root)
         if type(g) ~= "table" or seen[g] then return end
         seen[g] = true
         if g.type ~= "group" or type(g.args) ~= "table" then return end
-        local keys = {}
-        for k, v in pairs(g.args) do if type(v) == "table" then keys[#keys + 1] = k end end
+        -- (Options 0.6.69, REQUEST-LOG A15 P-16 click cost) the sort below only decides which heading a long description moves to; a
+        -- group with no such description (every rule list: hundreds of rule groups, no descriptions) is left as it is, unsorted. Each
+        -- entry's order is read once, not twice per comparison. Same result as before (tests/options_click_cost_run.py, parity).
+        local keys, ords, cand = {}, {}, false
+        for k, v in pairs(g.args) do
+            if type(v) == "table" then
+                keys[#keys + 1] = k; ords[k] = ord(v)
+                if not cand and v.type == "description" and type(v.name) == "string" and #v.name >= 50 and v.hidden == nil
+                    and not (type(v.arg) == "table" and v.arg.xuiKeep) then cand = true end
+            end
+        end
+        if not cand then keys = {} end
         table.sort(keys, function(a, b)
-            local oa, ob = ord(g.args[a]), ord(g.args[b])
+            local oa, ob = ords[a], ords[b]
             if oa ~= ob then return oa < ob end
             return tostring(a) < tostring(b)
         end)
@@ -4776,8 +4940,13 @@ local function BuildOptions()
     local disabledArgs, nDisabled = {}, 0
     local ruleGroups = {}
     local byRule, nested = {}, {}
+    -- (Options 0.6.69, REQUEST-LOG A15 P-16) Drawn in the window (Tree.lazy): a rule's full editor is built only when it is on screen
+    -- or asked for by a SelectGroup path; every other rule gets its sidebar row only (ns.OptionsApi.RuleStub), filled in place the
+    -- moment the window draws it (the FeedGroup hook below). Called directly (tests, other files): every rule in full, as before.
+    local lazy, want = Tree.lazy, Tree.want
     for i, rule in ipairs(ns.rules or {}) do
-        local g = BuildRule(i, rule)
+        local g
+        if lazy and not (want and want["rule" .. i]) then g = ns.OptionsApi.RuleStub(i, rule) else g = BuildRule(i, rule) end
         if rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) then
             -- an outcome is shown inside its parent rule (Conditions tab), not as its own list entry
             nested[#nested + 1] = { rule = rule, g = g }
@@ -4799,7 +4968,13 @@ local function BuildOptions()
             if pg then
                 cnt[par] = (cnt[par] or 0) + 1
                 if o.rule.folder ~= par.folder then o.rule.folder = par.folder end
-                local oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
+                -- a parent drawn as its row only: its outcomes / cues are built and embedded when it is filled (ns.OptionsApi.FillRule)
+                if pg.xuiStub then pg.xuiStub.nested[#pg.xuiStub.nested + 1] = { rule = o.rule, n = cnt[par], g = o.g } end
+                local oke, err = true, nil
+                if not pg.xuiStub then
+                    if o.g.xuiStub then o.g = BuildRule(o.g.xuiStub.i, o.rule) end
+                    oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
+                end
                 if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
             end
         end
@@ -4900,11 +5075,19 @@ local function BuildOptions()
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
-            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes.",
+            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes; a shorter time that would remove items now asks first.",
             values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
             sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
             get = function() return ns.RecycleKeepHours() end,
-            set = function(_, v) ns.SetRecycleKeepHours(v); Notify() end },
+            -- FA-14 (Options 0.6.69; Xaya: "Ask first (Recommended)"): a shorter time that removes items for good now asks first
+            set = function(_, v)
+                local n = ns.RecycleWouldPurge and ns.RecycleWouldPurge(v) or 0
+                if n == 0 then ns.SetRecycleKeepHours(v); Notify(); return end
+                local label = v
+                for _, k in ipairs(ns.RECYCLE_KEEP) do if k[1] == v then label = k[2] end end
+                StaticPopup_Show("XAYAUI_CONFIRM", ("Keep deleted items for %s? %d item(s) in the Recycle Bin are older than that and will be removed for good now."):format(tostring(label), n),
+                    nil, { cb = function() ns.SetRecycleKeepHours(v); Notify() end })
+            end },
         empty = { type = "execute", order = 2, width = "normal", name = "Empty Recycle Bin",
             desc = "Removes everything in the Recycle Bin for good.",
             disabled = function() return #ns.RecycleItems() == 0 end,
@@ -4918,11 +5101,13 @@ local function BuildOptions()
     end
     local binItems = ns.RecycleItems and ns.RecycleItems() or {}
     binArgs.summary = { type = "description", order = 3, width = "full", fontSize = "medium",
-        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups wait here so they can be restored."
+        name = (#binItems == 0) and "\nThe Recycle Bin is empty. Deleted rules and groups, and cues, conditions and triggers removed with the red X, wait here so they can be restored."
             or ("\n%d item(s). Each is removed for good %s after it was deleted."):format(#binItems, ns.RecycleKeepLabel()) }
     for i, it in ipairs(binItems) do
+        local KIND_WORD = { cue = "Cue", condition = "Condition", trigger = "Trigger" }   -- FA-11: removed with the red X in a rule
         local what = (it.kind == "rule") and "Rule"
             or (it.kind == "groupAll") and ("Group with its contents: %d rule(s), %d group(s)"):format(it.rules, it.groups)
+            or KIND_WORD[it.kind] and (KIND_WORD[it.kind] .. " of the rule '" .. tostring(it.owner or "?") .. "'")
             or "Group (its contents had moved up one level)"
         binArgs["item" .. i] = { type = "group", inline = true, order = 10 + i, name = tostring(it.name), args = {
             info = { type = "description", order = 1, width = "relative", relWidth = 0.7, fontSize = "medium",
@@ -4941,7 +5126,7 @@ local function BuildOptions()
                 func = function() ns.RecycleDeleteNow(it.id); Notify() end },
         } }
     end
-    local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = binArgs }
+    local binTab = { type = "group", name = "Recycle Bin", order = 3, args = binArgs }   -- a sub-tab of Profiles (Options 0.6.72; UI-25)
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
     creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Auto-Generate Rules"   -- (Options 0.6.63, UI-45: her name; was "Class/Spec Rule Creator")
@@ -5169,9 +5354,9 @@ local function BuildOptions()
 
     -- Addon Info and Settings > Acknowledgements moved into the version pane (InfoPane.lua, Options 0.6.56; Xaya 2026-11-06: "Both
     -- move into the pane"): Info > Version info and Info > Credits + Acknowledgements. The version text opens the pane.
-    -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
+    -- Settings (skin on): the last top tab (Options 0.6.72; UI-24 "Cog goes": before, a toolbar cog swapped the feature tabs out for it):
     --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
-    local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
+    local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
     local settings = BuildAddonSettings()
     local sa = settings.args
     local dispArgs = {}
@@ -5191,17 +5376,16 @@ local function BuildOptions()
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
     end
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
-    track.hidden = function() return SettingsOn() and true or false end
-    for _, t in pairs(modTabs) do t.hidden = function() return SettingsOn() and true or false end end   -- Settings open: feature tabs go away (Xaya, 2026-11-01)
+    -- (Options 0.6.72) the Rules and feature tabs stay beside Settings (they went away while the Settings pages were open, 2026-11-01)
     -- The Game Menu look (XayaUI_Reskin) was on this Display page until Options 0.6.38; it is the Esc Menu page of the Blizzard UI
     -- Reskin tab now (module "reskin", with the Chat Panel and the Character Pane). The XayaUI button in that menu stays here (it adds
     -- a button, it does not restyle the menu); one line says where the look went.
     if modTabs.reskin and modTabs.reskin.args and modTabs.reskin.args.gamemenu then
         dispArgs.gm_moved = { type = "description", order = 24.2, width = "full", arg = { xuiKeep = true },   -- shown, not folded into an (i)
-            name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard UI Reskin tab > Esc Menu." }
+            name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard Reskin tab > Esc Menu." }
     end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), settings = settings, set = setPage } }
+        args = { cooldowns = track, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(binTab), settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
@@ -5209,7 +5393,125 @@ local function BuildOptions()
     pcall(ns.OptionsApi.HalfInputs, out)
     return out
 end
-ns.BuildOptionsTable = BuildOptions
+-- (Options 0.6.69, REQUEST-LOG A15 P-16 click cost) While one build of the tree or one redraw of the sidebar rows runs, the rule list
+-- does not change, so a rule's cues (and a cue's parent, below) are looked up from one pass over the rules instead of a pass per call (ns.CuesOf outside the
+-- engine step reads every rule: with 313 rules, asked for every rule, that was a fifth of a click). The lookup gives the same list,
+-- in the same order, as ns.CuesOf, and a new copy each time (a caller may change its copy). Only for the length of that one call:
+-- ns.CuesOf is put back after it, even on an error; nested calls share the outer one; inside an engine step the step index answers.
+function ns.OptionsApi.WithCueMemo(fn, ...)
+    local orig = ns.CuesOf
+    if ns.OptionsApi.cueMemoOn or type(orig) ~= "function" or (ns.InStep and ns.InStep()) then return fn(...) end
+    local map
+    local function memo(p)
+        if type(p) ~= "table" or type(p.uid) ~= "string" then return orig(p) end
+        if not map then
+            map = {}
+            for _, r in ipairs(ns.rules or {}) do
+                local pu = r.parentUid
+                if r.isCue and type(pu) == "string" then
+                    local l = map[pu]
+                    if not l then l = {}; map[pu] = l end
+                    l[#l + 1] = r
+                end
+            end
+        end
+        local out, l = {}, map[p.uid]
+        if l then for i = 1, #l do if l[i] ~= p then out[#out + 1] = l[i] end end end
+        return out
+    end
+    -- the same for a cue's / condition's parent rule (ns.FindParentRule: the first rule in list order with that uid and no parent of
+    -- its own; outside a step it reads every rule, and the sidebar's up / down arrows asked it for every rule, for every row)
+    local origP, pmap = ns.FindParentRule, nil
+    local function memoP(rule)
+        if type(rule) ~= "table" then return origP(rule) end
+        local uid = rule.parentUid
+        if type(uid) ~= "string" or uid == "" then return nil end
+        if not pmap then
+            pmap = {}
+            for _, r in ipairs(ns.rules or {}) do
+                if not r.parentUid and type(r.uid) == "string" and pmap[r.uid] == nil then pmap[r.uid] = r end
+            end
+        end
+        return pmap[uid]
+    end
+    ns.OptionsApi.cueMemoOn = true
+    ns.OptionsApi.memo = {}   -- per-pass answers other code may keep for the length of this call (Siblings, the sidebar arrows)
+    ns.CuesOf = memo
+    if type(origP) == "function" then ns.FindParentRule = memoP end
+    local res = { pcall(fn, ...) }
+    if ns.CuesOf == memo then ns.CuesOf = orig end
+    if ns.FindParentRule == memoP then ns.FindParentRule = origP end
+    ns.OptionsApi.cueMemoOn = nil
+    ns.OptionsApi.memo = nil
+    if not res[1] then error(res[2], 0) end
+    return unpack(res, 2, table.maxn(res))
+end
+ns.BuildOptionsTable = function(...) return ns.OptionsApi.WithCueMemo(BuildOptions, ...) end
+-- (Options 0.6.69, REQUEST-LOG A15 P-16: a click took one full build, 0.5-0.9 s and ~165 MB of garbage with 313 rules in the stand-in,
+-- nine tenths of it the 313 rule editors) The window builds each rule's sidebar row only; the editor of the rule on screen is built
+-- when the window draws it. RuleStub: the row (the same name / hidden / order as the full editor's group) and the rule data fixes the
+-- full build makes. FillRule: builds the editor into that same table (every list holding the row sees it), with the outcomes / cues
+-- that show inside it and the same after-passes the full build runs over the whole tree (info icons, half-width inputs).
+function ns.OptionsApi.RuleStub(i, rule)
+    ns.OptionsApi.RuleDataFixes(rule)
+    return { type = "group", childGroups = "tab", order = 1000 + i,
+        hidden = ns.OptionsApi.RuleRowHidden(rule), name = ns.OptionsApi.RuleRowName(rule),
+        args = {}, xuiStub = { i = i, rule = rule, nested = {} } }
+end
+function ns.OptionsApi.FillRule(stub)
+    local s = type(stub) == "table" and stub.xuiStub
+    if not s then return false end
+    stub.xuiStub = nil
+    local full = ns.OptionsApi.WithCueMemo(function()
+        local g = BuildRule(s.i, s.rule)
+        for _, o in ipairs(s.nested) do
+            local og = o.g
+            if og.xuiStub then og = BuildRule(og.xuiStub.i, o.rule) end
+            local oke, err = pcall(ns.EmbedOutcome, g, og, o.rule, o.n)
+            if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
+        end
+        return g
+    end)
+    if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, full) end
+    pcall(ns.OptionsApi.HalfInputs, full)
+    for k in pairs(stub) do stub[k] = nil end
+    for k, v in pairs(full) do stub[k] = v end
+    -- the window's narrowest width follows the widest dropdown in what it has drawn (Skin.lua ScanDropdowns): look again
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of then of.xuiDD = nil end
+    return true
+end
+-- AceConfigDialog draws a group through FeedGroup(appName, options, container, rootframe, path) (AceConfigDialog-3.0.lua, the copy in
+-- Libs/; a method looked up on the library table at each call): every row-only rule on the path is filled first. Other addons' windows
+-- pass straight through.
+do
+    local FeedGroup0 = AceConfigDialog.FeedGroup
+    AceConfigDialog.FeedGroup = function(self, appName, options, container, rootframe, path, ...)
+        if appName == APP and type(options) == "table" and type(path) == "table" then
+            local g = options
+            for n = 1, #path do
+                g = type(g) == "table" and type(g.args) == "table" and g.args[path[n]] or nil
+                if type(g) ~= "table" then break end
+                if g.xuiStub then pcall(ns.OptionsApi.FillRule, g) end
+            end
+        end
+        return FeedGroup0(self, appName, options, container, rootframe, path, ...)
+    end
+    -- SelectGroup(appName, ...path) walks a tree it builds itself: the rules named in the path are built in full for that walk, so a
+    -- path into a rule's tab (the rule search's results, the QA walkthroughs) finds every level
+    local SelectGroup0 = AceConfigDialog.SelectGroup
+    AceConfigDialog.SelectGroup = function(self, appName, ...)
+        if appName ~= APP then return SelectGroup0(self, appName, ...) end
+        local want = {}
+        for n = 1, select("#", ...) do local k = select(n, ...); if type(k) == "string" then want[k] = true end end
+        local prev = Tree.want
+        Tree.want = want
+        local res = { pcall(SelectGroup0, self, appName, ...) }
+        Tree.want = prev
+        if not res[1] then error(res[2], 0) end
+        return unpack(res, 2, table.maxn(res))
+    end
+end
 -- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for text inputs: "Half width, two per row") every one-line text input that
 -- would take a whole row or most of it (width "full", none given, or "double": 340 px, the Shopping List's "Enchant: Head" in her
 -- screenshot) is half the row (AceConfigDialog's relative width; 0.49 so two fit beside the
@@ -5862,7 +6164,7 @@ drag.fail = function(err)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
-    ns.Print("moving a row failed and was cancelled: " .. tostring(err))
+    ns.Print("moving a row failed and was canceled: " .. tostring(err))
     if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
     pcall(Notify)
 end
@@ -5951,34 +6253,76 @@ local function Siblings(uv)
     -- in the Loaded / Not Loaded views only the rows shown there count as neighbors (so an arrow always moves the row visibly)
     local first = tostring(uv or ""):match("^([^\001]+)")
     local scope = (first == "loaded" or first == "notloaded" or first == "disabled") and first or nil
+    -- (Options 0.6.69, REQUEST-LOG A15 P-16) while one redraw of the sidebar rows runs (ns.OptionsApi.memo, set by WithCueMemo) the
+    -- rules do not change: each rule's scope, group and parent are read once for all the rows instead of once per row (every row read
+    -- every rule: three quarters of a click with 313 rules). Same lists, same order; each row gets its own copy.
+    local M = ns.OptionsApi.memo
+    local MS
+    if M then
+        local mk = "sib:" .. tostring(scope)
+        MS = M[mk]
+        if not MS then
+            MS = { inScope = {}, nested = {}, gkey = {}, lists = {}, has = {} }
+            if scope then MS.okc, MS.ctx = pcall(ns.ReadContext) end
+            M[mk] = MS
+        end
+    end
     local okc, ctx
-    if scope then okc, ctx = pcall(ns.ReadContext) end
-    local function RuleInScope(r)
+    if MS then okc, ctx = MS.okc, MS.ctx elseif scope then okc, ctx = pcall(ns.ReadContext) end
+    local function RuleInScope0(r)
         if not scope then return true end
         return okc and ns.RuleScope(r, ctx) == scope or false
     end
+    local function RuleInScope(r)
+        if not MS then return RuleInScope0(r) end
+        local v = MS.inScope[r]
+        if v == nil then v = RuleInScope0(r); MS.inScope[r] = v end
+        return v
+    end
+    local function Nested(r)
+        if not MS then return IsNestedOutcome(r) end
+        local v = MS.nested[r]
+        if v == nil then v = IsNestedOutcome(r); MS.nested[r] = v end
+        return v
+    end
+    local function GKey(r)
+        if not MS then return RuleGroupKey(r) end
+        local v = MS.gkey[r]
+        if v == nil then v = RuleGroupKey(r); MS.gkey[r] = v end
+        return v
+    end
     local function FolderInScope(f)
         if not scope then return true end
-        local function has(fid, depth)
+        local function has0(fid, depth)
             if depth > 16 then return false end
             for _, r in ipairs(ns.rules or {}) do
-                if r.folder == fid and not IsNestedOutcome(r) and RuleInScope(r) then return true end
+                if r.folder == fid and not Nested(r) and RuleInScope(r) then return true end
             end
             for _, x in ipairs(ns.folders or {}) do
-                if x.parent == fid and has(x.id, depth + 1) then return true end
+                if x.parent == fid and has0(x.id, depth + 1) then return true end
             end
             return false
         end
-        return has(f.id, 0)
+        if not MS then return has0(f.id, 0) end
+        local v = MS.has[f.id]
+        if v == nil then v = has0(f.id, 0); MS.has[f.id] = v end
+        return v
     end
     local n = last:match("^rule(%d+)$")
     if n then
-        local rule = ns.rules and ns.rules[tonumber(n)]
-        if not rule or IsNestedOutcome(rule) then return end
-        local key, list, pos = RuleGroupKey(rule), {}, nil
-        for i, r in ipairs(ns.rules) do
-            if not IsNestedOutcome(r) and RuleGroupKey(r) == key and RuleInScope(r) then list[#list + 1] = i; if r == rule then pos = #list end end
+        local idx = tonumber(n)
+        local rule = ns.rules and ns.rules[idx]
+        if not rule or Nested(rule) then return end
+        local key, list, pos = GKey(rule), {}, nil
+        local all = MS and MS.lists[key]
+        if not all then
+            all = {}
+            for i, r in ipairs(ns.rules) do
+                if not Nested(r) and GKey(r) == key and RuleInScope(r) then all[#all + 1] = i end
+            end
+            if MS then MS.lists[key] = all end
         end
+        for j = 1, #all do list[j] = all[j]; if ns.rules[all[j]] == rule then pos = j end end
         return "rule", rule, list, pos
     end
     local f = last:match("^f%d") and FolderById(last)
@@ -6376,8 +6720,8 @@ local function RowMenu(button, root)
             end)
             root:CreateDivider()
         end
-        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
-        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Enable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = true; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
+        root:CreateButton("Disable All Rules Inside", function() for _, r in ipairs(FolderTopRules(fold.id)) do r.enabled = false; pcall(ns.RefreshVisual, r) end; ns.MarkDirty(); Notify() end)
         root:CreateButton("Export Group", function() ns.UI.ExportFolder(fold) end)
         AddPasteMenu(root, "Paste Settings Into Rules Here", function() return FolderRules(fold.id) end,
             function() return "every rule in '" .. tostring(fold.name) .. "' (and its nested groups)" end)
@@ -6387,7 +6731,7 @@ local function RowMenu(button, root)
             AskConfirm("Delete the group '" .. fold.name .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() DeleteFolder(fold) end)
         end)
         root:CreateButton("|cffff6060Delete Group and All Contents|r", function()
-            local n = #FolderRules(fold.id)
+            local n = #FolderTopRules(fold.id)
             AskConfirm("Delete the group '" .. fold.name .. "' AND everything inside it: " .. n .. " rule(s) and all nested groups? They go to the Recycle Bin together as one item, for " .. ns.RecycleKeepLabel() .. ".", function() ns.DeleteFolderAll(fold) end)
         end)
         return true
@@ -7040,13 +7384,15 @@ do
     function ns.MultiMove(fid)
         local fo = fid and FolderById(fid)
         if fo and ns.IsCategoryRoot(fo) then ns.Print("rules cannot be placed into a Smart Category"); return end
-        local n = 0
+        local n, skipped = 0, 0
         for r in pairs(sel) do
-            if r.folder ~= fid then r.folder = fid; n = n + 1 end
+            if ns.IsEditLocked(r) then skipped = skipped + 1   -- audit D44: a locked rule stays where it is
+            elseif r.folder ~= fid then r.folder = fid; n = n + 1 end
             -- outcomes embedded in a rule follow their parent's group (same rule as the single-rule move)
         end
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) were not moved (unlock them in the sidebar to move them)."):format(skipped)) end
         local keep = {}
-        for r in pairs(sel) do keep[#keep + 1] = r end
+        for r in pairs(sel) do if not ns.IsEditLocked(r) then keep[#keep + 1] = r end end
         ns.MultiReset()
         ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify()
         if ns.DecorateTrees then ns.DecorateTrees() end
@@ -7123,8 +7469,9 @@ do
         if button.xuiMultiTex then button.xuiMultiTex:SetShown(on and true or false) end
     end
     function ns.MultiDelete()
-        local list = {}
-        for r in pairs(sel) do list[#list + 1] = r end
+        local list, skipped = {}, 0
+        for r in pairs(sel) do if ns.IsEditLocked(r) then skipped = skipped + 1 else list[#list + 1] = r end end   -- audit D44
+        if skipped > 0 then ns.Print(("%d edit-locked rule(s) are left out (unlock them in the sidebar to delete them)."):format(skipped)) end
         if #list == 0 then return end
         StaticPopup_Show("XAYAUI_CONFIRM", ("Delete %d selected rule(s)? Each goes to the Recycle Bin for %s and can be restored on its own."):format(#list, ns.RecycleKeepLabel()), nil, { cb = function()
             ns.RecycleRules(list)
@@ -7144,7 +7491,7 @@ function ns.SidebarRename(button)
         rule = fk and FolderById(fk)
         isFolder = rule and true or nil
     end
-    if not rule or (not isFolder and ns.IsEditLocked and ns.IsEditLocked(rule)) then return end
+    if not rule or ns.IsEditLocked(isFolder and { folder = rule.id } or rule) then return end   -- audit D44: a locked group is not renamed either
     local eb = button.xuiRenameEB
     if not eb then
         eb = CreateFrame("EditBox", nil, button)
@@ -7165,6 +7512,7 @@ function ns.SidebarRename(button)
                     r.name = t
                     ns.MarkDirty(); Notify()
                 else
+                    if t:match("^%s*$") then return end   -- audit D46: an empty name keeps the old one (as a group and the Rename popup do)
                     r.name = t
                     pcall(ns.RefreshVisual, r); ns.MarkDirty(); Notify()
                 end
@@ -7436,6 +7784,14 @@ local function DecorateButton(button)
         local rules = {}
         for _, o in ipairs(rawObjs or {}) do if o.visual then rules[#rules + 1] = o end end
         local lastKey = tostring(button.uniquevalue or ""):match("([^\001]+)$") or ""
+        -- audit D41: a rule whose displays are its cues listed only the cues here, so its lock left the rule itself editable
+        local rn = lastKey:match("^rule(%d+)$")
+        local own = rn and ns.rules and ns.rules[tonumber(rn)]
+        if own then
+            local has = false
+            for _, o in ipairs(rules) do if o == own then has = true; break end end
+            if not has then table.insert(rules, 1, own) end
+        end
         local folder = lastKey:match("^f%d") and ns.FolderById(lastKey) or nil
         local vr = {}
         for _, o in ipairs(vis or {}) do if o.visual then vr[#vr + 1] = o end end
@@ -7462,7 +7818,9 @@ local function DecorateTree(tree)
         local orig = tree.RefreshTree
         tree.RefreshTree = function(self, ...)
             orig(self, ...)
-            for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
+            ns.OptionsApi.WithCueMemo(function()   -- (Options 0.6.69) one cue lookup pass for all the visible rows
+                for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
+            end)
             if ns.EnsureNameRoom then pcall(ns.EnsureNameRoom, self) end   -- #369: room for every visible name
         end
         local status = tree.status or tree.localstatus
@@ -8126,7 +8484,7 @@ end
 
 function ns.DecorateTrees(root)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
-    if root then pcall(Walk, root, 0); pcall(ns.OptionsApi.PaintTabSwitches, root) end
+    if root then ns.OptionsApi.WithCueMemo(function() pcall(Walk, root, 0) end); pcall(ns.OptionsApi.PaintTabSwitches, root) end   -- (0.6.69) one rule lookup pass for every row
 end
 -- decorate right after every (re)draw of the window, so left-aligned headers do not flash centered before the next 0.25 s pass
 do
@@ -8190,6 +8548,10 @@ end
 function ns.DeleteKey()
     if ns.MultiCount() > 0 then ns.MultiDelete(); return true end
     local rule = SelectedRule()
+    if rule and ns.IsEditLocked(rule) then   -- audit D44: a locked rule is not deleted
+        ns.Print("'" .. tostring(rule.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if rule then
         AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function()
             ns.RecycleRule(rule)
@@ -8198,6 +8560,10 @@ function ns.DeleteKey()
         return true
     end
     local g = ns.SelectedGroup()
+    if g and ns.IsEditLocked({ folder = g.id }) then
+        ns.Print("the group '" .. tostring(g.name) .. "' is edit-locked: unlock it in the sidebar to delete it.")
+        return true
+    end
     if g then
         AskConfirm("Delete the group '" .. tostring(g.name) .. "'? Its rules and nested groups are kept and move up one level. " .. ns.RecycleBinNote(), function() ns.DeleteFolderById(g.id) end)
         return true
@@ -8425,13 +8791,6 @@ local function EnsureChrome(of)
             c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
         else c.delSel:Hide(); c.clr:Hide() end
     end
-    -- Creator / Profiles / Settings pages last only until another tab is picked
-    if ns.pageOpen then
-        local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
-        local tab = st and st.groups and st.groups.selected
-        local isSettingsTab = ns.pageOpen == "settings" and tab == "set"
-        if tab and tab ~= ns.pageOpen and not isSettingsTab then ns.pageOpen = nil; Notify() end
-    end
 end
 
 -- Unsaved-changes strip, attached under the options window (above the debug console) so it takes no room from the editor tabs.
@@ -8495,7 +8854,10 @@ do
                     f.armed = false
                 end
                 local fn = ns[d[3]]
-                if fn then pcall(fn, r) end
+                if fn then   -- audit D47: a failure is reported (it used to vanish inside pcall)
+                    local ok, err = pcall(fn, r)
+                    if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
+                end
                 if ns.UI and ns.UI.Notify then ns.UI.Notify() end
             end)
         end
@@ -8647,3 +9009,25 @@ function ns.OptionsApi.IsOpen() return (AceConfigDialog.OpenFrames and AceConfig
 function ns.OptionsApi.LastTree() return Tree.last end
 function ns.OptionsApi.SkinOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
 ns.Options = ns.OptionsApi
+
+-- Dev Assist QA walkthroughs (XayaUI_DevAssist/QAWalks-audit-options.lua) reach the editor only through this service: a fresh options
+-- tree's node for one rule or one group, and the Drafts page. Read-only helpers; nothing runs until a walkthrough calls them.
+do
+    local function FindKey(node, key, depth)
+        if type(node) ~= "table" or depth > 18 or type(node.args) ~= "table" then return nil end
+        if node.args[key] ~= nil then return node.args[key] end
+        for _, c in pairs(node.args) do local hit = FindKey(c, key, depth + 1); if hit then return hit end end
+    end
+    if ns.Provide then ns.Provide("optionsDebug", {
+        RuleNode = function(rule)
+            for i, r in ipairs(ns.rules or {}) do if r == rule then return FindKey(BuildOptions(), "rule" .. i, 0) end end
+        end,
+        FolderNode = function(f) return f and FindKey(BuildOptions(), f.id, 0) end,
+        Find = function(node, key) return FindKey(node, key, 0) end,
+        DraftsPage = function() return ns.BuildDraftsPage and ns.BuildDraftsPage() end,
+        IsEditLocked = function(x) return ns.IsEditLocked(x) end,
+        DraftsEnabled = function() return ns.DraftsEnabled and ns.DraftsEnabled() end,
+        DraftDirty = function(r) return ns.DraftDirty and ns.DraftDirty(r) end,
+        Notify = function() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end,
+    }) end
+end

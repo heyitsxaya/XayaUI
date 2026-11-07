@@ -55,6 +55,7 @@ local function new(kind, name, parent)
   return o
 end
 W.new = new
+W.proto = proto   -- (tests that load more of XayaUI add the methods those files need)
 function W.objects() return objects end
 
 function proto:GetName() return self._name end
@@ -133,7 +134,8 @@ function proto:RegisterEvent(e) self._events[e] = true end
 function proto:UnregisterEvent(e) self._events[e] = nil end
 function proto:UnregisterAllEvents() self._events = {} end
 function proto:RegisterForClicks() end
-function proto:CreateTexture(n, layer) return new("Texture", n, self) end
+function proto:CreateTexture(n, layer, tmpl, sub) local t = new("Texture", n, self); t._layer, t._sub = layer, sub or 0; return t end
+function proto:GetDrawLayer() return self._layer, self._sub end
 function proto:CreateFontString(n) return new("FontString", n, self) end
 function proto:CreateLine(n) return new("Line", n, self) end
 function proto:GetChildren() return table.unpack(self._kids) end
@@ -151,6 +153,9 @@ function proto:SetBackdropColor(r, g, b, a) self._bgc = { r, g, b, a } end
 function proto:SetMovable(v) self._movable = v end
 function proto:SetFading(v) self._fading = v end
 function proto:SetTimeVisible(v) self._timeVisible = v end
+-- the game's own values before anything set them (stand-in values: fading on, 120 s); GetFading / GetTimeVisible (widgets.md)
+function proto:GetFading() if self._fading == nil then return true end return self._fading end
+function proto:GetTimeVisible() return self._timeVisible or 120 end
 function proto:SetUserPlaced(v) self._userPlaced = v end
 function proto:StartMoving() self._moving = true end
 function proto:StartSizing() self._sizing = true end
@@ -214,7 +219,10 @@ GetNetStats = function() return 0, 0, 20, 35 end
 GetMoney = function() return 12345678 end
 GetZoneText = function() return "Dornogal" end
 GetSubZoneText = function() return "" end
-C_FriendList = { GetNumOnlineFriends = function() return 3 end, AddIgnore = function(n) W.ignored[#W.ignored + 1] = n end }
+C_FriendList = { GetNumOnlineFriends = function() return 3 end, AddIgnore = function(n)   -- returns added: bool (namespaces.md 1847); W.ignoreFull = the list is full
+    if W.ignoreFull then return false end
+    for _, x in ipairs(W.ignored) do if x == n then return false end end
+    W.ignored[#W.ignored + 1] = n; return true end }
 BNGetNumFriends = function() return 5, 2 end
 SOUNDKIT = { TELLMESSAGE = 3081 }
 issecretvalue = function(v) return v == "<<secret>>" end   -- test sentinel for a protected value
@@ -344,7 +352,7 @@ load("XayaUI_Chat/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua")
 -- W.coreHooks are XayaUI_Chat's (tests/chat_off_costs_nothing_run.py)
 W.coreObjects, W.coreHooks, W.coreThemeListeners = #objects, #W.hookLog, #ns.Theme._listeners
 for _, rel in ipairs({ "XayaUI_Chat/Core.lua", "XayaUI_Chat/Frame.lua", "XayaUI_Chat/Scroll.lua", "XayaUI_Chat/Bar.lua", "XayaUI_Chat/Skin.lua", "XayaUI_Chat/Fade.lua", "XayaUI_Chat/Locate.lua", "XayaUI_Chat/Messages.lua", "XayaUI_Chat/History.lua",
-  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Whispers.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua" }) do load(rel) end
+  "XayaUI_Chat/Sounds.lua", "XayaUI_Chat/Whispers.lua", "XayaUI_Chat/Options.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/Sidebar.lua" }) do load(rel) end
 W.ns = ns
 -- XayaUI Dev Assist's chat diagnostics (/xui chat wrap, indent, whispers and the whisper counters; Chat 0.6.20 / Dev Assist 0.7.5,
 -- REQUEST-LOG #81), loaded as the game loads that addon: after XayaUI and XayaUI Chat, finding XayaUI by its shared namespace.
@@ -353,6 +361,12 @@ function W.loadDevAssist()
   local f = assert(loadfile(ROOT .. "/XayaUI_DevAssist/CoreDebug.lua"))
   f("XayaUI_DevAssist", {})
   return ns.DevAssistDebug
+end
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) both chat settings pages in one tree, for tests that look a control up anywhere: Blizzard UI
+-- Reskin > Chat Panel (the look) and QoL > Improved Chat (behaviour)
+function W.allChatOptions(Notify)
+  Notify = Notify or function() end
+  return { type = "group", args = { chatpanel = ns.BuildChatTab(Notify), improvedchat = ns.BuildImprovedChatTab and ns.BuildImprovedChatTab(Notify) or nil } }
 end
 function W.start()
   ns.Chat_OnDBReady()

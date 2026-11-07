@@ -1,6 +1,12 @@
 # Shared tooltip helper, slice 1 (UI-51 / UI-52) + minimap row "Data Panels": core 0.6.71, Chat 0.6.38, Bonus 0.6.28, Dev Assist 0.7.34
 Session session_014bN6tVsL5WP5gZHkDeUhPN (UI-bugs successor). Nothing here has run in the game.
 
+**Relabelled at the merge with main 8478204 (13:15 UTC):** core 0.6.73, Chat 0.6.39, Bonus 0.6.29, Dev Assist 0.7.46, QA B279
+(main already used the numbers above). Main had already renamed the minimap row to "Data Panels" (function audit, O-100, Bonus
+0.6.27). What this change still adds for the name is the /xui data help text ("(Data Panels)") and checklist B4. The parity golden was
+re-recorded on main 8478204 (29 hovers) before the conversion was applied to main's versions of MinimapButton.lua and Privacy.lua.
+The converted tree matches it exactly.
+
 ## Request
 - UI-51 (relayed CLEAN-5, her words): "... This practice needs to be standardized across the addon ... the code should be cleaned up to
   be as tidy, clean, organized, and reusable as possible." BUILD-RULES B3: "one shared helper draws every XayaUI tooltip".

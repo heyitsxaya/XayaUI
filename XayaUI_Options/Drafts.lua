@@ -27,11 +27,18 @@ local function KeyLess(a, b)
     if ta == "number" or ta == "string" then return a < b end
     return tostring(a) < tostring(b)
 end
+-- An empty table counts as missing (audit D23: just opening a rule's Load tab makes its getters create empty load.classes / specs / roles
+-- / heroes / instanceTypes tables, which read the same as no table; before, that alone counted as "unsaved changes").
+local function Blank(x)   -- a table holding nothing but (nested) empty tables
+    if type(x) ~= "table" then return false end
+    for _, y in pairs(x) do if not Blank(y) then return false end end
+    return true
+end
 local function Ser(v, out, ignore)
     local t = type(v)
     if t == "table" then
         local keys = {}
-        for k in pairs(v) do if not (ignore and ignore[k]) then keys[#keys + 1] = k end end
+        for k, x in pairs(v) do if not (ignore and ignore[k]) and not Blank(x) then keys[#keys + 1] = k end end
         table.sort(keys, KeyLess)
         out[#out + 1] = "{"
         for _, k in ipairs(keys) do out[#out + 1] = tostring(k); out[#out + 1] = "="; Ser(v[k], out); out[#out + 1] = ";" end
@@ -383,22 +390,42 @@ end
 -------------------------------------------------------------------------------
 -- Drafts page actions
 -------------------------------------------------------------------------------
+-- What Restore says before it replaces a live rule while drafts are off (audit D22): nothing to Save then, so it is kept at once.
+function ns.DraftRestoreConfirm(id)
+    if ns.DraftsEnabled() then return false end
+    for _, d in ipairs(Drafts()) do
+        if d.id == id and #GroupOf(d.uid) > 0 then
+            return "Drafts are off, so this replaces the rule '" .. tostring(d.name or "Unnamed rule") .. "' with the draft right away and keeps it. Replace it?"
+        end
+    end
+    return false
+end
 function ns.DraftRestore(id)
     local list = Drafts()
     for i, d in ipairs(list) do
         if d.id == id then
             local copies = Copies(d.rules or {})
             if #copies == 0 then table.remove(list, i); return end
-            for _, c in ipairs(copies) do ns.NormalizeRule(c) end
             local uid = d.uid
-            local existed = #GroupOf(uid) > 0
             local keepRoot = GroupOf(uid)[1]
+            if keepRoot and ns.IsEditLocked and ns.IsEditLocked(keepRoot) then   -- audit D26: a locked rule does not change
+                if ns.Print then ns.Print(("'%s' is edit-locked: unlock it in the sidebar to restore this draft."):format(tostring(keepRoot.name or d.name))) end
+                return
+            end
+            for _, c in ipairs(copies) do ns.NormalizeRule(c) end
+            local existed = keepRoot ~= nil
             if keepRoot and copies[1] then for k in pairs(ROOT_IGNORE) do copies[1][k] = keepRoot[k] end end
             ReplaceGroup(uid, copies)
             if windowOpen and not baseline[uid] then baseline[uid] = { isNew = true } end   -- no saved version to go back to
             table.remove(list, i)
             cache = { t = -1 }
-            if ns.Print then ns.Print(("Draft '%s' was put back into the editor%s. Press 'Save changes' on the rule to keep it."):format(tostring(d.name), existed and " (replacing the rule's current version)" or "")) end
+            if ns.Print then
+                if ns.DraftsEnabled() then
+                    ns.Print(("Draft '%s' was put back into the editor%s. Press 'Save changes' on the rule to keep it."):format(tostring(d.name), existed and " (replacing the rule's current version)" or ""))
+                else   -- drafts off: there is no save bar, the restored version is kept as it is
+                    ns.Print(("Draft '%s' was put back%s and is kept (drafts are off)."):format(tostring(d.name), existed and ", replacing the rule's current version," or ""))
+                end
+            end
             if ns.ReselectRule then local r = GroupOf(uid)[1]; if r then pcall(ns.ReselectRule, r) end end
             if ns.UI and ns.UI.Notify then ns.UI.Notify() end
             return
@@ -636,7 +663,11 @@ function ns.BuildDraftsPage()
         local box = {
             head = { type = "description", order = 1, width = "relative", relWidth = 0.72, fontSize = "medium", name = head },
             restore = { type = "execute", order = 2, width = "relative", relWidth = 0.13, name = "Restore",
-                desc = "Loads this draft into its rule, replacing the current version. Not saved until you select Save changes.",
+                desc = function()
+                    if ns.DraftsEnabled() then return "Put this draft back in the editor: it is loaded into its rule (replacing the rule's current version). It is not saved until you select Save changes." end
+                    return "Put this draft back: it replaces the rule's current version and is kept at once (drafts are off, so there is no Save changes). Asks first."
+                end,
+                confirm = function() return ns.DraftRestoreConfirm(d.id) end,   -- audit D22: asks first while drafts are off (AceConfig shows the popup)
                 func = function() ns.DraftRestore(d.id) end },
             delete = { type = "execute", order = 3, width = "relative", relWidth = 0.11, name = "Delete", confirm = function() return ns.DraftsConfirmDelete() end, confirmText = "Delete this draft for good?",
                 func = function() ns.DraftDelete(d.id) end },
@@ -733,6 +764,10 @@ function ns.UndoKey(redo)
     local root = RootOf(ns.SelectedRuleForUndo())
     if not (root and root.uid) then return false end
     local uid = root.uid
+    if ns.IsEditLocked and ns.IsEditLocked(root) then   -- audit D26: a locked rule does not change
+        ns.Print(("'%s' is edit-locked: unlock it in the sidebar to undo or redo."):format(tostring(root.name or "rule")))
+        return true
+    end
     if pendingUid then Commit() end   -- an edit made less than half a second ago counts first
     local u = UState(uid)
     if not u then ns.Print("nothing recorded to undo for this rule yet") return true end

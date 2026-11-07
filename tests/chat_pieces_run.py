@@ -45,6 +45,9 @@ function FloatingChatFrameManager:IsEventRegistered(ev) return self._events[ev] 
 W.cvars = { whisperMode = "popout" }
 C_CVar = { GetCVar = function(k) return W.cvars[k] end }
 """)
+# (Chat 0.6.35; UI-3) this world reproduces Xaya's 2026-11-04 screenshot with the privacy and history buttons beside the chat and in the tab
+# row, where they are without the chat sidebar (on by default since then; tests/chat_sidebar_run.py)
+lua.execute("CueRulesDB.chat2 = { sbOn = false }")
 S = W.start()
 L = lua.globals()
 C = W.ns.Chat

@@ -210,8 +210,9 @@ end
 ns.MODULES = {
     -- (core 0.6.56: chatprobe and widthprobe are XayaUI Dev Assist's now, REQUEST-LOG #81; without it they do not exist)
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
-    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor" } },
-    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data" } },
+    -- (core 0.6.67, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
+    { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
+    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
 }
@@ -530,7 +531,7 @@ ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and 
 end)
 
 -------------------------------------------------------------------------------
--- 8b. Tooltips: one helper draws XayaUI's own hover texts (core 0.6.71; REQUEST-LOG UI-51 / UI-52, BUILD-RULES.md B3: "one shared
+-- 8b. Tooltips: one helper draws XayaUI's own hover texts (core 0.6.73; REQUEST-LOG UI-51 / UI-52, BUILD-RULES.md B3: "one shared
 -- helper draws every XayaUI tooltip"; order UI-55 "Baseline, refactor, test"). It only forwards to GameTooltip, in the same order
 -- the units called it before, so no tooltip changes (tests/tooltip_parity_run.py records every call before and after). No state,
 -- no frames, no events: it costs nothing until something is hovered. Game-object tooltips (SetSpellByID, SetItemByID, ...) stay

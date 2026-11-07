@@ -393,7 +393,7 @@ function ns.BuildDataPanelsTab(Notify)
         set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); ns.DataPanels_Sync(); if Notify then Notify() end end }
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Info panels for the screen. Tick the box next to Data Panels on the left, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The panel attached to the chat is the Chat Data Panel, under Blizzard UI Reskin > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
+            name = "Info panels for the screen. Tick the box next to Data Panels on the left, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The panel attached to the chat is the Chat Data Panel, under Blizzard Reskin > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
         blocks = { type = "group", name = "Clicks and hovering", order = 1, inline = true, hidden = MasterHidden, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },
@@ -541,7 +541,7 @@ function ns.BuildDataPanelsTab(Notify)
                 local n, i = nBlocks(), cur(); if n <= 1 then return end
                 for j = i, n - 1 do swap(j, j + 1) end
                 cfg["slot" .. n], cfg["text" .. n] = nil, ""; if cfg.blocks then cfg.blocks[n] = nil end
-                cfg.slots = n - 1; if editIdx[key] > n - 1 then editIdx[key] = n - 1 end
+                cfg.slots = n - 1; if (editIdx[key] or 1) > n - 1 then editIdx[key] = n - 1 end   -- (D50: nil until "Editing block" was used)
                 Both(key) end },
         } }
         args.reset = { type = "execute", order = 30, name = "Reset this panel", confirm = true,
@@ -612,6 +612,25 @@ function ns.BuildDataPanelsTab(Notify)
     return out
 end
 
+-- (function audit 2026-11-07, D50) the Data Panels' service for XayaUI Dev Assist's QA walkthroughs (QAWalks-audit-qol-bonus.lua):
+-- RemoveBlockFresh runs "Remove block" on a freshly built settings tab, where "Editing block" was never used (the D50 path)
+if ns.Provide then
+    ns.Provide("dataPanelsDebug", {
+        Cfg = function(key) return Cfg(key) end,
+        Refresh = function(key) if ns.DataPanels_Refresh then ns.DataPanels_Refresh(key) end; if ns.DataPanels_Sync then ns.DataPanels_Sync() end end,
+        RemoveBlockFresh = function(key)
+            local keepChanged, keepRemove = ns.DataPanels_Changed, ns.DataPanels_RemoveSection   -- (the settings window's own tab keeps its hooks)
+            local tab = ns.BuildDataPanelsTab(nil)
+            ns.DataPanels_Changed, ns.DataPanels_RemoveSection = keepChanged, keepRemove
+            local gen = tab and tab.args and tab.args.general and tab.args.general.args
+            local sec = gen and ((key == "bl" and gen.left) or (key == "br" and gen.right) or (key == "center" and gen.center))
+            local fn = sec and sec.args.blocks and sec.args.blocks.args.remove and sec.args.blocks.args.remove.func
+            if not fn then return false, "no Remove block for that panel" end
+            return pcall(fn)
+        end,
+    })
+end
+
 function ns.DataPanels_OpenSettings(tab)   -- tab (optional): a tab key such as "general"
     ns.OpenSettingsPage("bonus", "datapanels", tab)
 end
@@ -620,7 +639,7 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.WhenReady(ns.DataPanels_OnDBReady)
-ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (Data Panels)")
--- (Bonus 0.6.28: "Data Panels", her name for the feature: UI-5 "change the name Custom Data Panels and Bars ... to / Data Panels / Data Bars"; DISPLAY-RULES A7.2)
+ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (Data Panels)")   -- (Bonus 0.6.29: her name, UI-5 / DISPLAY-RULES A7.2)
+-- O-100 (Bonus 0.6.27): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
 ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)

@@ -67,14 +67,18 @@ local function rulesRow(w, lay)
   local others, cr = {}, nil
   for _, e in ipairs(lay) do if e.value == "creatorTab" then cr = e else others[#others + 1] = e end end
   if not cr or #others ~= 4 then return false, "tabs: " .. #others .. (cr and " + creator" or " no creator") end
-  local slot = (W0 - cr.w - 16) / 4
+  -- (Options 0.6.72; UI-25) "+ New Rule" sits at the left end of the row: the four tabs start 16 px (SUB_GAP) after it
+  local nb = w.xuiNewRule
+  local x0 = (nb and nb:IsShown()) and (nb:GetWidth() + 16) or 0
+  local slot = (W0 - x0 - cr.w - 16) / 4
+  if math.abs(others[1].x - x0) > 0.5 then return false, ("Smart Categories starts at %.1f, want %.1f (after + New Rule)"):format(others[1].x, x0) end
   for i, e in ipairs(others) do
-    if math.abs(e.w - slot * 0.9) > 0.5 or math.abs(e.x - (i - 1) * slot) > 0.5 then
-      return false, ("%s %.1f wide at %.1f (want %.1f at %.1f)"):format(tostring(e.text), e.w, e.x, slot * 0.9, (i - 1) * slot)
+    if math.abs(e.w - slot * 0.9) > 0.5 or math.abs(e.x - x0 - (i - 1) * slot) > 0.5 then
+      return false, ("%s %.1f wide at %.1f (want %.1f at %.1f)"):format(tostring(e.text), e.w, e.x, slot * 0.9, x0 + (i - 1) * slot)
     end
   end
   if math.abs(cr.x + cr.w - W0) > 0.5 then return false, ("creator ends at %.1f, row %.1f"):format(cr.x + cr.w, W0) end
-  if math.abs(cr.x - 4 * slot - 16) > 0.5 then return false, ("gap before creator %.1f"):format(cr.x - 3 * slot - others[4].w) end
+  if math.abs(cr.x - x0 - 4 * slot - 16) > 0.5 then return false, ("gap before creator %.1f"):format(cr.x - x0 - 3 * slot - others[4].w) end
   if cr.text ~= "Auto-Generate Rules" then return false, tostring(cr.text) end
   return true
 end

@@ -11,7 +11,7 @@ Style: Blizzard's own patch notes (blue posts). Short past-tense or present-tens
 Layout, newest landing first:
   ## YYYY-MM-DD — Short title                      one per landing on main (UTC date)
   ### <Addon> <version>                            Addon is one of: XayaUI, Options, Chat, Quality of Life, Bonus Features,
-                                                   Blizzard Reskin, Dev Assist, Media. One heading per addon version.
+                                                   Blizzard Reskin, Dev Assist, Media, Nameplates. One heading per addon version.
   **Feature name**                                 a bold category line; add " (new)" for a brand-new feature
   - Bullet.                                        a change
     - Nested bullet.                               detail under the bullet above (two spaces)
@@ -21,6 +21,93 @@ What's New (the pane's first entry) is built from this file: every bullet of a "
 that starts with "Added", newest first, grouped by addon. An addon's list keeps growing through its x.Y.* versions and starts
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
+
+## 2026-11-07 — What Changed Overnight
+
+### XayaUI 0.6.72
+
+**Engine and Performance**
+- Rule and snapshot log lines are now built only while something reads them (the console window, the debug strip, or the record).
+- Rules that are not loaded are no longer read during engine steps, except for a buff a display on that rule needs.
+- Removed closures that the engine created for every rule read, and most errors from other addons no longer cost a call-stack read.
+  *Developers' notes: Measured on stand-ins only, not in game.*
+- An aura the game hides now reads "hidden by the game right now ...", and the rule status says whether the game's container still draws the display.
+
+### Options 0.6.72
+
+**Settings Window**
+- Added new top tabs: Rules, QoL, Bonus Features, Blizzard Reskin, Profiles and Settings. The toolbar is gone: "+ New Rule" is at the left of the Rules row, and the Settings cog is now the Settings tab. The Blizzard UI Reskin tab is now called Blizzard Reskin everywhere a player reads it, including the Overview switch "Enable Blizzard Reskin" and chat messages.
+- Added Profiles, with sub-tabs Import, Export and Recycle Bin. Export has one tick box per component (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin); anything beyond Rules and groups makes a profile string. Import lists only what the string holds, each with a tick box.
+- Hover texts are now at most two sentences.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: which settings each Profiles component holds, and what is never exported (Notepad, Shopping List, Recycle Bin, backups, drafts, calculator history, other players' names). Questions UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui and UI-24-label-scope.*
+- The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
+  *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
+
+### Chat 0.6.38
+
+**Improved Chat (new)**
+- Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
+- Added a chat sidebar, on by default: side left, right, top or bottom, shown always or on mouseover, with "Fade with the chat" and "Hide in combat". It holds the privacy eye, Blizzard's chat menu, channels and voice buttons, history, chat windows and newest message.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Q-CR-1 to Q-CR-10.*
+
+**Chat Panel**
+- Blizzard Reskin > Chat Panel now holds only how chat looks.
+- Fixed an issue where the collapse arrow, the privacy eye and the sidebar did not fade with the chat. Hovering them now brings the chat back.
+- Added an Input line choice: Bottom, Top under the tabs, Top above the tabs, or Free move (with /xui chat move).
+- With the whisper tabs set to Both, a whisper you send now selects its window.
+  *Developers' notes: Chosen for you, change it in the Questions flow: this whisper switch is on by default (CHATREV-10).*
+- The game's own fade of old chat lines now comes back when Improved Chat is turned off, or when both it and the Chat Panel are off.
+- The addon's usage tooltip reads memory once per hover and says "Includes the cost of reading these numbers."
+
+### Quality of Life 0.7.45
+
+**Stat Calculator**
+- Each stat now has rows showing what feeds it ("from Agility +2,616"); every stat starts folded, and the Influences column is now Modifies.
+- Gear compare differences are shown in brackets after the value, "1,405 (-12)", and the picked item gets a clear accent frame.
+- The header shows "Equipped" and "Max (bags)" item levels. The "% / rating" switch is gone.
+- The stat list now reads "GCD", "Critical Strike Effectiveness" and "Movement Speed".
+- The GCD now follows a standard rule: 1.5 s reduced by haste to a floor of 0.75 s, or a fixed 1.0 s for rogues, some monks and cat-form druids, with the game's own reading shown beside it.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Movement Speed is title-cased on the same reading as the other two.*
+
+**Release Guard**
+- The box now sits above the death window. "Where" offers Raids only or Raids and dungeons; "Everywhere" is gone, and a saved "Everywhere" becomes Raids only. /xui releaseguard prints what happened.
+  *Developers' notes: Chosen for you, change it in the Questions flow: saved "Everywhere" becomes Raids only.*
+
+**Wording**
+- The function audit made wording and hover fixes, including US spelling, across the addons.
+  *Developers' notes: Not yet tested in game (QA D22, D23, D30).*
+
+**Cursor**
+- A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
+
+### Blizzard Reskin 0.6.14
+
+**Blizzard Windows (new)**
+- Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
+
+**More Blizzard Reskins (new)**
+- Added four reskin pages, each with its own switch and off until ticked: Toasts and Pop-ups (Battle.net toasts and Blizzard's pop-up dialogs), Loot rolls (the four group loot windows), Menus (the background of Blizzard's own menus), and Chat Bubbles (outside instances; in instances the game keeps bubbles to itself).
+  *Developers' notes: Not yet tested in game (QA G9 to G12). Chosen for you, change it in the Questions flow: "pop-ups" means Blizzard's pop-up dialogs, menus change the background only with no border, and a bubble's tail takes the window color.*
+
+**Friend Colors (new)**
+- Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class color. The new Social friends list is not colored yet.
+
+### Nameplates 0.2.1
+
+**Nameplates (new)**
+- Added XayaUI Nameplates, disabled by default in the AddOns list. It works on Blizzard's own nameplates and shows nothing while Plater replaces them.
+- Your target's health bar turns teal (change it in QoL > Nameplates).
+- Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
+  *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
+
+### Dev Assist 0.7.45
+
+**QA Review (new)**
+- Added a QA review window that opens when you first load into the game after an update, listing the walkthroughs that are new or changed since the last build you acknowledged. "Don't show again until the next update" acknowledges the build.
+- Added a question flow: one question per screen, with your words, "What we did without asking", Keep it and its choices, and a note. Copy answers copies them all. /xui dev review and /xui dev questions open them.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: REVIEW-1 to REVIEW-4 (it comes back at every login until the box is ticked).*
+- Added performance walkthroughs J20 to J31 to /xui dev qa.
 
 ## 2026-11-07 — Chat QA Walkthroughs
 
@@ -40,9 +127,9 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a Bar cue: a progress bar that tracks an aura's time left, a spell's cooldown or recharge, stacks, or charges. Make one with New Rule > Progress Bar, or Add a cue > Bar on any rule.
   - A new bar is 220 x 22 with a black 20% background, a 1 px border and a flat texture, draining from right to left, with the spell's icon on the left, its name inside the bar, the time on the right and a spark on the moving edge.
   - Tracks: Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges. Maximum 0 uses the game's own maximum; if the game gives none, the bar stays empty.
-  - Drain toward the left, right, bottom or top, or fill up instead. The icon can sit left, right or be hidden. The spark can be turned off and recoloured.
-  - Automatic colour follows the type the spell's tooltip names (a school written as "<school> damage", or a dispel type), then the aura's dispel type, then blue.
-  - Colour style per bar: Blizzard default, Neon, Pastel, Muted / Dark, or Custom with a colour for each of 12 types. A group's Display tab has "Every bar: colour style", with "Force on every bar in this group" to override each bar's own choice.
+  - Drain toward the left, right, bottom or top, or fill up instead. The icon can sit left, right or be hidden. The spark can be turned off and recolored.
+  - Automatic color follows the type the spell's tooltip names (a school written as "<school> damage", or a dispel type), then the aura's dispel type, then blue.
+  - Color style per bar: Blizzard default, Neon, Pastel, Muted / Dark, or Custom with a color for each of 12 types. A group's Display tab has "Every bar: color style", with "Force on every bar in this group" to override each bar's own choice.
   - Bar textures: Flat, Blizzard, Raid frame, the game's own power-bar art, any texture shared through LibSharedMedia, or your own file.
   - In combat, aura-time and stacks bars are drawn by the game's own aura buttons and keep moving while the game hides aura numbers. Cooldown bars are driven by the game from the cooldown's duration.
   *Developers' notes: Not yet tested in game (QA B200-B210). The combat drawing is built from Blizzard's 12.1.5 source and tested on a stand-in only.*
@@ -72,13 +159,13 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### Options 0.6.59
 
 **Bar Cues (new)**
-- Added a Bar Options box on each Bar cue, and "Every bar: colour style" on a group's Display tab.
+- Added a Bar Options box on each Bar cue, and "Every bar: color style" on a group's Display tab.
 - Smart Categories > Progress Bars now lists rules that have a Bar cue.
 
 ### Bonus Features 0.6.20
 
 **Enhanced Tooltips**
-- Added a "Type colours" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's colour for that school, and a dispel type such as "Magic" takes its dispel colour.
+- Added a "Type colors" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's color for that school, and a dispel type such as "Magic" takes its dispel color.
   *Developers' notes: Matches English game text only. Not yet tested in game.*
 
 ### Dev Assist 0.7.6
@@ -104,7 +191,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Group Page**
 - Added the tabs Group, Display, Load and Config to a group's page, with Group first.
   - Config holds the name, an Enabled switch, the group type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character>".
-- Added a group Size (Auto or Set, with optional Clip), and Border and Background tick boxes with colour, texture and padding.
+- Added a group Size (Auto or Set, with optional Clip), and Border and Background tick boxes with color, texture and padding.
 - Added "Anchored to: The parent group / The screen" for nested groups.
 - Added Align & Arrange to static groups (Align left / center / right, Distribute, Space with a gap). The choice is saved: a display you drag, nudge, add or resize goes back into line.
 - Added "Scale items to fit the box" for static groups with a Set size. Making the box smaller than its items asks "Scale the items to fit?" once.
@@ -163,7 +250,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Added a titled auto-populate table: rows grouped under Spell CD, Aura and Debuff, a Spec column when listing every spec, and each spell's icon.
   - Added a Cue set-up column: Speech has a "Customize" box, and Sound and pictures have a picker you must choose from.
   - A row that could not be made stays in the table with an error popup; made rows leave it.
-  - On-screen cues are placed in rows of 3 centred on the screen.
+  - On-screen cues are placed in rows of 3 centered on the screen.
   - Added a "Hide / Show already generated rules" switch.
 - The Cooldown Manager warning now reads "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably." where the game offers no tracking.
 - Combat Tracking Setup moved from the Debugging page to Settings > UI Options > Rule Creation.
@@ -215,14 +302,14 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   - Missing on your gear: each enchantable slot without an enchant and each empty socket, with one suggestion each. "+ Add" puts a suggestion in To buy.
   - Your tracked recipes: each with its reagents and have / need, counted the way Blizzard's tracker counts them.
   - Click a name while the Auction House is open to search for it there; Shift-click links the item.
-- Blizzard's Professions list in the objective tracker now takes your theme's colours (its own switch: "Restyle Blizzard's Professions list").
+- Blizzard's Professions list in the objective tracker now takes your theme's colors (its own switch: "Restyle Blizzard's Professions list").
   *Developers' notes: Which gems count as the one-per-character gem, and how enchant scrolls in your bags are counted, are not yet confirmed in game.*
 
 ### Quality of Life 0.7.31
 
 **Character Pane**
 - Added an Extra height slider (0 to 300 px, default 0) beneath Extra width. The slots spread out evenly, the model gets taller, and the weapons move down with the bottom of the window.
-- Added a full stat list: the character window's stats pane can now show every line of the Stat Calculator's Character Stats, each name in its stat colour. Arrange it under Character Pane > Stat list.
+- Added a full stat list: the character window's stats pane can now show every line of the Stat Calculator's Character Stats, each name in its stat color. Arrange it under Character Pane > Stat list.
 
 **Release Guard (new)**
 - When you die, a box now covers the Release Spirit button so a misclick does not release you. Hold Shift (or Ctrl or Alt, in settings) to click through.
@@ -315,8 +402,8 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### XayaUI 0.6.46
 
 **Themes**
-- Added each Gradient Cursor Trail gradient as a UI theme in Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme, and the Cursor Highlight can use your theme's accent colour (with Quality of Life 0.7.17).
-- `/xui help` is now one command per line, with the command in your theme's accent colour.
+- Added each Gradient Cursor Trail gradient as a UI theme in Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme, and the Cursor Highlight can use your theme's accent color (with Quality of Life 0.7.17).
+- `/xui help` is now one command per line, with the command in your theme's accent color.
 
 ### Options 0.6.40
 
@@ -328,7 +415,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 ### Options 0.6.39
 
 **Settings Window**
-- The version text at the bottom of the settings window now replaces the Addon Info button and uses your theme colours.
+- The version text at the bottom of the settings window now replaces the Addon Info button and uses your theme colors.
 - Console switches in settings no longer pause while the whole window rebuilds (with XayaUI 0.6.45).
 
 ### Options 0.6.38

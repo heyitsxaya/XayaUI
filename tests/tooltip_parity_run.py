@@ -6,7 +6,7 @@ How: the real addons start in the stand-in game (every addon on, settings window
 Then every frame with a mouse-over script is hovered once (OnEnter, then OnLeave). Every call it makes on GameTooltip is recorded:
 method, arguments, and whether the owner is the hovered frame. Numbers are rounded to 3 places; frames show as "<owner>" / "<frame>".
 The sorted list of those call logs must equal tests/tooltip_parity_golden.json, which was recorded on the code BEFORE the refactor
-(claude/ui-bugs-focused 544961e). So any hover whose text, colour, wrap, anchor or order changed fails here.
+(origin/main 8478204, re-recorded there when main was merged in; first recorded on f649428). So any hover whose text, colour, wrap, anchor or order changed fails here.
 It also checks that the hovers of the converted files are in the recording (so the comparison covers them), and that ns.Tip exists.
 
 Re-record (only for a deliberate change to a hover, never to make a refactor pass): python3 tests/tooltip_parity_run.py --record
@@ -87,7 +87,7 @@ end
 # text that only the converted hovers draw: each must be in the recording, or the comparison does not cover that file
 COVERS = [
     ("core MinimapButton.lua (button)", "Left-click: quick-access list"),
-    ("core MinimapButton.lua (list rows)", "SetText|Settings|1.000|0.820|0.000"),
+    ("core MinimapButton.lua (list rows)", "SetText|Data Panels|1.000|0.820|0.000"),
     ("core Visual.lua (group tag)", "display(s) on screen"),
     ("core Visual.lua (group lock)", "Lock this group for now"),
     ("Chat History.lua", "SetText|Chat history"),

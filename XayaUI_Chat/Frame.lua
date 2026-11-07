@@ -31,8 +31,11 @@ function C.TextArea() return textA end
 function C.TabsArea() return tabsA end
 function C.InputArea() return inputA end
 function C.Bar() return bar end
-function C.IsCollapsed() local s = S(); return s and s.collapsed and true or false end
-function C.ArrowLead() local s = S(); return (s and s.barOn) and ARROW_W or 0 end
+-- (Chat 0.6.33; UI-21) collapse ("Fade and hide"), the Chat Data Panel and the slow-scrolling bar are Improved Chat's: off with it
+function C.IsCollapsed() local s = S(); return s and s.collapsed and C.ImprovedOn() and true or false end
+function C.BarOn() local s = S(); return s and s.barOn and C.ImprovedOn() and true or false end
+function C.OwnScroll() local s = S(); return s and s.scrollOwn and C.ImprovedOn() and true or false end
+function C.ArrowLead() return C.BarOn() and ARROW_W or 0 end
 
 -------------------------------------------------------------------------------
 -- Building the frames
@@ -47,7 +50,7 @@ local function Build()
     pane:SetFrameStrata("BACKGROUND")
     tabsA = CreateFrame("Frame", nil, pane)
     textA = CreateFrame("Frame", nil, pane)
-    textA:SetScript("OnSizeChanged", function() if C.active and C.Rewrap then C.Rewrap() end end)   -- the text area was resized: wrap at the new width
+    textA:SetScript("OnSizeChanged", function() if C.skin and C.Rewrap then C.Rewrap() end end)   -- the text area was resized: wrap at the new width
     inputA = CreateFrame("Button", "XayaUIChatInput", pane)     -- the input line's strip; clicking it opens the edit box
     inputA:SetFrameStrata("LOW")
     inputA:RegisterForClicks("LeftButtonUp")
@@ -97,12 +100,54 @@ end
 -- Layout: size, position, regions
 -------------------------------------------------------------------------------
 local function TabH(s) return s.tabsShow and Clamp(s.tabHeight, 16, 40, 24) or 0 end
+local INPUT_POS = { BOTTOM = true, TOP = true, ABOVE = true, FREE = true }
+function C.InputPos() local s = S(); local v = s and s.inputPos; return INPUT_POS[v] and v or "BOTTOM" end
+
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) Improved Chat with the Chat Panel off: the block is not placed by the Chat Panel's size and position
+-- (those are skin settings); it is laid over Blizzard's chat where the game (or another chat addon) put it: from the left of the main
+-- window to its right, from the bottom of its input line to the top of its tab row. Read again at every refresh (the game's own moves of
+-- its chat are hooked below). nil when a number cannot be read (a secret or a frame without a place yet): the block is then hidden.
+local function N(v) v = tonumber(v); if v == nil or issecret(v) then return nil end return v end
+-- is o placed relative to one of the block's own frames? (then reading its place would go round in a circle: never read it then)
+local function OnOurs(o)
+    if not (o and o.GetNumPoints) then return false end
+    local ok, n = pcall(o.GetNumPoints, o)
+    for i = 1, (ok and n or 0) do
+        local ok2, _, rel = pcall(o.GetPoint, o, i)
+        if ok2 and rel and (rel == textA or rel == tabsA or rel == inputA or rel == pane or rel == container) then return true end
+    end
+    return false
+end
+function C.HostRect()
+    local cf = C.Main()
+    if not (cf and cf.GetLeft) then return nil end
+    -- (Chat 0.6.36) Blizzard's chat still glued into the pane (the game has not taken it back yet): no host place this time; the next
+    -- refresh reads it once it is free. Reading it now would read our own frames, which are about to be placed from it.
+    if OnOurs(cf) or OnOurs(_G.GeneralDockManager) or OnOurs(C.EditBoxOf(cf)) then return nil end
+    local l, r, t, b = N(cf:GetLeft()), N(cf:GetRight()), N(cf:GetTop()), N(cf:GetBottom())
+    if not (l and r and t and b) or r <= l or t <= b then return nil end
+    local ct, cb = t, b
+    local dock = _G.GeneralDockManager
+    if dock and dock.GetTop then local dt = N(dock:GetTop()); if dt and dt > t then t = dt end end
+    local eb = C.EditBoxOf(cf)
+    if eb and eb.GetBottom then local eb2 = N(eb:GetBottom()); if eb2 and eb2 < b then b = eb2 end end
+    return { l = l, b = b, w = r - l, h = t - b, textTop = ct, textBottom = cb }
+end
+function C.HostMode() return C.active and not C.skin and true or false end
 
 function C.Layout()
     local s = S()
     if not (s and container) then return end
     local W, H = Clamp(s.width, MIN_W, MAX_W, 440), Clamp(s.height, MIN_H, MAX_H, 230)
-    local barOn = s.barOn and true or false
+    local host = not C.skin and C.HostRect() or nil
+    if not C.skin and not host then container:Hide(); return end
+    if host then W, H = host.w, host.h; container:Show() end
+    -- (Chat 0.6.35; UI-17) the chat's size is untouched unless the sidebar's "Width of the whole chat" is set (Chat Panel on only)
+    if not host and C.Sidebar_PaneWidth then
+        local bs = s.barOn and C.ImprovedOn() and (s.barSide == "LEFT" or s.barSide == "RIGHT")
+        W = C.Sidebar_PaneWidth(W, bs and (Clamp(s.barW, 40, 200, 90) + Clamp(s.barGap, 0, 20, 2)) or 0)
+    end
+    local barOn = C.BarOn()
     -- (Chat 0.6.23; REQUEST-LOG UI-10 / UI-28 / UI-29, Xaya 2026-11-06: the Chat Data Panel "assigned to the left or right-hand side",
     -- her answers "Vertical strip beside chat", "snap to chat window height", "Slider 40-200, default 90") Left / Right: a strip as tall
     -- as the chat window, s.barW wide (40-200, default 90), its blocks stacked top to bottom; the block grows by its width
@@ -112,7 +157,14 @@ function C.Layout()
     local below = (s.barSide ~= "TOP")
     if barOn then BuildBar() end
     container:ClearAllPoints()
+    if host then
+        -- the pane over Blizzard's chat; the Chat Data Panel (and with it the block) grows out from it on its side
+        local ox = (barOn and side == "LEFT") and (bh + gap) or 0
+        local oy = (barOn and not side and below) and (bh + gap) or 0
+        container:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", host.l - ox, host.b - oy)
+    else
     container:SetPoint(s.point or "BOTTOMLEFT", UIParent, s.point or "BOTTOMLEFT", tonumber(s.x) or 24, tonumber(s.y) or 90)
+    end
     if side then container:SetSize(W + bh + gap, H) else container:SetSize(W, H + bh + gap) end
 
     pane:ClearAllPoints()
@@ -126,7 +178,7 @@ function C.Layout()
     -- (Chat 0.6.22; REQUEST-LOG UI-20, Xaya 2026-11-06: "pressing the collapse button should collapse the chat data bar down, not pull
     -- the chat up to it") collapsed, a bar placed above the chat drops to the block's bottom edge (where the chat's bottom was); the
     -- block's place on screen does not change
-    if below or s.collapsed then
+    if below or C.IsCollapsed() then
         pane:SetPoint("TOPLEFT", container, "TOPLEFT", 0, 0); pane:SetPoint("TOPRIGHT", container, "TOPRIGHT", 0, 0)
         if bar then bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0); bar:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, 0) end
     else
@@ -141,19 +193,60 @@ function C.Layout()
     end
 
     local th = TabH(s)
-    tabsA:ClearAllPoints()
-    tabsA:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, 0); tabsA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", 0, 0)
-    tabsA:SetHeight(math.max(1, th))
     local ih = Clamp(s.inputH, 18, 60, 26)
-    inputA:ClearAllPoints()
-    inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
+    -- (Chat 0.6.34; REQUEST-LOG UI-15 / UI-17 / A16 CR-7, Xaya: "include an option where to put place the chat entry field (top or bottom;
+    -- disconnected from pane (free move))"; free move: "configurable in mover gui, not from console line"; Top: "Both supported")
+    -- BOTTOM (as before) | TOP (under the tab row) | ABOVE (above the tab row) | FREE (its own place and width, set in the mover only)
+    local ipos = C.InputPos()
+    tabsA:ClearAllPoints(); inputA:ClearAllPoints()
+    if ipos == "ABOVE" then
+        inputA:SetPoint("TOPLEFT", pane, "TOPLEFT", 2, -2); inputA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", -2, -2)
+        tabsA:SetPoint("TOPLEFT", inputA, "BOTTOMLEFT", -2, -2); tabsA:SetPoint("TOPRIGHT", inputA, "BOTTOMRIGHT", 2, -2)
+    else
+        tabsA:SetPoint("TOPLEFT", pane, "TOPLEFT", 0, 0); tabsA:SetPoint("TOPRIGHT", pane, "TOPRIGHT", 0, 0)
+        if ipos == "TOP" then
+            inputA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", 2, -2); inputA:SetPoint("TOPRIGHT", tabsA, "BOTTOMRIGHT", -2, -2)
+        elseif ipos == "FREE" then
+            local fx, fy = tonumber(s.inputX), tonumber(s.inputY)
+            if not (fx and fy) then   -- first time: where the line was (at the pane's bottom), as wide as the pane
+                local pl, pb = container:GetLeft(), container:GetBottom()
+                fx, fy = (tonumber(pl) or 0) + 2, (tonumber(pb) or 0) + 2
+                s.inputX, s.inputY = math.floor(fx + 0.5), math.floor(fy + 0.5)
+            end
+            inputA:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", fx, fy)
+            inputA:SetWidth(Clamp(s.inputW, 120, 1200, W - 4))
+        else
+            inputA:SetPoint("BOTTOMLEFT", pane, "BOTTOMLEFT", 2, 2); inputA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -2, 2)
+        end
+    end
+    tabsA:SetHeight(math.max(1, th))
     inputA:SetHeight(ih)
     local inset = Clamp(s.textInset, 2, 30, 6)   -- never closer than 2 px to the pane's edge (Xaya 2026-11-04: a 2-3 px gutter)
-    local own = s.scrollOwn and true or false      -- the Chat Panel's scroll bar (Scroll.lua) sits in the space right of the text
+    local own = C.OwnScroll()                      -- the Chat Panel's scroll bar (Scroll.lua) sits in the space right of the text
     local right = inset + ((own and (Clamp(s.scrollW, 6, 20, 10) + 2)) or ((s.scrollBar == "SHOW") and 14 or 0))
     textA:ClearAllPoints()
-    textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
-    textA:SetPoint("BOTTOMRIGHT", inputA, "TOPRIGHT", -right, 3)
+    if host then
+        -- Improved Chat alone: the text area is Blizzard's own window, the tab row is what is above it, and there is no input strip of ours
+        -- (Blizzard's input line takes its own clicks); the slow-scrolling bar goes right of Blizzard's window
+        -- placed from the numbers read above, never anchored to Blizzard's window: a frame of ours anchored to it, while it is anchored to
+        -- ours, would make each one's place depend on the other (an endless loop in the game's layout)
+        textA:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", host.l, host.textTop)
+        textA:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMLEFT", host.l + host.w, host.textBottom)
+        tabsA:SetHeight(math.max(1, (host.b + host.h) - host.textTop))
+        inputA:Hide(); hint:Hide()
+    else
+        inputA:Show()
+        if ipos == "TOP" then
+            textA:SetPoint("TOPLEFT", inputA, "BOTTOMLEFT", inset - 2, -3)
+            textA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -right, 3)
+        elseif ipos == "ABOVE" or ipos == "FREE" then
+            textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
+            textA:SetPoint("BOTTOMRIGHT", pane, "BOTTOMRIGHT", -right, 3)
+        else
+            textA:SetPoint("TOPLEFT", tabsA, "BOTTOMLEFT", inset, -2)
+            textA:SetPoint("BOTTOMRIGHT", inputA, "TOPRIGHT", -right, 3)
+        end
+    end
 
     -- the arrow: first thing in the bar; with the bar off it hangs under the pane's corner (the pane is invisible while collapsed)
     BuildArrow()
@@ -161,17 +254,27 @@ function C.Layout()
     if barOn and side then arrow:SetPoint("TOP", bar, "TOP", 0, 0)   -- (Chat 0.6.23) a strip beside the chat: the arrow on top of it
     elseif barOn then arrow:SetPoint("LEFT", bar, "LEFT", 0, 0)
     else arrow:SetPoint("TOPLEFT", container, "BOTTOMLEFT", 0, -2) end
-    arrow:SetShown(true)
-    local collapsed = s.collapsed and true or false
+    arrow:SetShown(C.ImprovedOn())   -- (Chat 0.6.33) the collapse arrow is Improved Chat's ("Fade and hide")
+    local collapsed = C.IsCollapsed()
     -- the chevron: down while the chat shows (collapsing takes it down to the bar's place at the bottom), up while it is hidden
     -- (it comes back above the bar) (Chat 0.6.22, UI-20; before: toward a bar above the chat)
     DrawArrow(collapsed)
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
+    if C.SyncInputMover then C.SyncInputMover() end
+    -- (Chat 0.6.35; UI-3) the sidebar must not run off the screen: the Chat Panel's block moves in by that much (its saved place is kept)
+    if not host and C.Sidebar_Clip then
+        local dx, dy = C.Sidebar_Clip(container)
+        if dx ~= 0 or dy ~= 0 then
+            container:ClearAllPoints()
+            container:SetPoint(s.point or "BOTTOMLEFT", UIParent, s.point or "BOTTOMLEFT", (tonumber(s.x) or 24) + dx, (tonumber(s.y) or 90) + dy)
+        end
+    end
     C.Anchor()
     if C.ScrollBar_Layout then C.ScrollBar_Layout() end
     C.ApplyAlpha()
     if ns.ChatPrivacy_Refresh then ns.ChatPrivacy_Refresh() end
+    if C.Sidebar_Refresh then C.Sidebar_Refresh() end
 end
 
 -------------------------------------------------------------------------------
@@ -226,7 +329,7 @@ function C.Anchor()
             dock:ClearAllPoints()
             dock:SetPoint("TOPLEFT", tabsA, "TOPLEFT", 0, 0)
             -- the history button sits at the right end of the tab row (History.lua): the tabs stop short of it
-            local reserve = (s.tabsShow and s.histButton) and C.HIST_RESERVE or 0
+            local reserve = (s.tabsShow and s.histButton and C.ImprovedOn() and not (C.Sidebar_Has and C.Sidebar_Has("hist"))) and C.HIST_RESERVE or 0
             dock:SetPoint("BOTTOMRIGHT", tabsA, "BOTTOMRIGHT", -reserve, 0)
             if s.tabsShow then C.Unsuppress(dock) else C.Suppress(dock) end
             -- Blizzard sizes the tabs of user-made windows (60-90 px each) for the dock's width at the moment it lays them out, and
@@ -344,7 +447,7 @@ function C.Parts()
     -- tab is selected. Up to Chat 0.6.11 the first three were handled on ChatFrame1 only: with another tab selected (Xaya's Party tab,
     -- 2026-11-04) the game's scroll bar and arrow sat right of the text, in the column of the Chat Panel's scroll bar, and the arrow was
     -- drawn under it. A window the player undocks gets the game's own pieces back (Release).
-    local blizzBar = (s.scrollBar == "SHOW" and not s.scrollOwn)
+    local blizzBar = (s.scrollBar == "SHOW" and not C.OwnScroll())
     for _, f in ipairs(C.Frames()) do
         local n = C.NameOf(f)
         local sbar = f.ScrollBar or _G[n .. "ScrollBar"]
@@ -403,7 +506,7 @@ end
 
 function C.ToBottomUpdate()
     local s = S()
-    local manage = s and C.On() and s.toBottom ~= "HIDE" and not (s.scrollBar == "SHOW" and not s.scrollOwn)
+    local manage = s and C.On() and s.toBottom ~= "HIDE" and not (s.scrollBar == "SHOW" and not C.OwnScroll())
     for _, f in ipairs(C.Frames()) do
         local tb = f.ScrollToBottomButton
         if tb then
@@ -456,18 +559,23 @@ function C.Elements()
     add(_G.GeneralDockManager)
     local s = S()
     local bf = C.ButtonFrameOf(C.Main() or {})
-    if bf and s and s.stripMode ~= "HIDE" then add(bf) end
-    if s and s.socialMode == "SHOW" then add(_G.QuickJoinToastButton) end
+    if bf and s and (s.stripMode ~= "HIDE" or not C.skin) then add(bf) end   -- (Chat 0.6.33) Improved Chat alone: the game shows its strip
+    if s and C.skin and s.socialMode == "SHOW" then add(_G.QuickJoinToastButton) end
     return out
 end
 
 function C.ApplyAlpha()
     local s = S()
     if not (s and container) then return end
-    local collapsed = s.collapsed and true or false
+    local collapsed = C.IsCollapsed()
     C.master = (collapsed and 0 or 1) * C.fade
     pane:SetAlpha(collapsed and 0 or C.fade)
     if bar then bar:SetAlpha((s.fadeBar and C.fade) or 1) end
+    if C.Sidebar_Alpha then C.Sidebar_Alpha() end   -- (Chat 0.6.35; UI-3) fade with the chat, if ticked
+    -- (O-143, Xaya 2026-11-07: "weird chat appearance when chat fades -- the sidebar icons should also be fading"; her screenshot: the
+    -- collapse chevron and the privacy eye stayed at full strength) every control on the chat fades and comes back with it
+    if arrow then arrow:SetAlpha(C.fade) end
+    if ns.ChatPrivacy_Fade then ns.ChatPrivacy_Fade() end
     local off = C.master < 0.02
     for _, el in ipairs(C.Elements()) do
         C.Try("alpha", function()
@@ -539,8 +647,8 @@ local function BuildMover()
         cx, cy = cx / sc, cy / sc
         local l, b = container:GetLeft(), container:GetBottom()
         if type(l) ~= "number" then return end
-        local vside = s.barOn and (s.barSide == "LEFT" or s.barSide == "RIGHT")
-        local extra = s.barOn and ((vside and Clamp(s.barW, 40, 200, 90) or Clamp(s.barH, 14, 60, 22)) + Clamp(s.barGap, 0, 20, 2)) or 0
+        local vside = C.BarOn() and (s.barSide == "LEFT" or s.barSide == "RIGHT")
+        local extra = C.BarOn() and ((vside and Clamp(s.barW, 40, 200, 90) or Clamp(s.barH, 14, 60, 22)) + Clamp(s.barGap, 0, 20, 2)) or 0
         s.width = math.floor(Clamp(cx - l - (vside and extra or 0), MIN_W, MAX_W, s.width) + 0.5)
         s.height = math.floor(Clamp(cy - b - (vside and 0 or extra), MIN_H, MAX_H, s.height) + 0.5)
         C.Layout()
@@ -631,6 +739,66 @@ function C.PositionBox_Toggle(show)
 end
 function C.PositionBox() return posBox end
 
+-------------------------------------------------------------------------------
+-- (Chat 0.6.34; UI-15 / UI-17) the input line's own box in the mover, while "Input line" is Free move: drag it to place the line, drag its
+-- right edge for its width. Her words: "configurable in mover gui, not from console line" (no slider or command sets these). Made the
+-- first time the mover opens with Free move (V14).
+-------------------------------------------------------------------------------
+local inMover
+local function BuildInputMover()
+    if inMover then return end
+    inMover = CreateFrame("Frame", "XayaUIChatInputMover", UIParent, "BackdropTemplate")
+    inMover:SetFrameStrata("FULLSCREEN")
+    inMover:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    inMover:SetBackdropColor(0.3, 0.14, 0.05, 0.94); inMover:SetBackdropBorderColor(1, 0.75, 0.4, 1)
+    inMover:EnableMouse(true); inMover:RegisterForDrag("LeftButton")
+    inMover.label = inMover:CreateFontString(nil, "OVERLAY")
+    inMover.label:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE"); inMover.label:SetPoint("CENTER"); inMover.label:SetTextColor(1, 1, 1, 1)
+    inMover:SetScript("OnDragStart", function()
+        inputA:SetMovable(true)
+        inputA:StartMoving()
+    end)
+    inMover:SetScript("OnDragStop", function()
+        inputA:StopMovingOrSizing()
+        local s = S(); if not s then return end
+        local l, b = inputA:GetLeft(), inputA:GetBottom()
+        if type(l) == "number" and type(b) == "number" then s.inputX, s.inputY = math.floor(l + 0.5), math.floor(b + 0.5) end
+        C.Layout()
+    end)
+    local grip = CreateFrame("Button", nil, inMover)
+    grip:SetWidth(8); grip:SetPoint("TOPRIGHT", inMover, "TOPRIGHT", 0, 0); grip:SetPoint("BOTTOMRIGHT", inMover, "BOTTOMRIGHT", 0, 0)
+    grip.t = grip:CreateTexture(nil, "OVERLAY"); grip.t:SetAllPoints(); grip.t:SetColorTexture(1, 1, 1, 0.8)
+    grip:SetScript("OnMouseDown", function(self) self.sizing = true end)
+    grip:SetScript("OnMouseUp", function(self) self.sizing = false end)
+    grip:SetScript("OnUpdate", function(self)
+        if not self.sizing then return end
+        local s = S(); if not s then return end
+        local cx = GetCursorPosition()
+        local sc = UIParent:GetEffectiveScale()
+        if not (sc and sc > 0) then return end
+        local l = inputA:GetLeft()
+        if type(l) ~= "number" then return end
+        s.inputW = math.floor(Clamp(cx / sc - l, 120, 1200, s.inputW or 300) + 0.5)
+        C.Layout()
+    end)
+    inMover.grip = grip
+    inMover:SetScript("OnUpdate", function(self)
+        local s = S(); if not s then return end
+        self.label:SetText(("Input line  %d wide: drag to move, drag the right edge for its width"):format(math.floor((inputA:GetWidth() or 0) + 0.5)))
+    end)
+    inMover:Hide()
+end
+function C.InputMover() return inMover end
+local function SyncInputMover()
+    local want = C.unlocked and C.skin and C.InputPos() == "FREE"
+    if want then BuildInputMover() end
+    if inMover then
+        if want then inMover:ClearAllPoints(); inMover:SetAllPoints(inputA) end
+        inMover:SetShown(want and true or false)
+    end
+end
+C.SyncInputMover = SyncInputMover
+
 function C.ToggleMover()
     if not container then return end
     BuildMover()
@@ -638,6 +806,7 @@ function C.ToggleMover()
     if not C.unlocked and posBox then posBox:Hide() end
     mover:SetAllPoints(container)
     mover:SetShown(C.unlocked)
+    SyncInputMover()
     ns.Print("Chat Panel mover " .. (C.unlocked and "ON: drag the blue box, click it to type an exact place, resize from its top-right corner. /xui chat move again to finish." or "OFF"))
     if C.unlocked and C.IsCollapsed() then C.SetCollapsed(false) end
 end
@@ -650,7 +819,11 @@ local soonPending
 function C.SoonAnchor()
     if soonPending then return end
     soonPending = true
-    C_Timer.After(0, function() soonPending = false; if C.On() and not C.Glued() then C.Anchor() end end)
+    C_Timer.After(0, function()
+        soonPending = false
+        if C.On() then if not C.Glued() then C.Anchor() end
+        elseif C.HostMode() then C.Layout() end   -- (Chat 0.6.33) Improved Chat alone: the game moved its chat, the block follows it
+    end)
 end
 
 -------------------------------------------------------------------------------
@@ -712,7 +885,7 @@ function C.Rewrap(force)
 end
 
 local function Refresh(s)
-    if not C.On() then
+    if not C.active then   -- (Chat 0.6.33) the block exists while the Chat Panel or Improved Chat is on (Improved Chat alone: over Blizzard's chat)
         if container then container:Hide() end
         return
     end
@@ -760,7 +933,7 @@ local function Upkeep(_, dt)
     if s.inputHint then
         local eb = C.EditBoxOf(cf or {})
         local typing = eb and eb.IsShown and eb:IsShown()
-        hint:SetShown(not typing and not s.collapsed and true or false)
+        hint:SetShown(not typing and not C.IsCollapsed() and true or false)
         hint:SetText(s.inputHintText or "")
     end
 end

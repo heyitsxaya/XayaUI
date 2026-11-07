@@ -138,7 +138,7 @@ local function BonusRow(uv)
     for _, b in ipairs(tree and tree.buttons or {}) do if b:IsShown() and b.uniquevalue == uv then return b end end
 end
 
-QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme colours", qa = "B214, B219", order = 261, prefill = true, steps = {
+QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme colors", qa = "B214, B219", order = 261, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on Bonus Features > Data Panels. Then hover the tick box on the Data Panels row (left pane) and press |cffffd100Check|r: the addon hovers it once more itself and reads what the hover writes.\n\n|cffffd100Expect:|r three lines: the row's name, one short sentence, and Enabled or Disabled. No \"Off: ...\" text.",
         setup = function() Open("bonus", "datapanels") end,
         check = function()
@@ -160,13 +160,13 @@ QA.Register("ui-switch-hovers", { title = "Settings: tick-box hovers and theme c
         end },
     { text = "Hover the tick boxes of a few other rows yourself (Release Guard, Esc Menu, Chat Panel).\n\n|cffffd100Expect:|r each says in plain words what it does, in one sentence. Pass if every one reads clearly to you; Fail and say which one if not.",
         noVerdict = true },
-    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that colour. The addon checks that the grey it uses is the theme's Muted text colour.",
+    { text = "Look at a switched-off feature's name in the left pane (Release Guard is off by default), then open Settings > Theme and change |cffffd100Muted text|r.\n\n|cffffd100Expect:|r the grey name follows that color. The addon checks that the grey it uses is the theme's Muted text color.",
         check = function()
             local ns = NS(); local api = ns and ns.OptionsApi
             if not (api and api.Muted and ns.Theme and ns.Theme.Col) then return false, "the settings window has not been opened yet" end
             local a, b = api.Muted(), ns.Theme.Col("xui-text-muted", "text")
             local same = Near(a[1], b[1], 0.001) and Near(a[2], b[2], 0.001) and Near(a[3], b[3], 0.001)
-            return same, same and "the grey is the theme's Muted text colour" or "the grey is not the theme's Muted text colour"
+            return same, same and "the grey is the theme's Muted text color" or "the grey is not the theme's Muted text color"
         end },
 } })
 
@@ -187,21 +187,21 @@ local function AdvOpt()
 end
 local function Adv() local ns = NS(); return ns and ns.Theme and ns.Theme.Advanced and ns.Theme.Advanced() end
 QA.Register("ui-theme-advanced", { title = "Theme: Advanced customization", qa = "B221", order = 262, prefill = true, steps = {
-    { text = "Open Settings > Theme (the toolbar's Settings button, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colours or Class overrides.",
+    { text = "Open Settings > Theme (the toolbar's Settings button, then UI Options > Theme).\n\n|cffffd100Expect:|r a tick box |cffffd100Advanced customization|r, unticked (unless you ticked it before), and no Tab / Selected tab / Tree bars colors or Class overrides.",
         setup = function() local ns = NS(); if ns and ns.LoadOptions then ns.LoadOptions() end; saved = { adv = Adv() } end,
         check = function()
             local o = AdvOpt()
             if not o then return false, "no Advanced customization switch found (open the settings window once)" end
             local ns = NS()
             local parked = ns.Theme.Parked and ns.Theme.Parked("tabBg")
-            return (not Adv()) and parked == true, ("Advanced customization is %s; tab colours %s"):format(Adv() and "on" or "off", parked and "not offered" or "offered")
+            return (not Adv()) and parked == true, ("Advanced customization is %s; tab colors %s"):format(Adv() and "on" or "off", parked and "not offered" or "offered")
         end },
-    { text = "Press |cffffd100Do it for me|r (or tick it yourself).\n\n|cffffd100Expect:|r the Tab, Selected tab and Tree bars colours and a Class overrides box appear. Change |cffffd100Tab|r: the tabs take that colour.",
+    { text = "Press |cffffd100Do it for me|r (or tick it yourself).\n\n|cffffd100Expect:|r the Tab, Selected tab and Tree bars colors and a Class overrides box appear. Change |cffffd100Tab|r: the tabs take that color.",
         setup = function() local o = AdvOpt(); if o and o.set then o.set({}, true) end end,
         check = function()
             local ns = NS()
             local open = Adv() and ns.Theme.Parked and ns.Theme.Parked("tabBg") == false
-            return open == true, open and "on: the tab colours are offered and applied" or "still off"
+            return open == true, open and "on: the tab colors are offered and applied" or "still off"
         end },
     { text = "Last step: press |cffffd100Do it for me|r to put Advanced customization back as it was.",
         setup = function() local o = AdvOpt(); if o and o.set and saved then o.set({}, saved.adv and true or false) end end,
@@ -312,12 +312,12 @@ local function ReskinRow(uv)
     for _, b in ipairs(tree and tree.buttons or {}) do if b:IsShown() and b.uniquevalue == uv then return b end end
 end
 QA.Register("ui-nesting", { title = "Settings: parts nested 8 px under their feature", qa = "B218", order = 266, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the Blizzard UI Reskin tab opens on Chat Panel, with its parts listed.\n\n|cffffd100Expect:|r Layout, Appearance, Chat Data Panel ... start just a little right of where \"Chat Panel\" starts (8 px), with no wide gap; Stat list sits the same way under Character Pane.",
+    { text = "Press |cffffd100Do it for me|r: the Blizzard Reskin tab opens on Chat Panel, with its parts listed.\n\n|cffffd100Expect:|r Layout, Appearance, Chat Data Panel ... start just a little right of where \"Chat Panel\" starts (8 px), with no wide gap; Stat list sits the same way under Character Pane.",
         setup = function() Open("reskin", "chatpanel") end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local p, c = ReskinRow("chatpanel"), ReskinRow("chatpanel\001layout")
-            if not (p and c and p.xuiTextL and c.xuiTextL) then return false, "Chat Panel and its Layout row are not on screen (is the Blizzard UI Reskin tab on?)" end
+            if not (p and c and p.xuiTextL and c.xuiTextL) then return false, "Chat Panel and its Layout row are not on screen (is the Blizzard Reskin tab on?)" end
             local d = c.xuiTextL - p.xuiTextL
             return math.abs(d - 8) < 0.5, ("Layout's name starts %d px right of Chat Panel's (want 8)"):format(d)
         end },
@@ -552,14 +552,14 @@ QA.Register("ui-short-hovers", { title = "Hover texts: a title and at most two s
     { text = "Your look: hover a few switches on pages you use (Chat Panel, Tooltips, a rule's trigger). Are they brief and clear now? Pass if yes; Fail and name the ones to redo.", noVerdict = true },
 } })
 
--- UI-51 / UI-52 slice 1 (core 0.6.71, Chat 0.6.38, Bonus 0.6.28; Dev Assist 0.7.34): the shared tooltip helper ns.Tip draws the
+-- UI-51 / UI-52 slice 1 (core 0.6.73, Chat 0.6.39, Bonus 0.6.29; Dev Assist 0.7.46): the shared tooltip helper ns.Tip draws the
 -- minimap button's hovers, the mover's group tags and the Chat privacy / history / collapse hovers (the same text as before), and the
 -- minimap list row says "Data Panels" (DISPLAY-RULES A7.2).
-QA.Register("ui-tooltip-helper", { title = "Hovers drawn by the shared helper; minimap row \"Data Panels\"", qa = "B235", order = 273, prefill = true, steps = {
+QA.Register("ui-tooltip-helper", { title = "Hovers drawn by the shared helper; minimap row \"Data Panels\"", qa = "B279", order = 274, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the addon reads the minimap list and hovers the minimap button once by itself.\n\n|cffffd100Expect:|r the list has a \"Data Panels\" row (no \"Custom data panels\"), and the button's hover starts with \"XayaUI\" (the note lists what it read).",
         check = function()
             local ns = NS()
-            if not (ns and ns.Tip and ns.Tip.Show) then return false, "core's ns.Tip is missing (core older than 0.6.71?)" end
+            if not (ns and ns.Tip and ns.Tip.Show) then return false, "core's ns.Tip is missing (core older than 0.6.73?)" end
             local label
             for _, e in ipairs(ns.Launchers and ns.Launchers() or {}) do if e[1] == "data" then label = e[2] end end
             local b = rawget(_G, "XayaUIMinimapButton")

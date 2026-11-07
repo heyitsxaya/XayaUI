@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 10 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -25,13 +25,13 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
 `/xui reskin status` reports what it is doing; `/xui reskin options` opens its settings. Every part below has its own switch.
 
 - **Solid background.** The whole window, the stats list and the added width included, gets a solid fill in your theme's window
-  colour, so the game world no longer shows through. **Background opacity** (50% to 100%, default 95%) sets how solid it is.
-- **Clean window.** Blizzard's frame art (portrait, stone frame, backdrop picture) is replaced by a thin border, the theme's colours
+  color, so the game world no longer shows through. **Background opacity** (50% to 100%, default 95%) sets how solid it is.
+- **Clean window.** Blizzard's frame art (portrait, stone frame, backdrop picture) is replaced by a thin border, the theme's colors
   for title, tabs and stats list, and plain item slots.
-- **One item level per slot, coloured by upgrade track.** Veteran green, Champion blue, Hero purple, Myth orange, Explorer and
+- **One item level per slot, colored by upgrade track.** Veteran green, Champion blue, Hero purple, Myth orange, Explorer and
   Adventurer grey; dimmer at the first upgrade step, full at the last. If another addon already shows an item level on a slot,
   XayaUI's stays hidden there so you never see two (`/xui reskin status` names the other addon's text). Track names are read in
-  English; on other game languages the number uses the item's quality colour.
+  English; on other game languages the number uses the item's quality color.
 - **Enchant names beside each slot.** The enchant's own name in green, wrapped, without the "Enchant Ring - " prefix; "No enchant"
   in orange on a slot that should have one. Hover the line to see what the enchant does, as far as the game tells addons
   ("Effect text not given by the game." when it gives only the name).
@@ -40,7 +40,7 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
 - **Gems and sockets.** One row per socket under the enchant: the gem's icon (16 px; 12 px only where 16 does not fit) and its name;
   an empty socket shows its type ("Prismatic Socket") in orange. Hover a gem for its tooltip.
 - **Wider window.** On by default. The Character tab is **Extra width** wider (0 to 300 px, default 42: 380 px without the stats
-  list, 582 with it, where Blizzard's are 338 and 540). The model stays its size and centred. When a slot's text has too little room
+  list, 582 with it, where Blizzard's are 338 and 540). The model stays its size and centered. When a slot's text has too little room
   beside the model, it runs over the model's edges rather than disappearing (QoL 0.7.28); raise Extra width to keep it clear of the
   model (240 fits every enchant name of this expansion). Long lines that still do not fit are cut at a word with "...": hover for
   the whole line. The width changes only out of combat; a change made in a fight applies when the fight ends.
@@ -50,14 +50,14 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
   made in a fight applies when it ends.
 - **Full stat list (QoL 0.7.31).** The character window's stats pane can show every line of the Stat Calculator's Character Stats:
   the headings Core Stats, Primary, General, Offensive, Defensive, Secondaries and Tertiaries and every stat under them, each name
-  in its stat colour, with the same numbers the Stat Calculator shows (numbers you typed there are left out). Hover a line for the
+  in its stat color, with the same numbers the Stat Calculator shows (numbers you typed there are left out). Hover a line for the
   Stat Calculator's hover. On with the reskin, every line shown to start with. Arrange it on **Character Pane > Stat list**: per
   stat Show, Up / Down (its place in its group), Shows (Percent, Rating, or Both as "528 / 22.48%", for secondary and tertiary
-  stats), Name, Colour and Default colour; per heading Name and Colour; and **Reset the list**. Turn the part off ("Full stat
+  stats), Name, Color and Default color; per heading Name and Color; and **Reset the list**. Turn the part off ("Full stat
   list") for Blizzard's own list.
 - **Upgrade fix (QoL 0.7.27).** If you used QoL 0.7.21-0.7.23, your window kept those versions' 240 px extra width. It now changes
   once to the new 42 px default; any other width you chose is kept.
-- **Stats list styling.** Theme-coloured headers with a thin rule, muted labels, and a faint stripe on every other row.
+- **Stats list styling.** Theme-colored headers with a thin rule, muted labels, and a faint stripe on every other row.
 - **Safety.** Turning a part off gives Blizzard's look back at once (out of combat). If anything goes wrong while the reskin applies,
   it turns itself off until `/reload` and says so in chat.
 
@@ -85,7 +85,7 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 - **One "Character Stats" section.** Core Stats (Primary; General: health, your resource, global cooldown, movement speed;
   Offensive: attack and spell power, attack speed, weapon damage per second, weapon damage, critical strike effectiveness;
   Defensive: armor, dodge, parry, block, stagger for Brewmasters), then Secondaries, then Tertiaries.
-- **Category bars.** Primary, General, Offensive and Defensive are drawn as thin bands in your theme's accent colour, with the stats
+- **Category bars.** Primary, General, Offensive and Defensive are drawn as thin bands in your theme's accent color, with the stats
   indented under them.
 - **Critical strike effectiveness.** No game call gives it, so XayaUI adds up every "critical strike effectiveness by N%" in your
   equipped items' tooltip text (English only; talents and buffs are not included). Hover it to see which items it came from.
@@ -93,7 +93,7 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 - **Influences column.** The names of what a stat feeds (Agility: Attack power, Dodge, Armor) and, marked "from", what feeds it
   (Attack Power: from Agility). Hover a name for its value, its per-point value and the new value.
 - **Try a different number.** Type a number in a stat's **Change** box (the box at the far right of its row) and press Enter.
-  Every number it moves shows the new value with its sign underneath ("+2,800") in the accent colour; the Rating cell shows your
+  Every number it moves shows the new value with its sign underneath ("+2,800") in the accent color; the Rating cell shows your
   rating with the change beside it ("528 +172"). Empty the box, or type your own number, to put it back. The old "All ratings" box
   is gone. Panel > Your numbers > **Clear all** resets every box.
 - **Ability lists moved.** The "Abilities (per 100)" and "Ability Scaling" lists left the Agility / Strength card; they now live on
@@ -105,12 +105,12 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
   full, and L, the rating lost to diminishing returns (on two lines); and what the stat feeds now.
 - Hover a row for a sentence such as "Haste decreases Global cooldown by 0.34 s". An amount the game does not give reads
   "not given". This is not a simulated damage-per-point weight.
-- Column titles are never cut and sit centred over their columns (widths are measured from the game's own text widths). On a narrow
+- Column titles are never cut and sit centered over their columns (widths are measured from the game's own text widths). On a narrow
   panel the influences go under each row; at 580 px wide or more they get their own column.
 
 **Gear tab**
 - **Click an equipped item to compare it;** click it again to let it go. The picked item now has a clearly visible frame in your
-  theme's accent colour (before, the frame was drawn but too dark to see).
+  theme's accent color (before, the frame was drawn but too dark to see).
 - **Slots named clearly:** Ring slot #1 / #2, Trinket slot #1 / #2, Main-hand, Off-hand.
 - **Your bag items as icons,** best item level first. Click to pick up to 3 to compare side by side; click again to let one go.
   With two rings, trinkets or one-hand weapons, choose which one they replace.
@@ -138,14 +138,14 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 
 **Settings summary**
 - Blizzard UI Reskin > Character Pane: every Character Reskin switch, Background opacity, Extra width, Extra height.
-- Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colours.
+- Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colors.
 - QoL > Character Toolkit (tick box in the left pane), with Panel, Slot Overlays, Spell Math and Tooltip lines under it.
 - Panel > Layout: side, detail level, rating lines, text size, Gear Summary style, background, Smaller / Larger height, Reset size.
 
 ### Also in this round: Release Guard (QoL 0.7.31)
 Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default, and while off nothing of it loads or listens).
 - When you die, a black box covers the death window's **Release Spirit** button so a misclick does not release you. It reads
-  **NO RELEASE** (you can change the text), with a flavour line under it that changes each death: to start, "BAD MONKEY",
+  **NO RELEASE** (you can change the text), with a flavor line under it that changes each death: to start, "BAD MONKEY",
   "death comes for us all", "NOPE", "Disagree", "WTB Rez" (edit the list; one per line, each on or off).
 - Hold the click-through key (Shift to start; Ctrl or Alt in settings) and the box steps aside so your click reaches Release; let go
   and it is back. It hides once you are a ghost or the window closes.
@@ -183,7 +183,7 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   - Enchants you add are counted by the enchant scrolls in your bags whose name holds the enchant's name: **not yet confirmed in
     game.**
   - **Click a name** while the Auction House is open to search for it there; Shift-click links the item.
-  - Blizzard's own Professions list in the objective tracker takes your theme's colours (its own switch: "Restyle Blizzard's
+  - Blizzard's own Professions list in the objective tracker takes your theme's colors (its own switch: "Restyle Blizzard's
     Professions list"). The rest of the objective tracker is unchanged for now.
   - Settings: **Your defaults** (one per enchantable slot and one for gems) and **History** (forget what this character used;
     empty To buy).
@@ -199,10 +199,10 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   stay idle until `/reload`.
 - **Faster console switches; clickable version text; tidier Rules tabs** (XayaUI 0.6.45, Options 0.6.39). The console switches in
   settings no longer pause while the whole window rebuilds. The version text at the bottom of the settings window replaces the
-  Addon Info button: click it to open Addon Info; it uses your theme colours. The Rules sub-tab row stays compact instead of
+  Addon Info button: click it to open Addon Info; it uses your theme colors. The Rules sub-tab row stays compact instead of
   stretching across the row.
 - **`/xui help` is readable and shorter** (XayaUI 0.6.46, 0.6.50). One command per line, with the command in your theme's
-  accent colour. Since XayaUI 0.6.50 it is much shorter: only the commands a player uses (17 lines with the Shopping List's
+  accent color. Since XayaUI 0.6.50 it is much shorter: only the commands a player uses (17 lines with the Shopping List's
   `/xui shop`; it was 29), with option lists such as [on|off].
 - **Type commands in the console** (XayaUI 0.6.50). Open the console with `/xui console`; the line along its bottom takes any
   XayaUI command, with or without `/xui` (for example "debug status"). Press Enter: the command is echoed in grey and its output
@@ -224,9 +224,9 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   loses that letter. Example: the `/xui chat` status line used to read "on|off|eset|move|..." and now reads
   "on|off|reset|move|history|wrap|indent|whispers|settings". **Not yet tested in game** (QA D13); what Ctrl+C pastes, one "|" or
   two, is also still unchecked (QA D12).
-- **Cursor colours as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
+- **Cursor colors as UI themes** (XayaUI 0.6.46, QoL 0.7.17). Each Gradient Cursor Trail gradient is also a UI theme in
   Settings > Theme ("Cursor trail: <name>"). The trail can follow your UI theme ("Match the UI theme"), and the Cursor Highlight
-  can use your theme's accent colour.
+  can use your theme's accent color.
 - **Chat history: opens where you are; whisper tabs** (Chat 0.6.15, 0.6.16). The history window opens on the chat tab you are on,
   with All moved to the end. Whisper conversations get their own tabs, following the game's New Whispers setting, or all in one
   Whispers tab (History > Whisper tabs). People with the same name on different realms get separate tabs.
@@ -284,7 +284,7 @@ appeared at core 0.6.55-0.6.56 / Options 0.6.54-0.6.55). Nothing here has been r
 - **Tabs:** Group | Display | Load | Config, with Group first. Config holds the name, an Enabled switch (for all rules inside), the group
   type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character> (made here / imported, date)".
 - **Size** (Group tab): Auto (fits what is showing) or Set (width and height, optional Clip). Border and Background have tick boxes with
-  colour, texture and padding; in Auto the box follows the displays that are showing.
+  color, texture and padding; in Auto the box follows the displays that are showing.
 - **Nested groups:** "Anchored to: The parent group / The screen".
 - **Static groups, Align & Arrange:** Horizontal and Vertical choices (Align left / center / right, Distribute, Space with a gap). The
   choice is now saved: a display you drag, nudge, add or resize goes back into line; None places them freely.
@@ -334,6 +334,12 @@ feature in section 2. **Not tested in game.**
 - **A spec you are not in:** the Aura and Target Debuff buttons list nothing and say: "Auras and target debuffs are read from your
   Cooldown Manager for the spec you are in now. Switch to <Spec>, then press the button again." (the Cooldown Manager answers for the
   current spec only). Empty-list messages now show as text instead of hiding behind the (i) icon.
+- **In-game QA for these buttons** (main 9853d85, Dev Assist 0.7.33): `/xui dev qa` lists "Auto-Generate Rules: Generate buttons, filtered list,
+  Select all" (12 steps; QA B160, B151, B152). You press the real Generate buttons and tick Select all; after each step the addon reads
+  what the table lists and offers its verdict on "Accept" (nothing is recorded without your click). It checks the exact wording of all 16
+  buttons, that no list shows before a press, that each filter lists only its own kind, that Select all ticks and unticks only the rows
+  shown, another spec's Aura list and the class lists; one step is a question that captures the button widths into the note; the last
+  step unticks everything and closes the list. Not tested in game; the buttons' clicks are emulated in the test.
 - *Developers' notes:* the button width (3.0) is an estimate: check that no label is cut off and how the buttons wrap. The aura and
   debuff lists rely on an inference about the Cooldown Manager's fields. Not yet asked of Xaya: whether to keep the header-row tick box
   beside Select all, keep the spec icon on spec buttons, name the pressed button in the table title (still "Auto-populate: <Spec>"),
@@ -350,7 +356,7 @@ From engine session 2 (core 0.6.57, Options 0.6.57). Not seen in game yet.
     from.
   - A row that could not be finished stays in the table, with the popup "error issue making the following rules: [...]". Rows that
     were made leave the table.
-  - On-screen cues are placed in rows of 3, centred on the screen: centre, below, above.
+  - On-screen cues are placed in rows of 3, centered on the screen: center, below, above.
   - A switch, "Hide / Show already generated rules (can potentially cause duplicates)".
   - Buttons: Advanced, Populate, Reload list, Close.
 - **Cooldown Manager warning wording.** "This aura (name) requires Blizzard's Cooldown Manager ..." and, where the game offers no
@@ -379,20 +385,20 @@ From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, 
 - **What a bar tracks:** Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges.
   Maximum 0 uses the game's own maximum; if there is none, the bar stays empty and never guesses.
 - **Fill and look.** Drain toward left, right, bottom or top, or "Fill up instead of draining". Icon left, right or none. Spark on or
-  off with colour and width. Background, border and opacity.
-- **Automatic colour.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
-  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Colour section's
-  "Now:" line names the type in its colour, for example "Fire Damage (Magic)". Or pick a fixed colour.
-- **Colour style per bar:** Blizzard default (the game's own colours), Neon, Pastel, Muted / Dark, or Custom (a colour picker for each
-  of 12 types). A group's Display tab has **Every bar: colour style**: with "Force on every bar in this group" ticked the group's style
+  off with color and width. Background, border and opacity.
+- **Automatic color.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
+  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Color section's
+  "Now:" line names the type in its color, for example "Fire Damage (Magic)". Or pick a fixed color.
+- **Color style per bar:** Blizzard default (the game's own colors), Neon, Pastel, Muted / Dark, or Custom (a color picker for each
+  of 12 types). A group's Display tab has **Every bar: color style**: with "Force on every bar in this group" ticked the group's style
   wins; unticked, choosing a style copies it to every bar once, and the label says how many bars it changes.
 - **Bar textures:** Flat, Blizzard, Raid frame; the game's own power-bar art ("Blizzard power: Health, Mana, Rage, Fury, Insanity,
   ...", read from the game); every texture other addons share through LibSharedMedia; or your own file. Each texture is listed once.
   XayaUI's own bar fills are planned for later (roadmap RM-BARFILLS).
 - **In combat.** Aura-time and stacks bars are drawn by the game's own aura buttons, so they keep moving while the game hides aura
   numbers; each member of a dynamic group is its own bar. Cooldown bars are driven by the game from the cooldown's duration.
-- **Type colours in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colours", on by default. On spell and aura
-  tooltips "fire damage" becomes "Fire Damage" in the game's Fire colour, and a dispel type such as "Magic" takes its dispel colour.
+- **Type colors in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colors", on by default. On spell and aura
+  tooltips "fire damage" becomes "Fire Damage" in the game's Fire color, and a dispel type such as "Magic" takes its dispel color.
   English game text only.
 - **Smart Categories > Progress Bars** now lists rules with a Bar cue.
 - *Developers' notes:* the weakest part is the combat drawing (built from Blizzard's 12.1.5 source, tested on a stand-in only).
@@ -456,6 +462,68 @@ Not tested in game. Where this changes how section 1 describes the Stat Calculat
 - **Info > Credits + Acknowledgements:** plain section headings, one box per section with its credits as rows, a slightly darker
   background, more space between sections, and no intro paragraph.
 - **In-game QA:** steps E1z195 to E1z200 in `/xui dev qa` (Dev Assist on).
+
+## 11. Chat settings split, input line, chat sidebar, friend class colours (chat-round session; main 72a7512)
+
+Chat 0.6.33 to 0.6.36, core 0.6.68, Reskin 0.6.8. Not tested in game. Choices made without you are in the QA question flow (Q-CR-1 to Q-CR-10, Q-CHAT5).
+
+- **Chat settings split (Chat 0.6.33).** Blizzard UI Reskin > Chat Panel now holds only how chat looks: fonts, colours, boxes, tab and input
+  look, size, position and mover, indent of wrapped lines, Blizzard's buttons and scroll bar. The new **QoL > Improved Chat** holds
+  everything the addon adds to how chat behaves: slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters,
+  sounds, privacy cover, Chat Data Panel and sidebar. Improved Chat has its own tick box and a note that it looks best with a chat reskin;
+  it also works with the Chat Panel off, placing its pieces around Blizzard's chat. Right-clicking a data block opens Improved Chat > Chat
+  Data Panel.
+- **Input line position (Chat 0.6.34).** Chat Panel > Layout > Input line: Bottom, Top under the tabs, Top above the tabs, or Free move. With Free
+  move the line is dragged and sized in the mover (`/xui chat move`).
+- **Chat sidebar (Chat 0.6.35, core 0.6.68).** Improved Chat > Sidebar, on by default, on the left of the chat with a background tinted in your
+  class colour. Side: left, right, top or bottom. Show: always or on mouseover, plus "Fade with the chat" (on) and "Hide in combat".
+  Buttons: the privacy eye (moved in from beside the chat), Blizzard's chat menu, channels and voice buttons, history, chat windows, and
+  newest message. XayaUI's own button appears there through Settings > Minimap Button > "Show it in", or when the minimap button is off.
+  The chat keeps its size unless you set "Width of the whole chat".
+- **Fade fix (Chat 0.6.36).** The collapse arrow, the privacy eye and the sidebar now fade with the chat, and hovering them brings it back.
+- **Friend class colours (Reskin 0.6.8).** Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in
+  their class colour. Blizzard's new Social friends list is not coloured yet.
+
+## 12. Faster settings window clicks (perf session; main 72a7512; Options 0.6.70, walkthrough J31)
+
+Not tested in game.
+
+- The settings window responds much faster to clicks when there are many rules. Ticking a switch, or picking a rule in the sidebar, no
+  longer rebuilds every rule's editor; only the rule on screen is built. (Your request A15 P-16: "clicking off options causes a 2s delay
+  between click and actualization".)
+- Measured offline only (test harness, 313 rules, a rule open): a click went from 1,715 ms to about 100-200 ms of Lua, and from about 240 MB
+  to 17 MB of temporary memory. The real click time is not measured in game.
+- Also visible: the window's narrowest width now follows the dropdowns of the rules you have opened, not every rule's (question Q-PERF-8 in
+  the QA flow).
+- Walkthrough J31, "Performance: a click with a rule open", in `/xui dev qa`, reads the window's own redraw time.
+
+## 13. XayaUI Nameplates (new addon; nameplates session; main 72a7512, XayaUI_Nameplates 0.2.1)
+
+Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nameplates: target colour" and "Nameplates: match my Plater settings" (checklist K1 to K5).
+
+- **A new addon, "XayaUI Nameplates", disabled by default** in the game's AddOns list. To try it: tick it, disable Plater, `/reload`. It works on
+  Blizzard's own nameplates and shows nothing while Plater replaces them.
+- **Target colour:** your target's health bar turns teal (as in your Plater "Current Target Color" mod). Pick another colour or press Teal in
+  `/xui` > QoL > Nameplates; the row's tick box switches it off.
+- **Match my Plater settings** (same page): one button sets 12 of Blizzard's own nameplate options to what your Plater profile used: health
+  percent and amount, elite / rare icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on the
+  bar, threat flash off, enemy debuffs and crowd control. Out of combat only. "Put back" restores your earlier options.
+- **`/xui nameplates`** says what is on and whether your target's plate was found (and says so if Plater is loaded).
+- **Not yet:** Aura Reorder (sorting enemy auras by name is impossible in Mythic+ combat), your exact sizes and textures, and spell- or
+  NPC-keyed Plater scripts (impossible in Mythic+ for any addon). These are questions NP-Q1 to NP-Q8 in the QA question flow.
+- *Why:* cost. The addon only works when the target changes or a plate appears (no per-frame or per-tick work). The real comparison with
+  Plater is the perf session's A/B/C measurement, which has not been run.
+
+## 14. Settings window top tabs and Profiles (settings-restructure session; main d8960d8, Options 0.6.72)
+
+Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings window: new top tabs and Profiles (H6-H9)" and "Blizzard Reskin: the new name everywhere (H10)".
+
+- **Top tabs:** Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings. The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, Settings cog) is gone; Settings is a normal tab and the other tabs stay beside it.
+- **"+ New Rule"** is a flat button at the left end of the Rules tab's row (Smart Categories / Enabled / Disabled / Drafts follow; Auto-Generate Rules at the far right).
+- **Profiles tab** (was the hidden Import / Export page): sub-tabs Import, Export and Recycle Bin. Export has a tick box per part (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin). Import lists the parts a pasted text holds, each tickable; settings are merged and a Reload / Later prompt follows. Personal things (Notepad, Shopping List, Recycle Bin, backups, drafts, calculator history, other players' names) never go in. Rules alone still export as the old rules text.
+- **Renamed:** the tab is "Blizzard Reskin" everywhere a player reads it, including the Overview switch "Enable Blizzard Reskin" and chat messages.
+- **Hover texts** are at most two sentences (UI-65).
+- Open choices made without you are in the QA question flow: UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui, UI-24-label-scope.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
