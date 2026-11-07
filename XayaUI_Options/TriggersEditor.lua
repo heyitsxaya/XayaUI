@@ -11,7 +11,7 @@ local Call, MAX_ROWS, ORDER, TYPES = S.Call, S.MAX_ROWS, S.ORDER, S.TYPES
 local unpack = unpack or table.unpack
 
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
-    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in gray under the trigger number)",
+    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in grey under the trigger number)",
         desc = "Up to 30 characters. The trigger number always stays in the title; the name appears beneath it and in brackets in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)
@@ -148,6 +148,14 @@ local function ItemName(id)
     return "|cffaaaaaa(item name not loaded yet - reopen this tab)|r"
 end
 
+-- An ID typed into a box: a number is stored, an empty box clears it (0), anything else keeps the old value (audit D45: "1o" stored 0).
+local function SetID(t, k, v, onN, refresh)
+    v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    local n = (v == "") and 0 or tonumber(v)
+    if n == nil then ns.Print("'" .. v .. "' is not a number: the ID is unchanged"); if refresh then refresh() end; return end
+    t[k] = n; onN()
+end
+
 local function FieldArgs(rule, t, f, H, order, row)
     local k = f.key
     local on = function() H.Changed(rule) end
@@ -156,14 +164,14 @@ local function FieldArgs(rule, t, f, H, order, row)
         row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end, nil, f.search or "cd")   -- search first, then the ID it fills in, then the spell's name
         row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
-            set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
+            set = function(_, v) SetID(t, k, v, onN, H.Notify) end }
         row[k .. "Name"] = { type = "description", order = order + 0.2, width = "double", fontSize = "medium",
             name = function() return H.SpellName(t[k]) end }
     elseif f.kind == "talent" then
         row[k .. "Search"] = H.SearchBox(order, function(id) t[k] = id; onN() end, nil, "talent")
         row[k .. "ID"] = { type = "input", name = f.label, order = order + 0.1, width = "half",
             get = function() return tostring(t[k] or 0) end,
-            set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
+            set = function(_, v) SetID(t, k, v, onN, H.Notify) end }
         row[k .. "Name"] = { type = "description", order = order + 0.2, width = "double", fontSize = "medium",
             name = function() return H.SpellName(t[k]) end }
         local function Build()
@@ -188,7 +196,7 @@ local function FieldArgs(rule, t, f, H, order, row)
     elseif f.kind == "item" then
         row[k .. "ID"] = { type = "input", name = f.label, order = order, width = "half",
             get = function() return tostring(t[k] or 0) end,
-            set = function(_, v) t[k] = tonumber(v) or 0; onN() end }
+            set = function(_, v) SetID(t, k, v, onN, H.Notify) end }
         row[k .. "Name"] = { type = "description", order = order + 0.1, width = "double", fontSize = "medium",
             name = function() return ItemName(t[k]) end }
         row[k .. "Search"] = H.SearchBox(order + 0.2, function(id) t[k] = id; onN() end, nil, "item")
@@ -355,6 +363,8 @@ function ns.BuildExtraTriggerArgs(rule, H)
                 return "Right now: " .. word .. (d and ("  -  " .. tostring(d)) or "")
             end }
         local function removeFn()
+            if ns.IsEditLocked and ns.IsEditLocked(rule) then return end
+            if ns.RecycleTrigger then ns.RecycleTrigger(rule, "x", j) end   -- FA-11: to the Recycle Bin (no prompt), restorable
             local sq = ns.TriggerSequence(rule)
             local seen = 0
             for i, tk in ipairs(sq) do

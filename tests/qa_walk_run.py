@@ -143,6 +143,43 @@ QA.Toggle(); QA.Toggle()
 local gp
 for i, id in ipairs(QA.list) do if id == "group-page" then gp = Wn.rows[i] end end
 check("the list shows the last result of a walkthrough", gp and gp.status:GetText():find("1 failed", 1, true) ~= nil, gp and gp.status:GetText())
+-- audit D35 (Dev Assist 0.7.19): a group of the player's own called "QA test group" is never reused or deleted by a walkthrough
+do
+  local mine = ns.NewFolder("QA test group")
+  local r = ns.NewRule(); r.name = "my own rule"; r.folder = mine.id; ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
+  local def = QA.walks["group-page"]
+  QA.Start("group-page")
+  for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end
+  local kept, ruleKept = false, false
+  for _, f in ipairs(ns.folders) do if f == mine then kept = true end end
+  for _, x in ipairs(ns.rules) do if x == r and x.folder == mine.id then ruleKept = true end end
+  check("D35 the player's own 'QA test group' and its rule survive a walkthrough's Cleanup", kept and ruleKept)
+  local tagged = 0
+  for _, f in ipairs(ns.folders) do if f.qaTest then tagged = tagged + 1 end end
+  check("D35 ...and the walkthrough's own tagged group is gone", tagged == 0, tagged)
+end
+-- audit D34 (Dev Assist 0.7.19): walkthroughs put back what Do it for me changed
+local function RunAll(id)
+  local def = QA.walks[id]; QA.Start(id)
+  for _ = 1, #def.steps do pcall(function() QA.DoSetup(); W.tick(0.1, 2) end); QA.Answer("S") end
+end
+if ns.SetReskinTab and ns.ReskinTabOn then
+  ns.SetReskinTab(false); W.tick(0.1, 2)
+  RunAll("reskin-switches")
+  check("D34 reskin walkthrough: All reskins is off again at the end (it was off before)", ns.ReskinTabOn() == false, tostring(ns.ReskinTabOn()))
+  ns.SetReskinTab(true); W.tick(0.1, 2)
+end
+do
+  local S = ns.Service and ns.Service("shoppingList")
+  if S then
+    local c = S.Cfg(); c.enabled, c.panel = false, false; S.Apply()
+    RunAll("shopping-list")
+    c = S.Cfg()
+    check("D34 Shopping List walkthrough: switched off again at the end (it was off before)", c.enabled == false and c.panel == false, tostring(c.enabled) .. "/" .. tostring(c.panel))
+  else
+    check("D34 Shopping List service available in the stand-in", false, "no shoppingList service")
+  end
+end
 return R
 end
 '''

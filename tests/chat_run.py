@@ -217,6 +217,18 @@ check("own messages never filtered", r is False)
 run("ns.chat2.spamWord=true")
 r = filt("CHAT_MSG_SAY", "he is a boosted warrior", "Fay-R", 1008)
 check("whole-word mode: 'boost run' not in 'boosted warrior'", r is False)
+# audit D37 (Chat 0.6.33): punctuation at a phrase's edge and non-Latin letters (helper checked directly: no filter cache involved)
+ww = lambda text, ph: run("return ns.Chat_WholeWord and ns.Chat_WholeWord(...)", text, ph)
+check("D37 whole words: 'wts!' found in 'wts! cheap'", ww("wts! cheap", "wts!") is True)
+check("D37 whole words: '$gold' found in 'only $gold here'", ww("only $gold here", "$gold") is True)
+check("D37 whole words: Cyrillic phrase found as a word", ww("\u043f\u0440\u043e\u0434\u0430\u043c \u0437\u043e\u043b\u043e\u0442\u043e".encode().decode("unicode_escape"), "\u0437\u043e\u043b\u043e\u0442\u043e".encode().decode("unicode_escape")) is True)
+check("D37 whole words: Cyrillic phrase not found inside a longer word", ww("\u0437\u043e\u043b\u043e\u0442\u043e\u0439".encode().decode("unicode_escape"), "\u0437\u043e\u043b\u043e\u0442\u043e".encode().decode("unicode_escape")) is False)
+check("D37 whole words: 'gold' still not inside 'golden'", ww("golden rings", "gold") is False)
+check("D37 whole words: 'gold' found later after a non-match", ww("golden gold", "gold") is True)
+run("ns.chat2.spamPhrases='buy gold\\nboost run\\nwts!'")
+r = filt("CHAT_MSG_SAY", "wts! cheap stuff", "Sp-Realm", 9101)
+check("D37 through the chat filter: 'wts!' hides 'wts! cheap stuff' in whole-word mode", r is True, r)
+run("ns.chat2.spamPhrases='buy gold\\nboost run'")
 run("ns.chat2.spamWord=false")
 
 # secret safety: a protected message must pass untouched; a protected author must not break the filters, history or sounds
@@ -254,6 +266,17 @@ run("ns.chat2.ignoreClick=true; _G.SetItemRef('player:Spammer-Realm', 'x', 'Righ
 check("ctrl+right-click ignores the player", "Spammer-Realm" in [str(x) for x in W.ignored.values()], list(W.ignored.values()))
 run("_G.SetItemRef('player:Xaya', 'x', 'RightButton')")
 check("never ignores yourself", len(list(W.ignored.values())) == 1)
+# audit D32 (Chat 0.6.33): "Ignoring" only when the game added them; a full list / an already ignored name says it did not work
+for k in list(W.printed.keys()): W.printed[k] = None
+W.ignoreFull = True
+run("_G.SetItemRef('player:Third-Realm', 'x', 'RightButton')")
+W.ignoreFull = False
+out = " ".join(str(v) for v in W.printed.values() if v)
+check("D32 Ignore list full: says it could not ignore, not 'Ignoring'", "Could not ignore" in out and "Ignoring Third" not in out, out[:200])
+for k in list(W.printed.keys()): W.printed[k] = None
+run("_G.SetItemRef('player:Spammer-Realm', 'x', 'RightButton')")
+out = " ".join(str(v) for v in W.printed.values() if v)
+check("D32 already ignored: says it could not ignore", "Could not ignore" in out, out[:200])
 W.ctrl = False
 # (Chat 0.6.25; REQUEST-LOG UI-12 / UI-17: "allow a modifier selector (alt, ctrl. fn(?))"; her answer "detect available modifiers
 # based on available keybinds not already assigned; also allow user to record and save their own keybind")
@@ -585,6 +608,11 @@ check("cover does not touch the bar", cr_[1] >= br_[1] + br_[3] - 0.01, (cr_, br
 check("cover is above the edit box strata", cover.GetFrameStrata(cover) == "DIALOG" and cover.GetFrameLevel(cover) >= 100)
 bb = rect(btn); cc = rect(cont)
 check("privacy button beside the block", bb[0] >= cc[0] + cc[2] - 0.01 and btn.IsShown(btn), (bb, cc))
+# audit D38 (Chat 0.6.33): the defaults say what players have always seen (no label, no border); a ticked label with no text reads "Chat hidden"
+check("D38 privacy defaults: no border and no label (what players see)", run("return ns.CHAT_DEFAULTS.privBorder == false and ns.CHAT_DEFAULTS.privShowText == false") is True)
+run("ns.chatDB.privShowText = true; ns.chatDB.privText = nil; ns.ChatPrivacy_Refresh()")
+check("D38 a ticked label with no text typed reads Chat hidden", str(cover.label._text) == "Chat hidden", cover.label._text)
+run("ns.chatDB.privShowText = nil; ns.ChatPrivacy_Refresh()")
 # tab row under the cover (Xaya: "can't click on tabs if the privacy panel is active"; her setting had cover-tabs and reveal on)
 run("ns.chatDB.privCoverTabs=true; ns.ChatPrivacy_Set(false); ns.ChatPrivacy_Set(true)")
 W.update(0.3, 3)
@@ -723,8 +751,12 @@ out = " ".join(str(v) for v in W.printed.values() if v)
 check("/xui chat indent: a line that cannot be read ends the report with a message, not an error", "could not finish" in out, out[:300])
 run("C.Main().visibleLines = nil")
 check("/xui chat indent causes no module error", len(list(C.errors.keys())) == 0, dict(C.errors))
+# audit D31 (Chat 0.6.33): turning the Chat Panel off gives the game's own fade of old lines back (stand-in: on, 120 s)
+run("ns.chat2.textFade = false; C.Refresh()")
+check("D31 with the panel on and its text fade off, the game's fade is off", run("return C.Main()._fading") is False, run("return C.Main()._fading"))
 run("C.Command('off')")
 check("/xui chat off sets enabled=false", run("return ns.chat2.enabled") is False)
+check("D31 /xui chat off gives the game's fade back (on, 120 s)", run("return C.Main()._fading") is True and run("return C.Main()._timeVisible") in (None, 120), (run("return C.Main()._fading"), run("return C.Main()._timeVisible")))
 run("C.Command('on')")
 check("/xui chat on sets enabled=true", run("return ns.chat2.enabled") is True)
 run("C.Command('move')")

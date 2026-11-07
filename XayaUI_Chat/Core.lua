@@ -386,6 +386,14 @@ function C.TeardownSkin()
     for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
         if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
     end
+    for _, f in ipairs(C.Frames()) do   -- audit D31 (Chat 0.6.33): the game's own fade of old lines, as it was before the Chat Panel set it
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
     for _, f in ipairs(C.Frames()) do
         local tab = C.TabOf(f)
         if tab then
@@ -453,7 +461,8 @@ function ns.Chat_OnDBReady()
     -- V14: the Chat Panel saved off (or the Reskin tab off) and Improved Chat saved off: nothing more is built, registered or run
     if not ((s.enabled and ns.ReskinTabOn()) or s.improvedOn ~= false) then return end
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14)
+    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
+    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
     ns.Merge(CueRulesDB.chat, ns.CHAT_DEFAULTS)
     C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest

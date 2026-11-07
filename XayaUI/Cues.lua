@@ -280,26 +280,41 @@ function ns.MigrateCues()
     local made = 0
     local snapshot = {}
     for _, r in ipairs(ns.rules) do snapshot[#snapshot + 1] = r end
+    -- audit D57 (core 0.6.67): each child is moved under its own guard: one that fails is recorded (XUI-E011) and left exactly as it
+    -- was, the others go on, and the migration is marked done once, so it does not run again at every login (a child half moved before
+    -- an error could gain its cue a second time).
+    local failed = 0
     for _, child in ipairs(snapshot) do
-        local parent = (child.parentUid and not child.isCue) and ns.FindParentRule(child)
-        if parent then
-            child.thenCues = nil
-            local keys = {}
-            if type(child.sound) == "table" and child.sound.enabled then
-                local c = ns.NewCueRule(parent, "sound")
-                if c then c.sound = ns.Copy(child.sound); c.repeatSec = child.repeatSec; c.cueName = nil; keys[#keys + 1] = c.cueKey; made = made + 1 end
+        local nBefore, prevThen = #ns.rules, child.thenCues
+        local okChild, errChild = pcall(function()
+            local parent = (child.parentUid and not child.isCue) and ns.FindParentRule(child)
+            if parent then
+                child.thenCues = nil
+                local keys = {}
+                if type(child.sound) == "table" and child.sound.enabled then
+                    local c = ns.NewCueRule(parent, "sound")
+                    if c then c.sound = ns.Copy(child.sound); c.repeatSec = child.repeatSec; c.cueName = nil; keys[#keys + 1] = c.cueKey; made = made + 1 end
+                end
+                if type(child.visual) == "table" and child.visual.enabled then
+                    local c = ns.NewCueRule(parent, "texture")
+                    if c then c.visual = ns.Copy(child.visual); c.visual.trigger = "condition"; keys[#keys + 1] = c.cueKey; made = made + 1 end
+                end
+                if #keys > 0 then
+                    child.thenCues = keys
+                    child.sound.enabled = false
+                    child.visual.enabled = false
+                end
             end
-            if type(child.visual) == "table" and child.visual.enabled then
-                local c = ns.NewCueRule(parent, "texture")
-                if c then c.visual = ns.Copy(child.visual); c.visual.trigger = "condition"; keys[#keys + 1] = c.cueKey; made = made + 1 end
-            end
-            if #keys > 0 then
-                child.thenCues = keys
-                child.sound.enabled = false
-                child.visual.enabled = false
-            end
+    
+        end)
+        if not okChild then
+            failed = failed + 1
+            for k = #ns.rules, nBefore + 1, -1 do table.remove(ns.rules, k) end   -- the cues it made before the error go again (NewCueRule appends)
+            child.thenCues = prevThen
+            if ns.RecordError then pcall(ns.RecordError, "XayaUI cue migration, condition '" .. tostring(child.name) .. "': " .. tostring(errChild), nil, "XayaUI", "XUI-E011") end
         end
     end
+    if failed > 0 and ns.Print then ns.Print(failed .. " condition(s) could not be moved into Cues and were left as they were (see /xui report).") end
     DB.cuesVer = 2
     return made
 end

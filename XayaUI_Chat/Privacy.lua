@@ -25,8 +25,11 @@ D.privTexture = "Interface\\DialogFrame\\UI-DialogBox-Background"
 D.privTile = false
 D.privImageChoice = ""           -- a picture picked from the list
 D.privPath = ""                  -- or a typed picture path (wins over the list)
-D.privBorder = true
-D.privShowText = true
+-- audit D38 (Chat 0.6.33): these two said true, but the merge that would apply them runs before this file fills the table (Core.lua),
+-- so every player has had no border and no label. FLAGGED reading: what players see is kept, and the defaults now say so (sent to her
+-- question flow). The label text falls back to "Chat hidden" when the label is ticked with no text typed (before: an empty label).
+D.privBorder = false
+D.privShowText = false
 D.privText = "Chat hidden"
 D.privCoverTabs = false
 D.privReveal = false             -- cover fades away while the mouse is over it
@@ -124,7 +127,7 @@ local function Style(s)
     cover:SetBackdropBorderColor(0, 0, 0, ab)
     local path = ns.FontPath and ns.FontPath(s.font) or STANDARD_TEXT_FONT
     if not cover.label:SetFont(path or STANDARD_TEXT_FONT, 14, "OUTLINE") then cover.label:SetFont(STANDARD_TEXT_FONT, 14, "OUTLINE") end
-    cover.label:SetText(s.privShowText and (s.privText or "") or "")
+    cover.label:SetText(s.privShowText and ((s.privText and s.privText ~= "") and s.privText or D.privText) or "")
 end
 
 -- true while the pointer is inside the cover's whole rectangle (the tab row too, even though that part does not take clicks)
@@ -369,7 +372,7 @@ function ns.ChatPrivacy_Options(Notify)
                 return "No picture chosen: the cover shows the color." end },
         border = { type = "toggle", order = 20, name = "Border", get = get("privBorder"), set = set("privBorder") },
         showText = { type = "toggle", order = 21, name = "Show a label on the cover", get = get("privShowText"), set = set("privShowText") },
-        text = { type = "input", order = 22, name = "Label", get = get("privText"), set = set("privText") },
+        text = { type = "input", order = 22, name = "Label", get = function() local s = S(); return (s and s.privText and s.privText ~= "") and s.privText or D.privText end, set = set("privText") },
         areaHdr = { type = "header", order = 30, name = "Area and behavior" },
         tabs = { type = "toggle", order = 31, width = "full", name = "Also cover the chat tabs", get = get("privCoverTabs"), set = set("privCoverTabs") },
         reveal = { type = "toggle", order = 33, width = "full", name = "Cover fades away while the mouse is over it", get = get("privReveal"), set = set("privReveal") },
