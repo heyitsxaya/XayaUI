@@ -95,6 +95,17 @@ next-frame call per plate added, no string work, no secret read.
 tooltip. So "Plater 2 % vs XayaUI 0 %" would not be a fair comparison. The fair one is frame time in the same pull, with Plater
 vs with Blizzard's plates plus XayaUI_Nameplates. I asked the performance-test session for that method.
 
+### How it will be measured (method from the performance-test session, 2026-11-07 07:35 UTC)
+1. Same scene, three runs: **A** = Plater on (her profile); **B** = Plater off, Blizzard plates + XayaUI_Nameplates; **C** = both off
+   (Blizzard plates only, the baseline). A scripted target-dummy pack (the same 6-10 dummies, the same 60 s rotation, all plates in
+   view, a target swap every 3 s) so runs repeat; a real Mythic+ pull only as confirmation.
+2. Whole-game readings, not the addon share: `C_AddOnProfiler.GetApplicationMetric` with `Enum.AddOnProfilerMetric.RecentAverageTime`
+   and `PeakTime` (units: INFERENCE, the documentation has no text), `CountTimeOver10Ms` / `CountTimeOver50Ms` deltas over the 60 s, and
+   average FPS (`GetFramerate` once a second). B - C = our cost, including the Blizzard plate work we cause; A - C = Plater's.
+   `GetAddOnMetric` per addon as a second column.
+3. Errors per minute in A (core counts other addons' errors; the J22 walkthrough shows it).
+4. Three repeats per run; median and spread. No number without a run behind it.
+
 ## C. What she gets, slice by slice
 | Slice | Content | State |
 |---|---|---|
