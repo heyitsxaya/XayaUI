@@ -561,6 +561,10 @@ local function CDMDetail(fr)
         tostring(fr.wasSetFromAura == true), tostring(fr:IsShown() and true or false),
         issecret(u) and "secret" or tostring(u))
 end
+-- aura IDs read as a real buff on the player this session (not saved): AuraAlias.lua never aliases those (a rule that lists the buff's
+-- own ID needs no alias, and a namesake of it is a different buff)
+local seenReadable = {}
+function ns.AuraSeenReadable(id) return seenReadable[id] == true end
 local HIDDEN_PREFIX = "hidden by the game right now (auras are secret, as in combat): aura "
 ns.HIDDEN_AURA_PREFIX = HIDDEN_PREFIX
 local function BuffPresentRaw(id)
@@ -568,6 +572,7 @@ local function BuffPresentRaw(id)
     -- A real aura table proves presence, in any context.
     local api, aura = ReadAuraAPI(id)
     if api == "found" then
+        seenReadable[id] = true   -- this ID is itself a buff on you: never aliased (AuraAlias.lua; hub F2 guard)
         if ns.LearnStacks then pcall(ns.LearnStacks, id, aura) end   -- what the stack count can be (#300; CountSupport below)
         return true, "aura API", MakeRef(aura)
     end
@@ -1029,14 +1034,26 @@ function ns.HiddenAuraNote(rule, info)
     local D = ns.AuraDisplay
     local own, why
     if D and D.OwnerOf then own, why = D.OwnerOf(p) end
+    -- learned same-name IDs, shown so the player can see them (hub F2)
+    local learned = ""
+    if ns.AuraAliasesOf then
+        local t = {}
+        local function add(id)
+            local al = ns.AuraAliasesOf(tonumber(id))
+            if al then for a in pairs(al) do t[#t + 1] = tostring(a) .. " for " .. tostring(id) end end
+        end
+        add(p.buffID)
+        if type(p.buffAlt) == "table" then for _, a in ipairs(p.buffAlt) do add(a) end end
+        if #t > 0 then table.sort(t); learned = " Also matched: buff ID " .. table.concat(t, ", ") .. " (same name, learned in game)." end
+    end
     if own == true then
         return "the game hides this aura now; the game's own aura container still draws this display (" .. tostring(why)
-            .. "). Sounds, conditions and 'missing' wait until the game shows auras again."
+            .. "). Sounds, conditions and 'missing' wait until the game shows auras again." .. learned
     elseif own == false then
         return "the game hides this aura now, so XayaUI cannot show this display: the game's aura container does not draw it ("
-            .. tostring(why) .. ")."
+            .. tostring(why) .. ")." .. learned
     end
-    return "the game hides this aura now, so XayaUI cannot show this display (no display drawn by the game's aura container)."
+    return "the game hides this aura now, so XayaUI cannot show this display (no display drawn by the game's aura container)." .. learned
 end
 
 -- Advanced Debugging record (DebugRecord.lua): each aura's answer is written down when it changes (present / missing / unknown, and

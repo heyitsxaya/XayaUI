@@ -1,4 +1,4 @@
-# Externals and raid defensives in combat (core 0.6.69, Options 0.6.66, Dev Assist 0.7.26; QA J25)
+# Externals and raid defensives in combat (core 0.6.69, Options 0.6.66, Dev Assist 0.7.26; QA J26)
 Externals engine session, opened by the 11-06 hub (session_014bN6tSStpdmmCXviFAqPdQ). Branch `claude/externals-in-combat`, based on
 `claude/perf-load-first` (297f097, core 0.6.66). Logged 2026-11-07 08:00 UTC. Nothing here has run in the game. The lander relabels
 versions.
@@ -16,7 +16,7 @@ read. O-108: no questions to her. O-109: load conditions are untouched.
   - GetUnitAuraInstanceIDs and IsAuraFilteredOutByInstanceID: `RequiresUnitAuraAccess, SecretArguments=AllowedWhenUntainted` (no
     secret-return flag). But Combat/AuraDisplay.lua:4 records "measured: GetUnitAuraInstanceIDs errors" in combat. The measurement was
     not found in debug-log, so it is unconfirmed either way. Not used.
-  - C_UnitAuras.AuraIsBigDefensive(spellID) → bool, AllowedWhenTainted: read by the J25 walkthrough only.
+  - C_UnitAuras.AuraIsBigDefensive(spellID) → bool, AllowedWhenTainted: read by the J26 walkthrough only.
 - events.md: `UNIT_AURA (unitTarget, updateInfo) · SecretWhenAurasRestricted`. Seen in game on 11-04: lists secret in combat
   (debug-log/2026-11-04-2218).
 - docs/reference/spells/spells.json (game capture 2026-11-01): aura secrecy 2 (ContextuallySecret) for all 12 captured IDs of her bar.
@@ -42,7 +42,7 @@ read. O-108: no questions to her. O-109: load conditions are untouched.
    reasons are in /xuiengine) fall to path 1 and stay hidden. On top of that, the performance guard switched automatic drawing OFF for
    the session whenever Blizzard_AuraContainer's whole CPU stayed above 1 ms, even after lean mode. That meter includes Blizzard's own
    buff frame, target frame and group headers. In a raid this can trip from Blizzard's work alone, and then every external vanishes in
-   combat. INFERENCE: whether this is what happened to her needs her guard-trip record (captured by J25).
+   combat. INFERENCE: whether this is what happened to her needs her guard-trip record (captured by J26).
 3. Both readers match the exact aura ID. A rule that lists a cast ID whose buff has another ID never matches (see the pairs above).
 
 ## Change
@@ -67,7 +67,7 @@ read. O-108: no questions to her. O-109: load conditions are untouched.
 - Outcomes.lua ExplainRule (/xui debug status) and Options StatusText (rule status) show the note.
 - Dev Assist:
   - CoreDebug.lua: /xuiengine auto on/off also clears the kept state.
-  - QAWalks-externals.lua: walkthrough J25 (prefill; data capture).
+  - QAWalks-externals.lua: walkthrough J26 (prefill; data capture).
 
 ## Scope (V4: git grep)
 - Readers of the unknown text: DevRecord.lua SourceKind (takes the text before "(" / ":" / "|"; works unchanged); Options.lua
@@ -94,4 +94,4 @@ were readable in combat, which is unconfirmed (see above).
 
 ## Unverified in game
 Everything: that the container draws her externals in combat; whether her rules list cast IDs; whether the guard tripped for her; and
-the alias learning itself. J25 captures all of it.
+the alias learning itself. J26 captures all of it.

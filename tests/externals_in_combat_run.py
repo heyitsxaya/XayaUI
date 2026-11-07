@@ -151,9 +151,43 @@ L.execute("AURAS[22812] = AURA(22812, 8); NS._AuraAliasOnAura({ addedAuras = { A
 check("a namesake that is up together with the rule's own aura is a different buff: not learned", L.eval("NS.AuraAliasesOf(22812) == nil"))
 L.execute("AURAS = { [900] = AURA(900, 8) }; NS._AuraAliasOnAura({ isFullUpdate = true })")
 check("a full update reads your buffs and learns too", L.eval("(function() local a = NS.AuraAliasesOf(22812); return a ~= nil and a[900] == true end)()"))
+# hub F2 guard: an ID read as a real buff on you this session is never aliased, even once that buff is gone
+L.execute(r'''
+NAMES[700] = "Ironbark"; NAMES[701] = "Ironbark"
+IB = { uid = "ib", name = "Ironbark", enabled = true, useBuff = true, buffID = 700, buffState = "present", load = { mode = "always" }, visual = { enabled = true, trigger = "buffActive" } }
+NS.rules[#NS.rules + 1] = IB; NS.AuraAliasForget()
+AURAS = { [700] = AURA(700, 12) }
+''')
+res, info = L.eval("EVAL(IB)")
+check("guard setup: 700 read as a real buff on you", info.present is True)
+L.execute("AURAS = { [701] = AURA(701, 12) }; NS._AuraAliasOnAura({ addedAuras = { AURA(701, 12) } })")
+check("an ID seen readable this session is never aliased to a namesake (a different buff sharing the name)", L.eval("NS.AuraAliasesOf(700) == nil"))
+# two candidates: both kept, none picked
+L.execute("NAMES[710] = 'Rallying Cry'; NAMES[711] = 'Rallying Cry'; NAMES[712] = 'Rallying Cry'; RC = { uid = 'rc', name = 'RC', enabled = true, useBuff = true, buffID = 710, buffState = 'present', load = { mode = 'always' }, visual = { enabled = true, trigger = 'buffActive' } }; NS.rules[#NS.rules + 1] = RC; NS.AuraAliasForget(); AURAS = {}; NS._AuraAliasOnAura({ addedAuras = { AURA(711, 10), AURA(712, 10) } })")
+check("two namesake candidates: both kept, none picked", L.eval("(function() local a = NS.AuraAliasesOf(710); return a ~= nil and a[711] == true and a[712] == true end)()"))
+L.execute("COMBAT = true; OWNER = { true, 'its own slot' }"); L.eval("EVAL(RC)")
+note = L.eval("NS.HiddenAuraNote(RC)")
+check("the status note shows the learned IDs", note is not None and "711 for 710" in note and "712 for 710" in note, note)
+L.execute("COMBAT = false")
+
 # no rule lists an aura: the handler does nothing (V14)
 L.execute("SAVED_RULES = NS.rules; NS.rules = {}; NS.AuraAliasForget(); CALLS = 0; local o = C_UnitAuras.GetAuraDataByIndex; C_UnitAuras.GetAuraDataByIndex = function(...) CALLS = CALLS + 1; return o(...) end; NS._AuraAliasOnAura({ isFullUpdate = true }); C_UnitAuras.GetAuraDataByIndex = o; NS.rules = SAVED_RULES; NS.AuraAliasForget()")
 check("no rule lists an aura ID: no aura is read (off costs nothing)", L.eval("CALLS == 0"))
+
+# ---------------------------------------------------------------- 3. walkthrough J26: registered, and the F6 probe reports every answer
+qa_path = os.path.join(ROOT, "XayaUI_DevAssist", "QAWalks-externals.lua")
+L.execute(r'''WALKS = {}; XayaUI_DevQA = { Register = function(id, def) WALKS[id] = def end }; XayaUI_NS = NS''')
+L.execute("assert(loadfile(%s))()" % repr(qa_path).replace("'", '"'))
+check("J26 walkthrough registered with pre-fill and four steps", L.eval("WALKS['externals-combat'] ~= nil and WALKS['externals-combat'].qa == 'J26' and WALKS['externals-combat'].prefill == true and #WALKS['externals-combat'].steps == 4"))
+L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() error('restricted') end")
+check("F6 probe: a refused call is reported as an error", "ERROR" in str(L.eval("XayaUI_DevQA.ProbeExternalFilters()")))
+L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() return SECRET end")
+check("F6 probe: a secret list is reported as secret", "SECRET" in str(L.eval("XayaUI_DevQA.ProbeExternalFilters()")))
+L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() return { 11, SECRET } end; C_UnitAuras.IsAuraFilteredOutByInstanceID = function() return false end")
+pr = str(L.eval("XayaUI_DevQA.ProbeExternalFilters()"))
+check("F6 probe: readable and secret IDs are counted, the filter check is read", "2 IDs, 1 readable, 1 secret" in pr and "filter check readable (false)" in pr and "BIG_DEFENSIVE" in pr, pr)
+r = L.eval("(function() local ok, note = WALKS['externals-combat'].steps[1].check(); return tostring(ok) .. ' ' .. tostring(note) end)()")
+check("J26 step 1 captures the aura rules (data capture)", str(r).startswith("true") and "aura rules" in str(r), r)
 
 print()
 print("FAILS: %d" % len(fails))

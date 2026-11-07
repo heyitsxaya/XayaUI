@@ -6,7 +6,7 @@ d32239bcb673463ab874e80d47fae504  LICENSE
 306b2db548017ca9dd91b81d631e3d3a  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 44633508999dc983989db55ea09af13a  XayaUI/Actions.lua
-6a359891d799bfbf386a707f0d04e3be  XayaUI/AuraAlias.lua
+1f53987a74a5e1a96970257184c4de05  XayaUI/AuraAlias.lua
 bf5134b45b181fdc9d83ba8478cc65aa  XayaUI/AuraList.lua
 7bc5ab6899bc167c8fc5f3db72f3c9ff  XayaUI/AuraSound.lua
 65af89fb33339b6198aeadd68500731f  XayaUI/AuraSources.lua
@@ -18,7 +18,7 @@ df93d59958ede8af42f6e3acbd8264a2  XayaUI/Combat/AuraDisplay.lua
 2127aa3b78e0573438bacd7aea357097  XayaUI/Combat/AuraTracker.lua
 26bfbb4d0e97f3c7f5e272da084e2cab  XayaUI/Combat/README.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
-362dd7c3c0d58d54db3dd2a0e91e0b39  XayaUI/Conditions.lua
+60f585cde83daa5b112d85f7093be0fa  XayaUI/Conditions.lua
 4b019193a3c47742b573f00435888c00  XayaUI/Console.lua
 b6e8c107bcdf96898cf566fe7345ed8c  XayaUI/Core.lua
 d0708be0cbb15b15322a191218355a5e  XayaUI/Cues.lua
@@ -168,10 +168,10 @@ b5a92ec17bc645db493b24f51b63147f  XayaUI_DevAssist/CharacterWidthProbe.lua
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
 d1bc45421a3341cec7efd8daf8370225  XayaUI_DevAssist/QAWalk.lua
-e872f3c5a05ba644fe6aa2e8598fee11  XayaUI_DevAssist/QAWalks-Checklist.lua
+4a5cd9d05df9a431fc012eb1088638cd  XayaUI_DevAssist/QAWalks-Checklist.lua
 f54b7db2a69b6a507758d0220c71957f  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
-9911a31a97689e6c8cb59c6fecb76813  XayaUI_DevAssist/QAWalks-externals.lua
+02718c22bf399421a6ef803065b3c46c  XayaUI_DevAssist/QAWalks-externals.lua
 8af51db38f9f1231d4a5d48ed99c33e8  XayaUI_DevAssist/QAWalks-perf.lua
 ba170eccb1f9763d18212ecf63c91545  XayaUI_DevAssist/QAWalks.lua
 eeddd5c6837ec0e6ad5eeb4f0bdc35e2  XayaUI_DevAssist/RunRecord.lua
@@ -568,9 +568,9 @@ ab9e480fb1a50ed5736682e5e8445dae  debug-log/2026-11-07-0721-rule-log-only-while-
 8feddbbd8c3024e67e49d713acb74f23  debug-log/2026-11-07-0725-engine-churn-closures-core-0.6.64.md
 d08720044c7a08fe4e2d54873985500d  debug-log/2026-11-07-0728-error-handler-no-stack-for-others-core-0.6.65.md
 62b605147ad886fea9475510966dfe01  debug-log/2026-11-07-0732-load-first-core-0.6.66.md
-21bf1382c1391e46e5497d64d338215a  debug-log/2026-11-07-0800-externals-in-combat-core-0.6.69.md
+ae2e62984bd5bfd45f9d6f8263d3c7ff  debug-log/2026-11-07-0800-externals-in-combat-core-0.6.69.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-89f1169889e2e80fd141e89e6710ab28  docs/QA-CHECKLIST.md
+c768147633e00343ea92ba4b2c397a73  docs/QA-CHECKLIST.md
 016d704744f94668de6d3e58e201e3ce  docs/README-INGAME.md
 df0b0db8c4ec95be10546f6a19bef400  docs/ROADMAP.md
 83b0df21d9813f58d0a4290b48e16cd5  docs/SESSION-START-SUMMARY.md
@@ -613,7 +613,7 @@ c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 f2fa31ac21c4a1101f7fb13a72c08285  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-6266d6fb92603063576079f6b88ed822  docs/process/REQUEST-LOG.md
+3e6be87c26d1cd7258782ff765ff3a04  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 fc9ae6bece5db2731de3bf3b926c8c0c  docs/process/VERIFICATION.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
@@ -733,7 +733,7 @@ cafe909a0096f5993f25573a8c89a00b  tests/cursor_ui_themes_run.py
 c135893b4f8ae3d58b00fd2be6d813af  tests/delete_keeps_rule_run.py
 427962a9d4b8a689538d0b4850436526  tests/devassist_api_run.py
 bee02fd6123bf9edd4e6dd43f306e1e4  tests/devassist_catalogue_run.py
-c9269a3f3691b702722b0759fa168bfd  tests/devassist_debug_tools_run.py
+a54ee5cebf24bd13ce4b4edf6a03e04f  tests/devassist_debug_tools_run.py
 a988d0843e5594fd1d2e777772e4b56a  tests/devassist_instance_run.py
 beb33f9fd927428616543fd8364aa1bf  tests/devassist_probe_run.py
 5db2ab5175ba50d516fbad5b42ac943e  tests/devassist_rename_run.py
@@ -751,7 +751,7 @@ bee808375e1cc910aba4e456d34e8a20  tests/engine_garbage_229_run.py
 a64249be0636a14db14757341e2ad6e4  tests/engine_text_run.py
 3d1aff1f1af23656bfd57afbf6e3645a  tests/error_handler_cost_run.py
 91e69f1cabaacf58537aa37237ffb06c  tests/export_group_run.py
-b87d1099b7cb7d2be2daebc268b19ef5  tests/externals_in_combat_run.py
+381c5a88829d54ead0cc5d4a55544a29  tests/externals_in_combat_run.py
 2fb4b00b28123507a71c7c721d169cf2  tests/feature_rows_map_run.py
 2157a548b9905bd4b0eda1213be5ee05  tests/flat_buttons_run.py
 73996db55adfc87161e59f4458dc4a2e  tests/flex_dropdown_run.py

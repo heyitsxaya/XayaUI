@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-externals.lua (XayaUI_DevAssist 0.7.26): in-game QA walkthrough J25 for externals and raid defensives in combat (core 0.6.69).
+-- QAWalks-externals.lua (XayaUI_DevAssist 0.7.26): in-game QA walkthrough J26 for externals and raid defensives in combat (core 0.6.69).
 -- Xaya, 2026-11-07, her words: "I turned EUI ones on because XUI isn't reliably performing".
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
@@ -8,6 +8,8 @@
 --     for each ID, and the performance guard's state.
 --   Step 2 (prefill): in combat with an external or raid defensive on you, every rule the game hides is checked: drawn by the container
 --     = pass; the reasons for the rest are listed.
+--     It also records the F6 probe (no feature built on it): whether GetUnitAuraInstanceIDs("player", "HELPFUL|EXTERNAL_DEFENSIVE" /
+--     "HELPFUL|BIG_DEFENSIVE") answers in combat with readable instance IDs, a secret list, or an error.
 --   Step 3: a question for her (noVerdict): did the icons show in combat?
 --   Step 4 (data capture): after a buff out of combat, the IDs learned under the same name.
 -- Read-only. Listed in XayaUI_DevAssist.toc after QAWalks-perf.lua; does nothing without the framework (QAWalk.lua). UNTESTED IN GAME.
@@ -75,6 +77,37 @@ local function GuardLine()
         g.kept and " (kept on)" or (g.lean and " (lean)" or ""),
         type(last) == "table" and (tostring(last.at) .. " " .. tostring(last.step) .. " " .. tostring(last.ms) .. " ms") or "none")
 end
+-- F6 (probe only, hub 2026-11-07; no feature is built on it): in combat, does the game hand addon code the instance IDs of your
+-- external / big defensive buffs? GetUnitAuraInstanceIDs is documented RequiresUnitAuraAccess with no secret-return flag
+-- (docs/reference/api/namespaces.md); Combat/AuraDisplay.lua:4 says "measured: errors" with no record behind it. This settles it.
+-- The filter tokens are Blizzard's own (AuraUtil.AuraFilters, Blizzard_FrameXMLUtil/AuraUtil.lua). Values of unknown secrecy are only
+-- passed to issecretvalue / type, never compared or printed.
+local function ProbeFilter(filter)
+    local fn = C_UnitAuras and C_UnitAuras.GetUnitAuraInstanceIDs
+    if not fn then return filter .. ": call missing" end
+    local ok, ids = pcall(fn, "player", filter)
+    if not ok then return filter .. ": ERROR (" .. tostring(ids):sub(1, 80) .. ")" end
+    if ids == nil then return filter .. ": nil" end
+    if issecret(ids) then return filter .. ": the list is SECRET" end
+    if type(ids) ~= "table" then return filter .. ": not a table (" .. type(ids) .. ")" end
+    local okN, n = pcall(function() return #ids end)
+    if not okN or issecret(n) then return filter .. ": count not readable" end
+    local sec, num = 0, 0
+    for i = 1, n do
+        local v = ids[i]
+        if issecret(v) then sec = sec + 1 elseif type(v) == "number" then num = num + 1 end
+    end
+    local filt = ""
+    if num > 0 and C_UnitAuras.IsAuraFilteredOutByInstanceID then
+        local first
+        for i = 1, n do local v = ids[i]; if not issecret(v) and type(v) == "number" then first = v; break end end
+        local okF, f = pcall(C_UnitAuras.IsAuraFilteredOutByInstanceID, "player", first, filter)
+        filt = okF and (issecret(f) and "; filter check SECRET" or ("; filter check readable (" .. tostring(f) .. ")")) or "; filter check ERROR"
+    end
+    return ("%s: %d IDs, %d readable, %d secret%s"):format(filter, n, num, sec, filt)
+end
+QA.ProbeExternalFilters = function() return ProbeFilter("HELPFUL|EXTERNAL_DEFENSIVE") .. " || " .. ProbeFilter("HELPFUL|BIG_DEFENSIVE") end   -- (tests)
+
 local function AliasText(id)
     local n = NS() or {}
     local al = n.AuraAliasesOf and n.AuraAliasesOf(id)
@@ -85,7 +118,7 @@ local function AliasText(id)
     return table.concat(t, "/")
 end
 
-QA.Register("externals-combat", { title = "Externals and raid defensives in combat (J25)", area = "Combat displays", qa = "J25", order = 307, prefill = true, steps = {
+QA.Register("externals-combat", { title = "Externals and raid defensives in combat (J26)", area = "Combat displays", qa = "J26", order = 307, prefill = true, steps = {
     { text = "Out of combat: switch on the rules you want to test (for example your |cffffd100Externals|r group in the Disabled tab), then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the note lists each rule that watches an aura: its IDs, whether the game's own aura container draws its display (it can show these in combat) or why not, IDs learned under the same name, the game's secrecy level, and the performance guard's state. Send the note to Xaya.",
         check = function()
             local list = AuraRules()
@@ -107,7 +140,7 @@ QA.Register("externals-combat", { title = "Externals and raid defensives in comb
             local more = #list > MAX_LISTED and ("; and " .. (#list - MAX_LISTED) .. " more") or ""
             return true, ("%d aura rules, %d drawn by the game's container. %s. %s%s"):format(#list, drawn, GuardLine(), table.concat(parts, " | "), more)
         end },
-    { text = "Get an external or raid defensive on you |cffffd100in combat|r (a healer's Pain Suppression or Ironbark, a raid's Rallying Cry, or your own Darkness), and press |cffffd100Check again|r while it is up and you are still in combat.\n\n|cffffd100Expect:|r every rule whose aura the game hides is drawn by the game's own aura container (Accept: Pass). Any that are not are listed with the reason.",
+    { text = "Get an external or raid defensive on you |cffffd100in combat|r (a healer's Pain Suppression or Ironbark, a raid's Rallying Cry, or your own Darkness), and press |cffffd100Check again|r while it is up and you are still in combat.\n\n|cffffd100Expect:|r every rule whose aura the game hides is drawn by the game's own aura container (Accept: Pass). Any that are not are listed with the reason. The note also records what the game answers when asked for your external / big defensive buffs by category (a probe for Xaya; nothing uses it yet).",
         check = function()
             local n = NS() or {}
             if not (InCombatLockdown and InCombatLockdown()) then return false, "not in combat: check while in combat with the buff on you" end
@@ -122,8 +155,8 @@ QA.Register("externals-combat", { title = "Externals and raid defensives in comb
             end
             if hidden == 0 then return false, "no rule's aura is hidden right now (the game shows auras here, or no rule watches one)" end
             local ok = (#notDrawn == 0)
-            return ok, ("%d rules hidden by the game, %d drawn by its aura container%s. %s"):format(hidden, drawn,
-                ok and "" or (" | not drawn: " .. table.concat(notDrawn, "; ")), GuardLine())
+            return ok, ("%d rules hidden by the game, %d drawn by its aura container%s. %s. Probe (no feature): %s"):format(hidden, drawn,
+                ok and "" or (" | not drawn: " .. table.concat(notDrawn, "; ")), GuardLine(), QA.ProbeExternalFilters())
         end },
     { text = "Did each external or raid defensive show its icon (with its time) while it was on you in combat? Pass if yes. Fail if any did not, and write its name in the note.",
         noVerdict = true },

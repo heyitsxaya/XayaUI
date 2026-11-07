@@ -11,8 +11,10 @@
 -- WHAT IT DOES: while the game shows auras (out of combat), a helpful aura that appears on the player with a duration, whose name equals
 -- the name of an aura ID one of your rules lists, but whose ID differs, is recorded as that ID's alias (CueRulesDB.auraAlias). Both
 -- readers then count it: XayaUI's reading says "aura 81782 (same name as 62618, learned in game)", and the container's include list
--- gains the alias, so the display is drawn in combat too. Safety: auras with no duration (passives, talents) are never learned; an ID
--- whose own aura is on you at the same moment is not aliased (two different buffs that share a name); at most 4 aliases per ID.
+-- gains the alias, so the display is drawn in combat too. Safety: the name must match exactly and the aura must be on the player;
+-- auras with no duration (passives, talents) are never learned; an ID whose own aura is on you at the same moment, or was read as a
+-- buff on you this session, is not aliased (two different buffs that share a name); several candidates are all kept (never one
+-- picked), at most 4 per ID. The status note lists what was learned.
 -- /xui debug status and the J25 walkthrough list what was learned. Built from Blizzard's API documentation only (UNIT_AURA
 -- updateInfo.addedAuras, C_UnitAuras.GetAuraDataByIndex / GetUnitAuraBySpellID, C_Spell.GetSpellName).
 --
@@ -115,7 +117,9 @@ local function Consider(a, idx)
     if not (dur and dur > 0) then return false end   -- passives / talents have no duration: never learned
     local store, changed = nil, false
     for _, id in ipairs(list) do
-        if id ~= sid and not OwnAuraUp(id) then
+        -- never: the rule's own ID is a buff on you right now, or was read as one this session (then it needs no alias, and this
+        -- namesake is a different buff that shares the name; hub F2 guard)
+        if id ~= sid and not OwnAuraUp(id) and not (ns.AuraSeenReadable and ns.AuraSeenReadable(id)) then
             store = store or Store()
             if not store then return false end
             local al = store[id]
