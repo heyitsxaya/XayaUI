@@ -166,7 +166,7 @@ e1f89ddf0fdf2434ed0137a495095e90  XayaUI_DevAssist/DevAssist.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 10a00a7f66ce081044f89e3d998619fd  XayaUI_DevAssist/Probe.lua
-3f8bb9622bf214dbe8b554b68973dd3d  XayaUI_DevAssist/QAQuestions.lua
+b08604c9ef19679465d5521570b3c845  XayaUI_DevAssist/QAQuestions.lua
 8d70b074e2d0688b1773a410ecf6dfa3  XayaUI_DevAssist/QAReview.lua
 49161902be489ee62680632d44d25368  XayaUI_DevAssist/QAWalk.lua
 d4464e326d41a38d877b3f0bf7de9cad  XayaUI_DevAssist/QAWalks-Checklist.lua
@@ -570,7 +570,7 @@ a3a7006085abe2c2d45792e2a0dfdc4c  debug-log/2026-11-06-2350-chat-issue-qa-walks-
 6a016d1abd045d0c5139db55f57467d7  debug-log/2026-11-07-0022-m-plus-record-prompt-perf-meter-devassist-0.7.8.md
 9f306977e37ec5bb01d75a9510dda64e  debug-log/2026-11-07-0023-standard-gcd-calculation-qol-0.7.39.md
 f1e69afb494a02b2fafb34544eb14c98  debug-log/2026-11-07-0602-qa-walks-display-devassist-0.7.11.md
-dc8d06934a0d8725204d165c33c7310a  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
+7c58eef9c5a5822a47d73fdf98f03e77  debug-log/2026-11-07-0831-qa-review-popup-questions-devassist-0.7.30.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 0e3281ad9694fd73d03d78efb1ea5483  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md
