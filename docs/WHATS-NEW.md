@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 10 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -334,6 +334,12 @@ feature in section 2. **Not tested in game.**
 - **A spec you are not in:** the Aura and Target Debuff buttons list nothing and say: "Auras and target debuffs are read from your
   Cooldown Manager for the spec you are in now. Switch to <Spec>, then press the button again." (the Cooldown Manager answers for the
   current spec only). Empty-list messages now show as text instead of hiding behind the (i) icon.
+- **In-game QA for these buttons** (main 9853d85, Dev Assist 0.7.33): `/xui dev qa` lists "Auto-Generate Rules: Generate buttons, filtered list,
+  Select all" (12 steps; QA B160, B151, B152). You press the real Generate buttons and tick Select all; after each step the addon reads
+  what the table lists and offers its verdict on "Accept" (nothing is recorded without your click). It checks the exact wording of all 16
+  buttons, that no list shows before a press, that each filter lists only its own kind, that Select all ticks and unticks only the rows
+  shown, another spec's Aura list and the class lists; one step is a question that captures the button widths into the note; the last
+  step unticks everything and closes the list. Not tested in game; the buttons' clicks are emulated in the test.
 - *Developers' notes:* the button width (3.0) is an estimate: check that no label is cut off and how the buttons wrap. The aura and
   debuff lists rely on an inference about the Cooldown Manager's fields. Not yet asked of Xaya: whether to keep the header-row tick box
   beside Select all, keep the spec icon on spec buttons, name the pressed button in the table title (still "Auto-populate: <Spec>"),
@@ -456,6 +462,68 @@ Not tested in game. Where this changes how section 1 describes the Stat Calculat
 - **Info > Credits + Acknowledgements:** plain section headings, one box per section with its credits as rows, a slightly darker
   background, more space between sections, and no intro paragraph.
 - **In-game QA:** steps E1z195 to E1z200 in `/xui dev qa` (Dev Assist on).
+
+## 11. Chat settings split, input line, chat sidebar, friend class colours (chat-round session; main 72a7512)
+
+Chat 0.6.33 to 0.6.36, core 0.6.68, Reskin 0.6.8. Not tested in game. Choices made without you are in the QA question flow (Q-CR-1 to Q-CR-10, Q-CHAT5).
+
+- **Chat settings split (Chat 0.6.33).** Blizzard UI Reskin > Chat Panel now holds only how chat looks: fonts, colours, boxes, tab and input
+  look, size, position and mover, indent of wrapped lines, Blizzard's buttons and scroll bar. The new **QoL > Improved Chat** holds
+  everything the addon adds to how chat behaves: slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters,
+  sounds, privacy cover, Chat Data Panel and sidebar. Improved Chat has its own tick box and a note that it looks best with a chat reskin;
+  it also works with the Chat Panel off, placing its pieces around Blizzard's chat. Right-clicking a data block opens Improved Chat > Chat
+  Data Panel.
+- **Input line position (Chat 0.6.34).** Chat Panel > Layout > Input line: Bottom, Top under the tabs, Top above the tabs, or Free move. With Free
+  move the line is dragged and sized in the mover (`/xui chat move`).
+- **Chat sidebar (Chat 0.6.35, core 0.6.68).** Improved Chat > Sidebar, on by default, on the left of the chat with a background tinted in your
+  class colour. Side: left, right, top or bottom. Show: always or on mouseover, plus "Fade with the chat" (on) and "Hide in combat".
+  Buttons: the privacy eye (moved in from beside the chat), Blizzard's chat menu, channels and voice buttons, history, chat windows, and
+  newest message. XayaUI's own button appears there through Settings > Minimap Button > "Show it in", or when the minimap button is off.
+  The chat keeps its size unless you set "Width of the whole chat".
+- **Fade fix (Chat 0.6.36).** The collapse arrow, the privacy eye and the sidebar now fade with the chat, and hovering them brings it back.
+- **Friend class colours (Reskin 0.6.8).** Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in
+  their class colour. Blizzard's new Social friends list is not coloured yet.
+
+## 12. Faster settings window clicks (perf session; main 72a7512; Options 0.6.70, walkthrough J31)
+
+Not tested in game.
+
+- The settings window responds much faster to clicks when there are many rules. Ticking a switch, or picking a rule in the sidebar, no
+  longer rebuilds every rule's editor; only the rule on screen is built. (Your request A15 P-16: "clicking off options causes a 2s delay
+  between click and actualization".)
+- Measured offline only (test harness, 313 rules, a rule open): a click went from 1,715 ms to about 100-200 ms of Lua, and from about 240 MB
+  to 17 MB of temporary memory. The real click time is not measured in game.
+- Also visible: the window's narrowest width now follows the dropdowns of the rules you have opened, not every rule's (question Q-PERF-8 in
+  the QA flow).
+- Walkthrough J31, "Performance: a click with a rule open", in `/xui dev qa`, reads the window's own redraw time.
+
+## 13. XayaUI Nameplates (new addon; nameplates session; main 72a7512, XayaUI_Nameplates 0.2.1)
+
+Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nameplates: target colour" and "Nameplates: match my Plater settings" (checklist K1 to K5).
+
+- **A new addon, "XayaUI Nameplates", disabled by default** in the game's AddOns list. To try it: tick it, disable Plater, `/reload`. It works on
+  Blizzard's own nameplates and shows nothing while Plater replaces them.
+- **Target colour:** your target's health bar turns teal (as in your Plater "Current Target Color" mod). Pick another colour or press Teal in
+  `/xui` > QoL > Nameplates; the row's tick box switches it off.
+- **Match my Plater settings** (same page): one button sets 12 of Blizzard's own nameplate options to what your Plater profile used: health
+  percent and amount, elite / rare icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on the
+  bar, threat flash off, enemy debuffs and crowd control. Out of combat only. "Put back" restores your earlier options.
+- **`/xui nameplates`** says what is on and whether your target's plate was found (and says so if Plater is loaded).
+- **Not yet:** Aura Reorder (sorting enemy auras by name is impossible in Mythic+ combat), your exact sizes and textures, and spell- or
+  NPC-keyed Plater scripts (impossible in Mythic+ for any addon). These are questions NP-Q1 to NP-Q8 in the QA question flow.
+- *Why:* cost. The addon only works when the target changes or a plate appears (no per-frame or per-tick work). The real comparison with
+  Plater is the perf session's A/B/C measurement, which has not been run.
+
+## 14. Settings window top tabs and Profiles (settings-restructure session; main d8960d8, Options 0.6.72)
+
+Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings window: new top tabs and Profiles (H6-H9)" and "Blizzard Reskin: the new name everywhere (H10)".
+
+- **Top tabs:** Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings. The toolbar above the tabs (New Rule, Import, Export, Recycle Bin, Settings cog) is gone; Settings is a normal tab and the other tabs stay beside it.
+- **"+ New Rule"** is a flat button at the left end of the Rules tab's row (Smart Categories / Enabled / Disabled / Drafts follow; Auto-Generate Rules at the far right).
+- **Profiles tab** (was the hidden Import / Export page): sub-tabs Import, Export and Recycle Bin. Export has a tick box per part (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin). Import lists the parts a pasted text holds, each tickable; settings are merged and a Reload / Later prompt follows. Personal things (Notepad, Shopping List, Recycle Bin, backups, drafts, calculator history, other players' names) never go in. Rules alone still export as the old rules text.
+- **Renamed:** the tab is "Blizzard Reskin" everywhere a player reads it, including the Overview switch "Enable Blizzard Reskin" and chat messages.
+- **Hover texts** are at most two sentences (UI-65).
+- Open choices made without you are in the QA question flow: UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui, UI-24-label-scope.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
