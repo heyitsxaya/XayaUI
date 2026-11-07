@@ -1,4 +1,4 @@
-# Chat sidebar (Improved Chat > Sidebar) and "Show it in" for XayaUI's button (Chat 0.6.34, core 0.6.62, Dev Assist 0.7.16)
+# Chat sidebar (Improved Chat > Sidebar) and "Show it in" for XayaUI's button (Chat 0.6.35, core 0.6.68, Dev Assist 0.7.27)
 
 Session 014bN6tUJW6J1rnMZ6Z7t7c1 (chat-round session), branch `claude/chat-round-1106`.
 

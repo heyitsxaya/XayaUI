@@ -40,7 +40,7 @@ C = ns.Chat
 R = lua.eval(r'''function(W, ns, C)
   local out = { names = {}, oks = {}, notes = {} }
   local function rec(n, ok, note) out.names[#out.names + 1] = n; out.oks[#out.oks + 1] = ok and true or false; out.notes[#out.notes + 1] = tostring(note) end
-  -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) her #246 parts, split over Blizzard UI Reskin > Chat Panel (the look) and QoL > Improved Chat
+  -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) her #246 parts, split over Blizzard UI Reskin > Chat Panel (the look) and QoL > Improved Chat
   local o = W.allChatOptions()
   local function partNames(page)
     local parts = {}

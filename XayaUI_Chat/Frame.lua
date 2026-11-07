@@ -31,7 +31,7 @@ function C.TextArea() return textA end
 function C.TabsArea() return tabsA end
 function C.InputArea() return inputA end
 function C.Bar() return bar end
--- (Chat 0.6.32; UI-21) collapse ("Fade and hide"), the Chat Data Panel and the slow-scrolling bar are Improved Chat's: off with it
+-- (Chat 0.6.33; UI-21) collapse ("Fade and hide"), the Chat Data Panel and the slow-scrolling bar are Improved Chat's: off with it
 function C.IsCollapsed() local s = S(); return s and s.collapsed and C.ImprovedOn() and true or false end
 function C.BarOn() local s = S(); return s and s.barOn and C.ImprovedOn() and true or false end
 function C.OwnScroll() local s = S(); return s and s.scrollOwn and C.ImprovedOn() and true or false end
@@ -105,7 +105,7 @@ local function TabH(s) return s.tabsShow and Clamp(s.tabHeight, 16, 40, 24) or 0
 local INPUT_POS = { BOTTOM = true, TOP = true, ABOVE = true, FREE = true }
 function C.InputPos() local s = S(); local v = s and s.inputPos; return INPUT_POS[v] and v or "BOTTOM" end
 
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) Improved Chat with the Chat Panel off: the block is not placed by the Chat Panel's size and position
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) Improved Chat with the Chat Panel off: the block is not placed by the Chat Panel's size and position
 -- (those are skin settings); it is laid over Blizzard's chat where the game (or another chat addon) put it: from the left of the main
 -- window to its right, from the bottom of its input line to the top of its tab row. Read again at every refresh (the game's own moves of
 -- its chat are hooked below). nil when a number cannot be read (a secret or a frame without a place yet): the block is then hidden.
@@ -131,7 +131,7 @@ function C.Layout()
     local host = not C.skin and C.HostRect() or nil
     if not C.skin and not host then container:Hide(); return end
     if host then W, H = host.w, host.h; container:Show() end
-    -- (Chat 0.6.34; UI-17) the chat's size is untouched unless the sidebar's "Width of the whole chat" is set (Chat Panel on only)
+    -- (Chat 0.6.35; UI-17) the chat's size is untouched unless the sidebar's "Width of the whole chat" is set (Chat Panel on only)
     if not host and C.Sidebar_PaneWidth then
         local bs = s.barOn and C.ImprovedOn() and (s.barSide == "LEFT" or s.barSide == "RIGHT")
         W = C.Sidebar_PaneWidth(W, bs and (Clamp(s.barW, 40, 200, 90) + Clamp(s.barGap, 0, 20, 2)) or 0)
@@ -183,7 +183,7 @@ function C.Layout()
 
     local th = TabH(s)
     local ih = Clamp(s.inputH, 18, 60, 26)
-    -- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7, Xaya: "include an option where to put place the chat entry field (top or bottom;
+    -- (Chat 0.6.34; REQUEST-LOG UI-15 / UI-17 / A16 CR-7, Xaya: "include an option where to put place the chat entry field (top or bottom;
     -- disconnected from pane (free move))"; free move: "configurable in mover gui, not from console line"; Top: "Both supported")
     -- BOTTOM (as before) | TOP (under the tab row) | ABOVE (above the tab row) | FREE (its own place and width, set in the mover only)
     local ipos = C.InputPos()
@@ -241,7 +241,7 @@ function C.Layout()
     if barOn and side then arrow:SetPoint("TOP", bar, "TOP", 0, 0)   -- (Chat 0.6.23) a strip beside the chat: the arrow on top of it
     elseif barOn then arrow:SetPoint("LEFT", bar, "LEFT", 0, 0)
     else arrow:SetPoint("TOPLEFT", container, "BOTTOMLEFT", 0, -2) end
-    arrow:SetShown(C.ImprovedOn())   -- (Chat 0.6.32) the collapse arrow is Improved Chat's ("Fade and hide")
+    arrow:SetShown(C.ImprovedOn())   -- (Chat 0.6.33) the collapse arrow is Improved Chat's ("Fade and hide")
     local collapsed = C.IsCollapsed()
     -- the chevron: down while the chat shows (collapsing takes it down to the bar's place at the bottom), up while it is hidden
     -- (it comes back above the bar) (Chat 0.6.22, UI-20; before: toward a bar above the chat)
@@ -249,7 +249,7 @@ function C.Layout()
     pane:SetShown(not collapsed)
     if mover then mover:ClearAllPoints(); mover:SetAllPoints(container) end
     if C.SyncInputMover then C.SyncInputMover() end
-    -- (Chat 0.6.34; UI-3) the sidebar must not run off the screen: the Chat Panel's block moves in by that much (its saved place is kept)
+    -- (Chat 0.6.35; UI-3) the sidebar must not run off the screen: the Chat Panel's block moves in by that much (its saved place is kept)
     if not host and C.Sidebar_Clip then
         local dx, dy = C.Sidebar_Clip(container)
         if dx ~= 0 or dy ~= 0 then
@@ -546,7 +546,7 @@ function C.Elements()
     add(_G.GeneralDockManager)
     local s = S()
     local bf = C.ButtonFrameOf(C.Main() or {})
-    if bf and s and (s.stripMode ~= "HIDE" or not C.skin) then add(bf) end   -- (Chat 0.6.32) Improved Chat alone: the game shows its strip
+    if bf and s and (s.stripMode ~= "HIDE" or not C.skin) then add(bf) end   -- (Chat 0.6.33) Improved Chat alone: the game shows its strip
     if s and C.skin and s.socialMode == "SHOW" then add(_G.QuickJoinToastButton) end
     return out
 end
@@ -558,7 +558,11 @@ function C.ApplyAlpha()
     C.master = (collapsed and 0 or 1) * C.fade
     pane:SetAlpha(collapsed and 0 or C.fade)
     if bar then bar:SetAlpha((s.fadeBar and C.fade) or 1) end
-    if C.Sidebar_Alpha then C.Sidebar_Alpha() end   -- (Chat 0.6.34; UI-3) fade with the chat, if ticked
+    if C.Sidebar_Alpha then C.Sidebar_Alpha() end   -- (Chat 0.6.35; UI-3) fade with the chat, if ticked
+    -- (O-143, Xaya 2026-11-07: "weird chat appearance when chat fades -- the sidebar icons should also be fading"; her screenshot: the
+    -- collapse chevron and the privacy eye stayed at full strength) every control on the chat fades and comes back with it
+    if arrow then arrow:SetAlpha(C.fade) end
+    if ns.ChatPrivacy_Fade then ns.ChatPrivacy_Fade() end
     local off = C.master < 0.02
     for _, el in ipairs(C.Elements()) do
         C.Try("alpha", function()
@@ -723,7 +727,7 @@ end
 function C.PositionBox() return posBox end
 
 -------------------------------------------------------------------------------
--- (Chat 0.6.33; UI-15 / UI-17) the input line's own box in the mover, while "Input line" is Free move: drag it to place the line, drag its
+-- (Chat 0.6.34; UI-15 / UI-17) the input line's own box in the mover, while "Input line" is Free move: drag it to place the line, drag its
 -- right edge for its width. Her words: "configurable in mover gui, not from console line" (no slider or command sets these). Made the
 -- first time the mover opens with Free move (V14).
 -------------------------------------------------------------------------------
@@ -805,7 +809,7 @@ function C.SoonAnchor()
     C_Timer.After(0, function()
         soonPending = false
         if C.On() then if not C.Glued() then C.Anchor() end
-        elseif C.HostMode() then C.Layout() end   -- (Chat 0.6.32) Improved Chat alone: the game moved its chat, the block follows it
+        elseif C.HostMode() then C.Layout() end   -- (Chat 0.6.33) Improved Chat alone: the game moved its chat, the block follows it
     end)
 end
 
@@ -868,7 +872,7 @@ function C.Rewrap(force)
 end
 
 local function Refresh(s)
-    if not C.active then   -- (Chat 0.6.32) the block exists while the Chat Panel or Improved Chat is on (Improved Chat alone: over Blizzard's chat)
+    if not C.active then   -- (Chat 0.6.33) the block exists while the Chat Panel or Improved Chat is on (Improved Chat alone: over Blizzard's chat)
         if container then container:Hide() end
         return
     end

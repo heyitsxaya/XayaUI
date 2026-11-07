@@ -13,7 +13,7 @@ def check(name, cond, extra=""):
     global fails
     print(("PASS " if cond else "FAIL ") + name + ((" :: " + str(extra)) if (extra != "" and not cond) else ""))
     if not cond: fails += 1
-# (Chat 0.6.34; UI-3) these checks place the privacy and history buttons beside the chat and in the tab row, where they are without the
+# (Chat 0.6.35; UI-3) these checks place the privacy and history buttons beside the chat and in the tab row, where they are without the
 # chat sidebar; the sidebar (on by default) holds them otherwise: tests/chat_sidebar_run.py
 lua.execute("CueRulesDB.chat2 = { sbOn = false }")
 S = W.start()
@@ -503,7 +503,7 @@ check("options table builds", opt is not None)
 tabs = run("local out={} for k,v in pairs(ns.BuildChatTab(function() end).args) do if v.type == 'group' then out[#out+1]=k end end table.sort(out) return table.concat(out,',')")
 itabs = run("local out={} for k,v in pairs(ns.BuildImprovedChatTab(function() end).args) do if v.type == 'group' then out[#out+1]=k end end table.sort(out) return table.concat(out,',')")
 # (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya's #246 words) General and Chat Tabs replace Appearance, Fade and hide and History;
-# (Chat 0.6.32; UI-18 / UI-19 / UI-21) the behaviour parts are on QoL > Improved Chat
+# (Chat 0.6.33; UI-18 / UI-19 / UI-21) the behaviour parts are on QoL > Improved Chat
 check("all tabs present: Chat Panel = General, Chat Tabs, Layout", str(tabs) == "general,layout,tabs", tabs)
 check("all tabs present: Improved Chat = General, Chat Data Panel, Filters, Sounds, Privacy, Sidebar", all(t in str(itabs).split(",") for t in ["general","bar","filters","sounds","privacy"]), itabs)
 bad = run("""
@@ -540,7 +540,7 @@ walk(o)
 out[#out+1] = 'headers:' .. headers
 for _, k in ipairs({ 'general', 'tabs', 'layout' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
 out[#out+1] = 'layoutTop:' .. tostring(o.args.layout.args.enabled == nil and o.args.layout.args.theme == nil)
-o = ns.BuildImprovedChatTab(function() end)   -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) QoL > Improved Chat
+o = ns.BuildImprovedChatTab(function() end)   -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat
 out[#out+1] = (o.xuiSwitch and o.xuiSwitch.name == 'Improved Chat') and 'irow:switch' or 'missing:irow-switch'
 for _, k in ipairs({ 'general', 'bar', 'filters', 'privacy' }) do out[#out+1] = k .. ':' .. tostring(o.args[k] and o.args[k].childGroups) end
 out[#out+1] = 'sounds:' .. tostring(o.args.sounds and o.args.sounds.childGroups)
@@ -557,7 +557,7 @@ opened = []
 run("_G.__open = {}; ns.OpenSettingsPage = function(...) _G.__open = { ... } end")
 run("C.OpenSettings('bar', 'tab_blocksHdr')")
 # Chat 0.6.13: the Chat Panel's page is in the Blizzard UI Reskin tab (module "reskin"; Xaya 2026-11-05)
-# Chat 0.6.32 (UI-18 / UI-19 / UI-21): the Chat Data Panel is QoL > Improved Chat's
+# Chat 0.6.33 (UI-18 / UI-19 / UI-21): the Chat Data Panel is QoL > Improved Chat's
 check("right-click path opens QoL > Improved Chat > Chat Data Panel > Blocks", str(run("return table.concat(_G.__open, '>')")) == "qol>improvedchat>bar>tab_blocksHdr", run("return table.concat(_G.__open, '>')"))
 
 # ---- settings changes through the option setters actually refresh the layout ----------------------------------------------
@@ -684,7 +684,7 @@ check("off: button strip shown again", L.ChatFrame1ButtonFrame.IsShown(L.ChatFra
 check("off: social button shown again", L.QuickJoinToastButton.IsShown(L.QuickJoinToastButton) is True)
 check("off: scroll bar and border pieces shown again", sb.IsShown(sb) is True and L.ChatFrame1TopTexture.IsShown(L.ChatFrame1TopTexture) is True)
 check("off: chat alpha 1 and mouse on", cf1.GetAlpha(cf1) > 0.99 and L.ChatFrame1Tab.GetAlpha(L.ChatFrame1Tab) > 0.99)
-# (Chat 0.6.32; UI-18 / UI-19 / UI-21) /xui chat off turns the Chat Panel (the skin) off; QoL > Improved Chat has its own switch and stays on:
+# (Chat 0.6.33; UI-18 / UI-19 / UI-21) /xui chat off turns the Chat Panel (the skin) off; QoL > Improved Chat has its own switch and stays on:
 # its block lies over Blizzard's chat where the game put it (the tab row's top to the input line's bottom), the privacy button beside it
 pane = run("return C.Pane()")
 check("off (Improved Chat still on): our block lies over Blizzard's chat, from its tab row to its input line",

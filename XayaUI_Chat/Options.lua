@@ -16,7 +16,7 @@ local TAB_OUTLINE_ORDER = { "none", "outline", "thick", "shadow" }
 -- (Chat 0.6.13: the Chat Panel's page is in the settings window's Blizzard UI Reskin tab, module "reskin"; Xaya 2026-11-05)
 -- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11) parts that moved into General keep their old names as addresses
 local MOVED = { look = "general", behavior = "general", history = "general" }
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) parts on QoL > Improved Chat (old names too); "improved" opens that page itself
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) parts on QoL > Improved Chat (old names too); "improved" opens that page itself
 local IMPROVED = { improved = "", behavior = "general", history = "general", fade = "general", bar = "bar", filters = "filters",
     sounds = "sounds", privacy = "privacy", sidebar = "sidebar" }
 function C.OpenSettings(part, section)
@@ -127,7 +127,7 @@ local function Build(Notify, which)
         tabs = tog("Show the tab row", "tabsShow", 21, "Hiding the tabs also hides the way to switch chat windows."),
         tabH = rng("Tab height (pixels)", "tabHeight", 22, 16, 40, nil, 1, nil, "tabs"),
         inH = rng("Input line height (pixels)", "inputH", 23, 18, 60, nil, 1, nil, "input"),
-        -- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) top (under or above the tab row), bottom, or free move (place and width in
+        -- (Chat 0.6.34; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) top (under or above the tab row), bottom, or free move (place and width in
         -- the mover only: "configurable in mover gui, not from console line")
         inPos = sel("Input line", "inputPos", 23.5, { BOTTOM = "Bottom", TOP = "Top, under the tabs", ABOVE = "Top, above the tabs", FREE = "Free move" },
             { "BOTTOM", "TOP", "ABOVE", "FREE" }, "Where the line you type in sits. Free move: drag it and set its width in the mover (Move or resize the chat).", nil, "input"),
@@ -519,7 +519,7 @@ local function Build(Notify, which)
         set = function(_, v) local cv = rawget(_G, "C_CVar"); pcall(function() cv.SetCVar("showTimestamps", tostring(v)) end); if Notify then Notify() end end }
 
     ---------------------------------------------------------------------------------------------------------------------------
-    -- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21, Xaya 2026-11-06) the two pages. Her rule: "purely visual elements remain in skin
+    -- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21, Xaya 2026-11-06) the two pages. Her rule: "purely visual elements remain in skin
     -- and all things that directly modify chat behavior go into QoL"; her item list, "Yes, as listed":
     --   SKIN (Blizzard UI Reskin > Chat Panel): Appearance (colours, fonts, boxes, textures, tab look, input look), the chat block's size,
     --   position and mover, input line top / bottom / free move, indent wrapped lines, which of Blizzard's pieces show (button strip,
@@ -672,7 +672,7 @@ local function Build(Notify, which)
     return { type = "group", name = "Chat Panel", order = 1, childGroups = "tree", xuiSwitch = switch, args = overview }
 end
 function ns.BuildChatTab(Notify) return Build(Notify, "skin") end
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) QoL > Improved Chat
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat
 function ns.BuildImprovedChatTab(Notify) return Build(Notify, "improved") end
 
 -------------------------------------------------------------------------------
@@ -681,6 +681,6 @@ function ns.BuildImprovedChatTab(Notify) return Build(Notify, "improved") end
 -- module "reskin": the page is drawn in the Blizzard UI Reskin tab (Chat 0.6.13; Xaya 2026-11-05: "Take all reskins and put them into a
 -- new tab: Blizzard UI Reskin"; the Chat Panel restyles Blizzard's chat)
 ns.RegisterSettingsPage("reskin", "chatpanel", ns.BuildChatTab)
-ns.RegisterSettingsPage("qol", "improvedchat", ns.BuildImprovedChatTab)   -- (Chat 0.6.32; UI-18 / UI-19 / UI-21)
+ns.RegisterSettingsPage("qol", "improvedchat", ns.BuildImprovedChatTab)   -- (Chat 0.6.33; UI-18 / UI-19 / UI-21)
 ns.RegisterLauncher({ "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() C.OpenSettings() end, order = 40 })
 ns.RegisterLauncher({ "improvedchat", "Improved Chat", "Open the Improved Chat settings", function() C.OpenSettings("improved") end, order = 41 })

@@ -17,7 +17,7 @@ local DEFAULTS = {
     closeOnClick = true,     -- the list closes after a choice
     entries = {},            -- [key] = false hides that row; a row with no entry here is shown (features add rows: ns.RegisterLauncher)
     iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
-    -- where = nil | "MINIMAP" | "SIDEBAR" | "BOTH" (core 0.6.62; REQUEST-LOG A16 CR-6 / CR-7): the chat sidebar (XayaUI Chat, Improved
+    -- where = nil | "MINIMAP" | "SIDEBAR" | "BOTH" (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7): the chat sidebar (XayaUI Chat, Improved
     -- Chat) can hold this button. Nothing chosen: the sidebar holds it while the minimap button is turned off (her words: "default to
     -- having sidebar on if minimap is turned off"). Not in DEFAULTS, so nothing is saved until it is chosen.
 }
@@ -177,7 +177,7 @@ local function TogglePopup(anchor)
     popup:SetPoint(below and "TOP" or "BOTTOM", anchor, below and "BOTTOM" or "TOP", (cx > half) and -MENU_W / 2 + 10 or MENU_W / 2 - 10, below and -4 or 4)
     catcher:Show(); popup:Show()
 end
--- (core 0.6.62; A16 CR-6 / CR-7) the same list from XayaUI's button in the chat sidebar
+-- (core 0.6.68; A16 CR-6 / CR-7) the same list from XayaUI's button in the chat sidebar
 function ns.Minimap_TogglePopupAt(anchor) if DB() and anchor then TogglePopup(anchor) end end
 function ns.Minimap_Where()
     local db = DB(); if not db then return "MINIMAP" end
@@ -277,7 +277,7 @@ function ns.BuildMinimapTab(Notify)
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "A button on the minimap. Left-click opens a small list of buttons for the features you pick below; right-click opens this window; drag it to move it around the minimap." },
         show = { type = "toggle", order = 1, name = "Show the minimap button", width = "full", get = function() return not DB().hide end, set = function(_, v) DB().hide = not v; ns.Minimap_Refresh() end },
-        -- (core 0.6.62; REQUEST-LOG A16 CR-6 / CR-7, Xaya: "create the option in each feature to choose whether it's a sidebar or minimap
+        -- (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7, Xaya: "create the option in each feature to choose whether it's a sidebar or minimap
         -- icon display; default to having sidebar on if minimap is turned off")
         where = { type = "select", order = 1.5, name = "Show it in", values = { MINIMAP = "Minimap", SIDEBAR = "Chat sidebar", BOTH = "Both" }, sorting = { "MINIMAP", "SIDEBAR", "BOTH" },
             desc = "The chat sidebar is part of QoL > Improved Chat. With nothing chosen, the sidebar holds the button while the minimap button is turned off.",

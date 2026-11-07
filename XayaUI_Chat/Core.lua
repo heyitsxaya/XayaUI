@@ -31,7 +31,7 @@ C.DEFAULTS = {
     -- parts
     tabsShow = true, tabHeight = 24,
     inputH = 26, inputHint = true, inputHintText = "Press Enter to chat",
-    inputPos = "BOTTOM",   -- (Chat 0.6.33; UI-15) BOTTOM | TOP (under the tab row) | ABOVE (above it) | FREE (inputX / inputY / inputW, mover only)
+    inputPos = "BOTTOM",   -- (Chat 0.6.34; UI-15) BOTTOM | TOP (under the tab row) | ABOVE (above it) | FREE (inputX / inputY / inputW, mover only)
     stripMode = "HIDE", stripX = 0, stripY = 0,       -- Blizzard's button strip: HIDE | LEFT | RIGHT of the pane
     socialMode = "HIDE", socialX = 0, socialY = 0,    -- the social / quick-join button: HIDE | SHOW (stays above the pane)
     toBottom = "SHOW",                                -- the back-to-newest arrow: SHOW | HIDE
@@ -71,7 +71,7 @@ C.DEFAULTS = {
     histOn = true, histSize = 300, histConsole = true, histWhispers = "game",   -- histConsole: printed lines (addons, /xui) and system messages, in their own Console tab
     soundsOn = true, soundsInCombat = true, whisperSoundsOn = true,   -- whisperSoundsOn: the whisper sound overrides (Sounds.lua)
     whisperSelect = true,   -- (Chat 0.6.31, CHATREV-10) switch to a whisper tab you start, also with New Whispers = Both (Whispers.lua)
-    -- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21) QoL > Improved Chat's own switch: everything the addon adds to how chat behaves
+    -- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) QoL > Improved Chat's own switch: everything the addon adds to how chat behaves
     -- (scroll bar, fade and hide, history, filters, links, sounds, whisper tab switch, privacy cover, Chat Data Panel, sidebar). On by
     -- default, so a saved profile keeps what it had; independent of the Chat Panel switch (her answer: "1", two independent switches)
     improvedOn = true,
@@ -129,7 +129,7 @@ end
 -------------------------------------------------------------------------------
 C.on = {}          -- part name -> true while that part runs (the cached answer hooks read; never a settings read)
 local parts = {}
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) which switch a part belongs to. "skin": Blizzard UI Reskin > Chat Panel (the look, and the
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) which switch a part belongs to. "skin": Blizzard UI Reskin > Chat Panel (the look, and the
 -- anchoring of Blizzard's chat into the pane); "improved": QoL > Improved Chat (behaviour the addon adds); "any": runs while either is on.
 -- A part not listed is a skin part.
 C.PART_GROUP = { panel = "any", bar = "improved", fade = "improved", console = "improved", messages = "improved", filter = "improved",
@@ -201,7 +201,7 @@ function C.On()
     local s = ns.chat2
     return s and s.enabled and ns.ReskinTabOn() and not Blocked() and true or false
 end
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) QoL > Improved Chat: its own switch only. It also runs beside another addon's chat skin (her words:
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat: its own switch only. It also runs beside another addon's chat skin (her words:
 -- "should support other chat reskin options"): with the Chat Panel off it places its pieces around Blizzard's chat where it is.
 function C.ImprovedOn()
     local s = ns.chat2
@@ -334,7 +334,7 @@ end
 
 -- everything we changed on the game's chat goes back: shown / hidden pieces, alpha, mouse, anchors, fonts, tab heights.
 -- The game's own functions then lay the windows out again.
--- (Chat 0.6.32) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
+-- (Chat 0.6.33) in two halves: the skin's (Blizzard's chat back where and how the game draws it) and Improved Chat's (collapse and
 -- fade alpha back, the block hidden). C.Teardown does both; the Chat Panel turned off with Improved Chat still on does the first only.
 function C.Teardown()
     if not C.active then return end
@@ -523,6 +523,6 @@ ns.WhenReady(ns.Chat_OnDBReady)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
 ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
     Options = function() return ns.BuildChatTab and ns.BuildChatTab(function() end) end,   -- (Chat 0.6.31) the settings tree, for the QA walkthrough
-    ImprovedOptions = function() return ns.BuildImprovedChatTab and ns.BuildImprovedChatTab(function() end) end })   -- (Chat 0.6.32) QoL > Improved Chat's
+    ImprovedOptions = function() return ns.BuildImprovedChatTab and ns.BuildImprovedChatTab(function() end) end })   -- (Chat 0.6.33) QoL > Improved Chat's
 ns.RegisterCommand("chat", function(arg) C.Command(arg) end, "/xui chat (Chat Panel: on, off, reset, move, history, settings)")
 ns.RegisterCommand("panel", function() if C.OpenSettings then C.OpenSettings("bar") end end, "/xui panel (Chat Data Panel settings)")

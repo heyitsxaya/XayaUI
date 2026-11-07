@@ -1,4 +1,4 @@
-# Where the chat's input line sits (XayaUI_Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7).
+# Where the chat's input line sits (XayaUI_Chat 0.6.34; REQUEST-LOG UI-15 / UI-17 / A16 CR-7).
 # Xaya 2026-11-06: "include an option where to put place the chat entry field (top or bottom; disconnected from pane (free move))";
 # free move: "2 but configurable in mover gui, not from console line" (drag + its own width, set in the mover only); Top: "Both supported".
 # Checks in the stand-in world (tests/chat_world.lua; not the game):
@@ -8,7 +8,7 @@
 #     Blizzard's edit box always takes the input line's place
 #   - Free move: at its own place and width, the text runs to the pane's bottom; the mover shows a box over the line; dragging it moves the
 #     line and saves the place, its right edge sets the width; the privacy cover also covers it
-# Negative control (V1): every check except the guards fails on Chat 0.6.32 (b84322a): 11 of 16.
+# Negative control (V1): every check except the guards fails on Chat 0.6.33 (b84322a): 11 of 16.
 # Run: python3 tests/chat_input_position_run.py   Needs: pip install lupa.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

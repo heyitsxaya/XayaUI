@@ -147,7 +147,7 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("layout walk negative: an Appearance part back gives Fail", not chk(id, 1))
   ns.Service("chatDebug").Options = realTree
 
-  -- (Chat 0.6.32; UI-18 / UI-19 / UI-21) the two switches apart
+  -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) the two switches apart
   id = "chat-improved-split"
   local okI1, nI1 = run(id, 1); rec("split walk step 1: Chat Panel off, Improved Chat on: the block and Chat Data Panel around Blizzard's chat", okI1, nI1)
   local cbar = C.Bar(); cbar:Hide()
@@ -157,7 +157,7 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("split walk negative: Improved Chat back on gives Fail at step 2", not chk(id, 2))
   local okI3, nI3 = run(id, 3); rec("split walk last step: switches put back", okI3 and ns.chat2.enabled == true and ns.chat2.improvedOn ~= false, nI3)
 
-  -- (Chat 0.6.33; UI-15) the input line's place
+  -- (Chat 0.6.34; UI-15) the input line's place
   id = "chat-input-position"
   local okN1, nN1 = run(id, 1); rec("input walk step 1: Top under the tabs", okN1, nN1)
   rec("input walk negative: Bottom gives Fail at step 1", (function() ns.chat2.inputPos = "BOTTOM"; C.Refresh(); W.flush(); local r = not chk(id, 1); ns.chat2.inputPos = "TOP"; C.Refresh(); W.flush(); return r end)())
@@ -167,7 +167,7 @@ R = lua.eval(r'''function(W, ns, C, root)
   rec("input walk negative: a saved place the line is not at gives Fail", not chk(id, 3)); C.Refresh(); W.flush()
   local okN4, nN4 = run(id, 4); rec("input walk last step: put back, mover closed", okN4 and not C.unlocked and C.InputPos() == "BOTTOM", nN4)
 
-  -- (Chat 0.6.34; UI-3) the sidebar
+  -- (Chat 0.6.35; UI-3) the sidebar
   id = "chat-sidebar"
   local okB1, nB1 = run(id, 1); rec("sidebar walk step 1: on the left, eye in it", okB1, nB1)
   local eye = XayaUIChatPrivacyButton; eye:SetParent(UIParent)
@@ -179,6 +179,18 @@ R = lua.eval(r'''function(W, ns, C, root)
   local okB3, nB3 = run(id, 3); rec("sidebar walk step 3: on the right", okB3, nB3)
   local okB4, nB4 = run(id, 4); rec("sidebar walk step 4: out of combat, shown", okB4, nB4)
   local okB5 = run(id, 5); rec("sidebar walk last step: put back", okB5 and ns.chat2.sbCombat ~= true)
+
+  -- (O-143) every icon fades with the chat
+  id = "chat-fade-controls"
+  run(id, 1)
+  rec("fade walk negative: not faded yet gives Fail", not chk(id, 1))
+  C.fade = 0; C.ApplyAlpha()
+  local okF1, nF1 = chk(id, 1); rec("fade walk step 1: chat faded, no icon at full strength", okF1, nF1)
+  XayaUIChatArrow:SetAlpha(1)
+  rec("fade walk negative: a chevron left at full strength gives Fail", not chk(id, 1))
+  C.fade = 1; C.ApplyAlpha()
+  local okF2, nF2 = chk(id, 2); rec("fade walk step 2: back with the chat", okF2, nF2)
+  local okF3 = run(id, 3); rec("fade walk last step: put back", okF3)
 
   -- #430 walkthrough
   id = "chat-position-box"

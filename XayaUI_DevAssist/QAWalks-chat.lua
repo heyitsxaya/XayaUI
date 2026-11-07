@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-chat.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
+-- QAWalks-chat.lua (XayaUI_DevAssist 0.7.28): in-game QA walkthroughs for the old chat issues #210, #229 (items 1-4), #250 and #296,
 -- checked against the rebuilt Chat Panel (XayaUI_Chat). REQUEST-LOG A14, CHATREV-1 / CHATREV-6.
 -- Xaya, 2026-11-06 (her words): "ensure qa has a handler that can automatically generate an answer"; scope "For every issue here";
 -- how the answer is recorded, her answer: "Pre-fill, I confirm" (the addon's verdict is offered on one button, Accept; nothing is
@@ -33,7 +33,7 @@ local function Alpha(f) if not (f and f.GetAlpha) then return nil end local ok, 
 local function Overlap(a, b) return a and b and a.l < b.r - 0.5 and b.l < a.r - 0.5 and a.b < b.t - 0.5 and b.b < a.t - 0.5 end
 local function Fmt(rc) return rc and ("%d,%d %dx%d"):format(rc.l, rc.b, rc.w, rc.h) or "?" end
 
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) "is Improved Chat on?" (the whisper switch is Improved Chat's: it runs with the Chat Panel off too)
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) "is Improved Chat on?" (the whisper switch is Improved Chat's: it runs with the Chat Panel off too)
 local function ReadyImproved()
     local C = Ch()
     if not C then return false, "XayaUI Chat is not loaded" end
@@ -374,7 +374,7 @@ QA.Register("chat-whisper-switch", { title = "Chat: a whisper tab you start open
 
 local tsBefore
 local function Tree() local sv = Svc(); local ok, t = pcall(function() return sv.Options() end); return ok and t or nil end
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) QoL > Improved Chat's tree
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat's tree
 local function ITree() local sv = Svc(); local ok, t = pcall(function() return sv.ImprovedOptions() end); return ok and t or nil end
 local function Kids(t)
     local list = {}
@@ -384,7 +384,7 @@ local function Kids(t)
     for _, v in ipairs(list) do n[#n + 1] = tostring(v.name) end
     return table.concat(n, " | "), list
 end
--- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21) the #246 layout split over two pages: the look on Blizzard UI Reskin > Chat Panel, how
+-- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) the #246 layout split over two pages: the look on Blizzard UI Reskin > Chat Panel, how
 -- chat behaves on QoL > Improved Chat (her item list, "Yes, as listed")
 local function TabsOf(t, key) local g = t and t.args and t.args[key]; return g and (Kids(g)) or nil end
 QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs behaviour (UI-18 / UI-21, #246)", qa = "#246, D24, D25", order = 235, prefill = true, steps = {
@@ -434,7 +434,7 @@ QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs beh
         end },
 } })
 
--- (Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21) two independent switches: the Chat Panel (the look) and QoL > Improved Chat (behaviour).
+-- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) two independent switches: the Chat Panel (the look) and QoL > Improved Chat (behaviour).
 -- Her answer "1" (independent switches) and "should support other chat reskin options": Improved Chat runs with the Chat Panel off too.
 local splitSaved
 local function SplitSet(enabled, improved)
@@ -484,7 +484,7 @@ QA.Register("chat-improved-split", { title = "Chat: Chat Panel and Improved Chat
         end },
 } })
 
--- (Chat 0.6.33; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) where the input line sits: Bottom, Top under the tabs, Top above the tabs, Free move
+-- (Chat 0.6.34; REQUEST-LOG UI-15 / UI-17 / A16 CR-7) where the input line sits: Bottom, Top under the tabs, Top above the tabs, Free move
 -- (drag + width in the mover only)
 local inSaved
 local function InPos(v)
@@ -538,7 +538,7 @@ QA.Register("chat-input-position", { title = "Chat: input line top, bottom or fr
         end },
 } })
 
--- (Chat 0.6.34 / core 0.6.62; REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7) the chat sidebar (QoL > Improved Chat > Sidebar)
+-- (Chat 0.6.35 / core 0.6.68; REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7) the chat sidebar (QoL > Improved Chat > Sidebar)
 local sbSaved
 local SB_KEYS = { "sbOn", "sbSide", "sbShow", "sbFade", "sbCombat", "sbBg", "sbChatW", "improvedOn" }
 local function SbSet(t)
@@ -599,6 +599,49 @@ QA.Register("chat-sidebar", { title = "Chat: the chat sidebar (UI-3)", qa = "D27
             if s and C and sbSaved then for _, k in ipairs(SB_KEYS) do s[k] = sbSaved[k] end; sbSaved = nil; C.Refresh() end
         end,
         check = function() return sbSaved == nil, sbSaved == nil and "sidebar settings put back" or "not put back yet" end },
+} })
+
+-- (Chat 0.6.36; REQUEST-LOG O-143, Xaya 2026-11-07: "weird chat appearance when chat fades -- the sidebar icons should also be fading")
+local fdSaved
+local function FadeControls()
+    local C = Ch(); local out = {}
+    local function add(name, f) if f and Shown(f) then out[#out + 1] = { name, Alpha(f) or 1 } end end
+    add("collapse chevron", rawget(_G, "XayaUIChatArrow"))
+    local eye = rawget(_G, "XayaUIChatPrivacyButton")
+    local sb = C and C.Sidebar and C.Sidebar()
+    if sb and Shown(sb) then add("sidebar", sb) end
+    if eye and not (sb and eye:GetParent() == sb) then add("privacy eye", eye) end
+    return out
+end
+QA.Register("chat-fade-controls", { title = "Chat: every icon fades with the chat (O-143)", qa = "D28", order = 241, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: Fade the chat when it is idle is turned on, after 3 seconds (your settings are remembered). Move the mouse away from the chat, wait 5 seconds, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the chat fades away and so do the collapse chevron, the privacy eye and the sidebar with its buttons: nothing stays at full strength.",
+        setup = function()
+            local s, C = S(), Ch(); if not (s and C) then return end
+            fdSaved = fdSaved or { fadeOn = s.fadeOn, fadeAfter = s.fadeAfter, fadeTo = s.fadeTo, fadeHover = s.fadeHover }
+            s.fadeOn, s.fadeAfter, s.fadeTo, s.fadeHover = true, 3, 0, true
+            C.Refresh()
+        end,
+        check = function()
+            local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
+            if (C.fade or 1) > 0.05 then return false, ("the chat has not faded yet (opacity %.2f): move the mouse away and wait"):format(C.fade or 1) end
+            local bright, seen = {}, {}
+            for _, e in ipairs(FadeControls()) do seen[#seen + 1] = ("%s %.2f"):format(e[1], e[2]); if e[2] > 0.05 then bright[#bright + 1] = e[1] end end
+            return #bright == 0, (#bright == 0 and "all faded: " or "still showing: " .. table.concat(bright, ", ") .. "; ") .. table.concat(seen, ", ")
+        end },
+    { text = "Now move the mouse over the chat (or the sidebar). Then press |cffffd100Check again|r with the mouse still there.\n\n|cffffd100Expect:|r the chat comes back, and every icon with it.",
+        check = function()
+            local C = Ch(); if not C then return false, "XayaUI Chat is not loaded" end
+            if (C.fade or 0) < 0.95 then return false, ("the chat is not back yet (opacity %.2f)"):format(C.fade or 0) end
+            local dim, seen = {}, {}
+            for _, e in ipairs(FadeControls()) do seen[#seen + 1] = ("%s %.2f"):format(e[1], e[2]); if e[2] < 0.5 then dim[#dim + 1] = e[1] end end
+            return #dim == 0, (#dim == 0 and "all back: " or "still faded: " .. table.concat(dim, ", ") .. "; ") .. table.concat(seen, ", ")
+        end },
+    { text = "Last step: press |cffffd100Do it for me|r to put your fade settings back as they were.",
+        setup = function()
+            local s, C = S(), Ch()
+            if s and C and fdSaved then for k, v in pairs(fdSaved) do s[k] = v end; fdSaved = nil; C.Refresh() end
+        end,
+        check = function() return fdSaved == nil, fdSaved == nil and "fade settings put back" or "not put back yet" end },
 } })
 
 -- #430 (from #229 item 5, "Clicking the chat box in mover mode should open exact X/Y entry + cardinal arrows"; Chat 0.6.31)

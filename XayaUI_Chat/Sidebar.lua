@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Chat/Sidebar.lua (XayaUI Chat 0.6.34) : the chat sidebar, a part of QoL > Improved Chat (REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7).
+-- Chat/Sidebar.lua (XayaUI Chat 0.6.35) : the chat sidebar, a part of QoL > Improved Chat (REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7).
 -- Her words: "privacy bar should exist in a chat sidebar option that can be set to have a background or none at all. this bar should be
 -- configurable to be show on mouseover, auto-hide, etc and the buttons nested within should inherit that behavior. the sidebar should also
 -- be moveable to top, bottom, left or right sides and influence chat placement appropriately if it clips into the chat data panel or the
@@ -23,7 +23,8 @@ local C = ns.Chat
 local issecret = C.IsSecret
 
 C.SIDEBAR_DEFAULTS = {
-    sbOn = true, sbSide = "LEFT", sbShow = "ALWAYS", sbFade = false, sbCombat = false, sbBg = true,
+    -- sbFade on by default (O-143, Xaya 2026-11-07: "the sidebar icons should also be fading")
+    sbOn = true, sbSide = "LEFT", sbShow = "ALWAYS", sbFade = true, sbCombat = false, sbBg = true,
     sbBtn = 22,          -- button size in pixels (session's choice, between the history button's 16 and the eye button's 28)
     sbGap = 2,           -- between the strip and the chat block (the Chat Data Panel's own gap: session)
     sbChatW = 0,         -- 0: the chat's size is untouched; more: the whole chat container (sidebar included) is this wide (UI-17)
@@ -351,7 +352,7 @@ function C.Sidebar_Options(Notify, S2, Re)
         show = { type = "select", name = "Show", order = 21, values = { ALWAYS = "Always", MOUSEOVER = "On mouseover" }, sorting = { "ALWAYS", "MOUSEOVER" },
             desc = "On mouseover: hidden until the mouse is over the sidebar or the chat. Its buttons do the same.",
             disabled = off, get = function() return St().sbShow or "ALWAYS" end, set = function(_, v) local s = ns.chat2; if s then s.sbShow = v end; Re() end },
-        fade = tog("Fade with the chat", "sbFade", 22, "Fades out and back in together with the chat (Improved Chat > General > Scroll and fade options).", false),
+        fade = tog("Fade with the chat", "sbFade", 22, "Fades out and back in together with the chat (Improved Chat > General > Scroll and fade options).", true),
         combat = tog("Hide in combat", "sbCombat", 23, "Hidden while you are in combat.", false),
         btnHdr = hdr("Buttons", 30),
         priv = tog("Privacy cover", "sbPriv", 31, "The eye button that covers or shows the chat sits here instead of beside the chat.", true),

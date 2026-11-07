@@ -356,7 +356,7 @@ function W.loadDevAssist()
   f("XayaUI_DevAssist", {})
   return ns.DevAssistDebug
 end
--- (Chat 0.6.32; UI-18 / UI-19 / UI-21) both chat settings pages in one tree, for tests that look a control up anywhere: Blizzard UI
+-- (Chat 0.6.33; UI-18 / UI-19 / UI-21) both chat settings pages in one tree, for tests that look a control up anywhere: Blizzard UI
 -- Reskin > Chat Panel (the look) and QoL > Improved Chat (behaviour)
 function W.allChatOptions(Notify)
   Notify = Notify or function() end

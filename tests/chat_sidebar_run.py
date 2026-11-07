@@ -1,4 +1,4 @@
-# The chat sidebar, QoL > Improved Chat > Sidebar (XayaUI_Chat 0.6.34, core 0.6.62; REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7).
+# The chat sidebar, QoL > Improved Chat > Sidebar (XayaUI_Chat 0.6.35, core 0.6.68; REQUEST-LOG UI-3, UI-17, A16 CR-4 / CR-6 / CR-7).
 # Her words: "privacy bar should exist in a chat sidebar option that can be set to have a background or none at all. this bar should be
 # configurable to be show on mouseover, auto-hide, etc and the buttons nested within should inherit that behavior. the sidebar should also be
 # moveable to top, bottom, left or right sides and influence chat placement appropriately if it clips into the chat data panel or the end of
@@ -8,7 +8,7 @@
 # minimap is turned off)"; eye "Moves into sidebar"; fresh install "On with same opacity as chat pane with an additional layer underneath
 # the black using the primary class color for tinting"; icons "XayaUI's own first".
 # Checks in the stand-in world (tests/chat_world.lua; not the game). Negative control (V1): every check except the guards fails on
-# Chat 0.6.33 (39cc9b8).
+# Chat 0.6.34 (39cc9b8).
 # Run: python3 tests/chat_sidebar_run.py   Needs: pip install lupa.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

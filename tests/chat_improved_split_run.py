@@ -1,4 +1,4 @@
-# Chat settings split into the look and how chat behaves (XayaUI_Chat 0.6.32; REQUEST-LOG UI-18 / UI-19 / UI-21).
+# Chat settings split into the look and how chat behaves (XayaUI_Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21).
 # Xaya 2026-11-06: "chat reskin (colors, boxes, fonting go to blizzard UI reskin. other functionality (whispers, history, filtering, etc
 # -- anything newly added by the addon) go to "Improved Chat" in QoL"; rule: purely visual = Blizzard UI Reskin > Chat Panel, anything
 # that changes how chat behaves = QoL > Improved Chat; her answer "1": two independent switches, and "note in improved chat that it likely

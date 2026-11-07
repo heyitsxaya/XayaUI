@@ -250,7 +250,7 @@ local function Place()
 end
 
 local function Refresh(s)
-    if not (C.active and C.BarOn() and C.Bar()) then return end   -- (Chat 0.6.32) Improved Chat's   -- the bar's frame is built by C.Layout the first time the bar is on
+    if not (C.active and C.BarOn() and C.Bar()) then return end   -- (Chat 0.6.33) Improved Chat's   -- the bar's frame is built by C.Layout the first time the bar is on
     local bar = C.Bar()
     Style(s)
     local n = Count(s)

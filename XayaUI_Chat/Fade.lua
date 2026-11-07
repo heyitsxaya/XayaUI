@@ -33,7 +33,7 @@ local function TextFade(s)
 end
 
 local function Refresh(s)
-    if not C.ImprovedOn() then return end   -- (Chat 0.6.32) Improved Chat's ("Fade and hide")
+    if not C.ImprovedOn() then return end   -- (Chat 0.6.33) Improved Chat's ("Fade and hide")
     TextFade(s)
     if not s.fadeOn then
         if C.fade ~= 1 then C.fade = 1; C.ApplyAlpha() end
@@ -58,7 +58,10 @@ local function Tick(_, dt)
     -- (Chat 0.6.24; REQUEST-LOG UI-11, Xaya 2026-11-06: "mouse hover over should also allow for chat to reappear if this option is
     -- selected", her answer "Its own tick box") the mouse over the chat wakes it only while "The mouse over the chat brings it back" is
     -- ticked (on unless unticked: nothing saved means on, as before)
-    if C.unlocked or (s.fadeHover ~= false and Over(C.Container())) or Typing() or s.collapsed then last = now end
+    -- (O-143, Xaya 2026-11-07: "the sidebar icons should also be fading") the mouse over the sidebar or the privacy eye wakes the chat too
+    local hover = s.fadeHover ~= false and (Over(C.Container()) or (C.Sidebar and C.Sidebar() and C.Sidebar():IsShown() and Over(C.Sidebar()))
+        or (_G.XayaUIChatPrivacyButton and _G.XayaUIChatPrivacyButton:IsShown() and Over(_G.XayaUIChatPrivacyButton)))
+    if C.unlocked or hover or Typing() or s.collapsed then last = now end
     local floor = math.max(0, math.min(100, tonumber(s.fadeTo) or 0)) / 100
     local target = ((now - last) >= (tonumber(s.fadeAfter) or 10)) and floor or 1
     local rate = (1 - floor) / math.max(0.05, tonumber(s.fadeSeconds) or 0.4)

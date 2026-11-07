@@ -508,7 +508,7 @@ end
 -- the small button in the pane's corner
 local btn
 local function Refresh(s)
-    if not (C.active and C.ImprovedOn()) or not C.Pane() then if btn then btn:Hide() end return end   -- (Chat 0.6.32) Improved Chat's
+    if not (C.active and C.ImprovedOn()) or not C.Pane() then if btn then btn:Hide() end return end   -- (Chat 0.6.33) Improved Chat's
     if not btn then
         if not s.histButton then return end   -- V14: built the first time "Show the small history button" is on
         btn = CreateFrame("Button", "XayaUIChatHistoryButton", C.Pane())
@@ -529,7 +529,7 @@ local function Refresh(s)
     -- which is left of the scroll bar.
     btn:ClearAllPoints()
     local tabs = C.TabsArea()
-    -- (Chat 0.6.34; UI-3) in the chat sidebar while it holds it (Sidebar.lua places it there; it follows the sidebar's showing)
+    -- (Chat 0.6.35; UI-3) in the chat sidebar while it holds it (Sidebar.lua places it there; it follows the sidebar's showing)
     local sb = C.Sidebar_Slot and C.Sidebar_Slot("hist")
     if btn:GetParent() ~= (sb or C.Pane()) then btn:SetParent(sb or C.Pane()) end
     if sb then

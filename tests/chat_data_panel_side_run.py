@@ -24,7 +24,7 @@ ns = W.ns
 C = ns.Chat
 r = lua.eval(r'''function(W, ns, C)
   local out = {}
-  local opts = ns.BuildImprovedChatTab(function() end)   -- (Chat 0.6.32; UI-21) QoL > Improved Chat
+  local opts = ns.BuildImprovedChatTab(function() end)   -- (Chat 0.6.33; UI-21) QoL > Improved Chat
   local page, A = nil, {}
   local function collect(t, depth)   -- every control under the page, through its section tabs
     for k, v in pairs(t.args or {}) do

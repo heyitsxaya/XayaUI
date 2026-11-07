@@ -34,6 +34,7 @@ D.privReveal = false             -- cover fades away while the mouse is over it
 local function Store() return ns.chatDB end
 local BASE = "Interface\\AddOns\\XayaUI_Media\\"
 local cover, btn
+local BtnAlpha   -- (below)
 
 local BUILTIN_TEX = {
     { "Interface\\DialogFrame\\UI-DialogBox-Background", "Dialog background (dark)" },
@@ -194,7 +195,7 @@ local function PlaceButton()
     local c = ns.Chat and ns.Chat.Container and ns.Chat.Container()
     if not c then return end
     local s2 = ns.chat2
-    -- (Chat 0.6.34; UI-3, her answer "Moves into sidebar") while the chat sidebar holds it, the sidebar places it and it follows its showing
+    -- (Chat 0.6.35; UI-3, her answer "Moves into sidebar") while the chat sidebar holds it, the sidebar places it and it follows its showing
     local sb = ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy")
     if btn:GetParent() ~= (sb or UIParent) then btn:SetParent(sb or UIParent) end
     if sb then return end
@@ -203,6 +204,20 @@ local function PlaceButton()
     -- beside the chat block, level with its top edge (the strip option "Right of the chat" uses the same side: move one with the offsets)
     local past = (s2 and s2.stripMode == "RIGHT") and 34 or 0   -- Blizzard's button strip may sit on that side: stay clear of it
     btn:SetPoint("TOPLEFT", c, "TOPRIGHT", 4 + past + (tonumber(s.privBtnX) or 0), (tonumber(s.privBtnY) or 0))
+end
+
+-- (O-143) the eye's resting opacity, times the chat's fade while it sits beside the chat (in the sidebar it fades with the sidebar)
+BtnAlpha = function()
+    local st = Store()
+    local a = (tonumber(st and st.privBtnAlpha) or 90) / 100
+    local C = ns.Chat
+    local inBar = C and C.Sidebar_Slot and C.Sidebar_Slot("privacy")
+    if C and not inBar then a = a * (C.fade or 1) end
+    return a
+end
+function ns.ChatPrivacy_Fade()
+    if not (btn and btn:IsShown()) then return end
+    btn:SetAlpha((btn.IsMouseOver and btn:IsMouseOver()) and 1 or BtnAlpha())   -- under the mouse: full, as its OnEnter does
 end
 
 local function BuildButton()
@@ -224,7 +239,7 @@ local function BuildButton()
         GameTooltip:AddLine((s and s.privOn) and "Click: show the chat" or "Click: cover the chat", 1, 1, 1)
         GameTooltip:Show()
     end)
-    btn:SetScript("OnLeave", function(self) local st = Store(); self:SetAlpha((tonumber(st and st.privBtnAlpha) or 90) / 100); GameTooltip:Hide() end)
+    btn:SetScript("OnLeave", function(self) self:SetAlpha(BtnAlpha()); GameTooltip:Hide() end)
     btn:SetScript("OnClick", function() ns.ChatPrivacy_Set(not (Store() or {}).privOn) end)
     return btn
 end
@@ -237,14 +252,14 @@ function ns.ChatPrivacy_Refresh()
     local s = Store()
     if not s then return end
     local collapsed = ns.Chat and ns.Chat.IsCollapsed and ns.Chat.IsCollapsed()
-    local canShow = (Target() and ns.Chat.active and ns.Chat.ImprovedOn and ns.Chat.ImprovedOn() and not collapsed) and true or false   -- (Chat 0.6.32) Improved Chat's
+    local canShow = (Target() and ns.Chat.active and ns.Chat.ImprovedOn and ns.Chat.ImprovedOn() and not collapsed) and true or false   -- (Chat 0.6.33) Improved Chat's
     local wantBtn = canShow and s.privBtn ~= false
     if wantBtn then BuildButton() end
     if btn then
         local size = math.max(16, math.min(64, tonumber(s.privBtnSize) or 28))
-        if ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy") then size = math.max(14, math.min(40, tonumber(ns.chat2 and ns.chat2.sbBtn) or 22)) end   -- (Chat 0.6.34) the sidebar's button size
+        if ns.Chat.Sidebar_Slot and ns.Chat.Sidebar_Slot("privacy") then size = math.max(14, math.min(40, tonumber(ns.chat2 and ns.chat2.sbBtn) or 22)) end   -- (Chat 0.6.35) the sidebar's button size
         btn:SetSize(size, size)
-        if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha((tonumber(s.privBtnAlpha) or 90) / 100) end
+        if not (btn.IsMouseOver and btn:IsMouseOver()) then btn:SetAlpha(BtnAlpha()) end
         btn:SetShown(wantBtn)
         PlaceButton()
         DrawEye(btn, s.privOn)
@@ -256,7 +271,7 @@ function ns.ChatPrivacy_Refresh()
         cover:Hide()
         cover:SetScript("OnUpdate", nil)
     end
-    -- (Chat 0.6.33; UI-15) the input line moved out of the pane (Free move): a second piece of the cover over it, same fill and opacity
+    -- (Chat 0.6.34; UI-15) the input line moved out of the pane (Free move): a second piece of the cover over it, same fill and opacity
     local free = s.privOn and canShow and ns.Chat.InputPos and ns.Chat.InputPos() == "FREE" and ns.Chat.skin and ns.Chat.InputArea and ns.Chat.InputArea()
     if free then
         if not cover.free then

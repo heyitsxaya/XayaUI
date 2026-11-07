@@ -1,6 +1,6 @@
-# Chat input line: Bottom, Top under the tabs, Top above the tabs, Free move (Chat 0.6.33, Dev Assist 0.7.15)
+# Chat input line: Bottom, Top under the tabs, Top above the tabs, Free move (Chat 0.6.34, Dev Assist 0.7.26)
 
-Session 014bN6tUJW6J1rnMZ6Z7t7c1 (chat-round session), branch `claude/chat-round-1106`, on top of Chat 0.6.32 (b84322a).
+Session 014bN6tUJW6J1rnMZ6Z7t7c1 (chat-round session), branch `claude/chat-round-1106`, on top of Chat 0.6.33 (b84322a).
 
 ## Her words (REQUEST-LOG A8 UI-15, UI-17; A16 CR-7)
 - UI-15: "include an option where to put place the chat entry field (top or bottom; disconnected from pane (free move))"

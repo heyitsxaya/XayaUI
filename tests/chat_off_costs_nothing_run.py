@@ -125,7 +125,7 @@ def rect(W, o):
     r = W.rect(o); return (r.l, r.b, r.w, r.h)
 
 # ===================================================================================================================================
-# A. The Chat Panel saved OFF at login (and, since Chat 0.6.32, QoL > Improved Chat too: UI-18 / UI-19 / UI-21 made it a switch of its
+# A. The Chat Panel saved OFF at login (and, since Chat 0.6.33, QoL > Improved Chat too: UI-18 / UI-19 / UI-21 made it a switch of its
 #    own; with it on, its parts run over Blizzard's chat, tests/chat_improved_split_run.py)
 # ===================================================================================================================================
 lua, W, run, frames = world("CueRulesDB.chat2 = { enabled = false, improvedOn = false }", start=False)
