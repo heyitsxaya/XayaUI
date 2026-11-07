@@ -1,6 +1,6 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J18 (what the
 record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in
-combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor). Loads the real QAWalk.lua framework, core Core / Modules /
+combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor), J25 (the usage tooltip). Loads the real QAWalk.lua framework, core Core / Modules /
 DebugRecord and Dev Assist's DevRecord.lua with stand-in game calls (the stand-ins first written for the removed run prompt's test),
 and asks each step's check what it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways),
 and the counts in the notes. Also checks that the removed J17 walkthroughs are gone.
@@ -196,6 +196,16 @@ r = step("perf-still-cursor", 2); check("J24.2 before step 1: Fail", r[0] == "F"
 r = step("perf-still-cursor", 1); check("J24.1 still: Pass with the reading", r[0] == "P" and "while still: 0.0010 ms" in r[1])
 L.execute("QOL_MS = 0.0500")
 r = step("perf-still-cursor", 2); check("J24.2 moving: Pass with both readings", r[0] == "P" and "still 0.0010 ms per frame, moving 0.0500 ms" in r[1])
+
+# J25: the usage tooltip (the library's memory-read count; a stand-in LibStub holding it)
+L.execute("DBLIB = { memReads = 3 }; LibStub = setmetatable({}, { __call = function(_, name) if name == 'XayaDataBlocks-1.0' then return DBLIB end end })")
+r = step("perf-usage-tooltip", 1); check("J25 before Do it for me: Fail", r[0] == "F" and "Do it for me" in r[1])
+L.execute("SETUP('perf-usage-tooltip', 1)")
+r = step("perf-usage-tooltip", 1); check("J25 no hover yet: Fail, says hover", r[0] == "F" and "hover" in r[1])
+L.execute("DBLIB.memReads = DBLIB.memReads + 1")
+r = step("perf-usage-tooltip", 1); check("J25 a hover with one memory read: Pass", r[0] == "P" and "1 time(s)" in r[1])
+L.execute("DBLIB.memReads = DBLIB.memReads + 2")
+r = step("perf-usage-tooltip", 1); check("J25 three reads (the old 15 s re-read): Fail", r[0] == "F" and "3 time(s)" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

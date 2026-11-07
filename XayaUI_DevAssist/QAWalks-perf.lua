@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.17): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J18 what a recorded run holds (DevRecord.lua meter lines; tools/perf_report.py): counts fights, bosses, meter readings (data capture);
@@ -292,5 +292,24 @@ QA.Register("perf-still-cursor", { title = "Performance: a still cursor (J24)", 
             if not v then return false, "the game's addon meter is not available" end
             if not stillRead then return false, "do step 1 first" end
             return v >= stillRead, ("XayaUI_QoL still %.4f ms per frame, moving %.4f ms per frame"):format(stillRead, v)
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- J25: the usage tooltip reads addon memory once per hover (XayaDataBlocks-1.0 MINOR 2, Chat 0.6.32 / Bonus 0.6.26; REQUEST-LOG
+-- A15 P-14). Data capture: the library's own count of memory reads (B.memReads) over a 20 s hover; Pass when the hover made one.
+-------------------------------------------------------------------------------
+local function DataBlocks() local LS = rawget(_G, "LibStub"); local ok, B = pcall(function() return LS and LS("XayaDataBlocks-1.0", true) end); return ok and B or nil end
+local hoverMark
+QA.Register("perf-usage-tooltip", { title = "Performance: the addon usage tooltip (J25)", area = "Dev Assist", qa = "J25", order = 308, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r (marks the count), then hover the Chat Bar's (or a data panel's) frame rate or latency block for about 20 seconds, move the mouse away and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the tooltip ends with a grey line \"Includes the cost of reading these numbers.\"; the check says the hover read addon memory once.",
+        setup = function() local B = DataBlocks(); hoverMark = B and (B.memReads or 0) or nil end,
+        check = function()
+            local B = DataBlocks()
+            if not B then return false, "the data blocks library is not loaded (XayaUI Chat or Bonus Features off)" end
+            if hoverMark == nil then return false, "press Do it for me first" end
+            local n = (B.memReads or 0) - hoverMark
+            if n == 0 then return false, "no memory read since the mark: hover a frame rate or latency block" end
+            return n == 1, ("memory read %d time(s) during the hover (once is right; it was every 15 s before)"):format(n)
         end },
 } })
