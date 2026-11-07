@@ -1,5 +1,5 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J17 (two
-walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question). Loads the real QAWalk.lua
+walkthroughs: the prompt, then after Confirm's reload) and J18 (what the record holds; the upload question), J19 (settings window memory: four readings). Loads the real QAWalk.lua
 framework, DevRecord.lua and RunRecord.lua with the stand-ins of tests/run_record_run.py, plays a run and asks each step's check what
 it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways), and the counts in J18's note.
 J17 parts go with RunRecord.lua (one push); J18 stays.
@@ -141,6 +141,30 @@ r = step(D, 1); check("J18.1: Pass with the record's counts in the note", r[0] =
 check("J18.2 upload step is a question (no verdict)", E("XayaUI_DevQA.walks['perf-run-data'].steps[2].noVerdict == true and XayaUI_DevQA.walks['perf-run-data'].steps[2].check == nil"))
 L.execute("CueRulesDB.debugRecord = nil")
 r = step(D, 1); check("J18.1 with an empty record: Fail", r[0] == "F" and "empty" in r[1])
+
+# J19: settings window memory (stand-ins: the Options addon loaded or not, its memory in KB, Lua's total, a cleanup that frees garbage)
+L.execute("""
+OPT_LOADED, OPT_KB, LUA_KB, GARBAGE = false, 0, 50000, 0
+local realIsLoaded = C_AddOns.IsAddOnLoaded
+C_AddOns.IsAddOnLoaded = function(n) if n == 'XayaUI_Options' then return OPT_LOADED, OPT_LOADED end return realIsLoaded(n) end
+UPDATES = 0
+UpdateAddOnMemoryUsage = function() UPDATES = UPDATES + 1 end
+GetAddOnMemoryUsage = function(n) if n == 'XayaUI_Options' then return OPT_KB end return 0 end
+collectgarbage = function(opt) if opt == 'count' then return LUA_KB end if opt == 'collect' then OPT_KB = OPT_KB - GARBAGE; LUA_KB = LUA_KB - GARBAGE; GARBAGE = 0 end return 0 end
+""")
+M = "perf-options-memory"
+r = step(M, 1); check("J19.1 after /reload, settings not loaded: Pass, total Lua kept", r[0] == "P" and "XayaUI_Options not loaded" in r[1] and "48.8 MB" in r[1])
+L.execute("OPT_LOADED = true; OPT_KB = 1024 * 300; LUA_KB = 50000 + 1024 * 300; GARBAGE = 1024 * 250")
+r = step(M, 1); check("J19.1 with the settings addon already loaded: Fail (reload first)", r[0] == "F" and "/reload first" in r[1])
+r = step(M, 2); check("J19.2 window used: Pass with the reading (300.0 MB)", r[0] == "P" and "XayaUI_Options 300.0 MB" in r[1] and E("UPDATES") >= 1)
+r = step(M, 3); check("J19.3 closed: Pass with the reading", r[0] == "P" and "3 closed 30 s: XayaUI_Options 300.0 MB" in r[1])
+r = step(M, 5); check("J19.5 before the cleanup step: Fail (a reading is missing)", r[0] == "F" and "missing" in r[1])
+L.execute("SETUP('perf-options-memory', 4)")
+r = step(M, 4); check("J19.4 after Do it for me (cleanup): Pass, 50.0 MB left", r[0] == "P" and "XayaUI_Options 50.0 MB" in r[1])
+r = step(M, 5); check("J19.5 summary: leftover garbage 250.0 MB (300 - 50), kept 50.0 MB", r[0] == "P" and "leftover garbage 250.0 MB (3 - 4), kept 50.0 MB (4)" in r[1])
+check("J19 readings saved for upload (XayaUIDevAssistDB.qa.optionsMem)", E("XayaUIDevAssistDB.qa.optionsMem.d.kb == 51200 and XayaUIDevAssistDB.qa.optionsMem.b.kb == 307200 and XayaUIDevAssistDB.qa.optionsMem.c.kb == 307200"))
+L.execute("OPT_LOADED = false")
+r = step(M, 2); check("J19.2 with the settings addon not loaded: Fail (open it first)", r[0] == "F" and "open the settings window first" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

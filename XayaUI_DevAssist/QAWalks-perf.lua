@@ -1,13 +1,15 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.12): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthroughs for the performance test, stage 1 (REQUEST-LOG A15 P-1, P-4, P-5).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J17 "Record this run?" (RunRecord.lua), in two walkthroughs (the second runs after Confirm's reload): prefill = true. Each check reads the prompt window, the run state and the settings, and offers
 --       its verdict on Accept; nothing is recorded without her click. ONE-PUSH: remove both J17 walkthroughs with RunRecord.lua.
+--   J19 settings window memory (below): four readings of XayaUI_Options memory, data capture.
 --   J18 what the run recorded (DevRecord.lua meter lines; tools/perf_report.py): prefill = true; the check counts what is in the saved
 --       record (fights, boss lines, meter lines, dropped lines) and writes the counts into the note (data capture). The upload step is a
 --       question for the person (noVerdict). Stays after the prompt is removed (it works with a record started by hand too).
 -- Read-only except J17's first step ("Do it for me" remembers the Debugging settings, so the last step can compare them after the reload).
+-- J19's fourth step runs a full Lua cleanup (collectgarbage "collect") on "Do it for me"; its readings are kept in XayaUIDevAssistDB.qa.optionsMem.
 -- Listed in XayaUI_DevAssist.toc after QAWalks-chat.lua; does nothing without the framework (QAWalk.lua). UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
@@ -144,4 +146,61 @@ QA.Register("perf-run-data", { title = "Performance: send back a recorded run (J
         end },
     { text = "Upload the file |cff88ccffWTF/Account/<your account>/SavedVariables/XayaUI.lua|r (in the World of Warcraft _retail_ folder) to Xaya or the chat. Developers turn it into a report with |cff88ccffpython3 tools/perf_report.py XayaUI.lua|r.\n\nPass when it is sent.",
         noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- J19: settings window memory (REQUEST-LOG A15 P-7 / P-8). Her screenshot showed XayaUI_Options at 380.8 MB of 679.0 MB; her answer
+-- "Quick check + fix". Four readings of XayaUI_Options' memory (and all Lua memory): after a /reload without opening the settings,
+-- with the window used, 30 s after closing it, and after a forced full cleanup. Leftover garbage = reading 3 - reading 4; kept by the
+-- addon = reading 4. Data capture: every reading goes into the step's note and into XayaUIDevAssistDB.qa.optionsMem.
+-- API 12.1.5 (docs/reference/api/api.json, no documentation text): UpdateAddOnMemoryUsage() (no returns);
+-- GetAddOnMemoryUsage(name: uiAddon) -> result: number [SecretArguments=AllowedWhenUntainted]; C_AddOns.IsAddOnLoaded(name: uiAddon)
+-- -> loadedOrLoading: bool, loaded: bool. INFERENCE: GetAddOnMemoryUsage is in KB (the game's own memory lists show it that way) and
+-- counts garbage not yet collected. collectgarbage is Lua's own; INFERENCE: "count" and "collect" are allowed for addons (pcall'd).
+-------------------------------------------------------------------------------
+local OPT = "XayaUI_Options"
+local function MemDB() local db = QA.DB(); db.optionsMem = type(db.optionsMem) == "table" and db.optionsMem or {}; return db.optionsMem end
+local function Read()
+    local okL, _, loaded = pcall(function() return C_AddOns.IsAddOnLoaded(OPT) end)
+    local kb
+    if okL and loaded then
+        pcall(UpdateAddOnMemoryUsage)
+        local ok, v = pcall(GetAddOnMemoryUsage, OPT)
+        if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then kb = v end
+    end
+    local okC, all = pcall(collectgarbage, "count")
+    return { loaded = (okL and loaded) and true or false, kb = kb, allKB = (okC and type(all) == "number") and all or nil,
+        at = date and date("%H:%M:%S") or "?" }
+end
+local function MB(kb) return type(kb) == "number" and ("%.1f MB"):format(kb / 1024) or "?" end
+local function Reading(key, label, want)
+    return function()
+        local r = Read()
+        MemDB()[key] = r
+        local note = ("%s: XayaUI_Options %s, all addons' Lua %s (%s)"):format(label, r.loaded and MB(r.kb) or "not loaded", MB(r.allKB), r.at)
+        if want == "unloaded" then return not r.loaded, note .. (r.loaded and " (the settings addon is already loaded: /reload first)" or "") end
+        if not r.loaded then return false, note .. " (open the settings window first)" end
+        return r.kb ~= nil, note
+    end
+end
+QA.Register("perf-options-memory", { title = "Performance: settings window memory (J19)", area = "Dev Assist", qa = "J19", order = 302, prefill = true, steps = {
+    { text = "Type |cff88ccff/reload|r and do NOT open XayaUI's settings. Open |cff88ccff/xui dev qa|r, pick this walkthrough and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the settings addon is not loaded yet; the note keeps the total Lua memory.",
+        check = Reading("a", "1 after /reload", "unloaded") },
+    { text = "Open XayaUI's settings (|cff88ccff/xui|r) and use it for about a minute: Rules, open two or three rules, QoL, Bonus Features, a few switches on and back off. Leave it open, then press |cffffd100Check again|r here.\n\n|cffffd100Expect:|r a reading for the settings addon.",
+        check = Reading("b", "2 window used") },
+    { text = "Close the settings window, wait 30 seconds, press |cffffd100Check again|r.\n\n|cffffd100Expect:|r a reading 30 s after closing.",
+        check = Reading("c", "3 closed 30 s") },
+    { text = "Press |cffffd100Do it for me|r: a full Lua cleanup (the game may stop for a moment), then the reading.\n\n|cffffd100Expect:|r the reading after the cleanup.",
+        setup = function() pcall(collectgarbage, "collect") end,
+        check = Reading("d", "4 after a full cleanup") },
+    { text = "Press |cffffd100Check again|r for the summary, then Accept. Send the summary (or the result code from the end screen) to Xaya.",
+        check = function()
+            local m = MemDB()
+            local a, b, c, d = m.a, m.b, m.c, m.d
+            if not (a and b and c and d) then return false, "a reading is missing; run steps 1-4 in order" end
+            local garbage = (c.kb and d.kb) and (c.kb - d.kb) or nil
+            return (b.kb and c.kb and d.kb) and true or false,
+                ("Options: used %s, closed 30 s %s, after cleanup %s; leftover garbage %s (3 - 4), kept %s (4). All Lua: %s -> %s -> %s -> %s")
+                    :format(MB(b.kb), MB(c.kb), MB(d.kb), MB(garbage), MB(d.kb), MB(a.allKB), MB(b.allKB), MB(c.allKB), MB(d.allKB))
+        end },
 } })
