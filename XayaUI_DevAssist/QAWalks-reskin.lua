@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.45): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.14 (BlizzardSkins.lua): Blizzard's
--- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus and chat bubbles in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.46): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.15 (BlizzardSkins.lua): Blizzard's
+-- windows, the minimap shape, tooltips, the objective tracker, Battle.net toasts, pop-ups, loot rolls, menus, chat bubbles and status bars in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game
 -- qa test walk through with pre-fill confirmation options or data capturing". Every walkthrough sets prefill = true: the addon's own
@@ -275,5 +275,23 @@ QA.Register("reskin-bubbles", { title = "Reskin: chat bubbles", area = "Reskin",
     { text = "Stand near NPCs that talk, or players saying things, for a while.\n\n|cffffd100Expect:|r their bubbles have the same look and stay readable. Pass if so; Fail if a bubble looks wrong or unreadable (say where).",
         noVerdict = true },
     { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were. Bubbles on screen get Blizzard's colours back at once.",
+        setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
+} })
+
+-------------------------------------------------------------------------------
+-- 9. Status bars (Reskin 0.6.15)
+-------------------------------------------------------------------------------
+local function ShownBar() for _, n in ipairs({ "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }) do local f = rawget(_G, n); if f and f:IsShown() then return f end end end
+QA.Register("reskin-statusbars", { title = "Reskin: experience and reputation bars", area = "Reskin", qa = "RESKIN-S", order = 308, prefill = true, steps = {
+    { text = "You need a bar at the bottom of the screen: experience below max level, or at max level a reputation you watch (Reputation window > tick \"Show as Experience Bar\"). Press |cffffd100Do it for me|r: your reskin settings are remembered, then |cffffd100Blizzard Reskin > Status Bars|r is switched on.\n\n|cffffd100Expect:|r the bar's Blizzard frame art is gone; it has a background in the theme's window colour and a thin border. The fill colour and the text on hover are as before.",
+        setup = function() Keep(); Set(function(c) c.statusbars = true end) end,
+        check = function()
+            local f = ShownBar(); if not f then return false, "no status bar is shown: watch a reputation (or be below max level) and press Check again" end
+            local ok = Painted(f) and Alpha(f.BarFrameTexture) == 0
+            return ok, ok and (f:GetName() .. " carries the XayaUI look (Blizzard's frame art faded)") or (f:GetName() .. " still has Blizzard's frame art")
+        end },
+    { text = "Hover the bar, gain some experience or reputation, and open Edit Mode once.\n\n|cffffd100Expect:|r the text, the fill and its colours work as before; in Edit Mode the bar moves and resizes as usual and keeps the look. Pass if so.",
+        noVerdict = true },
+    { text = "Press |cffffd100Do it for me|r: your reskin settings are put back as they were.",
         setup = function() PutBack() end, check = function() return BS() ~= nil, "your settings are back" end },
 } })

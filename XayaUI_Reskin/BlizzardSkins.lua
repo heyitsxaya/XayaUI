@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.14): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
--- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus and chat bubbles. Look only: art, colour, border, mask. Nothing is
--- moved, resized, added or removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.15): XayaUI's look on Blizzard's own windows, the minimap, tooltips, the objective
+-- tracker, Battle.net toasts, pop-up dialogs, loot rolls, menus, chat bubbles and the status bars. Look only: art, colour, border,
+-- mask. Nothing is moved, resized, added or removed, and no Blizzard function is called to do anything. Own code, Blizzard's frames only.
 --
 -- Xaya, 2026-11-06 (REQUEST-LOG A13 RESKIN-1 to RESKIN-4): "review what of blizzard's ui elements can be reskinned and generate a list
 -- of them (no functionality changes, just reskins of core blizzard UI)". Her lists named the windows below, "minimap (two options: square
@@ -108,7 +108,7 @@ BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard
 
 -------------------------------------------------------------------------------
 -- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
---   windows / minimap / tooltips / tracker / toasts / menus / bubbles = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
+--   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
@@ -637,20 +637,60 @@ local function ApplyBubbles()
 end
 
 -------------------------------------------------------------------------------
+-- 8. Status bars: experience / reputation / honor bars (her "toolbars", Q6 "all")
+-------------------------------------------------------------------------------
+-- 12.1.5 (Gethe/wow-ui-source 297d7aa, read as data): MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer
+-- (Blizzard_ActionBar/Mainline/StatusTrackingBar.xml:41, 49) come from StatusTrackingBarContainerTemplate (:3-8), whose only art is
+-- the OVERLAY texture BarFrameTexture (atlas UI-HUD-ExperienceBar-Frame, set in XML only; no Lua sets it again). That frame art is
+-- faded and our background and 1 px border are drawn, as on a window. The bar's fill colours (experience, rested, reputation standing,
+-- honor ...) and its text are Blizzard's: they carry information. The containers fade in and out on their own; our pieces are their
+-- children and follow. Micro menu and bag bar: not skinned (their art is Blizzard's button art itself; question RSK-Q14).
+BS.BARS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+local liveBars = false
+local hookedBar = {}
+local function PaintBar(f)
+    if type(f) ~= "table" or type(f.CreateTexture) ~= "function" then return end
+    if Blocked(f) then Later(function() if liveBars then PaintBar(f) end end); return end
+    Fade(f, f.BarFrameTexture)
+    local m = OwnBg(f)
+    m.painted = true
+    BS.diag.painted = BS.diag.painted + 1
+end
+BS.PaintBar = PaintBar
+local function ApplyBars()
+    if PageOn("statusbars") then
+        liveBars = true
+        for _, n in ipairs(BS.BARS) do
+            local f = rawget(_G, n)
+            if type(f) == "table" then
+                if not hookedBar[f] and type(f.HookScript) == "function" then
+                    hookedBar[f] = true
+                    f:HookScript("OnShow", function(self) if liveBars then Safe(PaintBar, self) end end)
+                end
+                Safe(PaintBar, f)
+            end
+        end
+    elseif liveBars then
+        liveBars = false
+        for _, n in ipairs(BS.BARS) do local f = rawget(_G, n); if f then Restore(f) end end
+    end
+end
+
+-------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard Reskin tab's own switch call this
 -------------------------------------------------------------------------------
 function BS.Apply()
-    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles)
+    Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
-    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
+    WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
 ns.WhenReady(function()
     local r = Saved()
-    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles) and TabOn() then
+    if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end
     end
 end)
@@ -765,6 +805,16 @@ function BS.BubblesPage(Notify)
             "Colours chat bubbles in the theme (outside instances)." .. OFFNOTE, Notify) }
 end
 
+function BS.StatusBarsPage(Notify)
+    local args = {
+        note = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "The experience, reputation and honor bars at the bottom of the screen: Blizzard's frame art around them is replaced by a background in the theme's window colour and a thin border. The bars' fill colours, their text and where they sit (Edit Mode) are unchanged. Opacity: Blizzard Windows' Background opacity." },
+    }
+    return { type = "group", name = "Status Bars", order = 11, args = args,
+        xuiSwitch = PageSwitch("statusbars", "Use the XayaUI look on the status bars", "Experience / reputation bars in the theme's colours.",
+            "Restyles the frame of the experience, reputation and honor bars." .. OFFNOTE, Notify) }
+end
+
 ns.RegisterSettingsPage("reskin", "blizzwindows", BS.WindowsPage)
 ns.RegisterSettingsPage("reskin", "minimapshape", BS.MinimapPage)
 ns.RegisterSettingsPage("reskin", "rsktooltips", BS.TooltipsPage)   -- (not "tooltips": page keys are unique across tabs, and Bonus Features owns that one)
@@ -772,3 +822,4 @@ ns.RegisterSettingsPage("reskin", "objtracker", BS.TrackerPage)
 ns.RegisterSettingsPage("reskin", "rsktoasts", BS.ToastsPage)
 ns.RegisterSettingsPage("reskin", "rskmenus", BS.MenusPage)
 ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)
+ns.RegisterSettingsPage("reskin", "rskstatusbars", BS.StatusBarsPage)
