@@ -162,7 +162,7 @@ local function MakeSlot(i)
         local pr = Prov(s["barType" .. i])
         if pr and pr.click then pcall(pr.click) end
     end)
-    local function ShowTip(self)
+    local function ShowTip(self, fresh)   -- fresh: the first show on hover (reads addon memory once; A15 P-14)
         local s = S(); if not s then return end
         local pr = Prov(s["barType" .. i])
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
@@ -175,7 +175,7 @@ local function MakeSlot(i)
             GameTooltip:SetText((pr and pr.name) or "")
         end
         if pr and pr.usage and B.AddUsage then
-            local ok, err = pcall(B.AddUsage, GameTooltip, 8)
+            local ok, err = pcall(B.AddUsage, GameTooltip, 8, fresh)
             if not ok then GameTooltip:AddLine("Addon usage unavailable: " .. tostring(err), 1, 0.4, 0.4) end
         end
         if pr and pr.click then GameTooltip:AddLine("Click: open", 0.6, 0.6, 0.6) end
@@ -185,7 +185,7 @@ local function MakeSlot(i)
     slot:SetScript("OnEnter", function(self)
         local s = S(); if not s then return end
         if InCombatLockdown and InCombatLockdown() then return end
-        ShowTip(self)
+        ShowTip(self, true)
         local pr = Prov(s["barType" .. i])
         if pr and pr.usage then   -- the CPU numbers move: redraw once a second while the mouse is on the block
             local t = 0
