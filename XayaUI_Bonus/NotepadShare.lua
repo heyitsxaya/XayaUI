@@ -426,7 +426,10 @@ local function BuildShare()
     f.postBtn:SetPoint("TOPLEFT", M, -112)
     f.status = Text(f, "GameFontHighlightSmall", "TOPLEFT", M, -142); f.status:SetPoint("TOPRIGHT", -M, -142); f.status:SetJustifyH("LEFT"); f.status:SetHeight(26); f.status:SetWordWrap(true); f.status:SetJustifyV("TOP")
     f.send = Btn("Send", 80, 22, function()
-        local ok, info = ns.NotepadShare_Send(ns.Notepad_CurrentText and ns.Notepad_CurrentText() or "", f.channel, (f.name:GetText() or ""):gsub("%s+", ""), f.withText)
+        -- (D53) the note the window named when it opened, not whichever note is current now
+        local text = f:NoteText()
+        if text == nil then f.status:SetText("|cffff6060That note was deleted: close this window and share again.|r"); return end
+        local ok, info = ns.NotepadShare_Send(text, f.channel, (f.name:GetText() or ""):gsub("%s+", ""), f.withText)
         if ok then f:Hide() else f.status:SetText("|cffff6060" .. tostring(info) .. "|r") end
     end)
     f.send:SetPoint("BOTTOMLEFT", M, M)
@@ -435,6 +438,11 @@ local function BuildShare()
     x.xuiEdge = true   -- a title-bar close sits at the edge on purpose (#351)
     x.fs = x:CreateFontString(nil, "OVERLAY", "GameFontNormal"); x.fs:SetPoint("CENTER"); x.fs:SetText("x"); x:SetScript("OnClick", function() f:Hide() end)
     f.channel, f.withText = "PARTY", true
+    -- the note this window shares: the one current when it opened (kept by its id in f.noteID); nil once that note is deleted
+    function f:NoteText()
+        if self.noteID ~= nil and ns.Notepad_TextOf then return ns.Notepad_TextOf(self.noteID) end
+        return ns.Notepad_CurrentText and ns.Notepad_CurrentText() or ""
+    end
     function f:Sync()
         local label = "?"
         for _, c in ipairs(CHANNELS) do if c[1] == self.channel then label = c[2] end end
@@ -442,7 +450,7 @@ local function BuildShare()
         local whisper = self.channel == "WHISPER"
         self.name:SetShown(whisper); self.nameLabel:SetShown(whisper)
         self.postBtn.fs:SetText((self.withText and "[x] " or "[  ] ") .. "Also post the text as chat lines (up to 6)")
-        local t = ns.Notepad_CurrentText and ns.Notepad_CurrentText() or ""
+        local t = self:NoteText() or ""
         self.what:SetText(Title(t) .. "  (" .. #t .. " characters)")
         self.status:SetText("XayaUI users are offered the whole note to save. A header line is always posted to chat.")
     end
@@ -460,8 +468,11 @@ function ns.NotepadShare_OpenShare()
     local ok = false
     for _, c in ipairs(av) do if c[1] == f.channel then ok = true end end
     if not ok then f.channel = av[1] and av[1][1] or "WHISPER" end
+    f.noteID = ns.Notepad_CurrentID and ns.Notepad_CurrentID() or nil   -- (D53)
     f:Sync(); f:Show()
 end
+-- the text the open Share window would send (nil: no window open, or its note was deleted; tests and the QA walkthrough)
+function ns.NotepadShare_ShareText() if shareFrame and shareFrame:IsShown() then return shareFrame:NoteText() end end
 
 -------------------------------------------------------------------------------
 -- export / import window
