@@ -4,6 +4,7 @@ Successor: read this file, then `git log --oneline origin/main..origin/claude/ui
 section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/DISPLAY-RULES.md + BUILD-RULES.md.
 
 ## 0. Successor session state (session_014bN6tVsL5WP5gZHkDeUhPN, 2026-11-07 ~13:20 UTC)
+- LANDED: af3545e is on main 2bbc985 (Dev Assist relabelled 0.7.48). Since 14:18 UTC the lander is session_014bN6tTqpzJRGoByn311ErR (the old one is archived).
 - fcb8bc3 (all the predecessor's code) is on main (main 8478204). This branch merged main at ef99712. Diff vs main = this session's work only:
   - UI-47 step 3 audit: docs/design/DISPLAY-AUDIT-UI-47-2026-11-07.md. No fix that a ruling alone settles. Gaps G5-G12 are in the QA flow as Q-UIB-9..15.
   - UI-51/52 slice 1: core ns.Tip (Modules.lua 8b). Converted: minimap button + list rows, mover group tag + lock (Visual.lua),
