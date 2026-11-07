@@ -1,6 +1,6 @@
 # Settings window memory check: walkthrough J19 (XayaUI Dev Assist 0.7.13)
 Session 014bN6tTxYo6enpkMGsVkMqm, branch `claude/perf-options-memory` (from `claude/perf-test-m-plus-land` 036c7fd). Logged 2026-11-07
-07:30 UTC. Nothing here has run in the game.
+07:16 UTC. Nothing here has run in the game.
 
 ## Request (REQUEST-LOG A15 P-7, P-8)
 - Her screenshot (no text): the AddOn usage tooltip with "Memory: 679.0 MB total", "380.8 MB XayaUI_Options", "56.9 MB XayaUI".
