@@ -318,14 +318,44 @@ function ns.BuildChatTab(Notify)
     } }
 
     -- 6. HISTORY ------------------------------------------------------------------------------------------------------------
+    -- (Chat 0.6.26; UI-13 / UI-16 / UI-17 / UI-30 / UI-31) in-game and Battle.net whispers each: as the game (default), one tab per
+    -- conversation, one consolidated tab, or both; a box combines the consolidated tabs into one "Whispers" tab
+    local WV = { game = "As the game's New Whispers setting", each = "Individual tabs", one = "Consolidated tab", both = "Both" }
+    local function WhisperSel(name, field, order, desc)
+        return { type = "select", name = name, desc = desc, order = order, values = WV, sorting = { "game", "each", "one", "both" },
+            hidden = function() return not S().histOn end,
+            get = function() local s2 = S(); local v = s2[field]; if v == nil and s2.histWhispers == "one" then return "one" end; return v or "game" end,
+            set = function(_, v)
+                local s2 = ns.chat2
+                if s2 then
+                    if s2.histWhispers == "one" then   -- the 0.6.15 setting: becomes the two lists (both consolidated) and combined
+                        s2.histWhispers = "game"
+                        s2.histWhispersW = s2.histWhispersW or "one"; s2.histWhispersB = s2.histWhispersB or "one"
+                        if s2.histWhispersCombine == nil then s2.histWhispersCombine = true end
+                    end
+                    s2[field] = (v ~= "game") and v or nil
+                end
+                Re()
+            end }
+    end
     local history = { type = "group", name = "History", order = 6, args = {
         n = note("The history window lists recent messages as plain text you can select and copy, with a button per chat tab and a search box. It is kept in memory only: nothing is written to disk, and it is gone when you log out or reload. Combat log lines are not recorded.", 1),
         keepHdr = hdr("Keeping messages", 10),
         on = tog("Keep recent messages for the history window", "histOn", 11),
         size = rng("Messages kept", "histSize", 12, 20, 2000, nil, 10, function() return not S().histOn end),
-        whispers = sel("Whisper tabs", "histWhispers", 12.5, { game = "As the game's New Whispers setting", one = "All whispers in one tab" },
-            { "game", "one" }, "Which whisper tabs the history window has. As the game: with Options > Social > New Whispers set to New Tab or Both, one tab per conversation; set to In-line, none (whispers stay in the chat tabs that show them). All whispers in one tab: a Whispers tab with every whisper, sent and received.",
-            function() return not S().histOn end),
+        -- (Chat 0.6.26; UI-13 / UI-16 / UI-17 / UI-30 / UI-31) in-game and Battle.net whispers each: as the game (default), one tab per
+        -- conversation, one consolidated tab, or both; a box combines the consolidated tabs into one "Whispers" tab
+        whispersW = WhisperSel("In-game whisper tabs", "histWhispersW", 12.5, "Whispers from and to characters. Individual: one tab per conversation; Consolidated: one In-Game Whispers tab; Both: both. As the game: one tab per conversation when Options > Social > New Whispers is New Tab or Both, none when In-line."),
+        whispersB = WhisperSel("Battle.net whisper tabs", "histWhispersB", 12.6, "Whispers from and to Battle.net friends. Individual: one tab per friend; Consolidated: one BNet Whispers tab; Both: both. As the game: one tab per friend when Options > Social > New Whispers is New Tab or Both, none when In-line."),
+        whispersCombine = { type = "toggle", name = "Combine Battle.net and in-game whispers in the consolidated tab", order = 12.7, width = "full",
+            desc = "One Whispers tab instead of In-Game Whispers and BNet Whispers. Greyed unless one of the two lists above has Consolidated tab or Both.",
+            hidden = function() return not S().histOn end,
+            disabled = function()
+                local w, b = C.History_WhisperModes()
+                return not (w == "one" or w == "both" or b == "one" or b == "both")
+            end,
+            get = function() local _, _, c = C.History_WhisperModes(); return c end,
+            set = function(_, v) local s2 = ns.chat2; if s2 then s2.histWhispersCombine = v and true or false end; Re() end },
         console = tog("Keep console lines in a Console tab", "histConsole", 13,
             "Lines printed by XayaUI (/xui output) and other addons, and the game's system messages, are kept in their own Console tab of the history window instead of mixing with chat. Lines an addon writes straight into a chat window without printing them are not seen. Turned off, its hook on printed lines stays until you /reload but does nothing.",
             function() return not S().histOn end),

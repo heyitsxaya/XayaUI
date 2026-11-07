@@ -57,7 +57,7 @@ step()
 check("after closing: no display of those rules is left on screen", not shown(ca) and not shown(cb) and not shown(cc) and not shown(cd),
   tostring(shown(ca)) .. tostring(shown(cb)) .. tostring(shown(cc)) .. tostring(shown(cd)))
 check("after closing: nothing previewed, no rule or group unlocked, not paused, not unlocked", not ns.AnyPreview() and next(ns.moveUnlocked) == nil
-  and next(ns.groupUnlocked) == nil and not ns.previewPaused and not ns.unlocked and not ns.optionsShown)
+  and next(ns.groupUnlocked) == nil and not ns.previewPaused and not ns.unlocked and not ns.WindowOpen())
 -- /xui unlock typed with the window closed stays through an open / close
 ns.ToggleUnlock()
 check("/xui unlock with the window closed unlocks", ns.unlocked == true and not ns.unlockedByWindow)
