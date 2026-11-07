@@ -290,7 +290,7 @@ Phases marked "in game" add walkthroughs and wait for Xaya's Accept before the n
 | P1 | Platform services: `RegisterProfilePart`, `RegisterBinKind`, Theme scopes (6.6), Core-side services for Bonus; Profiles reads registered parts | no | yes |
 | P2 | Settings seam: `ns.Settings(module)`, all 490 references, the "no direct CueRulesDB" test | no | regression only |
 | P3 | Rule editor and rules tree cut out of Options.lua into `XayaUI_Options/RuleEditor/` (moves as one unit in P4); no feature page was left in Options.lua (done 2026-11-07, Options 0.6.83) | no | regression only |
-| P4 | Code move: `XayaUI_Core` folder, the 23 files, Core.lua / Share.lua / RecycleBin.lua cut, `GameMenuButton.lua`, test and tool paths (16 files name tracking files, 58 name platform files) | no | yes (full regression) |
+| P4 | Code move: `XayaUI_Rules` folder ("XayaUI Rules", B2 answered; `XayaUI` is "XayaUI Platform"), the 22 tracking files (git mv), Core.lua / Share.lua / RecycleBin.lua cut into RuleDefaults.lua / RuleShare.lua / RuleBin.lua, `GameMenuButton.lua`, the "rules" service, XayaUI Rules switchable (every harness combination on and off), test and tool paths; the rule editor stays in `XayaUI_Options/RuleEditor/` (the sidebar painting in it also paints the feature tabs: listed in the P4 debug log) (built 2026-11-07, XayaUI and XayaUI Rules 0.6.76) | no | yes (full regression, H14) |
 | P5 | Settings migration, one module per step, rules last (section 5) | yes, copy only | yes, per module |
 | P6 | Remove old `CueRulesDB` keys, module by module, after her confirmation | yes | yes |
 

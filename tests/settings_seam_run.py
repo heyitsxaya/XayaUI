@@ -10,6 +10,11 @@ that module's settings view; every read and write lands in the same CueRulesDB k
      saved variables of every addon (canonical JSON, table addresses blanked) hash to exactly what the old code (main 2faeda5)
      saved: GOLDEN, made by `python3 tests/settings_seam_run.py --golden` run in a checkout of 2faeda5. Also: no view was asked for
      a key its module does not own during those sessions (ns.SettingsUnknownKeys() empty).
+     (P4, platform split) since XayaUI_Rules declares XayaUITalentDB, the saved variables are compared merged across addon folders
+     ({variable: value}), "core only" is XayaUI + XayaUI_Rules (the old XayaUI folder), and GOLDEN was made again on main 8ced2e3
+     (the code before the split) in that form; the one allowed difference, the new folder's name in the three lists of installed
+     XayaUI addons, is taken out (canon). With XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, no view
+     asked for a key it does not own, and nothing of the rules saved.
   C  a view kept from load time still reads the new data after: the saved variables arriving (first-run defaults), a profile
      import (Profiles > Import, a registered part), Theme "Reset everything", a backup "Load (replace)", and CueRulesDB being
      replaced as a whole; the hot-path caches (ns.AuraAliasesOf, read on every aura read) follow a view write, a profile part

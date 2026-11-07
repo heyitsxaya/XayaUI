@@ -43,3 +43,4 @@ QAWalks-reskin.lua
 QAWalks-platform.lua
 QAWalks-settings-seam.lua
 QAWalks-options-split.lua
+QAWalks-code-move.lua

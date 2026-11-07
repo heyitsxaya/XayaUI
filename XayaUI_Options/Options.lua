@@ -1112,13 +1112,14 @@ end)
 
 local firstOpen = true
 function ns.OptionsApi.Toggle()
-    if not ns.rules then ns.Print("saved data is not ready yet (rules table is nil).") return end
+    if RulesOn() and not ns.rules then ns.Print("saved data is not ready yet (rules table is nil).") return end   -- (P4: only while XayaUI Rules is on)
     if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP] then
         AceConfigDialog:Close(APP)
     else
         -- (Options 0.6.68, REQUEST-LOG A15 P-16: her first open made 3 full builds, 2603 + 739 + 650 ms) The first opening picks the
         -- Rules sub-tab BEFORE the window opens: SelectGroup builds the tree once and only asks for a redraw; Open then reuses that same
         -- tree (Tree.keep) and the redraw SelectGroup asked for is dropped (Open has just drawn it). One build instead of three.
+        if firstOpen and not RulesOn() then firstOpen = false end   -- (P4) no Rules tab: the window opens on its first tab
         if firstOpen then
             firstOpen = false
             local ui = PlatS.ui

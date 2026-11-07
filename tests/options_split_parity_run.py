@@ -12,6 +12,9 @@ dates and error positions are normalised.
   B The same with each feature module switched off in turn (Chat, QoL, Bonus Features, Blizzard Reskin, Dev Assist, Nameplates, Media).
   C Off costs nothing (V14): a feature addon that is switched off has registered no settings page (ns.BuildSettingsPages(module)
     is empty) and its top tab is absent; the rule editor's own files register no page of their own.
+  D (P4, platform split) XayaUI Rules switched off: the window is the all-on window minus exactly the rules' own parts (the Rules tab,
+    the rule list rows and Rule Creation tab of Settings, the backups and the "Rules and groups" part of Profiles); every other line is
+    the same. Fails on the code before P4 (there is no XayaUI_Rules folder to switch off: the Rules tab and the backups stay).
 The golden values below were produced by `python3 tests/options_split_parity_run.py --golden` on a checkout of bd03eb5 (the code
 before the move). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
@@ -37,7 +40,8 @@ local ns = rawget(_G, "XayaUI_NS")
 if ns and ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 3)
 ns = rawget(_G, "XayaUI_NS")
 if not (ns and ns.BuildOptionsTable) then return { "the settings window did not load" } end
--- the fixed state
+-- the fixed state (P4: none while XayaUI Rules is off; there are no rules then)
+if ns.NewRule then
 local function rule(name, enabled) local r = ns.NewRule(); r.name = name; r.enabled = enabled; ns.NormalizeRule(r); return r end
 ns.folders = {}
 local g1 = ns.NewFolder and ns.NewFolder("Group One") or nil
@@ -51,6 +55,7 @@ pcall(ns.NewCueRule, A, "icon"); pcall(ns.NewCueRule, A, "text"); pcall(ns.NewCu
 local E = rule("Deleted later", true); ns.rules[#ns.rules + 1] = E
 if ns.RecycleRule then pcall(ns.RecycleRule, E) end
 if ns.MarkDirty then pcall(ns.MarkDirty) end
+end
 W.tick(0.1, 3)
 local root = ns.BuildOptionsTable()
 -- the dump
@@ -237,6 +242,38 @@ def main():
                   "still registered: %s" % sorted(own & have))
             if off in ("XayaUI_Chat", "XayaUI_Bonus"):
                 check("[%s] V14: its top tab is absent" % tag, MODULE_KEY[off] not in got["tabs"])
+    # D (P4) XayaUI Rules switched off: no golden from the old code (the module did not exist). The window is the all-on window minus
+    # exactly what belongs to the rules (the Rules tab, the rule list rows and the Rule Creation tab of Settings, the backups and the
+    # "Rules and groups" tick boxes of Profiles); everything else is line for line the same. Lines that differ for a known reason:
+    # the Recycle Bin (no rule could be deleted into it), the order numbers of the other profile parts (one part fewer before them),
+    # and Dev Assist's detailed-record rows (they list rules and count the record's lines).
+    on_dump, _, _ = run_variant(None)
+    off_dump, off_reg, off_errs = run_variant("XayaUI_Rules")
+    errs_all += [("off-XayaUI_Rules", e) for e in off_errs]
+    check("[off-XayaUI_Rules] the options table builds", off_dump is not None)
+    if off_dump is not None and on_dump is not None:
+        on_lines, off_lines = set(on_dump.split("\n")), set(off_dump.split("\n"))
+        path = lambda l: l.split(" :: ", 1)[0]
+        RULES_ONLY = re.compile(r"^(cooldowns(\..*)?|(set\.ui|settings)\.rules(\..*)?|(set\.ui\.display|settings\.ui)\.(displayHeader|parentGradient|"
+                                r"selStyle|sidebarSpellIcons)|profiles\.export\.(savedH|backupIntro|saveName|savePick|save|p\d+(\..*)?)|"
+                                r"profiles\.(export\.inc|import\.imp)_rules)$")
+        KNOWN = re.compile(r"^(profiles\.bin(\..*)?|profiles\.(export\.inc|import\.imp)_\w+|(set|settings)\.debug\.devPages\.devrecord\.(recFocus|recordInfo))$")
+        removed = sorted(path(l) for l in on_lines - off_lines)
+        added = sorted(path(l) for l in off_lines - on_lines)
+        check("[off-XayaUI_Rules] the Rules tab is absent", not any(path(l) == "cooldowns" for l in off_lines))
+        check("[off-XayaUI_Rules] the Rule Creation tab, the rule list rows and the backups are absent",
+              not any(re.match(r"^((set\.ui|settings)\.rules|profiles\.export\.(savedH|save|saveName|savePick))$", path(l)) for l in off_lines))
+        bad_removed = [p for p in removed if not (RULES_ONLY.match(p) or KNOWN.match(p))]
+        bad_added = [p for p in added if not KNOWN.match(p)]
+        check("[off-XayaUI_Rules] every other line of the window is the same as with XayaUI Rules on (%d lines gone, all the rules' own)" % len(removed),
+              not bad_removed and not bad_added, "unexpected: gone %s / new %s" % (bad_removed[:8], bad_added[:8]))
+        inc_on = sorted(re.search(r'name="([^"]+)"', l).group(1) for l in on_lines if path(l).startswith("profiles.export.inc_"))
+        inc_off = sorted(re.search(r'name="([^"]+)"', l).group(1) for l in off_lines if path(l).startswith("profiles.export.inc_"))
+        check("[off-XayaUI_Rules] Profiles > Export offers every part but \"Rules and groups\"",
+              inc_off == sorted(x for x in inc_on if x != "Rules and groups") and "Rules and groups" in inc_on, "%s / %s" % (inc_on, inc_off))
+        reg = dict(x.split("=", 1) for x in (off_reg or "").split())
+        check("[off-XayaUI_Rules] the other modules register the same settings pages as with it on",
+              off_reg == results["all-on"]["registered"], "%s / %s" % (off_reg, results["all-on"]["registered"]))
     allon = results.get("all-on")
     if allon:
         reg = dict(x.split("=", 1) for x in allon["registered"].split())
