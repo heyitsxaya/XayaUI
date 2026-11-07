@@ -465,6 +465,13 @@ Opened at her request through the "Repository branch cleanup" session (CLEAN-7, 
 | P-5 | Her answers (question prompt, 2026-11-07 ~00:15 UTC): stage 1: "Yes, as proposed (Recommended)"; transfer: "File + report tool (Recommended)"; record size: "10,000 lines (Recommended)"; probe / after: "Probe off; keep yours (Recommended)" | Recorded; building | this session, branch `claude/perf-test-m-plus` | Builds P-1 (audit doc + baseline on existing Perf / C_AddOnProfiler), P-4 (Accept sets 10,000 lines, probe stays off, Done turns off only what Accept turned on), `tools/perf_report.py` reading the uploaded SavedVariables file. |
 
 
+## A16. QA review popup session (opened 2026-11-07 by session_014bN6tSStpdmmCXviFAqPdQ; branch `qa-review-popup`)
+Her words relayed verbatim by the hub's brief.
+
+| # | Her words (verbatim; [screenshot]) | Status | Where / what | Notes |
+|---|---|---|---|---|
+| QR-1 | (2026-11-07 ~08:25 UTC) "I want a qa review checklist pushed and displayed as a popup for everything that needs review when I first load into the game and I want all outstanding questions to be nested within a qa question prompt flow so I know what you had to execute blindly and need feedback on." | BRANCH `qa-review-popup` (Dev Assist 0.7.30) | XayaUI_DevAssist/QAReview.lua (window + flow), QAQuestions.lua (the one question data file), QAWalks-review.lua (J30 walkthroughs); tests/qa_review_run.py | The choices made without asking her are themselves questions REVIEW-1..4 in the flow. Other sessions' questions are added to QAQuestions.lua as their exact wording arrives (none invented). |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."
