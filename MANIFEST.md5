@@ -172,7 +172,7 @@ e8301ad57f35da661e15c253b4e5ae91  XayaUI_DevAssist/CharacterWidthProbe.lua
 babb5f92d9469f95fd4e91773a8ba7e4  XayaUI_DevAssist/QAQuestions.lua
 b6fcf322839c4b3340cc700962a42889  XayaUI_DevAssist/QAReview.lua
 9e3d47f0eca47ca0edb07b7f1f966dea  XayaUI_DevAssist/QAWalk.lua
-a208fcf3b45a971d91cc1a716d208dff  XayaUI_DevAssist/QAWalks-Checklist.lua
+355a81569c8349f1a99bf43325d9fd17  XayaUI_DevAssist/QAWalks-Checklist.lua
 22231841abf6d188c16ffb8836bd6811  XayaUI_DevAssist/QAWalks-audit-options.lua
 4269667da1317477fd059808619d184e  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
 6472fd2ecd1aaa3728e979d3f4d5d615  XayaUI_DevAssist/QAWalks-audit.lua
@@ -186,11 +186,11 @@ b568549b88e4574d4461c3b0d5f38be4  XayaUI_DevAssist/QAWalks-generate.lua
 a2dfdce9114901eb73bcc74178c1b067  XayaUI_DevAssist/QAWalks-nameplates.lua
 f452a84717c19e50c1c4acc8cef49aef  XayaUI_DevAssist/QAWalks-perf.lua
 02e9597463f537baed2d313e812e20e6  XayaUI_DevAssist/QAWalks-profiles.lua
-080518834d91ffb807b43cb87e3cabef  XayaUI_DevAssist/QAWalks-reskin.lua
+410d0e0e3d55c1f5c9e92cd860a1ba4a  XayaUI_DevAssist/QAWalks-reskin.lua
 88653725abec812e843d4b38d078d387  XayaUI_DevAssist/QAWalks-review.lua
 c9228f262fe161232dd355ea92e02a2e  XayaUI_DevAssist/QAWalks-statcalc.lua
 f5668874e611a3bc713bc0494f323ec7  XayaUI_DevAssist/QAWalks.lua
-6b4f4e03b18ec0efd1919b1567eb2b59  XayaUI_DevAssist/XayaUI_DevAssist.toc
+fefb01aef4c6d67a5abb28033161b43e  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -296,10 +296,10 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 4fbc19f7b4bd634b1574046a5ffae16f  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 ce610e887b813d84d6c7a5703f79a05c  XayaUI_QoL/XayaUI_QoL.toc
-65a38f2395f60542da4b2d872145ebcd  XayaUI_Reskin/BlizzardSkins.lua
+11075b1b67561961b33a82cf9d7bb298  XayaUI_Reskin/BlizzardSkins.lua
 c813a14421dcf7ffb65e62782d371e94  XayaUI_Reskin/FriendColors.lua
 0dfb9996fec47cbc2adaa4709d8581cf  XayaUI_Reskin/GameMenuSkin.lua
-ce4ba7ead47dff9948adc6fae46c6f67  XayaUI_Reskin/XayaUI_Reskin.toc
+d507c959d4b1e6b0764432a3fa1996d8  XayaUI_Reskin/XayaUI_Reskin.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
 6282a56ce03230e14f536fc71e16240b  debug-log/2026-11-02-0100-buff-aura-multiple-ids-0.5.55.md
 906cbb09c9967ce5017b332f40552831  debug-log/2026-11-02-0200-group-move-duplicate-buff-0.5.56.md
@@ -644,8 +644,9 @@ f3acc99aabe580c7f3daf0bc951c81f1  debug-log/2026-11-07-1252-reskin-menus-reskin-
 4ff1a7cbdeef205b4a04b7a1215da56c  debug-log/2026-11-07-1303-reskin-status-bars-reskin-0.6.15-devassist-0.7.46.md
 689c3d2f3fba29d8dbba79b34edb4934  debug-log/2026-11-07-1312-reskin-minimap-buttons-reskin-0.6.16-devassist-0.7.47.md
 f9fa7aeed49d581dd89f353fda3d07d9  debug-log/2026-11-07-1318-reskin-buttons-reskin-0.6.17-devassist-0.7.48.md
+bfe431c4fbef35719125686de62e3406  debug-log/2026-11-07-1324-reskin-us-spelling-reskin-0.6.18-devassist-0.7.49.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-dcbf78c0e6819b6fc1513fc136df47f7  docs/QA-CHECKLIST.md
+a76a62812a16833389894349961ee640  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
@@ -932,7 +933,7 @@ ebe540c653fb3ed1e9116081f1e852d9  tests/qa_walk_run.py
 7c78d6f121fe2f26e502377410e949e9  tests/qa_walks_display_run.py
 5b9308ad8f05429e44e7e8e7c717e2c9  tests/qa_walks_generate_run.py
 94111ba7b3b4596bdf91823785038c0c  tests/qa_walks_profiles_run.py
-7cb273df45d517082c99b80a426f36e4  tests/qa_walks_reskin_run.py
+61802c5c0b8223ba80a48caf6c179667  tests/qa_walks_reskin_run.py
 541e949062b7be26c9b39690bb40de3e  tests/recycle_bin_run.py
 2453982bb724f7a4377718d116b598cd  tests/release_guard_run.py
 8f3ee4809efb1efd02f5b7b4ce8e953b  tests/reskin_blizzard_skins_run.py
