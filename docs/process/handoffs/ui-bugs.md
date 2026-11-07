@@ -14,14 +14,15 @@ section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/
   - b4cc411: UI-78 (core 0.6.69, Dev Assist 0.7.20).
   - 5ce2d2b: UI-77 follow-up (repaint from Theme.Resolve, not a theme listener).
   - a06a418: UI-77 part 2 (QoL 0.7.42, Dev Assist 0.7.21).
+  - 00ef0d4: this handoff (docs only).
+  - ee5362c: UI-65, hover texts (core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8, Dev Assist 0.7.22).
 - Full suites:
   - 0acb900 and 5ce2d2b running when written (scratchpad snapshots, both 0 FAIL at ~75-80%).
-  - a06a418 not started.
+  - a06a418 not started separately: run the suite on ee5362c (the tip), which holds a06a418 and UI-65.
   - Each green hash goes to the lander session_014bN6tSZh6UFB2WcRuyXqBZ with the suite result and versions. Only the lander pushes main.
-- Uncommitted in the working tree: UI-65 hover-text rewrites by a background agent (21 files; desc strings only; Notepad.lua excluded).
-  Its change list: hover-rewrites.md in the session scratchpad. The agent was running its own suite. If this session is gone, the
-  edits are lost (never committed): redo UI-65 from REQUEST-LOG UI-65 and BUILD-RULES section B (title + up to two sentences).
-- Version clashes for the lander / registry:
+- UI-65 is committed (ee5362c). Its old -> new list: docs/reference/HOVER-REWRITES-UI-65-2026-11-07.md. Bonus Notepad.lua's long texts
+  were left out on purpose (the function-audit session owns that file); the walkthrough ui-short-hovers lists them.
+- Version clashes for the lander / registry (UI-65 took numbers above every registry claim: core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8):
   - Core: the registry gives this session 0.6.67 only (used by UI-76), but 0.6.68 (UI-77) and 0.6.69 (UI-78) are taken by the chat round and externals.
   - Options: 0.6.64 vs d8-raid-rules-main / function-audit-land; 0.6.65 vs perf-*; 0.6.66 vs settings-restructure 8558687 (asked them to renumber).
   - Dev Assist: 0.7.13-0.7.21, contested; the lander relabels.
@@ -42,7 +43,7 @@ section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/
    - Then 5ce2d2b (UI-77 part 1, UI-78).
    - Then a06a418 (UI-77 part 2): run `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py` on that exact commit, plus `python3 tools/precheck.py --base origin/main` (must be FAILS 0).
    If main moved: merge main in, rerun the suite on the merge commit, then send it.
-2. UI-65: review the hover rewrites (each text: title + at most two sentences, plain, says what that one control changes). Run tests (grep the tests for any desc text you changed). Commit only those files with a MANIFEST made after git add. Suite, then lander.
+2. UI-65: committed at ee5362c; full suite on ee5362c, then send it to the lander.
 3. UI-47 step 3: a tab-by-tab audit of every settings page against DISPLAY-RULES.md, for display types with no ruling yet. Fix what a rule covers. Send each new choice to the QA flow (no questions to her, O-108 / O-150).
 4. UI-51 / UI-52 (shared tooltip helper + services refactor, BUILD-RULES A/B) only after the perf session's baseline (UI-55: "Baseline, refactor, test").
 5. Map #30 / B150: mark "resolved: game setting (miniWorldMap CVar), workaround given, no code change" in the logs.
@@ -125,7 +126,7 @@ Nothing here has been seen in game unless it says so.
 | UI-62 | "Global Cooldown should be GCD / Critical strike effectiveness should be title cased like every other line" [screenshot: the character window's stat list: General > Health, Mana, Holy Power, Global cooldown, Movement speed; Offensive > ... Critical strike effectiveness] | on main 7b830cf (baee9ac; not seen in game) |
 | UI-63 | "GCD is generally universal in my understanding and is modified by haste except for energy-resource classes — confirm on wowhead first and then look into GCD scaling to see if it’s universally uniform where haste reduces the GCD. If so, this should be a standardized calculation" | on main 7b830cf (baee9ac; not seen in game) |
 | UI-64 | Her answer (question box) to UI-63, after the research (docs/reference/GCD-RESEARCH-2026-11-07.md): "Formula + live check (Recommended)" (one shared GCD calculation: 1.5 s / (1 + haste) with a 0.75 s floor, or 1.0 s fixed for energy melee: Rogue, Cat Form Feral, Brewmaster, Windwalker; the live reading still shown, and the line says so when it differs) | on main 7b830cf (baee9ac; not seen in game) |
-| UI-65 | "Reiterating need for briefer, more direct, more user-legible tooltips" [screenshot of Discord: Insivius "this tooltip is hilarious" on the Enable Chat Panel hover (v0.6.57: "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."); Xaya "lol how come?"; Insivius "It's just very wordy"; Insivius: "Put something like "Uncheck to restore Blizzard default chat. /reload to clear XUI settings from the panel after deactivating.""] | not built yet: a background agent rewrote the hover texts in the working tree (uncommitted, 21 files); review + commit + suite + lander still to do |
+| UI-65 | "Reiterating need for briefer, more direct, more user-legible tooltips" [screenshot of Discord: Insivius "this tooltip is hilarious" on the Enable Chat Panel hover (v0.6.57: "Off gives Blizzard's chat back as the game draws it, and nothing of the Chat Panel runs. A few hooks it placed in the game's chat while it was on stay until you /reload, but they do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."); Xaya "lol how come?"; Insivius "It's just very wordy"; Insivius: "Put something like "Uncheck to restore Blizzard default chat. /reload to clear XUI settings from the panel after deactivating.""] | branch claude/ui-bugs-focused@ee5362c (core 0.6.70, Options 0.6.71, QoL 0.7.44, Chat 0.6.34, Bonus 0.6.26, Reskin 0.6.8, Dev Assist 0.7.22; QA B234) |
 | UI-66 | (relayed 2026-11-07 ~00:20 UTC by the coordinator 014bN6tSStpdmmCXviFAqPdQ; her words) "Coordinate with the new session to be able to finish up work in ui bugs session and push to main so the new session can review the new work on top of the old work" | process: finish + land (in progress) |
 | UI-67 | "Review Deja character stats as well because they also track GCs" (after UI-63 / UI-64, the standard GCD) | on main 7b830cf (baee9ac; not seen in game) |
 | UI-68 | (standing rule V21, relayed 2026-11-07 ~05:55 UTC by the coordinator; her words) "As a standing rule, make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing"; to the landing session: only branches that "still land cleanly and have qa test scripting for in game confirmation prompting available" land this round | on main 7b830cf (baee9ac; not seen in game) |
