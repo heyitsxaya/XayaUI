@@ -818,7 +818,7 @@ local function EngineAuto(rest)
     local db, guard = D.DB(), D._guard
     if not db then ns.Print("saved data not loaded yet") return end
     local a = tostring(rest or ""):lower()
-    if a == "on" or a == "off" then db.auto = (a == "on"); guard.lean, guard.off = nil, nil; guard.bad = 0; D.Build() end
+    if a == "on" or a == "off" then db.auto = (a == "on"); guard.lean, guard.off, guard.kept, guard.leanAt, guard.leanHanded = nil, nil, nil, nil, nil; guard.bad = 0; D.Build() end
     D.Status()
 end
 local function EngineGroup(word)

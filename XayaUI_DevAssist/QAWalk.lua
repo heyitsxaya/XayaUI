@@ -30,6 +30,17 @@ local function DB()
 end
 QA.DB = DB
 
+-- (0.7.30, the review popup, QAReview.lua) a walkthrough's fingerprint: its title and step texts. The review lists walkthroughs whose
+-- fingerprint is new or differs from the build she last acknowledged; a saved result keeps the fingerprint it was run against.
+function QA.Fingerprint(def)
+    if type(def) ~= "table" or type(def.steps) ~= "table" then return "0" end
+    local parts = { tostring(def.title or ""), tostring(#def.steps) }
+    for _, st in ipairs(def.steps) do parts[#parts + 1] = tostring(type(st) == "table" and st.text or "") end
+    local s, h = table.concat(parts, "\1"), 5381
+    for i = 1, #s do h = (h * 33 + s:byte(i)) % 2147483647 end
+    return tostring(h)
+end
+
 function QA.Register(id, def)
     if type(id) ~= "string" or type(def) ~= "table" or type(def.steps) ~= "table" then return end
     if not QA.walks[id] then QA.list[#QA.list + 1] = id end
@@ -131,6 +142,8 @@ local function Status(id)
     for _, s in ipairs(r.steps or {}) do if s.r == "P" then p = p + 1 elseif s.r == "F" then f = f + 1 end end
     return f > 0 and ("|cffff6060%d failed|r"):format(f) or ("|cff60ff60%d passed|r"):format(p)
 end
+
+QA.StatusText = Status   -- (0.7.30: the review popup shows the same verdict text)
 
 local ShowList, ShowStep, ShowEnd
 local function Build()
@@ -296,7 +309,7 @@ function QA.Answer(r)
     run.steps[run.i] = { r = r, note = Clean(W.note:GetText(), 160), k = key and Clean(key, 20) or nil }
     if run.i < #def.steps then run.i = run.i + 1; ShowStep()
     else
-        DB().results[run.id] = { when = time and time() or 0, v = def.version, steps = run.steps }
+        DB().results[run.id] = { when = time and time() or 0, v = def.version, steps = run.steps, fp = QA.Fingerprint(def) }
         ShowEnd(DB().results[run.id], def)
     end
 end

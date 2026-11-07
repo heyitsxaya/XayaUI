@@ -85,8 +85,9 @@ function HOOKED(name) for i = W.coreHooks + 1, #W.hookLog do if W.hookLog[i][2] 
 function NFILTERS() local n = 0; for _, l in pairs(W.filters) do n = n + #l end; return n end
 function THEMEL() return #ns.Theme._listeners - W.coreThemeListeners end
 function FIND(name)            -- an option of the Chat Panel's settings page, by its label (the switch Xaya clicks)
-  local o = ns.BuildChatTab(function() end)
-  if o.xuiSwitch and o.xuiSwitch.name == name then return o.xuiSwitch end   -- (Chat 0.6.18, S1 #48: "Enable Chat Panel" is the row's tick box)
+  local all = W.allChatOptions()
+  for _, o in pairs(all.args) do if o.xuiSwitch and o.xuiSwitch.name == name then return o.xuiSwitch end end
+  local o = all   -- (Chat 0.6.18, S1 #48: "Enable Chat Panel" is the row's tick box)
   local function walk(t)
     for _, v in pairs(t.args or {}) do
       if type(v) == "table" then
@@ -124,9 +125,10 @@ def rect(W, o):
     r = W.rect(o); return (r.l, r.b, r.w, r.h)
 
 # ===================================================================================================================================
-# A. The Chat Panel saved OFF at login
+# A. The Chat Panel saved OFF at login (and, since Chat 0.6.33, QoL > Improved Chat too: UI-18 / UI-19 / UI-21 made it a switch of its
+#    own; with it on, its parts run over Blizzard's chat, tests/chat_improved_split_run.py)
 # ===================================================================================================================================
-lua, W, run, frames = world("CueRulesDB.chat2 = { enabled = false }", start=False)
+lua, W, run, frames = world("CueRulesDB.chat2 = { enabled = false, improvedOn = false }", start=False)
 check("A1 Chat Panel saved off, files read: XayaUI_Chat made no frame while loading", n(run, "NFRAMES") == 0, both(run, "ONUPDATES"))
 check("A2 ...and placed no hook (no print hook, no whisper-tab hook)", n(run, "HOOKS") == 0, both(run, "HOOKS"))
 check("A3 ...and added no theme callback", run("return THEMEL()") == 0, run("return THEMEL()"))
@@ -147,7 +149,7 @@ d = run("return DELTA(...)", s0)
 check("A9 a chat message, a whisper, a system message and a print() run no Chat Panel code", d.chat == 0 and d.unitName == 0 and d.lower == 0,
       (d.chat, d.unitName, d.lower, dict(run("return M.by"))))
 keys = sorted(str(k) for k in run("return CueRulesDB.chat2").keys())
-check("A10 no data built: the saved Chat Panel table holds only its switch", keys == ["enabled"], keys)
+check("A10 no data built: the saved Chat Panel table holds only its switches (Chat Panel, Improved Chat)", keys == ["enabled", "improvedOn"], keys)
 # switched on with its own settings switch, as Xaya would
 run("SET('Enable Chat Panel', true)")
 W.update(0.4, 2)
@@ -193,7 +195,7 @@ check("A21 (sanity) no module errors", len(list(run("return C.errors").keys())) 
 # ===================================================================================================================================
 ALL_OFF = """CueRulesDB.chat2 = { enabled = true, barOn = false, fadeOn = false, histOn = false, histConsole = false, soundsOn = false,
   whisperSoundsOn = false, spamRepeat = false, spamPhrases = '', links = false, ignoreClick = false, histButton = false, scrollOwn = false,
-  inputHint = false, useTheme = false, whisperSelect = false }
+  inputHint = false, useTheme = false, whisperSelect = false, sbOn = false }
 CueRulesDB.chat = { privBtn = false, privOn = false, privReveal = false }"""
 lua, W, run, frames = world(ALL_OFF)
 cnt, names = both(run, "ONUPDATES")

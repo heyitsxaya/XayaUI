@@ -400,9 +400,17 @@ check("guard: reads Blizzard's container cost (where the containers' work is cou
 lua('profilerMs = 0.1; blizzMs = 1.2; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
 check("guard stage 1: lean mode (spec being played only)", lua(G + "return g.lean == true and e.auto == true") and not own("SPEC") and own("U1"))
 check("guard stage 1 is not saved (a /reload starts clean)", lua(G + "return e.lean == nil"))
+check("guard stage 1 counts the displays lean mode handed back (the evidence stage 2 needs)", lua(G + "return g.leanAt == 1.2 and (g.leanHanded or 0) >= 1"))
+# 0.6.69 (externals): the meter also counts Blizzard's own buff / target frames and group headers. A reading that does not fall after
+# lean mode handed displays back is not XayaUI's, so drawing stays on (switching off would hide every aura the game hides in combat).
 lua('printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 2: automatic mode off, all back to XayaUI, said in chat", lua(G + "return g.off == true and #e.guardTrips == 2 and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
-check("guard stage 2 is not saved: the saved setting stays on", lua(G + "return e.auto == true and e.guardTrips[2].session == true"))
+check("guard stage 2, cost not lowered by lean mode: drawing stays ON (kept), said in chat, still lean", lua(G + "return not g.off and g.kept == true and g.lean == true and #e.guardTrips == 2 and e.guardTrips[2].step == 'kept' and printed[1]:find('game.s own frames') ~= nil") and own("U1") and own("A1"))
+lua('printed = {}; blizzMs = 5.0; for i = 1, 6 do NS.AuraDisplay.GuardCheck() end')
+check("guard: once kept, it does not step again this session", lua(G + "return not g.off and #e.guardTrips == 2 and #printed == 0") and own("U1"))
+# the reading fell by at least a fifth after lean mode (XayaUI's containers are the cost) but is still high: off, as before
+lua('NS.AuraDisplay._guard.kept = nil; NS.AuraDisplay._guard.leanAt = 2.0; blizzMs = 1.5; printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
+check("guard stage 2: lean mode lowered the cost but not enough: automatic mode off, all back to XayaUI, said in chat", lua(G + "return g.off == true and #e.guardTrips == 3 and e.guardTrips[3].step == 'off' and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
+check("guard stage 2 is not saved: the saved setting stays on", lua(G + "return e.auto == true and e.guardTrips[3].session == true"))
 lua('profilerMs = 0.1; blizzMs = 0; SlashCmdList["XUIENGINE"]("auto on")')
 check("auto on: everything back, lean mode cleared", lua(G + "return e.auto == true and not g.lean and not g.off") and own("U1") and own("SPEC"))
 # a trip saved by an older version is undone once; a player's own "auto off" (no guard trip behind it) is kept
@@ -608,6 +616,30 @@ check("the condition's changes end: the art is painted again from the display's 
 lua('GCc.thenCues = nil; NS.runtime[GCi].info = { result = false }; NS.AuraDisplay.SyncLive()')
 check("no condition lists the display: it follows the aura as before (shown whatever the cue's own reading)", lua("return GS.frame.shown == true"))
 lua('GCc.thenCues = { "q1" }')
+
+# 19. externals and raid defensives (core 0.6.69; Xaya 2026-11-07: "I turned EUI ones on because XUI isn't reliably performing").
+# The game hides these auras from XayaUI's reading in combat, but its container may match spell IDs on the player's buffs
+# (Blizzard_CustomAuraContainer.lua). (a) a buff learned in game under another ID (AuraAlias.lua: same name, seen out of combat) is in
+# the include list too; (b) the status screens can ask who draws a rule's display, and why not.
+_alias_path = repr(os.path.join(ROOT, "XayaUI", "AuraAlias.lua")).replace("'", '"')
+L.execute(r'''local cf = CreateFrame; CreateFrame = nil; local f = assert(loadfile(PATH)); f("XayaUI", NS); CreateFrame = cf'''.replace("PATH", _alias_path))
+lua(r"""
+EXT, EXTc = P("Power Word: Barrier (cast ID)", nil, 62618)
+EXTM = P("external MISSING", nil, 33206, { buffState = "missing" })
+CueRulesDB.auraAlias = { [62618] = { [81782] = true } }
+NS.AuraDisplay.Build()
+""")
+check("externals: the buff learned under another ID (81782 for 62618) is in the container's include list",
+      lua("local s = NS.AuraDisplay._singles[EXT]; local ids = s and s.frame.groups.main.filters.includeSpellIDs; return s and s.ok and ids[62618] == true and ids[81782] == true"))
+check("externals: the rule itself is not changed by the alias (saved rule keeps its one ID)", lua("return EXT.buffAlt == nil and EXT.buffID == 62618"))
+check("externals: OwnerOf names the container that draws a display", lua("local o, w = NS.AuraDisplay.OwnerOf(EXT); return o == true and w:find('slot') ~= nil"))
+check("externals: OwnerOf a cue answers for its parent rule", lua("local o = NS.AuraDisplay.OwnerOf(EXTc); return o == true"))
+check("externals: OwnerOf gives the reason a display stays with XayaUI", lua("local o, w = NS.AuraDisplay.OwnerOf(EXTM); return o == false and w:find('MISSING') ~= nil"))
+check("externals: OwnerOf a cooldown-only display is nil (not an aura display)", lua("return NS.AuraDisplay.OwnerOf(CDONLY) == nil"))
+lua('CueRulesDB.engineDisplay.auto = false; NS.AuraDisplay.Build()')
+check("externals: automatic drawing switched off: OwnerOf says so", lua("local o, w = NS.AuraDisplay.OwnerOf(EXT); return o == false and w:find('off') ~= nil"))
+lua('CueRulesDB.engineDisplay.auto = true; CueRulesDB.auraAlias = nil; NS.AuraDisplay.Build()')
+check("externals: without a learned alias the include list is the rule's own ID only", lua("local ids = NS.AuraDisplay._singles[EXT].frame.groups.main.filters.includeSpellIDs; return ids[62618] and not ids[81782]"))
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
 lua('BEFORE_D = NS.AuraDisplay; BEFORE_SLASH = SlashCmdList["XUIENGINE"]')

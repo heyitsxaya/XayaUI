@@ -1,6 +1,6 @@
 # Settings window: new top tabs, toolbar gone, Profiles with components (Options 0.6.72, Dev Assist 0.7.31)
 
-Session 014bN6tWsQ4qcob9VPKD7PV5, branch `claude/settings-restructure` (from `main` 7b830cf). REQUEST-LOG A8 UI-23 to UI-27, A16 SR-1 to SR-3.
+Session 014bN6tWsQ4qcob9VPKD7PV5, branch `claude/settings-restructure` (from `main` 7b830cf). REQUEST-LOG A8 UI-23 to UI-27, A20 SR-1 to SR-3.
 
 ## Her words (A8)
 - UI-23: "I believe these almost exclusively belong to rules so they should be put under the rules tab and the Rules / QOL / Bonus Features / Reskin / Settings should be at the top level now instad" [toolbar: + New Rule, Import, Export]

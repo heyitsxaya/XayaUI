@@ -17,6 +17,9 @@ local DEFAULTS = {
     closeOnClick = true,     -- the list closes after a choice
     entries = {},            -- [key] = false hides that row; a row with no entry here is shown (features add rows: ns.RegisterLauncher)
     iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
+    -- where = nil | "MINIMAP" | "SIDEBAR" | "BOTH" (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7): the chat sidebar (XayaUI Chat, Improved
+    -- Chat) can hold this button. Nothing chosen: the sidebar holds it while the minimap button is turned off (her words: "default to
+    -- having sidebar on if minimap is turned off"). Not in DEFAULTS, so nothing is saved until it is chosen.
 }
 ns.MINIMAP_DEFAULTS = DEFAULTS
 local BASE_SIZE, MIN_SIZE, MAX_SIZE = 31, 16, 48   -- BASE_SIZE is the size the ring art was laid out for
@@ -160,18 +163,27 @@ local function Rebuild()
     return list
 end
 
-local function TogglePopup()
+local function TogglePopup(anchor)
+    anchor = anchor or button
     if popup and popup:IsShown() then ClosePopup() return end
     local list = Rebuild()
     if #list == 0 then if ns.ToggleUI then ns.ToggleUI() end return end
     popup:ClearAllPoints()
     -- open toward the middle of the screen so the list is never cut off
-    local cx = button:GetCenter() or 0
+    local cx = anchor:GetCenter() or 0
     local half = (UIParent:GetWidth() or 1024) / 2
-    local _, cy = button:GetCenter()
+    local _, cy = anchor:GetCenter()
     local below = (cy or 0) > ((UIParent:GetHeight() or 768) / 2)
-    popup:SetPoint(below and "TOP" or "BOTTOM", button, below and "BOTTOM" or "TOP", (cx > half) and -MENU_W / 2 + 10 or MENU_W / 2 - 10, below and -4 or 4)
+    popup:SetPoint(below and "TOP" or "BOTTOM", anchor, below and "BOTTOM" or "TOP", (cx > half) and -MENU_W / 2 + 10 or MENU_W / 2 - 10, below and -4 or 4)
     catcher:Show(); popup:Show()
+end
+-- (core 0.6.68; A16 CR-6 / CR-7) the same list from XayaUI's button in the chat sidebar
+function ns.Minimap_TogglePopupAt(anchor) if DB() and anchor then TogglePopup(anchor) end end
+function ns.Minimap_Where()
+    local db = DB(); if not db then return "MINIMAP" end
+    local w = db.where
+    if w == "MINIMAP" or w == "SIDEBAR" or w == "BOTH" then return w end
+    return db.hide and "SIDEBAR" or "MINIMAP"
 end
 
 local function BuildButton()
@@ -229,10 +241,16 @@ end
 
 function ns.Minimap_Refresh()
     local db = DB(); if not db then return end
-    if db.hide then if button then button:Hide() end; ClosePopup(); Watch(false) return end
+    if db.hide or db.where == "SIDEBAR" then if button then button:Hide() end; ClosePopup(); Watch(false); ns.Minimap_SidebarChanged() return end
     BuildButton(); ApplySize(); Place(); ApplyIcon(); button:Show()
     if popup and popup:IsShown() then Rebuild() end
     Watch(true)
+    ns.Minimap_SidebarChanged()
+end
+-- the chat sidebar shows or drops XayaUI's button at once (XayaUI Chat provides "chatSidebar" through Modules.lua; nothing without it)
+function ns.Minimap_SidebarChanged()
+    local sv = ns.Service and ns.Service("chatSidebar")
+    if sv and type(sv.Refresh) == "function" then pcall(sv.Refresh) end
 end
 
 -- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
@@ -262,6 +280,11 @@ function ns.BuildMinimapTab(Notify)
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "A button on the minimap. Left-click opens a small list of buttons for the features you pick below; right-click opens this window; drag it to move it around the minimap." },
         show = { type = "toggle", order = 1, name = "Show the minimap button", width = "full", get = function() return not DB().hide end, set = function(_, v) DB().hide = not v; ns.Minimap_Refresh() end },
+        -- (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7, Xaya: "create the option in each feature to choose whether it's a sidebar or minimap
+        -- icon display; default to having sidebar on if minimap is turned off")
+        where = { type = "select", order = 1.5, name = "Show it in", values = { MINIMAP = "Minimap", SIDEBAR = "Chat sidebar", BOTH = "Both" }, sorting = { "MINIMAP", "SIDEBAR", "BOTH" },
+            desc = "The chat sidebar is part of QoL > Improved Chat. With nothing chosen, the sidebar holds the button while the minimap button is turned off.",
+            get = function() return ns.Minimap_Where() end, set = function(_, v) DB().where = v; if v ~= "SIDEBAR" then DB().hide = false end; ns.Minimap_Refresh() end },
         lock = { type = "toggle", order = 2, name = "Lock the button's position", disabled = function() return DB().hide end, get = g("locked"), set = function(_, v) DB().locked = v end },
         close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
         angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },

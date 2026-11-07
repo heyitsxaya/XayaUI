@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-profiles.lua (XayaUI_DevAssist 0.7.31): the in-game QA walkthrough for the settings window's new top level (Options 0.6.72;
+-- QAWalks-profiles.lua (XayaUI_DevAssist 0.7.35): the in-game QA walkthrough for the settings window's new top level (Options 0.6.72;
 -- REQUEST-LOG UI-23 to UI-27): the toolbar gone, the top tabs Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings,
 -- "+ New Rule" on the Rules row, Profiles > Import / Export with components and the Recycle Bin as a sub-tab (QA H6 to H9).
 -- Standing rule V22 (Xaya 2026-11-07): every step that the addon can judge offers its verdict (prefill = true; recorded only on her
@@ -128,7 +128,7 @@ QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Pr
         noVerdict = true },
 } })
 
--- (Dev Assist 0.7.33; Options 0.6.72, Chat 0.6.37, QoL 0.7.45, Bonus 0.6.27, Reskin 0.6.30: the tab's name "Blizzard Reskin" (UI-24) in
+-- (Dev Assist 0.7.35; Options 0.6.72, Chat 0.6.38, QoL 0.7.45, Bonus 0.6.27, Reskin 0.6.30: the tab's name "Blizzard Reskin" (UI-24) in
 -- every place a player reads it: the Overview switch, chat messages and tooltips; QA H10)
 QA.Register("reskin-rename", { title = "Blizzard Reskin: the new name everywhere (H10)", qa = "H10", order = 271, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin|r.\n\n|cffffd100Expect:|r the tab reads Blizzard Reskin; its first row Overview has the switch |cffffd100Enable Blizzard Reskin|r.",
