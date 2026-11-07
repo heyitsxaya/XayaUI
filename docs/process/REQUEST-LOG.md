@@ -585,6 +585,9 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-13 | "a freeze sounds fine — do you want this to include even my going through the qa walk throughs? You said I should do that" | APPROVED (freeze); backlog walkthroughs paused, baseline only | section 8, Q6 |
 | PS-14 | "pause on that briefly. I just opened up the game. Should I open a new session ... and do any of this, or should I hold entirely?" / "sure" (to picking the baseline) | ANSWERED: hold; baseline list picked | PLATFORM-SPLIT section 8.1 |
 | PS-15 | "should I tell my friends willing to do QA to hold as well?" | ANSWERED: yes for the backlog; they may run the same baseline 10 | section 8.1 |
+| PS-16 | "I think I need an issue search bar and issues tags here to be able to navigate more easily" (the /xui dev qa walkthrough list) | BUILDING on `claude/lucid-mayer-pv4ytn` (Dev Assist) | her answers in PS-17 |
+| PS-17 | Question answers (2026-11-07): search matches "Titles, IDs and QA codes, Area names, Step text too"; tags "Baseline (the 10), Area, Status, New or changed"; freeze: "Build now (Recommended)" (exception for Dev Assist testing tools) | BUILDING | PLATFORM-SPLIT section 8 |
+| PS-18 | "for what it's worth, some of these also are not exactly human-readable" (screenshot: titles such as "[B263, B264] Engine: estimate off, glow stops on delete, errors in /xui report (D28, D56, D57)") | BUILDING: codes moved off the title line (hover + search keep them); the 10 baseline titles rewritten in plain words; the rest when each is touched after the split | |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
