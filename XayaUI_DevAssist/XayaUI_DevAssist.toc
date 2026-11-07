@@ -23,6 +23,7 @@ QAWalks.lua
 QAWalks-chat.lua
 QAWalks-friends.lua
 QAWalks-display.lua
+QAWalks-profiles.lua
 QAWalks-generate.lua
 QAWalks-perf.lua
 QAWalks-bars.lua

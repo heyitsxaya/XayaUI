@@ -173,7 +173,7 @@ local function ConditionBody(rule, H)
         end
         args["tc" .. i] = { type = "select", order = o + 0.001, width = "relative", relWidth = (i == 1) and 0.88 or 0.74, name = "", arg = { xuiTextLeft = true },
             hidden = function() return not rowShown(i) end,
-            desc = "A cue that plays while this condition is true. To play more than one, use + add cue... below.",
+            desc = "A cue that plays while this condition is true. For more than one, use + add cue below.",
             values = function() local v = cueChoices((rule.thenCues or {})[i]); return v end,
             sorting = function() local _, od = cueChoices((rule.thenCues or {})[i]); return od end,
             get = function() return (rule.thenCues or {})[i] end,
@@ -249,7 +249,7 @@ local function ConditionBody(rule, H)
         local o = 70 + i / 100 + 0.003
         args["tm" .. i] = { type = "toggle", order = o, width = "full", name = "Modify this cue for this condition set",
             hidden = function() return noRow(i) end,
-            desc = "Tick to change how this cue looks while THIS condition is true: color tint, desaturate, glow, opacity and frame strata. Each setting stays 'no change' until you set it. Unticking keeps your values but stops applying them.",
+            desc = "Changes how this cue looks while this condition is true (tint, desaturate, glow, opacity, strata). Unticking keeps your values but stops applying them.",
             get = function() return modsOn(i) end,
             set = function(_, v)
                 if v then mset(i, "on", true)
@@ -269,7 +269,7 @@ local function ConditionBody(rule, H)
         args["md" .. i] = triSel(i, "desat", "Desaturate", "Desaturate: on", "Desaturate: off (full color)", o + 0.0003, 0.3)
         args["mg" .. i] = triSel(i, "glow", "Glow", "Glow: on", "Glow: off", o + 0.0004, 0.26)
         args["ma" .. i] = { type = "select", order = o + 0.0005, width = "relative", relWidth = 0.3, name = "", arg = { xuiTextLeft = true }, hidden = function() return noOpts(i) end,
-            desc = "Replace the cue's opacity (alpha: 0 invisible, 100 solid) while this condition is true. Alpha and opacity are the same setting in WoW, so there is one box for both.",
+            desc = "Replaces the cue's opacity (0 invisible, 100 solid) while this condition is true.",
             values = { keep = "Opacity: no change", set = "Opacity: set..." }, sorting = { "keep", "set" },
             get = function() local m = mget(i); return (m and m.alpha ~= nil) and "set" or "keep" end,
             set = function(_, v) mset(i, "alpha", (v == "set") and (((mget(i) or {}).alpha) or 0.5) or nil) end, disabled = locked }

@@ -104,8 +104,8 @@ QA.Register("sidebar-drag", { title = "Drag a rule row in the sidebar", qa = "B1
 -- E2e: the Blizzard UI Reskin tab's switches -------------------------------------------------------------------------------------
 -- audit D34 (Dev Assist 0.7.19): what a walkthrough's "Do it for me" changed is put back by its last step
 local reskinWas, shopWas
-QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard UI Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
+QA.Register("reskin-switches", { title = "Blizzard Reskin: All reskins and each reskin's tick box", qa = "E2e", order = 120, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on the Blizzard Reskin tab.\n\n|cffffd100Expect:|r a tick box on the tab button itself, left of its name (All reskins, ticked), not covering the name; in the left pane each of Character Pane, Chat Panel, Esc Menu and Shopping List has its own tick box.",
         setup = function() local ns = NS(); if ns.ReskinTabOn and reskinWas == nil then reskinWas = ns.ReskinTabOn() and true or false end; if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "charreskin") end end,
         check = function() local ns = NS(); return ns.ReskinTabOn and ns.ReskinTabOn() == true, "All reskins is " .. ((ns.ReskinTabOn and ns.ReskinTabOn()) and "on" or "off") end },
     { text = "Untick |cffffd100All reskins|r on the tab (or press Do it for me).\n\n|cffffd100Expect:|r at once Blizzard's own chat comes back, the Esc menu (press Esc) and the character window (C) look like Blizzard's; the four tick boxes in the left pane stay ticked but greyed.",
@@ -123,7 +123,7 @@ QA.Register("reskin-switches", { title = "Blizzard UI Reskin: All reskins and ea
 local function Shop() local ns = NS(); return ns and ns.Service and ns.Service("shoppingList") end   -- (QoL provides it; nil while QoL is off)
 QA.Register("shopping-list", { title = "Shopping List: panel, stop-tracking question, diamond", qa = "E2a, E2g, E2h", order = 121, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on and its panel opens.\n\n|cffffd100Expect:|r a movable panel \"Shopping List\" with Missing on your gear, To buy, and your tracked recipes.",
-        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); if shopWas == nil then shopWas = { c.enabled, c.panel } end; c.enabled, c.panel = true, true; S.Apply() end,
+        setup = function() local S = Shop(); if not S then error("XayaUI QoL is off") end; local c = S.Cfg(); if shopWas == nil then shopWas = { c.enabled, c.panel } end; c.enabled, c.panel = true, true; S.Apply(true) end,   -- (true: asked for; QoL 0.7.42 no longer pops it up by itself)
         check = function() local p = rawget(_G, "XayaUIShoppingList"); return (p and p:IsShown()) and true or false, (p and p:IsShown()) and "the panel is showing" or "the panel is not showing" end },
     { text = "Open your profession window and |cffffd100track a recipe|r you are one reagent short of (the star / Track box).\n\n|cffffd100Expect:|r the recipe shows in the panel with each reagent and have / need, the same numbers as Blizzard's objective tracker.",
         check = function() local S = Shop(); local n = S and #S.Recipes() or 0; return n > 0, n .. " tracked recipe(s) read" end },

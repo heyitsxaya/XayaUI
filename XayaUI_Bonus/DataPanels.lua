@@ -388,12 +388,12 @@ function ns.BuildDataPanelsTab(Notify)
     -- the master switch is the tick box on this page's row in the left pane (xuiSwitch on the page group below; Bonus 0.6.11; Xaya
     -- 2026-11-05: "move all enable/disable toggles onto the sidebar instead"); the same set as the page's old switch
     local master = { type = "toggle", name = "Enable Data Panels", tip = "Shows info panels on your screen: time, gold, frame rate and more.",
-        desc = "Master switch. Off: no panel is shown and the sections of this page are hidden (their settings are kept). On: each section then has its own Enable switch.",
+        desc = "Turns every data panel on or off; their settings are kept. On, each section has its own Enable switch.",
         get = function() return db.general.enabled and true or false end,
         set = function(_, v) db.general.enabled = v and true or false; ns.DataPanels_Refresh(); ns.DataPanels_Sync(); if Notify then Notify() end end }
     local general = { type = "group", name = "General", order = 1, args = {
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Info panels for the screen. Tick the box next to Data Panels on the left, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The panel attached to the chat is the Chat Data Panel, under Blizzard UI Reskin > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
+            name = "Info panels for the screen. Tick the box next to Data Panels on the left, then switch on the sections you want: a left, right, and center panel, and as many custom panels as you like. (The panel attached to the chat is the Chat Data Panel, under Blizzard Reskin > Chat Panel, part of XayaUI Chat.) Every block of every panel can show any data type (time, frame rate, latency, gold, durability, bag slots, custom text, or one of the character stats). Right-click any panel to jump here. The Chat Panels tab holds the backdrops, tab panel, and sizes of the Blizzard chat windows." },
         blocks = { type = "group", name = "Clicks and hovering", order = 1, inline = true, hidden = MasterHidden, args = {
             click = { type = "toggle", order = 1, name = "Block combat click", get = function() return db.general.blockCombatClick end, set = function(_, v) db.general.blockCombatClick = v end },
             hover = { type = "toggle", order = 2, name = "Block combat hover", get = function() return db.general.blockCombatHover end, set = function(_, v) db.general.blockCombatHover = v end },

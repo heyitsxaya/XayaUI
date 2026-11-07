@@ -6,7 +6,7 @@
 # Checks: off costs nothing (V14); history (most used, per character); suggestions for a slot with no enchant and for empty sockets;
 # your own default wins; Select other (used before, bags, the Auction House's list); + Add / To buy / remove; have / need; the tracked
 # recipes as Blizzard's tracker counts them; a name click searches the Auction House only while it is open; Blizzard's Professions
-# section restyled after its layout; the settings page; layout bounds.
+# section restyled after its layout; the settings page; layout bounds; when the panel shows itself (UI-77).
 # Run from the repo root: python3 tests/shopping_list_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Every item, recipe, enchant and number below is a TEST STAND-IN (made-up IDs 7001-9100; no game data).
 import os, sys
@@ -286,6 +286,7 @@ arg("def11").set(nil, "")
 check("  ...empty goes back to the most used", D()["ench:11"] == nil)
 page.xuiSwitch.set(nil, false)
 check("switched off: the panel hides and its events are let go", not XayaUIShoppingList.shown)
+
 -- 11. Function audit 2026-11-07 (FA-7, D13, D14, D15, D16) ----------------------------------------------------------------------
 page.xuiSwitch.set(nil, true)
 Shop.picks.gem = nil
@@ -358,6 +359,48 @@ check("  ...a later Auction House search (same event) does not replace the slot'
 C_AuctionHouse.GetBrowseResults = baseRes
 AuctionHouseFrame.shown = false
 page.xuiSwitch.set(nil, false)
+-- 12. When the panel shows itself (UI-77, O-139, QoL 0.7.42; her words: "shopping list keeps popping up but there's no reason for it to
+-- show"; conservative reading, flagged): never at login or on a switch by itself; at the Auction House, or when worn gear misses an
+-- enchant or a gem; a close (its X, or /xui shop) is saved until the next Auction House visit; /xui shop still opens it ------------
+local SL = XayaUIShoppingList
+local closeBtn
+for _, f in ipairs(created) do if f.parent == SL and f.w == 24 and f.h == 24 and f.scripts.OnClick then closeBtn = f end end
+local helmLink = GEAR[1]
+local function gearComplete() GEAR[1] = helmLink:gsub("item:(%d+):", "item:%1:7000:", 1); TIP[1] = { { type = 15, leftText = "Enchanted: Amani Mastery" } }; SOCKETS.Helm = { 8001 } end
+local function gearMissing() GEAR[1] = helmLink; TIP[1] = nil; SOCKETS.Helm = { 0 } end
+local function shown() return SL.shown == true end
+gearComplete()
+c.enabled = true; c.closedTillAH = false; SL:Hide()
+do local m = Shop.Missing(c); local t = {}; for _, x in ipairs(m) do t[#t+1] = x.kind .. ":" .. tostring(x.slot) end; DBGM = table.concat(t, ",") end
+check("auto-show: with nothing missing on the gear, Missing is empty (the case she reported: only a tracked recipe)", Shop.Missing(c)[1] == nil, DBGM)
+Shop.Apply()   -- what login (ns.WhenReady) and the Blizzard UI Reskin switch call
+check("  ...login / the reskin switch: the panel does not pop up", not shown())
+fire("PLAYER_ENTERING_WORLD", false, true)
+check("  ...a loading screen: still not", not shown())
+fire("AUCTION_HOUSE_SHOW")
+check("the Auction House opens: the panel shows itself", shown())
+check("its X closes it, and the close is saved", closeBtn ~= nil and (closeBtn.scripts.OnClick(closeBtn) or true) and not shown() and c.closedTillAH == true)
+gearMissing()
+Shop.Apply()   -- a reload: the saved close holds even with something missing
+check("  ...after a reload it stays closed, even with the helm missing its enchant", not shown())
+fire("PLAYER_EQUIPMENT_CHANGED", 1, false)
+check("  ...and putting on gear that misses something does not reopen it", not shown())
+fire("AUCTION_HOUSE_SHOW")
+check("the next Auction House visit opens it and forgets the close", shown() and c.closedTillAH == false)
+SL:Hide()   -- (hidden without a close, as after the Auction House)
+fire("PLAYER_EQUIPMENT_CHANGED", 1, false)
+check("not closed, and the worn gear misses an enchant or a gem: it shows itself", shown())
+Shop.Toggle()
+check("/xui shop closes it (saved like the X)", not shown() and c.closedTillAH == true)
+Shop.Toggle()
+check("/xui shop opens it any time, and forgets the close", shown() and c.closedTillAH == false)
+gearComplete(); SL:Hide()
+local pg2 = ns.BuildShoppingListPage(function() end)
+local function arg2(k) if pg2.args[k] then return pg2.args[k] end; for _, tab in pairs(pg2.args) do if type(tab) == "table" and tab.args and tab.args[k] then return tab.args[k] end end end
+arg2("fontSize").set(nil, 12)
+check("a setting changed (text size) does not pop it up", not shown())
+arg2("panel").set(nil, false); arg2("panel").set(nil, true)
+check("the panel's own switch turned on shows it (you asked for it)", shown())
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__SL__", P("XayaUI_QoL/ShoppingList.lua")))
