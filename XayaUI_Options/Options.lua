@@ -357,7 +357,11 @@ end
 function Tree.Get(...)
     if Tree.keep and Tree.last then Tree.keep = nil; return Tree.last end
     Tree.keep = nil
-    Tree.last = ns.BuildOptionsTable(...)
+    Tree.lazy = true   -- (Options 0.6.69) the window's build: rule editors only for what it draws (BuildOptions, ns.OptionsApi.FillRule)
+    local ok, t = pcall(ns.BuildOptionsTable, ...)
+    Tree.lazy = nil
+    if not ok then error(t, 0) end
+    Tree.last = t
     return Tree.last
 end
 -- AceConfigDialog keeps the apps waiting for its next-frame redraw in AceConfigDialog.frame.apps (AceConfigDialog-3.0.lua
@@ -1755,6 +1759,33 @@ function ns.CollapsibleHeaders(rule, args, tag)
     end
 end
 
+-- A rule's row in the sidebar: hidden while the search box has text the name does not contain; grey name while switched off. Shared by
+-- the full editor (BuildRule) and the row-only entry the window builds for rules not on screen (Options 0.6.69, ns.OptionsApi.RuleStub).
+function ns.OptionsApi.RuleRowHidden(rule)
+    return function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end
+end
+function ns.OptionsApi.RuleRowName(rule)
+    return function()
+        local nm = tostring(rule.name or "")
+        if nm == "" then return "|cff888888Unnamed rule|r" end
+        return (rule.enabled and "" or "|cff888888") .. nm
+    end
+end
+-- What building a rule's editor writes into the rule's own data (BuildRule below), done also when only its row is built, so the saved
+-- data is the same either way (tests/options_click_cost_run.py compares them): the outline glow's defaults, icon cues always use the
+-- spell icon, and the art the rule shows now is noted for Maintain aspect ratio.
+function ns.OptionsApi.RuleDataFixes(rule)
+    local V = rule.visual
+    if type(V) ~= "table" then return end
+    local o = V.outline
+    if type(o) == "table" then
+        if o.style == nil then o.style = "auto" end
+        for k, dv in pairs({ borderOn = true, glowOn = true, glowSame = true, gap = 0, glowSize = 8, glowAlpha = 0.6 }) do if o[k] == nil then o[k] = dv end end
+        if not o.glowColor then o.glowColor = { 1, 0.82, 0, 1 } end
+    end
+    if rule.cueKind == "icon" and V.kind ~= "spellicon" then V.kind = "spellicon" end
+    ns.SeedArtAspect(V)
+end
 local function BuildRule(i, rule)
     local V = rule.visual
     local function on() Changed(rule) end
@@ -3097,12 +3128,8 @@ local function BuildRule(i, rule)
     end
     local rg = {
         type = "group", childGroups = "tab", order = 1000 + i,
-        hidden = function() local q = ns.treeFilter; return q and q ~= "" and not tostring(rule.name or ""):lower():find(q, 1, true) end,
-        name = function()
-            local nm = tostring(rule.name or "")
-            if nm == "" then return "|cff888888Unnamed rule|r" end
-            return (rule.enabled and "" or "|cff888888") .. nm
-        end,
+        hidden = ns.OptionsApi.RuleRowHidden(rule),
+        name = ns.OptionsApi.RuleRowName(rule),
         args = { display = displayTab, trigger = trigger, cues = cuesTab, conditions = conditionsTab, actions = actionsTab, load = load, rule = ruleTab },
     }
     -- a search box above the tabs (RuleSearch.lua; Xaya 2026-11-04). Not on cues / conditions, which show inside their rule.
@@ -4635,10 +4662,20 @@ function ns.InfoPass(root)
         if type(g) ~= "table" or seen[g] then return end
         seen[g] = true
         if g.type ~= "group" or type(g.args) ~= "table" then return end
-        local keys = {}
-        for k, v in pairs(g.args) do if type(v) == "table" then keys[#keys + 1] = k end end
+        -- (Options 0.6.69, REQUEST-LOG A15 P-16 click cost) the sort below only decides which heading a long description moves to; a
+        -- group with no such description (every rule list: hundreds of rule groups, no descriptions) is left as it is, unsorted. Each
+        -- entry's order is read once, not twice per comparison. Same result as before (tests/options_click_cost_run.py, parity).
+        local keys, ords, cand = {}, {}, false
+        for k, v in pairs(g.args) do
+            if type(v) == "table" then
+                keys[#keys + 1] = k; ords[k] = ord(v)
+                if not cand and v.type == "description" and type(v.name) == "string" and #v.name >= 50 and v.hidden == nil
+                    and not (type(v.arg) == "table" and v.arg.xuiKeep) then cand = true end
+            end
+        end
+        if not cand then keys = {} end
         table.sort(keys, function(a, b)
-            local oa, ob = ord(g.args[a]), ord(g.args[b])
+            local oa, ob = ords[a], ords[b]
             if oa ~= ob then return oa < ob end
             return tostring(a) < tostring(b)
         end)
@@ -4770,8 +4807,13 @@ local function BuildOptions()
     local disabledArgs, nDisabled = {}, 0
     local ruleGroups = {}
     local byRule, nested = {}, {}
+    -- (Options 0.6.69, REQUEST-LOG A15 P-16) Drawn in the window (Tree.lazy): a rule's full editor is built only when it is on screen
+    -- or asked for by a SelectGroup path; every other rule gets its sidebar row only (ns.OptionsApi.RuleStub), filled in place the
+    -- moment the window draws it (the FeedGroup hook below). Called directly (tests, other files): every rule in full, as before.
+    local lazy, want = Tree.lazy, Tree.want
     for i, rule in ipairs(ns.rules or {}) do
-        local g = BuildRule(i, rule)
+        local g
+        if lazy and not (want and want["rule" .. i]) then g = ns.OptionsApi.RuleStub(i, rule) else g = BuildRule(i, rule) end
         if rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) then
             -- an outcome is shown inside its parent rule (Conditions tab), not as its own list entry
             nested[#nested + 1] = { rule = rule, g = g }
@@ -4793,7 +4835,13 @@ local function BuildOptions()
             if pg then
                 cnt[par] = (cnt[par] or 0) + 1
                 if o.rule.folder ~= par.folder then o.rule.folder = par.folder end
-                local oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
+                -- a parent drawn as its row only: its outcomes / cues are built and embedded when it is filled (ns.OptionsApi.FillRule)
+                if pg.xuiStub then pg.xuiStub.nested[#pg.xuiStub.nested + 1] = { rule = o.rule, n = cnt[par], g = o.g } end
+                local oke, err = true, nil
+                if not pg.xuiStub then
+                    if o.g.xuiStub then o.g = BuildRule(o.g.xuiStub.i, o.rule) end
+                    oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
+                end
                 if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
             end
         end
@@ -5203,7 +5251,106 @@ local function BuildOptions()
     pcall(ns.OptionsApi.HalfInputs, out)
     return out
 end
-ns.BuildOptionsTable = BuildOptions
+-- (Options 0.6.69, REQUEST-LOG A15 P-16 click cost) While one build of the tree or one redraw of the sidebar rows runs, the rule list
+-- does not change, so a rule's cues are looked up from one pass over the rules instead of a pass per call (ns.CuesOf outside the
+-- engine step reads every rule: with 313 rules, asked for every rule, that was a fifth of a click). The lookup gives the same list,
+-- in the same order, as ns.CuesOf, and a new copy each time (a caller may change its copy). Only for the length of that one call:
+-- ns.CuesOf is put back after it, even on an error; nested calls share the outer one; inside an engine step the step index answers.
+function ns.OptionsApi.WithCueMemo(fn, ...)
+    local orig = ns.CuesOf
+    if ns.OptionsApi.cueMemoOn or type(orig) ~= "function" or (ns.InStep and ns.InStep()) then return fn(...) end
+    local map
+    local function memo(p)
+        if type(p) ~= "table" or type(p.uid) ~= "string" then return orig(p) end
+        if not map then
+            map = {}
+            for _, r in ipairs(ns.rules or {}) do
+                local pu = r.parentUid
+                if r.isCue and type(pu) == "string" then
+                    local l = map[pu]
+                    if not l then l = {}; map[pu] = l end
+                    l[#l + 1] = r
+                end
+            end
+        end
+        local out, l = {}, map[p.uid]
+        if l then for i = 1, #l do if l[i] ~= p then out[#out + 1] = l[i] end end end
+        return out
+    end
+    ns.OptionsApi.cueMemoOn = true
+    ns.CuesOf = memo
+    local res = { pcall(fn, ...) }
+    if ns.CuesOf == memo then ns.CuesOf = orig end
+    ns.OptionsApi.cueMemoOn = nil
+    if not res[1] then error(res[2], 0) end
+    return unpack(res, 2, table.maxn(res))
+end
+ns.BuildOptionsTable = function(...) return ns.OptionsApi.WithCueMemo(BuildOptions, ...) end
+-- (Options 0.6.69, REQUEST-LOG A15 P-16: a click took one full build, 0.5-0.9 s and ~165 MB of garbage with 313 rules in the stand-in,
+-- nine tenths of it the 313 rule editors) The window builds each rule's sidebar row only; the editor of the rule on screen is built
+-- when the window draws it. RuleStub: the row (the same name / hidden / order as the full editor's group) and the rule data fixes the
+-- full build makes. FillRule: builds the editor into that same table (every list holding the row sees it), with the outcomes / cues
+-- that show inside it and the same after-passes the full build runs over the whole tree (info icons, half-width inputs).
+function ns.OptionsApi.RuleStub(i, rule)
+    ns.OptionsApi.RuleDataFixes(rule)
+    return { type = "group", childGroups = "tab", order = 1000 + i,
+        hidden = ns.OptionsApi.RuleRowHidden(rule), name = ns.OptionsApi.RuleRowName(rule),
+        args = {}, xuiStub = { i = i, rule = rule, nested = {} } }
+end
+function ns.OptionsApi.FillRule(stub)
+    local s = type(stub) == "table" and stub.xuiStub
+    if not s then return false end
+    stub.xuiStub = nil
+    local full = ns.OptionsApi.WithCueMemo(function()
+        local g = BuildRule(s.i, s.rule)
+        for _, o in ipairs(s.nested) do
+            local og = o.g
+            if og.xuiStub then og = BuildRule(og.xuiStub.i, o.rule) end
+            local oke, err = pcall(ns.EmbedOutcome, g, og, o.rule, o.n)
+            if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
+        end
+        return g
+    end)
+    if ns.SkinRows and ns.SkinRows() then pcall(ns.InfoPass, full) end
+    pcall(ns.OptionsApi.HalfInputs, full)
+    for k in pairs(stub) do stub[k] = nil end
+    for k, v in pairs(full) do stub[k] = v end
+    -- the window's narrowest width follows the widest dropdown in what it has drawn (Skin.lua ScanDropdowns): look again
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of then of.xuiDD = nil end
+    return true
+end
+-- AceConfigDialog draws a group through FeedGroup(appName, options, container, rootframe, path) (AceConfigDialog-3.0.lua, the copy in
+-- Libs/; a method looked up on the library table at each call): every row-only rule on the path is filled first. Other addons' windows
+-- pass straight through.
+do
+    local FeedGroup0 = AceConfigDialog.FeedGroup
+    AceConfigDialog.FeedGroup = function(self, appName, options, container, rootframe, path, ...)
+        if appName == APP and type(options) == "table" and type(path) == "table" then
+            local g = options
+            for n = 1, #path do
+                g = type(g) == "table" and type(g.args) == "table" and g.args[path[n]] or nil
+                if type(g) ~= "table" then break end
+                if g.xuiStub then pcall(ns.OptionsApi.FillRule, g) end
+            end
+        end
+        return FeedGroup0(self, appName, options, container, rootframe, path, ...)
+    end
+    -- SelectGroup(appName, ...path) walks a tree it builds itself: the rules named in the path are built in full for that walk, so a
+    -- path into a rule's tab (the rule search's results, the QA walkthroughs) finds every level
+    local SelectGroup0 = AceConfigDialog.SelectGroup
+    AceConfigDialog.SelectGroup = function(self, appName, ...)
+        if appName ~= APP then return SelectGroup0(self, appName, ...) end
+        local want = {}
+        for n = 1, select("#", ...) do local k = select(n, ...); if type(k) == "string" then want[k] = true end end
+        local prev = Tree.want
+        Tree.want = want
+        local res = { pcall(SelectGroup0, self, appName, ...) }
+        Tree.want = prev
+        if not res[1] then error(res[2], 0) end
+        return unpack(res, 2, table.maxn(res))
+    end
+end
 -- (Options 0.6.63; REQUEST-LOG UI-47 / UI-48, her answer for text inputs: "Half width, two per row") every one-line text input that
 -- would take a whole row or most of it (width "full", none given, or "double": 340 px, the Shopping List's "Enchant: Head" in her
 -- screenshot) is half the row (AceConfigDialog's relative width; 0.49 so two fit beside the
@@ -7443,7 +7590,9 @@ local function DecorateTree(tree)
         local orig = tree.RefreshTree
         tree.RefreshTree = function(self, ...)
             orig(self, ...)
-            for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
+            ns.OptionsApi.WithCueMemo(function()   -- (Options 0.6.69) one cue lookup pass for all the visible rows
+                for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
+            end)
             if ns.EnsureNameRoom then pcall(ns.EnsureNameRoom, self) end   -- #369: room for every visible name
         end
         local status = tree.status or tree.localstatus
