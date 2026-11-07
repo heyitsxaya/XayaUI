@@ -401,6 +401,58 @@ arg2("fontSize").set(nil, 12)
 check("a setting changed (text size) does not pop it up", not shown())
 arg2("panel").set(nil, false); arg2("panel").set(nil, true)
 check("the panel's own switch turned on shows it (you asked for it)", shown())
+
+-- 12. UPG-1: a new bag item with a socket or an enchant slot that may be an upgrade (Xaya 2026-11-07). Test stand-ins only. ----------------
+-- worn: the helm (track hero = 5, ilvl 600) and the ring. New items come in through the bags; tracks come from C_Item.GetItemUpgradeInfo.
+TRK = { Helm = { "Hero", 600 }, Ring = { "Champion", 580 } }
+C_Item.GetItemUpgradeInfo = function(link) local nm = link:match("%[(.-)%]"); local t = TRK[nm]; if t then return { trackString = t[1], currentLevel = 1, maxLevel = 6, maxItemLevel = t[2] } end end
+local oldIL = C_Item.GetDetailedItemLevelInfo
+C_Item.GetDetailedItemLevelInfo = function(link) local nm = link:match("%[(.-)%]"); if TRK[nm] then return TRK[nm][2] end; return oldIL(link) end
+EQUIPLOC = {}
+local baseInstant2 = C_Item.GetItemInfoInstant
+C_Item.GetItemInfoInstant = function(x) if type(x) == "string" then local nm = x:match("%[(.-)%]"); if EQUIPLOC[nm] then return 1, "", "", EQUIPLOC[nm], 0, 4, 1 end end; return baseInstant2(x) end
+local function bagLink(nm, id) return "|cffffffff|Hitem:" .. id .. "::::::::90:::::|h[" .. nm .. "]|h|r" end
+function addBag(nm, id, loc, sockets, track, ilvl)
+  NAMES[id] = nm; EQUIPLOC[nm] = loc; SOCKETS[nm] = sockets; TRK[nm] = track and { track, ilvl } or nil
+  BAGS[#BAGS + 1] = { itemID = id, stackCount = 1 }
+  fire("BAG_UPDATE_DELAYED")
+end
+c.upgradeToast, c.minTrack, c.onlyHigherTrack, c.buy, c.ignored = true, "", false, {}, {}
+Shop.picks.gem = { name = "Deadly Peridot", itemID = 8001 }
+Shop.ToastOff(); Shop.Apply()   -- re-learns what is in the bags: no toast for what you already own
+check("UPG-1: nothing in the bags is new at the first look: no toast", not Shop.ToastShown())
+addBag("Hero Helm", 9501, "INVTYPE_HEAD", { 0 }, "Hero", 590)
+check("same track as worn (hero), item level LOWER: no toast", not Shop.ToastShown())
+addBag("Myth Helm", 9502, "INVTYPE_HEAD", { 0 }, "Myth", 570)
+local T = Shop.ToastFrame()
+check("a higher track with a LOWER item level still toasts (ilvl matters less on a superior track)", Shop.ToastShown() and T ~= nil)
+check("  ...her sentence, with the gem and the enchant filled in", T.text.text and T.text.text:find("XUI has detected a new item that may potentially be an upgrade. Do you want to add a Deadly Peridot + ", 1, true) ~= nil
+  and T.text.text:find(" to your shopping list for it?", 1, true) ~= nil, T.text.text)
+check("  ...it sits top-center", T.pts[1] and T.pts[1][1] == "TOP", T.pts[1] and T.pts[1][1])
+T.tickIgnore.scripts.OnClick(T.tickIgnore)
+T.yes.scripts.OnClick(T.yes)
+check("Yes adds the gem to To buy", #c.buy >= 1 and c.buy[1].name == "Deadly Peridot", c.buy[1] and c.buy[1].name)
+check("  ...and the toast closes", not Shop.ToastShown())
+check("ticking 'ignore item' saves this item for this character", c.ignored["Xaya-Stormrage"] and c.ignored["Xaya-Stormrage"][9502] == true)
+Shop.ToastOff(); Shop.Apply()
+check("an ignored item never toasts again", select(2, Shop.UpgradeCandidate(c, bagLink("Myth Helm", 9502), 9502)) == "ignored")
+addBag("Plain Ring", 9503, "INVTYPE_FINGER", { 0 }, nil, nil); BAGS[#BAGS] = nil
+addBag("Hero Helm 2", 9504, "INVTYPE_HEAD", { 0 }, "Hero", 610)
+check("same track, higher item level: toasts", Shop.ToastShown())
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
+check("No adds nothing and closes", not Shop.ToastShown())
+c.onlyHigherTrack = true
+check("'only on a higher upgrade track': same track no longer qualifies", select(2, Shop.UpgradeCandidate(c, bagLink("Hero Helm 2", 9504), 9504)) == "not a higher track")
+c.onlyHigherTrack, c.minTrack = false, "myth"
+check("a track floor of Myth: a Hero item is not suggested", select(2, Shop.UpgradeCandidate(c, bagLink("Hero Helm 2", 9504), 9504)) == "below your track floor")
+c.minTrack = ""
+addBag("Boots", 9505, "INVTYPE_FEET", { 0 }, nil, nil)
+check("an item with a socket but no readable track: fails safe, no toast", not Shop.ToastShown())
+addBag("Cloak of Nothing", 9506, "INVTYPE_CLOAK", { }, "Myth", 700)
+check("no socket and no enchant slot for the item: no toast", not Shop.ToastShown())
+c.upgradeToast = false; Shop.Apply()
+addBag("Myth Helm 3", 9507, "INVTYPE_HEAD", { 0 }, "Myth", 700)
+check("the switch off: no toast", not Shop.ToastShown())
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
    .replace("__SL__", P("XayaUI_QoL/ShoppingList.lua")))

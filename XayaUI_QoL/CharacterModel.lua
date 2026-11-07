@@ -1069,6 +1069,7 @@ CM.ItemStats = ItemStats
 local function ItemLevel(link)
     if C_Item and C_Item.GetDetailedItemLevelInfo then local v = N(C_Item.GetDetailedItemLevelInfo, link); if num(v) then return v end end
 end
+CM.ItemLevel = ItemLevel   -- (UPG-1: the Shopping List compares a new bag item's level with what is worn)
 
 -- The enchant field of an item link: the second field after "item:" (the item link format, as listed on warcraft.wiki.gg "ItemLink";
 -- INFERENCE that 12.1.5 keeps it). true = an enchant ID is there, false = the field is empty or 0, nil = the link could not be read.
