@@ -85,9 +85,11 @@ local function StepEnabled(rule, rt, ctx, now)
     if ns.RecTrigger then ns.RecTrigger(rule, result, info) end   -- trigger detail for chosen rules (DebugRecord.lua; one test when off)
     -- Actions tab: On Initialization (the rule's load conditions hold), During start, After It Ends
     if not rule.parentUid and ns.RunActions and info then
-        if info.ctxOK then
+        -- audit D54 (core 0.6.60): "loaded" is the load conditions AND the talent requirement (ns.IsLoaded); before, a rule whose
+        -- talent requirement failed still ran its On Initialization actions
+        if info.ctxOK and info.talentOK == true then
             if not rt.inited then rt.inited = true; RunActionsSafe(rule, rt, "init") end
-        elseif info.ctxOK == false then rt.inited = nil end
+        elseif info.ctxOK == false or info.talentOK == false then rt.inited = nil end
     end
     if result and not rt.active then
         rt.active, rt.lastPlay = true, now
@@ -387,7 +389,7 @@ for _, e in ipairs({
     "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED",
 }) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_AURA", "player")
-f:SetScript("OnEvent", function(_, event)
+f:SetScript("OnEvent", function(_, event, arg1)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
     if event == "UNIT_AURA" then ns.lastAuraEventAt = GetTime() end   -- (Conditions.lua stamps an aura's appearance with it)
     if event == "PLAYER_ENTERING_WORLD" then
@@ -395,6 +397,9 @@ f:SetScript("OnEvent", function(_, event)
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
+    -- audit D54 (core 0.6.60): On Initialization runs again after a spec change (USER-GUIDE Actions tab; Actions.lua), for every rule
+    -- (the event carries unitTarget, events.md 1215, and is registered for every unit: only the player's own spec change counts)
+    if event == "PLAYER_SPECIALIZATION_CHANGED" and arg1 == "player" then for _, rt in pairs(ns.runtime or {}) do rt.inited = nil end end
     -- auto-capture status into the ring-buffer log at combat start/end, since /xui debug status can't be typed mid-fight
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true

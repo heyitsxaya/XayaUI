@@ -87,6 +87,40 @@ do
   if not row and ns.launchers then for _, e in ipairs(ns.launchers) do if e[1] == "settings" then row = e end end end
   check("D11 minimap row named XayaUI Settings, tooltip says open or close", row and row[2] == "XayaUI Settings" and tostring(row[3]):find("Open or close", 1, true), row and row[2])
 end
+-- D54: On Initialization waits for the talent requirement and runs again after the player's own spec change
+do
+  local f = ns.NewFolder("Init")
+  local r = mk(f, "InitRule", 0, 0, 40, 40)
+  r.talentMode = "all"; r.talents = { { id = 987654 } }   -- a talent nobody knows: the requirement fails
+  local inits = 0
+  local orig = ns.RunActions
+  ns.RunActions = function(rule, phase) if rule == r and phase == "init" then inits = inits + 1 end end
+  local saveKnown = ns.ReadTalentKnown; ns.ReadTalentKnown = function(id) if id == 987654 then return false end return saveKnown and saveKnown(id) end
+  if ns.InvalidateContext then ns.InvalidateContext() end
+  W.tick(0.2, 10)
+  check("D54 talent requirement fails: On Initialization does not run", inits == 0, inits)
+  ns.ReadTalentKnown = function(id) if id == 987654 then return true end return saveKnown and saveKnown(id) end
+  if ns.InvalidateContext then ns.InvalidateContext() end
+  W.fire("SPELLS_CHANGED"); W.tick(0.2, 10)
+  check("D54 talent requirement met: On Initialization runs once", inits == 1, inits)
+  W.fire("PLAYER_SPECIALIZATION_CHANGED", "party1"); W.tick(0.2, 10)
+  check("D54 a party member's spec change does not run it again", inits == 1, inits)
+  W.fire("PLAYER_SPECIALIZATION_CHANGED", "player"); W.tick(0.2, 10)
+  check("D54 the player's own spec change runs it again", inits == 2, inits)
+  ns.RunActions = orig; ns.ReadTalentKnown = saveKnown
+  r.enabled = false
+end
+-- D55: deleting a group on its own and restoring it brings back a rule that had no uid
+do
+  local g = ns.NewFolder("BinGroup")
+  local r = ns.NewRule(); r.name = "plain"; r.folder = g.id; r.uid = nil; ns.rules[#ns.rules + 1] = r
+  local it = ns.RecycleFolder(g)
+  check("D55 the group's rule moved up a level", r.folder == g.parent, r.folder)
+  local ok = it and ns.RecycleRestore(it.id)
+  local back
+  for _, x in ipairs(ns.folders) do if x.name == "BinGroup" then back = x end end
+  check("D55 Restore brings the rule (no cue, no condition) back into the group", back and r.folder == back.id, tostring(r.folder) .. " / " .. tostring(back and back.id))
+end
 -- O-100 / FA-15 (Bonus 0.6.23, QoL 0.7.38; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
 -- the data panels row is named "Data Panels"
 do

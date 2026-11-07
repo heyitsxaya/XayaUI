@@ -35,3 +35,13 @@ Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D9, D10, D11, D18, D19, D40. Her
 
 ## QA
 B223, B224, B225.
+
+## Added later the same day (still core 0.6.60, unlanded): D54, D55
+- `XayaUI/Engine.lua` (D54): On Initialization runs when the load conditions AND the talent requirement hold (`info.talentOK == true`,
+  as `ns.IsLoaded`); it is armed again when either fails, and for every rule on the player's own PLAYER_SPECIALIZATION_CHANGED
+  (the event carries unitTarget, events.md 1215; registered for every unit, so only "player" counts). USER-GUIDE / Actions.lua
+  say it runs "after login or /reload, a spec change, or when its load conditions become true".
+- `XayaUI/RecycleBin.lua` (D55): deleting a group on its own records every rule it moves up (a rule with no uid yet gets one,
+  ns.NewUID), so Restore moves them all back. Before: only rules that already had a uid (from a cue or condition) went back.
+- Tests: `tests/audit_core_run.py` D54 (4 checks) and D55 (2): 3 fail on 28380a9. `tests/recycle_bin_run.py` passes (59).
+- QA B226.
