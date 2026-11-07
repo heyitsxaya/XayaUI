@@ -161,6 +161,17 @@ R = lua.eval(r'''function(W, ns, C, root)
   local okP5, nP5 = chk(id, 5); rec("position walk step 5: Shift = 10 up", okP5, nP5)
   local okP6, nP6 = run(id, 6); rec("position walk last step: put back, mover closed", okP6 and not C.unlocked and not box:IsShown(), nP6)
 
+  -- CHATREV-12 tab-row walkthrough: a docked tab moved off the line gives Fail, on the line Pass
+  GeneralDockManager.DOCKED_CHAT_FRAMES = { ChatFrame1, ChatFrame2 }
+  ChatFrame1.isStaticDocked, ChatFrame2.isStaticDocked = true, true
+  id = "chat-tab-row"
+  rec("tab-row walk: only static tabs -> asks for another tab (Fail)", not chk(id, 1))
+  ChatFrame2.isStaticDocked = nil
+  local t2 = ChatFrame2Tab; t2:ClearAllPoints(); t2:SetPoint("LEFT", ChatFrame1Tab, "RIGHT", 1, 6)
+  rec("tab-row walk negative: a tab 6 px higher gives Fail", not chk(id, 1))
+  t2:ClearAllPoints(); t2:SetPoint("LEFT", ChatFrame1Tab, "RIGHT", 1, 0)
+  local okT, nT = chk(id, 1); rec("tab-row walk: tabs on one line give Pass", okT, nT)
+
   -- pre-fill in the window
   QA.Start("chat-210-mover-collapse")
   local Wn = QA.Window()

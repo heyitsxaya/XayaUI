@@ -456,3 +456,40 @@ QA.Register("chat-position-box", { title = "Chat: exact X / Y position from the 
         end },
     PutBackStep(),
 } })
+
+-- CHATREV-12 (Chat 0.6.31): every chat tab at one height (General / Combat Log and the tabs in the scrolling part of the row)
+local function TabMids()
+    local dock = rawget(_G, "GeneralDockManager")
+    local list = dock and dock.DOCKED_CHAT_FRAMES
+    if type(list) ~= "table" then return nil end
+    local out = {}
+    for _, f in ipairs(list) do
+        local okN, n = pcall(f.GetName, f)
+        local tab = okN and n and _G[n .. "Tab"]
+        local r = Rect(tab)
+        if r and Shown(tab) then out[#out + 1] = { static = f.isStaticDocked and true or false, mid = r.b + r.h / 2 } end
+    end
+    return out
+end
+QA.Register("chat-tab-row", { title = "Chat: every tab at one height (CHATREV-12)", qa = "D24", order = 237, prefill = true, steps = {
+    { text = "Have at least one tab besides General and Combat Log (Guild, Self, a whisper tab ...). Look at the tab row.\n\n|cffffd100Expect:|r every tab's name sits on one line: General and Combat Log are not lower than the others.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local m = TabMids()
+            if not m or #m == 0 then return false, "the tab row could not be read" end
+            local hasDyn = false
+            local lo, hi = m[1].mid, m[1].mid
+            for _, t in ipairs(m) do if not t.static then hasDyn = true end; lo = math.min(lo, t.mid); hi = math.max(hi, t.mid) end
+            if not hasDyn then return false, "only General / Combat Log are docked: open another tab first" end
+            return (hi - lo) < 1, ("%d tabs; centres differ by %.1f px at most"):format(#m, hi - lo)
+        end },
+    { text = "Whisper someone new (a whisper tab opens), then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the new tab is on the same line too.",
+        check = function()
+            local ok, why = Ready(); if not ok then return false, why end
+            local m = TabMids()
+            if not m or #m == 0 then return false, "the tab row could not be read" end
+            local lo, hi = m[1].mid, m[1].mid
+            for _, t in ipairs(m) do lo = math.min(lo, t.mid); hi = math.max(hi, t.mid) end
+            return (hi - lo) < 1, ("%d tabs; centres differ by %.1f px at most"):format(#m, hi - lo)
+        end },
+} })

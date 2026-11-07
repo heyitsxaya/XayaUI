@@ -49,3 +49,17 @@ tests/chat_246_whisper_run.py (new), tests/qa_walks_chat_run.py (extended), test
 ## Not verified
 Nothing in game. Whether FCF_SelectDockFrame from addon code taints anything in combat is not known (INFERENCE: the game's own chat code
 calls it from the same event path; not seen in game).
+
+## CHATREV-12 (added 2026-11-07 ~07:05 UTC): the tab row at two heights
+Xaya [screenshot: General and Combat Log lower than Guild, Self and the Talent whisper tab]: "chat is still not displaying tabs correctly --
+I thought we said we would fix this".
+- Why 0.6.20 did not fix it: it aligned each tab's NAME inside its tab (Skin.lua AlignTabText). The tabs themselves are laid out by the game
+  in two groups (FCFDock_UpdateTabs, FloatingChatFrame.lua, wow-ui-source live): static tabs at the dock's BOTTOMLEFT; the others parented
+  to the dock's scroll child, LEFT of it (0, -1), i.e. centred on it. In the Chat Panel's tab row the two centres differ. The 0.6.20 test's
+  stand-in world gave every tab the same anchor, so it could not see this (V5 gap, now covered).
+- Fix: C.AlignTabRow (Skin.lua) moves the first dynamic tab by the difference between its centre and the first static tab's centre
+  (her UI-4 answer: "the ones that cannot be changed determine the rest"); the game chains the others to it. Runs after StyleTabs and in a
+  post-hook on FCFDock_UpdateTabs (idle while the Chat Panel is off). Measured each time: no drift.
+- Test: tests/chat_tab_row_run.py stands in FCFDock_UpdateTabs with the game's anchors (scroll child height 32: a STAND-IN, not read from
+  the game); its negative control reproduces the bug with the fix switched off. QA walkthrough "Chat: every tab at one height" (pre-fill).
+- Not verified in game.
