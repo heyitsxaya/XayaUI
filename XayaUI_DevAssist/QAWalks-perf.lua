@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.16): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J18 what a recorded run holds (DevRecord.lua meter lines; tools/perf_report.py): counts fights, bosses, meter readings (data capture);
@@ -263,4 +263,34 @@ QA.Register("perf-load-first", { title = "Performance: rules that are not loaded
     { text = "Press |cffffd100Do it for me|r to stop the timer again (if this walkthrough started it), then Pass.",
         setup = function() local n = NS() or {}; if perfByWalk and n.PerfCommand and n.CaptureOutput then n.CaptureOutput(n.PerfCommand, "off"); perfByWalk = nil end end,
         noVerdict = true },
+} })
+
+-------------------------------------------------------------------------------
+-- J24: a still cursor (QoL 0.7.41: the Cursor Highlight is re-anchored only when the cursor moved; the trail skips its dot loop
+-- while nothing is live; REQUEST-LOG A15 P-13). Data capture: the game's meter for XayaUI_QoL (RecentAverageTime, ms per frame:
+-- INFERENCE on units) after 10 s with the mouse still, then after 10 s of moving it.
+-------------------------------------------------------------------------------
+local function QoLRecent()
+    local P = C_AddOnProfiler
+    local M = Enum and Enum.AddOnProfilerMetric
+    if not (P and P.GetAddOnMetric and M) then return nil end
+    local ok, v = pcall(P.GetAddOnMetric, "XayaUI_QoL", M.RecentAverageTime)
+    if ok and type(v) == "number" and not (issecretvalue and issecretvalue(v)) then return v end
+end
+local stillRead
+QA.Register("perf-still-cursor", { title = "Performance: a still cursor (J24)", area = "Dev Assist", qa = "J24", order = 307, prefill = true, steps = {
+    { text = "With the Cursor Highlight and / or the cursor trail on, leave the mouse completely still for 10 seconds, out of combat, then press |cffffd100Check again|r with the keyboard focus (or move only to click and keep it still again for 10 s and press it).\n\n|cffffd100Expect:|r the note gives XayaUI_QoL's CPU per frame while still.",
+        check = function()
+            local v = QoLRecent()
+            if not v then return false, "the game's addon meter is not available" end
+            stillRead = v
+            return true, ("XayaUI_QoL while still: %.4f ms per frame (recent average)"):format(v)
+        end },
+    { text = "Now move the mouse around for 10 seconds and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r a higher reading while moving; the still one should be close to nothing. Send both to Xaya.",
+        check = function()
+            local v = QoLRecent()
+            if not v then return false, "the game's addon meter is not available" end
+            if not stillRead then return false, "do step 1 first" end
+            return v >= stillRead, ("XayaUI_QoL still %.4f ms per frame, moving %.4f ms per frame"):format(stillRead, v)
+        end },
 } })

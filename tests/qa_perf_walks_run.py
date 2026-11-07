@@ -1,6 +1,6 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J18 (what the
 record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in
-combat), J22 (other addons' errors), J23 (rules that are not loaded). Loads the real QAWalk.lua framework, core Core / Modules /
+combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor). Loads the real QAWalk.lua framework, core Core / Modules /
 DebugRecord and Dev Assist's DevRecord.lua with stand-in game calls (the stand-ins first written for the removed run prompt's test),
 and asks each step's check what it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways),
 and the counts in the notes. Also checks that the removed J17 walkthroughs are gone.
@@ -189,6 +189,13 @@ r = step(P, 2); check("J23.2 after the fight: Pass with ms per step and KB/s fro
 L.execute("SETUP('perf-load-first', 3)")
 check("J23.3 stops the timer it started", E("NS.perfOn") == False)
 r = step(P, 2); check("J23.2 with the timer off: Fail (no timing)", r[0] == "F" and "no timing" in r[1])
+
+# J24: a still cursor (the game's meter for XayaUI_QoL, stand-in values)
+L.execute("QOL_MS = 0.0010; C_AddOnProfiler.GetAddOnMetric = function(name, m) if name == 'XayaUI_QoL' then return QOL_MS end return m + 0.5 end")
+r = step("perf-still-cursor", 2); check("J24.2 before step 1: Fail", r[0] == "F" and "step 1 first" in r[1])
+r = step("perf-still-cursor", 1); check("J24.1 still: Pass with the reading", r[0] == "P" and "while still: 0.0010 ms" in r[1])
+L.execute("QOL_MS = 0.0500")
+r = step("perf-still-cursor", 2); check("J24.2 moving: Pass with both readings", r[0] == "P" and "still 0.0010 ms per frame, moving 0.0500 ms" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
