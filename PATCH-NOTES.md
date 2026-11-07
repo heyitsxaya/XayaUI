@@ -22,6 +22,20 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-07 — Trustworthy QA Walkthroughs
+
+### Dev Assist 0.7.53
+
+**In-game QA**
+- A walkthrough step that needs setup can no longer be passed, accepted or marked Done before "Do it for me" has run in this run. Fail and Skip always work.
+- A check that did not exercise the thing under test now says "Not tested yet" instead of passing. The bar cue walkthrough now fails when no style changed the bar.
+- Clean-up and put-back steps now have one Done button instead of Pass and Fail, and a run with no step passed or failed is shown as Skipped (grey) in both tables.
+- Added navigation at the end of a walkthrough: All walkthroughs, Review list and Next in this list (the next walkthrough in the order the list showed when you opened it). All walkthroughs has a Review list button.
+- The Reskin switch walkthroughs and the Chat Panel / Improved Chat split walkthroughs now reload before checking.
+- Titles wrap inside the window, and the QA windows have a solid background (95% opacity).
+- Added walkthrough J33.
+  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: the window opacity of 95% is provisional (C4), and Next follows the order the list showed when you opened the walkthrough.*
+
 ## 2026-11-07 — Walkthrough Tables
 
 ### Dev Assist 0.7.52
