@@ -514,21 +514,11 @@ function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) e
 local function BuildAddonSettings()
     local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
-    return { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
+    local dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)   -- (P3) the rule list and Rule Creation rows (RuleEditor/RuleSettings.lua)
+    local page = { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
         ui = { type = "group", name = "UI Options", order = 1, args = {
-            displayHeader = { type = "header", name = "Display Options", order = 20 },
-            selStyle = { type = "select", name = "Selected item in the rule list", order = 21, width = "double",
-                desc = "How the row you have selected stands out in the left-hand list.",
-                values = { text = "Alternate text color (light purple)", bar = "Highlighted bar over the item" },
-                sorting = { "text", "bar" },
-                get = function() return ns.SelStyle() end,
-                set = function(_, v) Ui().selStyle = (v == "bar") and "bar" or "text"; Repaint() end },
-            parentGradient = { type = "toggle", name = "Gradient highlight on the top parent group of a selected nested item", order = 22, width = "full",
-                desc = "Highlights the topmost parent group of the selected rule or group with a gradient.",
-                get = function() return ns.ParentGradientOn() end,
-                set = function(_, v) Ui().parentGradient = v and true or false; Repaint() end },
             paneHeader = { type = "header", name = "Window Size", order = 30 },
             paneNote = { type = "description", order = 30.5, width = "full",
                 name = "Sets the size of this window when it opens. 0 = automatic (780 wide by 860 tall). Values are kept on screen and no smaller than 600 by 400. Dragging the window's corner still resizes it for the current session." },
@@ -551,65 +541,8 @@ local function BuildAddonSettings()
                 sorting = { "gradient", "standard" },
                 get = function() return (PlatS.ui and PlatS.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
-            sidebarSpellIcons = { type = "toggle", name = "Show a rule's spell / buff icon in the rule list", order = 23, width = "full",
-                desc = "Shows a tracked spell or buff's icon in the left-hand list instead of the type icon. Each rule can override it (Sidebar icon).",
-                get = function() return ns.SidebarSpellIcons() end,
-                set = function(_, v) Ui().sidebarSpellIcons = v and true or false; Repaint() end },
         } },
-        rules = { type = "group", name = "Rule Creation", order = 1.2, args = {
-            savingHeader = { type = "header", name = "Saving", order = 10 },
-            promptSave = { type = "toggle", name = "Use drafts (save bar)", order = 11,
-                desc = "Holds rule edits until you save them, with a save bar under the window; closing it moves unsaved changes to Drafts. Off by default: every change is kept at once.",
-                get = function() return ns.DraftsEnabled and ns.DraftsEnabled() or false end,
-                set = function(_, v) Ui().promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
-            -- draft settings (0.6.4): what asks first, how many are kept, the chat notice. Grayed out while drafts are off.
-            draftsMax = { type = "range", name = "Keep up to (drafts)", order = 11.1, min = 5, max = 100, step = 1,
-                desc = "The newest drafts are kept; older ones beyond this number are dropped (lowering it drops them at once).",
-                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
-                get = function() return ns.DraftsMax and ns.DraftsMax() or 30 end,
-                set = function(_, v) Ui().draftsMax = v; if ns.DraftsTrim then ns.DraftsTrim() end end },
-            draftsConfirmDiscard = { type = "toggle", name = "Confirm Discard changes", order = 11.2,
-                desc = "Ask before throwing away a rule's unsaved changes.",
-                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
-                get = function() return Ui().draftsConfirmDiscard ~= false end, set = function(_, v) Ui().draftsConfirmDiscard = v and true or false end },
-            draftsConfirmDelete = { type = "toggle", name = "Confirm deleting a draft", order = 11.3,
-                desc = "Ask before a draft is deleted from the Drafts tab.",
-                get = function() return Ui().draftsConfirmDelete ~= false end, set = function(_, v) Ui().draftsConfirmDelete = v and true or false end },
-            draftsCloseNotice = { type = "toggle", name = "Chat notice on close", order = 11.4,
-                desc = "When the window closes with unsaved changes, say in chat how many rules went to Drafts.",
-                disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
-                get = function() return Ui().draftsCloseNotice ~= false end, set = function(_, v) Ui().draftsCloseNotice = v and true or false end },
-            listHeader = { type = "header", name = "Rule list", order = 20 },
-            condensedList = { type = "toggle", name = "Condensed rule list (no icons, compact rows)", order = 21, width = "full",
-                desc = "Drops the icons and the taller rows from the left-hand rule list and shows plain, compact rows with the +/- toggle on the left.",
-                get = function() return ns.CondensedOn() end,
-                set = function(_, v) Ui().condensedList = v and true or false; Repaint() end },
-            -- The talent scan (Options 0.6.40; Xaya, 2026-11-05: "scan belongs in Settings"; it was in Rules > Class/Spec Rule Creator).
-            -- Here because what it saves (XayaUITalentDB, XayaUI/TalentDump.lua) is read only by rule creation: the talent search of
-            -- the rule editor's talent requirement lists every spec and hero tree from it. The last message stays under the button.
-            talHdr = { type = "header", name = "All talents (every class and spec)", order = 30 },
-            talInfo = { type = "description", order = 30.1, width = "full", fontSize = "medium",
-                name = function() return (ns.TalentStatus and ns.TalentStatus() or "") .. " Reads every class, spec, and hero talent tree from the game (not from a fixed list), so it follows the current patch. In chat: /xui debug talents, /xui debug talents status, /xui debug talents <name>." end },
-            talScan = { type = "execute", order = 30.2, width = "double", name = "Scan all talents now",
-                func = function()
-                    if not ns.ScanAllTalents then return end
-                    local ok, m = ns.ScanAllTalents(function(_, msg) ns.OptionsApi.talentScanMsg = msg; Notify() end)
-                    ns.OptionsApi.talentScanMsg = m; ns.Print(m); Notify()
-                end },
-            talMsg = { type = "description", order = 30.3, width = "full", fontSize = "medium",
-                name = function() return ns.OptionsApi.talentScanMsg or "" end,
-                hidden = function() return not ns.OptionsApi.talentScanMsg end },
-            -- Combat Tracking Setup (Options 0.6.55; Xaya 2026-11-06, REQUEST-LOG #81: "Rule Creation"; it was on Settings > Debugging)
-            auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 40, args = {
-                asText = { type = "description", order = 1, fontSize = "medium",
-                    name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
-                asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
-                    func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
-                asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
-                    get = function() return ns.AuraModel and ns.AuraModel.PresenceEnabled() end,
-                    set = function(_, v) if ns.AuraModel then ns.AuraModel.SetSetting("presence", v and true or false) end end },
-            } },
-        } },
+        rules = ruleRows,   -- (P3) the Rule Creation tab: RuleEditor/RuleSettings.lua
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
@@ -715,6 +648,8 @@ local function BuildAddonSettings()
                 args = ns.BuildSettingsPages and ns.BuildSettingsPages("debugging", Notify) or {} },
         } },
     } }
+    for k, v in pairs(dispRows) do page.args.ui.args[k] = v end
+    return page
 end
 
 
