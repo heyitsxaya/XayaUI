@@ -11,7 +11,7 @@ Style: Blizzard's own patch notes (blue posts). Short past-tense or present-tens
 Layout, newest landing first:
   ## YYYY-MM-DD — Short title                      one per landing on main (UTC date)
   ### <Addon> <version>                            Addon is one of: XayaUI, Options, Chat, Quality of Life, Bonus Features,
-                                                   Blizzard Reskin, Dev Assist, Media, Nameplates. One heading per addon version.
+                                                   Blizzard Reskin, Dev Assist, Media, Nameplates, Rules. One heading per addon version.
   **Feature name**                                 a bold category line; add " (new)" for a brand-new feature
   - Bullet.                                        a change
     - Nested bullet.                               detail under the bullet above (two spaces)
@@ -21,6 +21,27 @@ What's New (the pane's first entry) is built from this file: every bullet of a "
 that starts with "Added", newest first, grouped by addon. An addon's list keeps growing through its x.Y.* versions and starts
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
+
+## 2026-11-07 — XayaUI Rules Is Its Own Addon
+
+### XayaUI 0.6.76
+
+**XayaUI Platform**
+- The XayaUI folder is now titled "XayaUI Platform" in the AddOns list. It keeps your saved data (CueRulesDB), and nothing in it moves.
+- Install note: copy the new XayaUI_Rules folder and replace the whole XayaUI folder. 22 files left it, and GameMenu.lua is now GameMenuButton.lua.
+  *Developers' notes: Not yet tested in game; it needs your in-game Accept (walkthroughs "code-move", "code-move-off" and "code-move-on", QA H14) before phase P5 of the platform split.*
+
+### Rules 0.6.76
+
+**XayaUI Rules (new)**
+- Added XayaUI Rules, a new addon that holds the rule engine, triggers, cues and displays, combat aura tracking, and rule sharing and the rules Recycle Bin, moved out of the XayaUI folder. You named it ("Call it Rules").
+- XayaUI Rules can be switched off in the AddOns list: the rule commands, the Rules tabs and the rules part of Profiles are hidden, and Import shows the rules part as "needs XayaUI Rules".
+
+### Options 0.6.84
+
+**Internal**
+- Internal: every addon now reads its settings through ns.Settings(module), and the rule editor and rules tree moved out of Options.lua into their own files (QoL 0.7.48, Bonus Features 0.6.32 and Dev Assist 0.7.57 were updated along with them). Nothing visible.
+  *Developers' notes: Not yet tested in game (QA H12 and H13).*
 
 ## 2026-11-07 — Platform Services
 

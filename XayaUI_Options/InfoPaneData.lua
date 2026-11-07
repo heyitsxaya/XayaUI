@@ -7,6 +7,10 @@ local _, ns = ...
 ns = _G.XayaUI_NS or ns
 ns.InfoPaneData = {
   whatsNew = {
+    { "h3", "Rules 0.6.x" },
+    { "grp", "XayaUI Rules  (0.6.76, 2026-11-07)" },
+    { "b", 1, "Added XayaUI Rules, a new addon that holds the rule engine, triggers, cues and displays, combat aura tracking, and rule sharing and the rules Recycle Bin, moved out of the XayaUI folder. You named it (\"Call it Rules\")." },
+    { "b", 1, "XayaUI Rules can be switched off in the AddOns list: the rule commands, the Rules tabs and the rules part of Profiles are hidden, and Import shows the rules part as \"needs XayaUI Rules\"." },
     { "h3", "Options 0.6.x" },
     { "grp", "Profiles  (0.6.80, 2026-11-07)" },
     { "b", 1, "Added a Nameplates part to Profiles: Export and Import carry your target color." },
@@ -161,6 +165,21 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-07", title = "XayaUI Rules Is Its Own Addon", blocks = {
+      { "h3", "XayaUI 0.6.76" },
+      { "grp", "XayaUI Platform" },
+      { "b", 1, "The XayaUI folder is now titled \"XayaUI Platform\" in the AddOns list. It keeps your saved data (CueRulesDB), and nothing in it moves." },
+      { "b", 1, "Install note: copy the new XayaUI_Rules folder and replace the whole XayaUI folder. 22 files left it, and GameMenu.lua is now GameMenuButton.lua." },
+      { "dev", 2, "Developers' notes: Not yet tested in game; it needs your in-game Accept (walkthroughs \"code-move\", \"code-move-off\" and \"code-move-on\", QA H14) before phase P5 of the platform split." },
+      { "h3", "Rules 0.6.76" },
+      { "grp", "XayaUI Rules (new)" },
+      { "b", 1, "Added XayaUI Rules, a new addon that holds the rule engine, triggers, cues and displays, combat aura tracking, and rule sharing and the rules Recycle Bin, moved out of the XayaUI folder. You named it (\"Call it Rules\")." },
+      { "b", 1, "XayaUI Rules can be switched off in the AddOns list: the rule commands, the Rules tabs and the rules part of Profiles are hidden, and Import shows the rules part as \"needs XayaUI Rules\"." },
+      { "h3", "Options 0.6.84" },
+      { "grp", "Internal" },
+      { "b", 1, "Internal: every addon now reads its settings through ns.Settings(module), and the rule editor and rules tree moved out of Options.lua into their own files (QoL 0.7.48, Bonus Features 0.6.32 and Dev Assist 0.7.57 were updated along with them). Nothing visible." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA H12 and H13)." },
+    } },
     { date = "2026-11-07", title = "Platform Services", blocks = {
       { "h3", "Options 0.6.80" },
       { "grp", "Profiles" },
