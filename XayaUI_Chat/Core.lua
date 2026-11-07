@@ -354,6 +354,14 @@ function C.Teardown()
     for _, f in ipairs(C.Frames()) do   -- the game's own "indent wrapped lines" value, as it was before the Chat Panel set it
         if f._xuiIndent ~= nil and f.SetIndentedWordWrap then pcall(f.SetIndentedWordWrap, f, f._xuiIndent); f._xuiIndent = nil end
     end
+    for _, f in ipairs(C.Frames()) do   -- audit D31 (Chat 0.6.29): the game's own fade of old lines, as it was before the Chat Panel set it
+        local o = f._xuiFade
+        if o ~= nil then
+            if f.SetFading then pcall(f.SetFading, f, o[1] and true or false) end
+            if f.SetTimeVisible and type(o[2]) == "number" then pcall(f.SetTimeVisible, f, o[2]) end
+            f._xuiFade = nil
+        end
+    end
     for _, f in ipairs(C.Frames()) do
         local tab = C.TabOf(f)
         if tab then
