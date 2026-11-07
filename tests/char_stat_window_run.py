@@ -290,6 +290,8 @@ checkp("Fury (a generator): its maximum 120, no generation rate; no note", funct
   local l = lineOf(d, "label", "Fury"); local m = CM.Build(c, "stats").byKey.map_power17
   return T(l.value) == "120" and l.note == nil and #m.pairs == 0, T(l.value) .. " / " .. T(l.note) end)
 PT = { 0, "MANA" }; POWERMAX = { [0] = 250000 }; REGEN = { [0] = { 1200.5, 2400 } }
+-- (QoL 0.7.40, REQUEST-LOG #88: a stat's lines show when it is opened, folded by default; the lines below are read with these two open)
+c.statOpen.map_power0, c.statOpen.map_power5 = true, true
 d = render()
 checkp("Mana (a drain type): the total 250,000 and its generation 1200.50/s (GetPowerRegenForPowerType); no note (\"total\", \"while casting 2400.00/s\" gone)", function()
   local l = lineOf(d, "label", "Mana"); local gen = lineOf(d, "pairLabel", "Generation")

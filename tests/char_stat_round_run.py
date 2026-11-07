@@ -218,14 +218,14 @@ checkp("Stat Weights: Haste's T/L cell is two lines, \"T: 1,200\" then \"L: 0.0\
   local t1, t2 = find(d, "wtl", "T: 1,200"), nil
   for _, r in ipairs(recs(d, "wtl")) do if t1 and r.text == "L: 0.0" and r.y > t1.y and (not t2 or r.y < t2.y) then t2 = r end end
   return t1 and t2 and t2.y > t1.y and t2.x == t1.x and find(d, "wtl", "T: 1,200 / L: 0.0") == nil, T(t1) .. " / " .. T(t2) .. " y " .. tostring(t1 and t1.y) .. "/" .. tostring(t2 and t2.y) end)
-checkp("the Stats grid's heads (Stat | Rating | Current value | Pt value | Influences | Change): none cut, each on one line at the default width (0.6 x size)", function()
+checkp("the Stats grid's heads (Stat | Rating | Current value | Pt value | Modifies | Change; Influences until QoL 0.7.39, #88): none cut, each on one line at the default width (0.6 x size)", function()
   local hs = recs(d, "colhead")
   local seen = {}
   for _, r in ipairs(hs) do
     seen[r.text] = true
     if cutWord(r) or not oneLine(r) then return false, r.text .. " w=" .. r.w end
   end
-  return seen.Influences and seen["Current value"] and seen.Change, "Influences head: " .. tostring(seen.Influences) end)
+  return seen.Modifies and seen["Current value"] and seen.Change, "Modifies head: " .. tostring(seen.Modifies) end)
 MEASURE = "est"
 
 -- -----------------------------------------------------------------------------------------------------------------------------
@@ -272,8 +272,8 @@ checkp("typed Agility: no \"Abilities (per 100)\" or \"Ability Scaling\" and no 
   return true end)
 checkp("  ...nor in the Agility card's hover", function()
   local h = hoverOf(d, "map_primary"); return h ~= "" and not h:find("Ability Scaling", 1, true) and not h:find("Abilities (per 100)", 1, true) and not h:find("Fracture", 1, true), h end)
-local hI, hP, hC = find(d, "colhead", "Influences"), find(d, "colhead", "Pt value"), find(d, "colhead", "Change")
-checkp("Influences: a column head between Pt value and Change", function()
+local hI, hP, hC = find(d, "colhead", "Modifies"), find(d, "colhead", "Pt value"), find(d, "colhead", "Change")
+checkp("Influences (Modifies since QoL 0.7.40, #88): a column head between Pt value and Change", function()
   return hI and hP and hC and hI.y == hP.y and hI.x >= hP.x + hP.w and hI.x + hI.w <= hC.x, T(hI) end)
 local function namesOn(dd, label)
   local L = find(dd, "label", label)
@@ -291,12 +291,12 @@ checkp("Agility's row: Attack power, Dodge, Armor as names only in the Influence
 checkp("  ...hovering Attack power: its value, its Pt value and, with the typed Agility, the new value with its sign", function()
   local h = hoverOf(d, "map_primary:» Attack power")
   return h:find("» Attack power | +2,637  (1 = 1.00) /  | +2,737", 1, true) ~= nil, h end)
-checkp("Attack Power's row: what feeds it, marked as feeders (from Agility), in the same column; hover gives its value and new value", function()
+-- (QoL 0.7.40, REQUEST-LOG #87 / #88 replaces the 0.7.28 check "what feeds it, marked as feeders (from Agility), in the same column": the
+-- column is Modifies, what the stat applies to; "from Agility" is a row under Attack Power, checked in tests/char_stat_round2_run.py)
+checkp("Attack Power's row: only what it applies to in Modifies (Damage per second); no \"from\" name in the column", function()
   local t = {}
   for _, r in ipairs(namesOn(d, "Attack Power")) do t[#t + 1] = r.kind .. ":" .. r.text end
-  local h = hoverOf(d, "map_ap:From Agility")
-  return table.concat(t, " "):find("feed:from Agility", 1, true) ~= nil and find(d, "pairLabel", "From Agility") == nil
-    and h:find("From Agility | +2,637  (1 = 1.00) /  | +2,737", 1, true) ~= nil, table.concat(t, " ") .. " // " .. h end)
+  return table.concat(t, " ") == "infl:Damage per second" and #recs(d, "feed") == 0, table.concat(t, " ") end)
 checkp("Haste: its abilities' list is a name in Influences; the ability and its recharge are in that name's hover, not a nested row", function()
   local h = hoverOf(d, "map_haste:» Abilities (their text names Haste)")
   return h:find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil, h end)
