@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-game QA walkthrough for Bar cues (XayaUI_DevAssist 0.7.13, XayaUI_DevAssist/QAWalks-bars.lua; REQUEST-LOG A11).
+"""In-game QA walkthrough for Bar cues (XayaUI_DevAssist 0.7.14, XayaUI_DevAssist/QAWalks-bars.lua; REQUEST-LOG A11).
 Xaya's rule (relayed 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa
 test walk through with pre-fill confirmation options or data capturing".
 Loads the real addons (with XayaUI Dev Assist) in the stand-in game (tests/harness), runs every step of the walkthrough as a player

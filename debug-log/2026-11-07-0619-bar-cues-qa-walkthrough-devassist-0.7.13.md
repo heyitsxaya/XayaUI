@@ -37,3 +37,9 @@ Logged 2026-11-07 06:19 UTC. Session 014bN6tX7AoZQrGX246YSXjC, branch `claude/dr
 ## Not verified
 - In game: everything. GetStatusBarColor's answer on a bar the game drives (INFERENCE: may be secret in combat; step 3 runs out of
   combat and falls back to XayaUI's record).
+
+## Update 2026-11-07 (landing preparation for the lander, session 014bN6tSZh6UFB2WcRuyXqBZ)
+- main 7b830cf merged in; Dev Assist 0.7.13 -> 0.7.14 (the function audit takes 0.7.13); QAWalks-Checklist.lua regenerated.
+- The full harness (static check) failed on 509c0e95: "QAWalks-bars.lua uses ns.TT, which belongs to XayaUI_Bonus; go through
+  Modules.lua instead". Step 8 now reads Bonus through its service, `ns.Service("tooltipsDebug").TT` (Bonus Tooltips.lua provides
+  it). tests/qa_walks_bars_run.py: 21 checks, 0 failed.

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-bars.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthrough for Bar cues (core 0.6.58 / Options 0.6.59 / Bonus 0.6.20,
+-- QAWalks-bars.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthrough for Bar cues (core 0.6.58 / Options 0.6.59 / Bonus 0.6.20,
 -- ROADMAP RM-BARS, REQUEST-LOG A11 S8-1 .. S8-13; QA B200-B210, F21).
 -- Xaya's standing rules: V20 (walkthroughs in /xui dev qa) and, relayed 2026-11-07, "make sure every feature or significant change to
 -- the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
@@ -203,7 +203,9 @@ local steps = {
         .. "|cffffd100Expect:|r \"Fire Damage\" in the game's Fire colour (orange), \"Magic\" in blue (Bonus Features > Enhanced Tooltips > Type colours; English game text only).",
       check = function()
           local ns = NS()
-          local TT = ns and ns.TT
+          -- (XayaUI_Bonus is reached only through its service: Modules.lua ns.Service; Bonus Tooltips.lua provides "tooltipsDebug")
+          local sv = ns and ns.Service and ns.Service("tooltipsDebug")
+          local TT = sv and sv.TT
           if not (TT and TT.SectionOn) then return false, "XayaUI Bonus Features (Enhanced Tooltips) is not loaded" end
           if not TT.SectionOn("typeColors") then return false, "Type colours is switched off (or Enhanced Tooltips is off)" end
           local s = ns.BarColorizeTypes and ns.BarColorizeTypes("Deals 10 fire damage.")
