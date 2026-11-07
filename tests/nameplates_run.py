@@ -57,6 +57,18 @@ C_Timer = { After = function(s, fn) W.timers[#W.timers + 1] = fn end }
 function W.nextFrame() local t = W.timers; W.timers = {}; for _, fn in ipairs(t) do fn() end end
 UnitIsUnit = function() W.compared = W.compared + 1; error("UnitIsUnit called") end
 C_AddOns = { IsAddOnLoaded = function(n) return W.loaded and W.loaded[n] or false end }
+-- the game's nameplate option bit fields (C_CVar.GetCVarBitfield / SetCVarBitfield; index = the Enum.NamePlate* value)
+W.cvars, W.cvarCalls, W.refuse, W.combat = {}, 0, {}, false
+C_CVar = {
+  GetCVarBitfield = function(name, i) W.cvarCalls = W.cvarCalls + 1; local t = W.cvars[name]; return (t and t[i]) and true or false end,
+  SetCVarBitfield = function(name, i, v) W.cvarCalls = W.cvarCalls + 1; if W.refuse[name] then return false end; W.cvars[name] = W.cvars[name] or {}; W.cvars[name][i] = v and true or false; return true end,
+}
+InCombatLockdown = function() return W.combat end
+Enum = { NamePlateInfoDisplay = { CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
+  NamePlateCastBarDisplay = { SpellName = 1, SpellIcon = 2, SpellTarget = 3, HighlightImportantCasts = 4, HighlightWhenCastTarget = 5 },
+  NamePlateThreatDisplay = { Progressive = 1, Flash = 2, HealthBarColor = 3 },
+  NamePlateEnemyNpcAuraDisplay = { Buffs = 1, Debuffs = 2, CrowdControl = 3 } }
+function W.bit(name, i) local t = W.cvars[name]; return (t and t[i]) and true or false end
 function W.fire(event, ...) for _, f in ipairs(W.frames) do if f._events[event] and f._scripts.OnEvent then f._scripts.OnEvent(f, event, ...) end end end
 XayaUI_NS = {
   Print = function(s) W.prints[#W.prints + 1] = s end,
@@ -166,6 +178,31 @@ run(L, 'W.commands.nameplates("")')
 out = " | ".join(list(W.prints.values()))
 check("F1 /xui nameplates names Plater when it is loaded (nothing of ours shows then)", "Plater is loaded" in out, out)
 check("F2 ...and says target colour is on and what the last refresh found", "target colour on" in out and "no target nameplate" in out, out)
+
+# G. Match my Plater settings (Blizzard's own nameplate options; 0.2.0) ------------------------------------------------------------
+L, W = world()
+check("G1 loading and logging in read or set no game option (only a click does)", run(L, "return W.cvarCalls") == 0, run(L, "return W.cvarCalls"))
+run(L, 'W.cvars.nameplateThreatDisplay = { [2] = true }; W.cvars.nameplateCastBarDisplay = { [1] = true, [5] = true }')
+run(L, 'W.combat = true; W.option("blizzApply").func()')
+check("G2 in combat: refused, nothing changed", run(L, "return W.bit('nameplateInfoDisplay', 1)") is False and run(L, "return XayaUINameplatesDB.blizzBefore") is None)
+run(L, 'W.combat = false; W.option("blizzApply").func()')
+want = [("nameplateInfoDisplay", 1, True), ("nameplateInfoDisplay", 2, True), ("nameplateInfoDisplay", 3, True),
+        ("nameplateCastBarDisplay", 1, True), ("nameplateCastBarDisplay", 2, True), ("nameplateCastBarDisplay", 3, True), ("nameplateCastBarDisplay", 4, True),
+        ("nameplateThreatDisplay", 3, True), ("nameplateThreatDisplay", 1, True), ("nameplateThreatDisplay", 2, False),
+        ("nameplateEnemyNpcAuraDisplay", 2, True), ("nameplateEnemyNpcAuraDisplay", 3, True)]
+got = [run(L, "return W.bit('%s', %d)" % (n, i)) for n, i, _ in want]
+check("G3 Match out of combat: each of the 12 options is set as her Plater profile had it (flash off, the rest on)", got == [v for _, _, v in want], got)
+check("G4 ...options it does not map are left alone (highlight-when-cast-target stays on, enemy buffs untouched)",
+      run(L, "return W.bit('nameplateCastBarDisplay', 5)") is True and run(L, "return W.bit('nameplateEnemyNpcAuraDisplay', 1)") is False)
+check("G5 ...the settings page then says 12 of 12 match", "Now: 12 of 12 match" in run(L, 'return W.option("blizzInfo").name()'), run(L, 'return W.option("blizzInfo").name()'))
+run(L, "W.cvars.nameplateInfoDisplay[1] = false; W.option('blizzApply').func()")   # pressed again later: the first 'before' is kept
+run(L, 'W.option("blizzBack").func()')
+back = [run(L, "return W.bit('%s', %d)" % (n, i)) for n, i, _ in want]
+before = [n == "nameplateThreatDisplay" and i == 2 or n == "nameplateCastBarDisplay" and i == 1 for n, i, _ in want]
+check("G6 Put back restores exactly what was there before the FIRST Match (pressing Match twice does not lose it)", back == before, back)
+check("G7 ...and Put back is greyed afterwards", run(L, 'return W.option("blizzBack").disabled()') is True)
+run(L, 'W.refuse.nameplateThreatDisplay = true; W.option("blizzApply").func()')
+check("G8 an option the game refuses is named, not reported as done", "the game refused" in run(L, "return W.prints[#W.prints]") and "Threat" in run(L, "return W.prints[#W.prints]"), run(L, "return W.prints[#W.prints]"))
 
 print("nameplates_run: %s" % ("ALL PASS" if fails == 0 else "%d FAIL" % fails))
 sys.exit(1 if fails else 0)

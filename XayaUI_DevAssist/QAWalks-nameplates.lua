@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-nameplates.lua (XayaUI_DevAssist 0.7.14): in-game QA walkthrough for XayaUI Nameplates 0.1.0, Target colour (slice 1 of
+-- QAWalks-nameplates.lua (XayaUI_DevAssist 0.7.14; 0.7.32 adds the Blizzard options walkthrough): in-game QA walkthrough for XayaUI Nameplates 0.1.0, Target colour (slice 1 of
 -- docs/plans/NAMEPLATES-PLAN-2026-11-07.md; QA-CHECKLIST K1-K4; REQUEST-LOG A15 NP-1).
 -- V20 / V22 (Xaya): a walkthrough with pre-filled answers wherever the addon can read the result (prefill = true: the addon's verdict
 -- is offered on one Accept button; nothing is recorded without her click). What only eyes can judge (is the colour visible, is the
@@ -109,5 +109,28 @@ QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (Xa
             if d.targetColor ~= saved.on then return false, "Target colour not put back yet" end
             for i = 1, 3 do if not Near(d.color[i], saved.color[i]) then return false, "colour not put back yet" end end
             return true, "settings are back as they were"
+        end },
+} })
+
+-- (Nameplates 0.2.0) Match my Plater settings: Blizzard's own nameplate options set to her Plater profile, and Put back (QA-CHECKLIST K5)
+local function BO() local np = NP(); return np and np.BlizzardOptions end
+QA.Register("nameplates-blizzard-options", { title = "Nameplates: match my Plater settings (XayaUI Nameplates 0.2.0)", qa = "K5, NP-1", order = 301, prefill = true, steps = {
+    { text = "Out of combat, press |cffffd100Do it for me|r (the same as the |cffffd100Match my Plater settings|r button in /xui > QoL > Nameplates).\n\n|cffffd100Expect:|r the addon's check says every listed Blizzard option now matches your Plater profile (health percent and amount, elite icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on, threat flash off, debuffs and crowd control on enemies).",
+        setup = function() local bo = BO(); if bo then local _, msg = bo.Apply(); local np = NP(); np.lastBlizz = msg end end,
+        check = function()
+            local bo = BO(); if not bo then return false, "XayaUI Nameplates 0.2.0 is not loaded" end
+            local m, k, n = bo.Matching()
+            if k < n then return false, ("%d of %d options could not be read back"):format(n - k, n) end
+            if m < n then return false, ("%d of %d match: %s"):format(m, n, tostring(NP().lastBlizz)) end
+            return true, ("all %d options match your Plater profile"):format(n)
+        end },
+    { text = "Target a few enemies and watch a caster.\n\n|cffffd100Answer:|r do you see the health percent and amount on the bars, the cast target's name, and important casts highlighted? Pass if yes; Fail and say what is missing.",
+        noVerdict = true },
+    { text = "Out of combat, press |cffffd100Do it for me|r (the same as |cffffd100Put back|r).\n\n|cffffd100Expect:|r Blizzard's nameplate options are back to what they were before the first Match.",
+        setup = function() local bo = BO(); if bo then local _, msg = bo.PutBack(); local np = NP(); np.lastBlizz = msg end end,
+        check = function()
+            local np = NP(); if not (np and BO()) then return false, "XayaUI Nameplates 0.2.0 is not loaded" end
+            if type(np.DB().blizzBefore) == "table" then return false, "not put back: " .. tostring(np.lastBlizz) end
+            return true, tostring(np.lastBlizz)
         end },
 } })

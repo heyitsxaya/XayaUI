@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Core.lua (XayaUI_Nameplates 0.1.0): saved settings, the settings page and /xui nameplates.
+-- Core.lua (XayaUI_Nameplates 0.1.0; 0.2.0 adds the Blizzard options buttons): saved settings, the settings page and /xui nameplates.
 --
 -- Xaya, 2026-11-07 (her words): "if you can replicate the following mods and profile functionality into xui and make it cost less,
 -- here are the nameplate mods and settings I rely on". Plan and what is (not) possible: docs/plans/NAMEPLATES-PLAN-2026-11-07.md.
@@ -62,6 +62,26 @@ local function BuildPage(Notify)
             teal = { type = "execute", order = 2, name = "Teal", width = "half", disabled = off,
                 desc = "Back to teal, rgb(0, 128, 128).",
                 func = function() NP.DB().color = { NP.TEAL[1], NP.TEAL[2], NP.TEAL[3] }; Changed() end },
+            -- (0.2.0) Blizzard's own nameplate options set to the ones closest to her Plater profile (BlizzardOptions.lua)
+            blizzHdr = { type = "header", order = 10, name = "Blizzard's nameplate options" },
+            blizzInfo = { type = "description", order = 11, width = "full",
+                name = function()
+                    local BO = NP.BlizzardOptions
+                    if not BO then return "" end
+                    local lines = { "Match sets these of the game's own nameplate options (Options > Nameplates) to what your Plater profile used. Only when you press it, only out of combat; Put back restores what they were before." }
+                    for _, row in ipairs(BO.ROWS) do lines[#lines + 1] = ("  %s: %s  (Plater: %s)"):format(row.label, row.value and "on" or "off", row.plater) end
+                    local m, k, n = BO.Matching()
+                    lines[#lines + 1] = ("Now: %d of %d match%s."):format(m, n, (k < n) and (" (" .. (n - k) .. " could not be read)") or "")
+                    if NP.lastBlizz then lines[#lines + 1] = "Last: " .. NP.lastBlizz end
+                    return table.concat(lines, "\n")
+                end },
+            blizzApply = { type = "execute", order = 12, name = "Match my Plater settings",
+                desc = "Sets the Blizzard nameplate options listed above. Out of combat only.",
+                func = function() local _, msg = NP.BlizzardOptions.Apply(); NP.lastBlizz = msg; ns.Print("Nameplates: " .. msg); if Notify then Notify() end end },
+            blizzBack = { type = "execute", order = 13, name = "Put back",
+                desc = "Restores the Blizzard nameplate options to what they were before you first pressed Match.",
+                disabled = function() return type(NP.DB().blizzBefore) ~= "table" end,
+                func = function() local _, msg = NP.BlizzardOptions.PutBack(); NP.lastBlizz = msg; ns.Print("Nameplates: " .. msg); if Notify then Notify() end end },
         },
     }
 end
@@ -86,6 +106,6 @@ loader:SetScript("OnEvent", function(self, _, name)
 end)
 
 ns.RegisterSettingsPage("qol", "nameplates", BuildPage)
--- for XayaUI Dev Assist's QA walkthrough (QAWalks-nameplates.lua): NP.DB, NP.Color, NP.TEAL, NP.Replacer, NP.TargetColor
+-- for XayaUI Dev Assist's QA walkthrough (QAWalks-nameplates.lua): NP.DB, NP.Color, NP.TEAL, NP.Replacer, NP.TargetColor, NP.BlizzardOptions
 ns.Provide("nameplates", NP)
 ns.RegisterCommand("nameplates", Status, "/xui nameplates - XayaUI Nameplates: what is on, and whether your target's nameplate was found")

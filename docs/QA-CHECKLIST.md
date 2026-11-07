@@ -415,6 +415,8 @@ Walkthrough: `/xui dev qa` > "Nameplates: target colour (XayaUI Nameplates 0.1.0
 - [ ] **K3.** (Nameplates 0.1.0) In a dungeon or Mythic+ pull, switch targets several times in combat. **Expect:** each new target turns teal at once; no "Interface action failed" or blocked-action message; `/xui nameplates` says "target nameplate found; colour shown".
 - [ ] **K4.** (Nameplates 0.1.0) /xui > QoL > Nameplates: pick another colour, then press Teal; untick Target colour. **Expect:** the target's bar takes the new colour at once, Teal puts teal back, unticked nothing is coloured. Untick XayaUI Nameplates in the AddOns list and /reload: **Expect:** Blizzard's plates as before, no Nameplates page in the settings.
 
+- [ ] **K5.** (Nameplates 0.2.0) Out of combat, /xui > QoL > Nameplates > **Match my Plater settings**. **Expect:** chat says how many of Blizzard's nameplate options changed; the page says "Now: 12 of 12 match"; enemy plates show health percent and amount, cast target names and highlighted important casts. Press it in combat: **Expect:** "not in combat". **Put back**: **Expect:** the options as they were before. (Walkthrough "Nameplates: match my Plater settings".)
+
 ## Reporting a problem
 
 Send, for each problem:

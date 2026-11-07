@@ -110,14 +110,15 @@ vs with Blizzard's plates plus XayaUI_Nameplates. I asked the performance-test s
 | Slice | Content | State |
 |---|---|---|
 | 1 | XayaUI_Nameplates 0.1.0: the addon itself (disabled by default), **Target colour** (on, teal, colour picker), `/xui nameplates` status (Plater loaded? target plate found?), V14 test, QA walkthrough | built on branch `claude/nameplates-plater` |
-| 2 | Aura order by the game's own sort rules; threat / quest / tapped tint colours; health text and other Blizzard options exposed from our page | proposal; needs her answers once her older items are on main |
+| 2a | XayaUI_Nameplates 0.2.0: **Match my Plater settings** button: sets 12 of Blizzard's own nameplate options to what her profile used (health % and amount, elite icon, cast bar spell name / icon / target, highlight important casts, threat colour on bar + glow, flash off, enemy debuffs + crowd control); out of combat only; Put back restores the earlier values. Walkthrough + K5 | built on branch `claude/nameplates-plater` (overnight order, 2026-11-07 08:25 UTC) |
+| 2b | Aura order by the game's own sort rules; threat / quest / tapped tint colours in her exact colours | waits on NP-Q5 / NP-Q7 (QA question flow) |
 | 3 | Her look on Blizzard's bars (texture, font, border), size step | proposal; taint check in game first |
 | - | Spell- and NPC-keyed scripts in Mythic+ combat | not possible for any addon (B3) |
 
 **What she must do to use slice 1:** enable "XayaUI Nameplates" in the AddOns list and **disable Plater**. She loses everything Plater
 draws that Blizzard does not (B3), so this is a trial, not a swap yet. Re-enabling Plater undoes it.
 
-## Questions for her (to send once her older items are on main; V19 question flow)
+## Questions for her (sent to the QA question flow session as NP-Q1..NP-Q8, 2026-11-07 ~08:30 UTC)
 1. R1: Blizzard's plates as the base (cheap), or our own plates for Plater's look (costlier, phase 3)?
 2. Which of the impossible-in-Mythic+ items (B3) does she rely on out of combat or outside Mythic+? Those can be built for there.
 3. Aura order: which of the game's sort rules?
