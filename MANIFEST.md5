@@ -809,8 +809,8 @@ af9c61485a8a24ffc2ac273ffbf48dc1  tests/qa_walks_chat_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 2453982bb724f7a4377718d116b598cd  tests/release_guard_run.py
 7db54860bf3ac18c989cb25e93695bdc  tests/reskin_blizzard_skins_run.py
-1d5722f074201f2ab3628d3e1b0d2160  tests/reskin_tab_run.py
-3e61113c4348b185c0dcc3476a2ae58f  tests/reskin_tab_switch_run.py
+38827713c51627052a80b62901729e25  tests/reskin_tab_run.py
+cedb314d150aaa1423cc354da455b441  tests/reskin_tab_switch_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
 24def41130c94534cf81b2f7cd7cb8da  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
