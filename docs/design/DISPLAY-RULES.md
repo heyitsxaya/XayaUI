@@ -74,7 +74,7 @@ location if they aren't already. / refactor all code appropriately. / priority: 
    Calculator page only, until she confirms).
 
 ## B. Gaps found in the audit (PROPOSED: each waits for her answer)
-Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. Each gap is asked through the question flow; the
+Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. The audit: [DISPLAY-AUDIT-UI-47-2026-11-07.md](DISPLAY-AUDIT-UI-47-2026-11-07.md). Each gap is asked through the question flow; the
 answer moves it to section A.
 
 | # | Display type | What differs today | Proposal | Status |
@@ -83,6 +83,14 @@ answer moves it to section A.
 | G2 | The box under a page's section tabs (bordered, own scroll bar) | a nested box inside the right pane | RULED [UI-48]: "If the item is not enabled no additional fill should exist"; while on: a fill without a border (INFERENCE, to be seen by her) | built (Options 0.6.63), not seen by her |
 | G3 | Titled boxes inside a page (e.g. "Whisper sound overrides", "Tab 1: General") | bordered box per group | RULED [UI-48]: "First try unbordered boxes (darker blocks) and dividing lines" | built (Options 0.6.63), waiting for her look |
 | G4 | Text inputs (e.g. "Enchant: Head") | each input stretches the full row | RULED [UI-48]: "Half width, two per row" | built (Options 0.6.63): no width, "full" and "double" inputs; not seen by her |
+| G5 | Sliders (190) | Blizzard track / thumb art + Skin.lua step arrows in Blizzard's page-arrow art | keep / flat theme-coloured track, thumb and arrows | PROPOSED: Q-UIB-9 (audit 3.1) |
+| G6 | Tick boxes inside pages (~310) | Blizzard's gold tick art; theme text colour only | keep / flat theme square, same as the switches | PROPOSED: Q-UIB-10 (audit 3.2) |
+| G7 | Colour swatches (148) | Blizzard swatch frame | keep / flat 1 px theme border | PROPOSED: Q-UIB-10 (audit 3.3) |
+| G8 | Multi-selects (16, Rules load conditions) | full-width block, one tick box per value | keep / dropdown with ticks | PROPOSED: Q-UIB-11 (audit 3.4) |
+| G9 | Small text blocks (41, Rules tab) | GameFontHighlightSmall beside medium elsewhere | keep / one size (medium) | PROPOSED: Q-UIB-12 (audit 3.5) |
+| G10 | Heading "Auto-populate my class / spec" | old feature name | keep / "Auto-Generate Rules for my class / spec" | PROPOSED: Q-UIB-13 (audit 3.6) |
+| G11 | Gear Summary style hover | 7 sentences (lists the six styles) | keep until she picks a style / one sentence | PROPOSED: Q-UIB-14 (audit 3.7) |
+| G12 | Info icons | older heading (i) (hover + pin) everywhere; UI-53 open / close box on Calculator only | keep both / one icon after the Calculator verdict | PROPOSED: Q-UIB-15 (audit 3.8; waits on Q-UIB-7) |
 
 ### Session choices made while building section B (each listed for her look; none is a ruling)
 | # | Where | Choice | Why |

@@ -596,7 +596,8 @@ d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
 5c157106bb140d54dff6bac56d59cd40  docs/USER-GUIDE.md
 0d991b064f251b05ebffcbf4b4749713  docs/WHATS-NEW.md
 addc6d522657e880ed4c488098f3799b  docs/design/BUILD-RULES.md
-ac0e5d4c9ef8d52b0def5f07792e76a1  docs/design/DISPLAY-RULES.md
+7a7ebd0fe5b00917b159b0c33c48504f  docs/design/DISPLAY-AUDIT-UI-47-2026-11-07.md
+fae20864d1f8962547879ab4bb2ea2f9  docs/design/DISPLAY-RULES.md
 5f0ae2f84a348e71d1d156b17c0795bf  docs/design/DISPLAY-RULINGS.md
 7a14670eaaa9f73d446ca19621cdfbe2  docs/issue-screenshots/group-panel-truncation.png
 8fe2a9a73b8e4f5fed71d3a1c45f8030  docs/issue-screenshots/group-top-row-buttons.png
@@ -640,7 +641,7 @@ c9c4d4428d7670e0ab3770e9a6af0f1a  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-779ddd00e6a5b187610619efc109d127  docs/process/REQUEST-LOG.md
+3afe3e0a7837781b2f52c8123e10ef4b  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 09a7314016fdc0383c32f5f6e438bf70  docs/process/VERIFICATION.md
 1e94015a6bbc6df04beba4c8e3d8b12c  docs/process/handoffs/bar-cues.md
@@ -648,7 +649,7 @@ fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rx
 309179f1a93a212af450b63cd877fc72  docs/process/handoffs/chat-issue-review.md
 ba484bd6279bcc1fd5a17a8d1929c865  docs/process/handoffs/d8-raid-rules.md
 28995ab2c62a3354b6be6f26362c12a0  docs/process/handoffs/perf-test.md
-f75b4cfe652cfea8b596c92295b27c23  docs/process/handoffs/ui-bugs.md
+b9e68833ed4510f564581b0fab24e4bd  docs/process/handoffs/ui-bugs.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
 fbd3ef6f3e1dbc3fe97c8918886f3073  docs/reference/GCD-RESEARCH-2026-11-07.md
 59d1f821a5da7ee913b826e5ba2040b4  docs/reference/HOVER-REWRITES-UI-65-2026-11-07.md
