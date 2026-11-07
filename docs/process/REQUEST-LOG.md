@@ -654,3 +654,6 @@ Other OPEN and CONFIRM rows (no display structure) are listed in the full file, 
 learner), CHAT-3a (progress bars), CHAT-3b (= #40), CHAT-3e (= #10), CHAT-5, CHAT-6 (`/notes`, `/calc`), WHISP-1 (whisper tabs in the
 chat window: waits on her `/xui chat whispers` output), TIPS-1, TIPS-3, TIPS-10, TIPS-12, TIPS-23, HIEFF-3, HIEFF-9, HIEFF-10, HIEFF-17,
 REPO-2, PART-3, and LAST-1 / LAST-2 (never answered: she stopped those turns).
+
+## UPG-1 (2026-11-07, session 014bN6tWKcNdrDgUBzRK3BUh, branch `claude/shopping-list-auto-detect-ieb029`)
+Her words: "Feature for shopping list: auto detect new upgrade item in bag upon looting/landing IFF the item has a socket or can be enchanted. Do a single confirmation toast: "XUI has detected a new item that may potentially be an upgrade. Do you want to add a {gem}{enchant} to your shopping list for it?" yes no options. Tick Options: "ignore item," "only on a higher upgrade track" (the latter only if possible) underneath". Answers: same track or above, with a setting "don't make recommendations for the shopping list below ___ track"; "ilvl less important if the item is on a superior track"; ignore = this exact item, this character; Yes adds to To buy, toast top-center. Status: built on branch (QoL 0.7.48, QA E2i, walkthrough upg-shop-toast), not on main, not run in game. Debug log 2026-11-07-1200.
