@@ -94,7 +94,7 @@ q.note:SetText("only on |cffff0000login")
 q.next:GetScript("OnClick")(q.next)
 local a = XayaUIDevAssistDB.questions.answers[first.key]
 check("picking a choice and Next saves it with the note, time and version", a and a.c == 2 and a.choice == first.choices[2] and a.note == "only on cffff0000login"
-  and a.when and a.v == "0.7.30", a and (tostring(a.c) .. " " .. tostring(a.note) .. " " .. tostring(a.v)))
+  and a.when and a.v == C_AddOns.GetAddOnMetadata("XayaUI_DevAssist", "Version"), a and (tostring(a.c) .. " " .. tostring(a.note) .. " " .. tostring(a.v)))
 check("  ...and moves to question 2", RV.State().qi == 2 and q.count:GetText():find("1 answered", 1, true) ~= nil, q.count:GetText())
 q.skip:GetScript("OnClick")(q.skip)
 check("Skip moves on without saving", RV.State().qi == 3 and XayaUIDevAssistDB.questions.answers[QA.questions[2].key] == nil)
