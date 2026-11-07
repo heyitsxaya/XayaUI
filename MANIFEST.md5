@@ -618,6 +618,7 @@ f2fa31ac21c4a1101f7fb13a72c08285  docs/process/REQUEST-LOG-session-014bN6tV8wAAE
 40c1c2e4913b7b1f100e250b8ffa905f  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 09a7314016fdc0383c32f5f6e438bf70  docs/process/VERIFICATION.md
+d260bfb4fbfc4870af0b3ba0548b258c  docs/process/handoffs/new-features-reskins.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
 fbd3ef6f3e1dbc3fe97c8918886f3073  docs/reference/GCD-RESEARCH-2026-11-07.md
 7af233aeafadc9bade62ce5da4b21189  docs/reference/README.md
@@ -800,7 +801,7 @@ fb1c1f19da3520085ebcb7a94d35e7e8  tests/precheck_run.py
 e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 69c610cd804812db130140e9e506c453  tests/preview_layout_run.py
 cf93c863d353050305e5a15faf19d724  tests/qa_perf_walks_run.py
-6549fe75f0ccc2ee5cb77e50cb8d521d  tests/qa_walk_run.py
+c3c779b14f59891ea9df9c709c27a1bd  tests/qa_walk_run.py
 af9c61485a8a24ffc2ac273ffbf48dc1  tests/qa_walks_chat_run.py
 15c2fad1e92c15d59b152b3f07541126  tests/qa_walks_display_run.py
 c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
