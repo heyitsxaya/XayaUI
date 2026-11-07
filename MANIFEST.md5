@@ -805,7 +805,7 @@ e419bc6fcc002cffc52e4a48a97807a8  tests/harness/build_framexml_index.py
 6f6d8a592b30903806cc446181eef8f5  tests/harness/loader.lua
 a86f56d3d0f0e1ed426ca5decffcbdbf  tests/harness/run.py
 9de9e7a08f41cb1724a50f5dfc1a8eec  tests/harness/scenario.lua
-2a91f90a18bc2c518a3264bce9dda6cd  tests/harness/world.lua
+010812dc680648ef38e2affbc467b4fe  tests/harness/world.lua
 7f8e06958cff5b6defb1058572578426  tests/harness_enum_values_run.py
 54ac3f5374107845cd76a8303a1e4a90  tests/header_chevron_run.py
 52415ac2ab3eae856593c419e3877b9b  tests/icon_cue_text_run.py
