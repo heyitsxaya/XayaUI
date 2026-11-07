@@ -11,7 +11,7 @@ Style: Blizzard's own patch notes (blue posts). Short past-tense or present-tens
 Layout, newest landing first:
   ## YYYY-MM-DD — Short title                      one per landing on main (UTC date)
   ### <Addon> <version>                            Addon is one of: XayaUI, Options, Chat, Quality of Life, Bonus Features,
-                                                   Blizzard Reskin, Dev Assist, Media. One heading per addon version.
+                                                   Blizzard Reskin, Dev Assist, Media, Nameplates. One heading per addon version.
   **Feature name**                                 a bold category line; add " (new)" for a brand-new feature
   - Bullet.                                        a change
     - Nested bullet.                               detail under the bullet above (two spaces)
