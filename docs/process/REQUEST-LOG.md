@@ -563,6 +563,22 @@ Opened 2026-11-07 by the coordinator (session_014bN6tSStpdmmCXviFAqPdQ) to build
 | CR-8 | (relayed by the hub as O-143, 2026-11-07 ~07:48 UTC) "weird chat appearance when chat fades -- the sidebar icons should also be fading" [screenshot: chat faded; a small chevron top-left and a gold-boxed eye top-right at full strength] | ON MAIN at 72a7512 (#443, merge of d5ecf8c); untested in game | Frame.lua C.ApplyAlpha, Privacy.lua, Fade.lua, Sidebar.lua; tests/chat_fade_controls_run.py; QA D28 | The collapse arrow and the eye fade with the chat; the sidebar fades with it by default; the mouse over them wakes the chat. debug-log/2026-11-07-*-chat-icons-fade-with-chat-chat-0.6.36.md |
 | CR-9 | (relayed by the hub, Xaya's overnight order, 2026-11-07 ~08:25 UTC) "I have to go to sleep. I want everything I've requested over the last 16h — and I mean EVERYTHING — implemented and pushed to main when I wake up. ... I should not find ANYTHING is not pushed to main when I wake up." | DONE for this session: everything on main 72a7512 (#443, #449); questions in the QA flow (Q-CR-1..10, Q-CHAT5) | this section | No questions to her (O-108); choices made without her go to the QA question flow session (session_014bN6tUZLKHa2NXorHRJghL). |
 
+## A18. Process redesign and platform split (session_014bN6tWwZM5hKvbZkMFd4zN, 2026-11-07; branch `claude/lucid-mayer-pv4ytn`)
+
+Her decisions are quoted in full in docs/plans/PLATFORM-SPLIT-2026-11-07.md section 2 (PS-1 to PS-8). Process-rule proposals (fast
+lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" doc; none is in force until she approves it.
+
+| Id | Her words | Status | Where |
+|---|---|---|---|
+| PS-1 | "We don't have to use the name "core" for the platform functionality. We can leave the original "core functionality" of the addon — trigger, cue, etc tracking — as core and create "platform" as the foundational layer upon which everything — including "core" runs." | DESIGN (waits for her approval of the plan) | PLATFORM-SPLIT section 3 |
+| PS-2 | "Re: game menu — change the name to include the name "button" like the minimap" | DESIGN: GameMenu.lua becomes GameMenuButton.lua in phase P4 | section 4 |
+| PS-3 | "Minimap button is part of core / Share is part of core / User media, user sounds, debugging, error handling also part of core" | DESIGN | section 4 |
+| PS-4 | "Recycle Bin can be moved to XayaUI "core" and not "rule tracking," because it houses more than one type of file delete" | DESIGN: Platform bin with registered kinds (today it holds rule items only) | section 6.3 |
+| PS-5 | "Options technically essential to core operating as a platform — part of core?" | DESIGN: Platform, kept as its own load-on-demand folder | section 7 |
+| PS-6 | "Does sharer / import / export have "universal plumbing" configured for each model to tie into? If not, it should — it should support sharing across all modules a user has installed." | DESIGN: ns.RegisterProfilePart | section 6.1 |
+| PS-7 | "I imagine we want individual modules to hold their own settings, correct?" | DESIGN: own saved variables per module, staged copy-not-move migration | section 5 |
+| PS-8 | "Yes, I think we need to prioritize this." | DESIGN: freeze proposal, open question Q6 | section 8 |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."
