@@ -872,6 +872,8 @@ d46d3072cc36fb2d7c5ba243ba723416  tests/sidebar_switches_run.py
 d61ddff1e632235c3ce9006b279dd0f9  tests/timing_run.py
 d41c47a7c982e113295cf6fe9c82478f  tests/tooltip_aura_source_run.py
 4ab5fd24ca1bb0910e3372c636868b5c  tests/tooltip_formulas_run.py
+e9c8a13a1c90464e8f050620a0a35809  tests/tooltip_parity_golden.json
+0027f47476b334dad623d81a8dbc9389  tests/tooltip_parity_run.py
 2de8ed42448c155c93f000dfd55d1484  tests/tooltips_run.py
 1ebaefa53214e59997760360aa40c80f  tests/tracked_buff_run.py
 b8a468e591bd450e9d60af1c7ea2988c  tests/trigger_labels_run.py
