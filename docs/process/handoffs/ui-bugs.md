@@ -3,6 +3,20 @@ Written for O-152 (HUB-HANDOFF-2026-11-07.md protocol). Branch: claude/ui-bugs-f
 Successor: read this file, then `git log --oneline origin/main..origin/claude/ui-bugs-focused`, then docs/process/REQUEST-LOG.md
 section A8 (rows UI-1..UI-78, the full verbatim log with notes) and docs/design/DISPLAY-RULES.md + BUILD-RULES.md.
 
+## 0. Successor session state (session_014bN6tVsL5WP5gZHkDeUhPN, 2026-11-07 ~13:20 UTC)
+- fcb8bc3 (all the predecessor's code) is on main (main 8478204). This branch merged main at ef99712. Diff vs main = this session's work only:
+  - UI-47 step 3 audit: docs/design/DISPLAY-AUDIT-UI-47-2026-11-07.md. No fix that a ruling alone settles. Gaps G5-G12 are in the QA flow as Q-UIB-9..15.
+  - UI-51/52 slice 1: core ns.Tip (Modules.lua 8b). Converted: minimap button + list rows, mover group tag + lock (Visual.lua),
+    Chat Privacy / History / collapse arrow. Proof: tests/tooltip_parity_run.py (golden recorded on main 8478204 before the conversion).
+  - /xui data help text "(Data Panels)" (A7.2). QA B279, walkthrough ui-tooltip-helper.
+  - Versions: core 0.6.73, Chat 0.6.39, Bonus 0.6.29, Dev Assist 0.7.46.
+- Next slices of UI-51/52 (each with the parity test extended first):
+  - QoL CharacterToolkit;
+  - Options (Options.lua, Skin.lua, InfoPane.lua; now allowed, fcb8bc3 is on main);
+  - Visual.lua rule tag (needs a rule with a display in the recording);
+  - AuraSetup rows.
+  - Leave Chat Bar.lua / Bonus DataPanels usage tooltips (J25, perf), and Notepad (function audit).
+
 ## 1. State right now (updated 2026-11-07 ~11:45 UTC)
 - Branch claude/ui-bugs-focused tip f8d88a6 = all of this session's work merged with main bf2ce6a. It holds UI-65 (hover texts),
   UI-70 (row icons), UI-71 (Auto-Generate), UI-76 (Rules sub-tab sizes, O-146), UI-77 (flat buttons from core + Shopping List
