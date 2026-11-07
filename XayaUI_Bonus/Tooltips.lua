@@ -38,6 +38,9 @@ TT.DEFAULTS = {
     forces = { enabled = true, onlyInDungeon = true, onlyMythicPlus = false },
     -- spell tooltips: how the cooldown / recharge and the damage numbers come about, built from live game values (Bonus 0.6.2)
     formulas = { enabled = true, cooldown = true, damage = true },
+    -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10 "Also in game tooltips") spell and aura tooltips: "<school> damage" title-cased
+    -- in its school's colour, a dispel type in brackets after it (or at an aura tooltip's top right) in its dispel colour
+    typeColors = { enabled = true },
 }
 
 local function fill(dst, src)
@@ -284,9 +287,39 @@ local function TextHasDuration(id)
     return ok and readable(d) and type(d) == "string" and d:find("%d+%s*sec") ~= nil
 end
 
+-- 1d. Type colours (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10): the damage school and dispel type words of a spell or aura
+-- tooltip, title-cased and coloured by core's ns.BarColorizeTypes (BarCue.lua; Blizzard's own colours read from the game). A line the
+-- game hands over as a secret is left as it is. English game text only (the words are matched in English).
+function TT.ColorTypes(tooltip)
+    if not ns.BarColorizeTypes then return end
+    local okn, name = pcall(tooltip.GetName, tooltip)
+    if not (okn and type(name) == "string") then return end
+    local okl, n = pcall(tooltip.NumLines, tooltip)
+    if not (okl and type(n) == "number") then return end
+    for i = 1, n do
+        local fs = _G[name .. "TextLeft" .. i]
+        if fs and fs.GetText then
+            local ok, tx = pcall(fs.GetText, fs)
+            if ok and readable(tx) and type(tx) == "string" then
+                local nt = ns.BarColorizeTypes(tx)
+                if nt and nt ~= tx then pcall(fs.SetText, fs, nt) end
+            end
+        end
+    end
+    local r1 = _G[name .. "TextRight1"]   -- an aura tooltip's dispel type ("Magic") at the top right
+    if r1 and r1.GetText then
+        local ok, tx = pcall(r1.GetText, r1)
+        if ok and readable(tx) and type(tx) == "string" then
+            local nt = ns.BarColorizeTypes(tx, true)
+            if nt and nt ~= tx then pcall(r1.SetText, r1, nt) end
+        end
+    end
+end
+
 function TT.OnIDData(tooltip, data, kind)
     local db = TT.DB()
     if type(data) ~= "table" then return end
+    if (kind.key == "spell" or kind.key == "aura") and TT.SectionOn("typeColors") then pcall(TT.ColorTypes, tooltip) end
     if kind.key == "spell" and TT.FormulaLines and readable(data.id) and type(data.id) == "number" then
         pcall(TT.FormulaLines, tooltip, data.id, data)
     end
@@ -677,7 +710,7 @@ function TT.OnUnitData(tooltip, data)
 end
 
 -- V14 "off costs nothing" (Bonus 0.6.12; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or
--- contribute to performance cost / demand in any way"). TT.on caches "at least one of IDs, Item level, Enemy forces, Formulas is on"; it
+-- contribute to performance cost / demand in any way"). TT.on caches "at least one of IDs, Item level, Enemy forces, Formulas, Type colours (0.6.20) is on"; it
 -- is set by TT.Sync, which runs at login and after every switch on the Tooltips page. With all four off nothing is installed: no tooltip
 -- post-call, no frame, no event. The post-calls are placed the first time one of the four is on; the game offers no way to take them
 -- back (INFERENCE: TooltipDataProcessor is Blizzard's own Lua, not in the 12.1.5 API documentation in docs/reference/api, and no removal
@@ -686,7 +719,7 @@ TT.on = false
 function TT.AnyOn()
     local db = TT.DB()
     if db.enabled == false then return false end   -- (Bonus 0.6.14) Enhanced Tooltips off: nothing, whatever the sections say
-    return (db.ids.enabled or db.ilvl.enabled or db.forces.enabled or db.formulas.enabled) and true or false
+    return (db.ids.enabled or db.ilvl.enabled or db.forces.enabled or db.formulas.enabled or db.typeColors.enabled) and true or false
 end
 -- (Bonus 0.6.14) one section is in effect: the master switch and its own switch both on
 function TT.SectionOn(key)

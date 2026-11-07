@@ -162,7 +162,7 @@ checkp("  ...choosing Utility: the menu closes, the header says utility, only th
   d = drawn()
   local names = {}
   for _, r in ipairs(recs(d, "spellname")) do names[#names + 1] = r.text end
-  return not d.filterMenu.shown and find(d, "header", "- Active utility spells") ~= nil and table.concat(names, ",") == "Banner", table.concat(names, ",")
+  return not d.filterMenu.shown and find(d, "header", "- Active utility spells") ~= nil and table.concat(names, ",") == "- Banner", table.concat(names, ",")
 end)
 checkp("  ...the icon shows the filter is on (label colour and a dot) and the choice is kept (saved, and read back after a reload)", function()
   local again = ns.CharToolkit_Cfg()
@@ -192,14 +192,14 @@ c.spellFilter = "all"
 d = render("spells")
 -- (QoL 0.7.24; her #27 "Spell Name (spell id underneath) | % PSV (underneath each entry show "1 agility = {value}") | Talent Modifiers"
 -- and her answer 2026-11-06 "Fourth column - computed Value")
-checkp("columns: exactly Spell Name | % PSV | Talent Modifiers | Computed Value, left to right, on one row; nothing else in the head (no Value column)", function()
+checkp("columns (QoL 0.7.36, UI-39: \"put talent modifiers before % PSV\"): exactly Spell Name | Talent Modifiers | % PSV | Computed Value, left to right, on one row; nothing else in the head (no Value column)", function()
   local heads = {}
   for _, r in ipairs(recs(d, "spellhead")) do heads[#heads + 1] = r end
   table.sort(heads, function(x, y) return x.x < y.x end)
   local names = {}
   for _, r in ipairs(heads) do names[#names + 1] = r.text end
   local sameRow = #heads == 4 and heads[1].y == heads[4].y
-  return table.concat(names, " | ") == "Spell Name | % PSV | Talent Modifiers | Computed Value" and sameRow, table.concat(names, " | ")
+  return table.concat(names, " | ") == "Spell Name | Talent Modifiers | % PSV | Computed Value" and sameRow, table.concat(names, " | ")
 end)
 checkp("  ...the table draws nothing outside those four columns: no note or \"Entered\" line (a coefficient typed for Fracture), no \"Not picked\" line", function()
   c.spells[1].coeff = 150
@@ -211,9 +211,29 @@ checkp("  ...the table draws nothing outside those four columns: no note or \"En
   return n == 0 and not entered, n
 end)
 checkp("  ...Fracture: its name in Spell Name and \"Spell ID: 263642\" on the line under it, in the same column", function()
-  local nm, id = find(d, "spellname", "Fracture"), find(d, "spellid", "Spell ID: 263642")
+  local nm, id = find(d, "spellname", "- Fracture"), find(d, "spellid", "Spell ID: 263642")
   local head = find(d, "spellhead", "Spell Name")
   return nm and id and nm.x == head.x and id.x == nm.x and id.y > nm.y, T(id)
+end)
+checkp("  ...(QoL 0.7.36, UI-39) Computed Value is left-aligned in its column (its left edge at the column's left, near % PSV)", function()
+  local v, head = find(d, "spellvalue", "6,944"), find(d, "spellhead", "Computed Value")
+  return v and head and v.x == head.x and v.justify == "LEFT", v and tostring(v.justify)
+end)
+checkp("  ...(QoL 0.7.36, UI-39) a divider line between two spells, none above the first", function()
+  local dv = recs(d, "divider")
+  local names = recs(d, "spellname")
+  return #names >= 2 and #dv == #names - 1 and dv[1].y < names[2].y and dv[1].y > names[1].y, #dv .. " lines for " .. #names .. " spells"
+end)
+checkp("  ...(QoL 0.7.36, UI-39) clicking a spell's row folds it to its name (\"+ Fracture\", no ID, numbers or modifiers); clicking again opens it", function()
+  local nm = find(d, "spellname", "- Fracture")
+  ns.CharToolkit_ToggleSpell("spell:spell263642")
+  local d2 = drawn()
+  local folded = find(d2, "spellname", "+ Fracture") ~= nil and find(d2, "spellid", "Spell ID: 263642") == nil and find(d2, "spellvalue", "6,944") == nil
+  ns.CharToolkit_ToggleSpell("spell:spell263642")
+  local d3 = drawn()
+  local open = find(d3, "spellname", "- Fracture") ~= nil and find(d3, "spellid", "Spell ID: 263642") ~= nil
+  d = d3
+  return nm ~= nil and folded and open, tostring(folded) .. " / " .. tostring(open)
 end)
 checkp("  ...\"200.0% of attack power\" in % PSV with \"1 Agility = 2.00\" on the line under it (her words \"1 agility = {value}\"); its number 6,944 in Computed Value, the 4th column, on the same line", function()
   local v = find(d, "spellvalue", "6,944")
@@ -224,10 +244,10 @@ checkp("  ...\"200.0% of attack power\" in % PSV with \"1 Agility = 2.00\" on th
 end)
 checkp("  ...Talent Modifiers: Burning Fracture (the picked talent whose text names it) in its column; Ward: \"none\"", function()
   local hm = find(d, "spellhead", "Talent Modifiers")
-  local nm = find(d, "spellname", "Fracture")
+  local nm = find(d, "spellname", "- Fracture")
   local tm, none
   for _, r in ipairs(recs(d, "spellmods")) do if r.y == nm.y and r.text == "Burning Fracture" then tm = r end end
-  local ward = find(d, "spellname", "Ward")
+  local ward = find(d, "spellname", "- Ward")
   for _, r in ipairs(recs(d, "spellmods")) do if ward and r.y == ward.y and r.text == "none" then none = r end end
   return tm and tm.x == hm.x and none ~= nil, T(tm)
 end)
@@ -453,11 +473,33 @@ checkp("  ...effects: the equipped ring's proc line, New Ring's Use line, Big Cr
   for _, r in ipairs(recs(d, "mnote")) do t[#t + 1] = r.text end
   local s = table.concat(t, " / ")
   return find(d, "msubhead", "On-use and proc effects") ~= nil
-    and s:find("Equipped: Your attacks have a chance to grant 500 Haste for 10 sec.", 1, true) ~= nil
-    and s:find("New Ring: Use: Gain a shield absorbing 20,000 damage. (2 Min Cooldown)", 1, true) ~= nil
-    and s:find("Big Crit Ring: none", 1, true) ~= nil and s:find("Big Crit Ring: loses the equipped item's effect", 1, true) ~= nil
+    -- (QoL 0.7.35, UI-34 / UI-35: "Equipped: <item>" / "Compared: <item>", a line break, then the game's line)
+    and s:find("Equipped: Ring\nYour attacks have a chance to grant 500 Haste for 10 sec.", 1, true) ~= nil
+    and s:find("Compared: New Ring\nUse: Gain a shield absorbing 20,000 damage. (2 Min Cooldown)", 1, true) ~= nil
+    and s:find("Compared: Big Crit Ring\nnone", 1, true) ~= nil and s:find("Big Crit Ring: loses the equipped item's effect", 1, true) ~= nil
     and s:find("New Ring: a different effect", 1, true) ~= nil, s
 end)
+-- (QoL 0.7.35; UI-35 / UI-38: "guillotine and a weapon share a set, and this should be indicated as part of the comparison"; her
+-- answer "Set line under each item"). Stand-in: the equipped Ring and the main-hand Glaive in set 600 "Test Set", New Ring in it too,
+-- Big Crit Ring not. Negative control: fails on QoL 0.7.34 (no set lines).
+do
+  local saveInfo, saveSet = C_Item.GetItemInfo, C_Item.GetItemSetInfo
+  C_Item.GetItemInfo = function(x)
+    if type(x) == "string" and (x:find("[Ring]", 1, true) or x == GEAR[16] or x:find("[New Ring]", 1, true)) then
+      return "n", x, 4, 90, 1, "Armor", "Misc", 1, "INVTYPE_FINGER", 0, 0, 4, 0, 1, 11, 600
+    end
+    return saveInfo(x)
+  end
+  C_Item.GetItemSetInfo = function(id) if id == 600 then return "Test Set" end end
+  ns.CharToolkit_Render(); local d2 = drawn()
+  local t = {}
+  for _, r in ipairs(recs(d2, "mnote")) do t[#t + 1] = r.text end
+  local s2 = table.concat(t, " / ")
+  check("set: under the equipped item, \"Set: Test Set (with Glaive)\"; New Ring \"Also in Test Set\"; Big Crit Ring \"Not in Test Set: replacing the equipped item breaks the set\"",
+    s2:find("Set: Test Set (with Glaive)", 1, true) ~= nil and s2:find("Also in Test Set", 1, true) ~= nil
+    and s2:find("Not in Test Set: replacing the equipped item breaks the set", 1, true) ~= nil, s2)
+  C_Item.GetItemInfo, C_Item.GetItemSetInfo = saveInfo, saveSet
+end
 checkp("  ...RPPM: the line reads exactly \"RPPM not given by the game\" (no documented source gives it), and no RPPM number anywhere", function()
   local said, num = false, false
   for _, r in ipairs(d.layout) do

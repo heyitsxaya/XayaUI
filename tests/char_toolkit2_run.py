@@ -324,8 +324,8 @@ check("  ...+100 Agility: attack power from it +2,637 -> +2,737", (effLine("map_
   effLine("map_primary", "» Attack power"))
 check("  ...+900 Stamina: health 1,476,516 -> 1,495,596 (+900 x 21.20)", (effLine("map_stamina", "» Health") or ""):find("1,476,516 -> 1,495,596", 1, true) == 1, effLine("map_stamina", "» Health"))
 check("  ...armor: the item's own +500 and more from Agility through the mastery text, damage reduction up (green)",
-  effLine("map_armor", "From the item itself") == "+500" and (effLine("map_armor", "From Agility (mastery)") or ""):find(" -> ", 1, true) ~= nil
-  and select(2, effLine("map_armor", "» Damage reduction")) == "good", effLine("map_armor", "From Agility (mastery)"))
+  effLine("map_armor", "From the item itself") == "+500" and (effLine("map_armor", "From mastery: Fel Blood passive") or ""):find(" -> ", 1, true) ~= nil
+  and select(2, effLine("map_armor", "» Damage reduction")) == "good", effLine("map_armor", "From mastery: Fel Blood passive"))
 check("  ...lines that do not change are left out (every Haste line listed changes)", (function()
   local n = 0
   for k, it in pairs(gm.byKey) do if k:find("^gc_map_haste:") and (it.cells[1] ~= "" or it.cells[2] ~= "") then n = n + 1; if it.cells[1] == it.cells[2] then return false end end end; return n > 0 end)())

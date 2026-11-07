@@ -308,6 +308,7 @@ local function StyleText(fs, parent, t, defaultAnchor)
     fs:SetTextColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
     PlaceText(fs, parent, t, defaultAnchor)
 end
+ns.StyleTextOn = StyleText   -- (BarCue.lua: a Bar cue's name text uses the same text settings)
 
 local function FindCooldownText(cd)
     if cd.xuiText ~= nil then return cd.xuiText or nil end
@@ -2314,6 +2315,9 @@ function ns.RefreshVisual(rule)
     if v.count then StyleText(fr.count, fr, v.count, "BOTTOMRIGHT") end
     if v.absorb then StyleText(fr.absorb, fr, v.absorb, "TOP") end
     fr.label:SetText(rule.name)
+    -- a Bar cue (BarCue.lua): a status bar with icon, spark and name text instead of the art
+    if v.kind == "bar" and ns.BarCueLayout then ns.BarCueLayout(fr, rule, v)
+    elseif fr.barF and ns.BarCueHide then ns.BarCueHide(fr) end
     -- "Show tooltip on hover" needs the frame to see the mouse; clicks still pass through to whatever is behind it unless unlocked for moving
     local tip = v.hoverTip and true or false
     local movable = Unl(rule) and not (ns.MoverTempLocked and ns.MoverTempLocked(rule))   -- (a group locked for now from its mover tag: P5)
@@ -2506,6 +2510,7 @@ local function CooldownDuration(rule, cd)
     local ok, d = pcall(C_Spell.GetSpellCooldownDuration, id, true)   -- true: the global cooldown is not counted
     return ok and d or nil
 end
+ns.CooldownDurationOf = CooldownDuration   -- (BarCue.lua: a cooldown bar is driven by the same duration object)
 local function BindCooldownText(fr, t, dur)
     if fr.cdBind == false then return false end
     if not fr.cdBind then
@@ -2735,6 +2740,10 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         ApplyStrata(fr, rule.folder)
     end
 
+    -- a Bar cue's value (BarCue.lua): readable / sample fraction, else a duration object the game drives
+    local barMoving = false
+    if v.kind == "bar" and fr.barF and ns.BarCueUpdate then barMoving = ns.BarCueUpdate(fr, rule, v, info, ref, f, sample, fxOnly) and true or false end
+
     -- progress-bar wipe (readable / sample fraction only; secret durations cannot be measured in Lua)
     local fl2 = v.fill
     if fl2 and fl2.enabled and f ~= nil then
@@ -2764,11 +2773,12 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     end
 
     -- keep the effects above animating every frame between engine ticks (only while a time source exists)
-    local wantsFx = (fl2 and fl2.enabled) or v.fadeAlpha or v.fadeGrey or (v.flash and v.flash.enabled)
+    local wantsFx = (fl2 and fl2.enabled) or v.fadeAlpha or v.fadeGrey or (v.flash and v.flash.enabled) or barMoving
     -- tenths of a second must move every frame (the engine tick is only 5x per second), so while the duration text is in its
     -- decimal range it is redrawn from here too
     local tx = v.text
     local wantsTenths = tx and tx.enabled and tx.decimals and rem ~= nil and rem > 0 and rem < (tx.decimalBelow or 5)
+        and not (v.kind == "bar" and ns.BarCueSource and ns.BarCueSource(rule) == "cooldown")   -- (its text is the cooldown's)
     SetFxRule(fr, ((wantsFx or wantsTenths) and (f ~= nil or dobj ~= nil)) and rule or nil)
     fr.fxInfo = info
     if wantsTenths then
@@ -2788,7 +2798,8 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     local ab = v.absorb
     if ab and ab.enabled then DrawAbsorb(fr.absorb, ab, ref, sample) else fr.absorb:Hide() end
 
-    -- duration text
+    -- duration text (a Bar cue that times the spell's cooldown shows the cooldown's time, not the aura's: path 4 below)
+    if v.kind == "bar" and ns.BarCueSource and ns.BarCueSource(rule) == "cooldown" then ref = nil end
     local t = v.text
     if not (t and t.enabled) then
         StopCdBind(fr)
@@ -2938,6 +2949,9 @@ end
 -- not turn off previews -- this is a high priority issue, as it indicates that the addon is still running its options pane indirectly in
 -- some way. this should not happen"). Up to now only the eye / headphone previews ended; the sidebar's per-rule and per-group movement
 -- unlocks (sample displays with their boxes and names), the preview pause and an unlock made with the window's Lock Positions button stayed.
+local windowOpen = false   -- the settings window is open (told by XayaUI_Options: ns.SetWindowOpen)
+function ns.SetWindowOpen(on) windowOpen = on and true or false end
+function ns.WindowOpen() return windowOpen end
 function ns.EndWindowState()
     if ns.ClearPreview and ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
     if ns.previewPaused and ns.SetPreviewPaused then ns.SetPreviewPaused(false) end
@@ -3182,8 +3196,8 @@ function ns.ToggleUnlock()
     KeyFrame():Show()
     ns.unlocked = true
     -- remembered so closing the settings window ends an unlock made while it was open (its Lock Positions button), not one typed as
-    -- /xui unlock with the window closed (engine core 0.6.56, ns.EndWindowState); locking clears paired auras in Lock()
-    ns.unlockedByWindow = ns.optionsShown and true or nil
+    -- /xui unlock with the window closed (core-owned window flag, ns.WindowOpen / ns.EndWindowState); locking clears paired auras in Lock()
+    ns.unlockedByWindow = ns.WindowOpen() and true or nil
     ns.Print("visuals UNLOCKED: drag them, then /xui unlock again to lock (you are asked to save or cancel the moves). Arrow keys nudge the display or group you last clicked (Shift: 10 pixels). Hover a display or a group's name tab to see what it is; click it to open its settings; the lock on a group's tab locks it for now.")
     ns.RefreshAllVisuals()
     ns.RefreshGroupTags()
