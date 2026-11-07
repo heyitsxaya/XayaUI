@@ -19,7 +19,7 @@ c4bdda60e9fc6950c20c8da72b9e2d8d  XayaUI/Combat/AuraDisplay.lua
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
 81101a839cbf6f1bf1b75ec5eebfd455  XayaUI/Conditions.lua
 4b019193a3c47742b573f00435888c00  XayaUI/Console.lua
-b6e8c107bcdf96898cf566fe7345ed8c  XayaUI/Core.lua
+cde67fde4ef55c783e5f42cd9fbf2c0f  XayaUI/Core.lua
 d0708be0cbb15b15322a191218355a5e  XayaUI/Cues.lua
 b33efd8a8c453fa0859efba75824bc16  XayaUI/DebugRecord.lua
 d65adc44b91f4ea0622e24ff183d64d0  XayaUI/Engine.lua
@@ -574,7 +574,7 @@ d08720044c7a08fe4e2d54873985500d  debug-log/2026-11-07-0728-error-handler-no-sta
 4376ed2ccc146e16b4d8ef1725c4f8dd  debug-log/2026-11-07-0735-run-prompt-removed-devassist-0.7.15.md
 92e23404d6573a1c73abcde2be2048a4  debug-log/2026-11-07-0738-still-cursor-qol-0.7.41.md
 ce817ce955d8250f87ea68ce225ae6e4  debug-log/2026-11-07-0742-usage-tooltip-memory-once-chat-0.6.32.md
-efcf6d4627bc8b185b6bee4feb47e8fb  debug-log/2026-11-07-0902-settings-window-one-build-options-0.6.68.md
+0eab928fdd0dc3ec40072ff2d5413250  debug-log/2026-11-07-0902-settings-window-one-build-options-0.6.68.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 3b831edeabb106afc88ae73cf80a872a  docs/QA-CHECKLIST.md
 8dba2b54e33cfc3e4a8f1a20a7cfbe6e  docs/README-INGAME.md

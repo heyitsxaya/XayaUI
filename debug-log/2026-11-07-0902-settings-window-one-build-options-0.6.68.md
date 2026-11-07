@@ -48,3 +48,8 @@ redraws, ~1.3 MB kept after close. Negative control on Options 0.6.65: 7 FAIL (4
 in 5 s idle, rebuilds at combat start and end, 19.7 MB kept). Options tests run: auto_table_layout, build_content, console_commands,
 console_toggle_cost, devassist_debug_tools, display_tab, drag_drop, feature_rows_map, header_chevron (all pass; the rest in the suite).
 qa_perf_walks_run.py +8 (J27).
+
+## Addendum 09:03 UTC: harness boundary rule
+The full suite on claude/perf-landing-2 flagged core 0.6.63's Core.lua reading ns.LogTrayOn, a name only XayaUI_Options defined
+("go through Modules.lua instead"). Core now defines the default ns.LogTrayOn() (false: no strip); XayaUI_Options replaces it when it
+loads. Same behaviour; boundary_checks and static_checks: 0 issues. tests/log_gate_run.py passes.
