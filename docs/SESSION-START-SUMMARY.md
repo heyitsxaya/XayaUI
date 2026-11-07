@@ -71,10 +71,12 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 - **Wording to Xaya:** truth first; flag inferences; no unearned compliments; state what is not verified in game.
 - **Roadmap feature branches (Xaya, 2026-11-05, her words):** "Rough scaffolding and proposed code structure (outline only) in a
   dedicated “roadmap features: ______” brand per feature"; then "Branch, not brand". Applied as:
-  - one branch per roadmap feature, `roadmap-features/<feature>` (git refuses a colon or spaces in a branch name);
-  - the scaffold sits under `roadmap-features/<feature>/` (never a top-level `XayaUI*` folder, which the tools treat as shipping);
-  - comments only, no code that runs; a draft PR that is not for merging.
-  First one: `roadmap-features/games` (RM-GAMES).
+  - **one branch for all roadmap features**, `roadmap-features/combined` (Xaya, 2026-11-06, her words: "Combine them into one
+    roadmap on one branch — the other branches get marked as stale if no code is on them"; draft PR #429). Before that it was one
+    branch per feature (games, rppm, layout-profiles); those three are stale (PRs #397, #398, #421 closed);
+  - each scaffold sits in its own folder `roadmap-features/<feature>/` on that branch (never a top-level `XayaUI*` folder, which the
+    tools treat as shipping); `roadmap-features/README.md` indexes them; a new feature adds a folder, not a branch;
+  - comments only, no code that runs; the branch is not for merging.
   Its detail is read only when that feature's work starts; it is not repeated here.
 
 ## 3. Addons (versions from the .toc files on `main` a859028, 2026-11-05 16:45 UTC)
