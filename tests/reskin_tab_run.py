@@ -73,8 +73,8 @@ if MODE == "all" then
   check("an old ('chat', 'chatpanel') address still lands on the moved page", last() == "reskin>chatpanel>bar", last())
   ns.OpenSettingsPage("qol", "charreskin")
   check("  ...and an old ('qol', 'charreskin') one", last() == "reskin>charreskin", last())
-  ns.Chat.OpenSettings("look")
-  check("the Chat Panel's own 'settings' buttons open it in the new tab", last() == "reskin>chatpanel>look", last())
+  ns.Chat.OpenSettings("look")   -- (Chat 0.6.31) Appearance moved into General: the old part name still opens it
+  check("the Chat Panel's own 'settings' buttons open it in the new tab", last() == "reskin>chatpanel>general", last())
   ns.RunCommand("reskin", "options")
   check("/xui reskin options opens it", last() == "reskin>charreskin", last())
   ns.OpenSettingsPage("qol", "chartoolkit")
