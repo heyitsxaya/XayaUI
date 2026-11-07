@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-perf.lua (XayaUI_DevAssist 0.7.17): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
+-- QAWalks-perf.lua (XayaUI_DevAssist 0.7.18): in-game QA walkthroughs for the performance test (REQUEST-LOG A15).
 -- Standing rule V22 (Xaya, 2026-11-07, her words): "As a standing rule, make sure every feature or significant change to the codebase /
 -- bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 --   J18 what a recorded run holds (DevRecord.lua meter lines; tools/perf_report.py): counts fights, bosses, meter readings (data capture);
@@ -311,5 +311,56 @@ QA.Register("perf-usage-tooltip", { title = "Performance: the addon usage toolti
             local n = (B.memReads or 0) - hoverMark
             if n == 0 then return false, "no memory read since the mark: hover a frame rate or latency block" end
             return n == 1, ("memory read %d time(s) during the hover (once is right; it was every 15 s before)"):format(n)
+        end },
+} })
+
+-------------------------------------------------------------------------------
+-- J27: the settings window's speed and memory (Options 0.6.68; REQUEST-LOG A15 P-16). Before, measured by Xaya in game with
+-- /xui debug perf ui: first open 3 full builds ("XayaUI open: 2603 ms", + 739 + 650 ms), reopen 776 + 1211 ms, one switch 2 builds =
+-- 1,362 ms, XayaUI_Options 528.5 MB. Data capture: the window's own redraw count and times (ns.perf: one per full redraw, build and
+-- skin milliseconds of the last) and XayaUI_Options' memory (GetAddOnMemoryUsage).
+-------------------------------------------------------------------------------
+local optMark
+local function Perf() local n = NS() or {}; return n.perf end
+local function OptMB() pcall(UpdateAddOnMemoryUsage); local ok, v = pcall(GetAddOnMemoryUsage, "XayaUI_Options"); return (ok and type(v) == "number") and v / 1024 or nil end
+local function Redraws(label)
+    local p = Perf()
+    if not (p and optMark) then return false, "press Do it for me first" end
+    local n = (p.n or 0) - optMark
+    return n, ("%s: %d full redraw(s); the last took %.0f ms build + %.0f ms skin"):format(label, n, p.build or 0, p.skin or 0)
+end
+QA.Register("perf-settings-window", { title = "Performance: the settings window (J27)", area = "Dev Assist", qa = "J27", order = 309, prefill = true, steps = {
+    { text = "Close XayaUI's settings window if it is open. Press |cffffd100Do it for me|r (marks the count), then open the window (|cff88ccff/xui|r) and press |cffffd100Check again|r here.\n\n|cffffd100Expect:|r ONE full redraw. Before this fix: 3 on the first open (2603 + 739 + 650 ms), about 2 s on a reopen.",
+        setup = function() local p = Perf(); optMark = p and p.n or 0 end,
+        check = function()
+            local n, note = Redraws("opening")
+            if n == false then return false, note end
+            return n == 1, note
+        end },
+    { text = "Press |cffffd100Do it for me|r again, then click one switch on and off once (for example Bonus Features > Tooltips > IDs) and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r one redraw per click (two clicks: 2). Before: 2 per click, 1,362 ms.",
+        setup = function() local p = Perf(); optMark = p and p.n or 0 end,
+        check = function()
+            local n, note = Redraws("two clicks")
+            if n == false then return false, note end
+            return n <= 2, note
+        end },
+    { text = "Leave the window open on the Rules tab for a minute without touching it: press |cffffd100Do it for me|r (marks the memory), wait 60 s, press |cffffd100Check again|r.\n\n|cffffd100Expect:|r XayaUI_Options grows little in that minute and makes no redraw.",
+        setup = function() local p = Perf(); optMark = p and p.n or 0; QA.DB().optIdle = { mb = OptMB(), t = GetTime() } end,
+        check = function()
+            local m, p = QA.DB().optIdle, Perf()
+            if not (m and m.mb) then return false, "press Do it for me first" end
+            local secs, now = GetTime() - m.t, OptMB()
+            if secs < 30 then return false, ("only %.0f s; wait about 60 s"):format(secs) end
+            local redraws = p and ((p.n or 0) - (optMark or 0)) or 0
+            return redraws == 0, ("open and idle %.0f s: XayaUI_Options %.1f -> %.1f MB (%.1f MB per minute), %d redraw(s)"):format(secs, m.mb, now or 0, ((now or 0) - m.mb) / secs * 60, redraws)
+        end },
+    { text = "Close the window, then press |cffffd100Do it for me|r (a full Lua cleanup; the game may stop for a moment) and |cffffd100Check again|r.\n\n|cffffd100Expect:|r XayaUI_Options keeps only a few MB once closed and cleaned up. Before: about 83 MB kept (your screenshot after a cleanup).",
+        setup = function() pcall(collectgarbage, "collect") end,
+        check = function()
+            local n = NS() or {}
+            if n.OptionsApi and n.OptionsApi.IsOpen and n.OptionsApi.IsOpen() then return false, "close the settings window first" end
+            local mb = OptMB()
+            if not mb then return false, "the settings addon is not loaded (open /xui once first)" end
+            return mb < 30, ("closed and cleaned up: XayaUI_Options %.1f MB"):format(mb)
         end },
 } })

@@ -1,6 +1,6 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J18 (what the
 record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in
-combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor), J25 (the usage tooltip). Loads the real QAWalk.lua framework, core Core / Modules /
+combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor), J25 (the usage tooltip), J27 (the settings window). Loads the real QAWalk.lua framework, core Core / Modules /
 DebugRecord and Dev Assist's DevRecord.lua with stand-in game calls (the stand-ins first written for the removed run prompt's test),
 and asks each step's check what it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways),
 and the counts in the notes. Also checks that the removed J17 walkthroughs are gone.
@@ -206,6 +206,24 @@ L.execute("DBLIB.memReads = DBLIB.memReads + 1")
 r = step("perf-usage-tooltip", 1); check("J25 a hover with one memory read: Pass", r[0] == "P" and "1 time(s)" in r[1])
 L.execute("DBLIB.memReads = DBLIB.memReads + 2")
 r = step("perf-usage-tooltip", 1); check("J25 three reads (the old 15 s re-read): Fail", r[0] == "F" and "3 time(s)" in r[1])
+
+# J27: the settings window (ns.perf counts full redraws; stand-in memory for XayaUI_Options)
+L.execute("NS.perf = { n = 10, build = 0, skin = 0 }; OPT_LOADED = true; OPT_KB = 1024 * 60; NS.OptionsApi = { IsOpen = function() return WIN_OPEN end }; WIN_OPEN = true")
+S27 = "perf-settings-window"
+r = step(S27, 1); check("J27.1 before Do it for me: Fail", r[0] == "F")
+L.execute("SETUP('perf-settings-window', 1); NS.perf.n = NS.perf.n + 1; NS.perf.build = 480; NS.perf.skin = 30")
+r = step(S27, 1); check("J27.1 one redraw on opening: Pass with its ms", r[0] == "P" and "1 full redraw(s); the last took 480 ms build + 30 ms skin" in r[1])
+L.execute("SETUP('perf-settings-window', 1); NS.perf.n = NS.perf.n + 3")
+r = step(S27, 1); check("J27.1 three redraws (before the fix): Fail", r[0] == "F" and "3 full redraw(s)" in r[1])
+L.execute("SETUP('perf-settings-window', 2); NS.perf.n = NS.perf.n + 2")
+r = step(S27, 2); check("J27.2 two clicks, two redraws: Pass", r[0] == "P")
+L.execute("SETUP('perf-settings-window', 3); NOW = NOW + 60; OPT_KB = OPT_KB + 1024 * 2")
+r = step(S27, 3); check("J27.3 idle a minute, no redraw: Pass with MB per minute", r[0] == "P" and "(2.0 MB per minute), 0 redraw(s)" in r[1])
+r = step(S27, 4); check("J27.4 window still open: Fail (close it first)", r[0] == "F" and "close" in r[1])
+L.execute("WIN_OPEN = false; OPT_KB = 1024 * 5; GARBAGE = 0; SETUP('perf-settings-window', 4)")
+r = step(S27, 4); check("J27.4 closed and cleaned up, 5 MB: Pass", r[0] == "P" and "5.0 MB" in r[1])
+L.execute("OPT_KB = 1024 * 83")
+r = step(S27, 4); check("J27.4 83 MB kept (before the fix): Fail", r[0] == "F")
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)
