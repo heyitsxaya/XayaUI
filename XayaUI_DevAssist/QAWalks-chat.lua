@@ -13,8 +13,10 @@ local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
-local function Ch() local ns = NS(); return ns and ns.Chat end
-local function S() local ns = NS(); return ns and ns.chat2 end
+-- XayaUI_Chat is reached only through its service (Modules.lua ns.Service; Chat Core.lua provides "chatDebug" = { C, Settings })
+local function Svc() local ns = NS(); return ns and ns.Service and ns.Service("chatDebug") end
+local function Ch() local sv = Svc(); return sv and sv.C end
+local function S() local sv = Svc(); return sv and sv.Settings and sv.Settings() end
 local function Secret(v) local C = Ch(); return C and C.IsSecret and C.IsSecret(v) end
 
 -- a frame's place and size in screen pixels (nil when the game does not give it)
