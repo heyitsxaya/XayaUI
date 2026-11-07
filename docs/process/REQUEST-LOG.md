@@ -610,6 +610,12 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-38 | "possible to add a "{current expansion} Zone ID Library" lookup menu?" | OPEN, roadmap | #477 |
 | PS-39 | Settings window title bar: buttons move to the middle when collapsed (two screenshots) | OPEN | #478 |
 | PS-40 | "please compile all your questions and keep them stashed in a doc, I'm just notating what I see as I go through it in my own way. I'll get to the outstanding questions shortly!" | DONE: "XayaUI Open Questions" doc (A1-A9, B1-B7, C1-C11, D1-D2); no more questions in chat | |
+| PS-41 | "why is the border of the ui suddenly white? ticking border in the border and background preview seems to cause an error" | OPEN; error text = question doc D3 | #479 |
+| PS-42 | B24 screenshots (anchor points, rows and columns) | question doc D4 | |
+| PS-43 | "this shouldn't work without a reload, anyway" / "again, none of these should be toggleable without a reload -- this is the standing convention for all UI overhaul addons" | STANDING RULE added to .claude/skills/xayaui-change/SKILL.md ("UI overhaul switches apply on reload"); scope = question doc A10 | #480 |
+| PS-44 | "the window is also broken" (walkthrough runner: title past the edge, see-through) | OPEN; title overflow is a regression from 0.7.52 | #481 |
+| PS-45 | "how do I navigate back to another walkthrough from the window?" | ANSWERED (X, then /xui dev qa); fix in #465 | #465 |
+| PS-46 | "save this for later, this will be very time consuming from a practical standpoint" (baseline audit-engine) | DONE: deferred in PLATFORM-SPLIT 8.1 | |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement

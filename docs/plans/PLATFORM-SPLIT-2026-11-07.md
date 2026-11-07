@@ -253,7 +253,7 @@ House; checked by searching each walkthrough's steps). Open each from `/xui dev 
 |---|---|---|
 | 1 | settings-toplevel | Settings window top tabs and Profiles (Options platform part, profile parts) |
 | 2 | perf-settings-click (J31) | Settings click speed: the number to compare after Options.lua is cut |
-| 3 | audit-engine | Engine: hidden-buff estimate, glow on delete, errors in the report (rule module, error handling) |
+| 3 | audit-engine | Engine: hidden-buff estimate, glow on delete, errors in the report (rule module, error handling). **Deferred** (Xaya, 2026-11-07: "save this for later, this will be very time consuming from a practical standpoint") |
 | 4 | audit-opt-bin | Red X to the Recycle Bin (bin kinds) |
 | 5 | audit-backup-replace | Backups: Load (replace) (the backup the rules migration relies on) |
 | 6 | bars-cues | Bar cues (engine plus visuals) |
