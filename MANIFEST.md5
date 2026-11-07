@@ -724,7 +724,7 @@ b5fba1aa0deaaf3049d15fa46843378c  tests/chat_collapse_bar_run.py
 8dbbad24f2db3b6911483dbd3218dd73  tests/chat_improved_split_run.py
 20312be3c80b062e7e39bbf58b207675  tests/chat_input_position_run.py
 02b1ae680ba9e425e26f44403cbc336c  tests/chat_off_costs_nothing_run.py
-71d3526a8ec4eb48720197b41d1b8ccd  tests/chat_pieces_run.py
+0ad5eb6e168553dadaf82414aad4ea8c  tests/chat_pieces_run.py
 4e56c31a809528b7b5b36e1f01b15411  tests/chat_run.py
 0c19707331c323c389bcb714a4a4f373  tests/chat_sidebar_run.py
 48559d62f35d5c11d3d04547b997b458  tests/chat_tab_align_run.py
