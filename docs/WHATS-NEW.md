@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-06 evening:** sections 3 to 6 (below) cover the debug round, the group page / QA round, the auto-populate buttons and the engine session's changes that landed after this page was first written.
+**Updated 2026-11-06 evening:** sections 3 to 8 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
 Section 1 describes the character pane as it is on `main` now. Section 2 lists the other features that reached `main` in the 24 hours
@@ -162,6 +162,7 @@ Turn it on: **QoL > Release Guard** (its own row with a tick box; off by default
   Character Pane and Esc Menu. The old Chat tab is gone. The old shortcuts still open the moved pages: `/xui chat settings`,
   `/xui reskin options`, and the Chat Panel's own settings buttons. The XayaUI button in the Esc menu stays under
   Settings > UI Options > Display.
+- **(Superseded the same evening, see section 8: the "All reskins" tick box on the tab button was replaced by an Overview row.)**
 - **All reskins, and a tick box per reskin** (XayaUI 0.6.51, Options 0.6.50, Chat 0.6.18, Reskin 0.6.4). The Blizzard UI Reskin
   tab button has its own tick box, **All reskins**: untick it and every reskin in the tab is off at once, with Blizzard's own look
   back. Each reskin (Chat Panel, Character Pane, Esc Menu, Shopping List) has its own tick box on its row in the left pane, greyed
@@ -368,8 +369,66 @@ From engine session 2 (core 0.6.57, Options 0.6.57). Not seen in game yet.
 - *Coming next, not on `main` yet:* a per-spec aura and debuff learner, a change so sounds play one frame after the event (measured
   in the test setup only), and a structure fix.
 
-*Not in this list yet:* Chat 0.6.25, Bonus 0.6.19, Reskin 0.6.6, and the Info pane / Patch Notes, chat changes and settings window look from
-other sessions. Their sessions send their own notes; they are added here only once they arrive and are checked against `main`.
+## 7. Bar cues (progress bars) (landed on `main` 2026-11-07 00:30 UTC, main 28380a9; core 0.6.58, Options 0.6.59, Bonus 0.6.20, Dev Assist 0.7.6)
+
+From the bar cues session (PR #417). Not run in game yet (QA B200-B210 and F21, all in `/xui dev qa`).
+
+- **A new cue kind, Bar.** Make one with New Rule > Progress Bar, or Add a cue > Bar on any rule. It starts at 220 x 22: black background at
+  20%, 1 px black border, flat texture, draining from right to left. The spell's icon is at the left, its name at the left inside the
+  bar, the time at the right, and a spark marks the moving edge. Everything is set in the cue's **Bar Options** box.
+- **What a bar tracks:** Automatic (the aura, else the spell's cooldown), Aura time left, Spell cooldown / recharge, Stacks, or Charges.
+  Maximum 0 uses the game's own maximum; if there is none, the bar stays empty and never guesses.
+- **Fill and look.** Drain toward left, right, bottom or top, or "Fill up instead of draining". Icon left, right or none. Spark on or
+  off with colour and width. Background, border and opacity.
+- **Automatic colour.** The type the spell's tooltip names comes first: a school written as "<school> damage" (optionally "(Magic)"
+  after it), or the dispel type at an aura tooltip's top right. Then the aura's dispel type, then a fixed blue. The Colour section's
+  "Now:" line names the type in its colour, for example "Fire Damage (Magic)". Or pick a fixed colour.
+- **Colour style per bar:** Blizzard default (the game's own colours), Neon, Pastel, Muted / Dark, or Custom (a colour picker for each
+  of 12 types). A group's Display tab has **Every bar: colour style**: with "Force on every bar in this group" ticked the group's style
+  wins; unticked, choosing a style copies it to every bar once, and the label says how many bars it changes.
+- **Bar textures:** Flat, Blizzard, Raid frame; the game's own power-bar art ("Blizzard power: Health, Mana, Rage, Fury, Insanity,
+  ...", read from the game); every texture other addons share through LibSharedMedia; or your own file. Each texture is listed once.
+  XayaUI's own bar fills are planned for later (roadmap RM-BARFILLS).
+- **In combat.** Aura-time and stacks bars are drawn by the game's own aura buttons, so they keep moving while the game hides aura
+  numbers; each member of a dynamic group is its own bar. Cooldown bars are driven by the game from the cooldown's duration.
+- **Type colours in tooltips** (Bonus 0.6.20). A new Enhanced Tooltips section, "Type colours", on by default. On spell and aura
+  tooltips "fire damage" becomes "Fire Damage" in the game's Fire colour, and a dispel type such as "Magic" takes its dispel colour.
+  English game text only.
+- **Smart Categories > Progress Bars** now lists rules with a Bar cue.
+- *Developers' notes:* the weakest part is the combat drawing (built from Blizzard's 12.1.5 source, tested on a stand-in only).
+  Tooltip words are matched in English only.
+
+**Engine changes in the same push** (core 0.6.58; from engine session 2's draft, not seen in game; QA B199, B211, B212):
+- **Closing the settings window: structure fix** to the window-close handling in section 6.
+- **Auto-populate for another spec:** once you have played a spec, its Auto-populate list shows that spec's Cooldown Manager auras and
+  debuffs (the Cooldown Manager only answers for the spec you are in, so they are remembered per spec).
+- **Faster cooldown and aura cues:** they now react one frame after the change instead of up to 58 ms later, and the rules that did not
+  change are not re-checked. Measured in the test setup only (stand-in: worst delay 58 ms down to 8.3 ms, about 12% fewer rule
+  checks); not measured in game.
+
+**Also landed in that push, details not received yet:** QoL 0.7.35 and 0.7.36 (Stat Calculator proc and set lines, the Ability Scaling
+table) and Chat 0.6.26 and 0.6.27 (whisper tabs per kind, a combine box).
+
+## 8. UI fixes, chat and Stat Calculator changes (UI bugs session; landed 2026-11-06 evening and 2026-11-07 00:30 UTC)
+
+Read from that session's debug logs on `main` (Chat 0.6.20 to 0.6.27, QoL 0.7.33 to 0.7.36, Options 0.6.55); the session itself has not sent a note. Not tested in game.
+
+- **Blizzard UI Reskin switch moved.** The tab now starts with an **Overview** row. "Enable Blizzard UI Reskin" is a tick box on that page
+  with a Reload / Later prompt, and the reskins' own pages appear once it is on. This replaces the "All reskins" box on the tab button.
+- **Settings window look:** even, thicker top tabs; no pane borders, a divider line instead; nested rows indented under their parent;
+  settings and names greyed under a feature that is off. Custom Data Panels and Bars is now **Data Panels**.
+- **Chat tabs** names sit at one height; collapsing the chat drops the bar to the bottom; the **Chat Bar is now the Chat Data Panel**, and can
+  sit left or right of the chat (width 40 to 200, default 90); a tick box for the mouse over the chat bringing it back; a chosen click for
+  quick ignore (free Alt / Ctrl / Shift combinations, or record your own).
+- **Whisper tabs** (7 Nov): in-game and Battle.net whisper tab lists (As the game / Individual / Consolidated / Both) and a combine box;
+  consolidated tabs are In-Game Whispers, BNet Whispers or Whispers.
+- **Character window** text is laid out again after a size change (QoL 0.7.33 / 0.7.34).
+- **Stat Calculator** (7 Nov, QoL 0.7.35 / 0.7.36): proc lines read "Equipped: <item>" / "Compared: <item>"; set lines under each item; the armor
+  row reads "From mastery: <spell> passive"; the Ability Scaling table is Spell Name | Talent Modifiers | % PSV | Computed Value, with
+  dividers and foldable spells.
+
+*Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
+They are added here only once they arrive and are checked against `main`.
 
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not

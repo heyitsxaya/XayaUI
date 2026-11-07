@@ -88,7 +88,14 @@ check("What's New shows new features grouped by addon line (e.g. Quality of Life
 check("What's New leaves out fixes (\"Fixed an issue ...\")", txt:find("Fixed an issue", 1, true) == nil)
 
 -- a dated entry: the full notes, blue-post style (Developers' notes kept)
-P.Select("patch", "p1")
+-- (the landing is found by its content, not by position: the newest landing changes with every push)
+local pickedLanding = "p1"
+for i = 1, __N__ do
+  P.Select("patch", "p" .. i)
+  local t = contentText()
+  if t:find("Fixed an issue", 1, true) and t:find("/xui shop", 1, true) then pickedLanding = "p" .. i; break end
+end
+P.Select("patch", pickedLanding)
 txt = contentText()
 check("a landing shows its full notes, fixes included", txt:find("Fixed an issue", 1, true) ~= nil and txt:find("Developers' notes", 1, true) ~= nil)
 check("**bold** and `commands` are coloured, not shown with their markers",
