@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.8's BlizzardSkins.lua (XayaUI_DevAssist 0.7.40, QAWalks-reskin.lua). Standing rule
+"""In-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.9's BlizzardSkins.lua (XayaUI_DevAssist 0.7.40, QAWalks-reskin.lua). Standing rule
 V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk
 through with pre-fill confirmation options or data capturing".
 Checks, on the real addons in the stand-in game: the four walkthroughs (windows, minimap, tooltips, tracker) are registered with prefill on

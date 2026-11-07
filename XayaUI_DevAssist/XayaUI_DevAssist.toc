@@ -21,10 +21,17 @@ DevRecord.lua
 QAWalk.lua
 QAWalks.lua
 QAWalks-chat.lua
+QAWalks-friends.lua
 QAWalks-display.lua
+QAWalks-generate.lua
 QAWalks-perf.lua
 QAWalks-bars.lua
+QAWalks-externals.lua
+QAWalks-nameplates.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
 QAWalks-statcalc.lua
+QAReview.lua
+QAQuestions.lua
+QAWalks-review.lua
 QAWalks-reskin.lua

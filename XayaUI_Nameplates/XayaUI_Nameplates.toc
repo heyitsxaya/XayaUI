@@ -1,0 +1,14 @@
+## Interface: 120100, 120105
+## Title: XayaUI Nameplates
+## Notes: Changes to Blizzard's own nameplates: your target's health bar in a colour you choose, and one button that sets Blizzard's nameplate options to match a Plater profile. Disabled until you enable it in the AddOns list, so it costs nothing until then. Shows nothing while Plater (or another nameplate addon) replaces Blizzard's plates. Needs XayaUI.
+## Author: Xaya
+## Version: 0.2.1
+## X-Date: 2026-11-07
+## Dependencies: XayaUI
+## DefaultState: disabled
+## SavedVariables: XayaUINameplatesDB
+## Group: XayaUI
+
+Core.lua
+TargetColor.lua
+BlizzardOptions.lua

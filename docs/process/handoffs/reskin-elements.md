@@ -22,7 +22,7 @@ Relayed standing rules this session received, all of which apply:
 - CLEAN-8 notes to the perf session;
 - only the lander pushes main.
 
-## 2. What is built (XayaUI_Reskin 0.6.8, `XayaUI_Reskin/BlizzardSkins.lua`) and what is not
+## 2. What is built (XayaUI_Reskin 0.6.9, `XayaUI_Reskin/BlizzardSkins.lua`) and what is not
 
 Built: four pages of the Blizzard UI Reskin tab, each off until ticked (V14), each with its own tick box.
 
@@ -33,7 +33,7 @@ Built: four pages of the Blizzard UI Reskin tab, each off until ticked (V14), ea
 | Tooltips | GameTooltip, item links, comparisons | HUD Tooltip (Edit Mode list) |
 | Objective Tracker | one box, then one box per section (11), labels from the game's heading strings | quest tracker, objectives pane, her Q11 "single » multi" |
 
-Also built: QA walkthroughs `XayaUI_DevAssist/QAWalks-reskin.lua` (Dev Assist 0.7.40; four walks, prefill); QA-CHECKLIST G3-G7; tests
+Also built: QA walkthroughs `XayaUI_DevAssist/QAWalks-reskin.lua` (Dev Assist 0.7.40; four walks, prefill); QA-CHECKLIST G4-G8; tests
 `tests/reskin_blizzard_skins_run.py` and `tests/qa_walks_reskin_run.py`.
 
 **Not built** (next steps, in this order unless her answers to the question flow say otherwise):
@@ -71,10 +71,10 @@ Also built: QA walkthroughs `XayaUI_DevAssist/QAWalks-reskin.lua` (Dev Assist 0.
   pages; tests/sidebar_switches_run.py guards this.
 
 ## 4. Versions claimed
-- XayaUI_Reskin 0.6.8 (main has 0.6.7). Clashes with the chat round's PR #449, which also claims 0.6.8; the lander relabels.
+- XayaUI_Reskin 0.6.9 (main has 0.6.7). Clashes with the chat round's PR #449, which also claims 0.6.8; the lander relabels.
 - XayaUI_DevAssist 0.7.40 (main has 0.7.18 after the lander's relabels). Chosen above every Dev Assist number seen on any branch at 08:30 UTC, the highest being 0.7.31; the
   lander relabels clashes.
-- QA ids G3-G7.
+- QA ids G4-G8.
 
 ## 5. Questions sent to the QA flow (session_014bN6tUZLKHa2NXorHRJghL)
 RSK-Q1 to RSK-Q10. The first six were re-sent in the hub's format at 08:4x UTC.

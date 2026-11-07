@@ -440,11 +440,11 @@ Request: "what can be reskinned"
   of any tier-C skin starts with an in-game check.
 - The player-facing names ("Great Vault", "Quick Join") are my labels for Blizzard's frames, not Blizzard's display strings.
 
-## 12. Built 2026-11-07 (Reskin 0.6.8; REQUEST-LOG RESKIN-5)
+## 12. Built 2026-11-07 (Reskin 0.6.9; REQUEST-LOG RESKIN-5)
 
 The reskins were built on Xaya's overnight order, relayed through the 11-06 hub. Where she had not chosen, the conservative reading
 was taken, and each such choice went to the QA question flow as RSK-Q1 to RSK-Q10. All of it is in `XayaUI_Reskin/BlizzardSkins.lua`.
-Nothing is checked in game; QA G3-G7 and `/xui dev qa` (area "Reskin") cover it.
+Nothing is checked in game; QA G4-G8 and `/xui dev qa` (area "Reskin") cover it.
 
 Built, each a page of the Blizzard UI Reskin tab with its own tick box, off until ticked:
 

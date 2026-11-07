@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.40): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.8 (BlizzardSkins.lua): Blizzard's
+-- QAWalks-reskin.lua (XayaUI_DevAssist 0.7.40): in-game QA walkthroughs for XayaUI Blizzard Reskin 0.6.9 (BlizzardSkins.lua): Blizzard's
 -- windows, the minimap shape, tooltips and the objective tracker in the XayaUI look (REQUEST-LOG A13 RESKIN-1 to RESKIN-4; Xaya's
 -- overnight order 2026-11-07: "I want everything I've requested ... implemented and pushed to main").
 -- Standing rule V22 (Xaya 2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game

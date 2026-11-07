@@ -54,6 +54,7 @@ local left = {}        -- displays the engine does not draw: { rule, reason }
 local pendingBuild, lastError
 local serial = 0       -- build number: a slot built by the latest build carries it
 local LIMIT_MS, NEED = 1.0, 3
+local LEAN_REASON = "lean mode: not for the spec you are playing"
 local guard = { bad = 0 }   -- .lean / .off: this session's trips (never saved)
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
@@ -147,6 +148,19 @@ local function NeedsCooldown(p)
     return ns.CooldownUsed and ns.CooldownUsed(p) and not (ns.Ignored and ns.Ignored(p.cdState)) or false
 end
 
+-- The same buff under another spell ID, learned in this player's game (AuraAlias.lua): a rule that lists a cast ID whose buff carries
+-- its own ID is matched by the container too. The container matches the AURA's spell ID only (Blizzard_AuraContainerUtil.lua).
+local function WithAliases(ids)
+    if not ns.AuraAliasesOf then return ids end
+    local add
+    for id in pairs(ids) do
+        local al = ns.AuraAliasesOf(id)
+        if al then for a in pairs(al) do if not ids[a] then add = add or {}; add[#add + 1] = a end end end
+    end
+    if add then for _, a in ipairs(add) do ids[a] = true end end
+    return ids
+end
+
 -- Classify a parent rule. Returns spec (what to draw) or nil and the reason it stays with XayaUI ("" = not an aura display).
 --   spec = { kind = "buff" | "debuff", unit, filter, ids = {set}, display, trigger }
 local function Classify(p)
@@ -173,7 +187,7 @@ local function Classify(p)
         end
         local ids = { [buffID] = true }
         if type(p.buffAlt) == "table" then for _, a in ipairs(p.buffAlt) do a = tonumber(a); if a and a > 0 then ids[a] = true end end end
-        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = ids, display = display, trigger = trigger }
+        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = WithAliases(ids), display = display, trigger = trigger }
     end
     -- a rule whose only trigger is one "Buff / Aura (another)" row (the built-in one removed): the same as the built-in Buff / Aura
     if #rows == 1 and type(rows[1]) == "table" and rows[1].type == "buffAura" and not p.useBuff and buffID == 0 and not NeedsCooldown(p) then
@@ -184,7 +198,7 @@ local function Classify(p)
         -- the row's extra aura IDs count too (retrospective gap 9: the engine icon stayed empty while the trigger counted a variant)
         local rids = { [id] = true }
         if type(rows[1].alt) == "table" then for _, a in ipairs(rows[1].alt) do a = tonumber(a); if a and a > 0 then rids[a] = true end end end
-        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = rids, display = display, trigger = trigger }
+        return { kind = "buff", unit = "player", filter = "HELPFUL", ids = WithAliases(rids), display = display, trigger = trigger }
     end
     -- a rule whose only trigger is one "Target Debuff (yours)" row
     if #rows == 1 and type(rows[1]) == "table" and rows[1].type == "targetDebuff" and not NeedsCooldown(p) then
@@ -975,7 +989,7 @@ function D.Build()
             elseif KeptWithXayaUI(s.display.folder) then
                 left[#left + 1] = { p, "its group is kept with XayaUI (/xuiengine reset <group> to undo)" }
             elseif guard.lean and not LoadsForSpec(p, spec) then
-                left[#left + 1] = { p, "lean mode: not for the spec you are playing" }
+                left[#left + 1] = { p, LEAN_REASON }
             else
                 local gid = DynGroupId(s.display.folder)   -- (XayaUI lays a display out by ITS OWN group)
                 local fo = FolderById(gid)
@@ -1193,7 +1207,8 @@ function D.Status()
     else
         Say("XayaUI keeps no aura displays: every one is drawn by the engine.")
     end
-    Say(string.format("automatic mode: %s%s.  Performance guard: %s", db.auto ~= false and "on" or "OFF", guard.lean and " (lean for this session: this spec only)" or "",
+    Say(string.format("automatic mode: %s%s%s.  Performance guard: %s", db.auto ~= false and "on" or "OFF", guard.lean and " (lean for this session: this spec only)" or "",
+        guard.kept and " (kept on: the cost did not fall when lean mode handed displays back, so it is the game's own frames)" or "",
         guard.last and string.format("Blizzard's aura containers %.2f ms recent average (limit %.1f; includes Blizzard's own target-frame auras)%s", guard.last, LIMIT_MS,
             guard.own and string.format("; all of XayaUI %.2f ms", guard.own) or "") or "no reading yet (the game's addon meter may be off)"))
     if db.guardUndone then
@@ -1228,7 +1243,7 @@ local function Slash(msg)
     local db = DB()
     if not db then Say("saved data not loaded yet") return end
     if cmd == "full" then   -- leave lean mode: every spec's displays again
-        guard.lean = nil; guard.bad = 0; D.Build(); D.Status()
+        guard.lean, guard.leanAt, guard.leanHanded = nil, nil, nil; guard.bad = 0; D.Build(); D.Status()
     elseif cmd == "refresh" or cmd == "build" then
         D.Build(); D.Status()
     elseif cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
@@ -1252,7 +1267,7 @@ local function Metric(name)
 end
 local function GuardCheck()
     local db = DB()
-    if not (db and db.auto ~= false and not guard.off) then guard.bad = 0; return end
+    if not (db and db.auto ~= false and not guard.off) or guard.kept then guard.bad = 0; return end
     if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
     -- The containers' work is counted under Blizzard_AuraContainer. The engine's own Lua is counted under XayaUI together with
     -- everything else XayaUI does (rules, sounds, the settings window), so that number is shown, never used to trip: handing
@@ -1268,10 +1283,25 @@ local function GuardCheck()
     guard.bad = 0
     db.guardTrips = db.guardTrips or {}
     local step = guard.lean and "off" or "lean"
+    -- 0.6.69 (externals, Xaya 2026-11-07 "XUI isn't reliably performing"): the meter counts ALL of Blizzard_AuraContainer, which also
+    -- runs Blizzard's own buff frame, target frame and group headers (Blizzard's UI source: BuffFrame.lua, TargetFrame.xml,
+    -- SecureGroupHeaders.lua). Switching off hands every display back to XayaUI, which cannot show a hidden aura in combat (an
+    -- external defensive vanishes). So "off" needs evidence that XayaUI's containers are the cost: lean mode handed displays back AND
+    -- the reading then fell by at least a fifth. Otherwise drawing stays on for the session and the reason is recorded.
+    -- INFERENCE (unverified in game): that a fifth is a fair margin over the meter's own swing between readings.
+    if step == "off" and not ((guard.leanHanded or 0) > 0 and guard.leanAt and v <= guard.leanAt * 0.8) then
+        step = "kept"
+        guard.kept = true
+    end
     db.guardTrips[#db.guardTrips + 1] = { at = date("%Y-%m-%d %H:%M:%S"), ms = v, limit = LIMIT_MS, step = step, session = true }
     while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
+    if step == "kept" then
+        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame; not lowered by lean mode, so not XayaUI's: drawing stays on"):format(v)) end
+        Say(string.format("performance guard: Blizzard's aura containers still cost %.2f ms per frame (limit %.1f), but handing back XayaUI's other-spec displays did not lower it, so the cost is the game's own frames. The engine keeps drawing your displays (auras hidden in combat stay visible).", v, LIMIT_MS))
+        return
+    end
     if step == "lean" then
-        guard.lean = true
+        guard.lean, guard.leanAt = true, v
         if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame (limit %.1f)"):format(v, LIMIT_MS)) end
         Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine now draws only the displays of the spec you are playing (lean mode, applied once combat ends, until /reload). /xuiengine full to undo.", v, LIMIT_MS))
     else
@@ -1280,6 +1310,11 @@ local function GuardCheck()
         Say(string.format("performance guard: still %.2f ms per frame in lean mode, so automatic engine drawing is OFF until /reload; XayaUI draws the displays itself once combat ends." .. (DevOn() and " /xuiengine auto on to turn it back on now." or ""), v))
     end
     D.Build()
+    if step == "lean" then   -- how many displays lean mode handed back (the evidence the "off" step needs)
+        local n = 0
+        for _, e in ipairs(left) do if e[2] == LEAN_REASON then n = n + 1 end end
+        guard.leanHanded = n
+    end
 end
 D.GuardCheck = GuardCheck
 
@@ -1337,3 +1372,18 @@ end)
 -- for tests
 D._groups, D._singles, D._owned, D._extras, D._guard = groups, singles, owned, extras, guard
 function D._Left() return left end
+-- Does the game's aura container draw this rule's display? true + where, false + the reason it stays with XayaUI, nil = not an aura
+-- display. Status screens only (Conditions.lua ns.HiddenAuraNote): a linear look through the last build's lists.
+function D.OwnerOf(rule)
+    if type(rule) ~= "table" then return nil end
+    local p = ParentOf(rule) or rule
+    local slot = owned[p]
+    if slot and slot.ok ~= false then
+        return true, slot.single and "its own slot on XayaUI's icon" or "its dynamic group's container"
+    end
+    for _, e in ipairs(left) do if e[1] == p then return false, e[2] end end
+    local db = DB()
+    if db and db.auto == false then return false, "automatic engine drawing is off (/xuiengine auto on)" end
+    if guard.off then return false, "automatic engine drawing is off for this session (performance guard)" end
+    return nil
+end

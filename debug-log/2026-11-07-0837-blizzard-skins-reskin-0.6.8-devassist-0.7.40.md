@@ -1,4 +1,4 @@
-# Blizzard skins built: windows, minimap shape, tooltips, objective tracker (Reskin 0.6.8, Dev Assist 0.7.40)
+# Blizzard skins built: windows, minimap shape, tooltips, objective tracker (Reskin 0.6.9, Dev Assist 0.7.40)
 
 Logged 2026-11-07 08:37 UTC. Session 014bN6tUPG6SDvkoa3i3tMu5, branch `claude/determined-cerf-981pn8`. Request rows RESKIN-1 to
 RESKIN-5. Her overnight order (relayed by the 11-06 hub, ~08:25 UTC): "I want everything I've requested over the last 16h ... implemented
@@ -31,7 +31,7 @@ RSK-Q10.
   her reskin settings and puts them back at the end.
 - Tests: `tests/reskin_blizzard_skins_run.py` (48 checks), `tests/qa_walks_reskin_run.py` (19 checks). Both fail on the old code: no
   BlizzardSkins, no walks.
-- QA-CHECKLIST G3-G7. Versions: Reskin 0.6.8, Dev Assist 0.7.40 (Dev Assist 0.7.31 was the highest number claimed on any open branch).
+- QA-CHECKLIST G4-G8. Versions: Reskin 0.6.9, Dev Assist 0.7.40 (Dev Assist 0.7.31 was the highest number claimed on any open branch).
 
 ## Scope (V4)
 - Frame names: every window frame name was checked by script to exist in the 12.1.5 source (Gethe/wow-ui-source 297d7aa), with its
@@ -59,3 +59,10 @@ All of it. Most at risk:
 - that the tooltip colour holds for every tooltip kind;
 - the square minimap's look with other addons' buttons;
 - that no window in the list is protected in a way that blocks the paint outside combat.
+
+## Update 2026-11-07 ~12:45 UTC: renumbered on merging main 72a7512
+Main took XayaUI_Reskin 0.6.8 for #449 (friend class colours, FriendColors.lua) and QA G3. This work is now **Reskin 0.6.9**, QA
+**G4-G8**. The Reskin toc lists FriendColors.lua then BlizzardSkins.lua. The reskin tab tests list both sets of pages. (The file name above
+keeps 0.6.8 because it is the name the request log cites.)
+Also fixed after the first suite: the Tooltips page's settings key is "rsktooltips". "tooltips" had replaced Bonus Features' Enhanced
+Tooltips page, because page keys are unique across tabs; tests/sidebar_switches_run.py caught it.

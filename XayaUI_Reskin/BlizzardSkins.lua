@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.8): XayaUI's look on Blizzard's own windows, the minimap, tooltips and the objective
+-- BlizzardSkins.lua (XayaUI Blizzard Reskin 0.6.9): XayaUI's look on Blizzard's own windows, the minimap, tooltips and the objective
 -- tracker. Look only: art, colour, border, mask. Nothing is moved, resized, added or removed, and no Blizzard function is called to do
 -- anything. Own code, Blizzard's frames only.
 --
