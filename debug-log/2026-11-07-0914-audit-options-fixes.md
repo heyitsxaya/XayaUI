@@ -70,3 +70,11 @@ Walkthrough test: `tests/qa_walks_audit_options_run.py` (new) runs every step of
 lua_pitfalls (FAILS 0), drafts_run (24/0), recycle_bin_run (59/0), flex_dropdown_run, import_run (22/0), trigger_labels_run,
 trigger_parity_run (56/0), delete_keeps_rule_run (43/0), sidebar_switches_run (see the commit message for its result).
 tests/qa_walk_run.py is expected to fail until the parent regenerates QAWalks-Checklist.lua for B265-B278.
+
+## Full run (with the window part)
+Fixed code: 67 checks, 0 failed, 0 Lua errors (tests/audit_options_run.py, ~10 minutes in the stand-in), plus the corrected D45 check
+in the fast run. On ae88fc3 the full run gives 52 checks, 34 failed; its window part (D44 Delete key / multi-select / group rename, D41,
+D47) does NOT give a clean negative control there: on the old code the FA-11 part errors half-way and leaves the test rule in the
+Recycle Bin, so those three parts stop on a Lua error instead of on their own assertions. Their fail-before is therefore by code
+reading only (the old DeleteKey / MultiMove / MultiDelete / SidebarRename had no lock check, the old row lock listed only the cues, the
+old save bar discarded the pcall result): flagged as not demonstrated.
