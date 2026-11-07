@@ -1,6 +1,6 @@
 # Good morning, Xaya: overnight summary (2026-11-07)
 
-Written by the overnight hub (session_014bN6tWMaSvKkwjeonHvvch). Main = **MAIN_HASH** (every push passed the full test suite, the Lua pitfall check and precheck on its exact commit). Details: docs/process/OVERNIGHT-STATUS-2026-11-07.md.
+Written by the overnight hub (session_014bN6tWMaSvKkwjeonHvvch). Main code = **f81561d** (the last push that changed code; anything after it is docs only; every push passed the full test suite, the Lua pitfall check and precheck on its exact commit). Details: docs/process/OVERNIGHT-STATUS-2026-11-07.md.
 
 ## What's missing or wrong (read first)
 
@@ -18,9 +18,9 @@ Written by the overnight hub (session_014bN6tWMaSvKkwjeonHvvch). Main = **MAIN_H
    - Roadmap items (RM-GSEARCH, Raid Tools, M+ Tools, layouts): you asked for roadmap entries only. R24 (right-side cue panel, from 11-04) and R62 (objective pane reskin, 11-05) are older than your 16-hour window: questions S3-Q13 / S3-Q14. C3 and RM-LAYOUTS stay deferred to next week, as you said.
 5. **Performance target not proven:** a settings-window click went from ~1.7 s to ~0.10-0.20 s in a stand-in with your 313 rules. Your target is under 0.1 s. Walkthrough J31 measures it in game (Q-PERF-5, Q-PERF-8). First open: ~2.1-2.5 s → 0.83 s (target < 1 s, met in the stand-in).
 6. **Small decisions for you:** LibStub ships 4 unused self-test files (harmless; delete or keep). Patch notes have no entries for Bonus 0.6.28 and QoL 0.7.43-0.7.45 beyond the hover rewrites.
-7. **Branches for you to delete:** STALE_LINE
+7. **Branches for you to delete (O-151):** docs/process/BRANCHES-2026-11-07.md (final refresh against main f81561d, ~14:10 UTC) lists **66 branches** that are fully in main (53) or stale (13), with one delete line each. Run `git fetch --prune` first. Each line is `git push origin --force-with-lease=refs/heads/<name>:<sha> :refs/heads/<name>`, so it refuses any branch that moved after the list was written. Six of the stale ones (function-audit, perf-click, perf-test-m-plus, d8-raid-rules, d8-raid-rules-main, fervent-cerf-hldtwn) were redone under new commits, so git can't prove them contained; their heads are kept in `archive/2026-11-07`, so deleting loses nothing. `claude/adoring-hawking-wyda59` has one docs commit whose file is already on main word for word, so it is safe to delete too. **Keep:** `claude/d8-raid-rules-ready` (held, O-109), `roadmap-features/combined`, `archive/*`, `qa-installer-branch`. Branches with code not on main and not held: **none**.
 
-## What landed overnight (main 7b830cf → MAIN_HASH)
+## What landed overnight (main 7b830cf → f81561d)
 
 - **QA review popup + question flow** (your O-150): on first load it lists **148 walkthroughs** (all of them, because you haven't acknowledged a build yet) and **207 questions**, D8-Q1 first. "Don't show again until the next update" limits later loads to what's new.
 - Settings window: top tabs Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings; "+ New Rule" at the left of the Rules row; Profiles = Import / Export / Recycle Bin (UI-23..27); "Blizzard UI Reskin" renamed "Blizzard Reskin" everywhere you read it.
