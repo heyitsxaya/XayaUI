@@ -58,10 +58,11 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75;
+-- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31-0.7.41 had qol>releaseguard: D8 (QoL 0.7.42) moved Release Guard to
+-- Rules > Raid Rules, where its on / off is a toggle on its page (tests/raid_rules_run.py);
 -- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
-  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
+  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
   "bonus>utilities>calculator",
   -- (S1 #48, Options 0.6.50: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
   "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist" }

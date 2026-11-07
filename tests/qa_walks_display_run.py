@@ -6,7 +6,7 @@ Checks, on the real addons in the stand-in game: the six walkthroughs are regist
 question (noVerdict); their own checks give the right verdict on the stand-in: the Rules sub-tab row (28 px, four even tabs, Auto-Generate
 Rules at the right), Data Panels off (no section tab) and on (24 px, even), the Data Panels switch's hover (three lines), the theme's
 Muted grey, Advanced customization (off, then on, then back), the Calculator page (summary, closed box, icon without a name; open box),
-Release Guard's Where (no Everywhere) and the stat labels (GCD, Movement Speed, Critical Strike Effectiveness); the settings the
+Release Guard's Load (no Where or Everywhere list, D8) and the stat labels (GCD, Movement Speed, Critical Strike Effectiveness); the settings the
 walkthroughs change are put back. Negative control: QAWalks-display.lua does not exist on main 486942c (every check fails there).
 Run: python3 tests/qa_walks_display_run.py   (Lua 5.1 via lupa; slow)."""
 import os, sys
@@ -60,7 +60,7 @@ check("  ...and it really is off again", not ns.Theme.Advanced())
 stepCheck("calculator 1: summary, closed box, the icon without a name", "ui-calc-infobox", 1, true)
 stepCheck("calculator 2: the box opens", "ui-calc-infobox", 2, true)
 if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
-stepCheck("release guard 1: Where has no Everywhere", "ui-release-guard", 1, false)
+stepCheck("release guard 1: no Where / Everywhere list; its Load table (D8: Rules > Raid Rules)", "ui-release-guard", 1, false)
 stepCheck("release guard 2: with no death window, the check says so (no verdict)", "ui-release-guard", 2, false, false)
 stepCheck("stat labels: GCD, Movement Speed, Critical Strike Effectiveness", "ui-stat-gcd", 1, false)
 return R
