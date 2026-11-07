@@ -26,16 +26,18 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ### XayaUI 0.6.76
 
+**Install (read this first)**
+- Copy the new XayaUI_Rules folder into AddOns AND replace the whole XayaUI folder (22 files left it, and GameMenu.lua is now GameMenuButton.lua). Without XayaUI_Rules no rules run.
+
 **XayaUI Platform**
-- The XayaUI folder is now titled "XayaUI Platform" in the AddOns list. It keeps your saved data (CueRulesDB), and nothing in it moves.
-- Install note: copy the new XayaUI_Rules folder and replace the whole XayaUI folder. 22 files left it, and GameMenu.lua is now GameMenuButton.lua.
-  *Developers' notes: Not yet tested in game; it needs your in-game Accept (walkthroughs "code-move", "code-move-off" and "code-move-on", QA H14) before phase P5 of the platform split.*
+- The XayaUI folder is now titled "XayaUI Platform" in the AddOns list. It keeps your saved data (CueRulesDB), and nothing in it moves. Rules strings you exported before still import.
+  *Developers' notes: Not yet tested in game; it needs your in-game Accept (walkthroughs "code-move", "code-move-off" and "code-move-on", QA H14) before phase P5 of the platform split. Replacing the whole XayaUI folder keeps it clean: the game loads only the files the addon's list names, so leftover files are unused.*
 
 ### Rules 0.6.76
 
 **XayaUI Rules (new)**
 - Added XayaUI Rules, a new addon that holds the rule engine, triggers, cues and displays, combat aura tracking, and rule sharing and the rules Recycle Bin, moved out of the XayaUI folder. You named it ("Call it Rules").
-- XayaUI Rules can be switched off in the AddOns list: the rule commands, the Rules tabs and the rules part of Profiles are hidden, and Import shows the rules part as "needs XayaUI Rules".
+- XayaUI Rules can be switched off in the AddOns list: the rule commands answer that it is off, the Rules tabs and the rules part of Profiles are hidden, and Import shows the rules part as "needs XayaUI Rules".
 
 ### Options 0.6.84
 
