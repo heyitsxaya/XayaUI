@@ -1,8 +1,8 @@
-# In-game QA walkthrough for the Generate buttons, filtered list and Select all (Dev Assist 0.7.13)
+# In-game QA walkthrough for the Generate buttons, filtered list and Select all (Dev Assist 0.7.13, Options 0.6.64)
 
 Logged 2026-11-07 08:31 UTC. Session 014bN6tTRFsCmBvVCUDVtrds, branch `claude/generate-buttons-qa-walk` (from main 7b830cf). NOT on `main` yet: goes to the lander (session 014bN6tSZh6UFB2WcRuyXqBZ). UNTESTED in game.
 Request log: REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md GEN-1 to GEN-4 (the feature, on main 687b624), GEN-5 to GEN-8 (the relayed orders below).
-Version note: Dev Assist 0.7.13 follows 0.7.12 on main; the lander may renumber at landing.
+Version note: Dev Assist 0.7.13 follows 0.7.12 on main, Options 0.6.64 follows 0.6.63; the lander may renumber at landing.
 
 ## Why
 Standing rule V22 (Xaya, 2026-11-07, her words, docs/process/VERIFICATION.md): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing". The Generate buttons (Options 0.6.54, on main 687b624) landed before the rule and had only the checklist walk generated from QA B160. This is the hand-written walkthrough with prefill. The overnight order relayed by the 11-06 hub (2026-11-07 ~08:25 UTC, relayed, not seen by this session): every change needs a V22 walkthrough with prefill.
@@ -20,7 +20,10 @@ Standing rule V22 (Xaya, 2026-11-07, her words, docs/process/VERIFICATION.md): "
 - tests/qa_walks_generate_run.py (new, 32 checks).
 
 ## V4 scope (git grep)
-`XayaUI_DevQA.Register` callers: QAWalks*.lua (all unchanged). The toc load order: the new file after QAWalks-display.lua (it needs XayaUI_DevQA from QAWalk.lua, loaded earlier). It reads `ns.AutoPicker` (FILTERS, ButtonLabel, Load, Close, view, AllTicked, TickAll, Choice, SetChoice, BuildRows, NoneText, SpecName), all existing on main. No change to XayaUI_Options, core, QoL.
+`XayaUI_DevQA.Register` callers: QAWalks*.lua (all unchanged). The toc load order: the new file after QAWalks-display.lua (it needs XayaUI_DevQA from QAWalk.lua, loaded earlier). It reads the picker through `ns.OptionsApi.AutoPicker` (FILTERS, ButtonLabel, Load, Close, view, AllTicked, TickAll, Choice, SetChoice, BuildRows, NoneText, SpecName), all existing on main.
+
+## Found by the full suite, fixed (Options 0.6.64)
+The first full-suite run (commit 90c7c04) failed ONE check, the harness's boundary rule: "FAIL static: XayaUI_DevAssist/QAWalks-generate.lua:19 (XayaUI_DevAssist) uses ns.AutoPicker, which belongs to XayaUI_Options; go through Modules.lua instead" (tests/harness/run.py boundary_checks: an addon may read only core's names and what another addon publishes, PUBLISHED = Options, OptionsApi). The targeted tests (tests/qa_walks_generate_run.py 32/32, auto_picker_run.py) had passed: they do not run that rule. Fix: XayaUI_Options/Options.lua publishes the picker as `ns.OptionsApi.AutoPicker` right after `ns.OptionsApi = {}` (AutoPicker.lua loads before Options.lua, so the line sits there); the walkthrough reads it from there; the harness rule is NOT loosened. Options 0.6.63 -> 0.6.64. Runtime: one table field set at load; nothing else. New check in tests/qa_walks_generate_run.py: the picker is published as ns.OptionsApi.AutoPicker. `boundary_checks` alone: no findings after the fix; the full suite is rerun on the fix commit.
 Runtime (CLEAN-8): Dev Assist only; the walkthrough is registered at load (one table), runs only when /xui dev qa is opened and a step is started; no event, OnUpdate, timer, hook or saved-variable field. V14: Dev Assist is the developer addon (loaded on demand by the player's choice).
 
 ## Tests (V1, V11)

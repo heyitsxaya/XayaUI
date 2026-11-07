@@ -10,13 +10,13 @@
 -- each of her clicks and offers its own verdict on "Accept"; nothing is recorded without her click. She presses the real buttons: a step
 -- never fakes a press. The one step about looks (are the button labels cut off?) captures the widths it reads into the note and asks her
 -- (noVerdict). Ticks the walkthrough makes are removed again in its last step. Reaches the picker only through the published
--- ns.AutoPicker (XayaUI_Options) and the settings window's Ace tree. Does nothing without the framework. UNTESTED IN GAME.
+-- ns.OptionsApi.AutoPicker (XayaUI_Options 0.6.64) and the settings window's Ace tree. Does nothing without the framework. UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
-local function AP() local ns = NS(); return ns and ns.AutoPicker end
+local function AP() local ns = NS(); return ns and ns.OptionsApi and ns.OptionsApi.AutoPicker end   -- published by XayaUI_Options (Options.lua): another addon's names are read only through it
 local function ACD() return LibStub and LibStub("AceConfigDialog-3.0", true) end
 local function Root() local a = ACD(); return a and a.OpenFrames and a.OpenFrames["CueRules"] end
 

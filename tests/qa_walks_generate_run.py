@@ -54,6 +54,7 @@ C_CooldownViewer = {
 IsPlayerSpell = function(id) return id ~= 204021 and id ~= 258920 end
 local SPEC = ns.CurrentSpecID()
 check("stand-in spec is Vengeance (581)", SPEC == 581)
+check("the picker is published for Dev Assist as ns.OptionsApi.AutoPicker (the harness allows no other cross-addon read)", ns.OptionsApi and ns.OptionsApi.AutoPicker == AP)
 
 -- a real click on a Generate button calls AP.Load and then redraws the window; the stand-in does both
 local function redraw() local r = LibStub("AceConfigRegistry-3.0"); r:NotifyChange("CueRules"); W.tick(0.2, 4) end
