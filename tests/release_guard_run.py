@@ -6,7 +6,7 @@
 # GameDialogDefs.lua:183; a stand-in dialog with GetButton1 here), its text, where a click lands (the box while it shows and takes the
 # mouse; Release when it has stepped aside), hidden as a ghost, not outside a raid by default; V14: nothing made or registered while off.
 # Negative control (V1): every check fails on the session branch head before this change (29a2f85: no Release Guard), except "(guard)".
-# D8 (QoL 0.7.42): where it works is a rule Load table decided by core ns.LoadAllows (not in this stand-in world: stubbed by LOADOK
+# D8 (QoL 0.7.44): where it works is a rule Load table decided by core ns.LoadAllows (not in this stand-in world: stubbed by LOADOK
 # here; the real decision, the migration and the Raid Rules entry are tested with the whole addon in tests/raid_rules_run.py).
 # Run from the repo root: python3 tests/release_guard_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 import os, sys

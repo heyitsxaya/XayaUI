@@ -1,4 +1,4 @@
-# D8: Release Guard as a built-in entry under Rules > Raid Rules (core 0.6.70, Options 0.6.68, QoL 0.7.42, Dev Assist 0.7.27)
+# D8: Release Guard as a built-in entry under Rules > Raid Rules (core 0.6.70, Options 0.6.71, QoL 0.7.44, Dev Assist 0.7.31)
 
 D8 session (session_014bN6tTZroPi49dAYwBbeGp), branch claude/d8-raid-rules-main from main 6b25c9b. Logged 2026-11-07 06:25 UTC.
 Spec and her words: docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md. Built without asking her the open proposals: her relayed words
@@ -52,7 +52,7 @@ and when the options window lists the entry. tests/raid_rules_run.py: off, build
 ## Rebased onto main 7b830cf (2026-11-07 ~08:50 UTC), held
 Branch claude/d8-raid-rules-ready, from main 7b830cf (not onto claude/perf-load-first: it does not merge cleanly with main itself, which
 is the lander's merge; the perf branch changes Conditions.lua too, so D8 is re-checked after that lands). Renumbered above every branch:
-core 0.6.70, Options 0.6.68, Dev Assist 0.7.27, QoL 0.7.42, QA B240-B247. Main had changed Release Guard meanwhile (UI bugs session):
+core 0.6.70, Options 0.6.71, Dev Assist 0.7.31, QoL 0.7.44, QA B240-B247. Main had changed Release Guard meanwhile (UI bugs session):
 - QoL 0.7.39 UI-58 (Xaya: "There also should not be an everywhere button"): a saved Everywhere became Raids only. D8's migration now maps
   "all" to her default too (was: no conditions), and D8-Q8 asks her whether the Load tab may still be emptied (= works everywhere).
 - QoL 0.7.39 UI-57: strata FULLSCREEN_DIALOG, state.why, /xui releaseguard: kept; the last-death note and the command show the Load in

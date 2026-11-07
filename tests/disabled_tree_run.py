@@ -65,7 +65,7 @@ check("same-named groups say which parent: Defensives - in VDH (1)", nm(dis.f9) 
 check("same-named groups say which parent: Defensives - in Externals (1)", nm(dis.f7) == "Defensives - in Externals (1)")
 check("no suffix without a clash (Personal Buffs (1))", nm(dis.f5) == "Personal Buffs (1)")
 check("empty new group counts 0", nm(dis.f8) == "Brand New (0)")
--- D8 (Options 0.6.68): Release Guard, built in and off by default, is listed (and counted) under Disabled like a rule
+-- D8 (Options 0.6.71): Release Guard, built in and off by default, is listed (and counted) under Disabled like a rule
 check("DISABLED root count is the rules (6) plus Release Guard while it is off (7)", (function() local n = rules.args.disabledTab.args.disabled.name; n = (type(n) == "function" and n() or n)
   local rg = dis.releaseguard ~= nil
   return n == (rg and "DISABLED (7)" or "DISABLED (6)") and rg, tostring(n) end)())

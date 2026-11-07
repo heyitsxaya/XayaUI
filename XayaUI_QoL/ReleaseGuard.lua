@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- ReleaseGuard.lua : Release Guard (XayaUI QoL 0.7.31; D8, QoL 0.7.42: shown under Rules > Raid Rules). A black box over the death window's Release Spirit button, so a misclick
+-- ReleaseGuard.lua : Release Guard (XayaUI QoL 0.7.31; D8, QoL 0.7.44: shown under Rules > Raid Rules). A black box over the death window's Release Spirit button, so a misclick
 -- does not release you in a raid. Off by default; while off nothing is created, registered or hooked (V14).
 -- Xaya (REQUEST-LOG #10, #39, #75, #76; her words): "autopopulating the rule calculator with things like "DO NOT RELEASE" button cover in
 -- raid"; "both: requires a modifier key to allow click-through"; "black box over the "release" button that says "NO RELEASE"
@@ -28,7 +28,7 @@ local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "W
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
     index = 0 }
 local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
--- D8 (QoL 0.7.42; Xaya: "Rule drives the cover"; load "in instance - raid party size => 20"): where it works is a rule-style Load table
+-- D8 (QoL 0.7.44; Xaya: "Rule drives the cover"; load "in instance - raid party size => 20"): where it works is a rule-style Load table
 -- (c.load, edited with the rule Load tab under Rules > Raid Rules > Release Guard; core ns.LoadAllows decides). Her default: in an
 -- instance, instance type Raid, people in my group at least 20.
 local function DefaultLoad() return { instance = "yes", instanceTypes = { raid = true }, groupMin = 20 } end

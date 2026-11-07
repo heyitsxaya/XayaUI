@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
--- QAWalks-raidrules.lua (XayaUI_DevAssist 0.7.27): the in-game walkthrough for D8, Release Guard as a built-in entry under
--- Rules > Raid Rules (core 0.6.70, Options 0.6.68, QoL 0.7.42; QA B240-B246).
+-- QAWalks-raidrules.lua (XayaUI_DevAssist 0.7.31): the in-game walkthrough for D8, Release Guard as a built-in entry under
+-- Rules > Raid Rules (core 0.6.70, Options 0.6.71, QoL 0.7.44; QA B240-B246).
 -- Xaya, 2026-11-07 (standing rule, relayed verbatim): "As a standing rule, make sure every feature or significant change to the
 -- codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 -- prefill = true: where the addon can read the answer (the saved settings, its own load answer against what the game reports, its
@@ -115,7 +115,7 @@ QA.Register("d8-raid-rules", { title = "Raid Rules: Release Guard as a built-in 
         check = function() local c = Need(); return wasOn == nil or c.enabled == wasOn, "on: " .. tostring(c.enabled) .. " (was " .. tostring(wasOn) .. ")" end },
 } })
 
--- B247: the load condition "People in my group: at least N" on an ordinary rule (core 0.6.70 / Options 0.6.68; D8). Data capture plus
+-- B247: the load condition "People in my group: at least N" on an ordinary rule (core 0.6.70 / Options 0.6.71; D8). Data capture plus
 -- one verdict the addon can give safely: a rule that needs more people than are in your group must not be loaded.
 QA.Register("d8-people-in-group", { title = "Load: People in my group, at least N (D8)", qa = "B247", order = 241, prefill = true, steps = {
     { text = "(B247) Open any rule's |cffffd100Load|r tab and set |cffffd100People in my group: at least|r to 3 (solo or in a 2-player group). Then press Check.\n\n|cffffd100Expect:|r the rule is under |cffffd100Not Loaded|r; the addon lists every rule with this setting, your group size and whether each is loaded.",

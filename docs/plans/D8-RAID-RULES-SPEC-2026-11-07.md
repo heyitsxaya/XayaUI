@@ -21,7 +21,7 @@ question prompt). Read docs/process/VERIFICATION.md (V1-V21) and the xayaui-chan
 
 ## Already built (engine session 2; reaches main with the next combined push or after it)
 - Player State trigger "Dead, not released" (Triggers.lua; UnitIsDead and not UnitIsGhost; unreadable = unknown).
-- Load condition "People in my group: at least N" (renumbered core 0.6.70 / Options 0.6.68 / QA B247; ships with D8 on claude/d8-raid-rules-main) (Conditions.lua ReadContext ctx.groupSize, CheckContextRaw load.groupMin; Options rule
+- Load condition "People in my group: at least N" (renumbered core 0.6.70 / Options 0.6.71 / QA B247; ships with D8 on claude/d8-raid-rules-main) (Conditions.lua ReadContext ctx.groupSize, CheckContextRaw load.groupMin; Options rule
   Load tab slider; test tests/load_group_size_run.py; QA B213; first built as core 0.6.59 / Options 0.6.60).
 
 ## To build

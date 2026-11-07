@@ -1762,7 +1762,7 @@ function ns.CollapsibleHeaders(rule, args, tag)
     end
 end
 
--- The rule Load tab (D8, Options 0.6.68): one builder for a rule and for a built-in entry that uses the same tab (Release Guard
+-- The rule Load tab (D8, Options 0.6.71): one builder for a rule and for a built-in entry that uses the same tab (Release Guard
 -- under Rules > Raid Rules). rec holds the rule-style fields (load, talentMode, talents; folder only on a rule). onChange: what an
 -- edit calls instead of Changed(rule) (a built-in entry is not a cue rule: nothing to repaint).
 local function BuildLoadArgs(rule, onChange)
@@ -4746,7 +4746,7 @@ function ns.ApplyTreeFilter(out)
     end
 end
 
--- D8 (Options 0.6.68; Xaya: "Rule drives the cover", "It belongs in "Raid Rules" under rules", "A group in the sidebar", "Yes,
+-- D8 (Options 0.6.71; Xaya: "Rule drives the cover", "It belongs in "Raid Rules" under rules", "A group in the sidebar", "Yes,
 -- built-in entry"): Release Guard is a fixed entry under a fixed "Raid Rules" group. It is not a cue rule: no record in ns.rules (the
 -- engine, export, profile export, delete, duplicate, multi-select and drag never see it; conservative reading, recorded in the D8
 -- spec), its settings stay in CueRulesDB.releaseGuard (XayaUI_QoL). Its row: no eye / headphone (Resolve knows no "releaseguard"

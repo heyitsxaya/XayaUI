@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (D8: core 0.6.70, Options 0.6.68, QoL 0.7.42): Release Guard as a built-in entry under Rules > "Raid Rules".
+"""Offline test (D8: core 0.6.70, Options 0.6.71, QoL 0.7.44): Release Guard as a built-in entry under Rules > "Raid Rules".
 Xaya (docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md, her words): "Rule drives the cover"; load "in instance - raid party size => 20";
 "If it's not enabled it does not exist"; "It has to be enabled (it's not exactly a rule) and then the load conditions are applied after
 enabling / disabling."; "It belongs in "Raid Rules" under rules"; "A group in the sidebar"; "Yes, built-in entry".

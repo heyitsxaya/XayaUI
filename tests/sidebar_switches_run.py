@@ -58,7 +58,7 @@ local function collect(g, path)
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31-0.7.41 had qol>releaseguard: D8 (QoL 0.7.42) moved Release Guard to
+-- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31-0.7.41 had qol>releaseguard: D8 (QoL 0.7.44) moved Release Guard to
 -- Rules > Raid Rules, where its on / off is a toggle on its page (tests/raid_rules_run.py);
 -- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
 local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",

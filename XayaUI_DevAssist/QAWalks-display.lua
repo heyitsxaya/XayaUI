@@ -244,7 +244,7 @@ QA.Register("ui-calc-infobox", { title = "Calculator page: summary and info icon
 -------------------------------------------------------------------------------
 local function RG() return Svc("releaseGuard") end
 QA.Register("ui-release-guard", { title = "Release Guard: where it works, the box on the death window", qa = "E1z93, E1z82", order = 264, prefill = true, steps = {
-    -- (D8, Dev Assist 0.7.27: Release Guard moved to Rules > Raid Rules; its old "Where" list became the rule Load tab, so this step
+    -- (D8, Dev Assist 0.7.31: Release Guard moved to Rules > Raid Rules; its old "Where" list became the rule Load tab, so this step
     -- now checks that no Where / Everywhere list is left and reads its Load table)
     { text = "Open |cffffd100Rules > Smart Categories > RAID RULES > Release Guard|r and tick |cffffd100Enabled|r on its Settings tab if it is not ticked.\n\n|cffffd100Expect:|r no Where list and no Everywhere choice; where it works is on its |cffffd100Load|r tab (by default: in an instance, Raid, at least 20 people in your group).",
         check = function()

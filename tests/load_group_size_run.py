@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline test (core 0.6.70, Options 0.6.68): D8 part 2, the load condition "People in my group: at least N". Xaya, 2026-11-06: the DO NOT RELEASE
+"""Offline test (core 0.6.70, Options 0.6.71): D8 part 2, the load condition "People in my group: at least N". Xaya, 2026-11-06: the DO NOT RELEASE
 load "in instance - raid party size => 20"; her answer "People in my group".
 Checks the load decision: not set (or 0 / 1) has no bearing; set to 20 the rule loads with 20 or more players in the group, not with 19, and
 not solo; the group size unreadable -> unknown (does not load); the rule Load tab has the control and it writes the setting.

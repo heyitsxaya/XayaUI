@@ -1,7 +1,7 @@
-# Load condition "People in my group: at least N" (core 0.6.70, Options 0.6.68; D8 part 2)
+# Load condition "People in my group: at least N" (core 0.6.70, Options 0.6.71; D8 part 2)
 
 Engine session 2. Renumbered by the D8 session (2026-11-07 06:24 UTC): first built as core 0.6.59 / Options 0.6.60 / QA B213 on
-claude/fervent-cerf-hldtwn 0f3151b; those numbers collided with other branches, so it lands with D8 as core 0.6.70 / Options 0.6.68 / QA B247. Her answers (QUESTIONS-engine-session.md "Round 7 answers"): the DO NOT RELEASE load "in instance - raid party size => 20";
+claude/fervent-cerf-hldtwn 0f3151b; those numbers collided with other branches, so it lands with D8 as core 0.6.70 / Options 0.6.71 / QA B247. Her answers (QUESTIONS-engine-session.md "Round 7 answers"): the DO NOT RELEASE load "in instance - raid party size => 20";
 "People in my group". Versions above the pending combined bundle (core 0.6.58 / Options 0.6.59 there).
 - Conditions.lua ReadContext: ctx.groupSize = max(1, GetNumGroupMembers()); in the context signature (memo). CheckContextRaw: load.groupMin
   (a number > 1) checks groupSize >= groupMin; unset / 0 / 1 = no bearing (#18). GROUP_ROSTER_UPDATE already steps the engine.
