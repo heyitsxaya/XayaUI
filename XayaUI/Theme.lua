@@ -364,6 +364,7 @@ function T.Resolve()
         if c then b[2][1], b[2][2], b[2][3], b[2][4] = c[1], c[2], c[3], c[4] end
     end
     for _, fn in ipairs(T.listeners) do pcall(fn) end   -- widgets that were painted once (toolbar buttons ...) repaint here
+    if ns.RepaintFlatButtons then pcall(ns.RepaintFlatButtons) end   -- core's flat buttons (Core.lua; UI-77, core 0.6.68)
 end
 
 -- color of a class property: the class override, else the token the class points at. Always returns a fresh {r,g,b,a}.

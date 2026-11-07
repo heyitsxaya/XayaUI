@@ -453,7 +453,7 @@ local function PageSwitch(page, name, tip, desc, Notify)
         set = function(_, v) Cfg()[page] = v and true or nil; re(Notify) end,
         disabled = function() return not TabOn() end }
 end
-local OFFNOTE = " Off: nothing of it is made or runs. Switched off after it was on, Blizzard's look comes back at once; its hooks stay until you /reload but do nothing. Greyed while Blizzard UI Reskin is off (this tab's Overview)."
+local OFFNOTE = " Off: nothing of it is made or runs. Switched off after it was on, Blizzard's look comes back at once; its hooks stay until you /reload but do nothing. Greyed while Blizzard Reskin is off (this tab's Overview)."
 
 function BS.WindowsPage(Notify)
     local off = function() return not PageOn("windows") end
@@ -507,7 +507,7 @@ function BS.TrackerPage(Notify)
     for i, s in ipairs(BS.SECTIONS) do
         local isProf = s.key == "professions"
         args.list.args[s.key] = { type = "toggle", order = i, name = function() return BS.SectionLabel(s) end, disabled = off,
-            desc = isProf and "While the Shopping List's tracker part is on (Blizzard UI Reskin > Shopping List), the Shopping List restyles this section and this box has no effect." or nil,
+            desc = isProf and "While the Shopping List's tracker part is on (Blizzard Reskin > Shopping List), the Shopping List restyles this section and this box has no effect." or nil,
             get = function() local r = Saved(); return not (r and r.otOff and r.otOff[s.key]) end,
             set = function(_, v) Cfg().otOff[s.key] = (not v) and true or nil; re(Notify) end }
     end

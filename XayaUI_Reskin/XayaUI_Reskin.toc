@@ -2,7 +2,7 @@
 ## Title: XayaUI Blizzard Reskin
 ## Notes: Restyles Blizzard's own frames without changing what they do: the Game Menu (ESC menu), friend class colors in the friends list, Blizzard's windows, the minimap shape, tooltips and the objective tracker. Settings: the Blizzard UI Reskin tab. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.9
+## Version: 0.6.10
 ## X-Date: 2026-11-07
 ## Dependencies: XayaUI
 ## Group: XayaUI

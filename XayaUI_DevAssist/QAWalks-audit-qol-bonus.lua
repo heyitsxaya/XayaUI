@@ -42,7 +42,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: per-character defau
             local others = 0; for _ in pairs(c.charDefaults or {}) do others = others + 1 end
             return ok and true or false, ("this character: %s; old shared: %s; characters with their own defaults: %d"):format(Short(mine and mine.name), Short(shared and shared.name or "none"), others)
         end },
-    { text = "Log onto another character that has used the Shopping List before (or note this step and come back to it later), open Blizzard UI Reskin > Shopping List > Your defaults, then come back and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the other character's Gem box does NOT show \"" .. TAG .. " gem\" (it shows its own default, or the old shared one). Skip this step if you have no other character at hand.",
+    { text = "Log onto another character that has used the Shopping List before (or note this step and come back to it later), open Blizzard Reskin > Shopping List > Your defaults, then come back and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the other character's Gem box does NOT show \"" .. TAG .. " gem\" (it shows its own default, or the old shared one). Skip this step if you have no other character at hand.",
         noVerdict = true,
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end
             local c = S.Cfg(); local d = S.Defaults(c).gem
@@ -71,7 +71,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: per-character defau
             local n, need = 0, nil
             for _, b in ipairs(S.Cfg().buy) do if b.name == TAG .. " gem" then n = n + 1; need = b.need end end
             return n == 1 and need == 3, ("%d test line(s), need %s"):format(n, tostring(need)) end },
-    { text = "Press |cffffd100Do it for me|r: the Shopping List is switched off, the Blizzard UI Reskin switch is read as off for a moment, |cffffd100/xui shop|r is run, and the Reskin switch is put straight back as it was.\n\n|cffffd100Expect:|r the Shopping List is still off (the command only says Blizzard UI Reskin is off). Before the fix it switched itself on.",
+    { text = "Press |cffffd100Do it for me|r: the Shopping List is switched off, the Blizzard Reskin switch is read as off for a moment, |cffffd100/xui shop|r is run, and the Reskin switch is put straight back as it was.\n\n|cffffd100Expect:|r the Shopping List is still off (the command only says Blizzard Reskin is off). Before the fix it switched itself on.",
         setup = function()
             local S, c = ShopCfg()
             c.enabled, c.panel = false, false; S.Apply()
@@ -108,7 +108,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: per-character defau
 
 -- D16: the Auction House list in Select other answers only our own query; the addon cannot see the list, so this one asks
 QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list kept after your own search (D16)", qa = "E1z225", order = 331, prefill = true, steps = {
-    { text = "Switch the Shopping List on (Blizzard UI Reskin > Shopping List) and open the Auction House. On a line of Missing on your gear press |cffffd100Other|r, then |cffffd100List what the Auction House has|r and wait for the list. Then type something unrelated (for example \"Bread\") in the Auction House's own search box and search. Press |cffffd100Other|r on the same line again and |cffffd100Check again|r here.\n\n|cffffd100Expect:|r the Select other list still shows that slot's items marked \"Auction House\", not the bread. Before the fix your own search replaced it.",
+    { text = "Switch the Shopping List on (Blizzard Reskin > Shopping List) and open the Auction House. On a line of Missing on your gear press |cffffd100Other|r, then |cffffd100List what the Auction House has|r and wait for the list. Then type something unrelated (for example \"Bread\") in the Auction House's own search box and search. Press |cffffd100Other|r on the same line again and |cffffd100Check again|r here.\n\n|cffffd100Expect:|r the Select other list still shows that slot's items marked \"Auction House\", not the bread. Before the fix your own search replaced it.",
         noVerdict = true,
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end
             return true, "XayaUI is waiting for an answer to its own query: " .. (S.BrowsePending() and "yes (the Auction House has not answered yet)" or "no (its answer was read once)") end },

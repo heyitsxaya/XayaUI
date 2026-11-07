@@ -357,6 +357,22 @@ check("GEN-3: four buttons per spec with her labels, verbatim (Vengeance, 581)",
   lbl("apSpec2all") == "Generate All Rules for Vengeance" and lbl("apSpec2cd") == "Generate CD Tracking Rules for Vengeance"
   and lbl("apSpec2aura") == "Generate Aura Tracking Rules for Vengeance" and lbl("apSpec2debuff") == "Generate Target Debuff Tracking Rules for Vengeance",
   lbl("apSpec2all") .. " | " .. lbl("apSpec2debuff"))
+-- (Options 0.6.65; UI-71, Xaya: "this needs work, it's too noisy. one icon, four buttons"; her answer "icon | four lines")
+check("UI-71: the spec's icon once, at the left of its first line; no button carries the icon", (function()
+  for i = 1, 2 do
+    local p = "apSpec" .. i
+    if not (a[p .. "Ic1"] and a[p .. "Ic1"].image) then return false end
+    for j = 2, 4 do if a[p .. "Ic" .. j] and a[p .. "Ic" .. j].image then return false end end
+    for _, f in ipairs({ "all", "cd", "aura", "debuff" }) do if tostring(a[p .. f] and a[p .. f].name):find("|T", 1, true) then return false end end
+  end
+  return true end)())
+check("UI-71: four lines per spec: the icon column, then one button, then a line break", (function()
+  local p = "apSpec2"
+  for j, f in ipairs({ "all", "cd", "aura", "debuff" }) do
+    local ic, b, br = a[p .. "Ic" .. j], a[p .. f], a[p .. "Br" .. j]
+    if not (ic and b and br and ic.order < b.order and b.order < br.order and br.width == "full") then return false end
+  end
+  return true end)())
 check("GEN-3: the same four for Havoc (577)", lbl("apSpec1all") == "Generate All Rules for Havoc" and lbl("apSpec1debuff") == "Generate Target Debuff Tracking Rules for Havoc")
 check("GEN-1: no button still says Auto-populate", (function() for k, v in pairs(a) do if type(v) == "table" and v.type == "execute" and tostring(v.name):find("Auto-populate", 1, true) then return false end end return true end)())
 check("the class gets the same four (her answer): 'my class'",
@@ -388,9 +404,10 @@ check("the class All button lists every spec's rows, the class CD button only th
   and (function() a.apClasscd.func(); return #AP.view.rows == 5 and AP.view.filter == "cd" end)(), #AP.view.rows)
 -- V11 (ESTIMATE: 154 px per width unit from the old 1.6-wide button, about 246 px in her screenshot; 7 px per character plus 16 icon and 24 padding)
 local longest = AP.ButtonLabel("debuff", "Beast Mastery")
-local btnW = (a.apSpec2debuff.width or 0) * 154
-check("V11: every Generate button is as wide as its longest label needs (estimate)", #longest * 7 + 16 + 24 <= btnW and a.apSpec2all.width == a.apClassdebuff.width,
-  #longest * 7 + 40 .. " px needed, " .. btnW .. " px given")
+-- (Options 0.6.65, UI-71) the buttons are a share of the pane: 0.88 of about 500 px at the default window width (ESTIMATE, 780 px window)
+local btnW = (a.apSpec2debuff.width == "relative" and (a.apSpec2debuff.relWidth or 0) or 0) * 500
+check("V11: every Generate button is as wide as its longest label needs (estimate)", #longest * 7 + 24 <= btnW and a.apSpec2all.relWidth == a.apClassall.relWidth,
+  #longest * 7 + 24 .. " px needed, " .. btnW .. " px given")
 -- Reload list and the talents switch keep the filter
 a.apSpec2aura.func(); a = creator(); a.apTable.args.reload.func()
 check("Reload list keeps the filter", AP.view.filter == "aura" and kinds(AP.view) == "0/2/0", kinds(AP.view))

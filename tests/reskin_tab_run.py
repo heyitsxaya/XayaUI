@@ -4,7 +4,7 @@ into a new tab: Blizzard UI Reskin. Currently applies to: chat, character pane, 
 Checks, on the real settings table built by the real addons: the new tab with its three pages (Character Pane, Chat Panel, Esc Menu) in
 name order; the Chat tab gone (its only page moved); QoL without the Character Reskin page; the Esc-menu look out of Settings > UI
 Options > Display (the XayaUI menu button stays there, with one line saying where the look went) and out of the old single Settings
-tab; the tab hides while the Settings pages are open, like the other feature tabs; opening a moved page from its new and from its old
+tab; the tab stays shown beside the Settings tab (Options 0.6.72); opening a moved page from its new and from its old
 address (a stale ("chat", "chatpanel") call), from the Chat Panel's own buttons, and from /xui reskin options. Runs once with every
 addon on, and once with XayaUI_Reskin and XayaUI_QoL off (the tab keeps the Chat Panel), and once with Chat, QoL and Reskin off (no tab).
 Run: python3 tests/reskin_tab_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
@@ -35,7 +35,7 @@ local function names(t)
   return table.concat(out, " | ")
 end
 if MODE == "all" then
-  check("a top tab named Blizzard UI Reskin, after Bonus Features", tab ~= nil and tab.name == "Blizzard UI Reskin" and built.args.bonus and tab.order > built.args.bonus.order,
+  check("a top tab named Blizzard Reskin (Options 0.6.72, UI-24: her label), after Bonus Features", tab ~= nil and tab.name == "Blizzard Reskin" and built.args.bonus and tab.order > built.args.bonus.order,
     tab and tab.name)
   -- (QoL 0.7.32: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: the tab's own switch is a tick box on the tab itself, Xaya 2026-11-06; tests/reskin_tab_switch_run.py checks it works)
@@ -50,16 +50,14 @@ if MODE == "all" then
   for k in pairs(disp) do if k:find("^gm_") and k ~= "gm_moved" then gmLeft = gmLeft + 1 end end
   check("Settings > UI Options > Display: the Esc-menu look is gone from it", gmLeft == 0, gmLeft)
   check("  ...the XayaUI button in the Esc menu stays there (it adds a button, not a look)", disp.gameMenuButton ~= nil and disp.gameMenuStyle ~= nil)
-  check("  ...and one line says where the look went", disp.gm_moved and tostring(disp.gm_moved.name):find("Blizzard UI Reskin tab > Esc Menu", 1, true) ~= nil, disp.gm_moved and tostring(disp.gm_moved.name) or ("absent; reskin tab pages: " .. names(tab)))
+  check("  ...and one line says where the look went", disp.gm_moved and tostring(disp.gm_moved.name):find("Blizzard Reskin tab > Esc Menu", 1, true) ~= nil, disp.gm_moved and tostring(disp.gm_moved.name) or ("absent; reskin tab pages: " .. names(tab)))
   check("the old single Settings tab (skin rows off) does not carry it either", built.args.settings and built.args.settings.args.gamemenu == nil)
-  -- hidden while the Settings pages are open, like the other feature tabs
+  -- (Options 0.6.72; UI-24 "Cog goes": Settings is a top tab beside the others) the tab no longer hides while Settings is picked
   local skinRows, pageOpen = ns.SkinRows, ns.pageOpen
   ns.SkinRows = function() return true end; ns.pageOpen = "settings"
-  local hidSettings = type(tab.hidden) == "function" and tab.hidden()
-  ns.pageOpen = nil
-  local hidNormal = type(tab.hidden) == "function" and tab.hidden()
+  local hidSettings = (type(tab.hidden) == "function" and tab.hidden()) or (type(tab.hidden) ~= "function" and tab.hidden) or false
   ns.SkinRows, ns.pageOpen = skinRows, pageOpen
-  check("the tab hides while the Settings pages are open, and shows otherwise", hidSettings == true and hidNormal == false)
+  check("the tab stays shown while Settings is picked (Settings is a top tab now)", not hidSettings, hidSettings)
   -- opening pages: the new address, an old address, the Chat Panel's own buttons, /xui reskin options
   local ACD = LibStub("AceConfigDialog-3.0")
   local picked = {}

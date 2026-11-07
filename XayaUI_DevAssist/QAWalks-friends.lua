@@ -17,7 +17,7 @@ local function OpenFriends()
     local up = rawget(_G, "FriendsList_Update"); if type(up) == "function" then pcall(up, true) end
 end
 QA.Register("friend-class-colors", { title = "Friends list: online friends in class colors (CHAT-5)", qa = "G3", order = 245, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: |cffffd100Friend class colors|r (Blizzard UI Reskin) is switched on and your friends list opens. You need at least one friend online in World of Warcraft.\n\n|cffffd100Expect:|r online character friends show their name in their class color; Battle.net friends playing WoW show the name in brackets in their class color; offline friends stay grey.",
+    { text = "Press |cffffd100Do it for me|r: |cffffd100Friend class colors|r (Blizzard Reskin) is switched on and your friends list opens. You need at least one friend online in World of Warcraft.\n\n|cffffd100Expect:|r online character friends show their name in their class color; Battle.net friends playing WoW show the name in brackets in their class color; offline friends stay grey.",
         setup = function()
             local ns = NS(); if not ns then return end
             CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.friendColors = CueRulesDB.ui.friendColors or {}
@@ -31,7 +31,7 @@ QA.Register("friend-class-colors", { title = "Friends list: online friends in cl
         check = function()
             local sv, st = Svc(), Stats()
             if not sv then return false, "XayaUI Blizzard Reskin is not loaded" end
-            if not sv.Active() then return false, "the feature is off (Blizzard UI Reskin tab off?)" end
+            if not sv.Active() then return false, "the feature is off (Blizzard Reskin tab off?)" end
             local social = false
             pcall(function() social = C_SocialUI and C_SocialUI.IsSystemEnabled and C_SocialUI.IsSystemEnabled() and true or false end)
             if social then return false, "your game shows Blizzard's new Social friends list, which is not colored yet" end

@@ -1387,7 +1387,7 @@ function ns.BuildCharReskinPage(Notify)
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "Every line of the Stat Calculator's Character Stats in the character window's stats pane (its own list over Blizzard's), colored. For each stat: show or hide it, move it up or down in its group, show its percent, its rating or both (the secondary and tertiary stats), and its name and color; for each group: its heading's name and color. An empty name or \"Default color\" gives the Stat Calculator's back." },
         reset = { type = "execute", order = 1, name = "Reset the list", disabled = listOff,
-            desc = "Every stat shown again, in Character Stats' order, as a percent, with its own name and color; every heading's own name and color.",
+            desc = "Shows every stat again in Character Stats' order as a percent, and resets every name and color.",
             func = function() local c = C(); for _, k in ipairs(LIST_TABLES) do c[k] = {} end; Changed() end },
     }
     for gi, g in ipairs(groups) do
@@ -1446,7 +1446,7 @@ function ns.BuildCharReskinPage(Notify)
     end
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard UI Reskin is off (this tab's Overview).")
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard Reskin is off (this tab's Overview).")
     switch.tip = "Restyles the character window, with item levels, enchants and gems beside each slot."
     switch.disabled = function() return not ns.ReskinTabOn() end
     return {
@@ -1455,19 +1455,19 @@ function ns.BuildCharReskinPage(Notify)
             statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot colored by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
-            chrome = T("chrome", 2, "Clean window", "Blizzard's frame art goes: no portrait or stone frame, no backdrop picture behind the model; a thin border, the theme's pane color behind the stat list, theme-colored title and tabs; the slots lose their frame art. Off: Blizzard's art over XayaUI's solid background.", "full", isOff),
-            ilvl = T("ilvl", 3, "Item level on each slot", "One item level per slot, colored by its upgrade track (Veteran green, Champion blue, Hero purple, Myth orange, Explorer / Adventurer grey; the game's quality colors) and brighter with each upgrade step. Items without a track show their quality color. The Character Toolkit's slot overlays leave out their own item level while this is on, and XayaUI's stays hidden on a slot where another addon already shows the same number (/xui reskin status names it).", "full", isOff),
-            enchants = T("enchants", 4, "Enchants beside the slots", "The enchant's name beside each slot, toward the model (without the \"Enchant <slot> - \" the game puts before every enchant's name), wrapped; \"No enchant\" in orange on a slot that takes one (the Character Toolkit's enchant slots); \"Embellished (worn / limit): <item name>\" on an embellished item (its hover: \"Embellished - Name: <item name>\", then what it does as the game words it). Hover a line: the whole line and what it does, as far as the game gives it.", "full", isOff),
-            gems = T("gems", 5, "Gems and sockets beside the slots", "One row per socket under the enchant: the gem's icon (16 px; 12 on a slot where 16 does not fit) and its name, or the empty socket's type in orange. Hover a gem for its tooltip. The Character Toolkit's slot overlays leave out their empty-socket mark while this is on.", "full", isOff),
-            stats = T("stats", 6, "Stat list", "The stat list's headers, labels and values in the theme's colors, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
-            wide = T("wide", 7, "Wider window (room for the enchant names)", "Makes the character window wider on its Character tab and centers the model, so the enchant, embellishment and gem lines sit between the slots and the model instead of over it (where the extra width leaves too little room beside the model, they run over its sides: nothing is hidden). Changed only out of combat; switching tabs gives Blizzard's width on the other tabs. Off: Blizzard's width (the lines then lie over the model's sides); once it has been on, a /reload removes its two hooks fully (while off they do nothing).", "full", isOff),
-            widePx = R("widePx", 8, "Extra width", "How much wider than Blizzard's window, in pixels (default 42: 338 -> 380 without the stats pane, 540 -> 582 with it). Each side of the model gets half.", 0, 300, 1, false,
+            chrome = T("chrome", 2, "Clean window", "Removes Blizzard's frame art for a thin border and theme colors. Off keeps Blizzard's art over the solid background.", "full", isOff),
+            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
+            enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
+            gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),
+            stats = T("stats", 6, "Stat list", "Colors the stat list with the theme, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
+            wide = T("wide", 7, "Wider window (room for the enchant names)", "Widens the Character tab so the enchant and gem lines sit between the slots and the model. Changes out of combat only.", "full", isOff),
+            widePx = R("widePx", 8, "Extra width", "Sets how much wider than Blizzard's window, in pixels (default 42). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             -- (QoL 0.7.31; Xaya: "character pane option should also allow for extra height"; her answer "either one": spread the slots)
-            tallPx = R("tallPx", 8.5, "Extra height", "How much taller than Blizzard's window, in pixels (default 0: Blizzard's height). The two slot columns spread out evenly over it (the same extra gap between every two slots), the model grows taller with them, the weapons move down, and each slot's enchant, embellishment and gem lines may use the extra room. Changed only out of combat, as the width.", 0, 300, 1, false,
+            tallPx = R("tallPx", 8.5, "Extra height", "Sets how much taller than Blizzard's window, in pixels (default 0); the slots spread out to fill it. Changes out of combat only.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
-            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "The stats pane shows every line of the Stat Calculator's Character Stats, Core Stats (Primary, General, Offensive, Defensive), Secondaries and Tertiaries, with each stat's name in its color, on a list of XayaUI's own over Blizzard's. Choose what shows, the order, percent / rating / both, names and colors on its Stat list page. Off: Blizzard's own list.", "full", isOff),
+            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line of the Stat Calculator in the stats pane. Pick what shows, the order, names and colors on its Stat list page.", "full", isOff),
         },
     }
 end
@@ -1478,11 +1478,11 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard UI Reskin is on again (Blizzard UI Reskin > Overview, then /reload).")); return end
+    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload).")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then
         ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
-            ns.ReskinTabOn() and "" or " (Blizzard UI Reskin is off: Blizzard UI Reskin > Overview, so it does not show)",
+            ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",
             diag.failed and " (stopped after an error)" or "", diag.faded, diag.slots, diag.lastError and (", last error: " .. diag.lastError) or ""))
         ns.Print(("Wider window: %s."):format(c.wide and tostring(diag.wide) or "switched off"))
         ns.Print(("Size change: %s."):format(diag.relayout or "none seen since login"))

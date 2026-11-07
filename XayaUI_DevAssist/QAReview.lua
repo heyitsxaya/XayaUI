@@ -89,7 +89,7 @@ end
 
 -- areas: a walkthrough's own area, else one read from its id (the walkthrough files name their ids by area)
 local PREFIX = { group = "Groups and displays", display = "Groups and displays", mover = "Groups and displays", dynamic = "Groups and displays",
-    sidebar = "Rules sidebar", reskin = "Blizzard UI Reskin", shopping = "Shopping List", chat = "Chat", ui = "Settings window",
+    sidebar = "Rules sidebar", reskin = "Blizzard Reskin", shopping = "Shopping List", chat = "Chat", ui = "Settings window",
     perf = "Dev Assist", debug = "Dev Assist", review = "Dev Assist" }
 function RV.Area(def)
     if type(def.area) == "string" and def.area ~= "" then return def.area end
