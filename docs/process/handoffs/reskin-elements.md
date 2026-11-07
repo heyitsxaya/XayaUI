@@ -98,3 +98,15 @@ RSK-Q1 to RSK-Q10. The first six were re-sent in the hub's format at 08:4x UTC.
 - `GetMinimapShape` is not a Blizzard function in 12.1.5. The stand-in test world defines one, so tests clear it.
 - Every new skin: register in `BS.WINDOWS` (or a new page in `BlizzardSkins.lua`); add a walk to `QAWalks-reskin.lua`, a test
   check, and a QA-CHECKLIST G-row; send a CLEAN-8 note to the perf session; bump the Reskin version.
+
+## 7. Successor progress (session 014bN6tSvVzc2HRgXhwF3J2L, 2026-11-07 12:37-13:25 UTC)
+- Confirmed this file at 7389bf1 to the hub; 7389bf1 reached main during the session.
+- Built, one commit each (own switch, V22 walkthrough with prefill, tests, debug-log), renumbered at the main merge:
+  item 1 Toasts and Pop-ups (0.6.11), item 2 Loot rolls (0.6.12), item 3 Menus (0.6.13), item 4 Chat Bubbles (0.6.14) -> main 5c7b372;
+  item 5 Status Bars (0.6.15), item 6 Minimap Buttons (0.6.16) -> main ac0ca79; item 7 Buttons (0.6.17, red panel buttons inside the
+  listed windows) -> commit 340b418, sent to the lander.
+- Not built: micro menu, bag bar, calendar button, mail icon (RSK-Q14); close buttons, tabs, scroll bars, dropdowns, other addons'
+  windows (RSK-Q15); items 8 / 9 held (RSK-Q4 / RSK-Q6); item 10 impossible; item 11 not in her lists.
+- Questions sent to the QA flow: RSK-Q11 (pop-ups reading), RSK-Q12 (loot roll border colour), RSK-Q13 (menus: no border), RSK-Q14,
+  RSK-Q15. Versions now: Reskin 0.6.17, Dev Assist 0.7.48; QA G9-G15.
+- Next step for whoever continues: build what her answers to RSK-Q11..Q15 ask for; each is one switch and a walkthrough.
