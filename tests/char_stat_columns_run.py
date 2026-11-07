@@ -75,6 +75,9 @@ CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+-- (QoL 0.7.40, REQUEST-LOG #88: every stat is folded by default; these checks read the lines under the stats, so every stat is open
+-- here. The fold itself is checked in tests/char_stat_round2_run.py.)
+setmetatable(c.statOpen, { __index = function() return true end })
 CM.gcd = { dur = 1.16, haste = 29.25 }
 local P = XayaUICharacterToolkit
 local LAY = ns.CHARTOOLKIT_LAYOUT
@@ -223,13 +226,14 @@ check("[0.7.20] ...it is the last cell of its row: Agility's name, value and eve
     end
     return true end)())
 -- (QoL 0.7.28) the » lines are names in the Influences column now; their numbers are in each name's hover
-local hInfl = find(d, "colhead", "Influences")
+local hInfl = find(d, "colhead", "Modifies")
 check("[0.7.28] Agility's Influences on its own row: Attack power, Dodge, Armor (names only), in the Influences column between Pt value and Change",
   inflOn(d, "Agility") == "Attack power, Dodge, Armor" and hInfl and hInfl.x > hPer.x + hPer.w and hInfl.x + hInfl.w <= hCh.x - GUT
   and find(d, "pairLabel", "» Attack power") == nil, inflOn(d, "Agility"))
 local hvAP = nameHover(d, "map_primary:» Attack power")
 check("[0.7.28] ...hovering Attack power: its value +2,637 and Pt value (1 = 1.00); the old '(1 = x)' is not drawn in the grid", hvAP:find("» Attack power | +2,637  (1 = 1.00)", 1, true) ~= nil
-  and font(d, "+2,637") == nil, hvAP)
+  -- (QoL 0.7.40, #88: Attack Power's own "from Agility +2,637" row draws that number under Attack Power; it is not on Agility's row)
+  and (function() local L = find(d, "label", "Agility"); for _, r in ipairs(d.layout) do if r.text == "+2,637" and L and math.abs(r.y - L.y) < 1 then return false end end; return L ~= nil end)(), hvAP)
 check("[0.7.28] ...hovering Armor: +2,684 (1 = 1.02); no note text anywhere ('101.8% of Agility, mastery' drawn nowhere)", nameHover(d, "map_primary:» Armor"):find("» Armor | +2,684  (1 = 1.02)", 1, true) ~= nil
   and (function() for _, r in ipairs(d.layout) do if tostring(r.text):find("101.8% of Agility, mastery", 1, true) then return false end end; return true end)())
 check("[0.7.28] ...hovering Dodge: +5.00%, no Pt value", nameHover(d, "map_primary:» Dodge"):find("» Dodge | +5.00%", 1, true) ~= nil, nameHover(d, "map_primary:» Dodge"))
@@ -304,7 +308,7 @@ d = render()
 -- (QoL 0.7.24) no Note column at any width: the heads are exactly Stat | Rating | Current value | Pt value | Change
 hVal, hPer, hCh = find(d, "colhead", "Current value"), find(d, "colhead", "Pt value"), find(d, "colhead", "Change")
 -- (the Gear Summary's own table, Gear | Character | Elsewhere, is not a grid head)
-local headSet, extra = { Stat = true, Rating = true, ["Current value"] = true, ["Pt value"] = true, Change = true, Influences = true, Gear = true, Character = true, Elsewhere = true }, {}
+local headSet, extra = { Stat = true, Rating = true, ["Current value"] = true, ["Pt value"] = true, Change = true, Modifies = true, Gear = true, Character = true, Elsewhere = true }, {}
 for _, r in ipairs(recs(d, "colhead")) do if not headSet[r.text] then extra[#extra + 1] = r.text end end
 local hRat = find(d, "colhead", "Rating")
 local rowHeads = {}
@@ -312,8 +316,8 @@ for _, r in ipairs(recs(d, "colhead")) do if hRat and r.y == hRat.y then rowHead
 table.sort(rowHeads, function(x, y) return x.x < y.x end)
 local rh = {}
 for _, r in ipairs(rowHeads) do rh[#rh + 1] = r.text end
-check("wide panel: no Note column head; a rated section's head reads exactly Stat | Rating | Current value | Pt value | Influences | Change (QoL 0.7.28), Change at the far right",
-  find(d, "colhead", "Note") == nil and #extra == 0 and table.concat(rh, " | ") == "Stat | Rating | Current value | Pt value | Influences | Change"
+check("wide panel: no Note column head; a rated section's head reads exactly Stat | Rating | Current value | Pt value | Modifies | Change (QoL 0.7.28 Influences; Modifies since 0.7.40, #88), Change at the far right",
+  find(d, "colhead", "Note") == nil and #extra == 0 and table.concat(rh, " | ") == "Stat | Rating | Current value | Pt value | Modifies | Change"
   and hCh.x + hCh.w == LAY.content and LAY.content == 740, table.concat(rh, " | ") .. " / extra: " .. table.concat(extra, ","))
 check("[0.7.28] ...wide panel: Agility's Influences on one line in their column, no » line drawn as a row", inflOn(d, "Agility") == "Attack power, Dodge, Armor"
   and (function() local ys = {}; for _, r in ipairs(recs(d, "infl")) do ys[r.y] = true end; local n = 0; for _ in pairs(ys) do n = n + 1 end; return n >= 1 end)()
@@ -356,7 +360,7 @@ local long
 for _, r in ipairs(d.layout) do
   -- (QoL 0.7.28: with the sixth column, Influences, at the same 450 width a 10-character rating such as "1,200 +300" may wrap at its
   -- space, and an Influences name inside its narrow column; both reported. "528 +172" still fits, and no word is ever cut.)
-  local must = (r.kind == "colhead" and (r.text == "Rating" or r.text == "Change" or r.text == "Current value" or r.text == "Pt value" or r.text == "Influences"))
+  local must = (r.kind == "colhead" and (r.text == "Rating" or r.text == "Change" or r.text == "Current value" or r.text == "Pt value" or r.text == "Modifies"))
     or (r.kind == "rating" and #tostring(r.text) <= 8) or r.kind == "per" or r.kind == "pairPer"
   -- (QoL 0.7.21's "every name fits at the default 450" no longer holds with the sixth column: "Critical Strike" wraps at its space; reported)
   if must and not fits(r) then long = r.kind .. " '" .. tostring(r.text) .. "' w " .. r.w end
@@ -376,7 +380,7 @@ if agiHover then agiHover.scripts.OnEnter(agiHover) end
 local tlT = table.concat(GameTooltip.lines or {}, " / ")
 check("[0.7.28] the Agility hover with typed numbers: » Attack power +2,637 (1 = 1.00) with +2,737 on the line under it; no Ability Scaling in it",
   tlT:find("» Attack power | +2,637  (1 = 1.00) /  | +2,737", 1, true) ~= nil and tlT:find("Ability Scaling", 1, true) == nil and tlT:find("bilities with your number", 1, true) == nil, tlT)
-local hInfl2 = find(d, "colhead", "Influences")
+local hInfl2 = find(d, "colhead", "Modifies")
 check("[0.7.28] ...the card's hover covers its row up to the Influences column (names hover on their own; the box stays clickable)", agiHover and hInfl2 and agiHover.w == hInfl2.x - GUT, agiHover and agiHover.w)
 ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:primary", ""); ns.CharToolkit_SetInput("sv:haste", "")
 c.size = nil
@@ -477,7 +481,7 @@ check("(guard) the Spells tab keeps its numbers: '6,944' | '... of attack power'
   and tostring(spp.text):find("of attack power", 1, true) ~= nil and spr ~= nil and tostring(spr.text):find("^1 Agility = %d") ~= nil, T(spp))
 c.advanced = false
 d = render()
-check("(guard) the Show: % button stays hidden (#382; the settings' Rating lines are left for Xaya's decision)", not P.modeBtn.shown)
+check("(guard) no Show: % button (#382; QoL 0.7.40, B2: not made at all, the settings' Rating lines gone too)", P.modeBtn == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")

@@ -39,8 +39,8 @@ USER-GUIDE Notepad paragraph updated.
 ## QA
 F22.
 
-## Also: XayaUI_DevAssist 0.7.13
+## Also: XayaUI_DevAssist 0.7.15
 `XayaUI_DevAssist/QAWalks-Checklist.lua` regenerated (`python3 tools/qa_walks_from_checklist.py`) for F22; no hand-written change.
-Version numbers from the coordinator's registry (Bonus 0.6.25, Dev Assist 0.7.13; 0.7.8 is the performance-test session's).
+Version numbers from the coordinator's registry (Bonus 0.6.25, Dev Assist 0.7.15; 0.7.8 is the performance-test session's).
 
-Versions renumbered for the landing on main 7b830cf (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.64, QoL 0.7.40, Chat 0.6.31, Bonus 0.6.25, Dev Assist 0.7.13.
+Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.

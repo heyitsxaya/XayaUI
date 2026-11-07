@@ -1,6 +1,6 @@
-# Function audit, Dev Assist: QA walkthroughs put back what "Do it for me" changed, and never touch a group of yours called "QA test group" (XayaUI_DevAssist 0.7.13)
+# Function audit, Dev Assist: QA walkthroughs put back what "Do it for me" changed, and never touch a group of yours called "QA test group" (XayaUI_DevAssist 0.7.15)
 Logged 2026-11-07 00:43 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx (function audit, UI-60), branch `claude/function-audit`, on main 28380a9. Nothing here has run in the game.
-Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D34, D35. Same unlanded Dev Assist 0.7.13 as the QAWalks-Checklist regeneration (3b2f801).
+Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D34, D35. Same unlanded Dev Assist 0.7.15 as the QAWalks-Checklist regeneration (3b2f801).
 
 ## What changed (`XayaUI_DevAssist/QAWalks.lua`)
 - D35: the walkthroughs' test group is tagged `qaTest = true` when they make it; `TestGroup()` (reuse and Cleanup) matches the tag,
@@ -18,4 +18,4 @@ Rows: docs/process/FUNCTION-AUDIT-2026-11-07.md D34, D35. Same unlanded Dev Assi
 ## QA
 Covered by the existing B176 walkthrough steps (the new last steps show in the walkthroughs themselves).
 
-Versions renumbered for the landing on main 7b830cf (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.64, QoL 0.7.40, Chat 0.6.31, Bonus 0.6.25, Dev Assist 0.7.13.
+Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.

@@ -1450,10 +1450,17 @@ end
 local WI_STATS = { "crit", "haste", "mastery", "vers", "avoidance", "leech", "speed2" }
 CM.WI_STATS = WI_STATS
 
+-- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #89: "compare item selection should also have a clear highlight for selections"; her screenshot:
+-- "Compare: Trinket slot #2", a row of trinket icons, none marked): the link's colour code may be a NAMED colour, "|cnIQ4:" (the item
+-- quality's name; the form 12.x item links use, as XayaUI Chat's History.lua strips it and tests/chat_run.py's sample link shows), not
+-- only "|cffRRGGBB". The old first pattern took only the hex form, so a bag item's link "|cnIQ4:|Hitem:...|h[Name]|h|r" was cut to its
+-- middle "|Hitem:...|h[Name]|h", which no longer equals the bag link the icon row compares with: the picked icon was never marked
+-- selected (no frame), though its column showed. Now any colour code is kept (|c up to the next |), and the picked list compares items
+-- by their item string (CM.LinkKey), so a link written either way still finds its icon.
 local function ResolveItemLink(text)
     text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
     if text == "" then return nil end
-    local link = text:match("(|c%x+|Hitem:[^|]+|h%[[^%]]*%]|h|r)") or text:match("(|Hitem:[^|]+|h%[[^%]]*%]|h)") or text:match("(item:[%-%d:]+)")
+    local link = text:match("(|c[^|]*|Hitem:[^|]+|h%[[^%]]*%]|h|r)") or text:match("(|Hitem:[^|]+|h%[[^%]]*%]|h)") or text:match("(item:[%-%d:]+)")
     if link then return link end
     local id = tonumber(text)
     if id and C_Item and C_Item.GetItemInfo then
@@ -1608,7 +1615,16 @@ CM.ChangeTone = Dir
 -- item in the box (CM.compareText) when it resolves to one not picked yet. CM.CompareState() reads it all once per build.
 CM.MAX_COMPARE = 3
 CM.compareLinks = {}
-local function InList(list, x) for i, v in ipairs(list or {}) do if v == x then return i end end end
+-- (QoL 0.7.40, #89) two links name the same item when their item strings match, whatever colour code or wrapping each carries
+local function LinkKey(l)
+    if type(l) ~= "string" then return l end
+    return l:match("|H(item:[^|]+)|h") or l:match("^(item:[%-%d:]+)$") or l
+end
+CM.LinkKey = LinkKey
+local function InList(list, x)
+    local kx = LinkKey(x)
+    for i, v in ipairs(list or {}) do if v == x or LinkKey(v) == kx then return i end end
+end
 CM.InList = InList
 -- add a picked item; one that fits another kind of slot than the items picked so far starts the list again
 function CM.AddCompare(link)
@@ -1710,7 +1726,7 @@ function GearCompareSections(ctx, out)
     local head = Item("gearCols", "Columns", "mhead")
     head.cols, head.colColors = { "Stat", "Pt value", "Equipped" }, {}
     for _, cd in ipairs(cs) do head.cols[#head.cols + 1] = cd.name; head.colColors[#head.cols] = cd.color end
-    Tip(head, ("Equipped: the item in your %s. Each column after it: an item you picked (up to %d; click it again to let it go), its number, and under it the change from the equipped one."):format(
+    Tip(head, ("Equipped: the item in your %s. Each column after it: an item you picked (up to %d; click it again to let it go), its number, and in brackets beside it the change from the equipped one."):format(
         CM.CompareSlotLabel(slot), CM.MAX_COMPARE))
     Tip(head, "Pt value: the rating that makes 1% of the stat now (N / 1%), or the attack power one point of your primary stat gives.")
     Tip(head, "The items' stats come from the game's item stat tables (C_Item.GetItemStats) at the item level in the link. Gems, enchants and set bonuses are not in them; on-use and proc effects are listed under the table, as the game's tooltip words them.")
@@ -1722,15 +1738,18 @@ function GearCompareSections(ctx, out)
         if not any and key ~= "ilvl" then return nil end
         local it = Item("gc_" .. key, label, "mrow")
         it.labelColor, it.per = color, per
-        it.cells, it.subs, it.subTones, it.cellTones = { num(a) and Big(a) or (old and "0" or "empty") }, {}, {}, {}
+        -- (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #90: "+/- signs should be in () to the right of the compared values -- set the number
+        -- values to left-align to make space") the difference from the equipped item is it.diffs[i], drawn in brackets to the right of
+        -- the item's number on the same line ("1,405 (-12)"); before, it was a line under the number (it.subs)
+        it.cells, it.subs, it.subTones, it.cellTones, it.diffs, it.diffTones = { num(a) and Big(a) or (old and "0" or "empty") }, {}, {}, {}, {}, {}
         for i = 1, #cs do
             local b = bs[i]
             it.cells[i + 1] = num(b) and Big(b) or "0"
             local d = (num(b) and b or 0) - (num(a) and a or 0)
             if math.abs(d) > 0.0001 then
-                it.subs[i + 1] = SB(d)
+                it.diffs[i + 1] = SB(d)
                 local better = (lowerBetter and d < 0) or (not lowerBetter and d > 0)
-                it.subTones[i + 1] = better and "good" or "warn"
+                it.diffTones[i + 1] = better and "good" or "warn"
             end
         end
         chg.items[#chg.items + 1] = it
@@ -1960,13 +1979,14 @@ function GearCompareSections(ctx, out)
             for j = 1, math.min(6, #list) do
                 local s = list[j]
                 local it = Item("gc_spell" .. s.id, SpellName(s.id), "mrow")
-                it.cells, it.subs, it.subTones = { Big(s.n) }, {}, {}
+                it.cells, it.subs, it.subTones, it.diffs, it.diffTones = { Big(s.n) }, {}, {}, {}, {}
                 for i = 1, #cs do
                     local r = ratios[i]
                     if r then
                         local v = s.n * r
                         it.cells[i + 1] = Big(v)
-                        if math.abs(v - s.n) >= 0.5 then it.subs[i + 1], it.subTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
+                        -- (QoL 0.7.40, #90) the difference in brackets beside the number, as in the stat rows above
+                        if math.abs(v - s.n) >= 0.5 then it.diffs[i + 1], it.diffTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
                     else it.cells[i + 1] = UNAV end
                 end
                 Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
@@ -2626,11 +2646,14 @@ local function GridHead(key, ratingHead, changeHead)
     local h = Item(key, "Columns", "colhead")   -- (the label is its hover's title; the head draws its cols)
     -- (QoL 0.7.28) a sixth column, Influences (Xaya 2026-11-06, REQUEST-LOG #66-#67), drawn between Pt value and Change; the
     -- new value a typed number gives is drawn under the current one, with its sign (her answer "New value with sign")
-    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Influences" }
+    -- (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #87 / #88, her answers "\"Modified By\" only" and "Only \"Modifies\" column") the sixth
+    -- column is "Modifies": only what the stat applies to (names); what feeds the stat ("from Agility +2,616") is a row under the stat
+    h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Modifies" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
     Tip(h, "Current value: the game's figure now; under it, in the accent color, the new value your typed numbers give, with + when it is higher and - when lower.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    Tip(h, "Influences: what the stat feeds (Attack power, Dodge, Armor ...) and, marked \"from\", what feeds it. Hover a name for its value, its Pt value and the new value your typed numbers give.")
+    Tip(h, "Modifies: what the stat applies to (Attack power, Dodge, Armor ...). Hover a name for its value, its Pt value and the new value your typed numbers give.")
+    Tip(h, "Under a stat (click it to open or fold): one row per contribution that feeds it, with its number (from Agility +2,616). Folded (the default), those rows are in the stat's hover.")
     if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every value it moves shows the new value under it. Clear it to go back to yours.") end
     return h
 end
@@ -3467,20 +3490,14 @@ CM.StatWeightsSection = StatWeightsSection
 -- fine up top"; role and movement left out): name, spec and class in the class colour, item level equipped and overall. UnitName,
 -- UnitClass (globals.md:668, 573), the spec from the same read as the rest of the model, GetAverageItemLevel (as PaperDollFrame.lua),
 -- the colour from C_ClassColor.GetClassColor (namespaces.md:860), else RAID_CLASS_COLORS. Secret values are left out.
+-- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #91, her words: "name, class, and spec not needed on stat calculator. Instead, set this section
+-- to display currently equipped ilvl and on the right side max ilvl (in bags)"): only the two item levels are read (no name, class, spec
+-- or class colour any more). GetAverageItemLevel() -> overall, equipped (, pvp) is not in the 12.1.5 documentation this repo carries
+-- (docs/reference/api); it is read the way Blizzard's PaperDollFrame.lua reads it: the first return is the "overall" item level the
+-- game works out from the best items you own (equipped and in your bags), the second the equipped average. INFERENCE (reading taken,
+-- REQUEST-LOG #91): her "max ilvl (in bags)" is that overall number. A missing or secret value shows nothing.
 function CM.HeaderInfo()
     local h = {}
-    local name = R(UnitName, "player")
-    if type(name) == "string" then h.name = name end
-    local className, classFile = R(UnitClass, "player")
-    if type(className) == "string" then h.className = className end
-    local sp = SpecIndex()
-    local info = sp and SpecInfo(sp) or {}
-    if type(info[2]) == "string" and not IsSecret(info[2]) then h.spec = info[2] end
-    if type(classFile) == "string" then
-        local col = C_ClassColor and R(C_ClassColor.GetClassColor, classFile)
-        if type(col) ~= "table" then col = _G.RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile] end
-        if type(col) == "table" and num(col.r) and num(col.g) and num(col.b) then h.color = { col.r, col.g, col.b, 1 } end
-    end
     local overall, equipped = R(GetAverageItemLevel)
     if num(overall) then h.ilvlOverall = overall end
     if num(equipped) then h.ilvlEquipped = equipped end

@@ -1,4 +1,4 @@
-# Theme page asks first, Replace / Save As Copy / Cancel, Reset wording; Recycle Bin keep time asks; /xui words of off addons (core 0.6.62, Options 0.6.64, Dev Assist 0.7.13)
+# Theme page asks first, Replace / Save As Copy / Cancel, Reset wording; Recycle Bin keep time asks; /xui words of off addons (core 0.6.62, Options 0.6.65, Dev Assist 0.7.15)
 Logged 2026-11-07 08:34 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx, branch `land-rebuild` (claude/function-audit-land) on main 7b830cf. Not run in the game.
 Her answers (REQUEST-LOG A11): FA-4 "Ask first (Recommended)"; FA-5 "1 or add as name (1) name (2) etc"; FA-8 "Replace, Save As Copy, Cancel";
 FA-13 "Reword to Class colors (Recommended)"; FA-14 "Ask first (Recommended)". Audit rows D5, D6, D7, D8.

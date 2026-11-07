@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-audit.lua (XayaUI_DevAssist 0.7.13): in-game QA walkthroughs for the function audit's fixes (REQUEST-LOG A11; UI-60;
+-- QAWalks-audit.lua (XayaUI_DevAssist 0.7.15): in-game QA walkthroughs for the function audit's fixes (REQUEST-LOG A11; UI-60;
 -- docs/process/FUNCTION-AUDIT-2026-11-07.md). Standing rule V21 (Xaya 2026-11-07, her words): "make sure every feature or significant
 -- change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 -- Every walkthrough sets prefill = true: where the addon can read the result, its verdict is offered on one button (Accept), recorded

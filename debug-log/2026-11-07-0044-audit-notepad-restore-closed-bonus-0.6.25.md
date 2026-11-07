@@ -23,4 +23,4 @@ Her words (O-100): "calculator isn't "off" -- it's just not displayed. same with
 - `DataPanels.lua`: the launcher row is named "Data Panels" (the feature's name since Bonus 0.6.18), tooltip "Open the Data Panels settings".
 - Test: `tests/audit_core_run.py` O-100 checks (fail on 28380a9: the rows had "on" / "off" and the old name). QA F24.
 
-Versions renumbered for the landing on main 7b830cf (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.64, QoL 0.7.40, Chat 0.6.31, Bonus 0.6.25, Dev Assist 0.7.13.
+Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.

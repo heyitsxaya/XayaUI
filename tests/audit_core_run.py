@@ -162,7 +162,7 @@ do
   for w, a in pairs(want) do local m = ns.ModuleOfCommand and ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
   check("D8 /xui stats, shop, reskin, releaseguard, calc, calculator name their addon", #bad == 0, table.concat(bad, ","))
 end
--- O-100 / FA-15 (Bonus 0.6.25, QoL 0.7.40; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
+-- O-100 / FA-15 (Bonus 0.6.25, QoL 0.7.41; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
 -- the data panels row is named "Data Panels"
 do
   local by = {}

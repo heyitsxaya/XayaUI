@@ -1,4 +1,4 @@
-# American spelling in every text the player sees (core 0.6.62, Options 0.6.64, QoL 0.7.40, Bonus 0.6.25, Dev Assist 0.7.13)
+# American spelling in every text the player sees (core 0.6.62, Options 0.6.65, QoL 0.7.41, Bonus 0.6.25, Dev Assist 0.7.15)
 Logged 2026-11-07 06:19 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx, branch `claude/function-audit-land`. Not run in the game.
 
 ## Request (REQUEST-LOG A11 FA-16 / FA-17, her words verbatim there)

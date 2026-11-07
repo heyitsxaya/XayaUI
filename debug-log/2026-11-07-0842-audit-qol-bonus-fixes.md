@@ -101,7 +101,7 @@ Fail-before was shown by putting the pre-fix addon files back (`git checkout HEA
   FA-7 in 12.12c.
 
 ## QA
-- docs/QA-CHECKLIST.md: E1z195-E1z200 (FA-7, D13, D14, D15, D16, D17), F25-F29 (D49, D51, D50, D52, D53).
+- docs/QA-CHECKLIST.md: E1z221-E1z226 (FA-7, D13, D14, D15, D16, D17), F25-F29 (D49, D51, D50, D52, D53).
 - Walkthroughs: `XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua`, orders 330-336, all prefill = true, reaching QoL / Bonus only through
   services; test data tagged "QA audit", each last step puts back what it changed (gem default, counts, To buy, on / off, panel part,
   saved sums, Left Panel settings, Aura IDs, test notes). Not in the toc yet. `tests/qa_walk_run.py` is stale until the parent

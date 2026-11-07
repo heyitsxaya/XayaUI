@@ -54,7 +54,7 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
       setup = function()
           local f = loadstring("error('QA walkthrough test error')", "@Interface/AddOns/XayaUI/QAWalk.lua")
           if f then xpcall(f, function(e) local h = geterrorhandler(); if h then pcall(h, e) end end) end
-          -- audit D36 (Dev Assist 0.7.13): the "not XayaUI" case is checked on XayaUI's own classifier (below) instead of being raised
+          -- audit D36 (Dev Assist 0.7.15): the "not XayaUI" case is checked on XayaUI's own classifier (below) instead of being raised
           -- through the game's error handler, where it could show the game's Lua error window or be kept by an error-collecting addon
       end,
       check = function()
@@ -74,7 +74,7 @@ QA.Register("debug-report", { title = "Debug report: codes, summary and string",
           return text:find("XUI-E001", 1, true) ~= nil and str:find("^XUIREP1:") ~= nil, ("summary %s; string %d characters"):format(
               text:find("XUI-E001", 1, true) and "names XUI-E001" or "has no XUI-E001", #str)
       end },
-    -- audit D36 (Dev Assist 0.7.13): the test error does not stay in your saved errors or later reports
+    -- audit D36 (Dev Assist 0.7.15): the test error does not stay in your saved errors or later reports
     { text = "Last step: press |cffffd100Do it for me|r to remove this walkthrough's test error from your saved errors (your real errors stay). Then Pass.",
       setup = function()
           local l = type(CueRulesDB) == "table" and CueRulesDB.errorLog

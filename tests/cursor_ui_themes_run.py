@@ -190,7 +190,7 @@ if MODE == "main" then
   local n0 = nListeners()   -- the settings window's own listeners are in from here on
   put("n0", n0)
   local okA, args = pcall(T.BuildArgs, function() end)
-  -- (FA-4, Options 0.6.64; Xaya: "Ask first"): picking another theme with unsaved colors of your own asks first; this test answers Discard
+  -- (FA-4, Options 0.6.65; Xaya: "Ask first"): picking another theme with unsaved colors of your own asks first; this test answers Discard
   pickArgs = args
   if not okA then put("buildArgsErr", tostring(args)); return R end
   local vals, sorting, under, usort = args.base.values(), args.base.sorting(), args.custom.args.under.values(), args.custom.args.under.sorting()

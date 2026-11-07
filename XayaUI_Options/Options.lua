@@ -4892,7 +4892,7 @@ local function BuildOptions()
             values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
             sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
             get = function() return ns.RecycleKeepHours() end,
-            -- FA-14 (Options 0.6.64; Xaya: "Ask first (Recommended)"): a shorter time that removes items for good now asks first
+            -- FA-14 (Options 0.6.65; Xaya: "Ask first (Recommended)"): a shorter time that removes items for good now asks first
             set = function(_, v)
                 local n = ns.RecycleWouldPurge and ns.RecycleWouldPurge(v) or 0
                 if n == 0 then ns.SetRecycleKeepHours(v); Notify(); return end

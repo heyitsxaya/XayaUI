@@ -23,7 +23,7 @@ local TAG = "QA audit"
 local sl = {}   -- remembered: { enabled, panel, gem (this character's gem default), shared (the old shared gem), ench, gems, done }
 local function Shop() return SV("shoppingList") end
 local function ShopCfg() local S = Shop(); if not S then error("XayaUI QoL is off") end; return S, S.Cfg() end
-QA.Register("audit-shopping-list", { title = "Shopping List: per-character defaults, Forget, To buy, /xui shop (FA-7, D13-D15)", qa = "E1z195, E1z196, E1z197, E1z198", order = 330, prefill = true, steps = {
+QA.Register("audit-shopping-list", { title = "Shopping List: per-character defaults, Forget, To buy, /xui shop (FA-7, D13-D15)", qa = "E1z221, E1z222, E1z223, E1z224", order = 330, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers your Shopping List settings and this character's gem default, then sets a test gem default \"" .. TAG .. " gem\" for THIS character only.\n\n|cffffd100Expect:|r this character's gem default is the test gem; the old account-wide defaults (kept from before defaults became per character) are unchanged.",
         setup = function()
             local S, c = ShopCfg()
@@ -107,7 +107,7 @@ QA.Register("audit-shopping-list", { title = "Shopping List: per-character defau
 } })
 
 -- D16: the Auction House list in Select other answers only our own query; the addon cannot see the list, so this one asks
-QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list kept after your own search (D16)", qa = "E1z199", order = 331, prefill = true, steps = {
+QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list kept after your own search (D16)", qa = "E1z225", order = 331, prefill = true, steps = {
     { text = "Switch the Shopping List on (Blizzard UI Reskin > Shopping List) and open the Auction House. On a line of Missing on your gear press |cffffd100Other|r, then |cffffd100List what the Auction House has|r and wait for the list. Then type something unrelated (for example \"Bread\") in the Auction House's own search box and search. Press |cffffd100Other|r on the same line again and |cffffd100Check again|r here.\n\n|cffffd100Expect:|r the Select other list still shows that slot's items marked \"Auction House\", not the bread. Before the fix your own search replaced it.",
         noVerdict = true,
         check = function() local S = Shop(); if not S then return false, "XayaUI QoL is off" end
@@ -119,7 +119,7 @@ QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list ke
 -------------------------------------------------------------------------------
 local ct = {}   -- remembered: { panel }
 local function CT() return SV("charToolkitDebug") end
-QA.Register("audit-char-toolkit-events", { title = "Character Toolkit: panel off registers no panel events (D17)", qa = "E1z200", order = 332, prefill = true, steps = {
+QA.Register("audit-char-toolkit-events", { title = "Character Toolkit: panel off registers no panel events (D17)", qa = "E1z226", order = 332, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers whether the Character Toolkit's panel is on, then switches the panel part off (the toolkit stays on).\n\n|cffffd100Expect:|r none of the panel's events are registered: no cooldown event (each cast would read the GCD for a hidden panel), no stat events.",
         setup = function()
             local T = CT(); if not T then error("XayaUI QoL is off") end
@@ -260,7 +260,7 @@ QA.Register("audit-notepad-share", { title = "Notepad Share: sends the note it o
     { text = "Optional, with someone in your party or by whispering yourself: in the Share window press |cffffd100Send|r (pick the channel first). Then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the chat header and the offer the other player gets are for \"" .. TAG .. " share A\", not B. Skip if nobody is at hand.",
         noVerdict = true,
         check = function() local s = NPS(); if not s then return false, "XayaUI Bonus is off" end
-            return true, "the Share window would send: " .. Short(s.ShareNoteText() or "(window closed: sent or cancelled)") end },
+            return true, "the Share window would send: " .. Short(s.ShareNoteText() or "(window closed: sent or canceled)") end },
     { text = "Last step: press |cffffd100Do it for me|r to close the Share window, delete both test notes (they go to Deleted notes) and put the Notepad back as it was (shown or hidden, the note you had open). Then Accept or Pass.",
         setup = function()
             local s, db = NPS(), NDB(); if not (s and db) then ns53 = { done = true }; return end

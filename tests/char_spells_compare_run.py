@@ -391,11 +391,15 @@ checkp("  ...a click on Big Crit Ring too: both highlighted, both columns in Cha
   return candIcon(d, NEWRING).selected and candIcon(d, BIGRING).selected and hE and h1 and h2 and hE.x < h1.x and h1.x < h2.x
     and d.boxes.item.text == BIGRING, d.boxes.item.text
 end)
-checkp("  ...a third (Old Band): three item columns at the default panel; a fourth (Fourth Ring) lets the first one picked (New Ring) go", function()
+-- (QoL 0.7.40, #90: with each difference in brackets beside its number the item columns are wider, so at the default panel two of the
+-- three picked are drawn side by side and a line says one more is picked; the table's head still lists all three)
+local function headCols(dd) local h = dd.model.byKey.gearCols; return h and table.concat(h.cols, "|") or "" end
+checkp("  ...a third (Old Band): three items picked (the table lists them; at the default panel two drawn and \"1 more picked\"); a fourth (Fourth Ring) lets the first one picked (New Ring) go", function()
   local b = candIcon(d, OLDBAND); b.scripts.OnClick(b); d = drawn()
-  local three = find(d, "mhead", "Old Band") ~= nil and find(d, "mhead", "New Ring") ~= nil
+  local three = headCols(d):find("New Ring|Big Crit Ring|Old Band", 1, true) ~= nil and find(d, "mhead", "New Ring") ~= nil
+    and find(d, "mmore", "1 more picked: drag the panel's corner wider (or choose a smaller text size) to see them side by side.") ~= nil
   b = candIcon(d, FOURTH); b.scripts.OnClick(b); d = drawn()
-  return three and find(d, "mhead", "New Ring") == nil and find(d, "mhead", "Fourth Ring") ~= nil and not candIcon(d, NEWRING).selected
+  return three and find(d, "mhead", "New Ring") == nil and headCols(d):find("Fourth Ring", 1, true) ~= nil and not candIcon(d, NEWRING).selected
     and candIcon(d, FOURTH).selected and #CM.compareLinks == 3
 end)
 checkp("  ...a picked one clicked again is let go (Fourth Ring): its column goes, its box loses the highlight", function()
@@ -408,7 +412,7 @@ checkp("  ...the typed / dropped item still works: Enter in the Item box with an
   C_Item.GetItemInfo = function(id) if id == 77 then return "Better Ring", "|cffa335ee|Hitem:77::::::::90:::::|h[Better Ring]|h|r" end; return savedInfo(id) end
   local eb = d.boxes.item; eb.text = "77"; eb.scripts.OnEnterPressed(eb)
   d = drawn()
-  local ok = find(d, "mhead", "Better Ring") ~= nil
+  local ok = headCols(d):find("Better Ring", 1, true) ~= nil   -- (QoL 0.7.40: listed; drawn when the panel is wide enough)
   CM.compareLinks = {}; CM.compareText = nil   -- (a clean start for the next checks)
   C_Item.GetItemInfo = savedInfo
   return ok
@@ -429,24 +433,28 @@ local b2 = candIcon(drawn(), BIGRING); if b2 then b2.scripts.OnClick(b2) end
 d = drawn()
 local function mrow(label, nth)
   local L, i = find(d, "mlabel", label, nth)
-  local out = { label = L, cells = {}, subs = {} }
+  local out = { label = L, cells = {}, subs = {}, diffs = {} }
   if not L then return out end
   for j = i + 1, #d.layout do
     local r = d.layout[j]
     if r.kind == "mlabel" or r.kind == "msubhead" or r.kind == "mnote" or r.kind == "header" then break end
-    if r.kind == "mcell" then out.cells[#out.cells + 1] = r elseif r.kind == "msub" then out.subs[#out.subs + 1] = r elseif r.kind == "mper" then out.per = r end
+    if r.kind == "mcell" then out.cells[#out.cells + 1] = r elseif r.kind == "msub" then out.subs[#out.subs + 1] = r elseif r.kind == "mper" then out.per = r
+    elseif r.kind == "mdiff" then out.diffs[#out.diffs + 1] = r end   -- (QoL 0.7.40, #90)
   end
   return out
 end
+-- (QoL 0.7.40, #90) a difference sits on its number's line, right after it (a space between), in brackets
+local function beside(cell, diff) return cell and diff and diff.y == cell.y and math.abs(diff.x - (cell.x + cell.w + ns.CharToolkit_TextW(" ", cell.size))) < 0.01 end
 checkp("Changes: one section named Changes, no Side by side and no What it changes", function()
   local hs = {}
   for _, r in ipairs(recs(d, "header")) do hs[#hs + 1] = r.text end
   return table.concat(hs, "|") == "- Equipped|- Compare: Ring slot #1|- Changes", table.concat(hs, "|")
 end)
-checkp("  ...Critical Strike: Equipped 100 | New Ring 300 (+200 under it) | Big Crit Ring 1,000 (+900 under it), Pt value 46.0 / 1%", function()
+-- (QoL 0.7.40, #90: "+/- signs should be in () to the right of the compared values"; before, "+200" was the line under "300")
+checkp("  ...Critical Strike: Equipped 100 | New Ring 300 (+200) | Big Crit Ring 1,000 (+900), each difference in brackets beside its number; Pt value 46.0 / 1%", function()
   local r = mrow("Critical Strike")
-  return T(r.cells[1]) == "100" and T(r.cells[2]) == "300" and T(r.cells[3]) == "1,000" and T(r.subs[1]) == "+200" and T(r.subs[2]) == "+900"
-    and r.subs[2].y > r.cells[3].y and r.subs[2].x == r.cells[3].x and T(r.per) == "46.0 / 1%", T(r.cells[3]) .. " " .. T(r.per)
+  return T(r.cells[1]) == "100" and T(r.cells[2]) == "300" and T(r.cells[3]) == "1,000" and T(r.diffs[1]) == "(+200)" and T(r.diffs[2]) == "(+900)"
+    and beside(r.cells[2], r.diffs[1]) and beside(r.cells[3], r.diffs[2]) and #r.subs == 0 and T(r.per) == "46.0 / 1%", T(r.cells[3]) .. " " .. T(r.diffs[2])
 end)
 checkp("  ...DR threshold under it: now 1,380; New Ring 1,380; Big Crit Ring passed, with \"crosses 1,380\" under it", function()
   local r = mrow("DR threshold")
@@ -463,10 +471,11 @@ checkp("  ...the stat rows come first, then Stat effects (crit 22.48% -> each it
   local mc = d.model.byKey.gc_map_crit
   return crit and se and sc and crit.y < se.y and se.y < sc.y and mc and mc.cells[1] == "22.48%" and mc.cells[2] ~= "22.48%" and mc.cells[3] ~= mc.cells[2], mc and table.concat(mc.cells, "|")
 end)
-checkp("  ...Spell Changes: Fracture 6,944 now; New Ring's +100 Agility -> 7,144 (+200 under it: x 3,572 / 3,472 attack power); Big Crit Ring (no Agility) 6,944", function()
+checkp("  ...Spell Changes: Fracture 6,944 now; New Ring's +100 Agility -> 7,144 (+200) beside it (x 3,572 / 3,472 attack power); Big Crit Ring (no Agility) 6,944", function()
   local sc = find(d, "msubhead", "Spell Changes")
   local r = mrow("Fracture")
-  return r.label and r.label.y > sc.y and T(r.cells[1]) == "6,944" and T(r.cells[2]) == "7,144" and T(r.subs[1]) == "+200" and T(r.cells[3]) == "6,944", T(r.cells[2])
+  return r.label and r.label.y > sc.y and T(r.cells[1]) == "6,944" and T(r.cells[2]) == "7,144" and T(r.diffs[1]) == "(+200)" and beside(r.cells[2], r.diffs[1])
+    and T(r.cells[3]) == "6,944", T(r.cells[2]) .. " " .. T(r.diffs[1])
 end)
 checkp("  ...effects: the equipped ring's proc line, New Ring's Use line, Big Crit Ring none, each word for word, and the difference", function()
   local t = {}
@@ -521,7 +530,7 @@ checkp("  ...no proc or equip effect on any of them: no RPPM line (the wording a
   return not any and find(dd, "msubhead", "On-use and proc effects") ~= nil
 end)
 checkp("fit (V11): at the default panel and text size 11 every number cell, change and Pt value fits its column on one line", function()
-  for _, k in ipairs({ "mcell", "msub", "mper" }) do
+  for _, k in ipairs({ "mcell", "mdiff", "msub", "mper" }) do
     for _, r in ipairs(recs(d, k)) do if not fits(r) then return false, k .. " '" .. r.text .. "' w=" .. r.w end end
   end
   return #recs(d, "mcell") > 0
@@ -533,16 +542,16 @@ for _, w in ipairs({ 340, 450, 760 }) do
       local o = candIcon(drawn(), OLDBAND); if o and not o.selected then o.scripts.OnClick(o) end
       local dd = render("gear")
       local ok, why = layoutOK(dd)
-      local g = ns.CharToolkit_MultiCols(fs, 4)
+      -- (QoL 0.7.40, #90: the columns are as wide as "number (difference)" needs, so how many fit follows the numbers)
       local shown = 0
       for _, r in ipairs(recs(dd, "mhead")) do if r.text == "New Ring" or r.text == "Big Crit Ring" or r.text == "Old Band" then shown = shown + 1 end end
-      local more = #recs(dd, "mmore") == ((g.n - 1 < 3) and 1 or 0)
-      return ok and shown == g.n - 1 and g.n >= 2 and more, why or (shown .. " shown, n=" .. g.n)
+      local more = #recs(dd, "mmore") == ((shown < 3) and 1 or 0)
+      return ok and shown >= 1 and more, why or (shown .. " shown")
     end)
   end
 end
 c.size = nil; c.fontSize = 11
-checkp("the limit: three item columns at the default panel (450) up to text size 12, two at the narrowest (340)", function()
+checkp("the limit (the column rule for numbers with no difference beside them; QoL 0.7.40, #90: a bracketed difference widens the columns, see the layout checks above): three item columns at the default panel (450) up to text size 12, two at the narrowest (340)", function()
   local a = ns.CharToolkit_MultiCols(12, 4).n
   c.size = { w = 340 }; render("gear")
   local b = ns.CharToolkit_MultiCols(11, 4).n

@@ -120,7 +120,7 @@ check("message text is NEVER recorded", not has("SECRET-CHAT-TEXT"))
 check("message length is recorded instead", has("last message length=27"))
 check("suspect frame found by name", has("QuickJoinToastButton: QuickJoinToastButton [Button]"))
 check("suspect that is absent says so", has("FriendsMicroButton: not found"))
--- audit D39 (Dev Assist 0.7.13): a frame's own text (it can be a character name) is shown in chat, never saved in the file players send
+-- audit D39 (Dev Assist 0.7.15): a frame's own text (it can be a character name) is shown in chat, never saved in the file players send
 check("top-left section lists the floating button", has("QuickJoinToastButton [Button]"))
 check("D39 no frame text is saved (a whisper tab's title can be a name)", not has("text='"), has("text='"))
 

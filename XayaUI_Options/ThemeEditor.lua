@@ -9,7 +9,7 @@ local S = ns.ThemeShared
 local DB, T, floor, max, min = S.DB, S.T, S.floor, S.max, S.min
 
 -------------------------------------------------------------------------------
--- Ask dialog (Options 0.6.64): one small window with up to three buttons, in the order given (left to right), so the choices read
+-- Ask dialog (Options 0.6.65): one small window with up to three buttons, in the order given (left to right), so the choices read
 -- exactly as decided. Used for FA-4 / FA-13 (Xaya: "Ask first": switching or resetting throws your own colors away) and FA-8 (her
 -- answer for a name that is already saved: "Replace, Save As Copy, Cancel"). Esc and the last button close it doing nothing.
 -------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ function T.BuildArgs(refresh)
             end }
         end
     end
-    -- FA-13 (Options 0.6.64; Xaya: "Reword to Class colors (Recommended)"): it resets to Class colors, the theme a new install starts with
+    -- FA-13 (Options 0.6.65; Xaya: "Reword to Class colors (Recommended)"): it resets to Class colors, the theme a new install starts with
     args.resetPal = { type = "execute", order = nx(), width = "full", name = "Reset everything",
         desc = "Back to Class colors (the starting theme), game font, Medium size, and no class overrides.",
         func = function() AskDiscard("Reset everything", function() T.ResetAll(); refresh() end) end }

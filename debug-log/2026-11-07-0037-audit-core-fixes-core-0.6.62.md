@@ -50,4 +50,4 @@ B223, B224, B225.
   Same two checks as the sidebar handle. Tests: `tests/audit_core_run.py` D27 (2 of 3 fail on 28380a9); mover_session (29) and
   mover_view (22) pass. QA B227.
 
-Versions renumbered for the landing on main 7b830cf (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.64, QoL 0.7.40, Chat 0.6.31, Bonus 0.6.25, Dev Assist 0.7.13.
+Versions renumbered for the landing on main bfc79ef (2026-11-07, numbers from the lander): core 0.6.62, Options 0.6.65, QoL 0.7.41, Chat 0.6.32, Bonus 0.6.25, Dev Assist 0.7.15.

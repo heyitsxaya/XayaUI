@@ -1,4 +1,4 @@
-# Function audit: privacy cover defaults (Chat 0.6.31), chat probe saves no names, the debug-report walkthrough leaves no test error (Dev Assist 0.7.13)
+# Function audit: privacy cover defaults (Chat 0.6.32), chat probe saves no names, the debug-report walkthrough leaves no test error (Dev Assist 0.7.15)
 Logged 2026-11-07 08:41 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx, branch claude/function-audit-land on main 7b830cf. Not run in the game.
 Rows D36, D38, D39 of docs/process/FUNCTION-AUDIT-2026-11-07.md.
 

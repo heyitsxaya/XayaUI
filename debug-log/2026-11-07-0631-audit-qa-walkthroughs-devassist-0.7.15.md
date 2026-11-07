@@ -1,4 +1,4 @@
-# In-game QA walkthroughs for every function-audit fix (XayaUI_DevAssist 0.7.13, QAWalks-audit.lua)
+# In-game QA walkthroughs for every function-audit fix (XayaUI_DevAssist 0.7.15, QAWalks-audit.lua)
 Logged 2026-11-07 06:31 UTC. Session 014bN6tSfFULX4BSXzmZ1yCx, branch `claude/function-audit-land`. Not run in the game.
 Standing rule V21 (REQUEST-LOG A11 FA-18, her words: "make sure every feature or significant change to the codebase / bug report fixes
 have an in game qa test walk through with pre-fill confirmation options or data capturing").
