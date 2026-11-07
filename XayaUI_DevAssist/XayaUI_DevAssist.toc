@@ -18,12 +18,12 @@ AuraIDProbe.lua
 ChatProbe.lua
 CharacterWidthProbe.lua
 DevRecord.lua
-RunRecord.lua
 QAWalk.lua
 QAWalks.lua
 QAWalks-chat.lua
 QAWalks-display.lua
 QAWalks-perf.lua
+QAWalks-bars.lua
 QAWalks-Checklist.lua
 QAWalks-debug.lua
 QAWalks-statcalc.lua

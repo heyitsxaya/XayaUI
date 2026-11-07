@@ -512,7 +512,14 @@ local function BuildMover()
     mover:EnableMouse(true); mover:RegisterForDrag("LeftButton")
     mover.label = mover:CreateFontString(nil, "OVERLAY")
     mover.label:SetFont(STANDARD_TEXT_FONT, 13, "OUTLINE"); mover.label:SetPoint("CENTER"); mover.label:SetTextColor(1, 1, 1, 1)
-    mover:SetScript("OnDragStart", function() container:StartMoving() end)
+    mover:SetScript("OnDragStart", function(self) self.dragged = true; container:StartMoving() end)
+    -- (Chat 0.6.31; #430, from #229 item 5: "Clicking the chat box in mover mode should open exact X/Y entry + cardinal arrows") a click
+    -- that is not the end of a drag opens the position box
+    mover:SetScript("OnMouseDown", function(self) self.dragged = false end)
+    mover:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" and not self.dragged then C.PositionBox_Toggle() end
+        self.dragged = false
+    end)
     mover:SetScript("OnDragStop", function()
         container:StopMovingOrSizing()
         local s = S(); if not s then return end
@@ -543,18 +550,97 @@ local function BuildMover()
     mover.grip = grip
     mover:SetScript("OnUpdate", function(self)
         local s = S(); if not s then return end
-        self.label:SetText(("Chat Panel  %d x %d\nDrag to move. Drag the top-right corner to resize.\n/xui chat move to finish"):format(s.width or 0, s.height or 0))
+        self.label:SetText(("Chat Panel  %d x %d\nDrag to move. Click to type an exact place. Drag the top-right corner to resize.\n/xui chat move to finish"):format(s.width or 0, s.height or 0))
     end)
     mover:Hide()
 end
+
+-------------------------------------------------------------------------------
+-- The position box (Chat 0.6.31; #430 / #229 item 5, Xaya: "Clicking the chat box in mover mode should open exact X/Y entry + cardinal
+-- arrows"). X and Y are the chat block's bottom-left corner in pixels from the screen's bottom-left (what the mover saves). Enter
+-- applies a typed number; each arrow moves 1 pixel, 10 with Shift held. Kept on screen. Made the first time it opens (V14); it closes
+-- with the mover.
+-------------------------------------------------------------------------------
+local posBox
+local function PlaceAt(x, y)
+    local s = S(); if not (s and container) then return end
+    local sw, sh = UIParent:GetWidth(), UIParent:GetHeight()
+    local cw, ch = container:GetWidth(), container:GetHeight()
+    local maxX = (type(sw) == "number" and type(cw) == "number") and math.max(0, sw - cw) or 4000
+    local maxY = (type(sh) == "number" and type(ch) == "number") and math.max(0, sh - ch) or 3000
+    s.point = "BOTTOMLEFT"
+    s.x = math.floor(Clamp(x, 0, maxX, tonumber(s.x) or 0) + 0.5)
+    s.y = math.floor(Clamp(y, 0, maxY, tonumber(s.y) or 0) + 0.5)
+    C.Layout()
+    if posBox then posBox.Fill() end
+end
+C.PlaceAt = PlaceAt
+local function BuildPositionBox()
+    if posBox then return end
+    posBox = CreateFrame("Frame", "XayaUIChatPosition", UIParent, "BackdropTemplate")
+    posBox:SetSize(230, 96); posBox:SetFrameStrata("FULLSCREEN_DIALOG"); posBox:SetClampedToScreen(true)
+    posBox:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    posBox:SetBackdropColor(0.05, 0.05, 0.07, 0.96); posBox:SetBackdropBorderColor(0.4, 0.75, 1, 1)
+    posBox:EnableMouse(true)
+    local title = posBox:CreateFontString(nil, "OVERLAY", "GameFontNormal"); title:SetPoint("TOPLEFT", 8, -6); title:SetText("Chat position")
+    local close = CreateFrame("Button", nil, posBox, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", 2, 2)
+    local function Field(label, key, x)
+        local fs = posBox:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); fs:SetPoint("TOPLEFT", x, -30); fs:SetText(label)
+        local e = CreateFrame("EditBox", nil, posBox, "InputBoxTemplate")
+        e:SetSize(50, 20); e:SetPoint("LEFT", fs, "RIGHT", 8, 0); e:SetAutoFocus(false)
+        e:SetScript("OnEnterPressed", function(self)
+            local s = S(); local v = tonumber(self:GetText())
+            if s and v then if key == "x" then PlaceAt(v, s.y) else PlaceAt(s.x, v) end end
+            self:ClearFocus(); posBox.Fill()
+        end)
+        e:SetScript("OnEscapePressed", function(self) self:ClearFocus(); posBox.Fill() end)
+        return e
+    end
+    posBox.x = Field("X", "x", 10); posBox.y = Field("Y", "y", 100)
+    local function Arrow(name, dx, dy, point, ox, oy)
+        local b = CreateFrame("Button", nil, posBox, "UIPanelButtonTemplate")
+        b:SetSize(24, 20); b:SetText(name); b:SetPoint(point, posBox, point, ox, oy)
+        if ns.FlatButton then ns.FlatButton(b) end   -- (#286: XayaUI's flat look)
+        b:SetScript("OnClick", function()
+            local s = S(); if not s then return end
+            local k = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+            PlaceAt((tonumber(s.x) or 0) + dx * k, (tonumber(s.y) or 0) + dy * k)
+        end)
+        return b
+    end
+    posBox.up = Arrow("^", 0, 1, "BOTTOM", 0, 30)
+    posBox.down = Arrow("v", 0, -1, "BOTTOM", 0, 6)
+    posBox.left = Arrow("<", -1, 0, "BOTTOM", -30, 18)
+    posBox.right = Arrow(">", 1, 0, "BOTTOM", 30, 18)
+    local hintFs = posBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); hintFs:SetPoint("BOTTOMLEFT", 8, 6); hintFs:SetText("Shift: 10 px")
+    posBox.Fill = function()
+        local s = S(); if not s then return end
+        if not posBox.x:HasFocus() then posBox.x:SetText(tostring(s.x or 0)) end
+        if not posBox.y:HasFocus() then posBox.y:SetText(tostring(s.y or 0)) end
+    end
+    posBox:Hide()
+end
+function C.PositionBox_Toggle(show)
+    if not container then return end
+    BuildPositionBox()
+    if show == nil then show = not posBox:IsShown() end
+    if show then
+        posBox:ClearAllPoints()
+        posBox:SetPoint("BOTTOM", container, "TOP", 0, 8)
+        posBox.Fill()
+    end
+    posBox:SetShown(show and true or false)
+end
+function C.PositionBox() return posBox end
 
 function C.ToggleMover()
     if not container then return end
     BuildMover()
     C.unlocked = not C.unlocked
+    if not C.unlocked and posBox then posBox:Hide() end
     mover:SetAllPoints(container)
     mover:SetShown(C.unlocked)
-    ns.Print("Chat Panel mover " .. (C.unlocked and "ON: drag the blue box, resize from its top-right corner. /xui chat move again to finish." or "OFF"))
+    ns.Print("Chat Panel mover " .. (C.unlocked and "ON: drag the blue box, click it to type an exact place, resize from its top-right corner. /xui chat move again to finish." or "OFF"))
     if C.unlocked and C.IsCollapsed() then C.SetCollapsed(false) end
 end
 

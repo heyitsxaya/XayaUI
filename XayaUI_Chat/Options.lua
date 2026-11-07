@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- Options.lua (XayaUI Chat) : the Chat Panel settings (Chat > Chat Panel). The Chat Panel node holds the panel-wide switches; its parts
--- are nodes under it in the left pane (Layout, Appearance, Chat Data Panel, Fade and hide, Filters, History, Sounds, Privacy), and each
+-- are nodes under it in the left pane (General, Chat Tabs, Layout, Chat Data Panel, Filters, Sounds, Privacy; Chat 0.6.31), and each
 -- part's sections are tabs (ns.SectionTabs, Modules.lua; Xaya, 2026-11-03). Every change applies at once. Own code. UNTESTED in game.
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
@@ -14,7 +14,10 @@ local TAB_OUTLINE_ORDER = { "none", "outline", "thick", "shadow" }
 
 -- part = a part under Chat Panel ("layout", "look", "bar", ...); section = a tab inside it ("tab_<header key>", e.g. "tab_blocksHdr")
 -- (Chat 0.6.13: the Chat Panel's page is in the settings window's Blizzard UI Reskin tab, module "reskin"; Xaya 2026-11-05)
+-- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11) parts that moved into General keep their old names as addresses
+local MOVED = { look = "general", behavior = "general", history = "general" }
 function C.OpenSettings(part, section)
+    part = MOVED[part] or part
     if part and section then ns.OpenSettingsPage("reskin", "chatpanel", part, section)
     elseif part then ns.OpenSettingsPage("reskin", "chatpanel", part)
     else ns.OpenSettingsPage("reskin", "chatpanel") end
@@ -456,8 +459,98 @@ function ns.BuildChatTab(Notify)
             func = function() local ws = WS(); if ws and #ws.list < MAXW then ws.list[#ws.list + 1] = { who = "", enabled = true, source = "kit", value = "", channel = "Master" } end; Notify() end }
     end
 
+    ---------------------------------------------------------------------------------------------------------------------------
+    -- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-11, Xaya 2026-11-07: "why is chat functionality still not placed correctly in its appropriate
+    -- location?" / "read what I said in the note"; her #246 words, built as given:) "general tab should have font options, color +
+    -- display options, scroll and fade options"; "Chat Tabs should be its own pane"; "Chat history likely belongs in the general tab
+    -- options"; "Timestamp, copying, and links options also likely belong in general options". The controls are MOVED from the parts
+    -- above (each exists once; settings keys unchanged). Appearance, Fade and hide and History are emptied into General and removed.
+    ---------------------------------------------------------------------------------------------------------------------------
+    local function mv(src, key, dst, order, newKey)
+        local o = src.args[key]
+        if not o then return end
+        src.args[key] = nil
+        o.order = order
+        dst.args[newKey or key] = o
+    end
+    -- the game's own Chat Timestamps setting (CVar showTimestamps; the same list as Options > Social > Chat Timestamps,
+    -- Blizzard_SettingsDefinitions_Frame/Social.lua, wow-ui-source live): none, or one of the game's TIMESTAMP_FORMAT_* strings
+    local TS_KEYS = { "TIMESTAMP_FORMAT_HHMM", "TIMESTAMP_FORMAT_HHMMSS", "TIMESTAMP_FORMAT_HHMM_AMPM", "TIMESTAMP_FORMAT_HHMMSS_AMPM",
+        "TIMESTAMP_FORMAT_HHMM_24HR", "TIMESTAMP_FORMAT_HHMMSS_24HR" }
+    local function TsLabel(fmt)
+        local ok, v = pcall(function()
+            return TimeUtil.BetterDate(fmt, time({ year = 2010, month = 12, day = 15, hour = 15, min = 27, sec = 32 }))
+        end)
+        return (ok and type(v) == "string" and v ~= "") and v or tostring(fmt)
+    end
+    local function TsGet()
+        local cv = rawget(_G, "C_CVar")
+        local ok, v = pcall(function() return cv.GetCVar("showTimestamps") end)
+        return (ok and type(v) == "string" and not (C.IsSecret and C.IsSecret(v))) and v or "none"
+    end
+    local function TsList()
+        local values, order = { none = rawget(_G, "TIMESTAMP_FORMAT_NONE") or "None" }, { "none" }
+        for _, k in ipairs(TS_KEYS) do
+            local fmt = rawget(_G, k)
+            if type(fmt) == "string" and not values[fmt] then values[fmt] = TsLabel(fmt); order[#order + 1] = fmt end
+        end
+        local cur = TsGet()
+        if not values[cur] then values[cur] = TsLabel(cur); order[#order + 1] = cur end
+        return values, order
+    end
+    local timestamps = { type = "select", name = "Timestamps", order = 81,
+        desc = "The time in front of each new chat line. This is the game's own Chat Timestamps setting (Options > Social): changing it here changes it there too.",
+        values = function() local v = TsList(); return v end, sorting = function() local _, o = TsList(); return o end,
+        get = TsGet,
+        set = function(_, v) local cv = rawget(_G, "C_CVar"); pcall(function() cv.SetCVar("showTimestamps", tostring(v)) end); if Notify then Notify() end end }
+
+    local general = { type = "group", name = "General", order = 1, args = {
+        fontHdr = hdr("Font options", 10),
+        colorHdr = hdr("Color + display options", 20),
+        scrollHdr = hdr("Scroll and fade options", 40),
+        histHdr = hdr("Chat history", 60),
+        tsHdr = hdr("Timestamp, copying, and links", 80),
+        timestamps = timestamps,
+    } }
+    mv(look, "font", general, 11); mv(look, "outline", general, 12); mv(look, "fontSize", general, 13)
+    mv(look, "themeNote", general, 21)
+    local o = 22
+    for _, k in ipairs({ "bg", "bgCol", "bd", "bdCol", "tex", "texA", "tile", "inBg", "inBd", "inFocus", "hint", "hintText" }) do mv(look, k, general, o); o = o + 1 end
+    mv(layout, "ownScroll", general, 41); mv(layout, "scrollSpeed", general, 42); mv(layout, "scrollW", general, 43)
+    mv(layout, "scroll", general, 44); mv(layout, "toBottom", general, 45)
+    o = 46
+    for _, k in ipairs({ "fade", "after", "to", "secs", "wake", "hoverWake" }) do mv(behavior, k, general, o); o = o + 1 end
+    mv(behavior, "bar", general, 52, "fadeBar"); mv(behavior, "textFade", general, 53); mv(behavior, "textAfter", general, 54)
+    mv(filters, "links", general, 82); mv(filters, "linkCol", general, 83)
+    mv(history, "histBtn", general, 84); mv(history, "open", general, 85, "histOpen")
+    -- everything else on the History page, in its own order (its whisper lists, the console tab, ...): Chat history
+    local rest = {}
+    for k, v in pairs(history.args) do if v.type ~= "header" then rest[#rest + 1] = k end end
+    table.sort(rest, function(a, b) return (tonumber(history.args[a].order) or 0) < (tonumber(history.args[b].order) or 0) end)
+    o = 61
+    for _, k in ipairs(rest) do mv(history, k, general, o, general.args[k] and ("hist_" .. k) or k); o = o + 0.5 end
+    if general.args.histOpen then general.args.histOpen.desc = "The history window lists recent messages as plain text you can select and copy (Ctrl+C)." end
+    filters.args.linkHdr = nil
+
+    -- "Chat Tabs should be its own pane"
+    local chatTabs = { type = "group", name = "Chat Tabs", order = 2, args = {
+        rowHdr = hdr("Tab row", 10),
+        whisperHdr = hdr("Whisper tabs", 30),
+        -- (Chat 0.6.31; REQUEST-LOG A14 CHATREV-10, Xaya 2026-11-07: "creating new whisper tabs by sending a new message don't
+        -- automatically shift to a new whisper window from general tab"; her setting "Both"; her answer "Yes, as an option") Whispers.lua
+        whisperSelect = tog("Switch to a new whisper tab I start", "whisperSelect", 31,
+            "Switches to the tab the game opens when you whisper someone new. Works with New Whispers set to New Tab or Both (In-line makes no tabs)."),
+    } }
+    mv(layout, "tabs", chatTabs, 11); mv(layout, "tabH", chatTabs, 12)
+    o = 13
+    for _, k in ipairs({ "tabFont", "tabOutline", "tabSize", "tabText", "tabSel", "tabBgOn", "tabBg", "tabSelBg" }) do mv(look, k, chatTabs, o); o = o + 1 end
+
+    -- Layout keeps place and size, the inside of the pane, Blizzard's pieces, and hiding the chat
+    layout.args.hideHdr = hdr("Hide the chat", 80)
+    mv(behavior, "collapse", layout, 81)
+    layout.order, bar.order, filters.order, sounds.order = 3, 4, 5, 6
     local privacy = ns.ChatPrivacy_Options and ns.ChatPrivacy_Options(Notify) or nil
-    if privacy then privacy.order = 8; privacy.name = "Privacy" end
+    if privacy then privacy.order = 7; privacy.name = "Privacy" end
 
     -- The Chat Panel node: its own page holds the panel-wide switches (moved from the top of Layout); the parts are nodes under it,
     -- and each part's header sections become tabs.
@@ -469,7 +562,7 @@ function ns.BuildChatTab(Notify)
     switch.desc = switch.desc .. " Greyed while Blizzard UI Reskin is off (this tab's Overview)."
     local overview = { blocked = layout.args.blocked, intro = layout.args.intro, theme = layout.args.theme }
     layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
-    local parts = { layout = layout, look = look, bar = bar, behavior = behavior, filters = filters, history = history, sounds = sounds, privacy = privacy }
+    local parts = { general = general, tabs = chatTabs, layout = layout, bar = bar, filters = filters, sounds = sounds, privacy = privacy }
     for key, part in pairs(parts) do
         if ns.SectionTabs then ns.SectionTabs(part) end
         overview[key] = part

@@ -43,7 +43,7 @@ check("memory sorted, Beta first (20.0 MB)", text:find("20.0 MB   Beta") ~= nil)
 check("zero-memory addon left out", text:find("Gamma") == nil)
 check("small values in KB", text:find("90 KB   Delta") ~= nil)
 B.UsageLines(8)
-check("memory re-read throttled (15 s)", updates == 1)
+check("memory not re-read by a redraw", updates == 1)
 -- profiler missing
 local B2 = load_blocks(mkenv({}))
 local t2 = table.concat(B2.UsageLines(5), "\n")
@@ -64,5 +64,21 @@ local added = {}
 local tip = { AddLine = function(_, s, r, g, b) added[#added + 1] = { s, r, g, b } end }
 B.AddUsage(tip, 3)
 check("AddUsage: blank line first, gold headings", added[1][1] == " " and added[2][1] == "AddOn usage" and added[2][3] == 0.82)
+check("AddUsage: ends with the grey cost line (MINOR 2)", added[#added][1] == "Includes the cost of reading these numbers." and added[#added][2] == 0.6)
+-- MINOR 2 (REQUEST-LOG A15 P-14): memory is read once per hover (readMemory), never on the once-a-second redraws
+do
+    local now, ups = 100, 0
+    local env5 = mkenv({ C_AddOnProfiler = prof, GetTime = function() return now end,
+        UpdateAddOnMemoryUsage = function() ups = ups + 1 end, GetAddOnMemoryUsage = function(i) return mem[i] end,
+        C_AddOns = { GetNumAddOns = function() return 4 end, GetAddOnInfo = function(i) return names[i] end } })
+    local B5 = load_blocks(env5)
+    B5.UsageLines(8, true)                                   -- the hover's first show
+    for s = 1, 40 do now = now + 1; B5.UsageLines(8) end      -- 40 s of redraws while hovered
+    check("hovered 40 s: memory read once (at the first show), not every 15 s (" .. ups .. ")", ups == 1)
+    now = now + 5; B5.UsageLines(8, true)                    -- a new hover later
+    check("a new hover reads memory again", ups == 2)
+    B5.UsageLines(8, true)                                   -- re-entered within a second
+    check("re-entering within a second reuses the reading", ups == 2)
+end
 print(string.format("%d checks, %d failed", n, fails))
 if fails > 0 then error("failed") end
