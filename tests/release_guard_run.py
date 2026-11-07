@@ -138,10 +138,13 @@ checkp("dead in a dungeon, raids only (the default): no box, the click reaches R
 DIALOG:Hide(); c.load = "group"; die()
 checkp("  ...set to raids and dungeons: the box shows", function() return b.shown end)
 DIALOG:Hide(); INST = { false, "none" }; die()
-checkp("  ...outside an instance: no box; set to everywhere: the box shows", function()
-  local off = not b.shown
-  DIALOG:Hide(); c.load = "all"; die()
-  return off and b.shown end)
+checkp("  ...outside an instance: no box", function() return not b.shown end)
+DIALOG:Hide()
+-- (QoL 0.7.37; UI-58, Xaya: "There also should not be an everywhere button")
+c.load = "all"; local c2 = ns.ReleaseGuard_Cfg()
+checkp("no Everywhere: a saved Everywhere becomes raids only (the default); outside an instance: no box", function()
+  die(); local ok = c2.load == "raid" and not b.shown; DIALOG:Hide(); return ok, c2.load end)
+INST = { true, "raid" }; die()
 -- /xui releaseguard (UI-57): what it did at the last death, to settle the layering in the game
 local said = {}
 local oldPrint = ns.Print; ns.Print = function(t) said[#said + 1] = tostring(t) end
@@ -149,17 +152,20 @@ if ns.RunCommand then pcall(ns.RunCommand, "releaseguard", "") end
 ns.Print = oldPrint
 checkp("/xui releaseguard: on, where, here, and the last death's outcome (covered) with the box's state", function()
   local t = table.concat(said, " / ")
-  return t:find("Release Guard: on", 1, true) ~= nil and t:find("Everywhere", 1, true) ~= nil and t:find("last death: covered", 1, true) ~= nil, t end)
+  return t:find("Release Guard: on", 1, true) ~= nil and t:find("Raids only", 1, true) ~= nil and t:find("last death: covered", 1, true) ~= nil, t end)
 DIALOG:Hide()
 c.enabled = false; if ns.ReleaseGuard_Apply then ns.ReleaseGuard_Apply() end
 local reg = 0
 for _, f in ipairs(created) do for _ in pairs(f.events) do reg = reg + 1 end end
 checkp("switched off: nothing registered, no box when she dies", function() die(); return box() ~= nil and reg == 0 and not b.shown, reg end)
 local pg = ns.BuildReleaseGuardPage and ns.BuildReleaseGuardPage(function() end) or { args = {} }
-checkp("its settings page: the row's tick box, the box's text, flavour on / off and the list, the key (Shift / Ctrl / Alt), where (raids / raids and dungeons / everywhere)", function()
+checkp("its settings page: the row's tick box, the box's text, flavour on / off and the list, the key (Shift / Ctrl / Alt), where (raids / raids and dungeons)", function()
   local a = pg.args
   return pg.xuiSwitch and a.text and a.flavorOn and a.flavors and a.modifier and a.modifier.values.SHIFT == "Shift" and a.modifier.values.CTRL == "Ctrl" and a.modifier.values.ALT == "Alt"
-    and a.load and a.load.values.raid and a.load.values.group and a.load.values.all end)
+    and a.load and a.load.values.raid and a.load.values.group end)
+checkp("  ...Where offers raids only and raids and dungeons, and no Everywhere (UI-58)", function()
+  local n = 0; for _ in pairs(pg.args.load.values) do n = n + 1 end
+  return pg.args.load.values.all == nil and n == 2 and #pg.args.load.sorting == 2, n end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)

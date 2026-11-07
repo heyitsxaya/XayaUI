@@ -28,7 +28,9 @@ local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "W
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
     load = "raid", index = 0 }
 local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
-local LOADS = { raid = "Raids only", group = "Raids and dungeons", all = "Everywhere" }
+-- (QoL 0.7.37; REQUEST-LOG UI-58, Xaya: "There also should not be an everywhere button") raids, or raids and dungeons; a saved
+-- "all" (Everywhere, QoL 0.7.31 to 0.7.36) becomes the default, raids only (Cfg below)
+local LOADS = { raid = "Raids only", group = "Raids and dungeons" }
 
 local function Cfg()
     if not CueRulesDB then return nil end
@@ -60,7 +62,6 @@ local function R(fn, ...) if type(fn) ~= "function" then return nil end; local o
 local function IsSecret(v) return type(issecretvalue) == "function" and issecretvalue(v) == true end
 -- where it loads (her "configurable, by default raid only")
 local function LoadsHere(c)
-    if c.load == "all" then return true end
     local inInst, kind = R(IsInInstance)
     if IsSecret(inInst) or IsSecret(kind) or not inInst then return false end
     if kind == "raid" then return true end
@@ -205,7 +206,7 @@ function ns.BuildReleaseGuardPage(Notify)
             modifier = { type = "select", order = 4, name = "Key to click through", values = MODS, sorting = { "SHIFT", "CTRL", "ALT" }, disabled = isOff,
                 desc = "Hold it and the box steps aside so the click reaches Release Spirit.",
                 get = function() return C().modifier end, set = function(_, v) C().modifier = v; Changed() end },
-            load = { type = "select", order = 5, name = "Where", values = LOADS, sorting = { "raid", "group", "all" }, disabled = isOff,
+            load = { type = "select", order = 5, name = "Where", values = LOADS, sorting = { "raid", "group" }, disabled = isOff,
                 get = function() return C().load end, set = function(_, v) C().load = v; Changed() end },
         },
     }

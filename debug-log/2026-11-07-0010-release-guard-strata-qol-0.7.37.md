@@ -25,3 +25,9 @@ world, the death window ("6 Minutes until release", Release Spirit, Recap) with 
 
 ## QA
 E1z93.
+
+## Follow-up: UI-58 (Xaya: "There also should not be an everywhere button")
+- Where offers Raids only / Raids and dungeons; LoadsHere no longer has an "all" branch; a saved "all" becomes "raid" (the default,
+  her "by default raid only"; the mapping is the session's). With that, no box outside an instance is how it should be (UI-57).
+- tests/release_guard_run.py: the Everywhere checks replaced (no Everywhere on the page; a saved Everywhere reads Raids only; no box
+  outside an instance); 21 / 21; on the previous code 3 fail.
