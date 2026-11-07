@@ -711,8 +711,8 @@ c8f3d8c6b3bcc4f6ec7c5ceacb3d461c  tests/chat_world.lua
 b4284e61f56408f7cdab011640341f7d  tests/chatprobe_run.py
 82f0699e6a7e2597f1d4e4939135bb95  tests/class_learn_auras_run.py
 c7534d340459aaeecb4c1aa07301144b  tests/class_learn_run.py
-77c4528b7a2dd2ec35f14acbb7abec18  tests/compact_button_width_run.py
-f73daa92e9555a50f8fc5480f9222301  tests/console_commands_run.py
+88356a8acb94baa4e1dc3047c3df78ef  tests/compact_button_width_run.py
+f7f659e1431422cddb7a500dce7d68c9  tests/console_commands_run.py
 5a5034513603092a5062a0bb8ef84779  tests/console_toggle_cost_run.py
 e165b5fe062c674ce18014843f7fab60  tests/core_off_costs_nothing_run.py
 385efab273152e93a25d127204b06e1e  tests/count_gcd_run.py

@@ -38,6 +38,11 @@ function Btn(label, startW)
 end
 function Run(content, buttons, passes) for _ = 1, passes do ns.FlexPrepass(content, buttons) end end
 ''')
+# (Options 0.6.60, UI-47) the slice reads core's ns.Style (the one place the display values live): the real table, read from Modules.lua
+mods = open(os.path.join(ROOT, "XayaUI", "Modules.lua"), encoding="utf-8").read()
+ms = re.search(r"^ns\.Style = \{.*?^\}\n", mods, re.S | re.M)
+assert ms, "ns.Style not found in XayaUI/Modules.lua"
+L.execute("local ns = ns\n" + ms.group(0))
 L.execute("local ns = ns\n" + chunk)
 fails = []
 def check(name, ok, extra=""):
