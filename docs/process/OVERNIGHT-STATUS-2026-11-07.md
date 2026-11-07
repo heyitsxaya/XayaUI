@@ -1,4 +1,48 @@
-# Overnight status, 2026-11-07 (first snapshot ~08:35 UTC, by the 11-06 hub; the overnight hub keeps it current)
+# Overnight status, 2026-11-07
+
+First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub session_014bN6tWMaSvKkwjeonHvvch until Xaya wakes (~15:30-16:30 UTC). Standing orders and session map: docs/process/HUB-HANDOFF-2026-11-07.md.
+
+## Main
+- origin/main at 08:32 UTC: 7b830cf (unchanged since the handoff).
+
+## Log
+- 08:30 UTC: new hub took over from session_014bN6tSStpdmmCXviFAqPdQ. Every mapped session told; handoff files requested from the 10 heavy sessions (O-152); "all on main" confirmations requested from the 7 completed sessions; O-151 branch list requested from branch cleanup and the lander. Next check-in 10:02 UTC.
+
+## O-152 migration
+| Old session | Scope | Handoff file | Successor | Archived |
+|---|---|---|---|---|
+| session_014bN6tV7oStjTuVPEJbytBJ | UI bugs | requested | — | no |
+| session_014bN6tTxYo6enpkMGsVkMqm | Perf | requested | — | no |
+| session_014bN6tSjceDcH6FdJCeukZG | Chat issue review | requested | — | no |
+| session_014bN6tTZroPi49dAYwBbeGp | D8 raid rules | requested | — | no |
+| session_014bN6tSfFULX4BSXzmZ1yCx | Function audit | requested | — | no |
+| session_014bN6tUt2Da7LiGNYKgtM7R | Nameplates | requested | — | no |
+| session_014bN6tX7AoZQrGX246YSXjC | Progress bar cues | requested | — | no |
+| session_014bN6tUPG6SDvkoa3i3tMu5 | Reskin elements | requested | — | no |
+| session_014bN6tSRsJgz4JWyawQp5gk | LFG / Wordle (PAUSED by her words; no successor, archive after RMG-Q0 is in the flow) | corrected 08:40 | — | no |
+| session_014bN6tSZh6UFB2WcRuyXqBZ | Lander (last, between landings) | not yet | — | no |
+
+## Completed sessions (archive on confirmation)
+| Session | Scope | Confirmation | Archived |
+|---|---|---|---|
+| session_014bN6tTuH6rxEfggbnTEH3o | Roadmap Features | asked | no |
+| session_014bN6tTRFsCmBvVCUDVtrds | Rule generation (still writing a walkthrough) | asked | no |
+| session_014bN6tV7wcxBdJHNGwnMXZP | Chat follow-ups | asked | no |
+| session_014bN6tSiDK8R3ZHPmcK9QHR | Additional Concepts | asked | no |
+| session_014bN6tWZxqCW85vMEyHdfnt | Character Pane (still running) | asked | no |
+| session_014bN6tStyDJVemzE9tX7F38 | New Features + Reskins (merging main) | asked | no |
+| session_014bN6tSuhd4nhS3kubHR58K | Chat | asked | no |
+
+## Fresh sessions (left alone)
+Externals session_014bN6tUA9JtkPEkQ3Qch7iE; chat round session_014bN6tUJW6J1rnMZ6Z7t7c1; QA flow session_014bN6tUZLKHa2NXorHRJghL; top tabs session_014bN6tWsQ4qcob9VPKD7PV5. Feature summary session_014bN6tU26cuzQ9LarKYhZQx and branch cleanup session_014bN6tV8Z5syBadjkfcN2Z4 stay as they are.
+
+## O-151 branches
+Snapshot above (from branch cleanup, 08:28). Fresh classified list requested from branch cleanup (docs/process/BRANCHES-2026-11-07.md) and the lander.
+
+## Held (O-109)
+D8 load-condition changes: stay off main; first question in the QA flow.
+
+# Snapshot ~08:35 UTC (11-06 hub)
 
 Main = 7b830cf at this snapshot. The rows below are the sessions' own reports (data), condensed.
 
