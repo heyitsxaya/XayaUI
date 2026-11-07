@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- QAWalks-generate.lua (XayaUI_DevAssist 0.7.14): the in-game QA walkthrough for the Generate buttons, the filtered list and the Select
+-- QAWalks-generate.lua (XayaUI_DevAssist 0.7.19): the in-game QA walkthrough for the Generate buttons, the filtered list and the Select
 -- all tick box in Rules > Auto-Generate Rules (XayaUI_Options 0.6.54 as built; on main since 687b624; QA B160). Own code.
 -- Xaya, 2026-11-06: "four buttons per specialization auto-generation: "Generate All Rules for {Spec}" "Generate CD Tracking Rules for
 -- {Spec}" "Generate Aura Tracking Rules for {Spec}" "Generate Target Debuff Tracking Rules for {Spec}"; these buttons filter out what
@@ -10,7 +10,7 @@
 -- each of her clicks and offers its own verdict on "Accept"; nothing is recorded without her click. She presses the real buttons: a step
 -- never fakes a press. The one step about looks (are the button labels cut off?) captures the widths it reads into the note and asks her
 -- (noVerdict). Ticks the walkthrough makes are removed again in its last step. Reaches the picker only through the published
--- ns.OptionsApi.AutoPicker (XayaUI_Options 0.6.65) and the settings window's Ace tree. Does nothing without the framework. UNTESTED IN GAME.
+-- ns.OptionsApi.AutoPicker (XayaUI_Options 0.6.69) and the settings window's Ace tree. Does nothing without the framework. UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end

@@ -364,6 +364,8 @@ end
 -- AceConfigDialog keeps the apps waiting for its next-frame redraw in AceConfigDialog.frame.apps (AceConfigDialog-3.0.lua
 -- ConfigTableChanged / RefreshOnUpdate, the copy in Libs/)
 function Tree.AcePending() local f = AceConfigDialog.frame; return (f and f.apps and f.apps[APP]) and true or false end   -- (a field: this file is at Lua's 200-local limit)
+-- a redraw asked for before a full Open that has just happened is not needed (the Open drew the latest tree): drop it (Options 0.6.68)
+function Tree.DropPending() local f = AceConfigDialog.frame; if f and f.apps then f.apps[APP] = nil end end
 function Tree.ViewChanged()
     local token = {}
     Tree.view = token
@@ -4882,6 +4884,10 @@ local function BuildOptions()
         -- 0.6.4 (Xaya): always shown; with drafts off it explains them and offers the switch (Drafts.lua BuildDraftsPage)
         draftsTab.hidden = nil
     end
+    -- (Options 0.6.68, REQUEST-LOG A15 P-16) ns.PickerInto holds `all` (the whole rule tree) in its closure; kept in ns it kept the last
+    -- tree alive after the window closed (measured in the stand-in, 313 rules: 136.5 MB after a full collect, 0.0 MB once released).
+    -- It is only used while this build runs.
+    ns.PickerInto = nil
     local disabledTab = { type = "group", name = "Disabled", order = 3, childGroups = "tree", args = {
         disabled = { type = "group", order = 1, childGroups = "tree",
             name = function() return "DISABLED (" .. nDisabled .. ")" end, args = disabledArgs },
@@ -5258,15 +5264,21 @@ function ns.OptionsApi.Toggle()
     if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP] then
         AceConfigDialog:Close(APP)
     else
-        local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
-        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+        -- (Options 0.6.68, REQUEST-LOG A15 P-16: her first open made 3 full builds, 2603 + 739 + 650 ms) The first opening picks the
+        -- Rules sub-tab BEFORE the window opens: SelectGroup builds the tree once and only asks for a redraw; Open then reuses that same
+        -- tree (Tree.keep) and the redraw SelectGroup asked for is dropped (Open has just drawn it). One build instead of three.
         if firstOpen then
             firstOpen = false
             local ui = CueRulesDB and CueRulesDB.ui
             local sub = ui and ui.rulesSub
             if sub ~= "smartTab" and sub ~= "draftsTab" and sub ~= "disabledTab" and sub ~= "creatorTab" then sub = "enabledTab" end   -- the last sub-tab used
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", sub)
+            Tree.keep = Tree.last and true or nil
         end
+        local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
+        Tree.keep = nil
+        Tree.DropPending()
+        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
     end
 end
 -- Window strata: AceGUI opens its frame at FULLSCREEN_DIALOG, which covers Blizzard dialogs / alert boxes (StaticPopups are DIALOG).
@@ -5281,6 +5293,9 @@ do
     if hooksecurefunc then
         hooksecurefunc(AceConfigDialog, "Open", function(_, app)
             if app ~= APP then return end
+            -- (Options 0.6.68, A15 P-16: a switch made two full builds, 616 + 739 ms) AceConfigDialog redraws the window itself right
+            -- after a control's set (a full Open); a redraw the set asked for (Notify -> NotifyChange, next frame) would build it again
+            Tree.DropPending()
             LowerWindow()
             if not ns.paneSizeApplied then ns.paneSizeApplied = true; if ns.ApplyPaneSize then pcall(ns.ApplyPaneSize) end end   -- saved size override, once per session
             if ns.DraftsOnOpen then pcall(ns.DraftsOnOpen) end   -- remember every rule's saved version
@@ -5298,8 +5313,12 @@ do
         -- every pane the window builds (an opening, a redraw, a click on a row): with "Use drafts" off the rule shown gets its first
         -- undo state here, before it can be edited (Drafts.lua ns.UndoFirstState; Options 0.6.41, instead of copying every rule)
         hooksecurefunc(AceConfigDialog, "FeedGroup", function(_, app)
+            if app == APP then Tree.decorateDue = true end   -- a pane was drawn (a tab or row click): the next tick decorates it
             if app == APP and ns.UndoFirstState then pcall(ns.UndoFirstState) end
         end)
+        -- any widget made (a dropdown's list, a pane's controls, a scrolled-in row): the next tick decorates it (Options 0.6.68)
+        local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
+        if AceGUI and AceGUI.Create then hooksecurefunc(AceGUI, "Create", function() Tree.decorateDue = true end) end
     end
 end
 ns.optionsLoaded = true
@@ -5387,6 +5406,8 @@ ns.On("LOG", function(line)
     tray.log:AddMessage(line)
     Tree.trayDrawn = ns.logSerial or 0
 end)
+-- (core Core.lua ns.LogWanted: rule and snapshot lines are built only while the strip, the console window or the record can take them)
+function ns.LogTrayOn() return (tray and tray:IsShown()) and true or false end
 function Tree.TrayCatchUp()
     local now, buf = ns.logSerial or 0, ns.logBuf or {}
     local n = #buf
@@ -8114,7 +8135,7 @@ do
         local t0 = debugprofilestop and debugprofilestop() or 0
         local a, b, c = ns.origOpen(self, app, ...)
         local t1 = debugprofilestop and debugprofilestop() or 0
-        if app == APP then pcall(ns.DecorateTrees) end
+        if app == APP then pcall(ns.DecorateTrees); Tree.decorateDue = false end   -- (decorated: nothing new to catch on the next tick)
         if app == APP and debugprofilestop then
             local t2 = debugprofilestop()
             ns.perf = ns.perf or { n = 0 }
@@ -8535,13 +8556,13 @@ end
 -- sidebar previews, let go of the kept tree, hide the unsaved-changes strip and the debug console strip, remember the Rules sub-tab.
 -- Up to 0.6.40 it ran on every frame from the first opening until /reload, with work every 0.25 s while the window was closed.
 local driver, acc = CreateFrame("Frame"), 0
-local sigAcc, lastSig = 0, nil
+local sigAcc = 0
 function Tree.Closed()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if of and of.frame and of.frame:IsShown() then return end   -- another addon's window (AceGUI reuses frames) hid, not this one
     driver:SetScript("OnUpdate", nil)
     acc, sigAcc = 0, 0
-    Tree.last, Tree.keep = nil, nil   -- the kept tree is let go
+    Tree.last, Tree.keep, Tree.loadSeen = nil, nil, nil   -- the kept tree (and the load answers seen) are let go
     if ns.SetWindowOpen then ns.SetWindowOpen(false) end
     -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
     if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
@@ -8559,19 +8580,35 @@ function Tree.Tick(_, e)
     if not (fr and fr:IsShown()) then Tree.Closed(); return end   -- (closed without the OnHide hook seeing it)
     if ns.SaveRulesSub then pcall(ns.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     pcall(EnsureChrome, of)
-    if ns.DecorateTrees then ns.DecorateTrees(of) end
+    -- (Options 0.6.68, A15 P-16) the decorate / skin pass walks every widget and frame of the window: only when something new was drawn
+    -- (an AceGUI widget made or a pane fed since the last pass), not every 0.25 s (it ran ~4x a second while the window was open)
+    if Tree.decorateDue and ns.DecorateTrees then Tree.decorateDue = false; ns.DecorateTrees(of) end
     if ns.rules then
         sigAcc = sigAcc + 1
-        if sigAcc >= 4 then
+        local fighting = (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player"))
+        if sigAcc >= 4 and not fighting then
             sigAcc = 0
-            local okc, ctx = pcall(ns.ReadContext)
-            if okc then
-                local t = {}
-                for i, r in ipairs(ns.rules) do t[i] = ns.IsLoaded(r, ctx) and "1" or "0" end
-                local sig = table.concat(t)
-                if lastSig and sig ~= lastSig then Notify() end
-                lastSig = sig
+            -- a rule moved between LOADED and NOT LOADED: redraw the lists. Read from what the engine answered this step (rt.info: its
+            -- load and talent answers), no new context, table or string (it was ns.ReadContext + every rule's ns.IsLoaded + a string
+            -- each second). Rules the engine has no answer for yet ask ns.IsLoaded.
+            -- Not in combat (Options 0.6.68, A15 P-16: with the window open every combat start and end rebuilt the whole tree, ~160 MB
+            -- each in the stand-in): out of combat the lists are compared with what they showed at the last check, so a rule that loads
+            -- only in combat moves nowhere after the fight; the lists may show it in its out-of-combat place during the fight.
+            local changed, rt, ctx = false, ns.runtime, nil
+            local seen = Tree.loadSeen or {}
+            Tree.loadSeen = seen
+            for i, r in ipairs(ns.rules) do
+                local info = rt and rt[r] and rt[r].info
+                local now
+                if r.parentUid then now = false   -- (an outcome follows its parent; it has no list row of its own here)
+                elseif not r.enabled then now = false
+                elseif info and info.ctxOK ~= nil then now = (info.ctxOK == true and info.talentOK == true)
+                else ctx = ctx or ns.ReadContext(); now = ns.IsLoaded(r, ctx) and true or false end
+                if seen[i] ~= nil and seen[i] ~= now then changed = true end
+                seen[i] = now
             end
+            for i = #ns.rules + 1, #seen do seen[i] = nil end
+            if changed then Notify() end
         end
     end
     local sbar = ns.SaveBarUpdate and ns.SaveBarUpdate(fr)
@@ -8588,5 +8625,7 @@ end
 -- core (Modules.lua) so they work before this addon is loaded.
 -------------------------------------------------------------------------------
 function ns.OptionsApi.IsOpen() return (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) and true or false end
+-- the tree the window was last drawn from (nil when none is kept): Skin.lua measures its dropdowns from it instead of building another
+function ns.OptionsApi.LastTree() return Tree.last end
 function ns.OptionsApi.SkinOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
 ns.Options = ns.OptionsApi
