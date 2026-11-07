@@ -18,8 +18,8 @@ location if they aren't already. / refactor all code appropriately. / priority: 
 3. Ideas checked against WeakAuras, ElvUI or EUI: behaviour only, our own design and code [0.8].
 
 ### A2. Settings window: tab rows
-1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built today: Rules | QoL | Bonus Features |
-   Blizzard UI Reskin; the rest is the UI-23..27 round, not built yet).
+1. Top tabs: Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings [1.6, 1.7] (built in Options 0.6.66, UI-23..27: no
+   toolbar above them; "+ New Rule" is a flat button at the left end of the Rules row; Profiles = Import | Export | Recycle Bin).
 2. Top tabs share the row evenly edge to edge, 32 px tall, 14 pt outlined, clearly the parent level [1.4, 1.5, 11.3].
 3. Rules sub-tabs: 28 px, 12 pt outlined; Smart Categories, Enabled, Disabled, Drafts share the row evenly; "Auto-Generate Rules" apart
    at the far right [1.9, 11.3; UI-45].

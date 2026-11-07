@@ -404,6 +404,16 @@ Opened at her request through the "Repository branch cleanup" session (CLEAN-7, 
 | P-5 | Her answers (question prompt, 2026-11-07 ~00:15 UTC): stage 1: "Yes, as proposed (Recommended)"; transfer: "File + report tool (Recommended)"; record size: "10,000 lines (Recommended)"; probe / after: "Probe off; keep yours (Recommended)" | Recorded; building | this session, branch `claude/perf-test-m-plus` | Builds P-1 (audit doc + baseline on existing Perf / C_AddOnProfiler), P-4 (Accept sets 10,000 lines, probe stays off, Done turns off only what Accept turned on), `tools/perf_report.py` reading the uploaded SavedVariables file. |
 
 
+## A16. Settings-window restructure session = session 014bN6tWsQ4qcob9VPKD7PV5 (branch `claude/settings-restructure`; UI-23 to UI-27 of A8)
+Opened 2026-11-07 by the coordinator (session_014bN6tSStpdmmCXviFAqPdQ) to build A8's UI-23 to UI-27 (her answers of 2026-11-06), after her
+words of 2026-11-07 (relayed): "most ui feedback items I've delivered today are still missing ... stop dropping the ball on my requests".
+
+| # | Her words (verbatim) | Status | Where | Notes |
+|---|---|---|---|---|
+| SR-1 | (relayed by the coordinator, 2026-11-07) "most ui feedback items I've delivered today are still missing ... stop dropping the ball on my requests" | BRANCH | this section | UI-23 to UI-27 built on `claude/settings-restructure` (Options 0.6.66, Dev Assist 0.7.13). |
+| SR-2 | (relayed by the coordinator, ~08:25 UTC, her overnight order) "I have to go to sleep. I want everything I've requested over the last 16h — and I mean EVERYTHING — implemented and pushed to main when I wake up. I want a qa review checklist pushed and displayed as a popup for everything that needs review when I first load into the game and I want all outstanding questions to be nested within a qa question prompt flow so I know what you had to execute blindly and need feedback on. ... I should not find ANYTHING is not pushed to main when I wake up." | BRANCH | UI-23 to UI-27 | No questions to her (O-108); the choices made without her went to the QA question flow session (session_014bN6tUZLKHa2NXorHRJghL): UI-25-newrule, UI-27-components, UI-27-eui, UI-24-label-scope, UI-27-backups, UI-27-merge. Landed through the lander (session_014bN6tSZh6UFB2WcRuyXqBZ). |
+| SR-3 | A8 UI-23 to UI-27 (her words there) | BRANCH | XayaUI_Options 0.6.66: Options.lua (TABS, BuildProfiles, OpenPage, Settings), Skin.lua (toolbar gone, top row, + New Rule), Profiles.lua (new); QA H6 to H9, walkthrough "Settings window: new top tabs and Profiles (H6-H9)" | Top tabs Rules \| QoL \| Bonus Features \| Blizzard Reskin \| Profiles \| Settings; toolbar and cog gone; + New Rule at the left end of the Rules row (her open point, chosen without her); Profiles = Import \| Export \| Recycle Bin, components ticked per import / export. Not seen in game. |
+
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
 a single instance. do this across all chats."

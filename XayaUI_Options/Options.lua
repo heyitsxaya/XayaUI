@@ -27,7 +27,10 @@ ns.OptionsApi = {}
 -- a group and everything in it to the Recycle Bin, by id (the Dev Assist QA walkthroughs clean up their test group with it)
 function ns.OptionsApi.DeleteFolderAll(id) if ns.DeleteFolderAllById then return ns.DeleteFolderAllById(id) end end
 ns.OptionsApi.TABS = { chat = { key = "chat", name = "Chat", order = 5 }, qol = { key = "qol", name = "QoL", order = 5.1 },
-    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard UI Reskin", order = 5.3 } }
+    bonus = { key = "bonus", name = "Bonus Features", order = 5.2 }, reskin = { key = "reskin", name = "Blizzard Reskin", order = 5.3 } }
+-- (Options 0.6.66; REQUEST-LOG UI-23 to UI-27, Xaya 2026-11-06: tab label "Blizzard Reskin"; the toolbar goes and the top row reads
+-- Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings.) Every top tab key, for the top-row layout (Skin.lua IsTopRow).
+ns.OptionsApi.TOP_KEYS = { cooldowns = true, chat = true, qol = true, bonus = true, reskin = true, profiles = true, set = true, settings = true }
 ns.OptionsApi.pageTab = {}   -- page key -> the top tab it is drawn in (filled by ModuleTabs), so a page that moved still opens
 ns.OptionsApi.featureParents = {}   -- module -> { [page key] = true } for pages whose parts are left-pane nodes (filled by ModuleTabs)
 -- Feature tabs: a feature's node starts open, so its parts show in the left pane right away (Xaya, 2026-11-03). Only the first
@@ -3321,13 +3324,25 @@ local exportInc = { rules = true, bars = true, qol = true }
 local exportText = ""
 local importText, importSnap, importErr = "", nil, nil
 local backupName, shareMsg = "", ""
+-- (Options 0.6.66; UI-26 / UI-27) Profiles > Export: one tick box per component (Profiles.lua); Profiles > Import: the components the
+-- pasted text holds, each ticked to start; rules are added as a new group or replace yours
+local profInc = { rules = true, themes = true, settings = true, qol = true, bonus = true, reskin = true }
+local importDef, importInc, importRulesMode = nil, {}, "add"
 
 local function ParseImport()
-    importSnap, importErr = nil, nil
+    importSnap, importErr, importDef = nil, nil, nil
+    importInc = {}
     if (importText or ""):match("%S") then
-        importSnap, importErr = ns.Share.Read(importText, "rules")
+        local data, defOrErr = ns.Share.Read(importText)
+        if data then
+            importSnap, importDef = data, defOrErr
+            if importDef.kind == "profile" and ns.Profile then for _, c in ipairs(ns.Profile.Held(data)) do importInc[c.key] = true end end
+        else
+            importErr = defOrErr
+        end
     end
 end
+ns.OptionsApi.ProfileState = function() return { profInc = profInc, importInc = importInc, importDef = importDef, importSnap = importSnap, importErr = importErr } end
 
 local function AddonVersion()
     local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
@@ -3338,8 +3353,10 @@ end
 -- Page switching (2026-10-31 UI pass): Class/Spec Rule Creator, Profiles (Export / Import) and Settings are not in the tab strip
 -- while the skin is on. The toolbar buttons open them (ns.pageOpen) and the tab goes away again as soon as another tab is picked.
 -- With the skin off (/xuiskin) they stay ordinary tabs, because the toolbar does not exist then.
+-- (Options 0.6.66; UI-23 to UI-27) Settings and Profiles are ordinary top tabs and the Recycle Bin is a sub-tab of Profiles, so no
+-- page is hidden any more; kept so an older caller still gets a valid "hidden" function.
 function ns.PageHidden(key)
-    return function() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen ~= key or false end
+    return function() return false end
 end
 
 -- Settings > Display Options / Debugging readers (used by the tree painting and the debug console tray)
@@ -3764,7 +3781,7 @@ function BuildClassCreator()
 end
 end   -- do (class/spec creator)
 
-local function BuildProfiles()
+local function BuildProfiles(binTab)
     local rulesKind = ns.Share.kinds.rules
     local function ApplyRules(snap, mode, okText)
         local now = ns.Share.Apply(rulesKind, snap, mode, function(c)
@@ -3774,73 +3791,63 @@ local function BuildProfiles()
         end)
         if not now then shareMsg = "Combat: this will happen as soon as combat ends."; Notify() end
     end
-    local a = {
+    local PR = ns.Profile
+    local function rulesInc() return { rules = profInc.rules, bars = profInc.rules, qol = profInc.rules } end
+    ------------------------------------------------------------------ Export
+    local e = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Your rules are personal. Nothing is shared unless you export it, and a fresh install starts empty. Export turns your rules into a text you can paste to a friend; they paste it under Import to add it to their own setup. A single rule or a group: right-click it in the list and pick Export. Themes are shared under Settings > UI Options > Theme." },
-        exportH = { type = "header", name = "Export rules", order = 1 },
-        incRules = Tog(exportInc, "rules", "Cooldown + Aura rules (with their groups)", 2, function() end, { width = "double" }),
-        incBars = Tog(exportInc, "bars", "Buff bars (and their group layout)", 3, function() end, { width = "double", hidden = function() return not ns.BarsOn end }),
-        incQol = Tog(exportInc, "qol", "QoL elements", 4, function() end, { width = "double", hidden = function() return not ns.QoLOn end }),
-        gen = { type = "execute", name = "Generate export text", order = 5, width = "double",
+            name = "A profile is everything you made in XayaUI. Tick the parts to include, then make the text and paste it to a friend or another account; they paste it under Profiles > Import. Personal things (the Notepad, the Shopping List, other players' names) never go in. A single rule or a group: right-click it in the list and pick Export." },
+        exportH = { type = "header", name = "Export", order = 1 },
+        gen = { type = "execute", name = "Generate export text", order = 20, width = "double",
+            disabled = function() for _, v in pairs(profInc) do if v then return false end end return true end,
             func = function()
-                local txt, err = ns.Share.Encode("rules", ns.Share_SnapshotAll(exportInc, backupName))
+                local onlyRules = profInc.rules
+                for k, v in pairs(profInc) do if v and k ~= "rules" then onlyRules = false end end
+                local txt, err
+                if onlyRules then   -- rules alone: the rules string (XUI1), which older XayaUI versions also read
+                    txt, err = ns.Share.Encode("rules", ns.Share_SnapshotAll(rulesInc(), backupName))
+                else
+                    txt, err = ns.Share.Encode("profile", PR.Snapshot(profInc, backupName))
+                end
                 exportText = txt or ("Could not export: " .. tostring(err))
                 Notify()
             end },
-        exportBox = { type = "input", name = "Export text  (click, Ctrl+A, Ctrl+C)", order = 6, width = "full", multiline = 6,
+        exportBox = { type = "input", name = "Export text  (click, Ctrl+A, Ctrl+C)", order = 21, width = "full", multiline = 6,
             get = function() return exportText end, set = function() end },
-        importH = { type = "header", name = "Import rules", order = 10 },
-        importBox = { type = "input", name = "Paste exported rules (a rule, a group, or several rules) here, then press Accept", order = 11, width = "full", multiline = 6,
-            get = function() return importText end,
-            set = function(_, v) importText = v or ""; ParseImport(); Notify() end },
-        importInfo = { type = "description", order = 12, width = "full", fontSize = "medium",
-            name = function()
-                if importErr then return "|cffff5555" .. importErr .. "|r" end
-                if importSnap then
-                    local nm = (importSnap.name and importSnap.name ~= "") and ("'" .. importSnap.name .. "': ") or ""
-                    return "|cff55ff55Readable.|r " .. nm .. ns.Share_DescribeRules(importSnap)
-                end
-                return "Nothing pasted yet."
-            end },
-        importGo = { type = "execute", name = "Import", order = 14, width = "half",
-            desc = "Adds everything in the text as one new folder of its own; your existing rules are not touched. During combat it waits until combat ends.",
-            disabled = function() return not importSnap end,
-            func = function()
-                local snap = importSnap
-                importSnap, importText = nil, ""
-                ApplyRules(snap, "add", function(c) return ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol) end)
-            end },
-        msg = { type = "description", order = 15, width = "full", name = function() return shareMsg end },
-        savedH = { type = "header", name = "Backups saved on this computer", order = 20 },
-        backupIntro = { type = "description", order = 20.5, width = "full",
-            name = "A backup is a copy of the parts ticked under Export rules, kept inside XayaUI's saved settings on this computer. Loading one can add it to what you have or replace it." },
-        saveName = { type = "input", name = "Backup name", order = 21, width = "double",
+        msg = { type = "description", order = 22, width = "full", name = function() return shareMsg end },
+        savedH = { type = "header", name = "Backups saved on this computer", order = 30 },
+        backupIntro = { type = "description", order = 30.5, width = "full",
+            name = "A backup is a copy of your rules and groups, kept inside XayaUI's saved settings on this computer. Loading one can add it to what you have or replace it." },
+        saveName = { type = "input", name = "Backup name", order = 31, width = "double",
             get = function() return backupName end, set = function(_, v) backupName = v or "" end },
-        savePick = { type = "select", name = "Or pick a backup to overwrite", order = 21.5, width = "double",
+        savePick = { type = "select", name = "Or pick a backup to overwrite", order = 31.5, width = "double",
             values = function() local v = {}; for _, p in ipairs(ns.Backups()) do v[p.name] = p.name end return v end,
             sorting = function() local o = {}; for _, p in ipairs(ns.Backups()) do o[#o + 1] = p.name end table.sort(o, function(x, y) return tostring(x):lower() < tostring(y):lower() end) return o end,
             get = function() for _, p in ipairs(ns.Backups()) do if p.name == backupName then return p.name end end end,
             set = function(_, v) backupName = v or ""; Notify() end },
-        save = { type = "execute", order = 22, width = "double",
+        save = { type = "execute", order = 32, width = "double",
             name = function()
                 for _, p in ipairs(ns.Backups()) do if p.name == backupName then return "Save and overwrite '" .. backupName .. "'" end end
                 return "Save a backup"
             end,
-            desc = "Saves a copy of the parts ticked under Export rules. If the name matches an existing backup, that backup is replaced after you confirm.",
+            desc = "Saves a copy of your rules and groups. If the name matches an existing backup, that backup is replaced after you confirm.",
             confirm = function()
                 for _, p in ipairs(ns.Backups()) do if p.name == backupName then return true end end
                 return false
             end,
             confirmText = "Overwrite this backup with your current rules? Its old contents are lost.",
             func = function()
-                local ok, msg = ns.Backup_Save(backupName, exportInc)
+                local ok, msg = ns.Backup_Save(backupName, { rules = true, bars = true, qol = true })
                 shareMsg = ok and ("Backup '" .. backupName .. "' " .. msg .. ".") or ("|cffff5555" .. msg .. "|r")
                 Notify()
             end },
     }
+    for i, c in ipairs(PR and PR.COMPONENTS or {}) do
+        e["inc_" .. c.key] = Tog(profInc, c.key, c.label, 1 + i, function() end, { width = "double" })
+    end
     for idx, p in ipairs(ns.Backups()) do
-        a["p" .. idx] = {
-            type = "group", inline = true, order = 30 + idx, name = p.name,
+        e["p" .. idx] = {
+            type = "group", inline = true, order = 40 + idx, name = p.name,
             args = {
                 desc = { type = "description", order = 1, width = "full", name = ns.Share_DescribeRules(p.data) },
                 add = { type = "execute", name = "Load (add)", order = 2, width = "half",
@@ -3856,7 +3863,79 @@ local function BuildProfiles()
             },
         }
     end
-    return { type = "group", name = "Import / Export", order = 6, hidden = ns.PageHidden("profiles"), args = a }
+    ------------------------------------------------------------------ Import
+    local function held(key)
+        if not importSnap then return false end
+        if importDef and importDef.kind == "rules" then return key == "rules" end
+        return importDef and importDef.kind == "profile" and importSnap.parts and importSnap.parts[key] ~= nil or false
+    end
+    local function anyTicked()
+        if not importSnap then return false end
+        if importDef.kind ~= "profile" then return true end
+        for _, v in pairs(importInc) do if v then return true end end
+        return false
+    end
+    local m = {
+        intro = { type = "description", order = 0, width = "full", fontSize = "medium",
+            name = "Paste a profile, rules or a theme. It is read as you paste; nothing changes until you press Import. Untick a part to leave it out." },
+        importH = { type = "header", name = "Import", order = 1 },
+        importBox = { type = "input", name = "Paste the text here, then press Accept", order = 2, width = "full", multiline = 6,
+            get = function() return importText end,
+            set = function(_, v) importText = v or ""; ParseImport(); Notify() end },
+        importInfo = { type = "description", order = 3, width = "full", fontSize = "medium",
+            name = function()
+                if importErr then return "|cffff5555" .. importErr .. "|r" end
+                if importSnap then
+                    local nm = (importSnap.name and importSnap.name ~= "") and ("'" .. importSnap.name .. "': ") or ""
+                    return "|cff55ff55Readable.|r " .. nm .. importDef.Describe(importSnap)
+                end
+                return "Nothing pasted yet."
+            end },
+        partsH = { type = "header", name = "Parts to import", order = 4, hidden = function() return not (importSnap and importDef.kind ~= "theme") end },
+        rulesMode = { type = "select", name = "Rules and groups", order = 20, width = "double",
+            values = { add = "Add them as a new group of their own", replace = "Replace my rules and groups" },
+            sorting = { "add", "replace" },
+            hidden = function() return not held("rules") end,
+            disabled = function() return importDef and importDef.kind == "profile" and not importInc.rules end,
+            get = function() return importRulesMode end, set = function(_, v) importRulesMode = v; Notify() end },
+        importGo = { type = "execute", name = "Import", order = 30, width = "half",
+            desc = "Imports the ticked parts. Settings from a profile replace yours one by one (what the profile does not have stays as it is); a reload then puts them to work. During combat it waits until combat ends.",
+            disabled = function() return not anyTicked() end,
+            confirm = function() return importRulesMode == "replace" and held("rules") and (importDef.kind == "rules" or importInc.rules) and true or false end,
+            confirmText = "Replace all your rules and groups with the imported ones? Your current ones are removed and do not go to the Recycle Bin: export or back them up first.",
+            func = function()
+                local snap, def = importSnap, importDef
+                local mode
+                if def.kind == "rules" then mode = importRulesMode
+                elseif def.kind == "profile" then mode = { inc = ns.Copy(importInc), rules = importRulesMode } end
+                importSnap, importDef, importText, importInc = nil, nil, "", {}
+                local now = ns.Share.Apply(def, snap, mode, function(c)
+                    if def.kind == "rules" then
+                        shareMsg = ("Imported %d rule(s), %d group(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.folders, c.bars, c.qol)
+                    elseif def.kind == "profile" then
+                        shareMsg = "Imported: " .. table.concat(c.done or {}, ", ") .. "." .. (c.reload and " Reload to put the imported settings to work." or "")
+                    else
+                        shareMsg = "Imported " .. def.label .. "."
+                    end
+                    ns.Print(shareMsg)
+                    if ns.MarkDirty then ns.MarkDirty() end
+                    Notify()
+                end)
+                if not now then shareMsg = "Combat: this will happen as soon as combat ends."; Notify() end
+            end },
+        msg = { type = "description", order = 31, width = "full", name = function() return shareMsg end },
+    }
+    for i, c in ipairs(PR and PR.COMPONENTS or {}) do
+        m["imp_" .. c.key] = Tog(importInc, c.key, c.label, 4 + i, function() Notify() end,
+            { width = "double", hidden = function() return not (importDef and importDef.kind == "profile" and held(c.key)) end })
+    end
+    local args = {
+        import = { type = "group", name = "Import", order = 1, args = m },
+        export = { type = "group", name = "Export", order = 2, args = e },
+    }
+    if binTab then binTab.order = 3; binTab.hidden = nil; args.bin = binTab end
+    -- (Options 0.6.66; UI-25 to UI-27) the Profiles top tab: Import, Export and the Recycle Bin as its sub-tabs
+    return { type = "group", name = "Profiles", order = 6, childGroups = "tab", args = args }
 end
 
 -------------------------------------------------------------------------------
@@ -3976,7 +4055,6 @@ local function StartNewRule(fid)
         ns.pickSub = (sub == "enabledTab" or sub == "draftsTab" or sub == "disabledTab" or sub == "smartTab") and sub or nil
     end
     picker = { folder = fid }
-    if ns.pageOpen == "settings" then ns.pageOpen = nil; ns.infoOpen = false end   -- a toolbar button other than Settings leaves the Settings pages
     Notify()
     ns.GoPicker()
 end
@@ -4092,16 +4170,17 @@ local function PickType(typ)
     elseif typ == "import" then
         Notify()   -- closes the type picker where it is; Import is a window of its own and does not change tabs
         if ns.OpenImportWindow then ns.OpenImportWindow() end
-    elseif typ == "profiles" then   -- the Profiles tab itself (Export button)
-        ns.pageOpen = "profiles"; ns.infoOpen = false
+    elseif typ == "profiles" then   -- Profiles > Export
+        ns.infoOpen = false
         Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles")
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", "export")
     else
         CreateRuleOfType(typ, p and p.folder)
     end
 end
 ns.UI.Import = function() PickType("import") end
--- toolbar buttons (Skin.lua): Import opens its own window; Export opens the Profiles page; Creator and Settings open their own page
+-- (Options 0.6.66) the toolbar is gone; these stay for the right-click menus, /xui commands and the type picker: Import opens its own
+-- window; Export opens Profiles > Export
 ns.UI.Export = function() PickType("profiles") end
 ns.UI.Refresh = Notify   -- redraw the options window in place (used by the Import window)
 function ns.OpenPage(key)
@@ -4111,9 +4190,12 @@ function ns.OpenPage(key)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", key == "drafts" and "draftsTab" or "creatorTab")
         return
     end
-    ns.pageOpen = key; ns.infoOpen = false
+    ns.pageOpen = nil; ns.infoOpen = false
     Notify()
     local skinned = ns.SkinRows and ns.SkinRows()
+    -- (Options 0.6.66; UI-25: the Recycle Bin is a sub-tab of Profiles; Import / Export are its other sub-tabs)
+    if key == "recyclebin" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", "bin"); return end
+    if key == "import" or key == "export" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "profiles", key); return end
     pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, (key == "settings" and skinned) and "set" or key)
 end
 ns.UI.Creator = function() ns.OpenPage("creator") end
@@ -4125,7 +4207,7 @@ function ns.OpenDraftSettings()
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "settings", "rules") end
 end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
-ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- toolbar button, next to Export
+ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- Profiles > Recycle Bin (Options 0.6.66; was a toolbar button)
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
 function ns.OptionsApi.OpenPage(module, key, ...)
@@ -4140,16 +4222,8 @@ function ns.OptionsApi.OpenPage(module, key, ...)
         pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, tab, key)
     end
 end
-ns.UI.Settings = function()
-    -- the Settings button is a switch: a second click leaves the settings pages and brings the Rules tabs back
-    if ns.pageOpen == "settings" and ns.SkinRows and ns.SkinRows() then
-        ns.pageOpen = nil
-        Notify()
-        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns")
-    else
-        ns.OpenPage("settings")
-    end
-end
+-- (Options 0.6.66; UI-24 "Cog goes") Settings is a top tab; this opens it (no longer a switch that swaps the feature tabs out)
+ns.UI.Settings = function() ns.OpenPage("settings") end
 
 local function FolderRuleCount(f)
     return #FolderRules(f.id)
@@ -4929,7 +5003,7 @@ local function BuildOptions()
                 func = function() ns.RecycleDeleteNow(it.id); Notify() end },
         } }
     end
-    local binTab = { type = "group", name = "Recycle Bin", order = 6, hidden = ns.PageHidden("recyclebin"), args = binArgs }
+    local binTab = { type = "group", name = "Recycle Bin", order = 3, args = binArgs }   -- a sub-tab of Profiles (Options 0.6.66; UI-25)
     -- Class/Spec Rule Creator is the last sub-tab; Skin.lua pins it to the far right of the tab row (2026-11-01)
     local creatorTab = BuildClassCreator()
     creatorTab.order = 9; creatorTab.hidden = nil; creatorTab.name = "Auto-Generate Rules"   -- (Options 0.6.63, UI-45: her name; was "Class/Spec Rule Creator")
@@ -5157,9 +5231,9 @@ local function BuildOptions()
 
     -- Addon Info and Settings > Acknowledgements moved into the version pane (InfoPane.lua, Options 0.6.56; Xaya 2026-11-06: "Both
     -- move into the pane"): Info > Version info and Info > Credits + Acknowledgements. The version text opens the pane.
-    -- Settings (skin on): its pages REPLACE the Rules / Smart Categories tabs while the toolbar's Settings button is on:
+    -- Settings (skin on): the last top tab (Options 0.6.66; UI-24 "Cog goes": before, a toolbar cog swapped the feature tabs out for it):
     --   Settings page = left sidebar: UI Options (Display | Rule Creation | Theme tabs), Minimap Button, Debugging
-    local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and ns.pageOpen == "settings" end
+    local function SettingsOn() return (ns.SkinRows and ns.SkinRows()) and true or false end
     local settings = BuildAddonSettings()
     local sa = settings.args
     local dispArgs = {}
@@ -5179,17 +5253,16 @@ local function BuildOptions()
         settings.args.minimap = minimapGroup   -- the old single Settings tab (skin rows off) gets it too
     end
     settings.hidden = function() return ns.SkinRows and ns.SkinRows() and true or false end   -- skin off: the old single Settings tab
-    track.hidden = function() return SettingsOn() and true or false end
-    for _, t in pairs(modTabs) do t.hidden = function() return SettingsOn() and true or false end end   -- Settings open: feature tabs go away (Xaya, 2026-11-01)
+    -- (Options 0.6.66) the Rules and feature tabs stay beside Settings (they went away while the Settings pages were open, 2026-11-01)
     -- The Game Menu look (XayaUI_Reskin) was on this Display page until Options 0.6.38; it is the Esc Menu page of the Blizzard UI
     -- Reskin tab now (module "reskin", with the Chat Panel and the Character Pane). The XayaUI button in that menu stays here (it adds
     -- a button, it does not restyle the menu); one line says where the look went.
     if modTabs.reskin and modTabs.reskin.args and modTabs.reskin.args.gamemenu then
         dispArgs.gm_moved = { type = "description", order = 24.2, width = "full", arg = { xuiKeep = true },   -- shown, not folded into an (i)
-            name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard UI Reskin tab > Esc Menu." }
+            name = "The Esc menu's own look (the XayaUI skin) is under the Blizzard Reskin tab > Esc Menu." }
     end
     local out = { type = "group", name = "XayaUI", childGroups = "tab",
-        args = { cooldowns = track, recyclebin = binTab, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(), settings = settings, set = setPage } }
+        args = { cooldowns = track, chat = modTabs.chat, qol = modTabs.qol, bonus = modTabs.bonus, reskin = modTabs.reskin, profiles = BuildProfiles(binTab), settings = settings, set = setPage } }
     pcall(ns.SmartOpen)
     pcall(ns.FeatureTreesOpen)
     pcall(ns.ApplyTreeFilter, out)
@@ -8384,13 +8457,6 @@ local function EnsureChrome(of)
             c.clr:ClearAllPoints(); c.clr:SetPoint("LEFT", c.delSel, "RIGHT", 12, 0)
             c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
         else c.delSel:Hide(); c.clr:Hide() end
-    end
-    -- Creator / Profiles / Settings pages last only until another tab is picked
-    if ns.pageOpen then
-        local st = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
-        local tab = st and st.groups and st.groups.selected
-        local isSettingsTab = ns.pageOpen == "settings" and tab == "set"
-        if tab and tab ~= ns.pageOpen and not isSettingsTab then ns.pageOpen = nil; Notify() end
     end
 end
 

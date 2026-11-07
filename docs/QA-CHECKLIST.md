@@ -389,11 +389,15 @@ For testers. Tick each box in order; when something does not match the **Expect*
 
 ## H. Import / Export and backups
 
-- [ ] **H1.** Right-click a rule > Export. Copy the text. Press **Import** (top bar), paste. **Expect:** "Readable rules", then Import adds it as a new folder "Imported: ...".
-- [ ] **H2.** Settings > UI Options > Theme: export the theme. Paste that theme text into the **Import** button's window. **Expect:** "Readable: a theme"; Import applies it. Paste the same theme text into Import / Export > Import rules. **Expect:** a message that this text holds a theme and where themes are imported.
+- [ ] **H1.** Right-click a rule > Export. Copy the text. Open **Profiles > Import** (Options 0.6.66: the top bar is gone), paste. **Expect:** "Readable rules", then Import adds it as a new folder "Imported: ...".
+- [ ] **H2.** Settings > UI Options > Theme: export the theme. Paste that theme text into the **Import** button's window. **Expect:** "Readable: a theme"; Import applies it. Paste the same theme text into Import / Export > Import rules. **Expect:** a message that this text holds a theme and where themes are imported. (Options 0.6.66: Profiles > Import now reads a theme too and imports it; the "not rules" message is gone.)
 - [ ] **H3.** Paste an export you made with 0.5.x (if you kept one). **Expect:** it still imports.
 - [ ] **H4.** Start an import in combat (training dummy). **Expect:** a line that it will be imported when combat ends; after combat it is there.
-- [ ] **H5.** Import / Export > Backups: name one, **Save a backup**, change a rule, **Load (replace)** the backup. **Expect:** the rule is back as it was.
+- [ ] **H5.** Profiles > Export > Backups (Options 0.6.66; was Import / Export > Backups): name one, **Save a backup**, change a rule, **Load (replace)** the backup. **Expect:** the rule is back as it was.
+- [ ] **H6.** (Options 0.6.66; REQUEST-LOG UI-23 / UI-24, walkthrough: `/xui dev qa` > "Settings window: new top tabs and Profiles (H6-H9)") Open the settings window. **Expect:** no row of buttons (New Rule, Import, Export, Recycle Bin, Settings cog) above the tabs; the top tabs read **Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings**, evenly across the row. Click **Settings**. **Expect:** its left pane (UI Options, Minimap Button, Debugging) and the other five tabs stay in the row.
+- [ ] **H7.** (Options 0.6.66; UI-25 "Rules tab's top row") Rules tab. **Expect:** a flat **+ New Rule** button at the left end of the Smart Categories / Enabled / Disabled / Drafts row, the four tabs even after it, **Auto-Generate Rules** apart at the far right. Click **+ New Rule**. **Expect:** the rule type picker opens, as the old toolbar button did.
+- [ ] **H8.** (Options 0.6.66; UI-26 / UI-27 "individual components can be selected to toggle") **Profiles > Export**: tick boxes Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin. Untick all but Settings and Blizzard Reskin, **Generate export text**, copy it. Change one Settings value (for example Settings > UI Options > Display, selection style). **Profiles > Import**, paste. **Expect:** "a profile with: Settings; Blizzard Reskin", a tick box for each of those two only. Untick Blizzard Reskin, **Import**. **Expect:** "Imported: Settings.", a Reload / Later prompt; after the reload the Settings value is back as exported; your Blizzard Reskin settings are unchanged.
+- [ ] **H9.** (Options 0.6.66; UI-25 "put into profiles instead as its own subtab") Delete a test rule, then open **Profiles > Recycle Bin**. **Expect:** the rule listed with Restore and Delete now; Restore puts it back.
 
 ## I. Reload and logout
 
