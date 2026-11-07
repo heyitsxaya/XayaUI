@@ -15,12 +15,12 @@ First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub se
 | session_014bN6tV7oStjTuVPEJbytBJ | UI bugs | requested | — | no |
 | session_014bN6tTxYo6enpkMGsVkMqm | Perf | requested | — | no |
 | session_014bN6tSjceDcH6FdJCeukZG | Chat issue review | requested | — | no |
-| session_014bN6tTZroPi49dAYwBbeGp | D8 raid rules | requested | — | no |
+| session_014bN6tTZroPi49dAYwBbeGp | D8 raid rules | handoffs/d8-raid-rules.md on d8-raid-rules-ready@248de57 (held code 91e8701, PR #446 HELD); nothing to land | none: all held for D8-Q1 (file is the restart point) | after its full-suite result |
 | session_014bN6tSfFULX4BSXzmZ1yCx | Function audit | requested | — | no |
 | session_014bN6tUt2Da7LiGNYKgtM7R | Nameplates | requested | — | no |
 | session_014bN6tX7AoZQrGX246YSXjC | Progress bar cues | handoffs/bar-cues.md on dreamy-edison-pvb3i1@98a4d35a; all on main except 4cc2c221 (with lander) | none needed | after lander confirms 4cc2c221 |
 | session_014bN6tUPG6SDvkoa3i3tMu5 | Reskin elements | requested | — | no |
-| session_014bN6tSRsJgz4JWyawQp5gk | LFG / Wordle: PAUSED by her words; RMG-Q0 in flow; kept (not archived) so it can resume if she lifts the pause | none, by her pause | — | no |
+| session_014bN6tSRsJgz4JWyawQp5gk | LFG / Wordle: PAUSED by her words; RMG-Q0 in flow; her requests are rows 1-10 in REQUEST-LOG; nothing to land | none, by her pause | 08:45 (it said archive any time; unarchive to resume) | — | no |
 | session_014bN6tSZh6UFB2WcRuyXqBZ | Lander (last, between landings) | not yet | — | no |
 
 ## Completed sessions (archive on confirmation)
@@ -38,11 +38,11 @@ First snapshot ~08:35 UTC by the 11-06 hub; kept current by the overnight hub se
 Externals session_014bN6tUA9JtkPEkQ3Qch7iE; chat round session_014bN6tUJW6J1rnMZ6Z7t7c1; QA flow session_014bN6tUZLKHa2NXorHRJghL; top tabs session_014bN6tWsQ4qcob9VPKD7PV5. Feature summary session_014bN6tU26cuzQ9LarKYhZQx and branch cleanup session_014bN6tV8Z5syBadjkfcN2Z4 stay as they are.
 
 ## O-151 branches
-Not on main (25, per branch cleanup 08:35): all are in the lander's queue or held, except d8-raid-rules-ready b3f0d5b and perf-options-memory f9a6a9c (owners asked which heads are final). Held (O-109): d8-raid-rules 4811da5, d8-raid-rules-main dc7628f, fervent-cerf-hldtwn 3ac6719. Stale (7) and contained (19): listed in BRANCHES-2026-11-07.md with one delete command for Xaya.
+Not on main (25, per branch cleanup 08:35): all are in the lander's queue or held, except perf-options-memory f9a6a9c (perf asked to confirm it is inside the chain). Held (O-109): d8-raid-rules-ready 248de57 (code 91e8701, PR #446) is the only held head. Superseded/stale per D8: d8-raid-rules-main dc7628f (#440), d8-raid-rules 4811da5 (#435), fervent-cerf-hldtwn, d8-docs-to-main (docs only, in landing 2). Stale (7) and contained (19): listed in BRANCHES-2026-11-07.md with one delete command for Xaya.
 Snapshot above (from branch cleanup, 08:28). Fresh classified list requested from branch cleanup (docs/process/BRANCHES-2026-11-07.md) and the lander.
 
 ## Held (O-109)
-D8 load-condition changes: stay off main; first question in the QA flow.
+D8 load-condition changes (all of D8): claude/d8-raid-rules-ready 91e8701, PR #446, stay off main; D8-Q1..Q8 in the QA flow.
 
 # Snapshot ~08:35 UTC (11-06 hub)
 
