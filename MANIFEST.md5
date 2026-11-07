@@ -172,7 +172,7 @@ ff43443c7b1d20d60d94d8820e50ff50  XayaUI_DevAssist/QAWalks-chat.lua
 5d1e25fd434970416f8c8147ef45c7b7  XayaUI_DevAssist/QAWalks-debug.lua
 bf1b1573d5271378ce31fc10948cd43e  XayaUI_DevAssist/QAWalks-display.lua
 a105c0f5551383b652134bec6f898ab7  XayaUI_DevAssist/QAWalks-perf.lua
-107544133354e8252224e01dc168300b  XayaUI_DevAssist/QAWalks-profiles.lua
+b1d05bd42f45cedfd8645ccf775c46f0  XayaUI_DevAssist/QAWalks-profiles.lua
 eb39a60ffc41cc33d19bbadfb46f9fb3  XayaUI_DevAssist/QAWalks.lua
 eeddd5c6837ec0e6ad5eeb4f0bdc35e2  XayaUI_DevAssist/RunRecord.lua
 d90023bba9b7467f6f8dfcd9d47ff942  XayaUI_DevAssist/XayaUI_DevAssist.toc
@@ -225,7 +225,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-9f253a34cb862265646ba7401e30841d  XayaUI_Options/Options.lua
+ff216def789fc0a4e1279142044d855f  XayaUI_Options/Options.lua
 88577b4bd85ae026304c40bb017d2cea  XayaUI_Options/OutcomesEditor.lua
 baee0751d15436adef0614a78632eea1  XayaUI_Options/Profiles.lua
 254f07e7aaf7373defae6c18fbf2eccf  XayaUI_Options/RuleSearch.lua
@@ -812,7 +812,7 @@ c41c52d02e5112eb8c21794ea85c0b18  tests/recycle_bin_run.py
 4f1a9d74f3c782632ef90c91884c8a0e  tests/reskin_tab_run.py
 88bd7a09fd9ac7f125bd6f4285557c9a  tests/reskin_tab_switch_run.py
 7122b20e5206f3b97c395d01daa7837a  tests/rule_search_run.py
-24def41130c94534cf81b2f7cd7cb8da  tests/rules_subtabs_compact_run.py
+94a6902a463625643967cbf2e873b009  tests/rules_subtabs_compact_run.py
 454634c102c49cb685d533d16e81ac13  tests/run_all.py
 b0fe90eed0dd0e7046097b913cc68344  tests/run_record_run.py
 b49015f5d265bd03e62c27e3fa420ad3  tests/settings_restructure_run.py

@@ -4,13 +4,14 @@
 -- "+ New Rule" on the Rules row, Profiles > Import / Export with components and the Recycle Bin as a sub-tab (QA H6 to H9).
 -- Standing rule V22 (Xaya 2026-11-07): every step that the addon can judge offers its verdict (prefill = true; recorded only on her
 -- click); steps it cannot judge say what to look at (noVerdict). Settings it changes are remembered in the first step and put back in
--- the last. Reaches the settings window only through core (ns.LoadOptions), ns.Profile, ns.Share, ns.OptionsApi and AceConfigDialog.
+-- the last. Reaches the settings window only through core (ns.LoadOptions), ns.Share, ns.OptionsApi (its Profile and OpenRecycleBin) and AceConfigDialog.
 -- UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
 
 local function NS() return rawget(_G, "XayaUI_NS") end
+local function Prof() local ns = NS(); return ns and ns.OptionsApi and ns.OptionsApi.Profile end
 local function ACD() return LibStub and LibStub("AceConfigDialog-3.0", true) end
 local function Root() local a = ACD(); return a and a.OpenFrames and a.OpenFrames["CueRules"] end
 local function Num(f, m) if not (f and f[m]) then return nil end local ok, v = pcall(f[m], f); if ok and type(v) == "number" then return v end end
@@ -93,17 +94,17 @@ QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Pr
             for _, t in ipairs(Shown(sub)) do names[#names + 1] = TabText(t) end
             local got = table.concat(names, ", ")
             if got ~= "Import, Export, Recycle Bin" then return false, "Profiles' sub-tabs read: " .. got end
-            local ns = NS(); local P = ns and ns.Profile
+            local P = Prof()
             if not (P and #P.COMPONENTS == 6) then return false, "the profile components are not loaded" end
             return true, "sub-tabs: " .. got .. "; 6 components to tick"
         end },
     { text = "Press |cffffd100Do it for me|r: a profile with only |cffffd100Settings|r is made from your setup (your Selection style is remembered), your Selection style is then changed, and the profile is imported back with Settings ticked.\n\n|cffffd100Expect:|r a Reload / Later prompt (press Later); the Selection style is back as it was.",
         setup = function()
-            local ns, db = NS(), rawget(_G, "CueRulesDB")
-            if not (ns and ns.Profile and ns.Share and db) then return end
+            local ns, db, P = NS(), rawget(_G, "CueRulesDB"), Prof()
+            if not (ns and P and ns.Share and db) then return end
             db.ui = db.ui or {}
             saved.sel = db.ui.selStyle
-            local txt = ns.Share.Encode("profile", ns.Profile.Snapshot({ settings = true }, "qa"))
+            local txt = ns.Share.Encode("profile", P.Snapshot({ settings = true }, "qa"))
             db.ui.selStyle = (saved.sel == "bar") and "text" or "bar"
             local data, def = ns.Share.Read(txt or "")
             if data and def then def.Apply(data, { inc = { settings = true }, rules = "add" }) end
@@ -115,7 +116,7 @@ QA.Register("settings-toplevel", { title = "Settings window: new top tabs and Pr
         end },
     { text = "Press |cffffd100Do it for me|r: |cffffd100Profiles > Recycle Bin|r opens.\n\n|cffffd100Expect:|r the Recycle Bin page (what you deleted, with Restore and Delete now, or \"The Recycle Bin is empty\").",
         setup = function() local ns = NS(); if ns and ns.LoadOptions and ns.LoadOptions() and Root() == nil then local a = ACD(); if a then a:Open("CueRules") end end
-            if ns and ns.UI and ns.UI.RecycleBin then ns.UI.RecycleBin() end end,
+            if ns and ns.OptionsApi and ns.OptionsApi.OpenRecycleBin then ns.OptionsApi.OpenRecycleBin() end end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local a = ACD(); local st = a and a:GetStatusTable("CueRules", { "profiles" })

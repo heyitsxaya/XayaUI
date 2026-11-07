@@ -4208,6 +4208,9 @@ function ns.OpenDraftSettings()
 end
 ns.UI.Drafts = function() ns.OpenPage("drafts") end
 ns.UI.RecycleBin = function() ns.OpenPage("recyclebin") end   -- Profiles > Recycle Bin (Options 0.6.71; was a toolbar button)
+-- published for XayaUI Dev Assist's walkthroughs (feature addons never reach into ns.UI / ns.Profile directly)
+ns.OptionsApi.OpenRecycleBin = ns.UI.RecycleBin
+ns.OptionsApi.Profile = ns.Profile   -- Profiles.lua (loaded before this file): components, Snapshot, Held, Apply
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
 function ns.OptionsApi.OpenPage(module, key, ...)
