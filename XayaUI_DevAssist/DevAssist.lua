@@ -12,6 +12,8 @@
 --   .catalogue / .catalogueCDM / .seen   the aura catalogue and the aura log (AuraCatalogue.lua)
 --   .probe     the event probe, /xuidev probe (Probe.lua)
 local ADDON = ...
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+do local cns = rawget(_G, "XayaUI_NS"); if cns and cns.SettingsDeclareStore then cns.SettingsDeclareStore("devassist", "XayaUI_DevAssist", "XayaUIDevAssistDB") end end
 local GD = {}
 _G.XayaUIDevAssist = GD
 -- (0.7.5) tell XayaUI that Dev Assist is loaded: its developer commands and settings are here now, and the Aura ID "via ..." text

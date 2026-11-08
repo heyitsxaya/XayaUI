@@ -58,7 +58,7 @@ if not QA.walks["reskin-switches-reload"] then return R end
 local was = ns.ReskinTabOn()
 check("(the reskins start switched on)", was == true)
 -- the Esc Menu reskin on (its own box), so the look after each /reload has something to show or not
-CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.gm = CueRulesDB.ui.gm or {}; CueRulesDB.ui.gm.skin = true
+local RS = ns.Settings("reskin"); RS.gm = RS.gm or {}; RS.gm.skin = true   -- (P5: Blizzard Reskin's own store, XayaUIReskinDB.gm)
 local res, notes = Walk("reskin-switches")
 check("reskin part 1: the switch is flipped through Enable Blizzard Reskin itself: saved off, and the reload question asked",
   ns.ReskinTabOn() == false and W.popup == "XAYAUI_RESKIN_RELOAD" and res and res.steps[2].r == "P" and tostring(res.steps[2].d):find("switch now OFF", 1, true), tostring(notes[2]))

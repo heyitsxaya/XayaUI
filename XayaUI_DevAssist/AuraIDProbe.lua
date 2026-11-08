@@ -12,6 +12,7 @@
 local ns = rawget(_G, "XayaUI_NS")   -- shares XayaUI core's namespace; without XayaUI it has nothing to report on
 if type(ns) ~= "table" then return end
 local DevS = ns.Settings("devassist")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("devassist", "XayaUI_DevAssist", "XayaUIDevAssistDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
 -- XayaUI_CombatEngine folder (installed before 0.6.0) finds this and steps aside (no double load).
@@ -38,13 +39,13 @@ local function Log(line)
     -- identical consecutive lines (e.g. a refused call repeating every cast) are counted, not stored 300 times
     if line == lastLine then repeats = repeats + 1; return end
     if repeats > 0 then
-        local db0 = ns.SettingsReady() and DevS
+        local db0 = ns.SettingsReady("devassist") and DevS
         if db0 and db0.idProbe then db0.idProbe[#db0.idProbe + 1] = "   (previous line repeated " .. repeats .. " more times)" end
         repeats = 0
     end
     lastLine = line
     ns.Print("[idprobe] " .. line)
-    local db = ns.SettingsReady() and DevS
+    local db = ns.SettingsReady("devassist") and DevS
     if db then
         db.idProbe = db.idProbe or {}
         db.idProbe[#db.idProbe + 1] = (date and date("%H:%M:%S ") or "") .. line
@@ -203,7 +204,7 @@ end
 -- Offline we can then ask: does a removal event line up with the expected end of a buff cast earlier?
 local flagTotals = { A = 0, U = 0, R = 0, n = 0 }
 local function Stream(line)
-    if not ns.SettingsReady() then return end
+    if not ns.SettingsReady("devassist") then return end
     local db = DevS
     local s = db.idProbeStream
     if not s then s = {}; db.idProbeStream = s end
@@ -383,7 +384,7 @@ local function Arm(on)
         f:RegisterUnitEvent("UNIT_AURA", "player")
         uaLogged, uaCount = { ooc = 0, combat = 0 }, { ooc = 0, combat = 0 }
         flagTotals = { A = 0, U = 0, R = 0, n = 0 }
-        if ns.SettingsReady() then DevS.idProbeStream = {} end
+        if ns.SettingsReady("devassist") then DevS.idProbeStream = {} end
         local have = {}
         for _, n in ipairs(CANDIDATES) do
             have[#have + 1] = n .. "=" .. ((C_UnitAuras and C_UnitAuras[n]) and "yes" or "no")
@@ -409,7 +410,7 @@ end
 function ns.IDProbe(arg)
     arg = (arg or ""):lower()
     if arg == "log" then
-        local db = ns.SettingsReady() and DevS
+        local db = ns.SettingsReady("devassist") and DevS
         local n = db and db.idProbe and #db.idProbe or 0
         ns.Print("[idprobe] " .. n .. " saved lines")
         for i = math.max(1, n - 25), n do ns.Print(db.idProbe[i]) end

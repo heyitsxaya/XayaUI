@@ -149,7 +149,7 @@ local function dpTabs()
     local u = tg:GetUserDataTable(); local p = u and u.path
     return p and p[1] == "bonus" and p[#p] == "datapanels" end)
 end
-CueRulesDB.dataPanels.general.enabled = false
+ns.Settings("bonus").dataPanels.general.enabled = false
 ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
 local tg = dpTabs()
 local shownN = 0
@@ -168,7 +168,7 @@ local function texts(x) if not x then return end
   for _, c in ipairs(x.children or {}) do texts(c) end end
 texts(ACD.OpenFrames["CueRules"])
 check("  ...the page shows its one sentence", table.concat(said, " | "):find("Shows info panels on your screen: time, gold, frame rate and more.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
-CueRulesDB.dataPanels.general.enabled = true
+ns.Settings("bonus").dataPanels.general.enabled = true
 ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
 tg = dpTabs()
 local lay = tg and layout(tg) or {}

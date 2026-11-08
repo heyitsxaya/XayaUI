@@ -109,7 +109,7 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 
 local c = ns.CharToolkit_Cfg()
 check("off by default", c.enabled == false)

@@ -154,7 +154,7 @@ end)
 section("E: the profile codec", function()
   local P = ns.Profile
   check("E: the profile component list exists (the six parts plus Nameplates, which is on in this run; Options 0.6.80)", P ~= nil and #P.COMPONENTS == 7, P and #P.COMPONENTS)
-  local DB = CueRulesDB
+  local DB = ns.SettingsRoutedForTests()   -- (P5) each key where its module reads it now (its own store or CueRulesDB)
   DB.chat2 = DB.chat2 or {}
   DB.chat2.fadeMarker = 7
   DB.chat2.whisperSounds = { list = { { who = "Friendname-Realm" } }, fav = { enabled = true } }

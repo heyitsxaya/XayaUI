@@ -369,7 +369,12 @@ function W.allChatOptions(Notify)
   return { type = "group", args = { chatpanel = ns.BuildChatTab(Notify), improvedchat = ns.BuildImprovedChatTab and ns.BuildImprovedChatTab(Notify) or nil } }
 end
 function W.start()
-  ns.Chat_OnDBReady()
+  -- (P5) the addon's ADDON_LOADED: its settings store (XayaUIChatDB) opens and runs Chat_OnDBReady, which waited for it (ns.WhenSettingsReady).
+  -- This stand-in always ran Chat_OnDBReady after every Chat file, so with every default those files define; the game ran it while
+  -- Core.lua loaded (fewer defaults: XayaUI_Chat/Core.lua keeps them in C.defaultsAtLoad). The stand-in keeps its own timing, as before.
+  local dbg = ns.Service and ns.Service("chatDebug")
+  if dbg and dbg.C then dbg.C.defaultsAtLoad = nil end
+  if ns.SettingsOpenAllForTests then ns.SettingsOpenAllForTests() else ns.Chat_OnDBReady() end
   W.fireEvent("PLAYER_ENTERING_WORLD")
   W.flush()
   W.update(0.4, 2)

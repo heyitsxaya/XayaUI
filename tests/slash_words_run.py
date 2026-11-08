@@ -38,6 +38,7 @@ function World(opts)
     Calculator_Command = function(msg) CALLS[#CALLS + 1] = "calc:" .. tostring(msg) end,
     RegisterSettingsPage = function() end,
     WhenReady = function(fn) ready[#ready + 1] = fn end,
+    WhenSettingsReady = function(_, fn) ready[#ready + 1] = fn end,   -- (P5: Utilities.lua waits for XayaUI Bonus's own store)
   }
   if opts.setup then opts.setup() end
   local before = {}

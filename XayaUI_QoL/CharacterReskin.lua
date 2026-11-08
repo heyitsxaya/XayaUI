@@ -37,7 +37,8 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local CM = ns.CharModel
 
 -- booleans are switches; numbers are the wider window's extra width (px) and the background's opacity (0.5 - 1)
@@ -56,10 +57,38 @@ local LIMITS = { widePx = { 0, 300 }, bgAlpha = { 0.5, 1 }, tallPx = { 0, 300 } 
 local LIST_TABLES = { "statHide", "statOrder", "statMode", "statName", "statColor", "groupName", "groupColor" }
 local GOOD, WARN = { 0.5, 1, 0.5, 1 }, { 1, 0.56, 0.25, 1 }   -- the Character Toolkit's good / warn tones
 ns.CHARRESKIN_DEFAULTS = DEFAULTS
+-- (P5, Xaya PS-53: "Character ui *reskin* is a blizzard change. Functionality changes or enhancements are separate.") The settings are
+-- kept in two halves: what only changes the LOOK of Blizzard's character window (LOOK below: the switch, chrome, the stat list's art,
+-- background opacity, the wider window, the extra height) in Blizzard Reskin's settings (XayaUIReskinDB.characterReskin), everything
+-- this file adds to the window (item level, enchant and gem blocks, the full stat list and how it is organised; PS-54) in QoL's
+-- (XayaUIQoLDB.characterReskin). Cfg() gives one table that reads and writes each field in its half. While Blizzard Reskin's settings
+-- are not open (XayaUI Blizzard Reskin switched off) the look half is this session's defaults with the switch off: nothing is drawn and
+-- nothing is saved for it. (Modules.lua sections 0b / 0c; the split is LEGACY_SPLIT there.)
+local ReskinS = ns.Settings("reskin")
+local LOOK = ns.SettingsSplitSub("characterReskin")   -- { enabled, chrome, stats, bgAlpha, wide, widePx, widePxTo42, tallPx = true }
+local featT, lookT, lookOff, halvesEpoch
+local cfg = setmetatable({}, {
+    __index = function(_, k) if LOOK[k] then return lookT[k] end return featT[k] end,
+    __newindex = function(_, k, v) if LOOK[k] then lookT[k] = v else featT[k] = v end end,
+})
+local function Halves()
+    if halvesEpoch == ns.settingsEpoch and featT and lookT then return end
+    local f = QolS.characterReskin
+    if type(f) ~= "table" then f = {}; QolS.characterReskin = f end
+    local l
+    if ns.SettingsReady("reskin") then
+        l = ReskinS.characterReskin
+        if type(l) ~= "table" then l = {}; ReskinS.characterReskin = l end
+    else
+        lookOff = lookOff or {}
+        l = lookOff
+    end
+    featT, lookT, halvesEpoch = f, l, ns.settingsEpoch
+end
 local function Cfg()
-    if not ns.SettingsReady() then return nil end
-    local c = QolS.characterReskin
-    if type(c) ~= "table" then c = {}; QolS.characterReskin = c end
+    if not ns.SettingsReady("qol") then return nil end
+    Halves()
+    local c = cfg
     -- (QoL 0.7.27) once per install: QoL 0.7.21-0.7.23 saved their default extra width, 240, into the settings, so the 0.7.24 default
     -- (42: 380 / 582) never reached an install that had run them (Xaya 2026-11-06: "surely this isn't 380px?", REQUEST-LOG #58-#59;
     -- her answer: a saved 240, the old default, becomes 42 once; any other saved number stays; a 240 picked after this stays too)
@@ -78,6 +107,7 @@ local function Cfg()
             c[k] = math.max(lim[1], math.min(lim[2], n))
         end
     end
+    if lookT == lookOff then lookOff.enabled = false end   -- (Blizzard Reskin off: the reskin stays off)
     return c
 end
 ns.CharReskin_Cfg = Cfg
@@ -1360,7 +1390,11 @@ function ns.CharReskin_Apply()
     if On(c) then Hook() end
     if hooked then Guard(ApplyNow) end
 end
-ns.WhenReady(function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+-- (P5) once both halves of the settings are open: QoL's at this addon's load, Blizzard Reskin's at that addon's load (it loads after
+-- this one); with XayaUI Blizzard Reskin switched off this never runs (the reskin is off, nothing is made)
+ns.WhenSettingsReady("qol", function()
+    ns.WhenSettingsReady("reskin", function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+end)
 ns.RegisterReskin("charreskin", function() ns.CharReskin_Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 
 -------------------------------------------------------------------------------
@@ -1486,6 +1520,10 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
+    if arg == "on" and not ns.SettingsReady("reskin") then   -- (P5) the switch is Blizzard Reskin's setting
+        ns.Print(("/xui reskin on: the Character Reskin's look is kept by %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(ns.AddonTitle and ns.AddonTitle("XayaUI_Reskin") or "XayaUI Blizzard Reskin"))
+        return
+    end
     if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload).")); return end
     if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
     if arg == "status" or arg == "" then

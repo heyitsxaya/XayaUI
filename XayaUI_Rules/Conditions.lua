@@ -7,6 +7,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local issecret = issecretvalue or function() return false end
 ns.IsSecret = issecret
@@ -632,7 +633,7 @@ local learnedT, learnedEp   -- (P2) kept in an upvalue; looked up again only whe
 local function LearnedTable()
     local t = learnedT
     if learnedEp ~= ns.settingsEpoch or type(t) ~= "table" then
-        if not ns.SettingsReady() then return nil end
+        if not ns.SettingsReady("core") then return nil end
         t = CoreS.learnedAuraDur
         if type(t) ~= "table" then t = {}; CoreS.learnedAuraDur = t end
         learnedT, learnedEp = t, ns.settingsEpoch
@@ -816,7 +817,7 @@ local glowT, glowEp   -- (P2) kept in an upvalue; looked up again only when the 
 local function GlowSeenDB()
     local g = glowT
     if glowEp ~= ns.settingsEpoch or type(g) ~= "table" then
-        if not ns.SettingsReady() then return nil end
+        if not ns.SettingsReady("core") then return nil end
         g = CoreS.procGlowSeen
     end
     -- a new table build can pair buttons differently: start counting again
@@ -2119,7 +2120,7 @@ local stacksT, stacksEp   -- (P2) kept in an upvalue; looked up again only when 
 local function Store()
     local t = stacksT
     if stacksEp ~= ns.settingsEpoch or type(t) ~= "table" then
-        if not ns.SettingsReady() then return nil end
+        if not ns.SettingsReady("core") then return nil end
         t = CoreS.learnedAuraStacks
         if type(t) ~= "table" then t = {}; CoreS.learnedAuraStacks = t end
         stacksT, stacksEp = t, ns.settingsEpoch

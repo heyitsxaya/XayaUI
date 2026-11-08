@@ -17,7 +17,9 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
-local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB") end
+local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
 
 local LABEL = "XayaUI"
 local diag = { built = 0, rows = 0, groups = 0, lastError = nil, failed = false, titleFound = false }
@@ -48,8 +50,8 @@ local DEFAULTS = {
 ns.GameMenuSkinDefaults = DEFAULTS
 
 local function Cfg()
-    ReskinS.gm = ReskinS.gm or {}   -- (kept in CueRulesDB.ui.gm, as before: Modules.lua section 0b)
-    local gm = ReskinS.gm
+    local gm = ReskinS.gm   -- (XayaUIReskinDB.gm; CueRulesDB.ui.gm before P5: Modules.lua section 0b)
+    if type(gm) ~= "table" then gm = {}; ReskinS.gm = gm end
     for k, v in pairs(DEFAULTS) do
         if gm[k] == nil then gm[k] = (type(v) == "table") and {} or v end
     end
@@ -471,8 +473,8 @@ local function Apply() if SavedOn() then Enable() elseif live then Disable() end
 ns.RegisterReskin("gamemenu", Apply)                            -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 ns.GameMenuSkin_Hook = function() live = true; Hook() end   -- (tests: place the hooks and let them work, as ticking the switch does)
 function ns.GameMenuSkin_Live() return live end              -- (tests)
--- at login (XayaUI's settings are ready before this addon loads, so this runs while the file loads)
-ns.WhenReady(function() if SavedOn() then Enable() end end)
+-- at login: once this addon's own settings are open (P5: XayaUIReskinDB, at this addon's ADDON_LOADED; Modules.lua section 0c)
+ns.WhenSettingsReady("reskin", function() if SavedOn() then Enable() end end)
 
 -- /xui debug gamemenu (the skin's half) moved to XayaUI Dev Assist (Reskin 0.6.5; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it
 -- reads this

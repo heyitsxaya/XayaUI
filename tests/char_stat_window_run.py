@@ -73,7 +73,7 @@ __DB__
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
 -- every check runs inside pcall: a missing function or frame (older code) is a failed check, not a stopped run
 function checkp(name, fn)

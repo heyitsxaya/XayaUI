@@ -6,7 +6,7 @@
 -- (customizable); also allow cycling through flavor texts (configurable) "BAD MONKEY," "death comes for us all," "NOPE," "Disagree,"
 -- "WTB Rez""; hide as a ghost; load "configurable, by default raid only"; the modifier: "Choice in settings" (Shift / Ctrl / Alt, Shift to
 -- start); the flavour text changes "Each death" (her list in order).
--- Saved settings: CueRulesDB.releaseGuard. NOT RUN IN GAME when written (2026-11-06): QA E1z82.
+-- Saved settings: XayaUIQoLDB.releaseGuard (CueRulesDB.releaseGuard before P5). NOT RUN IN GAME when written (2026-11-06): QA E1z82.
 --
 -- The game's side (Blizzard's 12.1.5 source mirror, 12.1.5.70688): the death window is the StaticPopup "DEATH"
 -- (Blizzard_StaticPopup_Game/Mainline/GameDialogDefs.lua:183): button1 = DEATH_RELEASE, whose OnButton1 calls RepopMe() (:229-236). A shown
@@ -23,7 +23,8 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local FLAVORS = { "BAD MONKEY", "death comes for us all", "NOPE", "Disagree", "WTB Rez" }
 ns.RELEASEGUARD_DEFAULTS = { enabled = false, text = "NO RELEASE", flavorOn = true, flavors = table.concat(FLAVORS, "\n"), modifier = "SHIFT",
@@ -34,7 +35,7 @@ local MODS = { SHIFT = "Shift", CTRL = "Ctrl", ALT = "Alt" }
 local LOADS = { raid = "Raids only", group = "Raids and dungeons" }
 
 local function Cfg()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("qol") then return nil end
     local c = QolS.releaseGuard
     if type(c) ~= "table" then c = {}; QolS.releaseGuard = c end
     for k, v in pairs(ns.RELEASEGUARD_DEFAULTS) do if c[k] == nil then c[k] = v end end
@@ -186,7 +187,7 @@ function ns.ReleaseGuard_Apply()
     local d = FindDeath()
     if d and d.IsShown and d:IsShown() then Cover(d) end
 end
-ns.WhenReady(function() local c = Cfg(); if c and c.enabled then ns.ReleaseGuard_Apply() end end)
+ns.WhenSettingsReady("qol", function() local c = Cfg(); if c and c.enabled then ns.ReleaseGuard_Apply() end end)   -- (P5: once XayaUIQoLDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 
 -- options: QoL > Release Guard (its tick box on its row in the left pane)
 function ns.BuildReleaseGuardPage(Notify)

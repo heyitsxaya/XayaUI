@@ -144,7 +144,7 @@ if not BS then return R end
 
 -- 0. off: nothing made
 local live = BS.Live()
-check("fresh install: no saved table (V14)", not (CueRulesDB.ui and CueRulesDB.ui.rsk), CueRulesDB.ui and CueRulesDB.ui.rsk)
+check("fresh install: no saved table (V14)", not (XayaUIReskinDB and XayaUIReskinDB.rsk), XayaUIReskinDB and XayaUIReskinDB.rsk)   -- (P5: Blizzard Reskin's own store)
 check("fresh install: nothing live, no watcher frame", not live.windows and not live.minimap and not live.tooltips and not live.tracker and not live.lodWatch and not live.waitFrame)
 check("fresh install: Blizzard's window art untouched", SP.NineSlice:GetAlpha() == 1 and SP.Bg:GetAlpha() == 1)
 check("fresh install: minimap mask untouched, no GetMinimapShape", MM._mask == nil and rawget(_G, "GetMinimapShape") == nil)
@@ -185,7 +185,7 @@ page.args.list.args.lootroll.set(nil, true)
 -- one window left out
 page.args.list.args.bags.set(nil, false)
 check("a window left out on the page is given back (Bags)", CF1.NineSlice:GetAlpha() == 1 and not BS.memo[CF1].bg:IsShown())
-check("  ...and saved only as a leave-out", CueRulesDB.ui.rsk.winOff.bags == true)
+check("  ...and saved only as a leave-out", XayaUIReskinDB.rsk.winOff.bags == true)
 page.args.list.args.bags.set(nil, true)
 check("ticked again, it is skinned again", CF1.NineSlice:GetAlpha() == 0)
 -- combat: a protected window waits
@@ -262,10 +262,10 @@ QOT:EndLayout()
 check("  ...and Blizzard's layout is no longer recoloured", select(1, QOT.block.HeaderText:GetTextColor()) == 1)
 op.args.list.args.quests.set(nil, true)
 check("Professions section restyled while the Shopping List's tracker part is off", PRT.Header.Background:GetAlpha() == 0)
-CueRulesDB.shoppingList = { enabled = true, tracker = true }
+ns.Settings("qol").shoppingList = { enabled = true, tracker = true }
 BS.Apply()
 check("Professions section left to the Shopping List while its tracker part is on", PRT.Header.Background:GetAlpha() == 1)
-CueRulesDB.shoppingList = nil
+ns.Settings("qol").shoppingList = nil
 
 -- 5. the tab's own switch turns everything off at once
 page.xuiSwitch.set(nil, true); mp.xuiSwitch.set(nil, true); mp.args.shape.set(nil, "SQUARE"); tp.xuiSwitch.set(nil, true)
@@ -273,7 +273,7 @@ ns.SetReskinTab(false)
 local L5 = BS.Live()
 check("Blizzard UI Reskin off: every skin stops", not L5.windows and not L5.minimap and not L5.tooltips and not L5.tracker)
 check("  ...windows, minimap and tracker have Blizzard's look back", SP.NineSlice:GetAlpha() == 1 and MM._mask == BS.ROUND_MASK and OTF.Header.Background:GetAlpha() == 1)
-check("  ...each keeps its own tick box", CueRulesDB.ui.rsk.windows == true and CueRulesDB.ui.rsk.tracker == true)
+check("  ...each keeps its own tick box", XayaUIReskinDB.rsk.windows == true and XayaUIReskinDB.rsk.tracker == true)
 ns.SetReskinTab(true)
 check("Blizzard UI Reskin on again: the ticked skins come back", SP.NineSlice:GetAlpha() == 0 and MM._mask == BS.SQUARE_MASK and OTF.Header.Background:GetAlpha() == 0)
 -- 6. Battle.net toasts and pop-up dialogs (Reskin 0.6.11)
@@ -290,7 +290,7 @@ SP1.BG:SetAlpha(1); SP1:Show()
 check("a pop-up shown again is faded again", SP1.BG:GetAlpha() == 0)
 tsp.args.list.args.popups.set(nil, false)
 check("pop-ups left out: Blizzard's art back, the toast keeps the look", SP1.BG:GetAlpha() == 1 and not BS.memo[SP1].bg:IsShown() and near(BNT._bdcolor[1], bg[1]))
-check("  ...saved only as a leave-out", CueRulesDB.ui.rsk.toastOff.popups == true)
+check("  ...saved only as a leave-out", XayaUIReskinDB.rsk.toastOff.popups == true)
 tsp.args.list.args.popups.set(nil, true)
 tsp.xuiSwitch.set(nil, false)
 c = BNT._bdcolor

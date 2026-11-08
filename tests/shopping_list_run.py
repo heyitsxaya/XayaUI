@@ -75,7 +75,7 @@ assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
 local framesBefore = #created
 assert(loadfile(__SL__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local Shop = ns.Shop
 local c = Shop.Cfg()
 -- this character's defaults (FA-7: per character; before it, the one account-wide D())

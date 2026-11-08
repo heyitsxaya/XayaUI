@@ -15,7 +15,7 @@ GetSpecializationInfoByID = function(id) return id, "Test Spec" end
 date = os.date
 C_Spell = { GetSpellCharges = function(id) if id == 2 then return { maxCharges = 2 } end end }
 CueRulesDB = {}
-local ns = {}
+local ns = { settingsTestHooks = { keepOld = true } }   -- (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 _G.XayaUI_NS = ns
 ns.CurrentSpecID = function() return 999 end
 ns.CollectCooldownSpells = function() return { { id = 1, name = "Alpha", talent = nil }, { id = 2, name = "Beta", talent = true }, { id = "x", name = "Bad" } } end

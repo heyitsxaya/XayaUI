@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local O = ns.OptionsApi.Shared
 local APP, AceConfigDialog, Notify, Col, Rng, Tog = O.APP, O.AceConfigDialog, O.Notify, O.Col, O.Rng, O.Tog
@@ -75,8 +76,8 @@ local function BuildBox(i, box)
                 func = function() ns.ToggleUnlock(); Notify() end },
             delete = { type = "execute", name = "Delete this box", order = 30, confirm = true, confirmText = "Delete this stats box?",
                 func = function()
-                    for idx, b in ipairs(ns.qolBoxes) do
-                        if b == box then table.remove(ns.qolBoxes, idx); break end
+                    for idx, b in ipairs(QoLBoxes()) do
+                        if b == box then table.remove(QoLBoxes(), idx); break end
                     end
                     ns.QoL_Drop(box)
                     Notify()

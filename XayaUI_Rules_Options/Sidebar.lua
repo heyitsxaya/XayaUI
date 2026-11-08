@@ -11,6 +11,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local O = ns.OptionsApi.Shared
 local CoreS, PlatS, QolS, APP, AceConfigDialog, Tree = O.CoreS, O.PlatS, O.QolS, O.APP, O.AceConfigDialog, O.Tree
@@ -154,8 +155,8 @@ end
 
 local soundAllDlg
 local function ConfirmAllSounds(count, cb)
-    local ui = PlatS.ui
-    if ui and ui.skipSoundAllPrompt then cb(); return end
+    local ui = CoreS   -- (P5: XayaUI Rules' store)
+    if ui.skipSoundAllPrompt then cb(); return end
     if not soundAllDlg then
         local f = CreateFrame("Frame", "XayaUISoundAllDialog", UIParent, "BackdropTemplate")
         f:SetSize(390, 170); f:SetPoint("CENTER"); f:SetFrameStrata("TOOLTIP"); f:EnableMouse(true)
@@ -175,7 +176,7 @@ local function ConfirmAllSounds(count, cb)
         f.no:SetScript("OnClick", function() f:Hide() end)
         ns.FlatButton(f.yes, true); ns.FlatButton(f.no)
         f.yes:SetScript("OnClick", function()
-            if f.check:GetChecked() and PlatS.ui then PlatS.ui.skipSoundAllPrompt = true end
+            if f.check:GetChecked() then CoreS.skipSoundAllPrompt = true end
             f:Hide()
             if f.cb then local c = f.cb; f.cb = nil; c() end
         end)
@@ -331,7 +332,7 @@ function ns.DragPlace(kind, obj, target, anchor, where)
         if anchor and ns.NormalizeFolderOrder then ns.NormalizeFolderOrder() end   -- folders keep list order from the first move on
         if obj.parent ~= target then
             obj.parent = target; changed = true
-            if not anchor and PlatS.ui and PlatS.ui.folderOrdered then   -- nested into a group: last of its groups
+            if not anchor and CoreS.folderOrdered then   -- nested into a group: last of its groups
                 for _, f in ipairs(ns.folders) do if f ~= obj and drag.DragFolderKey(f) == drag.DragFolderKey(obj) then anchor = f end end
                 where = "after"
             end
@@ -504,13 +505,12 @@ local function FolderParentKey(f) return (f.parent and FolderById(f.parent)) and
 -- Until the first move, top-level order is the legacy one (default categories fixed, the rest by list position). The first
 -- move bakes that order into ns.folders and switches ui.folderOrdered on, so list position is the order from then on.
 function ns.FolderSortOrder(f, k, dpos)
-    local ui = PlatS.ui
-    if ui and ui.folderOrdered then return 100 + k end
+    if CoreS.folderOrdered then return 100 + k end   -- (P5: XayaUI Rules' store)
     return dpos and (10 + dpos) or (100 + k)
 end
 local function NormalizeFolderOrder()
-    local ui = PlatS.ui
-    if not ui or ui.folderOrdered then return end
+    local ui = CoreS   -- (P5: XayaUI Rules' store)
+    if not ns.SettingsReady("core") or ui.folderOrdered then return end
     local keyed = {}
     for k, f in ipairs(ns.folders) do
         local _, dpos = ns.DefaultFolderInfo(f.default)
@@ -1264,18 +1264,18 @@ local function RowMenu(button, root)
         return true
     end
     n = last:match("^box(%d+)$")
-    local box = n and ns.qolBoxes and ns.qolBoxes[tonumber(n)]
+    local box = n and QoLBoxes() and QoLBoxes()[tonumber(n)]
     if box then
         root:CreateTitle(box.name or "Stats Box")
         root:CreateButton("Rename", function() AskRename(box.name, function(t) box.name = t; ns.QoL_Refresh(box); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function()
             local c = ns.Copy(box); c.name = (box.name or "Stats") .. " Copy"; c.y = (c.y or 0) - 30
-            ns.qolBoxes[#ns.qolBoxes + 1] = c; ns.QoL_Refresh(c); ns.MarkDirty(); Notify()
+            QoLBoxes()[#QoLBoxes() + 1] = c; ns.QoL_Refresh(c); ns.MarkDirty(); Notify()
         end)
         root:CreateDivider()
         root:CreateButton("Delete", function()
             AskConfirm("Delete the box '" .. tostring(box.name) .. "'?", function()
-                for idx, b in ipairs(ns.qolBoxes) do if b == box then table.remove(ns.qolBoxes, idx); break end end
+                for idx, b in ipairs(QoLBoxes()) do if b == box then table.remove(QoLBoxes(), idx); break end end
                 ns.QoL_Drop(box); ns.MarkDirty(); Notify()
                 pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol")
             end)

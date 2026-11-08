@@ -193,13 +193,13 @@ do
   child.thenCues = { "keep" }
   ns.rules[#ns.rules + 1] = child
   local n0 = #ns.rules
-  CueRulesDB.cuesVer = nil
+  ns.Settings("core").cuesVer = nil
   local origNew = ns.NewCueRule
   ns.NewCueRule = function(p, kind) if kind == "texture" then error("no texture") end return origNew(p, kind) end
   local ok = pcall(ns.MigrateCues)
   ns.NewCueRule = origNew
   local rec = false; for _, x in ipairs(recs) do if x:find("XUI-E011", 1, true) then rec = true end end
-  check("D57 migration: the failing condition is recorded (XUI-E011) and the migration finishes once", ok and rec and CueRulesDB.cuesVer == 2, tostring(ok) .. " " .. tostring(CueRulesDB.cuesVer))
+  check("D57 migration: the failing condition is recorded (XUI-E011) and the migration finishes once", ok and rec and ns.Settings("core").cuesVer == 2, tostring(ok) .. " " .. tostring(ns.Settings("core").cuesVer))
   check("D57 migration: the failing condition is left as it was (no new cue, its sound on, its THEN list back)", #ns.rules == n0 and child.sound.enabled == true and child.thenCues and child.thenCues[1] == "keep", #ns.rules - n0)
   ns.RecordError = origRec
 end

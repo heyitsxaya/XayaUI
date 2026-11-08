@@ -262,16 +262,7 @@ local function Merge(dst, src)
     end
 end
 
--- QoL "stats text" box defaults (see QoL.lua)
-ns.QOL_BOX_DEFAULTS = {
-    name = "Stats",
-    enabled = true,
-    format = "Crit {crit}   Haste {haste}\nMastery {mastery}   Vers {vers}",
-    size = 14,   -- outline / justify / showCombat: blank until chosen (fallbacks: outline / left / always)
-    color = { 1, 1, 1, 1 }, alpha = 1,
-    decimals = 1,
-    x = 0, y = -250,
-}
+-- (P5) the QoL "stats text" box defaults and their saved list moved to XayaUI QoL (XayaUI_QoL/StatsText.lua)
 
 -- Fonts: blank/none = the game's default font. Built-ins plus every LibSharedMedia font that is loaded.
 local BUILTIN_FONTS = {
@@ -320,15 +311,8 @@ local function InitDB()
     if CueRulesDB.ui.trayOpen == nil then CueRulesDB.ui.trayOpen = true end
     -- Advanced Debugging defaults ON (recommended): XayaUI's own Lua errors print to chat as a system message.
     if CueRulesDB.ui.advancedDebug == nil then CueRulesDB.ui.advancedDebug = true end
-    -- (P4) the rules, groups and buff bars are set up by XayaUI Rules at its own load (XayaUI_Rules/RuleDefaults.lua InitRules). The
-    -- shelved QoL "stats text" boxes stay here for now: CueRulesDB.qol is also XayaUI QoL's settings table, so it is made whatever is on.
-    CueRulesDB.qol = CueRulesDB.qol or {}
-    CueRulesDB.qol.boxes = CueRulesDB.qol.boxes or {}
-    for _, b in ipairs(CueRulesDB.qol.boxes) do
-        Merge(b, ns.QOL_BOX_DEFAULTS)
-        if b.showCombat == "any" then b.showCombat = "none" end
-    end
-    ns.qolBoxes = CueRulesDB.qol.boxes
+    -- (P4) the rules, groups and buff bars are set up by XayaUI Rules at its own load (XayaUI_Rules/RuleDefaults.lua InitRules). (P5) The
+    -- shelved QoL "stats text" boxes are XayaUI QoL's (XayaUI_QoL/StatsText.lua, its own store): nothing of them is made while it is off.
 end
 local f = CreateFrame("Frame")
 f:RegisterEvent("ADDON_LOADED")
@@ -336,12 +320,13 @@ f:RegisterEvent("PLAYER_LOGIN")   -- (Modules.lua ns.AtLogin: one frame for ever
 f:SetScript("OnEvent", function(_, event, name)
     if event == "PLAYER_LOGIN" then
         f:UnregisterEvent("PLAYER_LOGIN")
+        f:UnregisterEvent("ADDON_LOADED")   -- (P5) every module addon has loaded by now (none is load-on-demand)
         if ns.FireLogin then ns.FireLogin() end
         return
     end
-    if name ~= addonName then return end
+    -- (P5) a module addon loaded: the game has set its saved variable, so its settings store opens (Modules.lua section 0c)
+    if name ~= addonName then if ns.SettingsAddonLoaded then ns.SettingsAddonLoaded(name) end; return end
     InitDB()
-    f:UnregisterEvent("ADDON_LOADED")
     ns.FireReady()   -- every feature that asked through ns.WhenReady (Modules.lua), in load order (P4: the rule engine starts at XayaUI Rules' own load)
 end)
 

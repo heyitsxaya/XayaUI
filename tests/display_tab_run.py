@@ -238,8 +238,8 @@ pcall(ACD.SelectGroup, ACD, "CueRules", "cooldowns", "smartTab"); W.tick(0.1, 4)
 check("the open sub-tab is remembered while the window is open (saved for the next opening)", CueRulesDB.ui.rulesSub == "smartTab", tostring(CueRulesDB.ui.rulesSub))
 pcall(ns.ToggleUI); W.tick(0.1, 2)
 -- ===== Drafts (Xaya, 0.6.4): the tab is always there; off = description + switch; settings under Settings > Rule Creation =====
-CueRulesDB.ui.promptSave = nil
-CueRulesDB.drafts = {}
+ns.Settings("core").promptSave = nil
+ns.Settings("core").drafts = {}
 local b3 = ns.BuildOptionsTable()
 local DT = b3.args.cooldowns.args.draftsTab
 local function hid(o) local h = o and o.hidden; if type(h) == "function" then return h() end; return h and true or false end
@@ -256,9 +256,9 @@ local SR = b3.args.settings.args.rules.args
 check("settings: Use drafts toggle follows the same switch", SR.promptSave.get() == true)
 check("settings: Keep up to (5 to 100, default 30)", SR.draftsMax and SR.draftsMax.min == 5 and SR.draftsMax.max == 100 and SR.draftsMax.get() == 30)
 check("settings: confirm discard / confirm delete / chat notice, all on by default", SR.draftsConfirmDiscard.get() and SR.draftsConfirmDelete.get() and SR.draftsCloseNotice.get())
-for i = 1, 12 do table.insert(CueRulesDB.drafts, { id = "x" .. i, uid = "x" .. i, name = "D" .. i, ts = i, rules = {} }) end
+for i = 1, 12 do table.insert(ns.Settings("core").drafts, { id = "x" .. i, uid = "x" .. i, name = "D" .. i, ts = i, rules = {} }) end
 SR.draftsMax.set(nil, 8)
-check("settings: lowering 'Keep up to' trims the oldest drafts at once", #CueRulesDB.drafts == 8 and CueRulesDB.drafts[1].id == "x1", #CueRulesDB.drafts)
+check("settings: lowering 'Keep up to' trims the oldest drafts at once", #ns.Settings("core").drafts == 8 and ns.Settings("core").drafts[1].id == "x1", #ns.Settings("core").drafts)
 check("drafts intro states the chosen number", DT.args.intro.name():find("Up to 8 drafts") ~= nil)
 SR.draftsMax.set(nil, 500)
 check("settings: 'Keep up to' is clamped to 100", ns.DraftsMax() == 100)
@@ -272,10 +272,10 @@ SR.draftsConfirmDiscard.set(nil, false)
 check("confirm discard off: setting read by the save bar", ns.DraftsConfirmDiscard() == false)
 SR.draftsConfirmDiscard.set(nil, true)
 DT.args.toggle.func()
-check("drafts: the switch turns them off again; stored drafts stay listed", ns.DraftsEnabled() == false and #CueRulesDB.drafts == 8 and not hid(DT.args.intro))
+check("drafts: the switch turns them off again; stored drafts stay listed", ns.DraftsEnabled() == false and #ns.Settings("core").drafts == 8 and not hid(DT.args.intro))
 check("settings: the finer draft settings gray out while drafts are off (delete confirm stays usable for leftovers)", SR.draftsMax.disabled() == true and SR.draftsConfirmDiscard.disabled() == true and SR.draftsCloseNotice.disabled() == true and SR.draftsConfirmDelete.disabled == nil)
-CueRulesDB.drafts = {}
-CueRulesDB.ui.draftsMax = nil
+ns.Settings("core").drafts = {}
+ns.Settings("core").draftsMax = nil
 check("group page Display tab has the every-display sections (size now on Group), no Apply Text panel, no whole-group box", PD and PD.placement == nil and PD.textDur and PD.textCnt and PD.textAbs and PD.applyText == nil)
 return R
 end

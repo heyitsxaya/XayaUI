@@ -29,12 +29,13 @@ local CDM_EVENT = Enum and Enum.CooldownViewerAlertEventType or {}
 -- (core 0.6.75, P2 settings seam) the same CueRulesDB keys, through the core settings view; the tables are kept here and looked up
 -- again only when the settings epoch moves (Modules.lua section 0b: no metamethod per hook call)
 local CoreS = ns.Settings("core")
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local storeT, storeEp = {}, nil
 local function Store(key)
     if storeEp ~= ns.settingsEpoch then wipe(storeT); storeEp = ns.settingsEpoch end
     local t = storeT[key]
     if t then return t end
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("core") then return nil end
     t = CoreS[key]
     if type(t) ~= "table" then t = {}; CoreS[key] = t end
     storeT[key], storeEp = t, ns.settingsEpoch

@@ -57,11 +57,12 @@ local OVERSTAY_GRACE = 3          -- seconds past the expected end before an amb
 -- (core 0.6.75, P2 settings seam) the same CueRulesDB.auraTracker, through the core settings view; read on every aura event, so the
 -- table is kept in an upvalue and looked up again only when the settings epoch moves (Modules.lua section 0b)
 local CoreS = ns.Settings("core")
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local dbT, dbEp
 local function DB()
     local d = dbT
     if dbEp ~= ns.settingsEpoch or type(d) ~= "table" then
-        if not ns.SettingsReady() then return nil end
+        if not ns.SettingsReady("core") then return nil end
         d = CoreS.auraTracker
         if type(d) ~= "table" then d = { v = 1 }; CoreS.auraTracker = d end
         dbT, dbEp = d, ns.settingsEpoch

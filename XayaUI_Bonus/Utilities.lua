@@ -88,4 +88,4 @@ function ns.Utilities_SyncSlash()
 end
 function ns.Utilities_SlashClaimed(key) return claimed[key] == true end   -- (tests, and the settings text)
 
-ns.WhenReady(function() ns.Utilities_SyncSlash() end)
+ns.WhenSettingsReady("bonus", function() ns.Utilities_SyncSlash() end)   -- (P5: once XayaUIBonusDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)

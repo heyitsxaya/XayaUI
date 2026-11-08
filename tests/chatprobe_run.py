@@ -102,13 +102,14 @@ assert(loadfile(((__MOD__):gsub("Modules%.lua$", "Compat.lua"))))("XayaUI", ns) 
 -- (Dev Assist 0.7.5: the probe moved to XayaUI Dev Assist, REQUEST-LOG #81; it finds XayaUI by its shared namespace)
 XayaUI_NS = ns
 local fn = assert(loadfile(__PATH__)); fn("XayaUI_DevAssist", {})
+ns.SettingsOpenAllForTests()   -- (P5) XayaUI Dev Assist's ADDON_LOADED: its store (XayaUIDevAssistDB) opens
 '''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI_DevAssist", "ChatProbe.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
 lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
-local function has(pat) for _, l in ipairs(CueRulesDB.chatProbe.lines) do if l:find(pat, 1, true) then return l end end end
+local function has(pat) for _, l in ipairs(XayaUIDevAssistDB.chatProbe.lines) do if l:find(pat, 1, true) then return l end end end
 ns.ChatProbe()
-local P = CueRulesDB.chatProbe
+local P = XayaUIDevAssistDB.chatProbe
 check("report is stored", P and type(P.lines) == "table" and #P.lines > 20, P and #P.lines)
 check("stamped with a time", P.when == "2026-11-02 23:59:00")
 check("READ ONLY: no writer method was called", __writes() == 0, __writes())
@@ -138,11 +139,11 @@ check("the chat line names the floating button right away", printedTop)
 check("tells her to /reload to save", ns.printed[1] and ns.printed[1]:find("/reload", 1, true))
 -- run twice: replaces, not appends
 local first = #P.lines; ns.ChatProbe()
-check("second run replaces the report", #CueRulesDB.chatProbe.lines == first)
+check("second run replaces the report", #XayaUIDevAssistDB.chatProbe.lines == first)
 -- no secrets API at all (older client): still runs
 issecretvalue, canaccessvalue, C_Secrets = nil, nil, nil
 ns.printed = {}; ns.ChatProbe()
-check("works without the secrets API", CueRulesDB.chatProbe and #CueRulesDB.chatProbe.lines > 20 and not ns.printed[1]:find("failed", 1, true), ns.printed[1])
+check("works without the secrets API", XayaUIDevAssistDB.chatProbe and #XayaUIDevAssistDB.chatProbe.lines > 20 and not ns.printed[1]:find("failed", 1, true), ns.printed[1])
 -- EnumerateFrames missing
 EnumerateFrames = nil; ns.printed = {}; ns.ChatProbe()
 check("works without EnumerateFrames", has("EnumerateFrames or screen size not available"))

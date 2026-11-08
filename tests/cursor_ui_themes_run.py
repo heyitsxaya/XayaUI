@@ -149,7 +149,7 @@ GetCursorPosition = function() return CX, CY end   -- the cursor, moved by this 
 local function trailAt(fs)
   local fr = frameAt(80)
   if not fr then return nil end
-  local life = CueRulesDB.cursorTrail.length or 0.6
+  local life = ns.Settings("qol").cursorTrail.length or 0.6
   W.tick(life / 2, 3)          -- older dots run out
   CX = CX + 1; W.tick(0.001, 1) -- (a sample point that drops nothing: below the spacing)
   CX = CX + 60; W.tick(0.001, 1) -- this frame drops a row of dots, all born now (age 0)
@@ -219,10 +219,10 @@ if MODE == "main" then
   local pr = tr.args.colors.args.preset
   put("trailValues", pr.values); put("trailSorting", pr.sorting)
   pr.set(nil, "fel"); W.tick(0.05, 2)
-  CueRulesDB.cursorTrail.enabled = true; ns.CursorTrail_Apply(); W.tick(0.05, 2)
+  ns.Settings("qol").cursorTrail.enabled = true; ns.CursorTrail_Apply(); W.tick(0.05, 2)
   put("n_trailFel", nListeners())   -- on, with a gradient (fel): no listener
   pr.set(nil, "theme"); W.tick(0.05, 2)
-  put("trailPreset", CueRulesDB.cursorTrail.preset)
+  put("trailPreset", ns.Settings("qol").cursorTrail.preset)
   put("n_trailTheme", nListeners())
   put("trail_default", trailAt({ 0, 0.5, 0.9 }))
   put("preview_default", tr.args.colors.args.preview.name())
@@ -246,15 +246,15 @@ if MODE == "main" then
   put("n_trailBackToFire", nListeners())
   put("trail_fire", trailAt({ 0, 1 / 3 }))
   pr.set(nil, "theme"); W.tick(0.05, 2)
-  CueRulesDB.cursorTrail.enabled = false; ns.CursorTrail_Apply(); W.tick(0.05, 2)
+  ns.Settings("qol").cursorTrail.enabled = false; ns.CursorTrail_Apply(); W.tick(0.05, 2)
   put("n_trailOff", nListeners())
   local before = trailCalls
   pick("cursor_fel"); W.tick(0.05, 2)
   put("trailCallsWhileOff", trailCalls - before)
 
   -- Cursor Highlight: "Use the UI theme's accent"
-  CueRulesDB.cursorHighlight.useThemeColor = false
-  CueRulesDB.cursorHighlight.enabled = true; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
+  ns.Settings("qol").cursorHighlight.useThemeColor = false
+  ns.Settings("qol").cursorHighlight.enabled = true; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
   put("n_hlOwn", nListeners())
   put("hl_own", hlColor())
   local hl = ns.BuildCursorHighlightTab(function() end)
@@ -268,17 +268,17 @@ if MODE == "main" then
     pick("cursor_fire"); W.tick(0.05, 2)
     put("hl_theme_fire", hlColor()); put("accent_fire", rgba(T.cur.accent))
     -- hidden (Only show in combat, out of combat) stays hidden through a theme change
-    CueRulesDB.cursorHighlight.combatOnly = true; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
+    ns.Settings("qol").cursorHighlight.combatOnly = true; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
     local fr = frameAt(70)
     put("hl_hiddenBefore", fr and fr._alpha)
     pick("cursor_ocean")
     put("hl_hiddenAfter", fr and fr._alpha)
-    CueRulesDB.cursorHighlight.combatOnly = false; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
+    ns.Settings("qol").cursorHighlight.combatOnly = false; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
     opt.set(nil, false); W.tick(0.05, 2)
     put("n_hlOptOff", nListeners())
     put("hl_ownAgain", hlColor())
     opt.set(nil, true); W.tick(0.05, 2)
-    CueRulesDB.cursorHighlight.enabled = false; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
+    ns.Settings("qol").cursorHighlight.enabled = false; ns.CursorHighlight_Apply(); W.tick(0.05, 2)
     put("n_hlOff", nListeners())
   end
 elseif MODE == "qol_off" then
@@ -295,7 +295,7 @@ elseif MODE == "existing" then
   put("n_login", nListeners())
   put("base", CueRulesDB.theme.base); put("under", CueRulesDB.theme.under)
   put("cur", cur())
-  put("preset", CueRulesDB.cursorTrail.preset)
+  put("preset", ns.Settings("qol").cursorTrail.preset)
   put("trail_fire", trailAt({ 0, 1 / 3, 2 / 3 }))
   put("hl", hlColor())
   T.Load("Mine"); W.tick(0.05, 2)

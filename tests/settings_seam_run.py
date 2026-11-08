@@ -31,6 +31,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
+sys.path.insert(0, HERE)
+import settings_stores as SST  # noqa: E402  (P5: where each module keeps its settings)
 
 # (P4) made by --golden in a checkout of main 8ced2e3 (the code before the platform split), with the saved variables merged across
 # addon folders (canon below): XayaUITalentDB is declared by XayaUI_Rules since P4 instead of XayaUI, so the same data sits under
@@ -139,6 +141,25 @@ def guard(root):
                     key = toks[i + 2][1]
                 if key in module_keys:
                     bad.append("%s:%d (Platform) touches module key CueRulesDB.%s directly (go through ns.Settings)" % (f, line, key))
+    # (P5) no module reads another module's store directly: a module's saved variable (XayaUIReskinDB ...) is named only in its own
+    # addon's folder and in the Platform's Modules.lua (the seam that opens it); every other file goes through ns.Settings(<owner>)
+    try:
+        stores = SST.layout(root)["stores"]
+    except Exception:
+        stores = {}
+    for f in files:
+        if not f.endswith(".lua") or "/Libs/" in f:
+            continue
+        folder = f.split("/", 1)[0]
+        toks = None
+        for m, st in stores.items():
+            if folder == st["addon"] or f == "XayaUI/Modules.lua":
+                continue
+            if toks is None:
+                toks = lua_tokens(open(os.path.join(root, f), encoding="utf-8", errors="replace").read())
+            for kind, text, line in toks:
+                if kind in ("name", "str") and text == st["var"]:
+                    bad.append("%s:%d names %s's store %s directly (go through ns.Settings(\"%s\"))" % (f, line, m, st["var"], m))
     return bad
 
 
@@ -180,6 +201,13 @@ def canon(saved):
     for addon in sorted(saved):
         for var, val in (saved[addon] or {}).items():
             merged[var] = val
+    # (P5) each module's own store folded back into CueRulesDB as it was laid out before (tests/settings_stores.py): the old code's
+    # golden hash then still says "nothing a player set changed and nothing was lost"; the copy's marks (storeVersion ...) are dropped
+    merged = SST.project(merged, SST.layout(ROOT))
+    # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
+    # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
+    if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
+        merged["CueRulesDB"]["qol"] = {"boxes": {}}
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
@@ -234,22 +262,25 @@ check("XayaUI loaded and ns.Settings exists", ns and type(ns.Settings) == "funct
 if not (ns and ns.Settings) then return R end
 local V = {}
 for _, m in ipairs(MODULES) do V[m] = ns.Settings(m) end
+-- (P5) the table a module's keys live in now: its own store once open, else CueRulesDB
+local function HVAR(m) local st = ns.SettingsStore(m); if st and st.state == "own" then return st.var end return "CueRulesDB" end
+local function HOME(m) return _G[HVAR(m)] end
 
 section("C1 first-run defaults", function()
   check("C1: after the saved settings were set up, the core view held since load reads the same rules list the engine uses",
-    V.core.rules ~= nil and rawequal(V.core.rules, CueRulesDB.rules) and rawequal(ns.rules, V.core.rules))
-  check("C1: ... and the QoL view reads the stats-text boxes core set up (CueRulesDB.qol.boxes)",
-    V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, CueRulesDB.qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
+    V.core.rules ~= nil and rawequal(V.core.rules, HOME("core").rules) and rawequal(ns.rules, V.core.rules))
+  check("C1: ... and the QoL view reads the stats-text boxes set up at load (P5: by XayaUI QoL, in its store)",
+    V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, HOME("qol").qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
   check("C1: ... and the platform view reads the defaults written into CueRulesDB.ui (console open, Advanced Debugging on)",
     rawequal(V.platform.ui, CueRulesDB.ui) and V.platform.ui.advancedDebug == true and V.platform.ui.trayOpen == true)
 end)
 
 section("C2 profile import", function()
   local part = ns.ProfilePartsByKey().qol
-  CueRulesDB.cursorTrail = nil
+  HOME("qol").cursorTrail = nil
   local res = part.apply(part.check({ cursorTrail = { marker = 7, enabled = false }, cursorHighlight = { marker = 9 } }), "merge", 1)
   check("C2: a QoL profile part applied: the held QoL view reads the new cursor trail table", res and V.qol.cursorTrail ~= nil
-    and V.qol.cursorTrail.marker == 7 and rawequal(V.qol.cursorTrail, CueRulesDB.cursorTrail), tostring(V.qol.cursorTrail))
+    and V.qol.cursorTrail.marker == 7 and rawequal(V.qol.cursorTrail, HOME("qol").cursorTrail), tostring(V.qol.cursorTrail))
   check("C2: ... and the merged cursor highlight value", V.qol.cursorHighlight and V.qol.cursorHighlight.marker == 9)
   local bonus = ns.ProfilePartsByKey().bonus
   if bonus then
@@ -273,34 +304,46 @@ section("C3 Theme Reset everything", function()
 end)
 
 section("C4 backup Load (replace)", function()
-  CueRulesDB.barGroup.spacing = 11
+  HOME("core").barGroup.spacing = 11
   local ok = ns.Backup_Save("seam test", nil)
   check("C4: a backup is saved (through the platform's profiles key)", ok and #V.platform.profiles >= 1 and rawequal(V.platform.profiles, CueRulesDB.profiles))
   local snap
   for _, p in ipairs(ns.Backups()) do if p.name == "seam test" then snap = p.data end end
   snap = ns.Copy(snap); snap.bars = snap.bars or {}; snap.barGroup = { spacing = 11 }   -- (buff bars are off for now, so a backup leaves them out: put them in)
-  CueRulesDB.barGroup.spacing = 33
+  HOME("core").barGroup.spacing = 33
   ns.Share_ApplyRules(ns.Copy(snap), "replace")
   check("C4: Load (replace) put the bar group back: the held core view reads spacing 11",
-    rawequal(V.core.barGroup, CueRulesDB.barGroup) and V.core.barGroup.spacing == 11, tostring(V.core.barGroup and V.core.barGroup.spacing))
+    rawequal(V.core.barGroup, HOME("core").barGroup) and V.core.barGroup.spacing == 11, tostring(V.core.barGroup and V.core.barGroup.spacing))
   check("C4: ... and the rules list the core view reads is the one the engine uses", rawequal(V.core.rules, ns.rules))
 end)
 
 section("C5 CueRulesDB replaced as a whole", function()
-  local old = CueRulesDB
-  CueRulesDB = { qol = { marker = "new" }, chat = { m = 1 }, ui = { rsk = { windows = true }, x = 2 }, rules = {} }
-  check("C5: a view held from before reads the new table at once (QoL, Chat, platform)",
-    V.qol.qol.marker == "new" and V.chat.chat.m == 1 and V.platform.ui.x == 2)
-  check("C5: ... and Reskin's rsk inside the new CueRulesDB.ui", V.reskin.rsk and V.reskin.rsk.windows == true)
+  -- (P5) a module with its own store reads that saved variable; the others (and the Platform) CueRulesDB: every backing table is
+  -- replaced by a new one holding a marker, and each view held from before must read its marker at once
+  local probe = { qol = "qol", chat = "chat", bonus = "calculator", devassist = "idProbe", core = "drafts", reskin = "rsk" }
+  local keep, new = {}, { CueRulesDB = { ui = { x = 2 } } }
+  for m, k in pairs(probe) do
+    local st = ns.SettingsStore(m)
+    local var = (st.state == "own") and st.var or "CueRulesDB"
+    new[var] = new[var] or {}
+    new[var][k] = { marker = m }
+  end
+  for var in pairs(new) do keep[var] = rawget(_G, var); _G[var] = new[var] end
+  local bad = {}
+  for m, k in pairs(probe) do local t = V[m][k]; if not (type(t) == "table" and t.marker == m) then bad[#bad + 1] = m end end
+  check("C5: every backing table (CueRulesDB, each module's own store) replaced as a whole: each view held from before reads the new one at once",
+    #bad == 0 and V.platform.ui.x == 2, table.concat(bad, ", "))
+  check("C5: (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)",
+    not rawequal(V.reskin.rsk, CueRulesDB.ui and CueRulesDB.ui.rsk))
   check("C5: ns.SettingsReady() follows it", ns.SettingsReady() == true)
   CueRulesDB = nil
-  check("C5: with no CueRulesDB, a view reads nil and SettingsReady is false (nothing created by reading)",
-    V.qol.qol == nil and ns.SettingsReady() == false and rawget(_G, "CueRulesDB") == nil)
-  CueRulesDB = old
+  check("C5: with no CueRulesDB, the platform view reads nil and SettingsReady is false (nothing created by reading)",
+    V.platform.ui == nil and ns.SettingsReady() == false and rawget(_G, "CueRulesDB") == nil)
+  for var, t in pairs(keep) do _G[var] = t end
 end)
 
 section("C6 hot-path caches", function()
-  CueRulesDB.auraAlias = nil
+  HOME("core").auraAlias = nil
   ns.SettingsChanged()
   check("C6: no alias learned: AuraAliasesOf answers nil", ns.AuraAliasesOf(62618) == nil)
   V.core.auraAlias = { [62618] = { [81782] = true } }
@@ -308,11 +351,12 @@ section("C6 hot-path caches", function()
   local ep = ns.settingsEpoch
   V.core.auraAlias = V.core.auraAlias
   check("C6: writing the same table back (x = x or {}) does not move the epoch", ns.settingsEpoch == ep)
-  local old = CueRulesDB
-  CueRulesDB = ns.Copy(old); CueRulesDB.auraAlias = {}
+  local hv = HVAR("core")   -- (P5) XayaUI Rules' own store once it has one
+  local old = _G[hv]
+  _G[hv] = ns.Copy(old); _G[hv].auraAlias = {}
   ns.SettingsChanged()
-  check("C6: CueRulesDB replaced and ns.SettingsChanged(): the cache reads the new (empty) aliases", ns.AuraAliasesOf(62618) == nil)
-  CueRulesDB = old
+  check("C6: CueRulesDB (P5: or XayaUI Rules' store) replaced and ns.SettingsChanged(): the cache reads the new (empty) aliases", ns.AuraAliasesOf(62618) == nil)
+  _G[hv] = old
   ns.SettingsChanged()
   local ep2 = ns.settingsEpoch
   local part = ns.ProfilePartsByKey().qol
@@ -361,19 +405,22 @@ for _, m in ipairs(MODULES) do
   local v = ns.Settings(m)
   for _, k in ipairs(ns.SettingsKeys(m)) do
     local at = ns.SettingsStoredAt(m, k)
-    local function raw() if at == "ui." .. k then return CueRulesDB.ui and CueRulesDB.ui[k] end return CueRulesDB[k] end
-    local keep = raw()
+    -- (P5) a module with its own store (ns.SettingsStore(m).state == "own") keeps every key at the top of that saved variable
+    local st = ns.SettingsStore(m)
+    local own = st and st.state == "own" and _G[st.var]
+    local function home() if own then return own end if at == "ui." .. k then return CueRulesDB.ui end return CueRulesDB end
+    local keep = home()[k]
     local s = { sentinel = m .. "." .. k }
     v[k] = s
-    if not rawequal(raw(), s) then bad[#bad + 1] = m .. "." .. k .. " write" end
+    if not rawequal(home()[k], s) then bad[#bad + 1] = m .. "." .. k .. " write" end
     local s2 = { other = true }
-    if at == "ui." .. k then CueRulesDB.ui[k] = s2 else CueRulesDB[k] = s2 end
+    home()[k] = s2
     if not rawequal(v[k], s2) then bad[#bad + 1] = m .. "." .. k .. " read" end
-    if at == "ui." .. k then CueRulesDB.ui[k] = keep else CueRulesDB[k] = keep end
+    home()[k] = keep
   end
 end
-check("E: every module's view writes and reads exactly CueRulesDB.<key> (Reskin's rsk / gm / friendColors: CueRulesDB.ui.<key>)", #bad == 0, table.concat(bad, ", "))
-check("E: Reskin's view keys live where Reskin kept them", ns.SettingsStoredAt("reskin", "rsk") == "ui.rsk" and ns.SettingsStoredAt("reskin", "gm") == "ui.gm"
+check("E: every module's view writes and reads exactly its store's <key> (P5: a module with its own store, e.g. XayaUIReskinDB.rsk; the others CueRulesDB.<key>)", #bad == 0, table.concat(bad, ", "))
+check("E: Reskin's view keys are recorded where Reskin kept them in CueRulesDB (what the copy reads)", ns.SettingsStoredAt("reskin", "rsk") == "ui.rsk" and ns.SettingsStoredAt("reskin", "gm") == "ui.gm"
   and ns.SettingsStoredAt("reskin", "friendColors") == "ui.friendColors" and ns.SettingsStoredAt("qol", "cursorTrail") == "cursorTrail")
 check("E: characterReskin is readable through both QoL's and Reskin's views (open question; see the debug log)",
   ns.SettingsStoredAt("qol", "characterReskin") == "characterReskin" and ns.SettingsStoredAt("reskin", "characterReskin") == "characterReskin")
@@ -407,7 +454,7 @@ def main():
         return
     # G
     bad = guard(ROOT)
-    check("G: no direct CueRulesDB use outside the Platform allow-list (and no module key touched directly in Platform files)", not bad,
+    check("G: no direct CueRulesDB use outside the Platform allow-list (and no module key touched directly in Platform files); (P5) no module's store named outside its own addon", not bad,
           "%d: %s" % (len(bad), "; ".join(bad[:12])))
     # B
     for tag, (h, errs, unknown, saved) in sessions(folders).items():

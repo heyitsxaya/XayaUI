@@ -7,6 +7,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local frames = setmetatable({}, { __mode = "k" }) -- rule -> frame
 ns.unlocked = false
@@ -1385,7 +1386,7 @@ function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 -- through this (read-only; nothing runs until it is typed).
 function ns.VisualProbeState() return frames, containers, DynAncestor end
 
-local function SnapMode() return (PlatS.ui and PlatS.ui.snapMode) or "free" end
+local function SnapMode() return CoreS.snapMode or "free" end   -- (P5: XayaUI Rules' store; CueRulesDB.ui.snapMode before)
 
 -- x, y are offsets of the frame center from the screen center (UI units). Returns the snapped offsets.
 function ns.SnapPosition(rule, fr, x, y)
@@ -1827,8 +1828,7 @@ function ns.ShowVisualMenu(rule, anchor)
         root:CreateDivider()
         local function radio(parent, mode)
             parent:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function()
-                PlatS.ui = PlatS.ui or {}
-                PlatS.ui.snapMode = mode
+                CoreS.snapMode = mode
                 ns.Print("aura positioning: " .. SNAP_LABELS[mode])
             end)
         end
@@ -3083,7 +3083,7 @@ end
 local function EndSession(save)
     local d = CoreS.moverDraft
     if d and not save then Restore(d) end
-    if ns.SettingsReady() then CoreS.moverDraft = nil end
+    if ns.SettingsReady("core") then CoreS.moverDraft = nil end
     wipe(mover.tempLock); mover.sel = nil
     if ns.MarkDirty then ns.MarkDirty() end
     ns.Fire("CONFIG_CHANGED")
@@ -3198,7 +3198,7 @@ function ns.ToggleUnlock()
         ns.MoverExit("save")
         return
     end
-    if ns.SettingsReady() then CoreS.moverDraft = TakeDraft() end
+    if ns.SettingsReady("core") then CoreS.moverDraft = TakeDraft() end
     wipe(mover.tempLock); mover.sel = nil
     KeyFrame():Show()
     ns.unlocked = true

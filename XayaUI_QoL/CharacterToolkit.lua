@@ -2,7 +2,7 @@
 -- CharacterToolkit.lua : QoL > Character Toolkit (XayaUI QoL 0.7.0). The panel docked to the character window, its compact stat sheet,
 -- (the Stat Calculator: a stat map, a gear comparison, spells), the item level / socket / enchant overlays on the character window's slots, extra lines on the character
 -- window's own stat tooltips, and the settings page. OFF by default; while off nothing is created, registered or read.
--- Saved settings: CueRulesDB.characterToolkit. NOT RUN IN GAME when written (2026-11-04): every number needs an in-game check.
+-- Saved settings: XayaUIQoLDB.characterToolkit (CueRulesDB.characterToolkit before P5). NOT RUN IN GAME when written (2026-11-04): every number needs an in-game check.
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
@@ -51,7 +51,8 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local CM = ns.CharModel
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
@@ -100,7 +101,7 @@ local function CopyVal(v)
     return t
 end
 local function Cfg()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("qol") then return nil end
     local c = QolS.characterToolkit
     if type(c) ~= "table" then c = {}; QolS.characterToolkit = c end
     -- (QoL 0.7.23) a height dragged before the Min / Max heights existed becomes the smaller one
@@ -2570,7 +2571,7 @@ function ns.CharToolkit_SizeMode(mode)
     ns.CharToolkit_Render()
 end
 
-ns.WhenReady(function() if Cfg() then ns.CharToolkit_Apply() end end)
+ns.WhenSettingsReady("qol", function() if Cfg() then ns.CharToolkit_Apply() end end)   -- (P5: once XayaUIQoLDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 -- (audit QA walkthrough, D17) which of the toolkit's events are registered now; its settings, and Apply after changing them
 if ns.Provide then ns.Provide("charToolkitDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.CharToolkit_Apply() end,
     Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end }) end

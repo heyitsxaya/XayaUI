@@ -15,7 +15,8 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local ChatS, BonusS = ns.Settings("chat"), ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local ChatS, BonusS = ns.Settings("chat"), ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam; Bonus 0.6.33, P5: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 -- the block engine and the data types, shared with the Chat Bar (XayaUI_Chat): a library both addons carry (LibStub runs one copy)
 local B = LibStub("XayaDataBlocks-1.0")
@@ -112,7 +113,9 @@ function ns.DataPanels_OnDBReady()
     if dp.general and dp.general.enabled == nil then
         for _, k in ipairs({ "bl", "br", "center" }) do if type(dp[k]) == "table" and dp[k].enabled then dp.general.enabled = true; break end end
         for _, c in pairs(dp.customs) do if type(c) == "table" and c.enabled then dp.general.enabled = true; break end end
-        local oldChat = ChatS.chat   -- saved settings only (the Chat addon may be off): an old chat info bar counts too
+        -- saved settings only (the Chat addon may be off): an old chat info bar counts too. (P5) Chat's settings are XayaUI Chat's own
+        -- store, open only once that addon has loaded (after this one, and never while it is off): read when they are there
+        local oldChat = ChatS.chat
         if type(oldChat) == "table" and (oldChat.panelOn or oldChat.rpanelOn) then dp.general.enabled = true end
     end
     ns.Merge(dp, ns.DATAPANEL_DEFAULTS)
@@ -639,7 +642,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.WhenReady(ns.DataPanels_OnDBReady)
+ns.WhenSettingsReady("bonus", ns.DataPanels_OnDBReady)   -- (P5: once XayaUIBonusDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui data (Data Panels)")   -- (Bonus 0.6.29: her name, UI-5 / DISPLAY-RULES A7.2)
 -- O-100 (Bonus 0.6.27): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
 ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })

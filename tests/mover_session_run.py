@@ -44,11 +44,11 @@ check("V14: no key frame before the mover view is opened", rawget(_G, "XayaUIMov
 
 -- open, nothing moved, leave: no question
 ns.ToggleUnlock(); W.tick(0.05, 2)
-check("opening the mover view keeps every position aside (the draft)", ns.unlocked and type(CueRulesDB.moverDraft) == "table" and #CueRulesDB.moverDraft.rules >= 2)
+check("opening the mover view keeps every position aside (the draft)", ns.unlocked and type(ns.Settings("core").moverDraft) == "table" and #ns.Settings("core").moverDraft.rules >= 2)
 check("  ...and shows the key frame for the arrow keys", rawget(_G, "XayaUIMoverKeys") and XayaUIMoverKeys:IsShown())
 W.popup = nil
 ns.ToggleUnlock(); W.tick(0.05, 2)
-check("leaving with no move asks nothing and locks", not ns.unlocked and W.popup == nil and CueRulesDB.moverDraft == nil, W.popup)
+check("leaving with no move asks nothing and locks", not ns.unlocked and W.popup == nil and ns.Settings("core").moverDraft == nil, W.popup)
 check("  ...the key frame hides", not XayaUIMoverKeys:IsShown())
 
 -- moves, then Cancel
@@ -85,13 +85,13 @@ ns.MoverExit("cancel"); W.tick(0.05, 2)
 check("Cancel moves: the display and the group are back exactly", A.visual.x == -60 and A.visual.y == 0 and f.cX == 100 and f.cY == 50,
   ("%s %s %s %s"):format(tostring(A.visual.x), tostring(A.visual.y), tostring(f.cX), tostring(f.cY)))
 check("  ...on screen too", fa:GetLeft() < l1 - 0.5, ("%s / %s"):format(tostring(fa:GetLeft()), tostring(l1)))
-check("  ...the draft is deleted and the view is locked", CueRulesDB.moverDraft == nil and not ns.unlocked)
+check("  ...the draft is deleted and the view is locked", ns.Settings("core").moverDraft == nil and not ns.unlocked)
 
 -- moves, then Save
 ns.ToggleUnlock(); W.tick(0.05, 2)
 ns.MoverSelect("display", B); ns.MoverNudge(5, 0)
 ns.ToggleUnlock(); ns.MoverExit("save"); W.tick(0.05, 2)
-check("Save moves: the move is kept and the draft deleted", B.visual.x == 65 and CueRulesDB.moverDraft == nil and not ns.unlocked, B.visual.x)
+check("Save moves: the move is kept and the draft deleted", B.visual.x == 65 and ns.Settings("core").moverDraft == nil and not ns.unlocked, B.visual.x)
 
 -- the temporary lock
 ns.ToggleUnlock(); W.tick(0.05, 2)
@@ -119,14 +119,14 @@ ns.MoverSelect("display", A); ns.MoverNudge(0, 7)
 ns.unlocked = false   -- (as after a /reload: the view is closed, the moved data and the draft were saved)
 W.popup = nil
 ns.MoverCheckDraft()
-check("at login, a draft with moves asks to keep them", W.popup == "XAYAUI_MOVER_DRAFT" and CueRulesDB.moverDraft ~= nil, W.popup)
+check("at login, a draft with moves asks to keep them", W.popup == "XAYAUI_MOVER_DRAFT" and ns.Settings("core").moverDraft ~= nil, W.popup)
 check("  ...with the same two buttons", StaticPopupDialogs.XAYAUI_MOVER_DRAFT and StaticPopupDialogs.XAYAUI_MOVER_DRAFT.button2 == "Cancel moves")
 ns.MoverExit("cancel")
-check("  ...Cancel moves puts them back and deletes the draft", A.visual.y == 0 and CueRulesDB.moverDraft == nil, A.visual.y)
-CueRulesDB.moverDraft = { at = 0, rules = {}, folders = {} }
+check("  ...Cancel moves puts them back and deletes the draft", A.visual.y == 0 and ns.Settings("core").moverDraft == nil, A.visual.y)
+ns.Settings("core").moverDraft = { at = 0, rules = {}, folders = {} }
 W.popup = nil
 ns.MoverCheckDraft()
-check("a draft with no moves is dropped silently", CueRulesDB.moverDraft == nil and W.popup == nil)
+check("a draft with no moves is dropped silently", ns.Settings("core").moverDraft == nil and W.popup == nil)
 return R
 end
 '''

@@ -8,7 +8,9 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local ChatS = ns.Settings("chat")   -- (Chat 0.6.41, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("chat", "XayaUI_Chat", "XayaUIChatDB") end
+local ChatS = ns.Settings("chat")   -- (Chat 0.6.41, P2 settings seam; Chat 0.6.42, P5: Chat's own XayaUIChatDB; Modules.lua section 0b)
 
 local C = { errors = {}, applied = {}, mods = {}, hooked = {}, stats = { suppressed = 0, protected = 0 } }
 ns.Chat = C
@@ -417,11 +419,11 @@ end
 -- the saved defaults: filled in the first time the Chat Panel is on (at login when it is saved on), or when its settings page is built
 -- (the page shows them). V14: with the Chat Panel saved off, nothing is built for it at login.
 local defaulted
-function C.EnsureDefaults()
+function C.EnsureDefaults(defaults)   -- defaults: (P5) Chat_OnDBReady passes the defaults as they stood when this file loaded
     local s = ns.chat2
     if not s or defaulted == s then return end
     defaulted = s
-    for k, v in pairs(C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
+    for k, v in pairs(defaults or C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
     s.sounds = type(s.sounds) == "table" and s.sounds or {}
     -- whisper sound overrides (Sounds.lua): { list = { { who, enabled, source, value, channel } ... }, fav = { enabled, source, value, channel } }
     s.whisperSounds = type(s.whisperSounds) == "table" and s.whisperSounds or {}
@@ -455,7 +457,14 @@ function C.Schedule()
     C_Timer.After(0, function() pending = false; C.Refresh() end)
 end
 
+-- (P5) Chat_OnDBReady ran while this file loaded (XayaUI's settings were ready before this addon loaded), so it filled in only the
+-- defaults this file had defined by then: Privacy.lua (ns.CHAT_DEFAULTS) and Sidebar.lua (C.SIDEBAR_DEFAULTS) add theirs later. Since
+-- P5 it runs at this addon's ADDON_LOADED, after every file: it uses the defaults as they stood at the end of this file (kept below), so
+-- the saved settings and what the player sees stay exactly as before (the later defaults still apply where they did: their own files
+-- and the settings page). (Found while building P5, not changed here: the Sidebar's and the privacy cover's defaults therefore never
+-- reach the saved settings at login; see the P5 debug-log entry.)
 function ns.Chat_OnDBReady()
+    local defaultsAtLoad = C.defaultsAtLoad
     ChatS.chat = ChatS.chat or {}                        -- privacy cover settings (kept as they are)
     ns.chatDB = ChatS.chat
     ChatS.chat2 = ChatS.chat2 or {}                      -- the new Chat Panel (old chat settings are not read)
@@ -469,8 +478,8 @@ function ns.Chat_OnDBReady()
     -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
     -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
     -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
-    ns.Merge(ChatS.chat, ns.CHAT_DEFAULTS)
-    C.EnsureDefaults()
+    ns.Merge(ChatS.chat, defaultsAtLoad and defaultsAtLoad.chat or ns.CHAT_DEFAULTS)
+    C.EnsureDefaults(defaultsAtLoad and defaultsAtLoad.chat2)
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
 end
 
@@ -534,7 +543,13 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.WhenReady(ns.Chat_OnDBReady)
+do   -- (P5) the defaults as they stand at the end of this file (see Chat_OnDBReady)
+    local a, b = {}, {}
+    for k, v in pairs(ns.CHAT_DEFAULTS) do a[k] = v end
+    for k, v in pairs(C.DEFAULTS) do b[k] = v end
+    C.defaultsAtLoad = { chat = a, chat2 = b }
+end
+ns.WhenSettingsReady("chat", ns.Chat_OnDBReady)   -- (P5: once XayaUIChatDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
 ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
     Options = function() return ns.BuildChatTab and ns.BuildChatTab(function() end) end,   -- (Chat 0.6.31) the settings tree, for the QA walkthrough

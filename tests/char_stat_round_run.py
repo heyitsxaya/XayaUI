@@ -132,7 +132,7 @@ function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
 c = ns.CharToolkit_Cfg()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
@@ -483,7 +483,7 @@ function ns.BuildSpellList() return {} end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
 c = ns.CharToolkit_Cfg()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")

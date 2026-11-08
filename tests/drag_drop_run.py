@@ -76,12 +76,12 @@ check("place: the cue stays tied to its rule", cueB.parentUid == B.uid and idx(c
 check("place: Y (top level) below B joins Defensives", ns.DragPlace("rule", Y, "f1", B, "after") and Y.folder == "f1" and names("f1") == "C,B,Y,A", names("f1"))
 check("place: X into Defensives with no anchor goes to the end", ns.DragPlace("rule", X, "f1", nil, "into") and names("f1"):sub(-1) == "X", names("f1"))
 check("place: a drop onto where it already is changes nothing", ns.DragPlace("rule", B, "f1", C, "after") == false, names("f1"))
-CueRulesDB.ui.folderOrdered = nil
+ns.Settings("core").folderOrdered = nil
 check("place: group Buffs above Externals", ns.DragPlace("folder", ns.folders[4], nil, ns.folders[2], "before"))
 local top = {}
 for _, f in ipairs(ns.folders) do if not f.parent then top[#top + 1] = f.name end end
 check("place: top-level group order is now Defensives, Buffs, Externals", table.concat(top, ",") == "Defensives,Buffs,Externals", table.concat(top, ","))
-check("place: group order switched to list order (folderOrdered)", CueRulesDB.ui.folderOrdered == true)
+check("place: group order switched to list order (folderOrdered)", ns.Settings("core").folderOrdered == true)
 local inner = ns.folders[3].name == "Inner" and ns.folders[3] or nil
 for _, f in ipairs(ns.folders) do if f.name == "Inner" then inner = f end end
 check("place: group Inner (nested) dropped in the middle of Externals nests there", ns.DragPlace("folder", inner, "f2", nil, "into") and inner.parent == "f2")

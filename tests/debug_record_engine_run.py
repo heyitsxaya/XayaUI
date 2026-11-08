@@ -47,6 +47,7 @@ for f in toc:
 L.execute("XayaUI_NS = NS")
 try:
     load(open(os.path.join(ROOT, "XayaUI_DevAssist", "DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
+    L.execute("NS.SettingsOpenAllForTests()")   # (P5) XayaUI Dev Assist's ADDON_LOADED: its store opens
 except Exception as e:
     failed.append(("XayaUI_DevAssist/DevRecord.lua", str(e)[:200]))
 
@@ -98,12 +99,12 @@ check("  ...switched off: none (the console still gets them)", E("LINES('Snapsho
 L.execute("NS.SetRecCat('snapshots', true)")
 
 # 3. trigger detail for a chosen rule: once per change, nothing for the others
-L.execute("NS.SetRecCat('triggers', true); CueRulesDB.ui.recFocus = { P = true }; NS.DebugSettingsChanged(); CLEAR(); STEP(5)")
+L.execute("NS.SetRecCat('triggers', true); NS.Settings('devassist').recFocus = { P = true }; NS.DebugSettingsChanged(); CLEAR(); STEP(5)")
 check("trigger detail: the chosen rule's answer is written once, not on every step", E("LINES('Trigger', \"'Proc' does not fire\") == 1"), E("LINES('Trigger')"))
 L.execute("AURA(5001, true); STEP(5)")
 check("  ...and again when it changes, saying where the aura answer came from", E("LINES('Trigger', \"'Proc' fires | aura true via\") == 1"))
 check("  ...a rule not chosen gets no trigger lines", E("LINES('Trigger', 'Other') == 0"))
-L.execute("CueRulesDB.ui.recFocus = nil; NS.DebugSettingsChanged(); CLEAR(); AURA(5001, false); STEP(3)")
+L.execute("NS.Settings('devassist').recFocus = nil; NS.DebugSettingsChanged(); CLEAR(); AURA(5001, false); STEP(3)")
 check("  ...no rule chosen: none", E("LINES('Trigger') == 0"))
 
 # 4. CPU: an aura whose answer did not change does no string work in the record's aura hook

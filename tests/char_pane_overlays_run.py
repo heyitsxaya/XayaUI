@@ -235,12 +235,12 @@ def run(lua, code):
     TOTAL_N += lua.eval("n"); TOTAL_F += lua.eval("fails")
 
 lua = lua_with(ALLNAMES + r'''
-local tk = ns.CharToolkit_Cfg()
-tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
-tk.enchantSlotsSet = true   -- she ticked her wrist too: "No enchant" there
+-- (P5) her saved settings, in XayaUI QoL's own store (the store opens with the other addons below)
+XayaUIQoLDB = { characterToolkit = { enchantSlotsSet = true,   -- she ticked her wrist too: "No enchant" there
+  enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true } } }
 ''')
 run(lua, r'''
-ns.FireReady()
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
 -- her settings: reskin on, Clean window off, item level, enchants, gems, stat list on (the wider window: its default, on);
 -- the toolkit and its slot overlays on
@@ -619,7 +619,7 @@ end
 run(lua, r'''
 local createdBefore = #created
 local updateSize = CharacterFrame.UpdateSize
-ns.FireReady()
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 CharacterFrame:Show(); PaperDollFrame:Show()
 linkReads, tipReads = 0, 0
 ns.CharReskin_Apply()
@@ -662,12 +662,12 @@ check("V14: the reskin listens to item changes while its item level is on; switc
 # the inferred live-client behaviour (INFERENCE, not seen in the game): right after the size change, the slots', model's and Inset's
 # positions still read as the 300 px window's until the next frame. Negative control: the "next frame" check fails on QoL 0.7.32.
 lua = lua_with(r'''
-local tk = ns.CharToolkit_Cfg()
-tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
-tk.enchantSlotsSet = true
+-- (P5) her saved settings, in XayaUI QoL's own store (the store opens with the other addons below)
+XayaUIQoLDB = { characterToolkit = { enchantSlotsSet = true,
+  enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true } } }
 ''')
 run(lua, r'''
-ns.FireReady()
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
 rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
 tk.enabled, tk.overlays, tk.panel = true, true, false
@@ -715,7 +715,7 @@ CueRulesDB.characterToolkit = { enabled = false }
 ''')
 run(lua, r'''
 local before, hookBefore, sizeBefore = #created, PaperDollItemSlotButton_Update, CharacterFrame.UpdateSize
-ns.FireReady()
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 CharacterFrame:Show(); CharacterModelScene.ControlFrame:Show(); PaperDollFrame:Show()
 check("V14: both off at login: no frame created, nothing hooked (slots, UpdateSize, the Character tab), no theme listener, nothing drawn, Blizzard's width",
   #created == before and PaperDollItemSlotButton_Update == hookBefore and CharacterFrame.UpdateSize == sizeBefore and #(PaperDollFrame.hooks.OnShow or {}) == 0

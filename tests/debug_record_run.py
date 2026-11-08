@@ -41,6 +41,7 @@ for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lu
 # tests/devassist_debug_tools_run.py.)
 L.execute("XayaUI_NS = NS")
 load(open(os.path.join(ROOT, "XayaUI_DevAssist/DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
+L.execute("NS.SettingsOpenAllForTests()")   # (P5) XayaUI Dev Assist's ADDON_LOADED: its store opens
 L.execute(r'''
 local ns = NS
 WINDOW = { open = false, calls = 0 }
@@ -49,7 +50,7 @@ ns.ConsoleWindowOn = function() return WINDOW.open end
 SINK = {}
 ns.ConsoleSink = function(line) SINK[#SINK + 1] = line end
 ns.Fire = function() end
-function UI() CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
+function UI() return NS.SettingsUiRoutedForTests() end   -- (P5) CueRulesDB.ui as before; the record's own settings are Dev Assist's store now
 function RECN() local r = CueRulesDB.debugRecord; return r and #r.lines or 0 end
 function REC(i) local r = CueRulesDB.debugRecord; return r and r.lines[i or #r.lines] end
 -- a line of this kind (shown by its label: "12:00:00  Message  text") that holds this text

@@ -84,6 +84,8 @@ ns.ERROR_CODES = {
     { code = "XUI-W003", kind = "warning", text = "Engine safety stop: Blizzard's aura containers cost too much, so only this spec's displays are drawn by the engine (lean mode)" },
     { code = "XUI-W004", kind = "warning", text = "Engine safety stop: still too costly in lean mode, so automatic engine drawing is off until /reload" },
     { code = "XUI-W005", kind = "warning", text = "A part of the Chat Panel could not be applied" },
+    -- (P5 settings migration, Modules.lua section 0c) a module's settings copy differed from CueRulesDB: the module keeps reading CueRulesDB
+    { code = "XUI-W006", kind = "warning", text = "A module's settings could not be copied to their new saved place unchanged; it keeps using the old place" },
 }
 local CODE, FOLDER_CODE = {}, {}
 for _, c in ipairs(ns.ERROR_CODES) do

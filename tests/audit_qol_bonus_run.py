@@ -35,7 +35,7 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
 local gcdReads = 0
 local rawGCD = CM.ReadGCD
@@ -87,7 +87,7 @@ local noop = function() end
 -- D50: Data Panels "Remove block" before "Editing block" was used ----------------------------------------------------------------
 local tab = ns.BuildDataPanelsTab(noop)
 local blocks = tab.args.general.args.left.args.blocks.args
-local cfg = CueRulesDB.dataPanels.bl
+local cfg = ns.Settings("bonus").dataPanels.bl   -- (P5: where XayaUI Bonus reads it, its own store)
 check("(sanity) the left panel has 3 blocks", tonumber(cfg.slots) == 3, cfg.slots)
 local ok, err = pcall(blocks.remove.func)
 check("D50: Remove block with the Editing block slider never used: no Lua error", ok, err)
@@ -204,10 +204,10 @@ end
 -- what the walkthroughs must leave as it was
 local shop = ns.Service("shoppingList")
 local c = shop.Cfg()
-local ct = CueRulesDB.characterToolkit
+local ct = ns.Settings("qol").characterToolkit   -- (P5: through the owner's settings view)
 local before = { buy = #c.buy, enabled = c.enabled, panel = c.panel, ctPanel = ct and ct.panel, notes = #(ns.notepadDB and ns.notepadDB.notes or {}),
-  aura = ns.Service("tooltipsDebug").TT.DB().ids.aura, slots = CueRulesDB.dataPanels and CueRulesDB.dataPanels.bl and CueRulesDB.dataPanels.bl.slots,
-  hist = #(CueRulesDB.calculator and CueRulesDB.calculator.history or {}) }
+  aura = ns.Service("tooltipsDebug").TT.DB().ids.aura, slots = ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.bl and ns.Settings("bonus").dataPanels.bl.slots,
+  hist = #(ns.Settings("bonus").calculator and ns.Settings("bonus").calculator.history or {}) }
 local verdict = {}
 for _, id in ipairs(ids) do
   local d = QA.walks[id]
@@ -255,12 +255,12 @@ P("audit-notepad-share", 3, "notepad share last step: put back")
 check("everything put back: To buy, Shopping List on / off and panel, Character Toolkit panel, notes, Aura IDs, Left Panel blocks, saved sums",
   #c.buy == before.buy and c.enabled == before.enabled and c.panel == before.panel and (ct and ct.panel) == before.ctPanel
   and #(ns.notepadDB and ns.notepadDB.notes or {}) == before.notes and ns.Service("tooltipsDebug").TT.DB().ids.aura == before.aura
-  and (CueRulesDB.dataPanels and CueRulesDB.dataPanels.bl and CueRulesDB.dataPanels.bl.slots) == before.slots
-  and #(CueRulesDB.calculator and CueRulesDB.calculator.history or {}) == before.hist,
+  and (ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.bl and ns.Settings("bonus").dataPanels.bl.slots) == before.slots
+  and #(ns.Settings("bonus").calculator and ns.Settings("bonus").calculator.history or {}) == before.hist,
   ("buy %d/%d enabled %s/%s ctPanel %s/%s notes %d/%d slots %s/%s hist %d/%d"):format(#c.buy, before.buy, tostring(c.enabled), tostring(before.enabled),
     tostring(ct and ct.panel), tostring(before.ctPanel), #(ns.notepadDB and ns.notepadDB.notes or {}), before.notes,
-    tostring(CueRulesDB.dataPanels and CueRulesDB.dataPanels.bl and CueRulesDB.dataPanels.bl.slots), tostring(before.slots),
-    #(CueRulesDB.calculator and CueRulesDB.calculator.history or {}), before.hist))
+    tostring(ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.bl and ns.Settings("bonus").dataPanels.bl.slots), tostring(before.slots),
+    #(ns.Settings("bonus").calculator and ns.Settings("bonus").calculator.history or {}), before.hist))
 return R
 end
 '''

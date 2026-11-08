@@ -335,7 +335,7 @@ end
 local function RuleIDs()
     -- (Dev Assist 0.7.55, P2 settings seam) the rules and bars through XayaUI's core settings view (core Modules.lua section 0b)
     local cns = rawget(_G, "XayaUI_NS")
-    if not (type(cns) == "table" and cns.Settings and cns.SettingsReady()) then return nil end
+    if not (type(cns) == "table" and cns.Settings and cns.SettingsReady("core")) then return nil end   -- (P5: XayaUI Rules' own store)
     local db = cns.Settings("core")
     local set = {}
     if type(db.rules) == "table" then Walk(db.rules, set, 1) end

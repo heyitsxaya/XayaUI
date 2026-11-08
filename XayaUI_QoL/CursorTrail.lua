@@ -5,7 +5,7 @@
 -- * Pre-populated with gradient presets; "Custom" lets you build your own with 2 to 6 colors; "Match the UI theme" (QoL 0.7.17)
 --   takes the colors of the UI theme and follows it when the theme changes.
 -- * Independent of the (currently switched-off) QoL Elements / Cursor Tracker files. Its saved
---   settings live in CueRulesDB.cursorTrail.
+--   settings live in XayaUIQoLDB.cursorTrail (CueRulesDB.cursorTrail before P5).
 -- * Preset colors are Claude's choices, not taken from any other addon. Since QoL 0.7.17 they live in core (XayaUI/Theme.lua,
 --   ns.Theme.CURSOR_PRESETS), where the UI themes made from them read the same table.
 -- * Not run in game when written (2026-11-01): the texture paths and the look need an in-game check.
@@ -16,7 +16,8 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local MAXC = 6          -- most colors a gradient can have
 local NPT  = 48         -- most dots on screen at once (all shapes except the smooth line)
@@ -84,7 +85,7 @@ end
 
 -- the saved table, with any missing keys filled from the defaults
 local function Ensure()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("qol") then return nil end
     local c = QolS.cursorTrail
     if type(c) ~= "table" then c = {}; QolS.cursorTrail = c end
     for k, v in pairs(ns.CURSORTRAIL_DEFAULTS) do

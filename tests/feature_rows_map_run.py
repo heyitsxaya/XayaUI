@@ -195,7 +195,7 @@ local function check2(name, ok, extra) R2[#R2 + 1] = { name .. (ok and "" or (" 
 local hooked = {}
 local rawHSF = hooksecurefunc
 hooksecurefunc = function(a, b, c) local k = type(a) == "table" and b or a; hooked[k] = (hooked[k] or 0) + 1; return rawHSF(a, b, c) end
-ns.FireReady()
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
 -- #46: the toolkit on, its Tooltip lines saved off
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"

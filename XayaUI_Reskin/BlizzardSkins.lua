@@ -35,7 +35,8 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
-local QolS, ReskinS = ns.Settings("qol"), ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS, ReskinS = ns.Settings("qol"), ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local BS = { diag = { painted = 0, restored = 0, deferred = 0, lastError = nil } }
 ns.BlizzardSkins = BS
@@ -109,14 +110,14 @@ BS.SQUARE_MASK = "Interface\\Buttons\\WHITE8X8"
 BS.ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"   -- Blizzard's own round mask (the one portraits use)
 
 -------------------------------------------------------------------------------
--- Saved settings: CueRulesDB.ui.rsk, made only when something is ticked (V14). Off by default.
+-- Saved settings: XayaUIReskinDB.rsk (CueRulesDB.ui.rsk before P5), made only when something is ticked (V14). Off by default.
 --   windows / minimap / tooltips / tracker / toasts / menus / bubbles / statusbars / mmbuttons / buttons = true (a page ticked); winOff[key] / otOff[key] / toastOff[key] = true (left out);
 --   shape = "SQUARE";
 --   bgAlpha = window background opacity (0.5 - 1, default 0.95)
 -------------------------------------------------------------------------------
 local function Saved() local r = ReskinS.rsk; return type(r) == "table" and r or nil end
 local function Cfg()
-    local r = ReskinS.rsk   -- (kept in CueRulesDB.ui.rsk, as before: Modules.lua section 0b)
+    local r = ReskinS.rsk   -- (XayaUIReskinDB.rsk; CueRulesDB.ui.rsk before P5: Modules.lua section 0b)
     if type(r) ~= "table" then r = {}; ReskinS.rsk = r end
     if type(r.winOff) ~= "table" then r.winOff = {} end
     if type(r.otOff) ~= "table" then r.otOff = {} end
@@ -855,7 +856,7 @@ ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, C
     WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, IsPanelButton = IsPanelButton, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
     SQUARE_MASK = BS.SQUARE_MASK, ROUND_MASK = BS.ROUND_MASK })
 -- at login, only when something is ticked (a saved table with a page on); nothing is made otherwise
-ns.WhenReady(function()
+ns.WhenSettingsReady("reskin", function()   -- (P5: once XayaUIReskinDB is open, at this addon's load; Modules.lua section 0c)
     local r = Saved()
     if r and (r.windows or r.minimap or r.tooltips or r.tracker or r.toasts or r.menus or r.bubbles or r.statusbars or r.mmbuttons or r.buttons) and TabOn() then
         if ns.AtLogin then ns.AtLogin(BS.Apply) else BS.Apply() end

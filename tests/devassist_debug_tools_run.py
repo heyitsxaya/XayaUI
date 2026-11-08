@@ -139,7 +139,7 @@ check("B /xuiskin alpha 0.5 without Dev Assist: no change", ui.skinAlpha == alph
 local s1 = printed(function() SlashCmdList.XUISKIN("") end)
 check("B /xuiskin alone still switches the skin (players keep it)", ui.skinOff ~= off0 and s1:find("window skin", 1, true) ~= nil, s1)
 W.safecall(SlashCmdList.XUISKIN, "")
-local db = CueRulesDB.engineDisplay
+local db = ns.Settings("core").engineDisplay
 local e1 = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("auto off") end))
 check("B /xuiengine auto off without Dev Assist: automatic mode stays on", db.auto ~= false, e1:sub(1, 200))
 check("B /xuiengine help offers full and refresh only", e1:find("/xuiengine full (leave lean mode);  /xuiengine refresh.", 1, true) ~= nil
@@ -319,7 +319,7 @@ check("B /xui chat's word list names wrap, indent and whispers", joined(run("cha
 local ui = CueRulesDB.ui
 W.safecall(SlashCmdList.XUISKIN, "pad 5"); W.safecall(SlashCmdList.XUISKIN, "alpha 0.5")
 check("B /xuiskin pad 5 and alpha 0.5 work with Dev Assist", ui.skinPad == 5 and ui.skinAlpha == 0.5, tostring(ui.skinPad) .. " " .. tostring(ui.skinAlpha))
-local db = CueRulesDB.engineDisplay
+local db = ns.Settings("core").engineDisplay
 W.safecall(SlashCmdList.XUIENGINE, "auto off")
 check("B /xuiengine auto off works with Dev Assist", db.auto == false)
 local help = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("") end))

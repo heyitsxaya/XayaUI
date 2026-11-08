@@ -64,6 +64,7 @@ for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
 L.execute("XayaUI_NS = NS")
 for f in ("XayaUI_DevAssist/DevRecord.lua",):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
+L.execute("NS.SettingsOpenAllForTests()")   # (P5) XayaUI Dev Assist's ADDON_LOADED: its store opens
 L.execute(r'''
 local ns = NS
 ns.ConsoleWindow = function() end
@@ -74,7 +75,7 @@ ns.Fire = function() end
 PROBE = { on = false, starts = 0 }
 ns.Service = function(n) if n == "gameDataProbe" then return { On = function() PROBE.on = true; PROBE.starts = PROBE.starts + 1 end,
   Off = function() PROBE.on = false end, Active = function() return PROBE.on end } end end
-function UI() CueRulesDB.ui = CueRulesDB.ui or {}; return CueRulesDB.ui end
+function UI() return NS.SettingsUiRoutedForTests() end   -- (P5) CueRulesDB.ui as before; the record's own settings are Dev Assist's store now
 function HASLINE(text) local r = CueRulesDB.debugRecord; if not r then return false end
   for _, l in ipairs(r.lines) do if l:find(text, 1, true) then return true end end return false end
 function GO(place, ev) PLACE = place; FIRE(ev or "PLAYER_ENTERING_WORLD", false, false) end
