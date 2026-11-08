@@ -60,7 +60,7 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 local before = #created
 local rg = loadfile(__RG__)   -- (missing on the code before it: every check then fails, the run goes on)
 if rg then rg("XayaUI_QoL", ns) end
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 madeAtLoad = #created - before
 -- a death as the game runs it: PLAYER_DEAD, then the DEATH window shows
 function die() DEAD, GHOST = true, false; fire("PLAYER_DEAD"); StaticPopup_Show("DEATH") end

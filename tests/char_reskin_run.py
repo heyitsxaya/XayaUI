@@ -67,7 +67,7 @@ TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
 local tk = ns.CharToolkit_Cfg()
 local function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.002 end
@@ -197,13 +197,14 @@ check("  ...the wider window has its switch (on by default), its extra width (0-
   page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 0 and page.args.widePx.max == 300
   and ns.CHARRESKIN_DEFAULTS.wide == true and ns.CHARRESKIN_DEFAULTS.widePx == 42 and page.args.widePx.step == 1 and page.args.bgAlpha.min == 0.5 and ns.CHARRESKIN_DEFAULTS.bgAlpha == 0.95
   and (function() rc.wide = false; local d = page.args.widePx.disabled(); rc.wide = true; return d end)() == true and page.args.width == nil)
-CueRulesDB.characterReskin.widePx, CueRulesDB.characterReskin.bgAlpha = 5000, 0.1
+local RS = ns.Settings("reskin")   -- (P5) the extra width and the opacity are Blizzard Reskin's look settings (XayaUIReskinDB.characterReskin)
+RS.characterReskin.widePx, RS.characterReskin.bgAlpha = 5000, 0.1
 local cl = ns.CharReskin_Cfg()
 check("  ...a saved value out of range is brought back inside it (300 px, 50%)", cl.widePx == 300 and cl.bgAlpha == 0.5, cl.widePx .. " " .. cl.bgAlpha)
 
 -- 11. (QoL 0.7.27) an install that ran QoL 0.7.21-0.7.23 (REQUEST-LOG #58-#59; Xaya 2026-11-06: "surely this isn't 380px?") ---------
 -- those versions saved their default extra width, 240, into the settings; 0.7.24 kept every saved number, so her window stayed 578 wide
-local function upgraded(saved) CueRulesDB.characterReskin = saved; return ns.CharReskin_Cfg() end
+local function upgraded(saved) ns.Settings("reskin").characterReskin = saved; return ns.CharReskin_Cfg() end   -- (P5: the look half, XayaUIReskinDB)
 local u = upgraded({ enabled = true, chrome = true, wide = true, widePx = 240, bgAlpha = 0.95 })   -- 0.7.22's saved table: no marker
 check("upgrade from 0.7.22-0.7.23: the saved old default 240 becomes 42 (380 / 582), once", u.widePx == 42 and u.widePxTo42 == true
   and u.enabled == true and u.bgAlpha == 0.95, tostring(u.widePx) .. " " .. tostring(u.widePxTo42))

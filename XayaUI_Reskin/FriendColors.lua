@@ -17,14 +17,14 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
-local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
 
 local issecret = _G.issecretvalue or function() return false end
 local function Ok(v) return v ~= nil and not issecret(v) end
 
 local function DB()
-    if not ns.SettingsReady() then return { on = true } end
-    local t = ReskinS.friendColors   -- (kept in CueRulesDB.ui.friendColors, as before: Modules.lua section 0b)
+    if not ns.SettingsReady("reskin") then return { on = true } end
+    local t = ReskinS.friendColors   -- (XayaUIReskinDB.friendColors; CueRulesDB.ui.friendColors before P5: Modules.lua section 0b)
     if type(t) ~= "table" then t = {}; ReskinS.friendColors = t end
     return t
 end
@@ -131,7 +131,7 @@ function ns.FriendColors_Active() return active end
 if ns.Provide then ns.Provide("friendColors", { Apply = function() ns.FriendColors_Apply() end, Active = function() return active end, Stats = stats }) end
 
 ns.RegisterReskin("friendcolors", function() ns.FriendColors_Apply() end)   -- the Blizzard Reskin tab's own switch walks these
-ns.WhenReady(function() if On() then ns.FriendColors_Apply() end end)       -- V14: saved off, nothing is made at login
+ns.WhenSettingsReady("reskin", function() if On() then ns.FriendColors_Apply() end end)   -- (P5: once XayaUIReskinDB is open, at this addon's load; Modules.lua section 0c); V14: saved off, nothing is made at login
 
 -- settings: Blizzard UI Reskin > Friend Colors (its on / off is the tick box on its row in the left pane)
 function ns.FriendColors_Options(Notify)

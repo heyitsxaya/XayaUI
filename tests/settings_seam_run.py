@@ -31,6 +31,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
+sys.path.insert(0, HERE)
+import settings_stores as SST  # noqa: E402  (P5: where each module keeps its settings)
 
 # (P4) made by --golden in a checkout of main 8ced2e3 (the code before the platform split), with the saved variables merged across
 # addon folders (canon below): XayaUITalentDB is declared by XayaUI_Rules since P4 instead of XayaUI, so the same data sits under
@@ -139,6 +141,25 @@ def guard(root):
                     key = toks[i + 2][1]
                 if key in module_keys:
                     bad.append("%s:%d (Platform) touches module key CueRulesDB.%s directly (go through ns.Settings)" % (f, line, key))
+    # (P5) no module reads another module's store directly: a module's saved variable (XayaUIReskinDB ...) is named only in its own
+    # addon's folder and in the Platform's Modules.lua (the seam that opens it); every other file goes through ns.Settings(<owner>)
+    try:
+        stores = SST.layout(root)["stores"]
+    except Exception:
+        stores = {}
+    for f in files:
+        if not f.endswith(".lua") or "/Libs/" in f:
+            continue
+        folder = f.split("/", 1)[0]
+        toks = None
+        for m, st in stores.items():
+            if folder == st["addon"] or f == "XayaUI/Modules.lua":
+                continue
+            if toks is None:
+                toks = lua_tokens(open(os.path.join(root, f), encoding="utf-8", errors="replace").read())
+            for kind, text, line in toks:
+                if kind in ("name", "str") and text == st["var"]:
+                    bad.append("%s:%d names %s's store %s directly (go through ns.Settings(\"%s\"))" % (f, line, m, st["var"], m))
     return bad
 
 
@@ -180,6 +201,9 @@ def canon(saved):
     for addon in sorted(saved):
         for var, val in (saved[addon] or {}).items():
             merged[var] = val
+    # (P5) each module's own store folded back into CueRulesDB as it was laid out before (tests/settings_stores.py): the old code's
+    # golden hash then still says "nothing a player set changed and nothing was lost"; the copy's marks (storeVersion ...) are dropped
+    merged = SST.project(merged, SST.layout(ROOT))
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
@@ -291,7 +315,11 @@ section("C5 CueRulesDB replaced as a whole", function()
   CueRulesDB = { qol = { marker = "new" }, chat = { m = 1 }, ui = { rsk = { windows = true }, x = 2 }, rules = {} }
   check("C5: a view held from before reads the new table at once (QoL, Chat, platform)",
     V.qol.qol.marker == "new" and V.chat.chat.m == 1 and V.platform.ui.x == 2)
-  check("C5: ... and Reskin's rsk inside the new CueRulesDB.ui", V.reskin.rsk and V.reskin.rsk.windows == true)
+  check("C5: ... and (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)", V.reskin.rsk == nil or not rawequal(V.reskin.rsk, CueRulesDB.ui.rsk))
+  local oldR = XayaUIReskinDB
+  XayaUIReskinDB = { rsk = { windows = true } }
+  check("C5: (P5) XayaUIReskinDB replaced as a whole: the held Reskin view reads the new table at once", V.reskin.rsk and V.reskin.rsk.windows == true)
+  XayaUIReskinDB = oldR
   check("C5: ns.SettingsReady() follows it", ns.SettingsReady() == true)
   CueRulesDB = nil
   check("C5: with no CueRulesDB, a view reads nil and SettingsReady is false (nothing created by reading)",
@@ -361,19 +389,22 @@ for _, m in ipairs(MODULES) do
   local v = ns.Settings(m)
   for _, k in ipairs(ns.SettingsKeys(m)) do
     local at = ns.SettingsStoredAt(m, k)
-    local function raw() if at == "ui." .. k then return CueRulesDB.ui and CueRulesDB.ui[k] end return CueRulesDB[k] end
-    local keep = raw()
+    -- (P5) a module with its own store (ns.SettingsStore(m).state == "own") keeps every key at the top of that saved variable
+    local st = ns.SettingsStore(m)
+    local own = st and st.state == "own" and _G[st.var]
+    local function home() if own then return own end if at == "ui." .. k then return CueRulesDB.ui end return CueRulesDB end
+    local keep = home()[k]
     local s = { sentinel = m .. "." .. k }
     v[k] = s
-    if not rawequal(raw(), s) then bad[#bad + 1] = m .. "." .. k .. " write" end
+    if not rawequal(home()[k], s) then bad[#bad + 1] = m .. "." .. k .. " write" end
     local s2 = { other = true }
-    if at == "ui." .. k then CueRulesDB.ui[k] = s2 else CueRulesDB[k] = s2 end
+    home()[k] = s2
     if not rawequal(v[k], s2) then bad[#bad + 1] = m .. "." .. k .. " read" end
-    if at == "ui." .. k then CueRulesDB.ui[k] = keep else CueRulesDB[k] = keep end
+    home()[k] = keep
   end
 end
-check("E: every module's view writes and reads exactly CueRulesDB.<key> (Reskin's rsk / gm / friendColors: CueRulesDB.ui.<key>)", #bad == 0, table.concat(bad, ", "))
-check("E: Reskin's view keys live where Reskin kept them", ns.SettingsStoredAt("reskin", "rsk") == "ui.rsk" and ns.SettingsStoredAt("reskin", "gm") == "ui.gm"
+check("E: every module's view writes and reads exactly its store's <key> (P5: a module with its own store, e.g. XayaUIReskinDB.rsk; the others CueRulesDB.<key>)", #bad == 0, table.concat(bad, ", "))
+check("E: Reskin's view keys are recorded where Reskin kept them in CueRulesDB (what the copy reads)", ns.SettingsStoredAt("reskin", "rsk") == "ui.rsk" and ns.SettingsStoredAt("reskin", "gm") == "ui.gm"
   and ns.SettingsStoredAt("reskin", "friendColors") == "ui.friendColors" and ns.SettingsStoredAt("qol", "cursorTrail") == "cursorTrail")
 check("E: characterReskin is readable through both QoL's and Reskin's views (open question; see the debug log)",
   ns.SettingsStoredAt("qol", "characterReskin") == "characterReskin" and ns.SettingsStoredAt("reskin", "characterReskin") == "characterReskin")
@@ -407,7 +438,7 @@ def main():
         return
     # G
     bad = guard(ROOT)
-    check("G: no direct CueRulesDB use outside the Platform allow-list (and no module key touched directly in Platform files)", not bad,
+    check("G: no direct CueRulesDB use outside the Platform allow-list (and no module key touched directly in Platform files); (P5) no module's store named outside its own addon", not bad,
           "%d: %s" % (len(bad), "; ".join(bad[:12])))
     # B
     for tag, (h, errs, unknown, saved) in sessions(folders).items():

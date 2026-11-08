@@ -57,7 +57,7 @@ def world(saved):
     except Exception as e:
         ok = str(e)
     W.start()
-    lua.eval("function(ns) if ns.FireReady then ns.FireReady() end end")(W.ns)   # the login moment XayaUI core fires (Modules.lua)
+    lua.eval("function(ns) if ns.FireReady then ns.FireReady() end; if ns.SettingsOpenAllForTests then ns.SettingsOpenAllForTests() end end")(W.ns)   # (P5: and the module stores open) the login moment XayaUI core fires (Modules.lua)
     return lua, W, ok
 
 # --- on (nothing saved) ----------------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ if ok is True:
     local r0 = W.redraws
     page.xuiSwitch.set(nil, false)
     out.offRedraw = W.redraws > r0; out.offActive = ns.FriendColors_Active()
-    out.wowOff = W.row(2, 1); out.saved = CueRulesDB.ui.friendColors.on
+    out.wowOff = W.row(2, 1); out.saved = XayaUIReskinDB.friendColors.on
     -- the in-game walkthrough (V22, pre-fill): Do it for me switches it on and opens the list; the check counts re-colored rows
     _G.XayaUI_NS = ns; _G.XayaUIDevAssistDB = {}
     _G.ToggleFriendsFrame = function() W.row(2, 1); W.row(2, 2); W.row(3, 1) end
@@ -86,7 +86,7 @@ if ok is True:
     out.prefill = walk.prefill
     ns.FriendColorsStats.colored = 0
     out.walkNeg = not walk.steps[1].check()
-    walk.steps[2].setup(); out.walkBack = walk.steps[2].check() and CueRulesDB.ui.friendColors.on == false
+    walk.steps[2].setup(); out.walkBack = walk.steps[2].check() and XayaUIReskinDB.friendColors.on == false
     return out
     ''')
     check("on by default after login (nothing saved), waiting for Blizzard's friends list to load", r.waitBeforeLoad is True)

@@ -22,7 +22,7 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)   -- core loads Compat.lua after Modu
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
 local c = ns.CharToolkit_Cfg()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
@@ -536,7 +536,7 @@ assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 local ok, err = pcall(function()
   assert(loadfile(__CT__))("XayaUI_QoL", ns)
-  ns.FireReady()
+  ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
   local c = ns.CharToolkit_Cfg()
   CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
   CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}

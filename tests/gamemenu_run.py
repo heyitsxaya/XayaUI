@@ -91,12 +91,12 @@ load(open(os.path.join(ROOT, "XayaUI/GameMenuButton.lua"), encoding="utf-8").rea
 load(open(os.path.join(ROOT, "XayaUI_Reskin/GameMenuSkin.lua"), encoding="utf-8").read(), "XayaUI_Reskin/GameMenuSkin.lua", ns)
 lua = lambda s: L.execute(s)
 lua("NS.GameMenuSkin_Hook()")
-lua("NS.GameMenuSkin_Cfg().skin = true")
+lua("XayaUIReskinDB = { gm = { skin = true } }")   # (P5) the saved switch, in Blizzard Reskin's own store (XayaUIReskinDB.gm; was CueRulesDB.ui.gm)
 # GameMenu.lua hooks InitButtons at PLAYER_LOGIN: run its Hook the way the game would. Since core 0.6.47 (V14) it asks for the login
 # only when the saved settings say the button is on, through core's own start-up frame (Core.lua, not loaded here; Modules.lua
 # ns.AtLogin): first XayaUI's settings are ready (its ADDON_LOADED, ns.FireReady), then PLAYER_LOGIN (ns.FireLogin).
 lua("""
-NS.FireReady()
+NS.FireReady(); NS.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 NS.FireLogin()
 for _, fr in ipairs(ALLFRAMES) do
   if fr._s_OnEvent and not fr._ran then fr._ran = true; fr._s_OnEvent(fr, 'PLAYER_LOGIN') end

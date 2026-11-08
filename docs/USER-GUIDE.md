@@ -904,6 +904,7 @@ The newest 50 entries are kept in your settings file, newest first; the same err
 | XUI-W003 | Engine safety stop: Blizzard's aura containers cost too much, so only this spec's displays are drawn by the engine (lean mode) |
 | XUI-W004 | Engine safety stop: still too costly in lean mode, so automatic engine drawing is off until /reload |
 | XUI-W005 | A part of the Chat Panel could not be applied |
+| XUI-W006 | A module's settings could not be copied to their new saved place unchanged; it keeps using the old place |
 
 **The debug report** (`/xui report`, or **Open the debug report** under Settings > Debugging > Debug report): a window with a readable summary, made to be sent as a screenshot: when it was made, the game version and build, every XayaUI addon with its version, then each entry with its code, its meaning, how many times, first and last time, whether in combat, and what happened. Below it, **Select string** selects one line of text (`XUIREP1:...`) holding the same entries; then press Ctrl+C (Cmd+C on Mac) to copy it and paste it to Xaya. (An addon cannot put text on the clipboard itself, so the button only selects.) XayaUI Dev Assist reads that string back (`/xuidev report`) and shows every entry in full. The string cannot be imported as rules or a theme. The bug report (`/xui bug`) lists the same entries with their codes.
 

@@ -336,12 +336,13 @@ f:RegisterEvent("PLAYER_LOGIN")   -- (Modules.lua ns.AtLogin: one frame for ever
 f:SetScript("OnEvent", function(_, event, name)
     if event == "PLAYER_LOGIN" then
         f:UnregisterEvent("PLAYER_LOGIN")
+        f:UnregisterEvent("ADDON_LOADED")   -- (P5) every module addon has loaded by now (none is load-on-demand)
         if ns.FireLogin then ns.FireLogin() end
         return
     end
-    if name ~= addonName then return end
+    -- (P5) a module addon loaded: the game has set its saved variable, so its settings store opens (Modules.lua section 0c)
+    if name ~= addonName then if ns.SettingsAddonLoaded then ns.SettingsAddonLoaded(name) end; return end
     InitDB()
-    f:UnregisterEvent("ADDON_LOADED")
     ns.FireReady()   -- every feature that asked through ns.WhenReady (Modules.lua), in load order (P4: the rule engine starts at XayaUI Rules' own load)
 end)
 

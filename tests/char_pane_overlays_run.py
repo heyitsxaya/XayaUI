@@ -240,7 +240,7 @@ tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, 
 tk.enchantSlotsSet = true   -- she ticked her wrist too: "No enchant" there
 ''')
 run(lua, r'''
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
 -- her settings: reskin on, Clean window off, item level, enchants, gems, stat list on (the wider window: its default, on);
 -- the toolkit and its slot overlays on
@@ -619,7 +619,7 @@ end
 run(lua, r'''
 local createdBefore = #created
 local updateSize = CharacterFrame.UpdateSize
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CharacterFrame:Show(); PaperDollFrame:Show()
 linkReads, tipReads = 0, 0
 ns.CharReskin_Apply()
@@ -667,7 +667,7 @@ tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, 
 tk.enchantSlotsSet = true
 ''')
 run(lua, r'''
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
 rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
 tk.enabled, tk.overlays, tk.panel = true, true, false
@@ -715,7 +715,7 @@ CueRulesDB.characterToolkit = { enabled = false }
 ''')
 run(lua, r'''
 local before, hookBefore, sizeBefore = #created, PaperDollItemSlotButton_Update, CharacterFrame.UpdateSize
-ns.FireReady()
+ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CharacterFrame:Show(); CharacterModelScene.ControlFrame:Show(); PaperDollFrame:Show()
 check("V14: both off at login: no frame created, nothing hooked (slots, UpdateSize, the Character tab), no theme listener, nothing drawn, Blizzard's width",
   #created == before and PaperDollItemSlotButton_Update == hookBefore and CharacterFrame.UpdateSize == sizeBefore and #(PaperDollFrame.hooks.OnShow or {}) == 0
