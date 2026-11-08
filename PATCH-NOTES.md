@@ -22,6 +22,17 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Conflict Warnings and Reload on Switch
+
+### XayaUI 0.6.79
+
+**Conflict Warnings (new)**
+- Added a conflict warning: when another addon that changes the same thing is loaded (ElvUI, EllesmereUI, Prat, SexyMap, BasicMinimap, TipTac, Plater, KuiNameplates, ThreatPlates or idTip), XayaUI says so once at login and on that part's settings page. Nothing is switched off.
+
+**Reload on Switch**
+- Turning Blizzard Reskin, any reskin page, Improved Chat or Nameplates on or off, and /xui chat on|off, /xui reskin on|off and /xui shop, now save and ask for a /reload instead of applying at once. The switch descriptions now say "Takes effect after a reload".
+  *Developers' notes: Not yet tested in game (QA I2). Also changed along with it: Options 0.6.90, Chat 0.6.43, QoL 0.7.50, Bonus Features 0.6.34, Blizzard Reskin 0.6.23, Nameplates 0.2.3 and Dev Assist 0.7.60.*
+
 ## 2026-11-08 — Settings Migration
 
 ### XayaUI 0.6.78
