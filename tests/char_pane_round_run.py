@@ -159,7 +159,8 @@ checkp("  ...each stat's name in its stat colour (Critical Strike, Versatility);
 checkp("  ...drawn on the reskin's own list over Blizzard's pane (a child of CharacterStatsPane, shown, an opaque fill under it)", function()
   local L = ns.CharReskinParts.statList
   return L and L.parent == CharacterStatsPane and L:IsShown() and L.fill and L.fill.color and L.fill.color[4] == 1 end)
-local pg = ns.BuildCharReskinPage(function() ns.CharReskin_Apply() end)
+-- (QoL 0.7.53, character pane split stage 1) the Stat list page is on QoL > Character Pane now (Blizzard Reskin keeps the look)
+local pg = ns.BuildCharPanePage(function() ns.CharReskin_Apply() end)
 local page = pg.args.statListPage or { args = {} }
 -- (a stand-in for a missing control on older code, so a check fails instead of the run stopping)
 local NOOP = function() end
@@ -199,8 +200,11 @@ checkp("Reset the list: names, colours, order, modes back", function()
 rc.statList = false; ns.CharReskin_Apply()
 checkp("the part switched off (Full stat list): the list hides, Blizzard's own list shows again", function() return not ns.CharReskinParts.statList:IsShown() end)
 rc.statList = true; ns.CharReskin_Apply()
+-- (QoL 0.7.53, stage 1) the full stat list is QoL's: the reskin off leaves it; QoL's Character Pane off hides it
 rc.enabled = false; ns.CharReskin_Apply()
-checkp("the reskin off: the list hides", function() return not ns.CharReskinParts.statList:IsShown() end)
+checkp("the reskin off: the list stays (QoL's Character Pane feature, still on)", function() return ns.CharReskinParts.statList:IsShown() end)
+rc.features = false; ns.CharReskin_Apply()
+checkp("QoL's Character Pane off: the list hides", function() return not ns.CharReskinParts.statList:IsShown() end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 

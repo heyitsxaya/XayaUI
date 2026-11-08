@@ -12,6 +12,8 @@ Checks, on the real addons in the stand-in game:
 - mode "ownoff": the cost baseline.
 Options 0.6.55: the switch moved to the tab's Overview row (right pane) with a reload prompt; rows listed after a reload.
 XayaUI 0.6.79 / Options 0.6.90 (PS-57, #480): the switch only saves and asks; the reskins start or stop after the reload (stand-in here). Old code (main 0ef9cb0): no tab box, no row boxes on these pages, the tab switch does not exist: those checks fail.
+QoL 0.7.53 (character pane split stage 1): "character" is the reskin's look (ns.CharReskin_LookActive); the Character Pane features
+are QoL's and run with the reskin off by design, so both modes save QoL's Character Pane switch off (features = false).
 Run: python3 tests/reskin_tab_switch_run.py   (Lua 5.1 via lupa; loads the settings window)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -134,7 +136,9 @@ local function state()
   -- by itself (only at the Auction House, when worn gear misses an enchant / gem, or when asked for)
   local shopEvents = 0
   for _, o in ipairs(W.objects) do if rawget(o, "_owner") == FILES.shop then for _ in pairs(o._events or {}) do shopEvents = shopEvents + 1 end end end
-  return { chat = ns.Chat.On(), char = ns.CharReskin_Active(), gm = gm and true or false, shop = shopEvents > 0, shopShown = (sp and sp:IsShown()) and true or false }
+  -- (QoL 0.7.53, character pane split stage 1) the Character Pane reskin is its LOOK; its features (item level, enchants, gems, stat
+  -- list) are QoL's and run with the reskin off by design (tests/char_pane_split_run.py), so "character" is the look here
+  return { chat = ns.Chat.On(), char = (ns.CharReskin_LookActive or ns.CharReskin_Active)(), gm = gm and true or false, shop = shopEvents > 0, shopShown = (sp and sp:IsShown()) and true or false }
 end
 local function fmt(s) return ("chat %s, character %s, esc menu %s, shopping %s"):format(tostring(s.chat), tostring(s.char), tostring(s.gm), tostring(s.shop)) end
 local function own() return CueRulesDB.chat2.enabled == true and CueRulesDB.characterReskin.enabled == true and CueRulesDB.ui.gm.skin == true and CueRulesDB.shoppingList.enabled == true end
@@ -219,9 +223,10 @@ def run(mode, saved):
 
 
 def main():
-    on = {"chat2": {"enabled": True}, "characterReskin": {"enabled": True}, "ui": {"gm": {"skin": True}},
+    # (QoL 0.7.53, stage 1) QoL's Character Pane switch (the features) saved off in both modes, so the cost compared is the reskin's
+    on = {"chat2": {"enabled": True}, "characterReskin": {"enabled": True, "features": False}, "ui": {"gm": {"skin": True}},
           "shoppingList": {"enabled": True, "panel": True}}
-    off = {"chat2": {"enabled": False}, "characterReskin": {"enabled": False}, "ui": {"gm": {"skin": False}},
+    off = {"chat2": {"enabled": False}, "characterReskin": {"enabled": False, "features": False}, "ui": {"gm": {"skin": False}},
            "shoppingList": {"enabled": False}}
     n1, b1, e1, base = run("ownoff", off)
     tab_off = dict(on)

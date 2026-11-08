@@ -151,7 +151,10 @@ rc.stats = true; rc.enabled = false; ns.CharReskin_Apply()
 check("switched off: every faded region back to its alpha", CharacterFrame.NineSlice.alpha == 1 and CharacterFrame.Inset.Bg.alpha == 1 and _G[MODEL[1]].alpha == 1
   and CharacterHeadSlotFrame.alpha == 1 and CharacterHeadSlot.normal.alpha == 1 and CharacterFrameTab1.TabTextures[1].alpha == 1 and ns.CharReskinDiag.faded == 0)
 check("  ...every recoloured text back to its colour", col(CharacterFrame.TitleContainer.TitleText.color, 1, 0.82, 0) and col(CharacterStatsPane.AttributesCategory.Title.color, 1, 1, 1))
-check("  ...our pieces hidden", not CharacterHeadSlot.xuiIlvl.shown and not CharacterFinger0Slot.xuiEnchant.shown and not CharacterFrameTab1.xuiBg.shown)
+-- (QoL 0.7.53, character pane split stage 1) switching the reskin off takes the look away only: the item level and the enchant are QoL's
+-- Character Pane features (their switch took the reskin's saved value, on, the first time it was read) and stay
+check("  ...the look's pieces hidden; the item level and the enchant (QoL's Character Pane, on) stay", CharacterHeadSlot.xuiIlvl.shown
+  and CharacterFinger0Slot.xuiEnchant.shown and not CharacterFrameTab1.xuiBg.shown and ns.CharReskin_Cfg().features == true)
 PaperDollItemSlotButton_Update(CharacterHeadSlot); PaperDollFrame_UpdateStats()
 check("  ...and the hooks do nothing while off", CharacterHeadSlotFrame.alpha == 1 and STATROWS[1].Background.alpha == 1)
 rc.enabled = true; ns.CharReskin_Apply()
@@ -189,9 +192,18 @@ check("  ...after it the reskin no longer claims the slots: the toolkit's overla
 
 -- 10. Settings page and /xui reskin --------------------------------------------------------------------------------------------
 local page = ns.BuildCharReskinPage(function() end)
-check("settings: Blizzard UI Reskin > Character Pane with its switch and one per part", page.name == "Character Pane" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
-  and page.args.ilvl and page.args.enchants and page.args.stats)
-check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
+-- (QoL 0.7.53, stage 1) the look parts stay on Blizzard UI Reskin > Character Pane; item level, enchants, gems and the full stat list
+-- are on QoL > Character Pane (same labels), greyed by QoL's own switch
+check("settings: Blizzard UI Reskin > Character Pane with its switch and one per look part", page.name == "Character Pane" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
+  and page.args.stats and page.args.ilvl == nil and page.args.enchants == nil and page.args.gems == nil and page.args.statList == nil and page.args.statListPage == nil)
+check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.chrome.disabled(); rc.enabled = true; return d end)() == true)
+local qpage = ns.BuildCharPanePage(function() end)
+check("settings: QoL > Character Pane with its own switch and the feature parts (same labels)", qpage.name == "Character Pane" and qpage.xuiSwitch
+  and qpage.xuiSwitch.name == "Character Pane" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level on each slot" and qpage.args.enchants
+  and qpage.args.gems and qpage.args.statList and qpage.args.statListPage and qpage.args.chrome == nil)
+check("  ...its parts are greyed out while its own switch is off, whatever the reskin's", (function()
+  local f = rc.features; rc.features = false; local d = qpage.args.ilvl.disabled(); rc.features = f; return d end)() == true
+  and qpage.args.ilvl.disabled() == false)
 -- (QoL 0.7.22) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
 check("  ...the wider window has its switch (on by default), its extra width (0-300 px in 1 px steps, default 42: 380 / 582) and the background opacity (50-100%, default 95%)",
   page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 0 and page.args.widePx.max == 300

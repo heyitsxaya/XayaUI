@@ -37,7 +37,12 @@ removed (`reskin.gamemenu.colors.*`, now its Theme row) with a desc on its Reset
 chat defaults): only the "qol" tab changed, in every variant where XayaUI Chat is on, same node count; `--dump` of 1b974fe and of the new
 code differ in 16 lines per variant, all `qol.improvedchat.privacy.*` and only in their get() result (nil before: the privacy cover's
 defaults never reached the saved settings in the game; now each shows its default, e.g. Button size 28, Color 0.04 | 0.04 | 0.06), 0 other
-lines (debug-log 2026-11-08 debug-chatdefaults). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+lines (debug-log 2026-11-08 debug-chatdefaults). Regenerated again on 2026-11-08 for QoL 0.7.53 (character pane split stage 1, C20): only the
+"qol" and "reskin" tabs changed, in every variant where XayaUI QoL is on (QoL off: 0 lines); `--dump` of f870d78 and of the new code differ
+(all-on: 609 lines) only in the four feature controls and the Stat list page moving from `reskin.charreskin.*` (ilvl, enchants, gems,
+statList, statListPage: 299 nodes) to `qol.charpane.*`, node for node the same after the path (names, descs, orders, get / hidden /
+disabled results), the new page node `qol.charpane` ("Character Pane", its switch), and the `order` of the QoL pages sorted after it
+(Character Toolkit, Cursor, Improved Chat, Nameplates, Release Guard: +1); 0 other lines (debug-log 2026-11-08 character-split). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

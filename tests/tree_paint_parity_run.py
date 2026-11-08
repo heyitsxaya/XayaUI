@@ -18,7 +18,11 @@ every heading / button label's anchors and justification, and every top tab's ti
 The golden values were produced by `python3 tests/tree_paint_parity_run.py --golden` on a checkout of 232552d (before P4b);
 `--dump DIR` writes the drawings to compare by hand. Regenerated on 2026-11-08 for Options 0.6.104 (debug W9b, #472): `--dump` of
 accb5c8 and of the new code differ in exactly one line in each of the reskin and profiles drawings (both variants): the new
-Blizzard Reskin > Theme row ("row rsktheme ... text \"Theme\""); 0 other lines (debug-log 2026-11-08 debug-w9b).
+Blizzard Reskin > Theme row ("row rsktheme ... text \"Theme\""); 0 other lines (debug-log 2026-11-08 debug-w9b). Regenerated again
+on 2026-11-08 for QoL 0.7.53 (character pane split stage 1): `--dump` of f870d78 and of the new code differ only in the qol drawings
+(on / off: the new row "charpane" "Character Pane" with its tick box, 2 lines) and the reskin drawings (on / off: the row "charreskin"
+"Character Pane" has no child page any more, its Stat list page moved to QoL > Character Pane, so it is drawn as a leaf like Blizzard
+Windows: text at 25 instead of 42, tick box at 6 instead of 23; 2 lines each); 0 other lines (debug-log 2026-11-08 character-split).
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -405,7 +405,9 @@ check("  ...Clean window on: after a reopen ours is shown again (background, bor
   bg.shown and edges[1] and edges[1].shown and own.stats and own.stats.shown and near(own.stats.color, THEME.paneBg))
 rc.bgAlpha = 0.7; ns.CharReskin_Apply()
 check("  ...its opacity follows the page's \"Background opacity\" (70%)", bg.color ~= nil and math.abs(bg.color[4] - 0.7) < 0.001, bg.color and bg.color[4])
-rc.enabled = false; ns.CharReskin_Apply(); LISTEN0 = #ns.Theme.listeners; rc.enabled = true; ns.CharReskin_Apply()
+-- (QoL 0.7.53, stage 1: the listener is there while the look or QoL's Character Pane features are on; both off for the baseline)
+local fe0 = rc.features
+rc.enabled = false; rc.features = false; ns.CharReskin_Apply(); LISTEN0 = #ns.Theme.listeners; rc.enabled = true; rc.features = fe0; ns.CharReskin_Apply()
 THEME.windowBg = { 0.2, 0.1, 0.3, 1 }; ns.Theme.Resolve()
 check("  ...a theme change repaints it (one listener, there only while the reskin is on)", near(bg.color, THEME.windowBg) and #ns.Theme.listeners == LISTEN0 + 1,
   #ns.Theme.listeners .. " / " .. LISTEN0)
@@ -559,9 +561,11 @@ check("E. the slots with no position yet when the window opens: the blocks are l
 
 -- F. every combination of the switches: one item level, one socket mark, one enchant mark per slot -------------------------------
 local combos, badc = 0, {}
+-- (QoL 0.7.53, character pane split stage 1) rfe: QoL's Character Pane switch (the item level, enchant and gem parts), on its own from the
+-- reskin's (ron: the look, the wider window)
 for _, ron in ipairs({ false, true }) do for _, ril in ipairs({ false, true }) do for _, ren in ipairs({ false, true }) do for _, rge in ipairs({ false, true }) do
-for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do for _, rwi in ipairs({ false, true }) do
-  rc.enabled, rc.ilvl, rc.enchants, rc.gems, rc.wide = ron, ril, ren, rge, rwi
+for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do for _, rwi in ipairs({ false, true }) do for _, rfe in ipairs({ false, true }) do
+  rc.enabled, rc.ilvl, rc.enchants, rc.gems, rc.wide, rc.features = ron, ril, ren, rge, rwi, rfe
   tk.enabled, tk.overlays = ton, tov
   ns.CharReskin_Apply(); ns.CharToolkit_Apply(); ns.CharToolkit_UpdateOverlays()
   combos = combos + 1
@@ -569,24 +573,24 @@ for _, ton in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) d
   if CharacterFrame.w ~= wantW then badc[#badc + 1] = ("width %d (want %d) r%s w%s"):format(CharacterFrame.w, wantW, tostring(ron), tostring(rwi)) end
   for _, name in ipairs(ALL) do
     local slot = SLOT_ID[name]
-    local drawer = (ron and ril) or (ton and tov)
+    local drawer = (rfe and ril) or (ton and tov)
     local want = (drawer and GEAR[slot] and slot ~= 4 and slot ~= 19) and 1 or 0
     local il = ilvlTexts(name)
     local sockMarks = (#sockets(name) > 0 and 1 or 0) + (marks(name):find("%dS") and 1 or 0)
     local b = _G["Character" .. name]
     local enchMarks = (shownText(b.xuiEnchant) and 1 or 0) + (marks(name):find("E") and 1 or 0)
     if il ~= want or sockMarks > 1 or enchMarks > 1 then
-      badc[#badc + 1] = ("%s r%s/%s/%s/%s t%s/%s: ilvl %d (want %d), sockets %d, enchant %d"):format(name, tostring(ron), tostring(ril), tostring(ren),
-        tostring(rge), tostring(ton), tostring(tov), il, want, sockMarks, enchMarks)
+      badc[#badc + 1] = ("%s r%s/%s/%s/%s f%s t%s/%s: ilvl %d (want %d), sockets %d, enchant %d"):format(name, tostring(ron), tostring(ril), tostring(ren),
+        tostring(rge), tostring(rfe), tostring(ton), tostring(tov), il, want, sockMarks, enchMarks)
     end
   end
   if ron and rwi then local _, ov = layoutProblems(false, true); for _, x in ipairs(ov) do badc[#badc + 1] = "over the model: " .. x end end
-end end end end end end end
-check(("F. every combination of the reskin's (with the wider window) and the toolkit's switches (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
+end end end end end end end end
+check(("F. every combination of the reskin's (with the wider window), QoL's Character Pane and the toolkit's switches (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
   #badc == 0, list(badc, 2))
 rc.enabled, rc.wide = true, true; ns.CharReskin_Apply()
 local onW, onBg = CharacterFrame.w, PARTS().bg and PARTS().bg.shown
-rc.enabled = false; ns.CharReskin_Apply()
+rc.enabled = false; rc.features = false; ns.CharReskin_Apply()   -- (QoL 0.7.53: QoL's Character Pane off too, so no listener stays)
 check("F. the reskin switched off (from 780, background shown): Blizzard's width and places, the theme listener gone, the background hidden",
   onW == 780 and onBg and CharacterFrame.w == 540 and math.abs(RECT(CharacterModelScene).l - (RECT(cf).l + 52)) < 0.01 and #ns.Theme.listeners == LISTEN0 and not (PARTS().bg and PARTS().bg.shown),
   CharacterFrame.w .. " / " .. #ns.Theme.listeners)
@@ -651,10 +655,16 @@ check("V14: the toolkit on with its slot overlays off: no hook on the slot butto
 rc.ilvl = true; ns.CharReskin_Apply()
 local listening = {}
 for i = createdBefore + 1, #created do if tostring(created[i].src):find("CharacterReskin.lua", 1, true) and created[i].events.PLAYER_EQUIPMENT_CHANGED then listening[#listening + 1] = i end end
+-- (QoL 0.7.53, character pane split stage 1) the item level is QoL's Character Pane feature: with the reskin off it keeps listening while
+-- QoL's switch is on; with both off nothing listens
 rc.enabled = false; ns.CharReskin_Apply()
+local mid = 0
+for _, i in ipairs(listening) do for _ in pairs(created[i].events) do mid = mid + 1 end end
+rc.features = false; ns.CharReskin_Apply()
 local still = 0
 for _, i in ipairs(listening) do for _ in pairs(created[i].events) do still = still + 1 end end
-check("V14: the reskin listens to item changes while its item level is on; switched off, its event frame listens to nothing", #listening == 1 and still == 0, #listening .. " / " .. still)
+check("V14: the item level listens to item changes while it is on (the reskin off, QoL's Character Pane on: still); both off, the event frame listens to nothing",
+  #listening == 1 and mid > 0 and still == 0, #listening .. " / " .. mid .. " / " .. still)
 ''')
 
 # G. (QoL 0.7.33) Insivius via Xaya: "Text breaks if you make the window wider and then bring it back down"; her answer "Fix + diagnostic".

@@ -76,6 +76,7 @@ local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>
   -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
   "qol>nameplates",
   "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
+  "qol>charpane",       -- (QoL 0.7.53, character pane split stage 1: QoL > Character Pane, the item level / enchants / gems / stat list)
   "reskin>friendcolors" }   -- (Reskin 0.6.8, CHAT-5)
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
