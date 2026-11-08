@@ -39,7 +39,7 @@ GetTime = function() return 0 end
 InCombatLockdown = function() return false end
 ''')
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/Modules.lua")).replace("'", '"')))   # core contract (0.6.0)
-lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Options/RuleEditor/Drafts.lua")).replace("'", '"')))
+lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules_Options/Drafts.lua")).replace("'", '"')))
 lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end

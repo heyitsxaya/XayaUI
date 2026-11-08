@@ -1,10 +1,12 @@
 -------------------------------------------------------------------------------
--- RuleEditor/RuleSettings.lua : the rule module's rows on Settings > UI Options (the rule list's look on Display, and the Rule Creation
+-- XayaUI_Rules_Options/RuleSettings.lua : the rule module's rows on Settings > UI Options (the rule list's look on Display, and the Rule Creation
 -- tab: drafts, the rule list, the talent scan, Combat Tracking Setup).
 -- Part of the rule editor, moved out of Options.lua unchanged in the platform split P3 (Options 0.6.83;
 -- docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1: the rule module owns its editor). This folder talks to the rest of the
 -- settings window only through ns.OptionsApi: ns.OptionsApi.Shared (what Options.lua lends it) in, ns.OptionsApi.RuleEditor (what
 -- Options.lua asks of it) out; its files share their own parts through ns.OptionsApi.RuleEditorParts.
+-- Since P4b (XayaUI_Rules_Options 0.6.77) this folder is its own load-on-demand addon: the settings window loads it when it opens
+-- while XayaUI Rules is on (XayaUI_Options/Options.lua ns.OptionsApi.LoadRuleEditor); with XayaUI Rules off none of its files is read.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -88,4 +90,17 @@ function ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)
         } },
     } }
     return display, rules
+end
+
+-- (P4b) what the settings window (XayaUI_Options/Options.lua, Skin.lua) calls of the rule editor besides BuildRulesTab, SettingsRows,
+-- SelectedRule and StatusText: the same functions as before, now reached through ns.OptionsApi.RuleEditor (the window may not use
+-- this addon's names directly: it loads before it, and without it while XayaUI Rules is off). This is the last file of the addon,
+-- so every one of them is defined by now.
+do
+    local RE = ns.OptionsApi.RuleEditor
+    for _, n in ipairs({ "DeleteFolderAllById", "SaveRulesSub", "SmartOpen", "FixSelection", "ApplyTreeFilter", "DraftsOnOpen",
+        "DraftsOnClose", "SearchOnClose", "UndoFirstState", "DeleteKey", "UndoKey", "MultiDelete", "MultiClear", "MultiReset",
+        "MultiCount", "MultiMoveMenu", "SaveBarUpdate", "BuildDraftsPage", "IsEditLocked", "DraftsEnabled", "DraftDirty" }) do
+        RE[n] = ns[n]
+    end
 end

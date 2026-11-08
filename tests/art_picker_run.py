@@ -79,7 +79,7 @@ for mode in ("nothing", "error"):
     check("SetTexture %s: nothing is hidden (never a guess)" % ("returns nothing" if mode == "nothing" else "errors"),
           got.count("[Graphics]") == 2 and got.count("[Bar Fills]") == 3, got)
 # the picker uses the checked list
-opt = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "Editor.lua"), encoding="utf-8").read()
+opt = open(os.path.join(ROOT, "XayaUI_Rules_Options", "Editor.lua"), encoding="utf-8").read()
 check("the art picker reads ns.AvailableLocalGraphics", "ns.AvailableLocalGraphics()" in opt)
 
 print("FAILS: %d" % len(fails))

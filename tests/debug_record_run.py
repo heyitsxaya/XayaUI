@@ -170,7 +170,7 @@ OPTENV = setmetatable({ ns = OPTNS }, { __index = function(_, k) local v = _G[k]
 build = L.eval("function(src) local f, e = loadstring('local ns = ns; local CoreS, PlatS, QolS = ns.Settings(\"core\"), ns.Settings(\"platform\"), ns.Settings(\"qol\")\\n' .. src .. '\\nreturn BuildAddonSettings()', '@Options.lua(BuildAddonSettings)');"
                " if not f then error(e) end; setfenv(f, OPTENV); return f() end")
 # (P3 options split, Options 0.6.83) the page's rule rows come from the rule editor (RuleEditor/RuleSettings.lua): its function goes first
-rs = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "RuleSettings.lua"), encoding="utf-8").read()
+rs = open(os.path.join(ROOT, "XayaUI_Rules_Options", "RuleSettings.lua"), encoding="utf-8").read()
 rs = rs[rs.index("function ns.OptionsApi.RuleEditor.SettingsRows"):]
 L.execute("NS.OptionsApi = NS.OptionsApi or {}; NS.OptionsApi.RuleEditor = NS.OptionsApi.RuleEditor or {}")
 dbg = build(rs + "\n" + opt[i:j])["args"]["debug"]["args"]

@@ -4,6 +4,8 @@
 -- saved version shows "Save changes" / "Discard changes". If the window closes (or you log out) with unsaved changes, the edited rule is kept in the
 -- Drafts page and the rule itself goes back to its saved version. A rule made in this window and never saved lives only in Drafts after closing.
 -- Not counted as changes (they follow what you do in the sidebar, not what the rule does): on / off, name, group, collapse state, sidebar icon, edit lock.
+-- (P4b, XayaUI_Rules_Options 0.6.77) Moved unchanged from XayaUI_Options/RuleEditor/ into the rule editor's own load-on-demand addon,
+-- loaded by the settings window when it opens while XayaUI Rules is on; with XayaUI Rules off none of its files is read.
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)

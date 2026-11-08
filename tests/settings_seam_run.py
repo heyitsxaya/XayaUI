@@ -183,6 +183,8 @@ def canon(saved):
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
+    # (P4b) and the rule editor's folder (XayaUI_Rules_Options, not loaded in these sessions: the window is not opened), the same way
+    text = text.replace(", XayaUI_Rules_Options 0 (not loaded)", "").replace(";XayaUI_Rules_Options=0", "")
     return text.replace(", XayaUI_Rules 0", "").replace(";XayaUI_Rules=0", "")
 
 

@@ -35,12 +35,15 @@
 -- Choices per spec and row (CueRulesDB.ui.auto.picks[specID][key]): ticked, trigger, main cue, combat load, extra cues (Advanced), cue
 -- set-up (su: speech text, sound, art). Nothing is made until "Populate" is pressed.
 -------------------------------------------------------------------------------
+-- (P4b, XayaUI_Rules_Options 0.6.77) Moved unchanged from XayaUI_Options/RuleEditor/ into the rule editor's own load-on-demand addon,
+-- loaded by the settings window when it opens while XayaUI Rules is on; with XayaUI Rules off none of its files is read.
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local issecret = issecretvalue or function() return false end
 
 local AP = {}
 ns.AutoPicker = AP
+if ns.OptionsApi then ns.OptionsApi.AutoPicker = AP end   -- (P4b) published for Dev Assist's QA walkthrough (QAWalks-generate.lua, V22); was Options.lua's, which now loads before this file
 
 AP.TYPE = { cd = "Spell CD", aura = "Aura", debuff = "Debuff" }
 AP.BUCKETS = { "cd", "aura", "debuff" }   -- A11: type, then A-Z

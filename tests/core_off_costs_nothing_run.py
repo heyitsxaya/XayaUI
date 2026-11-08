@@ -379,7 +379,7 @@ def world(mode):
     folders = H.find_addons()
     # (core 0.6.56, REQUEST-LOG #82: the record's kinds of line are XayaUI Dev Assist's, so it is loaded here for the debug record's
     # checks; what a player has without it is tests/devassist_debug_tools_run.py)
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_DevAssist")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_Rules_Options", "XayaUI_DevAssist")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

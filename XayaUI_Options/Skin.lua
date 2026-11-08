@@ -684,7 +684,7 @@ local function EnsureTreeSearch(w)
         w.xuiSearchBox = sb
     end
     -- multi-select bar: while rules are selected it replaces the search box with "Delete (N)" / "Move (N)" / "Deselect (N)" right where the list is
-    local nSel = (has and ns.MultiCount and ns.MultiCount()) or 0
+    local nSel = (has and ns.OptionsApi.RuleEditor.MultiCount and ns.OptionsApi.RuleEditor.MultiCount()) or 0
     local bar = w.xuiSelBar
     if has and not bar and w.treeframe then
         bar = CreateFrame("Frame", nil, w.treeframe)
@@ -694,13 +694,13 @@ local function EnsureTreeSearch(w)
         bar:SetPoint("TOPRIGHT", w.treeframe, "TOPRIGHT", -12, -13)
         bar.clr = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.clr:SetSize(84, 22); bar.clr:SetPoint("RIGHT", 0, 0)
-        bar.clr:SetScript("OnClick", function() if ns.MultiClear then ns.MultiClear() end end)
+        bar.clr:SetScript("OnClick", function() if ns.OptionsApi.RuleEditor.MultiClear then ns.OptionsApi.RuleEditor.MultiClear() end end)
         bar.mv = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.mv:SetSize(70, 22); bar.mv:SetPoint("RIGHT", bar.clr, "LEFT", -4, 0)
-        bar.mv:SetScript("OnClick", function(self) if ns.MultiMoveMenu then ns.MultiMoveMenu(self) end end)
+        bar.mv:SetScript("OnClick", function(self) if ns.OptionsApi.RuleEditor.MultiMoveMenu then ns.OptionsApi.RuleEditor.MultiMoveMenu(self) end end)
         bar.del = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
         bar.del:SetHeight(22); bar.del:SetPoint("LEFT", 0, 0); bar.del:SetPoint("RIGHT", bar.mv, "LEFT", -4, 0)
-        bar.del:SetScript("OnClick", function() if ns.MultiDelete then ns.MultiDelete() end end)
+        bar.del:SetScript("OnClick", function() if ns.OptionsApi.RuleEditor.MultiDelete then ns.OptionsApi.RuleEditor.MultiDelete() end end)
         w.xuiSelBar = bar
     end
     if bar then

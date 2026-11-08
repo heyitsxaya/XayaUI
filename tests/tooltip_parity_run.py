@@ -11,7 +11,7 @@ It also checks that the hovers of the converted files are in the recording (so t
 
 Re-record (only for a deliberate change to a hover, never to make a refactor pass): python3 tests/tooltip_parity_run.py --record
 Run: python3 tests/tooltip_parity_run.py   (Lua 5.1 via lupa)."""
-import json, os, sys
+import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -20,10 +20,10 @@ GOLDEN = os.path.join(HERE, "tooltip_parity_golden.json")
 
 LUA = r'''
 return function(W, L)
--- (P4) the stand-in has one more addon folder since the split (XayaUI_Rules); it reports 0 KB for it, so the latency hover's memory list
+-- (P4) the stand-in has one more addon folder since the split (XayaUI_Rules; P4b: and XayaUI_Rules_Options); it reports 0 KB for them, so the latency hover's memory list
 -- (the eight biggest, all 1.0 MB in the stand-in) shows the same addons and total as the golden. The hover's own code is unchanged.
 do local realMem = GetAddOnMemoryUsage
-  GetAddOnMemoryUsage = function(a) local n = type(a) == "number" and C_AddOns.GetAddOnInfo(a) or a; if n == "XayaUI_Rules" then return 0 end; return realMem(a) end end
+  GetAddOnMemoryUsage = function(a) local n = type(a) == "number" and C_AddOns.GetAddOnInfo(a) or a; if n == "XayaUI_Rules" or n == "XayaUI_Rules_Options" then return 0 end; return realMem(a) end end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
 local ns = rawget(_G, "XayaUI_NS")
@@ -106,6 +106,15 @@ COVERS = [
 CONVERTED = ["XayaUI/MinimapButton.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/History.lua", "XayaUI_Chat/Frame.lua"]
 
 
+# The Chat clock's hover shows today's date ("Saturday 07 November"): the test runs on any day, so the date text is
+# compared as a placeholder; every other call, argument and line is still compared exactly.
+DATE_RE = re.compile(r"\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d{1,2} [A-Z][a-z]+\b")
+
+
+def norm_date(s):
+    return DATE_RE.sub("<DATE>", str(s))
+
+
 def record():
     folders = H.find_addons()
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
@@ -116,7 +125,7 @@ def record():
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
-    logs = sorted(res.logs[i] for i in range(1, len(res.logs) + 1))
+    logs = sorted(norm_date(res.logs[i]) for i in range(1, len(res.logs) + 1))
     errs = [str(world.errors[i])[:400] for i in range(1, len(world.errors) + 1)]
     return logs, bool(res.tip), errs
 
@@ -135,7 +144,7 @@ def main():
         print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra)[:900] + "]"))
         if not ok:
             fails.append(name)
-    want = json.load(open(GOLDEN, encoding="utf-8"))
+    want = sorted(norm_date(w) for w in json.load(open(GOLDEN, encoding="utf-8")))
     check("hovers recorded: %d (golden: %d)" % (len(logs), len(want)), len(logs) == len(want))
     missing = [w for w in want if w not in logs]
     extra = [g for g in logs if g not in want]
