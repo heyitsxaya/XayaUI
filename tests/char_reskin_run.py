@@ -65,11 +65,11 @@ C_Item.GetItemUpgradeInfo = function(link) local name = type(link) == "string" a
 GetInventoryItemQuality = function(_, slot) if GEAR[slot] then return 4 end end
 TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
-local tk = ns.CharToolkit_Cfg()
+local tk = TKC()
 local function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.002 end
 local function col(t, r, g, b) return t and near(t[1], r) and near(t[2], g) and near(t[3], b) end
 
@@ -103,7 +103,7 @@ check("  ...Ring, Veteran step 1 of 8: green at its dimmest (55%)", col(ri.color
 check("  ...an empty slot shows none", CharacterNeckSlot.xuiIlvl and CharacterNeckSlot.xuiIlvl.text == "")
 check("  ...the track is kept for the hover (Hero 4/6)", CharacterHeadSlot.xuiTrack and CharacterHeadSlot.xuiTrack.track == "Hero" and CharacterHeadSlot.xuiTrack.step == 4)
 -- the Character Toolkit's overlays leave their item level (and enchant mark) out while the reskin draws them
-tk.enabled, tk.overlays = true, true; ns.CharToolkit_Apply(); ns.CharToolkit_UpdateOverlays()
+tk.enabled, tk.overlays = true, true; TKA(); ns.CharToolkit_UpdateOverlays()
 check("the toolkit's slot overlay leaves out its item level while the reskin draws one (her screenshot had two)",
   ns.CharToolkit_OverlayText("HeadSlot") ~= nil and not tostring(ns.CharToolkit_OverlayText("HeadSlot")):find("336", 1, true), tostring(ns.CharToolkit_OverlayText("HeadSlot")))
 
@@ -151,7 +151,10 @@ rc.stats = true; rc.enabled = false; ns.CharReskin_Apply()
 check("switched off: every faded region back to its alpha", CharacterFrame.NineSlice.alpha == 1 and CharacterFrame.Inset.Bg.alpha == 1 and _G[MODEL[1]].alpha == 1
   and CharacterHeadSlotFrame.alpha == 1 and CharacterHeadSlot.normal.alpha == 1 and CharacterFrameTab1.TabTextures[1].alpha == 1 and ns.CharReskinDiag.faded == 0)
 check("  ...every recoloured text back to its colour", col(CharacterFrame.TitleContainer.TitleText.color, 1, 0.82, 0) and col(CharacterStatsPane.AttributesCategory.Title.color, 1, 1, 1))
-check("  ...our pieces hidden", not CharacterHeadSlot.xuiIlvl.shown and not CharacterFinger0Slot.xuiEnchant.shown and not CharacterFrameTab1.xuiBg.shown)
+-- (QoL 0.7.53, character pane split stage 1) switching the reskin off takes the look away only: the item level and the enchant are QoL's
+-- Character Pane features (their switch took the reskin's saved value, on, the first time it was read) and stay
+check("  ...the look's pieces hidden; the item level and the enchant (QoL's Character Pane, on) stay", CharacterHeadSlot.xuiIlvl.shown
+  and CharacterFinger0Slot.xuiEnchant.shown and not CharacterFrameTab1.xuiBg.shown and ns.CharReskin_Cfg().features == true)
 PaperDollItemSlotButton_Update(CharacterHeadSlot); PaperDollFrame_UpdateStats()
 check("  ...and the hooks do nothing while off", CharacterHeadSlotFrame.alpha == 1 and STATROWS[1].Background.alpha == 1)
 rc.enabled = true; ns.CharReskin_Apply()
@@ -189,9 +192,18 @@ check("  ...after it the reskin no longer claims the slots: the toolkit's overla
 
 -- 10. Settings page and /xui reskin --------------------------------------------------------------------------------------------
 local page = ns.BuildCharReskinPage(function() end)
-check("settings: Blizzard UI Reskin > Character Pane with its switch and one per part", page.name == "Character Pane" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
-  and page.args.ilvl and page.args.enchants and page.args.stats)
-check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.ilvl.disabled(); rc.enabled = true; return d end)() == true)
+-- (QoL 0.7.53, stage 1) the look parts stay on Blizzard UI Reskin > Character Pane; item level, enchants, gems and the full stat list
+-- are on QoL > Character Pane (same labels), greyed by QoL's own switch
+check("settings: Blizzard UI Reskin > Character Pane with its switch and one per look part", page.name == "Character Pane" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
+  and page.args.stats and page.args.ilvl == nil and page.args.enchants == nil and page.args.gems == nil and page.args.statList == nil and page.args.statListPage == nil)
+check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.chrome.disabled(); rc.enabled = true; return d end)() == true)
+local qpage = ns.BuildCharPanePage(function() end)
+check("settings: QoL > Character Pane with its own switch and the feature parts (same labels)", qpage.name == "Character Pane" and qpage.xuiSwitch
+  and qpage.xuiSwitch.name == "Character Pane" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level on each slot" and qpage.args.enchants
+  and qpage.args.gems and qpage.args.statList and qpage.args.statListPage and qpage.args.chrome == nil)
+check("  ...its parts are greyed out while its own switch is off, whatever the reskin's", (function()
+  local f = rc.features; rc.features = false; local d = qpage.args.ilvl.disabled(); rc.features = f; return d end)() == true
+  and qpage.args.ilvl.disabled() == false)
 -- (QoL 0.7.22) the wider window is built: its switch, its extra width (120 - 300, greyed out while it is off) and the background opacity
 check("  ...the wider window has its switch (on by default), its extra width (0-300 px in 1 px steps, default 42: 380 / 582) and the background opacity (50-100%, default 95%)",
   page.args.wide and page.args.wide.name:find("Wider window", 1, true) and page.args.widePx.min == 0 and page.args.widePx.max == 300
@@ -217,7 +229,7 @@ check("  ...a fresh install gets 42 and the marker", f.widePx == 42 and f.widePx
 local b = upgraded({ enabled = true, wide = true, widePx = "240" })
 check("  ...a 240 saved as text counts too", b.widePx == 42, tostring(b.widePx))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))

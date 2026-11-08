@@ -207,6 +207,26 @@ CHAT_DEFAULTS_ADDED = {
 CHAT_COLOUR_WRITTEN_BACK = {"privR": (0.04, 0), "privG": (0.04, 0), "privB": (0.06, 0)}
 
 
+STATS_HELP = "/xui stats [on||off||options||status]  Character Toolkit stat panel"
+
+
+def _stats_line_back(v):
+    if isinstance(v, dict):
+        return {k: _stats_line_back(x) for k, x in v.items()}
+    if isinstance(v, list):
+        out = [_stats_line_back(x) for x in v]
+        if all(isinstance(x, str) for x in out):
+            out = [x.replace("Turn it on in Bonus Features > Character Toolkit", "Turn it on in QoL > Character Toolkit") for x in out]
+            i = next((n for n, x in enumerate(out) if x.endswith(STATS_HELP)), None)
+            c = next((n for n, x in enumerate(out) if "/xui cursor [highlight" in x), None)
+            if i is not None and c is not None and i != c + 1:
+                line = out.pop(i)
+                c = next(n for n, x in enumerate(out) if "/xui cursor [highlight" in x)
+                out.insert(c + 1, line)
+        return out
+    return v
+
+
 def canon(saved):
     # (P4) the saved variables merged across addon folders ({variable: value}; every variable name is declared by one folder only)
     merged = {}
@@ -238,6 +258,12 @@ def canon(saved):
             for k, (now, was) in CHAT_COLOUR_WRITTEN_BACK.items():
                 if isinstance(t.get(k), (int, float)) and abs(t[k] - now) < 1e-9:
                     t[k] = was
+    # (character pane split stage 2, Bonus 0.6.37 / QoL 0.7.53) the two allowed differences in what the game printed (the debug record's
+    # lines): /xui stats is registered by XayaUI Bonus Features once XayaUI QoL's settings are open (nothing of it while QoL is off), so
+    # /xui help lists it after QoL's own commands (before: between /xui cursor and /xui reskin); and its "is off" line names Bonus Features
+    # > Character Toolkit instead of QoL > Character Toolkit. Diffing the dumps of f870d78 and the new code (all on, both sessions): these
+    # 4 lines per session, nothing else; core only: none. Put back here, so the rest stays compared with the old code's golden.
+    merged = _stats_line_back(merged)
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
@@ -520,8 +546,10 @@ def main():
         check(res[i][1], res[i][2])
     owners = owner_lists(ROOT) or {}
     every = sorted(k for ks in owners.values() for k in ks)
-    check("E: no key is owned twice except characterReskin (QoL writes it; Reskin may read it until the character pane split)",
-          sorted(set(k for k in every if every.count(k) > 1)) == ["characterReskin"], every)
+    # (core 0.6.83, character pane split stage 2) characterToolkit is split too: XayaUI Bonus Features keeps the Stat Calculator panel's
+    # keys, QoL the slot overlays' and tooltip lines' (Modules.lua LEGACY_SPLIT)
+    check("E: no key is owned twice except the split ones: characterReskin (QoL's features, Reskin's look) and characterToolkit (Bonus's panel, QoL's overlays)",
+          sorted(set(k for k in every if every.count(k) > 1)) == ["characterReskin", "characterToolkit"], every)
     failed = sum(1 for _, ok in results if not ok)
     print("%d checks, %d failed" % (len(results), failed))
     sys.exit(1 if failed else 0)

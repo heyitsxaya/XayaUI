@@ -196,14 +196,14 @@ local hooked = {}
 local rawHSF = hooksecurefunc
 hooksecurefunc = function(a, b, c) local k = type(a) == "table" and b or a; hooked[k] = (hooked[k] or 0) + 1; return rawHSF(a, b, c) end
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
-local rc, tk = ns.CharReskin_Cfg(), ns.CharToolkit_Cfg()
+local rc, tk = ns.CharReskin_Cfg(), TKC()
 -- #46: the toolkit on, its Tooltip lines saved off
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = CharacterStatsPane or mk("Frame"); CharacterStatsPane.children = { statRow }
 tk.enabled, tk.tooltips, tk.panel = true, false, false
 CharacterFrame:Show(); PaperDollFrame:Show()
-ns.CharToolkit_Apply()
-local page = ns.BuildCharToolkitPage(function() end)
+TKA()
+local page = TKPage(function() end)
 local tp = page.args.tipsPart
 check2("#46 the Character Toolkit has a \"Tooltip lines\" row of its own with its own tick box (xuiSwitch named \"Tooltip lines\"), unticked as saved",
   tp and tp.type == "group" and tp.name == "Tooltip lines" and tp.xuiSwitch and tp.xuiSwitch.name == "Tooltip lines" and tp.xuiSwitch.get({}) == false, tp and tp.name)

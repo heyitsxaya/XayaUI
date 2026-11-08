@@ -44,7 +44,7 @@ end
 def world(extra):
     return (COMMON + EXTRA + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
         .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")) \
+        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")) \
         .replace("__QAW__", P("XayaUI_DevAssist/QAWalk.lua")).replace("__QAS__", P("XayaUI_DevAssist/QAWalks-statcalc.lua"))
 
 totals = []
@@ -128,7 +128,7 @@ checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 
   return v and ch and v.text == "+2,637" and ch.text == "+2,737" and f and sameCol(f.color, ACCENT), T(v) .. " / " .. T(ch) end)
 ns.CharToolkit_SetInput("sv:primary", "")
 -- remembered per stat: a rebuild from the saved settings keeps Attack Power open, every other stat folded
-local saved = ns.Settings("qol").characterToolkit
+local saved = ns.Settings("bonus").characterToolkit   -- (Bonus 0.6.37, character pane split stage 2: the panel's settings are Bonus's)
 local c2 = ns.CharToolkit_Cfg()
 d = render()
 checkp("remembered per stat (saved settings): after a rebuild Attack Power is still open, Critical Strike folded", function()
@@ -143,7 +143,7 @@ checkp("a second click folds it again: \"+\", no rows, nothing saved for it", fu
 -- saved junk is cleaned
 c.statOpen = c.statOpen or {}   -- (QoL 0.7.39 has no statOpen: the negative-control run keeps going)
 c.statOpen.bogus = "yes"; c.statOpen[5] = true
-ns.CharToolkit_Cfg()
+TKC()
 checkp("a saved value other than true is dropped from statOpen", function() return c.statOpen.bogus == nil and c.statOpen[5] == nil end)
 -- every stat open: the layout at three widths, three text sizes, three measures
 for k in pairs(c.statOpen) do c.statOpen[k] = nil end
@@ -198,13 +198,13 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() return {} end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
-c = ns.CharToolkit_Cfg()
+c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 function drawn() return ns.CharToolkit_Drawn() end
 function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
 function icon(dd, slot) for _, b in ipairs(dd.icons) do if b.shown and b.slot == slot and not b.cand then return b end end end
@@ -365,12 +365,12 @@ GetAverageItemLevel = realAvg; render()
 checkp("B2: no \"Show: % / rating\" button is made in the title row (it was made and hidden)", function() return Pn.modeBtn == nil end)
 checkp("B2: the old functions of the toggle are gone (FlipLine, SetValueMode, ModeFor)", function()
   return ns.CharToolkit_FlipLine == nil and ns.CharToolkit_SetValueMode == nil and ns.CharToolkit_ModeFor == nil end)
-local pg = ns.BuildCharToolkitPage(function() end)
+local pg = TKPage(function() end)
 checkp("B2: Settings > Panel > Layout has no \"Rating lines\"; Your numbers has no \"Reset line flips\" (Clear all stays)", function()
   local p = pg.args.panelPart.args
   return p.layout.args.valueMode == nil and p.values.args.resetLines == nil and p.values.args.clear ~= nil end)
-ns.Settings("qol").characterToolkit.valueMode = "rating"; ns.Settings("qol").characterToolkit.lineModes = { crit = "rating" }
-c = ns.CharToolkit_Cfg()
+ns.Settings("bonus").characterToolkit.valueMode = "rating"; ns.Settings("bonus").characterToolkit.lineModes = { crit = "rating" }   -- (Bonus 0.6.37: the panel's keys)
+c = TKC()
 checkp("B2: an old profile's valueMode / lineModes are dropped when the settings are read (harmless: nothing reads them)", function()
   return c.valueMode == nil and c.lineModes == nil and ns.CHARTOOLKIT_DEFAULTS.valueMode == nil and ns.CHARTOOLKIT_DEFAULTS.lineModes == nil end)
 d = render()

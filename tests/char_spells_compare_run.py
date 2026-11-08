@@ -100,14 +100,14 @@ function ns.BuildSpellList()
 end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
-c = ns.CharToolkit_Cfg()
+c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-ns.CharToolkit_Apply()
+TKA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 function drawn() return ns.CharToolkit_Drawn() end
 function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
@@ -141,7 +141,7 @@ checkp("filter: one filter icon at the right end of the Spells tab's top row (no
   return d.filterIcon and d.filterIcon.shown and fi and fi.x + fi.w == W() and #recs(d, "filter") == 0, fi and (fi.x .. "+" .. fi.w)
 end)
 checkp("  ...None by default: every spell shown, the icon muted with no dot, its hover says no filter is on", function()
-  local f = ns.CharToolkit_Cfg()
+  local f = TKC()
   GameTooltip.lines = {}
   d.filterIcon.scripts.OnEnter(d.filterIcon)
   local said = false
@@ -166,7 +166,7 @@ checkp("  ...choosing Utility: the menu closes, the header says utility, only th
   return not d.filterMenu.shown and find(d, "header", "- Active utility spells") ~= nil and table.concat(names, ",") == "- Banner", table.concat(names, ",")
 end)
 checkp("  ...the icon shows the filter is on (label colour and a dot) and the choice is kept (saved, and read back after a reload)", function()
-  local again = ns.CharToolkit_Cfg()
+  local again = TKC()
   local col = d.filterIcon.parts[1].color
   return again.spellFilter == "utility" and d.filterIcon.dot.shown and d.filterIcon.active == true and col and col[1] == 1 and col[2] == 0.82
 end)
@@ -176,10 +176,10 @@ checkp("  ...Offense lists Fracture and Flame Ring; Defense lists Ward; neither 
   return o.spell263642 and o.spell9001 and not o.spell9005 and not o.spell9008 and df.spell9005 and not df.spell9001 and not df.spell9008
 end)
 checkp("  ...a spell added by hand can be set to Utility (settings: Filter > Utility), and then shows under Utility", function()
-  local page = ns.BuildCharToolkitPage(function() end)
+  local page = TKPage(function() end)
   local kind = page.args.spells.args.s1.args.kind
   kind.set(nil, "utility")
-  local keep = ns.CharToolkit_Cfg().spells[1].kind
+  local keep = TKC().spells[1].kind
   ns.CharToolkit_SetSpellFilter("utility")
   local ok = keep == "utility" and drawn().model.byKey.spell263642 ~= nil and kind.values.utility == "Utility"
   kind.set(nil, "auto")
@@ -560,7 +560,7 @@ checkp("the limit (the column rule for numbers with no difference beside them; Q
   return a == 4 and b == 3 and CM.MAX_COMPARE == 3, a .. " / " .. b
 end)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

@@ -9,7 +9,8 @@ module keeps its settings, read from XayaUI/Modules.lua itself (sections 0b / 0c
 import os, re
 import lupa.lua51 as lua51
 
-STORE_MARKS = {"storeVersion", "migratedFrom", "migratedAt", "migratedBy", "migratedKeys", "migrationMismatch"}
+STORE_MARKS = {"storeVersion", "migratedFrom", "migratedAt", "migratedBy", "migratedKeys", "migrationMismatch",
+               "keyMoves"}   # (core 0.6.83, character pane split stage 2: the key move's record, Modules.lua KeyMoves)
 
 
 def _block(src, name):
@@ -55,7 +56,8 @@ def layout(root):
                     decl[m.group(1)] = {"addon": m.group(2), "var": m.group(3)}
     out["stores"] = {m: decl[m] for m, on in (out.get("own") or {}).items() if on and m in decl}
     out["underUi"] = {m: sorted(k for k, v in (ks or {}).items() if v) for m, ks in (out.get("underUi") or {}).items()}
-    out["split"] = {k: {"owner": d["owner"], "rest": d["rest"], "sub": sorted(s for s, v in d["sub"].items() if v)}
+    out["split"] = {k: {"owner": d["owner"], "rest": d["rest"], "sub": sorted(s for s, v in d["sub"].items() if v),
+                        "both": sorted(s for s, v in (d.get("both") or {}).items() if v)}
                     for k, d in (out.get("split") or {}).items()}
     return out
 

@@ -45,7 +45,7 @@ C_Timer.After = function(d, fn) fn() end
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 CharacterStatsPane.pts = { { "TOPLEFT", CharacterFrame.InsetRight, "TOPLEFT", 3, -3 }, { "BOTTOMRIGHT", CharacterFrame.InsetRight, "BOTTOMRIGHT", -3, 3 } }
 CharacterStatsPane.shown = true
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.01 end
 function sameCol(a, b) return a and b and near(a[1], b[1]) and near(a[2], b[2]) and near(a[3], b[3]) end
@@ -55,7 +55,7 @@ def lua_with(extra=""):
     lua = LuaRuntime()
     src = (PRELUDE + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")) \
         .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")) \
+        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")) \
         .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua"))
     lua.execute(src)
     return lua
@@ -159,7 +159,8 @@ checkp("  ...each stat's name in its stat colour (Critical Strike, Versatility);
 checkp("  ...drawn on the reskin's own list over Blizzard's pane (a child of CharacterStatsPane, shown, an opaque fill under it)", function()
   local L = ns.CharReskinParts.statList
   return L and L.parent == CharacterStatsPane and L:IsShown() and L.fill and L.fill.color and L.fill.color[4] == 1 end)
-local pg = ns.BuildCharReskinPage(function() ns.CharReskin_Apply() end)
+-- (QoL 0.7.53, character pane split stage 1) the Stat list page is on QoL > Character Pane now (Blizzard Reskin keeps the look)
+local pg = ns.BuildCharPanePage(function() ns.CharReskin_Apply() end)
 local page = pg.args.statListPage or { args = {} }
 -- (a stand-in for a missing control on older code, so a check fails instead of the run stopping)
 local NOOP = function() end
@@ -199,8 +200,11 @@ checkp("Reset the list: names, colours, order, modes back", function()
 rc.statList = false; ns.CharReskin_Apply()
 checkp("the part switched off (Full stat list): the list hides, Blizzard's own list shows again", function() return not ns.CharReskinParts.statList:IsShown() end)
 rc.statList = true; ns.CharReskin_Apply()
+-- (QoL 0.7.53, stage 1) the full stat list is QoL's: the reskin off leaves it; QoL's Character Pane off hides it
 rc.enabled = false; ns.CharReskin_Apply()
-checkp("the reskin off: the list hides", function() return not ns.CharReskinParts.statList:IsShown() end)
+checkp("the reskin off: the list stays (QoL's Character Pane feature, still on)", function() return ns.CharReskinParts.statList:IsShown() end)
+rc.features = false; ns.CharReskin_Apply()
+checkp("QoL's Character Pane off: the list hides", function() return not ns.CharReskinParts.statList:IsShown() end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 

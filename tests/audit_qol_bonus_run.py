@@ -34,39 +34,39 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
 local gcdReads = 0
 local rawGCD = CM.ReadGCD
 CM.ReadGCD = function(...) gcdReads = gcdReads + 1; return rawGCD(...) end
 local function registered(e) for _, f in ipairs(created) do if f.events and f.events[e] then return true end end; return false end
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 c.enabled, c.panel, c.overlays = true, false, false
-ns.CharToolkit_Apply()
+TKA()
 check("D17: toolkit on, panel part off: SPELL_UPDATE_COOLDOWN is not registered", not registered("SPELL_UPDATE_COOLDOWN"))
 check("  ...no unit stat event (UNIT_STATS, UNIT_SPELL_HASTE) is registered", not registered("UNIT_STATS") and not registered("UNIT_SPELL_HASTE"))
 check("  ...no stat event (COMBAT_RATING_UPDATE, MASTERY_UPDATE) is registered", not registered("COMBAT_RATING_UPDATE") and not registered("MASTERY_UPDATE"))
 fire("SPELL_UPDATE_COOLDOWN")
 check("  ...a cast does no GCD read for the hidden panel", gcdReads == 0, gcdReads)
 c.overlays = true
-ns.CharToolkit_Apply()
+TKA()
 check("  ...slot overlays on: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = true
-ns.CharToolkit_Apply()
+TKA()
 check("(as before) panel part on: SPELL_UPDATE_COOLDOWN, UNIT_STATS and COMBAT_RATING_UPDATE are registered", registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS") and registered("COMBAT_RATING_UPDATE"))
 local before = gcdReads
 fire("SPELL_UPDATE_COOLDOWN")
 check("(as before) ...and a cast reads the GCD", gcdReads == before + 1, gcdReads - before)
 c.panel = false
-ns.CharToolkit_Apply()
+TKA()
 check("  ...panel part off again: its events are let go at once", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_EQUIPMENT_CHANGED"))
 c.enabled = false
-ns.CharToolkit_Apply()
+TKA()
 check("(as before) toolkit off: nothing of it is registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("PLAYER_SPECIALIZATION_CHANGED"))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-       .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+       .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
     return int(lua.eval("n")), int(lua.eval("fails"))
 
 

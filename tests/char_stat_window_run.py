@@ -72,7 +72,7 @@ CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 __DB__
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
 -- every check runs inside pcall: a missing function or frame (older code) is a failed check, not a stopped run
@@ -100,12 +100,12 @@ function clickRow(key) local _, r = launcher(key); r.scripts.OnClick(r) end
 def world(db_lua=""):
     return (SETUP.replace("__DB__", db_lua).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
             .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__MINI__", P("XayaUI/MinimapButton.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-            .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+            .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 
 lua = LuaRuntime()
 lua.execute(world())
 lua.execute(r'''
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 local GUT, PAD = ns.UI_GUTTER, ns.UI_MARGIN
 local LAY = ns.CHARTOOLKIT_LAYOUT
 
@@ -113,7 +113,7 @@ local LAY = ns.CHARTOOLKIT_LAYOUT
 openChar(); closeChar()
 checkp("(guard) V14, toolkit off at login: no panel frame, no character-window button, no Stat Calculator row in the minimap list",
   function() return _G.XayaUICharacterToolkit == nil and _G.XayaUICharacterToolkitButton == nil and launcher("stats") == nil end)
-c.enabled = true; c.panel = false; ns.CharToolkit_Apply(); openChar()
+c.enabled = true; c.panel = false; TKA(); openChar()
 checkp("V14, toolkit on but its panel off: still no panel, no button, no minimap row; /xui stats says the panel is off",
   function()
     printed = {}
@@ -123,7 +123,7 @@ checkp("V14, toolkit on but its panel off: still no panel, no button, no minimap
     return _G.XayaUICharacterToolkit == nil and _G.XayaUICharacterToolkitButton == nil and launcher("stats") == nil and said, table.concat(printed, " / ")
   end)
 closeChar()
-c.panel = true; ns.CharToolkit_Apply()
+c.panel = true; TKA()
 local B = _G.XayaUICharacterToolkitButton
 checkp("panel on: the character window gets a Stat Calc button (64 x 18) on it, made now", function()
   return B ~= nil and B.parent == CharacterFrame and B.w == 64 and B.h == 18 and B.text and B.text.text == "Stat Calc", B and (B.w .. "x" .. B.h) end)
@@ -188,7 +188,7 @@ checkp("(guard) the panel starts at the smaller height (440)", function() return
 checkp("Max: the panel takes the larger height (760; not full screen) and the button reads Min", function()
   SB.scripts.OnClick(SB); return Pn.h == 760 and c.sizeMode == "large" and SB.text.text == "Min", Pn.h end)
 checkp("Min: back to the smaller height", function() SB.scripts.OnClick(SB); return Pn.h == 440 and c.sizeMode == "small", Pn.h end)
-local page = ns.BuildCharToolkitPage(function() end)
+local page = TKPage(function() end)
 checkp("the two heights are settings (Panel > Layout: Smaller height 500, Larger height 900 move the panel's heights)", function()
   local L = page.args.panelPart.args.layout.args
   L.heightSmall.set(nil, 500); local h1 = Pn.h
@@ -199,7 +199,7 @@ checkp("the corner grip still resizes: dragged to 500 x 650 while large, the lar
   return c.heightLarge == 650 and c.size.w == 500 and Pn.h == 650 and Pn.w == 500 and Pn.grip.pts[1][1] == "BOTTOMRIGHT", c.heightLarge end)
 checkp("  ...Min then gives the smaller height (500) at the dragged width", function() SB.scripts.OnClick(SB); return Pn.h == 500 and Pn.w == 500, Pn.h end)
 checkp("(guard) a saved height past the limits is brought back inside them (1100 at most)", function()
-  c.heightLarge = 5000; return ns.CharToolkit_Cfg().heightLarge == 1100 end)
+  c.heightLarge = 5000; return TKC().heightLarge == 1100 end)
 page.args.panelPart.args.layout.args.resetSize.func()
 
 -- 4. Character Stats: one section, its headings and lines in her order ----------------------------------------------------------
@@ -486,18 +486,18 @@ GetCombatRating = realRating
 
 -- 8. Off again (V14): the button hides, the minimap row goes, the panel closes ----------------------------------------------------
 openChar()
-c.enabled = false; ns.CharToolkit_Apply()
+c.enabled = false; TKA()
 checkp("toolkit switched off: the panel closes, the Stat Calc button hides, the Stat Calculator row leaves the minimap list", function()
   return not Pn:IsShown() and not B:IsShown() and launcher("stats") == nil end)
-c.enabled = true; ns.CharToolkit_Apply()
+c.enabled = true; TKA()
 checkp("  ...switched on again: the button and the row are back", function() return B:IsShown() and launcher("stats") ~= nil end)
-c.panel = false; ns.CharToolkit_Apply()
+c.panel = false; TKA()
 checkp("the panel part switched off: no button, no minimap row", function() return not B:IsShown() and launcher("stats") == nil and not Pn:IsShown() end)
-c.panel = true; c.panelOpen = false; ns.CharToolkit_Apply()
+c.panel = true; c.panelOpen = false; TKA()
 closeChar()
 ''')
 n1, f1 = lua.eval("n"), lua.eval("fails")
-saved_open = lua.eval("ns.CharToolkit_Cfg().panelOpen")
+saved_open = lua.eval("TKC().panelOpen")
 
 # A second load (the next session) with the saved settings: the character window opens with the panel the way it was left.
 def next_session(open_state):
