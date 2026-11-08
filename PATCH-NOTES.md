@@ -22,6 +22,19 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Debug Batch W5
+
+### Rules 0.6.80
+
+**Recycle Bin**
+- Fixed an issue where the Recycle Bin listed a deleted cue under the wrong name: deleting "Sound 1" of three Sound cues showed "Sound 2". It now lists the cue under the name it had in the rule. The bin's storage format is unchanged.
+  *Developers' notes: Not yet tested in game (QA B291, walkthrough "debug-w5"). Issue #485. The "cue in both places" and "restore not played" reports did not reproduce on the data side (105 checks, including real reloads); they most likely came from the old walkthrough's check, which Dev Assist 0.7.53 replaced. Issue #479 (the group Border tick) did not reproduce in 82 checks, so nothing was changed there; it stays open.*
+
+### Dev Assist 0.7.65
+
+**In-game QA**
+- Added the walkthrough "debug-w5", which checks delete and restore in the Recycle Bin and the group Border tick, and records any error text (QA B291, B292).
+
 ## 2026-11-08 — Debug Batch W3
 
 ### Options 0.6.97
