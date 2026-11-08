@@ -22,6 +22,17 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Debug Batch W1
+
+### Rules Options 0.6.79
+
+**Rule Editor**
+- Fixed an issue where Devourer (and any spec after a gap in the spec numbers) was missing from the rule editor's Specialization list.
+- Fixed an issue where the Cooldown Manager warning could show the same line more than once. Identical lines now show once.
+- Fixed an issue where the rule type picker's Import row did not line up with the others.
+- Fixed an issue where the type picker drew over the Drafts list.
+  *Developers' notes: Not yet tested in game (QA B280 to B283; walkthrough "debug-w1"). Issues #476, #482, #484 and #487. Also changed along with it: Options 0.6.94 and Dev Assist 0.7.62.*
+
 ## 2026-11-08 — Element Menu
 
 ### XayaUI 0.6.80
