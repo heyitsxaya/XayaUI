@@ -10,7 +10,9 @@
 --   B303 every button in the X / Y box fits its label (label width read back, compared with the button);
 --   B304 "Anchor to a frame on screen..." never offers the X / Y box; any group anchored to it is listed (press "Anchor to the screen
 --        (stays in place)" on it to clear that anchor);
---   B305 (#13 "in mover mode, I can't use arrow keys") with the box open, the arrow keys move its group, and the box shows the new X / Y.
+--   B305 (#13 "in mover mode, I can't use arrow keys") with the box open, the arrow keys move its group, and the box shows the new X / Y;
+--   B313 (#26 "visual cuts off", Rules Options 0.6.82) a cue's Stacks / Charges Count > Count options shows its controls again (the
+--        "Count of" list's sort raised a Lua error that stopped the pane and every section after it).
 -- Standing rule V22 (Xaya 2026-11-07): each check reads back what the addon drew or stored, offers its verdict (prefill = true;
 -- recorded only on her click) and puts what it read in the note. The last step (Done) closes the mover view if the walkthrough
 -- opened it, without keeping the walkthrough's moves of the QA test group (Cancel moves). UNTESTED IN GAME.
@@ -149,6 +151,25 @@ local function CheckArrows()
     local shows = p.x:GetText() == tostring(f.cX or 0) and p.y:GetText() == tostring(f.cY or 0)
     return shows, ("The group moved by X %+d, Y %+d; the box shows X %s, Y %s%s"):format(dx, dy, p.x:GetText(), p.y:GetText(), shows and "" or " (not the group's numbers)")
 end
+local function CheckCount()
+    local ns = NS()
+    if not (ns and ns.LoadOptions and ns.LoadOptions() and ns.BuildOptionsTable) then return nil, "the settings window could not be loaded" end
+    local ok, built = pcall(ns.BuildOptionsTable)
+    if not ok then return false, "building the settings failed: " .. tostring(built) end
+    -- every "Count of" list in the settings (cues and the group's Display tab), read the way the window reads it
+    local lists, seen = {}, {}
+    local function scan(t) if type(t) ~= "table" or seen[t] then return end; seen[t] = true
+        if t.type == "select" and t.name == "Count of" and type(t.sorting) == "function" then lists[#lists + 1] = t end
+        for _, v in pairs(t) do scan(v) end end
+    scan(built)
+    if #lists == 0 then return nil, "no Count of list in the settings: tick Show a count on a cue, open Stacks / Charges Count, then Check" end
+    for _, o in ipairs(lists) do
+        local okS, list = pcall(o.sorting)
+        if not okS then return false, "a Count of list raised: " .. tostring(list) end
+        if type(list) ~= "table" or #list == 0 then return false, "a Count of list is empty" end
+    end
+    return true, ("The Count of lists work (%d read)."):format(#lists)
+end
 local function Done()
     local ns = NS(); local p = Box()
     if p then p:Hide() end
@@ -160,8 +181,8 @@ local function Done()
 end
 QA.LayoutFixesTest = { State = st, Done = Done }   -- (tests)
 
-QA.Register("layout-fixes", { title = "Theme table rows, the movable X / Y box, buttons that fit, arrow keys (B301-B305)",
-    qa = "B301, B302, B303, B304, B305", order = 530, prefill = true, steps = {
+QA.Register("layout-fixes", { title = "Theme table rows, the movable X / Y box, buttons that fit, arrow keys (B301-B305, B313)",
+    qa = "B301, B302, B303, B304, B305, B313", order = 530, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin > Theme|r.\n\n|cffffd100Expect:|r the header Element | Theme | Overrides | Comes from | Reset on one line, then one line per element, each starting with the element's name (Blizzard Windows, Buttons, Character Pane ...), with its Theme list, count, Edit, Comes from and Reset on the same line. The check reads where every cell is drawn.",
         setup = SetupTable, check = CheckTable },
     { text = "Press |cffffd100Do it for me|r: the mover view opens with the QA test group, and its |cffffd100X / Y box|r opens.\n\nNow |cffffd100drag the box|r by its background (not a button or a number box) somewhere else, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the box follows the mouse and stays where you drop it.",
@@ -172,5 +193,7 @@ QA.Register("layout-fixes", { title = "Theme table rows, the movable X / Y box, 
         check = CheckPicker },
     { text = "Press |cffffd100Do it for me|r (it takes the keyboard away from the number boxes), then press the |cffffd100arrow keys|r a few times (Shift + arrow: 10 pixels), then |cffffd100Check|r.\n\n|cffffd100Expect:|r the QA test group moves 1 pixel per press, and the box's X offset and Y offset show its new position.",
         setup = SetupArrows, check = CheckArrows },
+    { text = "Open a rule with an icon or text cue, tick |cffffd100Show a count|r and open |cffffd100Stacks / Charges Count|r, then |cffffd100Check|r.\n\n|cffffd100Expect:|r |cffffd100Count options|r shows its controls (Count of, Font, Text size, Outline, Text color, Placement, Position, X / Y offset) and the sections after it (Shield / Absorb Amount, Position, Color, Animation) are there. The check reads the Count of list the way the window does.",
+        check = CheckCount },
     { text = "Press |cffffd100Do it for me|r to close the box (and the mover view, if this walkthrough opened it), then |cffffd100Done|r.", done = true, setup = Done },
 } })

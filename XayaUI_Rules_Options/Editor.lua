@@ -1620,8 +1620,12 @@ local function BuildRule(i, rule)
         if not next(v) then v.none = COUNT_SOURCE.none end
         return v
     end
-    cntArgs.source.sorting = function()
-        local v, o = cntArgs.source.values(), {}
+    -- (Rules Options 0.6.82, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #26 "visual cuts off"): the option is kept in a local, because
+    -- ns.GateRest below moves it into the "Count options" pane (cntArgs.source is nil after that); reading cntArgs.source here raised
+    -- a Lua error while the pane was drawn, so the pane and every section after it stayed empty
+    local srcOpt = cntArgs.source
+    srcOpt.sorting = function()
+        local v, o = srcOpt.values(), {}
         for _, k in ipairs(COUNT_SOURCE_ORDER) do if v[k] then o[#o + 1] = k end end
         return o
     end

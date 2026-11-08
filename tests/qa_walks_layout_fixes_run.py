@@ -27,7 +27,7 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 local QA = rawget(_G, "XayaUI_DevQA")
 local def = QA and QA.walks["layout-fixes"]
-check("the layout walkthrough is registered with pre-fill, for B301-B304", def ~= nil and def.prefill == true and def.qa == "B301, B302, B303, B304, B305")
+check("the layout walkthrough is registered with pre-fill, for B301-B304", def ~= nil and def.prefill == true and def.qa == "B301, B302, B303, B304, B305, B313")
 if not def then return R end
 check("its last step is a Done step", def.steps[#def.steps].done == true)
 ns.Print = function() end
@@ -86,6 +86,10 @@ local keys = ns.MoverKeyFrame()
 keys:GetScript("OnKeyDown")(keys, "RIGHT"); keys:GetScript("OnKeyDown")(keys, "UP")
 local ok5, n5 = def.steps[5].check()
 check("step 5 after two arrow keys: Pass, moved X +1, Y +1 and the box shows it", ok5 == true and has(n5, "X +1, Y +1"), n5)
+local P = ns.rules[1]
+if P then local cue = ns.NewCueRule and ns.NewCueRule(P, "icon"); if cue then cue.visual.count.enabled = true end end
+local ok6b, n6b = def.steps[6].check()
+check("step 6 with a counting cue: Pass, every Count of list has its choices", ok6b == true and has(n6b, "The Count of lists work"), tostring(ok6b) .. " " .. tostring(n6b))
 def.steps[#def.steps].setup(); W.tick(0.1, 3)
 check("Done: the box is closed and the mover view is closed again", not box:IsShown() and not ns.unlocked)
 return R
