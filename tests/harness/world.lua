@@ -322,7 +322,7 @@ function proto:GetTextureFileID() return type(self._tex) == "number" and self._t
 function proto:SetAtlas(a) self._atlas = a; return true end
 function proto:GetAtlas() return self._atlas end
 function proto:SetColorTexture(r, g, b, a) self._color = { r, g, b, a } end
-function proto:SetVertexColor(r, g, b, a) self._vc = { r, g, b, a } end
+function proto:SetVertexColor(r, g, b, a) self._vc = { r, g, b, a }; self._grad = nil end   -- (#460) all four corners: a gradient is gone
 function proto:GetVertexColor() local c = self._vc or { 1, 1, 1, 1 }; return c[1], c[2], c[3], c[4] end
 function proto:SetTexCoord(...) self._tc8 = { ... } end
 function proto:GetTexCoord() return 0, 0, 0, 1, 1, 0, 1, 1 end
@@ -331,7 +331,12 @@ function proto:SetDesaturation(v) self._desat = v end
 function proto:IsDesaturated() return self._desat and true or false end
 function proto:SetBlendMode(m) self._blend = m end
 function proto:GetBlendMode() return self._blend or "BLEND" end
-function proto:SetGradient() end
+-- (#460) recorded: { orientation, {min r,g,b,a}, {max r,g,b,a} }. Kept by SetColorTexture (the game keeps a texture's vertex colours
+-- across a texture change; INFERENCE, the safe side for a test), cleared by SetVertexColor.
+function proto:SetGradient(o, mn, mx)
+  local function c(x) if type(x) == "table" and x.GetRGBA then return { x:GetRGBA() } end return nil end
+  self._grad = { o, c(mn), c(mx) }
+end
 function proto:SetRotation(r) self._rot = r end
 function proto:GetRotation() return self._rot or 0 end
 function proto:SetHorizTile() end

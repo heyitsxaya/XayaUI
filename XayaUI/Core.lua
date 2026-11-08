@@ -12,7 +12,7 @@ local FLAT_GOLD = { 1, 0.82, 0, 1 }
 local function FlatCol(class, prop, fb) local T = ns.Theme; if T and T.Col then return T.Col(class, prop, fb) end return fb end
 local function FlatSkinOn() return not (CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.skinOff) end
 -- the 1px-bordered box drawn with plain textures (the same fields as the settings addon's Skin.lua Flat, so both can repaint it)
-local function FlatBox(f, bg, border)
+local function FlatBox(f, bg, border, grad)   -- grad (#460, core 0.6.81): the border's gradient (Theme.lua T.Grad), nil = solid
     local t = f.xuiFlat
     if not t then
         t = { bg = f:CreateTexture(nil, "BACKGROUND", nil, -3), e = {} }
@@ -25,6 +25,8 @@ local function FlatBox(f, bg, border)
     t.e[3]:ClearAllPoints(); t.e[3]:SetPoint("TOPLEFT", 0, 0); t.e[3]:SetPoint("BOTTOMLEFT", 0, 0); t.e[3]:SetWidth(1)
     t.e[4]:ClearAllPoints(); t.e[4]:SetPoint("TOPRIGHT", 0, 0); t.e[4]:SetPoint("BOTTOMRIGHT", 0, 0); t.e[4]:SetWidth(1)
     t.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1); t.bg:Show()
+    local T = ns.Theme
+    if (grad or f.xuiGradE) and T and T.PaintEdges then T.PaintEdges(f, t.e, border, grad, "BACKGROUND", -2); return end
     for _, e in ipairs(t.e) do e:SetColorTexture(border[1], border[2], border[3], border[4] or 1); e:Show() end
 end
 -- hide the Blizzard art (remembered in f.xuiHidden, so skin-off can put it back); the box's own textures are kept
@@ -34,7 +36,7 @@ local function FlatHideArt(f)
     local own = {}
     if f.xuiFlat then own[f.xuiFlat.bg] = true; for _, e in ipairs(f.xuiFlat.e) do own[e] = true end end
     for _, rg in ipairs({ f:GetRegions() }) do
-        if rg.GetObjectType and rg:GetObjectType() == "Texture" and not own[rg] then
+        if rg.GetObjectType and rg:GetObjectType() == "Texture" and not own[rg] and not rg.xuiOwn then   -- (#460: xuiOwn = a gradient piece)
             f.xuiHidden[#f.xuiHidden + 1] = { rg, rg:GetAlpha() }; rg:SetAlpha(0)
         end
     end
@@ -52,6 +54,7 @@ function ns.PaintFlatButton(b, primary)
         if b.xuiFlatBtn then
             FlatShowArt(b)
             local t = b.xuiFlat; if t then t.bg:Hide(); for _, e in ipairs(t.e) do e:Hide() end end
+            local T = ns.Theme; if b.xuiGradE and T and T.HideGrad then T.HideGrad(b) end   -- (#460)
             local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(1) end
         end
         return
@@ -74,7 +77,8 @@ function ns.PaintFlatButton(b, primary)
         local ht = b:GetHighlightTexture(); if ht then ht:SetAlpha(0) end
     end
     local cl = primary and "xui-button-primary" or "xui-button"
-    FlatBox(b, FlatCol(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), FlatCol(cl, "border", { 0.25, 0.25, 0.25, 1 }))
+    local T = ns.Theme
+    FlatBox(b, FlatCol(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), FlatCol(cl, "border", { 0.25, 0.25, 0.25, 1 }), T and T.Grad and T.Grad(cl, "border") or nil)
     local fs = b:GetFontString()
     if fs then
         local c = FlatCol(cl, "text", FLAT_GOLD)

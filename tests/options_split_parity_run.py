@@ -26,7 +26,10 @@ the new code differ only in lines whose path holds `.specs` (every Specializatio
 answers 3, so each class lists 3 specs instead of the 4 indexes the old loop read), 0 other lines (debug-log 2026-11-08 debug-w1). Regenerated again on 2026-11-08 for Options 0.6.97 (debug W3, #471): only the "set" and "settings"
 tabs changed (the Theme page), in every variant, +48 nodes; `--dump` of main 1f7352b and of the new code differ in 280 lines per variant, all under
 `theme.overrides.` (each class box's colours and Reset become table cells, plus an empty cell per missing colour) or `theme.delete`
-(arg.xuiEndMargin), 0 other lines (debug-log 2026-11-08 debug-w3). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+(arg.xuiEndMargin), 0 other lines (debug-log 2026-11-08 debug-w3). Regenerated again on 2026-11-08 for Options 0.6.102 (debug W9a, #460):
+only the "set" and "settings" tabs changed (the Theme page), in every variant, +2 nodes each; `--dump` of main da9b5e9 and of the new code
+differ only under `theme.` (new `gradRev` and `gradTokens`, the `advanced` desc, and the `order` of the nodes after them); with order
+numbers set aside, 0 other lines (debug-log 2026-11-08 debug-w9a). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

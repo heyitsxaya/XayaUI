@@ -84,6 +84,28 @@ T.SIZE_NAMES = { S = "Small", M = "Medium", L = "Large" }
 local function Copy4(c) return { c[1], c[2], c[3], c[4] or 1 } end
 local function Clamp01(v) v = tonumber(v) or 0; if v < 0 then return 0 elseif v > 1 then return 1 end return v end
 local function Mix(a, b, t) return { a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t, a[4] or 1 } end
+local function IsCol(c) return type(c) == "table" and type(c[1]) == "number" and type(c[2]) == "number" and type(c[3]) == "number" end
+local function CleanCol(c) return { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) } end
+
+-- (#460, core 0.6.81) A palette colour can also be a GRADIENT: { stops = { {r,g,b,a}, ... 2 to 8 }, dir = "V" or nil (nil = "H") }.
+-- Kept next to the solid colours, never inside them (the share codec writes a table with both list and named keys as its named keys
+-- only), so a colour that has a gradient still has its solid colour, and every T.Col caller keeps getting a solid colour:
+--   th.tokens[k] = {r,g,b,a}   your solid colour (as before)        th.grads[k] = gradient | false   your gradient, or false = "solid here"
+--   T.BUILTIN[b].pal[k]        the theme's solid colour (as before)  T.BUILTIN[b].grads[k] = gradient   the theme's own gradient
+-- A theme without gradients stores and exports nothing new (no grads / gradRev keys), so its strings are byte-for-byte what they were.
+local GRAD_MAX = 8
+local function CleanGrad(g)
+    if type(g) ~= "table" or type(g.stops) ~= "table" then return nil end
+    local stops = {}
+    for i = 1, math.min(#g.stops, GRAD_MAX) do
+        local c = g.stops[i]
+        if not IsCol(c) then return nil end
+        stops[i] = CleanCol(c)
+    end
+    if #stops < 2 then return nil end
+    return { stops = stops, dir = (g.dir == "V") and "V" or nil }
+end
+T.CleanGrad = CleanGrad
 
 local function DB()
     if not CueRulesDB then return nil end
@@ -96,7 +118,7 @@ local function DB()
     th.size = th.size or "M"
     CueRulesDB.themes = CueRulesDB.themes or {}
     -- A preset with color changes on top IS a custom theme: say so in the selector (nothing visibly changes).
-    if th.base ~= "custom" and (next(th.tokens) or next(th.classes)) then
+    if th.base ~= "custom" and (next(th.tokens) or next(th.classes) or (type(th.grads) == "table" and next(th.grads))) then
         th.under = (th.base ~= "custom" and th.base) or "default"
         th.base = "custom"
     end
@@ -265,12 +287,28 @@ function T.CursorPalette(stops)
     pal.primaryBorder = { main[1] * 0.85, main[2] * 0.85, main[3] * 0.85, 1 }
     return pal
 end
+-- (#460, core 0.6.81; Xaya 2026-11-06: "all cursor trail based themes should have gradient borders that reflect the cursor gradient.
+-- this gradient should be reversible in direction."; her answer 2026-11-07, which borders: "Window frame, Panes, Buttons, Tabs")
+-- A cursor trail theme's border colours are the trail's own gradient, all its stops, head of the trail first: "border" (the window
+-- frame and the panes), "buttonBorder" and "primaryBorder" (buttons), "tabBorder" and "tabSelBorder" (tabs). Their solid colours (what
+-- a T.Col caller gets, and every element that does not draw gradients) stay what they were (CursorPalette above). Direction: left to
+-- right ("H"; INFERENCE, her words do not say: question G1 in debug-log 2026-11-08 debug-w9a).
+T.GRAD_BORDER_TOKENS = { "border", "buttonBorder", "primaryBorder", "tabBorder", "tabSelBorder" }
+function T.CursorBorderGrads(stops)
+    local out = {}
+    for _, k in ipairs(T.GRAD_BORDER_TOKENS) do
+        local g = { stops = {} }
+        for i, s in ipairs(stops) do g.stops[i] = { s[1], s[2], s[3], 1 } end
+        out[k] = g
+    end
+    return out
+end
 -- one built-in theme per gradient, offered after the color blind ones (the Theme page lists T.BUILTIN_ORDER)
 for _, key in ipairs(T.CURSOR_PRESET_ORDER) do
     local p = T.CURSOR_PRESETS[key]
     -- (core 0.6.54) the gradient's name alone (Xaya 2026-11-06: "theme names should drop "cursor theme:" prefix", her screenshot of
     -- the Theme list showing "Cursor trail: Fel" ... "Cursor trail: Frost")
-    T.BUILTIN["cursor_" .. key] = { name = p[1], pal = T.CursorPalette(p[2]), cursorPreset = key }
+    T.BUILTIN["cursor_" .. key] = { name = p[1], pal = T.CursorPalette(p[2]), cursorPreset = key, grads = T.CursorBorderGrads(p[2]) }
     T.BUILTIN_ORDER[#T.BUILTIN_ORDER + 1] = "cursor_" .. key
 end
 
@@ -326,11 +364,35 @@ function T.SavedPalette(saved)
     return pal
 end
 
+-- (#460) the gradients of a theme, by token: the built-in theme's own (a cursor trail theme's borders), then for a saved theme its
+-- own colours on top (a solid colour of its own replaces the gradient it started from; its own gradient, or false = solid, wins).
+local NOGRADS = {}
+function T.SavedGrads(saved)
+    local out = {}
+    local sb = (type(saved) == "table" and saved.base == "custom") and CleanUnder(saved.under) or (type(saved) == "table" and saved.base)
+    local b = T.BUILTIN[sb]
+    if b and b.grads then for k, v in pairs(b.grads) do out[k] = v end end
+    for k in pairs(type(saved.tokens) == "table" and saved.tokens or NOGRADS) do if T.TOKEN[k] then out[k] = nil end end
+    for k, v in pairs(type(saved.grads) == "table" and saved.grads or NOGRADS) do
+        if T.TOKEN[k] then if v == false then out[k] = nil else out[k] = CleanGrad(v) or out[k] end end
+    end
+    return out
+end
+function T.BaseGrads(base)
+    if base == "custom" then base = T.Under() end
+    local b = T.BUILTIN[base]
+    if b then return b.grads or NOGRADS end
+    local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[base]
+    if type(saved) == "table" then return T.SavedGrads(saved) end
+    return NOGRADS
+end
+
 -------------------------------------------------------------------------------
 -- Resolve: palette + overrides -> T.cur, then push into every bound table
 -------------------------------------------------------------------------------
 T.cur = {}
 for _, t in ipairs(T.TOKENS) do T.cur[t[1]] = Copy4(t[4]) end
+T.curGrad = {}   -- (#460) token -> gradient of the resolved theme (T.Resolve)
 T.binds = {}
 T.listeners = {}
 function T.OnResolve(fn) T.listeners[#T.listeners + 1] = fn end
@@ -359,6 +421,19 @@ function T.Resolve()
         cur[k] = Copy4(v)
     end
     T.cur = cur
+    -- (#460) the gradients, worked out once here (T.Grad reads them; nothing is worked out per frame): your own gradient (false = you
+    -- set it solid), else the theme's own one unless you picked a solid colour of your own for it. Parked tokens: as their colours.
+    local grads, base = {}, th and T.BaseGrads(th.base) or NOGRADS
+    local own = th and type(th.grads) == "table" and th.grads or NOGRADS
+    for _, t in ipairs(T.TOKENS) do
+        local k = t[1]
+        local open = not T.Parked(k)
+        local g
+        if open and own[k] ~= nil then g = own[k] or nil
+        elseif not (th and open and th.tokens[k]) then g = base[k] end
+        grads[k] = CleanGrad(g)
+    end
+    T.curGrad = grads
     for _, b in ipairs(T.binds) do
         local c = cur[b[1]]
         if c then b[2][1], b[2][2], b[2][3], b[2][4] = c[1], c[2], c[3], c[4] end
@@ -470,7 +545,7 @@ function T.SetUnder(u)
     if th.under ~= "class" then th.classPick = nil end
     T.Changed()
 end
-function T.ClearCustom() local th = DB(); if th then th.tokens, th.classes = {}, {}; T.Changed() end end
+function T.ClearCustom() local th = DB(); if th then th.tokens, th.classes, th.grads = {}, {}, nil; T.Changed() end end
 function T.SetBase(base, classPick)
     if base == "custom" then return T.MakeCustom() end
     local th = DB(); if not th then return end
@@ -479,15 +554,52 @@ function T.SetBase(base, classPick)
     th.classPick = classPick
     th.tokens = {}   -- a new base starts clean; individual colors are re-picked on top of it
     th.classes = {}
+    th.grads = nil   -- (#460) your gradients too; the Reverse switch stays, like the font and size
     T.Changed()
 end
 function T.SetToken(key, c)
     local th = DB(); if not (th and T.TOKEN[key]) then return end
     ToCustom(th)
     th.tokens[key] = { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) }
+    -- (#460) a solid colour picked for it replaces a gradient of your own (the theme's own gradient gives way to it in T.Resolve)
+    if type(th.grads) == "table" then th.grads[key] = nil; if next(th.grads) == nil then th.grads = nil end end
     T.Changed()
 end
-function T.ResetToken(key) local th = DB(); if th then th.tokens[key] = nil; T.Changed() end end
+function T.ResetToken(key)
+    local th = DB(); if not th then return end
+    th.tokens[key] = nil
+    if type(th.grads) == "table" then th.grads[key] = nil; if next(th.grads) == nil then th.grads = nil end end   -- (#460) back to the theme's own
+    T.Changed()
+end
+
+-- (#460, core 0.6.81) Xaya 2026-11-07, Advanced customization: "allow in advance settings the user to apply the gradient as a set
+-- "color" option to all elements". The gradient = the theme's gradient (T.TrailStops: a cursor trail theme's own trail gradient, else
+-- the light-to-dark accentText -> accent -> gradStart that the trail's "Match the UI theme" uses), copied in, so it travels in the
+-- theme's share string. on = false: the colour is solid again (false is kept only where the theme it starts from has a gradient).
+function T.SetTokenGradient(key, on)
+    local th = DB(); if not (th and T.TOKEN[key]) then return end
+    ToCustom(th)
+    local own = type(th.grads) == "table" and th.grads or {}
+    if on then
+        local stops = {}
+        for i, s in ipairs(T.TrailStops()) do stops[i] = { Clamp01(s[1]), Clamp01(s[2]), Clamp01(s[3]), 1 } end
+        if #stops >= 2 then own[key] = { stops = stops } end
+    else
+        if T.BaseGrads(th.base)[key] and not th.tokens[key] then own[key] = false else own[key] = nil end
+    end
+    th.grads = next(own) ~= nil and own or nil
+    T.Changed()
+end
+-- (#460) Xaya 2026-11-06: "this gradient should be reversible in direction"; her answer 2026-11-07: its own switch, independent of the
+-- cursor trail's "Reverse colors". One switch for the theme: every gradient of it runs the other way. Stored only while on.
+function T.GradReversed() local th = CueRulesDB and CueRulesDB.theme; return type(th) == "table" and th.gradRev == true end
+function T.SetGradReverse(on)
+    local th = DB(); if not th then return end
+    th.gradRev = on and true or nil
+    T.Changed()
+end
+-- does the resolved theme have any gradient (the Theme page shows the Reverse switch only then)
+function T.HasGradient() for _ in pairs(T.curGrad or {}) do return true end return false end
 function T.SetClassColor(class, prop, c)
     local th = DB(); if not (th and T.CLASS[class] and T.CLASS[class][3][prop]) then return end
     ToCustom(th)
@@ -501,6 +613,7 @@ function T.SetSize(sz) local th = DB(); if th and T.SIZES[sz] then th.size = sz;
 function T.ResetAll()
     local th = DB(); if not th then return end
     th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = "class", nil, nil, {}, {}, "none", "M"
+    th.grads, th.gradRev = nil, nil
     T.Changed()
 end
 
@@ -517,6 +630,18 @@ local function CleanColors(src, known)
     end
     return out
 end
+-- (#460) your gradients, checked: known tokens only, each a gradient (2-8 colours) or false (= solid here)
+local function CleanGrads(src)
+    local out = {}
+    if type(src) ~= "table" then return out end
+    for k, v in pairs(src) do
+        if type(k) == "string" and T.TOKEN[k] then
+            if v == false then out[k] = false else out[k] = CleanGrad(v) end
+        end
+    end
+    return out
+end
+T.CleanGrads = CleanGrads
 local function Snapshot()
     local th = DB()
     local classes = {}
@@ -529,8 +654,13 @@ local function Snapshot()
     end
     local toks = {}
     for k, c in pairs(th.tokens) do if T.TOKEN[k] then toks[k] = Copy4(c) end end
-    return { base = T.IsBase(th.base) and th.base or "default", under = (th.base == "custom") and CleanUnder(th.under) or nil, classPick = th.classPick,
+    local snap = { base = T.IsBase(th.base) and th.base or "default", under = (th.base == "custom") and CleanUnder(th.under) or nil, classPick = th.classPick,
         tokens = toks, classes = classes, font = th.font, size = th.size }
+    -- (#460) only when there is something: a theme without gradients saves and exports exactly what it did before
+    local grads = CleanGrads(th.grads)
+    if next(grads) then snap.grads = grads end
+    if th.gradRev == true then snap.gradRev = true end
+    return snap
 end
 
 function T.SavedNames()
@@ -580,10 +710,11 @@ local function Same(a, b)
 end
 function T.UnsavedColors()
     local th = DB(); if not th then return false end
-    if not (next(th.tokens or {}) or next(th.classes or {})) then return false end
+    if not (next(th.tokens or {}) or next(th.classes or {}) or (type(th.grads) == "table" and next(th.grads))) then return false end
     local now = Snapshot()
     for _, sv in pairs(CueRulesDB and CueRulesDB.themes or {}) do
-        if type(sv) == "table" and Same(now.tokens or {}, sv.tokens or {}) and Same(now.classes or {}, sv.classes or {}) then return false end
+        if type(sv) == "table" and Same(now.tokens or {}, sv.tokens or {}) and Same(now.classes or {}, sv.classes or {})
+            and Same(now.grads or {}, type(sv.grads) == "table" and sv.grads or {}) then return false end
     end
     return true
 end
@@ -599,6 +730,9 @@ function T.Load(name)
     end
     th.font = (type(s.font) == "string") and s.font or "none"
     th.size = T.SIZES[s.size] and s.size or "M"
+    local g = CleanGrads(s.grads)   -- (#460)
+    th.grads = next(g) and g or nil
+    th.gradRev = (s.gradRev == true) or nil
     T.Changed()
     return true
 end
@@ -623,6 +757,10 @@ local function CheckTheme(data)
     end
     clean.font = (type(data.font) == "string" and #data.font <= 60) and data.font or "none"
     clean.size = T.SIZES[data.size] and data.size or "M"
+    -- (#460) gradients and the Reverse switch: absent in strings made before core 0.6.81, which import exactly as before
+    local g = CleanGrads(data.grads)
+    if next(g) then clean.grads = g end
+    if data.gradRev == true then clean.gradRev = true end
     return clean
 end
 
@@ -641,6 +779,7 @@ local function ApplyTheme(data, opts)
         saveAs = n
     end
     th.base, th.under, th.classPick, th.tokens, th.classes, th.font, th.size = data.base, data.under, data.classPick, data.tokens, data.classes, data.font, data.size
+    th.grads, th.gradRev = data.grads, data.gradRev   -- (#460) nil for a theme without them
     if saveAs then T.Save(saveAs, true) end
     T.Changed()
     return true
@@ -699,7 +838,6 @@ end
 function T.Scope(id) return T.scopes[id] end
 T.OnResolve(function() scopeCache = {} end)
 
-local function IsCol(c) return type(c) == "table" and type(c[1]) == "number" and type(c[2]) == "number" and type(c[3]) == "number" end
 local function ScopeData(id, make)
     local th = CueRulesDB and CueRulesDB.theme
     if type(th) ~= "table" then if not make then return nil end th = DB(); if not th then return nil end end
@@ -768,6 +906,223 @@ function T.Col(class, prop, scope, fallback)
     if c then return Copy4(c) end
     return GlobalCol(class, prop, fallback)
 end
+-------------------------------------------------------------------------------
+-- (#460, core 0.6.81) T.Grad(class, prop [, scope]): the gradient of a class property, or nil when its colour is solid. Resolved the
+-- same way as T.Col, first match wins: a class colour of your own (solid) > your gradient for the token (false = solid) > your solid
+-- colour for the token > the theme's own gradient; in a scope, its own overrides, then its chosen theme, then its parent's, then the
+-- global theme. Returns a fresh { stops = { {r,g,b,a}, ... }, dir = "H" | "V" }, already turned round when the Reverse switch is on.
+-- Global answers come from T.curGrad (worked out in T.Resolve); scope answers are cached with the colours and dropped on every Resolve.
+-------------------------------------------------------------------------------
+local function Oriented(g)
+    if not g then return nil end
+    local n, rev, stops = #g.stops, T.GradReversed(), {}
+    for i = 1, n do stops[i] = Copy4(g.stops[rev and (n + 1 - i) or i]) end
+    return { stops = stops, dir = g.dir or "H" }
+end
+local function GlobalGrad(class, prop)
+    local th = CueRulesDB and CueRulesDB.theme
+    local def = T.CLASS[class]
+    local tok = def and def[3][prop]
+    if not tok then return nil end
+    local o = th and th.classes and th.classes[class] and th.classes[class][prop]
+    if type(o) == "table" and not T.Parked(tok) then return nil end   -- your class colour: solid
+    return T.curGrad[tok]
+end
+local function ScopeGrads(name)
+    local key = "\3grads\1" .. name
+    local g = scopeCache[key]
+    if g == nil then
+        g = (name ~= "custom" and T.IsBase(name) or (CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[name])) and T.BaseGrads(name) or false
+        scopeCache[key] = g
+    end
+    return g or NOGRADS
+end
+-- one scope's own say: decided (true / false), gradient or nil
+local function GradFromScope(id, class, prop, tok)
+    local s = ScopeData(id, false)
+    if not s then return false end
+    local parked = tok and T.Parked(tok)
+    local cl = type(s.classes) == "table" and type(s.classes[class]) == "table" and s.classes[class][prop]
+    if IsCol(cl) and not parked then return true, nil end
+    local sg
+    if tok and type(s.grads) == "table" then sg = s.grads[tok] end   -- (nil = inherit; false = solid here)
+    if sg ~= nil and not parked then return true, CleanGrad(sg) end
+    local tk = tok and type(s.tokens) == "table" and s.tokens[tok]
+    if IsCol(tk) and not parked then return true, nil end
+    if type(s.theme) == "string" and s.theme ~= "" then
+        local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[s.theme]
+        local sc = type(saved) == "table" and type(saved.classes) == "table" and type(saved.classes[class]) == "table" and saved.classes[class][prop]
+        if IsCol(sc) and not parked then return true, nil end
+        local g = tok and ScopeGrads(s.theme)[tok]
+        if g then return true, g end
+        local pal = tok and ScopePalette(s.theme)
+        if pal and IsCol(pal[tok]) then return true, nil end
+    end
+    return false
+end
+function T.Grad(class, prop, scope)
+    if type(scope) ~= "string" then return Oriented(GlobalGrad(class, prop)) end
+    local key = "\3g\1" .. scope .. "\1" .. tostring(class) .. "\1" .. tostring(prop)
+    local g = scopeCache[key]
+    if g == nil then
+        local def = T.CLASS[class]
+        local tok = def and def[3][prop]
+        local id, seen, hit = scope, {}, false
+        while id and not seen[id] do
+            seen[id] = true
+            local decided, sg = GradFromScope(id, class, prop, tok)
+            if decided then hit = true; g = sg or false; break end
+            local sc = T.scopes[id]
+            id = sc and sc.parent
+        end
+        if not hit then g = GlobalGrad(class, prop) or false end
+        scopeCache[key] = g
+    end
+    return Oriented(g or nil)
+end
+T.GlobalGrad = GlobalGrad
+
+-------------------------------------------------------------------------------
+-- (#460, core 0.6.81) Drawing a gradient outline. Game API (docs/reference/api/widgets.md, Texture, 12.1.5):
+--   SetGradient(orientation: Orientation, minColor: colorRGBA (ColorMixin), maxColor: colorRGBA (ColorMixin)) ·
+--     SecretArguments=AllowedWhenUntainted · SimpleTextureBaseAPI
+--   SetColorTexture(colorR: number, colorG: number, colorB: number, a: SingleColorValue?) · ChecksForbiddenAspects=[{'Argument':
+--     'self', 'Aspect': 'ForbiddenAspect.SetTexture'}], SecretArguments=AllowedWhenTainted · SimpleTextureBaseAPI
+--   SetVertexColor(colorR: number, colorG: number, colorB: number, a: SingleColorValue?) · SecretArguments=AllowedWhenTainted,
+--     SecretArgumentsAddAspect=[SecretAspect.VertexColor, SecretAspect.Alpha] · SimpleRegionAPI
+-- Our colours are plain numbers from the theme (never secret values), on our own textures. CreateColor is Blizzard's ColorMixin
+-- constructor (FrameXML, not in the generated documentation; XayaUI already passes it to SetGradient in GameMenuButton.lua and
+-- TreePaint.lua, as Blizzard's own nameplate and private aura code does). The same call pattern as those: a white colour texture,
+-- then SetGradient. One SetGradient spans two colours, so a gradient of n stops is drawn as n - 1 pieces along the edge.
+-- INFERENCE (not documented): "HORIZONTAL" puts minColor on the left; "VERTICAL" puts minColor at the BOTTOM; SetVertexColor sets all
+-- four corners and so clears a gradient (a texture going back to a solid colour gets SetVertexColor(1, 1, 1, 1) first).
+-- Drawn only when the theme changes or the element is painted (no OnUpdate); a frame whose pieces depend on its size (3 or more stops)
+-- lays them out again from an OnSizeChanged hook, which returns at once once the frame is solid again.
+-------------------------------------------------------------------------------
+local CLEAR = { 0, 0, 0, 0 }
+local function GradOn(tex, orient, a, b)
+    tex:SetColorTexture(1, 1, 1, 1)
+    tex:SetGradient(orient, CreateColor(a[1], a[2], a[3], a[4] or 1), CreateColor(b[1], b[2], b[3], b[4] or 1))
+    tex.xuiGrad = { orient, a, b }   -- what was drawn (the walkthrough reads it back; GetVertexColor cannot tell a gradient's ends apart)
+end
+local function SolidOn(tex, c)
+    if tex.xuiGrad then tex:SetVertexColor(1, 1, 1, 1); tex.xuiGrad = nil end
+    tex:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
+end
+-- stops drawn along region R (axis "H": left to right, "V": top to bottom) by pieces made on host (layer / sublevel as the edge's)
+local function Strip(host, list, R, axis, stops, layer, sub)
+    local n = #stops - 1
+    local len
+    if axis == "H" then len = R:GetWidth() else len = R:GetHeight() end
+    len = tonumber(len) or 0
+    for i = 1, n do
+        local s = list[i]
+        if not s then s = host:CreateTexture(nil, layer or "BACKGROUND", nil, sub); s.xuiOwn = true; list[i] = s end
+        s:ClearAllPoints()
+        local a0, a1 = len * (i - 1) / n, len * i / n
+        if axis == "H" then
+            s:SetPoint("TOPLEFT", R, "TOPLEFT", a0, 0)
+            if i == n then s:SetPoint("BOTTOMRIGHT", R, "BOTTOMRIGHT", 0, 0) else s:SetPoint("BOTTOMRIGHT", R, "BOTTOMLEFT", a1, 0) end
+            GradOn(s, "HORIZONTAL", stops[i], stops[i + 1])
+        else
+            s:SetPoint("TOPLEFT", R, "TOPLEFT", 0, -a0)
+            if i == n then s:SetPoint("BOTTOMRIGHT", R, "BOTTOMRIGHT", 0, 0) else s:SetPoint("BOTTOMRIGHT", R, "TOPRIGHT", 0, -a1) end
+            GradOn(s, "VERTICAL", stops[i + 1], stops[i])   -- (INFERENCE above: VERTICAL's minColor is the bottom)
+        end
+        s:Show()
+    end
+    for i = n + 1, #list do list[i]:Hide() end
+end
+local function HideList(list) for _, s in ipairs(list or NOGRADS) do s:Hide() end end
+-- one OnSizeChanged hook per host frame, running the relays registered on it (set only while a 3+ stop gradient is drawn there)
+local function Relay(host, key, fn)
+    host.xuiGradRelay = host.xuiGradRelay or {}
+    host.xuiGradRelay[key] = fn
+    if fn and not host.xuiGradHooked and host.HookScript then
+        host.xuiGradHooked = true
+        host:HookScript("OnSizeChanged", function(self)
+            local r = self.xuiGradRelay
+            if r then for _, f in pairs(r) do pcall(f) end end
+        end)
+    end
+end
+
+-- A 1-px box outline on f: edges = { top, bottom, left, right } (textures the caller anchored), solid = {r,g,b,a}, grad = T.Grad(...)
+-- or nil. Solid: exactly the calls the outline always had (SetColorTexture, Show). Gradient "H": top and bottom edges carry it from
+-- left to right, the left edge is the first colour and the right edge the last; "V": the same turned a quarter (top to bottom).
+function T.PaintEdges(f, edges, solid, grad, layer, sub)
+    local st = f.xuiGradE
+    if not grad then
+        for _, e in ipairs(edges) do SolidOn(e, solid); e:Show() end
+        if st then st.on = nil; for _, l in ipairs(st.segs) do HideList(l) end; Relay(f, "box", nil) end
+        return
+    end
+    if not st then st = { segs = { {}, {}, {}, {} } }; f.xuiGradE = st end
+    st.on = true
+    local stops, axis = grad.stops, (grad.dir == "V") and "V" or "H"
+    local first, last = stops[1], stops[#stops]
+    local function lay()
+        if not st.on then return end
+        if axis == "H" then
+            Strip(f, st.segs[1], edges[1], "H", stops, layer, sub); Strip(f, st.segs[2], edges[2], "H", stops, layer, sub)
+            HideList(st.segs[3]); HideList(st.segs[4])
+        else
+            Strip(f, st.segs[3], edges[3], "V", stops, layer, sub); Strip(f, st.segs[4], edges[4], "V", stops, layer, sub)
+            HideList(st.segs[1]); HideList(st.segs[2])
+        end
+    end
+    if axis == "H" then
+        SolidOn(edges[1], CLEAR); SolidOn(edges[2], CLEAR); SolidOn(edges[3], first); SolidOn(edges[4], last)
+    else
+        SolidOn(edges[3], CLEAR); SolidOn(edges[4], CLEAR); SolidOn(edges[1], first); SolidOn(edges[2], last)
+    end
+    for _, e in ipairs(edges) do e:Show() end
+    lay()
+    Relay(f, "box", (#stops > 2) and lay or nil)
+end
+-- the pieces of a box outline hidden (the element was released or its box hidden)
+function T.HideGrad(f)
+    local st = f and f.xuiGradE
+    if st then st.on = nil; for _, l in ipairs(st.segs) do HideList(l) end; Relay(f, "box", nil) end
+    local own = f and f.xuiGradBox
+    if own then for _, e in ipairs(own) do e:Hide() end end
+end
+-- four 1-px edges of f's own (for a frame whose outline is a backdrop, which cannot take a gradient: the window frame)
+function T.EdgeBox(f, layer, sub)
+    local e = f.xuiGradBox
+    if not e then
+        e = {}
+        for i = 1, 4 do e[i] = f:CreateTexture(nil, layer or "BORDER", nil, sub); e[i].xuiOwn = true end
+        e[1]:SetPoint("TOPLEFT", 0, 0); e[1]:SetPoint("TOPRIGHT", 0, 0); e[1]:SetHeight(1)
+        e[2]:SetPoint("BOTTOMLEFT", 0, 0); e[2]:SetPoint("BOTTOMRIGHT", 0, 0); e[2]:SetHeight(1)
+        e[3]:SetPoint("TOPLEFT", 0, 0); e[3]:SetPoint("BOTTOMLEFT", 0, 0); e[3]:SetWidth(1)
+        e[4]:SetPoint("TOPRIGHT", 0, 0); e[4]:SetPoint("BOTTOMRIGHT", 0, 0); e[4]:SetWidth(1)
+        f.xuiGradBox = e
+    end
+    return e
+end
+-- A line (a pane divider, a group's top line): the gradient runs along its own length (axis "H" for a horizontal line, "V" for a
+-- vertical one), first colour at its left / top. Call it after the line is placed and shown; solid = exactly SetColorTexture.
+function T.PaintLine(host, tex, solid, grad, axis, layer, sub)
+    local st = tex.xuiGradL
+    if not grad then
+        SolidOn(tex, solid)
+        if st then st.on = nil; HideList(st.segs); Relay(host, tex, nil) end
+        return
+    end
+    if not st then st = { segs = {} }; tex.xuiGradL = st end
+    st.on = true
+    SolidOn(tex, CLEAR)
+    local stops = grad.stops
+    local function lay() if st.on and tex:IsShown() then Strip(host, st.segs, tex, axis, stops, layer, sub) else HideList(st.segs) end end
+    lay()
+    Relay(host, tex, (#stops > 2) and lay or nil)
+end
+function T.HideLineGrad(host, tex)
+    local st = tex and tex.xuiGradL
+    if st then st.on = nil; HideList(st.segs); if host then Relay(host, tex, nil) end end
+end
+
 -- where a scope's colour comes from: the scope id that decided it, or "global" (for tests and the later "Comes from" column)
 function T.ColFrom(class, prop, scope)
     local def = T.CLASS[class]
@@ -794,11 +1149,11 @@ local function Tidy(id)
             if next(s.classes) == nil then s.classes = nil end
         end
         if type(s.tokens) == "table" and next(s.tokens) == nil then s.tokens = nil end
-        if s.theme == nil and s.tokens == nil and s.classes == nil then all[id] = nil end
+        if type(s.grads) == "table" and next(s.grads) == nil then s.grads = nil end
+        if s.theme == nil and s.tokens == nil and s.classes == nil and s.grads == nil then all[id] = nil end
     end
     if next(all) == nil then th.scopes = nil end
 end
-local function CleanCol(c) return { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]), Clamp01(c[4] == nil and 1 or c[4]) } end
 function T.SetScopeTheme(id, name)
     if type(id) ~= "string" then return end
     if name ~= nil and type(name) ~= "string" then return end
@@ -812,6 +1167,18 @@ function T.SetScopeToken(id, key, c)
     if s then
         if IsCol(c) then s.tokens = type(s.tokens) == "table" and s.tokens or {}; s.tokens[key] = CleanCol(c)
         elseif type(s.tokens) == "table" then s.tokens[key] = nil end
+    end
+    Tidy(id); T.Changed()
+end
+-- (#460) a scope's gradient for a token: a gradient, false (solid here) or nil (inherit)
+function T.SetScopeTokenGradient(id, key, g)
+    if type(id) ~= "string" or not T.TOKEN[key] then return end
+    local s = ScopeData(id, g ~= nil)
+    if s then
+        local v
+        if g == false then v = false else v = CleanGrad(g) end
+        if v ~= nil then s.grads = type(s.grads) == "table" and s.grads or {}; s.grads[key] = v
+        elseif type(s.grads) == "table" then s.grads[key] = nil end
     end
     Tidy(id); T.Changed()
 end
