@@ -387,7 +387,7 @@ end
 -- (Chat 0.6.33; REQUEST-LOG UI-18 / UI-19 / UI-21) the #246 layout split over two pages: the look on Blizzard UI Reskin > Chat Panel, how
 -- chat behaves on QoL > Improved Chat (her item list, "Yes, as listed")
 local function TabsOf(t, key) local g = t and t.args and t.args[key]; return g and (Kids(g)) or nil end
-QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs behaviour (UI-18 / UI-21, #246)", qa = "#246, D24, D25", order = 235, prefill = true, steps = {
+QA.Register("chat-settings-layout", { title = "Chat: settings split, look vs behavior (UI-18 / UI-21, #246)", qa = "#246, D24, D25", order = 235, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings open on Blizzard Reskin > Chat Panel > |cffffd100General|r.\n\n|cffffd100Expect:|r under Chat Panel in the left pane only General, Chat Tabs and Layout (how chat looks). General's tabs: Font options, Color + display options.",
         setup = function() local C = Ch(); if C and C.OpenSettings then C.OpenSettings("general") end end,
         check = function()
@@ -611,7 +611,7 @@ local function SbReady()
     return true, sb
 end
 QA.Register("chat-sidebar", { title = "Chat: the chat sidebar (UI-3)", qa = "D27", order = 240, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the sidebar is switched on, on the |cffffd100left|r, always shown, with its background (your settings are remembered; the last step puts them back).\n\n|cffffd100Expect:|r a strip left of the chat, as tall as it, with a dark background tinted in your class colour; top to bottom: the privacy eye, Blizzard's chat menu and channel buttons (voice buttons only in a voice channel), the history button, chat windows, newest message. The chat itself is the same size as before.",
+    { text = "Press |cffffd100Do it for me|r: the sidebar is switched on, on the |cffffd100left|r, always shown, with its background (your settings are remembered; the last step puts them back).\n\n|cffffd100Expect:|r a strip left of the chat, as tall as it, with a dark background tinted in your class color; top to bottom: the privacy eye, Blizzard's chat menu and channel buttons (voice buttons only in a voice channel), the history button, chat windows, newest message. The chat itself is the same size as before.",
         setup = function() SbSet({ improvedOn = true, sbOn = true, sbSide = "LEFT", sbShow = "ALWAYS", sbFade = false, sbCombat = false, sbBg = true, sbChatW = 0 }) end,
         check = function()
             local ok, sb = SbReady(); if not ok then return false, sb end

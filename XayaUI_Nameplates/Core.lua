@@ -51,9 +51,9 @@ local function BuildPage(Notify)
     local function off() return not NP.DB().targetColor end
     return {
         type = "group", name = "Nameplates", order = 40,
-        xuiSwitch = { type = "toggle", name = "Target colour",
-            desc = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
-            tip = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
+        xuiSwitch = { type = "toggle", name = "Target color",
+            desc = "Colors your target's health bar on Blizzard's nameplates in the color set on this page (default teal).",
+            tip = "Colors your target's health bar on Blizzard's nameplates in the color set on this page (default teal).",
             get = function() return NP.DB().targetColor end,
             -- (Nameplates 0.2.3; PS-57, #480) saves and asks for a reload; before, TargetColor.Apply ran at once
             set = function(_, v)
@@ -63,7 +63,7 @@ local function BuildPage(Notify)
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Changes to Blizzard's own nameplates. They show nothing while another nameplate addon (Plater) replaces Blizzard's plates. /xui nameplates says what is on and whether your target's plate was found." },
-            color = { type = "color", order = 1, name = "Target colour", disabled = off,
+            color = { type = "color", order = 1, name = "Target color", disabled = off,
                 get = function() local r, g, b = NP.Color(); return r, g, b, 1 end,
                 set = function(_, r, g, b) NP.DB().color = { r, g, b }; Changed() end },
             teal = { type = "execute", order = 2, name = "Teal", width = "half", disabled = off,
@@ -96,7 +96,7 @@ end
 local function Status()
     local d = NP.DB()
     local rep = NP.Replacer()
-    ns.Print(("Nameplates: target colour %s."):format(d.targetColor and "on" or "off"))
+    ns.Print(("Nameplates: target color %s."):format(d.targetColor and "on" or "off"))
     if rep then ns.Print(("Nameplates: %s is loaded and replaces Blizzard's nameplates, so nothing of XayaUI Nameplates shows. Disable it to use these."):format(rep)) end
     local tc = NP.TargetColor
     if d.targetColor and tc and tc.Report then ns.Print("Nameplates: " .. tc.Report()) end

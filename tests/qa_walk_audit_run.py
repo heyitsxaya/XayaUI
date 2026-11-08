@@ -109,10 +109,19 @@ do
   end
   local realL, realS = ns.Launchers, ns.Service
   ns.Launchers = function() return {} end
-  ns.Service = function(k) if k == "infoPaneData" then return nil end return realS(k) end
+  -- (Dev Assist 0.7.72) the settings window's texts (optionsDebug.Tree) are read too: none of them either
+  ns.Service = function(k) if k == "infoPaneData" or k == "optionsDebug" then return nil end return realS(k) end
   local vs, nsp = QA.walks["audit-spelling"].steps[1].check()
+  -- (Dev Assist 0.7.72, FA-16 reported again 2026-11-08) the settings window's texts are read: the tooltip she reported, as it read,
+  -- on a switch of a page two levels down, is found (the check before read only the minimap list and the Info pane: Pass)
+  local reported = { args = { qol = { name = "QoL", args = { nameplates = { name = "Nameplates",
+    xuiSwitch = { name = "Target color", desc = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal)." } } } } } }
+  ns.Service = function(k) if k == "optionsDebug" then return { Tree = function() return reported end } end return realS(k) end
+  local vo, no = QA.walks["audit-spelling"].steps[1].check()
   ns.Launchers, ns.Service = realL, realS
   check("B6 spelling check with no text read: not tested (nil), not a Pass", vs == nil, tostring(vs) .. " " .. tostring(nsp))
+  check("FA-16 the settings window's texts are read: the reported Nameplates tooltip ('Colours ... colour') gives Fail",
+    vo == false and tostring(no):find("colour", 1, true) ~= nil, tostring(vo) .. " " .. tostring(no))
 end
 -- audit D36 (Dev Assist 0.7.19): the debug-report walkthrough leaves no test error behind, and raises nothing through the game's handler
 do

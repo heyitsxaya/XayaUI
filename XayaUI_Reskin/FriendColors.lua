@@ -151,7 +151,7 @@ function ns.FriendColors_Options(Notify)
         n = { type = "description", order = 1, width = "full", fontSize = "medium",
             name = "Online friends in the friends list show their name in their class color: character friends, and the character name of Battle.net friends playing World of Warcraft. Offline friends keep Blizzard's grey." },
         social = { type = "description", order = 2, width = "full", hidden = function() return not social end,
-            name = "|cffaaaaaaYour game shows Blizzard's new Social friends list, which is not coloured yet.|r" },
+            name = "|cffaaaaaaYour game shows Blizzard's new Social friends list, which is not colored yet.|r" },
     } }
 end
 ns.RegisterSettingsPage("reskin", "friendcolors", ns.FriendColors_Options)

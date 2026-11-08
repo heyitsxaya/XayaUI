@@ -149,20 +149,20 @@ local function AfterReload(prevId, label)
     local wantB = (wb == "ON") and tabOn and true or false
     local gotB, gotN = BubblesLive(), NPLive()
     local ok = gotB == wantB and gotN == (wn == "ON")
-    return ok, ("Chat Bubbles drawn: %s (%s set %s%s); Nameplates colour listening: %s (%s set %s)"):format(OnOff(gotB), label, wb,
+    return ok, ("Chat Bubbles drawn: %s (%s set %s%s); Nameplates color listening: %s (%s set %s)"):format(OnOff(gotB), label, wb,
         tabOn and "" or ", Blizzard Reskin off", OnOff(gotN), label, wn)
 end
 QA.Register("switch-reload", { title = "Reskin and module switches take effect on reload (part 1 of 3) (I2, PS-57)", qa = "I2", order = 512, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on Blizzard Reskin > |cffffd100Chat Bubbles|r and its tick box is switched to the other setting, the way a click does.\n\n|cffffd100Expect:|r a question \"Chat Bubbles: this change takes effect after a reload. Reload now?\" with Reload / Later. Chat bubbles look as before. Press |cffffd100Later|r.",
         setup = function() Flip("reskin", "rskbubbles", BubblesLive) end,
         check = function() return FlipCheck("reskin", "rskbubbles", BubblesLive, "Chat Bubbles") end },
-    { text = "Press |cffffd100Do it for me|r: QoL > |cffffd100Nameplates|r (the whole XayaUI Nameplates module's switch) is switched to the other setting.\n\n|cffffd100Expect:|r the question \"Nameplates: this change takes effect after a reload. Reload now?\". Your target's nameplate colour is as before. Press |cffffd100Later|r.",
+    { text = "Press |cffffd100Do it for me|r: QoL > |cffffd100Nameplates|r (the whole XayaUI Nameplates module's switch) is switched to the other setting.\n\n|cffffd100Expect:|r the question \"Nameplates: this change takes effect after a reload. Reload now?\". Your target's nameplate color is as before. Press |cffffd100Later|r.",
         setup = function() Flip("qol", "nameplates", NPLive) end,
         check = function() return FlipCheck("qol", "nameplates", NPLive, "Nameplates") end },
     { done = true, text = "Press |cffffd100Done|r here first (so this part's record is kept), then type |cffffd100/reload|r. After the loading screen, open |cffffd100/xui dev qa|r and run \"Reskin and module switches ... (part 2 of 3, after the /reload)\"." },
 } })
 QA.Register("switch-reload-after", { title = "Reskin and module switches take effect on reload (part 2 of 3, after the /reload) (I2)", qa = "I2", order = 512.1, prefill = true, steps = {
-    { text = "Run this after part 1 and its /reload. Target something with a nameplate, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r both changes are in effect now: chat bubbles in the XayaUI look if part 1 switched Chat Bubbles on (Blizzard's if off); the target's nameplate coloured if Nameplates is on (Blizzard's if off).",
+    { text = "Run this after part 1 and its /reload. Target something with a nameplate, then press |cffffd100Check again|r.\n\n|cffffd100Expect:|r both changes are in effect now: chat bubbles in the XayaUI look if part 1 switched Chat Bubbles on (Blizzard's if off); the target's nameplate colored if Nameplates is on (Blizzard's if off).",
         check = function() return AfterReload("switch-reload", "part 1") end },
     { text = "Press |cffffd100Do it for me|r: both switches are flipped back (Chat Bubbles, then Nameplates).\n\n|cffffd100Expect:|r the reload question again; nothing changes before the reload. Press |cffffd100Later|r.",
         setup = function() Flip("reskin", "rskbubbles", BubblesLive); Flip("qol", "nameplates", NPLive) end,
@@ -184,6 +184,6 @@ QA.Register("switch-reload-back", { title = "Reskin and module switches take eff
             local tabOn = ns.ReskinTabOn and ns.ReskinTabOn()
             local gotB, gotN = BubblesLive(), NPLive()
             local ok = gotB == ((wb == "ON") and tabOn and true or false) and gotN == (wn == "ON")
-            return ok, ("Chat Bubbles drawn: %s (before part 1: %s); Nameplates colour listening: %s (before part 1: %s)"):format(OnOff(gotB), wb, OnOff(gotN), wn)
+            return ok, ("Chat Bubbles drawn: %s (before part 1: %s); Nameplates color listening: %s (before part 1: %s)"):format(OnOff(gotB), wb, OnOff(gotN), wn)
         end },
 } })

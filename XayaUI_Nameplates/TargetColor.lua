@@ -70,7 +70,7 @@ function TC.Refresh()
     if bar ~= shownBar then Hide() end
     if not plate then last = "no target nameplate (no target, or its plate is not on screen or is one addons cannot touch)"; return end
     if not bar then last = "the target's nameplate has no Blizzard health bar (hidden by another addon, or your own plate)"; Hide(); return end
-    if ShowOn(bar) then last = "target nameplate found; colour shown" else last = "the target's health bar has no fill texture"; Hide() end
+    if ShowOn(bar) then last = "target nameplate found; color shown" else last = "the target's health bar has no fill texture"; Hide() end
 end
 
 local function Later()

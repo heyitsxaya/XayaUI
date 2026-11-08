@@ -351,7 +351,7 @@ function C.Sidebar_Options(Notify, S2, Re)
         side = { type = "select", name = "Side", order = 11, values = { LEFT = "Left", RIGHT = "Right", TOP = "Top", BOTTOM = "Bottom" }, sorting = { "LEFT", "RIGHT", "TOP", "BOTTOM" },
             desc = "Which side of the chat it sits on. If it would run off the screen, the chat moves in to make room.",
             disabled = off, get = function() return St().sbSide or "LEFT" end, set = function(_, v) local s = ns.chat2; if s then s.sbSide = v end; Re() end },
-        bg = tog("Background", "sbBg", 12, "The chat pane's background at its opacity, over a layer tinted with your class colour. Untick for bare buttons.", true),
+        bg = tog("Background", "sbBg", 12, "The chat pane's background at its opacity, over a layer tinted with your class color. Untick for bare buttons.", true),
         size = { type = "range", name = "Button size (pixels)", order = 13, min = 14, max = 40, step = 1, disabled = off,
             get = function() return tonumber(St().sbBtn) or 22 end, set = function(_, v) local s = ns.chat2; if s then s.sbBtn = v end; Re() end },
         chatW = { type = "range", name = "Width of the whole chat (pixels)", order = 14, min = 0, max = 1400, step = 10, disabled = off,

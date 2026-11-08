@@ -476,9 +476,9 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Patch Notes and Info (new)**
 - Added a pane that opens when you click the version text in the settings window's bottom-left corner. It floats above the settings window, can be dragged by its title bar and reopens where you left it.
   - Patch Notes: What's New (new features only, newest first, per addon) and one entry per update.
-  - Info: Version info, Readme, Help (FAQ) and Credits + Acknowledgements.
+  - Info: Version info, Readme, Help (FAQ) and Credits + Acknowledgments.
 - Added a ? button to the settings window's title bar, beside collapse and X. It opens Info > Help (FAQ); the pane has the same button.
-- Addon Info and Settings > Acknowledgements moved into the pane.
+- Addon Info and Settings > Acknowledgments moved into the pane.
 - Esc closes the pane first, then the settings window.
   *Developers' notes: Not yet tested in game (QA B197). In combat the game does not let addons hold Esc back, so one Esc closes both windows there.*
 

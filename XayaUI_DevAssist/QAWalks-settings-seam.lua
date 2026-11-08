@@ -47,7 +47,7 @@ local ITEMS = {
       get = function() local t = View("bonus").tooltips; return t and t.ilvl and t.ilvl.cacheSecs or 120 end,
       new = function(v) return (tonumber(v) or 120) + 1 end,
       set = function(v) local B = View("bonus"); B.tooltips = B.tooltips or {}; B.tooltips.ilvl = B.tooltips.ilvl or {}; B.tooltips.ilvl.cacheSecs = v end },
-    { key = "reskin", label = "Blizzard Reskin: window opacity (or friend colours on / off)",
+    { key = "reskin", label = "Blizzard Reskin: window opacity (or friend colors on / off)",
       get = function() local t, k, d = RskTable(); if not t then return "none" end; local v = t[k]; if v == nil then v = d end; return v end,
       new = function(v) if v == "none" then return "none" end; if type(v) == "boolean" then return not v end; return (tonumber(v) or 0.95) >= 0.99 and 0.9 or 1 end,
       set = function(v) local t, k = RskTable(); if t and v ~= "none" then t[k] = v end end },
@@ -73,7 +73,7 @@ end
 local st = {}
 local changed   -- set in part 1 of this session (gone after the /reload)
 QA.Register("settings-seam", { title = "Settings seam: every module's settings after a change, a profile import and Reset (part 1 of 2) (H12)", area = "Platform", qa = "H12", order = 272.2, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: one setting of each module is changed, as its settings page would change it: Settings > UI Options selection style, the buff bars' spacing, QoL > Cursor Trail size, the Chat Panel's scroll speed, Bonus tooltips' item level memory, and a Blizzard Reskin value (window opacity, or friend colours when only those are set up). What each was is kept in this step's record; part 2 puts them back.\n\n|cffffd100Expect:|r the check reads each new value back through that module's settings.",
+    { text = "Press |cffffd100Do it for me|r: one setting of each module is changed, as its settings page would change it: Settings > UI Options selection style, the buff bars' spacing, QoL > Cursor Trail size, the Chat Panel's scroll speed, Bonus tooltips' item level memory, and a Blizzard Reskin value (window opacity, or friend colors when only those are set up). What each was is kept in this step's record; part 2 puts them back.\n\n|cffffd100Expect:|r the check reads each new value back through that module's settings.",
         setup = function()
             if not View("platform") then error("XayaUI core is too old or off (no ns.Settings)") end
             st.was, st.set = {}, {}
@@ -135,7 +135,7 @@ QA.Register("settings-seam", { title = "Settings seam: every module's settings a
             local r = st.reset
             if not r then return nil, "press Do it for me first" end
             local ok = r.size == "M" and r.base == "class" and r.tokens and r.back
-            return ok and true or false, ("after Reset everything: size %s, base %s, no colour overrides: %s; your theme back: %s"):format(
+            return ok and true or false, ("after Reset everything: size %s, base %s, no color overrides: %s; your theme back: %s"):format(
                 tostring(r.size), tostring(r.base), r.tokens and "yes" or "NO", r.back and "yes" or "NO")
         end },
     { done = true, text = "Press |cffffd100Done|r here first (so this record is kept), type |cffffd100/reload|r, and run \"Settings seam: every module's changed setting after the /reload (part 2 of 2) (H12)\"." },

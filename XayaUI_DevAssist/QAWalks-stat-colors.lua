@@ -97,7 +97,7 @@ local function CBPal(key)
 end
 local function Expected(dir)
     local _, cb = Base()
-    if cb then return CBPal(dir == "better" and "accent" or "danger"), dir == "better" and "blue (the colour-blind theme's accent)" or "orange (its danger colour)" end
+    if cb then return CBPal(dir == "better" and "accent" or "danger"), dir == "better" and "blue (the color-blind theme's accent)" or "orange (its danger color)" end
     return GameRGB(dir == "better" and "GREEN_FONT_COLOR" or "RED_FONT_COLOR"), dir == "better" and "the game's green" or "the game's red"
 end
 
@@ -133,7 +133,7 @@ local function CheckOne(key, want)
     local exp, words = Expected(want)
     local base = Base()
     local note = ("%s: new value %s, meaning %s, drawn %s; expected %s %s (base theme %s)"):format(ch.label, ch.text, tostring(ch.tone), Hex(ch.col), words, Hex(exp), base)
-    if not exp then return nil, note .. "; the expected colour could not be read" end
+    if not exp then return nil, note .. "; the expected color could not be read" end
     return ch.tone == want and Same(ch.col, exp), note
 end
 
@@ -147,7 +147,7 @@ end
 -- B309: needs a colour-blind base theme
 local function CheckCB()
     local base, cb = Base()
-    if not cb then return nil, "your base theme is " .. base .. ": pick a colour-blind theme in /xui > Theme (Colorblind: ...), then press Do it for me and Check" end
+    if not cb then return nil, "your base theme is " .. base .. ": pick a color-blind theme in /xui > Theme (Colorblind: ...), then press Do it for me and Check" end
     local okU, nU = CheckOne("map_crit", "better")
     local okD, nD = CheckOne("map_haste", "worse")
     if okU == nil or okD == nil then return nil, tostring(nU) .. "; " .. tostring(nD) end
@@ -187,7 +187,7 @@ local function CheckNames()
     local title, rating = lines[1], nil
     for _, l in ipairs(lines) do if l.left == "From rating" then rating = l end end
     local want = cm.STAT_COLORS and cm.STAT_COLORS.crit
-    local note = ("title '%s' drawn %s (Critical Strike's colour %s); 'From rating' drawn %s"):format(tostring(title.left), Hex(title.lc), Hex(want), rating and Hex(rating.lc) or "not in the hover")
+    local note = ("title '%s' drawn %s (Critical Strike's color %s); 'From rating' drawn %s"):format(tostring(title.left), Hex(title.lc), Hex(want), rating and Hex(rating.lc) or "not in the hover")
     return Same(title.lc, want) and (rating == nil or not Same(rating.lc, want)), note
 end
 local function CheckNotes()
@@ -231,17 +231,17 @@ local function CheckMastery()
     end
     return nil, "no 'From mastery' line under Armor (your spec's mastery adds no armor): skip"
 end
-QA.Register("stat-colors", { title = "Stat Calculator: change numbers green / red, stat names in their colour, hover notes (B306-B311, B314-B315)",
+QA.Register("stat-colors", { title = "Stat Calculator: change numbers green / red, stat names in their color, hover notes (B306-B311, B314-B315)",
     qa = "B306, B307, B308, B309, B310, B311, B314, B315", order = 531, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on |cffffd100Stats|r with 100 more |cffffd100Critical Strike|r rating typed.\n\n|cffffd100Expect:|r under Critical Strike's Current value, its new value with a + in |cff19ff19green|r (better), not your theme's colour. The check reads the colour it is drawn in.",
+    { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on |cffffd100Stats|r with 100 more |cffffd100Critical Strike|r rating typed.\n\n|cffffd100Expect:|r under Critical Strike's Current value, its new value with a + in |cff19ff19green|r (better), not your theme's color. The check reads the color it is drawn in.",
         setup = function() Type({ crit = 100 }) end, check = function() return CheckOne("map_crit", "better") end },
     { text = "Press |cffffd100Do it for me|r: 100 |cffffd100less|r Critical Strike rating.\n\n|cffffd100Expect:|r the new value under it with a - in |cffff1919red|r (worse).",
         setup = function() Type({ crit = -100 }) end, check = function() return CheckOne("map_crit", "worse") end },
     { text = "Press |cffffd100Do it for me|r: 300 more |cffffd100Haste|r rating.\n\n|cffffd100Expect:|r the |cffffd100GCD|r's new value is shorter (a -) and |cff19ff19green|r: for seconds lower is better. (With a fixed 1.0 s GCD, look at Attack Speed instead.)",
         setup = function() Type({ haste = 300 }) end, check = CheckFaster },
-    { text = "Only with a colour-blind theme: in |cffffd100/xui > Theme|r pick one of the |cffffd100Colorblind|r themes (skip this step otherwise). Then press |cffffd100Do it for me|r: 100 more Critical Strike, 300 less Haste.\n\n|cffffd100Expect:|r Critical Strike's new value in |cff56b4e9blue|r (better), Haste's in |cffff8c19orange|r (worse); no green or red. Put your theme back afterwards.",
+    { text = "Only with a color-blind theme: in |cffffd100/xui > Theme|r pick one of the |cffffd100Colorblind|r themes (skip this step otherwise). Then press |cffffd100Do it for me|r: 100 more Critical Strike, 300 less Haste.\n\n|cffffd100Expect:|r Critical Strike's new value in |cff56b4e9blue|r (better), Haste's in |cffff8c19orange|r (worse); no green or red. Put your theme back afterwards.",
         setup = function() Type({ crit = 100, haste = -300 }) end, check = CheckCB },
-    { text = "Press |cffffd100Do it for me|r: the typed numbers are cleared and the |cffffd100Critical Strike|r card's hover opens (keep the mouse still).\n\n|cffffd100Expect:|r the hover's title |cffffd100Critical Strike|r in Critical Strike's own colour (as its name in the list), other lines such as From rating in your theme's colours.",
+    { text = "Press |cffffd100Do it for me|r: the typed numbers are cleared and the |cffffd100Critical Strike|r card's hover opens (keep the mouse still).\n\n|cffffd100Expect:|r the hover's title |cffffd100Critical Strike|r in Critical Strike's own color (as its name in the list), other lines such as From rating in your theme's colors.",
         setup = ShowCritHover, check = CheckNames },
     { text = "Same hover. |cffffd100Expect:|r while XayaUI Dev Assist is on (it is, for this walkthrough) the hover ends with its notes (the paragraphs that say where the numbers come from). Without Dev Assist the notes are hidden: that is checklist step |cffffd100B312|r, done by hand after this walkthrough (switch Dev Assist off in the AddOns list, /reload, hover Critical Strike).",
         check = CheckNotes },

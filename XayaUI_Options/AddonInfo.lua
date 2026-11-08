@@ -105,10 +105,10 @@ function ns.VersionInfoBlocks()
         { "h1", "XayaUI   v" .. (Meta("Version") or "?") },
         { "kv", "Last updated:", Meta("X-Date") or "unknown (add '## X-Date: YYYY-MM-DD' to XayaUI.toc)" },
         { "kv", "Author:", Meta("Author") or "Xaya" },
-        { "kv", "License:", "GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed in Info > Credits + Acknowledgements)." },
+        { "kv", "License:", "GPL-3.0-or-later for XayaUI's own code. Bundled libraries and any media keep their own licenses (listed in Info > Credits + Acknowledgments)." },
         { "kv", "Commands:", "/xui or /xayaui" },
         { "input", "Source code (click the box, Ctrl+A, Ctrl+C)", REPO_URL },
         { "small", "Version and date are read from XayaUI.toc (## Version and ## X-Date). Update both when you ship a change." },
-        { "kv", "Credits and attribution:", "Info > Credits + Acknowledgements." },
+        { "kv", "Credits and attribution:", "Info > Credits + Acknowledgments." },
     }
 end

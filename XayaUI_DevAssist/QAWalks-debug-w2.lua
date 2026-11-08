@@ -150,7 +150,7 @@ local function CheckSpecCount()
         parts[#parts + 1] = cid .. "=" .. tostring(v or "?")
     end
     local old = rawget(_G, "GetNumSpecializationsForClassID")
-    return ok, "spec count per class ID (what the catalogue's item-set step now reads): " .. table.concat(parts, ", ")
+    return ok, "spec count per class ID (what the catalog's item-set step now reads): " .. table.concat(parts, ", ")
         .. "; the old global GetNumSpecializationsForClassID: " .. (type(old) == "function" and "present" or "absent")
 end
 
@@ -164,7 +164,7 @@ QA.Register("debug-w2", { title = "Bar colors and tooltips: the fixed blue in co
         setup = SetupCleanup, check = CheckCleanup },
     { text = "Put a macro that casts a fire spell on your action bar (for example your Sigil of Flame or Infernal Strike macro) and hover it, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the tooltip shows \"Fire Damage\" in the game's Fire color (orange), and Spell ID / Cooldown lines as on the spell itself. The note keeps the macro's resolved spell ID and the colored words read from the tooltip.",
         check = CheckMacro },
-    { text = "Press |cffffd100Check|r: the addon reads the game's spec count per class, which the Aura catalogue's item-set step (/xuidev catalogue) now uses.\n\n|cffffd100Expect:|r a number for every class (Demon Hunter 12 = 3).",
+    { text = "Press |cffffd100Check|r: the addon reads the game's spec count per class, which the Aura catalog's item-set step (/xuidev catalog) now uses.\n\n|cffffd100Expect:|r a number for every class (Demon Hunter 12 = 3).",
         check = CheckSpecCount },
     { done = true, noVerdict = true, text = "Last step: anything look wrong (a color, a leftover row, a tooltip line)? Write it in the note, then press |cffffd100Done|r (no verdict: a note is kept, nothing is recorded as Pass or Fail)." },
 } })
