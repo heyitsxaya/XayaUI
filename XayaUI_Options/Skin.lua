@@ -1828,6 +1828,15 @@ local function TextW(s)
     mfs:SetText(s)
     return (mfs:GetStringWidth() or 0) + extra
 end
+-- (Debug W7, #467) ScanDropdowns' kept widths (text -> TextW) and the font they were measured with. INFERENCE: the game documents
+-- GetStringWidth only as "width: uiUnit" (docs/reference/api/widgets.md, FontString); the key holds everything that could change it
+-- for the same text (font file, height, flags, text scale, effective scale), so a change of any of them measures again.
+local scanW, scanFont, scanN = {}, nil, 0
+local function ScanFontKey()
+    if not mfs then return nil end
+    local f, h, fl = mfs:GetFont()
+    return table.concat({ tostring(f), tostring(h), tostring(fl), tostring(mfs:GetTextScale()), tostring(mfs:GetEffectiveScale()) }, "\001")
+end
 local function DDMin(ch)
     local list = ch.list
     if type(list) ~= "table" then return 0 end
@@ -2141,6 +2150,23 @@ local function ScanDropdowns()
         root = r
     end
     local seen, mx = {}, 0
+    -- (Debug W7, #467) The widths are kept between scans: a scan runs on every redraw that builds a rule's editor (FillRule asks
+    -- for one), and measured every option text of every dropdown in the tree each time (with 313 rules in the stand-in: 13,054
+    -- texts, 26,108 game calls, the biggest part of the skin pass). A text's width depends only on the text and the measuring
+    -- string's font (file, size, flags) and scale; those are read once per scan and the kept widths are dropped when any changed.
+    local key = ScanFontKey()
+    if key ~= scanFont then scanW = {}; scanN = 0 end
+    local texts, measured = 0, 0
+    local function W(txt)
+        texts = texts + 1
+        local tw = scanW[txt]
+        if tw == nil then
+            tw = TextW(txt); measured = measured + 1
+            if scanN >= 20000 then scanW = {}; scanN = 0 end   -- (a cap: texts from rules deleted since are not kept for ever)
+            scanW[txt] = tw; scanN = scanN + 1
+        end
+        return tw
+    end
     local function walk(g, depth)
         if type(g) ~= "table" or seen[g] or depth > 30 then return end
         seen[g] = true
@@ -2149,13 +2175,18 @@ local function ScanDropdowns()
             if type(vals) == "function" then local ok2, r = pcall(vals, {}); vals = ok2 and r or nil end
             if type(vals) == "table" then
                 for _, txt in pairs(vals) do
-                    if type(txt) == "string" then local tw = TextW(txt) + 40; if tw > mx then mx = tw end end
+                    if type(txt) == "string" then local tw = W(txt) + 40; if tw > mx then mx = tw end end
                 end
             end
         end
         if type(g.args) == "table" then for _, v in pairs(g.args) do walk(v, depth + 1) end end
     end
     walk(root, 0)
+    scanFont = ScanFontKey()   -- (the measuring string is made by the first TextW: the widths kept are for its font)
+    -- the last scan's counts, for the Dev Assist walkthrough (QAWalks-debug-w7.lua) and the test (tests/rule_click_cost_run.py)
+    local st = ns.OptionsApi.WidthScan or {}
+    ns.OptionsApi.WidthScan = st
+    st.scans, st.texts, st.measured, st.width = (st.scans or 0) + 1, texts, measured, math.min(mx, 520)
     return math.min(mx, 520)
 end
 function ns.UpdateMinWidth(of)
