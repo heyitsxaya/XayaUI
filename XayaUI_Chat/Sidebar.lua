@@ -205,6 +205,15 @@ local function Build()
     bar.tint = bar:CreateTexture(nil, "BACKGROUND", nil, 0); bar.tint:SetAllPoints()
     bar.black = bar:CreateTexture(nil, "BACKGROUND", nil, 1); bar.black:SetAllPoints()
     BuildOwn()
+    -- (Chat 0.6.44; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on the strip (between its buttons; the
+    -- strip takes the mouse only then) opens the element menu (core Modules.lua section 11): "Element options" opens QoL > Improved Chat
+    -- > Sidebar. No X / Y: the strip's place is a side of the chat and a gap (sbSide, sbGap), it has no X / Y offsets. Its buttons keep
+    -- their own clicks (the XayaUI button's right-click still opens / closes the window). Registered when the strip is made (V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "chatSidebar", label = "Chat sidebar", mouse = true,
+            targets = function(add) add(bar, "OnMouseUp") end,
+            open = function() C.OpenSettings("sidebar") end })
+    end
 end
 
 local function Place(s)

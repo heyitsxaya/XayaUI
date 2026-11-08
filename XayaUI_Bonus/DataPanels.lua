@@ -265,6 +265,22 @@ local function Build(key)
         s:SetScript("OnLeave", function(self) self:SetScript("OnUpdate", nil); GameTooltip:Hide() end)
         e.slots[i] = s
     end
+    -- (Bonus 0.6.35; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on this panel opens the element menu
+    -- (core Modules.lua section 11) instead of jumping to the page: "Element options" opens the Data Panels page (what the right-click
+    -- did), X and Y are this panel's own X-Offset / Y-Offset (cfg.x / cfg.y from its Anchor Point, the same numbers as the page's
+    -- sliders and a drag). Registered when the panel is made (a panel that is off is never made: V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "dataPanel:" .. key, label = TITLES[key] or "Custom Panel",
+            targets = function(add) add(f, "OnMouseUp"); for _, s in ipairs(e.slots) do add(s, "OnClick") end end,
+            open = function() OpenSettings() end,
+            getPos = function() local cfg = Cfg(key); return tonumber(cfg and cfg.x) or 0, tonumber(cfg and cfg.y) or 0 end,
+            setPos = function(_, x, y)
+                local cfg = Cfg(key); if not cfg then return end
+                cfg.x, cfg.y = x, y
+                ns.DataPanels_Refresh(key)
+                if ns.DataPanels_Changed then ns.DataPanels_Changed() end
+            end })
+    end
     return e
 end
 

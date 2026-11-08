@@ -200,6 +200,14 @@ local function MakeSlot(i)
     end)
     slot:SetScript("OnLeave", function(self) self:SetScript("OnUpdate", nil); GameTooltip:Hide() end)
     slots[i] = slot
+    -- (Chat 0.6.44; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on a block opens the element menu (core
+    -- Modules.lua section 11) instead of jumping to the Blocks tab: "Element options" opens QoL > Improved Chat > Chat Data Panel. No X /
+    -- Y: the panel is an edge of the Chat Panel (barSide, barGap), it has no X / Y offsets. Registered with its first block (V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "chatDataPanel", label = "Chat Data Panel",
+            targets = function(add) for _, sl in pairs(slots) do add(sl, "OnClick") end end,
+            open = function() if C.OpenSettings then C.OpenSettings("bar") end end })
+    end
     return slot
 end
 
