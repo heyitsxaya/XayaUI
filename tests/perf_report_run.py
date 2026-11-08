@@ -92,5 +92,67 @@ check("report: a record with no run markers is one run", "(whole record, no run 
 out = os.path.join(d, "r.md")
 check("command line: --out writes the file", PR.main([p, "--out", out]) == 0 and open(out).read().startswith("# XayaUI performance report"))
 
+
+# fix plan f1-11: the kept /xui debug perf readings are in XayaUI_DevAssist.lua (XayaUIDevAssistDB.perfLog; XayaUI_Rules/Engine.lua
+# writes them through Dev Assist's settings view), not in CueRulesDB. Negative control: the old report read only
+# CueRulesDB.perfLog, so a XayaUI.lua without it (every file saved since the move) showed no readings.
+DEV = r'''
+XayaUIDevAssistDB = {
+["perfLog"] = {
+{
+["at"] = "2026-11-08 18:00:00",
+["build"] = "0.7.54",
+["combat"] = true,
+["lines"] = {
+"perf over 12s: 80 steps (6.7/s), 0.20 ms avg", -- [1]
+},
+}, -- [1]
+},
+["recordMax"] = 10000,
+}
+'''
+NEW = FIX.replace('["perfLog"]', '["perfLogGone"]')   # a XayaUI.lua saved after the move: no CueRulesDB.perfLog
+d2 = tempfile.mkdtemp()
+p2 = os.path.join(d2, "XayaUI.lua"); open(p2, "w").write(NEW)
+pd = os.path.join(d2, "XayaUI_DevAssist.lua"); open(pd, "w").write(DEV)
+main_only = PR.read_saved(p2)
+check("negative control: XayaUI.lua alone (no CueRulesDB.perfLog) has no readings, as the old report showed",
+      "/xui debug perf readings kept" not in PR.report(main_only, {}))
+check("XayaUI.lua alone: the report says where the readings are (--devassist)", "pass it with --devassist" in PR.report(main_only))
+r2 = PR.report(main_only, PR.read_saved(pd))
+check("with XayaUI_DevAssist.lua: the readings from XayaUIDevAssistDB.perfLog, named by their store",
+      "## /xui debug perf readings kept (XayaUIDevAssistDB.perfLog, newest last)" in r2 and
+      "- 2026-11-08 18:00:00 (build 0.7.54, in combat):" in r2 and "  - perf over 12s: 80 steps (6.7/s), 0.20 ms avg" in r2)
+check("an old XayaUI.lua with CueRulesDB.perfLog: still read, and labelled as the old place",
+      "(CueRulesDB.perfLog, saved before the readings moved to Dev Assist, newest last)" in PR.report(saved))
+out2 = os.path.join(d2, "r.md")
+check("command line: XayaUI_DevAssist.lua next to XayaUI.lua is read without --devassist",
+      PR.main([p2, "--out", out2]) == 0 and "(XayaUIDevAssistDB.perfLog, newest last)" in open(out2).read())
+d3 = tempfile.mkdtemp()
+p3 = os.path.join(d3, "XayaUI.lua"); open(p3, "w").write(NEW)
+out3 = os.path.join(d3, "r.md")
+check("command line: --devassist PATH", PR.main([p3, "--devassist", pd, "--out", out3]) == 0 and
+      "(XayaUIDevAssistDB.perfLog, newest last)" in open(out3).read())
+
+# fix plan f6-8: the reader matches at its position instead of slicing the rest of the file (self.s[self.i:]) for every number,
+# key and assignment, which copied ~n^2/2 characters. A str that counts what slicing copies shows it; the old reader copied
+# hundreds of times the file's size on this input (negative control, measured on the old code: 2000 entries -> ~1000x).
+class CountingStr(str):
+    copied = 0
+
+    def __getitem__(self, k):
+        r = str.__getitem__(self, k)
+        if isinstance(k, slice):
+            CountingStr.copied += len(r)
+        return r
+
+
+big = CountingStr("X = {\n" + "".join('["k%d"] = %d, -- [%d]\n' % (i, i, i) for i in range(2000)) + "}\n")
+CountingStr.copied = 0
+got = PR.LuaReader(big).assignments()
+check("f6-8: a 2000-entry table reads correctly", len(got["X"]) == 2000 and got["X"]["k1999"] == 1999)
+check("f6-8: the reader copies at most the file's size once over (copied %d chars, file %d)" % (CountingStr.copied, len(big)),
+      CountingStr.copied <= len(big))
+
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

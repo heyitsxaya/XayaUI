@@ -41,7 +41,7 @@ InCombatLockdown = function() return false end
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/Modules.lua")).replace("'", '"')))   # core contract (0.6.0)
 lua.execute('ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB")')   # (P5) XayaUI Rules on (its data stays in CueRulesDB here: keepOld)
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules_Options/Drafts.lua")).replace("'", '"')))
-lua.execute(r'''
+fails = lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
 local drafts = {
@@ -110,4 +110,6 @@ check("on: an edit is unsaved", ns.DraftDirty(ns.rules[1]) == true)
 ns.DraftsOnClose()
 check("on: closing reverts and stores a draft", ns.rules[1].spellID == 4321 and #CueRulesDB.drafts == 5)
 print(n .. " checks, " .. fails .. " failed")
+return fails
 ''')
+sys.exit(1 if fails else 0)   # fix plan f1-9: a failure now fails the exit code too (it used to exit 0 whatever happened)
