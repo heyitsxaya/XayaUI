@@ -72,7 +72,8 @@ local SETTINGS_KEYS = {
     -- rsk / gm / friendColors were kept inside CueRulesDB.ui (LEGACY_UNDER_UI). characterReskin is split (P5, Xaya PS-53: "Character ui
     -- *reskin* is a blizzard change. Functionality changes or enhancements are separate."): Reskin keeps the sub-keys that only change
     -- the LOOK of Blizzard's character window (LEGACY_SPLIT), QoL the rest; the code (XayaUI_QoL/CharacterReskin.lua) reads both.
-    reskin    = { "rsk", "gm", "friendColors", "characterReskin" },
+    -- (core 0.6.82, #472) themeFolded: the Esc Menu's "Use my own colors" was copied into its theme scope (GameMenuSkin.lua), once
+    reskin    = { "rsk", "gm", "friendColors", "characterReskin", "themeFolded" },
     -- (P5) perfLog: Dev Assist's (B11; XayaUI Rules' Engine.lua writes it through this view, only while Dev Assist is on); the detailed
     -- record's own settings, kept in CueRulesDB.ui before (LEGACY_UNDER_UI)
     devassist = { "idProbe", "idProbeStream", "chatProbe", "perfLog", "recCats", "recFocus", "recordOff", "recordMax", "debugProbe", "probeByDebug" },

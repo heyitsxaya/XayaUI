@@ -145,17 +145,27 @@ local function Alpha() local r = Saved(); local a = r and tonumber(r.bgAlpha); i
 -------------------------------------------------------------------------------
 -- Colours (the theme; fallbacks are the XayaUI default look)
 -------------------------------------------------------------------------------
-local function TC(class, prop, fb)
+-- (Reskin 0.6.24, #472; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) sc = the page's theme scope (registered at the end of this
+-- file): the page's own theme or colours from Blizzard Reskin > Theme, else the global theme exactly as before (core Theme.lua T.Col)
+local SC = { windows = "reskin.blizzwindows", minimap = "reskin.minimap", tooltips = "reskin.tooltips", tracker = "reskin.tracker",
+    toasts = "reskin.toasts", menus = "reskin.menus", bubbles = "reskin.bubbles", statusbars = "reskin.statusbars",
+    mmbuttons = "reskin.mmbuttons", buttons = "reskin.buttons" }
+BS.SCOPE = SC
+local function TC(class, prop, fb, sc)
     local T = ns.Theme
-    if T and T.Col then local ok, c = pcall(T.Col, class, prop, fb); if ok and type(c) == "table" then return c end end
+    if T and T.Col then
+        local ok, c
+        if sc then ok, c = pcall(T.Col, class, prop, sc, fb) else ok, c = pcall(T.Col, class, prop, fb) end
+        if ok and type(c) == "table" then return c end
+    end
     return fb
 end
-local function WinBg() return TC("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }) end
-local function WinBorder() return TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 }) end
-local function TitleCol() return TC("xui-titlebar", "text", { 1, 0.82, 0, 1 }) end
-local function LabelCol() return TC("xui-label", "text", { 1, 0.82, 0, 1 }) end
-local function TextCol() return TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 }) end
-local function MutedCol() return TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) end
+local function WinBg(sc) return TC("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }, sc) end
+local function WinBorder(sc) return TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 }, sc) end
+local function TitleCol(sc) return TC("xui-titlebar", "text", { 1, 0.82, 0, 1 }, sc) end
+local function LabelCol(sc) return TC("xui-label", "text", { 1, 0.82, 0, 1 }, sc) end
+local function TextCol(sc) return TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 }, sc) end
+local function MutedCol(sc) return TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }, sc) end
 
 -------------------------------------------------------------------------------
 -- Fade / recolour with memory, per owner (a window, the minimap, the tracker), so each gives Blizzard's look back on its own
@@ -247,16 +257,16 @@ local entryOf = {}          -- [frame name] = window entry
 for _, e in ipairs(BS.WINDOWS) do for _, n in ipairs(e.frames) do entryOf[n] = e end end
 
 -- our own background (theme window colour at Background opacity) and a 1 px border, drawn on a frame whose art is faded
-local function OwnBg(f)
+local function OwnBg(f, sc)
     local m = M(f)
     if not m.bg then
         m.bg = f:CreateTexture(nil, "BACKGROUND", nil, -8)
         m.bg:SetAllPoints(f)
         m.own[#m.own + 1] = m.bg
     end
-    local bg = WinBg()
+    local bg = WinBg(sc)
     m.bg:SetColorTexture(bg[1], bg[2], bg[3], Alpha()); m.bg:Show()
-    PaintEdges(Edges(f, f), WinBorder())
+    PaintEdges(Edges(f, f), WinBorder(sc))
     return m
 end
 
@@ -271,7 +281,7 @@ local function PaintWindow(f)
     end
     local e = f.GetName and entryOf[f:GetName() or ""]
     if e and e.art then for _, k in ipairs(e.art) do Fade(f, f[k]) end end
-    local m = OwnBg(f)
+    local m = OwnBg(f, SC.windows)
     local qb = e and e.qualityBorder and f[e.qualityBorder]
     if type(qb) == "table" and qb.GetVertexColor then   -- the item's quality colour Blizzard put on its own border (alpha does not change it)
         local ok, r, g, b = pcall(qb.GetVertexColor, qb)
@@ -279,7 +289,7 @@ local function PaintWindow(f)
     end
     local tc = f.TitleContainer or (type(f.BorderFrame) == "table" and f.BorderFrame.TitleContainer)
     local title = (type(tc) == "table" and tc.TitleText) or (f.GetName and f:GetName() and rawget(_G, f:GetName() .. "TitleText"))
-    Recolor(f, title, TitleCol())
+    Recolor(f, title, TitleCol(SC.windows))
     m.painted = true
     BS.diag.painted = BS.diag.painted + 1
 end
@@ -353,7 +363,7 @@ local function ApplyMinimap()
     if square then
         if mm.SetMaskTexture then Safe(mm.SetMaskTexture, mm, BS.SQUARE_MASK); maskChanged = true end
         Fade(MAPKEY, rawget(_G, "MinimapCompassTexture"))
-        if mm.CreateTexture then PaintEdges(Edges(MAPKEY, mm, "OVERLAY"), WinBorder()) end
+        if mm.CreateTexture then PaintEdges(Edges(MAPKEY, mm, "OVERLAY"), WinBorder(SC.minimap)) end
         M(MAPKEY).painted = true
     else
         if maskChanged and mm.SetMaskTexture then Safe(mm.SetMaskTexture, mm, BS.ROUND_MASK); maskChanged = false end
@@ -371,7 +381,7 @@ local function PaintTip(tip, embedded)
     if not liveTip or type(tip) ~= "table" or embedded or tip.IsEmbedded then return end
     local ns9 = tip.NineSlice
     if type(ns9) ~= "table" then return end
-    local bg, bd = WinBg(), WinBorder()
+    local bg, bd = WinBg(SC.tooltips), WinBorder(SC.tooltips)
     if ns9.SetCenterColor then ns9:SetCenterColor(bg[1], bg[2], bg[3], Alpha()) end
     if ns9.SetBorderColor then ns9:SetBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
 end
@@ -414,8 +424,8 @@ end
 local function PaintSection(s)
     local mod = rawget(_G, s.frame)
     if type(mod) ~= "table" then return end
-    PaintHeader(mod, mod.Header, LabelCol())
-    local text, muted = TextCol(), MutedCol()
+    PaintHeader(mod, mod.Header, LabelCol(SC.tracker))
+    local text, muted = TextCol(SC.tracker), MutedCol(SC.tracker)
     if mod.EnumerateActiveBlocks then
         pcall(mod.EnumerateActiveBlocks, mod, function(block)
             if block.HeaderText and block.HeaderText.SetTextColor then block.HeaderText:SetTextColor(text[1], text[2], text[3], 1) end
@@ -435,7 +445,7 @@ local function ApplyTracker()
     if PageOn("tracker") then
         liveOT = true
         local otf = rawget(_G, "ObjectiveTrackerFrame")
-        if type(otf) == "table" then PaintHeader(OTKEY, otf.Header, LabelCol()); M(OTKEY).painted = true end
+        if type(otf) == "table" then PaintHeader(OTKEY, otf.Header, LabelCol(SC.tracker)); M(OTKEY).painted = true end
         for _, s in ipairs(BS.SECTIONS) do
             local mod = rawget(_G, s.frame)
             if type(mod) == "table" then
@@ -483,13 +493,13 @@ local function PaintToast(f, e)
             local function n(v) return num(v) and v or 1 end
             m.bd = { n(r), n(g), n(b), n(a), n(br), n(bg2), n(bb), n(ba) }
         end
-        local bg, bd = WinBg(), WinBorder()
+        local bg, bd = WinBg(SC.toasts), WinBorder(SC.toasts)
         f:SetBackdropColor(bg[1], bg[2], bg[3], Alpha())
         if f.SetBackdropBorderColor then f:SetBackdropBorderColor(bd[1], bd[2], bd[3], bd[4] or 1) end
     else
         if type(f.CreateTexture) ~= "function" then return end
         Fade(f, f.BG)
-        OwnBg(f)
+        OwnBg(f, SC.toasts)
     end
     m.painted = true
     BS.diag.painted = BS.diag.painted + 1
@@ -534,7 +544,7 @@ local liveMenu, hookedMenu = false, false
 local function PaintMenu(menu)
     if not liveMenu or type(menu) ~= "table" or type(menu.GetRegions) ~= "function" then return end
     local regions = { menu:GetRegions() }
-    local bg = WinBg()
+    local bg = WinBg(SC.menus)
     for _, r in ipairs(regions) do
         local ok, atlas = pcall(function() return r.GetAtlas and r:GetAtlas() end)
         if ok and atlas == BS.MENU_BG_ATLAS then
@@ -589,7 +599,7 @@ local function PaintBubble(bubble)
     local p = BubblePanel(bubble)
     if not p then return end
     local m = M(p)
-    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    local bg, bd, a = WinBg(SC.bubbles), WinBorder(SC.bubbles), Alpha()
     if bubbles[p] and m.nine and p.GetCenterColor then
         local r, g, b, ca = p:GetCenterColor()
         local pb = m.paintedBorder
@@ -672,7 +682,7 @@ local function PaintBar(f)
     if type(f) ~= "table" or type(f.CreateTexture) ~= "function" then return end
     if Blocked(f) then Later(function() if liveBars then PaintBar(f) end end); return end
     Fade(f, f.BarFrameTexture)
-    local m = OwnBg(f)
+    local m = OwnBg(f, SC.statusbars)
     m.painted = true
     BS.diag.painted = BS.diag.painted + 1
 end
@@ -712,7 +722,7 @@ local function PaintMinimapButtons()
     local mc = rawget(_G, "MinimapCluster")
     if type(mc) ~= "table" then return end
     local m = M(MMBKEY)
-    local bg, bd, a = WinBg(), WinBorder(), Alpha()
+    local bg, bd, a = WinBg(SC.mmbuttons), WinBorder(SC.mmbuttons), Alpha()
     local bar = mc.BorderTop
     if type(bar) == "table" and type(bar.SetCenterColor) == "function" then
         if not m.bar then
@@ -775,8 +785,8 @@ end
 local liveBtn = false
 local hookedBtnWin = {}
 local btnPainted = setmetatable({}, { __mode = "k" })
-local function BtnBg() return TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }) end
-local function BtnBorder() return TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }) end
+local function BtnBg() return TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }, SC.buttons) end
+local function BtnBorder() return TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }, SC.buttons) end
 local function IsPanelButton(b)
     if type(b) ~= "table" or type(b.GetObjectType) ~= "function" then return false end
     local ok, t = pcall(b.GetObjectType, b)
@@ -848,10 +858,24 @@ end
 -------------------------------------------------------------------------------
 -- On / off: each page's tick box and the Blizzard Reskin tab's own switch call this
 -------------------------------------------------------------------------------
+-- (Reskin 0.6.24, #472) a theme change (Settings > Theme, or a page's own theme on Blizzard Reskin > Theme) repaints what is live at once;
+-- before, a window took it when shown again and the minimap, status bars and minimap buttons only after a /reload. The listener is
+-- there only while a page is live (V14) and is taken off when none is.
+local themeListening = false
+local function AnyLive() return liveWin or liveMap or liveTip or liveOT or liveToast or liveMenu or liveBubble or liveBars or liveMMB or liveBtn end
+local function OnTheme() if AnyLive() then BS.Apply() end end
+local function Listen()
+    local T = ns.Theme
+    if not (T and T.OnResolve and T.OffResolve) then return end
+    local want = AnyLive() and true or false
+    if want and not themeListening then T.OnResolve(OnTheme); themeListening = true
+    elseif not want and themeListening then T.OffResolve(OnTheme); themeListening = false end
+end
 function BS.Apply()
     Safe(ApplyWindows); Safe(ApplyMinimap); Safe(ApplyTooltips); Safe(ApplyTracker); Safe(ApplyToasts); Safe(ApplyMenus); Safe(ApplyBubbles); Safe(ApplyBars); Safe(ApplyMinimapButtons); Safe(ApplyButtons)
+    Safe(Listen)
 end
-function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, mmbuttons = liveMMB, buttons = liveBtn, buttonsLodWatch = btnLodOn, lodWatch = lodOn, waitFrame = waitFrame ~= nil } end
+function BS.Live() return { windows = liveWin, minimap = liveMap, tooltips = liveTip, tracker = liveOT, toasts = liveToast, menus = liveMenu, bubbles = liveBubble, bubbleEvents = bubbleFrame ~= nil and liveBubble, statusbars = liveBars, mmbuttons = liveMMB, buttons = liveBtn, buttonsLodWatch = btnLodOn, lodWatch = lodOn, waitFrame = waitFrame ~= nil, themeListener = themeListening } end
 ns.RegisterReskin("blizzardskins", BS.Apply)
 ns.Provide("blizzardSkins", { Apply = BS.Apply, Live = BS.Live, Saved = Saved, Cfg = Cfg, PageOn = PageOn, WinOn = WinOn, SecOn = SecOn,
     WINDOWS = BS.WINDOWS, SECTIONS = BS.SECTIONS, TOASTS = BS.TOASTS, ToastOn = ToastOn, MENU_BG_ATLAS = BS.MENU_BG_ATLAS, BUBBLE_EVENTS = BS.BUBBLE_EVENTS, BARS = BS.BARS, IsPanelButton = IsPanelButton, SectionLabel = BS.SectionLabel, memo = memo, diag = BS.diag, OurShape = OurShape,
@@ -1051,19 +1075,20 @@ if ns.RegisterConflict then
     reg("rskstatusbars", "statusbars", "Status Bars", { "ElvUI" }, "the experience, reputation and honor bars")
     reg("rskmmbuttons", "mmbuttons", "Minimap Buttons", { "EllesmereUIMinimap", "SexyMap" }, "the buttons around the minimap")
 end
--- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of each page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of each page, under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (Reskin 0.6.24, #472) each page paints with its scope (SC above); page = the page's key, where its "Theme" row goes (Blizzard Reskin > Theme).
+-- Registered only while this addon is loaded: with Blizzard Reskin switched off in the AddOns list, none of these exists (V14).
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.blizzwindows", label = "Blizzard Windows", parent = "reskin" })
-    TS({ id = "reskin.minimap", label = "Minimap", parent = "reskin" })
-    TS({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })
-    TS({ id = "reskin.tracker", label = "Objective Tracker", parent = "reskin" })
-    TS({ id = "reskin.toasts", label = "Toasts and Pop-ups", parent = "reskin" })
-    TS({ id = "reskin.menus", label = "Menus", parent = "reskin" })
-    TS({ id = "reskin.bubbles", label = "Chat Bubbles", parent = "reskin" })
-    TS({ id = "reskin.statusbars", label = "Status Bars", parent = "reskin" })
-    TS({ id = "reskin.mmbuttons", label = "Minimap Buttons", parent = "reskin" })
-    TS({ id = "reskin.buttons", label = "Buttons", parent = "reskin" })
+    TS({ id = SC.windows, label = "Blizzard Windows", parent = "reskin", page = "blizzwindows" })
+    TS({ id = SC.minimap, label = "Minimap", parent = "reskin", page = "minimapshape" })
+    TS({ id = SC.tooltips, label = "Tooltips", parent = "reskin", page = "rsktooltips" })
+    TS({ id = SC.tracker, label = "Objective Tracker", parent = "reskin", page = "objtracker" })
+    TS({ id = SC.toasts, label = "Toasts and Pop-ups", parent = "reskin", page = "rsktoasts" })
+    TS({ id = SC.menus, label = "Menus", parent = "reskin", page = "rskmenus" })
+    TS({ id = SC.bubbles, label = "Chat Bubbles", parent = "reskin", page = "rskbubbles" })
+    TS({ id = SC.statusbars, label = "Status Bars", parent = "reskin", page = "rskstatusbars" })
+    TS({ id = SC.mmbuttons, label = "Minimap Buttons", parent = "reskin", page = "rskmmbuttons" })
+    TS({ id = SC.buttons, label = "Buttons", parent = "reskin", page = "rskbuttons" })
 end
 

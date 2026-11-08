@@ -62,7 +62,8 @@ local TREE_SEL = { 0.78, 0.62, 1.0 }      -- selected row, "alternate text color
 ns.TREE_GRAD = { 0.30, 0.08, 0.45 }       -- parent-group gradient: dark purple (left) to black (right)
 ns.TREE_BAR = { 0.34, 0.34, 0.40 }
 do local TH = ns.Theme   -- style sheet: these tables are filled in place whenever the theme changes
-   if TH then TH.Bind("text", TREE_TXT); TH.Bind("accentText", TREE_SEL); TH.Bind("gradStart", ns.TREE_GRAD); TH.Bind("treeBar", ns.TREE_BAR) end end        -- every folder-tree bar (banner edge bar and guide bars) shares this muted color
+   -- (Options 0.6.104, #472) bound to the settings window's theme scope ("settings"): its own colours, else the global theme as before
+   if TH then TH.Bind("text", TREE_TXT, "settings"); TH.Bind("accentText", TREE_SEL, "settings"); TH.Bind("gradStart", ns.TREE_GRAD, "settings"); TH.Bind("treeBar", ns.TREE_BAR, "settings") end end        -- every folder-tree bar (banner edge bar and guide bars) shares this muted color
 
 local function RowTier(button)
     local uv = button.uniquevalue and tostring(button.uniquevalue) or ""
@@ -294,7 +295,7 @@ function Tree.SwitchTip(box)
     local t = Tree.OneSentence(sw, info)
     if t ~= "" then GameTooltip:AddLine(t, 1, 1, 1, true) end
     -- the status in theme colours (UI-49): Enabled in the theme's body text, Disabled in its muted text
-    local c = on and ((ns.Theme and ns.Theme.Col) and ns.Theme.Col("xui-text", "text", { 1, 1, 1, 1 }) or { 1, 1, 1, 1 }) or ns.OptionsApi.Muted()
+    local c = on and ((ns.Theme and ns.Theme.Col) and ns.Theme.Col("xui-text", "text", "settings", { 1, 1, 1, 1 }) or { 1, 1, 1, 1 }) or ns.OptionsApi.Muted()
     GameTooltip:AddLine(on and "Enabled" or "Disabled", c[1], c[2], c[3])
     GameTooltip:Show()
 end

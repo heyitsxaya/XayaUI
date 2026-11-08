@@ -116,11 +116,14 @@ local diag = { applied = false, failed = false, lastError = nil, faded = 0, slot
 ns.CharReskinDiag = diag
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
+-- (QoL 0.7.52, #472) the character window's theme scope: its own theme or colours from Blizzard Reskin > Theme, else the global theme as before
+local SCOPE = "reskin.charreskin"
 local function TC(class, prop, fb)
     local T = ns.Theme
-    if T and T.Col then local ok, c = pcall(T.Col, class, prop, fb); if ok and type(c) == "table" then return c end end
+    if T and T.Col then local ok, c = pcall(T.Col, class, prop, SCOPE, fb); if ok and type(c) == "table" then return c end end
     return fb
 end
+ns.CharReskin_ThemeCol = TC   -- (tests: the colour every part of the window is painted with)
 
 -- Blizzard regions faded by us, with the alpha they had; and text colours we changed, with the colour they had
 local faded, recolored = {}, {}
@@ -1532,11 +1535,11 @@ if ns.RegisterConflict then
     ns.RegisterConflict({ part = "charreskin", label = "Character Pane", addons = { "ElvUI", "EllesmereUIBlizzardSkin" }, what = "the character window",
         on = function() return ns.CharReskin_Active() end })
 end
--- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the character window (page Character Pane), under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the character window (page Character Pane), under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (QoL 0.7.52, #472) the window paints with it (TC above); page = where its "Theme" row goes.
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.charreskin", label = "Character Pane", parent = "reskin" })
+    TS({ id = SCOPE, label = "Character Pane", parent = "reskin", page = "charreskin" })
 end
 
 ns.RegisterCommand("reskin", function(arg)

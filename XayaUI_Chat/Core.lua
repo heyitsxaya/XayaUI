@@ -234,8 +234,22 @@ function C.Main() return _G.ChatFrame1 end
 
 -- Colors / fonts shared by every Chat/*.lua file. When "Use the XayaUI theme" is on, they come from ns.Theme.
 function C.ThemeOn() local s = ns.chat2; return s and s.useTheme and ns.Theme and true or false end
+-- (Chat 0.6.45, #472; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) the Chat Panel's theme scope. A colour the Chat Panel's own
+-- row on Blizzard Reskin > Theme decides (its own colour or its own theme) is drawn whatever "Use the XayaUI theme" says; any other
+-- colour is exactly as before: the global theme with that switch on, the Appearance colours with it off. Opacity sliders still apply.
+C.SCOPE = "reskin.chatpanel"
+C.scopeDrawn = false   -- a colour of the scope was drawn since the last refresh (the theme listener repaints then)
+function C.ScopeColor(themeClass, themeProp)
+    local T = ns.Theme
+    if not (themeClass and T and T.ScopeCol) then return nil end
+    local ok, c = pcall(T.ScopeCol, themeClass, themeProp or "bg", C.SCOPE)
+    if ok and type(c) == "table" then C.scopeDrawn = true; return c end
+    return nil
+end
 function C.Color(s, key, themeClass, themeProp)   -- key: the saved prefix, e.g. "bg" -> bgR bgG bgB bgA (percent)
     local r, g, b, a = s[key .. "R"] or 0, s[key .. "G"] or 0, s[key .. "B"] or 0, (tonumber(s[key .. "A"]) or 100) / 100
+    local sc = C.ScopeColor(themeClass, themeProp)
+    if sc then return sc[1] or r, sc[2] or g, sc[3] or b, (sc[4] or 1) * a end
     if C.ThemeOn() and themeClass then
         local ok, c = pcall(ns.Theme.Col, themeClass, themeProp or "bg")
         if ok and type(c) == "table" then return c[1] or r, c[2] or g, c[3] or b, (c[4] or 1) * a end
@@ -498,7 +512,12 @@ C.Part("panel", function() return true end,
         if not themeHooked and ns.Theme and ns.Theme.OnResolve then
             themeHooked = true
             -- a theme change only matters to the chat with "Use the XayaUI theme" on (C.ThemeOn is the only reader of ns.Theme here)
-            ns.Theme.OnResolve(function() if C.on.panel and ns.chat2 and ns.chat2.useTheme then C.Schedule() end end)
+            -- (#472) and to a chat whose own row on Blizzard Reskin > Theme sets a colour, or did at the last paint (a Reset there repaints)
+            ns.Theme.OnResolve(function()
+                if not (C.on.panel and ns.chat2) then return end
+                local T = ns.Theme
+                if ns.chat2.useTheme or C.scopeDrawn or (T.ScopeData and T.ScopeData(C.SCOPE)) then C.scopeDrawn = false; C.Schedule() end
+            end)
         end
     end,
     function()

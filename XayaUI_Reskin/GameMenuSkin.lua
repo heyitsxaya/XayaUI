@@ -69,9 +69,17 @@ function ns.GameMenuSkin_MatchReal() local gm = Saved(); return not (gm and gm.m
 ns.Provide("gameMenuSkin", { Active = function() return ns.GameMenuSkin_Active() end, MatchReal = function() return ns.GameMenuSkin_MatchReal() end })
 
 -- colors -------------------------------------------------------------------------------------------------------------------------
+-- (Reskin 0.6.24, #472; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) the Esc Menu's colours come from its theme scope: what
+-- Blizzard Reskin > Theme sets for the Esc Menu (its own colours or its own theme), else the look it always had (the theme's button
+-- border and accent, the fixed dark fills). "Use my own colors" was folded into that scope once (FoldOwnColors below, copy not move):
+-- panel fill = Window, panel border = Borders, button fill = Button, button border = Button outline, accent = Accent, title = Labels and
+-- headings. The old keys (useColors, bgR ... ttB) stay in the saved settings untouched; nothing reads them for the look any more.
+local SCOPE = "reskin.gamemenu"
+local function ScopeTok(tok) local T = ns.Theme; return T and T.ScopeTok and T.ScopeTok(tok, SCOPE) or nil end
+local function ScopeCol(class, prop) local T = ns.Theme; return T and T.ScopeCol and T.ScopeCol(class, prop, SCOPE) or nil end
 local function Accent()
-    local cfg = Cfg()
-    if cfg.useColors then return { cfg.accR, cfg.accG, cfg.accB } end
+    local s = ScopeTok("accent")
+    if s then return { s[1], s[2], s[3] } end
     local c = ns.Theme and ns.Theme.cur and ns.Theme.cur.accent
     if c then return { c[1], c[2], c[3] } end
     local ok, _, file = pcall(UnitClass, "player")
@@ -81,21 +89,40 @@ local function Accent()
 end
 local function Border()
     local T = ns.Theme
-    local c = T and T.Col and T.Col("xui-button", "border", { 0.25, 0.25, 0.25, 1 })
+    local c = T and T.Col and T.Col("xui-button", "border", SCOPE, { 0.25, 0.25, 0.25, 1 })
     return c or { 0.25, 0.25, 0.25, 1 }
 end
 
--- panel border / button border / button fill / title / panel fill: the user's colors when "Use my own colors" is on, else the old look
+-- panel border / button border / button fill / title / panel fill: the Esc Menu's scope where it sets one, else the old look
 local function Pal()
-    local c = Cfg()
-    if c.useColors then
-        return { panelBorder = { c.pbR, c.pbG, c.pbB, 1 }, btnBorder = { c.bbR, c.bbG, c.bbB, 1 }, btn = { c.btnR, c.btnG, c.btnB },
-                 title = { c.ttR, c.ttG, c.ttB }, bg = { c.bgR, c.bgG, c.bgB } }
-    end
     local b = Border()
     local ac = Accent()
-    return { panelBorder = b, btnBorder = b, btn = { 0.07, 0.07, 0.07 }, title = ac, bg = { DEFAULTS.bgR, DEFAULTS.bgG, DEFAULTS.bgB } }
+    local pb, btn, title, bg = ScopeCol("xui-window", "border"), ScopeCol("xui-button", "bg"), ScopeCol("xui-titlebar", "text"), ScopeCol("xui-window", "bg")
+    return { panelBorder = pb or b, btnBorder = b, btn = btn and { btn[1], btn[2], btn[3] } or { 0.07, 0.07, 0.07 },
+             title = title and { title[1], title[2], title[3] } or ac, bg = bg and { bg[1], bg[2], bg[3] } or { DEFAULTS.bgR, DEFAULTS.bgG, DEFAULTS.bgB } }
 end
+
+-- "Use my own colors" folded into the Esc Menu's scope, once (copy, not move; plan 6.6): with it on, its six colours become the scope's
+-- own colours, so the menu looks exactly as before and the colours show (and can be changed or reset) on Blizzard Reskin > Theme. Done
+-- at most once per saved settings (themeFolded in this addon's store), so a Reset there is not undone at the next login; with it off,
+-- nothing is written.
+local FOLD = { { "windowBg", "bgR", "bgG", "bgB" }, { "border", "pbR", "pbG", "pbB" }, { "buttonBg", "btnR", "btnG", "btnB" },
+    { "buttonBorder", "bbR", "bbG", "bbB" }, { "accent", "accR", "accG", "accB" }, { "label", "ttR", "ttG", "ttB" } }
+ns.GameMenuSkinFold = FOLD
+local function FoldOwnColors()
+    local gm = Saved()
+    local T = ns.Theme
+    if not (gm and gm.useColors == true and T and T.SetScopeTokens) then return end
+    if ReskinS.themeFolded then return end
+    local toks = {}
+    for _, f in ipairs(FOLD) do
+        local function v(k) local x = tonumber(gm[k]); if x == nil then x = DEFAULTS[k] end; return x end
+        toks[f[1]] = { v(f[2]), v(f[3]), v(f[4]), 1 }
+    end
+    T.SetScopeTokens(SCOPE, toks)
+    ReskinS.themeFolded = true
+end
+ns.GameMenuSkin_Fold = FoldOwnColors   -- (tests)
 
 -- our frame and rows -------------------------------------------------------------------------------------------------------------
 local panel, rows, title = nil, {}, nil
@@ -457,14 +484,26 @@ local function Hook()
     GameMenuFrame:HookScript("OnShow", later)
     GameMenuFrame:HookScript("OnHide", function() if live and panel then panel:Hide() end end)
 end
+-- (Reskin 0.6.24, #472) a change on Blizzard Reskin > Theme (or Settings > Theme) shows on the open menu at once (it is rebuilt each time
+-- it opens otherwise). The listener is there only while the look is on (V14) and is taken off with it.
+local themeOn = false
+local function OnTheme() if live then ns.GameMenuSkin_Refresh() end end
+local function ThemeListen(on)
+    local T = ns.Theme
+    if not (T and T.OnResolve and T.OffResolve) then return end
+    if on and not themeOn then T.OnResolve(OnTheme); themeOn = true
+    elseif not on and themeOn then T.OffResolve(OnTheme); themeOn = false end
+end
 local function Enable()
     live = true
+    ThemeListen(true)
     if hooked then return end
     if ns.AtLogin then ns.AtLogin(function() if live then Hook() end end)   -- (core Modules.lua: at PLAYER_LOGIN, or at once after it)
     else Hook() end
 end
 local function Disable()
     live = false
+    ThemeListen(false)
     if panel then panel:SetScript("OnUpdate", nil); panel:Hide() end
     if faded and GameMenuFrame and GameMenuFrame.SetAlpha then GameMenuFrame:SetAlpha(1) end   -- only if this file had faded it
     faded = false
@@ -475,7 +514,10 @@ ns.RegisterReskin("gamemenu", Apply)                            -- (the Reskin t
 ns.GameMenuSkin_Hook = function() live = true; Hook() end   -- (tests: place the hooks and let them work, as ticking the switch does)
 function ns.GameMenuSkin_Live() return live end              -- (tests)
 -- at login: once this addon's own settings are open (P5: XayaUIReskinDB, at this addon's ADDON_LOADED; Modules.lua section 0c)
-ns.WhenSettingsReady("reskin", function() if SavedOn() then Enable() end end)
+ns.WhenSettingsReady("reskin", function()
+    pcall(FoldOwnColors)   -- (#472) before the first paint
+    if SavedOn() then Enable() end
+end)
 
 -- /xui debug gamemenu (the skin's half) moved to XayaUI Dev Assist (Reskin 0.6.5; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it
 -- reads this
@@ -489,12 +531,6 @@ function ns.GameMenuSkin_Options(Notify)
     local off = function() return not Cfg().skin end
     local ownOnly = function() return not Cfg().skin or Cfg().matchReal ~= false end   -- settings that only mean something in own-layout mode
     local function rng(name, k, order, lo, hi, desc, dis) return { type = "range", name = name, order = order, min = lo, max = hi, step = 1, desc = desc, get = g(k), set = s(k), disabled = dis or off } end
-    local function ColorOpt(name, order, kr, kg, kb, desc)
-        return { type = "color", order = order, name = name, desc = desc, hasAlpha = false,
-            disabled = function() return off() or not Cfg().useColors end,
-            get = function() local c = Cfg(); return c[kr], c[kg], c[kb] end,
-            set = function(_, r, gg, b) local c = Cfg(); c[kr], c[kg], c[kb] = r, gg, b; re() end }
-    end
     local args = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "XayaUI's own look for the ESC menu. It draws its own look over Blizzard's menu and never edits the buttons other UI addons restyle. If something goes wrong the skin turns itself off and Blizzard's menu comes back. Off by default." },
@@ -511,23 +547,8 @@ function ns.GameMenuSkin_Options(Notify)
             title = { type = "toggle", order = 11, name = "Show the title", get = g("title"), set = s("title"), disabled = off },
             titleSize = rng("Title size", "titleSize", 12, 8, 30),
         } },
-        colors = { type = "group", order = 15, inline = true, name = "Colors", args = {
-            use = { type = "toggle", order = 1, width = "full", name = "Use my own colors (off: follow the theme and class color)", disabled = off,
-                desc = "Uses the colors below. Off follows the addon theme or your class color.",
-                get = g("useColors"), set = s("useColors") },
-            panel = ColorOpt("Panel fill", 2, "bgR", "bgG", "bgB", "The panel's background color. Its opacity is the Panel opacity slider above."),
-            panelBd = ColorOpt("Panel border", 3, "pbR", "pbG", "pbB"),
-            btn = ColorOpt("Button fill", 4, "btnR", "btnG", "btnB", "The button background color. Its opacity is the Button opacity slider above."),
-            btnBd = ColorOpt("Button border", 5, "bbR", "bbG", "bbB"),
-            acc = ColorOpt("Accent (hover, glow, XayaUI row)", 6, "accR", "accG", "accB", "Used for the hover border and glow, and for the XayaUI row."),
-            title = ColorOpt("Title", 7, "ttR", "ttG", "ttB"),
-            reset = { type = "execute", order = 8, name = "Reset colors", disabled = off,
-                func = function()
-                    local c = Cfg()
-                    for _, k in ipairs({ "bgR", "bgG", "bgB", "pbR", "pbG", "pbB", "btnR", "btnG", "btnB", "bbR", "bbG", "bbB", "accR", "accG", "accB", "ttR", "ttG", "ttB" }) do c[k] = DEFAULTS[k] end
-                    re()
-                end },
-        } },
+        -- (Reskin 0.6.24, #472) "Colors" (Use my own colors and its six colours) is now the Esc Menu's row on Blizzard Reskin > Theme
+        -- (its colours were copied there once: FoldOwnColors); the page's "Theme" row (order 15, added by the settings window) opens it.
         text = { type = "group", order = 20, inline = true, name = "Text", args = {
             font = { type = "select", order = 1, name = "Font", disabled = off,
                 values = function() local v = ns.FontList(); return v end, sorting = function() local _, o = ns.FontList(); return o end,
@@ -557,7 +578,12 @@ function ns.GameMenuSkin_Options(Notify)
                 set = function(_, v) Cfg().hide[GAMEMENU_SUPPORT or "Support"] = v or nil; re() end, disabled = ownOnly },
         } },
         reset = { type = "execute", order = 50, name = "Reset Game Menu settings", disabled = off,
-            func = function() ReskinS.gm = nil; Cfg().skin = true; re() end },
+            desc = "Back to the default look, its colors (Blizzard Reskin > Theme) included.",
+            func = function()
+                ReskinS.gm = nil; Cfg().skin = true
+                if ns.Theme and ns.Theme.ResetScope then ns.Theme.ResetScope(SCOPE) end   -- (#472) the colours this button reset before
+                re()
+            end },
     }
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.4, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
@@ -577,10 +603,9 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterSettingsPage("reskin", "gamemenu", ns.GameMenuSkin_Options)   -- the Blizzard UI Reskin tab's Esc Menu page (Options 0.6.38)
--- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Esc Menu page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Esc Menu page, under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (Reskin 0.6.24, #472) the menu paints with it (Pal / Accent / Border); its page's "Theme" row sits where "Colors" was (rowOrder).
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.gamemenu", label = "Esc Menu", parent = "reskin" })
+    TS({ id = SCOPE, label = "Esc Menu", parent = "reskin", page = "gamemenu", rowOrder = 15 })
 end
-

@@ -205,6 +205,8 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
         local args = ns.BuildSettingsPages(module, Notify)
         if module == "qol" and qolExtra then for k, v in pairs(qolExtra) do args[k] = v end end
         if module == "reskin" and next(args) then pcall(ns.OptionsApi.ReskinOverview, args) end
+        -- (Options 0.6.104, #472) each restyled element's page gets its one "Theme" row (ScopeEditor.lua; Xaya's Q9 answer "Both")
+        if module == "reskin" and ns.OptionsApi.ScopeEditor then pcall(ns.OptionsApi.ScopeEditor.AddRows, args) end
         local list = {}
         for key, ent in pairs(args) do
             local nm = ent.name
@@ -329,7 +331,7 @@ ns.OptionsApi.GREY = ns.Style.grey   -- (core ns.Style, UI-47)
 -- disabled items"); ns.Style.grey only when the theme is missing
 function ns.OptionsApi.Muted()
     local TH = ns.Theme
-    return (TH and TH.Col) and TH.Col("xui-text-muted", "text", ns.OptionsApi.GREY) or ns.OptionsApi.GREY
+    return (TH and TH.Col) and TH.Col("xui-text-muted", "text", "settings", ns.OptionsApi.GREY) or ns.OptionsApi.GREY   -- (#472: the settings window's scope)
 end
 function ns.OptionsApi.RowOff(button)
     local tree, user = ns.OptionsApi.FeatureRow(button)
@@ -1479,7 +1481,7 @@ local function EnsureChrome(of)
         c.info:SetWidth(math.max(40, (c.ver:GetStringWidth() or 0) + 4))   -- the click area is the text
         c.info.Paint = function(self)
             local T = ns.Theme
-            local col = T and T.cur and T.cur[self.hover and "accentText" or "accent"]
+            local col = T and T.TokCol and T.TokCol(self.hover and "accentText" or "accent", "settings")   -- (#472: the settings window's scope)
             if col then self.text:SetTextColor(col[1], col[2], col[3], 1) else self.text:SetTextColor(0.75, 0.25, 1) end
         end
         c.info:SetScript("OnEnter", function(self)

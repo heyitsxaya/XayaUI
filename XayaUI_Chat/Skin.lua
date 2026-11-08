@@ -233,7 +233,9 @@ function C.StyleTabs()
                 if fs then
                     C.SetFont(fs, path, size, flags)
                     local r, g, b
-                    if C.ThemeOn() then
+                    local sc = C.ScopeColor(selected and "xui-tab-selected" or "xui-tab", "text")   -- (#472) the Chat Panel's own row first
+                    if sc then r, g, b = sc[1], sc[2], sc[3] end
+                    if not r and C.ThemeOn() then
                         local ok, c = pcall(ns.Theme.Col, selected and "xui-tab-selected" or "xui-tab", "text")
                         if ok and c then r, g, b = c[1], c[2], c[3] end
                     end

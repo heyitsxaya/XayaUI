@@ -162,10 +162,11 @@ ns.RegisterSettingsPage("reskin", "friendcolors", ns.FriendColors_Options)
 if ns.RegisterConflict then
     ns.RegisterConflict({ part = "friendcolors", label = "Friend Colors", addons = { "ElvUI", "EllesmereUIFriends" }, what = "the friends list", on = On })
 end
--- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Friend Colors page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Friend Colors page, under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (Reskin 0.6.24, #472) listed on Blizzard Reskin > Theme like every restyled page; this page paints class colours only (no theme
+-- colour), so a theme or colour set for it changes nothing it draws today.
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.friendcolors", label = "Friend Colors", parent = "reskin" })
+    TS({ id = "reskin.friendcolors", label = "Friend Colors", parent = "reskin", page = "friendcolors" })
 end
 
