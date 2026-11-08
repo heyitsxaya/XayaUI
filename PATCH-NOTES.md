@@ -41,7 +41,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 **In-game QA**
 - Fixed an issue where the Bar cue walkthrough's clean-up could leave the rule editor open on your next rule after the test rule was removed. It now goes back to the list.
-- Fixed an issue where the Aura catalogue counted no specs per class and so collected no item sets.
+- Fixed an issue where the Dev Assist Aura catalog counted no specs per class and so collected no item sets.
 - Added the walkthrough "debug-w2" (J34).
   *Developers' notes: Not yet tested in game (QA B286, J34). Other walkthroughs that remove test rules directly can shift the editor the same way; they were not changed.*
 

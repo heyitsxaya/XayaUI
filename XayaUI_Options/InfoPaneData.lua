@@ -196,7 +196,7 @@ ns.InfoPaneData = {
       { "h3", "Dev Assist 0.7.63" },
       { "grp", "In-game QA" },
       { "b", 1, "Fixed an issue where the Bar cue walkthrough's clean-up could leave the rule editor open on your next rule after the test rule was removed. It now goes back to the list." },
-      { "b", 1, "Fixed an issue where the Aura catalogue counted no specs per class and so collected no item sets." },
+      { "b", 1, "Fixed an issue where the Dev Assist Aura catalog counted no specs per class and so collected no item sets." },
       { "b", 1, "Added the walkthrough \"debug-w2\" (J34)." },
       { "dev", 2, "Developers' notes: Not yet tested in game (QA B286, J34). Other walkthroughs that remove test rules directly can shift the editor the same way; they were not changed." },
     } },
