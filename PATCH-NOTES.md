@@ -22,6 +22,16 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Themes per Element
+
+### Blizzard Reskin 0.6.24
+
+**Element Themes (new)**
+- Added Blizzard Reskin > Theme, a table of every restyled element with the columns Element, Theme, Overrides, Comes from and Reset. Each element can use its own theme (Inherit, a built-in or a saved theme) or its own colors; Edit opens its palette. "Reset all overrides" asks first.
+- Each element's own page has a Theme button that leads to its row in the table.
+- The Esc Menu's own colors moved into its Theme row (copied once; the old settings are kept).
+  *Developers' notes: Not yet tested in game (QA B297 to B300, #472). Element level only; a theme per module waits for your answer.*
+
 ## 2026-11-08 — Gradient Borders
 
 ### XayaUI 0.6.81
