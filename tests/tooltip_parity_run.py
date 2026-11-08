@@ -11,7 +11,7 @@ It also checks that the hovers of the converted files are in the recording (so t
 
 Re-record (only for a deliberate change to a hover, never to make a refactor pass): python3 tests/tooltip_parity_run.py --record
 Run: python3 tests/tooltip_parity_run.py   (Lua 5.1 via lupa)."""
-import json, os, sys
+import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -106,6 +106,15 @@ COVERS = [
 CONVERTED = ["XayaUI/MinimapButton.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/History.lua", "XayaUI_Chat/Frame.lua"]
 
 
+# The Chat clock's hover shows today's date ("Saturday 07 November"): the test runs on any day, so the date text is
+# compared as a placeholder; every other call, argument and line is still compared exactly.
+DATE_RE = re.compile(r"\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) \d{1,2} [A-Z][a-z]+\b")
+
+
+def norm_date(s):
+    return DATE_RE.sub("<DATE>", str(s))
+
+
 def record():
     folders = H.find_addons()
     enabled = [n for n in folders if n != "XayaUI_DevAssist"]
@@ -116,7 +125,7 @@ def record():
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
-    logs = sorted(res.logs[i] for i in range(1, len(res.logs) + 1))
+    logs = sorted(norm_date(res.logs[i]) for i in range(1, len(res.logs) + 1))
     errs = [str(world.errors[i])[:400] for i in range(1, len(world.errors) + 1)]
     return logs, bool(res.tip), errs
 
@@ -135,7 +144,7 @@ def main():
         print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra)[:900] + "]"))
         if not ok:
             fails.append(name)
-    want = json.load(open(GOLDEN, encoding="utf-8"))
+    want = sorted(norm_date(w) for w in json.load(open(GOLDEN, encoding="utf-8")))
     check("hovers recorded: %d (golden: %d)" % (len(logs), len(want)), len(logs) == len(want))
     missing = [w for w in want if w not in logs]
     extra = [g for g in logs if g not in want]

@@ -1010,7 +1010,7 @@ b47b22d116c919edc43027abf68a4454  tests/toc_files_run.py
 fe9f5cdefd3f676baf93aec1e22cda9a  tests/tooltip_aura_source_run.py
 7618f24856f7247efbaf0f0a9ca3001f  tests/tooltip_formulas_run.py
 a67238731aba9ad54220a116a9b54275  tests/tooltip_parity_golden.json
-c3d59bfb6c9988370829f1dadff438e3  tests/tooltip_parity_run.py
+ed3159b068b4e200efb1ac64b779c9d8  tests/tooltip_parity_run.py
 d79c163d0c1beaa94953002f8688ca59  tests/tooltips_run.py
 9c9c1db032c18d7b73fb7d86d7a6932b  tests/tracked_buff_run.py
 a0109662c42228d648453768e62c9969  tests/tree_paint_parity_golden.json
