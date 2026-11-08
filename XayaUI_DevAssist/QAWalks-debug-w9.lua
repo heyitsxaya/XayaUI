@@ -34,7 +34,8 @@ local function OpenTheme()
 end
 local function Keep()
     local T = TH(); if not (T and T.Grad) then error("XayaUI is older than 0.6.81 (no gradient borders)") end
-    if not st.saved then st.saved = Copy(CueRulesDB and CueRulesDB.theme or {}) end
+    local cns = NS(); local P = cns and cns.Settings and cns.Settings("platform")   -- the theme lives in the Platform store (settings seam, P2)
+    if not st.saved then st.saved = Copy(P and P.theme or {}) end
     return T
 end
 local function Find(w, pred, out)
@@ -144,7 +145,8 @@ local function CheckSolid()
 end
 local function Restore()
     local T = TH()
-    if st.saved and CueRulesDB then CueRulesDB.theme = Copy(st.saved); if T then T.Changed() end end
+    local cns = NS(); local P = cns and cns.Settings and cns.Settings("platform")
+    if st.saved and P then P.theme = Copy(st.saved); if T then T.Changed() end end
     st.saved = nil
 end
 QA.DebugW9Test = { Elements = Elements, Restore = Restore, State = st }   -- (tests)
