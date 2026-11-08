@@ -10,7 +10,7 @@ the converter rating / 40: TEST STAND-INS), and runs each step as a player would
   - step 1 (more crit): Pass, the drawn colour is the game's green (the stand-in game's GREEN_FONT_COLOR); negative: the new value
     repainted in the theme's accent gives Fail;
   - step 2 (less crit): Pass, the game's red; step 3 (more haste): Pass, the GCD's shorter new value is green;
-  - step 4 with the class theme: no verdict, says to pick a colour-blind theme; with the colorblind / protan base: Pass (blue / orange);
+  - step 4 with the class theme: no verdict, says to pick a color-blind theme; with the colorblind / protan base: Pass (blue / orange);
   - step 5 (the Critical Strike hover): Pass, the title in Critical Strike's colour; negative: the title repainted gives Fail;
   - step 6 (notes, Dev Assist on): Pass, every note line is in the hover;
   - Done: the typed numbers are cleared and the panel is put back (closed).
@@ -96,7 +96,7 @@ check("step 2 (100 less crit): Pass, the game's red", ok2 == true and has(n2, "m
 local ok3, n3 = run(3)
 check("step 3 (300 more haste): Pass, the GCD's new value is shorter and green", ok3 == true and has(n3, "GCD: new value -"), n3)
 local ok4, n4 = run(4)
-check("step 4 with the class theme: no verdict, says to pick a colour-blind theme", ok4 == nil and has(n4, "pick a colour-blind theme"), n4)
+check("step 4 with the class theme: no verdict, says to pick a color-blind theme", ok4 == nil and has(n4, "pick a color-blind theme"), n4)
 local T = ns.Theme
 local real = T.EffBase
 for _, base in ipairs({ "colorblind", "protan" }) do

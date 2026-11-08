@@ -41,34 +41,34 @@ local function Ready()
     return true
 end
 
-QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (XayaUI Nameplates 0.1.0)", qa = "K1-K4, NP-1", order = 300, prefill = true, steps = {
-    { text = "Enable |cffffd100XayaUI Nameplates|r and disable |cffffd100Plater|r in the AddOns list, then /reload and open this walkthrough again. Then press |cffffd100Do it for me|r: XayaUI remembers your Nameplates settings (the last step puts them back) and switches Target colour on.\n\n|cffffd100Expect:|r the addon's check says XayaUI Nameplates is loaded, no other nameplate addon is, and Target colour is on.",
+QA.Register("nameplates-target-colour", { title = "Nameplates: target color (XayaUI Nameplates 0.1.0)", qa = "K1-K4, NP-1", order = 300, prefill = true, steps = {
+    { text = "Enable |cffffd100XayaUI Nameplates|r and disable |cffffd100Plater|r in the AddOns list, then /reload and open this walkthrough again. Then press |cffffd100Do it for me|r: XayaUI remembers your Nameplates settings (the last step puts them back) and switches Target color on.\n\n|cffffd100Expect:|r the addon's check says XayaUI Nameplates is loaded, no other nameplate addon is, and Target color is on.",
         setup = function() Remember(); local np = NP(); if np then np.DB().targetColor = true; np.TargetColor.Apply() end end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local tc = TC()
-            if not (NP().DB().targetColor and tc.Listening()) then return false, "Target colour is off (press Do it for me)" end
-            return true, "loaded, Blizzard's nameplates in use, Target colour on and listening"
+            if not (NP().DB().targetColor and tc.Listening()) then return false, "Target color is off (press Do it for me)" end
+            return true, "loaded, Blizzard's nameplates in use, Target color on and listening"
         end },
-    { text = "Out of combat, target an enemy that shows a nameplate (any mob in the open world).\n\n|cffffd100Expect:|r the filled part of its health bar turns teal (dark blue-green). The other plates keep their colour.",
+    { text = "Out of combat, target an enemy that shows a nameplate (any mob in the open world).\n\n|cffffd100Expect:|r the filled part of its health bar turns teal (dark blue-green). The other plates keep their color.",
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local r, g, b, bar = ShownColour()
-            if not r then return false, "no colour shown: " .. TC().Report() end
+            if not r then return false, "no color shown: " .. TC().Report() end
             firstBar = bar
             local np = NP(); local cr, cg, cb = np.Color()
             if not (Near(r, cr) and Near(g, cg) and Near(b, cb)) then return false, ("shown in %.2f %.2f %.2f, setting is %.2f %.2f %.2f"):format(r, g, b, cr, cg, cb) end
-            return true, "your target's plate is coloured, in the set colour"
+            return true, "your target's plate is colored, in the set color"
         end },
-    { text = "Look at the teal bar.\n\n|cffffd100Answer:|r is the colour clearly visible, and are the name and health text (if you show it) still readable on top of it? Pass if yes; Fail and say what is covered.",
+    { text = "Look at the teal bar.\n\n|cffffd100Answer:|r is the color clearly visible, and are the name and health text (if you show it) still readable on top of it? Pass if yes; Fail and say what is covered.",
         noVerdict = true },
-    { text = "Target a different enemy (Tab).\n\n|cffffd100Expect:|r the new target's bar is teal; the first one is back to its normal colour.",
+    { text = "Target a different enemy (Tab).\n\n|cffffd100Expect:|r the new target's bar is teal; the first one is back to its normal color.",
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local r, _, _, bar = ShownColour()
-            if not r then return false, "no colour shown: " .. TC().Report() end
+            if not r then return false, "no color shown: " .. TC().Report() end
             if bar == firstBar then return false, "still the same plate (target a different mob)" end
-            return true, "the colour moved to the new target; only one plate is coloured"
+            return true, "the color moved to the new target; only one plate is colored"
         end },
     { text = "Now the real test: |cffffd100in combat|r, ideally in a dungeon or Mythic+ pull. Switch targets a few times while fighting. Leave this window open (it can sit at the side).\n\n|cffffd100Expect:|r every new target turns teal at once, and no \"Interface action failed\" or \"blocked\" message appears. Press Check while you are still in combat with a target.",
         check = function()
@@ -76,26 +76,26 @@ QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (Xa
             local inCombat = InCombatLockdown and InCombatLockdown()
             if not inCombat then return false, "not in combat right now (press Check during the fight)" end
             local r = ShownColour()
-            if not r then return false, "in combat, but no colour shown: " .. TC().Report() end
+            if not r then return false, "in combat, but no color shown: " .. TC().Report() end
             local inInst, kind = false, nil
             if IsInInstance then inInst, kind = IsInInstance() end
-            return true, "in combat, target coloured" .. (inInst and (" (inside an instance: " .. tostring(kind) .. ")") or " (open world)")
+            return true, "in combat, target colored" .. (inInst and (" (inside an instance: " .. tostring(kind) .. ")") or " (open world)")
         end },
-    { text = "Press |cffffd100Do it for me|r: the colour is set to magenta (a test colour). Keep a target selected.\n\n|cffffd100Expect:|r your target's bar turns magenta. (You can choose your own colour later in /xui > QoL > Nameplates; the Teal button puts teal back.)",
+    { text = "Press |cffffd100Do it for me|r: the color is set to magenta (a test color). Keep a target selected.\n\n|cffffd100Expect:|r your target's bar turns magenta. (You can choose your own color later in /xui > QoL > Nameplates; the Teal button puts teal back.)",
         setup = function() local np = NP(); if np then np.DB().color = { 1, 0, 1 }; np.TargetColor.Apply() end end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             local r, g, b = ShownColour()
-            if not r then return false, "no colour shown (target a mob): " .. TC().Report() end
+            if not r then return false, "no color shown (target a mob): " .. TC().Report() end
             if not (Near(r, 1) and Near(g, 0) and Near(b, 1)) then return false, ("shown in %.2f %.2f %.2f, not magenta"):format(r, g, b) end
-            return true, "the new colour is shown on the target"
+            return true, "the new color is shown on the target"
         end },
-    { text = "Press |cffffd100Do it for me|r: Target colour is switched off.\n\n|cffffd100Expect:|r the coloured bar goes back to normal at once, and switching targets colours nothing.",
+    { text = "Press |cffffd100Do it for me|r: Target color is switched off.\n\n|cffffd100Expect:|r the colored bar goes back to normal at once, and switching targets colors nothing.",
         setup = function() local np = NP(); if np then np.DB().targetColor = false; np.TargetColor.Apply() end end,
         check = function()
             local ok, why = Ready(); if not ok then return false, why end
             if TC().Listening() then return false, "still listening for target changes" end
-            if ShownColour() then return false, "a colour is still shown" end
+            if ShownColour() then return false, "a color is still shown" end
             return true, "off: nothing shown, nothing listening"
         end },
     { text = "Look at a few enemy plates (Blizzard's own, now that Plater is off). Plater's \"Reorder Nameplate\" mod put the health bar in the middle, the cast bar right under it and the auras above it.\n\n|cffffd100Answer:|r is that the order you see on Blizzard's plates? Pass if yes; Fail and say what differs (sizes are expected to differ: Blizzard offers size steps, not pixels).",
@@ -106,8 +106,8 @@ QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (Xa
             local np = NP(); if not np then return false, "XayaUI Nameplates is not loaded" end
             if not saved then return false, "nothing was remembered (run the walkthrough from its first step)" end
             local d = np.DB()
-            if d.targetColor ~= saved.on then return false, "Target colour not put back yet" end
-            for i = 1, 3 do if not Near(d.color[i], saved.color[i]) then return false, "colour not put back yet" end end
+            if d.targetColor ~= saved.on then return false, "Target color not put back yet" end
+            for i = 1, 3 do if not Near(d.color[i], saved.color[i]) then return false, "color not put back yet" end end
             return true, "settings are back as they were"
         end },
 } })
@@ -115,7 +115,7 @@ QA.Register("nameplates-target-colour", { title = "Nameplates: target colour (Xa
 -- (Nameplates 0.2.0) Match my Plater settings: Blizzard's own nameplate options set to her Plater profile, and Put back (QA-CHECKLIST K5)
 local function BO() local np = NP(); return np and np.BlizzardOptions end
 QA.Register("nameplates-blizzard-options", { title = "Nameplates: match my Plater settings (XayaUI Nameplates 0.2.0)", qa = "K5, NP-1", order = 301, prefill = true, steps = {
-    { text = "Out of combat, press |cffffd100Do it for me|r (the same as the |cffffd100Match my Plater settings|r button in /xui > QoL > Nameplates).\n\n|cffffd100Expect:|r the addon's check says every listed Blizzard option now matches your Plater profile (health percent and amount, elite icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on, threat flash off, debuffs and crowd control on enemies).",
+    { text = "Out of combat, press |cffffd100Do it for me|r (the same as the |cffffd100Match my Plater settings|r button in /xui > QoL > Nameplates).\n\n|cffffd100Expect:|r the addon's check says every listed Blizzard option now matches your Plater profile (health percent and amount, elite icon, spell name / icon / target on cast bars, important casts highlighted, threat color and glow on, threat flash off, debuffs and crowd control on enemies).",
         setup = function() local bo = BO(); if bo then local _, msg = bo.Apply(); local np = NP(); np.lastBlizz = msg end end,
         check = function()
             local bo = BO(); if not bo then return false, "XayaUI Nameplates 0.2.0 is not loaded" end

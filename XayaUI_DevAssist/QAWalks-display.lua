@@ -428,7 +428,7 @@ local function FlatCheck(frame, label)
         local r, g, bl = 0, 0, 0
         if fs then r, g, bl = fs:GetTextColor() end
         if not b.xuiFlatBtn then bad[#bad + 1] = b:GetText() .. ": Blizzard look"
-        elseif not (Near(r, want[1], 0.02) and Near(g, want[2], 0.02) and Near(bl, want[3], 0.02)) then bad[#bad + 1] = b:GetText() .. ": not the theme's button colour" end
+        elseif not (Near(r, want[1], 0.02) and Near(g, want[2], 0.02) and Near(bl, want[3], 0.02)) then bad[#bad + 1] = b:GetText() .. ": not the theme's button color" end
     end
     if n == 0 then return false, label .. ": no buttons found" end
     local loaded = C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("XayaUI_Options")
@@ -436,7 +436,7 @@ local function FlatCheck(frame, label)
     return #bad == 0, (#bad == 0 and (label .. ": all " .. n .. " buttons flat") or table.concat(bad, "; ")) .. where
 end
 QA.Register("ui-core-flat-buttons", { title = "Console, copy box, debug report: flat buttons after /reload", qa = "B231", order = 269, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the XayaUI console opens.\n\n|cffffd100Expect:|r What to send, Copy, Clear and Bug report are flat (a dark box, text in your theme's button colour), not Blizzard's red buttons. The close X keeps Blizzard's red X on purpose, like the settings window's.",
+    { text = "Press |cffffd100Do it for me|r: the XayaUI console opens.\n\n|cffffd100Expect:|r What to send, Copy, Clear and Bug report are flat (a dark box, text in your theme's button color), not Blizzard's red buttons. The close X keeps Blizzard's red X on purpose, like the settings window's.",
         setup = function() local ns = NS(); if ns and ns.ConsoleWindow then ns.ConsoleWindow(true) end end,
         check = function() return FlatCheck(rawget(_G, "XayaUIConsoleWindow"), "the console") end },
     { text = "The case you reported: leave the console open and type |cffffd100/reload|r. When the game is back, the console reopens by itself; open this walkthrough again and go to the next step. (Do not open the settings window first: the bug only showed while it had not been opened.)", noVerdict = true },
@@ -580,5 +580,5 @@ QA.Register("ui-tooltip-helper", { title = "Hovers drawn by the shared helper; m
             local ok = label == "Data Panels" and first == "XayaUI"
             return ok, "list row: " .. tostring(label or "(no Data Panels row: is XayaUI Bonus on?)") .. "; minimap hover: " .. tostring(first) .. " (" .. n .. " lines)"
         end },
-    { text = "Your look: hover the minimap button, a row of its list, the chat's privacy button, its history button and its collapse arrow; then /xui unlock and hover a group's tab and its lock. Do they read and look exactly as before (same words, colours, place)? Pass if yes; Fail and name the one that changed.", noVerdict = true },
+    { text = "Your look: hover the minimap button, a row of its list, the chat's privacy button, its history button and its collapse arrow; then /xui unlock and hover a group's tab and its lock. Do they read and look exactly as before (same words, colors, place)? Pass if yes; Fail and name the one that changed.", noVerdict = true },
 } })

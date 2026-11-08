@@ -36,7 +36,7 @@ local st = {}
 local QA_COLOR = { 0.85, 0.30, 0.65 }
 local imported   -- set by part 1's import in this session (gone after the /reload)
 QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin kinds, theme scopes and Bonus services (part 1 of 2) (H11)", area = "Platform", qa = "H11", order = 272, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: a profile with every part this setup offers is made (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin, and Nameplates while XayaUI Nameplates is on). Then your Nameplates target colour is set to white and the profile is imported back with only Settings and Nameplates ticked (Rules are not touched).\n\n|cffffd100Expect:|r a Reload / Later prompt (press |cffffd100Later|r). The check shows the parts the profile holds and the colour before and after. If XayaUI Nameplates is off, tick it in the AddOns list, /reload and run this again.",
+    { text = "Press |cffffd100Do it for me|r: a profile with every part this setup offers is made (Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin, and Nameplates while XayaUI Nameplates is on). Then your Nameplates target color is set to white and the profile is imported back with only Settings and Nameplates ticked (Rules are not touched).\n\n|cffffd100Expect:|r a Reload / Later prompt (press |cffffd100Later|r). The check shows the parts the profile holds and the color before and after. If XayaUI Nameplates is off, tick it in the AddOns list, /reload and run this again.",
         setup = function()
             local ns, P, np = NS(), Prof(), NP()
             if not (ns and P and ns.Share) then error("the settings window could not load") end
@@ -60,7 +60,7 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
             local okC = c and math.abs(c[1] - QA_COLOR[1]) < 0.01 and math.abs(c[2] - QA_COLOR[2]) < 0.01 and math.abs(c[3] - QA_COLOR[3]) < 0.01
             local holdsNp = false
             for _, l in ipairs(st.held) do if l == "Nameplates" then holdsNp = true end end
-            return (okC and holdsNp) and true or false, ("was: color=%s on=%s; parts held: %s; colour after the import: %s (want %s)"):format(
+            return (okC and holdsNp) and true or false, ("was: color=%s on=%s; parts held: %s; color after the import: %s (want %s)"):format(
                 F(st.was), st.wasOn and "1" or "0", table.concat(st.held, ", "), F(c), F(QA_COLOR))
         end },
     { text = "Press |cffffd100Do it for me|r: a test profile is pasted into |cffffd100Profiles > Import|r. It holds your Settings and one part of an addon that does not exist (\"XayaUI QA Example\").\n\n|cffffd100Expect:|r under \"Parts to import\" a tick box for Settings and the line |cffffd100needs XayaUI QA Example|r. Do not press Import (the check imports it for you: the part is skipped, nothing of it is written).",
@@ -115,7 +115,7 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
             return ok and true or false, ("rule back: %s (restore said %s); unknown item: restore %s, still in the bin: %s, reads %s"):format(
                 back and "yes" or "NO", tostring(st.binOk), tostring(st.unkOk), stays and "yes" or "NO", tostring(what))
         end },
-    { text = "Press |cffffd100Do it for me|r: every theme colour is read, then the Tooltips page (Blizzard Reskin) gets its own button colour and Blizzard Reskin as a whole its own window colour (theme scopes; nothing paints with them yet), every colour is read again, and both overrides are removed.\n\n|cffffd100Expect:|r nothing on screen changes. The check compares the two readings: every colour asked for without a scope is the same; the Tooltips scope gave its own colours.",
+    { text = "Press |cffffd100Do it for me|r: every theme color is read, then the Tooltips page (Blizzard Reskin) gets its own button color and Blizzard Reskin as a whole its own window color (theme scopes; nothing paints with them yet), every color is read again, and both overrides are removed.\n\n|cffffd100Expect:|r nothing on screen changes. The check compares the two readings: every color asked for without a scope is the same; the Tooltips scope gave its own colors.",
         setup = function()
             local ns = NS(); local T = ns and ns.Theme
             if not (T and T.SetScopeToken) then error("theme scopes are not loaded") end
@@ -141,7 +141,7 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
             local s, w = st.scoped, st.scopedWin
             local okS = s and math.abs(s[1] - 0.9) < 0.01 and w and math.abs(w[2] - 0.9) < 0.01
             local ok = #diff == 0 and okS and not st.left
-            return ok and true or false, ("colours without a scope that changed: %d%s; Tooltips scope: button %s, window %s; overrides left stored: %s"):format(
+            return ok and true or false, ("colors without a scope that changed: %d%s; Tooltips scope: button %s, window %s; overrides left stored: %s"):format(
                 #diff, #diff > 0 and (" (" .. table.concat(diff, ", ") .. ")") or "", F(s), F(w), st.left and "YES" or "no")
         end },
     { text = "Press |cffffd100Do it for me|r: XayaUI Bonus's enhanced tooltip reads which auras a spell applies, once as now (rule tracking offers its aura readers as services) and once with those services hidden for that one read (as when rule tracking is switched off in a later version).\n\n|cffffd100Expect:|r both reads run without an error; without the services the list has no more auras than with them. Then hover a spell you know the buff of: the tooltip's Aura ID lines are as before.",
@@ -167,7 +167,7 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
             return ok and true or false, ("services offered: AuraSources %s, AuraModel %s; with them: %d aura(s); without them: %d aura(s)%s"):format(
                 st.svcAS and "yes" or "NO", st.svcAM and "yes" or "NO", t.n1, t.n2, t.err and ("; error: " .. t.err) or "")
         end },
-    { done = true, text = "Press |cffffd100Do it for me|r to remove the QA test rule and the unknown bin item again. Then press |cffffd100Done|r here first (so part 1's record is kept), type |cffffd100/reload|r, and run \"Platform: the imported Nameplates colour after the /reload (part 2 of 2)\".",
+    { done = true, text = "Press |cffffd100Do it for me|r to remove the QA test rule and the unknown bin item again. Then press |cffffd100Done|r here first (so part 1's record is kept), type |cffffd100/reload|r, and run \"Platform: the imported Nameplates color after the /reload (part 2 of 2)\".",
         setup = function()
             local ns = NS(); if not ns then return end
             local first
@@ -178,8 +178,8 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
         end },
 } })
 
-QA.Register("platform-services-reload", { title = "Platform: the imported Nameplates colour after the /reload (part 2 of 2) (H11)", area = "Platform", qa = "H11", order = 272.1, prefill = true, steps = {
-    { text = "Run this after part 1 and its /reload.\n\n|cffffd100Expect:|r your target's nameplate in the pink-purple colour part 1 imported (target an enemy with a nameplate to see it). The check reads the saved colour.",
+QA.Register("platform-services-reload", { title = "Platform: the imported Nameplates color after the /reload (part 2 of 2) (H11)", area = "Platform", qa = "H11", order = 272.1, prefill = true, steps = {
+    { text = "Run this after part 1 and its /reload.\n\n|cffffd100Expect:|r your target's nameplate in the pink-purple color part 1 imported (target an enemy with a nameplate to see it). The check reads the saved color.",
         check = function()
             if imported then return nil, "not reloaded yet: type /reload, then come back and Check again" end
             local note = QA.SeenNote("platform-services", 1)
@@ -187,14 +187,14 @@ QA.Register("platform-services-reload", { title = "Platform: the imported Namepl
             local np = NP(); if not np then return false, "XayaUI Nameplates is not loaded" end
             local r, g, b = np.Color()
             local ok = math.abs(r - QA_COLOR[1]) < 0.01 and math.abs(g - QA_COLOR[2]) < 0.01 and math.abs(b - QA_COLOR[3]) < 0.01
-            return ok, ("saved colour after the /reload: %.2f,%.2f,%.2f (imported: %s)"):format(r, g, b, F(QA_COLOR))
+            return ok, ("saved color after the /reload: %.2f,%.2f,%.2f (imported: %s)"):format(r, g, b, F(QA_COLOR))
         end },
-    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Nameplates target colour and switch back as they were before part 1 (from part 1's record). Then press |cffffd100Done|r.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put your Nameplates target color and switch back as they were before part 1 (from part 1's record). Then press |cffffd100Done|r.",
         setup = function()
             local np = NP(); if not np then error("XayaUI Nameplates is not loaded") end
             local note = QA.SeenNote("platform-services", 1) or ""
             local r, g, b, on = note:match("was: color=([%d%.]+),([%d%.]+),([%d%.]+) on=(%d)")
-            if not r then error("part 1's record of your colour is missing: set QoL > Nameplates yourself") end
+            if not r then error("part 1's record of your color is missing: set QoL > Nameplates yourself") end
             local d = np.DB()
             d.color = { tonumber(r), tonumber(g), tonumber(b) }
             d.targetColor = on == "1"

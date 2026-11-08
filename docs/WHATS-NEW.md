@@ -459,15 +459,15 @@ Not tested in game. Where this changes how section 1 describes the Stat Calculat
 - **Header:** "Equipped <item level>" on the left and "Max (bags) <item level>" on the right (the game's overall item level), in place of
   name, class and spec.
 - **The "% / rating" switch is gone;** the columns already show rating, current value and Pt value.
-- **Info > Credits + Acknowledgements:** plain section headings, one box per section with its credits as rows, a slightly darker
+- **Info > Credits + Acknowledgments:** plain section headings, one box per section with its credits as rows, a slightly darker
   background, more space between sections, and no intro paragraph.
 - **In-game QA:** steps E1z195 to E1z200 in `/xui dev qa` (Dev Assist on).
 
-## 11. Chat settings split, input line, chat sidebar, friend class colours (chat-round session; main 72a7512)
+## 11. Chat settings split, input line, chat sidebar, friend class colors (chat-round session; main 72a7512)
 
 Chat 0.6.33 to 0.6.36, core 0.6.68, Reskin 0.6.8. Not tested in game. Choices made without you are in the QA question flow (Q-CR-1 to Q-CR-10, Q-CHAT5).
 
-- **Chat settings split (Chat 0.6.33).** Blizzard UI Reskin > Chat Panel now holds only how chat looks: fonts, colours, boxes, tab and input
+- **Chat settings split (Chat 0.6.33).** Blizzard UI Reskin > Chat Panel now holds only how chat looks: fonts, colors, boxes, tab and input
   look, size, position and mover, indent of wrapped lines, Blizzard's buttons and scroll bar. The new **QoL > Improved Chat** holds
   everything the addon adds to how chat behaves: slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters,
   sounds, privacy cover, Chat Data Panel and sidebar. Improved Chat has its own tick box and a note that it looks best with a chat reskin;
@@ -476,13 +476,13 @@ Chat 0.6.33 to 0.6.36, core 0.6.68, Reskin 0.6.8. Not tested in game. Choices ma
 - **Input line position (Chat 0.6.34).** Chat Panel > Layout > Input line: Bottom, Top under the tabs, Top above the tabs, or Free move. With Free
   move the line is dragged and sized in the mover (`/xui chat move`).
 - **Chat sidebar (Chat 0.6.35, core 0.6.68).** Improved Chat > Sidebar, on by default, on the left of the chat with a background tinted in your
-  class colour. Side: left, right, top or bottom. Show: always or on mouseover, plus "Fade with the chat" (on) and "Hide in combat".
+  class color. Side: left, right, top or bottom. Show: always or on mouseover, plus "Fade with the chat" (on) and "Hide in combat".
   Buttons: the privacy eye (moved in from beside the chat), Blizzard's chat menu, channels and voice buttons, history, chat windows, and
   newest message. XayaUI's own button appears there through Settings > Minimap Button > "Show it in", or when the minimap button is off.
   The chat keeps its size unless you set "Width of the whole chat".
 - **Fade fix (Chat 0.6.36).** The collapse arrow, the privacy eye and the sidebar now fade with the chat, and hovering them brings it back.
-- **Friend class colours (Reskin 0.6.8).** Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in
-  their class colour. Blizzard's new Social friends list is not coloured yet.
+- **Friend class colors (Reskin 0.6.8).** Blizzard UI Reskin > Friend Colors: online friends in the classic friends list show their name in
+  their class color. Blizzard's new Social friends list is not colored yet.
 
 ## 12. Faster settings window clicks (perf session; main 72a7512; Options 0.6.70, walkthrough J31)
 
@@ -499,14 +499,14 @@ Not tested in game.
 
 ## 13. XayaUI Nameplates (new addon; nameplates session; main 72a7512, XayaUI_Nameplates 0.2.1)
 
-Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nameplates: target colour" and "Nameplates: match my Plater settings" (checklist K1 to K5).
+Merge ff12ec3 (PR #442). Not tested in game. Walkthroughs in `/xui dev qa`: "Nameplates: target color" and "Nameplates: match my Plater settings" (checklist K1 to K5).
 
 - **A new addon, "XayaUI Nameplates", disabled by default** in the game's AddOns list. To try it: tick it, disable Plater, `/reload`. It works on
   Blizzard's own nameplates and shows nothing while Plater replaces them.
-- **Target colour:** your target's health bar turns teal (as in your Plater "Current Target Color" mod). Pick another colour or press Teal in
+- **Target color:** your target's health bar turns teal (as in your Plater "Current Target Color" mod). Pick another color or press Teal in
   `/xui` > QoL > Nameplates; the row's tick box switches it off.
 - **Match my Plater settings** (same page): one button sets 12 of Blizzard's own nameplate options to what your Plater profile used: health
-  percent and amount, elite / rare icon, spell name / icon / target on cast bars, important casts highlighted, threat colour and glow on the
+  percent and amount, elite / rare icon, spell name / icon / target on cast bars, important casts highlighted, threat color and glow on the
   bar, threat flash off, enemy debuffs and crowd control. Out of combat only. "Put back" restores your earlier options.
 - **`/xui nameplates`** says what is on and whether your target's plate was found (and says so if Plater is loaded).
 - **Not yet:** Aura Reorder (sorting enemy auras by name is impossible in Mythic+ combat), your exact sizes and textures, and spell- or

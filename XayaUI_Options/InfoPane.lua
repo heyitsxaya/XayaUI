@@ -30,7 +30,7 @@ P.INFO = {
     { key = "version", label = "Version info" },
     { key = "readme", label = "Readme" },
     { key = "help", label = "Help (FAQ)" },
-    { key = "credits", label = "Credits + Acknowledgements" },
+    { key = "credits", label = "Credits + Acknowledgments" },
 }
 P.state = { tab = "patch", sel = { patch = "whatsnew", info = "version" } }   -- session only
 

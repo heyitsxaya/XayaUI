@@ -41,7 +41,7 @@ QA.Register("character-split", { title = "Character pane split: the item level, 
             if not WindowShown() then return nil, "open the character window (C), then check again | " .. Line(d) end
             return (d.ilvl > 0 and not d.look) and true or false, Line(d)
         end },
-    { text = "Now the other way round: switch XayaUI Blizzard Reskin on again (and its Character Pane tick box), untick |cffffd100QoL > Character Pane|r, |cffffd100/reload|r and open the character window.\n\n|cffffd100Expect:|r only the look changes (the clean window, theme colours); no item level, enchant, gem or full stat list of XayaUI's.",
+    { text = "Now the other way round: switch XayaUI Blizzard Reskin on again (and its Character Pane tick box), untick |cffffd100QoL > Character Pane|r, |cffffd100/reload|r and open the character window.\n\n|cffffd100Expect:|r only the look changes (the clean window, theme colors); no item level, enchant, gem or full stat list of XayaUI's.",
         check = function()
             local d, why = Drawn()
             if not d then return nil, why end

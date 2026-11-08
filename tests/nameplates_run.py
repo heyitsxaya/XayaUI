@@ -191,7 +191,7 @@ L, W = world(loaded="{ Plater = true }")
 run(L, 'W.commands.nameplates("")')
 out = " | ".join(list(W.prints.values()))
 check("F1 /xui nameplates names Plater when it is loaded (nothing of ours shows then)", "Plater is loaded" in out, out)
-check("F2 ...and says target colour is on and what the last refresh found", "target colour on" in out and "no target nameplate" in out, out)
+check("F2 ...and says target color is on and what the last refresh found", "target color on" in out and "no target nameplate" in out, out)
 
 # G. Match my Plater settings (Blizzard's own nameplate options; 0.2.0) ------------------------------------------------------------
 L, W = world()

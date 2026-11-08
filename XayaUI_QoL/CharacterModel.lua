@@ -2780,7 +2780,7 @@ local function GridHead(key, ratingHead, changeHead)
     -- column is "Modifies": only what the stat applies to (names); what feeds the stat ("from Agility +2,616") is a row under the stat
     h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Modifies" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
-    Tip(h, "Current value: the game's figure now; under it, the new value your typed numbers give, with + when it is higher and - when lower: green when the result is better, red when it is worse (blue and orange with a XayaUI colour-blind theme), the text colour when it reads the same.")
+    Tip(h, "Current value: the game's figure now; under it, the new value your typed numbers give, with + when it is higher and - when lower: green when the result is better, red when it is worse (blue and orange with a XayaUI color-blind theme), the text color when it reads the same.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
     Tip(h, "Modifies: what the stat applies to (Attack power, Dodge, Armor ...). Hover a name for its value, its Pt value and the new value your typed numbers give.")
     Tip(h, "Under a stat (click it to open or fold): one row per contribution that feeds it, with its number (from Agility +2,616). Folded (the default), those rows are in the stat's hover.")

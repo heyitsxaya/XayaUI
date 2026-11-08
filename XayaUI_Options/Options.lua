@@ -1720,5 +1720,8 @@ do
         DraftsEnabled = function() return RE.DraftsEnabled and RE.DraftsEnabled() end,
         DraftDirty = function(r) return RE.DraftDirty and RE.DraftDirty(r) end,
         Notify = function() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end,
+        -- (Options 0.6.106) the whole options tree as the window builds it: the FA-16 spelling walkthrough (QAWalks-audit.lua) reads
+        -- every page's and option's name, desc, tip and list entries from it
+        Tree = function() return ns.BuildOptionsTable() end,
     }) end
 end

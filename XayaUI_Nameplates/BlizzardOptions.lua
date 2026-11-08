@@ -41,7 +41,7 @@ BO.ROWS = {
     { cvar = "nameplateCastBarDisplay", enum = { "NamePlateCastBarDisplay", "HighlightImportantCasts", 4 }, value = true,
       label = "Highlight important casts", plater = "her important-cast scripts (the game's own replacement; works in Mythic+, hers cannot)" },
     { cvar = "nameplateThreatDisplay", enum = { "NamePlateThreatDisplay", "HealthBarColor", 3 }, value = true,
-      label = "Threat colours the health bar", plater = "threat changes the health bar colour (DPS colours)" },
+      label = "Threat colors the health bar", plater = "threat changes the health bar color (DPS colors)" },
     { cvar = "nameplateThreatDisplay", enum = { "NamePlateThreatDisplay", "Progressive", 1 }, value = true,
       label = "Threat glow", plater = "aggro glow on" },
     { cvar = "nameplateThreatDisplay", enum = { "NamePlateThreatDisplay", "Flash", 2 }, value = false,

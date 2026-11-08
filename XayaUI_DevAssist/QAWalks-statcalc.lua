@@ -126,7 +126,7 @@ QA.Register("statcalc-rows", { title = "Stat Calculator: open a stat with + to s
           local vals = #Under(s.d, AP, "pairValue")
           return s.mark == "-" and from >= 1 and vals >= 1, ("mark %s; rows: %s"):format(tostring(s.mark), table.concat(s.rows, ", "))
       end },
-    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in green (a higher number is better; blue with a XayaUI colour-blind theme), as on the other lines. Clear the box afterwards.",
+    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in green (a higher number is better; blue with a XayaUI color-blind theme), as on the other lines. Clear the box afterwards.",
       check = function()
           local s, why = APState(); if not s then return false, why end
           local ch = Under(s.d, AP, "pairChange")
@@ -262,8 +262,8 @@ local function InfoPane()
     if ns and ns.LoadOptions then pcall(ns.LoadOptions) end
     return Svc("infoPane")
 end
-QA.Register("credits-page", { title = "Credits + Acknowledgements: h1 / h2, one box per section", qa = "E1z200", order = 195, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the version pane opens on |cffffd100Info > Credits + Acknowledgements|r (also: click the version number in the settings window's bottom-left corner).\n\n|cffffd100Expect:|r \"Credits and attribution\" as the big heading, with no paragraph under it.",
+QA.Register("credits-page", { title = "Credits + Acknowledgments: h1 / h2, one box per section", qa = "E1z200", order = 195, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the version pane opens on |cffffd100Info > Credits + Acknowledgments|r (also: click the version number in the settings window's bottom-left corner).\n\n|cffffd100Expect:|r \"Credits and attribution\" as the big heading, with no paragraph under it.",
       setup = function() local ip = InfoPane(); if not ip then error("XayaUI Options could not be loaded") end; ip.Open("info", "credits") end,
       check = function()
           local ip = Svc("infoPane"); local recs = ip and ip.Recs()
