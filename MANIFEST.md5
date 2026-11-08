@@ -90,7 +90,7 @@ e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
 0f3ba7f51dd51c1e2800397b2d25a123  XayaUI/XayaUI.toc
 d24e142fd2fc4d2c371b54ecb6c321d9  XayaUI_Bonus/Calculator.lua
-5fdc16a70a3d2ce2f5f9baeee7fae541  XayaUI_Bonus/CharacterToolkit.lua
+7ba0daf13b33851bff6bbf31aaaa0b2c  XayaUI_Bonus/CharacterToolkit.lua
 6124c7cd312d5c7846cdbf87ca1ae6d3  XayaUI_Bonus/DataPanels.lua
 2db92a427ac459460d35533c667d4ce5  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -152,13 +152,13 @@ cc3a67b321da3d1ea9dec0a15f1c4554  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
-a3f78169fd1fab032ee40c3a565bb357  XayaUI_DevAssist/QAWalks-Checklist.lua
+001255571a060a02c070f11f62654876  XayaUI_DevAssist/QAWalks-Checklist.lua
 2c7bcc90ddc48aae39382a84cd014833  XayaUI_DevAssist/QAWalks-aspect-ratio.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
-80b11762ea7d6382b1cc5a7bff80093a  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
+2260f1f094571500ce081834b80bc332  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
 c68b7b86ebfa440bd68904347af1503b  XayaUI_DevAssist/QAWalks-audit.lua
 b1847e1d2cf95c3ef677003303645ea2  XayaUI_DevAssist/QAWalks-bars.lua
-0fdc23899202094b7f7b8edf8422f4f3  XayaUI_DevAssist/QAWalks-character-split.lua
+66c116a7db0ceffca675ff0b9a737c90  XayaUI_DevAssist/QAWalks-character-split.lua
 45d760594da8fb8d164f5128ff679296  XayaUI_DevAssist/QAWalks-chat.lua
 e9d4aa7b585b9d5274640d80dac06164  XayaUI_DevAssist/QAWalks-code-move.lua
 4f02d1d830269b8c43a76e20d19dfcac  XayaUI_DevAssist/QAWalks-conflicts-reload.lua
@@ -188,8 +188,8 @@ b9b3a814e030909645907e9004796a42  XayaUI_DevAssist/QAWalks-rule-editor-folder.lu
 c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lua
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 92754e224cf247ac91f125b3a2a820a8  XayaUI_DevAssist/QAWalks-sidebar-delete.lua
-8180b6d85d9529de33e9e235480e4a63  XayaUI_DevAssist/QAWalks-stat-colors.lua
-a959c1a92c1ac54d131a3a1456a214cc  XayaUI_DevAssist/QAWalks-statcalc.lua
+30fd6bfb65862eed45a4e2e7890a35d9  XayaUI_DevAssist/QAWalks-stat-colors.lua
+0a50ab64181434883c75565d44515f4f  XayaUI_DevAssist/QAWalks-statcalc.lua
 0a4c553262db631c0166d2c337c94c8c  XayaUI_DevAssist/QAWalks.lua
 42e762213c51d8cc39140dd22077cd46  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
@@ -250,7 +250,7 @@ ecff4419e08f8d304a2334a7651a1c77  XayaUI_Options/Skin.lua
 cbfcfd419f2b7c38f90aeae02675d2b6  XayaUI_Options/TreePaint.lua
 2391843773a4c51b2057b948fa25eda2  XayaUI_Options/XayaUI_Options.toc
 cd9dc8725972c38e44ea7417f58db4ff  XayaUI_QoL/CharacterModel.lua
-314e0695351b1714a4f27091732f3fbd  XayaUI_QoL/CharacterPane.lua
+2b2ac0dbc0e2b8ba951a96a93a4e9fb7  XayaUI_QoL/CharacterPane.lua
 1cf7fd0b01eebe06738c1168239fe9ac  XayaUI_QoL/CharacterReskin.lua
 102df93fe6e750339870c34aa38c0fa8  XayaUI_QoL/CursorHighlight.lua
 35f768a9b996bea833f3605de4ee9fa6  XayaUI_QoL/CursorTrail.lua
@@ -714,7 +714,7 @@ f925e07a2108d2bb9f071f42d410f1c5  debug-log/2026-11-08-2037-aspect-ratio-0.6.82.
 05d48c3db5d24d545139612d82eab6c5  debug-log/2026-11-08-2038-sidebar-delete-0.6.82.md
 05c6d0d5a398d86e9b16c034e9697127  debug-log/2026-11-08-2042-count-options-0.6.82.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-690c27f1e420127357a3aff558f92404  docs/QA-CHECKLIST.md
+6fd316db9747e3e2dc56aba0e95d1e08  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 a5fca89cb8cdf2d42fd011c089dbd4d5  docs/SESSION-START-SUMMARY.md
@@ -771,7 +771,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-8d73f52eb7a72502897fca188f0e4ed1  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+72ecabbeb495918d64ad4b968f6a243d  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md
@@ -888,7 +888,7 @@ a9e9ade8f210193b81ee95ecaeab4ef0  tests/char_stat_map_run.py
 2804bac6b5ff3b3557387838ee915d11  tests/char_stat_round_run.py
 57beed4ae63dd69e1f9049c98c17ac4d  tests/char_stat_window_run.py
 413960978e938d9f97e9ef68d5ef48f3  tests/char_toolkit2_run.py
-f578023e3378fdf434671c65f8ba101e  tests/char_toolkit_move_run.py
+16d10842e10430a22f423d53279d5987  tests/char_toolkit_move_run.py
 b0d799baeca2f6e89825950a6929efbf  tests/char_toolkit_run.py
 e06aa26567a4b55447749c485502c410  tests/char_toolkit_world.lua
 4ba50341e18a783aa2882febf468f786  tests/char_width_probe_run.py
@@ -1007,8 +1007,8 @@ be8dd409463d20467763c23a4f8e91eb  tests/options_click_cost.lua
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-1d32a71882590e2c4408263d1b52ac48  tests/options_split_parity_golden.json
-8c1e21e258fcc9b74b04725a5e94589b  tests/options_split_parity_run.py
+3c7ea7d70cd2d94a8b3a14f305c0d8c4  tests/options_split_parity_golden.json
+7103d57fabe171e1639c3373c79c2011  tests/options_split_parity_run.py
 525d8ff64cb03387c245094b3a0679db  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -1090,8 +1090,8 @@ a67238731aba9ad54220a116a9b54275  tests/tooltip_parity_golden.json
 ed3159b068b4e200efb1ac64b779c9d8  tests/tooltip_parity_run.py
 d79c163d0c1beaa94953002f8688ca59  tests/tooltips_run.py
 9c9c1db032c18d7b73fb7d86d7a6932b  tests/tracked_buff_run.py
-61c1e2082d4d9913d36f6cac0a36e909  tests/tree_paint_parity_golden.json
-cd747132ad47274a615599533a04b523  tests/tree_paint_parity_run.py
+dddf007a0780e6556999f0bb856f0419  tests/tree_paint_parity_golden.json
+1dc9cbf964baec2205bc4e67c664deea  tests/tree_paint_parity_run.py
 d4fba7b72eafa75f68f58c574d8845d9  tests/trigger_labels_run.py
 77ae3f027015055803566884844d1edf  tests/trigger_parity_run.py
 b44e8ab20ad23c0641c6e2da9f1dde11  tests/ui_gutter_run.py
