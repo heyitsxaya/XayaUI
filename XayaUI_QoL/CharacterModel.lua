@@ -1814,7 +1814,7 @@ function GearCompareSections(ctx, out)
 
     -- 2. Changes (replaces "Side by side" and "What it changes"): Stat | Pt value | Equipped | each picked item (its number, and the
     -- change under it); DR threshold and true / lost rating under each secondary stat that changes; the stat map's lines that change
-    -- (Stat effects); Spell Changes; on-use and proc effects
+    -- (Stat effects); on-use and proc effects; Spell Changes (QoL 0.7.54, #47: effects before Spell Changes)
     local eqStats = old and old.stats or {}
     local cs = {}
     for _, l in ipairs(links) do
@@ -2041,62 +2041,8 @@ function GearCompareSections(ctx, out)
         end
     end
 
-    -- Spell Changes: each spell's first number now -> with each item, the model's own spell scaling (the Spells tab's and Ability
-    -- Scaling's: the number x attack power then / attack power now). DECISION: the spells added by hand (Spell Math) first, then the
-    -- spellbook's damage spells with the largest first number; up to 6.
-    if #cs > 0 then
-        local sh = Item("gearSpellHead", "Spell Changes", "msubhead")
-        Tip(sh, "Each spell's first number in its own description (talents and buffs already in it), times attack power with the item / attack power now. Only the primary stat's attack power moves it; crit, haste, mastery and versatility change how often or how hard, not the number in the text.")
-        chg.items[#chg.items + 1] = sh
-        local function SNote(key, text)
-            local n = Item(key, text, "note"); n.value, n.minor = "", true
-            chg.items[#chg.items + 1] = n
-        end
-        local base, pos, neg = R(UnitAttackPower, "player")
-        local apNow = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
-        local a0 = (num(effP) and (p == 1 or p == 2)) and N(GetAttackPowerForStat, p, effP) or nil
-        if not (p == 1 or p == 2) then
-            SNote("gearSpellNone", "Worked out for Strength and Agility specs (attack power from the primary stat); for this spec the game gives no such read.")
-        elseif base == HIDDEN or effP == HIDDEN then
-            SNote("gearSpellNone", "Attack power: " .. HID .. ".")
-        elseif not (num(apNow) and apNow > 0 and num(a0)) then
-            SNote("gearSpellNone", "Attack power: " .. UNAV .. ".")
-        else
-            local list = {}
-            for _, s in ipairs(CM.SpellList(ctx.cfg, p)) do
-                if s.base ~= "sp" then
-                    local d = SpellDesc(s.id)
-                    local nums = d and CM.Numbers(d)
-                    local kind = d and CM.SpellKind(d)
-                    if nums and nums[1] and (s.hand or kind == "offense" or kind == "both") then list[#list + 1] = { id = s.id, n = nums[1], hand = s.hand == true } end
-                end
-            end
-            table.sort(list, function(x, y) if x.hand ~= y.hand then return x.hand end; return x.n > y.n end)
-            local ratios = {}
-            for i, cd in ipairs(cs) do
-                local a1 = N(GetAttackPowerForStat, p, effP + cd.dP)
-                ratios[i] = num(a1) and ((apNow + a1 - a0) / apNow) or nil
-            end
-            for j = 1, math.min(6, #list) do
-                local s = list[j]
-                local it = Item("gc_spell" .. s.id, SpellName(s.id), "mrow")
-                it.cells, it.subs, it.subTones, it.diffs, it.diffTones = { Big(s.n) }, {}, {}, {}, {}
-                for i = 1, #cs do
-                    local r = ratios[i]
-                    if r then
-                        local v = s.n * r
-                        it.cells[i + 1] = Big(v)
-                        -- (QoL 0.7.40, #90) the difference in brackets beside the number, as in the stat rows above
-                        if math.abs(v - s.n) >= 0.5 then it.diffs[i + 1], it.diffTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
-                    else it.cells[i + 1] = UNAV end
-                end
-                Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
-                chg.items[#chg.items + 1] = it
-            end
-            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Ability Scaling tab: Configure spell data lists them).") end
-        end
-    end
-
+    -- (QoL 0.7.54, Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #47: "on use and proc effects should appear higher than
+    -- spell changes") the On-use and proc effects block comes before Spell Changes
     -- on-use and proc effects: the effect lines of the game's tooltip (Use / Equip / Proc line types, C_TooltipInfo), the difference to
     -- the equipped item's, and the RPPM wording (no game call gives an item's proc rate: ROADMAP RM-RPPM)
     local eqTip = old and CM.SlotTip(old.slot) or nil
@@ -2173,6 +2119,63 @@ function GearCompareSections(ctx, out)
             FNote("gc_rppm", "RPPM not given by the game", "mute")
         end
     end
+
+    -- Spell Changes: each spell's first number now -> with each item, the model's own spell scaling (the Spells tab's and Ability
+    -- Scaling's: the number x attack power then / attack power now). DECISION: the spells added by hand (Spell Math) first, then the
+    -- spellbook's damage spells with the largest first number; up to 6.
+    if #cs > 0 then
+        local sh = Item("gearSpellHead", "Spell Changes", "msubhead")
+        Tip(sh, "Each spell's first number in its own description (talents and buffs already in it), times attack power with the item / attack power now. Only the primary stat's attack power moves it; crit, haste, mastery and versatility change how often or how hard, not the number in the text.")
+        chg.items[#chg.items + 1] = sh
+        local function SNote(key, text)
+            local n = Item(key, text, "note"); n.value, n.minor = "", true
+            chg.items[#chg.items + 1] = n
+        end
+        local base, pos, neg = R(UnitAttackPower, "player")
+        local apNow = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
+        local a0 = (num(effP) and (p == 1 or p == 2)) and N(GetAttackPowerForStat, p, effP) or nil
+        if not (p == 1 or p == 2) then
+            SNote("gearSpellNone", "Worked out for Strength and Agility specs (attack power from the primary stat); for this spec the game gives no such read.")
+        elseif base == HIDDEN or effP == HIDDEN then
+            SNote("gearSpellNone", "Attack power: " .. HID .. ".")
+        elseif not (num(apNow) and apNow > 0 and num(a0)) then
+            SNote("gearSpellNone", "Attack power: " .. UNAV .. ".")
+        else
+            local list = {}
+            for _, s in ipairs(CM.SpellList(ctx.cfg, p)) do
+                if s.base ~= "sp" then
+                    local d = SpellDesc(s.id)
+                    local nums = d and CM.Numbers(d)
+                    local kind = d and CM.SpellKind(d)
+                    if nums and nums[1] and (s.hand or kind == "offense" or kind == "both") then list[#list + 1] = { id = s.id, n = nums[1], hand = s.hand == true } end
+                end
+            end
+            table.sort(list, function(x, y) if x.hand ~= y.hand then return x.hand end; return x.n > y.n end)
+            local ratios = {}
+            for i, cd in ipairs(cs) do
+                local a1 = N(GetAttackPowerForStat, p, effP + cd.dP)
+                ratios[i] = num(a1) and ((apNow + a1 - a0) / apNow) or nil
+            end
+            for j = 1, math.min(6, #list) do
+                local s = list[j]
+                local it = Item("gc_spell" .. s.id, SpellName(s.id), "mrow")
+                it.cells, it.subs, it.subTones, it.diffs, it.diffTones = { Big(s.n) }, {}, {}, {}, {}
+                for i = 1, #cs do
+                    local r = ratios[i]
+                    if r then
+                        local v = s.n * r
+                        it.cells[i + 1] = Big(v)
+                        -- (QoL 0.7.40, #90) the difference in brackets beside the number, as in the stat rows above
+                        if math.abs(v - s.n) >= 0.5 then it.diffs[i + 1], it.diffTones[i + 1] = SB(v - s.n), (v > s.n) and "good" or "warn" end
+                    else it.cells[i + 1] = UNAV end
+                end
+                Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
+                chg.items[#chg.items + 1] = it
+            end
+            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Ability Scaling tab: Configure spell data lists them).") end
+        end
+    end
+
     out[#out + 1] = chg
     return st
 end
@@ -2633,6 +2636,15 @@ CM.svBase = {}   -- the number each box showed as "yours", by box key: the panel
 
 -- One colour per stat, used for its name wherever it appears in the panel (#379, Xaya: "all secondaries in the toolkit should be
 -- colorized"). The colours are XayaUI's choice (she named none); she can change them.
+-- (QoL 0.7.54, Xaya 2026-11-08 #46: "read mastery line -- does this read like real english to you?") the label under Armor names the
+-- mastery spell in her own wording (UI-37: "from mastery: fel blood passive"); the game names the spell "Mastery: Fel Blood", so its
+-- "Mastery: " prefix is dropped (it read "From mastery: Mastery: Fel Blood passive")
+function CM.MasteryLabel(name)
+    if type(name) ~= "string" or name == "" then return "From mastery" end
+    name = name:gsub("^%s*[Mm]astery%s*:%s*", "")
+    if name == "" then return "From mastery" end
+    return "From mastery: " .. name .. " passive"
+end
 CM.STAT_COLORS = {
     crit = { 1.00, 0.45, 0.35, 1 }, haste = { 1.00, 0.82, 0.30, 1 }, mastery = { 0.72, 0.55, 1.00, 1 }, vers = { 0.40, 0.85, 0.45, 1 },
     avoidance = { 0.35, 0.80, 0.85, 1 }, leech = { 1.00, 0.45, 0.70, 1 }, speed2 = { 0.55, 0.75, 1.00, 1 },
@@ -2826,7 +2838,8 @@ local function MapRating(ctx, src, key, kit)
     local per = a.perPctNow or a.perPctBase
     local quiet = src.rating < 1 and not w   -- a stat you have no rating in: only what it does (clean; Xaya: "clean, digestible")
     it.per = per and (F(per) .. " / 1%") or ""   -- the head row's last column: rating for 1% (#382: rating, percent and per 1% side by side)
-    if not quiet then
+    -- (QoL 0.7.54, Xaya 2026-11-08 #46: "remove top line \"from rating\" under versatility") the other secondaries keep it
+    if not quiet and key ~= "vers" then
         MapNote(it, "From rating", Was(src.fromRating or 0, w and ((src.fromRating or 0) + w.gain), SP))
     end
     -- the rating lost is the value; the next threshold and what your numbers cross are its note (QoL 0.7.15)
@@ -3332,7 +3345,7 @@ local function StatMapSections(ctx, out)
             -- (its name as the game gives it, ArmorPerPrimary's second return; Fel Blood for Vengeance); "From mastery" if no name
             if armorFromP then
                 local _, msrc = ArmorPerPrimary(ctx)
-                local lbl = (type(msrc) == "string" and msrc ~= "") and ("From mastery: " .. msrc .. " passive") or "From mastery"
+                local lbl = CM.MasteryLabel(msrc)
                 MapNote(it, lbl, Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100))
             end
             local abase, _, _, abonus = R(UnitArmor, "player")
@@ -3489,7 +3502,8 @@ local function StatMapSections(ctx, out)
     end
     if byKey.vers then
         Add(MapRating(ctx, byKey.vers, "vers", function(it, src, w)
-            MapNote(it, "» Damage and healing done (every ability)", Was(src.total or 0, src.totalAfter, SP))
+            -- (QoL 0.7.54, Xaya 2026-11-08 #46: "remove (every ability)")
+            MapNote(it, "» Damage and healing done", Was(src.total or 0, src.totalAfter, SP))
             if num(src.total) then Feeds("vers", "Damage and healing done", "Damage done", P(math.abs(src.total)), src.total >= 0) end
             local ft = Converter(IDX.versTaken)
             local tNow = N(GetCombatRatingBonus, IDX.versTaken)

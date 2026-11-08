@@ -205,8 +205,34 @@ local function CheckNotes()
     return shown == #tips, note
 end
 
-QA.Register("stat-colors", { title = "Stat Calculator: change numbers green / red, stat names in their colour, hover notes (B306-B311)",
-    qa = "B306, B307, B308, B309, B310, B311", order = 531, prefill = true, steps = {
+-- B314 / B315 (QoL 0.7.54, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #46): Versatility's lines; the mastery label under Armor
+local function CardPairs(key)
+    local sc = SC()
+    local d = sc and sc.Shown() and sc.Drawn()
+    if not d then return nil, "the Stat Calculator is not open: press Do it for me" end
+    local it = d.model and d.model.byKey and d.model.byKey[key]
+    if not it then return nil, "no " .. key .. " card on the Stats tab" end
+    local labels = {}
+    for _, p in ipairs(it.pairs or {}) do labels[#labels + 1] = tostring(p.label) end
+    return labels
+end
+local function CheckVers()
+    local labels, why = CardPairs("map_vers")
+    if not labels then return nil, why end
+    local bad = {}
+    for _, l in ipairs(labels) do if l == "From rating" or l:find("every ability", 1, true) then bad[#bad + 1] = l end end
+    return #bad == 0, "Versatility's lines: " .. table.concat(labels, " / ") .. (#bad > 0 and (". Should be gone: " .. table.concat(bad, ", ")) or "")
+end
+local function CheckMastery()
+    local labels, why = CardPairs("map_armor")
+    if not labels then return nil, why end
+    for _, l in ipairs(labels) do
+        if l:find("^From mastery") then return not l:find("Mastery: .*Mastery", 1) and not l:find(": [Mm]astery:", 1), "The line under Armor: " .. l end
+    end
+    return nil, "no 'From mastery' line under Armor (your spec's mastery adds no armor): skip"
+end
+QA.Register("stat-colors", { title = "Stat Calculator: change numbers green / red, stat names in their colour, hover notes (B306-B311, B314-B315)",
+    qa = "B306, B307, B308, B309, B310, B311, B314, B315", order = 531, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on |cffffd100Stats|r with 100 more |cffffd100Critical Strike|r rating typed.\n\n|cffffd100Expect:|r under Critical Strike's Current value, its new value with a + in |cff19ff19green|r (better), not your theme's colour. The check reads the colour it is drawn in.",
         setup = function() Type({ crit = 100 }) end, check = function() return CheckOne("map_crit", "better") end },
     { text = "Press |cffffd100Do it for me|r: 100 |cffffd100less|r Critical Strike rating.\n\n|cffffd100Expect:|r the new value under it with a - in |cffff1919red|r (worse).",
@@ -219,6 +245,10 @@ QA.Register("stat-colors", { title = "Stat Calculator: change numbers green / re
         setup = ShowCritHover, check = CheckNames },
     { text = "Same hover. |cffffd100Expect:|r while XayaUI Dev Assist is on (it is, for this walkthrough) the hover ends with its notes (the paragraphs that say where the numbers come from). Without Dev Assist the notes are hidden: that is checklist step |cffffd100B312|r, done by hand after this walkthrough (switch Dev Assist off in the AddOns list, /reload, hover Critical Strike).",
         check = CheckNotes },
+    { text = "Look at |cffffd100Versatility|r on the Stats tab.\n\n|cffffd100Expect:|r its lines read \"» Damage and healing done\" (no \"(every ability)\") and \"» Damage taken\", with no \"From rating\" line. The check reads the lines.",
+        check = CheckVers },
+    { text = "Look at the line under |cffffd100Armor|r that names your mastery (Vengeance: Fel Blood).\n\n|cffffd100Expect:|r \"From mastery: Fel Blood passive\": the mastery's name once, not \"From mastery: Mastery: Fel Blood passive\". The check reads the line.",
+        check = CheckMastery },
     { text = "Press |cffffd100Do it for me|r to clear the typed numbers and put the Stat Calculator back as it was, then |cffffd100Done|r.", done = true, setup = PutBack,
         check = function() return saved == nil, saved == nil and "put back" or "press Do it for me" end },
 } })

@@ -478,6 +478,11 @@ checkp("  ...Spell Changes: Fracture 6,944 now; New Ring's +100 Agility -> 7,144
   return r.label and r.label.y > sc.y and T(r.cells[1]) == "6,944" and T(r.cells[2]) == "7,144" and T(r.diffs[1]) == "(+200)" and beside(r.cells[2], r.diffs[1])
     and T(r.cells[3]) == "6,944", T(r.cells[2]) .. " " .. T(r.diffs[1])
 end)
+-- Xaya 2026-11-08 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #47): "on use and proc effects should appear higher than spell changes"
+checkp("  ...On-use and proc effects come before Spell Changes", function()
+  local _, fi = find(d, "msubhead", "On-use and proc effects"); local _, si = find(d, "msubhead", "Spell Changes")
+  return fi ~= nil and si ~= nil and fi < si, tostring(fi) .. " / " .. tostring(si)
+end)
 checkp("  ...effects: the equipped ring's proc line, New Ring's Use line, Big Crit Ring none, each word for word, and the difference", function()
   local t = {}
   for _, r in ipairs(recs(d, "mnote")) do t[#t + 1] = r.text end

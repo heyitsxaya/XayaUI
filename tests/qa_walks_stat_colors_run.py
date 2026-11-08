@@ -31,7 +31,7 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.5
 local ns = rawget(_G, "XayaUI_NS")
 local QA = rawget(_G, "XayaUI_DevQA")
 local def = QA and QA.walks["stat-colors"]
-check("the stat colours walkthrough is registered with pre-fill, for B306-B311", def ~= nil and def.prefill == true and def.qa == "B306, B307, B308, B309, B310, B311")
+check("the stat colours walkthrough is registered with pre-fill, for B306-B311, B314-B315", def ~= nil and def.prefill == true and def.qa == "B306, B307, B308, B309, B310, B311, B314, B315")
 if not def then return R end
 check("its last step is a Done step", def.steps[#def.steps].done == true)
 ns.Print = function() end

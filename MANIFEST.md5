@@ -152,7 +152,7 @@ cc3a67b321da3d1ea9dec0a15f1c4554  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
-001255571a060a02c070f11f62654876  XayaUI_DevAssist/QAWalks-Checklist.lua
+9a5aa920459d4f8af8c3202c7b87d386  XayaUI_DevAssist/QAWalks-Checklist.lua
 2c7bcc90ddc48aae39382a84cd014833  XayaUI_DevAssist/QAWalks-aspect-ratio.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 2260f1f094571500ce081834b80bc332  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
@@ -188,7 +188,7 @@ b9b3a814e030909645907e9004796a42  XayaUI_DevAssist/QAWalks-rule-editor-folder.lu
 c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lua
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 92754e224cf247ac91f125b3a2a820a8  XayaUI_DevAssist/QAWalks-sidebar-delete.lua
-30fd6bfb65862eed45a4e2e7890a35d9  XayaUI_DevAssist/QAWalks-stat-colors.lua
+b96cde89e15565efa96c2a7820bc044a  XayaUI_DevAssist/QAWalks-stat-colors.lua
 0a50ab64181434883c75565d44515f4f  XayaUI_DevAssist/QAWalks-statcalc.lua
 0a4c553262db631c0166d2c337c94c8c  XayaUI_DevAssist/QAWalks.lua
 42e762213c51d8cc39140dd22077cd46  XayaUI_DevAssist/XayaUI_DevAssist.toc
@@ -249,7 +249,7 @@ ecff4419e08f8d304a2334a7651a1c77  XayaUI_Options/Skin.lua
 05b6c07da0d3e254dbe416b02ac12984  XayaUI_Options/ThemeEditor.lua
 cbfcfd419f2b7c38f90aeae02675d2b6  XayaUI_Options/TreePaint.lua
 2391843773a4c51b2057b948fa25eda2  XayaUI_Options/XayaUI_Options.toc
-cd9dc8725972c38e44ea7417f58db4ff  XayaUI_QoL/CharacterModel.lua
+e1b5d9bb2e2d4a309acc953f89cce6af  XayaUI_QoL/CharacterModel.lua
 2b2ac0dbc0e2b8ba951a96a93a4e9fb7  XayaUI_QoL/CharacterPane.lua
 1cf7fd0b01eebe06738c1168239fe9ac  XayaUI_QoL/CharacterReskin.lua
 102df93fe6e750339870c34aa38c0fa8  XayaUI_QoL/CursorHighlight.lua
@@ -713,8 +713,9 @@ df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
 f925e07a2108d2bb9f071f42d410f1c5  debug-log/2026-11-08-2037-aspect-ratio-0.6.82.md
 05d48c3db5d24d545139612d82eab6c5  debug-log/2026-11-08-2038-sidebar-delete-0.6.82.md
 05c6d0d5a398d86e9b16c034e9697127  debug-log/2026-11-08-2042-count-options-0.6.82.md
+f1489ec5a2108ac4ec5b763febc0efdf  debug-log/2026-11-08-2128-stat-calc-text-order-0.7.54.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-6fd316db9747e3e2dc56aba0e95d1e08  docs/QA-CHECKLIST.md
+a814f34e839347a6cfdf337022a4cf1d  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 a5fca89cb8cdf2d42fd011c089dbd4d5  docs/SESSION-START-SUMMARY.md
@@ -771,7 +772,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-166e791a0db0344ff2b452c9b8b96af1  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+0b79b180f22024337b4900ca1a27ec73  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md
@@ -880,10 +881,10 @@ a8256603c8e3ad44a640b0927848f31a  tests/char_pane_geometry.lua
 b0688fca6f885a2c654d1f72ff3ae5bb  tests/char_pane_round_run.py
 3205639a62f0fd89c6d6ca31b1e11379  tests/char_pane_split_run.py
 a2a408df534d1d532daf2c8bad6d63c5  tests/char_reskin_run.py
-971fd48aeb874eb5b4f35cbbc688a8dd  tests/char_spells_compare_run.py
+a2cab7d9ce2d605dfd07e43125586280  tests/char_spells_compare_run.py
 7e53e04d8d0843f4f150e48de2969a7d  tests/char_spells_run.py
 36f83d55fd6fc4a6b07e37125741113b  tests/char_stat_columns_run.py
-a9e9ade8f210193b81ee95ecaeab4ef0  tests/char_stat_map_run.py
+0de029902ad8ce911aa6710856426cb0  tests/char_stat_map_run.py
 3b8ba92c1196677c7e90e4c55a232f26  tests/char_stat_round2_run.py
 2804bac6b5ff3b3557387838ee915d11  tests/char_stat_round_run.py
 57beed4ae63dd69e1f9049c98c17ac4d  tests/char_stat_window_run.py
@@ -1046,7 +1047,7 @@ a043026cb90116e57a07bdc0c1201091  tests/qa_walks_layout_fixes_run.py
 bf095314fbe7beb5e00310a758c80382  tests/qa_walks_reload_run.py
 61802c5c0b8223ba80a48caf6c179667  tests/qa_walks_reskin_run.py
 15d3bfa0d2354eca6d93ef29e5d78c1c  tests/qa_walks_sidebar_delete_run.py
-bc18f881d92afa72c7da832dcce47127  tests/qa_walks_stat_colors_run.py
+de971ac7a51154328202a31ca6bfc5d8  tests/qa_walks_stat_colors_run.py
 5f62f042f662068d4abddbce06e3970f  tests/recycle_bin_child_reload_run.py
 f70cddb32d3d27d74d4d8544476a3657  tests/recycle_bin_run.py
 2a501b8ae6b2a13a0b4be0c138ea0ed7  tests/release_guard_run.py
