@@ -148,11 +148,14 @@ function ns.RecycleChild(child)
             end
         end
     end
-    local taken = takeRules({ child })
-    if #taken == 0 then return nil end
+    -- the name the bin lists: the label it has in the rule NOW, before it leaves the list (Debug W5, Rules 0.6.80: a cue's default label
+    -- counts its kind up to itself in the rule's cues, so read after takeRules it counted every other cue of its kind: the first of
+    -- three sound cues went into the bin as "Sound 2")
     local name
     if child.isCue then name = (ns.CueLabel and parent and ns.CueLabel(child)) or child.cueName or "Cue"
     else name = (type(child.name) == "string" and child.name ~= "") and child.name or "Condition" end
+    local taken = takeRules({ child })
+    if #taken == 0 then return nil end
     return addItem({ kind = child.isCue and "cue" or "condition", name = tostring(name), rules = taken, parentUid = child.parentUid,
         owner = parent and ruleName(parent) or nil, pos = pos, refs = refs })
 end

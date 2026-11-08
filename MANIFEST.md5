@@ -151,7 +151,7 @@ e3c578c3c0599d608eb185a5fc8acd64  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
-e954fb0c138c03cad8e7aee6e7c17826  XayaUI_DevAssist/QAWalks-Checklist.lua
+8acafaee57b75ffa73bc040cfefdff4f  XayaUI_DevAssist/QAWalks-Checklist.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 f301375f3784003c1052d062ca197cab  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
 c68b7b86ebfa440bd68904347af1503b  XayaUI_DevAssist/QAWalks-audit.lua
@@ -162,6 +162,7 @@ e9d4aa7b585b9d5274640d80dac06164  XayaUI_DevAssist/QAWalks-code-move.lua
 2cc2a1773ae6194581fd923d259e27b6  XayaUI_DevAssist/QAWalks-debug-w1.lua
 3a043b4f8c460cd6274c727f003e9237  XayaUI_DevAssist/QAWalks-debug-w2.lua
 f056b67eb6f494c4541b78f87a58f25d  XayaUI_DevAssist/QAWalks-debug-w3.lua
+ccc658047383ba92e1f1ba6ab7b5b0d2  XayaUI_DevAssist/QAWalks-debug-w5.lua
 44c4f76bc45277fc03d5a3f545282d8e  XayaUI_DevAssist/QAWalks-debug.lua
 a96898e3bc0d026dfe1e33b85025df84  XayaUI_DevAssist/QAWalks-display.lua
 b1fa172d884e8a0677b43b7e90b40fe1  XayaUI_DevAssist/QAWalks-element-menu.lua
@@ -180,7 +181,7 @@ c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lu
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 1c0e16b3d71376e3281c746fce479215  XayaUI_DevAssist/QAWalks-statcalc.lua
 15a59f22320d9a870704a5f7828f0d62  XayaUI_DevAssist/QAWalks.lua
-46283255b7715ec12ff9d55a6e01b2be  XayaUI_DevAssist/XayaUI_DevAssist.toc
+ea99c5144adc0c667fee9d8a846b0a97  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -304,7 +305,7 @@ c7dc80d0ef07bec72fa3e4394010ccf2  XayaUI_Rules/Combat/README.md
 686f8539fdea3f2ad4e0232cedd81da4  XayaUI_Rules/Engine.lua
 531aa8c176cdb4293eee43f13416e729  XayaUI_Rules/Outcomes.lua
 e39cb0ac3702f401da517b6845f1178e  XayaUI_Rules/ProcGlows.lua
-4fb99ee5c35c8908e8a429ce3cca7ca6  XayaUI_Rules/RuleBin.lua
+6c1426606be70ecdc011e32c7765bf40  XayaUI_Rules/RuleBin.lua
 414dc3f92cba4b765ea3f2c8b3307817  XayaUI_Rules/RuleDefaults.lua
 66be5eadbd0187dd94fd19111c0b1fb7  XayaUI_Rules/RuleShare.lua
 abaad25ecc8057b2da32eefba44e993b  XayaUI_Rules/SetBonusAuras.lua
@@ -313,7 +314,7 @@ abaad25ecc8057b2da32eefba44e993b  XayaUI_Rules/SetBonusAuras.lua
 6f90b7a3e71a1c5b094c8271a81ce4f5  XayaUI_Rules/Timing.lua
 6825a2e3023fd21d82cf5e6beb36a0e8  XayaUI_Rules/Triggers.lua
 d389772a03d720deb4fbe205b7160776  XayaUI_Rules/Visual.lua
-d56e8d9b198756ff6ef072f82533281a  XayaUI_Rules/XayaUI_Rules.toc
+0189d382218016f34620c143c5125b24  XayaUI_Rules/XayaUI_Rules.toc
 4ecf6f2823bb186eb5756dcb892cbb83  XayaUI_Rules_Options/AutoPicker.lua
 a2a25f1ac4f4a2a59eddfad9d1d21e57  XayaUI_Rules_Options/DisplayTab.lua
 25ec03e1b6967e1cd9737cbac140205d  XayaUI_Rules_Options/Drafts.lua
@@ -690,8 +691,9 @@ c62bebe1d6fdb2422631c936a6cb46e5  debug-log/2026-11-07-2144-code-move-p4-0.6.76.
 08f440d3298702d05344dbb131b61082  debug-log/2026-11-08-0403-debug-w1-0.6.79.md
 dea9d12922add5f6e2454811d315cb20  debug-log/2026-11-08-0531-debug-w2-0.6.79.md
 b6cb8994e3db9a882f0836d0b8fd98ea  debug-log/2026-11-08-0621-debug-w3-0.6.97.md
+ead8ccf4589d6fe3adf5fe62aa18a8ef  debug-log/2026-11-08-0643-debug-w5-0.7.65.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-abbfcfcd085647be3c6e6e4df9776c08  docs/QA-CHECKLIST.md
+1cf06f866b6acb6d85b795d60c47369b  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
@@ -932,6 +934,7 @@ f02c43c10e399a57286e1d36682f938d  tests/frame_anchor_run.py
 cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 a7d24af1993ff8b6f0b346abe0bfe8a8  tests/gamemenu_run.py
 aec2dbf95f988bba4d474fc0a65af7c3  tests/group_arrange_run.py
+a5f241c96e9afb2472c076d286b44641  tests/group_border_tick_run.py
 e49807981e17f05447c306cbac63a7b4  tests/group_box_run.py
 90a090e6544851aa11d1912b5b013602  tests/group_fit_run.py
 2432f77932fc7e94d63c1f8c3f453c37  tests/harness/.gitignore
@@ -1001,11 +1004,13 @@ c498910ecec7bc82d5f4c53b7ba5808f  tests/qa_walks_bars_run.py
 06c4245b7d49727e53410a9e7a7ff1e8  tests/qa_walks_chat_run.py
 0a7c18260ad0e89be61d07b6238d7ef0  tests/qa_walks_debug_w2_run.py
 69a71645895f212cac1b52619741b56a  tests/qa_walks_debug_w3_run.py
+c0d764f2c88c66fdb6b42f98a143323a  tests/qa_walks_debug_w5_run.py
 4d25f15a269c1b22cab964f908a9772f  tests/qa_walks_display_run.py
 5b9308ad8f05429e44e7e8e7c717e2c9  tests/qa_walks_generate_run.py
 94111ba7b3b4596bdf91823785038c0c  tests/qa_walks_profiles_run.py
 bf095314fbe7beb5e00310a758c80382  tests/qa_walks_reload_run.py
 61802c5c0b8223ba80a48caf6c179667  tests/qa_walks_reskin_run.py
+5f62f042f662068d4abddbce06e3970f  tests/recycle_bin_child_reload_run.py
 f70cddb32d3d27d74d4d8544476a3657  tests/recycle_bin_run.py
 2a501b8ae6b2a13a0b4be0c138ea0ed7  tests/release_guard_run.py
 efa35166c993ce8b666dbd3d1b8fb975  tests/reskin_blizzard_skins_run.py
