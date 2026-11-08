@@ -121,7 +121,7 @@ e0cbf5b2b6c40d178f095204c6328575  XayaUI_Bonus/Tooltips.lua
 a6791f3a03b7642d15d45d95b6c4fa33  XayaUI_Bonus/Utilities.lua
 361ae783e3990c8c2d7f4d684421ab9a  XayaUI_Bonus/XayaUI_Bonus.toc
 abb4afecc30ebc934fefdd842e42a510  XayaUI_Chat/Bar.lua
-cf82ddc531cb56f5f72020fed92d17b8  XayaUI_Chat/Core.lua
+b4fe94ee13a08b497d813a32fb063f52  XayaUI_Chat/Core.lua
 c6fba7ed13e450164819d2e73ef132c4  XayaUI_Chat/Fade.lua
 4e3e698420201e72732409534df67a2f  XayaUI_Chat/Frame.lua
 9eff5741b7e3c6d7f8d59e13b4abc6cf  XayaUI_Chat/History.lua
@@ -135,7 +135,7 @@ a1c28f24a6f16ba39ab4150b62c5a0b7  XayaUI_Chat/Sidebar.lua
 88f8e6896eb099f5f94e2bca2f7c0ca3  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 0b25e4d4acccd35a4855b2c7fe691f0d  XayaUI_Chat/Whispers.lua
-a942d11dc0341fa7eb1374cce1ba25eb  XayaUI_Chat/XayaUI_Chat.toc
+d6f27eafed736b0d1684ebd519c70e09  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 2745da239fc1fb60b857b231f32d4f35  XayaUI_DevAssist/AuraCatalogue.lua
 9f456dd438a3f1e9c82a88f1a1a5a942  XayaUI_DevAssist/AuraIDProbe.lua
@@ -151,7 +151,7 @@ e3c578c3c0599d608eb185a5fc8acd64  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
-ab93ffd4833b5d904a1cad1bb4565060  XayaUI_DevAssist/QAWalks-Checklist.lua
+46748d778c2899f8bfad834b8974b358  XayaUI_DevAssist/QAWalks-Checklist.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 f301375f3784003c1052d062ca197cab  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
 c68b7b86ebfa440bd68904347af1503b  XayaUI_DevAssist/QAWalks-audit.lua
@@ -159,6 +159,7 @@ b1847e1d2cf95c3ef677003303645ea2  XayaUI_DevAssist/QAWalks-bars.lua
 45d760594da8fb8d164f5128ff679296  XayaUI_DevAssist/QAWalks-chat.lua
 e9d4aa7b585b9d5274640d80dac06164  XayaUI_DevAssist/QAWalks-code-move.lua
 4f02d1d830269b8c43a76e20d19dfcac  XayaUI_DevAssist/QAWalks-conflicts-reload.lua
+c58ccbccb6273adb885cd8d11b51dcca  XayaUI_DevAssist/QAWalks-debug-chatdefaults.lua
 2cc2a1773ae6194581fd923d259e27b6  XayaUI_DevAssist/QAWalks-debug-w1.lua
 3a043b4f8c460cd6274c727f003e9237  XayaUI_DevAssist/QAWalks-debug-w2.lua
 f056b67eb6f494c4541b78f87a58f25d  XayaUI_DevAssist/QAWalks-debug-w3.lua
@@ -184,7 +185,7 @@ c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lu
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 1c0e16b3d71376e3281c746fce479215  XayaUI_DevAssist/QAWalks-statcalc.lua
 15a59f22320d9a870704a5f7828f0d62  XayaUI_DevAssist/QAWalks.lua
-47d50f2c8f37d309156ce728f839146c  XayaUI_DevAssist/XayaUI_DevAssist.toc
+bf719a4ec29c51800331111af4877a83  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -699,8 +700,9 @@ ead8ccf4589d6fe3adf5fe62aa18a8ef  debug-log/2026-11-08-0643-debug-w5-0.7.65.md
 c4a0fd4b2d15995bae62dc841c7b3fe1  debug-log/2026-11-08-0711-debug-w7-0.6.100.md
 9337c8634f3215759a0232606ba7ec0e  debug-log/2026-11-08-0738-debug-w9a-0.6.81.md
 df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
+928bcabb12c7f2ba6c6b0b3eafab84b8  debug-log/2026-11-08-0848-debug-chatdefaults-0.6.46.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-93928aa31f688f194f9e343651b058d2  docs/QA-CHECKLIST.md
+142113755fe863470d8a7429cad26707  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
@@ -771,7 +773,7 @@ ba484bd6279bcc1fd5a17a8d1929c865  docs/process/handoffs/d8-raid-rules.md
 3eafda425d81574aecc595a6645c5587  docs/process/handoffs/nameplates.md
 1aefab10a361a807d52ee317923401f7  docs/process/handoffs/new-features-reskins.md
 f27b44b683fe244f573244a026520870  docs/process/handoffs/perf-test.md
-8aaf48a3ba3dbabaa0f50fdfeebbf18d  docs/process/handoffs/platform-split-lead.md
+52ca2ec505e20f121902a77610a6b1d9  docs/process/handoffs/platform-split-lead.md
 f7acca7ff9f4f3a3c73f96adee69218c  docs/process/handoffs/reskin-elements.md
 21cd84e9bef5b3d58c26756ae4bd7e43  docs/process/handoffs/ui-bugs.md
 a0e830eb30bd5b86ec89c71472e8bdb9  docs/process/qa-open-bugs.json
@@ -876,6 +878,7 @@ daa732e628aaea4214738e9402b1d560  tests/char_toolkit2_run.py
 4c43621c553fd116b5179d95d99a5e23  tests/chat_246_whisper_run.py
 b5fba1aa0deaaf3049d15fa46843378c  tests/chat_collapse_bar_run.py
 7f8079da53ff45af972c7866a7c13fe9  tests/chat_data_panel_side_run.py
+a69b4dbdcf6d38275114ccd9fe2b14d3  tests/chat_defaults_run.py
 40f559da9a6a27e797118f51814697fc  tests/chat_fade_controls_run.py
 8dbbad24f2db3b6911483dbd3218dd73  tests/chat_improved_split_run.py
 20312be3c80b062e7e39bbf58b207675  tests/chat_input_position_run.py
@@ -885,7 +888,7 @@ f3b6982b98c24a0718f49d490210ca92  tests/chat_off_costs_nothing_run.py
 0c19707331c323c389bcb714a4a4f373  tests/chat_sidebar_run.py
 48559d62f35d5c11d3d04547b997b458  tests/chat_tab_align_run.py
 bbacef0fbd9e2f8cfb2c4210d51d677a  tests/chat_tab_row_run.py
-01ea6994b1c74c84ab6f40344c7123e8  tests/chat_world.lua
+661f8b76fd1ff5e79f99b36c35ff792e  tests/chat_world.lua
 ab74f48d8c94aedda0a697bcfa24738c  tests/chatprobe_run.py
 f6286362b35a18f84f7cd16f4268e054  tests/class_learn_auras_run.py
 832acabcb40521a40488908927ee5a60  tests/class_learn_run.py
@@ -984,8 +987,8 @@ be8dd409463d20467763c23a4f8e91eb  tests/options_click_cost.lua
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-00f525ede9134606bbbeb5e8a1818b8d  tests/options_split_parity_golden.json
-865d9b8d9719fd92040d571bab42a3b9  tests/options_split_parity_run.py
+b9aa060522eabf92f8abc7a39e81b4af  tests/options_split_parity_golden.json
+23a8a6f9074cbd05e75bba98d64f8a0c  tests/options_split_parity_run.py
 525d8ff64cb03387c245094b3a0679db  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -993,7 +996,7 @@ aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
 fb1c1f19da3520085ebcb7a94d35e7e8  tests/precheck_run.py
 e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 1a27deb08ca15ec38e1fbe1e174c3f65  tests/preview_layout_run.py
-773cf57d447a121dbd225d7f2dcf126a  tests/profile_parts_run.py
+63b6305488e698c43dfaa6d8cbad1e10  tests/profile_parts_run.py
 36cb41fb09dc5b477852a7225e9935ad  tests/qa_perf_walks_run.py
 73d549cdb53f264102d48e14580bea56  tests/qa_review_run.py
 887d94a5d25f11780159f1c18968aefc  tests/qa_runner_run.py
@@ -1033,9 +1036,9 @@ b66f173aec689b386a745d134f605b24  tests/rule_editor_load_run.py
 d86e0e69b2baf2570a4e9acb34a91345  tests/run_all.py
 b34491d05dc6b2570300c06d2b5af54f  tests/settings_migration_run.py
 72d51aae7d9a82134f3d66dde9a446f1  tests/settings_restructure_run.py
-dd6dd29696287da752ed5a67cfc6556b  tests/settings_seam_run.py
+b4b386d2919f133f9f075cc44e3eabad  tests/settings_seam_run.py
 36173cc463fad3883a1584a8103ccd09  tests/settings_stores.py
-d5b0be47d8c573e4e98f471d92628024  tests/share_strings_presplit_run.py
+2bff3928ab4529613cf9cccfdd7487d4  tests/share_strings_presplit_run.py
 e0da32fb3acd6a22a4a487d1c2a251d1  tests/shopping_list_run.py
 74013242fe542c50dac6a6d9be9f79e9  tests/sidebar_icon_columns_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py

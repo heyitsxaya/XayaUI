@@ -2,7 +2,7 @@
 ## Title: XayaUI Chat
 ## Notes: XayaUI's chat: the Chat Panel (Blizzard's chat windows restyled in place; Blizzard UI Reskin) and Improved Chat (QoL: Chat Data Panel, filters, sounds, history, fade, privacy cover). Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.45
+## Version: 0.6.46
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUIChatDB

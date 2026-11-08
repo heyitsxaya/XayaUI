@@ -15,6 +15,8 @@ that module's settings view; every read and write lands in the same CueRulesDB k
      (the code before the split) in that form; the one allowed difference, the new folder's name in the three lists of installed
      XayaUI addons, is taken out (canon). With XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, no view
      asked for a key it does not own, and nothing of the rules saved.
+     (Debug chat defaults, Chat 0.6.46) one more allowed difference, in canon: the privacy cover's and the Sidebar's defaults that now
+     reach the saved settings at login (listed in CHAT_DEFAULTS_ADDED, found by diffing the dumps of 1b974fe and the new code).
   C  a view kept from load time still reads the new data after: the saved variables arriving (first-run defaults), a profile
      import (Profiles > Import, a registered part), Theme "Reset everything", a backup "Load (replace)", and CueRulesDB being
      replaced as a whole; the hot-path caches (ns.AuraAliasesOf, read on every aura read) follow a view write, a profile part
@@ -195,6 +197,16 @@ def play(folders, enabled, saved, quick):
     return (H.lua_to_py(S.saved) if S.saved else {}), errs, unknown
 
 
+# (Debug chat defaults, Chat 0.6.46; see canon) the Chat defaults the old code never saved in the scripted session, with their values
+CHAT_DEFAULTS_ADDED = {
+    "chat2": {"sbGap": 2},
+    "chat": {"privAlpha": 100, "privBorder": False, "privBtnAlpha": 90, "privBtnSize": 28, "privBtnX": 0, "privBtnY": 0,
+             "privCoverTabs": False, "privImageChoice": "", "privPath": "", "privReveal": False, "privShowText": False,
+             "privStartHidden": False, "privTexture": "Interface\\DialogFrame\\UI-DialogBox-Background", "privTile": False},
+}
+CHAT_COLOUR_WRITTEN_BACK = {"privR": (0.04, 0), "privG": (0.04, 0), "privB": (0.06, 0)}
+
+
 def canon(saved):
     # (P4) the saved variables merged across addon folders ({variable: value}; every variable name is declared by one folder only)
     merged = {}
@@ -208,6 +220,24 @@ def canon(saved):
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
         merged["CueRulesDB"]["qol"] = {"boxes": {}}
+    # (Debug chat defaults, Chat 0.6.46) the one allowed difference in the chat settings: the privacy cover's and the Sidebar's defaults
+    # now reach the saved settings at login (in the game they never did; tests/chat_defaults_run.py). Diffing the dumps of 1b974fe and the
+    # new code (all on, both sessions): 18 lines, all here; core only: none. The keys the old code never saved are taken out where they
+    # hold their default, and the cover colour the scenario writes back from the settings page (it showed 0, 0, 0 for a colour that was
+    # missing; now the default) is put back to what the old page showed.
+    db = merged.get("CueRulesDB")
+    if isinstance(db, dict):
+        for part, keys in CHAT_DEFAULTS_ADDED.items():
+            t = db.get(part)
+            if isinstance(t, dict):
+                for k, v in keys.items():
+                    if k in t and isinstance(t[k], bool) == isinstance(v, bool) and t[k] == v:
+                        del t[k]
+        t = db.get("chat")
+        if isinstance(t, dict):
+            for k, (now, was) in CHAT_COLOUR_WRITTEN_BACK.items():
+                if isinstance(t.get(k), (int, float)) and abs(t[k] - now) < 1e-9:
+                    t[k] = was
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)

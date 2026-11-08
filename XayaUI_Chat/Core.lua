@@ -434,12 +434,14 @@ end
 
 -- the saved defaults: filled in the first time the Chat Panel is on (at login when it is saved on), or when its settings page is built
 -- (the page shows them). V14: with the Chat Panel saved off, nothing is built for it at login.
+-- Fills only the keys that are missing (nil): a value the player saved, false included, is never changed. C.DEFAULTS holds every Chat
+-- file's defaults by the time this runs (Sidebar.lua adds its own to it while it loads).
 local defaulted
-function C.EnsureDefaults(defaults)   -- defaults: (P5) Chat_OnDBReady passes the defaults as they stood when this file loaded
+function C.EnsureDefaults()
     local s = ns.chat2
     if not s or defaulted == s then return end
     defaulted = s
-    for k, v in pairs(defaults or C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
+    for k, v in pairs(C.DEFAULTS) do if s[k] == nil then s[k] = Copy(v) end end
     s.sounds = type(s.sounds) == "table" and s.sounds or {}
     -- whisper sound overrides (Sounds.lua): { list = { { who, enabled, source, value, channel } ... }, fav = { enabled, source, value, channel } }
     s.whisperSounds = type(s.whisperSounds) == "table" and s.whisperSounds or {}
@@ -473,14 +475,15 @@ function C.Schedule()
     C_Timer.After(0, function() pending = false; C.Refresh() end)
 end
 
--- (P5) Chat_OnDBReady ran while this file loaded (XayaUI's settings were ready before this addon loaded), so it filled in only the
--- defaults this file had defined by then: Privacy.lua (ns.CHAT_DEFAULTS) and Sidebar.lua (C.SIDEBAR_DEFAULTS) add theirs later. Since
--- P5 it runs at this addon's ADDON_LOADED, after every file: it uses the defaults as they stood at the end of this file (kept below), so
--- the saved settings and what the player sees stay exactly as before (the later defaults still apply where they did: their own files
--- and the settings page). (Found while building P5, not changed here: the Sidebar's and the privacy cover's defaults therefore never
--- reach the saved settings at login; see the P5 debug-log entry.)
+-- Runs once XayaUIChatDB is open: at this addon's ADDON_LOADED, which the game fires after every file in the .toc has run and the saved
+-- variables are set (INFERENCE from the game's addon loader as tests/harness/loader.lua models it; docs/reference/api/events.md documents
+-- only the event: `ADDON_LOADED` (addOnName: cstring, containsBindings: bool) . SynchronousEvent . AddOns). So Privacy.lua and Sidebar.lua,
+-- which load after this file, have added their defaults by then, and they are filled in here with the rest.
+-- (Debug chat defaults, Chat 0.6.46) Up to Chat 0.6.45 this used a copy of the defaults taken at the end of this file (C.defaultsAtLoad,
+-- P5, kept from the time it ran while this file loaded): the privacy cover's defaults (ns.CHAT_DEFAULTS) and the Sidebar's
+-- (C.SIDEBAR_DEFAULTS, e.g. sbFade = true, O-143) never reached the saved settings in the game, and C.EnsureDefaults' once-per-store
+-- guard stopped the later fill. The chat stand-in (tests/chat_world.lua) cleared that copy, so it always had every default.
 function ns.Chat_OnDBReady()
-    local defaultsAtLoad = C.defaultsAtLoad
     ChatS.chat = ChatS.chat or {}                        -- privacy cover settings (kept as they are)
     ns.chatDB = ChatS.chat
     ChatS.chat2 = ChatS.chat2 or {}                      -- the new Chat Panel (old chat settings are not read)
@@ -491,11 +494,15 @@ function ns.Chat_OnDBReady()
     if ns.chatDB.privStartHidden then ns.chatDB.privOn = true end
     -- V14: the Chat Panel saved off (or the Reskin tab off) and Improved Chat saved off: nothing more is built, registered or run
     if not ((s.enabled and ns.ReskinTabOn()) or s.improvedOn ~= false) then return end
-    -- the privacy defaults are merged here, at the same moment as before (INFERENCE: in the game this runs while this file loads, before
-    -- Privacy.lua has filled ns.CHAT_DEFAULTS, so it merges nothing there; kept as it was, see debug-log 2026-11-05 chat 0.6.14). Since
-    -- Chat 0.6.33 (audit D38) Privacy.lua's defaults match that: no border, no label unless ticked.
-    ns.Merge(ChatS.chat, defaultsAtLoad and defaultsAtLoad.chat or ns.CHAT_DEFAULTS)
-    C.EnsureDefaults(defaultsAtLoad and defaultsAtLoad.chat2)
+    -- the privacy cover's and the Chat Panel's defaults (every Chat file's, see above); missing keys only: a saved value is kept as it is.
+    -- C.filledAtLogin: which keys were missing from the saved file and took their default at this login (XayaUI Dev Assist's walkthrough
+    -- "Chat defaults" reads it to tell a saved value from a default)
+    local filled = { chat = {}, chat2 = {} }
+    for k in pairs(ns.CHAT_DEFAULTS) do if ChatS.chat[k] == nil then filled.chat[k] = true end end
+    for k in pairs(C.DEFAULTS) do if s[k] == nil then filled.chat2[k] = true end end
+    C.filledAtLogin = filled
+    ns.Merge(ChatS.chat, ns.CHAT_DEFAULTS)
+    C.EnsureDefaults()
     C.StartPart("panel", s)                                       -- the refresh events below; the first refresh starts the rest
 end
 
@@ -567,12 +574,6 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-do   -- (P5) the defaults as they stand at the end of this file (see Chat_OnDBReady)
-    local a, b = {}, {}
-    for k, v in pairs(ns.CHAT_DEFAULTS) do a[k] = v end
-    for k, v in pairs(C.DEFAULTS) do b[k] = v end
-    C.defaultsAtLoad = { chat = a, chat2 = b }
-end
 ns.WhenSettingsReady("chat", ns.Chat_OnDBReady)   -- (P5: once XayaUIChatDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 -- (Chat 0.6.20) what XayaUI Dev Assist's /xui chat wrap / indent / whispers read: the Chat Panel's table and its settings
 ns.Provide("chatDebug", { C = C, Settings = function() return ns.chat2 end,
