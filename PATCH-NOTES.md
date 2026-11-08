@@ -22,6 +22,16 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Settings Migration
+
+### XayaUI 0.6.78
+
+**Saved Settings**
+- Each addon now keeps its own saved settings: XayaUIReskinDB, XayaUIChatDB, XayaUIBonusDB, XayaUIQoLDB, XayaUIDevAssistDB and XayaUIRulesDB. They are copied once from the old place (CueRulesDB), which is kept. The old place is never written, and nothing is moved or deleted.
+- A rules backup, "Rules before the settings move (<date>)", appears in Profiles > Backups.
+- The counts are compared after the copy. If they do not match, that addon keeps reading the old place, and a warning, XUI-W006, is shown once.
+  *Developers' notes: Not yet tested in game (walkthrough H16). Removing the old keys is not built (phase P6). Also changed along with it: Rules 0.6.77, Rules Options 0.6.78, QoL 0.7.49, Bonus Features 0.6.33, Chat 0.6.42, Blizzard Reskin 0.6.22 and Dev Assist 0.7.59.*
+
 ## 2026-11-08 — Rules Options Folder
 
 ### XayaUI 0.6.77
