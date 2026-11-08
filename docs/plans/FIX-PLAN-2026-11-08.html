@@ -175,12 +175,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
       <code class="where">tests/harness/run.py:61-66, 96, 166-168</code>
       <p class="how">Each session is a new LuaRuntime, so serialize the saved table to Lua source and <code>loadstring</code> it in the next runtime (mirrors how the game saves). Apply the same to <code>read_saved</code>, which has the same bug for <code>--saved PATH</code>.</p></div></li>
-    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f6-4"><div class="body">
-      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-4">Two tools execute a player's saved file as code</label></h3></div>
-      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
-      <code class="where">tools/formula_fit.py:44-47 · tests/lua51.py:25-29 · tests/engine_bench.py:7-10</code>
-      <p class="how"><code>loadstring</code> plus <code>setfenv(f, {})</code> as <code>tests/harness/run.py:94</code> does, or the data-only <code>LuaReader</code> from perf_report.</p>
-      <p class="vnote"><b>Verifier:</b> a stock lupa runtime may also expose a <code>python</code> global, so the reach could be Python itself, not only os and io.</p></div></li>
     <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f1-11"><div class="body">
       <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-11">perf_report reads perfLog from the wrong store</label></h3></div>
       <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: PR #493 moved it; perf-test.md:130 already says to pass the other file</span></div>
@@ -188,8 +182,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <p class="how">Accept an optional XayaUI_DevAssist.lua and read <code>XayaUIDevAssistDB.perfLog</code>. Drop the stale run-marker branches and fix the docstring.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 2 ===================== -->
 <section class="phase" aria-labelledby="p2">
   <div class="phase-head">
     <div class="num">2</div>
@@ -225,11 +217,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: audit D42 skipped this path</span></div>
       <code class="where">XayaUI_Rules_Options/Sidebar.lua:996-1025</code>
       <p class="how">Iterate <code>FolderTopRules(src.id)</code> instead of <code>FolderRules</code>, and send Transform's originals through <code>ns.RecycleRule</code>. Both halves must ship together or Transform strands child rows.</p></div></li>
-    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f1-7"><div class="body">
-      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-7">Gear compare matches equip location, not slot</label></h3></div>
-      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: 2H case noted as a limitation; robe/chest and ranged not</span></div>
-      <code class="where">XayaUI_QoL/CharacterModel.lua:1548-1557</code>
-      <p class="how">Pick candidates with <code>CM.SlotsForLink(link)</code> intersected with occupied slots (keep the dual-wield filter); subtract slot 17 for two-handers; fall back to <code>CM.compareSlot</code>.</p></div></li>
     <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f5-1"><div class="body">
       <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-1">Routed steps clear the Timing deadline</label></h3></div>
       <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: #115; the D4 log assumed the opposite</span></div>
@@ -247,8 +234,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <p class="how">Return early in <code>StartDrag</code>, <code>ReorderRow</code> and <code>DropTarget</code> (locked target folder) when <code>IsEditLocked</code>. Give the folder menu the same reduced set the locked rule menu has.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 3 ===================== -->
 <section class="phase" aria-labelledby="p3">
   <div class="phase-head">
     <div class="num">3</div>
@@ -288,8 +273,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <p class="how">In the hook, return unless <code>self.obj</code> is the tree inside <code>OpenFrames[APP].frame</code>. Also undo <code>EnableMouse(true)</code> on release.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 4 ===================== -->
 <section class="phase" aria-labelledby="p4">
   <div class="phase-head">
     <div class="num">4</div>
@@ -310,11 +293,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <code class="where">XayaUI_DevAssist/QAWalks-chat.lua:54-75 · QAWalks-nameplates.lua:28-46 · QAWalks-display.lua:54-91, 494-519</code>
       <p class="how">Guard with <code>if not saved or putBack then Remember() end</code> and clear only in the put-back step. Store snapshots in <code>QA.DB()</code> keyed by walk id. Give <code>ui-shop-autoshow</code> a put-back step.</p>
       <p class="vnote"><b>Verifier:</b> the chat-split walk itself asks for a /reload, which wipes the upvalue it relies on.</p></div></li>
-    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f3-4"><div class="body">
-      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f3-4">QA check swaps GameTooltip methods by assignment</label></h3></div>
-      <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New</span></div>
-      <code class="where">XayaUI_DevAssist/QAWalks-display.lua:153-157</code>
-      <p class="how">Read the lines back with <code>GetTooltipData()</code> or the <code>TextLeftN</code> font strings instead. If a swap stays, restore the exact <code>rawget</code> value saved before the swap, not <code>= nil</code>, which would drop another addon's instance-level hook.</p></div></li>
     <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f3-3"><div class="body">
       <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f3-3">Shared QA test group carries leftovers</label></h3></div>
       <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Partly: #485, audit D35 (audit-opt walks only)</span></div>
@@ -323,13 +301,11 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <p class="vnote"><b>Verifier:</b> the mover-session example in the finding was wrong; the group-fit and arrange effects are real.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 5 ===================== -->
 <section class="phase" aria-labelledby="p5">
   <div class="phase-head">
     <div class="num">5</div>
-    <h2 id="p5">Check in game first, then fix</h2>
-    <p>Rated plausible, not confirmed. Two of the fixes remove or rebuild a feature (the ESC-menu button, the Game Menu own-layout mode), so run the in-game check listed under &quot;Needs an in-game check&quot; (<code>/console taintLog 2</code>) before changing anything.</p>
+    <h2 id="p5">Check in game or Xaya decides first</h2>
+    <p>Rows that need an in-game check (<code>/console taintLog 2</code> where it is about taint) or a decision from Xaya before anything is built. Two fixes here remove or rebuild a feature (the ESC-menu button, the Game Menu own-layout mode). Moved in after the 68-row check (2026-11-08): gear compare, &quot;Exactly N seconds&quot;, sound handles, replace-import categories and the GameTooltip swap.</p>
     <div class="n" data-count></div>
   </div>
   <ol class="fixes">
@@ -348,15 +324,34 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New (audit marked it OK)</span></div>
       <code class="where">XayaUI_Bonus/DataPanels.lua:326-343</code>
       <p class="how">Skip the unregister/register under <code>InCombatLockdown()</code> and queue for <code>PLAYER_REGEN_ENABLED</code>. Call <code>e.f:Show()</code> only when there is no macro or the macro changed, since the unconditional Show defeats the driver.</p></div></li>
-    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-6"><div class="body">
-      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-6">One secret aura field aborts a recorder batch</label></h3></div>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f1-7"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-7">Gear compare matches equip location, not slot</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: 2H case noted as a limitation; robe/chest and ranged not</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:1548-1557</code>
+      <p class="how">Pick candidates with <code>CM.SlotsForLink(link)</code> intersected with occupied slots (keep the dual-wield filter); subtract slot 17 for two-handers; fall back to <code>CM.compareSlot</code>.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-15"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-15">"Exactly N seconds" compares floats with ==</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules/Triggers.lua:258-260 · Conditions.lua:1241-1263</code>
+      <p class="how">Remove "Exactly" from seconds-left choices, or compare within a 0.1 s window.</p>
+      <p class="vnote"><b>Decision for Xaya:</b> remove the choice, or keep it and compare within a window. Not built until she picks (V16).</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-9"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-9">Sound handles discarded, previews stack</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI/Sound.lua:177-190 · XayaUI_Rules/Engine.lua:165-170</code>
+      <p class="how">Keep the handle per rule and per preview; call <code>StopSound</code> when the rule ends, is dropped, or the preview stops or replays.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f4-5"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-5">Replace-import removes the default categories</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: audit D40 fixed the Backups > Load case only</span></div>
+      <code class="where">XayaUI_Rules/RuleShare.lua:114-117 · RuleDefaults.lua:388-395</code>
+      <p class="how">After a replace, call <code>EnsureDefaultFolders(true)</code> when no imported folder carries a default flag.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f3-4"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f3-4">QA check swaps GameTooltip methods by assignment</label></h3></div>
       <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New</span></div>
-      <code class="where">XayaUI_DevAssist/DevAssist.lua:578, 630-651</code>
-      <p class="how">Use <code>Clean(a.isFromPlayerOrPlayerPet) == true</code>. Wrap each OnAdded, OnUpdated and OnRemoved call in its own pcall.</p></div></li>
+      <code class="where">XayaUI_DevAssist/QAWalks-display.lua:153-157</code>
+      <p class="how">Read the lines back with <code>GetTooltipData()</code> or the <code>TextLeftN</code> font strings instead. If a swap stays, restore the exact <code>rawget</code> value saved before the swap, not <code>= nil</code>, which would drop another addon's instance-level hook.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 6 ===================== -->
 <section class="phase" aria-labelledby="p6">
   <div class="phase-head">
     <div class="num">6</div>
@@ -393,11 +388,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
       <code class="where">XayaUI_Rules/Outcomes.lua:21 · RuleShare.lua:155-167 · RuleBin.lua:343-347</code>
       <p class="how"><code>repeat u = ns.NewUID() until not haveUid[u]</code> (and against live uids), or add a session counter to the uid.</p></div></li>
-    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f4-5"><div class="body">
-      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-5">Replace-import removes the default categories</label></h3></div>
-      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: audit D40 fixed the Backups > Load case only</span></div>
-      <code class="where">XayaUI_Rules/RuleShare.lua:114-117 · RuleDefaults.lua:388-395</code>
-      <p class="how">After a replace, call <code>EnsureDefaultFolders(true)</code> when no imported folder carries a default flag.</p></div></li>
     <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f4-6"><div class="body">
       <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-6">Cleared cueKey is never repaired</label></h3></div>
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: audit D57 (neighbouring MigrateCues defect)</span></div>
@@ -415,8 +405,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <p class="how">Copy into a local table first and move it into <code>store</code> only after every <code>DeepCopy</code> and the diff succeed.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 7 ===================== -->
 <section class="phase" aria-labelledby="p7">
   <div class="phase-head">
     <div class="num">7</div>
@@ -440,12 +428,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
       <code class="where">XayaUI_Chat/Options.lua:483-519, 532-568</code>
       <p class="how">Delete the first copy (lines 476-519 including its comment header).</p></div></li>
-    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-15"><div class="body">
-      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-15">"Exactly N seconds" compares floats with ==</label></h3></div>
-      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
-      <code class="where">XayaUI_Rules/Triggers.lua:258-260 · Conditions.lua:1241-1263</code>
-      <p class="how">Remove "Exactly" from seconds-left choices, or compare within a 0.1 s window.</p>
-      <p class="vnote"><b>Decision for Xaya:</b> remove the choice, or keep it and compare within a window. Not built until she picks (V16).</p></div></li>
     <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-16"><div class="body">
       <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-16">Avoidance gain coloured as worse</label></h3></div>
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
@@ -466,11 +448,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
       <code class="where">XayaUI/Core.lua:186-198</code>
       <p class="how">Add an <code>inHandler</code> flag; while set, skip <code>RecordError</code> and <code>ConsoleMessage</code> and only forward to <code>prevHandler</code>.</p></div></li>
-    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-9"><div class="body">
-      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-9">Sound handles discarded, previews stack</label></h3></div>
-      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
-      <code class="where">XayaUI/Sound.lua:177-190 · XayaUI_Rules/Engine.lua:165-170</code>
-      <p class="how">Keep the handle per rule and per preview; call <code>StopSound</code> when the rule ends, is dropped, or the preview stops or replays.</p></div></li>
     <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-10"><div class="body">
       <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-10">Chat sidebar stop in combat strands Blizzard buttons</label></h3></div>
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
@@ -486,10 +463,13 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: audit D13 fixed the "Forget" trigger only</span></div>
       <code class="where">XayaUI_QoL/ShoppingList.lua:145-176</code>
       <p class="how">Update <code>lastEnch[slot]</code> only when the link was readable and <code>lastGems[slot]</code> only when <code>info.gems ~= nil</code>.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-6"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-6">One secret aura field aborts a recorder batch</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_DevAssist/DevAssist.lua:578, 630-651</code>
+      <p class="how">Use <code>Clean(a.isFromPlayerOrPlayerPet) == true</code>. Wrap each OnAdded, OnUpdated and OnRemoved call in its own pcall.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 8 ===================== -->
 <section class="phase" aria-labelledby="p8">
   <div class="phase-head">
     <div class="num">8</div>
@@ -574,10 +554,20 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Tracked: PERF-AUDIT PA-3, PA-5, PA-7, PA-12, PA-13, PA-14, PA-22</span></div>
       <code class="where">XayaUI_Rules/Conditions.lua:533-555, 1469-1505, 190-227 · Triggers.lua:27-51 · Outcomes.lua:361-371 · Visual.lua:2855-2862</code>
       <p class="how">Pool refs per aura ID; varargs instead of <code>pack</code> tables; memoise <code>CheckTalents</code> and <code>WatchCharges</code> on <code>configVersion</code>; key duration text on <code>ceil(rem)</code>. The audit already lists most of these with the same fixes.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f6-5"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-5">engine_bench.py no longer runs</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
+      <code class="where">tests/engine_bench.py:146-203</code>
+      <p class="how">Load files through <code>tests/xui_paths.py</code> including XayaUI_Rules; use <code>os.devnull</code>; delete the leftover <code>collectgarbage("stop")</code>.</p>
+      <p class="vnote"><b>Verifier:</b> not in run_all and fails loudly, so no false confidence.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f6-4"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-4">Two tools execute a player's saved file as code</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">tools/formula_fit.py:44-47 · tests/lua51.py:25-29 · tests/engine_bench.py:7-10</code>
+      <p class="how"><code>loadstring</code> plus <code>setfenv(f, {})</code> as <code>tests/harness/run.py:94</code> does, or the data-only <code>LuaReader</code> from perf_report.</p>
+      <p class="vnote"><b>Verifier:</b> a stock lupa runtime may also expose a <code>python</code> global, so the reach could be Python itself, not only os and io.</p></div></li>
   </ol>
 </section>
-
-<!-- ===================== PHASE 9 ===================== -->
 <section class="phase" aria-labelledby="p9">
   <div class="phase-head">
     <div class="num">9</div>
@@ -598,12 +588,6 @@ ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
       <code class="where">tests/harness/build_api_index.py:39-41</code>
       <p class="how">Emit <code>{Name: EnumValue}</code> as <code>api_index_from_docs.py</code> does. Exit non-zero when the source is empty or no files were read.</p>
       <p class="vnote"><b>Verifier:</b> fields iterate in declared order, so about 21% of enums are wrong, not 87%; no index is committed.</p></div></li>
-    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f6-5"><div class="body">
-      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-5">engine_bench.py no longer runs</label></h3></div>
-      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
-      <code class="where">tests/engine_bench.py:146-203</code>
-      <p class="how">Load files through <code>tests/xui_paths.py</code> including XayaUI_Rules; use <code>os.devnull</code>; delete the leftover <code>collectgarbage("stop")</code>.</p>
-      <p class="vnote"><b>Verifier:</b> not in run_all and fails loudly, so no false confidence.</p></div></li>
     <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f6-7"><div class="body">
       <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-7">Harness and chat_world stubs differ from the game</label></h3></div>
       <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: PR #504 found a different chat_world gap</span></div>

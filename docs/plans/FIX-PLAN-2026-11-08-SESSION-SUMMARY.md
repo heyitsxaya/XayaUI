@@ -18,15 +18,15 @@ multi-session project (2026-11-08). The project's standing rules in `docs/SESSIO
 ## Phases (row IDs are the page's checkbox IDs, not phase numbers)
 | # | Phase | Rows |
 |---|---|---|
-| 1 | Make the checks able to fail | f1-10, f1-9, f6-6, f6-3, f6-4, f1-11 |
-| 2 | Confirmed bugs players see | f1-1, f1-2 (both high), f1-3, f1-5, f1-6, f1-7, f5-1, f5-4, f5-5 |
+| 1 | Make the checks able to fail | f1-10, f1-9, f6-6, f6-3, f1-11 |
+| 2 | Confirmed bugs players see | f1-1, f1-2, f1-3, f1-5, f1-6, f5-1, f5-4, f5-5 |
 | 3 | AceGUI pooling cluster | f2-1, f2-2, f2-3, f2-5, f2-4 |
-| 4 | Stale-closure cluster | f3-1, f3-2, f3-4, f3-3 |
-| 5 | Check in game first, then fix | f5-2, f5-3, f1-8, f5-6 |
-| 6 | Import hardening | f4-1, f1-4, f4-2 ... f4-8 |
-| 7 | Smaller correctness fixes | f1-12 ... f1-17, f5-7 ... f5-12 |
-| 8 | Efficiency | f7-1 ... f7-14 |
-| 9 | Test harness depth | f6-1, f6-2, f6-5, f6-7, f6-8 |
+| 4 | Stale-closure cluster | f3-1, f3-2, f3-3 |
+| 5 | Check in game or Xaya decides first | f5-2, f5-3, f1-8, f1-7, f1-15, f5-9, f4-5, f3-4 |
+| 6 | Import hardening | f4-1, f1-4, f4-2, f4-3, f4-4, f4-6, f4-7, f4-8 |
+| 7 | Smaller correctness fixes | f1-12, f1-13, f1-14, f1-16, f1-17, f5-7, f5-8, f5-10, f5-11, f5-12, f5-6 |
+| 8 | Efficiency | f7-7, f7-8, f7-9, f7-10, f7-12, f7-1, f7-2, f7-3, f7-4, f7-5, f7-6, f7-11, f7-13, f7-14, f6-5, f6-4 |
+| 9 | Test harness depth | f6-1, f6-2, f6-7, f6-8 |
 
 ## Active items
 - None started. Next: phase 1.
@@ -40,7 +40,7 @@ multi-session project (2026-11-08). The project's standing rules in `docs/SESSIO
 ## Platform and tool notes
 - The plan page's checkmarks live in one browser's localStorage only; the tracker's Status column is the shared record.
 - Cloud sessions are ephemeral: commit and push tracker updates in the same session.
-- Spot-check status per row is in the tracker (13 of 68 checked in the code on 2026-11-08; all held).
+- Every row was checked in the code on 2026-11-08 (tracker section 5b): 48 hold, 20 hold in part, 0 refuted.
 
 ## Key files
 - `docs/plans/FIX-PLAN-2026-11-08.html`: the plan page (reordered, filter fixed)
