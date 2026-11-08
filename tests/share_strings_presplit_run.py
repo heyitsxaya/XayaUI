@@ -8,6 +8,8 @@ XayaUI_Rules/RuleShare.lua; no string format changed. Loads the real addons in t
     kind, and imported: the rules land as the old code put them (rule names, the cue under its rule, the groups), the theme's colour
     is back, the profile's parts apply.
   B the same setup shared now gives byte-for-byte the same strings (the format did not change).
+    (Debug chat defaults, Chat 0.6.46) the profile's one allowed difference: the Sidebar's and the privacy cover's defaults (37 keys,
+    each with its default value) now in the Blizzard Reskin part; taken out, the string is the pre-split one byte for byte.
   C XayaUI Rules switched off: the rules strings say "needs XayaUI Rules" and change nothing; the theme still imports; the profile
     lists its rules part as "needs XayaUI Rules", skips it and imports the rest.
 Negative control: C fails on 8ced2e3 (there is no XayaUI Rules to switch off: the rules kind is always there). A and B pass there by
@@ -416,8 +418,24 @@ if rulesOn then
   section("B: the same setup shared now", function()
     local g, r1 = makeRules(ns)
     local now = strings(ns, g, r1)
+    -- (Debug chat defaults, Chat 0.6.46) the profile's one allowed difference: the Blizzard Reskin part's chat2 / chat now carry the
+    -- Sidebar's and the privacy cover's defaults (they reach the saved settings at login since 0.6.46; in the game they never did).
+    -- Taken out where they hold their default, the string must be the pre-split one byte for byte (tests/profile_parts_run.py, A).
+    local CD = ns.Service and ns.Service("chatDebug"); CD = CD and CD.C
+    local added, want = 0, 0
+    if CD then for _ in pairs(CD.SIDEBAR_DEFAULTS) do want = want + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do want = want + 1 end end
+    do
+      local data = S.Read(now.profile, "profile")
+      local rk = type(data) == "table" and data.parts and data.parts.reskin
+      for part, defs in pairs({ chat2 = CD and CD.SIDEBAR_DEFAULTS or {}, chat = ns.CHAT_DEFAULTS or {} }) do
+        local t = rk and rk[part]
+        if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
+      end
+      now.profile = data and S.Encode("profile", data)
+    end
+    check("B: profile: the Chat defaults now saved are in it (" .. added .. " of " .. want .. ")", want > 0 and added == want, added)
     for _, k in ipairs({ "rule", "group", "all", "theme", "profile" }) do
-      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one", now[k] == GOLD[k], tostring(now[k]):sub(1, 50))
+      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), now[k] == GOLD[k], tostring(now[k]):sub(1, 50))
     end
     wipe(ns.rules); wipe(ns.folders)
   end)

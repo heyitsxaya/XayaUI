@@ -13,6 +13,9 @@ player gets:
     "(<kind>: module not loaded)", Restore refuses it and it stays in the bin; a newly registered kind restores through its own call.
   E Theme scopes: no scope = exactly the old answer for every class and property; element override > element theme > module override >
     global; the cache is dropped on Resolve; storage is sparse; the registered scopes and labels; scopes travel in the Themes part.
+  (Debug chat defaults, Chat 0.6.46) A's one allowed difference: the Blizzard Reskin part's chat2 / chat now carry the Sidebar's and
+    the privacy cover's defaults (all 37, each with its default value; decoded and compared with the old string: nothing else differs),
+    since they now reach the saved settings at login; taken out, the string is the old one byte for byte.
 Negative control: B-E fail on main 774980c (no ns.RegisterProfilePart / RegisterBinKind / Theme scopes; the bin restores any item as
 rules; Profiles drops unknown parts). A passes there by design: it is the reference the new code must match.
 Run: python3 tests/profile_parts_run.py"""
@@ -191,10 +194,27 @@ local P = ns.Profile
 
 if not npOn then
   section("A: byte-identical export", function()
+    -- (Debug chat defaults, Chat 0.6.46) the one allowed difference from the old build's string: the Sidebar's (C.SIDEBAR_DEFAULTS)
+    -- and the privacy cover's (ns.CHAT_DEFAULTS) defaults now reach the saved settings at login (in the game they never did), so the
+    -- Blizzard Reskin part's chat2 / chat carry them, each with its default value. Taken out where they hold the default, the string
+    -- must be the old build's byte for byte.
+    local CD = ns.Service and ns.Service("chatDebug"); CD = CD and CD.C
+    local added = 0
+    local function fold(str)
+      local data = ns.Share.Read(str, "profile")
+      local rk = type(data) == "table" and data.parts and data.parts.reskin
+      for part, defs in pairs({ chat2 = CD and CD.SIDEBAR_DEFAULTS or {}, chat = ns.CHAT_DEFAULTS or {} }) do
+        local t = rk and rk[part]
+        if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
+      end
+      return data and ns.Share.Encode("profile", data)
+    end
     local box = exportAll(ns)
-    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off)", box == GOLDEN, tostring(box):sub(1, 60))
+    local folded = fold(box)
+    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved", folded == GOLDEN, tostring(folded):sub(1, 60))
+    check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
     local six = ns.Share.Encode("profile", P.Snapshot(SIX, ""))
-    check("A: the six parts ticked by hand give the same string", six == GOLDEN, tostring(six):sub(1, 60))
+    check("A: the six parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
   end)
   section("C: a part whose module is not loaded", function()
     check("C: Nameplates is not offered while XayaUI Nameplates is off", P.BY_KEY.nameplates == nil)
