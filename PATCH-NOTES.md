@@ -11,7 +11,7 @@ Style: Blizzard's own patch notes (blue posts). Short past-tense or present-tens
 Layout, newest landing first:
   ## YYYY-MM-DD — Short title                      one per landing on main (UTC date)
   ### <Addon> <version>                            Addon is one of: XayaUI, Options, Chat, Quality of Life, Bonus Features,
-                                                   Blizzard Reskin, Dev Assist, Media, Nameplates, Rules. One heading per addon version.
+                                                   Blizzard Reskin, Dev Assist, Media, Nameplates, Rules, Rules Options. One heading per addon version.
   **Feature name**                                 a bold category line; add " (new)" for a brand-new feature
   - Bullet.                                        a change
     - Nested bullet.                               detail under the bullet above (two spaces)
@@ -21,6 +21,19 @@ What's New (the pane's first entry) is built from this file: every bullet of a "
 that starts with "Added", newest first, grouped by addon. An addon's list keeps growing through its x.Y.* versions and starts
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
+
+## 2026-11-08 — Rules Options Folder
+
+### XayaUI 0.6.77
+
+**Install (read this first)**
+- Copy the second new folder, XayaUI_Rules_Options, into AddOns as well, next to XayaUI_Rules. The AddOns list gains "XayaUI Rules Options". It loads only when the rule editor opens.
+  *Developers' notes: Not yet tested in game (walkthrough H15). You asked to build everything without waiting for your in-game test, so the Accept for the earlier code move (H14) no longer blocks the next phase.*
+
+### Rules Options 0.6.77
+
+**XayaUI Rules Options (new)**
+- Added XayaUI Rules Options, a load-on-demand addon that holds the rule editor.
 
 ## 2026-11-07 — XayaUI Rules Is Its Own Addon
 
