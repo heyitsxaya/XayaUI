@@ -2,7 +2,7 @@
 ## Title: XayaUI Rules
 ## Notes: XayaUI's rule-based sound cues and on-screen alerts (buff, cooldown, talent, load conditions) and combat aura tracking. Switch it off if you make no rules: none of its files load then. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.80
+## Version: 0.6.81
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUITalentDB, XayaUIRulesDB

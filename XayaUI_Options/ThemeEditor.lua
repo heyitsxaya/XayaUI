@@ -234,7 +234,8 @@ function T.BuildArgs(refresh)
         func = function() AskDiscard("Reset everything", function() T.ResetAll(); refresh() end) end }
 
     -- class overrides
-    -- (#471: the table row's cells; together 0.99 of the box, so rounding never puts Reset's last pixel past the box's inner edge)
+    -- (#471: the table row's cells; together 0.99 of the box. Safe only because each class is its own box, one row per box: in a
+    -- container of several rows, a row must add up to 1 (Skin.lua table cells; Options 0.6.105))
     local OV_SWATCH_W, OV_RESET_W, OV_CELL, OV_RESET = 0.27, 0.18, { xuiCell = true }, { xuiCell = true, xuiWide = true }
     local ov = { type = "group", order = nx(), name = "Class overrides", inline = true, args = {
         info = { type = "description", order = 0, width = "full",

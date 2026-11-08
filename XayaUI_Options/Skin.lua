@@ -1901,6 +1901,8 @@ local TAB_GAP = 2   -- between the tabs drawn as buttons (#370)
 -- to 1 make one table row. They sit CELL_GAP apart instead of the grid's 30 px gutter, and each cell gives up its share of the gutters,
 -- so the row fills the pane exactly. A full row also makes AceGUI's Flow start the next table row on a new line (its first cell no
 -- longer fits beside it; true while that cell is wider than the row's gutters, e.g. 0.08 of a pane wider than 330 px).
+-- A row also ends where the next cell would push it past the whole pane (Options 0.6.105), so a row of 0.99 no longer takes the
+-- next row's first cells onto its line and shrinks them all (Blizzard Reskin > Theme, Xaya's screenshot 2026-11-08).
 local CELL_GAP = 4
 function ns.IsCompactButton(ch)
     if ch.type ~= "Button" or not SkinOn() then return false end
@@ -2013,7 +2015,10 @@ function ns.FlexPrepass(content, children, bw)
                 w = width * (ch.relWidth or 1); flex = false
                 if isCell then
                     local nom = (type(oc.relWidth) == "number") and oc.relWidth or (ch.relWidth or 0)   -- the option's own width, every pass
-                    if not cells or cells.nom >= 0.999 then
+                    -- a new table row starts when the row so far is full, or when this cell would push it past the whole pane
+                    -- (Options 0.6.105: a row of 0.99 used to take the next row's first cells and shrink them all onto one line,
+                    -- Blizzard Reskin > Theme; a sub-cell shares the cell before it and never starts a row)
+                    if not cells or cells.nom >= 0.999 or (not oc.arg.xuiSubCell and cells.nom + nom > 1.001) then
                         closeCells(); flush()
                         cells = { list = {}, nom = 0 }
                     end

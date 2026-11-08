@@ -233,7 +233,49 @@ for _, k in ipairs(T.BUILTIN_ORDER) do if not tv[k] then miss[#miss + 1] = k end
 check("A the Theme list: Inherit first, then every built-in theme", SE.ThemeSorting()[1] == "inherit" and tv.inherit == "Inherit" and tv.class and tv.default and #miss == 0, table.concat(miss, ","))
 T.Save("Mine")
 check("A ...and the saved themes", SE.ThemeValues()["saved:Mine"] == "Saved: Mine")
-check("A a row's widths add up to the page (0.99, as the Theme page's class table)", math.abs(SE.WIDTHS.el + SE.WIDTHS.theme + SE.WIDTHS.n + SE.WIDTHS.edit + SE.WIDTHS.from + SE.WIDTHS.reset - 0.99) < 1e-6)
+check("A a row's widths add up to the whole page (1: Skin.lua's table rows close at 1)", math.abs(SE.WIDTHS.el + SE.WIDTHS.theme + SE.WIDTHS.n + SE.WIDTHS.edit + SE.WIDTHS.from + SE.WIDTHS.reset - 1) < 1e-6)
+-- The table as it is drawn (Xaya's screenshot, 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #7: the rows ran on as one
+-- wrapped stream, the header line ended with "Blizzard Windows" and the Edit / Reset buttons were cut to "E..." / "R..."). Skin.lua's
+-- FlexPrepass sizes the cells, then AceGUI's Flow (Libs/AceGUI-3.0/AceGUI-3.0.lua, Flow: a control goes to a new line when its width
+-- plus the line's used width passes the pane) places them. Expected: one line per table row, each starting with its Element cell.
+local cellKeys = {}
+for _, k in ipairs(keys) do local o = args[k]; if o.width == "relative" and type(o.arg) == "table" and o.arg.xuiCell then cellKeys[#cellKeys + 1] = k end end
+local function Lines(paneW)
+  local kids = {}
+  for _, k in ipairs(cellKeys) do
+    local o = args[k]
+    local w = { width = "relative", relWidth = o.relWidth, key = k, frame = { width = 10, GetWidth = function() return 10 end },
+                type = (o.type == "select" and "Dropdown") or (o.type == "execute" and "Button") or "Label" }
+    w.GetUserData = function(_, u) if u == "option" then return o end end
+    w.SetWidth = function(self, v) self.frame.width = v end
+    kids[#kids + 1] = w
+  end
+  local okP, errP = pcall(ns.FlexPrepass, { width = paneW, GetWidth = function() return paneW end }, kids)
+  if not okP then return nil, tostring(errP) end
+  local lines, used = {}, 0
+  for _, w in ipairs(kids) do
+    local fw = paneW * (w.relWidth or 1)
+    if #lines == 0 or used + fw > paneW then lines[#lines + 1] = {}; used = 0 end
+    table.insert(lines[#lines], w.key); used = used + fw
+  end
+  return lines, kids
+end
+for _, paneW in ipairs({ 450, 600, 800 }) do
+  local lines, kids = Lines(paneW)
+  local bad = {}
+  if not lines then bad[1] = "FlexPrepass error " .. tostring(kids) else
+    if #lines ~= #rowsSeen + 1 then bad[#bad + 1] = #lines .. " lines for " .. (#rowsSeen + 1) .. " rows" end
+    for i, ln in ipairs(lines) do
+      local want1 = (i == 1) and "h_el" or "^el_"
+      if not ln[1]:find(want1) then bad[#bad + 1] = "line " .. i .. " starts with " .. ln[1] .. " (" .. table.concat(ln, " ") .. ")"; break end
+    end
+    -- the Reset cell keeps its own share of the page: no row is squeezed to make room for the next row's cells
+    for _, w in ipairs(kids) do
+      if w.key:find("^rs_") and w.relWidth < SE.WIDTHS.reset * (paneW - 16) / paneW - 1e-6 then bad[#bad + 1] = w.key .. " squeezed to " .. string.format("%.3f", w.relWidth); break end
+    end
+  end
+  check(("A the table at a %d px pane: one line per row, each starting with its Element cell; nothing squeezed"):format(paneW), #bad == 0, table.concat(bad, "; "))
+end
 -- each element's own page: one "Theme" row opening its editor
 local tabs = ns.OptionsApi.ModuleTabs(nil)
 local rk = tabs.reskin and tabs.reskin.args or {}

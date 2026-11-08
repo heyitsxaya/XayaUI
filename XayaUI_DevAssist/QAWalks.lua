@@ -39,6 +39,7 @@ local function MakeTestGroup(withIcons)
     if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end
     return f
 end
+QA.MakeTestGroup = MakeTestGroup   -- (QAWalks-layout-fixes.lua: the same shared QA test group)
 local function OpenGroup(f)
     local ns = NS()
     if ns.LoadOptions and ns.LoadOptions() and ns.OptionsApi and ns.OptionsApi.EditFolder then ns.OptionsApi.EditFolder(f) end
