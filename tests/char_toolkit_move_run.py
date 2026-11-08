@@ -146,7 +146,7 @@ def main():
     check("  ...the Stat Calculator reads Bonus's copy (side left, text size 13)", out.get("panelSide") == "left" and out.get("panelFont") == 13,
           (out.get("panelSide"), out.get("panelFont")))
     check("  ...its page is Bonus Features > Character Toolkit; QoL > Character Toolkit keeps Slot Overlays and Tooltip lines only",
-          out.get("bonusPage") == "Character Toolkit" and out.get("qolPage") is True, (out.get("bonusPage"), out.get("qolPage")))
+          out.get("bonusPage") == "Stat Calculator" and out.get("qolPage") is True, (out.get("bonusPage"), out.get("qolPage")))
     check("  ...no Lua error", not errs, errs[:2])
     # M2: the next load
     s1b = copy.deepcopy(s1)

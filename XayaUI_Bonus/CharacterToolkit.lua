@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- CharacterToolkit.lua : Bonus Features > Character Toolkit (XayaUI QoL 0.7.0; XayaUI Bonus Features since Bonus 0.6.37). The panel
+-- CharacterToolkit.lua : Bonus Features > Stat Calculator (XayaUI QoL 0.7.0; XayaUI Bonus Features since Bonus 0.6.37). The panel
 -- docked to the character window, its compact stat sheet (the Stat Calculator: a stat map, a gear comparison, spells), and the settings
 -- page. OFF by default; while off nothing is created, registered or read.
 -- (Bonus 0.6.37 / QoL 0.7.53, character pane split stage 2; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 4.2) Xaya's Q5 answer: "The
@@ -2210,8 +2210,8 @@ if ns.Provide then
         Open = function(tab)
             local c = Cfg()
             if not c then return false, "no saved settings yet" end
-            if not c.enabled then return false, "Character Toolkit is off (Bonus Features > Character Toolkit)" end
-            if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Character Toolkit > Panel)" end
+            if not c.enabled then return false, "Character Toolkit is off (Bonus Features > Stat Calculator)" end
+            if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Stat Calculator > Panel)" end
             if tab then c.tab = tab end
             ns.CharToolkit_SetOpen(true)
             return panel ~= nil and panel:IsShown()
@@ -2424,11 +2424,11 @@ end
 function ns.CharToolkit_SetOpen(open)
     local c = Cfg(); if not c then return end
     if not c.enabled then
-        ns.Print("Character Toolkit is off. Turn it on in Bonus Features > Character Toolkit (or /xui stats on).")
+        ns.Print("Character Toolkit is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on).")
         return
     end
     if not c.panel then
-        ns.Print("The Stat Calculator panel is off. Turn it on in Bonus Features > Character Toolkit > Panel.")
+        ns.Print("The Stat Calculator panel is off. Turn it on in Bonus Features > Stat Calculator > Panel.")
         return
     end
     c.panelOpen = open and true or false
@@ -2606,8 +2606,10 @@ function ns.BuildCharToolkitPanelPage(Notify)
     -- (Bonus 0.6.37: the Slot Overlays and Tooltip lines parts stay XayaUI QoL's: QoL > Character Toolkit, XayaUI_QoL/CharacterPane.lua)
 
     return {
-        type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
-        xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", nil, nil, "Turns on the Stat Calculator and its character window tools."),
+        -- (Bonus 0.6.38, Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: "these are \"Stat Calculator\"") the Bonus
+        -- Features node and its switch are titled Stat Calculator; QoL's own Character Toolkit page (slot overlays, tooltip lines) keeps its name
+        type = "group", name = "Stat Calculator", order = 3, childGroups = "tree",
+        xuiSwitch = Toggle("enabled", 1, "Stat Calculator", "Turns the toolkit on. While it is off nothing is created, registered or read.", nil, nil, "Turns on the Stat Calculator and its character window tools."),
         args = {
             -- (Bonus 0.6.37) the parts' list names the two that came to Bonus Features (the slot overlays and tooltip lines stay QoL's)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",

@@ -1007,8 +1007,8 @@ be8dd409463d20467763c23a4f8e91eb  tests/options_click_cost.lua
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-3c7ea7d70cd2d94a8b3a14f305c0d8c4  tests/options_split_parity_golden.json
-7103d57fabe171e1639c3373c79c2011  tests/options_split_parity_run.py
+78b5351058c4ff332a814d923430ba20  tests/options_split_parity_golden.json
+d8a41e6fe17f6e65f41a502f809069a9  tests/options_split_parity_run.py
 525d8ff64cb03387c245094b3a0679db  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py

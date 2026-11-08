@@ -30,8 +30,8 @@ local function Ready()
     if not sc then return false, "XayaUI Bonus Features is not loaded (or is older than 0.6.38), or XayaUI QoL is off" end
     if not sc.SetInput then return false, "XayaUI Bonus Features is older than 0.6.38" end
     local c = sc.Cfg()
-    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Character Toolkit" end
-    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Character Toolkit > Panel" end
+    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Stat Calculator" end
+    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Stat Calculator > Panel" end
     return true
 end
 

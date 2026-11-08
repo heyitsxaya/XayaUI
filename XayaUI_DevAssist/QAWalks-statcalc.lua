@@ -22,8 +22,8 @@ local function Ready()
     local sc = SC()
     if not sc then return false, "XayaUI Bonus Features is not loaded (or is older than 0.6.37), or XayaUI QoL is off" end
     local c = sc.Cfg()
-    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Character Toolkit" end
-    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Character Toolkit > Panel" end
+    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Stat Calculator" end
+    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Stat Calculator > Panel" end
     return true
 end
 local function Drawn()
@@ -245,7 +245,7 @@ QA.Register("statcalc-no-rating-toggle", { title = "Stat Calculator: no % / rati
           local c = SC().Cfg()
           return not SC().HasModeButton() and c.valueMode == nil and c.lineModes == nil, SC().HasModeButton() and "the button still exists" or "no button; the old saved keys are gone"
       end },
-    { text = "Open XayaUI > Bonus Features > Character Toolkit > Panel: |cffffd100Layout|r and |cffffd100Your numbers|r.\n\n|cffffd100Expect:|r no \"Rating lines\" setting in Layout and no \"Reset line flips\" button in Your numbers (Clear all stays).",
+    { text = "Open XayaUI > Bonus Features > Stat Calculator > Panel: |cffffd100Layout|r and |cffffd100Your numbers|r.\n\n|cffffd100Expect:|r no \"Rating lines\" setting in Layout and no \"Reset line flips\" button in Your numbers (Clear all stays).",
       check = function()
           local pg = SC().Page()
           local p = pg and pg.args and pg.args.panelPart and pg.args.panelPart.args

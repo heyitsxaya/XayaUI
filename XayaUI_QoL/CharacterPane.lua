@@ -305,7 +305,7 @@ if ns.Provide then ns.Provide("charPaneDebug", { Cfg = function() return Cfg() e
 
 -------------------------------------------------------------------------------
 -- Settings: QoL > Character Toolkit (a feature node; its parts Slot Overlays and Tooltip lines are nodes under it). (QoL 0.7.53: the
--- Panel and Spell Math parts are XayaUI Bonus Features > Character Toolkit's now.)
+-- Panel and Spell Math parts are XayaUI Bonus Features > Stat Calculator's now.)
 -------------------------------------------------------------------------------
 function ns.BuildCharToolkitPage(Notify)
     local function C() return Cfg() or CopyVal(ns.CHARPANE_TOOLKIT_DEFAULTS) end
@@ -373,7 +373,7 @@ function ns.BuildCharToolkitPage(Notify)
         args = {
             -- (QoL 0.7.53) the intro described the Stat Calculator's panel, which is XayaUI Bonus Features' now (wording listed for Xaya)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "The character window's own tools: marks on its item slots and extra lines on its stat tooltips. The Stat Calculator is in Bonus Features > Character Toolkit. Turn it on with the tick box on its row on the left; its parts (Slot Overlays, Tooltip lines) then show under it, each with its own tick box. Off by default." },
+                name = "The character window's own tools: marks on its item slots and extra lines on its stat tooltips. The Stat Calculator is in Bonus Features > Stat Calculator. Turn it on with the tick box on its row on the left; its parts (Slot Overlays, Tooltip lines) then show under it, each with its own tick box. Off by default." },
             overlayPart = overlayPart,
             tipsPart = tipsPart,
         },

@@ -6,7 +6,7 @@
 --   Stage 1 (QoL 0.7.53, C20): the character window's features (item level, enchants, gems, the full stat list) are QoL's (QoL >
 --   Character Pane) and show with XayaUI Blizzard Reskin off; the reskin (Blizzard Reskin > Character Pane) only changes the look.
 --   Stage 2 (Bonus 0.6.37): the Stat Calculator's panel ("the Advanced Character Stats pane window", her Q5) is XayaUI Bonus Features'
---   (Bonus Features > Character Toolkit); its settings were copied once from XayaUIQoLDB.characterToolkit (copy, never move).
+--   (Bonus Features > Stat Calculator); its settings were copied once from XayaUIQoLDB.characterToolkit (copy, never move).
 --   Stage 3: the one model stays XayaUI QoL's (the "statModel" service); with XayaUI QoL off, Bonus Features shows nothing extra.
 -- Reaches XayaUI QoL and XayaUI Bonus Features only through core's services ("characterReskin", "statCalc", "statModel") and settings
 -- views (ns.Settings, ns.SettingsKeyMove). UNTESTED IN GAME.
@@ -58,15 +58,15 @@ QA.Register("character-split", { title = "Character pane split: the item level, 
             if not WindowShown() then return nil, "open the character window (C) | " .. Line(d) end
             return (d.ilvl > 0) and true or false, Line(d)
         end },
-    { text = "The Stat Calculator (the advanced character stats window) is in |cffffd100Bonus Features > Character Toolkit|r now. With XayaUI QoL and XayaUI Bonus Features on, press |cffffd100Do it for me|r: it opens on its Stats tab (the same as the |cffffd100Stat Calc|r button on the character window or |cffffd100/xui stats|r).\n\n|cffffd100Expect:|r the panel opens and fills in, as before this version. If Character Toolkit is off there, tick it first.",
+    { text = "The Stat Calculator (the advanced character stats window) is in |cffffd100Bonus Features > Stat Calculator|r now. With XayaUI QoL and XayaUI Bonus Features on, press |cffffd100Do it for me|r: it opens on its Stats tab (the same as the |cffffd100Stat Calc|r button on the character window or |cffffd100/xui stats|r).\n\n|cffffd100Expect:|r the panel opens and fills in, as before this version. If Character Toolkit is off there, tick it first.",
         setup = function() local sc = Svc("statCalc"); if sc and sc.Open then sc.Open("stats") end end,
         check = function()
             local sc = Svc("statCalc")
             if not sc then return nil, "XayaUI Bonus Features is off or older than 0.6.37 (no Stat Calculator service)" end
             if not Svc("statModel") then return nil, "XayaUI QoL is off: the Stat Calculator needs it (its model)" end
             local c = sc.Cfg and sc.Cfg()
-            if not (c and c.enabled) then return nil, "Bonus Features > Character Toolkit is off: tick it, then press Do it for me" end
-            if not c.panel then return nil, "Bonus Features > Character Toolkit > Panel is off: tick it, then press Do it for me" end
+            if not (c and c.enabled) then return nil, "Bonus Features > Stat Calculator is off: tick it, then press Do it for me" end
+            if not c.panel then return nil, "Bonus Features > Stat Calculator > Panel is off: tick it, then press Do it for me" end
             local shown = sc.Shown and sc.Shown()
             return shown and true or false, ("panel %s; tab %s; side %s; text size %s"):format(shown and "open" or "not open", tostring(c.tab), tostring(c.side), tostring(c.fontSize))
         end },
