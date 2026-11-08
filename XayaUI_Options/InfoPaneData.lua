@@ -168,6 +168,14 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-08", title = "Settings Migration", blocks = {
+      { "h3", "XayaUI 0.6.78" },
+      { "grp", "Saved Settings" },
+      { "b", 1, "Each addon now keeps its own saved settings: XayaUIReskinDB, XayaUIChatDB, XayaUIBonusDB, XayaUIQoLDB, XayaUIDevAssistDB and XayaUIRulesDB. They are copied once from the old place (CueRulesDB), which is kept. The old place is never written, and nothing is moved or deleted." },
+      { "b", 1, "A rules backup, \"Rules before the settings move (<date>)\", appears in Profiles > Backups." },
+      { "b", 1, "The counts are compared after the copy. If they do not match, that addon keeps reading the old place, and a warning, XUI-W006, is shown once." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (walkthrough H16). Removing the old keys is not built (phase P6). Also changed along with it: Rules 0.6.77, Rules Options 0.6.78, QoL 0.7.49, Bonus Features 0.6.33, Chat 0.6.42, Blizzard Reskin 0.6.22 and Dev Assist 0.7.59." },
+    } },
     { date = "2026-11-08", title = "Rules Options Folder", blocks = {
       { "h3", "XayaUI 0.6.77" },
       { "grp", "Install (read this first)" },
