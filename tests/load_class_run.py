@@ -108,4 +108,30 @@ check("spec entries carry the class name so they are told apart", lua("for _, c 
 lua("rawset(_G, 'GetClassInfo', false)")
 lua("local nsT = {}; local chunk = loadstring('local ns = ...\\n' .. BLOCK .. '\\nreturn SpecChoices'); SPEC_FN2 = chunk(nsT)")
 check("no class API: falls back to the logged-in character's specs (never an empty list)", lua("return #SPEC_FN2() == 3"), lua("return #SPEC_FN2()"))
+
+# #476 (debug W1, Rules_Options 0.6.79; Xaya 2026-11-07: "missing devourer"): the spec list follows the game's own count per class
+# (C_SpecializationInfo.GetNumSpecializationsForClassID), skips an index the game answers with nothing instead of stopping there, and
+# never offers an "Initial" spec. Stand-in shapes (INFERENCE: the real reason index 3 came back empty for her is not known; in game,
+# Game Data Capture's count-and-skip loop found Devourer 1480, docs/reference/spells/): Demon Hunter counts 4 with index 3 empty and
+# Devourer at 4; Warrior counts 4 with its Initial spec (1446) at 4; Druid counts 4 (Restoration at 4).
+# Old code (`for si = 1, 4` with `break`): no Devourer, and Warrior - Initial listed.
+L.execute(r'''
+rawset(_G, 'GetClassInfo', function(i) local f = ({ "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER" })[i]; return f, f, i end)
+local SPECS2 = { [1] = { 71, 72, 73, 1446 }, [11] = { 102, 103, 104, 105 }, [12] = { 577, 581, false, 1480 } }
+local NAMES = { [1480] = "Devourer", [577] = "Havoc", [581] = "Vengeance", [1446] = "Initial", [105] = "Restoration" }
+local COUNT = { [1] = 4, [11] = 4, [12] = 4 }
+rawset(_G, 'C_SpecializationInfo', { GetNumSpecializationsForClassID = function(cid) return COUNT[cid] or 3 end })
+rawset(_G, 'GetSpecializationInfoForClassID', function(cid, i)
+  local s = SPECS2[cid] or {}; local id = s[i]; if not id then return nil end
+  return id, NAMES[id] or ("Spec" .. id), "", 100 + id, "DAMAGER" end)
+local nsT = {}; local chunk = loadstring('local ns = ...\n' .. BLOCK .. '\nreturn SpecChoices'); SPEC_FN3 = chunk(nsT)
+function HAS(id) for _, c in ipairs(SPEC_FN3()) do if c.id == tostring(id) then return c end end end
+''')
+check("#476 Demon Hunter - Devourer (1480) is listed, after an index the game left empty", lua("local c = HAS(1480); return c ~= nil and c.class == 'DEMONHUNTER' and c.text:find('Devourer', 1, true) ~= nil"),
+      lua("local t = {}; for _, c in ipairs(SPEC_FN3()) do if c.class == 'DEMONHUNTER' then t[#t + 1] = c.id end end; return table.concat(t, ',')"))
+check("#476 Havoc and Vengeance are still listed", lua("return HAS(577) ~= nil and HAS(581) ~= nil"))
+check("#476 a class's fourth spec is listed (Druid - Restoration)", lua("return HAS(105) ~= nil"))
+check("#476 an Initial spec is never offered (Warrior 1446)", lua("return HAS(1446) == nil and HAS(73) ~= nil"))
+check("#476 the empty index adds no entry (13 classes: 4 Druid + 3 Demon Hunter + 3 Warrior + 0 for the classes with none)",
+      lua("return #SPEC_FN3() == 10"), lua("return #SPEC_FN3()"))
 print("\nALL PASSED" if not fails else "\n%d FAILED" % len(fails)); sys.exit(1 if fails else 0)

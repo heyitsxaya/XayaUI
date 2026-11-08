@@ -268,7 +268,27 @@ function ns.SmartAny(rule)
     return false
 end
 
-local picker = nil   -- { folder = id|nil } while the page is open
+local picker = nil   -- { folder = id|nil, sub = Rules sub-tab key } while the page is open
+-- (Rules_Options 0.6.79; #487, debug W1) The type picker belongs to the Rules sub-tab "+ New Rule" was pressed in (picker.sub). Its rows
+-- (and the page entries they replace) look at the option path AceConfigDialog passes (info[2] = the sub-tab): on any other sub-tab the
+-- picker is not drawn, and ns.PickerSync (run with ns.SaveRulesSub: every redraw, every 0.25 s while the window is open, and when it
+-- closes) forgets it once another sub-tab is open or the window is closed. Before, `picker` was cleared only by a pick or Cancel, so a
+-- picker left open was drawn again at the top of Drafts (Xaya, 2026-11-07: "????????????????????????").
+local function PickerShown(info)
+    if not picker then return false end
+    local sub = type(info) == "table" and info[2] or nil
+    if sub == nil then return true end   -- called without an option path (a direct call): the picker is open
+    return sub == (picker.sub or "smartTab")
+end
+ns.PickerShown = PickerShown
+function ns.PickerSync()
+    if not picker then return end
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    local open = of and of.frame and of.frame:IsShown()
+    local top = AceConfigDialog.GetStatusTable and AceConfigDialog:GetStatusTable(APP)
+    top = top and top.groups and top.groups.selected
+    if not open or (top == "cooldowns" and ns.CurrentSub() ~= (picker.sub or "smartTab")) then picker = nil end
+end
 -- The first set-up of a rule type's cue, shared by the "+ New rule" type list (CreateRuleOfType below) and the auto-populate table
 -- (AutoPicker.lua, Options 0.6.45): Icon -> icon cue (spell icon, 64 x 64, gray while on cooldown); Texture -> texture cue; Progress
 -- Texture -> texture cue with fill and overlay, base at 0.35; Text -> text cue (the duration text, no art); Sound / Speech -> that cue.
@@ -327,9 +347,9 @@ local function StartNewRule(fid)
         local sub = (ns.pickOrigin == "cooldowns" or ns.pickOrigin == "smartcat") and ns.CurrentSub() or nil
         ns.pickSub = (sub == "enabledTab" or sub == "draftsTab" or sub == "disabledTab" or sub == "smartTab") and sub or nil
     end
-    picker = { folder = fid }
+    picker = { folder = fid, sub = ns.pickSub or "smartTab" }
+    ns.GoPicker()   -- (0.6.79) the sub-tab first, so the redraw below (and its ns.PickerSync) already sees the picker's own sub-tab
     Notify()
-    ns.GoPicker()
 end
 -- Auto-populate: one rule per spell of the current class / spec whose base cooldown is >= the folder's threshold.
 -- Rules already in this folder (or its subfolders) for the same spell are skipped, so it is safe to run again after a
@@ -1099,12 +1119,12 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
             local a = all.args[k]
             if a then
                 local orig = a.hidden
-                a.hidden = function(...) if picker then return true end; if type(orig) == "function" then return orig(...) end; return orig end
+                a.hidden = function(info, ...) if PickerShown(info) then return true end; if type(orig) == "function" then return orig(info, ...) end; return orig end
             end
         end
         -- Picker descriptions are kept to ONE line (about 55 characters) on purpose: a row that wraps to 2-3 lines was measured before
         -- its real width was known and came out too short, so the next row / the External header / Cancel drew over it.
-        all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function() return not picker end }
+        all.args.pickerHdr = { type = "header", order = 0.1, name = "Choose what this rule shows", hidden = function(info) return not PickerShown(info) end }
         local TI = ns.TypeIcon or function(_, f) return f end
         all.args.pickIcon = Entry(0.2, TI("icon", "Spell_Holy_PowerWordShield"), "Icon", "Shows a spell icon with an optional cooldown overlay", "icon")
         all.args.pickBar = Entry(0.4, TI("progressbar", "Ability_Rogue_Sprint"), "Progress Bar", "A bar with name, timer, and icon", "bar")
@@ -1116,24 +1136,25 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
         all.args.pickSGroup = Entry(0.63, TI("stgroup", "INV_Misc_Bag_10"), "Static Group", "A container with fixed X / Y positions for its elements", "sgroup")
         all.args.pickCustom = Entry(0.64, 1669494, "Custom", "A blank rule with no display, sound, or cues", "custom")
         all.args.pickImport = Entry(0.66, TI("import", "INV_Scroll_03"), "Import", "Import from an encoded string (opens the Import window)", "import")
-        all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function() return not picker end }   -- empty rows: keeps Cancel clear of the last row
+        all.args.pickGap = { type = "description", order = 0.85, width = "full", fontSize = "large", name = " \n ", hidden = function(info) return not PickerShown(info) end }   -- empty rows: keeps Cancel clear of the last row
         all.args.pickCancel = { type = "execute", order = 0.9, name = "Cancel", width = "half", func = function() picker = nil; local o = ns.pickOrigin; ns.pickOrigin = nil; Notify(); if ns.pickSub then ns.GoPicker() else ns.GoHome(o) end; ns.pickSub = nil end }
         for _, k in ipairs({ "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickSound", "pickDGroup", "pickSGroup", "pickCustom", "pickImport", "pickCancel" }) do
-            all.args[k].hidden = function() return not picker end
+            all.args[k].hidden = function(info) return not PickerShown(info) end
         end
     end
     -- The picker also lives on the Loaded, Disabled and Drafts pages, so New Rule keeps the tab it was pressed in. The same row tables are
-    -- shared (their hidden functions only look at `picker`); the page's other non-group entries hide while the picker is open.
-    ns.PickerInto = function(args)
+    -- shared (their hidden functions look at `picker` and the page's sub-tab); the page's other non-group entries hide while the picker is open.
+    -- (0.6.79; #487) withBoxes: also hide the page's inline boxes (the Drafts list is one inline box per draft) while the picker is open
+    ns.PickerInto = function(args, withBoxes)
         if not (args and all.args.pickIcon) then return end
         for _, k in ipairs({ "pickerHdr", "pickIcon", "pickBar", "pickProg", "pickText", "pickTex", "pickDGroup", "pickSound", "pickSGroup", "pickCustom", "pickImport", "pickGap", "pickCancel" }) do
             args[k] = all.args[k]
         end
         for k, a in pairs(args) do
-            if type(a) == "table" and a.type ~= "group" and not tostring(k):match("^pick") and not a.xuiPickWrap then
+            if type(a) == "table" and (a.type ~= "group" or (withBoxes and a.inline)) and not tostring(k):match("^pick") and not a.xuiPickWrap then
                 a.xuiPickWrap = true
                 local orig = a.hidden
-                a.hidden = function(...) if picker then return true end; if type(orig) == "function" then return orig(...) end; return orig end
+                a.hidden = function(info, ...) if PickerShown(info) then return true end; if type(orig) == "function" then return orig(info, ...) end; return orig end
             end
         end
     end
@@ -1155,7 +1176,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
     local smartTab = { type = "group", name = "Smart Categories", order = 1, childGroups = "tree", args = { all = all } }
     local draftsTab = ns.BuildDraftsPage and ns.BuildDraftsPage() or nil
     if draftsTab then
-        draftsTab.order = 4; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args)
+        draftsTab.order = 4; draftsTab.name = "Drafts"; ns.PickerInto(draftsTab.args, true)
         -- 0.6.4 (Xaya): always shown; with drafts off it explains them and offers the switch (Drafts.lua BuildDraftsPage)
         draftsTab.hidden = nil
     end

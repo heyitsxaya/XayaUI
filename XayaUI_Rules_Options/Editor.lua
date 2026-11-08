@@ -230,21 +230,36 @@ function ns.ClassChoices()
     return list
 end
 local specCache
+-- (Rules_Options 0.6.79; #476, debug W1: "missing devourer") Each class's specs come from the game's own count,
+-- C_SpecializationInfo.GetNumSpecializationsForClassID(classID) -> specCount (12.1.5 docs), read index by index with
+-- GetSpecializationInfoForClassID(classID, index: luaIndex, gender) -> id, name, description, icon, role, ... (12.1.5 docs).
+-- An index the game answers with nothing is skipped, never the end of the list (it was `for si = 1, 4` stopping at the first empty
+-- index, which left out Demon Hunter - Devourer, spec 1480). The same count-and-skip loop is what Game Data Capture used in game on
+-- 2026-11-01 (docs/reference/spells/: Devourer 1480, Havoc 577, Vengeance 581). No count from the game: indexes 1 to 4, skipping gaps.
+-- The game's "Initial" specs (before a spec is chosen; Blizzard's client data, docs/reference/content/classes.json, build 12.1.5.70783)
+-- are never offered. Neither API entry marks them, so they are left out by spec ID.
+local INITIAL_SPECS = { [1444] = true, [1446] = true, [1447] = true, [1448] = true, [1449] = true, [1450] = true, [1451] = true,
+    [1452] = true, [1453] = true, [1454] = true, [1455] = true, [1456] = true, [1465] = true }
 local function SpecChoicesAll()
     if specCache then return specCache end
     local list = {}
     local nClasses = (GetNumClasses and GetNumClasses()) or 0
-    local infoFn = (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfoForClassID) or GetSpecializationInfoForClassID
+    local infoFn = GetSpecializationInfoForClassID
+    local countFn = C_SpecializationInfo and C_SpecializationInfo.GetNumSpecializationsForClassID
     if infoFn and nClasses > 0 and GetClassInfo then
         for ci = 1, nClasses do
             local okC, cname, cfile, cid = pcall(GetClassInfo, ci)
             if okC and cid and cfile then
                 local colored = (ClassName(cfile))
-                for si = 1, 4 do
+                local okN, n = false, nil
+                if countFn then okN, n = pcall(countFn, cid) end
+                n = (okN and type(n) == "number" and n > 0) and n or 4
+                for si = 1, n do
                     local ok, id, name, _, icon = pcall(infoFn, cid, si)
-                    if not ok or not id then break end
-                    list[#list + 1] = { key = cfile .. ":" .. id, id = tostring(id), class = cfile,
-                        text = (icon and ("|T" .. icon .. ":18:18|t  ") or "") .. colored .. "  -  " .. (name or tostring(id)) }
+                    if ok and type(id) == "number" and id > 0 and not INITIAL_SPECS[id] then
+                        list[#list + 1] = { key = cfile .. ":" .. id, id = tostring(id), class = cfile,
+                            text = (icon and ("|T" .. icon .. ":18:18|t  ") or "") .. colored .. "  -  " .. (name or tostring(id)) }
+                    end
                 end
             end
         end

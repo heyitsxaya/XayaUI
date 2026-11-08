@@ -1404,63 +1404,17 @@ local function SkinRow(w, fn)
     end
     f.xuiHL:Show()
     Flat(f, { 0.04, 0.04, 0.04, 0.35 + A() * 0.4 }, { 0, 0, 0, 0 })   -- fill only: no outline around each row
-    -- icon in its own column (left), thin divider, then the title + description text
+    -- (Options 0.6.94; #484 / #487, debug W1) Every row keeps AceGUI's own Label layout: the icon at the row's left edge, the title and
+    -- description 4 px to its right, and the row as tall as its icon or its text, whichever is taller, measured again by AceGUI each
+    -- time the row's width is set. Until 0.6.93 this function moved the icon 8 px in and the text 18 px after it and floored the row at
+    -- icon + 40 px, but each row's re-layout of the list (its DoLayout) put every EARLIER row back to AceGUI's layout, so only the last
+    -- row (Import) kept the moved icon / text ("import button has wrong alignment", #484), and every row was drawn 76 px tall while the
+    -- list stacked them at their AceGUI height (39 px apart in the stand-in), so the rows' boxes overlapped (#487). The icon crop and
+    -- the vertically centred text are what every row already showed, so they stay.
     local img, lab = w.image, w.label
-    if img and lab and w.imageshown then
-        local iw, ih = img:GetWidth(), img:GetHeight()
-        local function Place()   -- icon column, divider, text column (AceGUI re-anchors these on every layout, so this runs again after one)
-            local fw = f:GetWidth() or 0   -- the real width now (AceGUI's cached f.width goes stale when the scrollbar appears)
-            img:ClearAllPoints(); img:SetPoint("LEFT", f, "LEFT", 8, 0)
-            if ns.TypeIconCoords then img:SetTexCoord(ns.TypeIconCoords()) end   -- zoomed, square-edged icon
-            lab:ClearAllPoints(); lab:SetPoint("LEFT", img, "RIGHT", 18, 0)
-            lab:SetWidth(math.max(60, fw - 8 - iw - 18 - 16))
-            lab:SetJustifyV("MIDDLE")
-            if f.xuiSep then f.xuiSep:Hide() end   -- divider removed (2026-10-31): fully invisible
-        end
-        Place()
-        -- before the first real layout the row is 0 px wide, so the text would measure as a very tall 60 px column: use the icon height then
-        local textH = ((f:GetWidth() or 0) >= 150) and math.ceil(lab:GetStringHeight()) + 2 or 0
-        local need = math.max(ih, textH) + 40   -- the extra pixels are the gap between rows now that the outline is gone (was 20, doubled on request)
-        f.xuiMinH = need   -- floor: AceGUI's Label resets its frame height to the unwrapped text height on layout
-        if not rawget(f, "SetHeight") then
-            local real = f.SetHeight
-            f.SetHeight = function(self, h) real(self, math.max(h or 0, self.xuiMinH or 0)) end
-        end
-        if math.abs(f:GetHeight() - need) > 0.5 then
-            f:SetHeight(need); f.height = need
-            if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
-            Place()
-        end
-        f.height = need
-        -- The text only wraps correctly once the row has its real width (a 3-line description measured too early left the row
-        -- too short, and the next heading / button drew over it). Measure again whenever the row's width changes.
-        if not f.xuiRowSized then
-            f.xuiRowSized = true
-            f:HookScript("OnSizeChanged", function(self, nw)
-                if not self.xuiMinH or self.xuiRowBusy or not nw or nw < 150 then return end
-                if self.xuiLastW and math.abs(self.xuiLastW - nw) < 1 then return end
-                self.xuiLastW = nw
-                self.xuiRowBusy = true
-                if C_Timer and C_Timer.After then
-                    C_Timer.After(0, function()
-                        self.xuiRowBusy = nil
-                        if ns.Trace then ns.Trace("row re-measure (runs a frame LATE)") end
-                        if not (w.frame == self and w.label and w.image and self.xuiMinH) then return end
-                        Place()
-                        local th = math.ceil(w.label:GetStringHeight()) + 2
-                        local nn = math.max(ih, th) + 40
-                        if math.abs(nn - self.xuiMinH) > 0.5 then
-                            self.xuiMinH = nn; self.height = nn
-                            self:SetHeight(nn)
-                            if w.parent and w.parent.DoLayout then w.parent:DoLayout() end
-                        end
-                    end)
-                else self.xuiRowBusy = nil end
-            end)
-        end
-    elseif lab then
-        lab:SetJustifyV("MIDDLE")
-    end
+    if img and w.imageshown and ns.TypeIconCoords then img:SetTexCoord(ns.TypeIconCoords()) end   -- zoomed, square-edged icon
+    if lab then lab:SetJustifyV("MIDDLE") end
+    if f.xuiSep then f.xuiSep:Hide() end   -- divider removed (2026-10-31): fully invisible
     OnRelease(w, function(self)
         if self.frame.xuiSep then self.frame.xuiSep:Hide() end
         if self.image then self.image:SetTexCoord(0, 1, 0, 1) end   -- recycled label: undo the icon crop
