@@ -186,6 +186,7 @@ RESTORES = [
     "self.text:SetTextColor(1, 0.82, 0); self.xuiFont = nil",                         # heading colour given back on release
     "T:SetVertexColor(1, 1, 1, 1)",                                                  # icon un-tint / given back
     "self.text:SetTextColor(1, 1, 1); self.text:SetShadowOffset(1, -1)",             # text given back on release
+    "fs:SetTextColor(1, 0.82, 0) else fs:SetTextColor(0.5, 0.5, 0.5)",              # an AceGUI widget's inner button text given back on release (W3)
 ]
 
 

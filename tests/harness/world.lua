@@ -480,7 +480,14 @@ end
 SlashCmdList = {}
 hash_SlashCmdList = {}
 -- what FrameXML templates put on a frame (only the parts addons reach for)
-local function named(f, suffix, kind) local n = f._name and (f._name .. suffix) or nil; return new(kind or "Texture", n, f) end
+-- a template's own parts; textures and font strings are regions of the frame, as in the game (GetRegions lists a template's art: debug
+-- W3, the flat button skin hides Blizzard's red Left / Middle / Right that way, and the stand-in did not list them)
+local function named(f, suffix, kind)
+  local n = f._name and (f._name .. suffix) or nil
+  local o = new(kind or "Texture", n, f)
+  if (kind or "Texture") == "Texture" or kind == "FontString" then f._regions[#f._regions + 1] = o end
+  return o
+end
 W.templateInit = {
   UIPanelButtonTemplate = function(f) f.Left = named(f, "Left"); f.Middle = named(f, "Middle"); f.Right = named(f, "Right"); f.Text = named(f, "Text", "FontString"); f._fs = f.Text end,
   UIPanelCloseButton = function(f) end,

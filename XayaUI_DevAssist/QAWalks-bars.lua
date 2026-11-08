@@ -73,6 +73,18 @@ local function SelectedRuleIndex()
     if type(sel) ~= "string" then return nil end
     return tonumber(sel:match("rule(%d+)$"))
 end
+-- (0.7.64, debug W3) the same step for every walkthrough that removes its test rules from the list directly (code-move, platform,
+-- rule-editor-folder): call it right after the removal with `first`, the lowest list place a removed rule had. When the Rules
+-- sidebar's selected row is at or after that place, it now names ANOTHER rule (rows are keyed by place), so the editor goes back to
+-- the list (GoHome), as Delete this rule does. Returns whether it went back, and the row index still selected on a moved row (or nil).
+function QA.LeaveMovedRuleRow(first)
+    if not first then return false, nil end
+    local left = false
+    local sel = SelectedRuleIndex()
+    if sel and sel >= first and RE().GoHome then pcall(RE().GoHome); left = true end
+    sel = SelectedRuleIndex()
+    return left, (sel and sel >= first) and sel or nil
+end
 local function RemoveAll()
     local ns = NS()
     if not ns then return end
@@ -90,10 +102,9 @@ local function RemoveAll()
     -- would now open ANOTHER rule's editor (the test rule's own row, or one of yours). Do what Delete this rule does (Editor.lua):
     -- go back to the list (GoHome). T.leftEditor / T.shifted record it for the check.
     T.leftEditor, T.shifted = nil, nil
-    local sel = first and SelectedRuleIndex()
-    if sel and sel >= first and RE().GoHome then pcall(RE().GoHome); T.leftEditor = true end
-    sel = first and SelectedRuleIndex()
-    if sel and sel >= first then T.shifted = sel end   -- (still on a moved row: the check says Fail)
+    local left, still = QA.LeaveMovedRuleRow(first)
+    T.leftEditor = left or nil
+    T.shifted = still   -- (still on a moved row: the check says Fail)
     if T.group then
         for i = #ns.folders, 1, -1 do if ns.folders[i] == T.group then table.remove(ns.folders, i) end end
     end

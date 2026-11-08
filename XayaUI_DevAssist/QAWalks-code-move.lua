@@ -76,10 +76,13 @@ local function HasBuff(id)
 end
 local function Cleanup()
     local ns = NS(); if not (ns and ns.rules) then return end
+    local first
     for i = #ns.rules, 1, -1 do
         local r = ns.rules[i]
-        if Tagged(r) then if ns.DropVisual then pcall(ns.DropVisual, r) end; table.remove(ns.rules, i) end
+        if Tagged(r) then if ns.DropVisual then pcall(ns.DropVisual, r) end; table.remove(ns.rules, i); first = i end
     end
+    -- (0.7.64, debug W3) an editor open on a removed rule's row would slide onto the next rule: back to the list (QAWalks-bars.lua)
+    if QA.LeaveMovedRuleRow then QA.LeaveMovedRuleRow(first) end
     local b = ns.RecycleDB and ns.RecycleDB()
     local ids = {}
     for _, it in ipairs(b and b.items or {}) do

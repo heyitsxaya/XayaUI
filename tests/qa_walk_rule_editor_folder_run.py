@@ -54,12 +54,34 @@ check("part 1 step 4: the trigger spell changes (verdict Pass)", okS and okC and
 W.tick(0.1, 10)   -- the undo journal closes an edit's step half a second after it
 okS, errS, okC, v, n = Run("rule-editor-folder", 5)
 check("part 1 step 5: Ctrl+Z puts the trigger spell back (verdict Pass)", okS and okC and v == true, tostring(errS) .. " " .. tostring(n))
+-- (Dev Assist 0.7.64, debug W3) her case for the clean-up: the QA rule's editor is open and one of her rules comes after it in the list.
+-- Rules rows are keyed by place ("rule" .. i): before 0.7.64 removing the QA rule left the selection on that place, so the editor (now,
+-- or the next time the window opens) showed her next rule.
+local later = ns.NewRule(); later.name = "Her later rule"; later.enabled = true; ns.NormalizeRule(later); ns.rules[#ns.rules + 1] = later
+pcall(ns.MarkDirty); W.tick(0.1, 3)
+local qIdx; for i, r in ipairs(ns.rules) do if r.qaRuleEditor then qIdx = i end end
+local function SelIdx() local S = ns.RulesTreeStatus and ns.RulesTreeStatus(); return S and type(S.selected) == "string" and tonumber(S.selected:match("rule(%d+)$")) end
+check("(the QA rule's row is selected before the clean-up, with her rule after it)", qIdx ~= nil and SelIdx() == qIdx and ns.rules[qIdx + 1] == later,
+  tostring(SelIdx()) .. " vs " .. tostring(qIdx))
 if ns.ToggleUI then pcall(ns.ToggleUI) end; W.tick(0.1, 3)   -- the player closes the window
 okS, errS, okC, v, n = Run("rule-editor-folder", 6)
 local left = 0
 for _, r in ipairs(ns.rules or {}) do if r.qaRuleEditor then left = left + 1 end end
 check("part 1 step 6: window closed, no error, QA rule removed, XayaUI Rules set to off (verdict Pass)",
   okS and okC and v == true and left == 0 and C_AddOns.GetAddOnEnableState("XayaUI_Rules") == 0, tostring(errS) .. " " .. tostring(n))
+local sAfter = SelIdx()
+check("part 1 step 6: the clean-up did not leave the Rules list on her next rule (no row at the QA rule's old place or after is selected; back to the list, as Delete this rule does)",
+  qIdx ~= nil and not (sAfter and sAfter >= qIdx), tostring(sAfter))
+-- negative control: a clean-up that left the list on a moved row gives Fail
+if QA.RuleEditorFolderCleaned then
+  QA.RuleEditorFolderCleaned.shifted = 3
+  local okN, vN, nN = pcall(QA.walks["rule-editor-folder"].steps[6].check)   -- (the check alone: Do it for me would clean up again)
+  check("negative: a selection left on another rule's row gives Fail", okN and vN == false and tostring(nN):find("another rule", 1, true) ~= nil, tostring(vN) .. " " .. tostring(nN))
+  QA.RuleEditorFolderCleaned.shifted = nil
+else
+  check("negative: a selection left on another rule's row gives Fail", false, "QA.RuleEditorFolderCleaned missing")
+end
+for i = #ns.rules, 1, -1 do if ns.rules[i] == later then table.remove(ns.rules, i) end end
 local _, errP = Run("rule-editor-folder-off", 1)
 check("part 2 step 1 before the /reload: it asks for the /reload", tostring(errP):find("not reloaded yet", 1, true), errP)
 return R

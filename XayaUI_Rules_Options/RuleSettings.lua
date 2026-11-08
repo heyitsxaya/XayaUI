@@ -106,4 +106,5 @@ do
         RE[n] = ns[n]
     end
     RE.NewRule = ns.UI and ns.UI.NewRule   -- (0.6.79) + New Rule, for the same walkthrough
+    RE.RuleSearch = ns.RuleSearch   -- (0.6.81, debug W3) the rule option search (Find, FindControl, folded), for "debug-w3" (#483)
 end
