@@ -22,6 +22,29 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Debug Batch W3
+
+### Options 0.6.97
+
+**Settings Window**
+- Fixed an issue where collapsing the settings window moved its title-bar buttons next to the title. The Close, ? and collapse arrow now stay where they are, also after a redraw while collapsed.
+- The window's bottom Close button, the ? button and the collapse arrow now have XayaUI's flat look instead of Blizzard's red buttons, while the window's own skin is on.
+- Fixed an issue where the Accept button under "Theme string" was red. Accept, and the Okay button of text boxes, are now flat.
+- Fixed an issue where the Reset buttons on the Theme page did not line up and could sit past their box. Reset now sits at the same place in every box, and the color swatches are a share of the box instead of a fixed width.
+- Fixed an issue where "Delete saved" ran to the very edge of the Theme page. It now stays inside the page.
+  *Developers' notes: Not yet tested in game (QA B287 to B289; walkthrough "debug-w3"). Issues #468, #471 and #478. Not built: the window's X button stays as it is (its X is its art, and which red button you meant is a question), and the Theme page's opacity default is unchanged. "Delete saved" is partly inferred: in game the edge you saw is assumed to be the same flush row.*
+
+### Rules Options 0.6.81
+
+**Rule Editor**
+- Fixed an issue where clicking a rule option search result did not show the option. The click now folds the results, opens a closed section on the way and scrolls to the option.
+  *Developers' notes: Not yet tested in game (QA B290). Issue #483.*
+
+### Dev Assist 0.7.64
+
+**In-game QA**
+- Added the walkthrough "debug-w3", and fixed clean-up steps of earlier walkthroughs.
+
 ## 2026-11-08 — Debug Batch W2
 
 ### Rules 0.6.79
