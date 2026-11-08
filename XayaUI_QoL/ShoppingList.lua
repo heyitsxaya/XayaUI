@@ -245,7 +245,7 @@ end
 -- The one-per-character gem (C10): when none is in your sockets, the first empty socket gets it and the rest get your gem.
 function Shop.Missing(c)
     local out = {}
-    local tk = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg() or nil
+    local tk = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg() or nil   -- (QoL 0.7.53: QoL's half of the toolkit settings, CharacterPane.lua)
     local wanted = CM.EnchantSlots(tk)
     local infos, oneOfWorn, firstEmpty = {}, false, nil
     for _, s in ipairs(CM.SLOTS) do

@@ -209,3 +209,35 @@ function row(model, key) for _, r in ipairs(model) do if r.key == key then retur
 function has(r, pat) for _, l in ipairs(r and r.lines or {}) do if l:find(pat, 1, true) then return true end end; return false end
 function pair(it, label) for _, p in ipairs(it and it.pairs or {}) do if p.label == label then return p.value, p.tone end end end
 function tipHas(it, pat) for _, l in ipairs(it and it.tip or {}) do if l:find(pat, 1, true) then return true end end; return false end
+
+-- (character pane split stage 2: QoL 0.7.53 / Bonus 0.6.37) the Character Toolkit's settings are in two halves now: the Stat
+-- Calculator panel's keys in XayaUI Bonus Features (ns.CharToolkit_Cfg, XayaUI_Bonus/CharacterToolkit.lua), the slot overlays' and
+-- the tooltip lines' in XayaUI QoL (ns.CharPane_ToolkitCfg, XayaUI_QoL/CharacterPane.lua); each has its own switch `enabled`. The tests
+-- written before the split set the toolkit up as one table: TKC() is that table (reads and writes each key in its half; `enabled` is
+-- written to both and read from the panel's), TKA() applies both halves, TKPage() is the two settings pages as one (the QoL page's
+-- parts and the Bonus page's, in one args table). TEST HELPERS only: the game has no such joined table.
+TK_QOL = { tooltips = true, overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true, enchantSlotsSet = true }
+function TKC()
+  local p = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg()
+  local q = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg()
+  if not (p or q) then return nil end
+  return setmetatable({}, {
+    __index = function(_, k) if TK_QOL[k] then return q and q[k] end; if p then return p[k] end; return q and q[k] end,
+    __newindex = function(_, k, v)
+      if k == "enabled" then if p then p[k] = v end; if q then q[k] = v end
+      elseif TK_QOL[k] then if q then q[k] = v end
+      elseif p then p[k] = v end
+    end })
+end
+function TKA()
+  if ns.CharPane_ToolkitApply then ns.CharPane_ToolkitApply() end
+  if ns.CharToolkit_Apply then ns.CharToolkit_Apply() end
+end
+function TKPage(notify)
+  local a = ns.BuildCharToolkitPanelPage and ns.BuildCharToolkitPanelPage(notify) or { args = {} }
+  local b = ns.BuildCharToolkitPage and ns.BuildCharToolkitPage(notify) or { args = {} }
+  local out = { name = a.name, xuiSwitch = a.xuiSwitch, childGroups = a.childGroups, type = a.type, args = {} }
+  for k, v in pairs(b.args or {}) do out.args[k] = v end
+  for k, v in pairs(a.args or {}) do out.args[k] = v end
+  return out
+end

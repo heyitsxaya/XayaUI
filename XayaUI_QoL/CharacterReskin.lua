@@ -2,6 +2,8 @@
 -- CharacterReskin.lua : Character Reskin (XayaUI QoL 0.7.14). Blizzard's character window in XayaUI's look. Own code, Blizzard's frames
 -- only. Off by default; while off nothing is created, hooked or changed. Its settings page is the settings window's Blizzard UI Reskin
 -- tab > Character Pane (module "reskin"; Xaya 2026-11-05: every reskin in one tab).
+-- (QoL 0.7.53, character pane split stage 1) the item level, enchant, gem and full stat list parts are QoL's own (QoL > Character Pane,
+-- its own switch) and run with the reskin on or off; the reskin is the look only (FeaturesOn / LookActive below).
 --
 -- Xaya, 2026-11-04: "also create a QoL Character Reskin option to toggle on or off"; "I want a reskin OF THE CHARACTER MENU AND NOTHING
 -- ELSE"; "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET"; "THIS window needs to look beautiful and CLEAN"; "prettify the character
@@ -112,6 +114,40 @@ local function Cfg()
 end
 ns.CharReskin_Cfg = Cfg
 
+-- (QoL 0.7.53, character pane split stage 1; fixes C20, the P5 side effect: with XayaUI Blizzard Reskin off the item level, enchant and
+-- gem blocks and the full stat list did not show, as they were drawn only while the reskin was on.) Xaya PS-53: "Character ui *reskin*
+-- is a blizzard change. Functionality changes or enhancements are separate."; Q5: "the simple character/dressing room UI with the
+-- ability to customize stat display overhaul is a qol feature; and just a simple clean ui reskin that serves as the visual base is the
+-- reskin". So this file has two parts that run on their own:
+--   * the LOOK (the switch `enabled` and chrome, stats, wide, widePx, tallPx, bgAlpha: Blizzard Reskin's half), only while the reskin
+--     is on (LookActive);
+--   * the FEATURES (ilvl, enchants, gems, statList and the stat list's choices: QoL's half), only while QoL's Character Pane switch is
+--     on (`features`, QoL's half; FeatActive), with the reskin on or off, with XayaUI Blizzard Reskin loaded or not.
+-- `features` was not a setting before: while it has never been set it takes the Character Reskin switch's value in effect (what decided
+-- the features before; a reskin switch saved for the next /reload counts after that reload), so nothing a player sees changes at the update. It is saved only once it is on (or set by the player), so a
+-- profile made with every default is unchanged. Where that value is read from: Blizzard Reskin's settings when that addon is on; when
+-- it is not loaded (known only after the login), the copy CueRulesDB still keeps from before P5 (ns.SettingsOldValue; INFERENCE: the
+-- closest saved value there is, as Blizzard Reskin's own settings cannot be read while it is off).
+local loggedIn = false
+if ns.AtLogin then ns.AtLogin(function() loggedIn = true end) end
+local function FeaturesOn()
+    if not ns.SettingsReady("qol") then return false end
+    Halves()
+    local f = featT.features
+    if f == nil then
+        local r
+        if lookT ~= lookOff then r = ns.SwitchInEffect("reskin.charreskin", lookT.enabled)   -- (as in effect: a switch saved for the next /reload waits for it)
+        elseif loggedIn and ns.SettingsOldValue then
+            local old = ns.SettingsOldValue("reskin", "characterReskin")
+            r = type(old) == "table" and old.enabled or nil
+        end
+        if r == true then featT.features = true; return true end
+        return false
+    end
+    return f == true
+end
+ns.CharReskin_FeaturesOn = FeaturesOn
+
 local diag = { applied = false, failed = false, lastError = nil, faded = 0, slots = 0, wide = "off" }
 ns.CharReskinDiag = diag
 
@@ -156,6 +192,19 @@ local function Own(t) own.all[#own.all + 1] = t; return t end
 local function SetOwnShown(on) for _, t in ipairs(own.all) do if t.SetShown then t:SetShown(on) end end end
 
 local Active, Guard   -- (defined in "On / off" below)
+local LookActive, FeatActive   -- (QoL 0.7.53, stage 1: the look and the features, each on its own; "On / off" below)
+-- (QoL 0.7.53, stage 1) what the drawing code reads: the settings, with each look part (chrome, the stat list's art, the wider window)
+-- false while the reskin is off and each feature part (item level, enchants, gems, the full stat list) false while QoL's Character
+-- Pane switch is off. Every other field reads through as it is.
+local LOOK_PARTS = { chrome = true, stats = true, wide = true }
+local FEAT_PARTS = { ilvl = true, enchants = true, gems = true, statList = true }
+local eff = setmetatable({}, { __index = function(_, k)
+    local v = cfg[k]
+    if LOOK_PARTS[k] then return (v and LookActive()) and true or false end
+    if FEAT_PARTS[k] then return (v and FeatActive()) and true or false end
+    return v
+end, __newindex = function() error("the drawing view is read only") end })
+local function Eff() if not Cfg() then return nil end return eff end
 
 -------------------------------------------------------------------------------
 -- The window
@@ -618,7 +667,7 @@ local function BlockItems(btn, slot, info, tip, c)
     if c.enchants then btn.xuiEnchant = row("xuiEnchantRow").text end
     if not info then return items end
     if c.enchants then
-        local tk = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg() or nil
+        local tk = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg() or nil   -- (QoL 0.7.53: QoL's half of the toolkit settings, CharacterPane.lua)
         local slotsWanted = CM.EnchantSlots(tk)
         local ench = tip and tip.enchant
         local it
@@ -722,7 +771,7 @@ local retries = 0
 local dupPending = false
 local function RecheckDup()
     dupPending = false
-    local c = Cfg()
+    local c = Eff()
     if not (Active() and c.ilvl) then return end
     local n = 0
     for _, s in ipairs(CM.SLOTS) do
@@ -768,7 +817,7 @@ local function QueueRelayout(c)
         if not d then diag.relayout = "the window's size changed; positions not readable in one of the two passes"
         elseif d > 0.5 then diag.relayout = ("the window's size changed; the positions read right after it differed by %.1f px from the next frame's: laid out again"):format(d)
         else diag.relayout = "the window's size changed; the same positions in both passes (laid out again anyway)" end
-        local c2 = Cfg()
+        local c2 = Eff()
         if c2 and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end
     end)
 end
@@ -804,7 +853,7 @@ UpdateSlots = function(c)
     local cf = _G.CharacterFrame
     if diag.noGeometry and retries < 3 and C_Timer and C_Timer.After and type(cf) == "table" and cf.IsShown and cf:IsShown() then
         retries = retries + 1
-        C_Timer.After(0, function() local c2 = Cfg(); if Active() and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end end)
+        C_Timer.After(0, function() local c2 = Eff(); if Active() and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end end)
     elseif not diag.noGeometry then retries = 0 end
     QueueRelayout(c)
 end
@@ -1013,13 +1062,13 @@ local function ApplyWide(c)
 end
 
 local function WideAndSlots()
-    local c = Cfg()
+    local c = Eff()
     ApplyWide(c)
     if Active() and (c.ilvl or c.enchants or c.gems) then UpdateSlots(c) end
 end
 WideRegen = function()
     WaitForCombatEnd(false)
-    local c = Cfg()
+    local c = Eff()
     if c and Active() and c.wide then Guard(WideAndSlots) else pcall(RestoreWide) end
 end
 HookWide = function()
@@ -1032,17 +1081,34 @@ HookWide = function()
             if ns.MapTrace then ns.MapTrace("Character Reskin: hook after CharacterFrame:UpdateSize") end
             wide.reset = true
             SizeChanged()
-            local c = Cfg()
+            local c = Eff()
             if c and Active() and c.wide then Guard(WideAndSlots) end
         end)
     end
     if type(pd) == "table" and pd.HookScript then
-        pd:HookScript("OnShow", function() local c = Cfg(); if c and Active() and c.wide then Guard(WideAndSlots) end end)
+        pd:HookScript("OnShow", function() local c = Eff(); if c and Active() and c.wide then Guard(WideAndSlots) end end)
     end
 end
 function ns.CharReskin_WideOn() return (wide.applied or wide.moved) and true or false end
 -- (QoL 0.7.33) XayaUI Dev Assist's /xui debug widthprobe asks this (it refuses while the wider window is on), through the service list
-ns.Provide("characterReskin", { WideOn = function() return ns.CharReskin_WideOn() end })
+-- (QoL 0.7.53, character pane split stage 1) read-only answers for XayaUI Dev Assist's walkthrough (QAWalks-character-split.lua): what is
+-- drawn on the character window now, counted from our own pieces
+ns.Provide("characterReskin", { WideOn = function() return ns.CharReskin_WideOn() end,
+    Drawn = function()
+        local il, en, so = 0, 0, 0
+        for _, s in ipairs(CM.SLOTS) do
+            local b = _G["Character" .. s[4]]
+            if type(b) == "table" then
+                if b.xuiIlvl and b.xuiIlvl.IsShown and b.xuiIlvl:IsShown() then il = il + 1 end
+                if b.xuiEnchant and b.xuiEnchant.IsShown and b.xuiEnchant:IsShown() then en = en + 1 end
+                for _, f in ipairs(b.xuiSockets or {}) do if f.IsShown and f:IsShown() then so = so + 1 end end
+            end
+        end
+        local L = own.statList
+        return { ilvl = il, enchants = en, sockets = so, statList = (L ~= nil and L:IsShown()) and true or false,
+            look = LookActive() == true, features = FeatActive() == true, featuresSaved = (Cfg() or {}).features,
+            reskinLoaded = ns.SettingsReady("reskin"), tabOn = ns.ReskinTabOn() == true, faded = diag.faded or 0 }
+    end })
 
 -------------------------------------------------------------------------------
 -- The stat list (Blizzard's CharacterStatsPane)
@@ -1238,7 +1304,7 @@ local function UpdateStatList(c)
                         if not (GameTooltip and self.item) then return end
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                         GameTooltip:AddLine(self.name or "", 1, 1, 1)
-                        local lines = ns.CharToolkit_TooltipLines and ns.CharToolkit_TooltipLines(self.item) or {}
+                        local lines = CM.TooltipLines(self.item)   -- (QoL 0.7.53: the model's, CharacterModel.lua)
                         for i, l in ipairs(lines) do
                             if i > 1 then
                                 if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
@@ -1271,7 +1337,7 @@ local function HideStatList() if own.statList then own.statList:Hide() end end
 local function QueueStatList()
     if listPending then return end
     listPending = true
-    local function run() listPending = false; local c = Cfg(); if c and Active() and c.statList then Guard(UpdateStatList, c) end end
+    local function run() listPending = false; local c = Eff(); if c and Active() and c.statList then Guard(UpdateStatList, c) end end
     if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
 end
 function ns.CharReskin_StatListRecs() return own.statList and own.statList:IsShown() and own.statList.recs or nil end   -- (tests)
@@ -1283,13 +1349,19 @@ local hooked = false
 -- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.32, S1 #48: off there turns every reskin off)
 -- (QoL 0.7.50; PS-57, #480) the switch takes effect on reload: this session runs with the value in effect (Modules.lua section 5c)
 local function On(c) return c and ns.SwitchInEffect("reskin.charreskin", c.enabled) and ns.ReskinTabOn() and true or false end
-Active = function() local c = Cfg(); return On(c) and not diag.failed end
+-- (QoL 0.7.53, stage 1) the look runs while the reskin is on; the features while QoL's Character Pane switch is on (FeaturesOn above);
+-- Active = either of them (the hooks and the window's events are there while one is on)
+LookActive = function() local c = Cfg(); return On(c) and not diag.failed end
+FeatActive = function() return Cfg() ~= nil and FeaturesOn() and not diag.failed end
+Active = function() return LookActive() or FeatActive() end
 function ns.CharReskin_Active() return Active() == true end
+function ns.CharReskin_LookActive() return LookActive() == true end
+function ns.CharReskin_FeaturesActive() return FeatActive() == true end
 -- the Character Toolkit's slot overlays leave out their item level while this draws one (one number per slot: her screenshot had two)
-function ns.CharReskin_DrawsIlvl() local c = Cfg(); return (Active() and c.ilvl == true) and true or false end
-function ns.CharReskin_DrawsEnchants() local c = Cfg(); return (Active() and c.enchants == true) and true or false end
+function ns.CharReskin_DrawsIlvl() local c = Eff(); return (c and c.ilvl == true) and true or false end
+function ns.CharReskin_DrawsEnchants() local c = Eff(); return (c and c.enchants == true) and true or false end
 -- (QoL 0.7.19) and their empty-socket mark while this draws the sockets
-function ns.CharReskin_DrawsSockets() local c = Cfg(); return (Active() and c.gems == true) and true or false end
+function ns.CharReskin_DrawsSockets() local c = Eff(); return (c and c.gems == true) and true or false end
 
 Guard = function(fn, ...)
     local ok, err = pcall(fn, ...)
@@ -1321,7 +1393,7 @@ local function SetThemeListener(on)
 end
 
 local function ApplyNow()
-    local c = Cfg()
+    local c = Eff()
     if not c then return end
     if not Active() then
         RestoreAll(); SetOwnShown(false); diag.applied = false; SetEvents(nil); SetThemeListener(false)
@@ -1329,9 +1401,10 @@ local function ApplyNow()
         if ns.CharToolkit_UpdateOverlays then pcall(ns.CharToolkit_UpdateOverlays) end
         return
     end
-    -- a part switched off gives its pieces back: start from Blizzard's look, then apply the parts that are on
+    -- a part switched off gives its pieces back: start from Blizzard's look, then apply the parts that are on (QoL 0.7.53: c is the
+    -- drawing view, so with the reskin off no look part is on, and with the Character Pane switch off no feature part is)
     RestoreAll(); SetOwnShown(false)
-    PaintBackground(c)
+    if LookActive() then PaintBackground(c) end
     if c.chrome then StyleWindow(c) end
     ApplyWide(c)
     UpdateSlots(c)
@@ -1355,32 +1428,32 @@ local function Hook()
     -- reskin is on (this function runs only then: V14).
     if ns.RegisterElement then
         ns.RegisterElement({ key = "characterPane", label = "Character window", blizzard = true, page = { "reskin", "charreskin" },
-            targets = function(add) local cf2 = _G.CharacterFrame; if Active() and type(cf2) == "table" then add(cf2, "OnMouseUp") end end })
+            targets = function(add) local cf2 = _G.CharacterFrame; if LookActive() and type(cf2) == "table" then add(cf2, "OnMouseUp") end end })
     end
     -- the model's camera buttons: the blocks that meet them hide while they show (post-hooks; they return at once while off)
     local m = _G.CharacterModelScene
     local camf = type(m) == "table" and m.ControlFrame or nil
     if type(camf) == "table" and camf.HookScript then
-        camf:HookScript("OnShow", function() local c = Cfg(); if Active() and (c.enchants or c.gems) then Guard(UpdateCamHide) end end)
-        camf:HookScript("OnHide", function() local c = Cfg(); if Active() and (c.enchants or c.gems) then Guard(UpdateCamHide) end end)
+        camf:HookScript("OnShow", function() local c = Eff(); if Active() and (c.enchants or c.gems) then Guard(UpdateCamHide) end end)
+        camf:HookScript("OnHide", function() local c = Eff(); if Active() and (c.enchants or c.gems) then Guard(UpdateCamHide) end end)
     end
     if type(hooksecurefunc) == "function" then
         if type(_G.PaperDollItemSlotButton_Update) == "function" then
             hooksecurefunc("PaperDollItemSlotButton_Update", function(btn)
                 if not Active() then return end
-                local c = Cfg()
+                local c = Eff()
                 if Guard(UpdateSlot, btn, c) then QueueDupCheck(c) end
             end)
         end
         if type(_G.PaperDollFrame_UpdateStats) == "function" then
             hooksecurefunc("PaperDollFrame_UpdateStats", function()
-                local c = Cfg()
+                local c = Eff()
                 if Active() and c.stats then Guard(StyleStats) end
                 if Active() and c.statList then QueueStatList() end   -- (QoL 0.7.31; at most once per frame)
             end)
         end
         if type(_G.PanelTemplates_SetTab) == "function" then
-            hooksecurefunc("PanelTemplates_SetTab", function(frame) local c = Cfg(); if frame == _G.CharacterFrame and Active() and c.chrome then Guard(StyleTabs) end end)
+            hooksecurefunc("PanelTemplates_SetTab", function(frame) local c = Eff(); if frame == _G.CharacterFrame and Active() and c.chrome then Guard(StyleTabs) end end)
         end
     end
     -- item data that arrives later (an item level, a gem's name or a tooltip line the game had not sent yet) redraws the slots, once
@@ -1392,7 +1465,7 @@ local function Hook()
         local cf2 = _G.CharacterFrame
         if not (cf2 and cf2.IsShown and cf2:IsShown()) then return end
         pending = true
-        C_Timer.After(0, function() pending = false; if Active() then Guard(UpdateSlots, Cfg()) end end)
+        C_Timer.After(0, function() pending = false; if Active() then Guard(UpdateSlots, Eff()) end end)
     end)
     own.events = ev
 end
@@ -1400,23 +1473,25 @@ end
 function ns.CharReskin_Apply()
     local c = Cfg()
     if not c then return end
-    if On(c) then Hook() end
+    if Active() then Hook() end   -- (QoL 0.7.53: the look or the features; before, the reskin's switch only)
     if hooked then Guard(ApplyNow) end
 end
 -- (P5) once both halves of the settings are open: QoL's at this addon's load, Blizzard Reskin's at that addon's load (it loads after
--- this one); with XayaUI Blizzard Reskin switched off this never runs (the reskin is off, nothing is made)
+-- this one). (QoL 0.7.53, stage 1) and at the login, when every addon that loads has loaded: with XayaUI Blizzard Reskin switched off
+-- the features (QoL's half) still run then; the look stays off (nothing of it is made)
 ns.WhenSettingsReady("qol", function()
-    ns.WhenSettingsReady("reskin", function() local c = Cfg(); if On(c) then ns.CharReskin_Apply() end end)
+    ns.WhenSettingsReady("reskin", function() if Active() then ns.CharReskin_Apply() end end)
+    if ns.AtLogin then ns.AtLogin(function() if Active() then ns.CharReskin_Apply() end end) end
 end)
 ns.RegisterReskin("charreskin", function() ns.CharReskin_Apply() end)   -- (the Reskin tab's switch: core ns.SetReskinTab walks these)
 
 -------------------------------------------------------------------------------
 -- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin)
 -------------------------------------------------------------------------------
-function ns.BuildCharReskinPage(Notify)
+-- (QoL 0.7.53, stage 1) the controls both pages make the same way
+local function PageControls(Notify)
     local function C() return Cfg() or DEFAULTS end
     local function Changed() ns.CharReskin_Apply(); if Notify then Notify() end end
-    local function isOff() return not C().enabled end
     local function T(key, order, name, desc, width, hidden)
         return { type = "toggle", order = order, name = name, desc = desc, width = width, disabled = hidden,
             get = function() return C()[key] end, set = function(_, v) C()[key] = v and true or false; Changed() end }
@@ -1426,6 +1501,17 @@ function ns.BuildCharReskinPage(Notify)
             disabled = disabled, get = function() return C()[key] end,
             set = function(_, v) local lim = LIMITS[key]; C()[key] = math.max(lim[1], math.min(lim[2], tonumber(v) or DEFAULTS[key])); Changed() end }
     end
+    return C, Changed, T, R
+end
+
+-------------------------------------------------------------------------------
+-- (QoL 0.7.53, character pane split stage 1) Settings page: QoL > Character Pane. The feature controls that sat on Blizzard Reskin >
+-- Character Pane until QoL 0.7.52 (item level, enchants, gems, the full stat list and its Stat list page), same labels, same order;
+-- they read and write QoL's half only. Its on / off is the tick box on its row (QoL's `features`; FeaturesOn above).
+-------------------------------------------------------------------------------
+function ns.BuildCharPanePage(Notify)
+    local C, Changed, T = PageControls(Notify)
+    local function isOff() return not FeaturesOn() end
     -- (QoL 0.7.31) the full stat list's own page (her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"): every
     -- group heading and stat line of Character Stats as the game gives them for this character now (other classes' resources differ)
     local listOff = function() return isOff() or not C().statList end
@@ -1492,6 +1578,32 @@ function ns.BuildCharReskinPage(Notify)
                 } }
         end
     end
+    -- (QoL 0.7.53) the switch: QoL's Character Pane (first value: the Character Reskin switch as saved; FeaturesOn above)
+    local switch = { type = "toggle", order = 1, name = "Character Pane",
+        desc = "Turns on the item level, enchants, gems and the full stat list on the character window, with or without the Character Pane reskin (Blizzard Reskin).",
+        tip = "Item levels, enchants, gems and the full stat list on the character window.",
+        get = function() return FeaturesOn() end,
+        set = function(_, v) if not ns.SettingsReady("qol") then return end; C().features = v and true or false; Changed() end }
+    return {
+        type = "group", name = "Character Pane", order = 2, childGroups = "tree", xuiSwitch = switch,
+        args = {
+            statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
+            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
+            enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
+            gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),
+            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line of the Stat Calculator in the stats pane. Pick what shows, the order, names and colors on its Stat list page.", "full", isOff),
+        },
+    }
+end
+ns.RegisterSettingsPage("qol", "charpane", ns.BuildCharPanePage)
+
+-------------------------------------------------------------------------------
+-- Settings page: Blizzard UI Reskin > Character Pane (the switch is still called Character Reskin). (QoL 0.7.53, stage 1) the look only:
+-- the item level, enchant, gem and stat list controls are on QoL > Character Pane now.
+-------------------------------------------------------------------------------
+function ns.BuildCharReskinPage(Notify)
+    local C, _, T, R = PageControls(Notify)
+    local function isOff() return not C().enabled end
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
     local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on; takes effect after a reload. Off gives Blizzard's look and width back. Greyed while Blizzard Reskin is off (this tab's Overview).")
@@ -1505,13 +1617,9 @@ function ns.BuildCharReskinPage(Notify)
     return {
         type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
         args = {
-            statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, one item level per slot colored by its upgrade track, the enchant, embellishment and gems beside each slot (hover any of them), a wider window that gives them room beside the model, and a tidy stat list. The window works as before, in and out of combat. Off by default." },
             chrome = T("chrome", 2, "Clean window", "Removes Blizzard's frame art for a thin border and theme colors. Off keeps Blizzard's art over the solid background.", "full", isOff),
-            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
-            enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
-            gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),
             stats = T("stats", 6, "Stat list", "Colors the stat list with the theme, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Widens the Character tab so the enchant and gem lines sit between the slots and the model. Changes out of combat only.", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "Sets how much wider than Blizzard's window, in pixels (default 42). Each side of the model gets half.", 0, 300, 1, false,
@@ -1520,7 +1628,6 @@ function ns.BuildCharReskinPage(Notify)
             tallPx = R("tallPx", 8.5, "Extra height", "Sets how much taller than Blizzard's window, in pixels (default 0); the slots spread out to fill it. Changes out of combat only.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),
             bgAlpha = R("bgAlpha", 9, "Background opacity", "How solid the window's background is (50% to 100%).", 0.5, 1, 0.05, true, isOff),
-            statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line of the Stat Calculator in the stats pane. Pick what shows, the order, names and colors on its Stat list page.", "full", isOff),
         },
     }
 end

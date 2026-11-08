@@ -45,14 +45,14 @@ function ns.BuildSpellList()
 end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-ns.CharToolkit_Apply()
+TKA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 local function drawn() return ns.CharToolkit_Drawn() end
 local function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
@@ -66,11 +66,11 @@ local function secTitles(m) local t = {}; for _, s in ipairs(m.sections) do t[#t
 local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
 check("tabs: Stats, Gear, Spells (Defense and Offense are filters now; no Sheet, and What If folded into Stats and Gear, since QoL 0.7.14)", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
-c.tab = "defense"; c = ns.CharToolkit_Cfg()
+c.tab = "defense"; c = TKC()
 check("a saved Defense tab opens Spells with the Defense filter", c.tab == "spells" and c.spellFilter == "defense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
-c.tab = "offense"; c = ns.CharToolkit_Cfg()
+c.tab = "offense"; c = TKC()
 check("a saved Offense tab opens Spells with the Offense filter", c.tab == "spells" and c.spellFilter == "offense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
-c.spellFilter = "bogus"; c = ns.CharToolkit_Cfg()
+c.spellFilter = "bogus"; c = TKC()
 check("an unknown filter becomes None (all)", c.spellFilter == "all", c.spellFilter)
 local okD = pcall(CM.Build, c, "defense")
 check("the model still builds Defense / Offense for the tooltips and the sheet", okD and CM.Build(c, "defense").byKey.armor ~= nil and CM.Build(c, "offense").byKey.ap ~= nil)
@@ -253,7 +253,7 @@ check("  ...other tabs do not take the spell math's full-size detail lines", sm 
 c.tab = "spells"
 
 -- 11. Settings -----------------------------------------------------------------------------------------------------------------
-local page = ns.BuildCharToolkitPage(function() end)
+local page = TKPage(function() end)
 local sp = page.args.spells.args
 check("settings: 'List spells without numbers' toggle", sp.spellsAll and sp.spellsAll.type == "toggle")
 sp.spellsAll.set(nil, true)
@@ -264,7 +264,7 @@ sp.s1.args.kind.set(nil, "both")
 check("  ...setting it stores the filter", c.spells[1].kind == "both", c.spells[1].kind)
 sp.s1.args.kind.set(nil, "auto")
 check("  ...'From its description' clears it", c.spells[1].kind == nil)
-c.spells[1].kind = "bogus"; c = ns.CharToolkit_Cfg()
+c.spells[1].kind = "bogus"; c = TKC()
 check("a bad saved filter on a spell is dropped", c.spells[1].kind == nil)
 C_SpecializationInfo.GetSpecializationInfo = function() return 63, "Fire", "", 0, "DAMAGER", 4 end
 c.spells = {}
@@ -340,7 +340,7 @@ check("  ...a click turns Spell Math on and lists the spells", c.advanced == tru
 local okL, whyL = layoutOK(d)
 check("layout with the button and both sections: inside the width, no overlaps", okL, whyL)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

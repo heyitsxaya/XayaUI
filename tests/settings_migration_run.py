@@ -249,8 +249,8 @@ def legacy_value(lay, module, k, old):
     v = (old.get("ui") or {}).get(k) if k in lay["underUi"].get(module, []) else old.get(k)
     sp = lay["split"].get(k)
     if sp and isinstance(v, dict):
-        sub = set(sp["sub"])
-        part = {kk: x for kk, x in v.items() if (sp["owner"] == module and kk in sub) or (sp["rest"] == module and kk not in sub)}
+        sub, both = set(sp["sub"]), set(sp.get("both") or [])   # (core 0.6.83: a `both` key is copied to each half)
+        part = {kk: x for kk, x in v.items() if (sp["owner"] == module and (kk in sub or kk in both)) or (sp["rest"] == module and kk not in sub)}
         return part or None
     return v
 

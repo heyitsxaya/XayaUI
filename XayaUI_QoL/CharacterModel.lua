@@ -1018,10 +1018,61 @@ function CM.GcdFor(haste)
     if not num(haste) then return nil end
     return math.max(CM.GCD_FLOOR, base / (1 + haste / 100))
 end
--- (QoL 0.7.39; standing rule V21) read-only for Dev Assist's QA walkthrough (QAWalks-display.lua), through core's services
+-- (QoL 0.7.53, character pane split stage 2: moved here from CharacterToolkit.lua, which is XayaUI Bonus Features' now) the model, flat:
+-- one list of { section = title } markers and items with "label: value" lines (CM.PairLines), for settings c (the Stat Calculator's,
+-- or a clean set with no typed numbers); tab = a panel tab key, or nil for every section
+function CM.Flat(c, tab)
+    local m = CM.Build(c, tab)
+    local out = {}
+    for _, sec in ipairs(m.sections) do
+        if tab == nil or tab == "sheet" or sec.tab == tab then
+            out[#out + 1] = { section = sec.title, sectionKey = sec.key, tab = sec.tab }
+            for _, it in ipairs(sec.items) do
+                it.lines = CM.PairLines(it, c and c.detail == "short")
+                out[#out + 1] = it
+            end
+        end
+    end
+    return out, m
+end
+-- The hover of one line: { { left, right, tone } or { text } }. Used by the Stat Calculator's panel (XayaUI Bonus Features, through the
+-- statModel service), the character window's full stat list (CharacterReskin.lua) and the tests. A tooltip has one text column, so each
+-- line's Pt value follows its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15). QoL 0.7.24 (Xaya, the Note
+-- column: "Remove it entirely"): no note text here either, and a line that held only a note is left out. (QoL 0.7.53: moved here from
+-- CharacterToolkit.lua's ns.CharToolkit_TooltipLines, unchanged.)
+function CM.TooltipLines(it, mode)
+    local out = {}
+    local v, tone = CM.ValueFor(it, mode)
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true }
+    -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes, in the accent colour
+    if it.newValue then out[#out + 1] = { "", it.newValue, "change" } end
+    for _, p in ipairs(it.pairs or {}) do
+        if not CM.NoteOnly(p) then
+            out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone }   -- (nested: indented)
+            if p.newValue then out[#out + 1] = { "", p.newValue, "change" } end
+        end
+    end
+    if #(it.tip or {}) > 0 then
+        out[#out + 1] = { " " }
+        for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
+    end
+    -- (QoL 0.7.40, B2: no "Click: show the rating on this line" any more; #88: a stat with rows says what a click does)
+    if it.foldable ~= nil then
+        out[#out + 1] = { " " }
+        out[#out + 1] = { it.foldable == "open" and "Click: fold its rows into this hover." or "Click: show these rows under the stat.", hint = true }
+    end
+    return out
+end
+-- (QoL 0.7.39; standing rule V21) read-only for Dev Assist's QA walkthrough (QAWalks-display.lua), through core's services.
+-- (QoL 0.7.53, character pane split stage 3; plan 4.2: "it stays one model, offered as the existing statModel service by the module that
+-- owns the base stat display (QoL), and read by Bonus through the service") CM: the one model, for XayaUI Bonus Features' Stat Calculator
+-- (XayaUI_Bonus/CharacterToolkit.lua reads it only through this service: with XayaUI QoL off there is no service and no panel).
+-- Model(tab): the flat model with no typed numbers (before: the Stat Calculator's settings, a call into the panel's file).
+local MODEL_CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {}, statOpen = {}, spells = {} }
 if ns.Provide then ns.Provide("statModel", { GcdRule = function() return CM.GcdRule() end, GcdFor = function(h) return CM.GcdFor(h) end,
     Live = function() return CM.gcd, CM.gcdHidden end,
-    Model = function(tab) return ns.CharToolkit_Model and ns.CharToolkit_Model(tab) or nil end }) end
+    Model = function(tab) return CM.Flat(MODEL_CLEAN, tab) end,
+    CM = CM }) end
 
 -------------------------------------------------------------------------------
 -- Gear: per slot (one reader for the Gear tab and the slot overlays), totals, durability and repair

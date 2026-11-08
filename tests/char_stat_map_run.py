@@ -36,13 +36,13 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 CM.gcd = { dur = 1.16, haste = 29.25 }
 local function drawn() return ns.CharToolkit_Drawn() end
 local function render() c.tab = "stats"; ns.CharToolkit_Render(); return drawn() end
@@ -254,15 +254,15 @@ check("  ...kept within its limits (760 x 300)", c.size.w == L0.maxW and c.heigh
 P:SetSize(300, 2000)
 P.grip.scripts.OnMouseUp(P.grip)
 check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.minW and c.heightSmall == L0.maxH, c.size.w .. "x" .. c.heightSmall)
-local page = ns.BuildCharToolkitPage(function() end)
+local page = TKPage(function() end)
 page.args.panelPart.args.layout.args.resetSize.func()
 render()
 check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the two heights (440, 760; QoL 0.7.23)", c.size == nil and L0.content == 430
   and c.heightSmall == 440 and c.heightLarge == 760 and P.h == 440, L0.content)
 c.size = { w = "wide" }
-check("a broken saved size is dropped", ns.CharToolkit_Cfg().size == nil)
+check("a broken saved size is dropped", TKC().size == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

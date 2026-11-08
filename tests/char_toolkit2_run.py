@@ -21,14 +21,14 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)   -- core loads Compat.lua after Modules.lua (XayaUI.toc)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-ns.CharToolkit_Apply()
+TKA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 
 local function drawn() return ns.CharToolkit_Drawn() end
@@ -368,7 +368,7 @@ ns.CharToolkit_SetInput("crit", "0")
 -- 8. Slot overlays -----------------------------------------------------------------------------------------------------------
 ns.CharToolkit_UpdateOverlays()
 check("overlays off by default: nothing on the head slot", ns.CharToolkit_OverlayText("HeadSlot") == nil)
-c.overlays = true; ns.CharToolkit_Apply()
+c.overlays = true; TKA()
 local il, mk1 = ns.CharToolkit_OverlayText("HeadSlot")
 check("overlay: head shows its item level (336) and, with no slots ticked, E? (head takes an enchant this expansion: QoL 0.7.6 default)",
   il == "336" and mk1:find("E?", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
@@ -399,7 +399,7 @@ GEAR[1] = "|cffa335ee|Hitem:1:6000:::::::90:::::|h[Helm]|h|r"
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
 check("overlay follows Blizzard's slot redraw (enchant added: E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
 GEAR[1] = "|cffa335ee|Hitem:1::::::::90:::::|h[Helm]|h|r"
-c.overlays = false; ns.CharToolkit_Apply()
+c.overlays = false; TKA()
 check("overlays off: hidden again", ns.CharToolkit_OverlayText("HeadSlot") == nil)
 c.enchantSlots = {}
 
@@ -466,7 +466,7 @@ combat = false
 ns.CharToolkit_ClearCache()
 
 -- 10. Settings page: a feature node with parts under it, sections as tabs; no dropdown alone on a row ------------------------
-local page = ns.BuildCharToolkitPage(function() end)
+local page = TKPage(function() end)
 check("settings: Character Toolkit is a node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree"
   and page.args.panelPart.type == "group" and page.args.overlayPart.type == "group" and page.args.spells.type == "group")
 check("settings: a part's sections are tabs (Panel: Layout, What If; Slot Overlays: Show, Enchant Slots); the Tooltips tab left Panel (QoL 0.7.24: Tooltip lines is a part of its own)",
@@ -518,7 +518,7 @@ check("theme changes repaint the open panel", type(themeListener) == "function" 
 
 print(("%d checks, %d failed"):format(n, fails))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
+   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
    .replace("__COMPAT__", P("XayaUI/Compat.lua")))
 total_n, total_fails = lua.eval("n"), lua.eval("fails")
 
@@ -535,13 +535,13 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 local ok, err = pcall(function()
-  assert(loadfile(__CT__))("XayaUI_QoL", ns)
+  assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
   ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-  local c = ns.CharToolkit_Cfg()
+  local c = TKC()
   CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
   CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
   c.enabled = true
-  ns.CharToolkit_Apply()
+  TKA()
   CharacterFrame.shown = true; PaperDollFrame:Show()
   c.tab = "gear"; ns.CharToolkit_Render()
 end)
@@ -551,7 +551,7 @@ LINK = "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"
 __BODY__
 '''.replace("__PRELUDE__", prelude).replace("__BODY__", body).replace("__WORLD__", P("tests/char_toolkit_world.lua"))
        .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-       .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+       .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
     return L.eval("n"), L.eval("fails")
 
 r = toolkit_world("ChatFrameUtil = {}; ChatEdit_InsertLink = function(link) return false end   -- an older client: only the old global",
@@ -582,10 +582,10 @@ ChatFrameUtil.GetActiveWindow = function() return { IsShown = function() return 
 ChatFrameUtil.InsertLink(LINK)
 ChatFrameUtil.GetActiveWindow = nil
 check("no focus but a chat box open: the link goes to chat, not into the box", ib.text == "", ib.text)
-ns.CharToolkit_Cfg().tab = "stats"; ns.CharToolkit_Render()
+TKC().tab = "stats"; ns.CharToolkit_Render()
 ChatFrameUtil.InsertLink(LINK)
 check("no focus on another tab: the box does not take it", ib.text == "", ib.text)
-ns.CharToolkit_Cfg().tab = "gear"; ns.CharToolkit_Render(); ns.CharToolkit_SetInput("item", ""); ib.text = ""
+TKC().tab = "gear"; ns.CharToolkit_Render(); ns.CharToolkit_SetInput("item", ""); ib.text = ""
 ChatFrameUtil.InsertLink("|cff71d5ff|Hspell:8936|h[Regrowth]|h|r")
 check("a spell link is not taken", ib.text == "", ib.text)''')
 total_n += r[0]; total_fails += r[1]
@@ -617,7 +617,7 @@ NEWRING = "|cffa335ee|Hitem:5::::::::90:::::|h[New Ring]|h|r"
 r = toolkit_world(RINGS + """C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 3 or 0 end,
   GetContainerItemInfo = function(bag, i) local l = ({ NEWRING, "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r", nil })[i]
     if l then return { hyperlink = l, quality = 4, iconFileID = 1 } end end }
-""", '''local c = ns.CharToolkit_Cfg()
+""", '''local c = TKC()
 local CM = ns.CharModel
 -- Gear (QoL 0.7.14): click the first ring: the bags' rings are listed (the helm is not); pick one: compared with that ring
 c.tab = "gear"; ns.CharToolkit_SelectGearSlot(11)
@@ -655,7 +655,7 @@ if hb and hb.scripts.OnReceiveDrag then hb.scripts.OnReceiveDrag(hb) end
 check("an item dropped on the helm's icon is compared with the helm, and the cursor emptied", hb ~= nil and CM.gearSlot == 1 and (CM.compareText or ""):find("Better Helm", 1, true) ~= nil and clearedC,
   CM.compareText)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world("", '''local c = ns.CharToolkit_Cfg()
+r = toolkit_world("", '''local c = TKC()
 local CM = ns.CharModel
 local prim = CM.Build(c, "stats").byKey.map_primary
 check("the primary stat (Agility for this spec) has its own box on the map (it was on What If)", prim ~= nil and prim.label == "Agility" and prim.input == "sv:primary", prim and prim.label)
