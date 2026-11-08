@@ -88,6 +88,7 @@ local SETTINGS_STORES = {
     reskin    = { addon = "XayaUI_Reskin", var = "XayaUIReskinDB" },
     chat      = { addon = "XayaUI_Chat", var = "XayaUIChatDB" },
     bonus     = { addon = "XayaUI_Bonus", var = "XayaUIBonusDB" },
+    qol       = { addon = "XayaUI_QoL", var = "XayaUIQoLDB" },
 }
 
 ns.settingsEpoch = 0

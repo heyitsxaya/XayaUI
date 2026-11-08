@@ -10,6 +10,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local O = ns.OptionsApi.Shared
 local CoreS, PlatS, APP, AceConfigDialog, Tree, Notify = O.CoreS, O.PlatS, O.APP, O.AceConfigDialog, O.Tree, O.Notify
@@ -1369,12 +1370,12 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
             newBox = { type = "execute", name = "+ New stats text box", order = 1, width = "double",
                 func = function()
                     ns.QoL_NewBox(); Notify()
-                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol", "box" .. #ns.qolBoxes)
+                    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol", "box" .. #QoLBoxes())
                 end },
             tokens = { type = "description", order = 2, width = "full", fontSize = "small", name = TokenHelp },
         },
     }
-    for i, box in ipairs(ns.QoLOn and ns.qolBoxes or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
+    for i, box in ipairs(ns.QoLOn and QoLBoxes() or {}) do allQol.args["box" .. i] = BuildBox(i, box) end
     -- Stat Tracking off (tick box on its sidebar row): nothing is listed or shown
     for k, v in pairs(allQol.args) do v.hidden = function() return not ns.QoLOn() end end
     for k, v in pairs(allBars.args) do

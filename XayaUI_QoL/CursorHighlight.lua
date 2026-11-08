@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- CursorHighlight.lua : a colored shape (circle, square, diamond, star) that sits under the mouse cursor.
 -- Left tab of QoL > Cursor (XayaUI QoL). OFF by default; while off nothing is created, polled, or drawn.
--- Saved settings: CueRulesDB.cursorHighlight. Not run in game when written (2026-11-01): the look needs an in-game check.
+-- Saved settings: XayaUIQoLDB.cursorHighlight (CueRulesDB.cursorHighlight before P5). Not run in game when written (2026-11-01): the look needs an in-game check.
 --
 -- Shapes: circle = a square texture cut with a circular mask; diamond = a Line region as thick as it is long, drawn at 45 degrees
 -- (SetRotation only turns the image inside a texture, so it cannot turn a solid square into a diamond); square and star are plain textures.
@@ -12,7 +12,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
 
 -- Circle: our own anti-aliased circle / ring pictures (Media\\Cursor\\CircleHD.tga and HLRing_01..20.tga). A square cut with a mask, or a ring built
 -- from straight Line pieces, shows jagged edges and corners; the pictures are smooth. The 20 rings go from a hairline to a full disc; the one whose
@@ -79,7 +79,7 @@ local function CopyVal(v)
     return t
 end
 local function Ensure()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("qol") then return nil end
     local c = QolS.cursorHighlight
     if type(c) ~= "table" then c = {}; QolS.cursorHighlight = c end
     for k, v in pairs(ns.CURSORHIGHLIGHT_DEFAULTS) do

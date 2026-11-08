@@ -235,9 +235,9 @@ def run(lua, code):
     TOTAL_N += lua.eval("n"); TOTAL_F += lua.eval("fails")
 
 lua = lua_with(ALLNAMES + r'''
-local tk = ns.CharToolkit_Cfg()
-tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
-tk.enchantSlotsSet = true   -- she ticked her wrist too: "No enchant" there
+-- (P5) her saved settings, in XayaUI QoL's own store (the store opens with the other addons below)
+XayaUIQoLDB = { characterToolkit = { enchantSlotsSet = true,   -- she ticked her wrist too: "No enchant" there
+  enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true } } }
 ''')
 run(lua, r'''
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
@@ -662,9 +662,9 @@ check("V14: the reskin listens to item changes while its item level is on; switc
 # the inferred live-client behaviour (INFERENCE, not seen in the game): right after the size change, the slots', model's and Inset's
 # positions still read as the 300 px window's until the next frame. Negative control: the "next frame" check fails on QoL 0.7.32.
 lua = lua_with(r'''
-local tk = ns.CharToolkit_Cfg()
-tk.enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true }
-tk.enchantSlotsSet = true
+-- (P5) her saved settings, in XayaUI QoL's own store (the store opens with the other addons below)
+XayaUIQoLDB = { characterToolkit = { enchantSlotsSet = true,
+  enchantSlots = { [1] = true, [3] = true, [5] = true, [7] = true, [8] = true, [9] = true, [11] = true, [12] = true, [16] = true, [17] = true } } }
 ''')
 run(lua, r'''
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)

@@ -11,6 +11,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local O = ns.OptionsApi.Shared
 local CoreS, PlatS, QolS, APP, AceConfigDialog, Tree = O.CoreS, O.PlatS, O.QolS, O.APP, O.AceConfigDialog, O.Tree
@@ -1264,18 +1265,18 @@ local function RowMenu(button, root)
         return true
     end
     n = last:match("^box(%d+)$")
-    local box = n and ns.qolBoxes and ns.qolBoxes[tonumber(n)]
+    local box = n and QoLBoxes() and QoLBoxes()[tonumber(n)]
     if box then
         root:CreateTitle(box.name or "Stats Box")
         root:CreateButton("Rename", function() AskRename(box.name, function(t) box.name = t; ns.QoL_Refresh(box); ns.MarkDirty(); Notify() end) end)
         root:CreateButton("Duplicate", function()
             local c = ns.Copy(box); c.name = (box.name or "Stats") .. " Copy"; c.y = (c.y or 0) - 30
-            ns.qolBoxes[#ns.qolBoxes + 1] = c; ns.QoL_Refresh(c); ns.MarkDirty(); Notify()
+            QoLBoxes()[#QoLBoxes() + 1] = c; ns.QoL_Refresh(c); ns.MarkDirty(); Notify()
         end)
         root:CreateDivider()
         root:CreateButton("Delete", function()
             AskConfirm("Delete the box '" .. tostring(box.name) .. "'?", function()
-                for idx, b in ipairs(ns.qolBoxes) do if b == box then table.remove(ns.qolBoxes, idx); break end end
+                for idx, b in ipairs(QoLBoxes()) do if b == box then table.remove(QoLBoxes(), idx); break end end
                 ns.QoL_Drop(box); ns.MarkDirty(); Notify()
                 pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "qol", "allqol")
             end)

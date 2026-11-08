@@ -5,8 +5,10 @@
 ## Version: 0.7.49
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
+## SavedVariables: XayaUIQoLDB
 ## Group: XayaUI
 
+StatsText.lua
 CursorHighlight.lua
 CursorTrail.lua
 StatMath.lua

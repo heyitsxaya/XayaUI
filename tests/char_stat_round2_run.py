@@ -128,7 +128,7 @@ checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 
   return v and ch and v.text == "+2,637" and ch.text == "+2,737" and f and sameCol(f.color, ACCENT), T(v) .. " / " .. T(ch) end)
 ns.CharToolkit_SetInput("sv:primary", "")
 -- remembered per stat: a rebuild from the saved settings keeps Attack Power open, every other stat folded
-local saved = CueRulesDB.characterToolkit
+local saved = ns.Settings("qol").characterToolkit
 local c2 = ns.CharToolkit_Cfg()
 d = render()
 checkp("remembered per stat (saved settings): after a rebuild Attack Power is still open, Critical Strike folded", function()
@@ -369,7 +369,7 @@ local pg = ns.BuildCharToolkitPage(function() end)
 checkp("B2: Settings > Panel > Layout has no \"Rating lines\"; Your numbers has no \"Reset line flips\" (Clear all stays)", function()
   local p = pg.args.panelPart.args
   return p.layout.args.valueMode == nil and p.values.args.resetLines == nil and p.values.args.clear ~= nil end)
-CueRulesDB.characterToolkit.valueMode = "rating"; CueRulesDB.characterToolkit.lineModes = { crit = "rating" }
+ns.Settings("qol").characterToolkit.valueMode = "rating"; ns.Settings("qol").characterToolkit.lineModes = { crit = "rating" }
 c = ns.CharToolkit_Cfg()
 checkp("B2: an old profile's valueMode / lineModes are dropped when the settings are read (harmless: nothing reads them)", function()
   return c.valueMode == nil and c.lineModes == nil and ns.CHARTOOLKIT_DEFAULTS.valueMode == nil and ns.CHARTOOLKIT_DEFAULTS.lineModes == nil end)

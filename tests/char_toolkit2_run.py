@@ -501,7 +501,7 @@ check("settings: the Slot overlays switch draws the overlays", ns.CharToolkit_Ov
 page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
 check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 do
-  local cc = CueRulesDB.characterToolkit
+  local cc = ns.Settings("qol").characterToolkit   -- (P5: where XayaUI QoL keeps it, its own store)
   page.args.overlayPart.args.enchants.args.slot1.set(nil, false)
   check("settings: unticking Head is kept and the other default slots stay ticked", cc.enchantSlotsSet == true and not cc.enchantSlots[1] and cc.enchantSlots[11] == true
     and page.args.overlayPart.args.enchants.args.slot3.get() == true and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)

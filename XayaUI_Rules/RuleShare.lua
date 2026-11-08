@@ -5,6 +5,7 @@
 -- and this file registers its kind there (Share.RegisterKind). No string format changed: every string shared before still imports.
 -------------------------------------------------------------------------------
 local addonName, ns = ...; ns = XayaUI_NS or ns   -- the Platform's namespace (XayaUI/Core.lua)
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 local Share = ns.Share   -- (the Platform's Share.lua)
 local MAX_DEPTH = 16     -- (the same nesting limit as the Platform's codec)
@@ -25,7 +26,7 @@ function ns.Share_SnapshotAll(include, name)
         snap.bars = ns.Copy(ns.bars)
         snap.barGroup = ns.Copy(CoreS.barGroup)
     end
-    if include.qol and ns.QoLOn then snap.qol = ns.Copy(ns.qolBoxes) end
+    if include.qol and ns.QoLOn then snap.qol = ns.Copy(QoLBoxes()) end
     return snap
 end
 
@@ -196,15 +197,15 @@ function ns.Share_ApplyRules(snap, mode)
         end
     end
 
-    if IsTbl(snap.qol) then
+    if IsTbl(snap.qol) and QoLBoxes() then   -- (P5) the stats-text boxes are XayaUI QoL's: none while it is off
         if replace then
-            for _, b in ipairs(ns.qolBoxes) do if ns.QoL_Drop then ns.QoL_Drop(b) end end
-            wipe(ns.qolBoxes)
+            for _, b in ipairs(QoLBoxes()) do if ns.QoL_Drop then ns.QoL_Drop(b) end end
+            wipe(QoLBoxes())
         end
         for _, b in ipairs(snap.qol) do
             if IsTbl(b) then
-                ns.Merge(b, ns.QOL_BOX_DEFAULTS)
-                ns.qolBoxes[#ns.qolBoxes + 1] = b
+                ns.Merge(b, ns.Service("statsText").DEFAULTS)
+                QoLBoxes()[#QoLBoxes() + 1] = b
                 counts.qol = counts.qol + 1
             end
         end

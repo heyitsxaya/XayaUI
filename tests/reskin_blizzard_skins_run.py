@@ -262,10 +262,10 @@ QOT:EndLayout()
 check("  ...and Blizzard's layout is no longer recoloured", select(1, QOT.block.HeaderText:GetTextColor()) == 1)
 op.args.list.args.quests.set(nil, true)
 check("Professions section restyled while the Shopping List's tracker part is off", PRT.Header.Background:GetAlpha() == 0)
-CueRulesDB.shoppingList = { enabled = true, tracker = true }
+ns.Settings("qol").shoppingList = { enabled = true, tracker = true }
 BS.Apply()
 check("Professions section left to the Shopping List while its tracker part is on", PRT.Header.Background:GetAlpha() == 1)
-CueRulesDB.shoppingList = nil
+ns.Settings("qol").shoppingList = nil
 
 -- 5. the tab's own switch turns everything off at once
 page.xuiSwitch.set(nil, true); mp.xuiSwitch.set(nil, true); mp.args.shape.set(nil, "SQUARE"); tp.xuiSwitch.set(nil, true)

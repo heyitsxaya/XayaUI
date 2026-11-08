@@ -94,6 +94,7 @@ def run(src, speed, moving=60, still=0, look=0):
     lua.execute(WORLD)
     lua.globals().MODULES_SRC = MODULES_SRC
     lua.execute('assert(loadstring(MODULES_SRC, "@Modules.lua"))("XayaUI", XayaUI_NS)')   # (core 0.6.75) the settings seam
+    lua.execute('XayaUI_NS.SettingsOpenAllForTests()')   # (P5) XayaUI QoL's store opens (copied from CueRulesDB), as its ADDON_LOADED does
     lua.execute('local ns = XayaUI_NS; ns.Share = { RegisterKind = function() end }; assert(loadstring(THEME_SRC, "@Theme.lua"))("XayaUI", ns)')
     lua.execute('local ns = XayaUI_NS; assert(loadstring(SRC, "@CursorTrail.lua"))("XayaUI_QoL", ns); ns.CursorTrail_Apply()')
     if lua.eval("XayaUI_NS.CURSORTRAIL_PRESETS.fel ~= nil") is not True:

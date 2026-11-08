@@ -132,8 +132,8 @@ if iw then
   measure("import window", iw)
 end
 -- 4. The Stat Calculator panel (QoL) -----------------------------------------------------------------------------------------------
-CueRulesDB.characterToolkit = CueRulesDB.characterToolkit or {}
-CueRulesDB.characterToolkit.enabled = true
+ns.Settings("qol").characterToolkit = ns.Settings("qol").characterToolkit or {}
+ns.Settings("qol").characterToolkit.enabled = true
 pcall(ns.CharToolkit_Apply)
 local okT, errT = pcall(ns.CharToolkit_Toggle)
 local tp = rawget(_G, "XayaUICharacterToolkit")

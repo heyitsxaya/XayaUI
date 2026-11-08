@@ -204,6 +204,10 @@ def canon(saved):
     # (P5) each module's own store folded back into CueRulesDB as it was laid out before (tests/settings_stores.py): the old code's
     # golden hash then still says "nothing a player set changed and nothing was lost"; the copy's marks (storeVersion ...) are dropped
     merged = SST.project(merged, SST.layout(ROOT))
+    # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
+    # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
+    if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
+        merged["CueRulesDB"]["qol"] = {"boxes": {}}
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
@@ -258,22 +262,25 @@ check("XayaUI loaded and ns.Settings exists", ns and type(ns.Settings) == "funct
 if not (ns and ns.Settings) then return R end
 local V = {}
 for _, m in ipairs(MODULES) do V[m] = ns.Settings(m) end
+-- (P5) the table a module's keys live in now: its own store once open, else CueRulesDB
+local function HVAR(m) local st = ns.SettingsStore(m); if st and st.state == "own" then return st.var end return "CueRulesDB" end
+local function HOME(m) return _G[HVAR(m)] end
 
 section("C1 first-run defaults", function()
   check("C1: after the saved settings were set up, the core view held since load reads the same rules list the engine uses",
-    V.core.rules ~= nil and rawequal(V.core.rules, CueRulesDB.rules) and rawequal(ns.rules, V.core.rules))
-  check("C1: ... and the QoL view reads the stats-text boxes core set up (CueRulesDB.qol.boxes)",
-    V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, CueRulesDB.qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
+    V.core.rules ~= nil and rawequal(V.core.rules, HOME("core").rules) and rawequal(ns.rules, V.core.rules))
+  check("C1: ... and the QoL view reads the stats-text boxes set up at load (P5: by XayaUI QoL, in its store)",
+    V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, HOME("qol").qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
   check("C1: ... and the platform view reads the defaults written into CueRulesDB.ui (console open, Advanced Debugging on)",
     rawequal(V.platform.ui, CueRulesDB.ui) and V.platform.ui.advancedDebug == true and V.platform.ui.trayOpen == true)
 end)
 
 section("C2 profile import", function()
   local part = ns.ProfilePartsByKey().qol
-  CueRulesDB.cursorTrail = nil
+  HOME("qol").cursorTrail = nil
   local res = part.apply(part.check({ cursorTrail = { marker = 7, enabled = false }, cursorHighlight = { marker = 9 } }), "merge", 1)
   check("C2: a QoL profile part applied: the held QoL view reads the new cursor trail table", res and V.qol.cursorTrail ~= nil
-    and V.qol.cursorTrail.marker == 7 and rawequal(V.qol.cursorTrail, CueRulesDB.cursorTrail), tostring(V.qol.cursorTrail))
+    and V.qol.cursorTrail.marker == 7 and rawequal(V.qol.cursorTrail, HOME("qol").cursorTrail), tostring(V.qol.cursorTrail))
   check("C2: ... and the merged cursor highlight value", V.qol.cursorHighlight and V.qol.cursorHighlight.marker == 9)
   local bonus = ns.ProfilePartsByKey().bonus
   if bonus then
@@ -297,16 +304,16 @@ section("C3 Theme Reset everything", function()
 end)
 
 section("C4 backup Load (replace)", function()
-  CueRulesDB.barGroup.spacing = 11
+  HOME("core").barGroup.spacing = 11
   local ok = ns.Backup_Save("seam test", nil)
   check("C4: a backup is saved (through the platform's profiles key)", ok and #V.platform.profiles >= 1 and rawequal(V.platform.profiles, CueRulesDB.profiles))
   local snap
   for _, p in ipairs(ns.Backups()) do if p.name == "seam test" then snap = p.data end end
   snap = ns.Copy(snap); snap.bars = snap.bars or {}; snap.barGroup = { spacing = 11 }   -- (buff bars are off for now, so a backup leaves them out: put them in)
-  CueRulesDB.barGroup.spacing = 33
+  HOME("core").barGroup.spacing = 33
   ns.Share_ApplyRules(ns.Copy(snap), "replace")
   check("C4: Load (replace) put the bar group back: the held core view reads spacing 11",
-    rawequal(V.core.barGroup, CueRulesDB.barGroup) and V.core.barGroup.spacing == 11, tostring(V.core.barGroup and V.core.barGroup.spacing))
+    rawequal(V.core.barGroup, HOME("core").barGroup) and V.core.barGroup.spacing == 11, tostring(V.core.barGroup and V.core.barGroup.spacing))
   check("C4: ... and the rules list the core view reads is the one the engine uses", rawequal(V.core.rules, ns.rules))
 end)
 
@@ -336,7 +343,7 @@ section("C5 CueRulesDB replaced as a whole", function()
 end)
 
 section("C6 hot-path caches", function()
-  CueRulesDB.auraAlias = nil
+  HOME("core").auraAlias = nil
   ns.SettingsChanged()
   check("C6: no alias learned: AuraAliasesOf answers nil", ns.AuraAliasesOf(62618) == nil)
   V.core.auraAlias = { [62618] = { [81782] = true } }
@@ -344,11 +351,12 @@ section("C6 hot-path caches", function()
   local ep = ns.settingsEpoch
   V.core.auraAlias = V.core.auraAlias
   check("C6: writing the same table back (x = x or {}) does not move the epoch", ns.settingsEpoch == ep)
-  local old = CueRulesDB
-  CueRulesDB = ns.Copy(old); CueRulesDB.auraAlias = {}
+  local hv = HVAR("core")   -- (P5) XayaUI Rules' own store once it has one
+  local old = _G[hv]
+  _G[hv] = ns.Copy(old); _G[hv].auraAlias = {}
   ns.SettingsChanged()
-  check("C6: CueRulesDB replaced and ns.SettingsChanged(): the cache reads the new (empty) aliases", ns.AuraAliasesOf(62618) == nil)
-  CueRulesDB = old
+  check("C6: CueRulesDB (P5: or XayaUI Rules' store) replaced and ns.SettingsChanged(): the cache reads the new (empty) aliases", ns.AuraAliasesOf(62618) == nil)
+  _G[hv] = old
   ns.SettingsChanged()
   local ep2 = ns.settingsEpoch
   local part = ns.ProfilePartsByKey().qol

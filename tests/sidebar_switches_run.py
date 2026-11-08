@@ -354,12 +354,12 @@ check("A: the Cursor page no longer has the two switches", findW(root(), functio
 local function hlFrame() for _, o in ipairs(W.objects) do if o._strata == "TOOLTIP" and o._level == 70 and o._parent == UIParent and o._kind == "Frame" then return o end end end
 click("qol", "cursor\001highlight", true)
 local hf = hlFrame()
-check("A: Cursor Highlight ticked: on, its shape is shown and follows the cursor (OnUpdate set)", CueRulesDB.cursorHighlight.enabled == true and hf ~= nil
+check("A: Cursor Highlight ticked: on, its shape is shown and follows the cursor (OnUpdate set)", ns.Settings("qol").cursorHighlight.enabled == true and hf ~= nil
   and hf:IsShown() and hf:GetScript("OnUpdate") ~= nil)
 check("A: ...the row was not selected (Cursor is still open)", selected("qol") == "cursor", tostring(selected("qol")))
 oneRedraw("A: Cursor Highlight ticked")
 click("qol", "cursor\001highlight", false)
-check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", CueRulesDB.cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
+check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", ns.Settings("qol").cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
 oneRedraw("A: Cursor Highlight unticked")
 check("A: Character Toolkit's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chartoolkit") and box("qol", "chartoolkit"):GetChecked() == false
   and row("qol", "chartoolkit\001panelPart") == nil)
@@ -373,16 +373,16 @@ end
 check("A: Character Toolkit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
 click("qol", "chartoolkit", true)
 check("A: Character Toolkit ticked: on; Panel, Slot Overlays, Spell Math and Tooltip lines now show under it, each with its own box (Panel and Tooltip lines ticked: on by default)",
-  CueRulesDB.characterToolkit.enabled == true and box("qol", "chartoolkit\001panelPart") and box("qol", "chartoolkit\001overlayPart") and box("qol", "chartoolkit\001spells")
+  ns.Settings("qol").characterToolkit.enabled == true and box("qol", "chartoolkit\001panelPart") and box("qol", "chartoolkit\001overlayPart") and box("qol", "chartoolkit\001spells")
   and box("qol", "chartoolkit\001tipsPart") and box("qol", "chartoolkit\001tipsPart"):GetChecked() == true
   and box("qol", "chartoolkit\001panelPart"):GetChecked() == true and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false)
 check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chartoolkit").xuiChev ~= nil and row("qol", "chartoolkit").xuiChev:IsShown())
 oneRedraw("A: Character Toolkit ticked")
 click("qol", "chartoolkit\001overlayPart", true)
-check("A: Slot Overlays ticked: the overlays setting is on", CueRulesDB.characterToolkit.overlays == true)
+check("A: Slot Overlays ticked: the overlays setting is on", ns.Settings("qol").characterToolkit.overlays == true)
 click("qol", "chartoolkit\001overlayPart", false)
 click("qol", "chartoolkit", false)
-check("A: Character Toolkit unticked: off, and its parts leave the list", CueRulesDB.characterToolkit.enabled == false and row("qol", "chartoolkit\001panelPart") == nil)
+check("A: Character Toolkit unticked: off, and its parts leave the list", ns.Settings("qol").characterToolkit.enabled == false and row("qol", "chartoolkit\001panelPart") == nil)
 oneRedraw("A: Character Toolkit unticked")
 end)
 
