@@ -43,7 +43,7 @@ local function stepCheck(name, id, i, setup, want)
   local v, note = step(id, i, setup)
   check(name .. "  (" .. tostring(note) .. ")", (v and true or false) == (want ~= false), note)
 end
-local db = CueRulesDB
+local db = ns.SettingsRoutedForTests()   -- (P5) each key where its module reads it now (its own store or CueRulesDB)
 local dpWas = db.dataPanels and db.dataPanels.general and db.dataPanels.general.enabled
 stepCheck("tab rows 1: the Rules sub-tab row passes", "ui-tab-rows", 1, true)
 stepCheck("tab rows 3: Data Panels off, no section tab", "ui-tab-rows", 3, true)

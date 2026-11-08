@@ -72,6 +72,7 @@ do   -- (core 0.6.75) the real settings seam (XayaUI/Modules.lua section 0b), be
   local core = {}
   assert(loadstring(MODULES_SRC, "@Modules.lua"))("XayaUI", core)
   setmetatable(XayaUI_NS, { __index = core })
+  core.SettingsOpenAllForTests()   -- (P5) XayaUI Bonus's store opens (its ADDON_LOADED; Modules.lua section 0c)
 end
 LOADSTRING_CALLS = 0
 local realLoadstring = loadstring
@@ -137,7 +138,7 @@ SECTION("chat command", function()
   check("/xui calc <sum> prints sum = answer", PRINTED[1] == "23,249 / 3,472 = 6.696141", PRINTED[1])
   COMMANDS.calc("1/0")
   check("/xui calc with a wrong sum prints the reason", PRINTED[2] == "calc: cannot divide by zero (1/0)", PRINTED[2])
-  check("chat sums go into the history", CueRulesDB.calculator.history[#CueRulesDB.calculator.history] == "23,249 / 3,472 = 6.696141")
+  check("chat sums go into the history", XayaUIBonusDB.calculator.history[#XayaUIBonusDB.calculator.history] == "23,249 / 3,472 = 6.696141")
   COMMANDS.calc("")
   local f = _G.__calcFrame or nil
   for _, fr in ipairs(FRAMES) do if fr.name == "XayaUICalculator" then f = fr end end
@@ -184,7 +185,7 @@ SECTION("keypad", function()
   check("layout: 20 keys", keys == 20, keys)
   check("layout: the keypad fits inside the window with its margins", maxRight + 2 * 10 <= f.w, tostring(maxRight) .. " / " .. tostring(f.w))
   for i = 1, 15 do COMMANDS.calc(i .. "+0") end
-  check("history keeps the last 10", #CueRulesDB.calculator.history == 10 and CueRulesDB.calculator.history[10] == "15+0 = 15")
+  check("history keeps the last 10", #XayaUIBonusDB.calculator.history == 10 and XayaUIBonusDB.calculator.history[10] == "15+0 = 15")
 end)
 
 SECTION("on / off", function()
@@ -196,10 +197,10 @@ SECTION("on / off", function()
   check("switch: on by default (as it always was)", sw.get() == true and LAUNCHERS.calc.available() == true and not page.args.open.disabled())
   COMMANDS.calc("")
   check("switch: (shown before switching off)", f:IsShown())
-  local kept = #CueRulesDB.calculator.history
+  local kept = #XayaUIBonusDB.calculator.history
   sw.set(nil, false)
   check("off: the window closes", not f:IsShown())
-  check("off: the tick box reads off", sw.get() == false and CueRulesDB.calculator.enabled == false)
+  check("off: the tick box reads off", sw.get() == false and XayaUIBonusDB.calculator.enabled == false)
   check("off: no Calculator row in the minimap button's list", LAUNCHERS.calc.available() == false)
   check("off: the page's Open button is greyed out", page.args.open.disabled() == true)
   PRINTED = {}
@@ -209,7 +210,7 @@ SECTION("on / off", function()
   check("off: /xui calc <sum> still answers in chat (Xaya: \"just the window\")", PRINTED[2] == "2+2 = 4" and not f:IsShown(), PRINTED[2])
   ns.Calculator_Open(); ns.Calculator_Toggle(); LAUNCHERS.calc[4]()
   check("off: the settings button, the toggle and the minimap action open nothing", not f:IsShown())
-  check("off: the saved sums are kept (plus the chat sum)", #CueRulesDB.calculator.history == math.min(kept + 1, 10) and kept > 0)
+  check("off: the saved sums are kept (plus the chat sum)", #XayaUIBonusDB.calculator.history == math.min(kept + 1, 10) and kept > 0)
   sw.set(nil, true)
   check("on again: the switch, the minimap row and the Open button come back", sw.get() == true and LAUNCHERS.calc.available() == true and not page.args.open.disabled())
   COMMANDS.calc("")
@@ -222,7 +223,7 @@ end)
 '''
 
 OFF_AT_LOGIN = r'''
-CueRulesDB = { calculator = { enabled = false, history = { "1+1 = 2" } } }
+XayaUIBonusDB = { calculator = { enabled = false, history = { "1+1 = 2" } } }   -- (P5: XayaUI Bonus's own store)
 SECTION("off at login", function()
   local chunk = assert(loadstring_real_for_test(CALC_SRC, "@Calculator.lua"))
   chunk("XayaUI_Bonus", XayaUI_NS)
@@ -232,7 +233,7 @@ SECTION("off at login", function()
   check("off at login (V14): asked for every way, no frame of it is created", #FRAMES == before, #FRAMES - before)
   check("off at login: /xui calc 3*3 still answers in chat", PRINTED[2] == "3*3 = 9", PRINTED[2])
   check("off at login: no Calculator row in the minimap list", LAUNCHERS.calc.available() == false)
-  check("off at login: the saved sums are kept", #CueRulesDB.calculator.history == 2 and CueRulesDB.calculator.history[1] == "1+1 = 2")
+  check("off at login: the saved sums are kept", #XayaUIBonusDB.calculator.history == 2 and XayaUIBonusDB.calculator.history[1] == "1+1 = 2")
 end)
 '''
 

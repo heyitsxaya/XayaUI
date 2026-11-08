@@ -54,7 +54,7 @@ r = lua.execute(r'''
 local made = {}; date = os.date
 local CF = CreateFrame
 CreateFrame = function(kind, name, parent) local f = CF(kind, name, parent); f.parent = parent; made[#made+1] = f; return f end
-ns.Notepad_OnDBReady()
+ns.SettingsOpenAllForTests()   -- (P5) XayaUI Bonus's store opens (its ADDON_LOADED) and runs Notepad_OnDBReady, which waits for it (Modules.lua section 0c)
 local db = ns.notepadDB
 local n = db.notes[1]; n.text = "current text"; n.hist = { { t = 1, text = "old version" } }
 ns.Notepad_ToggleRestore()

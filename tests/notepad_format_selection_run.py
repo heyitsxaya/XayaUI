@@ -57,7 +57,7 @@ lua.eval("function(f) f('XayaUI', ns) end")(load(src))
 res = lua.execute(r'''
 local out, fails = {}, 0
 local function check(name, cond, got) out[#out+1] = (cond and "PASS " or "FAIL ") .. name .. ((not cond and got) and ("  [got: " .. tostring(got) .. "]") or ""); if not cond then fails = fails + 1 end end
-ns.Notepad_OnDBReady()
+ns.SettingsOpenAllForTests()   -- (P5) XayaUI Bonus's store opens (its ADDON_LOADED) and runs Notepad_OnDBReady, which waits for it (Modules.lua section 0c)
 local db = ns.notepadDB
 db.format = true
 ns.Notepad_SetShown(true)

@@ -16,7 +16,7 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam; Bonus 0.6.33, P5: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
 
 local TITLE_H = 20
 local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)
@@ -1190,7 +1190,7 @@ end
 -------------------------------------------------------------------------------
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
-ns.WhenReady(ns.Notepad_OnDBReady)
+ns.WhenSettingsReady("bonus", ns.Notepad_OnDBReady)   -- (P5: once XayaUIBonusDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
 ns.RegisterCommand({ "notes", "notepad", "note" }, function() ns.Notepad_Toggle() end, "/xui notes (show / hide the notepad)")
 -- O-100 (Bonus 0.6.27; Xaya: "calculator isn't "off" -- it's just not displayed. same with stat calculator and notes", her answer "No
 -- word at all"): no state text; the row exists only while the Notepad is on, and a click shows / hides the box.

@@ -53,7 +53,8 @@ local function fill(dst, src)
     end
 end
 
--- Saved data: XayaUI's CueRulesDB.tooltips when integrated, XayaUITooltipsDB.tooltips alone. Call after login.
+-- Saved data: XayaUI Bonus's XayaUIBonusDB.tooltips when integrated (CueRulesDB.tooltips before P5; through ns.Settings("bonus")),
+-- XayaUITooltipsDB.tooltips alone. Call after login.
 -- The defaults are filled in once per saved table (Bonus 0.6.12): up to 0.6.11 every call, so every tooltip, ran the recursive merge.
 -- (Bonus 0.6.31, P2) integrated: read through the Bonus settings view, and once filled the table is handed back without a lookup until
 -- the settings epoch moves (Modules.lua section 0b: no metamethod per tooltip).

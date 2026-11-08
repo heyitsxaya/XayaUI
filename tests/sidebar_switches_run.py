@@ -227,7 +227,7 @@ end
 -- a message from elsewhere (in the stand-in an aura-setup timer prints one) would open the console window, whose own redraw
 -- (Tree.ViewChanged) would be counted here: the console's auto-open is off for this test
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.consoleAutoOpen = false
-CueRulesDB.dataPanels.bl.enabled = true   -- one panel switched on, so the master switch shows on screen
+ns.Settings("bonus").dataPanels.bl.enabled = true   -- one panel switched on, so the master switch shows on screen
 pcall(ns.ToggleUI); settle()
 ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
 check("the window is open on Bonus Features > Enhanced Tooltips", root() ~= nil and selected("bonus") == "tooltips", tostring(selected("bonus")))
@@ -236,8 +236,8 @@ check("the window is open on Bonus Features > Enhanced Tooltips", root() ~= nil 
 section("A: Bonus Features", function()
 local bN, bD = box("bonus", "utilities\001notepad"), box("bonus", "datapanels")
 check("A: Notepad's row has a tick box, ticked like its setting (the Notepad on, its box hidden)", bN ~= nil and bN:GetChecked() == true
-  and CueRulesDB.notepad.enabled == true and CueRulesDB.notepad.shown == false)
-check("A: Data Panels' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and CueRulesDB.dataPanels.general.enabled == false)
+  and ns.Settings("bonus").notepad.enabled == true and ns.Settings("bonus").notepad.shown == false)
+check("A: Data Panels' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and ns.Settings("bonus").dataPanels.general.enabled == false)
 check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities", box("bonus", "tooltips") ~= nil
   and box("bonus", "tooltips"):GetChecked() == true and box("bonus", "utilities") == nil
   and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
@@ -263,47 +263,47 @@ check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled;
   local f = bD:GetScript("OnEnter"); if f then f(bD) end
   tip.SetText, tip.AddLine = oS, oA
   local s = table.concat(said, " | ")
-  local want = CueRulesDB.dataPanels and CueRulesDB.dataPanels.general and CueRulesDB.dataPanels.general.enabled and "Enabled" or "Disabled"
+  local want = ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.general and ns.Settings("bonus").dataPanels.general.enabled and "Enabled" or "Disabled"
   return #said == 3 and said[1] == "Data Panels" and said[2] == "Shows info panels on your screen: time, gold, frame rate and more." and said[3] == want and not s:find("Off", 1, true), s
 end)())
 
 -- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked
 ns.Notepad_SetShown(true); settle()
 check("A: Notepad: the box is clickable", click("bonus", "utilities\001notepad", false))
-check("A: Notepad box unticked: the Notepad is off, its box hidden, its events let go (Show Notepad stays saved)", CueRulesDB.notepad.enabled == false
-  and CueRulesDB.notepad.shown == true and _G.XayaUINotepad ~= nil and not _G.XayaUINotepad:IsShown())
+check("A: Notepad box unticked: the Notepad is off, its box hidden, its events let go (Show Notepad stays saved)", ns.Settings("bonus").notepad.enabled == false
+  and ns.Settings("bonus").notepad.shown == true and _G.XayaUINotepad ~= nil and not _G.XayaUINotepad:IsShown())
 check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
 oneRedraw("A: Notepad box unticked")
 check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001notepad") and box("bonus", "utilities\001notepad"):GetChecked() == false)
 click("bonus", "utilities\001notepad", true)
-check("A: Notepad box ticked: on again, the box shows as saved", CueRulesDB.notepad.enabled == true and _G.XayaUINotepad:IsShown())
+check("A: Notepad box ticked: on again, the box shows as saved", ns.Settings("bonus").notepad.enabled == true and _G.XayaUINotepad:IsShown())
 oneRedraw("A: Notepad box ticked")
 ns.Notepad_SetShown(false); settle()
 -- (Bonus 0.6.16) the Calculator's box: the whole Calculator; shown first, then the row unticked and ticked
 ns.Calculator_Open(); settle()
 check("A: Calculator: the window opens while it is on", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
 check("A: Calculator: the box is clickable", click("bonus", "utilities\001calculator", false))
-check("A: Calculator box unticked: off, its window closed", CueRulesDB.calculator.enabled == false and not _G.XayaUICalculator:IsShown())
+check("A: Calculator box unticked: off, its window closed", ns.Settings("bonus").calculator.enabled == false and not _G.XayaUICalculator:IsShown())
 check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
 oneRedraw("A: Calculator box unticked")
 check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001calculator") and box("bonus", "utilities\001calculator"):GetChecked() == false)
 ns.Calculator_Open(); settle()
 check("A: Calculator off: opening it does nothing", not _G.XayaUICalculator:IsShown())
 click("bonus", "utilities\001calculator", true)
-check("A: Calculator box ticked: on again (the window stays closed until opened)", CueRulesDB.calculator.enabled == true and not _G.XayaUICalculator:IsShown())
+check("A: Calculator box ticked: on again (the window stays closed until opened)", ns.Settings("bonus").calculator.enabled == true and not _G.XayaUICalculator:IsShown())
 oneRedraw("A: Calculator box ticked")
 click("bonus", "tooltips", false)
-check("A: Enhanced Tooltips box unticked: the feature is off (nothing of it runs)", CueRulesDB.tooltips.enabled == false and ns.TT.on == false)
+check("A: Enhanced Tooltips box unticked: the feature is off (nothing of it runs)", ns.Settings("bonus").tooltips.enabled == false and ns.TT.on == false)
 oneRedraw("A: Enhanced Tooltips box unticked")
 click("bonus", "tooltips", true)
-check("A: Enhanced Tooltips box ticked: on again", CueRulesDB.tooltips.enabled == true and ns.TT.on == true)
+check("A: Enhanced Tooltips box ticked: on again", ns.Settings("bonus").tooltips.enabled == true and ns.TT.on == true)
 click("bonus", "datapanels", true)
-check("A: Data Panels box ticked: master switch on, the left panel shows", CueRulesDB.dataPanels.general.enabled == true
+check("A: Data Panels box ticked: master switch on, the left panel shows", ns.Settings("bonus").dataPanels.general.enabled == true
   and _G.XayaUIDataPanel_bl ~= nil and _G.XayaUIDataPanel_bl:IsShown())
 check("A: ...the row was not selected", selected("bonus") == "tooltips", tostring(selected("bonus")))
 oneRedraw("A: Data Panels box ticked")
 click("bonus", "datapanels", false)
-check("A: Data Panels box unticked: master off, the panel is hidden", CueRulesDB.dataPanels.general.enabled == false and _G.XayaUIDataPanel_bl ~= nil and not _G.XayaUIDataPanel_bl:IsShown())
+check("A: Data Panels box unticked: master off, the panel is hidden", ns.Settings("bonus").dataPanels.general.enabled == false and _G.XayaUIDataPanel_bl ~= nil and not _G.XayaUIDataPanel_bl:IsShown())
 oneRedraw("A: Data Panels box unticked")
 end)
 
