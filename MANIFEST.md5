@@ -148,7 +148,7 @@ aa2319eb392a2c0dbdb4ca645f342185  XayaUI_DevAssist/DevRecord.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 e02d7cfaf5d8f831af4e099965713b69  XayaUI_DevAssist/Probe.lua
-05e8a77a4d360706400e6090963a6a76  XayaUI_DevAssist/QAQuestions.lua
+cc3a67b321da3d1ea9dec0a15f1c4554  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
@@ -187,7 +187,7 @@ c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lu
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 eeae9b48ca36f751a949367a498b3d73  XayaUI_DevAssist/QAWalks-statcalc.lua
 15a59f22320d9a870704a5f7828f0d62  XayaUI_DevAssist/QAWalks.lua
-8a092e8c8fd5cb04565993ea5653953a  XayaUI_DevAssist/XayaUI_DevAssist.toc
+bf591c8d8366e38ce9810ec997daf785  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
