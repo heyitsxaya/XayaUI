@@ -50,7 +50,9 @@ from `qol.chartoolkit.*` (panelPart, spells: 117 nodes) to `bonus.statcalc.*`, n
 "(Panel, Spell Math)"); the `order` of the Bonus pages after it (+1); QoL's `qol.chartoolkit` switch tip and intro (they named the Stat
 Calculator). XayaUI Bonus Features off (139 lines): the two parts gone with it, the minimap list's "Stat Calculator" row gone
 (`settings.minimap.entries.stats`, `set.minimap.entries.stats`: the row is Bonus's) and the rows after it one `order` up, and the two QoL
-texts. XayaUI QoL off: 0 lines (Bonus Features shows nothing of it). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+texts. XayaUI QoL off: 0 lines (Bonus Features shows nothing of it). Regenerated again on 2026-11-08 for Options 0.6.105 (the Theme table's rows, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #7): only the
+"reskin" tab changed; `--dump` of 3eb0c4b and of the new code differ only in the relWidth of the table's Element cells (h_el and every
+el_*, 0.24 -> 0.25: 17 lines changed, i.e. 34 diff lines all-on), 0 other lines in every variant (debug-log 2026-11-08-1941). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

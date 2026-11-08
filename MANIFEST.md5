@@ -705,7 +705,7 @@ c4a0fd4b2d15995bae62dc841c7b3fe1  debug-log/2026-11-08-0711-debug-w7-0.6.100.md
 df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
 928bcabb12c7f2ba6c6b0b3eafab84b8  debug-log/2026-11-08-0848-debug-chatdefaults-0.6.46.md
 5ba778ce07ca328405ee634d84d79787  debug-log/2026-11-08-0915-character-split-0.7.53.md
-1dc4c1e1cf5dae20162632da5236e192  debug-log/2026-11-08-1941-layout-mover-fixes-0.6.105.md
+1799c87419173ea258c8db02543e2e73  debug-log/2026-11-08-1941-layout-mover-fixes-0.6.105.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 d96560705f10875a2d369a78a5092270  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
@@ -764,7 +764,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-9ac40d5397f123ce727fbafb67448fca  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+f442719e4a99d4a65813f45826fd8979  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md
@@ -998,8 +998,8 @@ be8dd409463d20467763c23a4f8e91eb  tests/options_click_cost.lua
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-cd4fedac252edb425e40d33bd73cfcc8  tests/options_split_parity_golden.json
-20620dafec2cda9057e458e43bf727d3  tests/options_split_parity_run.py
+dbc53a5c88e078dbedb4b34a58e95ae8  tests/options_split_parity_golden.json
+b3a743bf668d3ec9422e72cf4bec8347  tests/options_split_parity_run.py
 525d8ff64cb03387c245094b3a0679db  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -1066,8 +1066,8 @@ f20656bb176b61bfa6271ba3f10f5459  tests/switch_reload_run.py
 34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py
 9218d9a33ff044bf7354f5701fb7ddd1  tests/theme_audit_run.py
 92f1976a10e8562f7c887adf05323793  tests/theme_gradient_borders_run.py
-ab80066975281b6d09a460c71bea7408  tests/theme_paint_parity_golden.json
-0c00c264f718c19821187bfaa68ba575  tests/theme_paint_parity_run.py
+3632256965d1862ad811bba884944976  tests/theme_paint_parity_golden.json
+d5373899fd32967a064f7995a5ea8ba8  tests/theme_paint_parity_run.py
 88cde50841e982c0c2a184cb8f7fd5d0  tests/theme_scopes_elements_run.py
 2935486619b9ec8aa3961a9d7f611d56  tests/timing_run.py
 b47b22d116c919edc43027abf68a4454  tests/toc_files_run.py

@@ -55,3 +55,12 @@ Read in the code; which one she hit is not known (INFERENCE), so all are fixed:
 - tests/harness/world.lua: a button's `GetFontString()` carries the button's text (as in the game), so label widths can be measured.
 - Run: the targeted runners above plus auto_picker, mover_session, audit_core, window_margins, lua_pitfalls. Full suite: see the
   commit that lands this bundle.
+
+## 5. Full suite and the two goldens (follow-up commit)
+- Full suite on 251dd41 (with the API index): 284 check groups ok, 2 failed: options_split_parity (8) and theme_paint_parity (16); both
+  pass on main 3eb0c4b.
+- options_split_parity: `--dump` of 3eb0c4b and of the new code differ only in the Element cells' relWidth (0.24 -> 0.25), every
+  variant, 0 other lines. Golden regenerated.
+- theme_paint_parity: the differences come from the stand-in change, not the addon code: the branch code with main's world.lua passes
+  the old golden (19 checks, 0 failed). AceGUI's Button reads its label through GetFontString(), which now carries the text, so the
+  stand-in's buttons show their label and compact buttons size to it. Golden regenerated on main 3eb0c4b with the new world.lua.
