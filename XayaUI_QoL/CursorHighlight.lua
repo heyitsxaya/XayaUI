@@ -13,6 +13,7 @@
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
 local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 -- Circle: our own anti-aliased circle / ring pictures (Media\\Cursor\\CircleHD.tga and HLRing_01..20.tga). A square cut with a mask, or a ring built
 -- from straight Line pieces, shows jagged edges and corners; the pictures are smooth. The 20 rings go from a hairline to a full disc; the one whose

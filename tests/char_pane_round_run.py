@@ -68,7 +68,7 @@ lua = lua_with(r'''
 CueRulesDB.characterReskin = { enabled = true }
 ''')
 lua.execute(r'''
-ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
 CharacterFrame:Show(); PaperDollFrame:Show(); ns.CharReskin_Apply()
 local LEFT, RIGHT = PANE_SLOTS_LEFT, PANE_SLOTS_RIGHT
@@ -135,7 +135,7 @@ lua = lua_with(r'''
 CueRulesDB.characterReskin = { enabled = true }
 ''')
 lua.execute(r'''
-ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
 CM.gcd = { dur = 1.16, haste = 29.25 }
 CharacterFrame:Show(); PaperDollFrame:Show(); ns.CharReskin_Apply()
@@ -209,7 +209,7 @@ lua = lua_with(r'''
 CueRulesDB.characterReskin = { enabled = false }
 ''')
 lua.execute(r'''
-ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 CharacterFrame:Show(); PaperDollFrame:Show()
 PaperDollFrame_UpdateStats()
 checkp("(guard) V14: the reskin off at login: no stat list frame, no height change", function()

@@ -10,6 +10,7 @@
 local ns = rawget(_G, "XayaUI_NS")   -- XayaUI core's namespace; without XayaUI there is nothing to register into
 if type(ns) ~= "table" or type(ns.RegisterDebugCommand) ~= "function" then return end
 local DevS = ns.Settings("devassist")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("devassist", "XayaUI_DevAssist", "XayaUIDevAssistDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local MAX_LINES = 1400
 local lines

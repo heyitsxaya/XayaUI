@@ -37,7 +37,7 @@ end
 -- every feature addon) has it. ns.Settings(module) returns that module's settings view:
 --   local S = ns.Settings("qol"); local c = S.cursorTrail; S.cursorTrail = c or {}
 -- module = "platform", "core" (rule tracking), "qol", "chat", "bonus", "reskin" or "devassist" (XayaUI Nameplates keeps its own
--- XayaUINameplatesDB). (P5) A module listed in SETTINGS_STORES below keeps its settings in its own saved variable (XayaUIReskinDB ...),
+-- XayaUINameplatesDB). (P5) A module listed in OWN_STORE below keeps its settings in its own saved variable (XayaUIReskinDB ...),
 -- copied there from CueRulesDB once (section 0c); the others still read and write their CueRulesDB keys. The call sites never change.
 --   * A view holds no data: each access looks up the current backing table, so a view kept in an upvalue still sees new data after
 --     anything replaces CueRulesDB, a module's store or one of their keys (the loader setting the saved variables, a profile import,
@@ -62,7 +62,7 @@ local SETTINGS_KEYS = {
                   "version", "reskinTabOff" },
     core      = { "rules", "folders", "bars", "barGroup", "drafts", "moverDraft", "auraAlias", "auraModel", "auraSources", "auraTracker",
                   "classLearn", "learnedAuraDur", "learnedAuraStacks", "learnedCooldown", "procGlowSeen", "engineDisplay", "cuesVer",
-                  "backupPreCues", "setupBuildError", "setupShowError", "perfLog" },
+                  "backupPreCues", "setupBuildError", "setupShowError" },
     qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "shoppingList", "releaseGuard" },
     chat      = { "chat", "chat2" },
     bonus     = { "dataPanels", "tooltips", "calculator", "notepad" },
@@ -70,10 +70,15 @@ local SETTINGS_KEYS = {
     -- *reskin* is a blizzard change. Functionality changes or enhancements are separate."): Reskin keeps the sub-keys that only change
     -- the LOOK of Blizzard's character window (LEGACY_SPLIT), QoL the rest; the code (XayaUI_QoL/CharacterReskin.lua) reads both.
     reskin    = { "rsk", "gm", "friendColors", "characterReskin" },
-    devassist = { "idProbe", "idProbeStream", "chatProbe" },
+    -- (P5) perfLog: Dev Assist's (B11; XayaUI Rules' Engine.lua writes it through this view, only while Dev Assist is on); the detailed
+    -- record's own settings, kept in CueRulesDB.ui before (LEGACY_UNDER_UI)
+    devassist = { "idProbe", "idProbeStream", "chatProbe", "perfLog", "recCats", "recFocus", "recordOff", "recordMax", "debugProbe", "probeByDebug" },
 }
 -- (P5) where a module's key lived in CueRulesDB before the module had its own saved variable: inside CueRulesDB.ui ...
-local LEGACY_UNDER_UI = { reskin = { rsk = true, gm = true, friendColors = true } }
+local LEGACY_UNDER_UI = {
+    reskin    = { rsk = true, gm = true, friendColors = true },
+    devassist = { recCats = true, recFocus = true, recordOff = true, recordMax = true, debugProbe = true, probeByDebug = true },
+}
 -- ... or as some sub-keys of a CueRulesDB key two modules share: { [key] = { owner = the module that keeps `sub`, sub = {...}, rest = the
 -- module that keeps every other sub-key } }. The look of the character window (Reskin): the switch, the window chrome, the stat list's
 -- art, the background's opacity, the wider window and the extra height (and the one-time widePx step). The rest (QoL): item level,
@@ -82,14 +87,17 @@ local LEGACY_SPLIT = {
     characterReskin = { owner = "reskin", rest = "qol", sub = { enabled = true, chrome = true, stats = true, bgAlpha = true, wide = true,
         widePx = true, widePxTo42 = true, tallPx = true } },
 }
--- (P5, plan section 5 steps 2-3) the module's own saved variable (declared by the module's .toc). A module without a line here keeps
--- its keys in CueRulesDB (the Platform's).
-local SETTINGS_STORES = {
-    reskin    = { addon = "XayaUI_Reskin", var = "XayaUIReskinDB" },
-    chat      = { addon = "XayaUI_Chat", var = "XayaUIChatDB" },
-    bonus     = { addon = "XayaUI_Bonus", var = "XayaUIBonusDB" },
-    qol       = { addon = "XayaUI_QoL", var = "XayaUIQoLDB" },
-}
+-- (P5, plan section 5 steps 2-3) the modules that keep their settings in a saved variable of their own. A module not listed here keeps
+-- its keys in CueRulesDB (the Platform's). Which variable, and which addon loads it, the module itself says from its own first file
+-- (ns.SettingsDeclareStore, below; its .toc declares the variable): the Platform never names a module's addon or saved file (a module
+-- that is switched off declares nothing, and its view then reads nil and keeps nothing: V14).
+local OWN_STORE = { reskin = true, chat = true, bonus = true, qol = true, devassist = true }
+local SETTINGS_STORES = {}   -- module -> { addon, var }, as declared
+function ns.SettingsDeclareStore(module, addon, var)
+    if OWN_STORE[module] and type(addon) == "string" and type(var) == "string" and not SETTINGS_STORES[module] then
+        SETTINGS_STORES[module] = { addon = addon, var = var }
+    end
+end
 
 ns.settingsEpoch = 0
 local settingsUnknown, settingsDropped, settingsStrict, lastBacking = {}, {}, false, nil
@@ -111,14 +119,14 @@ local function StoreOf(module)
 end
 -- the table a module's view reads, and whether it is laid out as CueRulesDB was (legacy = true)
 local function ModuleBacking(module)
-    if not SETTINGS_STORES[module] or storeState[module] == "old" then return Backing(), true end
+    if not OWN_STORE[module] or storeState[module] == "old" then return Backing(), true end
     if storeState[module] == "own" then return StoreOf(module), false end
     return nil, false
 end
 function ns.SettingsChanged() ns.settingsEpoch = ns.settingsEpoch + 1 end
 -- module (optional): that module's settings can be read and written now; without it: the Platform's CueRulesDB exists
 function ns.SettingsReady(module)
-    if module == nil or module == "platform" or not SETTINGS_STORES[module] then return Backing() ~= nil end
+    if module == nil or module == "platform" or not OWN_STORE[module] then return Backing() ~= nil end
     return storeState[module] ~= nil and (ModuleBacking(module)) ~= nil
 end
 function ns.SettingsStrict(on) settingsStrict = on and true or false end
@@ -149,12 +157,12 @@ local function MakeView(module)
             Check(k)
             local db, legacy = ModuleBacking(module)
             if not db then
-                if SETTINGS_STORES[module] and storeState[module] == nil then   -- not open: off or not loaded yet (V14: nothing is made)
+                if OWN_STORE[module] and storeState[module] == nil then   -- not open: off or not loaded yet (V14: nothing is made)
                     local id = module .. "." .. tostring(k)
                     settingsDropped[id] = (settingsDropped[id] or 0) + 1
                     if settingsStrict then error("XayaUI settings: " .. module .. "'s settings are not open (key " .. tostring(k) .. ")", 2) end
                     return
-                elseif SETTINGS_STORES[module] and storeState[module] == "own" then
+                elseif OWN_STORE[module] and storeState[module] == "own" then
                     db = {}; _G[SETTINGS_STORES[module].var] = db; StoreOf(module)
                 else
                     db = {}; _G.CueRulesDB = db; Backing()
@@ -190,14 +198,14 @@ end
 -- (P5) where a module's settings are kept now: { var = "XayaUIQoLDB" | "CueRulesDB", state = "own" | "old" | "closed" | "platform",
 -- addon, ownVar }; nil for a name that is not a module
 function ns.SettingsStore(module)
-    local st = SETTINGS_STORES[module]
-    if not st then return settingsViews[module] and { var = "CueRulesDB", state = "platform" } or nil end
+    if not OWN_STORE[module] then return settingsViews[module] and { var = "CueRulesDB", state = "platform" } or nil end
+    local st = SETTINGS_STORES[module] or {}   -- (not declared: the module's addon is off or not loaded yet)
     return { var = storeState[module] == "old" and "CueRulesDB" or st.var, state = storeState[module] or "closed", addon = st.addon, ownVar = st.var }
 end
 -- (P5) the modules that have their own store, sorted
 function ns.SettingsStoreModules()
     local out = {}
-    for m in pairs(SETTINGS_STORES) do out[#out + 1] = m end
+    for m in pairs(OWN_STORE) do out[#out + 1] = m end
     table.sort(out)
     return out
 end
@@ -266,7 +274,7 @@ end
 
 local readyFor = {}          -- module -> functions waiting for its store (ns.WhenSettingsReady)
 local migrationGuards = {}   -- module -> { before = fn(old), check = fn(old, store) -> nil | difference text }
-function ns.SettingsMigrationGuard(module, def) if SETTINGS_STORES[module] and type(def) == "table" then migrationGuards[module] = def end end
+function ns.SettingsMigrationGuard(module, def) if OWN_STORE[module] and type(def) == "table" then migrationGuards[module] = def end end
 ns.settingsTestHooks = ns.settingsTestHooks or {}   -- (tests only) afterCopy(module, store): see or change the copy (the mismatch path);
 -- keepOld = true: every store stays closed to the copy and its module reads CueRulesDB as before P5 (the reference to compare with)
 
@@ -351,7 +359,7 @@ end
 -- A module without its own store waits for the Platform's saved settings (ns.WhenReady).
 function ns.WhenSettingsReady(module, fn)
     if type(fn) ~= "function" then return end
-    if not SETTINGS_STORES[module] then return ns.WhenReady(fn) end
+    if not OWN_STORE[module] then return ns.WhenReady(fn) end
     if storeState[module] then Call(fn); return end
     local q = readyFor[module] or {}
     q[#q + 1] = fn
@@ -360,6 +368,17 @@ end
 -- (tests that load single files without the game's loader, where no module addon fires ADDON_LOADED) open every store as the addons'
 -- ADDON_LOADED would, after the test has set CueRulesDB up
 function ns.SettingsOpenAllForTests() for m in pairs(SETTINGS_STORES) do ns.SettingsOpen(m) end end
+-- (tests) CueRulesDB.ui as laid out before P5: a key a module took out of ui (LEGACY_UNDER_UI) goes to that module's view while its store
+-- is open, every other key to the Platform's ui (for tests that set settings up by writing CueRulesDB.ui.<key>)
+function ns.SettingsUiRoutedForTests()
+    local function home(k)
+        for m, keys in pairs(LEGACY_UNDER_UI) do if keys[k] and OWN_STORE[m] and storeState[m] == "own" then return settingsViews[m] end end
+        local p = settingsViews.platform
+        if type(p.ui) ~= "table" then p.ui = {} end
+        return p.ui
+    end
+    return setmetatable({}, { __index = function(_, k) return home(k)[k] end, __newindex = function(_, k, v) home(k)[k] = v end })
+end
 -- (tests) a table that reads and writes every settings key through the view of the module that owns it (where the module reads it
 -- now: its own store or CueRulesDB), for tests that set settings up by writing CueRulesDB.<key>; characterReskin goes to QoL's view
 function ns.SettingsRoutedForTests()
@@ -388,7 +407,7 @@ local function LegacyHomes(key)
         local moved = {}   -- the Platform's CueRulesDB.ui still holds the old copies of these (copy, never move): never read from there
         homes[#homes + 1] = { module = "platform", key = "ui", skip = moved }
         for m, keys in pairs(LEGACY_UNDER_UI) do
-            if SETTINGS_STORES[m] and storeState[m] ~= "old" then
+            if OWN_STORE[m] and storeState[m] ~= "old" then
                 for k in pairs(keys) do moved[k] = true; homes[#homes + 1] = { module = m, key = k, sub = k } end
             end
         end

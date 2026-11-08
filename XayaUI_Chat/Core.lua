@@ -8,6 +8,8 @@
 -------------------------------------------------------------------------------
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("chat", "XayaUI_Chat", "XayaUIChatDB") end
 local ChatS = ns.Settings("chat")   -- (Chat 0.6.41, P2 settings seam; Chat 0.6.42, P5: Chat's own XayaUIChatDB; Modules.lua section 0b)
 
 local C = { errors = {}, applied = {}, mods = {}, hooked = {}, stats = { suppressed = 0, protected = 0 } }

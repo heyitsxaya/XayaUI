@@ -17,6 +17,8 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB") end
 local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
 
 local LABEL = "XayaUI"

@@ -5,14 +5,16 @@
 -- performance, messages) are recorded only while this addon is enabled. REQUEST-LOG #81, row A20: the switch "Also run the game-data
 -- probe" moves to Dev Assist's own settings. Both show on XayaUI's Settings > Debugging, under "Dev Assist settings", registered here
 -- (ns.RegisterSettingsPage("debugging", ...)); without this addon nothing of them exists.
--- The record works as it did in core 0.6.54 (same saved data: CueRulesDB.debugRecord, CueRulesDB.ui.recCats / recordOff / recordMax /
--- recFocus / debugProbe), and only while Advanced Debugging is on and "Keep the detailed record" is ticked: every hand-in point checks
+-- The record works as it did in core 0.6.54 (same saved data: CueRulesDB.debugRecord; P5: the record's own settings recCats / recordOff /
+-- recordMax / recFocus / debugProbe / probeByDebug moved from CueRulesDB.ui to Dev Assist's XayaUIDevAssistDB, copied once), and only while Advanced Debugging is on and "Keep the detailed record" is ticked: every hand-in point checks
 -- its category first, and its events are registered only while their category is on (V14).
 -- Also here: reading a debug report string back (/xuidev report): the same entries, expanded (with each error's stack).
 -------------------------------------------------------------------------------
 local ns = rawget(_G, "XayaUI_NS")
 if type(ns) ~= "table" or type(ns.DebugRecordInfo) ~= "table" or type(ns.SetDebugHooks) ~= "function" then return end   -- XayaUI is off or older than 0.6.56
 local PlatS = ns.Settings("platform")   -- (Dev Assist 0.7.55, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+local DevS = ns.Settings("devassist")   -- (Dev Assist 0.7.59, P5: the record's own settings, in XayaUIDevAssistDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("devassist", "XayaUI_DevAssist", "XayaUIDevAssistDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local DR = ns.DebugRecordInfo
 local issecret = ns.IsSecret or issecretvalue or function() return false end
 local Plain, Version = DR.Plain, DR.Version
@@ -74,12 +76,22 @@ local function S(v)   -- any game value as text; a hidden (secret) one says so i
     return tostring(v)
 end
 
+-- (P5) the record's own settings (Dev Assist's store) as plain values, read again only when the settings epoch moves: the record's checks
+-- run on hot paths (every hand-in point tests its category first), so no metamethod per check (Modules.lua section 0b)
+local dsEp, dsOff, dsCats, dsFocus
+local function RecSet()
+    if dsEp ~= ns.settingsEpoch then
+        if ns.SettingsReady("devassist") then dsOff, dsCats, dsFocus = DevS.recordOff, DevS.recCats, DevS.recFocus
+        else dsOff, dsCats, dsFocus = nil, nil, nil end
+        dsEp = ns.settingsEpoch
+    end
+end
 -- Is the detailed record kept? (Advanced Debugging on and "Keep the detailed record" ticked)
-local function Kept() local u = Ui(); return (u.advancedDebug and u.recordOff ~= true) and true or false end
+local function Kept() local u = Ui(); RecSet(); return (u.advancedDebug and dsOff ~= true) and true or false end
 -- Is this category on? (the record kept, and the category on: its own setting, else its default)
 function ns.RecCatOn(key)
     if not Kept() then return false end
-    local c = Ui().recCats
+    local c = dsCats
     -- (not `type(c) == "table" and c[key] or nil`: a stored false would turn into nil and read as the default)
     local v
     if type(c) == "table" then v = c[key] end
@@ -88,7 +100,8 @@ function ns.RecCatOn(key)
 end
 -- The category's own setting, whatever Advanced Debugging is (for the Settings tick boxes)
 function ns.RecCatSetting(key)
-    local c = Ui().recCats
+    RecSet()
+    local c = dsCats
     local v
     if type(c) == "table" then v = c[key] end
     if v == nil then local d = CAT[key]; return d and d.default or false end
@@ -96,10 +109,12 @@ function ns.RecCatSetting(key)
 end
 function ns.SetRecCat(key, on)
     if not CAT[key] then return end
-    local u = Ui()
-    u.recCats = type(u.recCats) == "table" and u.recCats or {}
-    if (on and true or false) == CAT[key].default then u.recCats[key] = nil else u.recCats[key] = on and true or false end
-    if next(u.recCats) == nil then u.recCats = nil end
+    local c = DevS.recCats
+    c = type(c) == "table" and c or {}
+    if (on and true or false) == CAT[key].default then c[key] = nil else c[key] = on and true or false end
+    if next(c) == nil then c = nil end
+    DevS.recCats = c
+    dsEp = nil
     DR.SyncEvents()   -- (V14: a category's events are registered only while it is on)
 end
 -- presets: "light" (rules, game state, messages: the cheapest useful set), "all", "default"
@@ -120,7 +135,7 @@ local function RecordOn(kind)
     return ns.RecCatOn(cat)
 end
 function DR.MaxLines()
-    local n = tonumber(Ui().recordMax)
+    local n = tonumber(DevS.recordMax)
     return (n and SIZES[n]) and n or DEFAULT_MAX
 end
 local recT, recEp
@@ -191,7 +206,8 @@ end
 local triggerWatch = false   -- true while the category is on and at least one rule is chosen (DR.Refresh)
 local trigLast = setmetatable({}, { __mode = "k" })
 local function Focused(rule)
-    local f = Ui().recFocus
+    RecSet()
+    local f = dsFocus
     if type(f) ~= "table" then return false end
     if rule.uid and f[rule.uid] then return true end
     return rule.parentUid ~= nil and f[rule.parentUid] and true or false
@@ -231,7 +247,8 @@ local function RecSound(rule, how, result, note)
 end
 -- Recompute what other files test on their hot paths (after any change to the debugging settings)
 function DR.Refresh()
-    local f = Ui().recFocus
+    RecSet()
+    local f = dsFocus
     triggerWatch = ns.RecCatOn("triggers") and type(f) == "table" and next(f) ~= nil or false
 end
 
@@ -242,13 +259,13 @@ local function SyncProbe()
     local svc = ns.Service and ns.Service("gameDataProbe")
     if not (svc and type(svc.On) == "function" and type(svc.Active) == "function") then return end
     local u = Ui()
-    local want = u.advancedDebug and u.debugProbe ~= false
+    local want = u.advancedDebug and DevS.debugProbe ~= false
     local okA, active = pcall(svc.Active)
     active = okA and active
     if want and not active then
-        if pcall(svc.On) then u.probeByDebug = true end
-    elseif not want and active and u.probeByDebug then
-        pcall(svc.Off); u.probeByDebug = nil
+        if pcall(svc.On) then DevS.probeByDebug = true end
+    elseif not want and active and DevS.probeByDebug then
+        pcall(svc.Off); DevS.probeByDebug = nil
     end
 end
 ns.SyncDebugProbe = SyncProbe
@@ -481,16 +498,16 @@ function DR.extraEvents()
     if perfByDebug then want.PLAYER_REGEN_ENABLED = true end
     return want
 end
--- at login (XayaUI's settings are ready by then: this addon loads after XayaUI)
+-- at login (P5: once this addon's own settings are open, at its ADDON_LOADED; XayaUI's are ready before)
 local function Start()
     DR.Refresh(); DR.SyncEvents()
     local u = Ui()
-    if (u.advancedDebug or u.probeByDebug) and ns.AtLogin then ns.AtLogin(SyncProbe) end
+    if (u.advancedDebug or DevS.probeByDebug) and ns.AtLogin then ns.AtLogin(SyncProbe) end
 end
 -- the hand-in points core's files call (each tests for nil first), put in place through core's contract (Modules.lua ns.SetDebugHooks)
 ns.SetDebugHooks({ RecordOn = RecordOn, RecordLine = RecordLine, RecordSummary = RecordSummary, RecTrigger = RecTrigger,
     RecDisplay = RecDisplay, RecSound = RecSound, DevRecordChanged = DevRecordChanged })
-if ns.WhenReady then ns.WhenReady(Start) end
+if ns.WhenSettingsReady then ns.WhenSettingsReady("devassist", Start) elseif ns.WhenReady then ns.WhenReady(Start) end
 
 -------------------------------------------------------------------------------
 -- Dev Assist's settings on XayaUI's Settings > Debugging (shown only while this addon is loaded)
@@ -503,8 +520,8 @@ if ns.RegisterSettingsPage then
             debugProbe = { type = "toggle", name = "Also run the game-data probe (XayaUI Dev Assist)", order = 1, width = "full",
                 desc = "Turns on Dev Assist's event probe with Advanced Debugging, recording what the game lets addons read. It turns off again with Advanced Debugging.",
                 disabled = function() return not Ui().advancedDebug end,
-                get = function() return Ui().debugProbe ~= false end,
-                set = function(_, v) if v then Ui().debugProbe = nil else Ui().debugProbe = false end; SyncProbe() end },
+                get = function() return DevS.debugProbe ~= false end,
+                set = function(_, v) if v then DevS.debugProbe = nil else DevS.debugProbe = false end; SyncProbe() end },
         } }
     end)
     ns.RegisterSettingsPage("debugging", "devrecord", function(Notify)
@@ -513,8 +530,8 @@ if ns.RegisterSettingsPage then
             recordOn = { type = "toggle", name = "Keep the detailed record", order = 1, width = "full",
                 desc = "Keeps the kinds of line chosen below (on by default with Advanced Debugging). Off still keeps errors and warnings for /xui report.",
                 disabled = function() return not Ui().advancedDebug end,
-                get = function() return Ui().recordOff ~= true end,
-                set = function(_, v) Ui().recordOff = (not v) and true or nil; Changed(); Notify() end },
+                get = function() return DevS.recordOff ~= true end,
+                set = function(_, v) DevS.recordOff = (not v) and true or nil; Changed(); Notify() end },
             recIntro = { type = "description", order = 2, width = "full", fontSize = "medium",
                 hidden = function() return not Kept() end,
                 name = "Each switch adds one kind of line; one that is off costs nothing. Combat start and end and any action the game blocked are always kept while the record is. The cost is in grey." },
@@ -533,8 +550,8 @@ if ns.RegisterSettingsPage then
                 hidden = function() return not Kept() end,
                 desc = "The newest lines are kept; older ones are dropped and counted. More lines make a bigger saved file.",
                 values = { [1000] = "1000", [3000] = "3000 (default)", [10000] = "10000 (a bigger file)" }, sorting = { 1000, 3000, 10000 },
-                get = function() local n = tonumber(Ui().recordMax); return (n == 1000 or n == 10000) and n or 3000 end,
-                set = function(_, v) v = tonumber(v); Ui().recordMax = (v == 1000 or v == 10000) and v or nil end },
+                get = function() local n = tonumber(DevS.recordMax); return (n == 1000 or n == 10000) and n or 3000 end,
+                set = function(_, v) v = tonumber(v); DevS.recordMax = (v == 1000 or v == 10000) and v or nil end },
             recFocus = { type = "multiselect", name = "Rules for trigger detail", order = 4.5, width = "full", dialogControl = "Dropdown",
                 desc = "The rules whose every trigger change is recorded (their cues and conditions too). Pick only the rules you are looking into.",
                 hidden = function() return not (Kept() and ns.RecCatSetting("triggers")) end,
@@ -548,12 +565,14 @@ if ns.RegisterSettingsPage then
                     end
                     return v
                 end,
-                get = function(_, key) local f = Ui().recFocus; return type(f) == "table" and f[key] and true or false end,
+                get = function(_, key) local f = DevS.recFocus; return type(f) == "table" and f[key] and true or false end,
                 set = function(_, key, val)
-                    local u = Ui()
-                    u.recFocus = type(u.recFocus) == "table" and u.recFocus or {}
-                    u.recFocus[key] = val and true or nil
-                    if next(u.recFocus) == nil then u.recFocus = nil end
+                    local f = DevS.recFocus
+                    f = type(f) == "table" and f or {}
+                    f[key] = val and true or nil
+                    if next(f) == nil then f = nil end
+                    DevS.recFocus = f
+                    dsEp = nil
                     Changed()
                 end },
             recordInfo = { type = "description", order = 96, width = "full", fontSize = "medium",

@@ -18,6 +18,7 @@
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
 local ReskinS = ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local issecret = _G.issecretvalue or function() return false end
 local function Ok(v) return v ~= nil and not issecret(v) end

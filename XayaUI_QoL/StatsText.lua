@@ -7,6 +7,8 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end
 local QolS = ns.Settings("qol")
 
 -- QoL "stats text" box defaults (see shelved/QoL.lua)

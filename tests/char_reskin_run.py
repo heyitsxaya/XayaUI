@@ -67,7 +67,7 @@ TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
 assert(loadfile(__CT__))("XayaUI_QoL", ns)
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
-ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
+ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
 local tk = ns.CharToolkit_Cfg()
 local function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.002 end

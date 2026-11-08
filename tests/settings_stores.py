@@ -39,13 +39,24 @@ def _py(v):
 def layout(root):
     src = open(os.path.join(root, "XayaUI", "Modules.lua"), encoding="utf-8").read()
     L = lua51.LuaRuntime(unpack_returned_tuples=True)
-    code = "\n".join(_block(src, n) for n in ("SETTINGS_KEYS", "LEGACY_UNDER_UI", "LEGACY_SPLIT", "SETTINGS_STORES"))
-    t = L.execute(code + "\nreturn { keys = SETTINGS_KEYS, underUi = LEGACY_UNDER_UI, split = LEGACY_SPLIT, stores = SETTINGS_STORES }")
+    code = "\n".join(_block(src, n) for n in ("SETTINGS_KEYS", "LEGACY_UNDER_UI", "LEGACY_SPLIT", "OWN_STORE"))
+    t = L.execute(code + "\nreturn { keys = SETTINGS_KEYS, underUi = LEGACY_UNDER_UI, split = LEGACY_SPLIT, own = OWN_STORE }")
     out = _py(t)
+    # each module declares its addon and saved variable from its own files: ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB")
+    decl = {}
+    for base, _, files in os.walk(root):
+        rel = os.path.relpath(base, root)
+        if not rel.split(os.sep)[0].startswith("XayaUI"):
+            continue
+        for f in files:
+            if f.endswith(".lua"):
+                txt = open(os.path.join(base, f), encoding="utf-8", errors="replace").read()
+                for m in re.finditer(r'SettingsDeclareStore\("(\w+)",\s*"(\w+)",\s*"(\w+)"\)', txt):
+                    decl[m.group(1)] = {"addon": m.group(2), "var": m.group(3)}
+    out["stores"] = {m: decl[m] for m, on in (out.get("own") or {}).items() if on and m in decl}
     out["underUi"] = {m: sorted(k for k, v in (ks or {}).items() if v) for m, ks in (out.get("underUi") or {}).items()}
     out["split"] = {k: {"owner": d["owner"], "rest": d["rest"], "sub": sorted(s for s, v in d["sub"].items() if v)}
                     for k, d in (out.get("split") or {}).items()}
-    out["stores"] = out.get("stores") or {}
     return out
 
 

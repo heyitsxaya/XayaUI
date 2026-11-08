@@ -17,6 +17,7 @@
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
 local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam; Bonus 0.6.33, P5: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local TITLE_H = 20
 local TB_H, TB_W, BTN_W = 20, 38, 26   -- toolbar thickness (horizontal), width (vertical), button width (horizontal)

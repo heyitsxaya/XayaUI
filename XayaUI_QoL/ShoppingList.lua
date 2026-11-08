@@ -24,6 +24,7 @@
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local CM = ns.CharModel
 local Shop = {}
 ns.Shop = Shop

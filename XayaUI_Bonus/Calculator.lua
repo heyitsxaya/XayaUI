@@ -18,6 +18,7 @@
 local ADDON, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI)
 local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.31, P2 settings seam; Bonus 0.6.33, P5: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local W, TITLE_H, KEY_H, LINE_H = 216, 20, 26, 22
 local HISTORY_LINES, HISTORY_KEPT = 3, 10

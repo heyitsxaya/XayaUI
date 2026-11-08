@@ -36,6 +36,7 @@
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns
 local QolS, ReskinS = ns.Settings("qol"), ns.Settings("reskin")   -- (Reskin 0.6.21, P2 settings seam; P5: Reskin's own XayaUIReskinDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local BS = { diag = { painted = 0, restored = 0, deferred = 0, lastError = nil } }
 ns.BlizzardSkins = BS

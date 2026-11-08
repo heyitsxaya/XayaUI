@@ -272,7 +272,7 @@ end
 
 -- /xui debug perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
 -- split into rule evaluation / visual updates / bars, with the most expensive rules named. Every report is also saved to
--- CueRulesDB.perfLog (last 6) so it survives /reload and can be read from the saved variables.
+-- XayaUI Dev Assist's XayaUIDevAssistDB.perfLog (P5, B11; CueRulesDB.perfLog before; only while Dev Assist is on) (last 6) so it survives /reload and can be read from the saved variables.
 local function PerfReset()
     perf.steps, perf.total, perf.max, perf.events, perf.t0 = 0, 0, 0, {}, GetTime()
     perf.evalMs, perf.visMs, perf.barsMs, perf.fxMs, perf.fxN = 0, 0, 0, 0, 0
@@ -373,9 +373,11 @@ function ns.PerfCommand(arg)
     else
         L("perf: the game's addon meter (C_AddOnProfiler) is not available here")
     end
-    if ns.SettingsReady() then
-        local log = CoreS.perfLog
-        if type(log) ~= "table" then log = {}; CoreS.perfLog = log end
+    -- (P5, B11) kept by XayaUI Dev Assist (its store): with Dev Assist off nothing is saved (and nothing made for it)
+    local DevS = ns.SettingsReady("devassist") and ns.Settings("devassist")
+    if DevS then
+        local log = DevS.perfLog
+        if type(log) ~= "table" then log = {}; DevS.perfLog = log end
         log[#log + 1] = { at = date("%Y-%m-%d %H:%M:%S"), build = ns.version or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("XayaUI", "Version")), combat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false, lines = lines }
         while #log > 6 do table.remove(log, 1) end
     end

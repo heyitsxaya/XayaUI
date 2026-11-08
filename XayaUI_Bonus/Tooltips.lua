@@ -17,6 +17,8 @@ local addonName, ns = ...
 -- Inside XayaUI core this file receives the shared namespace itself; the XayaUI_NS lookup keeps the stub tests (and any standalone use) working.
 local integrated = _G.XayaUI_NS ~= nil
 ns = _G.XayaUI_NS or ns
+-- (P5) this addon keeps its settings in its own saved variable (its .toc); the Platform opens it at this addon's ADDON_LOADED
+if ns and ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end
 local BonusS = integrated and ns.Settings("bonus") or nil   -- (Bonus 0.6.31, P2 settings seam: the same CueRulesDB.tooltips; Modules.lua section 0b)
 ns.TT = ns.TT or {}
 local TT = ns.TT

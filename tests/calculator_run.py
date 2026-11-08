@@ -72,7 +72,7 @@ do   -- (core 0.6.75) the real settings seam (XayaUI/Modules.lua section 0b), be
   local core = {}
   assert(loadstring(MODULES_SRC, "@Modules.lua"))("XayaUI", core)
   setmetatable(XayaUI_NS, { __index = core })
-  core.SettingsOpenAllForTests()   -- (P5) XayaUI Bonus's store opens (its ADDON_LOADED; Modules.lua section 0c)
+  core.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB"); core.SettingsOpenAllForTests()   -- (P5) XayaUI Bonus is on: its store opens (its ADDON_LOADED; Modules.lua section 0c)
 end
 LOADSTRING_CALLS = 0
 local realLoadstring = loadstring
