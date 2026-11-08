@@ -8,6 +8,12 @@ ns = _G.XayaUI_NS or ns
 ns.InfoPaneData = {
   whatsNew = {
     { "h3", "XayaUI 0.6.x" },
+    { "grp", "Element Menu  (0.6.80, 2026-11-08)" },
+    { "b", 1, "Added a right-click menu for XayaUI elements. While the settings window is open, right-click an unlocked rule display, a data panel, the Notepad, the Calculator, the Shopping List, the chat sidebar, the Chat Data Panel or the Character window to get a menu at the cursor." },
+    { "b", 2, "\"Element options\" opens that element's settings page." },
+    { "b", 2, "X and Y boxes move the element. They are not offered for the chat sidebar, the Chat Data Panel or the Character window." },
+    { "b", 1, "Nothing changes with the settings window closed, or in combat." },
+    { "dev", 2, "Developers' notes: Not yet tested in game (QA I3). Chosen for you, change it in the Questions flow (#495): which elements get the menu (every XayaUI element with a settings page), that \"Element options\" opens that page in the window, that X and Y read and write the element's own saved position, and that a restyled Blizzard frame gets \"Element options\" only. Also changed along with it: Rules 0.6.78, Options 0.6.92, Chat 0.6.44, QoL 0.7.51, Bonus Features 0.6.35 and Dev Assist 0.7.61." },
     { "grp", "Conflict Warnings  (0.6.79, 2026-11-08)" },
     { "b", 1, "Added a conflict warning: when another addon that changes the same thing is loaded (ElvUI, EllesmereUI, Prat, SexyMap, BasicMinimap, TipTac, Plater, KuiNameplates, ThreatPlates or idTip), XayaUI says so once at login and on that part's settings page. Nothing is switched off." },
     { "grp", "Bar Cues  (0.6.58, 2026-11-07)" },
@@ -170,6 +176,15 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-08", title = "Element Menu", blocks = {
+      { "h3", "XayaUI 0.6.80" },
+      { "grp", "Element Menu (new)" },
+      { "b", 1, "Added a right-click menu for XayaUI elements. While the settings window is open, right-click an unlocked rule display, a data panel, the Notepad, the Calculator, the Shopping List, the chat sidebar, the Chat Data Panel or the Character window to get a menu at the cursor." },
+      { "b", 2, "\"Element options\" opens that element's settings page." },
+      { "b", 2, "X and Y boxes move the element. They are not offered for the chat sidebar, the Chat Data Panel or the Character window." },
+      { "b", 1, "Nothing changes with the settings window closed, or in combat." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA I3). Chosen for you, change it in the Questions flow (#495): which elements get the menu (every XayaUI element with a settings page), that \"Element options\" opens that page in the window, that X and Y read and write the element's own saved position, and that a restyled Blizzard frame gets \"Element options\" only. Also changed along with it: Rules 0.6.78, Options 0.6.92, Chat 0.6.44, QoL 0.7.51, Bonus Features 0.6.35 and Dev Assist 0.7.61." },
+    } },
     { date = "2026-11-08", title = "Conflict Warnings and Reload on Switch", blocks = {
       { "h3", "XayaUI 0.6.79" },
       { "grp", "Conflict Warnings (new)" },

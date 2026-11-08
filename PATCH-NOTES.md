@@ -22,6 +22,17 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Element Menu
+
+### XayaUI 0.6.80
+
+**Element Menu (new)**
+- Added a right-click menu for XayaUI elements. While the settings window is open, right-click an unlocked rule display, a data panel, the Notepad, the Calculator, the Shopping List, the chat sidebar, the Chat Data Panel or the Character window to get a menu at the cursor.
+  - "Element options" opens that element's settings page.
+  - X and Y boxes move the element. They are not offered for the chat sidebar, the Chat Data Panel or the Character window.
+- Nothing changes with the settings window closed, or in combat.
+  *Developers' notes: Not yet tested in game (QA I3). Chosen for you, change it in the Questions flow (#495): which elements get the menu (every XayaUI element with a settings page), that "Element options" opens that page in the window, that X and Y read and write the element's own saved position, and that a restyled Blizzard frame gets "Element options" only. Also changed along with it: Rules 0.6.78, Options 0.6.92, Chat 0.6.44, QoL 0.7.51, Bonus Features 0.6.35 and Dev Assist 0.7.61.*
+
 ## 2026-11-08 — Conflict Warnings and Reload on Switch
 
 ### XayaUI 0.6.79
