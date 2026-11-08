@@ -1333,7 +1333,7 @@ do
         local t0 = debugprofilestop and debugprofilestop() or 0
         local a, b, c = ns.origOpen(self, app, ...)
         local t1 = debugprofilestop and debugprofilestop() or 0
-        if app == APP then pcall(ns.DecorateTrees); Tree.decorateDue = false end   -- (decorated: nothing new to catch on the next tick)
+        if app == APP then pcall(ns.DecorateTrees, nil, true); Tree.decorateDue = false end   -- (decorated: nothing new to catch on the next tick; true: a rebuild, TreePaint.lua KeepScroll)
         if app == APP and debugprofilestop then
             local t2 = debugprofilestop()
             ns.perf = ns.perf or { n = 0 }
