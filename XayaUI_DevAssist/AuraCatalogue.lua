@@ -242,7 +242,11 @@ local function StepSets(out)
     for classID = 1, (okN and Num(nC) and nC or 0) do
         local okC, _, tok = Call(GetClassInfo, classID)
         local token = (okC and Str(tok)) and tok or tostring(classID)
-        local okS, nS = Call(GetNumSpecializationsForClassID, classID)
+        -- (Dev Assist 0.7.63) C_SpecializationInfo.GetNumSpecializationsForClassID(classID: number) -> specCount: number
+        -- (SecretArguments=AllowedWhenUntainted; docs/reference/api/namespaces.md). The old global of that name is not in the live
+        -- 12.1.5 function list, so this step collected no sets at all; same fix as the rule editor's SpecChoicesAll (Rules_Options 0.6.79).
+        local CSI = C_SpecializationInfo
+        local okS, nS = Call(CSI and CSI.GetNumSpecializationsForClassID, classID)
         for i = 1, (okS and Num(nS) and nS or 0) do
             local okI, specID = Call(GetSpecializationInfoForClassID, classID, i)
             if okI and Num(specID) then

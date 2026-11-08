@@ -110,7 +110,7 @@ if MODE == "off" then
   -- switched on through their rows' tick boxes
   do local sw = ttPage().xuiSwitch; if sw then sw.set({}, true) end end; W.tick(0.05, 2)
   check("(works) #45 Enhanced Tooltips ticked: the post-calls are installed and a spell shows its ID",
-    posts() == 10 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil, posts() .. " | " .. hoverSpell(133))
+    posts() == 11 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil, posts() .. " | " .. hoverSpell(133))
   do local sw = npPage().xuiSwitch; if sw then sw.set({}, true) end end; W.tick(0.05, 2)
   local box = rawget(_G, "XayaUINotepad")
   local n1, l1 = events(NP)
@@ -134,7 +134,7 @@ if MODE == "off" then
 elseif MODE == "defaults" then
   local tp, np = ttPage(), npPage()
   check("#45 a fresh install: Enhanced Tooltips is ticked (on, as the four sections were on by default) and works", tp.xuiSwitch and tp.xuiSwitch.get({}) == true
-    and posts() == 10 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil, posts())
+    and posts() == 11 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil, posts())
   check("#47 a fresh install: the Notepad is ticked (on, as it always was); its box is not built until shown; Notes is in the minimap list",
     np.xuiSwitch and np.xuiSwitch.get({}) == true and rawget(_G, "XayaUINotepad") == nil and available("notes") and np.args.show ~= nil and np.args.show.disabled() == false)
   -- #30 the world map report (/xui debug map)

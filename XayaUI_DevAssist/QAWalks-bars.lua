@@ -12,6 +12,10 @@
 -- (Dev Assist 0.7.53, issue #461) step 4 compares the drawn colour with the same bar in Blizzard default and fails when they are equal
 -- (a bar with no type colour can no longer pass); step 8 is a question for her (the addon cannot read the tooltip she hovered); step 9
 -- is a clean-up (Done) step whose check reads the open settings window: no Rules sidebar row and nothing in the editor shows the rule.
+-- (Dev Assist 0.7.63, issue #461) step 4 expects Neon to change the fixed blue too (Xaya: "Style the fixed blue too", Rules 0.6.79).
+-- Why the sidebar kept "XayaUI QA: Bar..." (her 0.7.52 run): the clean-up up to 0.7.52 removed the rules but never told the settings
+-- window to redraw (no Notify), so the open window kept its old rows; 0.7.53 added the redraw. Left: rows are keyed by place in the
+-- list, so the editor that was open on the test rule slid onto the next rule; the clean-up now goes back to the list as Delete does.
 -- Listed in XayaUI_DevAssist.toc after QAWalks-chat.lua; does nothing without the framework or XayaUI's Bar cues. UNTESTED IN GAME.
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
@@ -58,17 +62,38 @@ local function MakeRule()
     if ns.RefreshVisual and T.cue then pcall(ns.RefreshVisual, T.cue) end
     if ns.MarkDirty then ns.MarkDirty() end
 end
+-- (0.7.63, #461) the Rules sidebar's selected row, as AceConfigDialog keeps it ("loaded\001<group>\001rule7"): the rule index it
+-- names, or nil. Sidebar rows are keyed by the rule's place in the list (XayaUI_Rules_Options/RulesTree.lua "rule" .. i).
+-- (the rule editor, XayaUI Rules Options, is reached through ns.OptionsApi.RuleEditor: GoHome / RulesTreeStatus, published 0.6.80)
+local function RE() local ns = NS(); return ns and ns.OptionsApi and ns.OptionsApi.RuleEditor or {} end
+local function SelectedRuleIndex()
+    local fn = RE().RulesTreeStatus
+    local S = fn and select(2, pcall(fn))
+    local sel = type(S) == "table" and S.selected
+    if type(sel) ~= "string" then return nil end
+    return tonumber(sel:match("rule(%d+)$"))
+end
 local function RemoveAll()
     local ns = NS()
     if not ns then return end
     if T.cue and ns.SetPreview then ns.SetPreview({ T.cue }, "visual", false) end
+    local first
     for i = #ns.rules, 1, -1 do
         local r = ns.rules[i]
         if r == T.rule or r == T.cue then
             if ns.DropVisual then pcall(ns.DropVisual, r) end
             table.remove(ns.rules, i)
+            first = i
         end
     end
+    -- (0.7.63, #461) removing rules moves every later rule up one place, so a sidebar row selected at or after the first removed one
+    -- would now open ANOTHER rule's editor (the test rule's own row, or one of yours). Do what Delete this rule does (Editor.lua):
+    -- go back to the list (GoHome). T.leftEditor / T.shifted record it for the check.
+    T.leftEditor, T.shifted = nil, nil
+    local sel = first and SelectedRuleIndex()
+    if sel and sel >= first and RE().GoHome then pcall(RE().GoHome); T.leftEditor = true end
+    sel = first and SelectedRuleIndex()
+    if sel and sel >= first then T.shifted = sel end   -- (still on a moved row: the check says Fail)
     if T.group then
         for i = #ns.folders, 1, -1 do if ns.folders[i] == T.group then table.remove(ns.folders, i) end end
     end
@@ -163,7 +188,7 @@ local steps = {
           local what = (why == "tooltip" and ("named in the tooltip: " .. tostring(t))) or (why == "dispel" and ("the aura's dispel type: " .. tostring(t))) or (why == "fixed" and "a fixed color") or "no type found: the fixed blue"
           return true, "drawn in the chosen color (" .. what .. ")"
       end },
-    { text = "Press |cffffd100Do it for me|r: the test bar's |cffffd100Color style|r is set to Neon. |cffffd100Expect:|r the bar turns brighter and stronger in the same color family (a bar with no type stays the fixed blue: styles change type colors only).",
+    { text = "Press |cffffd100Do it for me|r: the test bar's |cffffd100Color style|r is set to Neon. |cffffd100Expect:|r the bar turns brighter and stronger in the same color family (a bar with no type color too: the fixed blue in Neon).",
       setup = function() local ns = NS(); if T.cue and ns then ns.BarCueSettings(T.cue.visual).style = "neon"; pcall(ns.RefreshVisual, T.cue); ns.MarkDirty() end end,
       check = function()
           local ns, fr = NS(), Frame()
@@ -175,15 +200,18 @@ local steps = {
           if not (Near(dr, r, 0.02) and Near(dg, g, 0.02) and Near(db, b, 0.02)) then return false, "the bar was not repainted in the Neon color" end
           -- (0.7.53, #461) the same bar in Blizzard default: its type's own color, or (no type, a fixed color) the color it already has.
           -- A drawn color equal to that means no style changed the bar, whatever the reason: Fail, never a Pass by default.
+          -- (0.7.63, #461 "Style the fixed blue too", Rules 0.6.79) no type: Blizzard default is the plain fixed blue (ns.BarFallbackColor)
           local br, bg, bb
-          if why == "tooltip" or why == "dispel" then br, bg, bb = ns.BarTypeColor(t, "blizzard") else br, bg, bb = r, g, b end
+          if why == "tooltip" or why == "dispel" then br, bg, bb = ns.BarTypeColor(t, "blizzard")
+          elseif why == "fallback" and ns.BarFallbackColor then br, bg, bb = ns.BarFallbackColor("blizzard")
+          else br, bg, bb = r, g, b end
           local drawn = ("%.2f %.2f %.2f"):format(dr or 0, dg or 0, db or 0)
           if not br then return false, "Blizzard default has no color for " .. tostring(t) .. ": nothing to compare the Neon bar with" end
           if Near(br, dr, 0.005) and Near(bg, dg, 0.005) and Near(bb, db, 0.005) then
               return false, ("no style changed the bar: drawn %s, the same as Blizzard default (%s)"):format(drawn,
-                  (why == "tooltip" or why == "dispel") and ("type " .. tostring(t)) or "this aura has no type color, so the bar keeps its fixed color")
+                  (why == "tooltip" or why == "dispel") and ("type " .. tostring(t)) or (why == "fallback" and "no type color: the fixed blue") or "a fixed color")
           end
-          return true, ("Neon %s drawn %s; Blizzard default %.2f %.2f %.2f"):format(tostring(t), drawn, br, bg, bb)
+          return true, ("Neon %s drawn %s; Blizzard default %.2f %.2f %.2f"):format(why == "fallback" and "fixed blue" or tostring(t), drawn, br, bg, bb)
       end },
     { text = "Press |cffffd100Do it for me|r: a test group, \"" .. GROUP_NAME .. "\", takes the test rule and forces |cffffd100Muted / Dark|r on every bar in it (the group's Display tab > Every bar: color style > Force). "
         .. "|cffffd100Expect:|r the bar turns duller and darker; on the bar's own Color section the style is greyed out and names the group.",
@@ -271,7 +299,11 @@ local steps = {
           if rows > 0 or editor > 0 then
               return false, ("gone from your rules, but the settings window still shows it: %d sidebar row(s), %d place(s) in the editor"):format(rows, editor)
           end
-          return true, "removed: not in your rules, no sidebar row and nothing in the editor shows it"
+          -- (0.7.63, #461) the editor must not have slid onto another rule: a selected rule row at or after where the test rule was
+          if T.shifted then
+              return false, "gone from your rules, but the editor was left on another rule (row rule" .. tostring(T.shifted) .. ") in the test rule's place"
+          end
+          return true, "removed: not in your rules, no sidebar row and nothing in the editor shows it" .. (T.leftEditor and " (the editor went back to the list)" or "")
       end },
 }
 
