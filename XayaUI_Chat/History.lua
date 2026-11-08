@@ -404,6 +404,7 @@ local function Build()
     search:SetScript("OnTextChanged", function(self) query = self:GetText() or ""; C.History_Update() end)
     search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     frame.search = search
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(search) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     search.hint = search:CreateFontString(nil, "OVERLAY"); search.hint:SetFont(STANDARD_TEXT_FONT, 11, ""); search.hint:SetPoint("LEFT", 8, 0)
     search.hint:SetTextColor(0.5, 0.5, 0.5, 1); search.hint:SetText("Search")
 
@@ -414,6 +415,7 @@ local function Build()
     edit:SetScript("OnTextChanged", function(self, user) if user and frame.text then self:SetText(frame.text) end end)   -- selectable, not editable
     scroll:SetScrollChild(edit)
     frame.scroll, frame.edit = scroll, edit
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(edit) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
 
     -- bottom rows (see FOOT_*): buttons and status on the upper one, the note under them
     frame.refresh = Btn(frame, "Refresh", 64); frame.refresh:SetPoint("BOTTOMLEFT", 12, FOOT_BTN)

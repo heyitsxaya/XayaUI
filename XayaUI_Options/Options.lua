@@ -1501,14 +1501,16 @@ local function EnsureChrome(of)
             ns.Theme.OnResolve(function() local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
         end
 
-        if not fr.xuiDelKey then
-            fr.xuiDelKey = true
-            fr:EnableKeyboard(true)
-            fr:HookScript("OnKeyDown", function(self, key)
-                local handled = false
-                if key == "DELETE" then handled = RE.DeleteKey and RE.DeleteKey() or false   -- (P4b) the rule editor's; absent while XayaUI Rules is off
-                elseif (key == "Z" or key == "Y") and IsControlKeyDown() and RE.UndoKey then handled = RE.UndoKey(key == "Y" or IsShiftKeyDown()) end
-                if self.SetPropagateKeyboardInput and not InCombatLockdown() then self:SetPropagateKeyboardInput(not handled) end
+        -- Delete and Ctrl+Z / Ctrl+Y (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s row 56, her words: "WHY DOES THE ADDON KEEP PREVENTING ME
+        -- FROM SCREENSHOTTING"): through core's ns.KeyCatch (XayaUI/KeyCatch.lua), which holds only a key the editor used and leaves every
+        -- other key, PRINTSCREEN included, to the game, also in combat (this window set the flag by hand only out of combat, so in a fight it
+        -- kept every key while it was open). The window is AceGUI's, recycled for other addons: c.keys is switched off on release.
+        if not c.keys and ns.KeyCatch then
+            c.keys = ns.KeyCatch(fr, function(_, key)
+                if not c.owned then return false end
+                if key == "DELETE" then return RE.DeleteKey and RE.DeleteKey() or false   -- (P4b) the rule editor's; absent while XayaUI Rules is off
+                elseif (key == "Z" or key == "Y") and IsControlKeyDown() and RE.UndoKey then return RE.UndoKey(key == "Y" or IsShiftKeyDown()) and true or false end
+                return false
             end)
         end
         -- multi-select delete links (shown only while rules are selected)
@@ -1536,6 +1538,8 @@ local function EnsureChrome(of)
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
         of.OnRelease = function(self, ...)
+            c.owned = nil
+            if c.keys then c.keys.SetActive(false) end   -- the next addon to get this window gets it without XayaUI's keys
             pcall(RE.SaveRulesSub)
             SetCollapsed(self, false)
             ns.infoOpen = false; ns.pageOpen = nil
@@ -1551,6 +1555,8 @@ local function EnsureChrome(of)
             if orig then return orig(self, ...) end
         end
     end
+    c.owned = true
+    if c.keys then c.keys.SetActive(true) end
     c.arrow:Show()
     c.close:Show()
     if c.help then c.help:Show() end

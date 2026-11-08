@@ -219,8 +219,21 @@ function proto:Lower() end
 function proto:EnableMouse(v) self._mouse = v and true or false end
 function proto:IsMouseEnabled() return self._mouse end
 function proto:EnableMouseWheel() end
-function proto:EnableKeyboard() end
-function proto:SetPropagateKeyboardInput() end
+-- keyboard (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM
+-- SCREENSHOTTING"). Modelled from warcraft.wiki.gg (API Frame SetPropagateKeyboardInput, read 2026-11-08): keys go to the shown
+-- keyboard-enabled frames top-down, "stopping upon encountering the first frame which consumes input rather than propagates it"; key
+-- bindings (movement, PRINTSCREEN = screenshot) run only when no frame kept the key; the call is "#nocombat" (an error here, and the
+-- flag does not change; in the game an addon gets a blocked-action error); "You can call this function from OnKeyDown script handlers
+-- to consume only some keyboard events", so the flag is read after the frame's OnKeyDown (W.keyFlagRead = "after"); a test can set
+-- "before" (the flag as it is when the key arrives) to show a fix holds under either reading.
+-- INFERENCE (not documented): a keyboard-enabled frame consumes until SetPropagateKeyboardInput(true) (default false); an edit box
+-- with keyboard focus takes every key (W.pressKey).
+function proto:EnableKeyboard(v) self._keyboard = v and true or false end
+function proto:SetPropagateKeyboardInput(v)
+  if W.combat then error("SetPropagateKeyboardInput: blocked in combat (#nocombat since 10.1.5)", 2) end
+  self._propagate = v and true or false
+end
+function proto:GetPropagateKeyboardInput() return self._propagate and true or false end
 function proto:RegisterForClicks() end
 function proto:RegisterForDrag() end
 function proto:IsMouseOver() return false end
@@ -990,6 +1003,38 @@ function W.tick(dt, steps)
     end
   end
 end
+-- a key press as the game routes it (see "keyboard" above): returns "game" when no frame kept it (key bindings run: movement,
+-- PRINTSCREEN), else the frame that kept it
+local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+W.keyFlagRead = "after"
+local function strataOf(f) while f do if f._strata then return STRATA_RANK[f._strata] or 3 end; f = f._parent end return 3 end
+function W.pressKey(key)
+  for _, o in ipairs(W.objects) do
+    if o._kind == "EditBox" and o._focus and o:IsVisible() then
+      if o._scripts.OnKeyDown then safecall(o._scripts.OnKeyDown, o, key) end
+      return o
+    end
+  end
+  local list = {}
+  for _, o in ipairs(W.objects) do if o._keyboard and o:IsVisible() then list[#list + 1] = o end end
+  table.sort(list, function(a, b)
+    local sa, sb = strataOf(a), strataOf(b)
+    if sa ~= sb then return sa > sb end
+    return (a._level or 0) > (b._level or 0)
+  end)
+  for _, o in ipairs(list) do
+    local before = o._propagate
+    if o._scripts.OnKeyDown then safecall(o._scripts.OnKeyDown, o, key) end
+    local pass
+    if W.keyFlagRead == "before" then pass = before else pass = o._propagate end
+    if not pass then return o end
+  end
+  return "game"
+end
+-- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown
+-- begins after the PLAYER_REGEN_DISABLED event fires, and ends before the PLAYER_REGEN_ENABLED event fires")
+function W.enterCombat() W.fire("PLAYER_REGEN_DISABLED"); W.combat = true end
+function W.leaveCombat() W.combat = false; W.fire("PLAYER_REGEN_ENABLED") end
 function W.registeredEvents()
   local set = {}
   for _, o in ipairs(W.objects) do for e in pairs(o._events) do set[e] = true end end

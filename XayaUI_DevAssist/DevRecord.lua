@@ -640,6 +640,7 @@ function ns.DevAssistReportWindow()
         eb:SetScript("OnEscapePressed", function() f:Hide() end)
         sf:SetScrollChild(eb)
         f.box = eb
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         local go = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         go:SetSize(110, 24); go:SetPoint("BOTTOMRIGHT", -10, 10); go:SetText("Read")
         go:SetScript("OnClick", function()

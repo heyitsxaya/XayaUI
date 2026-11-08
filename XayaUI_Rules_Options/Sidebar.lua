@@ -1754,6 +1754,7 @@ function ns.SidebarRename(button)
                 end
             end
         end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         button.xuiRenameEB = eb
     end
     eb.xuiRule = rule; eb.xuiIsFolder = isFolder
