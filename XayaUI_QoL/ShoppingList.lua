@@ -82,7 +82,8 @@ local function Cfg()
 end
 Shop.Cfg = Cfg
 -- on = its own switch AND the Blizzard UI Reskin tab's switch (S1 #48: off there turns every reskin off, each keeps its own switch)
-local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
+-- (QoL 0.7.50; PS-57, #480) the switch takes effect on reload: this session runs with the value in effect (Modules.lua section 5c)
+local function On(c) return c and ns.SwitchInEffect("reskin.shoppinglist", c.enabled) and ns.ReskinTabOn() and true or false end
 Shop.On = On
 
 -- this character's history (personal data: kept in your own saved settings only)
@@ -982,7 +983,7 @@ function Shop.Toggle()
     if not c then return end
     -- (D15) the Reskin tab's switch first: while it is off the command changes nothing
     if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard Reskin is off (Blizzard Reskin > Overview); it shows once that is on again."); return end
-    if not c.enabled then c.enabled, c.panel = true, true end
+    if not c.enabled then ns.SwitchApplyNow("reskin.shoppinglist"); c.enabled, c.panel = true, true end   -- (QoL 0.7.50) the command turns it on at once, as before
     if panel and panel:IsShown() then c.closedTillAH = true; panel:Hide(); if popup then popup:Hide() end; return end
     c.panel = true
     Shop.Apply(true)
@@ -1038,9 +1039,13 @@ function ns.BuildShoppingListPage(Notify)
     args.defDiamond = DefInput("diamond", 21, "One-per-character gem (diamond)")
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on; off, nothing of it runs. Greyed while Blizzard Reskin is off (this tab's Overview).",
+    local switch = { type = "toggle", name = "Shopping List", tip = "Lists what your tracked recipes and your gear still need.", desc = "Turns the shopping list on after a reload; off, nothing of it runs. Greyed while Blizzard Reskin is off (this tab's Overview).",
         disabled = function() return not ns.ReskinTabOn() end,
-        get = function() return C().enabled end, set = function(_, v) C().enabled = v and true or false; Changed(v and true or nil) end }
+        get = function() return C().enabled end,
+        set = function(_, v)   -- (QoL 0.7.50; PS-57, #480) saves and asks for a reload; before, Shop.Apply ran at once
+            ns.SwitchSaveForReload("reskin.shoppinglist", C().enabled, function() C().enabled = v and true or false end, "Shopping List")
+            if Notify then Notify() end
+        end }
     local g = { type = "group", name = "Shopping List", order = 5, xuiSwitch = switch, args = args }
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end

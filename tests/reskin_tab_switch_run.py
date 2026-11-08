@@ -10,7 +10,8 @@ Checks, on the real addons in the stand-in game:
   cost as the same reskins saved off by their own switches (mode "ownoff"), V14. The row boxes are greyed. Ticking "All reskins"
   starts all four; unticking it stops all four at once and keeps their own switches (on);
 - mode "ownoff": the cost baseline.
-Options 0.6.55: the switch moved to the tab's Overview row (right pane) with a reload prompt; rows listed after a reload. Old code (main 0ef9cb0): no tab box, no row boxes on these pages, the tab switch does not exist: those checks fail.
+Options 0.6.55: the switch moved to the tab's Overview row (right pane) with a reload prompt; rows listed after a reload.
+XayaUI 0.6.79 / Options 0.6.90 (PS-57, #480): the switch only saves and asks; the reskins start or stop after the reload (stand-in here). Old code (main 0ef9cb0): no tab box, no row boxes on these pages, the tab switch does not exist: those checks fail.
 Run: python3 tests/reskin_tab_switch_run.py   (Lua 5.1 via lupa; loads the settings window)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -148,23 +149,33 @@ local s0 = state()
 check("  ...every reskin is off although its own switch is on", not s0.chat and not s0.char and not s0.gm and not s0.shop and own(), fmt(s0))
 check("  ...the reskins' row boxes are greyed (14 of 14; Reskin 0.6.11 adds Toasts and Pop-ups, 0.6.13 Menus, 0.6.14 Chat Bubbles, 0.6.15 Status Bars, 0.6.16 Minimap Buttons, 0.6.17 Buttons)", greyed() == 14, greyed())
 
--- ticked on the Overview page: all four start, and a reload is offered
+-- ticked on the Overview page (0.6.79, PS-57, #480): the choice is saved and a reload is asked for; nothing starts before the reload
 all.set(nil, true); W.tick(0.1, 10); pcall(ns.DecorateTrees)
 local s1 = state()
-check("ticking Enable Blizzard UI Reskin starts every reskin whose own box is ticked", s1.chat and s1.char and s1.gm and s1.shop, fmt(s1))
-check("  ...the Shopping List starts without popping its panel up (UI-77; nothing is missing on the stand-in's gear)", not s1.shopShown)
+check("ticking Enable Blizzard Reskin saves it and starts nothing before the reload", not s1.chat and not s1.char and not s1.gm and not s1.shop
+  and ns.ReskinTabSaved() == true and ns.ReskinTabOn() == false and all.get() == true, fmt(s1))
 check("  ...and asks to reload (Reload / Later)", prompts == 1 and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD ~= nil and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button1 == "Reload"
   and StaticPopupDialogs.XAYAUI_RESKIN_RELOAD.button2 == "Later", prompts)
 check("  ...the rows stay unlisted until the reload", shownNames(tab) == "Overview", shownNames(tab))
 check("  ...nothing is saved for it while on (a profile that never unticked it holds nothing)", CueRulesDB.reskinTabOff == nil)
+check("  ...the row boxes stay greyed until the reload", greyed() == 14, greyed())
+-- STAND-IN for the reload (tests/switch_reload_run.py does a real one): the hold let go, every reskin's apply walked, the settings addon
+-- loads again with the switch on
+ns.SwitchApplyNow("reskin.tab"); ns.SetReskinTab(ns.ReskinTabSaved()); W.tick(0.1, 10); pcall(ns.DecorateTrees)
+ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn()
+local s1b = state()
+check("after the reload: every reskin whose own box is ticked has started", s1b.chat and s1b.char and s1b.gm and s1b.shop, fmt(s1b))
+check("  ...the Shopping List starts without popping its panel up (UI-77; nothing is missing on the stand-in's gear)", not s1b.shopShown)
 check("  ...the row boxes are no longer greyed", greyed() == 0, greyed())
-ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn()   -- STAND-IN for the reload: the settings addon loads again with the switch on
 check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Toasts and Pop-ups | Tooltips", shownNames(tab))
--- unticked on the tab: all four stop at once, their own switches kept
+-- unticked: saved off and asked again; the reskins keep running until the reload, then all four stop, their own switches kept
 all.set(nil, false); W.tick(0.1, 10)
 StaticPopup_Show = rawPopup
+local s2a = state()
+check("unticking it saves off and asks again; nothing stops before the reload", s2a.chat and s2a.char and s2a.gm and s2a.shop and prompts == 2, fmt(s2a))
+ns.SwitchApplyNow("reskin.tab"); ns.SetReskinTab(ns.ReskinTabSaved()); W.tick(0.1, 10)
 local s2 = state()
-check("unticking it stops all four at once", not s2.chat and not s2.char and not s2.gm and not s2.shop, fmt(s2))
+check("after the reload all four are stopped", not s2.chat and not s2.char and not s2.gm and not s2.shop, fmt(s2))
 check("  ...and keeps each reskin's own switch (on)", own())
 check("  ...saved as off", CueRulesDB.reskinTabOff == true)
 local sp = rawget(_G, "XayaUIShoppingList")

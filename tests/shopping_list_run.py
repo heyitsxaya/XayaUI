@@ -285,7 +285,11 @@ check("  ...a default set by shift-clicking an item: its name and item ID", D()[
 arg("def11").set(nil, "")
 check("  ...empty goes back to the most used", D()["ench:11"] == nil)
 page.xuiSwitch.set(nil, false)
-check("switched off: the panel hides and its events are let go", not XayaUIShoppingList.shown)
+-- (QoL 0.7.50; PS-57, #480) the tick box takes effect on reload (tests/switch_reload_run.py: across a real one); before it nothing
+-- changes, then it is applied as a fresh start would (the hold let go, Shop.Apply)
+check("switched off: nothing changes before the reload (the panel still shows)", XayaUIShoppingList.shown and true or false)
+ns.SwitchApplyNow("reskin.shoppinglist"); ns.Shop.Apply()
+check("switched off and reloaded: the panel hides and its events are let go", not XayaUIShoppingList.shown)
 
 -- 11. Function audit 2026-11-07 (FA-7, D13, D14, D15, D16) ----------------------------------------------------------------------
 page.xuiSwitch.set(nil, true)

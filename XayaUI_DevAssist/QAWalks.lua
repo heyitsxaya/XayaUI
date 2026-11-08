@@ -123,7 +123,10 @@ local function FlipReskin()
     OpenReskin()
     local sw = ReskinSwitch()
     if not (sw and sw.set and ns.ReskinTabOn) then error("the switch Enable Blizzard Reskin was not found: open /xui > Blizzard Reskin > Overview") end
-    local now = ns.ReskinTabOn() and true or false
+    -- (Dev Assist 0.7.60; PS-57) the saved choice (ns.ReskinTabSaved) and the switch in effect this session (ns.ReskinTabOn) differ
+    -- until the /reload
+    local saved = ns.ReskinTabSaved or ns.ReskinTabOn
+    local now = saved() and true or false
     sw.set(nil, not now)   -- (what a click on the tick box does: saves the choice and asks "reload now?")
     reskinPending = { was = now }
 end
@@ -136,11 +139,12 @@ end
 local function FlipCheck()
     local ns = NS()
     if not reskinPending then return false, "the switch was not changed in this session: press Do it for me" end
-    local now = ns.ReskinTabOn() and true or false
+    local now = (ns.ReskinTabSaved or ns.ReskinTabOn)() and true or false
+    local live = ns.ReskinTabOn() and true or false   -- (Dev Assist 0.7.60; PS-57) in effect: must still be what it was
     local asked = ReloadAsked()
-    return (now ~= reskinPending.was and asked) and true or false,
-        ("switch now %s (was %s); saved: %s; the reload question: %s"):format(now and "ON" or "OFF", reskinPending.was and "ON" or "OFF",
-            now ~= reskinPending.was and "yes" or "NO", asked and "asked" or "NOT asked")
+    return (now ~= reskinPending.was and live == reskinPending.was and asked) and true or false,
+        ("switch now %s (was %s); saved: %s; in effect until the /reload: %s; the reload question: %s"):format(now and "ON" or "OFF", reskinPending.was and "ON" or "OFF",
+            now ~= reskinPending.was and "yes" or "NO", live and "ON" or "OFF", asked and "asked" or "NOT asked")
 end
 -- the look after a reload, against what the switches say: each reskin is drawn only when Enable Blizzard Reskin and its own box are on
 local function ReskinLook()
@@ -192,7 +196,7 @@ QA.Register("reskin-switches", { title = "Blizzard Reskin: the switch for all re
             if not sw then return false, "the switch Enable Blizzard Reskin is not in the settings window" end
             return true, ("the switch is there; it is %s now"):format((ns.ReskinTabOn and ns.ReskinTabOn()) and "ON" or "OFF")
         end },
-    { text = "Press |cffffd100Do it for me|r: |cffffd100Enable Blizzard Reskin|r is switched to the other setting (off if it is on), the way a click on it does.\n\n|cffffd100Expect:|r a question \"Blizzard Reskin: reload now ...?\" with Reload / Later. The new look comes with the reload, not before. Press |cffffd100Later|r for now.",
+    { text = "Press |cffffd100Do it for me|r: |cffffd100Enable Blizzard Reskin|r is switched to the other setting (off if it is on), the way a click on it does.\n\n|cffffd100Expect:|r a question \"Blizzard Reskin: this change takes effect after a reload. Reload now?\" with Reload / Later. The new look comes with the reload, not before. Press |cffffd100Later|r for now.",
         setup = FlipReskin, check = FlipCheck },
     { done = true, text = "Press |cffffd100Done|r here first (so this part's record is kept), then type |cffffd100/reload|r. After the loading screen, open |cffffd100/xui dev qa|r and run \"Blizzard Reskin: ... (part 2 of 3, after the /reload)\"." },
 } })

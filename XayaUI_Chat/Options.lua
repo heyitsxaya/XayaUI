@@ -644,9 +644,14 @@ local function Build(Notify, which)
         if privacy and privacy.args and privacy.args.tab_btnHdr then privacy.args.tab_btnHdr.order = 20 end
         local switch = { type = "toggle", name = "Improved Chat",
             tip = "Adds chat features: history, filters, sounds, fading, the privacy cover and the Chat Data Panel.",
-            desc = "Off: none of Improved Chat's parts run and nothing of them is made (hooks it placed stay idle until you /reload). Separate from the Chat Panel's switch.",
+            desc = "Takes effect after a reload; off, none of Improved Chat's parts run and nothing of them is made. Separate from the Chat Panel's switch.",
             get = function() return S().improvedOn ~= false end,
-            set = function(_, v) local s = ns.chat2; if s then s.improvedOn = v and true or false end; Re() end }
+            -- (Chat 0.6.43; PS-57, #480) saves and asks for a reload; before, C.Refresh ran at once (Re)
+            set = function(_, v)
+                local s = ns.chat2; if not s then return end
+                ns.SwitchSaveForReload("chat.improved", s.improvedOn ~= false, function() s.improvedOn = v and true or false end, "Improved Chat")
+                if Notify then Notify() end
+            end }
         return { type = "group", name = "Improved Chat", order = 3, childGroups = "tree", xuiSwitch = switch, args = overview }
     end
 
@@ -660,7 +665,13 @@ local function Build(Notify, which)
     local switch = layout.args.enabled
     switch.order, switch.width = nil, nil
     switch.disabled = function() return not ns.ReskinTabOn() end
-    switch.desc = "Off gives Blizzard's chat back as the game draws it (QoL > Improved Chat has its own switch; hooks placed while on stay inert until /reload). Greyed while Blizzard Reskin is off (this tab's Overview)."
+    switch.desc = "Takes effect after a reload; off gives Blizzard's chat back as the game draws it (QoL > Improved Chat has its own switch). Greyed while Blizzard Reskin is off (this tab's Overview)."
+    -- (Chat 0.6.43; PS-57, #480) saves and asks for a reload; before, C.Refresh ran at once (Re)
+    switch.set = function(_, v)
+        local s = ns.chat2; if not s then return end
+        ns.SwitchSaveForReload("chat.panel", s.enabled, function() s.enabled = v and true or false end, "Chat Panel")
+        if Notify then Notify() end
+    end
     local overview = { blocked = layout.args.blocked, intro = layout.args.intro, theme = layout.args.theme }
     layout.args.blocked, layout.args.intro, layout.args.enabled, layout.args.theme = nil, nil, nil, nil
     layout.order = 3
@@ -682,6 +693,23 @@ function ns.BuildImprovedChatTab(Notify) return Build(Notify, "improved") end
 -- new tab: Blizzard UI Reskin"; the Chat Panel restyles Blizzard's chat)
 ns.RegisterSettingsPage("reskin", "chatpanel", ns.BuildChatTab)
 ns.RegisterSettingsPage("qol", "improvedchat", ns.BuildImprovedChatTab)   -- (Chat 0.6.33; UI-18 / UI-19 / UI-21)
+-- (Chat 0.6.43; PS-56, #469) other addons that change the same thing (Modules.lua section 5d): a flag on the page and in one login
+-- line; nothing here changes what the Chat Panel or Improved Chat do. Sources, each read 2026-11-08:
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc, Category "UI Overhaul"; module folders listed at
+-- https://github.com/tukui-org/ElvUI/tree/main/ElvUI/Game/Shared/Modules and skins in ElvUI/Game/load_mainline.xml, read 2026-11-08).  Its chat module: Modules/Chat.
+-- EllesmereUI ("EUI"): each module is its own addon folder (https://github.com/EllesmereGaming/EllesmereUI, every folder below has its
+-- own <folder>.toc, read 2026-11-08).  EllesmereUIChat/EllesmereUIChat.toc (with
+-- EUI_Chat_Skin.lua and EUI_Chat_Sidebar.lua).
+-- Prat: folder "Prat-3.0" (https://github.com/Legacy-of-Sylvanaar/prat-3-0 : Prat-3.0.toc at the root; WowAce, https://www.wowace.com/projects/prat-3-0:
+-- "made up of 30+ smaller modules which each provide additional functionality" to chat).
+if ns.RegisterConflict then
+    ns.RegisterConflict({ part = "chatpanel", label = "Chat Panel", addons = { "ElvUI", "EllesmereUIChat" }, what = "the chat window",
+        on = function() return C.On() end })
+    ns.RegisterConflict({ part = "improvedchat", label = "Improved Chat", addons = { "ElvUI", "EllesmereUIChat" }, what = "the chat window",
+        on = function() return C.ImprovedOn() end })
+    ns.RegisterConflict({ part = "improvedchat", label = "Improved Chat", addons = { "Prat-3.0" }, what = "how the chat behaves",
+        on = function() return C.ImprovedOn() end })
+end
 -- (Chat 0.6.40; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Chat Panel page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
 -- nothing paints with it yet and no page edits it (the UI comes with the module moves).
 local TS = ns.Theme and ns.Theme.RegisterScope

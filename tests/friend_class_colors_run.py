@@ -75,6 +75,10 @@ if ok is True:
     out.page = page.name; out.switch = page.xuiSwitch and page.xuiSwitch.name; out.tip = page.xuiSwitch and page.xuiSwitch.tip
     local r0 = W.redraws
     page.xuiSwitch.set(nil, false)
+    -- (Reskin 0.6.23; PS-57, #480) the switch takes effect on reload: nothing changes before it; then the change is applied the way
+    -- the reload's fresh start does for this part (the hold let go, its apply), so the off path itself is still checked here
+    out.heldActive = ns.FriendColors_Active()
+    ns.SwitchApplyNow("reskin.friendcolors"); ns.FriendColors_Apply()
     out.offRedraw = W.redraws > r0; out.offActive = ns.FriendColors_Active()
     out.wowOff = W.row(2, 1); out.saved = XayaUIReskinDB.friendColors.on
     -- the in-game walkthrough (V22, pre-fill): Do it for me switches it on and opens the list; the check counts re-colored rows
@@ -96,7 +100,8 @@ if ok is True:
     check("a Battle.net friend in another game is left alone", r.bnetApp == "Ben", r.bnetApp)
     check("Blizzard UI Reskin > Friend Colors, its tick box on the row with a one-sentence hover",
           r.page == "Friend Colors" and r.switch == "Friend class colors" and str(r.tip).endswith(".") and str(r.tip).count(". ") == 0, (r.page, r.switch, r.tip))
-    check("unticked: the open list is redrawn and the hook does nothing (Blizzard's colors back); saved off",
+    check("unticked: nothing changes before the reload (PS-57)", r.heldActive is True, r.heldActive)
+    check("unticked and applied: the open list is redrawn and the hook does nothing (Blizzard's colors back); saved off",
           r.offRedraw and r.offActive is False and r.wowOff == "Kaelan, Level 80 Mage" and r.saved is False, (r.offRedraw, r.offActive, r.wowOff, r.saved))
     check("QA walkthrough (pre-fill): Do it for me turns it on and opens the list; the check passes with re-colored rows", r.prefill is True and r.walk1 is True, r.walk1note)
     check("  ...no re-colored row gives Fail (negative control)", r.walkNeg is True)

@@ -30,7 +30,8 @@ local function DB()
     return t
 end
 -- on unless switched off (nothing is saved until the tick box is used), and the Blizzard UI Reskin tab on
-local function On() return DB().on ~= false and ns.ReskinTabOn() and true or false end
+-- (Reskin 0.6.23; PS-57, #480) the switch takes effect on reload (Modules.lua section 5c)
+local function On() return ns.SwitchInEffect("reskin.friendcolors", DB().on ~= false) and ns.ReskinTabOn() and true or false end
 
 local active, hooked, waiter = false, false, nil
 local stats = { rows = 0, colored = 0 }
@@ -140,7 +141,10 @@ function ns.FriendColors_Options(Notify)
         desc = "Character friends and Battle.net friends playing WoW. Offline friends keep Blizzard's grey.",
         disabled = function() return not ns.ReskinTabOn() end,
         get = function() return DB().on ~= false end,
-        set = function(_, v) DB().on = v and true or false; ns.FriendColors_Apply(); if Notify then Notify() end end }
+        set = function(_, v)   -- (Reskin 0.6.23; PS-57) saves and asks for a reload; before, ns.FriendColors_Apply() ran at once
+            ns.SwitchSaveForReload("reskin.friendcolors", DB().on ~= false, function() DB().on = v and true or false end, "Friend Colors")
+            if Notify then Notify() end
+        end }
     local social = false
     pcall(function() social = C_SocialUI and C_SocialUI.IsSystemEnabled and C_SocialUI.IsSystemEnabled() and true or false end)
     return { type = "group", name = "Friend Colors", order = 4, xuiSwitch = switch, args = {
@@ -151,6 +155,13 @@ function ns.FriendColors_Options(Notify)
     } }
 end
 ns.RegisterSettingsPage("reskin", "friendcolors", ns.FriendColors_Options)
+-- (Reskin 0.6.23; PS-56, #469) other addons that change the friends list (Modules.lua section 5d): a flag only, nothing changes here.
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc; Shared\Skins\Friends.lua in ElvUI/Game/load_mainline.xml).
+-- EllesmereUI: folder "EllesmereUIFriends" (https://github.com/EllesmereGaming/EllesmereUI : EllesmereUIFriends/EllesmereUIFriends.toc).
+-- (all read 2026-11-08)
+if ns.RegisterConflict then
+    ns.RegisterConflict({ part = "friendcolors", label = "Friend Colors", addons = { "ElvUI", "EllesmereUIFriends" }, what = "the friends list", on = On })
+end
 -- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Friend Colors page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
 -- nothing paints with it yet and no page edits it (the UI comes with the module moves).
 local TS = ns.Theme and ns.Theme.RegisterScope

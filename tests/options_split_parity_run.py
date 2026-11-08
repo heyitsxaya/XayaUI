@@ -16,7 +16,11 @@ dates and error positions are normalised.
     the rule list rows and Rule Creation tab of Settings, the backups and the "Rules and groups" part of Profiles); every other line is
     the same. Fails on the code before P4 (there is no XayaUI_Rules folder to switch off: the Rules tab and the backups stay).
 The golden values below were produced by `python3 tests/options_split_parity_run.py --golden` on a checkout of bd03eb5 (the code
-before the move). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+before the move). Regenerated once on 2026-11-08 for XayaUI 0.6.79 (PS-57, #480: reskin and module switches take effect on reload):
+the dumps before and after differed in exactly 16 lines (all-on variant; 5 to 16 per variant), each only in the `desc` text of a reskin or module switch that said it applied at once
+(Improved Chat, Chat Panel, Character Pane, Esc Menu, Shopping List, the 10 Blizzard Reskin pages, the Overview's "Enable Blizzard
+Reskin", in every variant where that page exists); node counts, names, get / hidden / disabled results unchanged (debug-log
+2026-11-08 conflicts-reload). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

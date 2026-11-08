@@ -75,7 +75,15 @@ XayaUI_NS = {
   RegisterSettingsPage = function(m, k, b) W.pages[k] = b end,
   RegisterCommand = function(n, fn) W.commands[n] = fn end,
   Provide = function(n, o) W.services = W.services or {}; W.services[n] = o end,
+  -- (Nameplates 0.2.3; PS-57) the Platform's switches-on-reload (XayaUI/Modules.lua section 5c), the same rules: the first change of a
+  -- session holds the value in effect, the settings switch saves and asks; W.asked counts the questions
+  held = {},
+  SwitchInEffect = function(id, v) local h = XayaUI_NS.held[id]; if h then return h.v end; return v and true or false end,
+  SwitchSaveForReload = function(id, v, write, label) if XayaUI_NS.held[id] == nil then XayaUI_NS.held[id] = { v = v and true or false } end; write(); W.asked = (W.asked or 0) + 1; W.askedLabel = label end,
+  SwitchApplyNow = function(id) XayaUI_NS.held[id] = nil end,
 }
+-- what a /reload does for the switch in this small world: the hold is let go and the behaviour is set up from the saved value again
+function W.reloadEffect() XayaUI_NS.SwitchApplyNow("nameplates.targetcolor"); W.services.nameplates.TargetColor.Apply() end
 -- helpers for the checks
 function W.shownOn(plate)       -- the colour of our texture shown on this plate's health bar, or nil
   local bar = plate.UnitFrame.HealthBarsContainer.healthBar
@@ -165,12 +173,18 @@ run(L, 'W.option("teal").func()')
 check("E2 Teal puts teal back", close(color(run(L, "return W.shownOn(W.p1)")), TEAL + (1,)))
 run(L, 'W.fire("NAME_PLATE_UNIT_ADDED", "nameplate2")')   # a refresh is queued ...
 run(L, 'W.option("switch").set({}, false)')
-check("E3 switched off: colour gone, no event registered", W.nShown() == 0 and W.nEvents() == 0, W.nEvents())
+# (Nameplates 0.2.3; PS-57, #480) the switch saves and asks for a reload; it takes effect then (tests/switch_reload_run.py: the real reload)
+check("E3a switched off: the reload question is asked (Nameplates) and nothing changes before the reload",
+      run(L, "return W.asked") == 1 and run(L, "return W.askedLabel") == "Nameplates" and W.nShown() == 1 and W.nEvents() == 3, (W.nShown(), W.nEvents()))
+run(L, "W.reloadEffect()")
+check("E3 after the reload: colour gone, no event registered", W.nShown() == 0 and W.nEvents() == 0, W.nEvents())
 run(L, "W.nextFrame()")
-check("E4 ...a refresh queued before the switch went off draws nothing", W.nShown() == 0)
+check("E4 ...a refresh queued before the switch went off draws nothing after it", W.nShown() == 0)
 check("E5 ...the colour picker is greyed while off", run(L, 'return W.option("color").disabled()') is True)
 run(L, 'W.option("switch").set({}, true)')
-check("E6 switched back on: the target is coloured again", run(L, "return W.shownOn(W.p1)") is not None and W.nEvents() == 3)
+check("E6a switched back on: asked again, nothing drawn before the reload", run(L, "return W.asked") == 2 and W.nShown() == 0 and W.nEvents() == 0)
+run(L, "W.reloadEffect()")
+check("E6 after the reload: the target is coloured again", run(L, "return W.shownOn(W.p1)") is not None and W.nEvents() == 3)
 
 # F. /xui nameplates -----------------------------------------------------------------------------------------------------------
 L, W = world(loaded="{ Plater = true }")

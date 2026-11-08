@@ -158,7 +158,13 @@ local function switch(key, v)
   o.set({}, v); W.tick(0.05, 2)
   return true
 end
-local function skinSwitch(v) local o = ns.GameMenuSkin_Options(function() end).xuiSwitch; o.set({}, v); W.tick(0.05, 2) end   -- (Reskin 0.6.4: the row's tick box)
+-- (Reskin 0.6.4: the row's tick box.) (Reskin 0.6.23; PS-57, #480) the tick box takes effect on reload; the look is then applied the way
+-- the reskins' own apply does it (the hold let go; ns.SetReskinTab walks every registered reskin's apply), so its on / off code is
+-- still measured here. tests/switch_reload_run.py checks the reload itself.
+local function skinSwitch(v)
+  local o = ns.GameMenuSkin_Options(function() end).xuiSwitch; o.set({}, v); W.tick(0.05, 2)
+  ns.SwitchApplyNow("reskin.gamemenu"); ns.SetReskinTab(ns.ReskinTabSaved()); W.tick(0.05, 2)
+end
 local function minimapSwitch(v) local o = ns.BuildMinimapTab(function() end).args.show; o.set({}, v); W.tick(0.05, 2) end
 
 if MODE == "off" then

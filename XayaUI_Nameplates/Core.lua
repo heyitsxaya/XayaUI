@@ -30,6 +30,8 @@ function NP.DB()
     db = saved
     return db
 end
+-- (0.2.3; PS-57, #480) the switch as it is in effect this session (Modules.lua section 5c): the settings switch takes effect on reload
+function NP.On() return ns.SwitchInEffect("nameplates.targetcolor", NP.DB().targetColor) end
 function NP.Color() local c = NP.DB().color; return c[1] or 0, c[2] or 0, c[3] or 0 end
 
 -- another addon replacing Blizzard's nameplates (then nothing of ours shows). Names only, for /xui nameplates.
@@ -53,7 +55,11 @@ local function BuildPage(Notify)
             desc = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
             tip = "Colours your target's health bar on Blizzard's nameplates in the colour set on this page (default teal).",
             get = function() return NP.DB().targetColor end,
-            set = function(_, v) NP.DB().targetColor = v and true or false; Changed() end },
+            -- (Nameplates 0.2.3; PS-57, #480) saves and asks for a reload; before, TargetColor.Apply ran at once
+            set = function(_, v)
+                ns.SwitchSaveForReload("nameplates.targetcolor", NP.DB().targetColor, function() NP.DB().targetColor = v and true or false end, "Nameplates")
+                if Notify then Notify() end
+            end },
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Changes to Blizzard's own nameplates. They show nothing while another nameplate addon (Plater) replaces Blizzard's plates. /xui nameplates says what is on and whether your target's plate was found." },
@@ -107,6 +113,17 @@ loader:SetScript("OnEvent", function(self, _, name)
 end)
 
 ns.RegisterSettingsPage("qol", "nameplates", BuildPage)
+-- (0.2.3; PS-56, #469) other addons that change nameplates (Modules.lua section 5d): a flag only, nothing changes here (NP.Replacer
+-- above stays as it was). Sources, each read 2026-11-08:
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc; module folder Modules/Nameplates).
+-- EllesmereUI: folder "EllesmereUINameplates" (https://github.com/EllesmereGaming/EllesmereUI : EllesmereUINameplates/EllesmereUINameplates.toc).
+-- Plater: folder "Plater" (https://github.com/Tercioo/Plater-Nameplates : Plater.toc at the root).
+-- Kui Nameplates: folder "Kui_Nameplates" (https://github.com/kesava-wow/kuinameplates2 : Kui_Nameplates/Kui_Nameplates.toc).
+-- Threat Plates: folder "TidyPlates_ThreatPlates" (https://github.com/Backupiseasy/ThreatPlates : TidyPlates_ThreatPlates.toc at the root).
+if ns.RegisterConflict then
+    ns.RegisterConflict({ part = "nameplates", label = "Nameplates",
+        addons = { "ElvUI", "EllesmereUINameplates", "Plater", "Kui_Nameplates", "TidyPlates_ThreatPlates" }, what = "nameplates", on = NP.On })
+end
 -- (0.2.2; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.1: "Nameplates registers its own part (fixes today's gap)") this addon's part
 -- of a profile (Profiles > Import / Export). It holds the target colour switch and colour. Left out: blizzBefore (the game's own
 -- nameplate options as they were on this computer before Match, for Put back). Applied by merging, like every settings part.

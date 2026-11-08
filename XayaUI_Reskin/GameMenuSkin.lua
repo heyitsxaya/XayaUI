@@ -62,7 +62,8 @@ ns.GameMenuSkin_Cfg = Cfg
 -- The saved switch, read without filling in the defaults (Cfg does that): V14, a look that is off builds no data either.
 local function Saved() local gm = ReskinS.gm; return type(gm) == "table" and gm or nil end
 -- (and the Blizzard UI Reskin tab's own switch: off there turns this look off too; Reskin 0.6.4, S1 #48)
-local function SavedOn() local gm = Saved(); return gm and gm.skin and ns.ReskinTabOn() and true or false end
+-- (Reskin 0.6.23; PS-57, #480) the switch takes effect on reload: this session runs with the value in effect (Modules.lua section 5c)
+local function SavedOn() local gm = Saved(); return ns.SwitchInEffect("reskin.gamemenu", gm and gm.skin) and ns.ReskinTabOn() and true or false end
 function ns.GameMenuSkin_Active() return SavedOn() and not diag.failed end
 function ns.GameMenuSkin_MatchReal() local gm = Saved(); return not (gm and gm.matchReal == false) end
 ns.Provide("gameMenuSkin", { Active = function() return ns.GameMenuSkin_Active() end, MatchReal = function() return ns.GameMenuSkin_MatchReal() end })
@@ -560,9 +561,15 @@ function ns.GameMenuSkin_Options(Notify)
     }
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; Reskin 0.6.4, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", tip = "Restyles the Esc menu in the XayaUI look.", get = g("skin"), set = s("skin"),
+    -- (Reskin 0.6.23; PS-57, #480) saves the choice and asks for a reload; before, the look switched at once (re)
+    local switch = { type = "toggle", name = "Use the XayaUI Game Menu look", tip = "Restyles the Esc menu in the XayaUI look.", get = g("skin"),
+        set = function(_, v)
+            local gm = Saved()
+            ns.SwitchSaveForReload("reskin.gamemenu", gm and gm.skin, function() Cfg().skin = v end, "Esc Menu")
+            if Notify then Notify() end
+        end,
         disabled = function() return not ns.ReskinTabOn() end,
-        desc = "Gives the Esc menu XayaUI's look; off, Blizzard's menu comes back at once. Greyed while Blizzard Reskin is off (this tab's Overview)." }
+        desc = "Gives the Esc menu XayaUI's look; takes effect after a reload. Greyed while Blizzard Reskin is off (this tab's Overview)." }
     return { type = "group", name = "Esc Menu", order = 3, xuiSwitch = switch, args = args }   -- (Reskin 0.6.1: a page of the Blizzard UI Reskin tab)
 end
 
