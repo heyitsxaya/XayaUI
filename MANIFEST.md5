@@ -1,5 +1,4 @@
 6ccc5d4c16650c515cce622d72f23c15  .claude/skills/xayaui-change/SKILL.md
-f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
 073a034559a86557c471fb89e6afbbf9  PATCH-NOTES.md
@@ -1110,4 +1109,4 @@ d6523c17628a422f4e2923ff554f0b66  tests/xui_paths.py
 c14dcafda42e4eed1b51816e09e6a45b  tools/perf_report.py
 7f460c604ed9e379aec888fa4127f2c1  tools/precheck.py
 7677b85d5a7a643f44d8070dd8c4c333  tools/qa_walks_from_checklist.py
-00d767360289b467ac011d61b76f43da  tools/sync-qa-branch.sh
+c4cc60ff59c1e1f8bc28116439ee9f16  tools/sync-qa-branch.sh

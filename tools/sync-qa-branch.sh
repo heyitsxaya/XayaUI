@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Keeps qa-installer-branch an exact mirror of main (the branch testers pull with GitHub Desktop; they copy the XayaUI*
+# DISCONNECTED 2026-11-08 (Xaya, her words: "disconnect QA and main mirroring"): the GitHub workflow that ran this on every push to
+# main (.github/workflows/mirror-qa-branch.yml) is removed; nothing updates qa-installer-branch from main any more. This script is kept
+# only as a record until the QA build gets its own process.
+# (Before:) Keeps qa-installer-branch an exact mirror of main (the branch testers pull with GitHub Desktop; they copy the XayaUI*
 # folders from it into AddOns and /reload). The tester installer was removed on 2026-11-04 (Xaya: "just eliminate the
 # installers"); the branch keeps its name. Later it is to become the test stage before main ("the qa-test environment can be
 # the test environment before pushing to main later down the road"); until then it only mirrors main.
