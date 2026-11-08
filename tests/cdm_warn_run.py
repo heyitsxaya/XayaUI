@@ -98,6 +98,25 @@ check("a rule with nothing hidden shows no message", GB and GB.args.display.args
 check("a cue's own Display tab shows its rule's limits", ns.CdmWarnArg(cue).hidden() == false)
 TRACKED[1001] = true
 check("once the aura is tracked in the Cooldown Manager its line goes away", not dw.name():find("1001", 1, true))
+-- #482 (debug W1, Rules_Options 0.6.79): her screenshot showed the not-offered sentence 4 times, word for word, with Metamorphosis. A rule
+-- whose aura has 3 alternate IDs, none offered for the spec, gives 4 identical lines from ns.CdmNeeds (one per ID); the Display tab shows
+-- the sentence once, word for word (B3). Old code: 4 lines.
+local B3 = "Blizzard's Cooldown Manager does not offer in-combat tracking for this aura for your current spec. Rule might not work reliably."
+for _, id in ipairs({ 5001, 5002, 5003, 5004 }) do SEC[id] = 2 end
+local M = rule("Meta rule"); M.useBuff, M.buffID, M.buffState = true, 5001, "present"; M.buffAlt = { 5002, 5003, 5004 }
+ns.rules[3] = M
+check("#482 stand-in: ns.CdmNeeds lists the 4 IDs, none offered", #ns.CdmNeeds(M) == 4, #ns.CdmNeeds(M))
+local function plain(s) return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
+local mw = ns.CdmWarnArg(M, -1)
+local shown = plain(mw.name())
+local n = 0; for _ in shown:gmatch("does not offer in%-combat tracking") do n = n + 1 end
+check("#482 the Display tab shows the not-offered sentence once, word for word", n == 1 and shown == B3, n .. " | " .. shown)
+-- distinct lines stay: a second aura the Cooldown Manager offers but does not track keeps its own line under the merged one
+M.buffAlt = { 5002, 5003, 5004, 1001 }; TRACKED[1001] = nil
+shown = plain(mw.name())
+local lines = {}; for l in (shown .. "\n"):gmatch("([^\n]*)\n") do lines[#lines + 1] = l end
+check("#482 distinct lines each stay once (the merged sentence, then the named aura)", #lines == 2 and lines[1] == B3
+  and lines[2]:find("This aura (Spell 1001) requires", 1, true) == 1, #lines .. " | " .. shown)
 return R
 end
 '''

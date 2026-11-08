@@ -92,6 +92,7 @@ end
 function ns.SaveRulesSub()   -- remembered for next time the window opens
     local ui = PlatS.ui
     if ui and AceConfigDialog.GetStatusTable then ui.rulesSub = ns.CurrentSub() end
+    if ns.PickerSync then ns.PickerSync() end   -- (0.6.79; #487) the type picker closes once another Rules sub-tab is open or the window is closed
 end
 function ns.ScopePath(r, ctx)   -- where a rule's row is in the Enabled / Disabled lists
     local sc = ns.RuleScope(r, ctx)

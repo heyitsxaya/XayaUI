@@ -20,7 +20,10 @@ before the move). Regenerated once on 2026-11-08 for XayaUI 0.6.79 (PS-57, #480:
 the dumps before and after differed in exactly 16 lines (all-on variant; 5 to 16 per variant), each only in the `desc` text of a reskin or module switch that said it applied at once
 (Improved Chat, Chat Panel, Character Pane, Esc Menu, Shopping List, the 10 Blizzard Reskin pages, the Overview's "Enable Blizzard
 Reskin", in every variant where that page exists); node counts, names, get / hidden / disabled results unchanged (debug-log
-2026-11-08 conflicts-reload). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+2026-11-08 conflicts-reload). Regenerated again on 2026-11-08 for Rules Options 0.6.79 (debug W1, #476: the Specialization lists follow
+the game's spec count per class): only the "cooldowns" tab changed, in every variant, 6855 -> 6686 nodes; `--dump` of main b0723dd and of
+the new code differ only in lines whose path holds `.specs` (every Specialization list; the 13 rule Load tabs drawn in full lose 13 tick boxes each: the stand-in's C_SpecializationInfo.GetNumSpecializationsForClassID
+answers 3, so each class lists 3 specs instead of the 4 indexes the old loop read), 0 other lines (debug-log 2026-11-08 debug-w1). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

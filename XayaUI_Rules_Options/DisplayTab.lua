@@ -14,15 +14,23 @@ ns = _G.XayaUI_NS or ns
 local ADD_KINDS = { { "icon", "Icon" }, { "texture", "Texture" }, { "text", "Text" } }
 
 -- Xaya 2026-11-05: wherever a limit to aura / debuff tracking can be detected, say so in the display pane / the rule's Display tab
--- (ns.CdmNeeds, Triggers.lua). One red line per aura or debuff the game hides in combat that Blizzard's Cooldown Manager does not track.
+-- (ns.CdmNeeds, Triggers.lua). One red line per aura or debuff the game hides in combat that Blizzard's Cooldown Manager does not track;
+-- identical lines merged into one (#482).
 function ns.CdmWarnArg(rule, order)
     local function lines()
         local p = rule
         if rule and rule.isCue and ns.FindParentRule then p = ns.FindParentRule(rule) or rule end   -- a cue follows its rule's triggers
         local ok, needs = pcall(ns.CdmNeeds or function() return {} end, p)
         if not ok or type(needs) ~= "table" or #needs == 0 then return nil end
-        local t = {}
-        for _, e in ipairs(needs) do t[#t + 1] = "|cffff5555" .. ns.CdmNeedText(e) .. "|r" end
+        -- (Rules_Options 0.6.79; #482, debug W1) identical lines are shown once. ns.CdmNeeds lists each aura ID, alternates included, and
+        -- every ID the Cooldown Manager does not offer gets the same B3 sentence, so a rule with several such IDs repeated it word for
+        -- word (her screenshot: 4 times with Metamorphosis; INFERENCE that its alternate IDs are the 4, not traced in game). The
+        -- sentence itself is unchanged (B3); naming the aura in it is open question A16.
+        local t, seen = {}, {}
+        for _, e in ipairs(needs) do
+            local line = "|cffff5555" .. ns.CdmNeedText(e) .. "|r"
+            if not seen[line] then seen[line] = true; t[#t + 1] = line end
+        end
         return table.concat(t, "\n")
     end
     return { type = "description", order = order or 0.05, width = "full", fontSize = "medium",
