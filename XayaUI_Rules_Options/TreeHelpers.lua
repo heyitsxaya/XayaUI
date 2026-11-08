@@ -282,6 +282,19 @@ function ns.GoHome(tab)
     if tab == "cooldowns" then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "enabledTab", "loaded")
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all") end
 end
+-- (0.6.82; request log row 20, Xaya 2026-11-08: "deleting auras shifts the rule sidebar up still") After a delete the list goes back
+-- to its top row (GoHome), and the window rebuild that follows re-selects that row through AceGUI's TreeGroup:Select, which scrolls the
+-- selected row into view: the list jumped to Loaded at the top. A delete keeps the list where it was instead: the scroll position is
+-- left on the tree's status table (xuiKeepScroll), and XayaUI_Options (TreePaint.lua, after the rebuild) puts it back and drops the
+-- scroll-to-selection. Rows above the deleted one keep their place, the next row moves up into its place; a list now shorter than the
+-- view is held at its bottom by AceGUI's own clamp. Only when the delete stays in the same list (GoHome from Not Loaded opens Loaded).
+function ns.GoHomeKeepScroll(tab)
+    tab = tab or ns.CurrentTab()
+    local S = ns.RulesTreeStatus()
+    local dest = (tab == "cooldowns") and "enabledTab" or "smartTab"
+    if S and ns.CurrentSub() == dest then S.xuiKeepScroll = S.scrollvalue or 0 end
+    ns.GoHome(tab)
+end
 
 local function RulePath(rule)
     for idx, r in ipairs(ns.rules) do

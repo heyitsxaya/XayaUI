@@ -473,7 +473,26 @@ function ns.SafeDecorate(b)
     end
 end
 
+-- (Options 0.6.106; request log row 20, Xaya 2026-11-08: "deleting auras shifts the rule sidebar up still") A delete in the Rules
+-- sidebar goes back to the list's top row and leaves the scroll position it had on the tree's status table (xuiKeepScroll;
+-- XayaUI_Rules_Options/TreeHelpers.lua ns.GoHomeKeepScroll). The window rebuild re-selects that row through AceGUI's TreeGroup:Select,
+-- which scrolls it into view (or leaves scrollToSelection on the status table for the tree's first drawn frame). Once the rebuild is
+-- done (the Open wrapper in Options.lua), the kept position goes back and the scroll-to-selection is dropped. AceGUI's RefreshTree
+-- clamps it, so a list now shorter than the view stays at its bottom. Only after a rebuild: a decorate pass before it would see the old
+-- tree and spend the mark too early.
+local afterRebuild = false
+local function KeepScroll(tree)
+    local st = tree.status or tree.localstatus
+    local keep = st and st.xuiKeepScroll
+    if keep == nil then return end
+    st.xuiKeepScroll = nil
+    st.scrollToSelection = nil
+    st.scrollvalue = keep
+    tree:RefreshTree()
+end
+
 local function DecorateTree(tree)
+    if afterRebuild then pcall(KeepScroll, tree) end
     if not tree.xuiHooked then
         tree.xuiHooked = true
         local orig = tree.RefreshTree
@@ -574,7 +593,9 @@ local function Walk(w, depth)
     for _, c in ipairs(w.children or {}) do Walk(c, depth + 1) end
 end
 
-function ns.DecorateTrees(root)
+function ns.DecorateTrees(root, rebuilt)   -- rebuilt: called right after a window rebuild (Options.lua, the Open wrapper)
     root = root or (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
+    afterRebuild = rebuilt and true or false
     if root then ns.OptionsApi.WithCueMemo(function() pcall(Walk, root, 0) end); pcall(ns.OptionsApi.PaintTabSwitches, root) end   -- (0.6.69) one rule lookup pass for every row
+    afterRebuild = false
 end

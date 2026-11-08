@@ -102,7 +102,8 @@ do
         "DraftsOnClose", "SearchOnClose", "UndoFirstState", "DeleteKey", "UndoKey", "MultiDelete", "MultiClear", "MultiReset",
         "MultiCount", "MultiMoveMenu", "SaveBarUpdate", "BuildDraftsPage", "IsEditLocked", "DraftsEnabled", "DraftDirty",
         "CurrentSub", "PickerShown", "CdmWarnArg",   -- (0.6.79, debug W1) these three for Dev Assist's walkthrough "debug-w1"
-        "GoHome", "RulesTreeStatus", "ScopePath" }) do   -- (0.6.80, debug W2) these for the Bar cue clean-up and "debug-w2" (#461)
+        "GoHome", "RulesTreeStatus", "ScopePath",   -- (0.6.80, debug W2) these for the Bar cue clean-up and "debug-w2" (#461)
+        "MultiHas", "GoHomeKeepScroll" }) do   -- (0.6.82, request row 20) these for Dev Assist's walkthrough "sidebar-delete" 
         RE[n] = ns[n]
     end
     RE.NewRule = ns.UI and ns.UI.NewRule   -- (0.6.79) + New Rule, for the same walkthrough

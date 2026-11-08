@@ -2192,7 +2192,8 @@ local function BuildRule(i, rule)
                     ns.MarkDirty()
                     local tab = ns.CurrentTab()
                     Notify()
-                    ns.GoHome(tab)
+                    if ns.MultiPrune then ns.MultiPrune() end   -- (0.6.82, request row 20) out of the multi-selection too
+                    ns.GoHomeKeepScroll(tab)   -- (0.6.82, request row 20) the list keeps its place (TreeHelpers.lua)
                 end,
             },
         },

@@ -1025,7 +1025,8 @@ local function ConvertFolder(src, mode)
     ns.Print((mode == "copy" and "copied " or "moved ") .. #rules .. " rule(s) into '" .. tostring(dst.name) .. "' (disabled; turn them on and pick a " .. (toKey == "sound" and "sound" or "display") .. ")")
 end
 
-local function SelectRoot() ns.GoHome() end
+-- after a delete: (0.6.82, request row 20) the deleted rules leave the multi-selection; back to the list's top row, the list keeps its place
+local function SelectRoot() ns.MultiPrune(); ns.GoHomeKeepScroll() end
 
 local function DeleteRule(rule)
     ns.RecycleRule(rule)   -- to the Recycle Bin, with its cues and conditions (XayaUI/RecycleBin.lua)
@@ -1566,9 +1567,21 @@ do
         local n = tonumber(last:match("^rule(%d+)$"))
         return n and ns.rules and ns.rules[n]
     end
-    function ns.MultiCount() local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
+    -- (0.6.82; request log row 20, Xaya 2026-11-08: "right clicking to delete does not get detected to remove the menu from the top")
+    -- A rule deleted any other way than the bar's Delete (N) (right-click > Delete, Del on the open rule, the rule page's Delete this
+    -- rule, a group deleted with its contents) stayed in the selection: the bar kept counting it, Move (N) moved it inside the Recycle
+    -- Bin, and a rule put back from the bin came back selected. The selection now holds only rules that are in the list.
+    local function Prune()
+        if not next(sel) then return end
+        local live = {}
+        for _, r in ipairs(ns.rules or {}) do live[r] = true end
+        for r in pairs(sel) do if not live[r] then sel[r] = nil end end
+        if anchor and not live[anchor] then anchor = nil end
+    end
+    ns.MultiPrune = Prune
+    function ns.MultiCount() Prune(); local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
     function ns.MultiReset() wipe(sel); anchor = nil end
-    function ns.MultiHas(rule) return sel[rule] and true or false end
+    function ns.MultiHas(rule) Prune(); return sel[rule] and true or false end
     -- "Link N Selected (move together)" (Xaya, 2026-11-06: "linking aura functionality not possible in the drop down menu"; her answer
     -- "Link N selected"). A link joins displays (Visual.lua ns.LinkAura: dragging one moves the others), so the selected rules' displays
     -- are linked: each rule's display cues (ns.PreviewTargets), or the rule itself when it draws its own display.
@@ -1603,6 +1616,7 @@ do
     end
     -- move every selected rule into group fid (nil = top level)
     function ns.MultiMove(fid)
+        Prune()
         local fo = fid and FolderById(fid)
         if fo and ns.IsCategoryRoot(fo) then ns.Print("rules cannot be placed into a Smart Category"); return end
         local n, skipped = 0, 0
@@ -1690,6 +1704,7 @@ do
         if button.xuiMultiTex then button.xuiMultiTex:SetShown(on and true or false) end
     end
     function ns.MultiDelete()
+        Prune()
         local list, skipped = {}, 0
         for r in pairs(sel) do if ns.IsEditLocked(r) then skipped = skipped + 1 else list[#list + 1] = r end end   -- audit D44
         if skipped > 0 then ns.Print(("%d edit-locked rule(s) are left out (unlock them in the sidebar to delete them)."):format(skipped)) end

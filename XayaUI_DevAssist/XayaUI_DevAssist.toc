@@ -60,3 +60,4 @@ QAWalks-character-split.lua
 QAWalks-layout-fixes.lua
 QAWalks-stat-colors.lua
 QAWalks-aspect-ratio.lua
+QAWalks-sidebar-delete.lua
