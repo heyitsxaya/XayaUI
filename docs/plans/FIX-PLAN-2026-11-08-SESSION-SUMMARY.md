@@ -29,7 +29,8 @@ multi-session project (2026-11-08). The project's standing rules in `docs/SESSIO
 | 9 | Test harness depth | f6-1, f6-2, f6-7, f6-8 |
 
 ## Active items
-- None started. Next: phase 1.
+- Xaya 2026-11-08 (#50): carry out the plan phase by phase, then review everything on main against her five questions (rule V23 in
+  docs/SESSION-START-SUMMARY.md section 2). Phase 1 started 2026-11-08.
 
 ## Pending actions
 - **Xaya decides** D8: f1-15 "Exactly N seconds": remove the choice, or keep it with a tolerance window.
