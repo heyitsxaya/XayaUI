@@ -10,6 +10,10 @@ records SetGradient), its draw size; per font string its text colour. Frames are
     equals the one made by the code before W9a (main da9b5e9), per page and theme (sha256 and line count).
 The golden values were produced by `python3 tests/theme_paint_parity_run.py --golden` on a checkout of da9b5e9 with this file and the
 stand-in of this commit (tests/harness/world.lua, which now records SetGradient); `--dump DIR` writes the drawings to compare by hand.
+Regenerated on 2026-11-08 (debug-log 2026-11-08-1941) for a stand-in change only: a button's GetFontString() now carries the button's
+text, as in the game, so AceGUI's buttons (which read their label through it) show their label and are sized to it. Produced with
+`--golden` on a checkout of main 3eb0c4b with the new tests/harness/world.lua; the branch code with the OLD world.lua still matched the
+old golden (19 checks, 0 failed), so the addon changes of that commit draw nothing differently.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

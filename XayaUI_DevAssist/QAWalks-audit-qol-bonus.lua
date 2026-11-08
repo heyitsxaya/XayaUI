@@ -127,7 +127,7 @@ QA.Register("audit-char-toolkit-events", { title = "Character Toolkit: panel off
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers whether the Character Toolkit's panel is on, then switches the panel part off (the toolkit stays on).\n\n|cffffd100Expect:|r none of the panel's events are registered: no cooldown event (each cast would read the GCD for a hidden panel), no stat events.",
         setup = function()
             local T = CT(); if not T then error("XayaUI QoL is off") end
-            local c = T.Cfg(); if not (c and c.enabled) then error("the Character Toolkit is off (Bonus Features > Character Toolkit; it needs XayaUI QoL on)") end
+            local c = T.Cfg(); if not (c and c.enabled) then error("the Character Toolkit is off (Bonus Features > Stat Calculator; it needs XayaUI QoL on)") end
             if ct.panel == nil then ct.panel = c.panel end
             c.panel = false; T.Apply()
         end,

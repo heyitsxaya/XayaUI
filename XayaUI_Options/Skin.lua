@@ -984,16 +984,24 @@ local function SkinTree(w)
             local lk = ns.infoLink
             if lk and lk:IsShown() and lk:GetTop() then floorY = math.max(floorY, lk:GetTop() + 8) end
             local reserve = math.max(0, floorY - tf:GetBottom())
+            -- (Options 0.6.106; request log row 20, Xaya 2026-11-08: "deleting auras shifts the rule sidebar up still") Every pass starts
+            -- from the scroll position asked for. AceGUI clamps it to each pass's line count (numlines - lines), so a first pass with
+            -- more lines than end up fitting (a recycled tree widget with no remembered count) pulled a list scrolled near its bottom
+            -- up for good. A scroll-to-selection that was asked for is asked of every pass, so the last pass (the real fit) decides it.
+            local st = self.status or self.localstatus
+            local want = st and st.scrollvalue
+            if st and st.scrollToSelection and not args[1] then args[1] = true end
             local function run(lines)
+                if want ~= nil then st.scrollvalue = want end
                 tf.GetHeight = function() return lines * 18 + 20.5 end
                 local ok, err = pcall(origRefresh, self, unpack(args))
                 tf.GetHeight = nil
                 if not ok then error(err, 0) end
-                local total, cnt = 0, 0
+                local total, cnt, tallest = 0, 0, 0
                 for _, b in ipairs(self.buttons or {}) do
-                    if b:IsShown() then total = total + b:GetHeight(); cnt = cnt + 1 end
+                    if b:IsShown() then local h = b:GetHeight(); total = total + h; cnt = cnt + 1; if h > tallest then tallest = h end end
                 end
-                return total, cnt
+                return total, cnt, tallest
             end
             if realH <= 60 then
                 local ok, err = pcall(origRefresh, self, ...)
@@ -1003,7 +1011,7 @@ local function SkinTree(w)
             end
             local avail = realH - reserve - TopPad(self) - 6
             local lines = math.max(1, self.xuiLines or math.floor((avail - 10) / 18))
-            local total, cnt = run(lines)
+            local total, cnt, tallest = run(lines)
             -- grow while there is spare room and more rows exist than are drawn. (Options 0.6.52) Before, this asked the scroll bar
             -- with `local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues()`: an `and` keeps only a call's first value, so mx
             -- was always nil and this loop never ran. The remembered count could then only shrink: one refresh that measured little
@@ -1013,14 +1021,19 @@ local function SkinTree(w)
             for _ = 1, 3 do
                 if cnt > 0 and total < avail - 40 and #(self.lines or {}) > cnt then
                     lines = lines + math.max(1, math.floor((avail - total) / (total / cnt)))
-                    total, cnt = run(lines)
+                    total, cnt, tallest = run(lines)
                 else break end
             end
-            -- shrink until what is drawn fits
+            -- shrink until what is drawn fits. (Options 0.6.106; request log row 20) A step drops the rows that surely do not fit: the
+            -- height over the room divided by the tallest drawn row, at least one. Each dropped row is at most that tall, so a step never
+            -- goes below the largest count that fits and the result is the one the one-row steps reach, in fewer passes. Before, from
+            -- the 18 px first guess (a recycled tree widget has no remembered count) the 8 one-row passes ran out on a list of ~38 px
+            -- rule rows: the count stayed too high and AceGUI clamped the scroll position to it (a list near its bottom jumped up).
             for _ = 1, 8 do
                 if total > avail and lines > 1 then
-                    lines = math.max(1, math.min(lines - 1, cnt - 1))
-                    total, cnt = run(lines)
+                    local step = (tallest > 0) and math.max(1, math.floor((total - avail) / tallest)) or 1
+                    lines = math.max(1, math.min(lines - step, cnt - 1))
+                    total, cnt, tallest = run(lines)
                 else break end
             end
             self.xuiLines = lines
@@ -1901,6 +1914,8 @@ local TAB_GAP = 2   -- between the tabs drawn as buttons (#370)
 -- to 1 make one table row. They sit CELL_GAP apart instead of the grid's 30 px gutter, and each cell gives up its share of the gutters,
 -- so the row fills the pane exactly. A full row also makes AceGUI's Flow start the next table row on a new line (its first cell no
 -- longer fits beside it; true while that cell is wider than the row's gutters, e.g. 0.08 of a pane wider than 330 px).
+-- A row also ends where the next cell would push it past the whole pane (Options 0.6.105), so a row of 0.99 no longer takes the
+-- next row's first cells onto its line and shrinks them all (Blizzard Reskin > Theme, Xaya's screenshot 2026-11-08).
 local CELL_GAP = 4
 function ns.IsCompactButton(ch)
     if ch.type ~= "Button" or not SkinOn() then return false end
@@ -2013,7 +2028,10 @@ function ns.FlexPrepass(content, children, bw)
                 w = width * (ch.relWidth or 1); flex = false
                 if isCell then
                     local nom = (type(oc.relWidth) == "number") and oc.relWidth or (ch.relWidth or 0)   -- the option's own width, every pass
-                    if not cells or cells.nom >= 0.999 then
+                    -- a new table row starts when the row so far is full, or when this cell would push it past the whole pane
+                    -- (Options 0.6.105: a row of 0.99 used to take the next row's first cells and shrink them all onto one line,
+                    -- Blizzard Reskin > Theme; a sub-cell shares the cell before it and never starts a row)
+                    if not cells or cells.nom >= 0.999 or (not oc.arg.xuiSubCell and cells.nom + nom > 1.001) then
                         closeCells(); flush()
                         cells = { list = {}, nom = 0 }
                     end

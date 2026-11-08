@@ -392,7 +392,7 @@ function proto:GetDisabledTexture() self._dis = self._dis or new("Texture", nil,
 function proto:SetCheckedTexture() self._chk = self._chk or new("Texture", nil, self) end
 function proto:GetCheckedTexture() self._chk = self._chk or new("Texture", nil, self); return self._chk end
 function proto:SetDisabledCheckedTexture() end
-function proto:GetFontString() self._fs = self._fs or new("FontString", nil, self); return self._fs end
+function proto:GetFontString() self._fs = self._fs or new("FontString", nil, self); if self._text ~= nil then self._fs._text = self._text end; return self._fs end   -- (a button's text is its font string's text, as in the game)
 function proto:SetFontString(fs) self._fs = fs end
 function proto:SetNormalFontObject() end
 function proto:SetHighlightFontObject() end

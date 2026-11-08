@@ -288,6 +288,41 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
         h = U.Rng(V, "h", "Display height", 2, 8, 512, 1, on),
         zoom = U.Rng(V, "zoom", "Zoom / crop edges", 3, 0, 0.3, 0.01, on, { desc = "Spell icons: how much of the icon's edge is cropped away." }),
     }
+    -- (Rules_Options 0.6.82) "Maintain aspect ratio" (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s rows 24-25: "add
+    -- maintain aspect ratio to the every display option"; her decision: a tick box in this section, off by default; while on, changing
+    -- Display width changes Display height in the same proportion and the other way round; the proportion is the one the two had when
+    -- the box was ticked). The proportion (width / height, as the sliders showed it) is saved on the group itself (f.dispAspect; nil =
+    -- off), beside its other settings (barStyle ...). The other side is rounded to a whole pixel (half up) and kept within the sliders'
+    -- 8-512; where that limit breaks the proportion the clamped value is kept, and the saved proportion is not changed, so a later
+    -- change inside the range gets it back. Only this section: a rule's own and a cue's own size controls are unchanged.
+    local SIZE_MIN, SIZE_MAX = 8, 512
+    local function aspect() local r = tonumber(f.dispAspect); if r and r > 0 then return r end return nil end
+    local function fit(x)
+        x = math.floor(x + 0.5)
+        if x < SIZE_MIN then return SIZE_MIN end
+        if x > SIZE_MAX then return SIZE_MAX end
+        return x
+    end
+    size.w.set = function(_, v)
+        V.w = v
+        local r = aspect()
+        if r then V.h = fit(v / r) end
+        on()
+    end
+    size.h.set = function(_, v)
+        V.h = v
+        local r = aspect()
+        if r then V.w = fit(v * r) end
+        on()
+    end
+    size.aspect = { type = "toggle", order = 2.5, name = "Maintain aspect ratio",
+        desc = "Width and height change together, keeping the proportion they had when you ticked this box.",
+        get = function() return aspect() ~= nil end,
+        set = function(_, v)
+            local w, h = tonumber(size.w.get()), tonumber(size.h.get())
+            if v and w and h and h > 0 then f.dispAspect = w / h else f.dispAspect = nil end
+            on()
+        end }
     size.diff = DiffLine(9, nil, { { "w", "Display width" }, { "h", "Display height" }, { "zoom", "Zoom" } })
     args.size = Section("size", "Every display: size", 3, size)
 

@@ -55,6 +55,18 @@ local pop = _G.XayaUIGroupPosPopup
 local btn
 for _, k in ipairs(pop._kids or {}) do if k.GetText and k:GetText() == "Anchor to a frame on screen..." then btn = k end end
 check("the group's X / Y popup has 'Anchor to a frame on screen...'", btn ~= nil)
+-- #11 (her words): "I need to be able to move the rule box around so that I can actually see what I'm working on"
+check("the X / Y box can be dragged", pop:IsMovable() and pop:GetScript("OnDragStart") ~= nil and pop:GetScript("OnDragStop") ~= nil)
+-- #11 (her words): "also all buttons should not have text overflow" ("Anchor to the screen (stays in place)" ran past its button)
+local over = {}
+for _, k in ipairs(pop._kids or {}) do
+  if k:GetObjectType() == "Button" and k:GetText() and k:GetText() ~= "" then
+    local fs = k:GetFontString(); local tw = fs:GetUnboundedStringWidth()
+    if tw + 30 > k:GetWidth() then over[#over + 1] = k:GetText() .. " (" .. tw .. " + 30 > " .. k:GetWidth() .. ")" end
+    if k:GetWidth() > pop:GetWidth() - 2 * 16 + 0.5 then over[#over + 1] = k:GetText() .. " wider than the box" end
+  end
+end
+check("every button in the X / Y box fits its label, and the box fits every button", #over == 0, table.concat(over, "; "))
 if not btn then return R end
 btn:Click()
 local P = ns.FramePicker()
@@ -68,6 +80,10 @@ FOCI = { forb }; W.tick(0.05, 1)
 check("a forbidden frame is never a candidate", P.cand == nil)
 FOCI = { P.cancel }; W.tick(0.05, 1)
 check("the picker's own banner is never a candidate", P.cand == nil)
+-- Xaya 2026-11-08 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #12, screenshot: "Anchored to XayaUIGroupPosPo..."): the group's own
+-- X / Y box was a candidate, so the group could be anchored to the box that places it
+FOCI = { btn }; W.tick(0.05, 1)
+check("the group's X / Y box (and its buttons) is never a candidate", P.cand == nil, tostring(P.candName))
 FOCI = { child }; W.tick(0.05, 1)
 SHIFT = true; W.tick(0.05, 1); SHIFT = false
 check("Shift picks it: the picker closes", not P:IsShown())

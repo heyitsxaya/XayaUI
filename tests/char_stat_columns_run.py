@@ -394,7 +394,12 @@ local function idx(lines, s) for i, l in ipairs(lines) do if tostring(l) == s th
 local agiLabel
 for _, b in ipairs(d.buttons) do if b.shown and b.item and b.item.key == "map_primary" and not agiLabel then agiLabel = b end end
 local tl = agiLabel and tipLines(agiLabel) or {}
-check("hovering the Agility card shows where the numbers come from", has(tl, "GetAttackPowerForStat"), table.concat(tl, " / "))
+-- (QoL 0.7.54; Xaya 2026-11-08, her answer "Hide notes unless Dev Assist") the notes show only while XayaUI Dev Assist is loaded
+check("(QoL 0.7.54) without XayaUI Dev Assist the Agility hover has no notes, its number rows stay", not has(tl, "GetAttackPowerForStat") and has(tl, "» Attack power | +2,637"), table.concat(tl, " / "))
+ns.DevAssistOn = function() return true end
+tl = agiLabel and tipLines(agiLabel) or {}
+ns.DevAssistOn = nil
+check("hovering the Agility card shows where the numbers come from (with XayaUI Dev Assist)", has(tl, "GetAttackPowerForStat"), table.concat(tl, " / "))
 check("(guard) the Agility hover lists » Attack power with its Pt value: '+2,637  (1 = 1.00)'", has(tl, "» Attack power | +2,637  (1 = 1.00)"), table.concat(tl, " / "))
 check("  ...and » Armor with its Pt value, no note (QoL 0.7.24: the note text is not moved to the hover): '+2,684  (1 = 1.02)'", has(tl, "» Armor | +2,684  (1 = 1.02)")
   and not has(tl, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(tl, " / "))

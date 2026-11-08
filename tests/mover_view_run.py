@@ -83,6 +83,21 @@ check("letting go after a drag keeps the position and does not open the settings
 tA:GetScript("OnMouseUp")(tA, "RightButton")
 local pop = _G.XayaUIGroupPosPopup
 check("a right-click opens the group's X / Y popup", pop and pop:IsShown())
+-- Xaya 2026-11-08 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #13, her words): "in mover mode, I can't use arrow keys" (her
+-- screenshot: the group's X / Y box open over it). Arrow keys nudge the group the box belongs to, and the box shows the new numbers.
+ns.MoverSelect("display", r2)   -- something else was selected before
+tA:GetScript("OnMouseUp")(tA, "RightButton")
+local sel = ns.MoverSelection()
+check("opening a group's X / Y box selects that group for the arrow keys", sel and sel.kind == "group" and sel.obj == fA, sel and sel.kind)
+local keys = ns.MoverKeyFrame()
+local xBefore = fA.cX
+if keys and keys:GetScript("OnKeyDown") then keys:GetScript("OnKeyDown")(keys, "RIGHT") end
+check("the right arrow then moves the group 1 px", fA.cX == xBefore + 1, tostring(fA.cX) .. " vs " .. tostring(xBefore))
+check("the box shows the nudged X at once (pressing Apply would otherwise move it back)", pop.x:GetText() == tostring(fA.cX), tostring(pop.x:GetText()))
+pop.x:SetFocus()
+for _, k in ipairs({ pop:GetChildren() }) do if k:GetObjectType() == "Button" and k:GetText() == "Apply X / Y" then k:Click() end end
+check("pressing a button in the box gives the keyboard back (the number boxes keep no focus, so arrows reach the mover)", not pop.x:HasFocus())
+check("the arrow keys' frame is drawn above other windows and has a size (keyboard input goes to a shown frame)", keys and keys:GetFrameStrata() == "FULLSCREEN_DIALOG" and (keys:GetWidth() or 0) > 0)
 if pop then pop:Hide() end
 -- a group unlocked on its own shows its handle, not the tag
 ns.SetGroupUnlocked(fA, true); W.tick(0.05, 2)

@@ -2,7 +2,7 @@
  "off": {
   "bonus": {
    "lines": 17,
-   "sha": "54c3a979466d5ab31a56b46dd7c2a49a7da0cb60e1a0145d65f12251e676be0f"
+   "sha": "9a92df46f53575d29c32b9173dfb49ddd9a73a5a76b61bf9fc0bd1be622f321f"
   },
   "profiles": {
    "lines": 31,
@@ -24,7 +24,7 @@
  "on": {
   "bonus": {
    "lines": 18,
-   "sha": "603a3b7e151ab4359962f2341d9dd4139a1b039a557530d280742833dadb0f7f"
+   "sha": "48a2d7016a593815d756223232f861bb7f2aa460bf8e7010b289597b2f84586e"
   },
   "profiles": {
    "lines": 32,

@@ -1088,6 +1088,13 @@ local function ShowGroupPosPopup(fo)
         -- after the last row
         local M, G = ns.UI_MARGIN, ns.UI_GUTTER
         p:SetSize(260, 384); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
+        -- (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #11-#12: "I need to be able to move the rule box around so that
+        -- I can actually see what I'm working on"): the box drags by any part that is not a button or a number box. It is never a
+        -- frame "Anchor to a frame on screen..." can pick (the group was anchored to this box: "Anchored to XayaUIGroupPosPo...").
+        p:SetMovable(true); p:RegisterForDrag("LeftButton")
+        p:SetScript("OnDragStart", function(self) self:StartMoving() end)
+        p:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+        p.xuiPickerOwn = true
         p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         p:SetBackdropColor(0.05, 0.05, 0.05, 0.96); p:SetBackdropBorderColor(1, 0.6, 0.1, 1)
         p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -M)
@@ -1111,12 +1118,15 @@ local function ShowGroupPosPopup(fo)
         p.y = Box("Y offset", -(y + 4)); y = y + 20 + G
         p.x:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
         p.y:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
+        local btns = {}
         local function Btn(text, fn)
             local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
             b:SetSize(228, 22); b:SetPoint("TOP", 0, -y); b:SetText(text)
             y = y + 22 + G
-            b:SetScript("OnClick", function() fn() end)
+            -- a button press gives the keyboard back: a number box left with focus kept the arrow keys from the mover (#13)
+            b:SetScript("OnClick", function() p.x:ClearFocus(); p.y:ClearFocus(); fn() end)
             if ns.FlatButton then ns.FlatButton(b) end
+            btns[#btns + 1] = b
             return b
         end
         Btn("Apply X / Y", Apply)
@@ -1139,6 +1149,17 @@ local function ShowGroupPosPopup(fo)
         Btn("Anchor to the screen (stays in place)", function() local f2 = ns.FolderById(p.fid); if f2 then ns.UnanchorGroup(f2); FillPosPopup(p) end end)
         Btn("Close", function() p:Hide() end)
         p:SetHeight(y - G + M)   -- 384: M under the Close button
+        -- every button as wide as the longest label needs (#11: "all buttons should not have text overflow"; "Anchor to the screen
+        -- (stays in place)" ran past both edges of its 228 px button): the label's own width (GetUnboundedStringWidth, as Skin.lua's
+        -- compact buttons measure it) plus 34 px (the template pins the label 15 px in from each side), the box 16 px wider each side
+        local need = 228
+        for _, b in ipairs(btns) do
+            local fs = b.GetFontString and b:GetFontString()
+            local ok, w = pcall(function() return fs and (fs.GetUnboundedStringWidth or fs.GetStringWidth)(fs) end)
+            if ok and type(w) == "number" then need = math.max(need, math.ceil(w + 34)) end
+        end
+        for _, b in ipairs(btns) do b:SetWidth(need) end
+        p:SetWidth(math.max(260, need + 32))
         if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
         posPopup = p
     end
@@ -1322,7 +1343,13 @@ local function GroupTag(f)
     t:SetScript("OnMouseUp", function(self, btn)
         local fo = ns.FolderById(self.fid)
         if not fo then self.drag = nil; return end
-        if btn == "RightButton" then self.drag = nil; ShowGroupPosPopup(fo); return end
+        if btn == "RightButton" then
+            self.drag = nil
+            -- (#13, Xaya 2026-11-08: "in mover mode, I can't use arrow keys"): the group whose X / Y box is open is the one the arrow
+            -- keys nudge, as a left-click selects it
+            if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
+            ShowGroupPosPopup(fo); return
+        end
         local d = self.drag
         self.drag = nil
         if d and d.moved then GroupPosChanged(fo)   -- a drag: the new X / Y is saved
@@ -3148,6 +3175,8 @@ function ns.MoverNudge(dx, dy)
         if mover.tempLock[s.obj.id] then return false end
         s.obj.cX = (s.obj.cX or 0) + dx; s.obj.cY = (s.obj.cY or 0) + dy
         GroupPosChanged(s.obj)
+        -- its X / Y box shows the new numbers (#13: its old ones stayed, and Apply would have moved the group back)
+        if posPopup and posPopup:IsShown() and posPopup.fid == s.obj.id then FillPosPopup(posPopup) end
     else
         local r = s.obj
         if not (r.visual and frames[r]) or ns.MoverTempLocked(r) then return false end
@@ -3163,6 +3192,10 @@ local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 
 local function KeyFrame()   -- made on the first opening of the mover view (V14); shown only while it is open
     if mover.keys then return mover.keys end
     local k = CreateFrame("Frame", "XayaUIMoverKeys", UIParent)
+    -- (#13, Xaya 2026-11-08: "in mover mode, I can't use arrow keys") a size, a place and a high strata: the frame had none, and
+    -- whether the game gives keys to a keyboard frame with no size, or ahead of other addons' keyboard frames below it, is not
+    -- documented (INFERENCE: both made safe here; the mouse still goes through it, EnableMouse stays off)
+    k:SetFrameStrata("FULLSCREEN_DIALOG"); k:SetSize(1, 1); k:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
     k:EnableKeyboard(true)
     k:SetScript("OnKeyDown", function(self, key)
         local n = NUDGE[key]

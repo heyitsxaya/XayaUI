@@ -22,8 +22,8 @@ local function Ready()
     local sc = SC()
     if not sc then return false, "XayaUI Bonus Features is not loaded (or is older than 0.6.37), or XayaUI QoL is off" end
     local c = sc.Cfg()
-    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Character Toolkit" end
-    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Character Toolkit > Panel" end
+    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Stat Calculator" end
+    if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Stat Calculator > Panel" end
     return true
 end
 local function Drawn()
@@ -126,7 +126,7 @@ QA.Register("statcalc-rows", { title = "Stat Calculator: open a stat with + to s
           local vals = #Under(s.d, AP, "pairValue")
           return s.mark == "-" and from >= 1 and vals >= 1, ("mark %s; rows: %s"):format(tostring(s.mark), table.concat(s.rows, ", "))
       end },
-    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in the accent color (as on the other lines). Clear the box afterwards.",
+    { text = "Type a number 100 higher than yours in your primary stat's (Agility / Strength) |cffffd100Change|r box and press Enter.\n\n|cffffd100Expect:|r under the |cffffd100from Agility|r row's number, its new value with a + in green (a higher number is better; blue with a XayaUI colour-blind theme), as on the other lines. Clear the box afterwards.",
       check = function()
           local s, why = APState(); if not s then return false, why end
           local ch = Under(s.d, AP, "pairChange")
@@ -245,7 +245,7 @@ QA.Register("statcalc-no-rating-toggle", { title = "Stat Calculator: no % / rati
           local c = SC().Cfg()
           return not SC().HasModeButton() and c.valueMode == nil and c.lineModes == nil, SC().HasModeButton() and "the button still exists" or "no button; the old saved keys are gone"
       end },
-    { text = "Open XayaUI > Bonus Features > Character Toolkit > Panel: |cffffd100Layout|r and |cffffd100Your numbers|r.\n\n|cffffd100Expect:|r no \"Rating lines\" setting in Layout and no \"Reset line flips\" button in Your numbers (Clear all stays).",
+    { text = "Open XayaUI > Bonus Features > Stat Calculator > Panel: |cffffd100Layout|r and |cffffd100Your numbers|r.\n\n|cffffd100Expect:|r no \"Rating lines\" setting in Layout and no \"Reset line flips\" button in Your numbers (Clear all stays).",
       check = function()
           local pg = SC().Page()
           local p = pg and pg.args and pg.args.panelPart and pg.args.panelPart.args

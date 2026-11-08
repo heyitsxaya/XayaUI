@@ -25,8 +25,9 @@ ns.OptionsApi = ns.OptionsApi or {}
 ns.OptionsApi.ScopeEditor = SE
 SE.PAGE = "rsktheme"
 -- the cells of one table row (Skin.lua arg.xuiCell / xuiSubCell): Element | Theme | Overrides (count, Edit) | Comes from | Reset.
--- Together 0.99 of the page, as the Theme page's class table (rounding never pushes Reset past the edge).
-local W = { el = 0.24, theme = 0.30, n = 0.07, edit = 0.12, from = 0.14, reset = 0.12 }
+-- Together the whole page (1). Skin.lua sizes each table row to the pane minus its gutters, so a row never needs a margin; a row of
+-- less than 1 used to take the next row's first cells onto its line (Options 0.6.105, Xaya's screenshot 2026-11-08).
+local W = { el = 0.25, theme = 0.30, n = 0.07, edit = 0.12, from = 0.14, reset = 0.12 }
 SE.WIDTHS = W
 local CELL, SUB, BTN = { xuiCell = true }, { xuiCell = true, xuiSubCell = true, xuiWide = true }, { xuiCell = true, xuiWide = true }
 

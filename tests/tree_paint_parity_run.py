@@ -15,6 +15,8 @@ every heading / button label's anchors and justification, and every top tab's ti
     painted by it; now the editor is not read and TreePaint paints them alone).
   C V14: with XayaUI Rules off no file of XayaUI_Rules_Options was read and the rule editor's hooks are absent; with it on they are
     registered.
+Regenerated on 2026-11-08 for Bonus 0.6.38 (#37): the Bonus Features row "Character Toolkit" reads "Stat Calculator" and sorts after
+Data Panels and Enhanced Tooltips (1 line per drawing with Bonus on); 0 other lines.
 The golden values were produced by `python3 tests/tree_paint_parity_run.py --golden` on a checkout of 232552d (before P4b);
 `--dump DIR` writes the drawings to compare by hand. Regenerated on 2026-11-08 for Options 0.6.104 (debug W9b, #472): `--dump` of
 accb5c8 and of the new code differ in exactly one line in each of the reskin and profiles drawings (both variants): the new

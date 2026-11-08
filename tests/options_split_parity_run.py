@@ -50,7 +50,19 @@ from `qol.chartoolkit.*` (panelPart, spells: 117 nodes) to `bonus.statcalc.*`, n
 "(Panel, Spell Math)"); the `order` of the Bonus pages after it (+1); QoL's `qol.chartoolkit` switch tip and intro (they named the Stat
 Calculator). XayaUI Bonus Features off (139 lines): the two parts gone with it, the minimap list's "Stat Calculator" row gone
 (`settings.minimap.entries.stats`, `set.minimap.entries.stats`: the row is Bonus's) and the rows after it one `order` up, and the two QoL
-texts. XayaUI QoL off: 0 lines (Bonus Features shows nothing of it). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+texts. XayaUI QoL off: 0 lines (Bonus Features shows nothing of it). Regenerated again on 2026-11-08 for Options 0.6.105 (the Theme table's rows, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #7): only the
+"reskin" tab changed; `--dump` of 3eb0c4b and of the new code differ only in the relWidth of the table's Element cells (h_el and every
+el_*, 0.24 -> 0.25: 17 lines changed, i.e. 34 diff lines all-on), 0 other lines in every variant (debug-log 2026-11-08-1941). Regenerated
+again on 2026-11-08 for Rules Options 0.6.82 ("Maintain aspect ratio", REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s rows 24-25): only the
+"cooldowns" tab changed, in every variant, 6686 -> 6690 nodes; `--dump` of 1c7ca2b and of the new code differ in exactly 4 added lines per
+variant, each the new `pageGroup.size.body.aspect` tick box (name "Maintain aspect ratio", order 2.5, get() false) on one of the 4 group
+pages the fixed state draws, 0 other lines (debug-log 2026-11-08 aspect-ratio). Regenerated again on 2026-11-08 for Rules Options 0.6.82 (Count options, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #26): `--dump` of
+4bbf585 and of the new code differ only in the "Count of" selects inside each cue's Count options pane (`...cnt.body.pane_cnt.body.source`,
+14 lines per variant, all-on): the old golden held `sorting()=ERR <src>: attempt to index field 'source' (a nil value)`, i.e. it had
+recorded the bug; now the list's order (e.g. {1="none",2="stacks"}). 0 other lines in every variant (debug-log 2026-11-08 count-options). Regenerated again on 2026-11-08 for Bonus 0.6.38 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37, "these are \"Stat Calculator\""):
+only the "bonus" tab, in every variant where XayaUI Bonus is on: `bonus.statcalc` is named "Stat Calculator" (was "Character Toolkit",
+its switch too), and the Bonus pages, sorted by name, renumber: Data Panels 2 -> 1, Enhanced Tooltips 3 -> 2, Stat Calculator 1 -> 3
+(3 lines per variant), plus the desc texts that named the path "Bonus Features > Character Toolkit" (now "... > Stat Calculator"; e.g. qol.chartoolkit.intro); 0 other lines. `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

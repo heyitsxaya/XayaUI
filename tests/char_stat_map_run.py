@@ -99,8 +99,17 @@ check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), note 16.4 m
 check("Haste card: » GCD 1.16 s (the standard rule, UI-64), » Attack speed 2.00 s", line("map_haste", "» GCD") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s", tostring(line("map_haste", "» GCD")))
 check("  » Abilities whose text names Haste, each on its own nested line with its recharge now", cells("map_haste", "» Abilities (their text names Haste)") == "||"
   and sub("map_haste", "» Abilities (their text names Haste)") == "Infernal Strike=9.6 s recharge", sub("map_haste", "» Abilities (their text names Haste)"))
-check("Versatility card: » Damage and healing done (every ability) +2.61%, » Damage taken -1.30% with Pt value 92.0 / 1%",
-  line("map_vers", "» Damage and healing done (every ability)") == "+2.61%" and cells("map_vers", "» Damage taken") == "-1.30%|92.0 / 1%|", cells("map_vers", "» Damage taken"))
+check("Versatility card: » Damage and healing done +2.61%, » Damage taken -1.30% with Pt value 92.0 / 1%",
+  line("map_vers", "» Damage and healing done") == "+2.61%" and cells("map_vers", "» Damage taken") == "-1.30%|92.0 / 1%|", cells("map_vers", "» Damage taken"))
+-- Xaya 2026-11-08 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #46): "remove (every ability)"; "remove top line \"from rating\" under versatility"
+check("Versatility card: no \"(every ability)\" and no \"From rating\" line", line("map_vers", "» Damage and healing done (every ability)") == nil and line("map_vers", "From rating") == nil,
+  tostring((line("map_vers", "From rating"))))
+check("  ...the other secondaries keep their From rating line (Critical Strike)", line("map_crit", "From rating") ~= nil)
+-- #46 "read mastery line -- does this read like real english to you?": the game names the spell "Mastery: Fel Blood", so the label read
+-- "From mastery: Mastery: Fel Blood passive"; her own wording (UI-37) is "from mastery: fel blood passive"
+check("the mastery label drops the game's \"Mastery: \" prefix (\"Mastery: Fel Blood\" -> \"From mastery: Fel Blood passive\")",
+  CM.MasteryLabel and CM.MasteryLabel("Mastery: Fel Blood") == "From mastery: Fel Blood passive" and CM.MasteryLabel("Fel Blood") == "From mastery: Fel Blood passive"
+  and CM.MasteryLabel(nil) == "From mastery", CM.MasteryLabel and CM.MasteryLabel("Mastery: Fel Blood"))
 check("a stat you have no rating in shows only what it does (Avoidance: one line)", #card("map_avoidance").pairs == 1, #card("map_avoidance").pairs)
 check("Defense: Parry 14.01%, from Critical Strike +10.15% (note before DR); Armor from Agility +2,684 (Pt value 1.02); Dodge from Agility +5.00%",
   card("map_parry").value == "14.01%" and cells("map_parry", "From Critical Strike") == "+10.15%||before DR" and cells("map_armor", "From mastery: Fel Blood passive") == "+2,684|1.02|"
