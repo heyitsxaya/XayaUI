@@ -330,6 +330,19 @@ local function Build()
     local d = DB()
     if d and d.point then f:SetPoint(d.point, UIParent, d.point, tonumber(d.x) or 0, tonumber(d.y) or 0)
     else f:SetPoint("CENTER", UIParent, "CENTER", 0, 0) end
+    -- (Bonus 0.6.35; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on the Calculator (title bar or frame)
+    -- opens the element menu (core Modules.lua section 11): "Element options" opens Bonus Features > Utilities > Calculator, X and Y are
+    -- its own saved place (d.x / d.y from d.point, what a drag saves; CENTER while it was never moved). Registered when it is made (V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "calculator", label = "Calculator", page = { "bonus", "utilities", "calculator" },
+            targets = function(add) add(f, "OnMouseUp"); add(bar, "OnMouseUp") end,
+            getPos = function() local d2 = DB(); return tonumber(d2 and d2.x) or 0, tonumber(d2 and d2.y) or 0 end,
+            setPos = function(_, x, y)
+                local d2 = DB(); if not d2 then return end
+                d2.point = d2.point or "CENTER"; d2.x, d2.y = x, y
+                f:ClearAllPoints(); f:SetPoint(d2.point, UIParent, d2.point, x, y)
+            end })
+    end
     RefreshHistory()
     return f
 end

@@ -1610,6 +1610,7 @@ function Tree.Closed()
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep, Tree.loadSeen = nil, nil, nil   -- the kept tree (and the load answers seen) are let go
     if ns.SetWindowOpen then ns.SetWindowOpen(false) end
+    if ns.ElementWindowShown then ns.ElementWindowShown(false) end   -- (Options 0.6.92; #495) right-click element menus end with the window
     -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
     if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
     if RE.SaveRulesSub then pcall(RE.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
@@ -1663,6 +1664,8 @@ end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
+    -- (Options 0.6.92; #495, PS-59) while the window is shown a right-click on a XayaUI element opens its menu (core Modules.lua section 11)
+    if of and of.frame and of.frame:IsShown() and ns.ElementWindowShown then ns.ElementWindowShown(true) end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
 

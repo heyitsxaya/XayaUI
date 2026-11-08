@@ -856,6 +856,19 @@ local function BuildPanel()
     panel.rules = {}
     panel:ClearAllPoints(); panel:SetPoint("CENTER", UIParent, "CENTER", c.free.x or 0, c.free.y or 0)
     panel:Hide()
+    -- (QoL 0.7.51; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on the panel opens the element menu (core
+    -- Modules.lua section 11): "Element options" opens Blizzard Reskin > Shopping List, X and Y are the panel's own saved place (free.x /
+    -- free.y, its centre from the screen's centre, what a drag saves). Registered when the panel is made (V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "shoppingList", label = "Shopping List", page = { "reskin", "shoppinglist" },
+            targets = function(add) add(panel, "OnMouseUp") end,
+            getPos = function() local cc = Cfg(); return tonumber(cc and cc.free.x) or 0, tonumber(cc and cc.free.y) or 0 end,
+            setPos = function(_, x, y)
+                local cc = Cfg(); if not cc then return end
+                cc.free.x, cc.free.y = x, y
+                panel:ClearAllPoints(); panel:SetPoint("CENTER", UIParent, "CENTER", x, y)
+            end })
+    end
 end
 
 -------------------------------------------------------------------------------

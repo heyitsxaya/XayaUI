@@ -1781,12 +1781,15 @@ local DRAG_UP_WINDOW = 0.3   -- seconds after OnDragStop in which a left release
 -- A drag that moved the display this little (px, each axis) was a click with a shaky hand, not a move (core 0.6.43): Xaya's saved
 -- displays shifted by 2-4 px after clicks in the mover view (her XayaUI.lua, 2026-11-04, compared by the Dev Assist session).
 local CLICK_SLOP = 5
-function ns.ShowVisualMenu(rule, anchor)
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
-    MenuUtil.CreateContextMenu(anchor, function(_, root)
-        root:CreateTitle(rule.name or "Aura")
-        local v = rule.visual
-        local st = root:CreateButton("Snap Target")
+-- (Rules 0.6.78; #495) the menu's entries as a list, so the settings window's element menu (core Modules.lua section 11) keeps the same
+-- entries, built by the same code: { title = text } | { divider = true } | { text, func } | { text, sub = fn(menuDescription) } |
+-- { radio = text, checked = fn, func }. ns.ShowVisualMenu builds the game's context menu from it exactly as before.
+local function VisualMenuParts(rule)
+    local v = rule.visual
+    local parts = {}
+    local function add(p) parts[#parts + 1] = p end
+    add({ title = rule.name or "Aura" })
+    add({ text = "Snap Target", sub = function(st)
         st:CreateRadio("None (free position)", function() return not (v.snap and v.snap.target) end, function() ns.SnapToTarget(rule, nil) end)
         st:CreateButton("Pick a frame on screen...", function()
             ns.PickFrame("Snap '" .. tostring(rule.name) .. "' to a frame", function(target, name)
@@ -1804,20 +1807,20 @@ function ns.ShowVisualMenu(rule, anchor)
                     function() ns.SnapToTarget(rule, t.key, p[1]) end)
             end
         end
-        do
-            local lk = root:CreateButton("Linked Auras (move together)")
-            if lk.SetScrollMode then lk:SetScrollMode(320) end
-            lk:CreateRadio("Not linked", function() return not rule.link end, function() ns.UnlinkAura(rule) end)
-            for _, o in ipairs(ns.rules or {}) do
-                if o ~= rule and o.visual then
-                    lk:CreateRadio(o.name or "Aura", function() return rule.link ~= nil and o.link == rule.link end,
-                        function() if rule.link and o.link == rule.link then ns.UnlinkAura(rule) else ns.LinkAura(rule, o) end end)
-                end
+    end })
+    add({ text = "Linked Auras (move together)", sub = function(lk)
+        if lk.SetScrollMode then lk:SetScrollMode(320) end
+        lk:CreateRadio("Not linked", function() return not rule.link end, function() ns.UnlinkAura(rule) end)
+        for _, o in ipairs(ns.rules or {}) do
+            if o ~= rule and o.visual then
+                lk:CreateRadio(o.name or "Aura", function() return rule.link ~= nil and o.link == rule.link end,
+                    function() if rule.link and o.link == rule.link then ns.UnlinkAura(rule) else ns.LinkAura(rule, o) end end)
             end
         end
-        root:CreateButton("Center Vertically", function() ns.CenterVisual(rule, "v") end)
-        root:CreateButton("Center Horizontally", function() ns.CenterVisual(rule, "h") end)
-        local pr = root:CreateButton("Paired Aura")
+    end })
+    add({ text = "Center Vertically", func = function() ns.CenterVisual(rule, "v") end })
+    add({ text = "Center Horizontally", func = function() ns.CenterVisual(rule, "h") end })
+    add({ text = "Paired Aura", sub = function(pr)
         if pr.SetScrollMode then pr:SetScrollMode(320) end
         pr:CreateRadio("None", function() return pairOf[rule] == nil end, function() ns.ClearPair(rule) end)
         for _, o in ipairs(ns.rules or {}) do
@@ -1825,22 +1828,53 @@ function ns.ShowVisualMenu(rule, anchor)
                 pr:CreateRadio(o.name or "Aura", function() return pairOf[rule] == o end, function() ns.SetPair(rule, o) end)
             end
         end
-        root:CreateDivider()
-        local function radio(parent, mode)
-            parent:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function()
-                CoreS.snapMode = mode
-                ns.Print("aura positioning: " .. SNAP_LABELS[mode])
-            end)
+    end })
+    add({ divider = true })
+    local function setMode(mode) CoreS.snapMode = mode; ns.Print("aura positioning: " .. SNAP_LABELS[mode]) end
+    add({ radio = SNAP_LABELS.free, checked = function() return SnapMode() == "free" end, func = function() setMode("free") end })
+    add({ text = "Drag Snapping", sub = function(snap)
+        for _, mode in ipairs({ "grid", "auras", "center" }) do
+            snap:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function() setMode(mode) end)
         end
-        radio(root, "free")
-        local snap = root:CreateButton("Drag Snapping")
-        radio(snap, "grid"); radio(snap, "auras"); radio(snap, "center")
-        root:CreateDivider()
-        root:CreateButton("Edit This Aura", function() if ns.EditRule then ns.EditRule(rule) end end)
-        local fo = rule.folder and ns.FolderById(rule.folder)
-        if fo then root:CreateButton("Edit Its Group (" .. tostring(fo.name) .. ")", function() if ns.EditFolder then ns.EditFolder(fo) end end) end
+    end })
+    add({ divider = true })
+    add({ text = "Edit This Aura", func = function() if ns.EditRule then ns.EditRule(rule) end end })
+    local fo = rule.folder and ns.FolderById(rule.folder)
+    if fo then add({ text = "Edit Its Group (" .. tostring(fo.name) .. ")", func = function() if ns.EditFolder then ns.EditFolder(fo) end end }) end
+    return parts
+end
+ns.VisualMenuParts = VisualMenuParts
+function ns.ShowVisualMenu(rule, anchor)
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
+    MenuUtil.CreateContextMenu(anchor, function(_, root)
+        for _, p in ipairs(VisualMenuParts(rule)) do
+            if p.title then root:CreateTitle(p.title)
+            elseif p.divider then root:CreateDivider()
+            elseif p.radio then root:CreateRadio(p.radio, p.checked, p.func)
+            elseif p.sub then p.sub(root:CreateButton(p.text))
+            else root:CreateButton(p.text, p.func) end
+        end
     end)
 end
+
+-- (Rules 0.6.78; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on a display (it takes clicks while it is
+-- unlocked for moving, as before) opens the element menu (core Modules.lua section 11): "Element options" (this display's settings in
+-- the rule editor, as a left click and "Edit This Aura" do), X and Y (this display's own visual.x / visual.y: the editor's Position X /
+-- Y), then the entries of the menu above. Registered with the first display frame made (no display, nothing registered: V14).
+local DISPLAY_ELEMENT = {
+    key = "ruleDisplays", label = "Display",
+    targets = function(add) for r, fr in pairs(frames) do add(fr, "OnMouseUp", r) end end,
+    open = function(rule) if ns.EditRule then ns.EditRule(rule) end end,
+    getPos = function(rule) local v = rule.visual; return tonumber(v and v.x) or 0, tonumber(v and v.y) or 0 end,
+    setPos = function(rule, x, y)
+        local v = rule.visual
+        if type(v) ~= "table" then return end
+        v.x, v.y = x, y
+        ns.RefreshVisual(rule)
+        if ns.MarkDirty then ns.MarkDirty() end
+    end,
+    rows = function(rule) return VisualMenuParts(rule) end,
+}
 
 local function GetFrame(rule)
     local fr = frames[rule]
@@ -2069,6 +2103,7 @@ local function GetFrame(rule)
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
     -- (the per-frame effects script is attached only while an effect is running: see FxOnUpdate / SetFxRule)
     frames[rule] = fr
+    if ns.RegisterElement then ns.RegisterElement(DISPLAY_ELEMENT) end   -- (#495) the new frame takes the right-click while the window is shown
     return fr
 end
 

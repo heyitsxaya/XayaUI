@@ -855,6 +855,20 @@ local function Build()
     bar:SetScript("OnDragStart", function() local db = DB(); if db and not db.locked then f:StartMoving(); f.moving = true end end)
     bar:SetScript("OnDragStop", function() if f.moving then f.moving = false; f:StopMovingOrSizing(); SavePosition(f) end end)
     f.bar = bar
+    -- (Bonus 0.6.35; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on the Notepad (its title bar or its
+    -- frame) opens the element menu (core Modules.lua section 11): "Element options" opens Bonus Features > Utilities > Notepad, X and Y
+    -- are the box's own saved place (db.x / db.y from db.anchor, what a drag saves). Registered when the box is made (V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "notepad", label = "Notepad", page = { "bonus", "utilities", "notepad" },
+            targets = function(add) add(f, "OnMouseUp"); add(bar, "OnMouseUp") end,
+            getPos = function() local db = DB(); return tonumber(db and db.x) or 0, tonumber(db and db.y) or 0 end,
+            setPos = function(_, x, y)
+                local db = DB(); if not db then return end
+                db.x, db.y = x, y
+                ns.Notepad_Refresh()
+                if ns.Notepad_Changed then ns.Notepad_Changed() end
+            end })
+    end
 
     local close = CreateFrame("Button", nil, bar)
     close:SetSize(TITLE_H, TITLE_H); close:SetPoint("RIGHT")

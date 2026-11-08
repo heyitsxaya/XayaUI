@@ -1345,6 +1345,15 @@ local function Hook()
     hooked = true
     local cf = _G.CharacterFrame
     if type(cf) == "table" and cf.HookScript then cf:HookScript("OnShow", function() if Active() then Guard(ApplyNow) end end) end
+    -- (QoL 0.7.51; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on the Character window opens the element
+    -- menu (core Modules.lua section 11) with "Element options" only (Blizzard Reskin > Character Pane): it is Blizzard's own window,
+    -- restyled, so its place is not XayaUI's to set (no X / Y; #495 proposal 4). A post-hook (blizzard = true: Blizzard's own handler
+    -- always runs), put on at the first opening of the window out of combat, never on a protected frame. Registered only while the
+    -- reskin is on (this function runs only then: V14).
+    if ns.RegisterElement then
+        ns.RegisterElement({ key = "characterPane", label = "Character window", blizzard = true, page = { "reskin", "charreskin" },
+            targets = function(add) local cf2 = _G.CharacterFrame; if Active() and type(cf2) == "table" then add(cf2, "OnMouseUp") end end })
+    end
     -- the model's camera buttons: the blocks that meet them hide while they show (post-hooks; they return at once while off)
     local m = _G.CharacterModelScene
     local camf = type(m) == "table" and m.ControlFrame or nil
