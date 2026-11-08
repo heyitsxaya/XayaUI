@@ -90,7 +90,7 @@ e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
 0f3ba7f51dd51c1e2800397b2d25a123  XayaUI/XayaUI.toc
 d24e142fd2fc4d2c371b54ecb6c321d9  XayaUI_Bonus/Calculator.lua
-74bf254df9c1accee783acf9b449a331  XayaUI_Bonus/CharacterToolkit.lua
+5fdc16a70a3d2ce2f5f9baeee7fae541  XayaUI_Bonus/CharacterToolkit.lua
 6124c7cd312d5c7846cdbf87ca1ae6d3  XayaUI_Bonus/DataPanels.lua
 2db92a427ac459460d35533c667d4ce5  XayaUI_Bonus/Libs/XayaDataBlocks-1.0/XayaDataBlocks-1.0.lua
 f16701beaa4d82ddbbd18177275aaf28  XayaUI_Bonus/Media/UI/Notepad/README.md
@@ -176,7 +176,7 @@ b1fa172d884e8a0677b43b7e90b40fe1  XayaUI_DevAssist/QAWalks-element-menu.lua
 2704c69140d1257de548ac33215a85ec  XayaUI_DevAssist/QAWalks-externals.lua
 8b6da661f3fa41e6d5d1b0f6159c9d83  XayaUI_DevAssist/QAWalks-friends.lua
 67c7b1025faa76858f5799fb0d5c98a2  XayaUI_DevAssist/QAWalks-generate.lua
-13bc62e04e850f12b3f24258b507ec90  XayaUI_DevAssist/QAWalks-layout-fixes.lua
+a78188ca39899f8f3830b6ff3b4986ec  XayaUI_DevAssist/QAWalks-layout-fixes.lua
 997ea5568046322b22ac17023bb37d50  XayaUI_DevAssist/QAWalks-nameplates.lua
 a979fbfb26d1de8ff66c39857545faf7  XayaUI_DevAssist/QAWalks-options-split.lua
 43dc51d70b874f598fa2f823abd832a5  XayaUI_DevAssist/QAWalks-perf.lua
@@ -188,7 +188,7 @@ b9b3a814e030909645907e9004796a42  XayaUI_DevAssist/QAWalks-rule-editor-folder.lu
 c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lua
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 92754e224cf247ac91f125b3a2a820a8  XayaUI_DevAssist/QAWalks-sidebar-delete.lua
-2dfe26c67c923a91197d5f61bd2c5f03  XayaUI_DevAssist/QAWalks-stat-colors.lua
+8180b6d85d9529de33e9e235480e4a63  XayaUI_DevAssist/QAWalks-stat-colors.lua
 a959c1a92c1ac54d131a3a1456a214cc  XayaUI_DevAssist/QAWalks-statcalc.lua
 0a4c553262db631c0166d2c337c94c8c  XayaUI_DevAssist/QAWalks.lua
 42e762213c51d8cc39140dd22077cd46  XayaUI_DevAssist/XayaUI_DevAssist.toc
@@ -242,7 +242,7 @@ a71b20abd2549cf335b0f05793a87ca6  XayaUI_Options/Libs/AceGUI-3.0/widgets/AceGUIW
 5281ce12a0c2698b32b9eb3f2977516c  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua
 0b5ec3250c09af1202f671f976fe21ff  XayaUI_Options/Libs/CallbackHandler-1.0/CallbackHandler-1.0.xml
 ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
-9526066fb8de1b9459deb87d7260d6cf  XayaUI_Options/Options.lua
+14cbeffb467afeebc2f15f51b906a691  XayaUI_Options/Options.lua
 9291e21891d83ea4eb5c3cac2cd330ce  XayaUI_Options/Profiles.lua
 ade0b416c7f8d38110ca7bf05f079164  XayaUI_Options/ScopeEditor.lua
 ecff4419e08f8d304a2334a7651a1c77  XayaUI_Options/Skin.lua
@@ -771,7 +771,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-f33255cda544437b54f64770c9859e2e  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+c64b0cdeb4bc588acf024d8a082a28bf  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md

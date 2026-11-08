@@ -153,8 +153,11 @@ local function CheckArrows()
 end
 local function CheckCount()
     local ns = NS()
-    if not (ns and ns.LoadOptions and ns.LoadOptions() and ns.BuildOptionsTable) then return nil, "the settings window could not be loaded" end
-    local ok, built = pcall(ns.BuildOptionsTable)
+    if not (ns and ns.LoadOptions and ns.LoadOptions()) then return nil, "the settings window could not be loaded" end
+    -- the whole settings table, through the Options API (Dev Assist does not call XayaUI_Options' own functions)
+    local api = ns.OptionsApi
+    if not (api and api.BuiltTable) then return nil, "XayaUI Options is older than 0.6.106" end
+    local ok, built = pcall(api.BuiltTable)
     if not ok then return false, "building the settings failed: " .. tostring(built) end
     -- every "Count of" list in the settings (cues and the group's Display tab), read the way the window reads it
     local lists, seen = {}, {}

@@ -242,8 +242,9 @@ local function ColorBlindBase()
     local ok, b = pcall(T.EffBase)
     if not ok or type(b) ~= "string" then return false end
     if CB_BASES[b] then return true end
-    local db = rawget(_G, "CueRulesDB")
-    local sv = type(db) == "table" and type(db.themes) == "table" and db.themes[b]
+    local P = ns.Settings and ns.Settings("platform")   -- (the saved themes, through the Platform's settings view: never CueRulesDB directly)
+    local themes = P and P.themes
+    local sv = type(themes) == "table" and themes[b]
     if type(sv) ~= "table" then return false end
     local sb = (sv.base == "custom") and sv.under or sv.base
     return CB_BASES[sb] == true

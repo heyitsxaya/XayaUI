@@ -474,6 +474,8 @@ ns.OptionsApi.ProfileState = function() return { profInc = profInc, importInc = 
 -- (Options 0.6.80) for XayaUI Dev Assist's platform walkthrough (QAWalks-platform.lua): paste a text into Profiles > Import as the box
 -- would, and read the Profiles tab as the window builds it
 ns.OptionsApi.SetImportText = function(t) importText = tostring(t or ""); ParseImport(); if ns.Fire then ns.Fire("CONFIG_CHANGED") end end
+-- the whole settings table, built in full (not the window's lazy build), for Dev Assist's QA checks (QAWalks-layout-fixes.lua B313)
+ns.OptionsApi.BuiltTable = function() return ns.BuildOptionsTable and ns.BuildOptionsTable() end
 ns.OptionsApi.ProfilesTable = function() local b = ns.BuildOptionsTable and ns.BuildOptionsTable(); return b and b.args and b.args.profiles end
 
 local function AddonVersion()

@@ -81,8 +81,9 @@ local function Base()
     b = ok and b or nil
     if type(b) ~= "string" then return "unknown", false end
     if CB_BASES[b] then return b, true end
-    local db = rawget(_G, "CueRulesDB")
-    local sv = type(db) == "table" and type(db.themes) == "table" and db.themes[b]
+    local P = ns and ns.Settings and ns.Settings("platform")   -- (the saved themes, through the Platform's settings view)
+    local themes = P and P.themes
+    local sv = type(themes) == "table" and themes[b]
     if type(sv) == "table" then
         local sb = (sv.base == "custom") and sv.under or sv.base
         if CB_BASES[sb] then return b .. " (saved, from " .. sb .. ")", true end
