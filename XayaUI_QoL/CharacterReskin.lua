@@ -1538,9 +1538,13 @@ ns.RegisterCommand("reskin", function(arg)
         ns.Print(("/xui reskin on: the Character Reskin's look is kept by %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(ns.AddonTitle and ns.AddonTitle("XayaUI_Reskin") or "XayaUI Blizzard Reskin"))
         return
     end
-    if arg == "on" or arg == "off" then ns.SwitchApplyNow("reskin.charreskin") end   -- (QoL 0.7.50) the command applies at once, as before (5c)
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload).")); return end
-    if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
+    -- (QoL 0.7.50; PS-57) on / off go the way of the settings switch: saved, the reload question, in effect after the /reload (5c)
+    if arg == "on" or arg == "off" then
+        local on = arg == "on"
+        local line = ns.SwitchCommand("reskin.charreskin", c.enabled, function() c.enabled = on end, "Character Reskin", on)
+        ns.Print(line .. ((on and not ns.ReskinTabSaved()) and " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)." or ""))
+        return
+    end
     if arg == "status" or arg == "" then
         ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
             ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",

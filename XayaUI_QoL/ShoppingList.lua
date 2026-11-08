@@ -983,7 +983,13 @@ function Shop.Toggle()
     if not c then return end
     -- (D15) the Reskin tab's switch first: while it is off the command changes nothing
     if not ns.ReskinTabOn() then ns.Print("Shopping List: Blizzard Reskin is off (Blizzard Reskin > Overview); it shows once that is on again."); return end
-    if not c.enabled then ns.SwitchApplyNow("reskin.shoppinglist"); c.enabled, c.panel = true, true end   -- (QoL 0.7.50) the command turns it on at once, as before
+    -- (QoL 0.7.50; PS-57) switched off, the command switches it on the way the settings switch does: saved (with its panel), the reload
+    -- question, in effect after the /reload; while it is not in effect the command only says so
+    if not c.enabled then
+        local line = ns.SwitchCommand("reskin.shoppinglist", c.enabled, function() c.enabled, c.panel = true, true end, "Shopping List", true)
+        if not On(c) then ns.Print(line); return end
+    end
+    if not On(c) then ns.Print("Shopping List: saved ON. It takes effect after a reload: type /reload."); return end
     if panel and panel:IsShown() then c.closedTillAH = true; panel:Hide(); if popup then popup:Hide() end; return end
     c.panel = true
     Shop.Apply(true)

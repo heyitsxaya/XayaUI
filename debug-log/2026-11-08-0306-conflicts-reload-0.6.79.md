@@ -1,6 +1,6 @@
 # Conflict flags (PS-56, #469) and reskin / module switches on reload (PS-57, #480) (XayaUI 0.6.79)
 
-Logged 2026-11-08 03:06 UTC. Branch `claude/lucid-mayer-pv4ytn`, base origin/main 1a7ee8a (P5 + its patch notes). Not on main.
+Logged 2026-11-08 03:06 UTC. Last updated 2026-11-08 03:18 UTC (addendum at the end: the /xui commands). Branch `claude/lucid-mayer-pv4ytn`, base origin/main 1a7ee8a (P5 + its patch notes). Not on main.
 Versions: XayaUI 0.6.79, Options 0.6.90, Chat 0.6.43, QoL 0.7.50, Bonus 0.6.34, Reskin 0.6.23, Nameplates 0.2.3, Dev Assist 0.7.60
 (XayaUI Rules, XayaUI Rules Options, Media: no code change). QA step I2; walkthroughs "conflicts" and "switch-reload" (3 parts),
 `XayaUI_DevAssist/QAWalks-conflicts-reload.lua`.
@@ -84,8 +84,8 @@ Glass, Kaliel's Tracker (!KalielsTracker), Narcissus, GW2_UI, NDui, Tukui, RealU
   the settings window's `ns.OptionsApi.ReloadPrompt(label)` asks "<label>: this change takes effect after a reload. Reload now?"
   (Reload / Later; StaticPopup_Show(which, text_arg1): FrameXML, not in docs/reference/api, INFERENCE from Blizzard's own dialogs).
   `ns.SwitchInEffect(id, saved)`: what every runtime reader asks. A /reload starts a new Lua state: nothing held.
-- `/xui chat on|off`, `/xui reskin on|off`, `/xui shop` (turning the list on) still apply at once (`ns.SwitchApplyNow` lets go of the
-  hold): they are not settings-window switches. A profile import writes the saved values directly (no hold), as before.
+- The /xui commands: see the addendum (since the second commit they wait for the reload too). A profile import writes the saved values
+  directly (no hold), as before: see the addendum.
 - Off costs nothing (V14): a part switched on in the window builds nothing before the reload (switch_reload_run: Shopping List event
   frame, reskins' live flags stay off).
 
@@ -153,3 +153,31 @@ Blizzard Reskin is off (this tab's Overview)."
   qa_walks_reload (E2e part checks read saved vs in effect). options_split_parity golden regenerated (above).
 
 UNTESTED IN GAME (QA I2 and its walkthroughs are the check).
+
+## Addendum 2026-11-08 03:18 UTC: the /xui commands (lead review of 5124884)
+Her words cover every way of switching: "Enabling/disabling reskins and modules should require a reload to take effect". In 5124884
+`/xui chat on|off`, `/xui reskin on|off` and `/xui shop` (when it switches the Shopping List on) still applied at once.
+- New `ns.SwitchCommand(id, saved, write, label, on)` (Modules.lua 5c): when the choice differs from what is in effect it saves, asks
+  the window's reload question (when the settings window is loaded this session) and returns "<label>: saved ON|OFF. It takes effect
+  after a reload: type /reload."; when the choice is what is in effect it saves and returns "<label>: ON|OFF (already in effect; no
+  reload needed)." (no question). The command prints that line (ns.Print adds "XayaUI: "). Labels: "Chat Panel", "Character Reskin"
+  (the command's own word for the Character Pane), "Shopping List".
+- /xui chat on with Blizzard Reskin saved off keeps its old note: " It shows once Blizzard Reskin is on again (Blizzard Reskin >
+  Overview, then /reload)." (same for /xui reskin on).
+- /xui shop with the Shopping List off saves it on with its panel and prints the line; it shows nothing before the reload. With the
+  list on it opens / closes the panel as before.
+- `ns.SwitchApplyNow` is now used by tests and reload stand-ins only.
+- Dev Assist's "audit-chat" walkthrough (D31, give-back of Blizzard's fade on a teardown in the same session) used /xui chat off to
+  tear the chat down at once; it now writes both switches and refreshes itself (a test-only step, said in its text).
+- Tests: switch_reload_run.py gains the command sessions (94 checks); negative control on 5124884: 9 fail (each command applied at once,
+  printed the old lines, asked nothing). chat_run.py: /xui chat off checks "saved off, says it, nothing changes before the reload", then
+  applies the reload's effect (stand-in) for its teardown checks. shopping_list_run.py D15: /xui shop saves, says it, shows nothing
+  before the reload; after the stand-in reload the list runs and its panel shows.
+- QA I2 text extended (the generated walkthrough follows).
+
+Profile import (left as it is, as asked): NOT only after the next reload. The import writes the saved switch values directly and asks
+"Profile imported. Reload now so every feature uses the imported settings?" (XayaUI_Options/Profiles.lua P.AskReload), but nothing is
+held (Modules.lua 5c holds only switch clicks and commands), so a part that reads its switch again on a later event can take the
+imported value before the reload: e.g. the Chat Panel's refresh events (PLAYER_ENTERING_WORLD, UPDATE_CHAT_WINDOWS ...) call C.Refresh,
+which reads C.On -> the saved value (code reading, not run in a test). Listed as OPEN: whether an import should hold the imported
+reskin / module switches until the reload as well.

@@ -704,7 +704,14 @@ check("help text escapes pipes (no stray single |)", re.search(r"(?<!\|)\|(?!\|)
 
 # ---- turning the Chat Panel off gives Blizzard's chat back --------------------------------------------------------------------------
 orig = {"cf1": (30.0, 40.0, 430.0, 120.0)}
+for k in list(W.printed.keys()): W.printed[k] = None
 run("C.Command('off')")
+said = " ".join(str(v) for v in W.printed.values() if v)
+# (Chat 0.6.43; PS-57, lead review of 5124884) /xui chat off saves and waits for the reload; then the reload's effect is applied here
+# (the hold let go, one refresh) to check the teardown itself (tests/switch_reload_run.py: across a real reload)
+check("/xui chat off: saved off, says it takes effect after a reload, and nothing changes before it",
+      run("return ns.chat2.enabled") is False and run("return C.skin") is True and "Chat Panel: saved OFF. It takes effect after a reload: type /reload." in said, said)
+run("ns.SwitchApplyNow('chat.panel'); C.Refresh()")
 check("off: chat window is back at its own place", rect(cf1) == orig["cf1"], rect(cf1))
 check("off: edit box back under its window", rect(L.ChatFrame1EditBox)[0] == 25 and rect(L.ChatFrame1EditBox)[1] == 40 - 2 - 32, rect(L.ChatFrame1EditBox))
 check("off: dock manager back above its window", int(rect(L.GeneralDockManager)[1]) == 164, rect(L.GeneralDockManager))
@@ -724,7 +731,7 @@ cf1.ClearAllPoints(cf1); cf1.SetPoint(cf1, "BOTTOMLEFT", L.UIParent, "BOTTOMLEFT
 W.flush(); W.update(0.5, 3)
 check("off: the game can move its chat and we do not fight it", rect(cf1)[0] == 300, rect(cf1))
 check("off (Improved Chat still on): the block follows the game's chat to its new place", rect(pane)[0] == 300, rect(pane))
-run("C.Command('on')")
+run("C.Command('on'); ns.SwitchApplyNow('chat.panel'); C.Refresh()")
 W.flush(); W.update(0.4, 2)
 check("on again: glued to the container", rect(cf1) == rect(textA) and rect(L.ChatFrame1EditBox) == rect(inputA), (rect(cf1), rect(textA)))
 check("on again: strip hidden once more", L.ChatFrame1ButtonFrame.IsShown(L.ChatFrame1ButtonFrame) is False)
@@ -754,19 +761,19 @@ check("/xui chat indent causes no module error", len(list(C.errors.keys())) == 0
 # audit D31 (Chat 0.6.33): turning the Chat Panel off gives the game's own fade of old lines back (stand-in: on, 120 s)
 run("ns.chat2.textFade = false; C.Refresh()")
 check("D31 with the panel on and its text fade off, the game's fade is off", run("return C.Main()._fading") is False, run("return C.Main()._fading"))
-run("C.Command('off')")
+run("C.Command('off'); ns.SwitchApplyNow('chat.panel'); C.Refresh()")
 check("/xui chat off sets enabled=false", run("return ns.chat2.enabled") is False)
 # (Chat 0.6.33, UI-18 / UI-21) the fade of old lines is Improved Chat's: with Improved Chat on it stays as Improved Chat sets it; with
 # both the Chat Panel and Improved Chat off the game's own fade comes back (C.Teardown)
 check("D31 Chat Panel off, Improved Chat on: Improved Chat's text fade (off) stays", run("return C.Main()._fading") is False, run("return C.Main()._fading"))
 run("ns.chat2.improvedOn = false; C.Refresh()")
 check("D31 Chat Panel and Improved Chat off give the game's fade back (on, 120 s)", run("return C.Main()._fading") is True and run("return C.Main()._timeVisible") in (None, 120), (run("return C.Main()._fading"), run("return C.Main()._timeVisible")))
-run("ns.chat2.improvedOn = nil; C.Command('on'); ns.chat2.textFade = false; C.Refresh()")
+run("ns.chat2.improvedOn = nil; C.Command('on'); ns.SwitchApplyNow('chat.panel'); C.Refresh(); ns.chat2.textFade = false; C.Refresh()")
 check("D31 back on with its text fade off: the game's fade is off again", run("return C.Main()._fading") is False, run("return C.Main()._fading"))
 run("ns.chat2.improvedOn = false; C.Refresh()")
 check("D31 Improved Chat off, Chat Panel on: the game's fade back (on, 120 s)", run("return C.Main()._fading") is True and run("return C.Main()._timeVisible") in (None, 120), (run("return C.Main()._fading"), run("return C.Main()._timeVisible")))
 run("ns.chat2.improvedOn = nil; C.Refresh()")
-run("C.Command('on')")
+run("C.Command('on'); ns.SwitchApplyNow('chat.panel'); C.Refresh()")
 check("/xui chat on sets enabled=true", run("return ns.chat2.enabled") is True)
 run("C.Command('move')")
 check("mover toggles on", C.unlocked is True)

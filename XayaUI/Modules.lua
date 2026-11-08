@@ -826,8 +826,20 @@ function ns.SwitchSaveForReload(id, saved, write, label)
     local api = ns.OptionsApi
     if type(api) == "table" and type(api.ReloadPrompt) == "function" then Call(api.ReloadPrompt, label) end
 end
--- a route that applies at once (a /xui command) lets go of the hold, so its own change shows and what it prints is true
+-- a route that applies at once lets go of the hold (tests and the reload stand-ins use it; nothing in the addons does since 0.6.79)
 function ns.SwitchApplyNow(id) held[id] = nil end
+-- (XayaUI 0.6.79, lead review of 5124884) a /xui command that switches a reskin or module on or off goes the same way as the settings
+-- switch: it saves, asks (the window's question when the window is loaded) and keeps what is in effect until the /reload. Returns the
+-- line the command prints: "<label>: saved ON. It takes effect after a reload: type /reload." or, when the saved choice is what is in
+-- effect already, "<label>: ON (already in effect; no reload needed)."
+function ns.SwitchCommand(id, saved, write, label, on)
+    if (on and true or false) == ns.SwitchInEffect(id, saved) then
+        Call(write)   -- (the choice is what is in effect: saved, nothing to ask)
+        return ("%s: %s (already in effect; no reload needed)."):format(label, on and "ON" or "OFF")
+    end
+    ns.SwitchSaveForReload(id, saved, write, label)
+    return ("%s: saved %s. It takes effect after a reload: type /reload."):format(label, on and "ON" or "OFF")
+end
 -- ids held this session, sorted (Dev Assist's walkthrough and the tests read it)
 function ns.SwitchesHeld()
     local out = {}

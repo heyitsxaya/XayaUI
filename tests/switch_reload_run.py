@@ -13,6 +13,10 @@ does (the switch's own set, taken from the settings window's options table), on 
     the nameplate colour's listener) stays as it was;
   - after a /reload (the stand-in game logs out, writes the saved files, and a new session loads from them) the change is in effect.
 Run twice: once for all part switches together, once for "Enable Blizzard Reskin" alone (it turns the reskins in the tab off).
+Then the /xui commands that switch a reskin on or off (lead review of 5124884): /xui chat on|off, /xui reskin on, /xui shop (switching
+the Shopping List on) save, print "<part>: saved ON|OFF. It takes effect after a reload: type /reload." (or "<part>: ON|OFF (already
+in effect; no reload needed)." when the choice is what is in effect), ask the window's reload question, and change nothing before the
+reload; after it the change is in effect. These fail on 5124884 (the commands applied at once).
 Fails on the code before 0.6.79: each switch applied at once (the drawn state changed before the reload) and only the Overview asked.
 Run: python3 tests/switch_reload_run.py   (Lua 5.1 via lupa)."""
 import os, sys
@@ -183,6 +187,52 @@ end
 '''
 
 
+# (lead review of 5124884) the /xui commands that switch a reskin on or off go the same way: /xui chat off, /xui reskin on, /xui shop
+# (switching the Shopping List on). The settings window is loaded first, so the window's reload question can show too.
+CMD1 = r'''
+return function(W, L)
+''' + COMMON + r'''
+check("the settings window loads", ns.LoadOptions and ns.LoadOptions())
+local said = {}
+ns.Print = function(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end said[#said + 1] = table.concat(t, " ") end
+local function cmd(word, arg) local n0, a0 = #said, #asked; ns.RunCommand(word, arg); W.tick(0.1, 2); return said[#said], #asked - a0, asked[#asked] end
+local chat0, char0, shop0 = C().skin and true or false, ns.CharReskin_Active() and true or false, events("XayaUI_QoL/ShoppingList.lua", "AUCTION_HOUSE_SHOW") > 0
+check("(start) Chat Panel drawn, Character Pane and Shopping List not", chat0 and not char0 and not shop0)
+local line, n, q = cmd("chat", "on")
+check("/xui chat on while it is on: \"Chat Panel: ON (already in effect; no reload needed).\", no question", line == "Chat Panel: ON (already in effect; no reload needed)." and n == 0, tostring(line) .. " / " .. n)
+line, n, q = cmd("chat", "off")
+check("/xui chat off: \"Chat Panel: saved OFF. It takes effect after a reload: type /reload.\" and the reload question naming Chat Panel",
+  line == "Chat Panel: saved OFF. It takes effect after a reload: type /reload." and n == 1 and q[2] == "Chat Panel" and ns.chat2.enabled == false, tostring(line) .. " / " .. n)
+line, n, q = cmd("reskin", "on")
+check("/xui reskin on: \"Character Reskin: saved ON. It takes effect after a reload: type /reload.\" and the question",
+  line == "Character Reskin: saved ON. It takes effect after a reload: type /reload." and n == 1 and q[2] == "Character Reskin", tostring(line) .. " / " .. n)
+line, n, q = cmd("shop", "")
+check("/xui shop (Shopping List off): \"Shopping List: saved ON. It takes effect after a reload: type /reload.\" and the question",
+  line == "Shopping List: saved ON. It takes effect after a reload: type /reload." and n == 1 and q[2] == "Shopping List", tostring(line) .. " / " .. n)
+settle()
+check("/xui chat off: the Chat Panel is still drawn before the reload", C().skin == true)
+check("/xui reskin on: the character window reskin is not on before the reload", ns.CharReskin_Active() == false)
+check("/xui shop: the Shopping List does not run before the reload (no event frame), its panel not shown", events("XayaUI_QoL/ShoppingList.lua", "AUCTION_HOUSE_SHOW") == 0
+  and not (rawget(_G, "XayaUIShoppingList") and XayaUIShoppingList:IsShown()))
+line, n = cmd("chat", "on")
+check("/xui chat on again before the reload: back to what is in effect, no reload needed, no question", line == "Chat Panel: ON (already in effect; no reload needed)." and n == 0 and ns.chat2.enabled == true, tostring(line))
+line, n = cmd("chat", "off")
+check("/xui chat off again: saved off, the question again", line == "Chat Panel: saved OFF. It takes effect after a reload: type /reload." and n == 1, tostring(line))
+return R
+end
+'''
+
+CMD2 = r'''
+return function(W, L)
+''' + COMMON + r'''
+check("after the /reload: the Chat Panel is off, the character window reskin on, the Shopping List running",
+  C().skin == false and ns.CharReskin_Active() == true and events("XayaUI_QoL/ShoppingList.lua", "AUCTION_HOUSE_SHOW") > 0,
+  tostring(C().skin) .. " " .. tostring(ns.CharReskin_Active()))
+return R
+end
+'''
+
+
 def session(src, saved, arg=None):
     folders = H.find_addons()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
@@ -222,6 +272,12 @@ def main():
     t2, _, e4, _ = session(TAB2, saved)
     report("Enable Blizzard Reskin, after the reload", t2)
     errs += e4
+    c1, saved, e5, _ = session(CMD1, {})
+    report("/xui commands, before the reload", c1)
+    errs += e5
+    c2, _, e6, _ = session(CMD2, saved)
+    report("/xui commands, after the reload", c2)
+    errs += e6
     n += 1
     if errs:
         bad += 1
