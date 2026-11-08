@@ -446,6 +446,9 @@ QA.ChatSplitPending = function() return splitPending end   -- (tests)
 local function B(v) return v and "1" or "0" end
 local function SplitSave(enabled, improved)
     local s = S(); if not s then error("XayaUI Chat is not loaded") end
+    -- (Dev Assist 0.7.60; PS-57) the switches keep their value in effect until the /reload, as the settings window's switches do
+    local ns = NS and NS()
+    if ns and ns.SwitchHold then ns.SwitchHold("chat.panel", s.enabled); ns.SwitchHold("chat.improved", s.improvedOn ~= false) end
     s.enabled, s.improvedOn, s.collapsed = enabled, improved, false
     if improved then s.barOn = true end
     splitPending = true
@@ -520,6 +523,8 @@ QA.Register("chat-improved-split-back", { title = "Chat: Chat Panel on, Improved
             local note = QA.SeenNote("chat-improved-split", 1) or ""
             local e, i, b, c = note:match("was: panel=(%d) improved=(%d) bar=(%d) collapsed=(%d)")
             if not e then error("part 1's record of your switches is missing: set Blizzard Reskin > Chat Panel and QoL > Improved Chat yourself") end
+            local ns = NS and NS()
+            if ns and ns.SwitchHold then ns.SwitchHold("chat.panel", s.enabled); ns.SwitchHold("chat.improved", s.improvedOn ~= false) end
             s.enabled, s.improvedOn, s.barOn, s.collapsed = e == "1", i == "1", b == "1", c == "1"
             splitPending = true
         end,

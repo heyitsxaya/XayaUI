@@ -126,7 +126,8 @@ local function Cfg()
 end
 BS.Saved, BS.Cfg = Saved, Cfg
 local function TabOn() return not ns.ReskinTabOn or ns.ReskinTabOn() end
-local function PageOn(page) local r = Saved(); return (r and r[page] == true and TabOn()) and true or false end
+-- (Reskin 0.6.23; PS-57, #480) a page's switch takes effect on reload: what runs this session is the value in effect (Modules.lua 5c)
+local function PageOn(page) local r = Saved(); return (ns.SwitchInEffect("reskin." .. page, r and r[page] == true) and TabOn()) and true or false end
 BS.PageOn = PageOn
 local function WinOn(e) local r = Saved(); return PageOn("windows") and not (r.winOff and r.winOff[e.key]) end
 local function SecOn(s)
@@ -134,7 +135,7 @@ local function SecOn(s)
     if not PageOn("tracker") or (r.otOff and r.otOff[s.key]) then return false end
     if s.key == "professions" then   -- the Shopping List restyles this section while its tracker part is on: it keeps it
         local sl = QolS.shoppingList
-        if type(sl) == "table" and sl.enabled == true and sl.tracker == true then return false end
+        if type(sl) == "table" and ns.SwitchInEffect("reskin.shoppinglist", sl.enabled == true) and sl.tracker == true then return false end
     end
     return true
 end
@@ -867,13 +868,22 @@ end)
 -- Settings: pages of the Blizzard Reskin tab, each with its own tick box in the left pane (xuiSwitch)
 -------------------------------------------------------------------------------
 local function re(Notify) BS.Apply(); if Notify then Notify() end end
+-- each page's name as shown (the reload prompt names it)
+BS.PAGE_LABEL = { windows = "Blizzard Windows", minimap = "Minimap", tooltips = "Tooltips", tracker = "Objective Tracker", toasts = "Toasts and Pop-ups",
+    menus = "Menus", bubbles = "Chat Bubbles", statusbars = "Status Bars", mmbuttons = "Minimap Buttons", buttons = "Buttons" }
+-- (Reskin 0.6.23; PS-57, #480) the switch saves the choice and asks for a reload (Modules.lua ns.SwitchSaveForReload); nothing is
+-- applied before the reload. Before: BS.Apply ran at once.
 local function PageSwitch(page, name, tip, desc, Notify)
     return { type = "toggle", name = name, tip = tip, desc = desc,
         get = function() local r = Saved(); return r and r[page] == true or false end,
-        set = function(_, v) Cfg()[page] = v and true or nil; re(Notify) end,
+        set = function(_, v)
+            local r = Saved()
+            ns.SwitchSaveForReload("reskin." .. page, r and r[page] == true, function() Cfg()[page] = v and true or nil end, BS.PAGE_LABEL[page] or name)
+            if Notify then Notify() end
+        end,
         disabled = function() return not TabOn() end }
 end
-local OFFNOTE = " Off: nothing of it is made or runs. Switched off after it was on, Blizzard's look comes back at once; its hooks stay until you /reload but do nothing. Greyed while Blizzard Reskin is off (this tab's Overview)."
+local OFFNOTE = " Takes effect after a reload. Off: nothing of it is made or runs. Greyed while Blizzard Reskin is off (this tab's Overview)."
 
 function BS.WindowsPage(Notify)
     local off = function() return not PageOn("windows") end
@@ -1013,6 +1023,34 @@ ns.RegisterSettingsPage("reskin", "rskbubbles", BS.BubblesPage)
 ns.RegisterSettingsPage("reskin", "rskstatusbars", BS.StatusBarsPage)
 ns.RegisterSettingsPage("reskin", "rskmmbuttons", BS.MinimapButtonsPage)
 ns.RegisterSettingsPage("reskin", "rskbuttons", BS.ButtonsPage)
+-- (Reskin 0.6.23; PS-56, #469) other addons that change the same thing (Modules.lua section 5d): a flag on the page and in one login
+-- line; nothing here changes what a reskin does. Sources, each read 2026-11-08:
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc, Category "UI Overhaul"; module folders listed at
+-- https://github.com/tukui-org/ElvUI/tree/main/ElvUI/Game/Shared/Modules and skins in ElvUI/Game/load_mainline.xml, read 2026-11-08).  Skins/Character.lua and the window skins (Shared\Skins\*.lua), Skins/Tooltip.lua
+-- and Modules/Tooltip, Skins/ObjectiveTracker.lua, Skins/Menu.lua, Modules/Maps/Minimap.lua, Modules/DataBars (Mainline\DataBars\Honor.lua).
+-- EllesmereUI ("EUI"): each module is its own addon folder (https://github.com/EllesmereGaming/EllesmereUI, every folder below has its
+-- own <folder>.toc, read 2026-11-08).  EllesmereUIBlizzardSkin (EllesmereUIBlizzardSkin_WindowEngine.lua,
+-- _WindowPacks.lua, EUI_BlizzardSkin_TooltipSkin.lua, EUI_BlizzardSkin_Dialogs.lua, EllesmereUIBlizzardSkin_ChatBubbles.lua), EllesmereUIMinimap
+-- (EUI_Minimap_Styles.lua, EUI_Minimap_Buttons.lua), EllesmereUIQuestTracker (EllesmereUIQuestTracker_Skin.lua).
+-- SexyMap: folder "SexyMap" (https://github.com/funkydude/SexyMap : SexyMap.toc, Shapes.lua, Buttons.lua; "Spice up your minimap").
+-- BasicMinimap: folder "BasicMinimap" (https://github.com/funkydude/BasicMinimap : BasicMinimap.toc; "a basic solution to a clean, square minimap").
+-- TipTac: folder "TipTac" (https://github.com/frozn/TipTac : TipTac/TipTac.toc; "a tooltip enhancement addon, it allows you to configure
+-- various aspects of the tooltip").
+-- (Buttons: no addon with a source is listed for Blizzard's red buttons on their own; the window skins above cover their windows.)
+if ns.RegisterConflict then
+    local function reg(part, page, label, addons, what)
+        ns.RegisterConflict({ part = part, label = label, addons = addons, what = what, on = function() return PageOn(page) end })
+    end
+    reg("blizzwindows", "windows", "Blizzard Windows", { "ElvUI", "EllesmereUIBlizzardSkin" }, "the look of Blizzard's windows")
+    reg("minimapshape", "minimap", "Minimap", { "ElvUI", "EllesmereUIMinimap", "SexyMap", "BasicMinimap" }, "the minimap")
+    reg("rsktooltips", "tooltips", "Tooltips", { "ElvUI", "EllesmereUIBlizzardSkin", "TipTac" }, "the look of tooltips")
+    reg("objtracker", "tracker", "Objective Tracker", { "ElvUI", "EllesmereUIQuestTracker" }, "the objective tracker")
+    reg("rsktoasts", "toasts", "Toasts and Pop-ups", { "EllesmereUIBlizzardSkin" }, "Blizzard's pop-up dialogs")
+    reg("rskmenus", "menus", "Menus", { "ElvUI" }, "Blizzard's menus")
+    reg("rskbubbles", "bubbles", "Chat Bubbles", { "EllesmereUIBlizzardSkin" }, "chat bubbles")
+    reg("rskstatusbars", "statusbars", "Status Bars", { "ElvUI" }, "the experience, reputation and honor bars")
+    reg("rskmmbuttons", "mmbuttons", "Minimap Buttons", { "EllesmereUIMinimap", "SexyMap" }, "the buttons around the minimap")
+end
 -- (Reskin 0.6.20; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of each page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
 -- nothing paints with it yet and no page edits it (the UI comes with the module moves).
 local TS = ns.Theme and ns.Theme.RegisterScope

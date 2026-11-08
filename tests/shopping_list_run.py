@@ -285,7 +285,11 @@ check("  ...a default set by shift-clicking an item: its name and item ID", D()[
 arg("def11").set(nil, "")
 check("  ...empty goes back to the most used", D()["ench:11"] == nil)
 page.xuiSwitch.set(nil, false)
-check("switched off: the panel hides and its events are let go", not XayaUIShoppingList.shown)
+-- (QoL 0.7.50; PS-57, #480) the tick box takes effect on reload (tests/switch_reload_run.py: across a real one); before it nothing
+-- changes, then it is applied as a fresh start would (the hold let go, Shop.Apply)
+check("switched off: nothing changes before the reload (the panel still shows)", XayaUIShoppingList.shown and true or false)
+ns.SwitchApplyNow("reskin.shoppinglist"); ns.Shop.Apply()
+check("switched off and reloaded: the panel hides and its events are let go", not XayaUIShoppingList.shown)
 
 -- 11. Function audit 2026-11-07 (FA-7, D13, D14, D15, D16) ----------------------------------------------------------------------
 page.xuiSwitch.set(nil, true)
@@ -338,13 +342,24 @@ c.buy = {}
 
 -- D15: /xui shop while Blizzard UI Reskin is off changes nothing
 page.xuiSwitch.set(nil, false)
+ns.SwitchApplyNow("reskin.shoppinglist"); Shop.Apply()   -- (QoL 0.7.50; PS-57) the reload's effect (stand-in)
 c.panel = false
 CueRulesDB.reskinTabOff = true
 ns.RunCommand("shop", "")
 check("D15: /xui shop with the Reskin tab off: the Shopping List stays off", c.enabled == false and c.panel == false, ("enabled %s panel %s"):format(tostring(c.enabled), tostring(c.panel)))
 CueRulesDB.reskinTabOff = nil
+-- (QoL 0.7.50; PS-57, lead review of 5124884) switched off, /xui shop switches it on the way the settings switch does: saved, the line
+-- "Shopping List: saved ON. It takes effect after a reload: type /reload.", nothing shown before the reload
+local said = {}
+local rawPrint = ns.Print
+ns.Print = function(m) said[#said + 1] = tostring(m) end
 ns.RunCommand("shop", "")
-check("  ...with it on again: /xui shop switches it on and shows the panel", c.enabled == true and c.panel == true and XayaUIShoppingList.shown)
+ns.Print = rawPrint
+check("  ...with it on again: /xui shop saves it on (with its panel), says it takes effect after a reload, shows nothing before it",
+  c.enabled == true and c.panel == true and not XayaUIShoppingList.shown and table.concat(said, " / ") == "Shopping List: saved ON. It takes effect after a reload: type /reload.", table.concat(said, " / "))
+ns.SwitchApplyNow("reskin.shoppinglist"); Shop.Apply()   -- the reload's effect (stand-in; the panel may show itself: worn gear misses an enchant)
+if not XayaUIShoppingList.shown then ns.RunCommand("shop", "") end
+check("  ...after the reload it runs and its panel shows (by itself or with /xui shop)", c.enabled == true and XayaUIShoppingList.shown)
 
 -- D16: only the answer to our own Auction House query is read
 AuctionHouseFrame.shown = true

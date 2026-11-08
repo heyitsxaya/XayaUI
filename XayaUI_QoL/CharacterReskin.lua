@@ -1278,7 +1278,8 @@ function ns.CharReskin_StatListRecs() return own.statList and own.statList:IsSho
 -------------------------------------------------------------------------------
 local hooked = false
 -- on = its own switch AND the Blizzard UI Reskin tab's switch (QoL 0.7.32, S1 #48: off there turns every reskin off)
-local function On(c) return c and c.enabled and ns.ReskinTabOn() and true or false end
+-- (QoL 0.7.50; PS-57, #480) the switch takes effect on reload: this session runs with the value in effect (Modules.lua section 5c)
+local function On(c) return c and ns.SwitchInEffect("reskin.charreskin", c.enabled) and ns.ReskinTabOn() and true or false end
 Active = function() local c = Cfg(); return On(c) and not diag.failed end
 function ns.CharReskin_Active() return Active() == true end
 -- the Character Toolkit's slot overlays leave out their item level while this draws one (one number per slot: her screenshot had two)
@@ -1481,9 +1482,14 @@ function ns.BuildCharReskinPage(Notify)
     end
     -- its on / off is the tick box on this page's row in the left pane (xuiSwitch; QoL 0.7.32, S1 #48: "individual toggles for
     -- individual reskins"), greyed while the Blizzard UI Reskin tab's own switch is off
-    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on. Off gives Blizzard's look and width back at once (out of combat; in combat when the fight ends). Greyed while Blizzard Reskin is off (this tab's Overview).")
+    local switch = T("enabled", 1, "Character Reskin", "Turns the reskin on; takes effect after a reload. Off gives Blizzard's look and width back. Greyed while Blizzard Reskin is off (this tab's Overview).")
     switch.tip = "Restyles the character window, with item levels, enchants and gems beside each slot."
     switch.disabled = function() return not ns.ReskinTabOn() end
+    -- (QoL 0.7.50; PS-57, #480) saves the choice and asks for a reload; before, ns.CharReskin_Apply ran at once
+    switch.set = function(_, v)
+        ns.SwitchSaveForReload("reskin.charreskin", C().enabled, function() C().enabled = v and true or false end, "Character Pane")
+        if Notify then Notify() end
+    end
     return {
         type = "group", name = "Character Pane", order = 4, childGroups = "tree", xuiSwitch = switch,
         args = {
@@ -1509,6 +1515,14 @@ end
 -- module "reskin": the page is the Blizzard UI Reskin tab's Character Pane (Xaya 2026-11-05: "Take all reskins and put them into a new
 -- tab: Blizzard UI Reskin. Currently applies to: chat, character pane, Esc menu")
 ns.RegisterSettingsPage("reskin", "charreskin", ns.BuildCharReskinPage)
+-- (QoL 0.7.50; PS-56, #469) other addons that change the character window (Modules.lua section 5d): a flag only, nothing changes here.
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc; Shared\Skins\Character.lua in ElvUI/Game/load_mainline.xml).
+-- EllesmereUI: folder "EllesmereUIBlizzardSkin" (https://github.com/EllesmereGaming/EllesmereUI : EllesmereUIBlizzardSkin.toc,
+-- EllesmereUIBlizzardSkin_CharacterSheet.lua). (all read 2026-11-08)
+if ns.RegisterConflict then
+    ns.RegisterConflict({ part = "charreskin", label = "Character Pane", addons = { "ElvUI", "EllesmereUIBlizzardSkin" }, what = "the character window",
+        on = function() return ns.CharReskin_Active() end })
+end
 -- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the character window (page Character Pane), under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
 -- nothing paints with it yet and no page edits it (the UI comes with the module moves).
 local TS = ns.Theme and ns.Theme.RegisterScope
@@ -1524,8 +1538,13 @@ ns.RegisterCommand("reskin", function(arg)
         ns.Print(("/xui reskin on: the Character Reskin's look is kept by %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(ns.AddonTitle and ns.AddonTitle("XayaUI_Reskin") or "XayaUI Blizzard Reskin"))
         return
     end
-    if arg == "on" then c.enabled = true; ns.CharReskin_Apply(); ns.Print("Character Reskin on." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload).")); return end
-    if arg == "off" then c.enabled = false; ns.CharReskin_Apply(); ns.Print("Character Reskin off."); return end
+    -- (QoL 0.7.50; PS-57) on / off go the way of the settings switch: saved, the reload question, in effect after the /reload (5c)
+    if arg == "on" or arg == "off" then
+        local on = arg == "on"
+        local line = ns.SwitchCommand("reskin.charreskin", c.enabled, function() c.enabled = on end, "Character Reskin", on)
+        ns.Print(line .. ((on and not ns.ReskinTabSaved()) and " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)." or ""))
+        return
+    end
     if arg == "status" or arg == "" then
         ns.Print(("Character Reskin: %s%s%s; %d Blizzard regions faded, %d slots%s."):format(c.enabled and "on" or "off",
             ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",

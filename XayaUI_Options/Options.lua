@@ -84,8 +84,8 @@ function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t
 -- (Options 0.6.55; REQUEST-LOG UI-5 / UI-7; Xaya 2026-11-06: "Blizzard UI Reskin is not a check box at the top level. the check box
 -- should be enable and disable in the tab itself and then after a reload individual reskin items populate", her answer "Right pane +
 -- reload prompt".) The tab button carries no box any more (this table is empty; PaintTabSwitch hides a box a recycled button had).
--- The switch is the first row of the tab, Overview (ns.OptionsApi.ReskinOverview below): ticking or unticking it switches every reskin
--- at once as before (core ns.SetReskinTab) and asks "Reload now?"; the reskins' own rows are listed only when the switch was on when
+-- The switch is the first row of the tab, Overview (ns.OptionsApi.ReskinOverview below): ticking or unticking it saves the choice for every
+-- reskin and asks "Reload now?" (since Options 0.6.90 nothing changes before the reload; PS-57); the reskins' own rows are listed only when the switch was on when
 -- this settings addon loaded (it loads on the first open after a login or /reload), so they appear after a reload.
 ns.OptionsApi.TAB_SWITCHES = {}
 ns.OptionsApi.reskinAtLoad = ns.ReskinTabOn and ns.ReskinTabOn() or false   -- the switch as it was when this addon loaded
@@ -103,30 +103,33 @@ function ns.OptionsApi.ReskinOverview(args)
     end
     args.reskinOverview = { type = "group", name = "Overview", order = 0, args = {
         enable = { type = "toggle", order = 1, width = "full", name = ns.OptionsApi.RESKIN_SWITCH,
-            desc = "Turns every reskin in this tab on or off at once; each keeps its own tick box. The reskins are listed in this tab after a reload.",
-            get = function() return ns.ReskinTabOn() end,
-            set = function(_, v)
-                ns.SetReskinTab(v and true or false)
-                if ns.OptionsApi.ReloadPrompt then ns.OptionsApi.ReloadPrompt() end
-            end },
+            desc = "Turns every reskin in this tab on or off together, after a reload; each keeps its own tick box. The reskins are listed in this tab after the reload.",
+            -- (Options 0.6.90; PS-57, #480) saves the choice and asks for a reload; the reskins keep what they had until then
+            -- (Modules.lua section 5c). Before: every reskin switched at once (ns.SetReskinTab) and then the prompt.
+            get = function() return ns.ReskinTabSaved() end,
+            set = function(_, v) ns.SaveReskinTab(v and true or false) end },
         note = { type = "description", order = 2, width = "full", fontSize = "medium",
             name = function()
-                local now = ns.ReskinTabOn()
-                if now ~= ns.OptionsApi.reskinAtLoad then return "Changed: /reload to list the reskins as they are now." end
+                local now = ns.ReskinTabSaved()
+                if now ~= ns.OptionsApi.reskinAtLoad then return "Changed: /reload to apply it and list the reskins as they are now." end
                 return now and "The reskins are in the rows under Overview." or "Tick it, then /reload: the reskins are listed under Overview."
             end },
     } }
 end
 -- "Reload now?" (Reload / Later). C_UI.Reload (no arguments, no returns; ReloadUI if it is missing, as Console.lua does);
 -- StaticPopupDialogs / StaticPopup_Show: Blizzard's FrameXML globals, checked before use.
-function ns.OptionsApi.ReloadPrompt()
+-- (Options 0.6.90; PS-57, #480) every reskin and module switch asks with it (Modules.lua ns.SwitchSaveForReload); label names the part.
+-- StaticPopup_Show(which, text_arg1) puts text_arg1 in the dialog's "%s" (Blizzard's StaticPopup.lua formats the text with it;
+-- FrameXML, not in docs/reference/api: INFERENCE from Blizzard's own dialogs, e.g. "%s has invited you to a group.").
+ns.OptionsApi.RELOAD_TEXT = "%s: this change takes effect after a reload. Reload now?"
+function ns.OptionsApi.ReloadPrompt(label)
     if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then return end
     if not StaticPopupDialogs.XAYAUI_RESKIN_RELOAD then
-        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = "Blizzard Reskin: reload now to list the reskins as they are now?",
+        StaticPopupDialogs.XAYAUI_RESKIN_RELOAD = { text = ns.OptionsApi.RELOAD_TEXT,
             button1 = "Reload", button2 = "Later", OnAccept = function() local r = (C_UI and C_UI.Reload) or ReloadUI; if type(r) == "function" then r() end end,
             timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3 }
     end
-    StaticPopup_Show("XAYAUI_RESKIN_RELOAD")
+    StaticPopup_Show("XAYAUI_RESKIN_RELOAD", (type(label) == "string" and label ~= "") and label or "XayaUI")
 end
 ns.OptionsApi.TAB_BOX = 14   -- the tick box's size on the tab
 function ns.OptionsApi.PaintTabSwitches(root)
@@ -253,8 +256,9 @@ function ns.OptionsApi.GreyWhileOff(g, offs)
         -- a page whose text is all inside its section tabs (Data Panels, Enhanced Tooltips) would be empty while off: it shows its
         -- switch's one sentence (Options 0.6.63, UI-46 "just show the summary"; which text is the summary is a session choice)
         local own = false
-        for _, o in pairs(type(g.args) == "table" and g.args or {}) do
-            if type(o) == "table" and (o.type ~= "group" or o.inline) then own = true; break end
+        for k, o in pairs(type(g.args) == "table" and g.args or {}) do
+            -- (Options 0.6.90) an overlap flag (Modules.lua 5d, xuiConflict) is not the page's own text: the summary still shows
+            if k ~= "xuiConflict" and type(o) == "table" and (o.type ~= "group" or o.inline) then own = true; break end
         end
         if not own and type(sw) == "table" and type(g.args) == "table" and not g.args.xuiOffSummary then
             local offs2 = mine
@@ -276,8 +280,8 @@ function ns.OptionsApi.GreyWhileOff(g, offs)
             end
         end
     end
-    for _, o in pairs(type(g.args) == "table" and g.args or {}) do
-        if type(o) == "table" then
+    for k, o in pairs(type(g.args) == "table" and g.args or {}) do
+        if type(o) == "table" and k ~= "xuiConflict" then   -- (Options 0.6.90) the overlap flag is never greyed
             if o.type == "group" and not o.inline then ns.OptionsApi.GreyWhileOff(o, mine)
             elseif #mine > 0 then
                 ns.OptionsApi.WrapDisabled(o, mine)

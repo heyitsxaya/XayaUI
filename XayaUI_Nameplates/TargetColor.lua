@@ -63,7 +63,7 @@ end
 
 function TC.Refresh()
     pending = nil
-    if not NP.DB().targetColor then Hide(); return end   -- a queued refresh that lands after the switch went off
+    if not NP.On() then Hide(); return end   -- a queued refresh that lands after the switch went off
     local plate = PlateFor("target")
     local bar = plate and HealthBarOf(plate)
     if plate and plate == PlateFor("player") then bar = nil end   -- never the personal resource bar
@@ -94,7 +94,7 @@ end
 
 -- switch on or off from the saved setting (login, the settings page)
 function TC.Apply()
-    local on = NP.DB().targetColor
+    local on = NP.On()
     if on then
         if not driver then driver = CreateFrame("Frame") end
         driver:SetScript("OnEvent", OnEvent)

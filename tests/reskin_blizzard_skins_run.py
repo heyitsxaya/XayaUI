@@ -21,7 +21,9 @@ reskins). What the player sees, in the stand-in game:
   * Status bars (0.6.15): the experience / reputation bars' frame art faded, our background and border; the fill untouched;
   * Minimap buttons (0.6.16): the zone bar and the tracking button's art tinted in the theme, their own colours given back;
   * Buttons (0.6.17): red panel buttons inside listed windows (any depth) take the flat xui-button look; other addons' windows untouched;
-  * the Blizzard UI Reskin tab's own switch turns every one of them off at once.
+  * the Blizzard UI Reskin tab's own switch turns every one of them off at once (ns.SetReskinTab, the reskins' apply walk).
+(Reskin 0.6.23; PS-57) Each page's tick box saves and asks for a reload; here every click is applied right after as a fresh start would
+(the hold let go, BS.Apply) to check each look; tests/switch_reload_run.py checks the tick boxes across a real reload.
 Run: python3 tests/reskin_blizzard_skins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -139,6 +141,17 @@ L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 local BS = ns and ns.BlizzardSkins
+-- (Reskin 0.6.23; PS-57, #480) a page's tick box takes effect on reload (tests/switch_reload_run.py checks that, across a real reload).
+-- This test is about each reskin's look: after a click the change is applied the way a fresh start applies it (the hold let go,
+-- BS.Apply), and the click must still have asked for the reload.
+local asks = 0
+if ns and ns.SwitchSaveForReload then
+  local rawSave = ns.SwitchSaveForReload
+  ns.SwitchSaveForReload = function(id, saved, write, label)
+    rawSave(id, saved, write, label); asks = asks + 1
+    ns.SwitchApplyNow(id); if BS then BS.Apply() end
+  end
+end
 check("Reskin loaded with BlizzardSkins", BS ~= nil)
 if not BS then return R end
 
@@ -421,6 +434,7 @@ check("buttons off: showing the window again changes nothing", mailSend.Left:Get
 btp.xuiSwitch.set(nil, true); ns.SetReskinTab(false)
 check("Blizzard UI Reskin off: buttons are Blizzard's", not BS.Live().buttons and mailSend.Left:GetAlpha() == 1)
 ns.SetReskinTab(true)
+check("every page tick box asked for the reload (0.6.79, PS-57)", asks >= 20, asks)
 return R
 end
 '''

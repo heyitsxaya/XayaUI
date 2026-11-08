@@ -3,6 +3,8 @@
 # nothing of it exists, is registered or runs (no frame, no event, no OnUpdate, no hook, no chat filter, no code on a frame, a chat
 # message or a print); switched on through its own settings switch it is made and works; switched off again it stops at once (hooks and
 # the chat filter, which the game cannot take back, do no work).
+# (Chat 0.6.43; PS-57, #480) the Chat Panel's settings switch now takes effect on reload: A10b checks nothing is made before it, and
+# APPLY() applies it the way /xui chat on|off does, so the on / off code itself is still measured (tests/switch_reload_run.py: the reload).
 # Uses tests/chat_world.lua (stand-in frames). XayaUI_Chat's own frames are the ones made after W.coreObjects; its hooks the ones after
 # W.coreHooks. "Chat Panel code ran" is measured by wrapping the shared C.* functions every file calls through the table (C.On,
 # C.Container, C.Frames, ...), plus the game calls C_AddOns.IsAddOnLoaded, UnitName and string.lower.
@@ -99,6 +101,9 @@ function FIND(name)            -- an option of the Chat Panel's settings page, b
   return walk(o)
 end
 function SET(name, v) local opt = FIND(name); assert(opt, "no option " .. name); opt.set({}, v); W.flush() end
+-- (Chat 0.6.43; PS-57, #480) the settings switch takes effect on reload: this applies it the way a /xui chat command does (the hold let
+-- go, one refresh), so the Chat Panel's own on / off code is still measured here; tests/switch_reload_run.py checks the reload itself
+function APPLY(id) ns.SwitchApplyNow(id); C.Refresh(); W.flush() end
 function SAY(msg, who) W.now = W.now + 1; W.fireEvent("CHAT_MSG_SAY", msg, who or "Hal-Realm", "", "", "", "", 0, 0, "", 0, math.random(1, 1e9)) end
 '''
 
@@ -152,8 +157,10 @@ keys = sorted(str(k) for k in run("return CueRulesDB.chat2").keys())
 check("A10 no data built: the saved Chat Panel table holds only its switches (Chat Panel, Improved Chat)", keys == ["enabled", "improvedOn"], keys)
 # switched on with its own settings switch, as Xaya would
 run("SET('Enable Chat Panel', true)")
+check("A10b switched on in the settings: nothing is made before the reload (PS-57)", n(run, "NFRAMES") == 0 and n(run, "EVENTS") == 0, both(run, "EVENTS"))
+run("APPLY('chat.panel')")
 W.update(0.4, 2)
-check("A11 (works) switched on: Blizzard's chat sits in the Chat Panel at once, no /reload",
+check("A11 (works) switched on and applied: Blizzard's chat sits in the Chat Panel",
       run("return C.Container() ~= nil and C.Container():IsShown()") is True and rect(W, W.cf1) == rect(W, run("return C.TextArea()")))
 ev_on = both(run, "EVENTS")
 check("A12 (works) switched on: its refresh events and its upkeep are running", "PLAYER_ENTERING_WORLD" in str(ev_on[1]) and n(run, "ONUPDATES") >= 1,
@@ -162,6 +169,7 @@ check("A13 (works) switched on: its defaults are filled in", run("return ns.chat
 run("C.Main():SetAlpha(1); ChatFrame1Tab:SetAlpha(1)")
 # off again
 run("SET('Enable Chat Panel', false)")
+run("APPLY('chat.panel')")
 check("A14 (works) switched off again: Blizzard's chat is back where the game put it", rect(W, W.cf1) == (30.0, 40.0, 430.0, 120.0), rect(W, W.cf1))
 check("A15 switched off again: no event registered, no OnUpdate set", n(run, "EVENTS") == 0 and n(run, "ONUPDATES") == 0,
       (both(run, "EVENTS"), both(run, "ONUPDATES")))
@@ -184,7 +192,7 @@ check("A18 switched off again: opening the chat no longer restyles the hidden in
 run("ChatFrame1Tab:SetAlpha(0.4)")
 check("A19 switched off again: the game's SetAlpha on a chat tab is not recorded by the Chat Panel", run("return ChatFrame1Tab._xuiBase") is None,
       run("return ChatFrame1Tab._xuiBase"))
-run("SET('Enable Chat Panel', true)"); W.update(0.4, 2)
+run("SET('Enable Chat Panel', true); APPLY('chat.panel')"); W.update(0.4, 2)
 run("C.SetCollapsed(true); C.SetCollapsed(false)")
 check("A20 (works) back on, collapsed and shown again: the tab keeps the alpha the game gave it while the Chat Panel was off",
       abs(run("return ChatFrame1Tab:GetAlpha()") - 0.4) < 0.01, run("return ChatFrame1Tab:GetAlpha()"))

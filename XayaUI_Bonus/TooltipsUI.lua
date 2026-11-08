@@ -90,3 +90,13 @@ end
 -- Plugs into core through Modules.lua (0.5.108): core never calls this file by name.
 -------------------------------------------------------------------------------
 ns.RegisterSettingsPage("bonus", "tooltips", ns.BuildTooltipsTab)
+-- (Bonus 0.6.34; PS-56, #469) other addons that change tooltips (Modules.lua section 5d): a flag only, nothing changes here.
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc; module folder Modules/Tooltip).
+-- TipTac: folder "TipTac" (https://github.com/frozn/TipTac : TipTac/TipTac.toc; "a tooltip enhancement addon").
+-- idTip: folder "idTip" (https://github.com/silverwind/idTip : idTip.toc at the root; "Adds various IDs to the WoW ingame tooltips").
+-- (all read 2026-11-08)
+if ns.RegisterConflict then
+    local function on() local d = TT.DB(); return d and d.enabled and true or false end
+    ns.RegisterConflict({ part = "tooltips", label = "Enhanced Tooltips", addons = { "ElvUI", "TipTac" }, what = "tooltips", on = on })
+    ns.RegisterConflict({ part = "tooltips", label = "Enhanced Tooltips", addons = { "idTip" }, what = "the IDs shown on tooltips", on = on })
+end

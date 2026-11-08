@@ -199,16 +199,18 @@ local function Blocked()
     if blocked == nil then blocked = C.BlockedReason() or false end
     return blocked
 end
+-- (Chat 0.6.43; PS-57, #480) C.On / C.ImprovedOn read their switch as it is in effect this session: the settings window's switches
+-- save and ask for a reload (Modules.lua section 5c); so does /xui chat on|off.
 -- (Chat 0.6.18, S1 #48) and the Blizzard UI Reskin tab's own switch: off there turns the Chat Panel off too, its own switch kept
 function C.On()
     local s = ns.chat2
-    return s and s.enabled and ns.ReskinTabOn() and not Blocked() and true or false
+    return s and ns.SwitchInEffect("chat.panel", s.enabled) and ns.ReskinTabOn() and not Blocked() and true or false
 end
 -- (Chat 0.6.33; UI-18 / UI-19 / UI-21) QoL > Improved Chat: its own switch only. It also runs beside another addon's chat skin (her words:
 -- "should support other chat reskin options"): with the Chat Panel off it places its pieces around Blizzard's chat where it is.
 function C.ImprovedOn()
     local s = ns.chat2
-    return s and s.improvedOn ~= false and true or false
+    return s and ns.SwitchInEffect("chat.improved", s.improvedOn ~= false) and true or false
 end
 
 function C.Frames()
@@ -514,8 +516,11 @@ function C.Command(arg)
     arg = (arg or ""):lower():match("^%s*(%S*)") or ""
     local s = ns.chat2
     if not s then ns.Print("Chat Panel: settings are not loaded yet."); return end
-    if arg == "off" then s.enabled = false; C.Refresh(); ns.Print("Chat Panel OFF. Blizzard's chat is back as the game draws it.")
-    elseif arg == "on" then s.enabled = true; C.Refresh(); ns.Print("Chat Panel ON." .. (ns.ReskinTabOn() and "" or " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)."))
+    -- (Chat 0.6.43; PS-57) on / off go the way of the settings switch: saved, the reload question, in effect after the /reload (5c)
+    if arg == "on" or arg == "off" then
+        local on = arg == "on"
+        local line = ns.SwitchCommand("chat.panel", s.enabled, function() s.enabled = on end, "Chat Panel", on)
+        ns.Print(line .. ((on and not ns.ReskinTabSaved()) and " It shows once Blizzard Reskin is on again (Blizzard Reskin > Overview, then /reload)." or ""))
     elseif arg == "reset" then
         s.point, s.x, s.y, s.width, s.height = C.DEFAULTS.point, C.DEFAULTS.x, C.DEFAULTS.y, C.DEFAULTS.width, C.DEFAULTS.height
         C.Refresh(); ns.Print("Chat Panel: position and size reset.")

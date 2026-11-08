@@ -647,3 +647,9 @@ ns.RegisterCommand("data", function() ns.DataPanels_OpenSettings() end, "/xui da
 -- O-100 (Bonus 0.6.27): the row carries the feature's name ("Data Panels" since Bonus 0.6.18)
 ns.RegisterLauncher({ "data", "Data Panels", "Open the Data Panels settings (also /xui data)", function() ns.DataPanels_OpenSettings() end, order = 30 })
 ns.RegisterSettingsPage("bonus", "datapanels", ns.BuildDataPanelsTab)
+-- (Bonus 0.6.34; PS-56, #469) another addon with info panels on screen (Modules.lua section 5d): a flag only, nothing changes here.
+-- ElvUI: folder "ElvUI" (https://github.com/tukui-org/ElvUI : ElvUI/ElvUI.toc; module folder Modules/DataTexts; read 2026-11-08).
+if ns.RegisterConflict then
+    ns.RegisterConflict({ part = "datapanels", label = "Data Panels", addons = { "ElvUI" }, what = "info panels on screen",
+        on = function() return ns.DataPanels_MasterOn and ns.DataPanels_MasterOn() or false end })
+end

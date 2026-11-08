@@ -769,7 +769,15 @@ end
 -- toggles for individual reskins"). Off turns every reskin off (Chat Panel, Character Pane, Esc Menu, Shopping List) and each keeps its
 -- own switch for when the tab is on again. Saved only while off (CueRulesDB.reskinTabOff = true), so a profile that never touched it
 -- holds nothing. Every reskin reads it with its own switch: on = its own switch AND this one.
-function ns.ReskinTabOn() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
+-- (XayaUI 0.6.79; PS-57, #480) ns.ReskinTabOn is the switch in effect this session; ns.ReskinTabSaved the choice saved for the next
+-- /reload (section 5c). The settings window's switch saves with ns.SaveReskinTab and asks for a reload.
+function ns.ReskinTabSaved() return not (type(CueRulesDB) == "table" and CueRulesDB.reskinTabOff) end
+function ns.ReskinTabOn() return ns.SwitchInEffect("reskin.tab", ns.ReskinTabSaved()) end
+function ns.SaveReskinTab(on)
+    ns.SwitchSaveForReload("reskin.tab", ns.ReskinTabSaved(), function()
+        if type(CueRulesDB) == "table" then CueRulesDB.reskinTabOff = (not on) and true or nil end
+    end, "Blizzard Reskin")
+end
 -- Each reskin registers its own apply (it builds, or gives Blizzard's look back) with ns.RegisterReskin(key, fn), the way features
 -- register everything else here; core only walks the list. A reskin whose addon is off is simply not in it.
 local reskins = {}
@@ -782,6 +790,150 @@ function ns.SetReskinTab(on)
     for k in pairs(reskins) do keys[#keys + 1] = k end
     table.sort(keys)
     for _, k in ipairs(keys) do Call(reskins[k]) end
+end
+
+-------------------------------------------------------------------------------
+-- 5c. Switches that take effect on reload (XayaUI 0.6.79; PS-57, #480). Xaya, 2026-11-07: "none of these should be toggleable without
+-- a reload -- this is the standing convention for all UI overhaul addons"; widened 2026-11-08: "Enabling/disabling reskins and modules
+-- should require a reload to take effect to account for memory/cpu changes as well".
+-- A reskin's or module's on / off in the settings window saves the new choice and asks for a reload; the session keeps running with
+-- the value it had. ns.SwitchSaveForReload(id, saved, write, label): `saved` is the switch's saved value before this change (a
+-- boolean as its reader computes it), write() saves the new choice, label names it in the prompt. The first change of a session holds
+-- the value in effect; later changes in the same session only save. ns.SwitchInEffect(id, saved) is what every reader of that switch
+-- asks: the held value when one is held, else the saved one. Nothing is held at login, so a session starts with what was saved; a
+-- /reload starts a new Lua state and clears the holds. Readers that are not switch clicks (a profile import, a test setting the
+-- saved value directly) are not held and behave as before.
+-------------------------------------------------------------------------------
+local held = {}
+function ns.SwitchInEffect(id, saved)
+    local h = held[id]
+    if h then return h.v end
+    return saved and true or false
+end
+function ns.SwitchPending(id, saved)
+    local h = held[id]
+    return h ~= nil and h.v ~= (saved and true or false)
+end
+-- hold the value in effect without asking (a walkthrough that saves a switch and then asks for the /reload itself)
+function ns.SwitchHold(id, saved)
+    if type(id) == "string" and held[id] == nil then held[id] = { v = saved and true or false } end
+end
+function ns.SwitchSaveForReload(id, saved, write, label)
+    if type(id) ~= "string" then return end
+    ns.SwitchHold(id, saved)
+    if type(write) == "function" then Call(write) end
+    -- the prompt is the settings window's (XayaUI_Options, load-on-demand: a switch click means it is loaded)
+    local api = ns.OptionsApi
+    if type(api) == "table" and type(api.ReloadPrompt) == "function" then Call(api.ReloadPrompt, label) end
+end
+-- a route that applies at once lets go of the hold (tests and the reload stand-ins use it; nothing in the addons does since 0.6.79)
+function ns.SwitchApplyNow(id) held[id] = nil end
+-- (XayaUI 0.6.79, lead review of 5124884) a /xui command that switches a reskin or module on or off goes the same way as the settings
+-- switch: it saves, asks (the window's question when the window is loaded) and keeps what is in effect until the /reload. Returns the
+-- line the command prints: "<label>: saved ON. It takes effect after a reload: type /reload." or, when the saved choice is what is in
+-- effect already, "<label>: ON (already in effect; no reload needed)."
+function ns.SwitchCommand(id, saved, write, label, on)
+    if (on and true or false) == ns.SwitchInEffect(id, saved) then
+        Call(write)   -- (the choice is what is in effect: saved, nothing to ask)
+        return ("%s: %s (already in effect; no reload needed)."):format(label, on and "ON" or "OFF")
+    end
+    ns.SwitchSaveForReload(id, saved, write, label)
+    return ("%s: saved %s. It takes effect after a reload: type /reload."):format(label, on and "ON" or "OFF")
+end
+-- ids held this session, sorted (Dev Assist's walkthrough and the tests read it)
+function ns.SwitchesHeld()
+    local out = {}
+    for id in pairs(held) do out[#out + 1] = id end
+    table.sort(out)
+    return out
+end
+
+-------------------------------------------------------------------------------
+-- 5d. Overlaps with other addons (XayaUI 0.6.79; PS-56, #469). Xaya, 2026-11-08: "Make sure all addons that have conflicts with each
+-- other (EUI with the chat reskin, elvui with the chat reskin, etc) get appropriately flagged."
+-- Each XayaUI part declares, from its own module, the other addons that change the same thing:
+--   ns.RegisterConflict{ part = <settings page key>, label = <the part's name as shown>, addons = { <AddOn folder name>, ... },
+--                        what = <what both change, after "both change">, on = <function: the part is in effect> (optional) }
+-- At PLAYER_LOGIN (every addon that loads at login has loaded by then) the Platform asks C_AddOns.IsAddOnLoaded for each named addon
+-- (docs/reference/api/namespaces.md:162: `C_AddOns.IsAddOnLoaded(name: uiAddon)` -> `loadedOrLoading: bool, loaded: bool`,
+-- SecretArguments=AllowedWhenUntainted). A flag is shown on the part's settings page (one line at its top) and, for the parts that are
+-- on, in one chat line at login. A flag changes nothing: XayaUI does not switch anything off or step aside for it (C6 is open).
+-- Whether the other addon has its own module for that thing switched off is NOT read (it would mean reading its saved data or frames):
+-- the flag says only that the addon is loaded. Off costs nothing (V14): a module that is off registers nothing, and with nothing
+-- registered no login work is queued.
+-------------------------------------------------------------------------------
+local conflicts, conflictsFound, conflictQueued = {}, nil, false
+local function AddonLoaded(name)
+    local A = C_AddOns
+    local fn = A and A.IsAddOnLoaded
+    if type(fn) ~= "function" then return false end
+    local ok, loadedOrLoading, loaded = pcall(fn, name)
+    if not ok then return false end
+    if loaded ~= nil then return loaded and true or false end
+    return loadedOrLoading and true or false
+end
+function ns.DetectConflicts()
+    local found = { byPart = {}, list = {} }
+    for _, c in ipairs(conflicts) do
+        for _, addon in ipairs(c.addons) do
+            if AddonLoaded(addon) then
+                local e = { part = c.part, label = c.label, addon = addon, what = c.what, on = c.on }
+                found.byPart[c.part] = found.byPart[c.part] or {}
+                table.insert(found.byPart[c.part], e)
+                found.list[#found.list + 1] = e
+            end
+        end
+    end
+    conflictsFound = found
+    return found
+end
+-- the one line at login: the loaded addons, each with the XayaUI parts (that are on) it overlaps; nil when there is none
+function ns.ConflictLoginLine(found)
+    found = found or conflictsFound
+    if not found then return nil end
+    local order, parts = {}, {}
+    for _, e in ipairs(found.list) do
+        local on = true
+        if type(e.on) == "function" then local ok, v = pcall(e.on); on = ok and v and true or false end
+        if on then
+            if not parts[e.addon] then parts[e.addon] = {}; order[#order + 1] = e.addon end
+            local seen = false
+            for _, l in ipairs(parts[e.addon]) do if l == e.label then seen = true end end
+            if not seen then table.insert(parts[e.addon], e.label) end
+        end
+    end
+    if #order == 0 then return nil end
+    table.sort(order, function(a, b) return a:lower() < b:lower() end)   -- (addons and parts in name order: the same line on every login)
+    local bits = {}
+    for _, addon in ipairs(order) do
+        table.sort(parts[addon])
+        bits[#bits + 1] = addon .. " (" .. table.concat(parts[addon], ", ") .. ")"
+    end
+    return "overlaps with other loaded addons: " .. table.concat(bits, "; ") .. ". Each part's settings page says what both change."
+end
+local function ConflictsAtLogin()
+    local found = ns.DetectConflicts()
+    local line = ns.ConflictLoginLine(found)
+    if line and ns.Print then ns.Print(line) end
+end
+function ns.RegisterConflict(c)
+    if type(c) ~= "table" or type(c.part) ~= "string" or type(c.addons) ~= "table" or type(c.what) ~= "string" then return end
+    local addons = {}
+    for _, a in ipairs(c.addons) do if type(a) == "string" and a ~= "" then addons[#addons + 1] = a end end
+    if #addons == 0 then return end
+    conflicts[#conflicts + 1] = { part = c.part, label = type(c.label) == "string" and c.label or c.part, addons = addons, what = c.what,
+        on = type(c.on) == "function" and c.on or nil }
+    if not conflictQueued then conflictQueued = true; ns.AtLogin(ConflictsAtLogin) end
+end
+function ns.Conflicts() return conflicts end
+function ns.ConflictsFor(part) return conflictsFound and conflictsFound.byPart[part] or nil end
+-- the page's line(s), one sentence per loaded addon (in the orange the settings window uses for a note that warns)
+function ns.ConflictPageText(part)
+    local list = ns.ConflictsFor(part)
+    if not list or #list == 0 then return nil end
+    local lines = {}
+    for _, e in ipairs(list) do lines[#lines + 1] = ("Overlaps with %s (loaded): both change %s."):format(e.addon, e.what) end
+    return " |cffff8a3d" .. table.concat(lines, "\n") .. "|r"   -- (the leading space sorts it first among the page's order-0 notes)
 end
 
 -- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):
@@ -870,7 +1022,15 @@ function ns.BuildSettingsPages(module, Notify)
     for _, p in ipairs(pages) do
         if module == nil or p.module == module then
             local ok, group = pcall(p.build, Notify)
-            if ok and type(group) == "table" then out[p.key] = group elseif not ok then Report(group) end
+            if ok and type(group) == "table" then
+                out[p.key] = group
+                -- (0.6.79, section 5d) a part with a loaded overlapping addon: one line at the top of its page. Added only then, so
+                -- the window is node for node the same as before when nothing overlaps.
+                local text = ns.ConflictPageText(p.key)
+                if text and type(group.args) == "table" then
+                    group.args.xuiConflict = { type = "description", order = 0, width = "full", fontSize = "medium", name = text }
+                end
+            elseif not ok then Report(group) end
         end
     end
     return out

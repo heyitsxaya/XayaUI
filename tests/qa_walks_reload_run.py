@@ -60,8 +60,8 @@ check("(the reskins start switched on)", was == true)
 -- the Esc Menu reskin on (its own box), so the look after each /reload has something to show or not
 local RS = ns.Settings("reskin"); RS.gm = RS.gm or {}; RS.gm.skin = true   -- (P5: Blizzard Reskin's own store, XayaUIReskinDB.gm)
 local res, notes = Walk("reskin-switches")
-check("reskin part 1: the switch is flipped through Enable Blizzard Reskin itself: saved off, and the reload question asked",
-  ns.ReskinTabOn() == false and W.popup == "XAYAUI_RESKIN_RELOAD" and res and res.steps[2].r == "P" and tostring(res.steps[2].d):find("switch now OFF", 1, true), tostring(notes[2]))
+check("reskin part 1: the switch is flipped through Enable Blizzard Reskin itself: saved off, still on in effect until the /reload (0.6.79, PS-57), and the reload question asked",
+  ns.ReskinTabSaved() == false and ns.ReskinTabOn() == true and C().skin == true and W.popup == "XAYAUI_RESKIN_RELOAD" and res and res.steps[2].r == "P" and tostring(res.steps[2].d):find("switch now OFF", 1, true), tostring(notes[2]))
 check("reskin part 1: its last step is Done (no verdict) and tells her to /reload", res and res.steps[3].r == "D" and QA.walks["reskin-switches"].steps[3].text:find("/reload", 1, true) ~= nil)
 local v, n = Check("reskin-switches-reload", 1)
 check("reskin part 2 before any /reload: not tested (nil), says to reload", v == nil and tostring(n):find("not reloaded yet", 1, true) ~= nil, tostring(v) .. " " .. tostring(n))
@@ -92,7 +92,7 @@ Cc.skin = real
 local cv, cn = Check("chat-improved-split-reload", 1)
 check("chat part 2 after the /reload: Blizzard's chat (no XayaUI art), Improved Chat's pieces around it: Pass", cv == true, tostring(cv) .. " " .. tostring(cn))
 local res = Walk("reskin-switches-reload")
-check("reskin part 2: the switch is flipped back (saved on) and the reload question asked", ns.ReskinTabOn() == true and res and res.steps[2].r == "P" and tostring(res.steps[2].d):find("switch now ON", 1, true), res and tostring(res.steps[2].d))
+check("reskin part 2: the switch is flipped back (saved on; still off in effect until the /reload) and the reload question asked", ns.ReskinTabSaved() == true and ns.ReskinTabOn() == false and res and res.steps[2].r == "P" and tostring(res.steps[2].d):find("switch now ON", 1, true), res and tostring(res.steps[2].d))
 local cres = Walk("chat-improved-split-reload", { [2] = "P" })
 check("chat part 2: saves Chat Panel on / Improved Chat off for the next /reload", ns.chat2.enabled == true and ns.chat2.improvedOn == false and cres and cres.steps[3].r == "D")
 return R
