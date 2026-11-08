@@ -20,6 +20,15 @@ section 15 = the execution order), then `.claude/skills/xayaui-change/SKILL.md`.
 - Built, held until H14 passes: P4b (rule editor in load-on-demand `XayaUI_Rules_Options`), commit 98467fb, draft PR #493.
 - Archiving sessions is blocked by the permission classifier (C16 in the doc).
 
+## State update (2026-11-08 ~08:30 UTC, lead session_014bN6tX5sAfcgMXdDw6XsNU)
+- Xaya (PS-52): "build everything"; she tests once at the end. Recommended answers in use: A11 (not built), B8 answered (PS-53: look keys -> Reskin, features -> QoL), B9-B11.
+- On main: P4b, P5 (per-module stores, copy only; P6 NOT built), conflict flags + reload-on-switch (PS-56/57), element menu (#495), debug W1 (#476 #482 #484 #487), W2 (#461 #462), W3 (#468 #471 #478 #483), W5/W6 (#485, #479 not reproduced), W7 (#467 width-scan cache), W9a (#460 gradient borders, main e6bf30b). Lander landing reply after each.
+- Sent to lander: W9b (#472 per-element themes), head 6edd94d, PR #504.
+- Triage of #460-#494: docs/process/audits/debug-triage-2026-11-08.md. Toggle audit: docs/process/audits/toggle-audit-2026-11-08.md.
+- Lesson: always re-run tests/settings_seam_run.py (W9a failed the gate on it).
+- Next unblocked: #494 chat defaults never saved at login (P5 finding); character pane split per her Q5 answer (fixes C20); then wait.
+- Blocked on her (Open Questions doc): A1-A8, A10-A19, B4, B5, C-rows, D3.
+
 ## How Xaya wants to work (her words and rules; all binding)
 - She has stepped away (2026-11-07): "Ping me from a single appropriate source when you need something from me. Otherwise, I'm
   stepping away and not interfering". Single source = **one push notification** when a phase needs her (e.g. B2 / B3 before P4,
