@@ -143,7 +143,7 @@ local function setup(W, L)
   -- the version both builds report (the string carries it; the new build has a newer number)
   local A = C_AddOns; local realGet = A.GetAddOnMetadata
   A.GetAddOnMetadata = function(a, f) if f == "Version" then return "0.6.73" end return realGet(a, f) end
-  local DB = CueRulesDB
+  local DB = ns.SettingsRoutedForTests()   -- (P5) each key where its module reads it now (its own store or CueRulesDB)
   DB.theme = { base = "custom", under = "default", tokens = { accent = { 0.1, 0.2, 0.3, 1 } }, classes = { ["xui-button"] = { text = { 1, 0, 0, 1 } } }, font = "none", size = "M" }
   DB.themes = { Mine = { base = "default", tokens = { label = { 0.5, 0.5, 0.5, 1 } }, classes = {}, font = "none", size = "L" } }
   DB.ui = DB.ui or {}; DB.ui.selStyle = "bar"; DB.ui.hybridMigrated = true; DB.ui._tmp = 1

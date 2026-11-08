@@ -86,6 +86,7 @@ local LEGACY_SPLIT = {
 -- its keys in CueRulesDB (the Platform's).
 local SETTINGS_STORES = {
     reskin    = { addon = "XayaUI_Reskin", var = "XayaUIReskinDB" },
+    chat      = { addon = "XayaUI_Chat", var = "XayaUIChatDB" },
 }
 
 ns.settingsEpoch = 0
@@ -357,6 +358,18 @@ end
 -- (tests that load single files without the game's loader, where no module addon fires ADDON_LOADED) open every store as the addons'
 -- ADDON_LOADED would, after the test has set CueRulesDB up
 function ns.SettingsOpenAllForTests() for m in pairs(SETTINGS_STORES) do ns.SettingsOpen(m) end end
+-- (tests) a table that reads and writes every settings key through the view of the module that owns it (where the module reads it
+-- now: its own store or CueRulesDB), for tests that set settings up by writing CueRulesDB.<key>; characterReskin goes to QoL's view
+function ns.SettingsRoutedForTests()
+    local owner = {}
+    for _, m in ipairs({ "platform", "core", "chat", "bonus", "qol", "reskin", "devassist" }) do
+        for _, k in ipairs(SETTINGS_KEYS[m]) do if owner[k] == nil then owner[k] = m end end
+    end
+    return setmetatable({}, {
+        __index = function(_, k) return settingsViews[owner[k] or "platform"][k] end,
+        __newindex = function(_, k, v) settingsViews[owner[k] or "platform"][k] = v end,
+    })
+end
 
 -- called by XayaUI's own start-up frame (Core.lua) at every addon's ADDON_LOADED until the login: opens the store of the module that
 -- addon is (no frame of its own here)

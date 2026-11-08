@@ -82,7 +82,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 847e928b561f85cb54499f55e01f31f8  XayaUI/MinimapButton.lua
-ed95b836c4e3da337e8ff6e1faeb9cca  XayaUI/Modules.lua
+f0c3e8b9fcbe884b0c6e5de6b471cf15  XayaUI/Modules.lua
 e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 0a5e0ae7a3920b1f999a9699de5ba8f6  XayaUI/Share.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
@@ -121,7 +121,7 @@ dbf08df132d75abdc23f6eaf4e4a8dee  XayaUI_Bonus/TooltipsUI.lua
 3a37261e12b91d6cb3d67fe5c00118ee  XayaUI_Bonus/Utilities.lua
 fb54b6839dc6aeb601f1506379df0430  XayaUI_Bonus/XayaUI_Bonus.toc
 c2efec81e9210cc14c938837abda7da0  XayaUI_Chat/Bar.lua
-5cb2e652d975cd90c3c345a4c3001612  XayaUI_Chat/Core.lua
+5acbc7d0c216f2fd6f539c1b0bb13123  XayaUI_Chat/Core.lua
 c6fba7ed13e450164819d2e73ef132c4  XayaUI_Chat/Fade.lua
 4e3e698420201e72732409534df67a2f  XayaUI_Chat/Frame.lua
 9eff5741b7e3c6d7f8d59e13b4abc6cf  XayaUI_Chat/History.lua
@@ -135,7 +135,7 @@ ec96bc59c4743c9b10cc4a05b1901e5b  XayaUI_Chat/Scroll.lua
 89310d84a4fdb3b158d8c79a97abca2f  XayaUI_Chat/Skin.lua
 c3443dcf8a486e540ddfeac1aae87728  XayaUI_Chat/Sounds.lua
 0b25e4d4acccd35a4855b2c7fe691f0d  XayaUI_Chat/Whispers.lua
-a4024f71485bd4ebc36c8fcf12785cd6  XayaUI_Chat/XayaUI_Chat.toc
+10ea51b2205f7cf550a1a3fde182b7c3  XayaUI_Chat/XayaUI_Chat.toc
 d1214a6ecb251789fe882787dce5d8ef  XayaUI_DevAssist/ApiInventory.lua
 712b6c841be26382331cc3a76959f06f  XayaUI_DevAssist/AuraCatalogue.lua
 9e4bc43ff30d55de9a3f488eb71c2e8c  XayaUI_DevAssist/AuraIDProbe.lua
@@ -861,7 +861,7 @@ f8a9b310ad952a131d1ca175943f69f7  tests/chat_run.py
 0c19707331c323c389bcb714a4a4f373  tests/chat_sidebar_run.py
 48559d62f35d5c11d3d04547b997b458  tests/chat_tab_align_run.py
 bbacef0fbd9e2f8cfb2c4210d51d677a  tests/chat_tab_row_run.py
-f4044806ff2ac37698d24742ba4ddfe0  tests/chat_world.lua
+01ea6994b1c74c84ab6f40344c7123e8  tests/chat_world.lua
 d6297c20fa8473f92f68346ed2bdf2a7  tests/chatprobe_run.py
 82f0699e6a7e2597f1d4e4939135bb95  tests/class_learn_auras_run.py
 10ac006cc4dec7a2fe3c17b823a537d0  tests/class_learn_run.py
@@ -963,7 +963,7 @@ d5d22268639009282db5ff4478e9a976  tests/options_split_parity_golden.json
 fb1c1f19da3520085ebcb7a94d35e7e8  tests/precheck_run.py
 e43831498bacdfeb4c158aa0147a9644  tests/preview_icons_run.py
 1a27deb08ca15ec38e1fbe1e174c3f65  tests/preview_layout_run.py
-c61bdbea147dc2021256acf71e3e0741  tests/profile_parts_run.py
+773cf57d447a121dbd225d7f2dcf126a  tests/profile_parts_run.py
 3b6ad7be7d4e9d3b52d20dd6e7dbfba2  tests/qa_perf_walks_run.py
 73d549cdb53f264102d48e14580bea56  tests/qa_review_run.py
 887d94a5d25f11780159f1c18968aefc  tests/qa_runner_run.py
@@ -991,9 +991,9 @@ b66f173aec689b386a745d134f605b24  tests/rule_editor_load_run.py
 3f0fbb8de92404446cfdbc8e785d0324  tests/rules_subtabs_compact_run.py
 d86e0e69b2baf2570a4e9acb34a91345  tests/run_all.py
 d5b46cf225a405e1ac840fa1ab3fd7ca  tests/settings_migration_run.py
-c92e7a697aaf07d8cfdd740187a4be8d  tests/settings_restructure_run.py
-b60104cbcbc590eccad245cead4da861  tests/settings_seam_run.py
-1058f97854ca111c24e92629263325f5  tests/settings_stores.py
+72d51aae7d9a82134f3d66dde9a446f1  tests/settings_restructure_run.py
+1c91f5173c4c7f35064d9a874252a14d  tests/settings_seam_run.py
+70c5584675db0929d97f388fbcb20604  tests/settings_stores.py
 d5b0be47d8c573e4e98f471d92628024  tests/share_strings_presplit_run.py
 ae23803ef76c39ff525c566e4f2314ec  tests/shopping_list_run.py
 74013242fe542c50dac6a6d9be9f79e9  tests/sidebar_icon_columns_run.py

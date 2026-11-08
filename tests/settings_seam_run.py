@@ -311,20 +311,28 @@ section("C4 backup Load (replace)", function()
 end)
 
 section("C5 CueRulesDB replaced as a whole", function()
-  local old = CueRulesDB
-  CueRulesDB = { qol = { marker = "new" }, chat = { m = 1 }, ui = { rsk = { windows = true }, x = 2 }, rules = {} }
-  check("C5: a view held from before reads the new table at once (QoL, Chat, platform)",
-    V.qol.qol.marker == "new" and V.chat.chat.m == 1 and V.platform.ui.x == 2)
-  check("C5: ... and (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)", V.reskin.rsk == nil or not rawequal(V.reskin.rsk, CueRulesDB.ui.rsk))
-  local oldR = XayaUIReskinDB
-  XayaUIReskinDB = { rsk = { windows = true } }
-  check("C5: (P5) XayaUIReskinDB replaced as a whole: the held Reskin view reads the new table at once", V.reskin.rsk and V.reskin.rsk.windows == true)
-  XayaUIReskinDB = oldR
+  -- (P5) a module with its own store reads that saved variable; the others (and the Platform) CueRulesDB: every backing table is
+  -- replaced by a new one holding a marker, and each view held from before must read its marker at once
+  local probe = { qol = "qol", chat = "chat", bonus = "calculator", devassist = "idProbe", core = "drafts", reskin = "rsk" }
+  local keep, new = {}, { CueRulesDB = { ui = { x = 2 } } }
+  for m, k in pairs(probe) do
+    local st = ns.SettingsStore(m)
+    local var = (st.state == "own") and st.var or "CueRulesDB"
+    new[var] = new[var] or {}
+    new[var][k] = { marker = m }
+  end
+  for var in pairs(new) do keep[var] = rawget(_G, var); _G[var] = new[var] end
+  local bad = {}
+  for m, k in pairs(probe) do local t = V[m][k]; if not (type(t) == "table" and t.marker == m) then bad[#bad + 1] = m end end
+  check("C5: every backing table (CueRulesDB, each module's own store) replaced as a whole: each view held from before reads the new one at once",
+    #bad == 0 and V.platform.ui.x == 2, table.concat(bad, ", "))
+  check("C5: (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)",
+    not rawequal(V.reskin.rsk, CueRulesDB.ui and CueRulesDB.ui.rsk))
   check("C5: ns.SettingsReady() follows it", ns.SettingsReady() == true)
   CueRulesDB = nil
-  check("C5: with no CueRulesDB, a view reads nil and SettingsReady is false (nothing created by reading)",
-    V.qol.qol == nil and ns.SettingsReady() == false and rawget(_G, "CueRulesDB") == nil)
-  CueRulesDB = old
+  check("C5: with no CueRulesDB, the platform view reads nil and SettingsReady is false (nothing created by reading)",
+    V.platform.ui == nil and ns.SettingsReady() == false and rawget(_G, "CueRulesDB") == nil)
+  for var, t in pairs(keep) do _G[var] = t end
 end)
 
 section("C6 hot-path caches", function()
