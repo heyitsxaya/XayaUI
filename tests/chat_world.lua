@@ -370,10 +370,9 @@ function W.allChatOptions(Notify)
 end
 function W.start()
   -- (P5) the addon's ADDON_LOADED: its settings store (XayaUIChatDB) opens and runs Chat_OnDBReady, which waited for it (ns.WhenSettingsReady).
-  -- This stand-in always ran Chat_OnDBReady after every Chat file, so with every default those files define; the game ran it while
-  -- Core.lua loaded (fewer defaults: XayaUI_Chat/Core.lua keeps them in C.defaultsAtLoad). The stand-in keeps its own timing, as before.
-  local dbg = ns.Service and ns.Service("chatDebug")
-  if dbg and dbg.C then dbg.C.defaultsAtLoad = nil end
+  -- As in the game (tests/harness/loader.lua): after every Chat file has run. (Debug chat defaults, Chat 0.6.46) Up to Chat 0.6.45 this
+  -- stand-in cleared C.defaultsAtLoad here, so it had every default while the game had only Core.lua's; it now runs the game's own code
+  -- path, unchanged (tests/chat_defaults_run.py compares the two).
   if ns.SettingsOpenAllForTests then ns.SettingsOpenAllForTests() else ns.Chat_OnDBReady() end
   W.fireEvent("PLAYER_ENTERING_WORLD")
   W.flush()

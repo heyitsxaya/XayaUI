@@ -33,7 +33,11 @@ numbers set aside, 0 other lines (debug-log 2026-11-08 debug-w9a). Regenerated a
 (debug W9b, #472): only the "reskin" tab changed; `--dump` of accb5c8 and of the new code differ (all-on: 275 lines) only in the new
 Blizzard Reskin > Theme page (`reskin.rsktheme.*`), one `xuiTheme` row ("Theme") on each element's page, the Esc Menu's Colors group
 removed (`reskin.gamemenu.colors.*`, now its Theme row) with a desc on its Reset, and the `order` of the two pages sorted after "Theme"
-(Toasts and Pop-ups, Tooltips); 0 other lines (debug-log 2026-11-08 debug-w9b). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+(Toasts and Pop-ups, Tooltips); 0 other lines (debug-log 2026-11-08 debug-w9b). Regenerated again on 2026-11-08 for Chat 0.6.46 (debug
+chat defaults): only the "qol" tab changed, in every variant where XayaUI Chat is on, same node count; `--dump` of 1b974fe and of the new
+code differ in 16 lines per variant, all `qol.improvedchat.privacy.*` and only in their get() result (nil before: the privacy cover's
+defaults never reached the saved settings in the game; now each shows its default, e.g. Button size 28, Color 0.04 | 0.04 | 0.06), 0 other
+lines (debug-log 2026-11-08 debug-chatdefaults). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
