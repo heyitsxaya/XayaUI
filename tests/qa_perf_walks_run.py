@@ -1,6 +1,6 @@
 """V22 walkthroughs for the performance test (XayaUI_DevAssist/QAWalks-perf.lua; REQUEST-LOG A15, standing rule V22): J18 (what the
 record holds; the upload question), J19 (settings window memory: four readings), J20 (rule log only while read), J21 (memory growth in
-combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor), J25 (the usage tooltip), J27 (the settings window). Loads the real QAWalk.lua framework, core Core / Modules /
+combat), J22 (other addons' errors), J23 (rules that are not loaded), J24 (a still cursor), J25 (the usage tooltip), J27 (the settings window), J31 (a click in a rule's editor) and B293 (debug W7, #467: the skin pass's width scan, QAWalks-debug-w7.lua). Loads the real QAWalk.lua framework, core Core / Modules /
 DebugRecord and Dev Assist's DevRecord.lua with stand-in game calls (the stand-ins first written for the removed run prompt's test),
 and asks each step's check what it would pre-fill: Pass when the step was done, Fail when it was not (each check is tried both ways),
 and the counts in the notes. Also checks that the removed J17 walkthroughs are gone.
@@ -63,7 +63,7 @@ ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI/DebugRecord.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute("XayaUI_NS = NS")
-for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua", "XayaUI_DevAssist/QAWalks-bars.lua"):
+for f in ("XayaUI_DevAssist/DevRecord.lua", "XayaUI_DevAssist/QAWalk.lua", "XayaUI_DevAssist/QAWalks-perf.lua", "XayaUI_DevAssist/QAWalks-bars.lua", "XayaUI_DevAssist/QAWalks-debug-w7.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute("NS.SettingsOpenAllForTests()")   # (P5) XayaUI Dev Assist's ADDON_LOADED: its store opens
 L.execute(r'''
@@ -289,6 +289,22 @@ r = step(J, 4); check("J31.4 the sidebar row shows the rule's name: Pass", r[0] 
 L.execute("NS.rules[3].name = 'Renamed rule'")
 r = step(J, 4); check("J31.4 renamed, but no row shows the new name: Fail", r[0] == "F")
 check("J31 the narrow-window step stays a question for her", E("XayaUI_DevQA.walks['perf-settings-click'].steps[5].noVerdict == true"))
+
+# B293 (Dev Assist 0.7.66, debug W7, #467): the skin pass's width scan on a repeat rule-editor click measures no text anew; the note keeps
+# each rule-editor redraw's ms (build and draw + skin) next to her J31 numbers
+W7 = "debug-w7"
+check("B293 the walkthrough is registered with Do it for me on step 1 and pre-fill", E("XayaUI_DevQA.walks['debug-w7'] ~= nil and XayaUI_DevQA.walks['debug-w7'].steps[1].setup ~= nil and XayaUI_DevQA.walks['debug-w7'].prefill == true"))
+L.execute("SEL = 'folderX\\001rule3'; for i = #XayaUI_DevQA.PerfRedraws, 1, -1 do XayaUI_DevQA.PerfRedraws[i] = nil end; SETUP('debug-w7', 1)")
+r = step(W7, 1); check("B293.1 no rule-editor redraw yet: not tested, asks for the clicks", r[0] == "N" and "0 rule-editor redraw(s)" in r[1])
+L.execute("NS.OptionsApi.WidthScan = { scans = 1, texts = 13054, measured = 891 }; REDRAW('folderX\\001rule3', 82, 54)")
+L.execute("NS.OptionsApi.WidthScan = { scans = 2, texts = 13054, measured = 0 }; REDRAW('folderX\\001rule3', 80, 9)")
+r = step(W7, 1); check("B293.1 two editor redraws, the last scan measured nothing anew: Pass, both ms and the J31 numbers in the note", r[0] == "P" and "136 ms (82 build and draw + 54 skin; width scan: 891 of 13054" in r[1] and "89 ms (80 build and draw + 9 skin; width scan: 0 of 13054" in r[1] and "221 ms" in r[1])
+L.execute("NS.OptionsApi.WidthScan = { scans = 3, texts = 13054, measured = 13054 }; REDRAW('folderX\\001rule3', 82, 54)")
+r = step(W7, 1); check("B293.1 the last click's scan measured every text again (Options 0.6.99): Fail", r[0] == "F" and "measured texts again" in r[1])
+L.execute("REDRAW('folderX', 900, 30)")
+r = step(W7, 2); check("B293.2 another page's redraw is not counted (still the editor's last redraw: Fail)", r[0] == "F")
+L.execute("NS.OptionsApi.WidthScan = nil; for i = #XayaUI_DevQA.PerfRedraws, 1, -1 do XayaUI_DevQA.PerfRedraws[i] = nil end; REDRAW('folderX\\001rule3', 80, 9); REDRAW('folderX\\001rule3', 80, 9)")
+r = step(W7, 2); check("B293.2 a settings window without the scan counts (older Options): Fail, says so", r[0] == "F" and "older than 0.6.100" in r[1])
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

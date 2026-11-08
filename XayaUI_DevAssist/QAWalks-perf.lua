@@ -409,7 +409,12 @@ local function WatchRedraws()
         local p = (NS() or {}).perf
         if not (p and p.n) then return end
         local key, g = OnScreenRule()
-        redraws[#redraws + 1] = { n = p.n, build = p.build or 0, skin = p.skin or 0, rule = key, built = (type(g) == "table" and g.xuiStub == nil) or false }
+        -- (Dev Assist 0.7.66, debug W7) the skin pass's minimum-width scan as it stood after this redraw (Options 0.6.100 Skin.lua
+        -- ns.OptionsApi.WidthScan: scans so far, dropdown texts in the tree, texts measured anew; nil before Options 0.6.100)
+        local ws = (NS() or {}).OptionsApi
+        ws = ws and ws.WidthScan
+        redraws[#redraws + 1] = { n = p.n, build = p.build or 0, skin = p.skin or 0, rule = key, built = (type(g) == "table" and g.xuiStub == nil) or false,
+            scans = ws and ws.scans, texts = ws and ws.texts, measured = ws and ws.measured }
         while #redraws > 30 do table.remove(redraws, 1) end
     end)
     return true
@@ -489,6 +494,8 @@ local function OptionOnScreen(names)
     return found or false
 end
 QA.PerfOptionOnScreen = OptionOnScreen   -- (tests)
+-- (Dev Assist 0.7.66) for the debug W7 walkthrough (QAWalks-debug-w7.lua): the same redraw record and window opening as J31
+QA.PerfWatchRedraws, QA.PerfOpenRules, QA.PerfOnScreenRule = WatchRedraws, OpenRules, OnScreenRule
 QA.Register("perf-settings-click", { title = "Speed: how fast a click reacts while a rule is open (J31)", area = "Dev Assist", qa = "J31", order = 310, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Rules|r and the addon starts noting which page each redraw builds. Click any rule in the sidebar so its editor shows. Then click one switch in that rule's editor on and off (for example Display > Maintain aspect ratio), and press |cffffd100Check again|r.\n\n|cffffd100Expect:|r the switch changes at once. The check reads the window's own time for the last redraw that built this rule's editor (other pages' redraws do not count): under 100 ms is the goal (before: about 1.4 s per click with your rules).",
         setup = OpenRules,
