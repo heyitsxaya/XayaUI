@@ -82,7 +82,7 @@ e94cfc0c3fc54c4e5188a7aadaf41d90  XayaUI/Media/UI/xui_progresstex.tga
 66226a0137e47566a0fd0ce9c41e6bcc  XayaUI/Media/UI/xui_sttexture.tga
 30d50e1964ffdb6d81b4e902ecb5accd  XayaUI/Media/UI/xui_text.tga
 847e928b561f85cb54499f55e01f31f8  XayaUI/MinimapButton.lua
-4d1994f7aa2d3d0ee55b90c3381685d9  XayaUI/Modules.lua
+300949699d093b9592542335712a06a3  XayaUI/Modules.lua
 e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 0a5e0ae7a3920b1f999a9699de5ba8f6  XayaUI/Share.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
@@ -276,9 +276,9 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 a449497df1d8d7be9bc625cb7df38e50  XayaUI_QoL/ShoppingList.lua
 b11bf3dca3da73f0598136f9c67442b1  XayaUI_QoL/StatMath.lua
 61eb515a3f6a282baf9e84d1db31b48e  XayaUI_QoL/XayaUI_QoL.toc
-6dc5d83069a571077ce346ec486beaf4  XayaUI_Reskin/BlizzardSkins.lua
-74b9bf024595afc840a00d1b614dbe6b  XayaUI_Reskin/FriendColors.lua
-1e834a9a423f9ee6ebaa5f21800bd11c  XayaUI_Reskin/GameMenuSkin.lua
+757f088cb30a3ec67c0bdb43619a15aa  XayaUI_Reskin/BlizzardSkins.lua
+123e20c2bddf22b7e5ad8cb2b69393e1  XayaUI_Reskin/FriendColors.lua
+da2a6f4cc2549c7c2ff35b8dd8e36ead  XayaUI_Reskin/GameMenuSkin.lua
 430444adf5afbe56ec156eb1c8e1def9  XayaUI_Reskin/XayaUI_Reskin.toc
 83c4db1f5488be3899eca66fe3b50f5c  XayaUI_Rules/Actions.lua
 093b335e10216602f9beb4be10fb5911  XayaUI_Rules/AuraAlias.lua
@@ -734,7 +734,7 @@ e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCm
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-30b83adfae865be3b8e533368a28e4c1  docs/process/REQUEST-LOG.md
+0edb5ee33a7eddf4b0c3d59c639e78e1  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 09a7314016fdc0383c32f5f6e438bf70  docs/process/VERIFICATION.md
 3fcee98869dd9370442f963cf4c125fa  docs/process/WAKEUP-SUMMARY-2026-11-07.md
