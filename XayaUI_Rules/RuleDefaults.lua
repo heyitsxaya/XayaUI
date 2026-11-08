@@ -166,6 +166,7 @@ function ns.FixFolderIds()
     if n == 0 then return 0 end
     for _, f in ipairs(ns.folders) do
         if f.parent and map[f.parent] then f.parent = map[f.parent] end
+        if f.cGroup ~= nil and map[f.cGroup] then f.cGroup = map[f.cGroup] end   -- (a group that follows another group: B, 0.6.82)
         if map[f.id] then f.id = map[f.id] end
     end
     for _, r in ipairs(ns.rules or {}) do if r.folder and map[r.folder] then r.folder = map[r.folder] end end
@@ -586,6 +587,12 @@ local function InitRules()
     if nHyb and nHyb > 0 then ns.Print(nHyb .. " existing rules are now under Hybrid Cues (they keep both their display and sound options).") end
     local nProg = ns.MigrateToProgress()
     if nProg and nProg > 0 then ns.Print(nProg .. " active display(s) were converted to progress textures (base and overlay wipe together).") end
+    -- (0.6.82, fix A "Nothing moves": Visual.lua ns.MigrateGroupAnchors; once per profile)
+    if ns.MigrateGroupAnchors then
+        local okA, nA = pcall(ns.MigrateGroupAnchors)
+        if not okA and ns.RecordError then pcall(ns.RecordError, "XayaUI group anchor update: " .. tostring(nA), nil, "XayaUI", "XUI-E011") end
+        if okA and nA and nA > 0 then ns.Print(nA .. " group(s) with an anchor point other than Center had their X / Y adjusted once, so they stay where they were: the anchor point now names that point of what the group holds.") end
+    end
     CoreS.bars = CoreS.bars or {}
     for _, b in ipairs(CoreS.bars) do Merge(b, ns.BAR_DEFAULTS) end
     ns.bars = CoreS.bars

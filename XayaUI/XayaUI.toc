@@ -2,7 +2,7 @@
 ## Title: XayaUI Platform
 ## Notes: Xaya's personal UI toolkit: the platform every XayaUI addon runs on (settings, theme, sharing, Recycle Bin, profiles, sounds and media lists, console, error report, minimap and game menu buttons). Rule-based cues and combat aura tracking (Rules), the feature addons (Chat, QoL, Bonus Features, Blizzard Reskin) and the settings window (Options) are separate entries you can switch on or off. Commands: /xui, /xayaui
 ## Author: Xaya
-## Version: 0.6.83
+## Version: 0.6.84
 ## X-Date: 2026-11-08
 ## SavedVariables: CueRulesDB
 ## OptionalDeps: LibSharedMedia-3.0, XayaUI_Media

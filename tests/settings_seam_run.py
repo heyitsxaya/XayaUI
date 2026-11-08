@@ -236,6 +236,11 @@ def canon(saved):
     # (P5) each module's own store folded back into CueRulesDB as it was laid out before (tests/settings_stores.py): the old code's
     # golden hash then still says "nothing a player set changed and nothing was lost"; the copy's marks (storeVersion ...) are dropped
     merged = SST.project(merged, SST.layout(ROOT))
+    # (Rules 0.6.82, group anchors) the one-time "Nothing moves" update's own marks (its done flag, and the list of groups it adjusted
+    # when there were any; the scenario has none): taken out, so the rest stays compared with the old code's golden
+    if isinstance(merged.get("CueRulesDB"), dict):
+        merged["CueRulesDB"].pop("groupAnchorVer", None)
+        merged["CueRulesDB"].pop("groupAnchorMoved", None)
     # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
