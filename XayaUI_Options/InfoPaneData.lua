@@ -206,8 +206,8 @@ ns.InfoPaneData = {
     { date = "2026-11-08", title = "Main Slims Down", blocks = {
       { "h3", "XayaUI 0.6.84" },
       { "grp", "Addons on main" },
-      { "b", 1, "Main now holds only XayaUI (platform and settings), Options, Rules, Rules Options, Chat, Quality of Life, Bonus Features, Dev Assist and Media. Blizzard Reskin (Esc menu skin, Friend Colors, Blizzard windows, tooltips, minimap shape) and Nameplates are no longer part of it." },
-      { "dev", 2, "Developers' notes: Both addons, with shelved/ and roadmap-features/, live on qa-installer-branch, which is not synced with main. Chosen by you: \"just remove all blizzard reskins for the time being\". If you had XayaUI_Reskin or XayaUI_Nameplates installed, delete those folders when you update from main." },
+      { "b", 1, "Main now holds only XayaUI (platform and settings), Options, Rules, Rules Options, Chat, Quality of Life, Bonus Features, Dev Assist and Media. Blizzard Reskin (Esc menu skin, Friend Colors, Blizzard windows, tooltips, minimap shape) and Nameplates are no longer part of it. Earlier entries about them describe the QA branch now." },
+      { "dev", 2, "Developers' notes: Both addons, with shelved/ and roadmap-features/, moved to qa-installer-branch (TRI-4, TRI-7), which is not synced with main. Chosen by you: \"just remove all blizzard reskins for the time being\". If you had XayaUI_Reskin or XayaUI_Nameplates installed, delete those folders when you update from main." },
       { "h3", "Quality of Life 0.7.54" },
       { "grp", "Character Pane" },
       { "b", 1, "The Character Pane look (Blizzard UI tab > Character Pane) now works without Blizzard Reskin. Its switch and look settings are kept in Quality of Life's own settings." },

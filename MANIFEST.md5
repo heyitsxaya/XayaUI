@@ -1,7 +1,7 @@
 6ccc5d4c16650c515cce622d72f23c15  .claude/skills/xayaui-change/SKILL.md
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-fb45eccc3b8814752872a6036edbdf9d  PATCH-NOTES.md
+ef935f05e4fe577663c39dd57f8c98ee  PATCH-NOTES.md
 f940f53631b402f425c2ab54ebcedc49  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
@@ -197,7 +197,7 @@ efec3fcde487dd92bc91fc15f730a5b2  XayaUI_Media/Update-UserMedia.py
 2eb040102df5f6b107c97e4a1470a3dc  XayaUI_Options/AddonInfo.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 39e5de8b2f7935ba3f23e86c8026183b  XayaUI_Options/InfoPane.lua
-5465a2b32e34c56daab5f6377302eefe  XayaUI_Options/InfoPaneData.lua
+e58bdfe9f8bde51e114b7b1fdede8e7a  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
