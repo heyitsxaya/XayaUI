@@ -22,6 +22,29 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Debug Batch W2
+
+### Rules 0.6.79
+
+**Bar Cues**
+- Fixed an issue where a bar with no damage type and no dispel type stayed the same fixed blue in every color style. Neon, Pastel and Muted now change it too (Neon 0.00 0.49 1.00, Pastel 0.66 0.83 1.00, Muted 0.39 0.54 0.70). Blizzard default and Custom keep the plain blue.
+  *Developers' notes: Not yet tested in game (QA B284, walkthrough "debug-w2"). Issue #461. Also changed along with it: Rules Options 0.6.80.*
+
+### Bonus Features 0.6.36
+
+**Enhanced Tooltips**
+- Added damage type colors on macro tooltips: "fire damage" on a macro's tooltip becomes "Fire Damage" in the game's Fire color, as on spell tooltips.
+- Added the macro's Spell ID line, and the spell's aura and formula lines, when the macro's spell can be read and its name matches the tooltip's first line. Nothing is guessed otherwise.
+  *Developers' notes: Not yet tested in game (QA B285). Issue #462. Inferred, not checked in game: that a macro tooltip's id is the macro's index and that GetMacroSpell returns the spell the macro shows. Not built: Chaos and Physical colors, and other schools with three or more types.*
+
+### Dev Assist 0.7.63
+
+**In-game QA**
+- Fixed an issue where the Bar cue walkthrough's clean-up could leave the rule editor open on your next rule after the test rule was removed. It now goes back to the list.
+- Fixed an issue where the Dev Assist Aura catalog counted no specs per class and so collected no item sets.
+- Added the walkthrough "debug-w2" (J34).
+  *Developers' notes: Not yet tested in game (QA B286, J34). Other walkthroughs that remove test rules directly can shift the editor the same way; they were not changed.*
+
 ## 2026-11-08 — Debug Batch W1
 
 ### Rules Options 0.6.79
