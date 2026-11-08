@@ -216,7 +216,8 @@ def _stats_line_back(v):
     if isinstance(v, list):
         out = [_stats_line_back(x) for x in v]
         if all(isinstance(x, str) for x in out):
-            out = [x.replace("Turn it on in Bonus Features > Character Toolkit", "Turn it on in QoL > Character Toolkit") for x in out]
+            # (2026-11-08, #37) the Bonus node is titled "Stat Calculator" now: the same line, its new path
+            out = [x.replace("Turn it on in Bonus Features > Stat Calculator", "Turn it on in QoL > Character Toolkit").replace("Turn it on in Bonus Features > Character Toolkit", "Turn it on in QoL > Character Toolkit") for x in out]
             i = next((n for n, x in enumerate(out) if x.endswith(STATS_HELP)), None)
             c = next((n for n, x in enumerate(out) if "/xui cursor [highlight" in x), None)
             if i is not None and c is not None and i != c + 1:

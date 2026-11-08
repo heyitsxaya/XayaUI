@@ -318,8 +318,9 @@ do
   local t = tree("bonus"); local order = {}
   for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
   -- (Bonus 0.6.37, character pane split stage 2) Character Toolkit (the Stat Calculator, from QoL) sorts first by its name
-  check("B: the rows read Character Toolkit, Data Panels, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
-    table.concat(order, ",") == "statcalc,datapanels,tooltips,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
+  -- (2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: the Bonus node "Character Toolkit" is titled "Stat Calculator", so by name it sorts after Enhanced Tooltips)
+  check("B: the rows read Data Panels, Enhanced Tooltips, Stat Calculator, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
+    table.concat(order, ",") == "datapanels,tooltips,statcalc,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
 -- (Bonus 0.6.37) Bonus Features > Character Toolkit: its own box; ticked, Panel and Spell Math show under it (Panel ticked by default)
   check("A: Bonus Features > Character Toolkit's row has its own tick box, unticked; its parts are not listed while it is off", box("bonus", "statcalc")
     and box("bonus", "statcalc"):GetChecked() == false and row("bonus", "statcalc\001panelPart") == nil)

@@ -717,7 +717,7 @@ f1489ec5a2108ac4ec5b763febc0efdf  debug-log/2026-11-08-2128-stat-calc-text-order
 a814f34e839347a6cfdf337022a4cf1d  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
-b8a4cad83a73a4d1530fc38221b22bab  docs/SESSION-START-SUMMARY.md
+1423ba0d52ed49d1438e3ddac68b5a78  docs/SESSION-START-SUMMARY.md
 17d2128b608d16ddc1aab5d787d71bd2  docs/USER-GUIDE.md
 8ca0cdce9cbbb8eeb20d9950f460d8a9  docs/WHATS-NEW.md
 addc6d522657e880ed4c488098f3799b  docs/design/BUILD-RULES.md
@@ -771,12 +771,12 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-50c6cd4c6e2f5f9e4f48f449fdb8e8bc  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+dc7aa615f1cbce640b819e800acd7fb5  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
-d8aea08a5a5eafe465ee43017abbadb7  docs/process/VERIFICATION.md
+318a0a8e6ed3b11105cc1fea6911709c  docs/process/VERIFICATION.md
 3fcee98869dd9370442f963cf4c125fa  docs/process/WAKEUP-SUMMARY-2026-11-07.md
 081e1d5d47786327b4103006f6fe1245  docs/process/audits/debug-triage-2026-11-08.md
 8cb92d917efd42bdfb8da522d1b1ef77  docs/process/audits/toggle-audit-2026-11-08.md
@@ -1061,7 +1061,7 @@ b66f173aec689b386a745d134f605b24  tests/rule_editor_load_run.py
 d86e0e69b2baf2570a4e9acb34a91345  tests/run_all.py
 f756888443f0f3bddb368f61e1524a85  tests/settings_migration_run.py
 72d51aae7d9a82134f3d66dde9a446f1  tests/settings_restructure_run.py
-138fd5e4918406683d3d931e426e3bdb  tests/settings_seam_run.py
+c04db9d3673f54349a7e68d60c70d879  tests/settings_seam_run.py
 58371ee9e7e117cb74bdd09fc14e6bf0  tests/settings_stores.py
 2bff3928ab4529613cf9cccfdd7487d4  tests/share_strings_presplit_run.py
 ee8008f2288cbe1f5e22e6d26a56a09e  tests/shopping_list_run.py
@@ -1070,7 +1070,7 @@ d56b219db3d013b68b41f41d70827f75  tests/sidebar_delete_run.py
 9bffcdd1f943ece4a657140d7259098e  tests/sidebar_multi_link_run.py
 033cc3815741ca63d85f3a67a2bd0409  tests/sidebar_name_room_run.py
 d3e43ebe0b0c51a82085916ade221862  tests/sidebar_rows_regrow_run.py
-de5cbb4a5b49afacaadc458c8b2e67c7  tests/sidebar_switches_run.py
+21b0392384da007de85123a54e10dece  tests/sidebar_switches_run.py
 7abfb00e945bc4809c0388e9d4a0c498  tests/skin_button_run.py
 487f375e5656a7ca591116652561457f  tests/slash_words_run.py
 2ab0305057bc1ba469131f702de0799c  tests/sound_cue_channel_run.py
