@@ -22,6 +22,37 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Character Pane Split and Chat Defaults
+
+### XayaUI 0.6.83
+
+**Character Pane**
+- The Stat Calculator moved to XayaUI Bonus Features. Its settings were copied, not moved, so the old ones stay.
+  *Developers' notes: Not yet tested in game (QA E1z227, F30; walkthrough character-split).*
+
+### Quality of Life 0.7.53
+
+**Character Pane (new)**
+- Added QoL > Character Pane. Item level, enchants, gems and the full stat list now work without Blizzard Reskin.
+
+### Bonus Features 0.6.37
+
+**Character Toolkit**
+- The Stat Calculator and Advanced Character Stats panel are now part of Bonus Features. With Bonus Features switched off the Stat Calculator is no longer available; before, it came with Quality of Life.
+
+### Chat 0.6.46
+
+**Chat Defaults**
+- Fixed an issue where, for players who never changed the chat settings, the chat sidebar did not fade with the chat even with "Fade with the chat" ticked.
+- Fixed an issue where the privacy cover did not use its default color or show its settings.
+- Profile exports now include these settings. Only missing settings are filled in; nothing you changed is overwritten.
+  *Developers' notes: Not yet tested in game (QA D29; walkthrough debug-chatdefaults).*
+
+### Dev Assist 0.7.70
+
+**QA Review**
+- Added QA entries and walkthroughs for the character split and the chat defaults.
+
 ## 2026-11-08 — Themes per Element
 
 ### Blizzard Reskin 0.6.24
