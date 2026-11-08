@@ -22,6 +22,19 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Debug Batch W7
+
+### Options 0.6.100
+
+**Settings Window**
+- Clicking an option in the rule editor now does about half the work it did: the width of dropdown text is measured once and cached (by font, size, flags and scale) instead of on every click. In the test stand-in, game calls per click went from 53,802 to 27,704.
+  *Developers' notes: Measured in the test stand-in only, not in game; the real click time needs your re-run of the J31 walkthrough ("perf-settings-click") and the new "debug-w7" walkthrough (QA B293). Issue #467 stays open.*
+
+### Dev Assist 0.7.66
+
+**In-game QA**
+- Added the walkthrough "debug-w7", which reads the rule editor's click cost.
+
 ## 2026-11-08 — Debug Batch W5
 
 ### Rules 0.6.80

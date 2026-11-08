@@ -8,6 +8,8 @@ ns = _G.XayaUI_NS or ns
 ns.InfoPaneData = {
   whatsNew = {
     { "h3", "Dev Assist 0.7.x" },
+    { "grp", "In-game QA  (0.7.66, 2026-11-08)" },
+    { "b", 1, "Added the walkthrough \"debug-w7\", which reads the rule editor's click cost." },
     { "grp", "In-game QA  (0.7.65, 2026-11-08)" },
     { "b", 1, "Added the walkthrough \"debug-w5\", which checks delete and restore in the Recycle Bin and the group Border tick, and records any error text (QA B291, B292)." },
     { "grp", "In-game QA  (0.7.64, 2026-11-08)" },
@@ -187,6 +189,15 @@ ns.InfoPaneData = {
     { "b", 1, "Off by default. Turn it on under QoL > Release Guard. Works in raids only to start, or in raids and dungeons, or everywhere." },
   },
   patches = {
+    { date = "2026-11-08", title = "Debug Batch W7", blocks = {
+      { "h3", "Options 0.6.100" },
+      { "grp", "Settings Window" },
+      { "b", 1, "Clicking an option in the rule editor now does about half the work it did: the width of dropdown text is measured once and cached (by font, size, flags and scale) instead of on every click. In the test stand-in, game calls per click went from 53,802 to 27,704." },
+      { "dev", 2, "Developers' notes: Measured in the test stand-in only, not in game; the real click time needs your re-run of the J31 walkthrough (\"perf-settings-click\") and the new \"debug-w7\" walkthrough (QA B293). Issue #467 stays open." },
+      { "h3", "Dev Assist 0.7.66" },
+      { "grp", "In-game QA" },
+      { "b", 1, "Added the walkthrough \"debug-w7\", which reads the rule editor's click cost." },
+    } },
     { date = "2026-11-08", title = "Debug Batch W5", blocks = {
       { "h3", "Rules 0.6.80" },
       { "grp", "Recycle Bin" },
