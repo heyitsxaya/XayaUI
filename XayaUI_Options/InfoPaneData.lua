@@ -7,6 +7,9 @@ local _, ns = ...
 ns = _G.XayaUI_NS or ns
 ns.InfoPaneData = {
   whatsNew = {
+    { "h3", "Rules Options 0.6.x" },
+    { "grp", "XayaUI Rules Options  (0.6.77, 2026-11-08)" },
+    { "b", 1, "Added XayaUI Rules Options, a load-on-demand addon that holds the rule editor." },
     { "h3", "Rules 0.6.x" },
     { "grp", "XayaUI Rules  (0.6.76, 2026-11-07)" },
     { "b", 1, "Added XayaUI Rules, a new addon that holds the rule engine, triggers, cues and displays, combat aura tracking, and rule sharing and the rules Recycle Bin, moved out of the XayaUI folder. You named it (\"Call it Rules\")." },
@@ -165,6 +168,15 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-08", title = "Rules Options Folder", blocks = {
+      { "h3", "XayaUI 0.6.77" },
+      { "grp", "Install (read this first)" },
+      { "b", 1, "Copy the second new folder, XayaUI_Rules_Options, into AddOns as well, next to XayaUI_Rules. The AddOns list gains \"XayaUI Rules Options\". It loads only when the rule editor opens." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (walkthrough H15). You asked to build everything without waiting for your in-game test, so the Accept for the earlier code move (H14) no longer blocks the next phase." },
+      { "h3", "Rules Options 0.6.77" },
+      { "grp", "XayaUI Rules Options (new)" },
+      { "b", 1, "Added XayaUI Rules Options, a load-on-demand addon that holds the rule editor." },
+    } },
     { date = "2026-11-07", title = "XayaUI Rules Is Its Own Addon", blocks = {
       { "h3", "XayaUI 0.6.76" },
       { "grp", "Install (read this first)" },

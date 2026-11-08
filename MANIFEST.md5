@@ -2,7 +2,7 @@ d40c0c0fb0aaf61b2e9a34d57d64fc5f  .claude/skills/xayaui-change/SKILL.md
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-b73921f8fbb34d0b4594d6cbeed09181  PATCH-NOTES.md
+759b575a090f827e1bb269710842643c  PATCH-NOTES.md
 5b61fe21add066c4f67553ace5a13dc6  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
@@ -189,7 +189,7 @@ cc34f6996dfbebdb06f85afaade3608b  XayaUI_Nameplates/XayaUI_Nameplates.toc
 2eb040102df5f6b107c97e4a1470a3dc  XayaUI_Options/AddonInfo.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 39e5de8b2f7935ba3f23e86c8026183b  XayaUI_Options/InfoPane.lua
-20217b35f5629b0d18ab287015d675ee  XayaUI_Options/InfoPaneData.lua
+a35f6f90168718306be856b458c17650  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -230,7 +230,7 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 3f5e69ed87c883f140f4ba25c7249be1  XayaUI_Options/Skin.lua
 472dcfa9dc3fab172b520147bcde7dd0  XayaUI_Options/ThemeEditor.lua
 c3865e4be257865ee9daf6fc353a04e7  XayaUI_Options/TreePaint.lua
-bf16fa1c23b1ea8e4f08cb2c148432b2  XayaUI_Options/XayaUI_Options.toc
+0e353238840afc3b51eaba7ca91b9472  XayaUI_Options/XayaUI_Options.toc
 a4a499307c75b295b407a634ccdd651c  XayaUI_QoL/CharacterModel.lua
 f964b0a0d21a17bbbc36c28309215595  XayaUI_QoL/CharacterReskin.lua
 fc1a865a1c09d7034d76bc68451c9ef4  XayaUI_QoL/CharacterToolkit.lua
@@ -1026,7 +1026,7 @@ b44e8ab20ad23c0641c6e2da9f1dde11  tests/ui_gutter_run.py
 480b49a29f06991788f1bff461d947fd  tests/window_margins_run.py
 964ab86ead726b28b2d24bc02c0cd0c9  tests/xui_help_lines_run.py
 d6523c17628a422f4e2923ff554f0b66  tests/xui_paths.py
-c05ea47effc868849797e021c08108c7  tools/build_info_pane_data.py
+13f244261ea57c2bf690e6235645b8eb  tools/build_info_pane_data.py
 9cf2dbe8870484cac06007449100805c  tools/formula_fit.py
 5ea11cb0d56f3c473cd881158515069e  tools/manifest.py
 c14dcafda42e4eed1b51816e09e6a45b  tools/perf_report.py

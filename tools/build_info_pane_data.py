@@ -23,7 +23,7 @@ SRC_README = os.path.join(ROOT, "docs", "README-INGAME.md")
 SRC_FAQ = os.path.join(ROOT, "docs", "HELP-FAQ.md")
 OUT = os.path.join(ROOT, "XayaUI_Options", "InfoPaneData.lua")
 
-ADDONS = ["XayaUI", "Options", "Chat", "Quality of Life", "Bonus Features", "Blizzard Reskin", "Dev Assist", "Media", "Nameplates", "Rules"]
+ADDONS = ["XayaUI", "Options", "Chat", "Quality of Life", "Bonus Features", "Blizzard Reskin", "Dev Assist", "Media", "Nameplates", "Rules", "Rules Options"]
 DASH = "\u2014"
 
 
