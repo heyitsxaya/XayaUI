@@ -163,6 +163,35 @@ check("Custom (this cue's own picker): the picked Fire colour is drawn", rec.col
 b.style = "neon"
 step({ buffRef = ref })
 check("switching this cue's style repaints the bar (Neon Fire, not Custom)", rec.color and not near(rec.color[2], 0.8))
+-- 4a. (Rules 0.6.79, issue #461; Xaya 2026-11-07 "Style the fixed blue too") a bar with no type colour (the fixed blue): Neon,
+-- Pastel and Muted change the drawn colour too; Blizzard default and Custom keep the blue. Before: the blue was returned unstyled.
+TIP = { lines = { { leftText = "x" }, { leftText = "Increases your armor." } } }
+AURADATA = nil
+ns.BarForgetTooltipTypes()
+local blue = { 0.25, 0.62, 1 }
+local hb, sb, vb = hsv(blue[1], blue[2], blue[3])
+for _, st in ipairs({ "neon", "pastel", "muted" }) do
+  b.style = st
+  step({ buffRef = ref })
+  local c = rec.color
+  local sr, sg, sbl = ns.BarStyleTransform(st, blue[1], blue[2], blue[3])
+  local same = c and near(c[1], blue[1]) and near(c[2], blue[2]) and near(c[3], blue[3])
+  local h1, s1, v1 = c and hsv(c[1], c[2], c[3])
+  check(ns.BAR_STYLE_LABEL[st] .. " on the fixed blue: the drawn bar is the blue in that style, not the plain blue",
+    fr.barColorWhy == "fallback" and c and not same and near(c[1], sr) and near(c[2], sg) and near(c[3], sbl) and near(h1, hb),
+    c and ("%.3f %.3f %.3f %s"):format(c[1], c[2], c[3], tostring(fr.barColorWhy)) or "no colour")
+end
+for _, st in ipairs({ "blizzard", "custom" }) do
+  b.style = st
+  step({ buffRef = ref })
+  local c = rec.color
+  check(ns.BAR_STYLE_LABEL[st] .. " on the fixed blue: the bar stays the plain blue (0.25, 0.62, 1)",
+    fr.barColorWhy == "fallback" and c and near(c[1], blue[1]) and near(c[2], blue[2]) and near(c[3], blue[3]),
+    c and ("%.3f %.3f %.3f"):format(c[1], c[2], c[3]) or "no colour")
+end
+b.style = "neon"
+TIP = { lines = { { leftText = "x" }, { leftText = "Deals 50 Fire damage." } } }
+ns.BarForgetTooltipTypes()
 
 -- 4b. the group: "Cue sets it, group overrides if forcibly set" (S8-10)
 local G = ns.NewFolder("Bars group")
@@ -483,6 +512,17 @@ NS.AuraDisplay.Build()
     lua('TIP = nil; NS.BarForgetTooltipTypes(); BAc.visual.bar.colorMode = "auto"; BAc.visual.bar.style = "neon"; BAc.visual.w = 223; NS.AuraDisplay.Build()')
     check("B: parity: the cue's own style reaches the game's dispel colouring (Magic in Neon)",
           lua("local b = LASTBTN(SLOT(BA)); local m = b.log.dispelOpts and b.log.dispelOpts.customDispelColorMap.Magic; local r, g, bl = NS.BarTypeColor('Magic', 'neon'); return m and math.abs(m.r - r) < 1e-6 and math.abs(m.b - bl) < 1e-6 and math.abs(m.r - 0.2) > 1e-3"))
+    # (Rules 0.6.79, issue #461 "Style the fixed blue too") the engine's "None" (no dispel type) and the fill colour are the fixed blue
+    # in the cue's style, the same colour XayaUI's own bar gets; Blizzard default keeps the plain blue
+    for st in ("neon", "pastel", "muted"):
+        lua('BAc.visual.bar.style = "%s"; BAc.visual.w = BAc.visual.w + 1; NS.AuraDisplay.Build()' % st)
+        check("B: %s: the engine's 'None' colour (no dispel type) is the fixed blue in that style, not the plain blue" % st,
+              lua("local b = LASTBTN(SLOT(BA)); local n = b.log.dispelOpts and b.log.dispelOpts.customDispelColorMap.None; local r, g, bl = NS.BarStyleTransform('%s', 0.25, 0.62, 1); return n and math.abs(n.r - r) < 1e-6 and math.abs(n.g - g) < 1e-6 and math.abs(n.b - bl) < 1e-6 and (math.abs(n.r - 0.25) > 1e-3 or math.abs(n.g - 0.62) > 1e-3 or math.abs(n.b - 1) > 1e-3)" % st))
+        check("B: %s: parity: the engine bar's fill colour is the one XayaUI's own bar draws for no type" % st,
+              lua("local b = LASTBTN(SLOT(BA)); local r, g, bl, a, why = NS.BarCueColor(BAc, nil); local c = b.log.bar.color; return why == 'fallback' and c and math.abs(c[1] - r) < 1e-6 and math.abs(c[2] - g) < 1e-6 and math.abs(c[3] - bl) < 1e-6"))
+    lua('BAc.visual.bar.style = "blizzard"; BAc.visual.w = BAc.visual.w + 1; NS.AuraDisplay.Build()')
+    check("B: Blizzard default: the engine's 'None' stays the plain fixed blue",
+          lua("local b = LASTBTN(SLOT(BA)); local n = b.log.dispelOpts.customDispelColorMap.None; return math.abs(n.r - 0.25) < 1e-6 and math.abs(n.g - 0.62) < 1e-6 and math.abs(n.b - 1) < 1e-6"))
 
 
 def main():

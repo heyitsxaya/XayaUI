@@ -115,7 +115,7 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- A. Bonus features saved off: after login, nothing of them exists or runs
   ---------------------------------------------------------------------------------------------------------------------------------
-  check("A1 all five Tooltip features saved off (Type colours since Bonus 0.6.20): no tooltip post-call is installed (10 before)", posts() == 0, posts())
+  check("A1 all five Tooltip features saved off (Type colours since Bonus 0.6.20): no tooltip post-call is installed (11 before: 9 ID types, Unit, and Macro since Bonus 0.6.36)", posts() == 0, posts())
   check("A2 ...and Tooltips.lua / TooltipsUI.lua made no frame and registered no event", nothing(TT_) and nothing(TTUI), cost(TT_) .. " | " .. cost(TTUI))
   check("A3 ...hovering a spell runs no XayaUI code and adds no line", hoverSpell(133) == "" and idCalls == 0, idCalls)
   W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED"); W.fire("ACTIVE_PLAYER_SPECIALIZATION_CHANGED")
@@ -141,7 +141,7 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- B1-B6 Tooltips (Bonus Features > Tooltips)
   ttSwitch("ids", true)
-  check("(works) B1 'Show IDs on tooltips' on: the post-calls are installed and a spell shows its ID", posts() == 10 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil,
+  check("(works) B1 'Show IDs on tooltips' on: the post-calls are installed and a spell shows its ID", posts() == 11 and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil,
     posts() .. " | " .. hoverSpell(133))
   local _, l1, s1 = events(TT_)
   local _, l1b, s1b = events(TTUI)   -- (up to Bonus 0.6.11 they were on TooltipsUI.lua's frame)
@@ -257,7 +257,7 @@ elseif MODE == "defaults" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- D. a fresh install: what is on by default works, what is off by default costs nothing
   ---------------------------------------------------------------------------------------------------------------------------------
-  check("(works) D1 the Tooltip features are on by default: the post-calls are installed, a spell shows its ID", posts() == 10
+  check("(works) D1 the Tooltip features are on by default: the post-calls are installed, a spell shows its ID", posts() == 11
     and hoverSpell(133):find("Spell ID: 133", 1, true) ~= nil, posts())
   local _, ld, setd = events(TT_)
   check("D2 ...no INSPECT_READY is registered while no inspect request waits", not setd.INSPECT_READY, ld)

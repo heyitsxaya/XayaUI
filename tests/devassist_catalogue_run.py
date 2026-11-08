@@ -140,7 +140,11 @@ C_MythicPlus = { GetCurrentAffixes = function() return { { id = 9, seasonID = 17
 -- item sets
 GetNumClasses = function() return 2 end
 GetClassInfo = function(c) if c == 1 then return "Warrior", "WARRIOR", 1 end; return "Paladin", "PALADIN", 2 end
-GetNumSpecializationsForClassID = function(c) return c == 2 and 2 or 1 end
+-- (Dev Assist 0.7.63) the live 12.1.5 client: the spec count comes from C_SpecializationInfo.GetNumSpecializationsForClassID (documented,
+-- docs/reference/api/namespaces.md); the old global GetNumSpecializationsForClassID is not in the live function list, so it is absent here
+GetNumSpecializationsForClassID = nil
+C_SpecializationInfo = C_SpecializationInfo or {}
+C_SpecializationInfo.GetNumSpecializationsForClassID = function(c) return c == 2 and 2 or 1 end
 GetSpecializationInfoForClassID = function(c, i) if c == 1 then return 71 end; return ({ 65, 70 })[i] end
 C_LootJournal = {
   GetItemSets = function(c, s) if c == 2 then return { { setID = 300, name = "Paladin Tier", itemLevel = 700 } } end; return {} end,
@@ -209,7 +213,7 @@ check("mythic+: a dungeon also in the newest tier is tagged both ways", c.ej.ins
 check("mythic+: this week's affixes", c.mplus.affixes[9] and c.mplus.affixes[9].name == "Bursting")
 check("journal: the Adventure Guide's tier, loot filter and slot filter are put back", EJ.tier == 1 and EJ.lootClass == 7 and EJ.lootSpec == 66 and EJ.slot == 4)
 -- 4) / 5) sets and items
-check("sets: per class, with the spec's set-bonus spells", c.sets[300] and c.sets[300].classes.PALADIN and c.sets[300].bonus[70][1] == 1300020 and c.seeds[1300020])
+check("sets: per class, with the spec's set-bonus spells (spec count from C_SpecializationInfo, the global absent as in 12.1.5)", c.sets[300] and c.sets[300].classes.PALADIN and c.sets[300].bonus[70] and c.sets[300].bonus[70][1] == 1300020 and c.seeds[1300020])
 check("items: the use / proc spell of a loot item", c.items[40001] and c.items[40001].spellID == 1300010 and c.seeds[1300010])
 check("items: an item the game does not know is read without waiting", c.items[40002] == nil)
 -- 6) / 7) names

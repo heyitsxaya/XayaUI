@@ -75,9 +75,21 @@ C_TooltipInfo = C_TooltipInfo or {}
 C_TooltipInfo.GetSpellByID = function() return { lines = { { leftText = "Demon Spikes" }, { leftText = "Increases your armor." } } } end
 ns.BarForgetTooltipTypes()
 do
+  -- (Dev Assist 0.7.63 / Rules 0.6.79, #461 "Style the fixed blue too") Neon now changes the fixed blue: Pass, and the drawn colour
+  -- is the blue in Neon (on 0.7.62 / Rules 0.6.78 this said Fail: "no style changed the bar")
   local st4 = step(4); st4.setup(); W.tick(0.05, 3)
   local okN, nN = st4.check()
-  check("step 4 with no type on the aura: Fail, the bar equals Blizzard default (no Pass by default)", okN == false and tostring(nN):find("no style changed the bar", 1, true) ~= nil, tostring(okN) .. " " .. tostring(nN))
+  local dr, dg, db = fr.barCR, fr.barCG, fr.barCB
+  local nr, ng, nb = ns.BarStyleTransform("neon", 0.25, 0.62, 1)
+  check("step 4 with no type on the aura: Pass, the fixed blue is drawn in Neon (not the plain blue)", okN == true and tostring(nN):find("fixed blue", 1, true) ~= nil
+    and math.abs(dr - nr) < 0.01 and math.abs(dg - ng) < 0.01 and math.abs(db - nb) < 0.01 and not (math.abs(dr - 0.25) < 0.01 and math.abs(dg - 0.62) < 0.01),
+    tostring(okN) .. " " .. tostring(nN) .. (" drawn %.2f %.2f %.2f"):format(dr or -1, dg or -1, db or -1))
+  local realT = ns.BarStyleTransform
+  ns.BarStyleTransform = function(style, r, g, b) return r, g, b end
+  fr.barCR = nil; ns.UpdateVisualText(T.cue, nil)
+  local okU, nU = st4.check()
+  check("negative: no type and a style that leaves the fixed blue as it is: Fail (drawn = Blizzard default)", okU == false and tostring(nU):find("no style changed the bar", 1, true) ~= nil, tostring(okU) .. " " .. tostring(nU))
+  ns.BarStyleTransform = realT
   ns.BarCueSettings(T.cue.visual).style = "blizzard"; pcall(ns.RefreshVisual, T.cue)
 end
 -- 4: give the cue a type colour (a tooltip that names Fire) so the style has something to change
@@ -125,9 +137,30 @@ ACD = LibStub("AceConfigDialog-3.0")
 pcall(ACD.SelectGroup, ACD, "CueRules", "cooldowns"); W.tick(0.05, 4)
 local rows0 = QA.WindowMentions("XayaUI QA: Bar test")
 check("(the settings window is open and its sidebar lists the test rule before the clean-up)", rows0 ~= nil and rows0 > 0, rows0)
+-- (Dev Assist 0.7.63, #461) her case: the test rule's editor is open (Cues tab) and one of her rules comes after it in the list. Rows are
+-- keyed by place ("rule" .. i): before 0.7.63 the clean-up left the selection on that place, so the editor slid onto her next rule.
+local later = ns.NewRule(); later.name = "Her later rule"; later.enabled = true; ns.NormalizeRule(later); ns.rules[#ns.rules + 1] = later
+pcall(ns.MarkDirty); local od = ns.Service("optionsDebug"); if od and od.Notify then od.Notify() end; W.tick(0.05, 4)
+local okx, ctx = pcall(ns.ReadContext)
+local tpath = { ns.ScopePath(T.rule, okx and ctx or nil) }; tpath[#tpath + 1] = "cues"
+pcall(ACD.SelectGroup, ACD, "CueRules", unpack(tpath)); W.tick(0.05, 6)
+local tIdx; for i, r in ipairs(ns.rules) do if r == T.rule then tIdx = i end end
+local function SelIdx() local S = ns.RulesTreeStatus(); return S and S.selected and tonumber(S.selected:match("rule(%d+)$")) end
+check("(the test rule's editor is open: its row is selected)", tIdx ~= nil and SelIdx() == tIdx, tostring(SelIdx()) .. " vs " .. tostring(tIdx))
 local ok9, n9 = run(9); W.tick(0.05, 6); ok9, n9 = chk(9)
 check("step 9: the test rule, its cue and the test group are gone from the data, the sidebar and the editor: Pass", ok9 == true, n9)
+local rowsAfter = QA.WindowMentions("XayaUI QA: Bar test")
+check("step 9: no sidebar row shows the test rule after the clean-up (read from the open window)", rowsAfter == 0, rowsAfter)
+local sAfter = SelIdx()
+check("step 9: the editor did not slide onto her next rule: no rule row at the test rule's old place or after is selected (back to the list, as Delete this rule does)",
+  not (sAfter and sAfter >= tIdx), tostring(sAfter))
+for i = #ns.rules, 1, -1 do if ns.rules[i] == later then table.remove(ns.rules, i) end end
 check("...nothing else was added or left behind", #ns.rules == nRules0 and #ns.folders == nFolders0, #ns.rules .. "/" .. nRules0 .. " " .. #ns.folders .. "/" .. nFolders0)
+-- negative: a clean-up that left the editor on a moved row gives Fail
+T.shifted = 5
+local okSh, nSh = chk(9)
+check("negative: the editor left on another rule's row gives Fail", okSh == false and tostring(nSh):find("another rule", 1, true) ~= nil, tostring(okSh) .. " " .. tostring(nSh))
+T.shifted = nil
 -- negative: the data is gone but a sidebar row still shows the name (a window that was not redrawn): Fail
 local function AnyRow()
   local root = ACD.OpenFrames and ACD.OpenFrames.CueRules

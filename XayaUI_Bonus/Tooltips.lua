@@ -338,10 +338,10 @@ function TT.ColorTypes(tooltip)
     end
 end
 
-function TT.OnIDData(tooltip, data, kind)
+function TT.OnIDData(tooltip, data, kind, colored)
     local db = TT.DB()
     if type(data) ~= "table" then return end
-    if (kind.key == "spell" or kind.key == "aura") and TT.SectionOn("typeColors") then pcall(TT.ColorTypes, tooltip) end
+    if (kind.key == "spell" or kind.key == "aura") and TT.SectionOn("typeColors") and not colored then pcall(TT.ColorTypes, tooltip) end
     if kind.key == "spell" and TT.FormulaLines and readable(data.id) and type(data.id) == "number" then
         pcall(TT.FormulaLines, tooltip, data.id, data)
     end
@@ -376,6 +376,61 @@ function TT.OnIDData(tooltip, data, kind)
             end
         end
     end
+end
+
+-- 1e. Macro tooltips (Bonus 0.6.36, issue #462): a macro on an action bar shows its spell's tooltip, but the game hands it over as a
+-- Macro tooltip (Enum.TooltipDataType.Macro = 25, docs/reference/api/enums.md), which had no post-call here: no Type colours, no Spell
+-- ID, no formula lines. Now:
+--   1. Type colours run on the macro tooltip's own lines (they read only the text the tooltip shows; no spell ID needed).
+--   2. The spell is resolved, then the same spell processing runs (IDs, aura lines, formulas): TT.OnIDData with the Spell kind.
+-- API facts (V2): the 12.1.5 reference (docs/reference/api) documents Enum.TooltipDataType.Macro = 25 and C_Macro with only
+-- GetMacroName / GetSelectedMacroIcon / RunMacroText; it does NOT document GetMacroSpell (an older global the public reference leaves
+-- out) or the fields of a TooltipData table (Blizzard's TooltipInfoSharedDocumentation.lua describes only TooltipDataArg).
+-- INFERENCE (unverified in game): a Macro tooltip's data.id is the macro's index and GetMacroSpell(index) returns the spell ID the
+-- macro shows (XayaUI_Rules/Conditions.lua reads GetMacroSpell the same way). Fail safe: the spell is used only when GetMacroSpell
+-- exists, both values are readable numbers, and the spell's name (C_Spell.GetSpellName) is the tooltip's first line; otherwise only
+-- step 1 runs and nothing is guessed. TT.lastMacro keeps what the last macro hover resolved (the QA walkthrough reads it).
+function TT.MacroSpell(data)
+    if type(data) ~= "table" then return nil, "no tooltip data" end
+    local mid = data.id
+    if not (readable(mid) and (type(mid) == "number" or type(mid) == "string")) then return nil, "the macro's ID is not readable" end
+    local gms = rawget(_G, "GetMacroSpell")
+    if type(gms) ~= "function" then return nil, "the game has no GetMacroSpell" end
+    local ok, sid = pcall(gms, mid)
+    if not (ok and readable(sid) and type(sid) == "number" and sid > 0) then return nil, "the macro shows no spell" end
+    local nm = SpellNameOf(sid)
+    local first = type(data.lines) == "table" and type(data.lines[1]) == "table" and data.lines[1].leftText
+    if not (nm and readable(first) and type(first) == "string") then return nil, "the tooltip's title cannot be compared" end
+    if first ~= nm then return nil, ("the tooltip's title (%s) is not the spell's name (%s)"):format(first, nm) end
+    return sid
+end
+-- the coloured type words on a tooltip's left lines now: { "Fire Damage e6661a", ... } (what the QA walkthrough reports)
+function TT.ColoredWords(tooltip)
+    local out = {}
+    local okn, name = pcall(tooltip.GetName, tooltip)
+    local okl, n = pcall(tooltip.NumLines, tooltip)
+    if not (okn and type(name) == "string" and okl and type(n) == "number") then return out end
+    for i = 1, n do
+        local fs = _G[name .. "TextLeft" .. i]
+        local ok, tx = false, nil
+        if fs and fs.GetText then ok, tx = pcall(fs.GetText, fs) end
+        if ok and readable(tx) and type(tx) == "string" then
+            for hex, w in tx:gmatch("|cff(%x%x%x%x%x%x)(%a+ Damage)|r") do out[#out + 1] = w .. " " .. hex end
+        end
+    end
+    return out
+end
+local SPELL_KIND
+function TT.OnMacroData(tooltip, data)
+    local colored = false
+    if TT.SectionOn("typeColors") then pcall(TT.ColorTypes, tooltip); colored = true end
+    local sid, why = TT.MacroSpell(data)
+    TT.lastMacro = { macroID = type(data) == "table" and readable(data.id) and data.id or nil, spellID = sid, why = why, colored = TT.ColoredWords(tooltip) }
+    if not sid then return end
+    if not SPELL_KIND then for _, k in ipairs(TT.ID_KINDS) do if k.key == "spell" then SPELL_KIND = k end end end
+    if not SPELL_KIND then return end
+    -- the macro tooltip's lines ARE the spell's tooltip lines (the cooldown text, the effect block); its ID is the resolved spell
+    TT.OnIDData(tooltip, { id = sid, lines = data.lines, type = Enum.TooltipDataType.Spell }, SPELL_KIND, colored)
 end
 
 -------------------------------------------------------------------------------
@@ -764,6 +819,9 @@ function TT.Init()
     end
     if Enum.TooltipDataType.Unit then
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data) if TT.on then pcall(TT.OnUnitData, tooltip, data) end end)
+    end
+    if Enum.TooltipDataType.Macro then   -- (Bonus 0.6.36, #462) a macro shows its spell's tooltip: section 1e
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Macro, function(tooltip, data) if TT.on then pcall(TT.OnMacroData, tooltip, data) end end)
     end
 end
 

@@ -244,7 +244,7 @@ function ns.BarCueStyle(cue)
     local st = ns.BAR_STYLE_LABEL[b.style] and b.style or "blizzard"
     return st, (type(b.custom) == "table") and b.custom or nil, nil
 end
--- The colour a type shows in a style: r, g, b, a, or nil when the game gives no colour for it (then: fixed blue).
+-- The colour a type shows in a style: r, g, b, a, or nil when the game gives no colour for it (then: the fixed blue, ns.BarFallbackColor).
 -- Custom: the type's own picked colour (custom[type]); a type never picked shows Blizzard's colour.
 function ns.BarTypeColor(t, style, custom)
     style = style or "blizzard"
@@ -256,6 +256,13 @@ function ns.BarTypeColor(t, style, custom)
     if not r then return nil end
     r, g, b = ns.BarStyleTransform(style, r, g, b)
     return r, g, b, 1
+end
+-- The fixed blue in a style (Xaya 2026-11-07, issue #461: "Style the fixed blue too"): Neon / Pastel / Muted move it like a type
+-- colour; Blizzard default and Custom (which picks colours per type) keep it as it is. Returns r, g, b, a.
+function ns.BarFallbackColor(style)
+    local f = ns.BAR_FALLBACK_COLOR
+    local r, g, b = ns.BarStyleTransform(style or "blizzard", f[1], f[2], f[3])
+    return r, g, b, f[4] or 1
 end
 local function Hex(r, g, b) return ("%02x%02x%02x"):format(math.floor(clamp(r, 0, 1) * 255 + 0.5), math.floor(clamp(g, 0, 1) * 255 + 0.5), math.floor(clamp(b, 0, 1) * 255 + 0.5)) end
 local function TitleWord(w) return w:sub(1, 1):upper() .. w:sub(2):lower() end
@@ -431,7 +438,7 @@ end
 
 -- The bar's colour: r, g, b, a, where it came from ("fixed" | "tooltip" | "dispel" | "fallback"), the type, a bracketed dispel type.
 -- Order (Xaya, S8-4 "Tooltip first"): the type the tooltip names > the game's dispel type of the aura > fixed blue.
--- The type colours are drawn in the cue's style (ns.BarCueStyle: the cue's own, or that of a group that forces one).
+-- The type colours and (Rules 0.6.79, #461) the fixed blue are drawn in the cue's style (ns.BarCueStyle: the cue's own, or that of a group that forces one).
 function ns.BarCueColor(cue, ref)
     local b = ns.BarCueSettings(cue and cue.visual)
     if b.colorMode == "fixed" then
@@ -454,8 +461,8 @@ function ns.BarCueColor(cue, ref)
             if r then return r, g, bl, a, "dispel", dt end
         end
     end
-    local c = ns.BAR_FALLBACK_COLOR
-    return c[1], c[2], c[3], c[4], "fallback"
+    local r, g, bl, a = ns.BarFallbackColor(style)   -- (#461) in the cue's style too
+    return r, g, bl, a, "fallback"
 end
 -- For the combat engine's aura buttons: the dispel-type colours in the cue's style, keyed the way the game's aura button keys them
 -- (Blizzard_CustomAuraButton.lua GetDispelTypeMapKey: dispelName or "None"); "None" = the fixed blue.
@@ -465,11 +472,11 @@ function ns.BarDispelColorMap(cue)
     local map = {}
     for _, t in ipairs(ns.BAR_DISPEL_TYPES) do
         local r, g, b = ns.BarTypeColor(t, style, custom)
-        local c = r and { r, g, b } or ns.BAR_FALLBACK_COLOR
-        map[t] = CreateColor(c[1], c[2], c[3], 1)
+        if not r then r, g, b = ns.BarFallbackColor(style) end   -- (#461) a type the game gives no colour for: the styled fixed blue
+        map[t] = CreateColor(r, g, b, 1)
     end
-    local f = ns.BAR_FALLBACK_COLOR
-    map.None = CreateColor(f[1], f[2], f[3], 1)
+    local fr, fg, fb = ns.BarFallbackColor(style)   -- (#461) "None" (no dispel type) = the fixed blue in the cue's style
+    map.None = CreateColor(fr, fg, fb, 1)
     return map
 end
 -- A short signature of a cue's colour style (the engine bakes the colours into its buttons: a change makes a new slot).
