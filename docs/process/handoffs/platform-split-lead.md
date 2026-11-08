@@ -29,6 +29,11 @@ section 15 = the execution order), then `.claude/skills/xayaui-change/SKILL.md`.
 - Next unblocked: #494 chat defaults never saved at login (P5 finding); character pane split per her Q5 answer (fixes C20); then wait.
 - Blocked on her (Open Questions doc): A1-A8, A10-A19, B4, B5, C-rows, D3.
 
+## State update (2026-11-08 ~10:00 UTC)
+- On main 535f9e5: W9b (#472), chat defaults fix (O-143), character pane split (Q5; stage 1 bdf1a49 fixes C20, stages 2+3 535f9e5 move the Stat Calculator to Bonus with a copy-once of its settings).
+- Everything unblocked is built. Xaya got one push: test guide is section 5 of the Open Questions doc (install all 11 folders, walkthrough order).
+- Waiting on her: in-game results; A1-A8, A10-A19, B4, B5, C20-C29, D3; P6 after her OK.
+
 ## How Xaya wants to work (her words and rules; all binding)
 - She has stepped away (2026-11-07): "Ping me from a single appropriate source when you need something from me. Otherwise, I'm
   stepping away and not interfering". Single source = **one push notification** when a phase needs her (e.g. B2 / B3 before P4,
