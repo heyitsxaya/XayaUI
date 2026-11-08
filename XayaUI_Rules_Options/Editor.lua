@@ -942,22 +942,17 @@ local function BuildRule(i, rule)
             buffAltSearch = SearchBox(13.1, function(id)
                 id = tonumber(id) or 0
                 if id == 0 or id == (tonumber(rule.buffID) or 0) then return end
-                rule.buffAlt = type(rule.buffAlt) == "table" and rule.buffAlt or {}
-                for _, x in ipairs(rule.buffAlt) do if x == id then return end end
-                if #rule.buffAlt >= 30 then ns.Print("a trigger can watch at most 30 extra aura IDs"); return end
-                rule.buffAlt[#rule.buffAlt + 1] = id; Changed(rule); Notify()
+                for _, x in ipairs(type(rule.buffAlt) == "table" and rule.buffAlt or {}) do if x == id then return end end
+                local out, over = ns.AuraIDList(rule.buffID, rule.buffAlt, { id })   -- the shared list rule (TreeHelpers.lua)
+                if over > 0 then ns.Print("a trigger can watch at most " .. ns.AURA_ALT_MAX .. " extra aura IDs"); return end
+                rule.buffAlt = out; Changed(rule); Notify()
             end, "Also count these auras: search to add another", "aura"),
             buffAlt = {
                 type = "input", name = "Extra aura IDs (comma separated; any one counts)", order = 13.2, width = "full",
                 desc = "Other aura IDs that count as this same buff: present if any is on you, missing only if all are absent. Delete an ID from the box to remove it.",
                 get = function() local t = type(rule.buffAlt) == "table" and rule.buffAlt or {}; local o = {}; for i, v in ipairs(t) do o[i] = tostring(v) end; return table.concat(o, ", ") end,
                 set = function(_, v)
-                    local out, seen = {}, { [tonumber(rule.buffID) or 0] = true }
-                    for n in tostring(v or ""):gmatch("%d+") do
-                        local id = tonumber(n)
-                        if id and id > 0 and not seen[id] and #out < 30 then seen[id] = true; out[#out + 1] = id end
-                    end
-                    rule.buffAlt = (#out > 0) and out or nil
+                    rule.buffAlt = ns.AuraIDList(rule.buffID, tostring(v or ""))   -- numbers, no repeats, not the main ID, at most 30 (TreeHelpers.lua)
                     Changed(rule); Notify()
                 end,
             },

@@ -541,6 +541,8 @@ local function TriggerItems(root)
     return out
 end
 
+ns.DraftTriggerItems = TriggerItems   -- (0.6.82) also the trigger list in Merge N Selected's question (RuleMerge.lua)
+
 local function SoundText(s)
     if type(s) ~= "table" then return "Sound" end
     if s.source == "tts" then

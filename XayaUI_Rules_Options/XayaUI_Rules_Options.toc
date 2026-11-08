@@ -19,6 +19,7 @@ Editor.lua
 ShelvedElements.lua
 RulesTree.lua
 Sidebar.lua
+RuleMerge.lua
 SpellSearch.lua
 SaveBar.lua
 RuleSettings.lua
