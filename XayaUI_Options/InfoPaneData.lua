@@ -8,6 +8,8 @@ ns = _G.XayaUI_NS or ns
 ns.InfoPaneData = {
   whatsNew = {
     { "h3", "Dev Assist 0.7.x" },
+    { "grp", "In-game QA  (0.7.65, 2026-11-08)" },
+    { "b", 1, "Added the walkthrough \"debug-w5\", which checks delete and restore in the Recycle Bin and the group Border tick, and records any error text (QA B291, B292)." },
     { "grp", "In-game QA  (0.7.64, 2026-11-08)" },
     { "b", 1, "Added the walkthrough \"debug-w3\", and fixed clean-up steps of earlier walkthroughs." },
     { "grp", "In-game QA  (0.7.63, 2026-11-08)" },
@@ -185,6 +187,15 @@ ns.InfoPaneData = {
     { "b", 1, "Off by default. Turn it on under QoL > Release Guard. Works in raids only to start, or in raids and dungeons, or everywhere." },
   },
   patches = {
+    { date = "2026-11-08", title = "Debug Batch W5", blocks = {
+      { "h3", "Rules 0.6.80" },
+      { "grp", "Recycle Bin" },
+      { "b", 1, "Fixed an issue where the Recycle Bin listed a deleted cue under the wrong name: deleting \"Sound 1\" of three Sound cues showed \"Sound 2\". It now lists the cue under the name it had in the rule. The bin's storage format is unchanged." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA B291, walkthrough \"debug-w5\"). Issue #485. The \"cue in both places\" and \"restore not played\" reports did not reproduce on the data side (105 checks, including real reloads); they most likely came from the old walkthrough's check, which Dev Assist 0.7.53 replaced. Issue #479 (the group Border tick) did not reproduce in 82 checks, so nothing was changed there; it stays open." },
+      { "h3", "Dev Assist 0.7.65" },
+      { "grp", "In-game QA" },
+      { "b", 1, "Added the walkthrough \"debug-w5\", which checks delete and restore in the Recycle Bin and the group Border tick, and records any error text (QA B291, B292)." },
+    } },
     { date = "2026-11-08", title = "Debug Batch W3", blocks = {
       { "h3", "Options 0.6.97" },
       { "grp", "Settings Window" },
