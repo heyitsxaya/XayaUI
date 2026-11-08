@@ -710,11 +710,15 @@ if ns.RegisterConflict then
     ns.RegisterConflict({ part = "improvedchat", label = "Improved Chat", addons = { "Prat-3.0" }, what = "how the chat behaves",
         on = function() return C.ImprovedOn() end })
 end
--- (Chat 0.6.40; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Chat Panel page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (Chat 0.6.40; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Chat Panel page, under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (Chat 0.6.45, #472) the chat paints with it (C.Color, Core.lua). "Use the XayaUI theme" stays this page's switch: on is the same as
+-- Inherit (nothing to copy); off draws the page's Appearance colours, which a theme scope cannot hold (one colour per class, while the
+-- chat has its own per part), so Blizzard Reskin > Theme says "this element" for it (own) and keeps them. Its "Theme" row sits right
+-- after that switch (rowOrder).
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.chatpanel", label = "Chat Panel", parent = "reskin" })
+    TS({ id = "reskin.chatpanel", label = "Chat Panel", parent = "reskin", page = "chatpanel", rowOrder = 4.5,
+        own = function() local s = ns.chat2; return type(s) == "table" and not s.useTheme end })
 end
 
 ns.RegisterLauncher({ "chat", "Chat Panel", "Open the Chat Panel settings (also /xui chat settings)", function() C.OpenSettings() end, order = 40 })

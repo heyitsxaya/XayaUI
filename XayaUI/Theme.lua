@@ -404,13 +404,17 @@ function T.OffResolve(fn)
     T.listeners = keep
 end
 
-function T.Bind(key, tbl)
-    T.binds[#T.binds + 1] = { key, tbl }
+-- (#472, core 0.6.82) scope = an element's theme scope (T.RegisterScope): the bound table follows that element's colour for the token
+-- (its own override or chosen theme, else the global one). Without a scope: exactly as before.
+function T.Bind(key, tbl, scope)
+    T.binds[#T.binds + 1] = { key, tbl, type(scope) == "string" and scope or nil }
     local c = T.cur[key]
+    if type(scope) == "string" and T.TokCol then c = T.TokCol(key, scope) end
     if c then tbl[1], tbl[2], tbl[3], tbl[4] = c[1], c[2], c[3], c[4] end
 end
 
 function T.Resolve()
+    if T.DropScopeCache then T.DropScopeCache() end   -- (#472) scoped binds below read the scopes' answers fresh
     local th = DB()
     local pal = {}
     if th then pal = T.BasePalette(th.base, th.classPick) end
@@ -436,6 +440,7 @@ function T.Resolve()
     T.curGrad = grads
     for _, b in ipairs(T.binds) do
         local c = cur[b[1]]
+        if b[3] and T.TokCol then c = T.TokCol(b[1], b[3]) end
         if c then b[2][1], b[2][2], b[2][3], b[2][4] = c[1], c[2], c[3], c[4] end
     end
     for _, fn in ipairs(T.listeners) do pcall(fn) end   -- widgets that were painted once (toolbar buttons ...) repaint here
@@ -811,7 +816,7 @@ end
 -- Scopes (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6, PS-24, Xaya 2026-11-07: "I think we also need to enable
 -- individual element themeing and overrides somewhere -- let's make that part of our rebuild as we configure proper plumbing. ... The
 -- XayaUI Settings Theme can be the initial fallback but users can customize at different levels of granularity?"). Plumbing only:
--- nothing paints with a scope yet and there is no page for them (the UI comes with the module moves, P3 / P4).
+-- (#472, core 0.6.82) the restyled elements now paint with their scope and Blizzard Reskin > Theme edits them (XayaUI_Options/ScopeEditor.lua).
 --   T.RegisterScope{ id, label, parent }      an element ("reskin.tooltips") or a module ("reskin") that can carry its own theme
 --   T.Col(class, prop, scope [, fallback])    first match wins:
 --       1. the element's own overrides (a class colour, then a token colour)
@@ -825,12 +830,17 @@ end
 -------------------------------------------------------------------------------
 T.scopes, T.scopeList = {}, {}
 local scopeCache = {}
+function T.DropScopeCache() scopeCache = {} end   -- (#472) T.Resolve calls it first, so scoped binds read fresh answers
 function T.RegisterScope(def)
     local ok, err = pcall(function()
         if type(def) ~= "table" or type(def.id) ~= "string" or def.id == "" then return end
         if not T.scopes[def.id] then T.scopeList[#T.scopeList + 1] = def.id end
+        -- (#472, core 0.6.82) page = the settings page key of the element's own page (its "Theme" row goes there); own = a function
+        -- answering true while the element draws colours of its own instead of the theme (the Theme page's "Comes from" says so)
         T.scopes[def.id] = { id = def.id, label = type(def.label) == "string" and def.label or def.id,
-            parent = (type(def.parent) == "string" and def.parent ~= def.id) and def.parent or nil }
+            parent = (type(def.parent) == "string" and def.parent ~= def.id) and def.parent or nil,
+            page = type(def.page) == "string" and def.page or nil, own = type(def.own) == "function" and def.own or nil,
+            rowOrder = tonumber(def.rowOrder) }
         scopeCache = {}
     end)
     if not ok then local h = geterrorhandler and geterrorhandler(); if h then h(err) end end
@@ -849,11 +859,15 @@ local function ScopeData(id, make)
 end
 T.ScopeData = function(id) return ScopeData(id, false) end
 -- a scope's chosen theme as a palette (built-in, class or saved; "custom" means nothing on its own here)
+-- (#472, core 0.6.82) complete: a colour the theme does not list is the XUI default, as when that theme is picked in Settings > Theme
+-- (T.Resolve: own colour > palette > default). Before, an unlisted colour fell through to the global theme, so an element given
+-- "Class colors" under a global Light mode kept Light's window colour.
 local function ScopePalette(name)
     local key = "\2pal\1" .. name
     local pal = scopeCache[key]
     if pal == nil then
         pal = (name ~= "custom" and T.IsBase(name) or (CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[name])) and T.BasePalette(name) or false
+        if pal then for _, t in ipairs(T.TOKENS) do if not IsCol(pal[t[1]]) then pal[t[1]] = Copy4(t[4]) end end end
         scopeCache[key] = pal
     end
     return pal or nil
@@ -1170,6 +1184,18 @@ function T.SetScopeToken(id, key, c)
     end
     Tidy(id); T.Changed()
 end
+-- (#472) several palette colours of a scope at once, one repaint (the Esc Menu's "Use my own colors" fold): { [token] = colour }
+function T.SetScopeTokens(id, toks)
+    if type(id) ~= "string" or type(toks) ~= "table" then return end
+    local s
+    for key, c in pairs(toks) do
+        if T.TOKEN[key] and IsCol(c) then
+            s = s or ScopeData(id, true)
+            if s then s.tokens = type(s.tokens) == "table" and s.tokens or {}; s.tokens[key] = CleanCol(c) end
+        end
+    end
+    Tidy(id); T.Changed()
+end
 -- (#460) a scope's gradient for a token: a gradient, false (solid here) or nil (inherit)
 function T.SetScopeTokenGradient(id, key, g)
     if type(id) ~= "string" or not T.TOKEN[key] then return end
@@ -1200,9 +1226,92 @@ function T.ResetScope(id)
     Tidy(id); T.Changed()
 end
 
+-------------------------------------------------------------------------------
+-- (#472, core 0.6.82) Element scopes in use: helpers for the elements' paint code and the Blizzard Reskin > Theme page.
+--   T.ScopeCol(class, prop, scope)   the colour only when a scope decides it (its own override or chosen theme), else nil: an element
+--                                    whose look today is not the theme's (fixed colours, its own settings) keeps it unless overridden
+--   T.ScopeTok(tok, scope)           the same for a palette colour (token) on its own; T.TokCol(tok, scope) falls back to the global one
+--   T.ScopeOverrides(id)             how many single colours the element itself overrides (palette colours, class colours, gradients)
+--   T.ScopeComesFrom(id)             who decides the element's look: the scope id (its own overrides or theme, or a parent's), "own"
+--                                    (the element draws colours of its own: def.own), or "global"
+--   T.ResetAllScopes()               every element's overrides and theme gone (the Theme page's "Reset all overrides"); Settings >
+--                                    Theme's "Reset everything" (T.ResetAll) leaves them (open question C15; recommended "global only")
+-------------------------------------------------------------------------------
+local function TokFromScope(id, tok)
+    local s = ScopeData(id, false)
+    if not s then return nil end
+    local tk = type(s.tokens) == "table" and s.tokens[tok]
+    if IsCol(tk) and not T.Parked(tok) then return tk end
+    if type(s.theme) == "string" and s.theme ~= "" then
+        local pal = ScopePalette(s.theme)
+        if pal and IsCol(pal[tok]) then return pal[tok] end
+    end
+end
+function T.ScopeTok(tok, scope)
+    if type(scope) ~= "string" or not T.TOKEN[tok] then return nil end
+    local id, seen = scope, {}
+    while type(id) == "string" and not seen[id] do
+        seen[id] = true
+        local hit = TokFromScope(id, tok)
+        if hit then return Copy4(hit) end
+        local sc = T.scopes[id]
+        id = sc and sc.parent
+    end
+    return nil
+end
+function T.TokCol(tok, scope)
+    local c = T.ScopeTok(tok, scope)
+    if c then return c end
+    local g = T.cur[tok]
+    return g and Copy4(g) or nil
+end
+function T.ScopeCol(class, prop, scope)
+    if type(scope) ~= "string" or T.ColFrom(class, prop, scope) == "global" then return nil end
+    return T.Col(class, prop, scope)
+end
+local function HasData(s)
+    return type(s) == "table" and ((type(s.theme) == "string" and s.theme ~= "") or (type(s.tokens) == "table" and next(s.tokens) ~= nil)
+        or (type(s.classes) == "table" and next(s.classes) ~= nil) or (type(s.grads) == "table" and next(s.grads) ~= nil)) and true or false
+end
+function T.ScopeOverrides(id)
+    local s = ScopeData(id, false)
+    if type(s) ~= "table" then return 0 end
+    local n = 0
+    if type(s.tokens) == "table" then for k, c in pairs(s.tokens) do if T.TOKEN[k] and IsCol(c) then n = n + 1 end end end
+    if type(s.classes) == "table" then
+        for cls, props in pairs(s.classes) do
+            if T.CLASS[cls] and type(props) == "table" then for prop, c in pairs(props) do if T.CLASS[cls][3][prop] and IsCol(c) then n = n + 1 end end end
+        end
+    end
+    if type(s.grads) == "table" then for k in pairs(s.grads) do if T.TOKEN[k] then n = n + 1 end end end
+    return n
+end
+function T.ScopeComesFrom(id)
+    local cur, seen = id, {}
+    while type(cur) == "string" and not seen[cur] do
+        seen[cur] = true
+        if HasData(ScopeData(cur, false)) then return cur end
+        local sc = T.scopes[cur]
+        cur = sc and sc.parent
+    end
+    local def = T.scopes[id]
+    if def and def.own then local ok, v = pcall(def.own); if ok and v then return "own" end end
+    return "global"
+end
+function T.HasScopes()
+    local th = CueRulesDB and CueRulesDB.theme
+    return type(th) == "table" and type(th.scopes) == "table" and next(th.scopes) ~= nil
+end
+function T.ResetAllScopes()
+    local th = CueRulesDB and CueRulesDB.theme
+    if type(th) == "table" then th.scopes = nil end
+    T.Changed()
+end
+
 -- The Platform's own scopes: the Blizzard Reskin tab as a whole (the parent of its pages; the tab and its switch are the Platform's,
 -- Modules.lua ns.ReskinTabOn, so the parent exists whichever module adds a page) and the settings window. The pages register their
--- own scopes from the module that owns each page.
+-- own scopes from the module that owns each page. (#472) "reskin" is the module level: nothing writes it until open question B5 / Q7
+-- (module then element, or element only) is answered; the Blizzard Reskin > Theme page lists the elements only.
 T.RegisterScope({ id = "reskin", label = "Blizzard Reskin" })
 T.RegisterScope({ id = "settings", label = "Settings window" })
 

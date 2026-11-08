@@ -13,11 +13,15 @@ if not ACD then return end
 local WHITE8 = "Interface\\Buttons\\WHITE8X8"
 local GOLD = { 1, 0.82, 0, 1 }
 local TH = ns.Theme
-if TH then TH.Bind("label", GOLD) end
+-- (Options 0.6.104, #472; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) the settings window's theme scope ("settings", core
+-- Theme.lua): its own theme or colours from Blizzard Reskin > Theme, else the global theme exactly as before
+local SCOPE = "settings"
+ns.OptionsApi.SCOPE = SCOPE
+if TH then TH.Bind("label", GOLD, SCOPE) end
 -- style-sheet color for a class property ({r,g,b,a}); falls back to the given color when Theme.lua is missing
-local function TC(class, prop, fb) if TH then return TH.Col(class, prop, fb) end return fb end
+local function TC(class, prop, fb) if TH then return TH.Col(class, prop, SCOPE, fb) end return fb end
 -- (#460, Options 0.6.101) the class property's gradient, or nil when it is solid (core's Theme.lua T.Grad; nil without it)
-local function TG(class, prop) if TH and TH.Grad then return TH.Grad(class, prop) end return nil end
+local function TG(class, prop) if TH and TH.Grad then return TH.Grad(class, prop, SCOPE) end return nil end
 -- theme font + size on a fontstring (color is set by the caller)
 local function TF(fs) if TH and fs then pcall(TH.Style, fs, nil) end end
 local function TR(fs) if TH and fs then pcall(TH.Restore, fs) end end

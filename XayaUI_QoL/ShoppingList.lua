@@ -596,11 +596,14 @@ local BTN_W = 46
 ns.SHOPPING_LAYOUT = { width = PANEL_W, content = W, button = BTN_W }
 local fsPool, btnPool, nFS, nBtn = {}, {}, 0, 0
 local layout = {}
+-- (QoL 0.7.52, #472) the Shopping List's theme scope: its own theme or colours from Blizzard Reskin > Theme, else the global theme as before
+local SCOPE = "reskin.shoppinglist"
 local function TC(class, prop, fb)
     local T = ns.Theme
-    if T and T.Col then local ok, col = pcall(T.Col, class, prop, fb); if ok and type(col) == "table" then return col end end
+    if T and T.Col then local ok, col = pcall(T.Col, class, prop, SCOPE, fb); if ok and type(col) == "table" then return col end end
     return fb
 end
+ns.ShoppingList_ThemeCol = TC   -- (tests: the colour every part of the panel is painted with)
 local TONES = { good = { 0.5, 1, 0.5, 1 }, warn = { 1, 0.56, 0.25, 1 } }
 local function Tone(t, fb) if t == "mute" then return TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) end; return TONES[t] or fb end
 local function FontPath() local T = ns.Theme; local p = T and T.FontPath and T.FontPath(); return p or "Fonts\\FRIZQT__.TTF" end
@@ -1069,11 +1072,11 @@ function ns.BuildShoppingListPage(Notify)
     return ns.SectionTabs and ns.SectionTabs(g) or g
 end
 ns.RegisterSettingsPage("reskin", "shoppinglist", ns.BuildShoppingListPage)
--- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Shopping List page, under the Blizzard Reskin tab's scope (core Theme.lua). Plumbing only:
--- nothing paints with it yet and no page edits it (the UI comes with the module moves).
+-- (QoL 0.7.46; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.6) theme scope of the Shopping List page, under the Blizzard Reskin tab's scope (core Theme.lua).
+-- (QoL 0.7.52, #472) the panel paints with it (TC above); page = where its "Theme" row goes.
 local TS = ns.Theme and ns.Theme.RegisterScope
 if TS then
-    TS({ id = "reskin.shoppinglist", label = "Shopping List", parent = "reskin" })
+    TS({ id = SCOPE, label = "Shopping List", parent = "reskin", page = "shoppinglist" })
 end
 
 ns.RegisterCommand("shop", function(arg)

@@ -29,7 +29,11 @@ tabs changed (the Theme page), in every variant, +48 nodes; `--dump` of main 1f7
 (arg.xuiEndMargin), 0 other lines (debug-log 2026-11-08 debug-w3). Regenerated again on 2026-11-08 for Options 0.6.102 (debug W9a, #460):
 only the "set" and "settings" tabs changed (the Theme page), in every variant, +2 nodes each; `--dump` of main da9b5e9 and of the new code
 differ only under `theme.` (new `gradRev` and `gradTokens`, the `advanced` desc, and the `order` of the nodes after them); with order
-numbers set aside, 0 other lines (debug-log 2026-11-08 debug-w9a). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+numbers set aside, 0 other lines (debug-log 2026-11-08 debug-w9a). Regenerated again on 2026-11-08 for Options 0.6.104 / Reskin 0.6.24
+(debug W9b, #472): only the "reskin" tab changed; `--dump` of accb5c8 and of the new code differ (all-on: 275 lines) only in the new
+Blizzard Reskin > Theme page (`reskin.rsktheme.*`), one `xuiTheme` row ("Theme") on each element's page, the Esc Menu's Colors group
+removed (`reskin.gamemenu.colors.*`, now its Theme row) with a desc on its Reset, and the `order` of the two pages sorted after "Theme"
+(Toasts and Pop-ups, Tooltips); 0 other lines (debug-log 2026-11-08 debug-w9b). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

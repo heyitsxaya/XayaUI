@@ -39,7 +39,7 @@ if MODE == "all" then
     tab and tab.name)
   -- (QoL 0.7.32: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: the tab's own switch is a tick box on the tab itself, Xaya 2026-11-06; tests/reskin_tab_switch_run.py checks it works)
-  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips; 0.6.11 Toasts and Pop-ups; 0.6.13 Menus; 0.6.14 Chat Bubbles; 0.6.15 Status Bars; 0.6.16 Minimap Buttons)", names(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Toasts and Pop-ups | Tooltips", names(tab))
+  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips; 0.6.11 Toasts and Pop-ups; 0.6.13 Menus; 0.6.14 Chat Bubbles; 0.6.15 Status Bars; 0.6.16 Minimap Buttons; Options 0.6.104 Theme, #472)", names(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", names(tab))
   check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch
     and tab.args.charreskin.args.chrome and tab.args.gamemenu.xuiSwitch ~= nil and tab.args.gamemenu.args.match ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)
@@ -79,7 +79,7 @@ if MODE == "all" then
   check("pages that did not move open where they were (QoL > Character Toolkit)", last() == "qol>chartoolkit", last())
   ACD.SelectGroup = realSelect
 elseif MODE == "noqolreskin" then
-  check("XayaUI_QoL and XayaUI_Reskin off: the tab keeps Overview and the Chat Panel only", tab ~= nil and names(tab) == "Overview | Chat Panel", names(tab))
+  check("XayaUI_QoL and XayaUI_Reskin off: the tab keeps Overview, the Chat Panel and its Theme page", tab ~= nil and names(tab) == "Overview | Chat Panel | Theme", names(tab))   -- (Options 0.6.104, #472: the Theme page lists the Chat Panel)
   local disp = built.args.set and built.args.set.args.ui and built.args.set.args.ui.args.display and built.args.set.args.ui.args.display.args or {}
   check("  ...and Display says nothing about an Esc-menu look that is not installed", disp.gm_moved == nil)
 else
