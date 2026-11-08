@@ -33,6 +33,20 @@ sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"
 import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "tree_paint_parity_golden.json")
+# Chat, Reskin and Nameplates are QA-branch modules. Without them the Profiles, QoL and Blizzard Reskin trees correctly lack their
+# rows (Improved Chat, Nameplates, Chat Panel, Esc Menu, Minimap, ... ), so the golden's hashes of those three tabs cannot match.
+# For main without those modules these are the hashes of the same drawings without those rows (taken from main; checked that each
+# drawing's lines are a subsequence of the golden-era full drawing's lines, i.e. only module rows and their boxes went away).
+ROOT = os.path.dirname(HERE)
+QA_MODS = [m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if os.path.isdir(os.path.join(ROOT, m))]
+NO_QA_TABS = {
+    "on": {"profiles": ("3b30ff177027931399774a605e25f7f0814c974e74e241a07a32198f345cb8e1", 15),
+           "qol": ("17adaf045712c0bb86902475909fda9bfabdf267a6aa06186e910f7e2a4ded23", 18),
+           "reskin": ("d3741f4c440d302d5a073604c2514b61c18fe01df6c357747128b18417557d07", 12)},
+    "off": {"profiles": ("0ed66f5a3976667d03a27b0910b0e3d32331e9f238171e1cc76410d3da617292", 14),
+            "qol": ("88dd2b9a10bf5ba72f1982b4418b0066264c559a4c37b3bf8ca5375144c25d7b", 17),
+            "reskin": ("78f8ef089f9cf9eebdcdc67ac0b42819f5cb310dc7a19119223fefd841365a07", 11)},
+}
 
 LUA = r'''
 return function(W, L, rulesOn)
@@ -198,6 +212,15 @@ def main():
         check("[%s] the same tabs were drawn as before P4b" % label, sorted(got) == sorted(want), "%s vs %s" % (sorted(got), sorted(want)))
         for k in sorted(want):
             g = got.get(k)
+            if len(QA_MODS) < 3 and k in NO_QA_TABS["on" if v is on else "off"]:
+                if QA_MODS:
+                    print("SKIP (QA-branch module absent: %s) [%s] %s: every row, decoration, heading and tab box drawn as before P4b"
+                          % (", ".join(m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if m not in QA_MODS), label, k))
+                    continue
+                sha, nl = NO_QA_TABS["on" if v is on else "off"][k]
+                check("[%s] %s: (XayaUI_Chat, XayaUI_Reskin, XayaUI_Nameplates absent) every row, decoration, heading and tab box drawn as before P4b, without those modules' rows (%d lines)" % (label, k, nl),
+                      g is not None and g["sha"] == sha, "now %s lines" % (g and g["lines"]))
+                continue
             check("[%s] %s: every row, decoration, heading and tab box drawn as before P4b (%d lines)" % (label, k, want[k]["lines"]),
                   g is not None and g["sha"] == want[k]["sha"], "now %s lines" % (g and g["lines"]))
         check("[%s] no Lua error" % label, not errs, "; ".join(str(e)[:300] for e in errs[:3]))

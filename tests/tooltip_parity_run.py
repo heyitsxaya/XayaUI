@@ -103,6 +103,58 @@ COVERS = [
 
 # files whose every hover is drawn by ns.Tip (core Visual.lua is converted for its group tags only: its rule tag and the
 # spell / item tooltip stay direct, the first because no rule with a display exists in the stand-in to record it)
+# XayaUI_Chat is a QA-branch module (absent on main). The golden was recorded with it, so without it the expected recording is the golden
+# without the hovers Chat draws: these (title, first line under it) pairs, 12 in all (the Chat History / Chat Panel / Improved Chat /
+# privacy / Chat windows / Newest message / Hide the chat buttons and the Chat Bar's blocks: XayaUI, Friends online, Latency, Time).
+CHAT_HOVERS = {
+    ("SetText|Chat history", "AddLine|Copy recent messages"),
+    ("SetText|Chat Panel", "AddLine|Open the Chat Panel settings (also /xui chat settings)"),
+    ("SetText|Chat privacy", "AddLine|Click: cover the chat"),
+    ("SetText|Chat privacy cover", "AddLine|Cover or show the chat (also /xui privacy)"),
+    ("SetText|Chat windows", "AddLine|Lists every chat window; click one to switch to it."),
+    ("SetText|Improved Chat", "AddLine|Open the Improved Chat settings"),
+    ("SetText|Newest message", "AddLine|Scrolls the chat to its newest line."),
+    ("SetText|XayaUI", "AddLine|Left-click: the quick-access list. Right-click: settings."),
+    ("SetText|Friends online", "AddLine|Game friends: 3"),
+    ("SetText|Hide the chat", "Show"),
+    ("SetText|Latency", "AddLine|Home: 20 ms"),
+    ("SetText|Time", "AddLine|<DATE>"),
+}
+HAS_CHAT = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Chat"))
+# The Chat Bar's Latency hover lists each loaded XayaUI addon's memory (the stand-in gives every addon the same size) under their total,
+# capped to a few lines. The golden was recorded with every module loaded; on main (tools/qa-only-paths.txt) the absent ones are not
+# loaded, so for this one hover: the absent addons' lines are dropped, the total is lowered by one size per absent addon (each was
+# loaded when the golden was recorded, listed or not), and the addon lines are compared as a set (equal sizes have no fixed order).
+# Every other line of it, and every other hover, is still compared exactly.
+ABSENT_ADDONS = [a for a in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates")
+                 if not os.path.isdir(os.path.join(os.path.dirname(HERE), a))]
+USAGE_LINE = re.compile(r"^AddLine\|([0-9.]+) MB   ([^|\s]+)\|")
+
+
+def usage_sorted(g):
+    """the Latency hover with its addon lines in sorted order (other hovers unchanged)"""
+    if "\nSetText|Latency\n" not in g:
+        return g
+    ls = g.split("\n")
+    idx = [i for i, l in enumerate(ls) if USAGE_LINE.match(l)]
+    block = sorted(ls[i] for i in idx)
+    for i, l in zip(idx, block):
+        ls[i] = l
+    return "\n".join(ls)
+
+
+def without_absent_usage(g):
+    if "\nSetText|Latency\n" not in g or not ABSENT_ADDONS:
+        return g
+    sizes = [float(m.group(1)) for m in (USAGE_LINE.match(l) for l in g.split("\n")) if m]
+    size = sizes[0] if sizes and all(x == sizes[0] for x in sizes) else None
+    assert size is not None, "the stand-in no longer gives every addon the same size: update without_absent_usage"
+    out = [l for l in g.split("\n") if not (USAGE_LINE.match(l) and USAGE_LINE.match(l).group(2) in ABSENT_ADDONS)]
+    def total(mt):
+        return "AddLine|Memory: %.1f MB total|" % (float(mt.group(1)) - size * len(ABSENT_ADDONS))
+    return usage_sorted("\n".join(re.sub(r"^AddLine\|Memory: ([0-9.]+) MB total\|", total, l) for l in out))
+
+
 CONVERTED = ["XayaUI/MinimapButton.lua", "XayaUI_Chat/Privacy.lua", "XayaUI_Chat/History.lua", "XayaUI_Chat/Frame.lua"]
 
 
@@ -145,12 +197,22 @@ def main():
         if not ok:
             fails.append(name)
     want = sorted(norm_date(w) for w in json.load(open(GOLDEN, encoding="utf-8")))
+    if not HAS_CHAT:
+        chat_want = [w for w in want if is_chat_hover(w)]
+        want = [w for w in want if not is_chat_hover(w)]
+        check("(XayaUI_Chat absent) exactly the %d hovers XayaUI_Chat draws are left out of the golden" % len(CHAT_HOVERS), len(chat_want) == len(CHAT_HOVERS), len(chat_want))
+    if ABSENT_ADDONS:
+        want = sorted(without_absent_usage(w) for w in want)
+        logs = [usage_sorted(g) for g in logs]
     check("hovers recorded: %d (golden: %d)" % (len(logs), len(want)), len(logs) == len(want))
     missing = [w for w in want if w not in logs]
     extra = [g for g in logs if g not in want]
     check("every hover draws exactly the tooltip it drew before the refactor (same calls, arguments, order)",
           not missing and not extra, "changed/missing: %s || new: %s" % (missing[:2], extra[:2]))
     for label, text in COVERS:
+        if not HAS_CHAT and label.startswith("Chat "):
+            print("SKIP (QA-branch module absent: XayaUI_Chat) the recording covers %s" % label)
+            continue
         check("the recording covers %s" % label, any(text in g for g in logs))
     check("core has the shared tooltip helper ns.Tip (Show, Hide)", tip)
     # DISPLAY-RULES A7.2 (her names everywhere; UI-5 "... to / Data Panels / Data Bars"): the minimap list row (Bonus 0.6.28)
@@ -158,6 +220,9 @@ def main():
           any("SetText|Data Panels|" in g for g in logs) and not any("ustom data panels" in g for g in logs))
     root = os.path.abspath(os.path.join(HERE, ".."))
     for rel in CONVERTED:
+        if not HAS_CHAT and rel.startswith("XayaUI_Chat/"):
+            print("SKIP (QA-branch module absent: XayaUI_Chat) %s draws its hovers through ns.Tip only (no direct GameTooltip call left)" % rel)
+            continue
         code = "\n".join(l.split("--", 1)[0] for l in open(os.path.join(root, rel), encoding="utf-8").read().split("\n"))
         check("%s draws its hovers through ns.Tip only (no direct GameTooltip call left)" % rel, "GameTooltip" not in code)
     for e in errs:

@@ -10,13 +10,14 @@ For testers. Tick each box in order; when something does not match the **Expect*
 
 ## A. Install (5 minutes)
 
-- [ ] **A1.** In `World of Warcraft\_retail_\Interface\AddOns\`, put these folders side by side (the game can stay open; `/reload` afterwards): `XayaUI`, `XayaUI_Rules`, `XayaUI_Options`, `XayaUI_Rules_Options`, `XayaUI_Chat`, `XayaUI_QoL`, `XayaUI_Bonus`, `XayaUI_Reskin` (and `XayaUI_Media` if you have one). Each must sit directly in `AddOns` (not inside another folder).
-  **Expect:** `AddOns\XayaUI\XayaUI.toc`, `AddOns\XayaUI_Chat\XayaUI_Chat.toc`, and so on exist.
+- [ ] **A1.** In `World of Warcraft\_retail_\Interface\AddOns\`, put these folders side by side (the game can stay open; `/reload` afterwards): `XayaUI`, `XayaUI_Rules`, `XayaUI_Options`, `XayaUI_Rules_Options`, `XayaUI_Chat`, `XayaUI_QoL`, `XayaUI_Bonus`, `XayaUI_DevAssist`, `XayaUI_Media` (since 2026-11-08 that is everything on `main`; from `qa-installer-branch` also `XayaUI_Reskin` and `XayaUI_Nameplates`). Each must sit directly in `AddOns` (not inside another folder).
+  **Expect:** `AddOns\XayaUI\XayaUI.toc`, `AddOns\XayaUI_Rules\XayaUI_Rules.toc`, and so on exist.
   Using GitHub Desktop? Clone outside the game folder and copy the `XayaUI*` folders from the clone into `AddOns`; after each "Pull origin", copy them again and `/reload`. The **Expect** line above still applies.
 - [ ] **A2.** If you had 0.5.x: delete or switch off `AddOns\XayaUI_CombatEngine` if it exists.
 - [ ] **A3.** Start the game. At the character screen open **AddOns**.
-  **Expect:** XayaUI with its entries grouped under it: XayaUI Options, XayaUI Chat, XayaUI QoL, XayaUI Bonus Features, XayaUI Blizzard Reskin. None marked "out of date" or "missing dependency".
+  **Expect:** XayaUI with its entries grouped under it: XayaUI Options, XayaUI Rules, XayaUI Rules Options, XayaUI Chat, XayaUI QoL, XayaUI Bonus Features, XayaUI Dev Assist, XayaUI Media (and XayaUI Blizzard Reskin, XayaUI Nameplates when installed from `qa-installer-branch`). None marked "out of date" or "missing dependency".
 - [ ] **A4.** Log in. **Expect:** no red Lua error. Chat shows no XayaUI error lines.
+- [ ] **A5.** (Dev Assist 0.7.72; main slim-down, REQUEST-LOG TRI-4, TRI-6, TRI-7) Install only what `main` holds now (A1; delete `XayaUI_Reskin` and `XayaUI_Nameplates` from `AddOns` if they are there), log in, open `/xui`, then `/xui dev qa`. **Expect:** no red Lua error at login or when the window opens; the Blizzard UI tab holds the Chat Panel and the Character Pane but no Blizzard Reskin pages; the walkthrough list shows no Blizzard Reskin or Nameplates walkthroughs. Walkthrough: `/xui dev qa` > "Main without Blizzard Reskin and Nameplates (A5)".
 
 ## B. Core (rules)
 

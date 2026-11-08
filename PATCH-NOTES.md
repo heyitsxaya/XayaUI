@@ -22,6 +22,28 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Main Slims Down
+
+### XayaUI 0.6.84
+
+**Addons on main**
+- Main now holds only XayaUI (platform and settings), Options, Rules, Rules Options, Chat, Quality of Life, Bonus Features, Dev Assist and Media. Blizzard Reskin (Esc menu skin, Friend Colors, Blizzard windows, tooltips, minimap shape) and Nameplates are no longer part of it.
+  *Developers' notes: Both addons, with shelved/ and roadmap-features/, live on qa-installer-branch, which is not synced with main. Chosen by you: "just remove all blizzard reskins for the time being". If you had XayaUI_Reskin or XayaUI_Nameplates installed, delete those folders when you update from main.*
+
+### Quality of Life 0.7.54
+
+**Character Pane**
+- The Character Pane look (Blizzard UI tab > Character Pane) now works without Blizzard Reskin. Its switch and look settings are kept in Quality of Life's own settings.
+- The look stays out of the way (off, with item levels, enchants, gems and the stat list still on) while EllesmereUI's Blizzard skin, or ElvUI with its character skin on, is loaded.
+  *Developers' notes: Not yet tested in game. The ElvUI check reads ElvUI setting names that are an inference. Look settings saved earlier inside Blizzard Reskin are not read on main, so the look starts at its default (off).*
+
+### Dev Assist 0.7.72
+
+**QA Review**
+- Walkthroughs and checklist steps for addons that are not installed are no longer listed in /xui dev qa.
+- Added the walkthrough "Main without Blizzard Reskin and Nameplates" (A5).
+  *Developers' notes: Not yet tested in game.*
+
 ## 2026-11-08 — Character Pane Split and Chat Defaults
 
 ### XayaUI 0.6.83
@@ -52,16 +74,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 **QA Review**
 - Added QA entries and walkthroughs for the character split and the chat defaults.
-
-## 2026-11-08 — Themes per Element
-
-### Blizzard Reskin 0.6.24
-
-**Element Themes (new)**
-- Added Blizzard Reskin > Theme, a table of every restyled element with the columns Element, Theme, Overrides, Comes from and Reset. Each element can use its own theme (Inherit, a built-in or a saved theme) or its own colors; Edit opens its palette. "Reset all overrides" asks first.
-- Each element's own page has a Theme button that leads to its row in the table.
-- The Esc Menu's own colors moved into its Theme row (copied once; the old settings are kept).
-  *Developers' notes: Not yet tested in game (QA B297 to B300, #472). Element level only; a theme per module waits for your answer.*
 
 ## 2026-11-08 — Gradient Borders
 

@@ -201,3 +201,78 @@ QA.Register("platform-services-reload", { title = "Platform: the imported Namepl
             if np.TargetColor and np.TargetColor.Apply then pcall(np.TargetColor.Apply) end
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- (Dev Assist 0.7.72) Main without Blizzard Reskin and Nameplates (QA A5; REQUEST-LOG TRI-4, TRI-6, TRI-7, 2026-11-08). Xaya: main
+-- holds only core + settings, Rules, QoL and Bonus Features (Chat counts as Bonus Features), plus Dev Assist and Media; "just remove
+-- all blizzard reskins for the time being". XayaUI_Reskin and XayaUI_Nameplates live on qa-installer-branch (tools/qa-only-paths.txt).
+-- Pre-fill (V22): step 1 reads each addon's state from core (ns.ModuleState); step 2 counts new XayaUI errors while the window opens
+-- and lists its top tabs; step 3 reads Dev Assist's own list. UNTESTED IN GAME.
+-------------------------------------------------------------------------------
+do
+    local function NSm() return rawget(_G, "XayaUI_NS") end
+    local function Errs() local ns = NSm(); local n = ns and ns.ErrorCount and ns.ErrorCount(); return tonumber(n) or 0 end
+    local function State(a)
+        local ns = NSm()
+        if not (ns and ns.ModuleState) then return "unknown" end
+        local ok, s = pcall(ns.ModuleState, a)
+        return ok and s or "unknown"
+    end
+    local function OptApi()
+        local ns = NSm()
+        if not (ns and ns.LoadOptions and ns.LoadOptions()) then return nil end
+        return ns.OptionsApi
+    end
+    local QA_ONLY = { "XayaUI_Reskin", "XayaUI_Nameplates" }
+    local ON_MAIN = { "XayaUI", "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Media" }
+    local ms = {}
+    QA.Register("main-slim", { title = "Main without Blizzard Reskin and Nameplates (A5)", area = "Platform", qa = "A5", order = 272.9, prefill = true, steps = {
+        { text = "Install only what |cffffd100main|r holds now: XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Rules_Options, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_DevAssist (and XayaUI_Media). Delete |cffffd100XayaUI_Reskin|r and |cffffd100XayaUI_Nameplates|r from your AddOns folder if they are there, then |cffffd100/reload|r and open this walkthrough again.\n\n|cffffd100Expect:|r no red Lua error at login. The check reads whether Blizzard Reskin and Nameplates are installed (they should not be) and lists the other addons' states and XayaUI's saved error count (old errors from earlier sessions count too).",
+            check = function()
+                local out, ok = {}, true
+                for _, a in ipairs(QA_ONLY) do
+                    local s = State(a)
+                    out[#out + 1] = a:gsub("XayaUI_", "") .. ": " .. s
+                    if s ~= "missing" then ok = false end
+                end
+                local others = {}
+                for _, a in ipairs(ON_MAIN) do others[#others + 1] = a:gsub("XayaUI_", "") .. " " .. State(a) end
+                return ok, ("%s (should be missing); %s; XayaUI errors saved: %d"):format(table.concat(out, ", "), table.concat(others, ", "), Errs())
+            end },
+        { text = "Press |cffffd100Do it for me|r: the settings window opens.\n\n|cffffd100Expect:|r it opens with no Lua error. The Blizzard UI tab still holds the Chat Panel and the Character Pane, but no Blizzard Reskin pages (Esc Menu, Blizzard windows, tooltips ...). The check counts new XayaUI errors and lists the top tabs.",
+            setup = function()
+                local api = OptApi(); if not api then error("the settings window addon (XayaUI_Options) could not be loaded") end
+                ms.err0 = Errs()
+                if not api.IsOpen() then api.Toggle() end
+            end,
+            check = function()
+                local api = OptApi(); if not (api and ms.err0) then return nil, "press Do it for me first" end
+                local tabs, tree = {}, api.LastTree and api.LastTree()
+                for k in pairs(tree and tree.args or {}) do tabs[#tabs + 1] = k end
+                table.sort(tabs)
+                local e = Errs() - ms.err0
+                return (api.IsOpen() and e == 0) and true or false, ("open: %s; new XayaUI errors: %d; top tabs: %s"):format(tostring(api.IsOpen()), e, table.concat(tabs, ", "))
+            end },
+        { text = "No action: the check reads Dev Assist's own walkthrough list.\n\n|cffffd100Expect:|r no walkthrough and no checklist step for Blizzard Reskin or Nameplates is listed while those addons are not installed (they stay on qa-installer-branch).",
+            check = function()
+                local bad, n, hidden = 0, 0, 0
+                for _, id in ipairs(QA.list) do
+                    local def = QA.walks[id]
+                    n = n + 1
+                    if def.needs and QA.Missing(def.needs) then bad = bad + 1 end
+                    for _, st in ipairs(def.steps or {}) do
+                        if type(st) == "table" and st.needs and QA.Missing(st.needs) then bad = bad + 1 end
+                    end
+                end
+                for _, a in ipairs(QA_ONLY) do if QA.Missing(a) then hidden = hidden + 1 end end
+                return bad == 0, ("%d walkthroughs listed; %d walkthroughs or steps for a missing addon; %d of 2 QA-branch addons missing here"):format(n, bad, hidden)
+            end },
+        { done = true, text = "Last step: press |cffffd100Do it for me|r to close the settings window. Then press |cffffd100Done|r.",
+            setup = function()
+                local api = OptApi()
+                if api and api.IsOpen() then api.Toggle() end
+                ms.closed = true
+            end,
+            check = function() return ms.closed == true, ms.closed and "closed" or "not closed yet" end },
+    } })
+end

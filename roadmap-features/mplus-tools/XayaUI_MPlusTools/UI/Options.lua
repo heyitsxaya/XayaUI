@@ -1,6 +1,0 @@
--------------------------------------------------------------------------------
--- UI/Options.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
--- Settings page through ns.RegisterSettingsPage("mplus", ...) (XayaUI/Modules.lua:16). Sections: Sending (Q1), Interrupts, CC,
--- Cast Watch (list editor), Threat (tank only), Cooldowns (show per kind / player / spell), Announcements (channels, confirm), Requests.
--- Options style (ROADMAP standing rules): no dropdown alone on a row, short labels, explanations in tooltips.
--------------------------------------------------------------------------------

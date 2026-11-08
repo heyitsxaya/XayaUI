@@ -1,6 +1,0 @@
--------------------------------------------------------------------------------
--- UI/Tracker.lua : OUTLINE ONLY (RM-MPLUS, 2026-11-06). No code. Proposed, not decided. Open questions: ../README.md section 4.
--- The group view: one row per player (with XayaUI) and one icon per tracked spell: ready, on cooldown (time left), no data.
--- Layout, size, grow direction, which kinds show: to propose with mock-ups before building ("No guessing without a confirmed proposal").
--- Icons are clickable only if Requests.lua is built. Display-only otherwise (no secure frames needed).
--------------------------------------------------------------------------------

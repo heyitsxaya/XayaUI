@@ -73,6 +73,41 @@ local cfg = setmetatable({}, {
     __index = function(_, k) if LOOK[k] then return lookT[k] end return featT[k] end,
     __newindex = function(_, k, v) if LOOK[k] then lookT[k] = v else featT[k] = v end end,
 })
+-- (QoL 0.7.54; REQUEST-LOG TRI-4 / TRI-8, 2026-11-08) XayaUI Blizzard Reskin not installed at all (main holds no Blizzard Reskin since
+-- 2026-11-08: tools/qa-only-paths.txt; it lives on qa-installer-branch). Xaya: the character reskin "should follow the same logic as
+-- improved chat: if no reskin is present, reskin it; otherwise let the current reskin run and only run the other components". So
+-- without that addon the look half is kept in QoL's own settings (XayaUIQoLDB.characterReskinLook) and its switch works; an installed
+-- but switched-off Blizzard Reskin still keeps the look off, as before. Only "missing" counts (core ns.ModuleState).
+local function ReskinMissing()
+    if type(ns.ModuleState) ~= "function" then return false end
+    local ok, state = pcall(ns.ModuleState, "XayaUI_Reskin")
+    return ok and state == "missing" or false
+end
+-- The look half without that addon: reads XayaUIQoLDB.characterReskinLook when it exists; until a setting is changed from its default
+-- (Cfg fills the defaults in on every read) nothing is saved, so an install that never touches the reskin keeps no new key.
+local lookMain
+local function MainLook()
+    if lookMain then return lookMain end
+    local session = {}
+    lookMain = setmetatable({}, {
+        __index = function(_, k)
+            local sv = QolS.characterReskinLook
+            if type(sv) == "table" and sv[k] ~= nil then return sv[k] end
+            return session[k]
+        end,
+        __newindex = function(_, k, v)
+            local sv = QolS.characterReskinLook
+            if type(sv) ~= "table" then
+                if DEFAULTS[k] == nil or v == DEFAULTS[k] or v == session[k] then session[k] = v; return end
+                sv = {}
+                for kk, vv in pairs(session) do sv[kk] = vv end
+                QolS.characterReskinLook = sv
+            end
+            sv[k] = v
+        end,
+    })
+    return lookMain
+end
 local function Halves()
     if halvesEpoch == ns.settingsEpoch and featT and lookT then return end
     local f = QolS.characterReskin
@@ -81,6 +116,8 @@ local function Halves()
     if ns.SettingsReady("reskin") then
         l = ReskinS.characterReskin
         if type(l) ~= "table" then l = {}; ReskinS.characterReskin = l end
+    elseif ReskinMissing() then
+        l = MainLook()
     else
         lookOff = lookOff or {}
         l = lookOff
@@ -1351,7 +1388,38 @@ local hooked = false
 local function On(c) return c and ns.SwitchInEffect("reskin.charreskin", c.enabled) and ns.ReskinTabOn() and true or false end
 -- (QoL 0.7.53, stage 1) the look runs while the reskin is on; the features while QoL's Character Pane switch is on (FeaturesOn above);
 -- Active = either of them (the hooks and the window's events are there while one is on)
-LookActive = function() local c = Cfg(); return On(c) and not diag.failed end
+-- (QoL 0.7.54; TRI-8, as Improved Chat does beside another chat skin: Chat Core.lua C.BlockedReason) another addon that skins the
+-- character window (the two registered as conflicts at the end of this file): the look stays out of its way, the features still run.
+-- Read once per session like Chat's (the other addon's own switch changes only with a reload); an answer that cannot be read yet (the
+-- other addon's settings not set up) is not kept, and counts as that addon skinning the window (fail safe: nothing drawn over it).
+local otherSkin
+local function OtherSkin()
+    if otherSkin ~= nil then return otherSkin end
+    local A = C_AddOns
+    local function loaded(n)
+        if not (A and A.IsAddOnLoaded) then return false end
+        local ok, l = pcall(A.IsAddOnLoaded, n)   -- namespaces.md: C_AddOns.IsAddOnLoaded(name) -> loadedOrLoading, loaded
+        return ok and l and true or false
+    end
+    if loaded("EllesmereUIBlizzardSkin") then otherSkin = "EllesmereUIBlizzardSkin"; return otherSkin end
+    if loaded("ElvUI") then
+        -- INFERENCE (ElvUI's code not checked here): ElvUI keeps its Blizzard skin switches in E.private.skins.blizzard (enable, and
+        -- character for this window). Only an explicit false there lets the reskin run.
+        local ok, known, off = pcall(function()
+            local E = _G.ElvUI and _G.ElvUI[1]
+            local b = E and E.private and E.private.skins and E.private.skins.blizzard
+            if type(b) ~= "table" then return false end
+            return true, (b.enable == false or b.character == false)
+        end)
+        if not (ok and known) then return "ElvUI" end
+        otherSkin = (not off) and "ElvUI" or false
+        return otherSkin
+    end
+    otherSkin = false
+    return otherSkin
+end
+ns.CharReskin_OtherSkin = function() return OtherSkin() or nil end
+LookActive = function() local c = Cfg(); return On(c) and not OtherSkin() and not diag.failed end
 FeatActive = function() return Cfg() ~= nil and FeaturesOn() and not diag.failed end
 Active = function() return LookActive() or FeatActive() end
 function ns.CharReskin_Active() return Active() == true end
@@ -1653,7 +1721,7 @@ ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
     if not c then return end
-    if arg == "on" and not ns.SettingsReady("reskin") then   -- (P5) the switch is Blizzard Reskin's setting
+    if arg == "on" and not ns.SettingsReady("reskin") and not ReskinMissing() then   -- (P5) the switch is Blizzard Reskin's setting (QoL's own without that addon: 0.7.54)
         ns.Print(("/xui reskin on: the Character Reskin's look is kept by %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(ns.AddonTitle and ns.AddonTitle("XayaUI_Reskin") or "XayaUI Blizzard Reskin"))
         return
     end

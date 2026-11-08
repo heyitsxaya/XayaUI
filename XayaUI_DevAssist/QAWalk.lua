@@ -62,8 +62,26 @@ function QA.SeenNote(id, i)
     return st and type(st.d) == "string" and st.d or nil
 end
 
+-- (Dev Assist 0.7.72) `needs` on a walkthrough or on one step: the addon it tests. Since 2026-11-08 main has no XayaUI_Reskin or
+-- XayaUI_Nameplates (tools/qa-only-paths.txt: they live on qa-installer-branch), and the same Dev Assist files serve both branches, so
+-- a walkthrough or step whose addon is not installed is not listed. Only "missing" counts (core ns.ModuleState): an installed but
+-- switched-off addon keeps its walkthroughs, whose steps may switch it on.
+function QA.Missing(addon)
+    local ns = rawget(_G, "XayaUI_NS")
+    if type(addon) ~= "string" or type(ns) ~= "table" or type(ns.ModuleState) ~= "function" then return false end
+    local ok, state = pcall(ns.ModuleState, addon)
+    return ok and state == "missing" or false
+end
+
 function QA.Register(id, def)
     if type(id) ~= "string" or type(def) ~= "table" or type(def.steps) ~= "table" then return end
+    if def.needs and QA.Missing(def.needs) then return end
+    local kept = {}
+    for _, st in ipairs(def.steps) do
+        if not (type(st) == "table" and st.needs and QA.Missing(st.needs)) then kept[#kept + 1] = st end
+    end
+    if #kept == 0 then return end
+    if #kept ~= #def.steps then def.steps = kept end
     if not QA.walks[id] then QA.list[#QA.list + 1] = id end
     def.id = id
     QA.walks[id] = def
