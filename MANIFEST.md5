@@ -708,7 +708,7 @@ c4a0fd4b2d15995bae62dc841c7b3fe1  debug-log/2026-11-08-0711-debug-w7-0.6.100.md
 df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
 928bcabb12c7f2ba6c6b0b3eafab84b8  debug-log/2026-11-08-0848-debug-chatdefaults-0.6.46.md
 5ba778ce07ca328405ee634d84d79787  debug-log/2026-11-08-0915-character-split-0.7.53.md
-1799c87419173ea258c8db02543e2e73  debug-log/2026-11-08-1941-layout-mover-fixes-0.6.105.md
+4b6b073473c80e051b1cc2241ce3d9e3  debug-log/2026-11-08-1941-layout-mover-fixes-0.6.105.md
 239c3d2bec3afff623537c582e80b2f5  debug-log/2026-11-08-2021-stat-calc-colors-tooltips-0.7.54.md
 f925e07a2108d2bb9f071f42d410f1c5  debug-log/2026-11-08-2037-aspect-ratio-0.6.82.md
 05d48c3db5d24d545139612d82eab6c5  debug-log/2026-11-08-2038-sidebar-delete-0.6.82.md
@@ -738,7 +738,7 @@ a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.p
 46e7925eac2f7f3568c5ff46a1336781  docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md
 e62439d6b9c7a0a6eac69d3d5735b088  docs/plans/DEBUG-TO-DEVASSIST-2026-11-06.md
 59e63a6fc40eaf3ee9f4c31503c9dc3b  docs/plans/FIX-PLAN-2026-11-08-SESSION-SUMMARY.md
-a4649cd3626bdc25c7b73ca574e040c6  docs/plans/FIX-PLAN-2026-11-08-TRACKER.md
+163facbd292c62158fa41c353099c474  docs/plans/FIX-PLAN-2026-11-08-TRACKER.md
 2de4ce8166893f4b845fee9484e81357  docs/plans/FIX-PLAN-2026-11-08.html
 2a03d88935103ce732b7e3e0d1eccbb9  docs/plans/GAMES-MODULE-2026-11-05.md
 20e4afb61755d1406576c94507b3a229  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
@@ -771,7 +771,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-72ecabbeb495918d64ad4b968f6a243d  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+d702dbee95d6418252822fb7c4da6aaf  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md

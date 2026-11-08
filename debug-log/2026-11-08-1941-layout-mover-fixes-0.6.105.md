@@ -19,7 +19,7 @@ QA steps B301-B305; walkthrough `XayaUI_DevAssist/QAWalks-layout-fixes.lua` (pre
   never on a sub-cell). This is the root fix for every table; (2) ScopeEditor: the widths add up to 1 (Element 0.24 -> 0.25), as
   Skin.lua's comment always required. The 0.99 comments (ScopeEditor, ThemeEditor) corrected: 0.99 is safe only with one row per box.
 - Scope (V4), `git grep xuiCell`: ScopeEditor.lua (main table: drifted; per-element class boxes: one row per box, safe),
-  ThemeEditor.lua (class boxes: one row per box, safe), AutoPicker.lua (rows normalised to 1: unchanged by the new rule). No other caller.
+  ThemeEditor.lua (class boxes: one row per box, safe), AutoPicker.lua (rows normalized to 1: unchanged by the new rule). No other caller.
 - Since when: 6edd94d (Options 0.6.104, 2026-11-07); QA B297 checked column names and row count only, so it passed on the broken table.
 
 ## 2. The group's X / Y box (#11, #12)
