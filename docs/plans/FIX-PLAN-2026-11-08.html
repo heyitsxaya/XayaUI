@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XayaUI Fix Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column checklist, seven numbered phases (the order is the recommendation), severity stripe per row. */
+:root {
+  --bg: #f2f4f8; --surface: #ffffff; --surface-2: #e9ecf3; --fg: #1b1f2a; --muted: #5b6275; --line: #d6dae4;
+  --accent: #0f7b86; --accent-ink: #ffffff;
+  --high: #b42318; --high-bg: #fdecea; --med: #9a5b00; --med-bg: #fff3dc; --low: #4a5d7a; --low-bg: #e8edf5;
+  --corr: #4c3fa8; --eff: #1f6f43;
+  --ok: #1f6f43; --ok-bg: #e4f3ea; --warn: #9a5b00; --warn-bg: #fff3dc; --info: #3b5a8a; --info-bg: #e7eef8; --new: #6b3fa0; --new-bg: #efe8f8;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "SF Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #13161e; --surface: #1b1f2a; --surface-2: #232838; --fg: #e7e9f0; --muted: #9aa2b6; --line: #2f3546;
+  --accent: #49bcc6; --accent-ink: #0f1a1c;
+  --high: #ff8a80; --high-bg: #3a1b1a; --med: #e8b04a; --med-bg: #3a2d14; --low: #9fb3cf; --low-bg: #232d3d;
+  --corr: #a99cf0; --eff: #6fcf97;
+  --ok: #6fcf97; --ok-bg: #1a3324; --warn: #e8b04a; --warn-bg: #3a2d14; --info: #8fb0e0; --info-bg: #1e2a3c; --new: #c3a6f0; --new-bg: #2b2140;
+  color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #13161e; --surface: #1b1f2a; --surface-2: #232838; --fg: #e7e9f0; --muted: #9aa2b6; --line: #2f3546;
+  --accent: #49bcc6; --accent-ink: #0f1a1c;
+  --high: #ff8a80; --high-bg: #3a1b1a; --med: #e8b04a; --med-bg: #3a2d14; --low: #9fb3cf; --low-bg: #232d3d;
+  --corr: #a99cf0; --eff: #6fcf97;
+  --ok: #6fcf97; --ok-bg: #1a3324; --warn: #e8b04a; --warn-bg: #3a2d14; --info: #8fb0e0; --info-bg: #1e2a3c; --new: #c3a6f0; --new-bg: #2b2140;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font: 16px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 940px; margin: 0 auto; display: grid; gap: 28px; }
+a { color: var(--accent); }
+code { font-family: var(--font-mono); font-size: 0.86em; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 2.1rem; line-height: 1.1; letter-spacing: -0.01em; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 66ch; }
+.meta { display: grid; gap: 6px; margin-top: 14px; font-variant-numeric: tabular-nums; }
+.meta .row { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 0.95rem; align-items: baseline; }
+.meta .row .lbl { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.75rem; font-weight: 700; min-width: 7ch; }
+.meta b { color: var(--fg); font-weight: 600; }
+.meta .h b { color: var(--high); } .meta .m b { color: var(--med); } .meta .l b { color: var(--low); }
+.meta .ok b { color: var(--ok); } .meta .nw b { color: var(--new); }
+
+.bar { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px;
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.progress { display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+.progress .track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.progress .fill { height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .2s ease; }
+.progress .count { color: var(--muted); font-size: 0.95rem; min-width: 9ch; text-align: right; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.filters span { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
+.filters button { font: 600 0.85rem var(--font-body); padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.filters button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 0.85rem; color: var(--muted); align-items: center; }
+
+.phase { display: grid; gap: 12px; }
+.phase-head { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; align-items: baseline; }
+.phase-head .num { font: 700 2rem/1 var(--font-display); color: var(--accent); font-variant-numeric: tabular-nums; }
+.phase-head h2 { font-size: 1.35rem; }
+.phase-head p { grid-column: 2; margin: 2px 0 0; color: var(--muted); max-width: 72ch; }
+.phase-head .n { grid-column: 2; color: var(--muted); font-size: 0.85rem; }
+
+ol.fixes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fix { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--line);
+  border-left: 4px solid var(--low); border-radius: 8px; padding: 12px 14px; min-width: 0; }
+.fix[data-sev="high"] { border-left-color: var(--high); }
+.fix[data-sev="med"] { border-left-color: var(--med); }
+.fix input { width: 20px; height: 20px; margin: 3px 0 0; accent-color: var(--accent); cursor: pointer; }
+.fix .body { min-width: 0; display: grid; gap: 4px; }
+.fix .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.fix h3 { font: 600 1.05rem/1.3 var(--font-body); }
+.fix h3 label { cursor: pointer; }
+.chip { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; line-height: 1.5; white-space: nowrap; }
+.fix[data-sev="high"] .chip.sev { color: var(--high); background: var(--high-bg); }
+.fix[data-sev="med"] .chip.sev { color: var(--med); background: var(--med-bg); }
+.fix[data-sev="low"] .chip.sev { color: var(--low); background: var(--low-bg); }
+.cat { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.fix[data-cat="c"] .cat { color: var(--corr); } .fix[data-cat="e"] .cat { color: var(--eff); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 0.74rem; font-weight: 600; padding: 1px 7px; border-radius: 4px; line-height: 1.6; border: 1px solid transparent; }
+.tag.ok { color: var(--ok); background: var(--ok-bg); }
+.tag.warn { color: var(--warn); background: var(--warn-bg); }
+.tag.down { color: var(--low); background: var(--low-bg); }
+.tag.unv { color: var(--muted); border-color: var(--line); }
+.tag.cov { color: var(--info); background: var(--info-bg); }
+.tag.new { color: var(--new); background: var(--new-bg); }
+.where { display: block; color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.how { margin: 0; color: var(--fg); }
+.how code { background: var(--surface-2); padding: 0 4px; border-radius: 3px; }
+.vnote { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.vnote b { color: var(--fg); font-weight: 600; }
+.fix.done { opacity: 0.55; }
+.fix.done h3 { text-decoration: line-through; text-decoration-color: var(--muted); }
+.fix[hidden] { display: none; }
+
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+.note h2 { font-size: 1.1rem; }
+.note ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--fg); }
+.foot { color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 520px) { h1 { font-size: 1.7rem; } .phase-head .num { font-size: 1.6rem; } .progress .count { min-width: 0; } }
+@media (prefers-reduced-motion: reduce) { .progress .fill { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>XayaUI fix plan</h1>
+  <p class="sub">The suggested order of work from the review of heyitsxaya/xayaui (commit 3eb0c4b, 2026-11-08), after a verification pass over every high and medium finding and a cross-reference against the repo's issues, pull requests and audits. Severities shown are the verified ones. Reordered 2026-11-08 after a review of this plan: the checks that every fix relies on come first, then confirmed bugs players see, then the two root-cause clusters, then plausible items behind an in-game check, then import hardening, smaller fixes, efficiency and deeper test work. Fixes that share a root cause sit together. Checkbox IDs are unchanged, so ticks already saved still apply.</p>
+  <div class="meta">
+    <div class="row"><span class="lbl">Found</span><div><b>132</b> findings</div><div class="h"><b>2</b> high</div><div class="m"><b>31</b> medium</div><div class="l"><b>99</b> low</div></div>
+    <div class="row"><span class="lbl">Verified</span><div><b>55</b> checked</div><div class="ok"><b>27</b> confirmed</div><div><b>6</b> plausible</div><div class="l"><b>22</b> downgraded</div><div><b>0</b> refuted</div></div>
+    <div class="row"><span class="lbl">Tracked</span><div><b>14</b> already filed</div><div><b>32</b> partly</div><div><b>29</b> related</div><div class="nw"><b>57</b> new</div><div>no regressions</div></div>
+  </div>
+</header>
+
+<div class="bar" role="region" aria-label="Progress and filters">
+  <div class="progress"><div class="track"><div class="fill" id="fill"></div></div><div class="count" id="count">0 of 0 done</div></div>
+  <div class="filters" role="group" aria-label="Show severities">
+    <span>Show</span>
+    <button type="button" data-sev="high" aria-pressed="true">High</button>
+    <button type="button" data-sev="med" aria-pressed="true">Medium</button>
+    <button type="button" data-sev="low" aria-pressed="true">Low</button>
+    <button type="button" data-new="only" aria-pressed="false">New only</button>
+    <button type="button" data-done="hide" aria-pressed="false">Hide done</button>
+  </div>
+  <div class="legend">
+    <span class="tag ok">Confirmed</span><span class="tag warn">Plausible</span><span class="tag down">Downgraded</span><span class="tag unv">Unverified</span>
+    <span class="tag cov">Tracked / Partly / Related</span><span class="tag new">New</span>
+  </div>
+</div>
+
+<!-- ===================== PHASE 1 ===================== -->
+<section class="phase" aria-labelledby="p1">
+  <div class="phase-head">
+    <div class="num">1</div>
+    <h2 id="p1">Make the checks able to fail</h2>
+    <p>Moved first: every later fix is checked by these tools, and two of them can pass when they should fail (the click-cost test sets the counters it then checks; run_all accepts &quot;10 failed&quot; as a pass). Small changes each.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f1-10"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-10">options_click_cost forces the counters it checks</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: PR #452 added the check; #461 audits walks only</span></div>
+      <code class="where">tests/options_click_cost.lua:370-378</code>
+      <p class="how">Save <code>builds, fills</code> right after the measured click and check those. Delete <code>builds, fills = 1, 1</code>. Expect the test to start failing if a click really builds more than once.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f1-9"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-9">run_all.py counts "10 failed" as a pass</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Related: pass markers are a documented rule</span></div>
+      <code class="where">tests/run_all.py:16 · tools/precheck.py:14</code>
+      <p class="how">Match <code>\b(\d+) failed\b</code> or <code>FAILS:\s*(\d+)</code> and require 0. Make chatprobe, drafts and minimap runners exit non-zero on failure.</p>
+      <p class="vnote"><b>Verifier:</b> only 3 of 218 runners are exposed, and only at a round failure count.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f6-6"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-6">precheck ignores git errors</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">tools/precheck.py:17-18, 209, 215</code>
+      <p class="how">Check <code>returncode</code> in <code>git()</code> and verify the base with <code>git rev-parse --verify &lt;base&gt;^{commit}</code>. The same unchecked call feeds <code>ls-files</code> and <code>status</code>. Use <code>ls-files -z</code> here and in manifest.py.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f6-3"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-3">Saved-variable round trip stringifies numeric keys</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">tests/harness/run.py:61-66, 96, 166-168</code>
+      <p class="how">Each session is a new LuaRuntime, so serialize the saved table to Lua source and <code>loadstring</code> it in the next runtime (mirrors how the game saves). Apply the same to <code>read_saved</code>, which has the same bug for <code>--saved PATH</code>.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f6-4"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-4">Two tools execute a player's saved file as code</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">tools/formula_fit.py:44-47 · tests/lua51.py:25-29 · tests/engine_bench.py:7-10</code>
+      <p class="how"><code>loadstring</code> plus <code>setfenv(f, {})</code> as <code>tests/harness/run.py:94</code> does, or the data-only <code>LuaReader</code> from perf_report.</p>
+      <p class="vnote"><b>Verifier:</b> a stock lupa runtime may also expose a <code>python</code> global, so the reach could be Python itself, not only os and io.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f1-11"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-11">perf_report reads perfLog from the wrong store</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: PR #493 moved it; perf-test.md:130 already says to pass the other file</span></div>
+      <code class="where">tools/perf_report.py:353</code>
+      <p class="how">Accept an optional XayaUI_DevAssist.lua and read <code>XayaUIDevAssistDB.perfLog</code>. Drop the stale run-marker branches and fix the docstring.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 2 ===================== -->
+<section class="phase" aria-labelledby="p2">
+  <div class="phase-head">
+    <div class="num">2</div>
+    <h2 id="p2">Confirmed bugs players see</h2>
+    <p>The two findings still rated high, then every confirmed medium bug with a visible effect in game. Each was traced in the code; none needs an in-game check before the fix.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="high" data-cat="c" data-cov="related"><input type="checkbox" id="f1-1"><div class="body">
+      <div class="top"><span class="chip sev">High</span><span class="cat">Correctness</span><h3><label for="f1-1">Theme page Save, Export and Import never work</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: #471 covers layout only</span></div>
+      <code class="where">XayaUI_Options/ThemeEditor.lua:67-74, 278-308</code>
+      <p class="how">Move <code>saveName</code>, <code>exportText</code> and <code>msg</code> out of <code>T.BuildArgs</code> into file-level upvalues (or a <code>T.editor</code> table) so AceConfig redraws keep them.</p>
+      <p class="vnote"><b>Verifier:</b> the in-game QA walk reuses one cached args table, so it cannot catch this either.</p></div></li>
+    <li class="fix" data-sev="high" data-cat="c" data-cov="related"><input type="checkbox" id="f1-2"><div class="body">
+      <div class="top"><span class="chip sev">High</span><span class="cat">Correctness</span><h3><label for="f1-2">Deleted dynamic group keeps drawing auras</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: HIEFF-E38 request (symptom, no cause)</span></div>
+      <code class="where">XayaUI_Rules/Combat/AuraDisplay.lua:1012-1024, 1099-1127</code>
+      <p class="how">At the end of <code>Build</code>, walk <code>groups</code> and mark not-ok and hide every entry whose serial is stale, as <code>singles</code> and <code>extras</code> already are.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f1-3"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-3">Stale Target Debuff numbers fire conditions</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed, worse</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules/Triggers.lua:721-742, 834-836</code>
+      <p class="how">After <code>CheckTrigger</code>, return nil unless <code>c.tick == ns.tickID</code>. Better: every exit of the aura checks writes a <code>rowAura</code> entry for this tick.</p>
+      <p class="vnote"><b>Verifier:</b> after the stale aura expires the condition stays true until a readable read.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f1-5"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-5">Privacy cover misses the input line above the tabs</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: QA D26 covers Free move only</span></div>
+      <code class="where">XayaUI_Chat/Privacy.lua:73-86</code>
+      <p class="how">When <code>InputPos() == "ABOVE"</code>, add a second cover piece over <code>InputArea()</code>, the same way the FREE layout does.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f1-6"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-6">Display → Sound conversion makes junk rules</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: audit D42 skipped this path</span></div>
+      <code class="where">XayaUI_Rules_Options/Sidebar.lua:996-1025</code>
+      <p class="how">Iterate <code>FolderTopRules(src.id)</code> instead of <code>FolderRules</code>, and send Transform's originals through <code>ns.RecycleRule</code>. Both halves must ship together or Transform strands child rows.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f1-7"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f1-7">Gear compare matches equip location, not slot</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: 2H case noted as a limitation; robe/chest and ranged not</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:1548-1557</code>
+      <p class="how">Pick candidates with <code>CM.SlotsForLink(link)</code> intersected with occupied slots (keep the dual-wield filter); subtract slot 17 for two-handers; fall back to <code>CM.compareSlot</code>.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f5-1"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-1">Routed steps clear the Timing deadline</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Related: #115; the D4 log assumed the opposite</span></div>
+      <code class="where">XayaUI_Rules/Engine.lua:296-297, 264, 204-213</code>
+      <p class="how">Clear the deadline only in full, non-skipping steps (skip-fresh steps also skip rules), or keep per-rule deadlines and take the minimum. In <code>Deps</code>, use <code>ns.CooldownUsed(r)</code> and <code>ns.BuffUsed(r)</code>.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="related new"><input type="checkbox" id="f5-4"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-4">Deleted group box stays; group drag uses wrong scale</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Box: new · Drag: related #261 "math not tested", #267</span></div>
+      <code class="where">XayaUI_Rules/Visual.lua:855-858, 882-899, 1015-1022, 1194-1198, 1345-1347</code>
+      <p class="how">Hide <code>boxes[id]</code> for ids no longer in <code>ns.folders</code> (if you also hide <code>containers[id]</code>, add <code>c:Show()</code> in <code>Container</code> or a restored group stays invisible). Use one factor, <code>parentC_eff / pScale</code>, in all four drag and anchor paths.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f5-5"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-5">Edit lock bypassed by drag and folder menu</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: audit D44 covered other paths</span></div>
+      <code class="where">XayaUI_Rules_Options/Sidebar.lua:360-379, 615-636, 1202-1252</code>
+      <p class="how">Return early in <code>StartDrag</code>, <code>ReorderRow</code> and <code>DropTarget</code> (locked target folder) when <code>IsEditLocked</code>. Give the folder menu the same reduced set the locked rule menu has.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 3 ===================== -->
+<section class="phase" aria-labelledby="p3">
+  <div class="phase-head">
+    <div class="num">3</div>
+    <h2 id="p3">AceGUI pooling cluster</h2>
+    <p>One root cause, confirmed against the vendored Ace3 source: AceGUI's pool is shared by every Ace3 addon in the client, and Release clears only userdata, events, size and points. Hooks and fields XayaUI leaves on pooled widgets therefore reach other addons' windows. One fix pattern covers all five: undo each patch on release with the existing <code>AddRest</code> / <code>OnRelease</code> helpers (HookScript handlers cannot be removed, so give them a flag the restore clears), or gate on <code>AceConfigDialog.OpenFrames[APP]</code>. None of these is filed.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="related"><input type="checkbox" id="f2-1"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f2-1">OnHide hook reverts drafts from another addon's window</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded from high</span><span class="tag cov">Related: #266 (undo lost on close)</span></div>
+      <code class="where">XayaUI_Options/Options.lua:1198-1205</code>
+      <p class="how">Return at the top of the hook unless <code>OpenFrames[APP].frame == self</code>, or move <code>DraftsOnClose</code> and <code>SearchOnClose</code> inside <code>Tree.Closed</code> after its guard. Do not nil-check <code>OpenFrames[APP]</code>: on a genuine close it is already cleared before the hook runs.</p>
+      <p class="vnote"><b>Verifier:</b> needs two Ace windows open in order; the edits land in Drafts with a notice and the window state recovers on the next redraw.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f2-2"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f2-2">Spell search survives EditBox recycling</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed, worse</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules_Options/SpellSearch.lua:537-561</code>
+      <p class="how">Add an <code>OnRelease</code> wrapper on the EditBox widget that clears <code>xuiSearchFn</code> and <code>xuiSearchKind</code> (the Skin.lua <code>AddRest</code> helper is local, so SpellSearch needs its own or an exported one).</p>
+      <p class="vnote"><b>Verifier:</b> focusing a stale box also starts XayaUI's whole-game index scans inside the other addon's window.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f2-3"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f2-3">RefreshTree wrappers, Delete-key hook, OnRelease wrapper, pullout patch</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed, worse</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Options/TreePaint.lua:476-486 · Skin.lua:965-1031, 2337-2407 · Options.lua:1502-1550</code>
+      <p class="how">Restore method wrappers with <code>AddRest</code> (methods are instance fields, so the original can be put back); give HookScript handlers a flag the restore clears.</p>
+      <p class="vnote"><b>Verifier:</b> the dropdown pullout is its own pooled widget shared by every Ace3 dropdown, so the width wrapper and backdrop reach unrelated addons; the row hooks give other trees XayaUI's right-click menu, multi-select and drag.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="e" data-cov="new"><input type="checkbox" id="f2-5"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f2-5">Slider arrows recreated on every acquire</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Options/Skin.lua:1784-1831</code>
+      <p class="how">Keep the arrows on the frame, hide them on release, and on acquire show them, re-anchor, and re-register the <code>AddRest</code> restore (cleared on every release). Re-pointing <code>step</code> is unnecessary.</p>
+      <p class="vnote"><b>Verifier:</b> the leaked buttons are also walked by every decorate pass, so passes slow down as they pile up.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f2-4"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f2-4">Blank-space right-click menu on other trees</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Related: #231 added the menu</span></div>
+      <code class="where">XayaUI_Rules_Options/Sidebar.lua:1338-1373</code>
+      <p class="how">In the hook, return unless <code>self.obj</code> is the tree inside <code>OpenFrames[APP].frame</code>. Also undo <code>EnableMouse(true)</code> on release.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 4 ===================== -->
+<section class="phase" aria-labelledby="p4">
+  <div class="phase-head">
+    <div class="num">4</div>
+    <h2 id="p4">Stale-closure cluster</h2>
+    <p>Closures that capture a live table which is later replaced. The QA walk snapshots are the same class inside DevAssist and are partly tracked in #485.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f3-1"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f3-1">Sidebar popups delete from a dead rule copy</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded from high</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules_Options/Sidebar.lua:1199, 1030-1033, 1155-1186, 1993 · XayaUI_Rules/RuleBin.lua:17-46</code>
+      <p class="how">Capture <code>rule.uid</code> and re-resolve the live root when the popup is accepted (Sidebar needs its own uid lookup; <code>GroupOf</code> is local to Drafts.lua), abort if gone. Make <code>RecycleRule</code> refuse a root not in <code>ns.rules</code>.</p>
+      <p class="vnote"><b>Verifier:</b> restoring the Recycle Bin item re-attaches the cues to the live root, so the damage is recoverable.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f3-2"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f3-2">QA walks overwrite or lose the settings snapshot</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed, worse</span><span class="tag cov">Partly: audit D34, #485 (abort case accepted)</span></div>
+      <code class="where">XayaUI_DevAssist/QAWalks-chat.lua:54-75 · QAWalks-nameplates.lua:28-46 · QAWalks-display.lua:54-91, 494-519</code>
+      <p class="how">Guard with <code>if not saved or putBack then Remember() end</code> and clear only in the put-back step. Store snapshots in <code>QA.DB()</code> keyed by walk id. Give <code>ui-shop-autoshow</code> a put-back step.</p>
+      <p class="vnote"><b>Verifier:</b> the chat-split walk itself asks for a /reload, which wipes the upvalue it relies on.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f3-4"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f3-4">QA check swaps GameTooltip methods by assignment</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_DevAssist/QAWalks-display.lua:153-157</code>
+      <p class="how">Read the lines back with <code>GetTooltipData()</code> or the <code>TextLeftN</code> font strings instead. If a swap stays, restore the exact <code>rawget</code> value saved before the swap, not <code>= nil</code>, which would drop another addon's instance-level hook.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f3-3"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f3-3">Shared QA test group carries leftovers</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Partly: #485, audit D35 (audit-opt walks only)</span></div>
+      <code class="where">XayaUI_DevAssist/QAWalks.lua:17-41, 280-281</code>
+      <p class="how">Reset layout fields and sample positions in <code>MakeTestGroup</code>, or delete any leftover <code>qaTest</code> group and make a fresh one. Give the "Align top" samples different y first.</p>
+      <p class="vnote"><b>Verifier:</b> the mover-session example in the finding was wrong; the group-fit and arrange effects are real.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 5 ===================== -->
+<section class="phase" aria-labelledby="p5">
+  <div class="phase-head">
+    <div class="num">5</div>
+    <h2 id="p5">Check in game first, then fix</h2>
+    <p>Rated plausible, not confirmed. Two of the fixes remove or rebuild a feature (the ESC-menu button, the Game Menu own-layout mode), so run the in-game check listed under &quot;Needs an in-game check&quot; (<code>/console taintLog 2</code>) before changing anything.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="covered"><input type="checkbox" id="f5-2"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-2">ESC-menu hook writes Blizzard's pooled buttons</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag cov">Tracked: #233 as an untested risk</span></div>
+      <code class="where">XayaUI/GameMenuButton.lua:273-282, 315</code>
+      <p class="how">Stop calling <code>AddButton</code> and writing <code>layoutIndex</code> on pooled buttons. Draw XayaUI's button in a small frame of its own under the menu (loses Blizzard's auto layout, so keep the height-fit code). Verify Edit Mode and Log Out after two opens.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="c" data-cov="partial"><input type="checkbox" id="f5-3"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f5-3">Game Menu skin own-layout forwards clicks</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag cov">Partly: #312; the skin log left the taint test open</span></div>
+      <code class="where">XayaUI_Reskin/GameMenuSkin.lua:227-245, 264-267</code>
+      <p class="how">Drop own-layout mode or block it in combat and document it as taint-prone; the click-through idea does not work because the rows are not at the real buttons' positions. Sort entries with a position before entries without one.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-8"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-8">Data Panels touch state drivers in combat</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New (audit marked it OK)</span></div>
+      <code class="where">XayaUI_Bonus/DataPanels.lua:326-343</code>
+      <p class="how">Skip the unregister/register under <code>InCombatLockdown()</code> and queue for <code>PLAYER_REGEN_ENABLED</code>. Call <code>e.f:Show()</code> only when there is no macro or the macro changed, since the unconditional Show defeats the driver.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-6"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-6">One secret aura field aborts a recorder batch</label></h3></div>
+      <div class="tags"><span class="tag warn">Plausible</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_DevAssist/DevAssist.lua:578, 630-651</code>
+      <p class="how">Use <code>Clean(a.isFromPlayerOrPlayerPet) == true</code>. Wrap each OnAdded, OnUpdated and OnRemoved call in its own pcall.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 6 ===================== -->
+<section class="phase" aria-labelledby="p6">
+  <div class="phase-head">
+    <div class="num">6</div>
+    <h2 id="p6">Import hardening</h2>
+    <p>One pass over Share_ApplyRules, NormalizeRule and the profile parts. Pasted strings are untrusted input. The repo's import-safety tracking (#52, roadmap M12) covers custom code only. The imported folder cycle moved here from the old Quick wins: same input, same pass.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="new"><input type="checkbox" id="f4-1"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f4-1">Normalization never type-checks fields</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed, worse</span><span class="tag new">New (audit marked normalisation OK)</span></div>
+      <code class="where">XayaUI_Rules/RuleDefaults.lua:538-567 · XayaUI_Rules/Visual.lua:3024</code>
+      <p class="how">Repair wrong-typed fields in a rules-only pass against <code>RULE_DEFAULTS</code> (not in the shared <code>Merge</code>, which bars, QoL and settings also use). Guard Visual.lua:3024 with <code>type(r.visual) == "table"</code>.</p>
+      <p class="vnote"><b>Verifier:</b> that line runs outside any pcall, so the import click itself throws and every later refresh stops at the bad rule, leaving every rule after it unrefreshed.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-4"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-4">Imported folder cycle overflows the stack</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules/Visual.lua:453-461 · XayaUI_Rules/RuleShare.lua:131-153</code>
+      <p class="how">Add the usual 32-step guard to <code>Container</code>. After the import remap, walk each folder's parent chain and point cycles at the wrap group.</p>
+      <p class="vnote"><b>Verifier:</b> contained by the per-rule pcall and needs a hand-made string; only the imported group breaks.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f4-2"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-2">Themes profile part merges field by field</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Related: #460, PR #503</span></div>
+      <code class="where">XayaUI/Modules.lua:570-578 · XayaUI/Theme.lua:121-124, 1320</code>
+      <p class="how">Give the "themes" part its own <code>apply</code> that clears <code>grads</code>, <code>gradRev</code>, <code>under</code> and <code>classPick</code> before merging, written through the settings view. Decide what happens to <code>scopes</code>.</p>
+      <p class="vnote"><b>Verifier:</b> the reviewer's exact scenario cannot occur (SetUnder clears classPick); a narrower variant with a class pick is real and cosmetic.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f4-3"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-3">Imported rules keep chat-sending actions silently</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: #52, roadmap M12 (code only)</span></div>
+      <code class="where">XayaUI_Rules/RuleShare.lua:244-254, 83-94</code>
+      <p class="how">Clear <code>msgOn</code> for SAY, YELL and GROUP in <code>Check</code>, or count them in the import preview and ask.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f4-4"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-4">Remapped uids can collide</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules/Outcomes.lua:21 · RuleShare.lua:155-167 · RuleBin.lua:343-347</code>
+      <p class="how"><code>repeat u = ns.NewUID() until not haveUid[u]</code> (and against live uids), or add a session counter to the uid.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f4-5"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-5">Replace-import removes the default categories</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: audit D40 fixed the Backups > Load case only</span></div>
+      <code class="where">XayaUI_Rules/RuleShare.lua:114-117 · RuleDefaults.lua:388-395</code>
+      <p class="how">After a replace, call <code>EnsureDefaultFolders(true)</code> when no imported folder carries a default flag.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f4-6"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-6">Cleared cueKey is never repaired</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: audit D57 (neighbouring MigrateCues defect)</span></div>
+      <code class="where">XayaUI_Rules/Cues.lua:241, 274-281</code>
+      <p class="how">Run the "cue without a key gets <code>CueKey(parent)</code>" pass at every <code>InitRules</code> and after <code>Share_ApplyRules</code>, outside the <code>cuesVer</code> guard.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f4-7"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-7">Import window: untrusted name concatenated; theme import skips "Discard?"</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: FA-4 / audit D7 added the ask on the Theme page only</span></div>
+      <code class="where">XayaUI_Options/ImportWindow.lua:90, 102, 117-120</code>
+      <p class="how">Check <code>type(snap.name) == "string"</code>. Wrap a theme import in <code>T.AskDiscard</code> like the Theme page does.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f4-8"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f4-8">Partial store survives an OpenStore error</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: P5 migration log covers the mismatch path only</span></div>
+      <code class="where">XayaUI/Modules.lua:343-348</code>
+      <p class="how">Copy into a local table first and move it into <code>store</code> only after every <code>DeepCopy</code> and the diff succeed.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 7 ===================== -->
+<section class="phase" aria-labelledby="p7">
+  <div class="phase-head">
+    <div class="num">7</div>
+    <h2 id="p7">Smaller correctness fixes</h2>
+    <p>Low severity, nearly all unverified: read the code for each one before fixing it. One (&quot;Exactly N seconds&quot;) is a decision for Xaya, not a fix.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-12"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-12">Chat verdict cache drops the verdict it just stored</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Chat/Messages.lua:197-198</code>
+      <p class="how">Reset the table before storing: <code>if decidedN &gt;= 600 then decided, decidedN = {}, 0 end</code>, then store.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-13"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-13">Search strips UTF-8 bytes one at a time</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules_Options/SpellSearch.lua:162 · RuleSearch.lua:33</code>
+      <p class="how">Replace the byte class with <code>gsub("'", ""):gsub("\226\128\153", "")</code>.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-14"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-14">Timestamp helpers defined twice</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Chat/Options.lua:483-519, 532-568</code>
+      <p class="how">Delete the first copy (lines 476-519 including its comment header).</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-15"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-15">"Exactly N seconds" compares floats with ==</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Rules/Triggers.lua:258-260 · Conditions.lua:1241-1263</code>
+      <p class="how">Remove "Exactly" from seconds-left choices, or compare within a 0.1 s window.</p>
+      <p class="vnote"><b>Decision for Xaya:</b> remove the choice, or keep it and compare within a window. Not built until she picks (V16).</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f1-16"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-16">Avoidance gain coloured as worse</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:1646-1656, 3436-3441</code>
+      <p class="how">Carry an explicit <code>lowerBetter</code> flag on each pair instead of matching "taken" in the label.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f1-17"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f1-17">QA note records "true" instead of the note; no Skipped chip</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: #461 item 5 asked for the status, chip never added</span></div>
+      <code class="where">XayaUI_DevAssist/QAWalk.lua:363 · QATable.lua:83-96</code>
+      <p class="how"><code>d = ok and Clean(note or "") or Clean(good)</code>. Add the missing <code>status:skipped</code> chip.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f5-7"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-7">Second return of R() never sees HIDDEN; Change box resets in combat</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: QA E1j expects "hidden in combat"</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:66-72, 2928, 3000, 3227, 1815, 3448, 2734-2741</code>
+      <p class="how">Check the first return too, or add an <code>R2(fn, i, ...)</code> helper. Keep the last readable rating per key so the Change box does not reset in combat.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-8"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-8">Error handler can recurse until C stack overflow</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI/Core.lua:186-198</code>
+      <p class="how">Add an <code>inHandler</code> flag; while set, skip <code>RecordError</code> and <code>ConsoleMessage</code> and only forward to <code>prevHandler</code>.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-9"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-9">Sound handles discarded, previews stack</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI/Sound.lua:177-190 · XayaUI_Rules/Engine.lua:165-170</code>
+      <p class="how">Keep the handle per rule and per preview; call <code>StopSound</code> when the rule ends, is dropped, or the preview stops or replays.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-10"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-10">Chat sidebar stop in combat strands Blizzard buttons</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Chat/Sidebar.lua:154-179, 326-334</code>
+      <p class="how">If <code>moved</code> is non-empty after <code>GiveAllBack()</code> in stop, keep a one-shot <code>PLAYER_REGEN_ENABLED</code> handler that gives them back.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f5-11"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-11">Recycle Bin purges items of unloaded modules</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI/RecycleBin.lua:139-149</code>
+      <p class="how">Skip items with <code>not ns.BinKind(it.kind)</code> in <code>RecyclePurge</code> and <code>RecycleWouldPurge</code>, as the contract promises.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="partial"><input type="checkbox" id="f5-12"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f5-12">Shopping List history double-counts after unreadable reads</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Partly: audit D13 fixed the "Forget" trigger only</span></div>
+      <code class="where">XayaUI_QoL/ShoppingList.lua:145-176</code>
+      <p class="how">Update <code>lastEnch[slot]</code> only when the link was readable and <code>lastGems[slot]</code> only when <code>info.gems ~= nil</code>.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 8 ===================== -->
+<section class="phase" aria-labelledby="p8">
+  <div class="phase-head">
+    <div class="num">8</div>
+    <h2 id="p8">Efficiency</h2>
+    <p>Most rules-core items here are already open entries in the repo's own PERF-AUDIT, which is also why the verifiers rated them low: the developer had measured them as bounded. The new medium items are in chat, the character panel and the options window.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="e" data-cov="partial"><input type="checkbox" id="f7-7"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f7-7">Any GET_ITEM_INFO_RECEIVED rebuilds two panels</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: PERF-AUDIT Q6, Q8 inventory rows</span></div>
+      <code class="where">XayaUI_QoL/ShoppingList.lua:938-988 · CharacterReskin.lua:1461-1469, 90-114</code>
+      <p class="how">Keep a set of awaited item IDs and return early unless <code>arg1</code> is in it; throttle Render to ~4/s (the larger win, since browse results and bag updates also refresh). Cache the Reskin's normalised settings per <code>settingsEpoch</code>.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="e" data-cov="new"><input type="checkbox" id="f7-8"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f7-8">Chat history Live rebuilds all lines per message</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Chat/History.lua:455-475, 101-111</code>
+      <p class="how">Cache each entry's formatted line when created; coalesce Live updates to one per 0.25 s; replace <code>table.remove(list, 1)</code> with a ring buffer.</p>
+      <p class="vnote"><b>Verifier:</b> Live is off by default and the default size is 300, not 2000; still about 1,500 entry rebuilds a second at 5 messages a second.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="e" data-cov="partial"><input type="checkbox" id="f7-9"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f7-9">Options tree rebuilds and sidebar rescans</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Partly: PR #502, #467 (sidebar refresh "largest remaining cost")</span></div>
+      <code class="where">XayaUI_Options/Options.lua:1664-1678 · TreePaint.lua:480-484 · XayaUI_Rules_Options/DisplayTab.lua:194-262 · RulesTree.lua:477-479</code>
+      <p class="how">Key <code>loadSeen</code> by rule table or clear it in <code>Notify</code>; cache <code>Resolve</code> and the read context in <code>WithCueMemo</code>; memoise <code>list()</code> and <code>Differs</code> on <code>GetTime()</code> (not on <code>OptionsApi.memo</code>, which is nil inside FeedGroup); count folders in one pass per build.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="e" data-cov="partial new"><input type="checkbox" id="f7-10"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f7-10">Theme changes schedule uncoalesced skin passes; dropdowns re-measured</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag cov">Skin pass: new · Dropdowns: partly, left on purpose per W7 log</span></div>
+      <code class="where">XayaUI_Options/Skin.lua:219-220, 1864-1873</code>
+      <p class="how">Guard the <code>OnResolve</code> timer with a pending flag (T.Defer throttles only THEME_CHANGED). Route <code>DDMin</code> through the existing <code>scanW</code> width cache.</p></div></li>
+    <li class="fix" data-sev="med" data-cat="e" data-cov="new"><input type="checkbox" id="f7-12"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Efficiency</span><h3><label for="f7-12">Ability Scaling scans spells × talents per render</label></h3></div>
+      <div class="tags"><span class="tag ok">Confirmed</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:2438-2451, 2399-2404</code>
+      <p class="how">Read each picked talent's description once per build and match spell names against that list. Cache the talent scan on an epoch when Rules is off.</p>
+      <p class="vnote"><b>Verifier:</b> stat events in combat also re-render this tab at up to 4 Hz.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="covered"><input type="checkbox" id="f7-1"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-1">Cooldown Manager index rebuilt 4× a second</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Tracked: PERF-AUDIT PA-4, #116</span></div>
+      <code class="where">XayaUI_Rules/Conditions.lua:371-447</code>
+      <p class="how">Hoist <code>Add</code> and the key list (pass <code>ids</code>/<code>hidden</code> as arguments), reuse the tables, mark dirty from <code>OnCooldownIDSet</code>, and keep a slow timer as backstop for IDs that become readable again.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="partial new"><input type="checkbox" id="f7-2"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-2">Display frames and aura containers leak on every edit</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Frames: new · Containers: partly (add-only groups accepted in 0.6.6 log)</span></div>
+      <code class="where">XayaUI_Rules/Visual.lua:3250-3257 · Combat/AuraDisplay.lua:929-936, 652-659</code>
+      <p class="how">Free list in <code>DropVisual</code> that <code>GetFrame</code> takes from (closures must read <code>self.xuiRule</code>); re-arm the Build debounce on each edit; reuse a disabled aura group whose key matches.</p>
+      <p class="vnote"><b>Verifier:</b> grows only with editing, capped at one Build per second; a /reload clears it.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="covered"><input type="checkbox" id="f7-3"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-3">Auto-size group box runs a 5 Hz OnUpdate forever</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Tracked: PERF-AUDIT PA-17</span></div>
+      <code class="where">XayaUI_Rules/Visual.lua:855-877, 813-853</code>
+      <p class="how">Compute bounds once per tick for all groups or only after a layout change; apply the backdrop only when its look key changes; skip SetPoint/SetSize when unchanged.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="partial"><input type="checkbox" id="f7-4"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-4">Every cast runs the duration model</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Partly: PERF-AUDIT §3.5 calls it "fine"</span></div>
+      <code class="where">XayaUI_Rules/Combat/AuraModel.lua:691-694, 667-679</code>
+      <p class="how">Build the modifier list lazily for the review UI; drop only the cache entries whose spell data loaded. Do not filter cast windows to watched IDs: that could starve the Bonus AuraModel service.</p>
+      <p class="vnote"><b>Verifier:</b> talent texts stay cached; only the parse repeats, once per spell per wipe.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="new"><input type="checkbox" id="f7-5"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-5">Chat input open/close triggers a full refresh</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
+      <code class="where">XayaUI_Chat/Frame.lua:817, 902-905 · Core.lua:272-280</code>
+      <p class="how">Hook ActivateChat/DeactivateChat with a lighter refresh (keep the edit-box restyle). Skip <code>SetFont</code> when <code>GetFont()</code> already matches. Force <code>Rewrap</code> only when <code>WrapOff()</code> says the width is stale.</p>
+      <p class="vnote"><b>Verifier:</b> runs at typing frequency, not a hot path; the taint sub-claim is plausible only.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="partial"><input type="checkbox" id="f7-6"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-6">Stats tab redoes 36 item reads per render</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Partly: PERF-CODE-NOTES:57 "to measure"</span></div>
+      <code class="where">XayaUI_QoL/CharacterModel.lua:1407-1415, 2879-2900 · XayaUI_Bonus/CharacterToolkit.lua:2164-2178, 111-165</code>
+      <p class="how">Cache the SlotInfo list and CritEffect, invalidated on the already-registered equipment, item-info and socket events; cache text widths; drop to ~1 Hz in combat; normalise <code>Cfg()</code> once on a dirty flag.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="partial"><input type="checkbox" id="f7-11"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-11">DevAssist probe inflates Mythic+ perf recordings</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Partly: PERF-AUDIT PA-32; REQUEST-LOG P-5</span></div>
+      <code class="where">XayaUI_DevAssist/DevRecord.lua:262 · Probe.lua:392-440, 1122-1197</code>
+      <p class="how">Suspend the probe while Perf records (defaulting it off goes against row A20). Cache <code>WatchIDs()</code>, update <code>lastWatch</code> in place, skip creatures already filed.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="related"><input type="checkbox" id="f7-13"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-13">Aura bars rebuild tooltip data every step</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Related: PERF-AUDIT PA-21 (different bar cost)</span></div>
+      <code class="where">XayaUI_Rules/BarCue.lua:359-381, 451-462</code>
+      <p class="how">Cache the negative per <code>(spellID, "aura")</code> once the tooltip has text, keyed separately from the spell-only reads.</p>
+      <p class="vnote"><b>Verifier:</b> engine-drawn bars skip this path entirely; only bars XayaUI draws itself pay.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="covered"><input type="checkbox" id="f7-14"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f7-14">Per-step allocations on the hot path</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Tracked: PERF-AUDIT PA-3, PA-5, PA-7, PA-12, PA-13, PA-14, PA-22</span></div>
+      <code class="where">XayaUI_Rules/Conditions.lua:533-555, 1469-1505, 190-227 · Triggers.lua:27-51 · Outcomes.lua:361-371 · Visual.lua:2855-2862</code>
+      <p class="how">Pool refs per aura ID; varargs instead of <code>pack</code> tables; memoise <code>CheckTalents</code> and <code>WatchCharges</code> on <code>configVersion</code>; key duration text on <code>ceil(rem)</code>. The audit already lists most of these with the same fixes.</p></div></li>
+  </ol>
+</section>
+
+<!-- ===================== PHASE 9 ===================== -->
+<section class="phase" aria-labelledby="p9">
+  <div class="phase-head">
+    <div class="num">9</div>
+    <h2 id="p9">Test harness depth</h2>
+    <p>Larger test work, after the fixes above. The secret-value gap is an accepted limitation in the harness header, but combat lockdown is unemulated everywhere and not acknowledged; the scenario even claims &quot;combat lockdown on&quot;.</p>
+    <div class="n" data-count></div>
+  </div>
+  <ol class="fixes">
+    <li class="fix" data-sev="med" data-cat="c" data-cov="covered new"><input type="checkbox" id="f6-1"><div class="body">
+      <div class="top"><span class="chip sev">Medium</span><span class="cat">Correctness</span><h3><label for="f6-1">Harness never produces secrets or combat lockdown</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded from high</span><span class="tag cov">Tracked: accepted limitation (secrets); lockdown half new</span></div>
+      <code class="where">tests/harness/world.lua:142, 694 · scenario.lua:73-79</code>
+      <p class="how">Mark aura, cooldown and cast payload fields secret during the combat step by a C_Secrets-style policy (blanket marking would cause false failures). While <code>W.combat</code>, mark some frames protected and have protected widget methods on them record a FAIL.</p>
+      <p class="vnote"><b>Verifier:</b> 34 individual runners already install secret values, so the gap is end-to-end coverage, not total.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="covered"><input type="checkbox" id="f6-2"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-2">Enums numbered by position in the API index</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag cov">Tracked: acknowledged in REQUEST-LOG row 55, not fixed</span></div>
+      <code class="where">tests/harness/build_api_index.py:39-41</code>
+      <p class="how">Emit <code>{Name: EnumValue}</code> as <code>api_index_from_docs.py</code> does. Exit non-zero when the source is empty or no files were read.</p>
+      <p class="vnote"><b>Verifier:</b> fields iterate in declared order, so about 21% of enums are wrong, not 87%; no index is committed.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="new"><input type="checkbox" id="f6-5"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-5">engine_bench.py no longer runs</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
+      <code class="where">tests/engine_bench.py:146-203</code>
+      <p class="how">Load files through <code>tests/xui_paths.py</code> including XayaUI_Rules; use <code>os.devnull</code>; delete the leftover <code>collectgarbage("stop")</code>.</p>
+      <p class="vnote"><b>Verifier:</b> not in run_all and fails loudly, so no false confidence.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="c" data-cov="related"><input type="checkbox" id="f6-7"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Correctness</span><h3><label for="f6-7">Harness and chat_world stubs differ from the game</label></h3></div>
+      <div class="tags"><span class="tag unv">Unverified</span><span class="tag cov">Related: PR #504 found a different chat_world gap</span></div>
+      <code class="where">tests/harness/world.lua:707, 255, 964-968, 801 · tests/chat_world.lua:46-51, 91</code>
+      <p class="how">Pack with <code>n</code> in the hook stub, filter units in <code>RegisterUnitEvent</code>, snapshot the object list before dispatch, add <code>isActive</code>/<code>isOnGCD</code> to the cooldown stub. Fire OnHide in chat_world and stop returning silent no-ops for unknown methods.</p></div></li>
+    <li class="fix" data-sev="low" data-cat="e" data-cov="new"><input type="checkbox" id="f6-8"><div class="body">
+      <div class="top"><span class="chip sev">Low</span><span class="cat">Efficiency</span><h3><label for="f6-8">perf_report reader is quadratic</label></h3></div>
+      <div class="tags"><span class="tag down">Downgraded</span><span class="tag new">New</span></div>
+      <code class="where">tools/perf_report.py:67, 99, 116</code>
+      <p class="how">Precompile the patterns and call <code>PAT.match(self.s, self.i)</code> instead of slicing the rest of the file per value.</p></div></li>
+  </ol>
+</section>
+
+<section class="note" aria-labelledby="verify">
+  <h2 id="verify">Needs an in-game check</h2>
+  <ul>
+    <li>ESC-menu AddButton taint after two opens (<code>/console taintLog 2</code>, then Edit Mode and Log Out).</li>
+    <li>Data Panels state-driver re-register under combat lockdown: blocked-action report or silent no-op.</li>
+    <li>Game Menu skin own-layout clicks: whether Settings or Edit Mode opened that way misbehave later.</li>
+    <li>What <code>GetInspectItemLevel</code> returns for a unit token that has moved since the request.</li>
+    <li>Whether <code>isFromPlayerOrPlayerPet</code> is secret in UNIT_AURA payloads and whether comparing it raises.</li>
+    <li>Whether the GameTooltip method swap leaves taint that secure tooltip paths pick up.</li>
+    <li>Still open from the review: hidden AuraContainer semantics, <code>FontableFrameMixin:SetFont</code> allocation, the Professions header reset, and <code>hasCurrent</code> in PLAYER_EQUIPMENT_CHANGED.</li>
+  </ul>
+</section>
+
+<p class="foot">Full evidence, verifier traces and coverage references for every item are in <code>xayaui-review-2026-11-08.md</code> (not in the repo at 3eb0c4b; this page shows 68 rows for the 132 findings, the rest are in that file). Tracker: <code>docs/plans/FIX-PLAN-2026-11-08-TRACKER.md</code>. Checkmarks are stored in this browser only.</p>
+
+</div>
+<script>
+(function () {
+  var KEY = "xayaui-fixes-done";
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('.fix input[type="checkbox"]'));
+  var done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { done = {}; }
+  var sevOn = { high: true, med: true, low: true };
+  var hideDone = false, newOnly = false;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+  function apply() {
+    var total = 0, n = 0;
+    boxes.forEach(function (b) {
+      var li = b.closest(".fix");
+      var isDone = !!done[b.id];
+      b.checked = isDone;
+      li.classList.toggle("done", isDone);
+      var show = sevOn[li.getAttribute("data-sev")] && !(hideDone && isDone) && !(newOnly && (" " + li.getAttribute("data-cov") + " ").indexOf(" new ") < 0);
+      li.hidden = !show;
+      total++; if (isDone) n++;
+    });
+    document.getElementById("count").textContent = n + " of " + total + " done";
+    document.getElementById("fill").style.width = (total ? (100 * n / total) : 0) + "%";
+    document.querySelectorAll(".phase").forEach(function (p) {
+      var items = p.querySelectorAll(".fix"), d = 0;
+      items.forEach(function (li) { if (li.classList.contains("done")) d++; });
+      var c = p.querySelector("[data-count]"); if (c) c.textContent = items.length + " fixes · " + d + " done";
+    });
+  }
+  boxes.forEach(function (b) {
+    b.addEventListener("change", function () { if (b.checked) done[b.id] = 1; else delete done[b.id]; save(); apply(); });
+  });
+  document.querySelectorAll(".filters button[data-sev]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var s = btn.getAttribute("data-sev"); sevOn[s] = !sevOn[s];
+      btn.setAttribute("aria-pressed", sevOn[s] ? "true" : "false"); apply();
+    });
+  });
+  var hd = document.querySelector('.filters button[data-done]');
+  hd.addEventListener("click", function () { hideDone = !hideDone; hd.setAttribute("aria-pressed", hideDone ? "true" : "false"); apply(); });
+  var nw = document.querySelector('.filters button[data-new]');
+  nw.addEventListener("click", function () { newOnly = !newOnly; nw.setAttribute("aria-pressed", newOnly ? "true" : "false"); apply(); });
+  apply();
+})();
+</script>
+</body>
+</html>

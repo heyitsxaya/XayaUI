@@ -708,7 +708,7 @@ df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
 5c43aeb1bb0e4642c10cc1aabe836f9a  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
-d8b19ca6b6c74872f098a6813de16c70  docs/SESSION-START-SUMMARY.md
+a5fca89cb8cdf2d42fd011c089dbd4d5  docs/SESSION-START-SUMMARY.md
 b214736d8ecc6647f246b61fc0825915  docs/USER-GUIDE.md
 8ca0cdce9cbbb8eeb20d9950f460d8a9  docs/WHATS-NEW.md
 addc6d522657e880ed4c488098f3799b  docs/design/BUILD-RULES.md
@@ -728,6 +728,9 @@ a2e49515e283e72fc94f220e8148b746  docs/issue-screenshots/toolkit-window-resize.p
 5b76c3620cb5e2f1e3997e604b5a4c9a  docs/plans/CDM-TRACKING-REVIEW-2026-11-06.md
 46e7925eac2f7f3568c5ff46a1336781  docs/plans/D8-RAID-RULES-SPEC-2026-11-07.md
 e62439d6b9c7a0a6eac69d3d5735b088  docs/plans/DEBUG-TO-DEVASSIST-2026-11-06.md
+334b5936f1ccf8540ef6fee74cce0e47  docs/plans/FIX-PLAN-2026-11-08-SESSION-SUMMARY.md
+e42ab2091db69b805e1267d1288c4863  docs/plans/FIX-PLAN-2026-11-08-TRACKER.md
+045d772c2a3bb4bf020a1ccacb871935  docs/plans/FIX-PLAN-2026-11-08.html
 2a03d88935103ce732b7e3e0d1eccbb9  docs/plans/GAMES-MODULE-2026-11-05.md
 20e4afb61755d1406576c94507b3a229  docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md
 25e9cf312a11d30076f032e0a3e750a4  docs/plans/GROUP-PAGE-REVIEW-2026-11-04.md
@@ -759,6 +762,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
+deae41d910b2665dd0aaa6ed1ff0b62b  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 3389dcbd9ba574ac286fd24366361f7a  docs/process/REQUEST-LOG.md
