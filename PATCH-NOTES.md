@@ -22,6 +22,26 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-08 — Gradient Borders
+
+### XayaUI 0.6.81
+
+**Themes**
+- Added gradient borders to the cursor trail themes: the settings window's frame, panes, buttons and tabs are drawn with a border that runs through the trail's colors. Solid themes draw exactly as before.
+- Added a "Reverse gradient direction" switch on the Theme page, under the theme choice. It is independent of the cursor trail's own Reverse, and is saved and shared with the theme.
+- Added "Use the gradient as the color of" in Advanced customization, which lets the gradient be the color of any palette color. Six earlier theme strings still import unchanged.
+  *Developers' notes: Not yet tested in game (QA B294 to B296; walkthrough "debug-w9"). Issue #460. Chosen for you, change it in the Questions flow: a box's gradient runs left to right and a line along its length; only the settings window and core's flat buttons get gradient borders (not the version pane, the import window, the Blizzard Reskin, Character or Chat windows, dropdown boxes or the Esc menu button); anything else that asks for one solid color still gets the old color; and there is one Reverse per theme.*
+
+### Options 0.6.102
+
+**Theme**
+- The Theme page carries the new switch and the gradient color list.
+
+### Dev Assist 0.7.67
+
+**In-game QA**
+- Added the walkthrough "debug-w9".
+
 ## 2026-11-08 — Debug Batch W7
 
 ### Options 0.6.100
