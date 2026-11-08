@@ -45,3 +45,4 @@ QAWalks-settings-seam.lua
 QAWalks-options-split.lua
 QAWalks-code-move.lua
 QAWalks-rule-editor-folder.lua
+QAWalks-settings-migration.lua

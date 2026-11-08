@@ -118,7 +118,7 @@ end
 -- (P5) storeState[module]: nil = its store is not open (the module's addon has not loaded yet, or is switched off: reads give nil, writes
 -- are dropped and counted, nothing is made); "own" = its own saved variable; "old" = the copy failed its check, so the module keeps
 -- CueRulesDB (laid out as before)
-local storeState, lastStore = {}, {}
+local storeState, lastStore, copiedNow = {}, {}, {}   -- copiedNow[module]: the copy was made in this session
 local function StoreOf(module)
     local st = SETTINGS_STORES[module]
     local t = rawget(_G, st.var)
@@ -212,7 +212,16 @@ end
 function ns.SettingsStore(module)
     if not OWN_STORE[module] then return settingsViews[module] and { var = "CueRulesDB", state = "platform" } or nil end
     local st = SETTINGS_STORES[module] or {}   -- (not declared: the module's addon is off or not loaded yet)
-    return { var = storeState[module] == "old" and "CueRulesDB" or st.var, state = storeState[module] or "closed", addon = st.addon, ownVar = st.var }
+    local out = { var = storeState[module] == "old" and "CueRulesDB" or st.var, state = storeState[module] or "closed", addon = st.addon,
+        ownVar = st.var, copiedNow = copiedNow[module] == true }
+    -- what the copy recorded in the store (for the QA walkthrough and /dump; copies, read only)
+    local t = st.var and rawget(_G, st.var)
+    if type(t) == "table" then
+        out.migratedFrom, out.migratedAt, out.migratedBy, out.migratedKeys = t.migratedFrom, t.migratedAt, t.migratedBy, t.migratedKeys
+        local mm = t.migrationMismatch
+        if type(mm) == "table" then out.mismatch = { at = mm.at, by = mm.by, diff = mm.diff, tries = mm.tries } end
+    end
+    return out
 end
 -- (P5) the modules that have their own store, sorted
 function ns.SettingsStoreModules()
@@ -277,6 +286,8 @@ local function LegacyValue(module, k, old)
     return v
 end
 ns.SettingsLegacyValue = LegacyValue   -- (tests: what the copy takes from a CueRulesDB)
+-- (the QA walkthrough) a copy of what a module's key still holds in CueRulesDB (the old place, kept untouched until P6), read only
+function ns.SettingsOldValue(module, k) return DeepCopy(LegacyValue(module, k, Backing())) end
 -- the sub-keys of a split key that its owner keeps ({ [sub key] = true }, a copy), or nil (XayaUI_QoL/CharacterReskin.lua reads the look keys)
 function ns.SettingsSplitSub(key)
     local split = LEGACY_SPLIT[key]
@@ -349,6 +360,7 @@ local function OpenStore(module)
         store.migratedAt = Stamp()
         store.migratedBy = st.addon .. " " .. (Meta(st.addon, "Version") or "?")
         store.migratedKeys = n
+        copiedNow[module] = true
     end
     store.storeVersion = 1
     return "own"
