@@ -46,8 +46,9 @@
 --   2026-11-06: "Fourth column - computed Value"); "Usable now" is gone.
 --   QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Spells tab is the Ability Scaling tab (her answer "Spells tab -> Ability
 --   Scaling"); no stray Refresh row in its lists; no column head is cut (widths from the heads as the game measures them); Stat Weights
---   titles centred, cells from their column's left edge, T/L in two lines; a typed number's new value, with its sign, under the value in
---   the accent colour (no "now -> then" on the Stats tab); Primary / General / Offensive / Defensive are bucket bars and every Stats line
+--   titles centred, cells from their column's left edge, T/L in two lines; a typed number's new value, with its sign, under the value
+--   (Bonus 0.6.38: green when better, red when worse, blue / orange with a XayaUI colour-blind theme; was the accent colour) (no
+--   "now -> then" on the Stats tab); Primary / General / Offensive / Defensive are bucket bars and every Stats line
 --   is indented by its depth (one step); the Gear Summary is at the top of the Stats tab as a graphic in a chosen style.
 --   Gear: the selected equipped item's box is highlighted (a click on it again lets it go); the items you own for the slot are icons
 --   (click to pick, several at once, up to 3; the box shows the last one's name); one "Changes" section (Stat | Pt value | Equipped |
@@ -208,7 +209,8 @@ local function TC(class, prop, fb)
 end
 local TONES = { good = { 0.5, 1, 0.5, 1 }, warn = { 1, 0.56, 0.25, 1 } }
 -- the theme's accent colour (core's resolved "accent" token, ns.Theme.cur.accent, as core's game menu and the cursor highlight read it;
--- XayaUI's default accent when the theme is missing). QoL 0.7.28: the new value a typed number gives (tone "change") and the bucket bars.
+-- XayaUI's default accent when the theme is missing). The bucket bars and the picked items' frame. (QoL 0.7.28 to 0.7.53 / Bonus 0.6.37:
+-- also the new value a typed number gives; Bonus 0.6.38: those have their own colours, ChangeColor below.)
 local function Accent()
     local T = ns.Theme
     local c = T and T.cur and T.cur.accent
@@ -216,9 +218,69 @@ local function Accent()
     return { 0.75, 0.25, 1, 1 }
 end
 ns.CharToolkit_Accent = Accent   -- (tests)
+
+-- Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15, her words: "stat calculator colors need to
+-- ignore themeing colors"; "xayaui theme is fine for everything except change numbers and stat colors"; change values by direction: "1 or
+-- adjust for color blind mode" (option 1 = "Green up, red down"); the colour-blind switch: "XayaUI theme only"). The new value a typed
+-- number gives is coloured by what it means (the model's newTone, CharacterModel.lua CM.ChangeDir / SplitChanges): better = the game's
+-- green, worse = the game's red; when XayaUI's base theme is one of its three colour-blind themes (XayaUI/Theme.lua T.BUILTIN colorblind,
+-- protan, tritan; the game's own colour-blind setting is not read), better = blue and worse = orange, the pair the colour-blind theme
+-- already uses: its accent (sky blue, Okabe-Ito) and its danger colour (orange), read from T.BUILTIN.colorblind.pal (XayaUI/Theme.lua,
+-- the "colorblind" entry of T.BUILTIN, line 174 accent = { 0.337, 0.706, 0.914 }, line 179 danger = { 1.00, 0.55, 0.10 }, at core
+-- 0.6.83). The same = the theme's text colour.
+-- The base theme is the global one (Settings > Theme, T.EffBase: a Custom theme looks through to the theme it starts from; a saved
+-- theme to its own base): the Stat Calculator registers no theme scope of its own (Theme.lua T.RegisterScope), so it paints with the
+-- global theme.
+-- GREEN_FONT_COLOR / RED_FONT_COLOR: the game's own colour objects (Blizzard's shared UI code, ColorMixin, read with :GetRGB() as
+-- XayaUI_Reskin/BlizzardSkins.lua reads the game's colours). They are not in the generated API documentation (INFERENCE: present in
+-- every client, as Blizzard's UI uses them); when one is missing or does not answer, the fallback is XayaUI's own "good" green and the
+-- theme's danger colour (else a plain red).
+local CB_BASES = { colorblind = true, protan = true, tritan = true }
+local function ColorBlindBase()
+    local T = ns.Theme
+    if not (T and T.EffBase) then return false end
+    local ok, b = pcall(T.EffBase)
+    if not ok or type(b) ~= "string" then return false end
+    if CB_BASES[b] then return true end
+    local db = rawget(_G, "CueRulesDB")
+    local sv = type(db) == "table" and type(db.themes) == "table" and db.themes[b]
+    if type(sv) ~= "table" then return false end
+    local sb = (sv.base == "custom") and sv.under or sv.base
+    return CB_BASES[sb] == true
+end
+ns.CharToolkit_ColorBlindBase = ColorBlindBase   -- (tests, the QA walkthrough)
+local function GameColor(name)
+    local c = rawget(_G, name)
+    if type(c) ~= "table" or type(c.GetRGB) ~= "function" then return nil end
+    local ok, r, g, b = pcall(c.GetRGB, c)
+    if ok and num(r) and num(g) and num(b) then return { r, g, b, 1 } end
+end
+local function CBPal(key)
+    local T = ns.Theme
+    local pal = T and type(T.BUILTIN) == "table" and type(T.BUILTIN.colorblind) == "table" and T.BUILTIN.colorblind.pal
+    local c = type(pal) == "table" and pal[key]
+    if type(c) == "table" and num(c[1]) and num(c[2]) and num(c[3]) then return { c[1], c[2], c[3], 1 } end
+end
+local function ChangeColor(dir)
+    if dir == "better" or dir == "worse" then
+        if ColorBlindBase() then
+            local c = CBPal(dir == "better" and "accent" or "danger")
+            if c then return c end
+        end
+        local c = GameColor(dir == "better" and "GREEN_FONT_COLOR" or "RED_FONT_COLOR")
+        if c then return c end
+        if dir == "better" then return { TONES.good[1], TONES.good[2], TONES.good[3], 1 } end
+        local T = ns.Theme
+        local d = T and T.cur and T.cur.danger
+        if type(d) == "table" and num(d[1]) and num(d[2]) and num(d[3]) then return { d[1], d[2], d[3], 1 } end
+        return { 1, 0.25, 0.25, 1 }
+    end
+    return TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })   -- the same (or no direction known): the theme's text colour
+end
+ns.CharToolkit_ChangeColor = ChangeColor   -- (tests, the QA walkthrough)
 local function ToneColor(tone, fb)
     if tone == "mute" then return TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) end
-    if tone == "change" then return Accent() end
+    if tone == "better" or tone == "worse" or tone == "same" or tone == "change" then return ChangeColor(tone) end
     return TONES[tone] or fb
 end
 local function FontPath(fs)
@@ -294,7 +356,9 @@ local function ShowTooltip(owner, it)
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     for _, l in ipairs(CM.TooltipLines(it, mode)) do   -- (Bonus 0.6.37: the model's, CharacterModel.lua)
         if l[2] ~= nil then
-            local lc = l.title and label or muted
+            -- (Bonus 0.6.38, "Yes, everywhere") a label that is a stat's name in the stat's colour (the model's lc, CM.STAT_COLORS);
+            -- other labels keep the theme. The new value's colour: its tone (better / worse / same, ToneColor -> ChangeColor).
+            local lc = l.lc or (l.title and label or muted)
             local rc = ToneColor(l[3], text)
             if GameTooltip.AddDoubleLine then
                 GameTooltip:AddDoubleLine(l[1], l[2], lc[1], lc[2], lc[3], rc[1], rc[2], rc[3])
@@ -1066,8 +1130,9 @@ local function GridLine(g, y, o)
     if hasV or o.newValue then
         local vh = hasV and PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value")) or o.size
         -- (QoL 0.7.28; Xaya: "input changes should show changed values underneath them in a color change with a +/- before"; her answer
-        -- "New value with sign") a typed number's new value, with its sign, under the current value, in the theme's accent colour
-        if o.newValue then vh = vh + 1 + PlaceFS(FS(), g.vx, y + vh + 1, g.val, o.size, o.newValue, Accent(), "RIGHT", true, K("change")) end
+        -- "New value with sign") a typed number's new value, with its sign, under the current value. Bonus 0.6.38: coloured by what it
+        -- means (green better / red worse, blue / orange with a XayaUI colour-blind theme, the text colour when the same; ChangeColor)
+        if o.newValue then vh = vh + 1 + PlaceFS(FS(), g.vx, y + vh + 1, g.val, o.size, o.newValue, ChangeColor(o.newTone), "RIGHT", true, K("change")) end
         h = math.max(h, vh)
     end
     if hasP then h = math.max(h, PlaceFS(FS(), g.px, y, g.per, o.size, o.per, o.perCol, "RIGHT", true, K("per"))) end
@@ -1182,7 +1247,7 @@ local function RenderGrid(c, items, y, hasBox)
             end
             local h = GridLine(g, y, { x0 = INDENT, label = it.label, labelCol = it.labelColor or (it.minor and cMuted or cText), size = size,
                 rating = it.ratingText, ratingCol = cText,
-                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, box = boxed, boxH = boxH, newValue = it.newValue })
+                value = v, valueCol = ToneColor(tone, cText), per = it.per, perCol = cText, box = boxed, boxH = boxH, newValue = it.newValue, newTone = it.newTone })
             -- the lines under it: one size smaller and muted, except a card that asks for full-size ones (#378: "way too tiny")
             local big = it.bigPairs == true
             local psz, pcol = big and size or size - 1, big and cText or cMuted
@@ -1230,7 +1295,8 @@ local function RenderGrid(c, items, y, hasBox)
                     lineMax = math.max(lineMax, nh)
                     local p = e.p
                     nameBtns[#nameBtns + 1] = { x = g.ix + fx, y = fy, w = tw, h = nh, item = { kind = "infl", key = it.key .. ":" .. tostring(p.label),
-                        label = p.label, value = p.value, per = p.per, perPoint = p.perPoint, perText = p.perText, newValue = p.newValue, tone = p.tone,
+                        label = p.label, value = p.value, per = p.per, perPoint = p.perPoint, perText = p.perText, newValue = p.newValue, newTone = p.newTone, tone = p.tone,
+                        labelColor = p.labelColor,
                         pairs = e.nested, tip = {} } }
                     fx = fx + tw + sp
                 end
@@ -1243,7 +1309,7 @@ local function RenderGrid(c, items, y, hasBox)
                 -- (QoL 0.7.40) a contribution reads "from Agility" as in her words (the model's "From ..." with a small f)
                 local lbl = tostring(p.label or ""):gsub("^From ", "from ")
                 local ph = GridLine(g, y, { x0 = 2 * INDENT, label = lbl, labelCol = p.labelColor or pcol, size = psz, value = pv,
-                    valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair", newValue = p.newValue })
+                    valueCol = ToneColor(p.tone, cText), per = p.per, perCol = pcol, kind = "pair", newValue = p.newValue, newTone = p.newTone })
                 y = y + ph + 1
             end
             -- the hover (where the numbers come from): the card's row up to the Influences column (a box stays clickable), the lines
@@ -1388,7 +1454,8 @@ end
 -- the values as the game measures them (TextW, FitCols): every head fits its column on one line where the width allows, and never
 -- loses a word; then the percents and the values fit on one line; Spell Name takes the rest (Talent Modifiers up to 22% of it). Under the
 -- percents, one line per other stat that changes the number (Versatility, Mastery: CM SpellItem, her answer "Only stats that change the
--- number"); under the first Computed Value, the new value a typed number gives, with its sign, in the accent colour (as on the Stats tab).
+-- number"); under the first Computed Value, the new value a typed number gives, with its sign, coloured as on the Stats tab (Bonus
+-- 0.6.38: better / worse, ChangeColor; was the accent colour).
 -- (QoL 0.7.36; REQUEST-LOG UI-39, Xaya 2026-11-06: "put talent modifiers before % PSV for clarity / spell names should be collapsible
 -- and there should be divider lines between each ability to segmenrt more clearly / put the numbers to left-align to be closer to their
 -- %PSV calculations") Spell Name | Talent Modifiers | % PSV | Computed Value; a click on a spell's row folds it to its name ("- " open,
@@ -1468,11 +1535,21 @@ local function RenderSpells(c, items, y)
                 local hp = PlaceFS(FS(), g.px, ey, g.psv, size, e.pct, cText, "LEFT", true, "spellpct")
                 if e.per then hp = hp + 1 + PlaceFS(FS(), g.px, ey + hp + 1, g.psv, hs, e.per, cMuted, "LEFT", true, "spellper") end
                 local hv = PlaceFS(FS(), g.vx, ey, g.val, size, e.value, cText, "LEFT", true, "spellvalue")
-                if e.newValue then hv = hv + 1 + PlaceFS(FS(), g.vx, ey + hv + 1, g.val, size, e.newValue, Accent(), "LEFT", true, "spellchange") end
+                if e.newValue then hv = hv + 1 + PlaceFS(FS(), g.vx, ey + hv + 1, g.val, size, e.newValue, ChangeColor(e.newTone), "LEFT", true, "spellchange") end
                 hm = hm + math.max(hv, hp) + 2
             end
-            for _, sm in ipairs(r.statMods or {}) do
-                hm = hm + PlaceFS(FS(), g.px, y + hm, g.psv, hs, sm, cMuted, "LEFT", true, "spellstat") + 1
+            for i, sm in ipairs(r.statMods or {}) do
+                local fs = FS()
+                local sh = PlaceFS(fs, g.px, y + hm, g.psv, hs, sm, cMuted, "LEFT", true, "spellstat")
+                -- (Bonus 0.6.38, "Yes, everywhere") the stat's name ("Versatility" of "Versatility: +2.61%") in the stat's colour, the
+                -- number after it as before: a colour code around the name only (the game draws no width for the code; the layout above
+                -- measured the plain text)
+                local sc = r.statModColors and r.statModColors[i]
+                local name, rest = tostring(sm):match("^([^:]+)(:.*)$")
+                if sc and name then
+                    fs:SetText(("|cff%02x%02x%02x%s|r%s"):format(math.floor(sc[1] * 255 + 0.5), math.floor(sc[2] * 255 + 0.5), math.floor(sc[3] * 255 + 0.5), name, rest))
+                end
+                hm = hm + sh + 1
             end
             local mods = (#(r.mods or {}) > 0) and table.concat(r.mods, ", ") or (r.notPicked and "" or "none")
             local ht = 0
@@ -2141,6 +2218,9 @@ if ns.Provide then
         Shown = function() return panel ~= nil and panel:IsShown() end,
         Close = function() if panel and panel:IsShown() then ns.CharToolkit_SetOpen(false) end end,
         Drawn = function() return ns.CharToolkit_Drawn() end,
+        -- (Bonus 0.6.38) type in a box as the player does ("crit" with "100": 100 more crit rating; "" clears it) and redraw; for the
+        -- change-colour walkthrough (QAWalks-stat-colors.lua)
+        SetInput = function(key, text) ns.CharToolkit_SetInput(key, text) end,
         ToggleStat = function(key) ns.CharToolkit_ToggleStat(key) end,
         SelectGearSlot = function(slot) ns.CharToolkit_SelectGearSlot(slot) end,
         PickItem = function(link, slot) ns.CharToolkit_PickItem(link, slot) end,

@@ -119,13 +119,13 @@ checkp("  ...the other stats stay folded (Critical Strike: \"+\", no Diminishing
 -- typed change: the new value with its sign under a row's number (existing behaviour on those rows too)
 ns.CharToolkit_SetInput("sv:primary", "2737")
 d = render()
-checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 with the sign, in the accent colour", function()
+checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 with the sign, in the game's green (QoL 0.7.54 / Bonus 0.6.38: better; was the accent colour)", function()
   local fa = find(d, "pairLabel", "from Agility")
   local v, ch
   for _, r in ipairs(recs(d, "pairValue")) do if fa and r.y == fa.y then v = r end end
   for _, r in ipairs(recs(d, "pairChange")) do if v and r.x == v.x and r.y > v.y and r.y < v.y + 3 * v.size then ch = r end end
   local f = ch and fontAt(d, ch)
-  return v and ch and v.text == "+2,637" and ch.text == "+2,737" and f and sameCol(f.color, ACCENT), T(v) .. " / " .. T(ch) end)
+  return v and ch and v.text == "+2,637" and ch.text == "+2,737" and f and sameCol(f.color, GREEN), T(v) .. " / " .. T(ch) end)
 ns.CharToolkit_SetInput("sv:primary", "")
 -- remembered per stat: a rebuild from the saved settings keeps Attack Power open, every other stat folded
 local saved = ns.Settings("bonus").characterToolkit   -- (Bonus 0.6.37, character pane split stage 2: the panel's settings are Bonus's)

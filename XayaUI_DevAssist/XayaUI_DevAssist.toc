@@ -58,3 +58,4 @@ QAWalks-debug-w9b.lua
 QAWalks-debug-chatdefaults.lua
 QAWalks-character-split.lua
 QAWalks-layout-fixes.lua
+QAWalks-stat-colors.lua

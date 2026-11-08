@@ -101,6 +101,12 @@ local function modelTip(key, mode)
   end
   return out
 end
+-- (QoL 0.7.54; Xaya 2026-11-08, her answer "Hide notes unless Dev Assist") without XayaUI Dev Assist the hover has the title and the
+-- number rows, no notes; the notes checked below show while Dev Assist is loaded (core's ns.DevAssistOn, the "via" text's reader)
+local tlOff = modelTip("crit")
+check("crit hover without XayaUI Dev Assist: the title and the number rows, no notes", linesHave(tlOff, "Critical Strike | 22.48%") and linesHave(tlOff, "Rating | 528")
+  and not linesHave(tlOff, "the game's own converter") and not linesHave(tlOff, "Linked:"))
+ns.DevAssistOn = function() return true end
 local tl = modelTip("crit")
 check("crit hover: headline and value", linesHave(tl, "Critical Strike | 22.48%"))
 check("crit hover: total = rating share + other sources", linesHave(tl, "Critical Strike 22.48% = +11.48% from 528 rating +11.00% from other sources"))
@@ -333,6 +339,17 @@ check("  ...lines that do not change are left out (every Haste line listed chang
   local n = 0
   for k, it in pairs(gm.byKey) do if k:find("^gc_map_haste:") and (it.cells[1] ~= "" or it.cells[2] ~= "") then n = n + 1; if it.cells[1] == it.cells[2] then return false end end end; return n > 0 end)())
 check("  ...cards that do not change are left out (Versatility, Avoidance)", eff("map_vers") == nil and eff("map_avoidance") == nil)
+-- (QoL 0.7.54, fix plan f1-16) more Avoidance means less area damage taken: "» Area damage taken (less)" going up is better (green), not
+-- worse; the direction is a flag set where the line is made (lowerBetter), not the word "taken" in its label. Fails on QoL 0.7.53.
+ITEMS["Better Helm"].stats.ITEM_MOD_CR_AVOIDANCE_SHORT = 300
+gm = CM.Build(c, "gear")
+local avV, avT = effLine("map_avoidance", "» Area damage taken (less)")
+check("compare: +300 Avoidance: \"» Area damage taken (less)\" goes up and is coloured better (good), f1-16", avV ~= nil and avV:find(" -> ", 1, true) ~= nil and avT == "good",
+  tostring(avV) .. " " .. tostring(avT))
+local gcV, gcT = effLine("map_haste", "» GCD")
+check("  ...(guard) less haste: the GCD gets longer and stays worse (warn): lower is better for seconds", gcV ~= nil and gcT == "warn", tostring(gcV) .. " " .. tostring(gcT))
+ITEMS["Better Helm"].stats.ITEM_MOD_CR_AVOIDANCE_SHORT = nil
+gm = CM.Build(c, "gear")
 check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs)", tipHas(gm.byKey.gearCols, "on-use and proc effects are listed under the table"))
 local savedDesc = C_Spell.GetSpellDescription
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end

@@ -21,6 +21,11 @@
 # character at any size), and report a wrapped height from that width. A title is "cut" when one of its words is wider than its column
 # (the game wraps only at spaces, and truncates a longer word with "..."); "on one line" when the whole title fits its column.
 # Negative control (V1): every check fails on QoL 0.7.24's files (session branch head e05475a), except those marked "(guard)".
+# QoL 0.7.54 / Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15): the new value a typed number
+# gives is no longer in the accent colour: green better / red worse (the game's GREEN_FONT_COLOR / RED_FONT_COLOR, stand-ins below with
+# their own values so a copied number cannot pass), blue / orange with a XayaUI colour-blind base theme (read from XayaUI/Theme.lua's
+# colorblind palette), the text colour when the same; a stat's name in its colour in the hovers and the Ability Scaling rows. Section K;
+# its checks fail on 930a0c7 (QoL 0.7.53 / Bonus 0.6.37), except those marked "(guard)".
 # Run from the repo root: python3 tests/char_stat_round_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
 # Spell IDs 9101-9103 and every number are TEST STAND-INS.
 import os, sys
@@ -70,6 +75,12 @@ TABSEL = { 0.64 * 0.28, 0.19 * 0.28, 0.79 * 0.28, 0.9 }
 ns.Theme = { cur = { accent = ACCENT }, Col = function(class, prop, fb)
   if class == "xui-tab-selected" and prop == "bg" then return { TABSEL[1], TABSEL[2], TABSEL[3], TABSEL[4] } end
   return fb and { fb[1], fb[2], fb[3], fb[4] or 1 } or { 1, 1, 1, 1 } end }
+-- (QoL 0.7.54 / Bonus 0.6.38) stand-ins for the game's colour objects (ColorMixin, :GetRGB()), with values of their own, so only a
+-- colour read from them at run time passes
+GREEN_FONT_COLOR = { GetRGB = function() return 0.12, 0.88, 0.14 end }
+RED_FONT_COLOR = { GetRGB = function() return 0.93, 0.11, 0.09 end }
+GREEN, RED = { 0.12, 0.88, 0.14, 1 }, { 0.93, 0.11, 0.09, 1 }
+TEXT = { 0.96, 0.96, 0.98, 1 }   -- (the stand-in theme's "xui-text" answer: the panel's own fallback)
 function sameCol(a, b) return a and b and math.abs(a[1] - b[1]) < 0.01 and math.abs(a[2] - b[2]) < 0.01 and math.abs(a[3] - b[3]) < 0.01 end
 function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = tostring(r.text) end; return table.concat(t, "|") end
@@ -230,7 +241,8 @@ checkp("the Stats grid's heads (Stat | Rating | Current value | Pt value | Modif
 MEASURE = "est"
 
 -- -----------------------------------------------------------------------------------------------------------------------------
--- B. A typed number (#60 e, #62 "New value with sign"): the current value, and under it the new value with its sign, in the accent
+-- B. A typed number (#60 e, #62 "New value with sign"): the current value, and under it the new value with its sign (QoL 0.7.28 to
+-- 0.7.53: in the accent; QoL 0.7.54 / Bonus 0.6.38: green when better, red when worse, section K)
 -- -----------------------------------------------------------------------------------------------------------------------------
 ns.CharToolkit_SetInput("sv:crit", "700")
 d = render()
@@ -244,8 +256,8 @@ checkp("typed 700 crit: Critical Strike's Current value reads 22.48%, and under 
   for _, r in ipairs(recs(d, "value")) do if r.text == "22.48%" then v = r end end
   local ch = v and changeUnder(d, v)
   return v and ch and ch.text == "+26.22%", T(v) .. " / " .. T(ch) end)
-checkp("  ...the line under it is drawn in the theme's accent colour", function()
-  local f = font(d, "+26.22%"); return f and sameCol(f.color, ACCENT), f and f.color and table.concat(f.color, ",") end)
+checkp("  ...the line under it is drawn in the game's green (more crit is better), not the theme's accent", function()
+  local f = font(d, "+26.22%"); return f and sameCol(f.color, GREEN) and not sameCol(f.color, ACCENT), f and f.color and table.concat(f.color, ",") end)
 checkp("  ...no \"now -> then\" anywhere on the Stats tab", function()
   for _, r in ipairs(d.layout) do if tostring(r.text or ""):find(" -> ", 1, true) then return false, r.kind .. " '" .. tostring(r.text) .. "'" end end
   return true end)
@@ -258,6 +270,11 @@ checkp("typed 400 crit (lower than 528): 22.48% with a minus and the new value u
   local v; for _, r in ipairs(recs(d, "value")) do if r.text == "22.48%" then v = r end end
   local ch = v and changeUnder(d, v)
   return ch ~= nil and tostring(ch.text):find("^%-%d+%.%d%d%%$") ~= nil, T(ch) end)
+checkp("  ...drawn in the game's red (less crit is worse)", function()
+  local v; for _, r in ipairs(recs(d, "value")) do if r.text == "22.48%" then v = r end end
+  local ch = v and changeUnder(d, v)
+  local f = ch and fontAt(d, ch)
+  return f and sameCol(f.color, RED), f and f.color and table.concat(f.color, ",") end)
 ns.CharToolkit_SetInput("sv:crit", "")
 
 -- -----------------------------------------------------------------------------------------------------------------------------
@@ -445,7 +462,7 @@ checkp("typed Agility 2,737 (+100): Fracture's Computed Value 6,944, and under i
   local v = find(d, "spellvalue", "6,944")
   local ch = find(d, "spellchange", "+7,144")
   return v and ch and ch.x == v.x and ch.y > v.y, tx(fr.spellchange) end)
-checkp("  ...in the theme's accent colour", function() local f = font(d, "+7,144"); return f and sameCol(f.color, ACCENT) end)
+checkp("  ...in the game's green (a larger number is better), not the theme's accent", function() local f = font(d, "+7,144"); return f and sameCol(f.color, GREEN) and not sameCol(f.color, ACCENT), f and f.color and table.concat(f.color, ",") end)
 ns.CharToolkit_SetInput("sv:primary", "")
 ns.CharToolkit_SetInput("sv:vers", "220")   -- 120 -> 220 versatility rating
 d = render("spells")
@@ -531,6 +548,177 @@ checkp("(guard) an item not picked has no frame", function()
   local b = candIcon(d, NEWRING); b.scripts.OnClick(b); d = drawn()
   return not candIcon(d, NEWRING).selEdges[1].shown and candIcon(d, BIGRING).selEdges[1].shown end)
 ''', "")
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# K. QoL 0.7.54 / Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15, her words: "xayaui theme is
+#    fine for everything except change numbers and stat colors"; "1 or adjust for color blind mode" (1 = "Green up, red down"); "XayaUI
+#    theme only"; stat names "Yes, everywhere (Recommended)"; tooltips "Hide notes unless Dev Assist"). Better / worse by meaning (lower
+#    is better for seconds and damage taken), the colour-blind pair read from XayaUI/Theme.lua's colorblind palette (by this test, at run
+#    time), the text colour when the same; stat names in their colour in the hovers and the Ability Scaling rows. Fail on 930a0c7
+#    (QoL 0.7.53 / Bonus 0.6.37), except those marked "(guard)".
+# ---------------------------------------------------------------------------------------------------------------------------------
+import re as _re
+_TH = open(os.path.join(ROOT, "XayaUI", "Theme.lua"), encoding="utf-8").read()
+_CBP = _re.search(r'colorblind = \{ name = .*?pal = \{.*?\} \} \},', _TH, _re.S).group(0)   # (the "colorblind" entry of T.BUILTIN)
+CB_ACC = "{ " + _re.search(r'accent = \{ ([\d., ]+) \}', _CBP).group(1) + " }"
+CB_DAN = "{ " + _re.search(r'danger = \{ ([\d., ]+) \}', _CBP).group(1) + " }"
+run(STATWORLD, (r'''
+-- the hover with each line's colours
+local function hoverCols(b)
+  local out = {}
+  GameTooltip.AddDoubleLine = function(self, a, bb, lr, lg, lb, rr, rg, rb) out[#out + 1] = { l = a, r = bb, lc = { lr, lg, lb }, rc = { rr, rg, rb } } end
+  GameTooltip.AddLine = function(self, a, r, g, bl) out[#out + 1] = { l = a, lc = { r, g, bl } } end
+  b.scripts.OnEnter(b)
+  return out
+end
+local function btn(dd, pred) for _, b in ipairs(dd.buttons) do if b.shown and b.item and pred(b.item) then return b end end end
+local function changeUnder(dd, valueRec)
+  for _, r in ipairs(recs(dd, valueRec.kind == "value" and "change" or "pairChange")) do
+    if math.abs(r.x - valueRec.x) < 0.01 and r.y > valueRec.y and r.y < valueRec.y + 3 * valueRec.size then return r end
+  end
+end
+-- the value record on a card's own line (the card's hover button starts at that line)
+local function cardValue(dd, key)
+  local hit
+  for _, r in ipairs(recs(dd, "hit")) do if r.text == key then hit = r end end
+  if not hit then return nil end
+  for _, r in ipairs(recs(dd, "value")) do if math.abs(r.y - hit.y) < 0.01 then return r end end
+end
+-- 1. lower is better: typed Haste 1,500 (from 1,200): the GCD card's new value is shorter, drawn green
+ns.CharToolkit_SetInput("sv:haste", "1500")
+local d = render()
+local gv = cardValue(d, "map_gcd")
+local gch = gv and changeUnder(d, gv)
+checkp("typed more Haste: the GCD card's new value (shorter, \"-1.xx s\") is drawn in the game's green: lower is better for seconds", function()
+  local f = gch and fontAt(d, gch)
+  return gch and tostring(gch.text):find("^%-%d%.%d%d s$") ~= nil and f and sameCol(f.color, GREEN), T(gv) .. " / " .. T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
+local av = cardValue(d, "map_aspeed")
+local ach = av and changeUnder(d, av)
+checkp("  ...the Attack Speed card's new value (a shorter swing) is green too", function()
+  local f = ach and fontAt(d, ach); return f and sameCol(f.color, GREEN), T(av) .. " / " .. T(ach) end)
+local hb = btn(d, function(it) return it.kind == "infl" and it.label == "» GCD" end)
+local hl = hb and hoverCols(hb) or {}
+checkp("  ...Haste's Modifies name \"GCD\": its hover's new-value line is green", function()
+  local line = hl[2]
+  return line ~= nil and tostring(line.r):find("^%-") ~= nil and sameCol(line.rc, GREEN), line and (tostring(line.r) .. " " .. table.concat(line.rc, ",")) end)
+-- less Haste: the GCD gets longer: red
+ns.CharToolkit_SetInput("sv:haste", "900")
+d = render()
+gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
+checkp("typed less Haste: the GCD card's new value (longer, \"+1.xx s\") is drawn in the game's red", function()
+  local f = gch and fontAt(d, gch)
+  return gch and tostring(gch.text):find("^%+") ~= nil and f and sameCol(f.color, RED), T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
+-- the same: a change too small to show at two decimals (3 rating): the text colour
+ns.CharToolkit_SetInput("sv:haste", "1203")
+d = render()
+gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
+checkp("typed Haste 1,203 (+3 rating): the GCD's new value reads the same as now: drawn in the theme's text colour, not green or red", function()
+  local f = gch and fontAt(d, gch)
+  local same = gch and gv and tostring(gch.text):gsub("^[%+%-]", "") == tostring(gv.text)
+  return same and f and sameCol(f.color, TEXT), T(gv) .. " / " .. T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
+ns.CharToolkit_SetInput("sv:haste", "")
+-- 2. damage taken: more Versatility = less damage taken = better (green)
+ns.CharToolkit_SetInput("sv:vers", "400")
+local m = CM.Build(c, "stats").byKey.map_vers
+local dt
+for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Damage taken" then dt = p end end
+checkp("typed more Versatility: \"» Damage taken\" goes down and its new value means better (lower is better for damage taken)", function()
+  return dt and dt.newValue and dt.newTone == "better", dt and (tostring(dt.value) .. " / " .. tostring(dt.newValue) .. " " .. tostring(dt.newTone)) end)
+d = render()
+local vb = btn(d, function(it) return it.kind == "infl" and it.label == "» Damage taken" end)
+local vl = vb and hoverCols(vb) or {}
+checkp("  ...its hover's new-value line is the game's green", function() return vl[2] ~= nil and sameCol(vl[2].rc, GREEN), vl[2] and table.concat(vl[2].rc, ",") end)
+ns.CharToolkit_SetInput("sv:vers", "")
+-- 3. Avoidance (fix plan f1-16): more Avoidance = less area damage taken: its line goes UP and that is better
+ns.CharToolkit_SetInput("sv:avoidance", "600")
+m = CM.Build(c, "stats").byKey.map_avoidance
+local ad
+for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Area damage taken (less)" then ad = p end end
+checkp("typed Avoidance 600: \"» Area damage taken (less)\" goes up and its new value means better (f1-16: not matched by \"taken\")", function()
+  return ad and ad.newValue and ad.newValue:find("^%+") ~= nil and ad.newTone == "better", ad and (tostring(ad.newValue) .. " " .. tostring(ad.newTone)) end)
+d = render()
+local ab = btn(d, function(it) return it.kind == "infl" and it.label == "» Area damage taken (less)" end)
+local al = ab and hoverCols(ab) or {}
+checkp("  ...its hover's new-value line is the game's green", function() return al[2] ~= nil and sameCol(al[2].rc, GREEN), al[2] and table.concat(al[2].rc, ",") end)
+ns.CharToolkit_SetInput("sv:avoidance", "")
+-- 4. a XayaUI colour-blind base theme: blue better, orange worse (the colorblind palette's accent and danger), never green / red
+CB_ACCENT, CB_DANGER = __CBACC__, __CBDAN__
+ns.Theme.BUILTIN = { colorblind = { pal = { accent = CB_ACCENT, danger = CB_DANGER } } }
+for _, base in ipairs({ "colorblind", "protan", "tritan" }) do
+  ns.Theme.EffBase = function() return base end
+  ns.CharToolkit_SetInput("sv:crit", "700")
+  d = render()
+  local up = font(d, "+26.22%")
+  up = up and { color = { up.color[1], up.color[2], up.color[3] } }   -- (copied now: the panel reuses its font strings on the next draw)
+  ns.CharToolkit_SetInput("sv:crit", "400")
+  d = render()
+  local down
+  for _, f in ipairs(d.fonts) do if f.shown and tostring(f.text):find("^%-19%.") then down = f end end
+  checkp(("base theme \"%s\": more crit drawn blue (the colorblind palette's accent), less crit orange (its danger colour)"):format(base), function()
+    return up and down and sameCol(up.color, CB_ACCENT) and sameCol(down.color, CB_DANGER),
+      (up and table.concat(up.color, ",") or "none") .. " / " .. (down and table.concat(down.color, ",") or "none") end)
+end
+ns.Theme.EffBase = function() return "default" end
+ns.CharToolkit_SetInput("sv:crit", "700")
+d = render()
+checkp("base theme \"default\": the game's green", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, GREEN) end)
+-- a saved theme whose own base is the colour-blind one counts too (as Theme.lua T.IsLight reads a saved theme's base)
+CueRulesDB = CueRulesDB or {}
+CueRulesDB.themes = { Mine = { base = "custom", under = "protan" } }
+ns.Theme.EffBase = function() return "Mine" end
+d = render()
+checkp("a saved theme started from a colour-blind theme: blue", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, CB_ACCENT) end)
+ns.Theme.EffBase = nil; CueRulesDB.themes = nil
+ns.CharToolkit_SetInput("sv:crit", "")
+-- 5. stat names in their colour in the hovers (title and lines); other labels keep the theme
+d = render()
+local cb = btn(d, function(it) return it.key == "map_crit" end)
+local cl = cb and hoverCols(cb) or {}
+checkp("the Critical Strike card's hover: its title \"Critical Strike\" in the stat's colour (CM.STAT_COLORS.crit), not the theme's label colour", function()
+  return cl[1] ~= nil and cl[1].l == "Critical Strike" and sameCol(cl[1].lc, CM.STAT_COLORS.crit), cl[1] and (tostring(cl[1].l) .. " " .. table.concat(cl[1].lc, ",")) end)
+checkp("(guard)  ...a label that is not a stat (\"From rating\") keeps the theme's muted colour", function()
+  for _, l in ipairs(cl) do if l.l == "From rating" then return sameCol(l.lc, { 0.6, 0.6, 0.65 }), table.concat(l.lc, ",") end end
+  return false, "no From rating line" end)
+local found
+for _, b in ipairs(d.buttons) do
+  if b.shown and b.item and type(b.item.pairs) == "table" then
+    for _, p in ipairs(b.item.pairs) do if p.label == "From Critical Strike" or p.label == "From Agility" then found = found or { b = b, label = p.label } end end
+  end
+end
+checkp("a hover line \"From Critical Strike\" / \"From Agility\" has its stat's colour on the left (the panel's hover did not read it before)", function()
+  if not found then return false, "no such line" end
+  local key = found.label == "From Agility" and "primary" or "crit"
+  for _, l in ipairs(hoverCols(found.b)) do if l.l == found.label then return sameCol(l.lc, CM.STAT_COLORS[key]), found.label .. " " .. table.concat(l.lc, ",") end end
+  return false, "line not in the hover" end)
+-- the Ability Scaling tab: Fracture's "Versatility: +2.61%": the name in Versatility's colour, the number after it as before; its hover too
+c.advanced = true   -- (as section F: Spell Math on)
+d = render("spells")
+checkp("Ability Scaling: \"Versatility: +2.61%\" is drawn with \"Versatility\" in its stat colour (a colour code around the name), the text recorded as before", function()
+  local r = find(d, "spellstat", "Versatility: +2.61%")
+  local col = CM.STAT_COLORS.vers
+  local code = ("|cff%02x%02x%02x"):format(math.floor(col[1] * 255 + 0.5), math.floor(col[2] * 255 + 0.5), math.floor(col[3] * 255 + 0.5))
+  local f
+  for _, ff in ipairs(d.fonts) do if ff.shown and ff.text == code .. "Versatility|r: +2.61%" then f = ff end end
+  local t = {}; for _, ff in ipairs(d.fonts) do if ff.shown and tostring(ff.text):find("Versatility", 1, true) then t[#t + 1] = ff.text end end
+  return r ~= nil and f ~= nil, (r and T(r) or "no record") .. "; drawn: " .. table.concat(t, " ; ") end)
+local sb = btn(d, function(it) return it.key == "spell9101" end)
+local sl = sb and hoverCols(sb) or {}
+checkp("  ...Fracture's hover: the \"Versatility\" line's label in Versatility's colour", function()
+  for _, l in ipairs(sl) do if l.l == "Versatility" then return sameCol(l.lc, CM.STAT_COLORS.vers), table.concat(l.lc, ",") end end
+  return false, "no Versatility line" end)
+-- 6. the notes (her answer "Hide notes unless Dev Assist"): the crit card's hover without and with XayaUI Dev Assist
+d = render()
+cb = btn(d, function(it) return it.key == "map_crit" end)
+local function hasLine(lines, s) for _, l in ipairs(lines) do if tostring(l.l):find(s, 1, true) or tostring(l.r or ""):find(s, 1, true) then return true end end end
+local off = hoverCols(cb)
+ns.DevAssistOn = function() return true end
+local on = hoverCols(cb)
+ns.DevAssistOn = nil
+local note
+for _, l in ipairs(on) do if l.r == nil and tostring(l.l):len() > 40 then note = note or l.l end end
+checkp("the crit card's hover without XayaUI Dev Assist: the title and its numbers, no note paragraph; with it, the notes too", function()
+  return note ~= nil and not hasLine(off, note) and hasLine(off, "Critical Strike") and #on > #off, tostring(note) end)
+''').replace("__CBACC__", CB_ACC).replace("__CBDAN__", CB_DAN))
 
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)
 print("%d checks, %d failed" % (n, fails))

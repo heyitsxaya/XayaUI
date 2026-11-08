@@ -1040,19 +1040,67 @@ end
 -- line's Pt value follows its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15). QoL 0.7.24 (Xaya, the Note
 -- column: "Remove it entirely"): no note text here either, and a line that held only a note is left out. (QoL 0.7.53: moved here from
 -- CharacterToolkit.lua's ns.CharToolkit_TooltipLines, unchanged.)
+-- QoL 0.7.54 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #8 / #15, her answer "Hide notes unless Dev Assist"): the
+-- hover's notes (the item's tip paragraphs, Tip(it, ...)) show only while XayaUI Dev Assist is loaded, through the same reader as the
+-- aura "via" text (core's ns.DevAssistOn, Modules.lua; XayaUI_Bonus/Tooltips.lua TT.SourcesOn; her earlier answer FUS-4 "Tooltip, Dev
+-- Assist on"). Without core's reader the notes are left out. Players see the title, the number rows and the click hint. A Stat Weights
+-- row's influence lines ("Agility increases Attack Power by 2,637", her own wording for that hover, REQUEST-LOG #36) are its number rows,
+-- not notes: they stay (it.influenceTips).
+-- The hovers of the panel's column heads and controls (the filter, Refresh spell data, the gear icons, the Gear comparison's heads) are
+-- made only of their help text, which says what a column or a button does: they keep it (HELP_KINDS; INFERENCE that "notes" means the
+-- stat hovers' paragraphs, as in her screenshot of the Attack Power hover: an open question in the debug log, not decided by her).
+local HELP_KINDS = { colhead = true, weighthead = true, spellhead = true, mhead = true, msubhead = true, action = true, filter = true, icons = true }
+CM.HELP_KINDS = HELP_KINDS
+function CM.NotesOn()
+    local ok, on = pcall(function() return ns.DevAssistOn and ns.DevAssistOn() end)
+    return ok and on == true
+end
+-- The colour of a stat's name (CM.STAT_COLORS) for a label that is a stat name, nil for any other label. QoL 0.7.54 (Xaya 2026-11-08,
+-- REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #6 / #15, her answer "Yes, everywhere (Recommended)"): a stat's name has its one colour
+-- everywhere in the panel. Labels read: "Critical Strike", "From Critical Strike", "» Haste", "    Mastery" (the game's own names,
+-- the English ones when the game gives none); the primary stats (Strength, Agility, Intellect) share the "primary" colour.
+local STAT_NAME_KEYS
+function CM.StatColorFor(label)
+    if type(label) ~= "string" or label == "" then return nil end
+    if not STAT_NAME_KEYS then
+        STAT_NAME_KEYS = {}
+        local function Add(name, key) if type(name) == "string" and name ~= "" then STAT_NAME_KEYS[name:lower()] = key end end
+        Add(L("STAT_CRITICAL_STRIKE", "Critical Strike"), "crit"); Add("Critical Strike", "crit")
+        Add(L("STAT_HASTE", "Haste"), "haste"); Add("Haste", "haste")
+        Add(L("STAT_MASTERY", "Mastery"), "mastery"); Add("Mastery", "mastery")
+        Add(L("STAT_VERSATILITY", "Versatility"), "vers"); Add("Versatility", "vers")
+        Add(L("STAT_AVOIDANCE", "Avoidance"), "avoidance"); Add("Avoidance", "avoidance")
+        Add(L("STAT_LIFESTEAL", "Leech"), "leech"); Add("Leech", "leech")
+        Add(L("STAT_SPEED", "Speed"), "speed2"); Add("Speed", "speed2")
+        for _, i in ipairs({ 1, 2, 4 }) do Add(StatName(i), "primary") end
+        Add("Strength", "primary"); Add("Agility", "primary"); Add("Intellect", "primary")
+        Add(StatName(3), "stamina"); Add("Stamina", "stamina")
+    end
+    local l = label:gsub("^%s+", ""):gsub("^» ", ""):gsub("^[Ff]rom ", "")
+    local key = STAT_NAME_KEYS[l:lower()]
+    return key and CM.STAT_COLORS[key] or nil
+end
 function CM.TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true }
-    -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes, in the accent colour
-    if it.newValue then out[#out + 1] = { "", it.newValue, "change" } end
+    -- (QoL 0.7.54) a stat's name in its own colour (lc), on the title as on the lines
+    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true,
+        lc = it.labelColor or CM.StatColorFor(it.label) }
+    -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes. QoL 0.7.54 (Xaya 2026-11-08, "xayaui
+    -- theme is fine for everything except change numbers and stat colors"): its tone says whether the result is better, worse or the same
+    -- (it.newTone, CM.ChangeDir); the panel colours it (green / red, blue / orange with a XayaUI colour-blind theme; the text colour when the same)
+    if it.newValue then out[#out + 1] = { "", it.newValue, it.newTone or "same" } end
     for _, p in ipairs(it.pairs or {}) do
         if not CM.NoteOnly(p) then
-            out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone }   -- (nested: indented)
-            if p.newValue then out[#out + 1] = { "", p.newValue, "change" } end
+            out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone, lc = p.labelColor or CM.StatColorFor(p.label) }   -- (nested: indented)
+            if p.newValue then out[#out + 1] = { "", p.newValue, p.newTone or "same" } end
         end
     end
-    if #(it.tip or {}) > 0 then
+    if #(it.influenceTips or {}) > 0 then
+        out[#out + 1] = { " " }
+        for _, l in ipairs(it.influenceTips) do out[#out + 1] = { l } end
+    end
+    if #(it.tip or {}) > 0 and (HELP_KINDS[it.kind] or CM.NotesOn()) then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
     end
@@ -1641,16 +1689,17 @@ local function QualityColor(q)
     if num(r) and num(g) and num(b) then return { r, g, b, 1 } end
 end
 
--- whether a "now -> then" change is better (green) or worse (orange): lower is better for times (the global cooldown, attack speed,
--- recharges: values in seconds) and for damage taken; higher for everything else
-local function Dir(label, value)
+-- whether a "now -> then" change is better (green) or worse (orange): lower is better on a line the Stats tab marks lowerBetter (times:
+-- the global cooldown, attack speed, recharges; and damage taken), higher for everything else. (QoL 0.7.54, fix plan f1-16: the flag is
+-- set where the line is made; before, any value in seconds or any label with "taken" counted, so Avoidance's "» Area damage taken
+-- (less)", where more is better, showed a gain as worse.)
+local function Dir(lowerBetter, value)
     if type(value) ~= "string" then return nil end
     local a, b = value:match("^(.-) %-> (.*)$")
     if not a then return nil end
     local function first(t) local x = t:match("[%-+]?%d[%d,]*%.?%d*"); return x and tonumber((x:gsub(",", ""))) end
     local x, y = first(a), first(b)
     if not (x and y) or math.abs(x - y) < 1e-9 then return nil end
-    local lowerBetter = value:find("%d s") ~= nil or (label or ""):lower():find("taken", 1, true) ~= nil
     if lowerBetter then return (y < x) and "good" or "warn" end
     return (y > x) and "good" or "warn"
 end
@@ -1933,10 +1982,11 @@ function GearCompareSections(ctx, out)
             for _, it in ipairs(sec.items) do
                 if it.kind ~= "colhead" and it.kind ~= "subhead" and it.kind ~= "cmprow" then   -- (the tree's headings, the Gear Summary)
                     ci = ci + 1
-                    local function Put(key, label, color, now, after, per, sub, pi)
+                    local function Put(key, label, color, now, after, per, sub, pi, lowerBetter)
                         local r = derived[key]
                         if not r then
-                            r = { key = key, label = label, color = color, now = now, after = {}, per = per, sub = sub, tip = it.tip, order = ci * 1000 + pi }
+                            r = { key = key, label = label, color = color, now = now, after = {}, per = per, sub = sub, tip = it.tip, order = ci * 1000 + pi,
+                                lowerBetter = lowerBetter == true }
                             derived[key] = r; dList[#dList + 1] = r
                         end
                         if r.now == nil then r.now = now end
@@ -1948,7 +1998,7 @@ function GearCompareSections(ctx, out)
                         Put(ck, it.label, it.labelColor, HID, HID, nil, nil, 0)   -- a stat the game hides right now (in combat): said
                     elseif type(it.value) == "string" and it.value:find(" -> ", 1, true) then
                         local a, b = it.value:match("^(.-) %-> (.*)$")
-                        Put(ck, it.label, it.labelColor, a, b, it.per, nil, 0)
+                        Put(ck, it.label, it.labelColor, a, b, it.per, nil, 0, it.lowerBetter)
                     end
                     local scaling = false   -- (the "» Ability Scaling" lines: Spell Changes below has them per item)
                     local head, headPi   -- the last line that is not nested: the "»" line a nested one sits under (put first)
@@ -1964,7 +2014,7 @@ function GearCompareSections(ctx, out)
                             if pr.nested and head and not derived[ck .. ":" .. head.label] then
                                 Put(ck .. ":" .. head.label, head.label, head.labelColor, nil, nil, nil, 1, headPi)
                             end
-                            Put(ck .. ":" .. (pr.nested and (head and head.label or "") .. ":" or "") .. pr.label, pr.label, pr.labelColor, a, b, pr.per, pr.nested and 2 or 1, pi)
+                            Put(ck .. ":" .. (pr.nested and (head and head.label or "") .. ":" or "") .. pr.label, pr.label, pr.labelColor, a, b, pr.per, pr.nested and 2 or 1, pi, pr.lowerBetter)
                         end
                     end
                 end
@@ -1983,7 +2033,7 @@ function GearCompareSections(ctx, out)
             for i = 1, #cs do
                 local a = r.after[i]
                 it.cells[i + 1] = a or r.now or ""
-                if a and r.now and a ~= r.now then it.cellTones[i + 1] = Dir(r.label, r.now .. " -> " .. a)
+                if a and r.now and a ~= r.now then it.cellTones[i + 1] = Dir(r.lowerBetter, r.now .. " -> " .. a)
                 elseif not a then it.cellTones[i + 1] = "mute" end
             end
             if r.now == HID then it.tone = "mute" end
@@ -2312,7 +2362,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     local it = Item("spell" .. s.id, SpellName(s.id))
     it.value, it.spellID = "", s.id
     it.bigPairs = true   -- #378 (Xaya: "way too tiny"): its number lines at the panel's text size, in the text colour
-    it.row = { idText = "Spell ID: " .. s.id, entries = {}, mods = {}, statMods = {} }
+    it.row = { idText = "Spell ID: " .. s.id, entries = {}, mods = {}, statMods = {}, statModColors = {} }
     local ref = (s.base == "sp") and refs.sp or refs.ap
     local refName = (s.base == "sp") and "spell power" or "attack power"
     local function RowNote(text, tone) it.row.note, it.row.noteTone = text, tone end
@@ -2347,14 +2397,18 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
         local vs = refs.vers
         if vs and DealsOrHeals(desc, kind) then
             it.row.statMods[#it.row.statMods + 1] = "Versatility: " .. SP(vs.now)
+            it.row.statModColors[#it.row.statMods] = CM.STAT_COLORS.vers   -- (QoL 0.7.54) the stat's name in its own colour
             Pair(it, "Versatility", SP(vs.now) .. " damage and healing done")
+            it.pairs[#it.pairs].labelColor = CM.STAT_COLORS.vers
             if num(vs.after) then up = up * (1 + vs.after / 100) / (1 + vs.now / 100) end
         end
         local ms = refs.mastery
         local mp = ms and MasteryPctFor(ms.texts, SpellName(s.id), desc)
         if mp then
             it.row.statMods[#it.row.statMods + 1] = "Mastery: " .. SP(mp, 1)
+            it.row.statModColors[#it.row.statMods] = CM.STAT_COLORS.mastery
             Pair(it, "Mastery", SP(mp, 1) .. " (" .. (ms.name or "your mastery") .. ")")
+            it.pairs[#it.pairs].labelColor = CM.STAT_COLORS.mastery
             if num(ms.now) and ms.now > 0 and num(ms.after) then
                 local mpA = mp * ms.after / ms.now
                 up = up * (1 + mpA / 100) / (1 + mp / 100)
@@ -2363,6 +2417,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
         local first = it.row.entries[1]
         if first and math.abs(nums[1] * up - nums[1]) >= 0.5 and CM.Signed then
             first.newValue = CM.Signed(nums[1], nums[1] * up, Big)
+            first.newTone = CM.ChangeDir(nums[1], nums[1] * up, false, Big)   -- (QoL 0.7.54) a larger number is better
             Pair(it, "With your numbers", Big(nums[1] * up))
         end
         if num(s.coeff) then
@@ -2588,26 +2643,42 @@ CM.STAT_COLORS = {
 -- her answer "New value with sign", e.g. 2,616 with "+2,800" under it): a typed number no longer draws "now -> then". Was still makes
 -- the "now -> then" text (the Gear comparison's Stat effects, ctx.compare, split it into its Equipped and item columns as before), and
 -- keeps its two parts here; at the end of the Stats tab's build (SplitChanges) each value Was made becomes the current value, with
--- newValue = the new value and its sign ("+" when it is higher than now, "-" when lower), which the panel draws under it in the theme's
--- accent colour. The sign is the direction; the number after it is the new value without its own sign (DECISION, a question for her:
--- the only line whose value is below zero is Versatility's "» Damage taken", where a lower Versatility would read "+3.00%").
+-- newValue = the new value and its sign ("+" when it is higher than now, "-" when lower), which the panel draws under it. The sign is
+-- the direction; the number after it is the new value without its own sign (DECISION, a question for her: the only line whose value is
+-- below zero is Versatility's "» Damage taken", where a lower Versatility would read "+3.00%").
+-- QoL 0.7.54 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15, her words: "stat calculator colors need to
+-- ignore themeing colors"; "xayaui theme is fine for everything except change numbers and stat colors"; "1 or adjust for color blind
+-- mode" (option 1 = "Green up, red down"); "XayaUI theme only"): newTone says what the new value means, by meaning, not by sign:
+-- "better", "worse", or "same" when the new value reads the same as the current one (the panel: green / red, blue / orange with a XayaUI
+-- colour-blind theme, the text colour when the same; was the theme's accent). Lower is better on a line marked lowerBetter (seconds:
+-- the global cooldown, attack speed, recharges; damage taken), higher everywhere else (CM.ChangeDir).
 local wasParts = {}
 local function Signed(now, after, fmt)
     local t = tostring(fmt(math.abs(after))):gsub("^[%+%-]", "")
     return ((after > now) and "+" or "-") .. t
 end
 CM.Signed = Signed   -- (the Ability Scaling tab's Computed Value uses the same form)
+-- the meaning of a change from now to after: "better", "worse", or "same" when both read the same once formatted (fmt) or do not differ
+function CM.ChangeDir(now, after, lowerBetter, fmt)
+    if not (num(now) and num(after)) then return nil end
+    if after == now or (fmt and tostring(fmt(now)) == tostring(fmt(after))) then return "same" end
+    if lowerBetter then return (after < now) and "better" or "worse" end
+    return (after > now) and "better" or "worse"
+end
+local function Parts(now, after, fmt)
+    return { now = fmt(now), new = Signed(now, after, fmt), up = after > now, same = tostring(fmt(now)) == tostring(fmt(after)) }
+end
 local function Was(now, after, fmt)   -- "now" or "now -> after" (after only when it differs)
     if after == nil or not num(now) or not num(after) or math.abs(after - now) < 0.0005 then return fmt(now) end
     local s = fmt(now) .. " -> " .. fmt(after)
-    wasParts[s] = { now = fmt(now), new = Signed(now, after, fmt) }
+    wasParts[s] = Parts(now, after, fmt)
     return s
 end
 -- the same with words after both parts ("12.0 s -> 11.2 s recharge": the text stays as the Gear comparison reads it)
 local function WasSuffix(now, after, fmt, suffix)
     local s = Was(now, after, fmt)
     local w = wasParts[s]
-    if w then wasParts[s .. suffix] = { now = w.now .. suffix, new = w.new .. suffix } end
+    if w then wasParts[s .. suffix] = { now = w.now .. suffix, new = w.new .. suffix, up = w.up, same = w.same } end
     return s .. suffix
 end
 -- an estimate ("1.16 s -> about 0.98 s"): the text as before; under the value the new one with its sign (the word "about" is left out
@@ -2615,16 +2686,21 @@ end
 local function WasAbout(now, after, fmt)
     if after == nil or not num(now) or not num(after) or math.abs(after - now) <= 0.0005 then return fmt(now) end
     local s = fmt(now) .. " -> about " .. fmt(after)
-    wasParts[s] = { now = fmt(now), new = Signed(now, after, fmt) }
+    wasParts[s] = Parts(now, after, fmt)
     return s
 end
--- every value Was made in these items: the current value stays, the new one with its sign goes in newValue; the green / orange tone it
--- had for the change leaves the current value (the colour is on the line under it now)
+-- (QoL 0.7.54, fix plan f1-16) a line or card where a lower number is better, flagged where it is made (no label matching): returns it
+local function LowerBetter(t) if type(t) == "table" then t.lowerBetter = true end; return t end
+-- every value Was made in these items: the current value stays, the new one with its sign goes in newValue and its meaning in newTone;
+-- the green / orange tone it had for the change leaves the current value (the colour is on the line under it now)
 local function SplitChanges(items)
     local function One(t)
         local w = type(t.value) == "string" and wasParts[t.value]
         if w then
             t.value, t.newValue = w.now, w.new
+            if w.same then t.newTone = "same"
+            elseif t.lowerBetter then t.newTone = w.up and "worse" or "better"
+            else t.newTone = w.up and "better" or "worse" end
             if t.tone == "good" or t.tone == "warn" then t.tone = nil end
         end
     end
@@ -2641,7 +2717,8 @@ end
 local function MapNote(it, label, value, tone, colorKey, cols)
     Pair(it, label, value, tone, true)
     local p = it.pairs[#it.pairs]
-    if colorKey then p.labelColor = CM.STAT_COLORS[colorKey] end
+    if colorKey then p.labelColor = CM.STAT_COLORS[colorKey]
+    else p.labelColor = CM.StatColorFor(label) end   -- (QoL 0.7.54: a label that is a stat's name has the stat's colour, "Yes, everywhere")
     if cols then
         if cols.per and cols.per ~= "" then p.per, p.perPoint, p.perText = cols.per, cols.perPoint == true or nil, cols.perText end
         if cols.note and cols.note ~= "" then p.note = cols.note end
@@ -2703,7 +2780,7 @@ local function GridHead(key, ratingHead, changeHead)
     -- column is "Modifies": only what the stat applies to (names); what feeds the stat ("from Agility +2,616") is a row under the stat
     h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Modifies" }
     if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
-    Tip(h, "Current value: the game's figure now; under it, in the accent color, the new value your typed numbers give, with + when it is higher and - when lower.")
+    Tip(h, "Current value: the game's figure now; under it, the new value your typed numbers give, with + when it is higher and - when lower: green when the result is better, red when it is worse (blue and orange with a XayaUI colour-blind theme), the text colour when it reads the same.")
     Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
     Tip(h, "Modifies: what the stat applies to (Attack power, Dodge, Armor ...). Hover a name for its value, its Pt value and the new value your typed numbers give.")
     Tip(h, "Under a stat (click it to open or fold): one row per contribution that feeds it, with its number (from Agility +2,616). Folded (the default), those rows are in the stat's hover.")
@@ -3033,6 +3110,7 @@ local function StatMapSections(ctx, out)
         -- CM.GcdFor) at your haste now (and with your typed numbers), the rule it follows, and the live reading as a check
         local it = Item("map_gcd", "GCD")
         it.bigPairs = true
+        it.lowerBetter = true   -- (QoL 0.7.54) seconds: a shorter global cooldown is better
         local base, hasted, why = CM.GcdRule()
         local function S2(v) return F(v, 2) .. " s" end
         local now = CM.GcdFor(h0)
@@ -3159,14 +3237,15 @@ local function StatMapSections(ctx, out)
         -- Attack Speed: the weapon's swing time now (with your haste: an estimate)
         local as = Item("map_aspeed", "Attack Speed")
         as.bigPairs = true
+        as.lowerBetter = true   -- (QoL 0.7.54) seconds per swing: shorter is better
         if hidden then SetValue(as, HIDDEN)
         elseif hasMH or hasR then
             local s0 = hasMH and mh or rSpeed
             local s2 = Hasted(s0)
             as.value = Was(s0, s2, Sec)
             if s2 then as.note = "estimate" end
-            if hasMH and hasOH then MapNote(as, "Off hand", Was(oh, Hasted(oh), Sec)) end
-            if hasMH and hasR then MapNote(as, "Ranged", Was(rSpeed, Hasted(rSpeed), Sec)) end
+            if hasMH and hasOH then LowerBetter(MapNote(as, "Off hand", Was(oh, Hasted(oh), Sec))) end
+            if hasMH and hasR then LowerBetter(MapNote(as, "Ranged", Was(rSpeed, Hasted(rSpeed), Sec))) end
             Tip(as, "Swing time from UnitAttackSpeed (UnitRangedDamage for a ranged weapon), every modifier applied. With your haste it is an estimate: speed x (1 + haste now) / (1 + haste then).")
             if num(h0) then Feeds("haste", "Attack Speed", nil, F(s0 * (1 + h0 / 100) - s0, 2) .. " s", false, true) end
         else NotGiven(as) end
@@ -3350,14 +3429,14 @@ local function StatMapSections(ctx, out)
                 local _, hasted = CM.GcdRule()
                 local gNow = CM.GcdFor(h0)
                 local gAfter = (num(h1) and num(h0) and math.abs(h1 - h0) > 0.0005) and CM.GcdFor(h1) or nil
-                if hasted and num(gNow) then MapNote(it, "» GCD", Was(gNow, gAfter, function(v) return F(v, 2) .. " s" end))
+                if hasted and num(gNow) then LowerBetter(MapNote(it, "» GCD", Was(gNow, gAfter, function(v) return F(v, 2) .. " s" end)))
                 elseif hasted == false then MapNote(it, "» GCD", "", "mute", nil, { note = "a fixed 1.0 s: haste does not shorten it" })
                 else MapNote(it, "» GCD", "", "mute", nil, { note = "not readable right now" }) end
             end
             local mh = N(UnitAttackSpeed, "player")
             if num(mh) then
                 local est = (num(h0) and num(h1)) and mh * (1 + h0 / 100) / (1 + h1 / 100) or nil
-                MapNote(it, "» Attack speed", WasAbout(mh, est, function(v) return F(v, 2) .. " s" end))
+                LowerBetter(MapNote(it, "» Attack speed", WasAbout(mh, est, function(v) return F(v, 2) .. " s" end)))
             end
             -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
             -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
@@ -3379,7 +3458,7 @@ local function StatMapSections(ctx, out)
             -- abilities"; before, one list in the note)
             if #names > 0 then
                 MapNote(it, "» Abilities (their text names Haste)", "")
-                for _, nm in ipairs(names) do MapSub(it, nm[1], nm[2]) end
+                for _, nm in ipairs(names) do LowerBetter(MapSub(it, nm[1], nm[2])) end   -- (recharge in seconds: shorter is better)
             end
             Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
             Tip(it, "Abilities: those whose own description mentions Haste (a word match on English text; the game does not list what haste shortens). Their recharge is the game's figure now (C_Spell.GetSpellCharges); with your numbers it is an estimate, like the global cooldown.")
@@ -3420,8 +3499,8 @@ local function StatMapSections(ctx, out)
                 local after = (w and ft) and ft(w.newRating) or nil
                 local at = ft and SM.Analyze(ft, src.rating, SM.BaseRate(ft), nil, 1, nil)
                 local per2 = at and (at.perPctNow or at.perPctBase)
-                MapNote(it, "» Damage taken", Was(-(tNow + base), num(after) and -(after + base) or nil, function(v) return P(v) end), nil, nil,
-                    PerPct(per2, "rating"))
+                LowerBetter(MapNote(it, "» Damage taken", Was(-(tNow + base), num(after) and -(after + base) or nil, function(v) return P(v) end), nil, nil,
+                    PerPct(per2, "rating")))   -- (the change in damage taken: lower is better)
                 Feeds("vers", "Damage taken", nil, P(math.abs(tNow + base)), (tNow + base) < 0)
             elseif tNow == HIDDEN then MapNote(it, "» Damage taken", HID, "mute"); Feeds("vers", "Damage taken", nil, nil) end
         end))
@@ -3523,13 +3602,10 @@ local function StatWeightsSection(ctx, out)
             end
             it.influences = "Influences: " .. (#parts > 0 and table.concat(parts, ", ") or "none")
             if it.cells[1] == HID then it.influences, tips = "Influences: " .. HID, {} end
+            -- (QoL 0.7.54) the influence lines are the hover's number rows (CM.TooltipLines shows them always); it.tip keeps the notes,
+            -- which show only while XayaUI Dev Assist is loaded (her answer "Hide notes unless Dev Assist")
+            if #tips == 0 then tips[1] = it.label .. " feeds no other stat the game reports." end
             it.influenceTips = tips
-            local base = it.tip
-            it.tip = {}
-            for _, l in ipairs(tips) do Tip(it, l) end
-            if #tips == 0 then Tip(it, it.label .. " feeds no other stat the game reports.") end
-            Tip(it, " ")
-            for _, l in ipairs(base) do Tip(it, l) end
             sec.items[#sec.items + 1] = it
         end
     end

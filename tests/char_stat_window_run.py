@@ -400,7 +400,9 @@ checkp("Mastery: Influences: Armor (+2,684) (the mastery text's percent of Agili
 checkp("Versatility: hover \"Versatility decreases Damage taken by 1.30%\" and \"Versatility increases Damage and healing done by 2.61%\"", function()
   local h = hover(d, "w_vers")
   return h:find("Versatility decreases Damage taken by 1.30%", 1, true) ~= nil and h:find("Versatility increases Damage and healing done by 2.61%", 1, true) ~= nil, h end)
-checkp("the column head's hover says what each column holds (PPP: points per percent)", function() return hover(d, "weights_cols"):find("PPP: points per percent", 1, true) ~= nil end)
+-- (QoL 0.7.54; her answer "Hide notes unless Dev Assist") the influence lines above show without XayaUI Dev Assist (they are the row's
+-- numbers, checked above with it off); a column head's hover is its help text and keeps it (CM.HELP_KINDS)
+checkp("(guard) the column head's hover says what each column holds (PPP: points per percent), also without XayaUI Dev Assist", function() return hover(d, "weights_cols"):find("PPP: points per percent", 1, true) ~= nil end)
 ratings[18] = 1500
 d = render()
 checkp("past a threshold (1,500 haste): PPP 46.0 / 1% with the DR rate under it (DR: 51.1 / 1%), DR Threshold 1,380 (passed), T: 1,488 [line break] L: 12.0", function()
