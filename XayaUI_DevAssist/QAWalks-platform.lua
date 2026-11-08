@@ -170,7 +170,9 @@ QA.Register("platform-services", { title = "Platform: profile parts, Recycle Bin
     { done = true, text = "Press |cffffd100Do it for me|r to remove the QA test rule and the unknown bin item again. Then press |cffffd100Done|r here first (so part 1's record is kept), type |cffffd100/reload|r, and run \"Platform: the imported Nameplates colour after the /reload (part 2 of 2)\".",
         setup = function()
             local ns = NS(); if not ns then return end
-            for i = #(ns.rules or {}), 1, -1 do if ns.rules[i] == st.binRule then table.remove(ns.rules, i) end end
+            local first
+            for i = #(ns.rules or {}), 1, -1 do if ns.rules[i] == st.binRule then table.remove(ns.rules, i); first = i end end
+            if QA.LeaveMovedRuleRow then QA.LeaveMovedRuleRow(first) end   -- (0.7.64, debug W3: no editor sliding onto the next rule)
             if ns.RecycleDeleteNow and st.unknownId then ns.RecycleDeleteNow(st.unknownId) end
             if ns.MarkDirty then ns.MarkDirty() end
         end },

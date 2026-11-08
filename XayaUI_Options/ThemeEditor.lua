@@ -219,6 +219,8 @@ function T.BuildArgs(refresh)
         func = function() AskDiscard("Reset everything", function() T.ResetAll(); refresh() end) end }
 
     -- class overrides
+    -- (#471: the table row's cells; together 0.99 of the box, so rounding never puts Reset's last pixel past the box's inner edge)
+    local OV_SWATCH_W, OV_RESET_W, OV_CELL, OV_RESET = 0.27, 0.18, { xuiCell = true }, { xuiCell = true, xuiWide = true }
     local ov = { type = "group", order = nx(), name = "Class overrides", inline = true, args = {
         info = { type = "description", order = 0, width = "full",
             name = "Every element belongs to a general class. By default a class takes its color from the palette above; pick a color here to change only that class. 'Reset' returns it to the palette." } } }
@@ -226,21 +228,27 @@ function T.BuildArgs(refresh)
     for _, c in ipairs(T.CLASSES) do
         local cls, label, map = c[1], c[2], c[3]
         local a = { type = "group", order = po, name = label .. "  |cff888888(" .. cls .. ")|r", inline = true, args = {} }
+        -- #471 item 2 (Options 0.6.97; her "correct on all fronts" to "Fix: one fixed Reset column inside the box for every row"): every
+        -- box is one table row of four cells (Skin.lua arg.xuiCell): Background, Border, Text, Reset. A colour the class does not have
+        -- (or a parked one) leaves its cell empty instead of moving Reset left, so Reset sits at the same x in every box, and the cells
+        -- add up to the box's width, so it stays inside it. (Before, Reset followed the last swatch: past the box's right edge after two.)
         local io = 0
-        for _, prop in ipairs({ "bg", "border", "text" }) do
-            if map[prop] then
+        for k, prop in ipairs({ "bg", "border", "text" }) do
+            local tok = map[prop]
+            if tok then
                 io = io + 1
                 local pname = (prop == "bg") and "Background" or (prop == "border" and "Border" or "Text")
-                local tok = map[prop]
-                a.args[prop] = { type = "color", order = io, width = "normal", name = pname, hasAlpha = true,
+                a.args[prop] = { type = "color", order = k, width = "relative", relWidth = OV_SWATCH_W, arg = OV_CELL, name = pname, hasAlpha = true,
                     hidden = function() return T.Parked(tok) end,
                     get = function() local col = T.Col(cls, prop); return col[1], col[2], col[3], col[4] end,
                     set = function(_, r, g, b, al) T.SetClassColor(cls, prop, { r, g, b, al }); refresh() end }
             end
+            a.args[prop .. "_cell"] = { type = "description", order = k + 0.5, width = "relative", relWidth = OV_SWATCH_W, arg = OV_CELL, name = "",
+                hidden = function() return tok ~= nil and not T.Parked(tok) end }
         end
         if io > 0 then
             po = po + 1
-            a.args.reset = { type = "execute", order = 9, width = "full", name = "Reset", func = function() T.ResetClass(cls); refresh() end }
+            a.args.reset = { type = "execute", order = 9, width = "relative", relWidth = OV_RESET_W, arg = OV_RESET, name = "Reset", func = function() T.ResetClass(cls); refresh() end }
             ov.args[cls] = a
         end
     end
@@ -263,7 +271,9 @@ function T.BuildArgs(refresh)
             AskExisting(n, function() local ok2, n2 = T.Save(n, true); say(ok2 and ("Replaced '" .. n2 .. "'.") or n2) end,
                 function() local c = T.CopyName(n); local ok2, n2 = T.Save(c); say(ok2 and ("Saved as '" .. n2 .. "'.") or n2) end)
         end }
-    args.delete = { type = "execute", order = nx(), width = "half", name = "Delete saved",
+    -- #471 item 3 (Options 0.6.97): the row ends one margin (ns.Style.margin) before the page's right edge (Skin.lua arg.xuiEndMargin);
+    -- "Delete saved" was the row's last control and was laid flush against that edge
+    args.delete = { type = "execute", order = nx(), width = "half", name = "Delete saved", arg = { xuiEndMargin = true },
         desc = "Deletes the saved theme with the name typed in the box.",
         func = function() if PlatS.themes[saveName] then T.Delete(saveName); say("Deleted '" .. saveName .. "'.") else say("No saved theme called '" .. saveName .. "'.") end end }
     local exportText = ""

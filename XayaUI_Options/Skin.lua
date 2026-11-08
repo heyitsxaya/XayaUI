@@ -140,6 +140,66 @@ local function AddRest(w, key, fn)
     end
 end
 
+-- #468 / #471 / #483 (Options 0.6.97): the Blizzard-template buttons AceGUI makes INSIDE its widgets, which are not AceGUI Button widgets
+-- and so never reached the button skin: the window's bottom Close (AceGUI Frame), the "Okay" of a one-line text box (EditBox: the rule
+-- option search) and the "Accept" of a multi-line box (MultiLineEditBox: Theme string, export / import boxes). XayaUI's own windows
+-- always have the flat look (standing rule in #468), whatever Blizzard Reskin > Buttons says. They get the same look as the window's
+-- AceGUI buttons (SkinButton's plain-button branch): theme "xui-button" box, flat hover, theme text. AceGUI hands these widgets to other
+-- addons after release, and core's ns.PaintFlatButton has no undo, so the look is put on here and taken off by UnflatInner on release.
+-- Only the look changes: size, place, text and what a click does stay AceGUI's.
+local function FlatInner(b)
+    if not (b and b.GetHighlightTexture and b.GetFontString) then return end
+    HideRegions(b, b:GetHighlightTexture())
+    Flat(b, TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }), TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }))
+    local ht = b:GetHighlightTexture()
+    if ht then
+        if not b.xuiHLOrig then b.xuiHLOrig = { ht:GetTexture(), ht:GetBlendMode() } end
+        local hc = TC("xui-button", "border", { 0.75, 0.4, 1, 1 })
+        ht:SetTexture(WHITE8); ht:SetTexCoord(0, 1, 0, 1)
+        ht:SetBlendMode("ADD"); ht:SetVertexColor(hc[1], hc[2], hc[3]); ht:SetAlpha(0.28)
+        ht:ClearAllPoints(); ht:SetAllPoints(b)
+    end
+    local fs = b:GetFontString()
+    if fs then
+        TF(fs)
+        local on = not b.IsEnabled or b:IsEnabled()
+        local c = on and TC("xui-button", "text", GOLD) or TC("xui-text-muted", "text", { 0.5, 0.5, 0.5, 1 })
+        fs:SetTextColor(c[1], c[2], c[3])
+        LightFont(b, fs, TC("xui-button", "text", GOLD))
+    end
+    b.xuiInnerFlat = true
+end
+local function UnflatInner(b)
+    if not (b and b.xuiInnerFlat) then return end
+    b.xuiInnerFlat = nil
+    ShowRegions(b)
+    FlatHide(b)
+    RestoreLF(b)
+    local ht, o = b:GetHighlightTexture(), b.xuiHLOrig
+    if ht and o then   -- Blizzard's highlight art back (UIPanelButtonTemplate's, as SkinButton's release does)
+        ht:SetTexture(o[1] or "Interface\\Buttons\\UI-Panel-Button-Highlight"); ht:SetTexCoord(0, 0.625, 0, 0.6875)
+        ht:SetBlendMode(o[2] or "ADD"); ht:SetVertexColor(1, 1, 1); ht:SetAlpha(1)
+        ht:ClearAllPoints(); ht:SetPoint("TOPLEFT", 2, -2); ht:SetPoint("BOTTOMRIGHT", -2, 2)
+    end
+    b.xuiHLOrig = nil
+    local fs = b:GetFontString()
+    if fs then
+        TR(fs)
+        if not b.IsEnabled or b:IsEnabled() then fs:SetTextColor(1, 0.82, 0) else fs:SetTextColor(0.5, 0.5, 0.5) end
+    end
+end
+-- the AceGUI Frame's bottom Close button: AceGUI keeps no field for it (AceGUIContainer-Frame.lua: closebutton.obj = widget, like the
+-- status bar's), so it is the frame's child Button that points back at the widget and carries text
+local function FrameCloseButton(of)
+    local fr = of and of.frame
+    if not (fr and fr.GetChildren) then return nil end
+    local sb = of.statustext and of.statustext.GetParent and of.statustext:GetParent()
+    for _, ch in ipairs({ fr:GetChildren() }) do
+        if ch ~= sb and ch.obj == of and ch.GetObjectType and ch:GetObjectType() == "Button" and ch.GetText and ch:GetText() then return ch end
+    end
+end
+ns.OptionsApi.FrameCloseButton = FrameCloseButton   -- (Dev Assist's walkthrough "debug-w3")
+
 -------------------------------------------------------------------------------
 -- Rule search box (filters the rule list by name). The toolbar that was here is gone (Options 0.6.72).
 -------------------------------------------------------------------------------
@@ -236,6 +296,7 @@ local function SkinFrame(of)
             if f.xuiTitleBar then f.xuiTitleBar:Hide() end
             if f.xuiDrag then f.xuiDrag:Hide() end
             if f.xuiToolbar then f.xuiToolbar:Hide() end   -- (a window skinned by an older Options before an in-session update)
+            UnflatInner(self.xuiCloseBtn); self.xuiCloseBtn = nil   -- #468: the next addon to get this window has AceGUI's own Close
             local c2 = self.content
             c2:ClearAllPoints()
             for _, p in ipairs(self.xuiOrigContent or {}) do c2:SetPoint(p[1], p[2], p[3], p[4], p[5]) end
@@ -253,6 +314,9 @@ local function SkinFrame(of)
         fr:SetBackdropColor(wb[1], wb[2], wb[3], A())
         fr:SetBackdropBorderColor(wbd[1], wbd[2], wbd[3], 1)
     end
+    -- #468: the bottom Close button in the flat look (every pass, so a theme change repaints it)
+    of.xuiCloseBtn = of.xuiCloseBtn or FrameCloseButton(of)
+    FlatInner(of.xuiCloseBtn)
     -- title strip
     for _, rg in ipairs({ fr:GetRegions() }) do
         if rg.GetObjectType and rg:GetObjectType() == "Texture" and rg:GetTexture() == 131080 then rg:SetAlpha(0); rg.xuiWasTitle = true end
@@ -1848,7 +1912,14 @@ function ns.FlexPrepass(content, children, bw)
             e.ch.xuiFlexW = e.base
         end
         for _, e in ipairs(row) do if e.flex and not lone then flex[#flex + 1] = e end end
-        local extra = math.max(0, math.floor(width - gap * (n - 1) - used - 0.05))
+        -- arg.xuiEndMargin (#471, Options 0.6.97: Theme > "Delete saved"): the row's stretched controls leave one margin free at its right
+        -- end, so its last control stays that far inside the page's edge
+        local endM = 0
+        for _, e in ipairs(row) do
+            local o = e.ch.GetUserData and e.ch:GetUserData("option")
+            if o and type(o.arg) == "table" and o.arg.xuiEndMargin then endM = UI_MARGIN end
+        end
+        local extra = math.max(0, math.floor(width - gap * (n - 1) - used - endM - 0.05))
         local each, rem = 0, 0
         if #flex > 0 then each = math.floor(extra / #flex); rem = extra - each * #flex end
         for k, e in ipairs(flex) do
@@ -2090,7 +2161,14 @@ end
 function ns.UpdateMinWidth(of)
     local fr = of.frame
     if not (fr and fr.SetResizeBounds) then return end
-    if of.xuiChrome and of.xuiChrome.collapsed then return end
+    if of.xuiChrome and of.xuiChrome.collapsed then
+        -- #478 (Options 0.6.97): a redraw while collapsed re-applies AceGUI's stored width (AceGUIContainer-Frame.lua ApplyStatus), which
+        -- can be narrower than the window was (this function widened it to its minimum); the window keeps the width it had when it was
+        -- collapsed, so the title-bar buttons, anchored to its right edge, stay where they were
+        local keep = of.xuiChrome.openWidth
+        if keep and fr:GetWidth() < keep - 0.5 then fr:SetWidth(keep) end
+        return
+    end
     if not of.xuiDD then of.xuiDD = ScanDropdowns() end
     local function find(w, d)
         if not w or d > 8 then return nil end
@@ -2179,7 +2257,14 @@ local function Walk(w, depth)
             w:SetLabel(nil)
             if w.parent and w.parent.DoLayout then pcall(w.parent.DoLayout, w.parent) end
         end
-    elseif t == "EditBox" then SideLabel(w, "EditBox")
+    elseif t == "EditBox" or t == "MultiLineEditBox" then
+        if t == "EditBox" then SideLabel(w, "EditBox") end
+        -- #471 / #483: the box's Okay / Accept button in the flat look (AceGUI shows it while the text is changed; Enter does the same)
+        if w.button and not w.xuiInnerBtn then
+            w.xuiInnerBtn = true
+            AddRest(w, "innerbtn", function(self) self.xuiInnerBtn = nil; UnflatInner(self.button) end)
+        end
+        FlatInner(w.button)
     elseif t == "Dropdown" or t == "Dropdown-Pullout" then
         if t == "Dropdown" then
             SideLabel(w, "Dropdown")

@@ -1348,6 +1348,16 @@ local function StatusText(rule) return ns.OptionsApi.RuleEditor.StatusText(rule)
 
 local ARROW_OPEN, ARROW_COLLAPSED = "Interface\\Buttons\\Arrow-Up-Up", "Interface\\Buttons\\Arrow-Down-Up"
 
+-- the title-bar buttons' places: X at the right edge, the collapse arrow just left of it (the ? follows the arrow). #478 (Options 0.6.97,
+-- Xaya 2026-11-07, collapsed: "? and the collapse button now sit just left of the 'XayaUI' title and X just right of it ... Expected:
+-- the same positions as when open, at the right edge"): the same anchors in both states (the collapsed window keeps its full width).
+local function AnchorTitleButtons(c, fr)
+    c.close:ClearAllPoints()
+    c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -4)
+    c.arrow:ClearAllPoints()
+    c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -32, -4)
+end
+
 local function SetCollapsed(of, collapsed)
     local c = of and of.xuiChrome
     local fr = of and of.frame
@@ -1366,25 +1376,21 @@ local function SetCollapsed(of, collapsed)
         fr:SetBackdropColor(0, 0, 0, 0)
         fr:SetBackdropBorderColor(0, 0, 0, 0)
         fr:EnableMouse(false)
-        -- keep the X visible too, on the other side of the banner
-        c.close:ClearAllPoints()
-        c.close:SetPoint("LEFT", of.titlebg, "RIGHT", 36, 0)
+        -- #478: the buttons stay where they are when the window is open (until Options 0.6.96 the X moved to the right of the "XayaUI"
+        -- title and the arrow, with the ? beside it, to its left)
+        AnchorTitleButtons(c, fr)
+        c.openWidth = fr:GetWidth()   -- (#478) kept while collapsed: Skin.lua ns.UpdateMinWidth
         c.arrow.tex:SetTexture(ARROW_COLLAPSED)
-        -- the window body is gone, so keep the button next to the banner instead of the (invisible) corner
-        c.arrow:ClearAllPoints()
-        c.arrow:SetPoint("RIGHT", of.titlebg, "LEFT", -36, 0)
     else
         for _, child in ipairs(c.hidden or {}) do child:Show() end
         c.hidden = nil
         fr:SetBackdropColor(0, 0, 0, 1)
         fr:SetBackdropBorderColor(1, 1, 1, 1)
         fr:EnableMouse(true)
-        c.close:ClearAllPoints()
-        c.close:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -6, -4)
+        AnchorTitleButtons(c, fr)
+        c.openWidth = nil
         c.close:Show()
         c.arrow.tex:SetTexture(ARROW_OPEN)
-        c.arrow:ClearAllPoints()
-        c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -32, -4)
     end
 end
 
@@ -1430,6 +1436,18 @@ local function EnsureChrome(of)
             GameTooltip:Show()
         end)
         c.help:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        -- #468 (Options 0.6.97): XayaUI's own windows always have the flat button look, whatever Blizzard Reskin > Buttons says (that
+        -- switch only restyles Blizzard's windows). The ? and the collapse arrow are XayaUI's own buttons: core's flat look (Core.lua
+        -- ns.PaintFlatButton, through ns.SkinPlainButton), painted again each time they show. The arrow's glyph is the button's own
+        -- texture, not Blizzard's art, so it is kept visible. The X (UIPanelCloseButton) is not repainted: its X is its art (A5 asks
+        -- which red button she meant).
+        local function FlatChrome(b)
+            if ns.SkinPlainButton then pcall(ns.SkinPlainButton, b, false) end
+            if b.tex then b.tex:SetAlpha(1) end
+        end
+        c.flatChrome = FlatChrome
+        FlatChrome(c.arrow); FlatChrome(c.help)
+        c.arrow:HookScript("OnShow", FlatChrome); c.help:HookScript("OnShow", FlatChrome)
         c.arrow:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
             GameTooltip:SetText(c.collapsed and "Expand the window" or "Collapse to the banner")

@@ -42,9 +42,16 @@ local function TestRule()
     local ns = NS()
     for _, r in ipairs(ns and ns.rules or {}) do if type(r) == "table" and r.qaRuleEditor and not r.parentUid then return r end end
 end
+local cleaned = {}   -- (0.7.64) what the last clean-up did: left = went back to the list, shifted = a row still on a moved place
+QA.RuleEditorFolderCleaned = cleaned   -- (tests)
 local function Cleanup()
+    cleaned.left, cleaned.shifted = false, nil
     local ns = NS(); if not (ns and ns.rules) then return end
-    for i = #ns.rules, 1, -1 do if type(ns.rules[i]) == "table" and ns.rules[i].qaRuleEditor then table.remove(ns.rules, i) end end
+    local first
+    for i = #ns.rules, 1, -1 do if type(ns.rules[i]) == "table" and ns.rules[i].qaRuleEditor then table.remove(ns.rules, i); first = i end end
+    -- (0.7.64, debug W3) the editor (open, or opened again later) must not slide onto the rule after the QA rule: back to the list
+    -- (QAWalks-bars.lua QA.LeaveMovedRuleRow, as Delete this rule does)
+    if QA.LeaveMovedRuleRow then cleaned.left, cleaned.shifted = QA.LeaveMovedRuleRow(first) end
     if ns.MarkDirty then ns.MarkDirty() end
 end
 
@@ -130,8 +137,10 @@ QA.Register("rule-editor-folder", { title = "Rule editor in its own folder: the 
             local closed = api and not api.IsOpen()
             local e = st.err and (Errors() - st.err) or 0
             local ok, s = pcall(C_AddOns.GetAddOnEnableState, RULES)
-            return (closed and e == 0) and true or false, ("window closed: %s; new XayaUI errors: %d; XayaUI Rules enable state: %s (0 = off; Do it for me switches it off)"):format(
-                tostring(closed), e, tostring(ok and s))
+            -- (0.7.64, debug W3) the clean-up left no Rules row selected on the QA rule's old place (it would open your next rule)
+            local slid = cleaned.shifted
+            return (closed and e == 0 and not slid) and true or false, ("window closed: %s; new XayaUI errors: %d; XayaUI Rules enable state: %s (0 = off; Do it for me switches it off)%s"):format(
+                tostring(closed), e, tostring(ok and s), slid and ("; the Rules list was left on row rule" .. tostring(slid) .. ", another rule in the QA rule's place") or "")
         end },
     { done = true, text = "Press |cffffd100Do it for me|r on the step before if you have not (it switches XayaUI Rules off), press |cffffd100Done|r here (so this record is kept), type |cffffd100/reload|r, and run \"Rule editor in its own folder: XayaUI Rules off (part 2 of 2) (H15)\"." },
 } })

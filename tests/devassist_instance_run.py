@@ -25,6 +25,13 @@ from lua51 import runtime as LuaRuntime
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 GD_PATH = os.path.join(ROOT, "XayaUI_DevAssist", "DevAssist.lua").replace("\\", "/")
+MODULES_PATH = os.path.join(ROOT, "XayaUI", "Modules.lua").replace("\\", "/")
+try:   # never read the terminal: nothing in this test needs input (debug W3; a Lua loadfile(nil) here once waited on stdin)
+    sys.stdin.close()
+    os.close(0)
+    os.open(os.devnull, os.O_RDONLY)   # fd 0 = /dev/null for the Lua runtime too
+except OSError:
+    pass
 PROBE_PATH = os.path.join(ROOT, "XayaUI_DevAssist", "Probe.lua")
 EVENTS_MD = os.path.join(ROOT, "docs", "reference", "api", "events.md")
 PROBE_SRC = open(PROBE_PATH, encoding="utf-8").read()
@@ -209,6 +216,9 @@ def run(src):
     g = lua.globals()
     g.PROBE_SRC = src
     g.GD_PATH = GD_PATH
+    # the stand-in world (taken from devassist_probe_run.py) loads core's Modules.lua from MODULES_PATH; unset, loadfile(nil) read Lua
+    # source from stdin, so a run with an open stdin (a background full suite) hung, and with stdin closed Modules.lua was never loaded
+    g.MODULES_PATH = MODULES_PATH
     t = lua.table()
     for e in DOC_EVENTS:
         t[e] = True
@@ -253,3 +263,4 @@ for name, edits in MUTATIONS:
             fails += 1
             print("BREAK %r: no check failed" % name)
 print("%d checks, %d deliberate breaks, %.1f s  FAILS: %d" % (len(order), len(MUTATIONS), time.time() - started, fails))
+sys.exit(1 if fails else 0)

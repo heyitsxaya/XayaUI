@@ -2,7 +2,7 @@
 ## Title: XayaUI Rules Options
 ## Notes: The rule editor of the XayaUI settings window (the Rules tab). Loads when the settings window opens while XayaUI Rules is on, so it costs nothing until then. Needs XayaUI, XayaUI Rules and XayaUI Options.
 ## Author: Xaya
-## Version: 0.6.80
+## Version: 0.6.81
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI, XayaUI_Rules, XayaUI_Options
 ## LoadOnDemand: 1
