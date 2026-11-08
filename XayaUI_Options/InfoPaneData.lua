@@ -176,6 +176,15 @@ ns.InfoPaneData = {
     { "b", 1, "Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat." },
   },
   patches = {
+    { date = "2026-11-08", title = "Debug Batch W1", blocks = {
+      { "h3", "Rules Options 0.6.79" },
+      { "grp", "Rule Editor" },
+      { "b", 1, "Fixed an issue where Devourer (and any spec after a gap in the spec numbers) was missing from the rule editor's Specialization list." },
+      { "b", 1, "Fixed an issue where the Cooldown Manager warning could show the same line more than once. Identical lines now show once." },
+      { "b", 1, "Fixed an issue where the rule type picker's Import row did not line up with the others." },
+      { "b", 1, "Fixed an issue where the type picker drew over the Drafts list." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA B280 to B283; walkthrough \"debug-w1\"). Issues #476, #482, #484 and #487. Also changed along with it: Options 0.6.94 and Dev Assist 0.7.62." },
+    } },
     { date = "2026-11-08", title = "Element Menu", blocks = {
       { "h3", "XayaUI 0.6.80" },
       { "grp", "Element Menu (new)" },
