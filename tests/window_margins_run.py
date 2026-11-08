@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
 LUA = r'''
-return function(W, L)
+return function(W, L, HAS_CHAT)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 IsShiftKeyDown = function() return false end
@@ -146,9 +146,18 @@ if tp then
   check("Stat Calculator panel: its content inset is the core margin", lay and lay.pad == M and lay.content == lay.width - 2 * M, lay and lay.pad)
 end
 -- 5. The chat history window (Chat) --------------------------------------------------------------------------------------------
-local okH, errH = pcall(function() ns.Chat.History_Toggle() end)
-local hw = rawget(_G, "XayaUIChatHistory")
-check("the chat history window opens", okH and hw ~= nil, errH)
+local okH, errH, hw
+if HAS_CHAT then
+  okH, errH = pcall(function() ns.Chat.History_Toggle() end)
+  hw = rawget(_G, "XayaUIChatHistory")
+  check("the chat history window opens", okH and hw ~= nil, errH)
+else
+  R[#R + 1] = { "the chat history window opens", true, true }
+  for _, w in ipairs({ "chat history window", "chat history window at its smallest (440 x 300)" }) do
+    R[#R + 1] = { w .. ": every control and text at least 10 px inside the edges", true, true }
+    R[#R + 1] = { w .. ": at least 10 px between two controls", true, true }
+  end
+end
 if hw then
   hw.status:SetText("1000 newer messages. Click Refresh.")
   local kb = {}
@@ -219,6 +228,7 @@ end
 
 
 def main():
+    HAS_CHAT = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Chat"))
     folders = H.find_addons()
     enabled = [n for n in folders if n not in ("XayaUI_DevAssist", "XayaUI_Reskin")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
@@ -227,17 +237,22 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
+    res = L.eval("function(src, W, Ld, c) return loadstring(src)()(W, Ld, c) end")(LUA, world, loader, HAS_CHAT)
     bad = 0
+    nskip = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if res[i][3]:
+            print("SKIP (QA-branch module absent: XayaUI_Chat) " + name)
+            nskip += 1
+            continue
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
-    print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
+    print("%d checks, %d failed, %d Lua errors" % (len(res) - nskip, bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 
 

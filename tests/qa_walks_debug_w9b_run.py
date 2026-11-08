@@ -16,12 +16,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+# XayaUI_Reskin is a QA-branch module, absent on main: presence is read from the folder
+HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
+
 GM = {"skin": True, "useColors": True, "bgR": 0.11, "bgG": 0.12, "bgB": 0.13, "pbR": 0.9, "pbG": 0.2, "pbB": 0.1, "btnR": 0.21, "btnG": 0.22,
       "btnB": 0.23, "bbR": 0.1, "bbG": 0.8, "bbB": 0.3, "accR": 0.2, "accG": 0.4, "accB": 0.95, "ttR": 0.95, "ttG": 0.9, "ttB": 0.05}
 
 LUA = r'''
 return function(W, L)
 local R = {}
+local HAS_RESKIN = __HAS_RESKIN__
+local function skip(name) R[#R + 1] = { "SKIP (QA-branch module absent: XayaUI_Reskin) " .. name, true, true } end
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
@@ -50,7 +55,11 @@ end
 local function run(i) local st = def.steps[i]; if st.setup then st.setup() end; W.tick(0.1, 8); if ns.DecorateTrees then pcall(ns.DecorateTrees) end; W.tick(0.1, 3); return st.check() end
 local function has(note, s) return type(note) == "string" and note:find(s, 1, true) ~= nil end
 local ok1, n1 = run(1)
-check("step 1 (the table): Pass, the five columns and one row per element", ok1 == true and has(n1, "Columns: Element | Theme | Overrides | Comes from | Reset") and has(n1, "Rows: 16 of 16"), n1)
+-- one row per element: with every module there are 16; without the QA-branch module the elements it registered are not there (fewer rows,
+-- still one row each: the two numbers in the note agree)
+local got, want = tostring(n1):match("Rows: (%d+) of (%d+) elements")
+local rowsOk = got ~= nil and got == want and tonumber(got) > 0 and (not HAS_RESKIN or got == "16")
+check("step 1 (the table): Pass, the five columns and one row per element", ok1 == true and has(n1, "Columns: Element | Theme | Overrides | Comes from | Reset") and rowsOk, n1)
 local ok2, n2 = run(2)
 check("step 2 (Settings window on Light mode): Pass, before > after in the note", ok2 == true and has(n2, "> ffffff") and has(n2, "Comes from: this element") and #n2 <= 200, n2)
 local fr = LibStub("AceConfigDialog-3.0").OpenFrames.CueRules.frame
@@ -59,8 +68,12 @@ local ok2n, n2n = def.steps[2].check()
 check("step 2 negative: a window not drawn in Light's colours gives Fail", ok2n == false, tostring(ok2n) .. " " .. tostring(n2n))
 local ok3, n3 = run(3)
 check("step 3 (Reset): Pass, the colours before step 2 and Global", ok3 == true and has(n3, "Comes from: Global"), n3)
-local ok4, n4 = def.steps[4].check()
-check("step 4 (Esc Menu): the note has the six colours saved before the update", ok4 == true and has(n4, "panel fill 1c1f21") and has(n4, "title f2e60d") and not has(n4, "Not the old"), n4)
+if HAS_RESKIN then
+  local ok4, n4 = def.steps[4].check()
+  check("step 4 (Esc Menu): the note has the six colours saved before the update", ok4 == true and has(n4, "panel fill 1c1f21") and has(n4, "title f2e60d") and not has(n4, "Not the old"), n4)
+else
+  skip("step 4 (Esc Menu): the note has the six colours saved before the update")
+end
 def.steps[#def.steps].setup(); W.tick(0.1, 4)
 check("Done: her own element themes are exactly what they were", ser(P.theme.scopes) == before, ser(P.theme.scopes) .. " vs " .. before)
 return R
@@ -76,10 +89,13 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders},
                                                                 "saved": {"XayaUI_Reskin": {"XayaUIReskinDB": {"gm": GM}}}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
+    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA.replace("__HAS_RESKIN__", str(HAS_RESKIN).lower()), world, loader)
     bad = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if res[i][3]:
+            print(str(name))
+            continue
         print(("PASS " if ok else "FAIL ") + str(name)[:900])
         if not ok:
             bad += 1

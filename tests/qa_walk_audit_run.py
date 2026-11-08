@@ -16,10 +16,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+# QA-branch module XayaUI_Chat: absent on main, so what is about the chat is skipped (printed as SKIP), never silently
+ROOT = os.path.dirname(HERE)
+HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
+
 LUA = r'''
 return function(W, L)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local HAS_CHAT = __HAS_CHAT__
+local function skip(mod, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. mod .. ") " .. name, true, true } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local QA, ns = rawget(_G, "XayaUI_DevQA"), rawget(_G, "XayaUI_NS")
@@ -56,7 +62,9 @@ v, n = V("audit-groups", 6); check("audit-groups last step: the QA audit group i
 local left = 0; for _, r in ipairs(ns.rules) do if r.qaAudit and r.folder and ns.FolderById and ns.FolderById(r.folder) and ns.FolderById(r.folder).qaAudit then left = left + 1 end end
 check("  ...no sample rule left in a QA audit group", left == 0, left)
 v, n = V("audit-backup-replace", 1); check("D40 built-in categories present on a fresh profile: verdict Pass", v == true, n)
-v, n = V("audit-chat", 1); check("D37 whole-word filter: verdict Pass", v == true, n)
+if HAS_CHAT then
+  v, n = V("audit-chat", 1); check("D37 whole-word filter: verdict Pass", v == true, n)
+else skip("XayaUI_Chat", "D37 whole-word filter: verdict Pass") end
 v, n = V("audit-spelling", 1); check("FA-16 no British spelling in the texts it reads: verdict Pass", v == true, n)
 -- the theme walkthrough: asks, Cancel keeps, Save As Copy, cleanup puts the theme back
 do
@@ -87,7 +95,7 @@ do
   check("B6 audit-engine step 2 (by eye) has no check that pretends to judge", QA.walks["audit-engine"].steps[2].check == nil and QA.walks["audit-engine"].steps[2].noVerdict == true)
 end
 -- (Dev Assist 0.7.53, B6) audit-chat D31: nothing to give back is not a Pass
-do
+if not HAS_CHAT then skip("XayaUI_Chat", "B6 D31 audit-chat: XayaUI never changed the fade, so nothing was given back: not tested (nil), not a Pass") else
   local st = QA.walks["audit-chat"].steps[2]
   local C = ns.Service and ns.Service("chatDebug") and ns.Service("chatDebug").C
   if C and C.On and not C.On() and C.Command then C.Command("on"); W.tick(0.05, 2) end
@@ -161,10 +169,13 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": {}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
+    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA.replace("__HAS_CHAT__", str(HAS_CHAT).lower()), world, loader)
     bad = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if res[i][3]:
+            print(name)
+            continue
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1

@@ -80,7 +80,12 @@ end
 do
   local t, uvs = tree("qol"), {}
   for _, l in ipairs(t.lines or {}) do uvs[#uvs + 1] = tostring(l.uniquevalue):gsub("\001", ">") end
-  check("the QoL sidebar has every part as a row (Character Toolkit's and Cursor's)", #uvs >= 7, table.concat(uvs, ", "))
+  -- (QA-branch modules: Improved Chat's seven rows and Nameplates' one are in this sidebar only where XayaUI_Chat / XayaUI_Nameplates are; the
+  -- six rows of QoL's own parts are always asserted: Character Toolkit's two, Cursor's three, Release Guard)
+  local have = {}
+  for _, u in ipairs(uvs) do have[u] = true end
+  local own = have.charpane and have.chartoolkit and have.cursor and have["cursor>highlight"] and have["cursor>trail"] and have.releaseguard
+  check("the QoL sidebar has every part as a row (Character Toolkit's and Cursor's)", own and #uvs >= ((XUI_HAS_CHAT or XUI_HAS_NAMEPLATES) and 7 or 6), table.concat(uvs, ", "))
 end
 allRows("1 opened")
 
@@ -100,6 +105,11 @@ do
   local h = fr:GetHeight()
   fr:SetHeight(260); sizeChanged()
   local shown, total = seen()
+  -- (with fewer rows in the sidebar, 260 px may hold them all: the window is made shorter until they no longer fit)
+  for _, hh in ipairs({ 200, 150, 110, 80 }) do
+    if shown < total then break end
+    fr:SetHeight(hh); sizeChanged(); shown, total = seen()
+  end
   check("3 short window: fewer rows drawn, the rest scroll (the list follows the room)", shown > 0 and shown < total, ("%d of %d"):format(shown, total))
   fr:SetHeight(h); sizeChanged()
 end
@@ -134,6 +144,8 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+    # QA-branch modules (Chat, Nameplates): absent on main
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s" % tuple(str(os.path.isdir(os.path.join(H.ROOT, m))).lower() for m in ("XayaUI_Chat", "XayaUI_Nameplates")))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

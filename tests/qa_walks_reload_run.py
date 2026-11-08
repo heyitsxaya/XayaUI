@@ -20,6 +20,10 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
+import re  # noqa: E402
+
+# QA-branch modules: main keeps only core, Options, Rules, QoL, Bonus, Dev Assist, Media; Chat, Reskin and Nameplates live on the QA branch
+ABSENT = [m for m in ("XayaUI_Chat", "XayaUI_Reskin") if not os.path.isdir(os.path.join(H.ROOT, m))]
 
 COMMON = r'''
 local R = {}
@@ -140,8 +144,8 @@ end
 PLAIN = r'''
 return function(W, L)
 ''' + COMMON + r'''
-if ns.OpenSettingsPage then ns.OpenSettingsPage("reskin", "reskinOverview") end; W.tick(0.1, 3)
-ns.SetReskinTab(false); ns.SetReskinTab(true); W.tick(0.1, 3)
+if ns.OpenSettingsPage and ns.SetReskinTab then ns.OpenSettingsPage("reskin", "reskinOverview") end; W.tick(0.1, 3)
+if ns.SetReskinTab then ns.SetReskinTab(false); ns.SetReskinTab(true) end; W.tick(0.1, 3)
 if CharacterFrame then CharacterFrame:Show(); W.tick(0.1, 2); CharacterFrame:Hide() end
 if GameMenuFrame then GameMenuFrame:Show(); W.tick(0.1, 2); GameMenuFrame:Hide() end
 return R
@@ -179,6 +183,25 @@ def keypaths(v, path="", depth=0, maxd=99):
 def main():
     bad, n, errs = 0, 0, []
     saved = {}
+    if ABSENT:
+        # the walkthroughs switch Blizzard Reskin and Improved Chat: nothing of them to walk without those modules. Each check is listed as skipped;
+        # the plain session (settings window, character window, Esc menu) still runs and must load, run and save without a Lua error
+        why = "QA-branch module absent: " + ", ".join(ABSENT)
+        for i, src in enumerate((S1, S2, S3, S4), 1):
+            for name in re.findall(r'check\("((?:[^"\\]|\\.)*)"', src):
+                print("SKIP (%s) session %d: %s" % (why, i, name))
+        for name in ("no new saved key in XayaUIDevAssistDB (only qa.results holds the runs)", "no new top-level saved key in CueRulesDB"):
+            print("SKIP (%s) %s" % (why, name))
+        results, plain, e = session(PLAIN, {})
+        errs += e
+        for name, ok in results[-1:]:
+            n += 1
+            print(("PASS " if ok else "FAIL ") + "plain session (modules absent): %s" % name)
+            bad += 0 if ok else 1
+        for e in errs:
+            print("ERROR in the game stand-in:", str(e)[:600])
+        print("%d checks, %d failed, %d Lua errors" % (n, bad, len(errs)))
+        sys.exit(1 if bad or errs else 0)
     for i, src in enumerate((S1, S2, S3, S4), 1):
         results, saved, e = session(src, saved if isinstance(saved, dict) else {})
         errs += e

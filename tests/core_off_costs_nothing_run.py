@@ -18,10 +18,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
+ROOT = os.path.dirname(HERE)
+# XayaUI_Reskin is a QA-branch module (not on main): the checks about the Game Menu look (GameMenuSkin.lua) are skipped while it is absent
+HAS_RESKIN = os.path.isdir(os.path.join(ROOT, "XayaUI_Reskin"))
+
 LUA = r'''
-return function(W, L, MODE)
+return function(W, L, MODE, HAS_RESKIN)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { "[" .. MODE .. "] " .. name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local function skipReskin(name) R[#R + 1] = { "[" .. MODE .. "] " .. name, "skip" } end
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- meters: which addon file made a frame, placed a hook, started a timer (the first XayaUI file on the call stack)
@@ -173,7 +178,8 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   check("A1 Game Menu button saved off: GameMenu.lua made no frame and placed no hook", nothing(GM), cost(GM))
   check("A1b ...and added no theme-change listener", themeListeners(GM) == 0, themeListeners(GM))
-  check("A2 Game Menu look saved off: GameMenuSkin.lua made no frame and placed no hook", nothing(SKIN), cost(SKIN))
+  if HAS_RESKIN then check("A2 Game Menu look saved off: GameMenuSkin.lua made no frame and placed no hook", nothing(SKIN), cost(SKIN))
+  else skipReskin("A2 Game Menu look saved off: GameMenuSkin.lua made no frame and placed no hook") end
   check("A3 Advanced Debugging saved off: DebugRecord.lua made no frame and registered no event (17 before)", nothing(DBG), cost(DBG))
   check("A4 no rule uses the game-played sound: AuraSound.lua made no frame, registered no event, placed no hook (on ns.MarkDirty before)",
     nothing(SND), cost(SND))
@@ -239,20 +245,26 @@ if MODE == "off" then
     tostring(xb:IsShown()), asks))
   closeMenu()
   -- B5-B8 the Game Menu look (Blizzard UI Reskin > Esc Menu)
-  skinSwitch(true)
-  openMenu()
-  local panel = _G.XayaUI_GameMenuPanel
-  check("(works) B5 the look switched on: its panel is drawn over the menu and Blizzard's menu is faded", panel ~= nil and panel:IsShown()
-    and M:GetAlpha() == 0, ("panel %s, alpha %s"):format(tostring(panel and panel:IsShown()), tostring(M:GetAlpha())))
-  check("(works) B6 ...its hooks are placed now", nhooks(SKIN) >= 2, cost(SKIN))
-  closeMenu()
-  skinSwitch(false)
-  check("B7 the look switched off with the menu closed: Blizzard's menu gets its alpha back at once", M:GetAlpha() == 1, M:GetAlpha())
-  M:SetAlpha(0.5)
-  openMenu()
-  check("B8 ...the menu opened again: no panel, and Blizzard's alpha is not touched (the hooks return at once)", not panel:IsShown()
-    and M:GetAlpha() == 0.5, ("panel %s, alpha %s"):format(tostring(panel:IsShown()), tostring(M:GetAlpha())))
-  closeMenu(); M:SetAlpha(1)
+  if not HAS_RESKIN then
+    for _, n in ipairs({ "(works) B5 the look switched on: its panel is drawn over the menu and Blizzard's menu is faded", "(works) B6 ...its hooks are placed now",
+      "B7 the look switched off with the menu closed: Blizzard's menu gets its alpha back at once",
+      "B8 ...the menu opened again: no panel, and Blizzard's alpha is not touched (the hooks return at once)" }) do skipReskin(n) end
+  else
+    skinSwitch(true)
+    openMenu()
+    local panel = _G.XayaUI_GameMenuPanel
+    check("(works) B5 the look switched on: its panel is drawn over the menu and Blizzard's menu is faded", panel ~= nil and panel:IsShown()
+      and M:GetAlpha() == 0, ("panel %s, alpha %s"):format(tostring(panel and panel:IsShown()), tostring(M:GetAlpha())))
+    check("(works) B6 ...its hooks are placed now", nhooks(SKIN) >= 2, cost(SKIN))
+    closeMenu()
+    skinSwitch(false)
+    check("B7 the look switched off with the menu closed: Blizzard's menu gets its alpha back at once", M:GetAlpha() == 1, M:GetAlpha())
+    M:SetAlpha(0.5)
+    openMenu()
+    check("B8 ...the menu opened again: no panel, and Blizzard's alpha is not touched (the hooks return at once)", not panel:IsShown()
+      and M:GetAlpha() == 0.5, ("panel %s, alpha %s"):format(tostring(panel:IsShown()), tostring(M:GetAlpha())))
+    closeMenu(); M:SetAlpha(1)
+  end
   -- B9-B13 Advanced Debugging and its "Game state" category (Settings > Debugging)
   check("(works) the Advanced Debugging switch is in the settings", switch("advancedDebug", true))
   local n1, l1, set1 = events(DBG)
@@ -337,7 +349,8 @@ elseif MODE == "defaults" then
   local _, lm, setm = events(MINI)
   check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil
     and _G.XayaUIMinimapButton:IsShown() and setm.PLAYER_ENTERING_WORLD, lm)
-  check("C6 the Game Menu look is off by default: nothing of it exists", nothing(SKIN), cost(SKIN))
+  if HAS_RESKIN then check("C6 the Game Menu look is off by default: nothing of it exists", nothing(SKIN), cost(SKIN))
+  else skipReskin("C6 the Game Menu look is off by default: nothing of it exists") end
   check("C7 no rule uses the game-played sound: nothing of it exists", nothing(SND), cost(SND))
   check("C8 the console window is closed by default: nothing of it exists", nothing(CON), cost(CON))
 elseif MODE == "on" then
@@ -346,8 +359,13 @@ elseif MODE == "on" then
   ---------------------------------------------------------------------------------------------------------------------------------
   openMenu()
   local panel = _G.XayaUI_GameMenuPanel
-  check("(works) D1 the Game Menu look saved on: its panel is drawn when the menu opens", panel ~= nil and panel:IsShown() and M:GetAlpha() == 0)
-  check("(works) D2 ...the XayaUI row sits on core's slot (match mode)", slotCount() == 1)
+  if HAS_RESKIN then
+    check("(works) D1 the Game Menu look saved on: its panel is drawn when the menu opens", panel ~= nil and panel:IsShown() and M:GetAlpha() == 0)
+    check("(works) D2 ...the XayaUI row sits on core's slot (match mode)", slotCount() == 1)
+  else
+    skipReskin("(works) D1 the Game Menu look saved on: its panel is drawn when the menu opens")
+    skipReskin("(works) D2 ...the XayaUI row sits on core's slot (match mode)")
+  end
   closeMenu()
   check("(works) D3 the console window saved open: open after login", _G.XayaUIConsoleWindow ~= nil and _G.XayaUIConsoleWindow:IsShown())
   local nc, lc = events(CON)
@@ -392,16 +410,20 @@ def world(mode):
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), w,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved_for(mode)}))
-    res = L.eval("function(src, W, Ld, mode) return loadstring(src)()(W, Ld, mode) end")(LUA, w, loader, mode)
+    res = L.eval("function(src, W, Ld, mode, r) return loadstring(src)()(W, Ld, mode, r) end")(LUA, w, loader, mode, HAS_RESKIN)
     return res, w
 
 
 def main():
-    total, bad, errs = 0, 0, 0
+    total, bad, errs, skipped = 0, 0, 0, 0
     for mode in ("off", "defaults", "on"):
         res, w = world(mode)
         for i in range(1, len(res) + 1):
             name, ok = res[i][1], res[i][2]
+            if ok == "skip":
+                skipped += 1
+                print("SKIP (QA-branch module absent: XayaUI_Reskin) " + name)
+                continue
             print(("PASS " if ok else "FAIL ") + name)
             total += 1
             if not ok:
@@ -409,7 +431,8 @@ def main():
         for i in range(1, len(w.errors) + 1):
             print("ERROR in the game stand-in [%s]: %s" % (mode, str(w.errors[i])[:700]))
             errs += 1
-    print("%d checks, %d failed, %d Lua errors" % (total, bad, errs))
+    print("%d checks, %d failed, %d Lua errors%s" % (total, bad, errs,
+          (", %d skipped (QA-branch module absent: XayaUI_Reskin)" % skipped) if skipped else ""))
     sys.exit(1 if bad or errs else 0)
 
 

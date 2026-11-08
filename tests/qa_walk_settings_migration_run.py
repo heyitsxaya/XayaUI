@@ -19,6 +19,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 sys.path.insert(0, HERE)
 import run as H  # noqa: E402
+
+# XayaUI_Reskin is a QA-branch module, absent on main: presence is read from the folder
+HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
 import settings_seam_run as SEAM  # noqa: E402
 import settings_stores as SST  # noqa: E402
 import settings_migration_run as MIG  # noqa: E402
@@ -67,8 +70,10 @@ if opts.breakCore then
 end
 local res = Walk("settings-migration")
 local function said(i, pat) return tostring(res[i].d):find(pat, 1, true) ~= nil end
+-- (absent-case, XayaUI_Reskin missing: the record says "Reskin off" where it names the module that copied)
+local reskinSaid = __HAS_RESKIN__ and said(1, "copied from CueRulesDB: Reskin 0 11-06 now") or (not __HAS_RESKIN__ and said(1, "copied from CueRulesDB: Reskin off"))
 check("part 1 step 1: every module copied from CueRulesDB (verdict Pass); the record names the version that copied and the day",
-  res[1].v == true and said(1, "copied from CueRulesDB: Reskin 0 11-06 now") and said(1, "Rules 0 11-06 now") and said(1, "DevAssist 0 11-06 now"), res[1].d)
+  res[1].v == true and reskinSaid and said(1, "Rules 0 11-06 now") and said(1, "DevAssist 0 11-06 now"), res[1].d)
 check("part 1 step 2: the compared values are the same, own store against the old copy (verdict Pass)", res[2].v == true and said(2, "changed or lost: none"), res[2].d)
 check("part 1 step 3: rules, groups, bars counted the same on both sides; the backup is there (verdict Pass)",
   res[3].v == true and said(3, "Rules before the settings move") and said(3, "own: 320 rules"), res[3].d)
@@ -123,13 +128,13 @@ def main():
             print(("PASS " if ok else "FAIL ") + tag + ": " + name)
             bad += 0 if ok else 1
 
-    r1, s1, e1 = session(PART1.replace("__NR__", str(nR)), before)
+    r1, s1, e1 = session(PART1.replace("__NR__", str(nR)).replace("__HAS_RESKIN__", str(HAS_RESKIN).lower()), before)
     report("part 1", r1, e1)
     r2, s2, e2 = session(PART2, s1)
     report("part 2", r2, e2)
     r3, s3, e3 = session(PART3, s2)
     report("after", r3, e3)
-    rb, _, eb = session(PART1, before, breakCore=True)
+    rb, _, eb = session(PART1.replace("__HAS_RESKIN__", str(HAS_RESKIN).lower()), before, breakCore=True)
     report("mismatch", rb, eb)
     for e in errs:
         print("ERROR in the game stand-in:", e[:600])

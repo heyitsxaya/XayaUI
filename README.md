@@ -27,7 +27,11 @@ This addon is for personal use only. Forks are welcome and the community is alwa
 
 ## The addons (since 0.6.0)
 
-XayaUI is a group of addons; every folder at the top of this repository is one of them and is installed as-is:
+XayaUI is a group of addons; every folder at the top of this repository is one of them and is installed as-is.
+
+Since 2026-11-08 `main` holds only the essential addons: the platform and its settings, Rules, QoL, Bonus Features (with Chat), plus Dev Assist and Media. XayaUI Blizzard Reskin, XayaUI Nameplates and the parked code (`shelved/`, `roadmap-features/`) are developed on the `qa-installer-branch` branch (see `tools/qa-only-paths.txt`). That branch is separate from `main`: nothing copies one into the other.
+
+On `main`:
 
 | Folder | In the AddOns list | What it holds |
 |---|---|---|
@@ -35,14 +39,20 @@ XayaUI is a group of addons; every folder at the top of this repository is one o
 | `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups (since 0.6.76; was part of `XayaUI`). Switch it off if you make no rules. |
 | `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
 | `XayaUI_Rules_Options` | XayaUI Rules Options | The rule editor (the settings window's Rules tab), loaded when the window opens while XayaUI Rules is on (since 0.6.77; was part of `XayaUI_Options`). |
-| `XayaUI_Chat` | XayaUI Chat | Chat Panel, Chat Bar, filters, sounds, history, privacy cover. |
+| `XayaUI_Chat` | XayaUI Chat | Chat Panel (Blizzard's chat windows restyled) and Improved Chat (Chat Data Panel, filters, sounds, history, fade, privacy cover). |
 | `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail; Character Toolkit stat panel (friends and bags later). |
 | `XayaUI_Bonus` | XayaUI Bonus Features | Tooltip additions, Notepad, custom data panels. |
-| `XayaUI_Reskin` | XayaUI Blizzard Reskin | XayaUI's look on Blizzard frames (today: the Game Menu). |
 | `XayaUI_Media` | XayaUI Media | Your own pictures and sounds (a support folder; see its README). |
 | `XayaUI_DevAssist` | XayaUI Dev Assist | A developer and debugging tool; not needed to play (was `XayaUI_GameDump`, "Game Data Capture", before 0.7.0: delete that old folder). |
 
-Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the documents) stays out of the game folder.
+Only on `qa-installer-branch`:
+
+| Folder | In the AddOns list | What it holds |
+|---|---|---|
+| `XayaUI_Reskin` | XayaUI Blizzard Reskin | Restyles Blizzard's own frames without changing what they do: the Esc menu, friend class colors, Blizzard's windows, minimap shape, tooltips, objective tracker, toasts, loot rolls, menus, chat bubbles and more. |
+| `XayaUI_Nameplates` | XayaUI Nameplates | Changes to Blizzard's own nameplates (target health bar color; Plater-matching nameplate options). |
+
+Everything else in the repository (`tests/`, `debug-log/`, the documents) stays out of the game folder.
 
 ## Install
 
@@ -50,7 +60,7 @@ Everything else in the repository (`tests/`, `debug-log/`, `shelved/`, the docum
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 
-Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else (a plain local folder, not a cloud-synced one), then copy the `XayaUI*` folders from the clone into `AddOns` as in step 1. After each "Pull origin", copy them again (replace the old ones) and `/reload`. The `qa-installer-branch` branch is an automatic copy of `main`.
+Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else (a plain local folder, not a cloud-synced one), then copy the `XayaUI*` folders from the clone into `AddOns` as in step 1. After each "Pull origin", copy them again (replace the old ones) and `/reload`. The `qa-installer-branch` branch holds XayaUI Blizzard Reskin and XayaUI Nameplates as well; it is separate from `main` (it is not updated from `main`). Testers who want those two pull that branch instead.
 
 ## Sounds
 

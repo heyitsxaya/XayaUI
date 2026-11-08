@@ -18,9 +18,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+# QA-branch modules (XayaUI_Reskin, XayaUI_Nameplates) are absent on main: presence is read from the folder. The switch-reload walkthrough
+# flips Reskin > Chat Bubbles and Nameplates, so it needs both; what needs a module that is absent is printed as SKIP, never silently.
+ROOT = os.path.dirname(HERE)
+HAS_RESKIN = os.path.isdir(os.path.join(ROOT, "XayaUI_Reskin"))
+HAS_NP = os.path.isdir(os.path.join(ROOT, "XayaUI_Nameplates"))
+HAS_SWITCH = HAS_RESKIN and HAS_NP
+MISSING = " + ".join(m for m, h in (("XayaUI_Reskin", HAS_RESKIN), ("XayaUI_Nameplates", HAS_NP)) if not h)
+
 COMMON = r'''
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local HAS_NP, HAS_SWITCH, MISSING = __HAS_NP__, __HAS_SWITCH__, "__MISSING__"
+local function skip(name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. MISSING .. ") " .. name, true, true } end
 local LOADED_EXTRA = {}
 for _, n in ipairs(EXTRA or {}) do LOADED_EXTRA[n] = true end
 local rawLoaded = C_AddOns.IsAddOnLoaded
@@ -48,8 +58,8 @@ local function Walk(id, plan)
 end
 local function Check(id, i) local okC, v, n = pcall(QA.walks[id].steps[i].check); if not okC then return "ERR", tostring(v) end; return v, n end
 local NP = ns.Service("nameplates")
-local function bubbles() return ns.Service("blizzardSkins").Live().bubbles and true or false end
-local function listening() return NP.TargetColor.Listening() and true or false end
+local function bubbles() local S = ns.Service("blizzardSkins"); return S and S.Live().bubbles and true or false end
+local function listening() return NP and NP.TargetColor.Listening() and true or false end
 '''
 
 S1 = r'''
@@ -61,15 +71,24 @@ if not QA.walks["conflicts"] then return R end
 -- conflicts
 local v1, n1 = Check("conflicts", 1)
 check("conflicts step 1: what was found at login matches a fresh read of the AddOns list (Pass), and the note captures it",
-  v1 == true and tostring(n1):find("ElvUI", 1, true) and tostring(n1):find("nameplates:Plater", 1, true) and tostring(n1):find("login line: overlaps with other loaded addons", 1, true), tostring(n1))
+  v1 == true and tostring(n1):find("ElvUI", 1, true) and (not HAS_NP or tostring(n1):find("nameplates:Plater", 1, true)) and tostring(n1):find("login line: overlaps with other loaded addons", 1, true), tostring(n1))
 local rawFor = ns.ConflictsFor
-ns.ConflictsFor = function(p) local l = rawFor(p); if p == "nameplates" and l then local out = {}; for _, e in ipairs(l) do if e.addon ~= "Plater" then out[#out + 1] = e end end; return out end return l end
+-- (no Nameplates page without XayaUI_Nameplates, so Plater is flagged nowhere: ElvUI is the one left out of every page instead)
+local dropAddon, dropPage = "Plater", "nameplates"
+if not HAS_NP then dropAddon, dropPage = "ElvUI", nil end
+ns.ConflictsFor = function(p) local l = rawFor(p); if (dropPage == nil or p == dropPage) and l then local out = {}; for _, e in ipairs(l) do if e.addon ~= dropAddon then out[#out + 1] = e end end; return out end return l end
 local vn = Check("conflicts", 1)
 ns.ConflictsFor = rawFor
 check("conflicts step 1 negative: a loaded addon missing from what was found: Fail", vn == false, tostring(vn))
 local res, notes = Walk("conflicts")
 check("conflicts step 2: the first flagged page opens and every flagged page has its line (Pass)", res and res.steps[2].r == "P" and tostring(notes[2]):find("pages with their line:", 1, true)
   and not tostring(notes[2]):find("MISSING", 1, true), tostring(notes[2]))
+if not HAS_SWITCH then
+  skip("(start) Chat Bubbles not drawn, the nameplate colour listening")
+  skip("switch-reload part 1: Chat Bubbles flipped, asked, nothing drawn before the reload (Pass)")
+  skip("switch-reload part 1: Nameplates flipped, asked, still listening before the reload (Pass)")
+  skip("switch-reload part 2 before the /reload: no verdict (not reloaded yet)")
+else
 -- switch-reload part 1
 local b0, l0 = bubbles(), listening()
 check("(start) Chat Bubbles not drawn, the nameplate colour listening", b0 == false and l0 == true)
@@ -80,6 +99,7 @@ check("switch-reload part 1: Nameplates flipped, asked, still listening before t
   and listening() == true, tostring(nt1[2]))
 local vb = Check("switch-reload-after", 1)
 check("switch-reload part 2 before the /reload: no verdict (not reloaded yet)", vb == nil, tostring(vb))
+end
 return R
 end
 '''
@@ -124,9 +144,11 @@ def session(src, saved, extra):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": H.to_lua(L, saved)}))
+    src = (src.replace("__HAS_NP__", str(HAS_NP).lower()).replace("__HAS_SWITCH__", str(HAS_SWITCH).lower())
+           .replace("__MISSING__", MISSING))
     res = L.eval("function(src, W, Ld, x) return loadstring(src)()(W, Ld, x) end")(src, world, loader, H.to_lua(L, extra))
     out, issues = loader.logout()
-    results = [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]
+    results = [(res[i][1], res[i][2], bool(res[i][3])) for i in range(1, len(res) + 1)]
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     return results, H.lua_to_py(out), errs
 
@@ -136,10 +158,20 @@ def main():
     errs = []
     saved = {}
     for i, src in enumerate((S1, S2, S3), 1):
+        if i > 1 and not HAS_SWITCH:   # part 2 and 3 of switch-reload only exist after part 1's real /reload
+            for nm in (("switch-reload part 2 after the /reload: Chat Bubbles drawn, the nameplate colour no longer listening (Pass)",
+                        "switch-reload part 2: both flipped back and asked; nothing changes before the reload (Pass)") if i == 2 else
+                       ("switch-reload part 3 after the second /reload: both as before part 1 (Pass)",)):
+                n += 1
+                print("SKIP (QA-branch module absent: %s) session %d: %s" % (MISSING, i, nm))
+            continue
         results, saved, e = session(src, saved if isinstance(saved, dict) else {}, ["ElvUI", "Plater"])
         errs += e
-        for name, ok in results:
+        for name, ok, sk in results:
             n += 1
+            if sk:
+                print(name.replace(") ", ") session %d: " % i, 1))
+                continue
             print(("PASS " if ok else "FAIL ") + "session %d: %s" % (i, name))
             if not ok:
                 bad += 1
@@ -151,7 +183,7 @@ def main():
     bad += 0 if ok else 1
     results, _, e = session(S4, {}, [])
     errs += e
-    for name, ok in results:
+    for name, ok, sk in results:
         n += 1
         print(("PASS " if ok else "FAIL ") + "session 4: %s" % name)
         if not ok:

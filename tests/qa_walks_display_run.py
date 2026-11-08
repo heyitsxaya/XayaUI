@@ -14,9 +14,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+# XayaUI_Reskin is a QA-branch module, absent on main: presence is read from the folder
+HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
+
 LUA = r'''
 return function(W, L)
 local R = {}
+local HAS_RESKIN = __HAS_RESKIN__
+local function skip(mod, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. mod .. ") " .. name, true, true } end
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
@@ -63,7 +68,9 @@ if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
 stepCheck("release guard 1: Where has no Everywhere", "ui-release-guard", 1, false)
 stepCheck("release guard 2: with no death window, the check says so (no verdict)", "ui-release-guard", 2, false, false)
 stepCheck("stat labels: GCD, Movement Speed, Critical Strike Effectiveness", "ui-stat-gcd", 1, false)
-stepCheck("nesting (UI-69): Layout's name 8 px right of Chat Panel's", "ui-nesting", 1, true)
+if HAS_RESKIN then
+  stepCheck("nesting (UI-69): Layout's name 8 px right of Chat Panel's", "ui-nesting", 1, true)
+else skip("XayaUI_Reskin", "nesting (UI-69): Layout's name 8 px right of Chat Panel's (the Blizzard Reskin tab's Chat Panel row)") end
 stepCheck("row icons (UI-70): every icon in its column on Rules > Enabled", "ui-row-icons", 1, true)
 stepCheck("auto-generate (UI-71): one icon per spec, four buttons as four lines", "ui-autogen-layout", 1, true)
 stepCheck("core flat buttons (UI-77) 1: the console's buttons are flat", "ui-core-flat-buttons", 1, true)
@@ -106,10 +113,13 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": {}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
+    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA.replace("__HAS_RESKIN__", str(HAS_RESKIN).lower()), world, loader)
     bad = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if res[i][3]:
+            print(name)
+            continue
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1

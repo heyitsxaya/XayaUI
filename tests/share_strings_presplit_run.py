@@ -19,6 +19,8 @@ import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
+sys.path.insert(0, HERE)
+import settings_stores as SST  # noqa: E402  (where each module keeps its settings)
 
 # made by the code before the split (main 8ced2e3) with --golden; see the docstring
 GOLDEN = {
@@ -433,9 +435,36 @@ if rulesOn then
       end
       now.profile = data and S.Encode("profile", data)
     end
-    check("B: profile: the Chat defaults now saved are in it (" .. added .. " of " .. want .. ")", want > 0 and added == want, added)
+    if XUI_HAS_CHAT then
+      check("B: profile: the Chat defaults now saved are in it (" .. added .. " of " .. want .. ")", want > 0 and added == want, added)
+    else
+      R[#R + 1] = { "SKIP (QA-branch module absent: XayaUI_Chat) B: profile: the Chat defaults now saved are in it", true }
+    end
+    local function same(a, b)
+      if type(a) ~= type(b) then return false end
+      if type(a) ~= "table" then return a == b end
+      for k, v in pairs(a) do if not same(v, b[k]) then return false end end
+      for k in pairs(b) do if a[k] == nil then return false end end
+      return true
+    end
     for _, k in ipairs({ "rule", "group", "all", "theme", "profile" }) do
-      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), now[k] == GOLD[k], tostring(now[k]):sub(1, 50))
+      local ok, shown = now[k] == GOLD[k], tostring(now[k]):sub(1, 50)
+      if k == "profile" and not (XUI_HAS_CHAT and XUI_HAS_RESKIN) then
+        -- the pre-split profile string holds the data of the QA-branch modules that are absent: Chat's two tables (chat, chat2) and, from
+        -- Reskin, its keys inside the Settings part (ui.friendColors, gm, rsk) and its half of characterReskin in the Blizzard Reskin part.
+        -- Nothing makes them without those addons, so the expected profile is taken at compare time without them and compared part by
+        -- part, every key and value (the byte order of an encoded string follows how the tables were built, which differs once the golden
+        -- is read back and changed). Everything of core, QoL and Bonus in it still has to match.
+        local gd, nd = S.Read(GOLD.profile, "profile"), S.Read(now.profile, "profile")
+        local P = type(gd) == "table" and gd.parts or {}
+        if not XUI_HAS_CHAT and P.reskin then P.reskin.chat = nil; P.reskin.chat2 = nil end
+        if not XUI_HAS_RESKIN then
+          for _, key in ipairs(XUI_RESKIN_UI) do if P.settings and P.settings.ui then P.settings.ui[key] = nil end end
+          for _, key in ipairs(XUI_RESKIN_SPLIT) do if P.reskin and P.reskin.characterReskin then P.reskin.characterReskin[key] = nil end end
+        end
+        ok = type(gd) == "table" and type(nd) == "table" and same(gd, nd)
+      end
+      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), ok, shown)
     end
     wipe(ns.rules); wipe(ns.folders)
   end)
@@ -536,10 +565,18 @@ def main():
     bad, total, errs_all = 0, 0, []
     for rules_on in (True, False):
         L, world, loader = runtime(lambda n: n not in skip and (rules_on or n != "XayaUI_Rules"))
+        # (QA-branch modules: absent on main) and, for the golden profile string, the keys Reskin owns (settings_stores.py reads them from Modules.lua)
+        lay = SST.layout(H.ROOT)
+        L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s" % (str(os.path.isdir(os.path.join(H.ROOT, "XayaUI_Chat"))).lower(), str(os.path.isdir(os.path.join(H.ROOT, "XayaUI_Reskin"))).lower()))
+        L.execute("XUI_RESKIN_UI = { %s }; XUI_RESKIN_SPLIT = { %s }" % (", ".join('"%s"' % k for k in lay["underUi"].get("reskin", [])),
+                  ", ".join('"%s"' % k for k in lay["split"]["characterReskin"]["sub"] if lay["split"]["characterReskin"]["owner"] == "reskin")))
         res = L.eval("function(src, W, Ld, g, on) return loadstring(src)()(W, Ld, g, on) end")(TEST_LUA, world, loader, H.to_lua(L, GOLDEN), rules_on)
         tag = "[Rules on] " if rules_on else "[Rules off] "
         for i in range(1, len(res) + 1):
             name, ok = res[i][1], res[i][2]
+            if str(name).startswith("SKIP ("):
+                print(name.replace("SKIP (", "SKIP " + tag + "(", 1))
+                continue
             print(("PASS " if ok else "FAIL ") + tag + name)
             total += 1
             if not ok:

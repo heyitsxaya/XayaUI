@@ -46,9 +46,11 @@ RSK_ALL = {"windows": True, "minimap": True, "shape": "SQUARE", "tooltips": True
            "bubbles": True, "statusbars": True, "mmbuttons": True, "buttons": True}
 
 LUA = r'''
-return function(W, L, mode, GMOWN)
+return function(W, L, mode, GMOWN, HAS_CHAT, HAS_RESKIN)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+-- the QA-branch modules (XayaUI_Chat, XayaUI_Reskin) are absent on main: a check about one is printed as a SKIP
+local function skip(name, mod) R[#R + 1] = { name, true, mod } end
 local function f3(c) return c and ("%.3f,%.3f,%.3f"):format(c[1] or -1, c[2] or -1, c[3] or -1) or "nil" end
 local function same(a, b) return a and b and math.abs(a[1] - b[1]) < 0.002 and math.abs(a[2] - b[2]) < 0.002 and math.abs(a[3] - b[3]) < 0.002 end
 
@@ -126,6 +128,11 @@ local function gmPanel() return rawget(_G, "XayaUI_GameMenuPanel") end
 
 if mode == "plain" then
   check("F with \"Use my own colors\" off nothing is stored: no theme.scopes", type(CueRulesDB.theme) ~= "table" or CueRulesDB.theme.scopes == nil, CueRulesDB.theme and CueRulesDB.theme.scopes)
+  if not HAS_RESKIN then
+    skip("F ...and no fold mark", "XayaUI_Reskin")
+    skip("F the Esc menu draws today's theme look: panel fill 0.04, border = the theme's button border, title = accent", "XayaUI_Reskin")
+    return R
+  end
   check("F ...and no fold mark", RS.themeFolded == nil)
   GMF:Show(); W.tick(0.05, 3)
   local p = gmPanel()
@@ -149,39 +156,54 @@ local function repaint() W.tick(0.1, 4); if ns.DecorateTrees then pcall(ns.Decor
 local GMIDS = { "reskin.gamemenu" }
 local function snap()
   local s = {}
-  local m = BS.memo[SP]
-  s["reskin.blizzwindows"] = { m and m.bg and m.bg._color, m and m.edges and m.edges[1]._color, { SP.TitleContainer.TitleText:GetTextColor() } }
-  local mm = BS.memo.minimap
-  s["reskin.minimap"] = { mm and mm.edges and mm.edges[1]._color }
-  SharedTooltip_SetBackdropStyle(GT)
-  s["reskin.tooltips"] = { GT.NineSlice._center, GT.NineSlice._border }
-  QOT:EndLayout()
-  s["reskin.tracker"] = { { QOT.Header.Text:GetTextColor() }, { QOT.block.HeaderText:GetTextColor() } }
-  BNT:Hide(); BNT:Show()
-  s["reskin.toasts"] = { BNT._bdcolor, BNT._bdborder }
-  local menu = BuildMenu()
-  s["reskin.menus"] = { menu._bg._color }
-  bp._center = nil; BS.ScanBubbles()
-  s["reskin.bubbles"] = { bp._center, bp._border }
-  local mb = BS.memo[MSB]
-  s["reskin.statusbars"] = { mb and mb.bg and mb.bg._color, mb and mb.edges and mb.edges[1]._color }
-  s["reskin.mmbuttons"] = { MC.BorderTop._center, MC.BorderTop._border }
-  MAILF:Hide(); MAILF:Show()
-  local bm = BS.memo[mailSend]
-  s["reskin.buttons"] = { bm and bm.bg and bm.bg._color, bm and bm.edges and bm.edges[1]._color }
-  GMF:Hide(); GMF:Show(); W.tick(0.05, 3)
-  local p = gmPanel()
-  s["reskin.gamemenu"] = { p and p.bg._color, p and p.e[1]._color, p and { p.title:GetTextColor() } }
-  local cs = ns.chat2 or {}
-  s["reskin.chatpanel"] = { { C.Color(cs, "bg", "xui-pane", "bg") }, { C.Color(cs, "border", "xui-pane", "border") } }
+  if HAS_RESKIN then
+    local m = BS.memo[SP]
+    s["reskin.blizzwindows"] = { m and m.bg and m.bg._color, m and m.edges and m.edges[1]._color, { SP.TitleContainer.TitleText:GetTextColor() } }
+    local mm = BS.memo.minimap
+    s["reskin.minimap"] = { mm and mm.edges and mm.edges[1]._color }
+    SharedTooltip_SetBackdropStyle(GT)
+    s["reskin.tooltips"] = { GT.NineSlice._center, GT.NineSlice._border }
+    QOT:EndLayout()
+    s["reskin.tracker"] = { { QOT.Header.Text:GetTextColor() }, { QOT.block.HeaderText:GetTextColor() } }
+    BNT:Hide(); BNT:Show()
+    s["reskin.toasts"] = { BNT._bdcolor, BNT._bdborder }
+    local menu = BuildMenu()
+    s["reskin.menus"] = { menu._bg._color }
+    bp._center = nil; BS.ScanBubbles()
+    s["reskin.bubbles"] = { bp._center, bp._border }
+    local mb = BS.memo[MSB]
+    s["reskin.statusbars"] = { mb and mb.bg and mb.bg._color, mb and mb.edges and mb.edges[1]._color }
+    s["reskin.mmbuttons"] = { MC.BorderTop._center, MC.BorderTop._border }
+    MAILF:Hide(); MAILF:Show()
+    local bm = BS.memo[mailSend]
+    s["reskin.buttons"] = { bm and bm.bg and bm.bg._color, bm and bm.edges and bm.edges[1]._color }
+    GMF:Hide(); GMF:Show(); W.tick(0.05, 3)
+    local p = gmPanel()
+    s["reskin.gamemenu"] = { p and p.bg._color, p and p.e[1]._color, p and { p.title:GetTextColor() } }
+  end
+  if HAS_CHAT then
+    local cs = ns.chat2 or {}
+    s["reskin.chatpanel"] = { { C.Color(cs, "bg", "xui-pane", "bg") }, { C.Color(cs, "border", "xui-pane", "border") } }
+  end
   s["reskin.charreskin"] = { NEW(ns, "CharReskin_ThemeCol")("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }), NEW(ns, "CharReskin_ThemeCol")("xui-label", "text", { 1, 0.82, 0, 1 }) }
   s["reskin.shoppinglist"] = { NEW(ns, "ShoppingList_ThemeCol")("xui-window", "bg", { 0.04, 0.04, 0.06, 1 }), NEW(ns, "ShoppingList_ThemeCol")("xui-text", "text", { 0.96, 0.96, 0.98, 1 }) }
   repaint()
   s["settings"] = { fr and fr._bdcolor, fr and fr._bdborder }
   return s
 end
-local IDS = { "reskin.blizzwindows", "reskin.minimap", "reskin.tooltips", "reskin.tracker", "reskin.toasts", "reskin.menus", "reskin.bubbles",
-  "reskin.statusbars", "reskin.mmbuttons", "reskin.buttons", "reskin.gamemenu", "reskin.chatpanel", "reskin.charreskin", "reskin.shoppinglist", "settings" }
+-- which module's element each scope is (nil: core, Options or QoL, always present on main)
+local OWNER = { ["reskin.chatpanel"] = "chat", ["reskin.friendcolors"] = "reskin" }
+for _, id in ipairs({ "blizzwindows", "minimap", "tooltips", "tracker", "toasts", "menus", "bubbles", "statusbars", "mmbuttons", "buttons", "gamemenu" }) do OWNER["reskin." .. id] = "reskin" end
+local MODNAME = { chat = "XayaUI_Chat", reskin = "XayaUI_Reskin" }
+local function present(id) local m = OWNER[id]; return m == nil or (m == "chat" and HAS_CHAT) or (m == "reskin" and HAS_RESKIN) end
+local IDS = {}
+for _, id in ipairs({ "reskin.blizzwindows", "reskin.minimap", "reskin.tooltips", "reskin.tracker", "reskin.toasts", "reskin.menus", "reskin.bubbles",
+  "reskin.statusbars", "reskin.mmbuttons", "reskin.buttons", "reskin.gamemenu", "reskin.chatpanel", "reskin.charreskin", "reskin.shoppinglist", "settings" }) do
+  if present(id) then IDS[#IDS + 1] = id end
+end
+-- stand-ins for the elements the checks below pick on (Status Bars, Minimap, Tooltips, Menus, the Esc Menu's page); QoL's two elements when Blizzard Reskin is absent
+local E_STAT, E_MIN, E_TIP, E_MENU = "reskin.statusbars", "reskin.minimap", "reskin.tooltips", "reskin.menus"
+if not HAS_RESKIN then E_STAT, E_MIN, E_TIP, E_MENU = "reskin.shoppinglist", "reskin.charreskin", "reskin.shoppinglist", "settings" end
 local function str(list) local o = {}; for i, c in ipairs(list or {}) do o[i] = f3(c) end; return table.concat(o, " | ") end
 local function eq(a, b) if #a ~= #b then return false end for i = 1, #a do if not same(a[i], b[i]) then return false end end return true end
 local function diffs(a, b, except)
@@ -195,9 +217,12 @@ local PAGES = { ["reskin.blizzwindows"] = "blizzwindows", ["reskin.minimap"] = "
   ["reskin.toasts"] = "rsktoasts", ["reskin.menus"] = "rskmenus", ["reskin.bubbles"] = "rskbubbles", ["reskin.statusbars"] = "rskstatusbars",
   ["reskin.mmbuttons"] = "rskmmbuttons", ["reskin.buttons"] = "rskbuttons", ["reskin.gamemenu"] = "gamemenu", ["reskin.friendcolors"] = "friendcolors",
   ["reskin.shoppinglist"] = "shoppinglist", ["reskin.chatpanel"] = "chatpanel", ["reskin.charreskin"] = "charreskin" }
+for id in pairs(PAGES) do if not present(id) then PAGES[id] = nil end end
 local bad = {}
 for id, pg in pairs(PAGES) do local d = T.scopes[id]; if not (d and d.parent == "reskin" and d.page == pg) then bad[#bad + 1] = id end end
-check("A the 13 Blizzard Reskin pages, Chat Panel and Character Pane each have a scope under Blizzard Reskin with their page key", #bad == 0, table.concat(bad, ","))
+check("A the 13 Blizzard Reskin pages, Chat Panel and Character Pane each have a scope under Blizzard Reskin with their page key" .. ((HAS_RESKIN and HAS_CHAT) and "" or " (the pages of the modules present)"), #bad == 0, table.concat(bad, ","))
+if not HAS_RESKIN then skip("A the Blizzard Reskin pages (Blizzard Windows, Minimap, Tooltips, Objective Tracker, Toasts, Menus, Chat Bubbles, Status Bars, Minimap Buttons, Buttons, Esc Menu, Friend Colors) each have a scope with their page key", "XayaUI_Reskin") end
+if not HAS_CHAT then skip("A the Chat Panel has a scope under Blizzard Reskin with its page key", "XayaUI_Chat") end
 check("A the settings window has its scope", T.scopes.settings ~= nil and T.scopes.settings.label == "Settings window")
 local SE = ns.OptionsApi and ns.OptionsApi.ScopeEditor
 check("A Blizzard Reskin has a Theme page", SE ~= nil and ns.OptionsApi.pageTab and ns.OptionsApi.pageTab.rsktheme == "reskin", SE and ns.OptionsApi.pageTab and ns.OptionsApi.pageTab.rsktheme)
@@ -217,7 +242,8 @@ for _, k in ipairs(keys) do local id = k:match("^el_(.+)$"); if id then rowsSeen
 local want = {}
 for _, id in ipairs(T.scopeList) do if id ~= "reskin" then want[#want + 1] = T.scopes[id].label end end
 table.sort(want, function(a, b) return a:lower() < b:lower() end)
-check("A one row per element (16: 13 pages, Chat Panel, Character Pane, Settings window), not the module level", #rowsSeen == 16 and table.concat(rowsSeen, ",") == table.concat(want, ","), table.concat(rowsSeen, ","))
+local nElems = 16 - (HAS_RESKIN and 0 or 12) - (HAS_CHAT and 0 or 1)   -- (Blizzard Reskin's 12 pages incl. Friend Colors, the Chat Panel)
+check("A one row per element (16: 13 pages, Chat Panel, Character Pane, Settings window), not the module level" .. (nElems == 16 and "" or " (" .. nElems .. ": those of the modules present)"), #rowsSeen == nElems and table.concat(rowsSeen, ",") == table.concat(want, ","), table.concat(rowsSeen, ","))
 local K = function(id) return (id:gsub("[^%w]", "_")) end
 local cellsOk = true
 for _, id in ipairs(IDS) do
@@ -247,37 +273,54 @@ check("A every element's own page has one \"Theme\" row", #rowBad == 0, table.co
 local opened
 local rawOpen = ns.OpenSettingsPage
 ns.OpenSettingsPage = function(m, k) opened = m .. ">" .. k end
-if rk.rsktooltips and rk.rsktooltips.args.xuiTheme then rk.rsktooltips.args.xuiTheme.func() end
+local tipPg = PAGES[E_TIP]
+if rk[tipPg] and rk[tipPg].args.xuiTheme then rk[tipPg].args.xuiTheme.func() end
 ns.OpenSettingsPage = rawOpen
-check("A Tooltips' Theme row opens Blizzard Reskin > Theme with the Tooltips editor open", opened == "reskin>rsktheme" and SE.editing == "reskin.tooltips", tostring(opened) .. " " .. tostring(SE.editing))
-check("A the Esc Menu page: the Colors group is gone, its Theme row sits in its place (order 15)", rk.gamemenu and rk.gamemenu.args.colors == nil and rk.gamemenu.args.xuiTheme and rk.gamemenu.args.xuiTheme.order == 15)
+check((HAS_RESKIN and "A Tooltips' Theme row opens Blizzard Reskin > Theme with the Tooltips editor open" or "A the Shopping List's Theme row opens Blizzard Reskin > Theme with its editor open (Tooltips' page is XayaUI_Reskin's)"),
+  opened == "reskin>rsktheme" and SE.editing == E_TIP, tostring(opened) .. " " .. tostring(SE.editing))
+if HAS_RESKIN then
+  check("A the Esc Menu page: the Colors group is gone, its Theme row sits in its place (order 15)", rk.gamemenu and rk.gamemenu.args.colors == nil and rk.gamemenu.args.xuiTheme and rk.gamemenu.args.xuiTheme.order == 15)
+else
+  skip("A the Esc Menu page: the Colors group is gone, its Theme row sits in its place (order 15)", "XayaUI_Reskin")
+end
 SE.editing = nil
 
 -- E ------------------------------------------------------------------------------------------------------------------------------
 -- (the Esc Menu's own colours were folded at login, before the first paint)
-local gm = RS.gm
-local savedKeys = {}
-for k, v in pairs(GMOWN) do if gm[k] ~= v then savedKeys[#savedKeys + 1] = k end end
-check("E the old \"Use my own colors\" settings are untouched (copy, not move)", #savedKeys == 0, table.concat(savedKeys, ","))
-local sd = T.ScopeData("reskin.gamemenu")
-local function own(r, g, b) return { GMOWN[r], GMOWN[g], GMOWN[b] } end
-check("E folded: the Esc Menu's scope holds the six colours", sd and sd.tokens and same(sd.tokens.windowBg, own("bgR", "bgG", "bgB")) and same(sd.tokens.border, own("pbR", "pbG", "pbB"))
-  and same(sd.tokens.buttonBg, own("btnR", "btnG", "btnB")) and same(sd.tokens.buttonBorder, own("bbR", "bbG", "bbB")) and same(sd.tokens.accent, own("accR", "accG", "accB"))
-  and same(sd.tokens.label, own("ttR", "ttG", "ttB")) and RS.themeFolded == true)
-local e = snap()["reskin.gamemenu"]
-local p = gmPanel()
-local row
-for _, k in ipairs(p and { p:GetChildren() } or {}) do if k.label == "Options" and k:IsShown() then row = k end end
-check("E the Esc menu draws exactly the colours it drew before: panel fill, panel border, title", same(e[1], own("bgR", "bgG", "bgB")) and same(e[2], own("pbR", "pbG", "pbB")) and same(e[3], own("ttR", "ttG", "ttB")), str(e))
-check("E ...and a row's fill and border", row and same(row.bg._color, own("btnR", "btnG", "btnB")) and same(row.e[1]._color, own("bbR", "bbG", "bbB")), row and (f3(row.bg._color) .. " " .. f3(row.e[1]._color)))
-if row then row.hover = true; row:GetScript("OnEnter")(row) end
-check("E ...and the accent (the hover border)", row and same(row.e[1]._color, own("accR", "accG", "accB")), row and f3(row.e[1]._color))
-check("E its Theme row: 6 overrides, this element", plain(args["n_" .. K("reskin.gamemenu")].name) == "6" and plain(args["cf_" .. K("reskin.gamemenu")].name) == "this element")
-args["rs_" .. K("reskin.gamemenu")].func()
-NEW(ns, "GameMenuSkin_Fold")()
-check("E the fold is done once: after a Reset it is not copied again", T.ScopeData("reskin.gamemenu") == nil)
-local e2 = snap()["reskin.gamemenu"]
-check("E after Reset the Esc menu has its theme look (fill 0.04, border = the button border, title = accent)", same(e2[1], { 0.04, 0.04, 0.04 }) and same(e2[2], T.GlobalCol("xui-button", "border")) and same(e2[3], T.cur.accent), str(e2))
+if HAS_RESKIN then
+  local gm = RS.gm
+  local savedKeys = {}
+  for k, v in pairs(GMOWN) do if gm[k] ~= v then savedKeys[#savedKeys + 1] = k end end
+  check("E the old \"Use my own colors\" settings are untouched (copy, not move)", #savedKeys == 0, table.concat(savedKeys, ","))
+  local sd = T.ScopeData("reskin.gamemenu")
+  local function own(r, g, b) return { GMOWN[r], GMOWN[g], GMOWN[b] } end
+  check("E folded: the Esc Menu's scope holds the six colours", sd and sd.tokens and same(sd.tokens.windowBg, own("bgR", "bgG", "bgB")) and same(sd.tokens.border, own("pbR", "pbG", "pbB"))
+    and same(sd.tokens.buttonBg, own("btnR", "btnG", "btnB")) and same(sd.tokens.buttonBorder, own("bbR", "bbG", "bbB")) and same(sd.tokens.accent, own("accR", "accG", "accB"))
+    and same(sd.tokens.label, own("ttR", "ttG", "ttB")) and RS.themeFolded == true)
+  local e = snap()["reskin.gamemenu"]
+  local p = gmPanel()
+  local row
+  for _, k in ipairs(p and { p:GetChildren() } or {}) do if k.label == "Options" and k:IsShown() then row = k end end
+  check("E the Esc menu draws exactly the colours it drew before: panel fill, panel border, title", same(e[1], own("bgR", "bgG", "bgB")) and same(e[2], own("pbR", "pbG", "pbB")) and same(e[3], own("ttR", "ttG", "ttB")), str(e))
+  check("E ...and a row's fill and border", row and same(row.bg._color, own("btnR", "btnG", "btnB")) and same(row.e[1]._color, own("bbR", "bbG", "bbB")), row and (f3(row.bg._color) .. " " .. f3(row.e[1]._color)))
+  if row then row.hover = true; row:GetScript("OnEnter")(row) end
+  check("E ...and the accent (the hover border)", row and same(row.e[1]._color, own("accR", "accG", "accB")), row and f3(row.e[1]._color))
+  check("E its Theme row: 6 overrides, this element", plain(args["n_" .. K("reskin.gamemenu")].name) == "6" and plain(args["cf_" .. K("reskin.gamemenu")].name) == "this element")
+  args["rs_" .. K("reskin.gamemenu")].func()
+  NEW(ns, "GameMenuSkin_Fold")()
+  check("E the fold is done once: after a Reset it is not copied again", T.ScopeData("reskin.gamemenu") == nil)
+  local e2 = snap()["reskin.gamemenu"]
+  check("E after Reset the Esc menu has its theme look (fill 0.04, border = the button border, title = accent)", same(e2[1], { 0.04, 0.04, 0.04 }) and same(e2[2], T.GlobalCol("xui-button", "border")) and same(e2[3], T.cur.accent), str(e2))
+else
+  skip("E the old \"Use my own colors\" settings are untouched (copy, not move)", "XayaUI_Reskin")
+  skip("E folded: the Esc Menu's scope holds the six colours", "XayaUI_Reskin")
+  skip("E the Esc menu draws exactly the colours it drew before: panel fill, panel border, title", "XayaUI_Reskin")
+  skip("E ...and a row's fill and border", "XayaUI_Reskin")
+  skip("E ...and the accent (the hover border)", "XayaUI_Reskin")
+  skip("E its Theme row: 6 overrides, this element", "XayaUI_Reskin")
+  skip("E the fold is done once: after a Reset it is not copied again", "XayaUI_Reskin")
+  skip("E after Reset the Esc menu has its theme look (fill 0.04, border = the button border, title = accent)", "XayaUI_Reskin")
+end
 -- B ------------------------------------------------------------------------------------------------------------------------------
 local base = snap()
 local G = T.GlobalCol
@@ -298,10 +341,14 @@ local expect = {
   ["reskin.gamemenu"] = { { 0.04, 0.04, 0.04 }, G("xui-button", "border"), T.cur.accent },
 }
 local bBad = {}
-for id, e in pairs(expect) do if not eq(base[id], e) then bBad[#bBad + 1] = id .. ": " .. str(base[id]) .. " vs " .. str(e) end end
+for id, e in pairs(expect) do if present(id) and not eq(base[id], e) then bBad[#bBad + 1] = id .. ": " .. str(base[id]) .. " vs " .. str(e) end end
 check("B no override (the Esc Menu after its Reset above): every element draws exactly the global theme's colours", #bBad == 0, table.concat(bBad, " ; "))
 local cs = ns.chat2 or {}
-check("B no override: the Chat Panel (\"Use the XayaUI theme\" off) draws its own Appearance colours", eq(base["reskin.chatpanel"], { { cs.bgR, cs.bgG, cs.bgB }, { cs.borderR, cs.borderG, cs.borderB } }), str(base["reskin.chatpanel"]))
+if HAS_CHAT then
+  check("B no override: the Chat Panel (\"Use the XayaUI theme\" off) draws its own Appearance colours", eq(base["reskin.chatpanel"], { { cs.bgR, cs.bgG, cs.bgB }, { cs.borderR, cs.borderG, cs.borderB } }), str(base["reskin.chatpanel"]))
+else
+  skip("B no override: the Chat Panel (\"Use the XayaUI theme\" off) draws its own Appearance colours", "XayaUI_Chat")
+end
 
 -- C ------------------------------------------------------------------------------------------------------------------------------
 local LIGHT = T.BUILTIN.light.pal
@@ -332,27 +379,27 @@ for _, id in ipairs(IDS) do
   if #d2 > 0 or plain(args["cf_" .. k].name) ~= backFrom or args["th_" .. k].get() ~= "inherit" then cBad[#cBad + 1] = id .. " after Reset: " .. table.concat(d2, " ; ") .. " " .. plain(args["cf_" .. k].name) end
 end
 check("C each element given Light mode in its Theme cell: only its own colours change, to Light's; its row says Light / this element; Reset puts back exactly today's colours and Global", #cBad == 0, table.concat(cBad, " || "))
-args["th_" .. K("reskin.menus")].set(nil, "light"); args["th_" .. K("reskin.menus")].set(nil, "inherit")
-check("C Inherit stores nothing", CueRulesDB.theme.scopes == nil or CueRulesDB.theme.scopes["reskin.menus"] == nil)
+args["th_" .. K(E_MENU)].set(nil, "light"); args["th_" .. K(E_MENU)].set(nil, "inherit")
+check("C Inherit stores nothing", CueRulesDB.theme.scopes == nil or CueRulesDB.theme.scopes[E_MENU] == nil)
 -- a saved theme picked for one element
-args["th_" .. K("reskin.tooltips")].set(nil, "saved:Mine")
-check("C a saved theme can be picked for an element (stored by name)", T.ScopeData("reskin.tooltips") and T.ScopeData("reskin.tooltips").theme == "Mine" and args["th_" .. K("reskin.tooltips")].get() == "saved:Mine")
-args["rs_" .. K("reskin.tooltips")].func()
+args["th_" .. K(E_TIP)].set(nil, "saved:Mine")
+check("C a saved theme can be picked for an element (stored by name)", T.ScopeData(E_TIP) and T.ScopeData(E_TIP).theme == "Mine" and args["th_" .. K(E_TIP)].get() == "saved:Mine")
+args["rs_" .. K(E_TIP)].func()
 
 -- D ------------------------------------------------------------------------------------------------------------------------------
-SE.Open("reskin.statusbars", nil)
+SE.Open(E_STAT, nil)
 local ed = args.editor
-check("D Edit opens the element's editor (its name, a Theme list, the palette)", not ed.hidden() and plain(ed.name) == "Status Bars" and ed.args.theme and ed.args.tok_windowBg ~= nil)
+check("D Edit opens the element's editor (its name, a Theme list, the palette)", not ed.hidden() and plain(ed.name) == T.scopes[E_STAT].label and ed.args.theme and ed.args.tok_windowBg ~= nil)
 ed.args.tok_windowBg.set(nil, 0.5, 0.1, 0.1, 1)
 local s = snap()
-local d = diffs(base, s, "reskin.statusbars")
-check("D one colour set in the editor: only that element changes, to that colour", same(s["reskin.statusbars"][1], { 0.5, 0.1, 0.1 }) and #d == 0, f3(s["reskin.statusbars"][1]) .. " " .. table.concat(d, " ; "))
-check("D ...its row counts 1 override and says this element", plain(args["n_" .. K("reskin.statusbars")].name) == "1" and plain(args["cf_" .. K("reskin.statusbars")].name) == "this element")
+local d = diffs(base, s, E_STAT)
+check("D one colour set in the editor: only that element changes, to that colour", same(s[E_STAT][1], { 0.5, 0.1, 0.1 }) and #d == 0, f3(s[E_STAT][1]) .. " " .. table.concat(d, " ; "))
+check("D ...its row counts 1 override and says this element", plain(args["n_" .. K(E_STAT)].name) == "1" and plain(args["cf_" .. K(E_STAT)].name) == "this element")
 local r1, g1 = ed.args.tok_windowBg.get()
 check("D the editor's swatch shows the element's colour", math.abs(r1 - 0.5) < 0.002 and math.abs(g1 - 0.1) < 0.002)
-args["th_" .. K("reskin.minimap")].set(nil, "colorblind")
+args["th_" .. K(E_MIN)].set(nil, "colorblind")
 T.ResetAll()
-check("D Settings > Theme \"Reset everything\" leaves the elements' overrides (C15: global only)", T.ScopeData("reskin.statusbars") ~= nil and T.ScopeData("reskin.minimap") ~= nil)
+check("D Settings > Theme \"Reset everything\" leaves the elements' overrides (C15: global only)", T.ScopeData(E_STAT) ~= nil and T.ScopeData(E_MIN) ~= nil)
 check("D \"Reset all overrides\" is offered and asks first", not args.resetAll.disabled() and type(args.resetAll.confirm) == "function")
 args.resetAll.func()
 local s2 = snap()
@@ -361,21 +408,31 @@ check("D ...and is greyed with nothing to reset", args.resetAll.disabled())
 
 -- E (Chat Panel) -----------------------------------------------------------------------------------------------------------------
 -- Chat Panel
-local chk = K("reskin.chatpanel")
-check("E Chat Panel with \"Use the XayaUI theme\" off: nothing stored, its row says this element (its own colours)", T.ScopeData("reskin.chatpanel") == nil and plain(args["cf_" .. chk].name) == "this element")
-ns.chat2.useTheme = true
-local on = snap()["reskin.chatpanel"]
-check("E ...on: the same as Inherit (nothing stored, Global), drawn in the global theme as before", T.ScopeData("reskin.chatpanel") == nil and plain(args["cf_" .. chk].name) == "Global"
-  and same(on[1], T.GlobalCol("xui-pane", "bg")), str(on))
-args["th_" .. chk].set(nil, "light")
-local lt = snap()["reskin.chatpanel"]
-ns.chat2.useTheme = false
-local lt2 = snap()["reskin.chatpanel"]
-check("E a theme picked for the Chat Panel wins with the switch on or off", same(lt[1], LIGHT.paneBg or T.TOKEN.paneBg[4]) and same(lt2[1], LIGHT.paneBg or T.TOKEN.paneBg[4]), str(lt) .. " / " .. str(lt2))
-args["rs_" .. chk].func()
+if HAS_CHAT then
+  local chk = K("reskin.chatpanel")
+  check("E Chat Panel with \"Use the XayaUI theme\" off: nothing stored, its row says this element (its own colours)", T.ScopeData("reskin.chatpanel") == nil and plain(args["cf_" .. chk].name) == "this element")
+  ns.chat2.useTheme = true
+  local on = snap()["reskin.chatpanel"]
+  check("E ...on: the same as Inherit (nothing stored, Global), drawn in the global theme as before", T.ScopeData("reskin.chatpanel") == nil and plain(args["cf_" .. chk].name) == "Global"
+    and same(on[1], T.GlobalCol("xui-pane", "bg")), str(on))
+  args["th_" .. chk].set(nil, "light")
+  local lt = snap()["reskin.chatpanel"]
+  ns.chat2.useTheme = false
+  local lt2 = snap()["reskin.chatpanel"]
+  check("E a theme picked for the Chat Panel wins with the switch on or off", same(lt[1], LIGHT.paneBg or T.TOKEN.paneBg[4]) and same(lt2[1], LIGHT.paneBg or T.TOKEN.paneBg[4]), str(lt) .. " / " .. str(lt2))
+  args["rs_" .. chk].func()
+else
+  skip("E Chat Panel with \"Use the XayaUI theme\" off: nothing stored, its row says this element (its own colours)", "XayaUI_Chat")
+  skip("E ...on: the same as Inherit (nothing stored, Global), drawn in the global theme as before", "XayaUI_Chat")
+  skip("E a theme picked for the Chat Panel wins with the switch on or off", "XayaUI_Chat")
+end
 
 -- H ------------------------------------------------------------------------------------------------------------------------------
-check("H Blizzard Reskin listens for theme changes while a page is live", BS.Live().themeListener == true)
+if HAS_RESKIN then
+  check("H Blizzard Reskin listens for theme changes while a page is live", BS.Live().themeListener == true)
+else
+  skip("H Blizzard Reskin listens for theme changes while a page is live", "XayaUI_Reskin")
+end
 return R
 end
 '''
@@ -393,19 +450,29 @@ def world_and_loader(enabled_filter, saved):
     return L, world, loader
 
 
+ROOT = os.path.dirname(HERE)
+HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
+HAS_RESKIN = os.path.isdir(os.path.join(ROOT, "XayaUI_Reskin"))
+
+
 def run(mode, enabled_filter, saved):
     L, world, loader = world_and_loader(enabled_filter, saved)
-    fn = L.eval("function(src, W, Ld, mode, gm) return loadstring(src)()(W, Ld, mode, gm) end")
-    res = fn(LUA, world, loader, mode, H.to_lua(L, GM_OWN))
+    fn = L.eval("function(src, W, Ld, mode, gm, hc, hr) return loadstring(src)()(W, Ld, mode, gm, hc, hr) end")
+    res = fn(LUA, world, loader, mode, H.to_lua(L, GM_OWN), HAS_CHAT, HAS_RESKIN)
     bad = 0
     out = []
+    nskip = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if res[i][3]:
+            out.append("SKIP (QA-branch module absent: %s) [%s] %s" % (res[i][3], mode, str(name)[:1500]))
+            nskip += 1
+            continue
         out.append(("PASS " if ok else "FAIL ") + "[%s] " % mode + str(name)[:1500])
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
-    return out, bad, errs, len(res)
+    return out, bad, errs, len(res) - nskip
 
 
 def main():

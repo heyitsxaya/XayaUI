@@ -16,14 +16,17 @@ for t in sorted(glob.glob(os.path.join(HERE, "*_run.py"))):
     ok = r.returncode == 0 and any(s in last for s in ("0 failed", "PASS", "passed", "FAILS: 0"))
     bad += 0 if ok else 1
     print(("ok   " if ok else "FAIL ") + os.path.basename(t) + "  " + last[:90])
+# the feature addons present in this checkout (main has no XayaUI_Chat / XayaUI_Reskin since 2026-11-08: tools/qa-only-paths.txt)
+ROOT = os.path.dirname(HERE)
+FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options")
+            if os.path.isdir(os.path.join(ROOT, a))]
 harness = [sys.executable, os.path.join(HERE, "harness", "run.py"), "--fresh-only"]
 if quick:
-    harness += ["--only", "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
+    harness += ["--only"] + FEATURES
 r = subprocess.run(harness)
 bad += 0 if r.returncode == 0 else 1
 if saved:
-    r = subprocess.run([sys.executable, os.path.join(HERE, "harness", "run.py"), "--saved", saved, "--only",
-                        "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"])
+    r = subprocess.run([sys.executable, os.path.join(HERE, "harness", "run.py"), "--saved", saved, "--only"] + FEATURES)
     bad += 0 if r.returncode == 0 else 1
 print("ALL CHECKS PASS" if bad == 0 else "%d CHECK GROUP(S) FAILED" % bad)
 sys.exit(1 if bad else 0)
