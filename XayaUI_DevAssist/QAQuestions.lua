@@ -1622,8 +1622,8 @@ Q{ key = "PN-1",
    area = "Patch Notes: size in game",
    order = 208,
    since = "Dev Assist 0.7.71",
-   wordsNote = "no words of yours: the Patch Notes data (every landing's notes, shown in the info pane) reached the memory check's 200 KB cap. Measured: 200.2 KB of Lua memory after the settings window loads, about 2.5 KB more per new landing.",
-   did = "Nothing was changed in the cap while waiting for your answer, so new landing entries cannot be added until you pick one.",
-   choices = { "Raise the cap to 300 KB (simple; the pane's data keeps growing about 2.5 KB per landing)",
-               "Keep the newest landings loaded and load older ones only when you open them (about half the memory; more work to build)",
-               "Leave the cap at 200 KB and drop the oldest landings from the in-game pane (they stay in PATCH-NOTES.md)" } }
+   wordsNote = "no words of yours: the Patch Notes data (every landing's notes, shown in the info pane) reached the memory check's 200 KB cap. Measured: the data takes about 200 KB of Lua memory once the settings window loads, and each new landing adds about 2.5 KB.",
+   did = "The cap was left alone while waiting for your answer, so new landing entries are held back until you pick one.",
+   choices = { "Load older landings only when you open them: every note stays in game at constant memory, nothing is given up (more work to build)",
+               "Raise the cap to 300 KB (simple; the pane's data keeps growing about 2.5 KB per landing)",
+               "Keep 200 KB and drop the oldest landings from the in-game pane (they stay in PATCH-NOTES.md; this conflicts with your earlier \"every patch note stays in game\")" } }
