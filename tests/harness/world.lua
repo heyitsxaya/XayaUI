@@ -952,6 +952,57 @@ for e in ([[PLAYER_LOGIN PLAYER_LOGOUT ADDON_LOADED VARIABLES_LOADED PLAYER_ENTE
 -------------------------------------------------------------------------------
 -- unknown globals: recorded, never an error (see the header)
 -------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- combat lockdown and secret values (fix plan f6-1, the minimal slice; the rest of f6-1 is phase 9)
+-------------------------------------------------------------------------------
+-- Lockdown. In the game, while InCombatLockdown() is true, addon (insecure) code calling a protected method on a protected frame is
+-- blocked: the call does nothing, the game fires ADDON_ACTION_BLOCKED and the player sees "Interface action failed because of an
+-- AddOn". Here: on a frame marked protected, while W.combat is true, the methods below do nothing and the call is recorded in
+-- W.blocked and as an error (so the harness and the tests that read W.errors report it as a FAIL). ADDON_ACTION_BLOCKED itself is
+-- not fired (nothing in XayaUI listens to it).
+-- The methods: every one the stand-in implements that the 12.1.5 API documentation (docs/reference/api/api.json, widgetMethods)
+-- flags IsProtectedFunction on the frame / script-region API objects (SimpleFrameAPI, SimpleScriptRegionAPI,
+-- SimpleScriptRegionResizingAPI, SimpleRegionAPI). tests/harness_lockdown_run.py checks the list against the documentation.
+-- Which frames are protected: those a test marks with W.Protect(frame), and frames made from a template whose name contains
+-- "Secure" (as FrameXML's secure templates make a frame protected; XayaUI makes none today). Blizzard's own protected frames are
+-- NOT marked here (that is f6-1's phase 9 part: a list by name from FrameXML).
+-- Limit: the stand-in cannot tell secure code (a secure handler snippet) from addon code; every such call in combat counts as addon code.
+W.PROTECTED_METHODS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "ClearPoint", "SetAllPoints", "SetSize", "SetWidth",
+  "SetHeight", "SetParent", "SetScale", "EnableMouse", "SetFrameStrata", "SetFrameLevel" }
+W.blocked = {}
+function W.Protect(f, on) rawset(f, "_protected", on ~= false); return f end
+for _, m in ipairs(W.PROTECTED_METHODS) do
+  local real = proto[m]
+  if real then
+    proto[m] = function(self, ...)
+      if W.combat and rawget(self, "_protected") then
+        local what = ("%s:%s()"):format(self._name or tostring(self), m)
+        W.blocked[#W.blocked + 1] = what
+        W.errors[#W.errors + 1] = "ADDON_ACTION_BLOCKED (stand-in): " .. what .. " on a protected frame in combat lockdown\n" .. debug.traceback("", 2)
+        return
+      end
+      return real(self, ...)
+    end
+  end
+end
+function proto:IsProtected() local p = rawget(self, "_protected") and true or false; return p, p end
+do
+  local realCreate = CreateFrame
+  CreateFrame = function(kind, name, parent, template, id)
+    local f = realCreate(kind, name, parent, template, id)
+    if type(template) == "string" and template:find("Secure", 1, true) then rawset(f, "_protected", true) end
+    return f
+  end
+end
+
+-- Secret values. issecretvalue(v) answers W.secret[v] (as before). W.MarkSecret(v) marks a value secret for a test and returns it;
+-- W.ClearSecret(v) undoes it. Keys are values, so marking 5 makes every 5 secret: mark something unique (a string such as
+-- "secret-name-1", or a table). Nothing is marked by default: marking everything would fail code paths the game leaves readable.
+-- Limit: a secret here is only reported by issecretvalue / canaccessvalue; arithmetic or comparison on it does not error as it
+-- does in the game.
+function W.MarkSecret(v) W.secret = W.secret or {}; W.secret[v] = true; return v end
+function W.ClearSecret(v) if W.secret then W.secret[v] = nil end end
+
 local G_IGNORE = { _ENV = true, arg = true, __XUI_HARNESS = true }
 setmetatable(_G, { __index = function(t, k)
   if not G_IGNORE[k] then record(W.unknownGlobals, tostring(k), debug.traceback("", 2)) end

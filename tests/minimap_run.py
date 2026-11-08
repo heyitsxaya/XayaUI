@@ -35,7 +35,7 @@ CueRulesDB = {}
 assert(loadfile(__MOD__))("XayaUI", ns)   -- Modules.lua: the core contract (0.5.108)
 local fn = assert(loadfile(__PATH__)); fn("XayaUI", ns)
 '''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
-lua.execute(r'''
+fails = lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
 ns.Minimap_OnDBReady()
@@ -69,4 +69,6 @@ check("slider set applies at once", ns.minimapDB.size == 40 and b.w == 40)
 sl.set(nil, 999)
 check("slider cannot exceed the maximum", ns.minimapDB.size == 48 and b.w == 48)
 print(n .. " checks, " .. fails .. " failed")
+return fails
 ''')
+_sys.exit(1 if fails else 0)   # fix plan f1-9: a failure now fails the exit code too (it used to exit 0 whatever happened)

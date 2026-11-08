@@ -368,14 +368,14 @@ local g1 = garbage(function()
   builds, fills = 0, 0
   reg:NotifyChange(APP); ACD:Open(APP); frames(1)
 end)
+local clickBuilds, clickFills = builds, fills   -- saved right after the measured click (fix plan f1-10: was forced to 1, 1 below)
 do   -- time, for the record only (not checked: the stand-in's speed is not the game's)
   local t = {}
   for k = 1, 5 do collectgarbage("collect"); local t0 = os.clock(); reg:NotifyChange(APP); ACD:Open(APP); frames(1); t[k] = os.clock() - t0 end
   table.sort(t)
   OUT[#OUT + 1] = ("info  a click with a rule on screen, 313 rules: median %.0f ms of Lua in the stand-in (5 clicks, %.0f-%.0f)"):format(t[3] * 1000, t[1] * 1000, t[5] * 1000)
-  builds, fills = 1, 1
 end
-check(("a click with a rule on screen: ONE build and the one editor (builds %d, editors filled %d)"):format(builds, fills), builds == 1 and fills == 1)
+check(("a click with a rule on screen: ONE build and the one editor (builds %d, editors filled %d)"):format(clickBuilds, clickFills), clickBuilds == 1 and clickFills == 1)
 check(("a click with a rule on screen: %.1f MB of garbage (Options 0.6.68: ~165 MB with 313 rules)"):format(g1 / 1024), g1 < 30 * 1024)
 check("after the click the same rule's editor is on screen", RulePane(L1) ~= nil)
 -- the editor's Cues tab, by a SelectGroup path into the rule (the rule search's results do this)

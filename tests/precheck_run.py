@@ -75,5 +75,33 @@ expect("moved docs: debug-log history is left as written", P.check_doc_paths(ALL
 expect("moved docs: a document missing from docs/ fails", P.check_doc_paths(ALL[1:]), 1)
 expect("QA IDs: a missing checklist is an error, not a pass", P.check_qa_ids(None), 1)
 
+# fix plan f6-6: git errors stop precheck. The old git() returned "" for a failed command, so `--base no-such-ref` diffed against
+# nothing and the version check passed (negative control: the old tools/precheck.py printed no base error and its version
+# group passed with --base no-such-ref).
+import subprocess
+
+
+def check(name, ok, detail=""):
+    global fails, checks
+    checks += 1
+    if not ok:
+        fails += 1
+        print("FAIL", name, detail)
+
+
+check("f6-6: HEAD is a commit (verify_base)", P.verify_base("HEAD") is None)
+check("f6-6: a ref that does not exist is refused (verify_base)", P.verify_base("no-such-ref-f6-6") is not None)
+try:
+    P.git("rev-parse", "--verify", "--quiet", "no-such-ref-f6-6^{commit}")
+    check("f6-6: a failing git command raises GitError", False, "no error raised")
+except P.GitError:
+    check("f6-6: a failing git command raises GitError", True)
+r = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "precheck.py"), "--base", "no-such-ref-f6-6"],
+                   cwd=ROOT, capture_output=True, text=True)
+check("f6-6: precheck --base <bad ref> exits 1 with a clear error", r.returncode == 1 and "does not name a commit" in r.stdout
+      and "FAILS: 1" in r.stdout, (r.returncode, r.stdout[-300:]))
+check("f6-6: ls-files -z gives the same tracked list as the plain one for ordinary names",
+      set(P.git_paths("ls-files")) >= {"tools/precheck.py", "tests/run_all.py"})
+
 print("%d checks  FAILS: %d" % (checks, fails))
 sys.exit(1 if fails else 0)

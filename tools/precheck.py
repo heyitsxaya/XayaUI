@@ -11,11 +11,35 @@ Errors make the exit code 1. Warnings are printed but do not fail. Each check ex
 import argparse, datetime, hashlib, os, re, subprocess, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-PASS_MARKERS = ("0 failed", "PASS", "passed", "FAILS: 0")   # what tests/run_all.py accepts on a test's last line
+# What tests/run_all.py accepts on a test's last line (its line_passes(): every failure count printed must be 0; PASS / passed
+# only where the line prints no count). Fix plan f1-9: the old substring markers read "10 failed" as a pass.
+PASS_MARKERS = ("N failed with N = 0", "FAILS: 0", "PASS / passed with no count")
+
+
+class GitError(Exception):
+    pass
 
 
 def git(*args):
-    return subprocess.run(["git"] + list(args), cwd=ROOT, capture_output=True, text=True).stdout
+    """Runs git in the repository and returns its output. A failing git command raises GitError (fix plan f6-6: the old version
+    returned the empty output of a failed command, so a bad --base compared against nothing and the version check passed)."""
+    r = subprocess.run(["git"] + list(args), cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise GitError("git %s failed (exit %d): %s" % (" ".join(args), r.returncode, (r.stderr or r.stdout).strip()))
+    return r.stdout
+
+
+def git_paths(*args):
+    """The paths a git command prints, run with -z (NUL-separated: names with spaces or non-ASCII letters arrive unquoted)."""
+    return [p for p in git(*(args + ("-z",))).split("\0") if p]
+
+
+def verify_base(base):
+    """None when base names a commit, else the error text."""
+    r = subprocess.run(["git", "rev-parse", "--verify", "--quiet", base + "^{commit}"], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        return "--base %s does not name a commit in this repository (git rev-parse --verify %s^{commit} failed)" % (base, base)
+    return None
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
@@ -192,10 +216,24 @@ def toc_versions(reader):
     return out
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="HEAD", help="ref to compare against for the version check (default HEAD)")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
+    bad_base = verify_base(a.base)
+    if bad_base:
+        print("ERROR  [base] " + bad_base)
+        print("precheck: stopped before the checks  FAILS: 1")
+        return 1
+    try:
+        return run_checks(a)
+    except GitError as e:
+        print("ERROR  [git] %s" % e)
+        print("precheck: stopped by a git error  FAILS: 1")
+        return 1
+
+
+def run_checks(a):
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
     def read_bytes(p):
@@ -206,14 +244,14 @@ def main():
         b = read_bytes(p)
         return b.decode("utf-8", "replace") if b is not None else None
 
-    tracked = git("ls-files").splitlines()
+    tracked = git_paths("ls-files")
     results = []
     logs = [(n, read_text("debug-log/" + n)) for n in sorted(os.listdir(os.path.join(ROOT, "debug-log"))) if n.endswith(".md")]
     logs.append(("docs/SESSION-START-SUMMARY.md", read_text("docs/SESSION-START-SUMMARY.md")))
     results.append(("debug-log times", check_log_times(logs, now)))
     results.append(("manifest", check_manifest(tracked, read_text("MANIFEST.md5"), read_bytes)))
     results.append(("untracked files", check_untracked(git("status", "--porcelain", "--untracked-files=all").splitlines())))
-    changed = set(git("diff", "--name-only", a.base).splitlines()) | set(git("diff", "--name-only", "--cached", a.base).splitlines())
+    changed = set(git_paths("diff", "--name-only", a.base)) | set(git_paths("diff", "--name-only", "--cached", a.base))
 
     def base_reader(p):
         r = subprocess.run(["git", "show", "%s:%s" % (a.base, p)], cwd=ROOT, capture_output=True, text=True)
