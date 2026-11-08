@@ -42,7 +42,15 @@ lines (debug-log 2026-11-08 debug-chatdefaults). Regenerated again on 2026-11-08
 (all-on: 609 lines) only in the four feature controls and the Stat list page moving from `reskin.charreskin.*` (ilvl, enchants, gems,
 statList, statListPage: 299 nodes) to `qol.charpane.*`, node for node the same after the path (names, descs, orders, get / hidden /
 disabled results), the new page node `qol.charpane` ("Character Pane", its switch), and the `order` of the QoL pages sorted after it
-(Character Toolkit, Cursor, Improved Chat, Nameplates, Release Guard: +1); 0 other lines (debug-log 2026-11-08 character-split). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+(Character Toolkit, Cursor, Improved Chat, Nameplates, Release Guard: +1); 0 other lines (debug-log 2026-11-08 character-split). Regenerated
+again on 2026-11-08 for Bonus 0.6.37 / QoL 0.7.53 (character pane split stage 2): `--dump` of stage 1 and of the new code differ only in
+(all-on, 246 lines; every variant with XayaUI QoL and Bonus Features on the same) the Stat Calculator's Panel and Spell Math parts moving
+from `qol.chartoolkit.*` (panelPart, spells: 117 nodes) to `bonus.statcalc.*`, node for node the same after the path; the new page node
+`bonus.statcalc` ("Character Toolkit", its own switch, the toolkit's switch texts) and its intro (the toolkit's, its parts list now
+"(Panel, Spell Math)"); the `order` of the Bonus pages after it (+1); QoL's `qol.chartoolkit` switch tip and intro (they named the Stat
+Calculator). XayaUI Bonus Features off (139 lines): the two parts gone with it, the minimap list's "Stat Calculator" row gone
+(`settings.minimap.entries.stats`, `set.minimap.entries.stats`: the row is Bonus's) and the rows after it one `order` up, and the two QoL
+texts. XayaUI QoL off: 0 lines (Bonus Features shows nothing of it). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

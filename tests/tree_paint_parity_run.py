@@ -23,6 +23,9 @@ on 2026-11-08 for QoL 0.7.53 (character pane split stage 1): `--dump` of f870d78
 (on / off: the new row "charpane" "Character Pane" with its tick box, 2 lines) and the reskin drawings (on / off: the row "charreskin"
 "Character Pane" has no child page any more, its Stat list page moved to QoL > Character Pane, so it is drawn as a leaf like Blizzard
 Windows: text at 25 instead of 42, tick box at 6 instead of 23; 2 lines each); 0 other lines (debug-log 2026-11-08 character-split).
+Regenerated again for Bonus 0.6.37 (character pane split stage 2): `--dump` of stage 1 and of the new code differ only in the bonus
+drawings (on / off): the new row "statcalc" "Character Toolkit" with its tick box (the Stat Calculator, from QoL), 2 lines each; 0 other
+lines (the QoL row "Character Toolkit" keeps its parts, Slot Overlays and Tooltip lines, so it is drawn as before).
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -667,7 +667,7 @@ local function BlockItems(btn, slot, info, tip, c)
     if c.enchants then btn.xuiEnchant = row("xuiEnchantRow").text end
     if not info then return items end
     if c.enchants then
-        local tk = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg() or nil
+        local tk = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg() or nil   -- (QoL 0.7.53: QoL's half of the toolkit settings, CharacterPane.lua)
         local slotsWanted = CM.EnchantSlots(tk)
         local ench = tip and tip.enchant
         local it
@@ -1304,7 +1304,7 @@ local function UpdateStatList(c)
                         if not (GameTooltip and self.item) then return end
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                         GameTooltip:AddLine(self.name or "", 1, 1, 1)
-                        local lines = ns.CharToolkit_TooltipLines and ns.CharToolkit_TooltipLines(self.item) or {}
+                        local lines = CM.TooltipLines(self.item)   -- (QoL 0.7.53: the model's, CharacterModel.lua)
                         for i, l in ipairs(lines) do
                             if i > 1 then
                                 if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)

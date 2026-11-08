@@ -108,10 +108,10 @@ n, fails = SM_n, SM_fails
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 check("off by default", c.enabled == false)
 check("defaults filled", c.panel == true and c.side == "right" and c.tooltips == true and type(c.spells) == "table" and c.overlays == false)
 
@@ -243,7 +243,7 @@ CharacterFrame = mk("Frame"); PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 c.enabled = true
-ns.CharToolkit_Apply()
+TKA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 check("panel shown docked with the character window", XayaUICharacterToolkit and XayaUICharacterToolkit:IsShown())
 check("stat row hooked", statRow.hooks.OnEnter and #statRow.hooks.OnEnter == 1)
@@ -267,11 +267,11 @@ for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "
   check("panel renders the " .. t .. " tab", ok, err)
 end
 c.tab = "sheet"
-c.enabled = false; ns.CharToolkit_Apply()
+c.enabled = false; TKA()
 check("off: panel hidden", not XayaUICharacterToolkit:IsShown())
 
 -- settings page and command
-local page = ns.BuildCharToolkitPage(function() end)
+local page = TKPage(function() end)
 check("settings page builds: feature node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree" and page.args.panelPart
   and page.args.overlayPart and page.args.spells)
 page.args.spells.args.add.set(nil, "Fracture")
@@ -283,8 +283,8 @@ ns.RunCommand("stats", "on")
 check("/xui stats on turns it on", c.enabled == true)
 ns.RunCommand("stats", "")
 check("/xui stats shows the panel on its own", XayaUICharacterToolkit:IsShown())
-check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return ns.CharToolkit_Cfg().tab == "stats" end)())
+check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return TKC().tab == "stats" end)())
 print(("%d checks, %d failed"):format(n, fails))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

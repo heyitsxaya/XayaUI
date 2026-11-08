@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: XayaUI QoL
-## Notes: XayaUI quality-of-life changes: cursor highlight, cursor trail, the Character Toolkit stat panel, the Character Reskin and the Shopping List (friends and bags come later). Needs XayaUI.
+## Notes: XayaUI quality-of-life changes: cursor highlight, cursor trail, the character window's Character Pane (item level, enchants, gems, stat list), slot overlays and stat tooltip lines, the Character Reskin and the Shopping List (friends and bags come later). Needs XayaUI.
 ## Author: Xaya
 ## Version: 0.7.53
 ## X-Date: 2026-11-08
@@ -13,7 +13,7 @@ CursorHighlight.lua
 CursorTrail.lua
 StatMath.lua
 CharacterModel.lua
-CharacterToolkit.lua
+CharacterPane.lua
 CharacterReskin.lua
 ShoppingList.lua
 ReleaseGuard.lua

@@ -68,14 +68,14 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
-c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 -- (QoL 0.7.40, REQUEST-LOG #88: every stat is folded by default; these checks read the lines under the stats, so every stat is open
 -- here. The fold itself is checked in tests/char_stat_round2_run.py.)
 setmetatable(c.statOpen, { __index = function() return true end })
@@ -484,7 +484,7 @@ c.advanced = false
 d = render()
 check("(guard) no Show: % button (#382; QoL 0.7.40, B2: not made at all, the settings' Rating lines gone too)", P.modeBtn == nil)
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

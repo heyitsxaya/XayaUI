@@ -60,7 +60,9 @@ for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, ta
 -- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
 -- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75;
 -- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
-local WANT = { "qol>chartoolkit", "qol>chartoolkit>panelPart", "qol>chartoolkit>overlayPart", "qol>chartoolkit>spells",
+-- (QoL 0.7.53 / Bonus 0.6.37, character pane split stage 2: the Stat Calculator's Panel and Spell Math parts are under Bonus Features >
+-- Character Toolkit, bonus>statcalc, with its own switch; the Slot Overlays and Tooltip lines stay under QoL > Character Toolkit)
+local WANT = { "qol>chartoolkit", "bonus>statcalc", "bonus>statcalc>panelPart", "qol>chartoolkit>overlayPart", "bonus>statcalc>spells",
   "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
   "bonus>utilities>calculator",
   -- (S1 #48, Options 0.6.50: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
@@ -315,8 +317,18 @@ do
   check("B: Bonus Features has a Utilities row with Calculator and Notepad under it", u and c and n and u.level == 1 and c.level == 2 and n.level == 2)
   local t = tree("bonus"); local order = {}
   for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
-  check("B: the rows read Data Panels, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
-    table.concat(order, ",") == "datapanels,tooltips,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
+  -- (Bonus 0.6.37, character pane split stage 2) Character Toolkit (the Stat Calculator, from QoL) sorts first by its name
+  check("B: the rows read Character Toolkit, Data Panels, Enhanced Tooltips, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
+    table.concat(order, ",") == "statcalc,datapanels,tooltips,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
+-- (Bonus 0.6.37) Bonus Features > Character Toolkit: its own box; ticked, Panel and Spell Math show under it (Panel ticked by default)
+  check("A: Bonus Features > Character Toolkit's row has its own tick box, unticked; its parts are not listed while it is off", box("bonus", "statcalc")
+    and box("bonus", "statcalc"):GetChecked() == false and row("bonus", "statcalc\001panelPart") == nil)
+  click("bonus", "statcalc", true)
+  check("A: ...ticked: on (Bonus's own setting); Panel and Spell Math show under it (Panel ticked)", ns.Settings("bonus").characterToolkit.enabled == true
+    and box("bonus", "statcalc\001panelPart") and box("bonus", "statcalc\001spells") and box("bonus", "statcalc\001panelPart"):GetChecked() == true)
+  click("bonus", "statcalc", false)
+  check("A: ...unticked: off, its parts leave the list", ns.Settings("bonus").characterToolkit.enabled == false and row("bonus", "statcalc\001panelPart") == nil)
+
   local up = node(ns.BuildOptionsTable(), "bonus", "utilities")
   check("B: Utilities' own page is an overview of its tools", up and up.args.calcNote and up.args.calcNote.name:find("Calculator", 1, true)
     and up.args.notesNote and up.args.notesNote.name:find("Notepad", 1, true))
@@ -363,7 +375,7 @@ click("qol", "cursor\001highlight", false)
 check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", ns.Settings("qol").cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
 oneRedraw("A: Cursor Highlight unticked")
 check("A: Character Toolkit's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chartoolkit") and box("qol", "chartoolkit"):GetChecked() == false
-  and row("qol", "chartoolkit\001panelPart") == nil)
+  and row("qol", "chartoolkit\001overlayPart") == nil)
 local function ctPlace()
   local c, u = row("qol", "chartoolkit"), row("qol", "cursor")
   local x = c and c.xuiSwitchBox
@@ -373,17 +385,19 @@ local function ctPlace()
 end
 check("A: Character Toolkit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
 click("qol", "chartoolkit", true)
-check("A: Character Toolkit ticked: on; Panel, Slot Overlays, Spell Math and Tooltip lines now show under it, each with its own box (Panel and Tooltip lines ticked: on by default)",
-  ns.Settings("qol").characterToolkit.enabled == true and box("qol", "chartoolkit\001panelPart") and box("qol", "chartoolkit\001overlayPart") and box("qol", "chartoolkit\001spells")
+-- (QoL 0.7.53, character pane split stage 2: QoL's Character Toolkit has Slot Overlays and Tooltip lines; Panel and Spell Math are under
+-- Bonus Features > Character Toolkit, its own switch, checked below)
+check("A: Character Toolkit ticked: on; Slot Overlays and Tooltip lines now show under it, each with its own box (Tooltip lines ticked: on by default)",
+  ns.Settings("qol").characterToolkit.enabled == true and box("qol", "chartoolkit\001overlayPart")
   and box("qol", "chartoolkit\001tipsPart") and box("qol", "chartoolkit\001tipsPart"):GetChecked() == true
-  and box("qol", "chartoolkit\001panelPart"):GetChecked() == true and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false)
+  and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false and row("qol", "chartoolkit\001panelPart") == nil)
 check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chartoolkit").xuiChev ~= nil and row("qol", "chartoolkit").xuiChev:IsShown())
 oneRedraw("A: Character Toolkit ticked")
 click("qol", "chartoolkit\001overlayPart", true)
 check("A: Slot Overlays ticked: the overlays setting is on", ns.Settings("qol").characterToolkit.overlays == true)
 click("qol", "chartoolkit\001overlayPart", false)
 click("qol", "chartoolkit", false)
-check("A: Character Toolkit unticked: off, and its parts leave the list", ns.Settings("qol").characterToolkit.enabled == false and row("qol", "chartoolkit\001panelPart") == nil)
+check("A: Character Toolkit unticked: off, and its parts leave the list", ns.Settings("qol").characterToolkit.enabled == false and row("qol", "chartoolkit\001overlayPart") == nil)
 oneRedraw("A: Character Toolkit unticked")
 end)
 

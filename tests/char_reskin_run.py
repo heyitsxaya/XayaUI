@@ -65,11 +65,11 @@ C_Item.GetItemUpgradeInfo = function(link) local name = type(link) == "string" a
 GetInventoryItemQuality = function(_, slot) if GEAR[slot] then return 4 end end
 TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 local rc = ns.CharReskin_Cfg()
-local tk = ns.CharToolkit_Cfg()
+local tk = TKC()
 local function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.002 end
 local function col(t, r, g, b) return t and near(t[1], r) and near(t[2], g) and near(t[3], b) end
 
@@ -103,7 +103,7 @@ check("  ...Ring, Veteran step 1 of 8: green at its dimmest (55%)", col(ri.color
 check("  ...an empty slot shows none", CharacterNeckSlot.xuiIlvl and CharacterNeckSlot.xuiIlvl.text == "")
 check("  ...the track is kept for the hover (Hero 4/6)", CharacterHeadSlot.xuiTrack and CharacterHeadSlot.xuiTrack.track == "Hero" and CharacterHeadSlot.xuiTrack.step == 4)
 -- the Character Toolkit's overlays leave their item level (and enchant mark) out while the reskin draws them
-tk.enabled, tk.overlays = true, true; ns.CharToolkit_Apply(); ns.CharToolkit_UpdateOverlays()
+tk.enabled, tk.overlays = true, true; TKA(); ns.CharToolkit_UpdateOverlays()
 check("the toolkit's slot overlay leaves out its item level while the reskin draws one (her screenshot had two)",
   ns.CharToolkit_OverlayText("HeadSlot") ~= nil and not tostring(ns.CharToolkit_OverlayText("HeadSlot")):find("336", 1, true), tostring(ns.CharToolkit_OverlayText("HeadSlot")))
 
@@ -229,7 +229,7 @@ check("  ...a fresh install gets 42 and the marker", f.widePx == 42 and f.widePx
 local b = upgraded({ enabled = true, wide = true, widePx = "240" })
 check("  ...a 240 saved as text counts too", b.widePx == 42, tostring(b.widePx))
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))

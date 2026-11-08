@@ -45,7 +45,7 @@ C_Timer.After = function(d, fn) fn() end
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 CharacterStatsPane.pts = { { "TOPLEFT", CharacterFrame.InsetRight, "TOPLEFT", 3, -3 }, { "BOTTOMRIGHT", CharacterFrame.InsetRight, "BOTTOMRIGHT", -3, 3 } }
 CharacterStatsPane.shown = true
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.01 end
 function sameCol(a, b) return a and b and near(a[1], b[1]) and near(a[2], b[2]) and near(a[3], b[3]) end
@@ -55,7 +55,7 @@ def lua_with(extra=""):
     lua = LuaRuntime()
     src = (PRELUDE + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")) \
         .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")) \
+        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")) \
         .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua"))
     lua.execute(src)
     return lua

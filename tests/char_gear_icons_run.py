@@ -30,17 +30,17 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.CharModel
-local c = ns.CharToolkit_Cfg()
+local c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 GameTooltip = mk("GameTooltip")
 invSet = {}
 GameTooltip.SetInventoryItem = function(self, unit, slot) invSet[#invSet + 1] = unit .. ":" .. slot; return true end
 c.enabled = true
-ns.CharToolkit_Apply()
+TKA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 local function drawn() return ns.CharToolkit_Drawn() end
 local function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
@@ -155,7 +155,7 @@ local okS, mS = pcall(CM.Build, c, "gear")
 check("secret texture / quality: not used (question mark, plain border)", okS and mS.byKey.gearIcons.icons[1].tex == nil and mS.byKey.gearIcons.icons[1].color == nil, okS and "" or mS)
 GetInventoryItemTexture, GetInventoryItemQuality = savedT, savedQ
 '''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua")))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

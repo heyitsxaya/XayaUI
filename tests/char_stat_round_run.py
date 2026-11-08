@@ -131,14 +131,14 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
-c = ns.CharToolkit_Cfg()
+c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
-c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 CM.gcd = { dur = 1.16, haste = 29.25 }
 LAY = ns.CHARTOOLKIT_LAYOUT
 function drawn() return ns.CharToolkit_Drawn() end
@@ -148,7 +148,7 @@ function render(tab) c.tab = tab or "stats"; ns.CharToolkit_Render(); return dra
 def world(extra):
     return (COMMON + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
         .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_QoL/CharacterToolkit.lua"))
+        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
 
 totals = []
 def run(extra, body):
@@ -353,7 +353,7 @@ d = render()
 checkp("the Gear Summary is the Stats tab's first section, above Character Stats", function()
   return texts(d, "header") == "- Gear Summary|- Character Stats|- Stat Weights", texts(d, "header") end)
 checkp("its style is a setting (Panel > Layout > Gear Summary style): Split bars, Stat tiles, One stacked bar, Columns, Gear share, Table; Split bars to start with", function()
-  local pg = ns.BuildCharToolkitPage(function() end)
+  local pg = TKPage(function() end)
   local sel = pg.args.panelPart.args.layout.args.gearSumStyle
   local names = {}
   for _, k in ipairs(sel.sorting) do names[#names + 1] = sel.values[k] end
@@ -482,13 +482,13 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() return {} end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CT__))("XayaUI_QoL", ns)
+assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.CharModel
-c = ns.CharToolkit_Cfg()
+c = TKC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; ns.CharToolkit_Apply(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 function drawn() return ns.CharToolkit_Drawn() end
 function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
 local function icon(dd, slot, cand) for _, b in ipairs(dd.icons) do if b.shown and b.slot == slot and (b.cand and true or false) == (cand or false) then return b end end end

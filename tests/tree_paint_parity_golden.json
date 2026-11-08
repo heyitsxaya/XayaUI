@@ -1,8 +1,8 @@
 {
  "off": {
   "bonus": {
-   "lines": 15,
-   "sha": "63251fac82a3c805b427f268a2c126e6560fad41d07fe2d13c584c07e605f3dc"
+   "lines": 17,
+   "sha": "54c3a979466d5ab31a56b46dd7c2a49a7da0cb60e1a0145d65f12251e676be0f"
   },
   "profiles": {
    "lines": 31,
@@ -23,8 +23,8 @@
  },
  "on": {
   "bonus": {
-   "lines": 16,
-   "sha": "42d78cd16f5b7295122bb084c8cbac6366007c847fc8a6b25ed6a2d607b6e618"
+   "lines": 18,
+   "sha": "603a3b7e151ab4359962f2341d9dd4139a1b039a557530d280742833dadb0f7f"
   },
   "profiles": {
    "lines": 32,

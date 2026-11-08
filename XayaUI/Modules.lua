@@ -68,7 +68,9 @@ local SETTINGS_KEYS = {
                   "skipSoundAllPrompt", "promptSave", "draftsMax", "draftsConfirmDiscard", "draftsConfirmDelete", "draftsCloseNotice" },
     qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "shoppingList", "releaseGuard" },
     chat      = { "chat", "chat2" },
-    bonus     = { "dataPanels", "tooltips", "calculator", "notepad" },
+    -- (core 0.6.83, character pane split stage 2) characterToolkit is split: the Stat Calculator's panel (XayaUI_Bonus/CharacterToolkit.lua)
+    -- keeps its keys here, QoL the slot overlays' and tooltip lines' (LEGACY_SPLIT)
+    bonus     = { "dataPanels", "tooltips", "calculator", "notepad", "characterToolkit" },
     -- rsk / gm / friendColors were kept inside CueRulesDB.ui (LEGACY_UNDER_UI). characterReskin is split (P5, Xaya PS-53: "Character ui
     -- *reskin* is a blizzard change. Functionality changes or enhancements are separate."): Reskin keeps the sub-keys that only change
     -- the LOOK of Blizzard's character window (LEGACY_SPLIT), QoL the rest; the code (XayaUI_QoL/CharacterReskin.lua) reads both.
@@ -90,9 +92,18 @@ local LEGACY_UNDER_UI = {
 -- module that keeps every other sub-key } }. The look of the character window (Reskin): the switch, the window chrome, the stat list's
 -- art, the background's opacity, the wider window and the extra height (and the one-time widePx step). The rest (QoL): item level,
 -- enchant and gem blocks, the full stat list and how it is organised (Xaya PS-54: the character pane's stat organisation is QoL's).
+-- (core 0.6.83, character pane split stage 2; Xaya Q5: "The Advanced Character Stats pane window is a Bonus feature") characterToolkit:
+-- XayaUI Bonus Features keeps the Stat Calculator panel's keys (sub), QoL every other one (the slot overlays, the tooltip lines). `both`:
+-- a key each half keeps a copy of (the toolkit's switch `enabled`: each module has its own from the move on); a profile part saves QoL's
+-- (the rest's) and an import writes it to both. `moved`: the owner's keys were the rest module's own store's before this split, so once
+-- both stores are open they are copied across once (the key move below; copy, never move).
 local LEGACY_SPLIT = {
     characterReskin = { owner = "reskin", rest = "qol", sub = { enabled = true, chrome = true, stats = true, bgAlpha = true, wide = true,
         widePx = true, widePxTo42 = true, tallPx = true } },
+    characterToolkit = { owner = "bonus", rest = "qol", moved = true, both = { enabled = true }, sub = { panel = true, side = true,
+        detail = true, fontSize = true, opacity = true, advanced = true, spells = true, spellFilter = true, spellsAll = true, free = true,
+        panelOpen = true, sizeMode = true, heightSmall = true, heightLarge = true, tab = true, gearSumStyle = true, whatIf = true,
+        whatIfStats = true, whatIfPrimary = true, collapsed = true, statOpen = true, size = true, valueMode = true, lineModes = true } },
 }
 -- (P5, plan section 5 steps 2-3) the modules that keep their settings in a saved variable of their own. A module not listed here keeps
 -- its keys in CueRulesDB (the Platform's). Which variable, and which addon loads it, the module itself says from its own first file
@@ -277,9 +288,9 @@ local function LegacyValue(module, k, old)
     else v = old[k] end
     local split = LEGACY_SPLIT[k]
     if split and type(v) == "table" then
-        local part = {}
+        local part, both = {}, split.both or {}
         for kk, x in pairs(v) do
-            if (split.owner == module and split.sub[kk]) or (split.rest == module and not split.sub[kk]) then part[kk] = x end
+            if (split.owner == module and (split.sub[kk] or both[kk])) or (split.rest == module and not split.sub[kk]) then part[kk] = x end
         end
         if next(part) == nil then return nil end
         return part
@@ -367,6 +378,67 @@ local function OpenStore(module)
     return "own"
 end
 
+-- (core 0.6.83, character pane split stage 2) the key move: a split key marked `moved` (LEGACY_SPLIT) had all its sub-keys in the rest
+-- module's settings until this version (characterToolkit: XayaUIQoLDB.characterToolkit held the Stat Calculator panel's keys too). Once
+-- the owner's store and the rest's are both open, the owner's keys (sub and both) are deep-copied from the rest's settings (its own store,
+-- or CueRulesDB while it reads that) into the owner's store, once: the owner's store records keyMoves[key] = { migratedFrom ("XayaUIQoLDB.
+-- characterToolkit"), migratedAt, migratedBy (the owner addon and version), migratedKeys }. Copy, never move: the rest's settings and
+-- CueRulesDB are only read. An owner store that already holds the key (copied from CueRulesDB with the rest of its settings at its first
+-- opening, this session) records where that copy came from instead. Runs before the waiting start-ups (ns.WhenSettingsReady) of the
+-- module just opened, so the owner's code never sees its settings before the copy.
+local keyMovedNow = {}   -- key -> true: copied in this session
+local function KeyMoves()
+    for key, split in pairs(LEGACY_SPLIT) do
+        local st = SETTINGS_STORES[split.owner]
+        if split.moved and st and storeState[split.owner] == "own" and storeState[split.rest] ~= nil then
+            local dst = StoreOf(split.owner)
+            local moves = dst and dst.keyMoves
+            if dst and not (type(moves) == "table" and moves[key]) then
+                local rec
+                if dst[key] ~= nil then
+                    if copiedNow[split.owner] then
+                        local n = 0
+                        if type(dst[key]) == "table" then for _ in pairs(dst[key]) do n = n + 1 end end
+                        rec = { migratedFrom = "CueRulesDB." .. key, migratedAt = dst.migratedAt, migratedBy = dst.migratedBy, migratedKeys = n }
+                    end
+                else
+                    local src = settingsViews[split.rest][key]
+                    local both, part, n = split.both or {}, {}, 0
+                    if type(src) == "table" then
+                        for kk, x in pairs(src) do if split.sub[kk] or both[kk] then part[kk] = x; n = n + 1 end end
+                    end
+                    if n > 0 then
+                        dst[key] = DeepCopy(part)
+                        local diff = Differs(part, dst[key], key)
+                        if diff then
+                            dst[key] = nil   -- (taken out again; tried again at the next load)
+                            if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W006", st.addon .. ": " .. tostring(diff):sub(1, 300)) end
+                        else
+                            local restSt = SETTINGS_STORES[split.rest]
+                            rec = { migratedFrom = ((storeState[split.rest] == "own" and restSt) and restSt.var or "CueRulesDB") .. "." .. key,
+                                migratedAt = Stamp(), migratedBy = st.addon .. " " .. (Meta(st.addon, "Version") or "?"), migratedKeys = n }
+                            keyMovedNow[key] = true
+                        end
+                    end
+                end
+                if rec then
+                    if type(moves) ~= "table" then moves = {}; dst.keyMoves = moves end
+                    moves[key] = rec
+                    ns.settingsEpoch = ns.settingsEpoch + 1
+                end
+            end
+        end
+    end
+end
+-- (the QA walkthrough, tests) what the key move recorded for a split key in its owner's store, a copy; and whether it ran this session
+function ns.SettingsKeyMove(key)
+    local split = LEGACY_SPLIT[key]
+    local st = split and SETTINGS_STORES[split.owner]
+    local t = st and rawget(_G, st.var)
+    local rec = type(t) == "table" and type(t.keyMoves) == "table" and t.keyMoves[key] or nil
+    return DeepCopy(rec), keyMovedNow[key] == true
+end
+
 -- Opens a module's store (once; later calls return the state). The Platform calls it at the module addon's ADDON_LOADED (below); a
 -- module whose own start-up runs at its ADDON_LOADED (XayaUI Rules) calls it first itself. Returns "own" or "old".
 function ns.SettingsOpen(module)
@@ -377,6 +449,8 @@ function ns.SettingsOpen(module)
     storeState[module] = state
     StoreOf(module)
     ns.settingsEpoch = ns.settingsEpoch + 1
+    local okM, errM = pcall(KeyMoves)   -- (core 0.6.83) before the module's waiting start-ups
+    if not okM then Report(errM) end
     local queue = readyFor[module] or {}
     readyFor[module] = nil
     for _, fn in ipairs(queue) do Call(fn) end
@@ -413,6 +487,7 @@ function ns.SettingsRoutedForTests()
     for _, m in ipairs({ "platform", "core", "chat", "bonus", "qol", "reskin", "devassist" }) do
         for _, k in ipairs(SETTINGS_KEYS[m]) do if owner[k] == nil then owner[k] = m end end
     end
+    for k, split in pairs(LEGACY_SPLIT) do owner[k] = split.rest end   -- (core 0.6.83) a split key: its rest module's view, as before the split
     return setmetatable({}, {
         __index = function(_, k) return settingsViews[owner[k] or "platform"][k] end,
         __newindex = function(_, k, v) settingsViews[owner[k] or "platform"][k] = v end,
@@ -485,18 +560,21 @@ function ns.SettingsLegacyMerge(key, value)
     local homes = LegacyHomes(key)
     local sub = {}
     for _, h in ipairs(homes) do if h.sub then sub[h.sub] = h end end
+    local split = LEGACY_SPLIT[key]
+    local both = split and split.both or {}
     for kk, vv in pairs(value) do
         local h = sub[kk]
         if h then
             if ns.SettingsReady(h.module) then settingsViews[h.module][h.key] = DeepCopy(vv) end
         else
             for _, w in ipairs(homes) do
-                if not w.sub and LegacyKeep(w, kk) and ns.SettingsReady(w.module) then
+                -- (core 0.6.83) a `both` key goes to each half (the rest's home keeps it by LegacyKeep; the owner's, `only`, too)
+                if not w.sub and (LegacyKeep(w, kk) or both[kk]) and ns.SettingsReady(w.module) then
                     local view = settingsViews[w.module]
                     local mine = view[w.key]
                     if type(mine) ~= "table" then mine = {}; view[w.key] = mine end
                     mine[kk] = DeepCopy(vv)
-                    break
+                    if not both[kk] then break end
                 end
             end
         end

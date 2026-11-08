@@ -1,8 +1,16 @@
 -------------------------------------------------------------------------------
--- CharacterToolkit.lua : QoL > Character Toolkit (XayaUI QoL 0.7.0). The panel docked to the character window, its compact stat sheet,
--- (the Stat Calculator: a stat map, a gear comparison, spells), the item level / socket / enchant overlays on the character window's slots, extra lines on the character
--- window's own stat tooltips, and the settings page. OFF by default; while off nothing is created, registered or read.
--- Saved settings: XayaUIQoLDB.characterToolkit (CueRulesDB.characterToolkit before P5). NOT RUN IN GAME when written (2026-11-04): every number needs an in-game check.
+-- CharacterToolkit.lua : Bonus Features > Character Toolkit (XayaUI QoL 0.7.0; XayaUI Bonus Features since Bonus 0.6.37). The panel
+-- docked to the character window, its compact stat sheet (the Stat Calculator: a stat map, a gear comparison, spells), and the settings
+-- page. OFF by default; while off nothing is created, registered or read.
+-- (Bonus 0.6.37 / QoL 0.7.53, character pane split stage 2; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 4.2) Xaya's Q5 answer: "The
+-- Advanced Character Stats pane window is a Bonus feature"; PS-54: "the Stat Calculator which is a bonus feature as already established".
+-- This file was XayaUI_QoL/CharacterToolkit.lua (git mv: its history is this file's). What stayed with QoL, in XayaUI_QoL/CharacterPane.lua:
+-- the slot overlays, the extra lines on the character window's own stat tooltips and their settings (QoL > Character Toolkit); the
+-- model's flat list and line hover are CharacterModel.lua's (CM.Flat, CM.TooltipLines). The one model stays XayaUI QoL's: this file reads
+-- it only through the "statModel" service (CM below), so with XayaUI QoL off there is no panel, no page, no command and nothing is made.
+-- Saved settings: XayaUIBonusDB.characterToolkit (the panel's keys and its own switch `enabled`), copied once from
+-- XayaUIQoLDB.characterToolkit (CueRulesDB.characterToolkit before P5) by core (Modules.lua section 0c, the key move; copy, never move).
+-- NOT RUN IN GAME when written (2026-11-04): every number needs an in-game check.
 --
 -- Every number comes from the one model in CharacterModel.lua (the game's own reads; what the game does not give is marked, never
 -- guessed; secret values show as "hidden in combat"). This file only draws it:
@@ -51,12 +59,16 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
-local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
-if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
-local CM = ns.CharModel
+local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.37: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
+-- (Bonus 0.6.37, stage 3) the one model, XayaUI QoL's, through its "statModel" service: every CM.x reads the service's model at the time
+-- (XayaUI QoL loads after this addon; with it off every CM.x is nil and nothing below runs: Cfg() is nil without the model)
+local function Model() local s = ns.Service and ns.Service("statModel"); return s and s.CM or nil end
+local CM = setmetatable({}, { __index = function(_, k) local m = Model(); if m then return m[k] end end,
+    __newindex = function(_, k, v) local m = Model(); if m then m[k] = v end end })
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
-local isSecret = CM.IsSecret
+local function isSecret(v) return CM.IsSecret(v) end
 
 -------------------------------------------------------------------------------
 -- Settings
@@ -66,7 +78,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     panel = true,          -- the docked panel
     side = "right",        -- right | left of the character window
     detail = "all",        -- all | short (detail pairs under each line)
-    tooltips = true,       -- extra lines on the character window's stat tooltips
+    -- (tooltips: XayaUI QoL's, CharacterPane.lua, since Bonus 0.6.37)
     fontSize = 11,
     opacity = 0.92,
     advanced = false,      -- spell math
@@ -84,11 +96,7 @@ ns.CHARTOOLKIT_DEFAULTS = {
     -- (valueMode and lineModes, the "% / rating" toggle, are gone since QoL 0.7.40: REQUEST-LOG B2; Cfg clears them from saved settings)
     collapsed = {},        -- folded section headers, by section key
     statOpen = {},         -- (QoL 0.7.40, #88) the Stats tab's stats opened to show their rows, by card key; folded is the default
-    overlays = false,      -- item level / socket / enchant marks on the character window's slots
-    ovIlvl = true, ovSockets = true, ovEnchants = true,
-    ovSize = 11,
-    enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
-    -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
+    -- (overlays, ovIlvl, ovSockets, ovEnchants, ovSize, enchantSlots, enchantSlotsSet: XayaUI QoL's, CharacterPane.lua, since Bonus 0.6.37)
 }
 -- the size limits of the panel's corner grip (#381, Xaya: "resize from the bottom right"; QoL 0.7.14)
 local MIN_W, MAX_W, MIN_H, MAX_H = 340, 760, 300, 1100
@@ -101,9 +109,10 @@ local function CopyVal(v)
     return t
 end
 local function Cfg()
-    if not ns.SettingsReady("qol") then return nil end
-    local c = QolS.characterToolkit
-    if type(c) ~= "table" then c = {}; QolS.characterToolkit = c end
+    -- (Bonus 0.6.37) Bonus's store open and the model there (XayaUI QoL on, its store open: the key move from it has run then)
+    if not (ns.SettingsReady("bonus") and ns.SettingsReady("qol") and Model()) then return nil end
+    local c = BonusS.characterToolkit
+    if type(c) ~= "table" then c = {}; BonusS.characterToolkit = c end
     -- (QoL 0.7.23) a height dragged before the Min / Max heights existed becomes the smaller one
     if c.heightSmall == nil and type(c.size) == "table" and num(c.size.h) then c.heightSmall = c.size.h end
     for k, v in pairs(ns.CHARTOOLKIT_DEFAULTS) do
@@ -115,7 +124,6 @@ local function Cfg()
     -- rating, current value and Pt value side by side) its two saved keys are dropped; nothing reads them any more
     c.valueMode, c.lineModes = nil, nil
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
-    c.ovSize = math.max(8, math.min(16, tonumber(c.ovSize) or 11))
     c.opacity = math.max(0, math.min(1, tonumber(c.opacity) or 0.92))
     if type(c.spells) ~= "table" then c.spells = {} end
     for i = #c.spells, 1, -1 do
@@ -144,7 +152,7 @@ local function Cfg()
     c.gearSumStyle = CM.GearSumStyle(c)
     c.spellsAll = c.spellsAll == true
     c.whatIf = 0   -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option": a saved amount no longer applies)
-    for _, k in ipairs({ "whatIfStats", "collapsed", "statOpen", "enchantSlots" }) do
+    for _, k in ipairs({ "whatIfStats", "collapsed", "statOpen" }) do
         if type(c[k]) ~= "table" then c[k] = {} end
     end
     for k, v in pairs(c.statOpen) do if v ~= true or type(k) ~= "string" then c.statOpen[k] = nil end end
@@ -153,7 +161,6 @@ local function Cfg()
         c.whatIfStats[k] = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil
     end
     do local n = math.floor(tonumber(c.whatIfPrimary) or 0); c.whatIfPrimary = (n ~= 0) and math.max(-100000, math.min(100000, n)) or nil end
-    if c.enchantSlotsSet ~= true then c.enchantSlotsSet = nil end
     return c
 end
 ns.CharToolkit_Cfg = Cfg
@@ -175,56 +182,18 @@ function ns.CharToolkit_StatOpen(key)
 end
 
 -------------------------------------------------------------------------------
--- The model, flat (one list of { section = title } markers and items with "label: value" lines); used by the tooltip lines
--- on the character window and by tests. tab = a panel tab key, or nil for Stats, Defense and Offense.
+-- The model, flat (one list of { section = title } markers and items with "label: value" lines), with the panel's settings; used by
+-- the tests. tab = a panel tab key, or nil for Stats, Defense and Offense. (Bonus 0.6.37: the code is CharacterModel.lua's CM.Flat.)
 -------------------------------------------------------------------------------
 function ns.CharToolkit_Model(tab)
     local c = Cfg()
-    tab = OLD_TABS[tab] or tab
-    local m = CM.Build(c, tab)
-    local out = {}
-    for _, sec in ipairs(m.sections) do
-        if tab == nil or tab == "sheet" or sec.tab == tab then
-            out[#out + 1] = { section = sec.title, sectionKey = sec.key, tab = sec.tab }
-            for _, it in ipairs(sec.items) do
-                it.lines = CM.PairLines(it, c and c.detail == "short")
-                out[#out + 1] = it
-            end
-        end
-    end
-    return out, m
+    if not c then return {}, nil end
+    return CM.Flat(c, OLD_TABS[tab] or tab)
 end
 ns.CharToolkit_ClearCache = function() CM.ClearCache() end
 ns.CharToolkit_Numbers = function(text) return CM.Numbers(text) end
 ns.CharToolkit_SpellName = function(id) return CM.SpellName(id) end
 ns.CharToolkit_ItemStats = function(link) return CM.ItemStats(link) end
-
--- The hover of one line: { { left, right, tone } or { text } }. Used by the panel, the sheet and the tests. A tooltip has one text
--- column, so each line's Pt value follows its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15). QoL 0.7.24
--- (Xaya, the Note column: "Remove it entirely"): no note text here either, and a line that held only a note is left out.
-function ns.CharToolkit_TooltipLines(it, mode)
-    local out = {}
-    local v, tone = CM.ValueFor(it, mode)
-    out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true }
-    -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes, in the accent colour
-    if it.newValue then out[#out + 1] = { "", it.newValue, "change" } end
-    for _, p in ipairs(it.pairs or {}) do
-        if not CM.NoteOnly(p) then
-            out[#out + 1] = { CM.PairLabel(p), CM.PairText(p, true), p.tone }   -- (nested: indented)
-            if p.newValue then out[#out + 1] = { "", p.newValue, "change" } end
-        end
-    end
-    if #(it.tip or {}) > 0 then
-        out[#out + 1] = { " " }
-        for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
-    end
-    -- (QoL 0.7.40, B2: no "Click: show the rating on this line" any more; #88: a stat with rows says what a click does)
-    if it.foldable ~= nil then
-        out[#out + 1] = { " " }
-        out[#out + 1] = { it.foldable == "open" and "Click: fold its rows into this hover." or "Click: show these rows under the stat.", hint = true }
-    end
-    return out
-end
 
 -------------------------------------------------------------------------------
 -- Theme (XayaUI's own style sheet, ns.Theme; plain fallbacks when it is missing)
@@ -323,7 +292,7 @@ local function ShowTooltip(owner, it)
     local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
     local muted = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
-    for _, l in ipairs(ns.CharToolkit_TooltipLines(it, mode)) do
+    for _, l in ipairs(CM.TooltipLines(it, mode)) do   -- (Bonus 0.6.37: the model's, CharacterModel.lua)
         if l[2] ~= nil then
             local lc = l.title and label or muted
             local rc = ToneColor(l[3], text)
@@ -2163,8 +2132,8 @@ if ns.Provide then
         Open = function(tab)
             local c = Cfg()
             if not c then return false, "no saved settings yet" end
-            if not c.enabled then return false, "Character Toolkit is off (QoL > Character Toolkit)" end
-            if not c.panel then return false, "the Stat Calculator panel is off (QoL > Character Toolkit > Panel)" end
+            if not c.enabled then return false, "Character Toolkit is off (Bonus Features > Character Toolkit)" end
+            if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Character Toolkit > Panel)" end
             if tab then c.tab = tab end
             ns.CharToolkit_SetOpen(true)
             return panel ~= nil and panel:IsShown()
@@ -2181,71 +2150,12 @@ if ns.Provide then
             return panel.hEq:GetText(), panel.hMax:GetText(), CM.HeaderInfo()
         end,
         HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
-        Page = function() return ns.BuildCharToolkitPage and ns.BuildCharToolkitPage(function() end) end,
+        Page = function() return ns.BuildCharToolkitPanelPage and ns.BuildCharToolkitPanelPage(function() end) end,
         TextW = function(text, size) return panel and TextW(text, size) or nil end,
     })
 end
 
--------------------------------------------------------------------------------
--- Slot overlays on the character window: item level, empty sockets, missing enchant (slots the player ticks)
--------------------------------------------------------------------------------
-local overlays = {}
-local function SlotButton(slotName) return _G["Character" .. slotName] end
-local function UpdateOverlay(button)
-    local c = Cfg()
-    if not (button and c) then return end
-    local o = overlays[button]
-    if not (c.enabled and c.overlays) then
-        if o then o:Hide() end
-        return
-    end
-    local slot = button.GetID and button:GetID()
-    if not num(slot) or slot <= 0 then return end
-    if not o then
-        o = CreateFrame("Frame", nil, button)
-        o:SetAllPoints(button)
-        if o.SetFrameLevel and button.GetFrameLevel then o:SetFrameLevel((button:GetFrameLevel() or 1) + 3) end
-        o.ilvl = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        o.ilvl:SetPoint("BOTTOM", o, "BOTTOM", 0, 2)
-        o.marks = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        o.marks:SetPoint("TOP", o, "TOP", 0, -2)
-        o.ilvl.xuiOwn, o.marks.xuiOwn = true, true   -- (the reskin's /xui reskin status lists only other addons' text)
-        overlays[button] = o
-    end
-    local eSlots, eDefault = CM.EnchantSlots(c)
-    -- (QoL 0.7.14) while the Character Reskin draws its own item level / enchant on the slot, these leave theirs out: one of each per slot
-    -- (QoL 0.7.19) and the empty-socket mark while it draws the sockets
-    local rIlvl = ns.CharReskin_DrawsIlvl and ns.CharReskin_DrawsIlvl()
-    local rEnch = ns.CharReskin_DrawsEnchants and ns.CharReskin_DrawsEnchants()
-    local rSock = ns.CharReskin_DrawsSockets and ns.CharReskin_DrawsSockets()
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not rIlvl, sockets = c.ovSockets and not rSock, enchants = c.ovEnchants and not rEnch,
-        enchantSlots = eSlots, enchantDefault = eDefault })
-    SetFont(o.ilvl, c.ovSize, "OUTLINE")
-    SetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
-    o.ilvl:SetText(data.ilvl or "")
-    local parts = {}
-    for _, mk in ipairs(data.marks) do
-        local col = ToneColor(mk[2], { 1, 1, 1, 1 })
-        parts[#parts + 1] = ("|cff%02x%02x%02x%s|r"):format(math.floor(col[1] * 255 + 0.5), math.floor(col[2] * 255 + 0.5), math.floor(col[3] * 255 + 0.5), mk[1])
-    end
-    o.marks:SetText(table.concat(parts, " "))
-    o.data = data
-    o:Show()
-end
-function ns.CharToolkit_UpdateOverlays()
-    local c = Cfg()
-    if not (c and c.enabled and c.overlays) and next(overlays) == nil then return end   -- off and never drawn: nothing to do (V14)
-    for _, s in ipairs(CM.SLOTS) do
-        local b = SlotButton(s[4])
-        if b then UpdateOverlay(b) end
-    end
-end
--- the overlay drawn on one slot: { ilvl text, marks text } (tests)
-function ns.CharToolkit_OverlayText(slotName)
-    local o = overlays[SlotButton(slotName)]
-    if not o or not o:IsShown() then return nil end
-    return o.ilvl:GetText(), o.marks:GetText()
-end
+-- (Bonus 0.6.37: the slot overlays on the character window are XayaUI QoL's, XayaUI_QoL/CharacterPane.lua)
 
 -------------------------------------------------------------------------------
 -- Events: only while the toolkit is on. Refresh is throttled to one per 0.25 s and only while the panel is up.
@@ -2259,7 +2169,6 @@ local STAT_EVENTS = { "COMBAT_RATING_UPDATE", "MASTERY_UPDATE", "PLAYER_EQUIPMEN
 local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "UNIT_RANGED_ATTACK_POWER", "UNIT_ATTACK_SPEED", "UNIT_DAMAGE",
     "UNIT_MAXHEALTH", "UNIT_RESISTANCES", "UNIT_SPELL_HASTE" }
 -- (QoL 0.7.23: durability, repair and the vendor events left with the Durability and repair section)
-local OVERLAY_EVENTS = { PLAYER_EQUIPMENT_CHANGED = true, GET_ITEM_INFO_RECEIVED = true, SOCKET_INFO_UPDATE = true, ENCHANT_SPELL_COMPLETED = true }
 
 local function Refresh()
     if pending then return end
@@ -2290,14 +2199,6 @@ local function ShowIfDocked()
     ns.CharToolkit_UpdateButton()
 end
 
-local overlayPending
-local function RefreshOverlays()
-    if overlayPending then return end
-    overlayPending = true
-    local run = function() overlayPending = false; if Docked() then ns.CharToolkit_UpdateOverlays() end end
-    if C_Timer and C_Timer.After then C_Timer.After(0.2, run) else run() end
-end
-
 local function OnEvent(_, event, unit)
     if event == "SPELL_UPDATE_COOLDOWN" then ReadGCD(); return end
     -- the Spells tab: a description it asked for arrived, or the spellbook changed (core resets its spell list on SPELLS_CHANGED)
@@ -2308,108 +2209,17 @@ local function OnEvent(_, event, unit)
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     if event == "PLAYER_REGEN_ENABLED" then CM.gcdHidden = false end   -- out of combat the last readable GCD shows again
-    if OVERLAY_EVENTS[event] then local c = Cfg(); if c and c.overlays then RefreshOverlays() end end
+    -- (Bonus 0.6.37: the slot overlays' refresh is XayaUI QoL's own, CharacterPane.lua)
     if unit and unit ~= "player" and event:find("^UNIT_") then return end
     if panel and panel:IsShown() then Refresh() end
 end
 
--------------------------------------------------------------------------------
--- Extra lines on the character window's own stat tooltips (post-hooks only; Blizzard's code runs unchanged first).
--------------------------------------------------------------------------------
-local hooked = setmetatable({}, { __mode = "k" })
-local function Plain(s)
-    if type(s) ~= "string" or isSecret(s) then return nil end
-    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("[:：]%s*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
-    return s:lower()
-end
-local LABEL_KEYS = {
-    { "STAT_CRITICAL_STRIKE", "crit" }, { "STAT_HASTE", "haste" }, { "STAT_MASTERY", "mastery" }, { "STAT_VERSATILITY", "vers" },
-    { "STAT_AVOIDANCE", "avoidance" }, { "STAT_LIFESTEAL", "leech" }, { "STAT_SPEED", "speed2" }, { "STAT_ARMOR", "armor" },
-    { "STAT_DODGE", "dodge" }, { "STAT_PARRY", "parry" }, { "STAT_BLOCK", "block" }, { "STAT_ATTACK_POWER", "ap" },
-    { "WEAPON_SPEED", "speed" }, { "STAT_ATTACK_SPEED", "speed" }, { "DAMAGE", "damage" }, { "SPELL_STAT3_NAME", "stamina" },
-    { "STAT_STAGGER", "stagger" }, { "STAT_SPELLPOWER", "sp" }, { "STAT_AVERAGE_ITEM_LEVEL", "ilvl" },
-}
-local function KeyForLabel(text)
-    local p = Plain(text)
-    if not p then return nil end
-    for _, e in ipairs(LABEL_KEYS) do
-        local g = Plain(_G[e[1]])
-        if g and g == p then return e[2] end
-    end
-    for i = 1, 4 do
-        local g = Plain(_G["SPELL_STAT" .. i .. "_NAME"])
-        if g and g == p and i ~= 3 then return "stat" .. i end
-    end
-    if p:find("global cooldown", 1, true) then return "gcd" end
-end
-ns.CharToolkit_KeyForLabel = KeyForLabel
-
--- the stat map card each character-window stat row shows in its tooltip (A8)
-local MAP_KEY = { crit = "map_crit", haste = "map_haste", mastery = "map_mastery", vers = "map_vers", avoidance = "map_avoidance",
-    leech = "map_leech", speed2 = "map_speed2", armor = "map_armor", dodge = "map_dodge", parry = "map_parry", block = "map_block",
-    ap = "map_ap", speed = "map_aspeed", damage = "map_damage", stamina = "map_stamina", stagger = "map_stagger", sp = "map_sp", gcd = "map_gcd" }
-local function AppendTooltip(frame)
-    local c = Cfg()
-    if not (c and c.enabled and c.tooltips) or not GameTooltip then return end
-    if GameTooltip.IsOwned and not GameTooltip:IsOwned(frame) then return end
-    local label = frame.Label and frame.Label.GetText and frame.Label:GetText()
-    local key = KeyForLabel(label)
-    if not key then return end
-    -- (QoL 0.7.14, requirements A8; Xaya: "do you see how these tooltips behave?", "no. I don't want a bar next to the threshold")
-    -- a compact block under Blizzard's own text: the stat map's lines for this stat at your real numbers (your typed numbers are left
-    -- out here): rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then what it feeds (the
-    -- "»" lines: parry from crit, armor from mastery, ...). No bars. Our own wording.
-    local mk = MAP_KEY[key] or ((key == "stat1" or key == "stat2" or key == "stat4") and "map_primary") or nil
-    local clean = setmetatable({ whatIf = 0, whatIfStats = {}, whatIfPrimary = false }, { __index = c })
-    local card = mk and CM.Build(clean, "stats").byKey[mk] or nil
-    if key:match("^stat%d$") and card and card.label ~= (label and label:gsub("[:：]%s*$", "")) then card = nil end   -- not your primary stat
-    local lines = {}
-    if card then
-        if card.absolute then
-            local from
-            for _, p in ipairs(card.pairs or {}) do if p.label == "From rating" then from = tostring(p.value) end end
-            lines[#lines + 1] = { "Rating", CM.Big(card.absolute) .. (from and (" = " .. from) or "") }
-            if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
-        end
-        for _, p in ipairs(card.pairs or {}) do
-            -- (one text column: the Pt value and the note follow the value, QoL 0.7.15; a nested ability line is indented, 0.7.20)
-            if p.label ~= "From rating" then lines[#lines + 1] = { CM.PairLabel(p), CM.PairText(p) } end
-        end
-    else
-        local it = CM.Build(c, nil).byKey[key]
-        if not it then return end
-        for _, line in ipairs(CM.PairLines(it, true)) do lines[#lines + 1] = { line } end
-    end
-    if #lines == 0 then return end
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("XayaUI", 0.2, 0.8, 1)
-    for _, l in ipairs(lines) do
-        if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
-        elseif l[2] ~= nil then GameTooltip:AddLine(l[1] .. ": " .. l[2], 0.85, 0.85, 0.85, true)
-        else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
-    end
-    GameTooltip:Show()
-end
-
-local function HookStatFrames()
-    local pane = _G.CharacterStatsPane
-    if not (pane and pane.GetChildren) then return end
-    for _, child in ipairs({ pane:GetChildren() }) do
-        if not hooked[child] and child.Label and child.HookScript then
-            hooked[child] = true
-            child:HookScript("OnEnter", AppendTooltip)
-        end
-    end
-end
-ns.CharToolkit_HookStatFrames = HookStatFrames
+-- (Bonus 0.6.37: the extra lines on the character window's own stat tooltips are XayaUI QoL's, XayaUI_QoL/CharacterPane.lua)
 
 -------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
-local ownerHooked, themeHooked, slotHooked, statHooked = false, false, false, false
--- (QoL 0.7.24, V14) the Tooltip lines' hooks (PaperDollFrame_UpdateStats and each stat row's OnEnter) are placed only once the Tooltip
--- lines are on; before, they came with the toolkit even while the lines were off. Placed, they return at once while it is off.
-local function TooltipLinesOn() local c = Cfg(); return (c and c.enabled and c.tooltips) and true or false end
+local ownerHooked, themeHooked = false, false
 
 -------------------------------------------------------------------------------
 -- The Stat Calc button on the character window and the Stat Calculator row in XayaUI's minimap button list (QoL 0.7.23; Xaya
@@ -2463,17 +2273,24 @@ function ns.CharToolkit_UpdateButton()
     b.open = open
     b:Show()
 end
-if type(ns.RegisterLauncher) == "function" then
-    ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
-        function() ns.CharToolkit_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.42, her answer "No word at all"): no "on" / "off" for shown / hidden
-        available = function() local c = Cfg(); return (c and c.enabled and c.panel) and true or false end })
+local function RegisterLauncher()   -- (Bonus 0.6.37: called by RegisterAll, only with XayaUI QoL on)
+    if type(ns.RegisterLauncher) == "function" then
+        ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
+            function() ns.CharToolkit_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.42, her answer "No word at all"): no "on" / "off" for shown / hidden
+            available = function() local c = Cfg(); return (c and c.enabled and c.panel) and true or false end })
+    end
 end
 function ns.CharToolkit_Apply()
     local c = Cfg(); if not c then return end
     if not c.enabled then
         if ev then ev:UnregisterAllEvents() end
         if panel then panel:Hide() end
-        for _, o in pairs(overlays) do o:Hide() end
+        ns.CharToolkit_UpdateButton()
+        return
+    end
+    -- (Bonus 0.6.37) with the panel off this file has nothing to listen to (the overlays and the tooltip lines are XayaUI QoL's)
+    if not c.panel and not ev then
+        if panel then panel:Hide() end
         ns.CharToolkit_UpdateButton()
         return
     end
@@ -2482,24 +2299,20 @@ function ns.CharToolkit_Apply()
         ev:SetScript("OnEvent", OnEvent)
     end
     ev:UnregisterAllEvents()
-    -- (D17, V14) the panel's stat / unit events and the GCD read only while its "Show the panel" part is on; with it off, only what the
-    -- slot overlays need (while they are on) and the cache reset on a spec change / level up (the overlays and tooltip lines read it)
+    -- (D17, V14) the panel's stat / unit events and the GCD read only while its "Show the panel" part is on; with it off, nothing
+    -- (Bonus 0.6.37: the slot overlays' events and the cache reset for the overlays and tooltip lines are XayaUI QoL's, CharacterPane.lua)
     if c.panel then
         for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
         for _, e in ipairs(UNIT_EVENTS) do
             if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
         end
         pcall(ev.RegisterEvent, ev, "SPELL_UPDATE_COOLDOWN")
-    else
-        pcall(ev.RegisterEvent, ev, "PLAYER_SPECIALIZATION_CHANGED")
-        pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
-        if c.overlays then for e in pairs(OVERLAY_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
     end
     if not ownerHooked then
         local owner = Owner()
         if owner and owner.HookScript then
             ownerHooked = true
-            owner:HookScript("OnShow", function() ShowIfDocked(); if TooltipLinesOn() then HookStatFrames() end; ns.CharToolkit_UpdateOverlays() end)
+            owner:HookScript("OnShow", function() ShowIfDocked() end)
             -- the character window closed: a panel that docked with it closes with it (its open state is kept for next time); one
             -- opened on its own stays open and goes back to its own place (QoL 0.7.23)
             owner:HookScript("OnHide", function()
@@ -2509,22 +2322,10 @@ function ns.CharToolkit_Apply()
             end)
         end
     end
-    if c.tooltips and not statHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
-        statHooked = true
-        hooksecurefunc("PaperDollFrame_UpdateStats", function() if TooltipLinesOn() then HookStatFrames() end end)
-    end
-    if c.tooltips then HookStatFrames() end
-    -- Blizzard redraws one slot button at a time; the overlay follows (post-hook, Blizzard's code runs unchanged first). Placed only once
-    -- the overlays are on (QoL 0.7.19, V14: before, it was placed with the toolkit even while the overlays were off).
-    if c.overlays and not slotHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollItemSlotButton_Update) == "function" then
-        slotHooked = true
-        hooksecurefunc("PaperDollItemSlotButton_Update", UpdateOverlay)
-    end
     if not themeHooked and ns.Theme and ns.Theme.OnResolve then
         themeHooked = true
         ns.Theme.OnResolve(function() if panel and panel:IsShown() then ns.CharToolkit_Render() end end)
     end
-    ns.CharToolkit_UpdateOverlays()
     if panel then
         if not c.panel then panel:Hide()
         elseif panel:IsShown() then ns.CharToolkit_Render()
@@ -2542,11 +2343,11 @@ end
 function ns.CharToolkit_SetOpen(open)
     local c = Cfg(); if not c then return end
     if not c.enabled then
-        ns.Print("Character Toolkit is off. Turn it on in QoL > Character Toolkit (or /xui stats on).")
+        ns.Print("Character Toolkit is off. Turn it on in Bonus Features > Character Toolkit (or /xui stats on).")
         return
     end
     if not c.panel then
-        ns.Print("The Stat Calculator panel is off. Turn it on in QoL > Character Toolkit > Panel.")
+        ns.Print("The Stat Calculator panel is off. Turn it on in Bonus Features > Character Toolkit > Panel.")
         return
     end
     c.panelOpen = open and true or false
@@ -2571,7 +2372,16 @@ function ns.CharToolkit_SizeMode(mode)
     ns.CharToolkit_Render()
 end
 
-ns.WhenSettingsReady("qol", function() if Cfg() then ns.CharToolkit_Apply() end end)   -- (P5: once XayaUIQoLDB is open, at this addon's ADDON_LOADED; Modules.lua section 0c)
+-- (Bonus 0.6.37) once both stores are open: Bonus's at this addon's ADDON_LOADED, XayaUI QoL's at that addon's (it loads after this one;
+-- core copies the panel's settings from it then, once: Modules.lua section 0c). With XayaUI QoL off this never runs: nothing is made.
+local registered = false
+local RegisterAll   -- (below: the page, the command, the minimap row and the services, only with XayaUI QoL on)
+ns.WhenSettingsReady("bonus", function()
+    ns.WhenSettingsReady("qol", function()
+        if not registered and RegisterAll then registered = true; RegisterAll() end
+        if Cfg() then ns.CharToolkit_Apply() end
+    end)
+end)
 -- (audit QA walkthrough, D17) which of the toolkit's events are registered now; its settings, and Apply after changing them
 if ns.Provide then ns.Provide("charToolkitDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.CharToolkit_Apply() end,
     Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end }) end
@@ -2594,7 +2404,8 @@ local function ResolveSpell(text)
 end
 ns.CharToolkit_ResolveSpell = ResolveSpell
 
-function ns.BuildCharToolkitPage(Notify)
+function ns.BuildCharToolkitPanelPage(Notify)
+    if not Cfg() then return nil end   -- (Bonus 0.6.37) no page without XayaUI QoL's model (nothing extra while it is off)
     local function C() return Cfg() or CopyVal(ns.CHARTOOLKIT_DEFAULTS) end
     local function Changed() ns.CharToolkit_Apply(); if Notify then Notify() end end
     local isOff = function() return not C().enabled end
@@ -2711,85 +2522,43 @@ function ns.BuildCharToolkitPage(Notify)
             } },
         },
     }
-    -- (QoL 0.7.24; Xaya 2026-11-06, asked whether the Character Toolkit's "Tooltip lines" get their own row and tick box: "Assume yes for
-    -- now") the tooltip lines are a part of their own in the left pane, its tick box the switch that sat on Panel > Tooltips before
-    local TIP_TEXT = "Adds the toolkit's lines under the character window's own stat tooltips. The panel's own hover does not need this."
-    local tipsPart = {
-        type = "group", name = "Tooltip lines", order = 40, hidden = isOff,
-        xuiSwitch = Toggle("tooltips", 1, "Tooltip lines", TIP_TEXT, nil, nil, "Adds Stat Calculator lines to the character window's stat tooltips."),
-        args = {
-            intro = { type = "description", order = 0, width = "full", fontSize = "medium", name = TIP_TEXT },
-        },
-    }
-
-    local slotToggles = {
-        note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Ticked to start with: the slots this expansion's enchants cover (head, shoulders, chest, legs, feet, both rings, main hand, and off hand when it holds a weapon). Change any tick and your own choice is kept. A ticked slot with no enchant shows E? (orange); an enchanted one shows E (green)." },
-        reset = { type = "execute", order = 99, name = "This expansion's slots",
-            desc = "Resets to the slots this expansion's enchants cover.",
-            func = function() local c = C(); c.enchantSlots = {}; c.enchantSlotsSet = nil; Changed() end },
-    }
-    for i, s in ipairs(CM.SLOTS) do
-        local slot = s[1]
-        slotToggles["slot" .. slot] = { type = "toggle", order = i, name = CM.SlotLabel(slot),
-            desc = "Flags this slot on the character window when its item has no enchant.",
-            get = function() return CM.EnchantSlots(C())[slot] and true or false end,
-            set = function(_, v)
-                local c = C()
-                if c.enchantSlotsSet ~= true then   -- the first change keeps every slot that shows ticked now
-                    local now = {}
-                    for k in pairs((CM.EnchantSlots(c))) do now[k] = true end
-                    c.enchantSlots, c.enchantSlotsSet = now, true
-                end
-                c.enchantSlots[slot] = v and true or nil
-                Changed()
-            end }
-    end
-    local overlayPart = {
-        type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
-        xuiSwitch = Toggle("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", nil, nil, "Shows marks on the character window's item slots."),
-        args = {
-            show = { type = "group", name = "Show", order = 1, args = {
-                ovIlvl = Toggle("ovIlvl", 2, "Item level", "Shows the item level at the bottom of the slot."),
-                ovSockets = Toggle("ovSockets", 3, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top. Hidden while the Character Reskin draws sockets."),
-                ovEnchants = Toggle("ovEnchants", 4, "Enchant check", "Shows E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab."),
-                ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
-                    get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
-            } },
-            enchants = { type = "group", name = "Enchant Slots", order = 2, args = slotToggles },
-        },
-    }
+    -- (Bonus 0.6.37: the Slot Overlays and Tooltip lines parts stay XayaUI QoL's: QoL > Character Toolkit, XayaUI_QoL/CharacterPane.lua)
 
     return {
         type = "group", name = "Character Toolkit", order = 3, childGroups = "tree",
         xuiSwitch = Toggle("enabled", 1, "Character Toolkit", "Turns the toolkit on. While it is off nothing is created, registered or read.", nil, nil, "Turns on the Stat Calculator and its character window tools."),
         args = {
+            -- (Bonus 0.6.37) the parts' list names the two that came to Bonus Features (the slot overlays and tooltip lines stay QoL's)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "The Stat Calculator: a panel beside the character window (its Stat Calc button) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Slot Overlays, Spell Math, Tooltip lines) then show under it, each with its own tick box. Off by default." },
+                name = "The Stat Calculator: a panel beside the character window (its Stat Calc button) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Turn it on with the tick box on its row on the left; its parts (Panel, Spell Math) then show under it, each with its own tick box. Off by default." },
             panelPart = panelPart,
-            overlayPart = overlayPart,
             spells = spells,
-            tipsPart = tipsPart,
         },
     }
 end
 
 -------------------------------------------------------------------------------
--- Plugs into core through Modules.lua: core never calls this file by name.
+-- Plugs into core through Modules.lua: core never calls this file by name. (Bonus 0.6.37) only once XayaUI QoL's settings are open
+-- (RegisterAll, from the start-up above): with XayaUI QoL off there is no page, no /xui stats and no minimap row.
 -------------------------------------------------------------------------------
-ns.RegisterSettingsPage("qol", "chartoolkit", ns.BuildCharToolkitPage)
+RegisterAll = function()
+RegisterLauncher()
+ns.RegisterSettingsPage("bonus", "statcalc", ns.BuildCharToolkitPanelPage)
 ns.RegisterCommand("stats", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local c = Cfg()
-    if arg == "options" or arg == "settings" then ns.OpenSettingsPage("qol", "chartoolkit"); return end
+    if arg == "options" or arg == "settings" then ns.OpenSettingsPage("bonus", "statcalc"); return end
     if arg == "help" then
         ns.Print("/xui stats: show or hide the Stat Calculator (on its own when the character window is closed). /xui stats on | off | options | status")
         return
     end
     if arg == "status" then
         if not c then ns.Print("Character Toolkit: settings not ready."); return end
+        -- (Bonus 0.6.37) the slot overlays and tooltip lines are XayaUI QoL's: read through its settings view (QoL > Character Toolkit)
+        local q = ns.Settings("qol").characterToolkit
+        q = type(q) == "table" and q or {}
         ns.Print(("Character Toolkit: %s, panel %s, slot overlays %s, tooltips %s, spell math %s (%d spells), converter %s."):format(
-            c.enabled and "on" or "off", c.panel and "on" or "off", c.overlays and "on" or "off", c.tooltips and "on" or "off",
+            c.enabled and "on" or "off", c.panel and "on" or "off", (q.enabled and q.overlays) and "on" or "off", (q.enabled and q.tooltips ~= false) and "on" or "off",
             c.advanced and "on" or "off", #c.spells,
             type(GetCombatRatingBonusForCombatRatingValue) == "function" and "present" or "MISSING"))
         return
@@ -2799,4 +2568,5 @@ ns.RegisterCommand("stats", function(arg)
     if arg == "off" then c.enabled = false; ns.CharToolkit_Apply(); ns.Print("Character Toolkit off."); return end
     ns.CharToolkit_Toggle()
 end, "/xui stats [on|off|options|status] (Character Toolkit stat panel)")
+end
 -- (/xui debug widthprobe and its file, CharacterWidthProbe.lua, are XayaUI Dev Assist's since QoL 0.7.33; REQUEST-LOG #81)

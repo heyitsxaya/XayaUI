@@ -131,9 +131,9 @@ if iw then
   iw.status:SetText("A long status line that the import window shows after it reads a paste, with a second line under it.")
   measure("import window", iw)
 end
--- 4. The Stat Calculator panel (QoL) -----------------------------------------------------------------------------------------------
-ns.Settings("qol").characterToolkit = ns.Settings("qol").characterToolkit or {}
-ns.Settings("qol").characterToolkit.enabled = true
+-- 4. The Stat Calculator panel (XayaUI Bonus Features since Bonus 0.6.37; its settings are Bonus's) -----------------------------------
+ns.Settings("bonus").characterToolkit = ns.Settings("bonus").characterToolkit or {}
+ns.Settings("bonus").characterToolkit.enabled = true
 pcall(ns.CharToolkit_Apply)
 local okT, errT = pcall(ns.CharToolkit_Toggle)
 local tp = rawget(_G, "XayaUICharacterToolkit")
