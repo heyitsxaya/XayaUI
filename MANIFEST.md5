@@ -2,7 +2,7 @@
 f0a87dda2d5d8e7f2fb1822dffe8228e  .github/workflows/mirror-qa-branch.yml
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-073a034559a86557c471fb89e6afbbf9  PATCH-NOTES.md
+9bb4728b67ce080d370321c560df60a3  PATCH-NOTES.md
 5b61fe21add066c4f67553ace5a13dc6  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
@@ -148,7 +148,7 @@ aa2319eb392a2c0dbdb4ca645f342185  XayaUI_DevAssist/DevRecord.lua
 4f406e5f61d664082acd91fcb9dcafdd  XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH.md
 540e759425acffdcd2e04155ed259ae3  XayaUI_DevAssist/FormulaCapture.lua
 e02d7cfaf5d8f831af4e099965713b69  XayaUI_DevAssist/Probe.lua
-05e8a77a4d360706400e6090963a6a76  XayaUI_DevAssist/QAQuestions.lua
+af5207afa59b26da0957bfe7604cd2f2  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
@@ -187,7 +187,7 @@ c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lu
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 eeae9b48ca36f751a949367a498b3d73  XayaUI_DevAssist/QAWalks-statcalc.lua
 15a59f22320d9a870704a5f7828f0d62  XayaUI_DevAssist/QAWalks.lua
-8a092e8c8fd5cb04565993ea5653953a  XayaUI_DevAssist/XayaUI_DevAssist.toc
+bf591c8d8366e38ce9810ec997daf785  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -202,7 +202,7 @@ dbfe5b8f7902a2fc6917c7e8d3a3e631  XayaUI_Nameplates/Core.lua
 2eb040102df5f6b107c97e4a1470a3dc  XayaUI_Options/AddonInfo.lua
 659930de4dfc6f25822d9a3575c1f350  XayaUI_Options/ImportWindow.lua
 39e5de8b2f7935ba3f23e86c8026183b  XayaUI_Options/InfoPane.lua
-296bf8c372800e77db3ac12b3b285256  XayaUI_Options/InfoPaneData.lua
+6d9002c3518c79060788ebf23761cdf7  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -244,7 +244,7 @@ b0801598df61b10b5760f0df0a25398b  XayaUI_Options/ScopeEditor.lua
 75d612f7d2d6c1e8322a227fc6529370  XayaUI_Options/Skin.lua
 2fc1925add0ae7745f623f67fec1a135  XayaUI_Options/ThemeEditor.lua
 03d066ba8a570cb500e2cdffbb9a38fc  XayaUI_Options/TreePaint.lua
-b68d68bbc4eea872fed6dec3c6ade761  XayaUI_Options/XayaUI_Options.toc
+f1046af44c74352ff72c5b27a37aca88  XayaUI_Options/XayaUI_Options.toc
 f9c7ee1943da4c9fbc5607244e1f411f  XayaUI_QoL/CharacterModel.lua
 314e0695351b1714a4f27091732f3fbd  XayaUI_QoL/CharacterPane.lua
 1cf7fd0b01eebe06738c1168239fe9ac  XayaUI_QoL/CharacterReskin.lua

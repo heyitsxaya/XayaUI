@@ -1617,3 +1617,13 @@ Q{ key = "REVIEW-4",
    words = "I want a qa review checklist pushed and displayed as a popup for everything that needs review when I first load into the game and I want all outstanding questions to be nested within a qa question prompt flow so I know what you had to execute blindly and need feedback on.",
    did = "The flow starts at the first question you have not answered. Answered questions stay in the list (Back reaches them; your answer is shown and can be changed). Next needs an answer or a note; Skip moves on without saving. \"Questions (N)\" counts the unanswered ones. Questions with several parts were split into one question per part. Where nothing was decided yet, the first choice reads \"Leave it undecided for now\" instead of \"Keep it\".",
    choices = { "Hide the questions I have answered", "Let Next move on without an answer (like Skip)" } }
+
+Q{ key = "PN-1",
+   area = "Patch Notes: size in game",
+   order = 208,
+   since = "Dev Assist 0.7.71",
+   wordsNote = "no words of yours: the Patch Notes data (every landing's notes, shown in the info pane) reached the memory check's 200 KB cap. Measured: 200.2 KB of Lua memory after the settings window loads, about 2.5 KB more per new landing.",
+   did = "Nothing was changed in the cap while waiting for your answer, so new landing entries cannot be added until you pick one.",
+   choices = { "Raise the cap to 300 KB (simple; the pane's data keeps growing about 2.5 KB per landing)",
+               "Keep the newest landings loaded and load older ones only when you open them (about half the memory; more work to build)",
+               "Leave the cap at 200 KB and drop the oldest landings from the in-game pane (they stay in PATCH-NOTES.md)" } }
