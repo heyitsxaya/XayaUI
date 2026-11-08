@@ -123,6 +123,13 @@ function T.BuildArgs(refresh)
             th.classPick = (v ~= "auto") and v or nil
             T.Resolve(); T.Changed(); refresh()
         end }
+    -- (#460, Options 0.6.101; Xaya 2026-11-06: "this gradient should be reversible in direction"; her answer 2026-11-07: its own switch,
+    -- not the cursor trail's "Reverse colors"). Shown while the theme has a gradient (a cursor trail theme's borders, or one set below).
+    args.gradRev = { type = "toggle", order = nx(), width = "full", name = "Reverse gradient direction",
+        desc = "Runs this theme's gradients (the window, pane, button and tab borders of a cursor trail theme) the other way round. Separate from the cursor trail's own Reverse colors.",
+        hidden = function() return not T.HasGradient() end,
+        get = function() return T.GradReversed() end,
+        set = function(_, v) T.SetGradReverse(v); refresh() end }
 
     -- Custom: shown only while Custom is the selected theme. The addon background (window, panes, title bar, borders) and the window
     -- opacity live here; the Palette below keeps the rest of the colors.
@@ -178,7 +185,7 @@ function T.BuildArgs(refresh)
         get = function() local th = DB(); return th and th.size or "M" end,
         set = function(_, v) T.SetSize(v); refresh() end }
     args.advanced = { type = "toggle", order = nx(), width = "full", name = "Advanced customization",
-        desc = "Offers more theme options: tab colors, tree bars and per-class color overrides. Off by default.",
+        desc = "Offers more theme options: tab colors, tree bars, per-class color overrides and the gradient as a color. Off by default.",
         get = function() return T.Advanced() end,
         set = function(_, v)
             if not ns.SettingsReady() then return end
@@ -213,6 +220,14 @@ function T.BuildArgs(refresh)
             end }
         end
     end
+    -- (#460, Options 0.6.101; Xaya 2026-11-07: "allow in advance settings the user to apply the gradient as a set "color" option to all
+    -- elements") Advanced customization only: each palette colour can be set to the theme's gradient (T.SetTokenGradient).
+    args.gradTokens = { type = "multiselect", order = nx(), width = "full", name = "Use the gradient as the color of",
+        desc = "Sets a palette color to this theme's gradient (a cursor trail theme's trail colors, any other theme's light-to-dark accent colors). Window, pane, button and tab borders draw it as a gradient, anything else shows the color's own solid color, and unticking makes it solid again.",
+        hidden = function() return not T.Advanced() end,
+        values = function() local v = {}; for _, t in ipairs(T.TOKENS) do v[t[1]] = t[2] end; return v end,
+        get = function(_, k) return T.curGrad[k] ~= nil end,
+        set = function(_, k, v) T.SetTokenGradient(k, v); refresh() end }
     -- FA-13 (Options 0.6.69; Xaya: "Reword to Class colors (Recommended)"): it resets to Class colors, the theme a new install starts with
     args.resetPal = { type = "execute", order = nx(), width = "full", name = "Reset everything",
         desc = "Back to Class colors (the starting theme), game font, Medium size, and no class overrides.",

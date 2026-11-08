@@ -16,6 +16,8 @@ local TH = ns.Theme
 if TH then TH.Bind("label", GOLD) end
 -- style-sheet color for a class property ({r,g,b,a}); falls back to the given color when Theme.lua is missing
 local function TC(class, prop, fb) if TH then return TH.Col(class, prop, fb) end return fb end
+-- (#460, Options 0.6.101) the class property's gradient, or nil when it is solid (core's Theme.lua T.Grad; nil without it)
+local function TG(class, prop) if TH and TH.Grad then return TH.Grad(class, prop) end return nil end
 -- theme font + size on a fontstring (color is set by the caller)
 local function TF(fs) if TH and fs then pcall(TH.Style, fs, nil) end end
 local function TR(fs) if TH and fs then pcall(TH.Restore, fs) end end
@@ -58,8 +60,8 @@ end
 
 -- /xuiskin lives in core (Modules.lua) so it works before this addon is loaded.
 
--- flat 1px-bordered box drawn with plain textures (inset = { l, r, t, b })
-local function Flat(f, bg, border, inset)
+-- flat 1px-bordered box drawn with plain textures (inset = { l, r, t, b }); grad (#460): the border's gradient (TG), nil = solid
+local function Flat(f, bg, border, inset, grad)
     local t = f.xuiFlat
     if not t then
         t = { bg = f:CreateTexture(nil, "BACKGROUND", nil, -3), e = {} }
@@ -74,12 +76,14 @@ local function Flat(f, bg, border, inset)
     t.e[3]:ClearAllPoints(); t.e[3]:SetPoint("TOPLEFT", l, -tp); t.e[3]:SetPoint("BOTTOMLEFT", l, b); t.e[3]:SetWidth(1)
     t.e[4]:ClearAllPoints(); t.e[4]:SetPoint("TOPRIGHT", -r, -tp); t.e[4]:SetPoint("BOTTOMRIGHT", -r, b); t.e[4]:SetWidth(1)
     t.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 1); t.bg:Show()
+    if (grad or f.xuiGradE) and TH and TH.PaintEdges then TH.PaintEdges(f, t.e, border, grad, "BACKGROUND", -2); return end   -- (#460)
     for _, e in ipairs(t.e) do e:SetColorTexture(border[1], border[2], border[3], border[4] or 1); e:Show() end
 end
 local function FlatHide(f)
     local t = f and f.xuiFlat
     if not t then return end
     t.bg:Hide(); for _, e in ipairs(t.e) do e:Hide() end
+    if f.xuiGradE and TH and TH.HideGrad then TH.HideGrad(f) end   -- (#460) the gradient pieces too
 end
 
 -- hide every texture of a frame except the ones listed in keep (remembered, so it can be undone)
@@ -87,7 +91,7 @@ local function HideRegions(f, keep)
     if f.xuiHidden then return end
     f.xuiHidden = {}
     for _, rg in ipairs({ f:GetRegions() }) do
-        if rg.GetObjectType and rg:GetObjectType() == "Texture" and rg ~= keep and not (f.xuiFlat and (rg == f.xuiFlat.bg)) then
+        if rg.GetObjectType and rg:GetObjectType() == "Texture" and rg ~= keep and not (f.xuiFlat and (rg == f.xuiFlat.bg)) and not rg.xuiOwn then   -- (#460: xuiOwn = a gradient piece)
             local isEdge
             if f.xuiFlat then for _, e in ipairs(f.xuiFlat.e) do if e == rg then isEdge = true end end end
             if not isEdge then f.xuiHidden[#f.xuiHidden + 1] = { rg, rg:GetAlpha() }; rg:SetAlpha(0) end
@@ -150,7 +154,7 @@ end
 local function FlatInner(b)
     if not (b and b.GetHighlightTexture and b.GetFontString) then return end
     HideRegions(b, b:GetHighlightTexture())
-    Flat(b, TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }), TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }))
+    Flat(b, TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }), TC("xui-button", "border", { 0.25, 0.25, 0.25, 1 }), nil, TG("xui-button", "border"))
     local ht = b:GetHighlightTexture()
     if ht then
         if not b.xuiHLOrig then b.xuiHLOrig = { ht:GetTexture(), ht:GetBlendMode() } end
@@ -290,6 +294,7 @@ local function SkinFrame(of)
             self.xuiSkinFrame = nil
             local f = self.frame
             f.xuiBDset = nil
+            if f.xuiGradBox and TH then TH.HideGrad(f) end   -- (#460)
             if self.xuiOrigBackdrop then f:SetBackdrop(self.xuiOrigBackdrop) end
             f:SetBackdropColor(0, 0, 0, 1); f:SetBackdropBorderColor(1, 1, 1, 1)
             for _, rg in ipairs({ f:GetRegions() }) do if rg.xuiWasTitle then rg:SetAlpha(1); rg.xuiWasTitle = nil end end
@@ -312,11 +317,22 @@ local function SkinFrame(of)
         end
         local wb, wbd = TC("xui-window", "bg", { 0.06, 0.06, 0.06, 1 }), TC("xui-window", "border", { 0.32, 0.32, 0.32, 1 })
         fr:SetBackdropColor(wb[1], wb[2], wb[3], A())
-        fr:SetBackdropBorderColor(wbd[1], wbd[2], wbd[3], 1)
+        -- (#460) a gradient border: the backdrop's own edge (one colour only) is cleared and the window gets four edges of its own
+        local wg = TG("xui-window", "border")
+        if wg and TH and TH.EdgeBox then
+            fr:SetBackdropBorderColor(0, 0, 0, 0)
+            TH.PaintEdges(fr, TH.EdgeBox(fr, "BORDER", 7), wbd, wg, "BORDER", 7)
+        else
+            fr:SetBackdropBorderColor(wbd[1], wbd[2], wbd[3], 1)
+            if fr.xuiGradBox and TH then TH.HideGrad(fr) end
+        end
     end
     -- #468: the bottom Close button in the flat look (every pass, so a theme change repaints it)
     of.xuiCloseBtn = of.xuiCloseBtn or FrameCloseButton(of)
     FlatInner(of.xuiCloseBtn)
+    -- (#460) the title bar's ? and collapse arrow (core's flat buttons, Options.lua c.flatChrome) on every pass too: before, only when
+    -- they were shown again, so a theme change (a gradient border on or off) reached them only after the window was reopened
+    do local ch = of.xuiChrome; if ch and ch.flatChrome then pcall(ch.flatChrome, ch.arrow); pcall(ch.flatChrome, ch.help) end end
     -- title strip
     for _, rg in ipairs({ fr:GetRegions() }) do
         if rg.GetObjectType and rg:GetObjectType() == "Texture" and rg:GetTexture() == 131080 then rg:SetAlpha(0); rg.xuiWasTitle = true end
@@ -374,12 +390,14 @@ local function PaneDivider(w)
     local d = w.xuiDivider
     if not d then d = w.frame:CreateTexture(nil, "ARTWORK"); w.xuiDivider = d end
     local c = TC("xui-pane", "border", { 0.3, 0.3, 0.3, 1 })
-    d:SetColorTexture(c[1], c[2], c[3], 1)
+    local g = TG("xui-pane", "border")   -- (#460)
+    if not (g or d.xuiGradL) then d:SetColorTexture(c[1], c[2], c[3], 1) end
     d:ClearAllPoints()
     d:SetPoint("TOPLEFT", tf, "TOPRIGHT", 0, 0)
     d:SetPoint("BOTTOMLEFT", tf, "BOTTOMRIGHT", 0, 0)
     d:SetWidth(ns.Style.divider.size)
     d:Show()
+    if (g or d.xuiGradL) and TH and TH.PaintLine then TH.PaintLine(w.frame, d, { c[1], c[2], c[3], 1 }, g, "V", "ARTWORK") end
 end
 
 -- /xui debug perf: time every pane / tab switch (OnGroupSelected) so the slow or late step can be named
@@ -451,7 +469,7 @@ local function LayTabRow(w, slots, H, SIZE)
             fs:SetTextColor(c[1], c[2], c[3])
         end
         local tcl = tab.selected and "xui-tab-selected" or "xui-tab"
-        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 })
+        Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 1, 1, 0, 0 }, TG(tcl, "border"))
     end
     w.borderoffset = top + H + 3
     if w.border then w.border:SetPoint("TOPLEFT", 1, -w.borderoffset) end
@@ -614,7 +632,7 @@ local function SkinTabGroup(w)
             local sel = tab.selected and true or false
             -- AceGUI tabs overlap by ~10px (the Blizzard art has transparent edges), so the box is inset to keep each border whole
             local tcl = sel and "xui-tab-selected" or "xui-tab"
-            Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 9, 9, 6, 3 })
+            Flat(tab, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), { 9, 9, 6, 3 }, TG(tcl, "border"))
             local fs = tab:GetFontString()
             if fs then local c = TC(tcl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs); LightFont(tab, fs, c) end
         end
@@ -781,7 +799,7 @@ local function EnsureTreeSearch(w)
                     b:HookScript("OnLeave", function(self) local f = self:GetFontString(); if f then f:SetTextColor(GOLD[1], GOLD[2], GOLD[3]) end end)
                 end
                 local cl = (key == "del") and "xui-button-primary" or "xui-button"
-                Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }))
+                Flat(b, TC(cl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(cl, "border", { 0.25, 0.25, 0.25, 1 }), nil, TG(cl, "border"))
                 local fs = b:GetFontString()
                 if fs then local c = TC(cl, "text", GOLD); fs:SetTextColor(c[1], c[2], c[3]); TF(fs) end
             end
@@ -1043,7 +1061,7 @@ local function SkinTree(w)
         end
         PaneColors(self.treeframe, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
         PaneColors(self.border, { 0.1, 0.1, 0.1, 0.5 }, { 0.4, 0.4, 0.4 })
-        if self.xuiDivider then self.xuiDivider:Hide() end
+        if self.xuiDivider then self.xuiDivider:Hide(); if TH and TH.HideLineGrad then TH.HideLineGrad(self.frame, self.xuiDivider) end end   -- (#460)
         for _, b in ipairs(self.buttons or {}) do
             local ht = b:GetHighlightTexture()
             if ht and b.xuiHT then ht:SetTexture(b.xuiHT[1]); ht:SetVertexColor(unpack(b.xuiHT[2])); ht:SetBlendMode(b.xuiHT[3]); ht:SetAlpha(1); b.xuiHT = nil end
@@ -1310,7 +1328,7 @@ local function SkinButton(w)
         HideRegions(f, f:GetHighlightTexture())
         local okS, sel = pcall(arg.xuiTabSel or function() return false end)
         local tcl = (okS and sel) and "xui-tab-selected" or "xui-tab"
-        Flat(f, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }))
+        Flat(f, TC(tcl, "bg", { 0.03, 0.03, 0.03, 0.7 }), TC(tcl, "border", { 0.22, 0.22, 0.22, 1 }), nil, TG(tcl, "border"))
         do
             local ht = f:GetHighlightTexture()
             if ht then
@@ -1338,7 +1356,7 @@ local function SkinButton(w)
     else
         HideRegions(f, f:GetHighlightTexture())
         local bcl = (arg and arg.xuiRed) and "xui-button-primary" or "xui-button"   -- red "Add ..." button = primary
-        Flat(f, TC(bcl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(bcl, "border", { 0.25, 0.25, 0.25, 1 }))
+        Flat(f, TC(bcl, "bg", { 0.04, 0.04, 0.04, 0.7 }), TC(bcl, "border", { 0.25, 0.25, 0.25, 1 }), nil, TG(bcl, "border"))
         -- mouse-over glow: Blizzard's own highlight art is red; repaint it flat in the button's theme (class) color
         do
             local ht = f:GetHighlightTexture()
@@ -1398,7 +1416,7 @@ local function SkinInline(w)
     local flat, box = oa and oa.xuiFlat, oa and oa.xuiBox   -- xuiFlat: no box at all; xuiBox: square 1px box, 10% more opaque (Addon Info tab)
     if (flat or box) and w.border and w.border.SetBackdropColor then
         w.border:SetBackdropColor(0, 0, 0, 0); w.border:SetBackdropBorderColor(0, 0, 0, 0)   -- hide AceGUI's rounded border
-        if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }) else FlatHide(w.border) end
+        if box then Flat(w.border, { 0.04, 0.04, 0.04, math.min(1, A() * 0.5 + 0.10) }, { 0.3, 0.3, 0.3, 1 }, nil, TG("xui-pane", "border")) else FlatHide(w.border) end
     else
         if w.border then FlatHide(w.border) end
         -- (Options 0.6.63; UI-47 / UI-48, her answer for titled groups inside a page: "First try unbordered boxes (darker blocks) and
@@ -1408,15 +1426,17 @@ local function SkinInline(w)
             local ln = w.xuiTopLine
             if not ln then ln = w.border:CreateTexture(nil, "ARTWORK"); w.xuiTopLine = ln end
             local c = TC("xui-pane", "border", { 0.25, 0.25, 0.25, 1 })
-            ln:SetColorTexture(c[1], c[2], c[3], 1)
+            local g = TG("xui-pane", "border")   -- (#460)
+            if not (g or ln.xuiGradL) then ln:SetColorTexture(c[1], c[2], c[3], 1) end
             ln:ClearAllPoints()
             ln:SetPoint("TOPLEFT", w.border, "TOPLEFT", 0, 0); ln:SetPoint("TOPRIGHT", w.border, "TOPRIGHT", 0, 0)
             ln:SetHeight(ns.Style.divider.size)
             ln:Show()
-            AddRest(w, "topline", function(self) if self.xuiTopLine then self.xuiTopLine:Hide() end end)
+            if (g or ln.xuiGradL) and TH and TH.PaintLine then TH.PaintLine(w.border, ln, { c[1], c[2], c[3], 1 }, g, "H", "ARTWORK") end
+            AddRest(w, "topline", function(self) if self.xuiTopLine then self.xuiTopLine:Hide(); if TH and TH.HideLineGrad then TH.HideLineGrad(self.border, self.xuiTopLine) end end end)
         end
     end
-    if (flat or box) and w.xuiTopLine then w.xuiTopLine:Hide() end
+    if (flat or box) and w.xuiTopLine then w.xuiTopLine:Hide(); if TH and TH.HideLineGrad then TH.HideLineGrad(w.border, w.xuiTopLine) end end
     local title = w.titletext and w.titletext:GetText()
     if opt and opt.xuiInfo and title and title ~= "" and ns.GetInfoIcon then
         local ic = ns.GetInfoIcon(w.frame)
