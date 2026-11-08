@@ -32,7 +32,7 @@
 --     an aura: selfAura = true on you, selfAura = false on your target. INFERENCE (the documentation lists these fields without
 --     describing them). Its aura ID is its first linkedSpellIDs entry (else its spellID). The Cooldown Manager answers for the spec you
 --     are in now only; another spec's auras and debuffs come from what the learner read while you last played it (C1, core 0.6.56).
--- Choices per spec and row (CueRulesDB.ui.auto.picks[specID][key]): ticked, trigger, main cue, combat load, extra cues (Advanced), cue
+-- Choices per spec and row (XayaUI Rules' store: auto.picks[specID][key]; CueRulesDB.ui.auto before P5): ticked, trigger, main cue, combat load, extra cues (Advanced), cue
 -- set-up (su: speech text, sound, art). Nothing is made until "Populate" is pressed.
 -------------------------------------------------------------------------------
 -- (P4b, XayaUI_Rules_Options 0.6.77) Moved unchanged from XayaUI_Options/RuleEditor/ into the rule editor's own load-on-demand addon,

@@ -114,7 +114,7 @@ function FlowModel(c, counts)
 end
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
-ns = L.eval("{}"); L.globals().NS = ns
+ns = L.eval("{ settingsTestHooks = { keepOld = true } }"); L.globals().NS = ns  # (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Outcomes.lua", "XayaUI_Rules/Cues.lua", "XayaUI_Rules/Visual.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''

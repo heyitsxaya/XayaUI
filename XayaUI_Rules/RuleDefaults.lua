@@ -10,6 +10,7 @@ local Copy, Merge = ns.Copy, ns.Merge
 -- (P4) the saved data through the settings seam (Modules.lua section 0b): the same CueRulesDB keys as before, read and written through
 -- their owners' views (rules, folders, bars, barGroup: core; ui: platform) instead of CueRulesDB directly, as every module does
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 ns.rules = nil -- set at XayaUI Rules' ADDON_LOADED to CoreS.rules (InitRules below)
 
@@ -385,7 +386,7 @@ function ns.DefaultFolderInfo(key)
 end
 local DEFAULTS_VERSION = 3
 function ns.EnsureDefaultFolders(force)
-    local ui = PlatS.ui
+    local ui = CoreS   -- (P5) the rules' own one-time flags: XayaUI Rules' store (CueRulesDB.ui before)
     if not ui or not ns.folders then return 0 end
     if (ui.defaultFoldersV or 0) >= DEFAULTS_VERSION and not force then return 0 end
     -- profiles that already had the three original defaults only gain the new Hybrid category (a default the user deleted stays deleted)
@@ -482,7 +483,7 @@ local function MergeFolderInto(src, dstParentId)
     for i, f in ipairs(ns.folders) do if f == src then table.remove(ns.folders, i); break end end
 end
 function ns.MigrateToHybrid()
-    local ui = PlatS.ui
+    local ui = CoreS   -- (P5) the rules' own one-time flags: XayaUI Rules' store (CueRulesDB.ui before)
     if not ui or ui.hybridMigrated or not ns.folders or not ns.rules then return 0 end
     local hybrid
     for _, f in ipairs(ns.folders) do if not f.parent and f.default == "hybrid" then hybrid = f; break end end
@@ -510,7 +511,7 @@ end
 -- (visual.fill.enabled). Base art and the overlay layer are cropped together by that wipe, so they act as one unit.
 -- The previous fill switch is kept in rule.progressBackup so it can be restored.
 function ns.MigrateToProgress()
-    local ui = PlatS.ui
+    local ui = CoreS   -- (P5) the rules' own one-time flags: XayaUI Rules' store (CueRulesDB.ui before)
     if not ui or ui.progressMigrated or not ns.rules then return 0 end
     ui.progressMigrated = true
     local n = 0
@@ -632,6 +633,10 @@ f:SetScript("OnEvent", function(_, _, name)
     if name ~= addonName then return end
     f:UnregisterEvent("ADDON_LOADED")
     if not ns.SettingsReady() then return end   -- the Platform did not set up its saved data (its own error is recorded)
+    -- (P5) this addon's own store first (Modules.lua section 0c: copied once from CueRulesDB, with a backup and the counts checked,
+    -- RuleShare.lua); the Platform opens it at this same event, whichever handler runs first
+    if ns.SettingsOpen then ns.SettingsOpen("core") end
+    if not ns.SettingsReady("core") then return end
     InitRules()
     if ns.OnDBReady then ns.OnDBReady() end   -- the rule engine (Engine.lua)
     rulesReady = true

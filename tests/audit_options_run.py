@@ -143,7 +143,7 @@ end)
 
 -------------------------------------------------------------------------------------------------------------------------------
 section("D23", function()
-  CueRulesDB.ui.promptSave = true
+  ns.Settings("core").promptSave = true
   if ns.DraftsApplySetting then ns.DraftsApplySetting() end
   local p = byUid(P.uid)
   p.load.classes, p.load.specs, p.load.roles, p.load.heroes, p.load.instanceTypes = nil, nil, nil, nil, nil
@@ -162,15 +162,15 @@ section("D23", function()
   W.tick(0.05, 2)
   check("D23 after reading every control of the Load tab: still no unsaved changes", not ns.DraftDirty(p),
     "classes=" .. tostring(p.load.classes) .. " specs=" .. tostring(p.load.specs))
-  CueRulesDB.ui.promptSave = nil
+  ns.Settings("core").promptSave = nil
   if ns.DraftsApplySetting then ns.DraftsApplySetting() end
 end)
 
 -------------------------------------------------------------------------------------------------------------------------------
 section("D22 + D26 Drafts Restore", function()
   local p = byUid(P.uid)
-  CueRulesDB.drafts = { { id = "dq1", uid = p.uid, name = "Audit parent", ts = 1, rules = { ns.Copy(p) } } }
-  CueRulesDB.drafts[1].rules[1].spellID = 4242
+  ns.Settings("core").drafts = { { id = "dq1", uid = p.uid, name = "Audit parent", ts = 1, rules = { ns.Copy(p) } } }
+  ns.Settings("core").drafts[1].rules[1].spellID = 4242
   local page = ns.BuildDraftsPage()
   local rs = page.args.d1 and page.args.d1.args.restore
   local c = rs and rs.confirm
@@ -183,7 +183,7 @@ section("D22 + D26 Drafts Restore", function()
   ns.DraftRestore("dq1")
   check("D26 Restore on a locked rule leaves it as it was", byUid(P.uid).spellID == 1001, byUid(P.uid).spellID)
   byUid(P.uid).editLocked = nil
-  CueRulesDB.drafts = {}
+  ns.Settings("core").drafts = {}
 end)
 
 section("D26 Ctrl+Z on a locked rule", function()
@@ -476,7 +476,7 @@ end)
 
 -------------------------------------------------------------------------------------------------------------------------------
 section("D47", function()
-  CueRulesDB.ui.promptSave = true
+  ns.Settings("core").promptSave = true
   if ns.DraftsApplySetting then ns.DraftsApplySetting() end
   local p = byUid(P.uid)
   pcall(ns.ReselectRule, p)
@@ -493,7 +493,7 @@ section("D47", function()
   ns.DraftSave = saveFn; geterrorhandler = saveEH
   check("D47 the save bar is up for the changed rule", bar ~= nil and bar.rule ~= nil)
   check("D47 an error in Save changes reaches the error handler", got ~= nil and tostring(got):find("audit save failure", 1, true), tostring(got))
-  CueRulesDB.ui.promptSave = nil
+  ns.Settings("core").promptSave = nil
   if ns.DraftsApplySetting then ns.DraftsApplySetting() end
   p.spellID = 1001
 end)

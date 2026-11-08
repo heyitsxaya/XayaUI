@@ -7,7 +7,7 @@ from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''
-ns = { rules = {}, CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" } }
+ns = { settingsTestHooks = { keepOld = true }, rules = {}, CUE_KIND_LABEL = { sound = "Sound", speech = "Speech", text = "Text", texture = "Texture", icon = "Icon", custom = "Custom" } }
 function ns.Ignored(s) return s == nil or s == "" or s == "none" or s == "any" end
 function ns.CooldownUsed(r) return r.useCooldown == true or (tonumber(r.spellID) or 0) ~= 0 or not ns.Ignored(r.cdState) end
 function ns.BuffUsed(r) return r.useBuff == true or (tonumber(r.buffID) or 0) ~= 0 or not ns.Ignored(r.buffState) end
@@ -39,6 +39,7 @@ GetTime = function() return 0 end
 InCombatLockdown = function() return false end
 ''')
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/Modules.lua")).replace("'", '"')))   # core contract (0.6.0)
+lua.execute('ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB")')   # (P5) XayaUI Rules on (its data stays in CueRulesDB here: keepOld)
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules_Options/Drafts.lua")).replace("'", '"')))
 lua.execute(r'''
 local fails, n = 0, 0

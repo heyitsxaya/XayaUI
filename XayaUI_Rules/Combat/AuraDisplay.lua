@@ -33,6 +33,7 @@
 -- absent from the generated API docs: every container call is pcall'd and a failure hands the display back to XayaUI (no gap).
 local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 ns = XayaUI_NS or ns
 
 -- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
@@ -66,7 +67,7 @@ local TO_CENTER = {
 }
 
 local function DB()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("core") then return nil end
     local db = CoreS
     db.engineDisplay = db.engineDisplay or {}
     local e = db.engineDisplay

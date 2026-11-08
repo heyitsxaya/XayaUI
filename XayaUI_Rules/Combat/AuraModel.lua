@@ -45,11 +45,12 @@ local SCHEMA = 1
 -- (core 0.6.75, P2 settings seam) the same CueRulesDB.auraModel, through the core settings view; kept in an upvalue and looked up
 -- again only when the settings epoch moves (Modules.lua section 0b: no metamethod per aura event)
 local CoreS = ns.Settings("core")
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local dbT, dbEp
 local function DB()
     local d = dbT
     if dbEp ~= ns.settingsEpoch or type(d) ~= "table" then
-        if not ns.SettingsReady() then return nil end
+        if not ns.SettingsReady("core") then return nil end
         d = CoreS.auraModel
         if type(d) ~= "table" then d = {}; CoreS.auraModel = d end
         dbT, dbEp = d, ns.settingsEpoch

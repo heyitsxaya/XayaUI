@@ -57,7 +57,7 @@ FRAME_METHODS.SetScript = function(self, n, fn) SetScript0(self, n, fn); if n ==
 SPOKEN = {}
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
-ns = L.eval("{}"); L.globals().NS = ns
+ns = L.eval("{ settingsTestHooks = { keepOld = true } }"); L.globals().NS = ns  # (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/Compat.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua", "XayaUI_Rules/Cues.lua", "XayaUI_Rules/Actions.lua", "XayaUI/Sound.lua", "XayaUI_Rules/Visual.lua", "XayaUI_Rules/Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 # (core 0.6.56, REQUEST-LOG #81: /xui debug timing, the coverage report, is XayaUI Dev Assist's: the real function from

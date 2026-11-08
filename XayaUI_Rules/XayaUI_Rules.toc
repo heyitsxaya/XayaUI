@@ -5,7 +5,7 @@
 ## Version: 0.6.77
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
-## SavedVariables: XayaUITalentDB
+## SavedVariables: XayaUITalentDB, XayaUIRulesDB
 ## Group: XayaUI
 
 RuleDefaults.lua

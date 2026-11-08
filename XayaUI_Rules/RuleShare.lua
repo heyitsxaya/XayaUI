@@ -7,6 +7,7 @@
 local addonName, ns = ...; ns = XayaUI_NS or ns   -- the Platform's namespace (XayaUI/Core.lua)
 local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local Share = ns.Share   -- (the Platform's Share.lua)
 local MAX_DEPTH = 16     -- (the same nesting limit as the Platform's codec)
 
@@ -294,3 +295,36 @@ function ns.Backup_Save(name, include)
 end
 
 function ns.Backup_Delete(idx) table.remove(ns.Backups(), idx) end
+
+-------------------------------------------------------------------------------
+-- (P5, docs/plans/PLATFORM-SPLIT-2026-11-07.md section 5 step 3, risk R1) the guards around the one-time copy of the rules' settings from
+-- CueRulesDB into this addon's own store (Modules.lua section 0c):
+--   before: a backup of the rules and groups as they are in CueRulesDB, in Profiles > Backups (CueRulesDB.profiles, where every backup
+--           lives: Load (add) / Load (replace) / show as text restore it), named "Rules before the settings move (<date>)";
+--   check:  the numbers of rules, groups and buff bars must be the same on both sides (the Platform compares every copied table too).
+-- Any difference: the Platform keeps this addon on CueRulesDB, takes the copy out again and tells the player once.
+-------------------------------------------------------------------------------
+local function Count(t) return type(t) == "table" and #t or 0 end
+if ns.SettingsMigrationGuard then
+    ns.SettingsMigrationGuard("core", {
+        before = function(old)
+            if type(old) ~= "table" or (Count(old.rules) == 0 and Count(old.folders) == 0) then return end
+            local stamp = date and date("%Y-%m-%d %H:%M") or "?"
+            local name = "Rules before the settings move (" .. stamp .. ")"
+            local snap = { v = 1, name = name, addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ns.name or addonName, "Version")) or "",
+                rules = ns.Copy(type(old.rules) == "table" and old.rules or {}), folders = ns.Copy(type(old.folders) == "table" and old.folders or {}) }
+            local list = ns.Backups()
+            for i, p in ipairs(list) do if p.name == name then list[i] = { name = name, data = snap }; return end end
+            list[#list + 1] = { name = name, data = snap }
+        end,
+        check = function(old, store)
+            local diffs = {}
+            for _, k in ipairs({ "rules", "folders", "bars" }) do
+                local a, b = Count(old and old[k]), Count(store and store[k])
+                if a ~= b then diffs[#diffs + 1] = ("%s %d vs %d"):format(k, a, b) end
+            end
+            if #diffs > 0 then return "counts differ: " .. table.concat(diffs, ", ") end
+            return nil
+        end,
+    })
+end

@@ -151,7 +151,7 @@ SlashCmdList = {}
 C_AddOns = { LoadAddOn = function() return true end }
 printed = {}
 
-local ns = { rules = {}, folders = {} }
+local ns = { rules = {}, folders = {}, settingsTestHooks = { keepOld = true } }   -- (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 XayaUI_NS = ns
 function ns.Print(...) local t = {} for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end printed[#printed + 1] = table.concat(t, " ") end
 function ns.FolderById(id) for _, f in ipairs(ns.folders) do if f.id == id then return f end end end

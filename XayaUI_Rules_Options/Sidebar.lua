@@ -155,8 +155,8 @@ end
 
 local soundAllDlg
 local function ConfirmAllSounds(count, cb)
-    local ui = PlatS.ui
-    if ui and ui.skipSoundAllPrompt then cb(); return end
+    local ui = CoreS   -- (P5: XayaUI Rules' store)
+    if ui.skipSoundAllPrompt then cb(); return end
     if not soundAllDlg then
         local f = CreateFrame("Frame", "XayaUISoundAllDialog", UIParent, "BackdropTemplate")
         f:SetSize(390, 170); f:SetPoint("CENTER"); f:SetFrameStrata("TOOLTIP"); f:EnableMouse(true)
@@ -176,7 +176,7 @@ local function ConfirmAllSounds(count, cb)
         f.no:SetScript("OnClick", function() f:Hide() end)
         ns.FlatButton(f.yes, true); ns.FlatButton(f.no)
         f.yes:SetScript("OnClick", function()
-            if f.check:GetChecked() and PlatS.ui then PlatS.ui.skipSoundAllPrompt = true end
+            if f.check:GetChecked() then CoreS.skipSoundAllPrompt = true end
             f:Hide()
             if f.cb then local c = f.cb; f.cb = nil; c() end
         end)
@@ -332,7 +332,7 @@ function ns.DragPlace(kind, obj, target, anchor, where)
         if anchor and ns.NormalizeFolderOrder then ns.NormalizeFolderOrder() end   -- folders keep list order from the first move on
         if obj.parent ~= target then
             obj.parent = target; changed = true
-            if not anchor and PlatS.ui and PlatS.ui.folderOrdered then   -- nested into a group: last of its groups
+            if not anchor and CoreS.folderOrdered then   -- nested into a group: last of its groups
                 for _, f in ipairs(ns.folders) do if f ~= obj and drag.DragFolderKey(f) == drag.DragFolderKey(obj) then anchor = f end end
                 where = "after"
             end
@@ -505,13 +505,12 @@ local function FolderParentKey(f) return (f.parent and FolderById(f.parent)) and
 -- Until the first move, top-level order is the legacy one (default categories fixed, the rest by list position). The first
 -- move bakes that order into ns.folders and switches ui.folderOrdered on, so list position is the order from then on.
 function ns.FolderSortOrder(f, k, dpos)
-    local ui = PlatS.ui
-    if ui and ui.folderOrdered then return 100 + k end
+    if CoreS.folderOrdered then return 100 + k end   -- (P5: XayaUI Rules' store)
     return dpos and (10 + dpos) or (100 + k)
 end
 local function NormalizeFolderOrder()
-    local ui = PlatS.ui
-    if not ui or ui.folderOrdered then return end
+    local ui = CoreS   -- (P5: XayaUI Rules' store)
+    if not ns.SettingsReady("core") or ui.folderOrdered then return end
     local keyed = {}
     for k, f in ipairs(ns.folders) do
         local _, dpos = ns.DefaultFolderInfo(f.default)

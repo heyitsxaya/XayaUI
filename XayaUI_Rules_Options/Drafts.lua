@@ -12,9 +12,9 @@ local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (Options 
 
 local baseline = {}      -- [rootUid] = { sig = string, rules = { deep copies }, isNew = true when the rule was made in this window and never saved }
 local windowOpen = false
-local MAX_DRAFTS = 30   -- default; Settings > UI Options > Rule Creation > "Keep up to" (ui.draftsMax, 5 to 100)
+local MAX_DRAFTS = 30   -- default; Settings > UI Options > Rule Creation > "Keep up to" (draftsMax in XayaUI Rules' store, 5 to 100)
 -- Draft settings (0.6.4, Settings > UI Options > Rule Creation). All default to the behavior before they existed.
-local function DUi() return (PlatS.ui) or {} end
+local function DUi() return CoreS end   -- (P5) the drafts' settings: XayaUI Rules' store (CueRulesDB.ui before)
 function ns.DraftsMax() local n = tonumber(DUi().draftsMax) or MAX_DRAFTS; return math.max(5, math.min(100, math.floor(n))) end
 function ns.DraftsConfirmDiscard() return DUi().draftsConfirmDiscard ~= false end
 function ns.DraftsConfirmDelete() return DUi().draftsConfirmDelete ~= false end
@@ -111,7 +111,7 @@ local function RemoveGroup(uid)
 end
 
 local function Drafts()
-    if not ns.SettingsReady() then return {} end
+    if not ns.SettingsReady("core") then return {} end
     CoreS.drafts = CoreS.drafts or {}
     return CoreS.drafts
 end
@@ -123,8 +123,7 @@ local cache = { t = -1 }
 -- "Prompt for saving and enable drafts" (Settings > UI Options). Off by default: edits are kept as you make them, there is no save bar,
 -- and closing the window never moves anything to Drafts. On: the behaviour described in the guide (section 12.2).
 function ns.DraftsEnabled()
-    local ui = PlatS.ui
-    return ui ~= nil and ui.promptSave == true
+    return CoreS.promptSave == true
 end
 function ns.DraftDirty(rule)
     if not ns.DraftsEnabled() then return false end
@@ -640,9 +639,7 @@ function ns.BuildDraftsPage()
             name = function() return ns.DraftsEnabled() and "Turn drafts off" or "Turn drafts on" end,
             desc = "Turning drafts on counts the rules as they are now as saved. Turning them off keeps every edit and every draft.",
             func = function()
-                local ui = PlatS.ui
-                if not ui then return end
-                ui.promptSave = not ns.DraftsEnabled()
+                CoreS.promptSave = not ns.DraftsEnabled()
                 if ns.DraftsApplySetting then ns.DraftsApplySetting() end
                 Notify()
             end },

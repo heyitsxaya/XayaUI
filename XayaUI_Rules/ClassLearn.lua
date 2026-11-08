@@ -9,6 +9,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 ns = _G.XayaUI_NS or ns
 local CL = {}
 ns.ClassLearn = CL
@@ -16,7 +17,7 @@ ns.ClassLearn = CL
 local isSecret = issecretvalue or function() return false end
 
 local function DB()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("core") then return nil end
     local root = CoreS
     local okB, _, bn = pcall(GetBuildInfo)
     local build = okB and bn or "?"

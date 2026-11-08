@@ -21,7 +21,7 @@ tips = { item = {}, spell = {} }
 C_TooltipInfo = { GetItemByID = function(id) return tips.item[id] end, GetSpellByID = function(id) return tips.spell[id] end }
 frameFn = nil
 function CreateFrame() return { SetScript = function(s, n, f) frameFn = f end } end
-XayaUI_NS = {}
+XayaUI_NS = { settingsTestHooks = { keepOld = true } }   -- (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 CueRulesDB = {}
 ''')
 def load(f):

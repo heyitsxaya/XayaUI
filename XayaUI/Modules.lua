@@ -62,7 +62,10 @@ local SETTINGS_KEYS = {
                   "version", "reskinTabOff" },
     core      = { "rules", "folders", "bars", "barGroup", "drafts", "moverDraft", "auraAlias", "auraModel", "auraSources", "auraTracker",
                   "classLearn", "learnedAuraDur", "learnedAuraStacks", "learnedCooldown", "procGlowSeen", "engineDisplay", "cuesVer",
-                  "backupPreCues", "setupBuildError", "setupShowError" },
+                  "backupPreCues", "setupBuildError", "setupShowError",
+                  -- (P5) the rules' own switches, kept in CueRulesDB.ui before (LEGACY_UNDER_UI); only XayaUI Rules / Rules Options read them
+                  "snapMode", "auto", "creatorIDs", "folderOrdered", "defaultFolders", "defaultFoldersV", "hybridMigrated", "progressMigrated",
+                  "skipSoundAllPrompt", "promptSave", "draftsMax", "draftsConfirmDiscard", "draftsConfirmDelete", "draftsCloseNotice" },
     qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "shoppingList", "releaseGuard" },
     chat      = { "chat", "chat2" },
     bonus     = { "dataPanels", "tooltips", "calculator", "notepad" },
@@ -76,6 +79,9 @@ local SETTINGS_KEYS = {
 }
 -- (P5) where a module's key lived in CueRulesDB before the module had its own saved variable: inside CueRulesDB.ui ...
 local LEGACY_UNDER_UI = {
+    core      = { snapMode = true, auto = true, creatorIDs = true, folderOrdered = true, defaultFolders = true, defaultFoldersV = true,
+                  hybridMigrated = true, progressMigrated = true, skipSoundAllPrompt = true, promptSave = true, draftsMax = true,
+                  draftsConfirmDiscard = true, draftsConfirmDelete = true, draftsCloseNotice = true },
     reskin    = { rsk = true, gm = true, friendColors = true },
     devassist = { recCats = true, recFocus = true, recordOff = true, recordMax = true, debugProbe = true, probeByDebug = true },
 }
@@ -91,11 +97,13 @@ local LEGACY_SPLIT = {
 -- its keys in CueRulesDB (the Platform's). Which variable, and which addon loads it, the module itself says from its own first file
 -- (ns.SettingsDeclareStore, below; its .toc declares the variable): the Platform never names a module's addon or saved file (a module
 -- that is switched off declares nothing, and its view then reads nil and keeps nothing: V14).
-local OWN_STORE = { reskin = true, chat = true, bonus = true, qol = true, devassist = true }
+local OWN_STORE = { reskin = true, chat = true, bonus = true, qol = true, devassist = true, core = true }
 local SETTINGS_STORES = {}   -- module -> { addon, var }, as declared
 function ns.SettingsDeclareStore(module, addon, var)
     if OWN_STORE[module] and type(addon) == "string" and type(var) == "string" and not SETTINGS_STORES[module] then
         SETTINGS_STORES[module] = { addon = addon, var = var }
+        -- (tests only, ns.settingsTestHooks.keepOld: single-file tests that keep a module's data in CueRulesDB as before P5)
+        if ns.settingsTestHooks and ns.settingsTestHooks.keepOld and ns.SettingsOpen then ns.SettingsOpen(module) end
     end
 end
 
@@ -150,7 +158,11 @@ local function MakeView(module)
             Check(k)
             local db, legacy = ModuleBacking(module)
             if not db then return nil end
-            if legacy and underUi[k] then local ui = db.ui; return type(ui) == "table" and ui[k] or nil end
+            if legacy and underUi[k] then   -- (not `type(ui) == "table" and ui[k] or nil`: a saved false would read as nil)
+                local ui = db.ui
+                if type(ui) ~= "table" then return nil end
+                return ui[k]
+            end
             return db[k]
         end,
         __newindex = function(_, k, v)
@@ -250,7 +262,9 @@ ns.SettingsDiffers = Differs   -- (the Rules guard and the tests)
 local function LegacyValue(module, k, old)
     if type(old) ~= "table" then return nil end
     local v
-    if (LEGACY_UNDER_UI[module] or {})[k] then v = type(old.ui) == "table" and old.ui[k] or nil else v = old[k] end
+    if (LEGACY_UNDER_UI[module] or {})[k] then
+        if type(old.ui) == "table" then v = old.ui[k] end   -- (a saved false stays false)
+    else v = old[k] end
     local split = LEGACY_SPLIT[k]
     if split and type(v) == "table" then
         local part = {}

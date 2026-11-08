@@ -33,7 +33,7 @@ check("nothing is learned in combat", okL == nil and why == "in combat")
 InCombatLockdown = function() return false end
 local got, why2 = ns.ClassLearn.Learn()
 check("learned the spec you are in", got == sid, tostring(got) .. " " .. tostring(why2) .. " sid=" .. tostring(sid) .. " db=" .. tostring(CueRulesDB))
-local e = (CueRulesDB.classLearn.specs[sid] or {}).entries or {}
+local e = (ns.Settings("core").classLearn.specs[sid] or {}).entries or {}
 local cd, au, db = 0, {}, {}
 for _, x in ipairs(e) do
   if x.kind == "cd" then cd = cd + 1 elseif x.kind == "aura" then au[#au + 1] = x elseif x.kind == "debuff" then db[#db + 1] = x end

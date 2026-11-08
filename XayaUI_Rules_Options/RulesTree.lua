@@ -66,9 +66,8 @@ local VDH_AURAS = {
 local VDH_GROUP, VDH_SPEC = "VDH Test Rules", 581   -- 581 = Vengeance
 local creatorSel, creatorMsg, creatorOpen = {}, nil, false   -- ticks / message / list shown: this session only
 local function CreatorIDs()
-    PlatS.ui = PlatS.ui or {}
-    PlatS.ui.creatorIDs = PlatS.ui.creatorIDs or {}   -- IDs she typed (kept with the profile); 0 = cleared
-    return PlatS.ui.creatorIDs
+    CoreS.creatorIDs = CoreS.creatorIDs or {}   -- IDs she typed (kept with the profile); 0 = cleared (P5: XayaUI Rules' store)
+    return CoreS.creatorIDs or {}
 end
 local function AuraID(a)
     local v = CreatorIDs()[a.key]
@@ -342,9 +341,8 @@ local AUTO_SCOPE_VALUES = {
 }
 -- Settings live in CueRulesDB.ui.auto (one global set, used by the sidebar row "AUTO-POPULATE RULES"), not on each folder.
 function ns.AutoCfg()
-    PlatS.ui = PlatS.ui or {}
-    local a = PlatS.ui.auto
-    if not a then a = {}; PlatS.ui.auto = a end
+    local a = CoreS.auto   -- (P5: XayaUI Rules' store; CueRulesDB.ui.auto before)
+    if not a then a = {}; CoreS.auto = a end
     if a.minCD == nil then a.minCD = 30 end
     if a.scope == nil then a.scope = "spec" end
     if a.talents == nil then a.talents = true end
@@ -1010,8 +1008,8 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                 get = function() return newOpts.visual end, set = function(_, v) newOpts.visual = v end },
             askSounds = { type = "toggle", name = "Ask before previewing many sounds at once", order = 4.5, width = "double",
                 desc = "Asks first when the headphone icon on a row covers several sounds.",
-                get = function() local u = PlatS.ui; return not (u and u.skipSoundAllPrompt) end,
-                set = function(_, v) local u = PlatS.ui; if u then u.skipSoundAllPrompt = (not v) or nil end end },
+                get = function() return not CoreS.skipSoundAllPrompt end,   -- (P5: XayaUI Rules' store)
+                set = function(_, v) CoreS.skipSoundAllPrompt = (not v) or nil end },
             unlock = { type = "execute", order = 5, width = "double",
                 name = function() return ns.unlocked and "Lock visuals" or "Unlock visuals (drag on screen)" end,
                 func = function() ns.ToggleUnlock(); Notify() end },

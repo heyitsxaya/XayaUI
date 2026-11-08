@@ -29,8 +29,9 @@ local MAX_ALIASES = 4
 local INDEX_TTL = 10   -- seconds: the rules' aura names are read again at most this often (rules change rarely)
 
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB.auraAlias as before)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local function Store()
-    if not ns.SettingsReady() then return nil end
+    if not ns.SettingsReady("core") then return nil end
     local t = CoreS.auraAlias
     if type(t) ~= "table" then t = {}; CoreS.auraAlias = t end
     return t

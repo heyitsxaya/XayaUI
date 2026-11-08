@@ -53,7 +53,7 @@ function AURA(id, dur) return { spellId = id, name = NAMES[id], duration = dur o
 ''')
 toc = XP.core_toc_lines(ROOT)
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
-ns = L.eval("{}"); L.globals().NS = ns
+ns = L.eval("{ settingsTestHooks = { keepOld = true } }"); L.globals().NS = ns  # (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 skip = ("Libs", "Console.lua", "GameMenu", "MinimapButton", "AuraSources", "Combat/")
 loaded, failed = [], []
 for f in toc:

@@ -3,6 +3,7 @@
 -- so the existing sound / display engine and editors are reused. A cue fires while ANY enabled condition that lists it is true.
 local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
+if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 ns.CUE_KINDS = { "sound", "speech", "text", "texture", "icon", "bar", "custom" }   -- bar: BarCue.lua (RM-BARS, Xaya 2026-11-06)
 local KIND_OK = {}
@@ -271,7 +272,7 @@ end
 
 -- Version 2 (one time): every enabled sound / display of a condition becomes a cue of its parent; the condition now points at them.
 function ns.MigrateCues()
-    local DB = ns.SettingsReady() and CoreS
+    local DB = ns.SettingsReady("core") and CoreS
     if not DB or not ns.rules or (DB.cuesVer or 0) >= 2 then return 0 end
     if not DB.backupPreCues then DB.backupPreCues = ns.Copy(DB.rules) end   -- full in-game copy of every rule before the first migration
     -- repair cue keys that normalization cleared

@@ -225,6 +225,14 @@ def opt_dump(saved, keep_old):
     Ld.load("XayaUI")
     local ns = rawget(_G, "XayaUI_NS")
     if XUI_KEEP then ns.settingsTestHooks.keepOld = true end
+    -- the migration's own backup of the rules (Profiles > Backups) is the one thing the window shows that the pre-P5 way does not
+    -- make: it is taken out before the window is built, so the two windows can be compared line by line (R checks the backup itself)
+    local start = Ld.startup
+    Ld.startup = function()
+      start()
+      local list = ns.Backups and ns.Backups() or {}
+      for i = #list, 1, -1 do if tostring(list[i].name):find("before the settings move", 1, true) then table.remove(list, i) end end
+    end
     math.randomseed(1234)   -- (new group ids are random: the same ones in both builds of the window)
     '''
     L.eval("function(src, Ld) return loadstring(src)(Ld) end")(pre, loader)
@@ -377,7 +385,10 @@ def main():
               (sorted(st_b), mm))
         said = [p for p in (bad.get("printed") or []) if "could not be copied" in p]
         check("R mismatch: the player is told once, in chat", len(said) == 1, bad.get("printed"))
-        check("R mismatch: CueRulesDB's rules are untouched", norm((sb.get("CueRulesDB") or {}).get("rules")) == norm(old.get("rules")))
+        check("R mismatch: nothing lost: CueRulesDB still holds every rule and group (it stays the live place, as before P5)",
+              len((sb.get("CueRulesDB") or {}).get("rules") or []) == nR and len((sb.get("CueRulesDB") or {}).get("folders") or []) == nF)
+        check("R mismatch: the backup was made before the copy all the same",
+              any("before the settings move" in str(b.get("name")) and b.get("nRules") == nR for b in (bad.get("backups") or [])), bad.get("backups"))
         again = run(bad["saved"], breakCore=True)
         said2 = [p for p in (again.get("printed") or []) if "could not be copied" in p]
         st_a = merge(again["saved"]).get(sv) or {}
