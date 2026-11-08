@@ -152,7 +152,8 @@ cc3a67b321da3d1ea9dec0a15f1c4554  XayaUI_DevAssist/QAQuestions.lua
 5c2f423bffca59deaf96727be7636686  XayaUI_DevAssist/QAReview.lua
 35803dd75bd804178d0772f36e5f377c  XayaUI_DevAssist/QATable.lua
 355b07d0d06082991ac172c7372aa917  XayaUI_DevAssist/QAWalk.lua
-a4585d27a69cf80e015c1051b33f89d7  XayaUI_DevAssist/QAWalks-Checklist.lua
+af8bcaaf2518c45696c4e02715adc818  XayaUI_DevAssist/QAWalks-Checklist.lua
+2c7bcc90ddc48aae39382a84cd014833  XayaUI_DevAssist/QAWalks-aspect-ratio.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 80b11762ea7d6382b1cc5a7bff80093a  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
 c68b7b86ebfa440bd68904347af1503b  XayaUI_DevAssist/QAWalks-audit.lua
@@ -188,7 +189,7 @@ c4e935ced4cef60a8f029c4040c938c7  XayaUI_DevAssist/QAWalks-settings-migration.lu
 aa77048600f30f5aa8d5dcbb0fc61fad  XayaUI_DevAssist/QAWalks-settings-seam.lua
 eeae9b48ca36f751a949367a498b3d73  XayaUI_DevAssist/QAWalks-statcalc.lua
 0a4c553262db631c0166d2c337c94c8c  XayaUI_DevAssist/QAWalks.lua
-a9eec0d9af99ee1814790cb8ee9f180a  XayaUI_DevAssist/XayaUI_DevAssist.toc
+88a10bc788ecd3e2b1f5ccd19e4a03e9  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -324,7 +325,7 @@ abaad25ecc8057b2da32eefba44e993b  XayaUI_Rules/SetBonusAuras.lua
 3eace19491d50d06b1ed9cdbf94db293  XayaUI_Rules/Visual.lua
 10b99f6f06e10de6ab2e4c562f72f624  XayaUI_Rules/XayaUI_Rules.toc
 4ecf6f2823bb186eb5756dcb892cbb83  XayaUI_Rules_Options/AutoPicker.lua
-a2a25f1ac4f4a2a59eddfad9d1d21e57  XayaUI_Rules_Options/DisplayTab.lua
+9c8f8b82f079a2b790e03c3affa2dea6  XayaUI_Rules_Options/DisplayTab.lua
 25ec03e1b6967e1cd9737cbac140205d  XayaUI_Rules_Options/Drafts.lua
 64a51af308d57a9670c71760020c1447  XayaUI_Rules_Options/Editor.lua
 43f4ba6c66436533a13ec5c9127f81ae  XayaUI_Rules_Options/OutcomesEditor.lua
@@ -337,7 +338,7 @@ a369583540ab6379dc225aefb3adb7bb  XayaUI_Rules_Options/SaveBar.lua
 1d54cfa41de656976a687e9ba69773de  XayaUI_Rules_Options/SpellSearch.lua
 c33f52f6f6b41a81968ba6c1c369846d  XayaUI_Rules_Options/TreeHelpers.lua
 d02146a8830f68c74514aeb7d95c4f62  XayaUI_Rules_Options/TriggersEditor.lua
-9baa0163a5bfeba438072c3199f20776  XayaUI_Rules_Options/XayaUI_Rules_Options.toc
+4ce6687bd3681574aa4952035fc40239  XayaUI_Rules_Options/XayaUI_Rules_Options.toc
 456a53446802144a0d1cf610b5b88d5b  debug-log/2026-11-02-0030-group-naming-inline-rename-0.5.54.md
 6282a56ce03230e14f536fc71e16240b  debug-log/2026-11-02-0100-buff-aura-multiple-ids-0.5.55.md
 906cbb09c9967ce5017b332f40552831  debug-log/2026-11-02-0200-group-move-duplicate-buff-0.5.56.md
@@ -706,8 +707,9 @@ df0e7af90d72f6d06a4aa39aee357379  debug-log/2026-11-08-0817-debug-w9b-0.6.82.md
 928bcabb12c7f2ba6c6b0b3eafab84b8  debug-log/2026-11-08-0848-debug-chatdefaults-0.6.46.md
 5ba778ce07ca328405ee634d84d79787  debug-log/2026-11-08-0915-character-split-0.7.53.md
 1799c87419173ea258c8db02543e2e73  debug-log/2026-11-08-1941-layout-mover-fixes-0.6.105.md
+f925e07a2108d2bb9f071f42d410f1c5  debug-log/2026-11-08-2037-aspect-ratio-0.6.82.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-d96560705f10875a2d369a78a5092270  docs/QA-CHECKLIST.md
+bfbcfcc78cfb8df6e1b941860ebc7885  docs/QA-CHECKLIST.md
 d7b627c95da3bb7b4c29c227fd6e79ea  docs/README-INGAME.md
 c2566bd33acd6ace43df6491463b2b4a  docs/ROADMAP.md
 a5fca89cb8cdf2d42fd011c089dbd4d5  docs/SESSION-START-SUMMARY.md
@@ -955,6 +957,7 @@ ca6838bceadce56a0e16c0cefe837afb  tests/frame_anchor_run.py
 cca9d978e3b3e2e5ae5ad632f2f78020  tests/gamemenu_ratchet_run.py
 a7d24af1993ff8b6f0b346abe0bfe8a8  tests/gamemenu_run.py
 aec2dbf95f988bba4d474fc0a65af7c3  tests/group_arrange_run.py
+0c57d96488a51ebe6aafd76d908dba9b  tests/group_aspect_ratio_run.py
 a5f241c96e9afb2472c076d286b44641  tests/group_border_tick_run.py
 e49807981e17f05447c306cbac63a7b4  tests/group_box_run.py
 90a090e6544851aa11d1912b5b013602  tests/group_fit_run.py
@@ -998,8 +1001,8 @@ be8dd409463d20467763c23a4f8e91eb  tests/options_click_cost.lua
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-dbc53a5c88e078dbedb4b34a58e95ae8  tests/options_split_parity_golden.json
-b3a743bf668d3ec9422e72cf4bec8347  tests/options_split_parity_run.py
+97fb0d9a9895edc91239c42ba475c8e3  tests/options_split_parity_golden.json
+97b1da597220d5db4df3302b893c6ee2  tests/options_split_parity_run.py
 525d8ff64cb03387c245094b3a0679db  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -1021,6 +1024,7 @@ aef73a73e3b0d4396010d3a9dbf5296a  tests/qa_walk_element_menu_run.py
 7af2b359176d737d11111157e05c4bdc  tests/qa_walk_rule_editor_folder_run.py
 e3006484090369837b0e6c4800ec6ded  tests/qa_walk_run.py
 699740e2f074145626fcafc3d06420b1  tests/qa_walk_settings_migration_run.py
+828054957c0b3903ce94242d2eb6d650  tests/qa_walks_aspect_ratio_run.py
 728b9f4238883b05836a98d9f4824964  tests/qa_walks_audit_options_run.py
 c498910ecec7bc82d5f4c53b7ba5808f  tests/qa_walks_bars_run.py
 06c4245b7d49727e53410a9e7a7ff1e8  tests/qa_walks_chat_run.py
