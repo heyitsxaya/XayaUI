@@ -161,6 +161,58 @@ for _, f in ipairs(ns.folders) do
 end
 check("import: the copy follows the imported copy of its group", newR and newQ and newR.cRel == "group" and newR.cGroup == newQ.id, newR and tostring(newR.cGroup))
 check("import: a link to a group that was not exported is dropped (placed from the screen / parent)", newS and newS.cRel == nil and newS.cGroup == nil, newS and tostring(newS.cGroup))
+
+-- Review fixes (each fails on 751da05)
+-- 3a: in the mover view the followed group is deleted, then Cancel moves: the link is not brought back to a group that is gone, and
+--     the group stays where it is ("Stays put, link cleared")
+if ns.unlocked then ns.ToggleUnlock(); W.tick(0.05, 2) end
+ns.folders[#ns.folders + 1] = { id = "fL", name = "Leader", cX = -200, cY = -150 }
+ns.folders[#ns.folders + 1] = { id = "fF", name = "Follower", cX = 0, cY = 0 }
+local l1r, f1r = rule("Lead icon", "fL", 0, 0), rule("Follow icon", "fF", 0, 0)
+ns.rules[#ns.rules + 1] = l1r; ns.rules[#ns.rules + 1] = f1r
+ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local L_, F_ = ns.FolderById("fL"), ns.FolderById("fF")
+ns.AnchorGroupToGroup(F_, L_); W.tick(0.05, 2)
+check("review 3a: set-up: the group follows the leader", F_.cRel == "group" and F_.cGroup == "fL")
+ns.ToggleUnlock(); W.tick(0.05, 3)   -- the mover view keeps the link in its draft
+ns.RecycleFolder(L_); ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local fl0, fb0 = bounds({ f1r })
+ns.MoverExit("cancel"); ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local fl1, fb1 = bounds({ f1r })
+check("review 3a: the followed group deleted in the mover view, then Cancel moves: the link to the deleted group is not brought back",
+  F_.cRel == nil and F_.cGroup == nil, tostring(F_.cRel) .. " " .. tostring(F_.cGroup))
+check("  ...and the group stays where it is", near(fl1, fl0) and near(fb1, fb0), ("%.1f,%.1f -> %.1f,%.1f"):format(fl0, fb0, fl1, fb1))
+
+-- 3b: a group already in the Recycle Bin follows a group that is deleted later: restored, it is where it was when it was deleted, unlinked
+ns.folders[#ns.folders + 1] = { id = "fM", name = "Leader 2", cX = 250, cY = -200 }
+ns.folders[#ns.folders + 1] = { id = "fN", name = "Binned follower", cX = 0, cY = 0 }
+local m1r, n1r = rule("Lead 2 icon", "fM", 0, 0), rule("Binned icon", "fN", 0, 0)
+ns.rules[#ns.rules + 1] = m1r; ns.rules[#ns.rules + 1] = n1r
+ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local M_, N_ = ns.FolderById("fM"), ns.FolderById("fN")
+ns.AnchorGroupToGroup(N_, M_); ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local nl0, nb0 = bounds({ n1r })
+local itemN = ns.RecycleFolderAll(N_)
+ns.RecycleFolder(M_); ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local okR = itemN and ns.RecycleRestore(itemN.id)
+ns.RefreshAllVisuals(); W.tick(0.05, 2)
+local N2 = ns.FolderById("fN")
+local nl1, nb1 = bounds({ n1r })
+check("review 3b: restored after the group it followed was deleted (it was in the bin then): the link is cleared",
+  okR and N2 and N2.cRel == nil and N2.cGroup == nil, N2 and (tostring(N2.cRel) .. " " .. tostring(N2.cGroup)))
+check("  ...and it is where it was when it was deleted (no jump)", near(nl1, nl0) and near(nb1, nb0), ("%.1f,%.1f -> %.1f,%.1f"):format(nl0, nb0, nl1, nb1))
+
+-- restore with a new ID: a group restored with everything inside keeps following its sibling under the sibling's new ID
+ns.folders[#ns.folders + 1] = { id = "fU", name = "Pack 2" }
+ns.folders[#ns.folders + 1] = { id = "fV", name = "Lead V", parent = "fU" }
+ns.folders[#ns.folders + 1] = { id = "fW", name = "Follows V", parent = "fU", cRel = "group", cGroup = "fV" }
+local itemU = ns.RecycleFolderAll(ns.FolderById("fU"))
+ns.folders[#ns.folders + 1] = { id = "fV", name = "Took the ID" }   -- a new group now has fV's old ID
+ns.RecycleRestore(itemU.id)
+local newV, newW
+for _, f in ipairs(ns.folders) do if f.name == "Lead V" then newV = f end; if f.name == "Follows V" then newW = f end end
+check("  ...a restored group whose followed sibling gets a new ID (clash) follows the sibling, not the group that took the old ID",
+  newV and newW and newV.id ~= "fV" and newW.cGroup == newV.id, newW and tostring(newW.cGroup))
 return R
 end
 '''

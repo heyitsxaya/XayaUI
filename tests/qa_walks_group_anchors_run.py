@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """In-game QA walkthrough for the group anchors of Rules 0.6.82 (XayaUI_DevAssist 0.7.72, XayaUI_DevAssist/QAWalks-group-anchors.lua; QA
-B350-B356; REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #14, #16, #18, #28 and her answer on hand-placed groups). Xaya's rule V22
+B350-B357; REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #14, #16, #18, #28 and her answer on hand-placed groups). Xaya's rule V22
 (2026-11-07): "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through
 with pre-fill confirmation options or data capturing".
 Loads the real addons (with XayaUI Dev Assist) in the stand-in game and runs each step as a player would (Do it for me, then the check):
-  - registered with pre-fill for B350-B356; the last step is a Done step; B353 is a question (noVerdict) with the update's record;
+  - registered with pre-fill for B350-B357; the last step is a Done step; B353 is a question (noVerdict) with the update's record;
   - before Do it for me: "not tested" (nil), never Pass;
   - step 1 (grid corner): Pass; negative: the group's point moved without the icons gives Fail;
   - step 2 (outline): Pass; negative: the group moved after the check's snapshot gives Fail ("MOVED");
   - step 3 (Icons move): Pass; negative: X / Y changed gives Fail;
   - step 5 (picker): nil before Shift; pointing at the target's tab and Shift: Pass; negative: linked to another group gives Fail;
   - steps 6-8 (follows, settings list, deleted): Pass;
+  - step 9 (B357, a question for her): no verdict; the note records what moved when the outline's edge display is nudged 20 px left;
   - Done: the target group is gone, the mover view is closed, the QA test group's position settings are back.
 Run: python3 tests/qa_walks_group_anchors_run.py"""
 import os, sys
@@ -31,7 +32,7 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 local QA = rawget(_G, "XayaUI_DevQA")
 local def = QA and QA.walks["group-anchors"]
-check("the group anchors walkthrough is registered with pre-fill, for B350-B356", def ~= nil and def.prefill == true and def.qa == "B350, B351, B352, B353, B354, B355, B356", def and def.qa)
+check("the group anchors walkthrough is registered with pre-fill, for B350-B357", def ~= nil and def.prefill == true and def.qa == "B350, B351, B352, B353, B354, B355, B356, B357", def and def.qa)
 if not def then return R end
 check("its last step is a Done step", def.steps[#def.steps].done == true)
 check("step 4 (the one-time update) is a question for her", def.steps[4].noVerdict == true)
@@ -91,7 +92,18 @@ local ok7, n7 = run(7)
 check("step 7 (settings: Another group, its list): Pass", ok7 == true and has(n7, "has 'Another group'") and has(n7, "without the group itself"), tostring(ok7) .. " " .. tostring(n7))
 local ok8, n8 = run(8)
 check("step 8 (the target deleted): Pass, stays put, link cleared", ok8 == true and has(n8, "stayed where it was") and has(n8, "is cleared"), n8)
+-- step 9 (B357, review of 751da05): a question for her with what moved (the edge display nudged 20 px left through the mover's path)
+check("step 9 (a display at the outline's edge) is a question for her", def.steps[9].noVerdict == true and has(def.steps[9].text, "Question:"))
+local ok9a = def.steps[9].check()
+check("step 9 before Do it for me: not tested, asks for Do it for me", ok9a == nil)
+local ok9, n9 = run(9)
+check("step 9: no verdict; the note records the nudge: the moved display stayed, the other moved 20 right, the outline's corner on the point",
+  ok9 == nil and has(n9, "On screen it moved X +0.0; the other display moved X +20.0") and T.State.edge and has(n9, "-> " .. tostring(T.State.edge.x - 20))
+  and has(n9, "bottom-left is at (960.0, 540.0)"), n9)
+local edgeRule = T.State.edge and T.State.edge.rule
+local edgeX = T.State.edge and T.State.edge.x
 def.steps[#def.steps].setup(); W.tick(0.1, 3)
+check("Done: the nudged display's own X is back", edgeRule and edgeRule.visual.x == edgeX, edgeRule and tostring(edgeRule.visual.x))
 local gone = true
 for _, f in ipairs(ns.folders) do if f.name == "QA anchor target" then gone = false end end
 check("Done: the target group is gone, the mover view is closed, the QA test group's settings are back", gone and not ns.unlocked and g.cRel == nil and g.cPoint == nil)

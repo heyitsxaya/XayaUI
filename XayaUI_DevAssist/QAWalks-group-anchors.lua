@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 -- QAWalks-group-anchors.lua (XayaUI_DevAssist 0.7.72): in-game QA walkthrough for the group anchors of Rules 0.6.82 (QA steps B350 to
--- B356). Her words (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s): #14 "anchoring to an EUI unit frame isn't calculating correctly";
+-- B357). Her words (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s): #14 "anchoring to an EUI unit frame isn't calculating correctly";
 -- #18 "I should be able to anchor to another rule group's position"; her answers (#28 and the next row): scope "Both now"; rows growing
 -- one way: "Whole grid's corner"; existing groups: "Nothing moves"; changing the point: "Icons move"; hand-placed groups: every
 -- switched-on display; group to group: follows the other group's frame, picked in the picker and from "Another group" in Relative to;
@@ -12,7 +12,8 @@
 --   B353 what the one-time update adjusted at the first login with 0.6.82 (data capture; she says whether anything moved);
 --   B354 the picker: the QA test group anchored to the "QA anchor target" group, staying in place; it follows that group;
 --   B355 the settings page: Relative to has Another group, the group list leaves the group itself and loops out;
---   B356 the followed group deleted: the QA test group stays put and is placed from the screen again.
+--   B356 the followed group deleted: the QA test group stays put and is placed from the screen again;
+--   B357 (a question, how it behaves now) a display at the edge of a hand-placed group's outline nudged: what moves (data capture).
 -- Standing rule V22 (Xaya 2026-11-07): each check reads back what the addon drew or stored, offers its verdict (prefill = true; recorded
 -- only on her click) and puts what it read in the note; B353 asks her (noVerdict). Test data: the shared "QA test group" (its two
 -- sample displays) and a group "QA anchor target" made here (two sample displays, previewed); Done puts the QA test group's position
@@ -292,6 +293,44 @@ local function CheckDelete()
         cleared and "is cleared" or "is STILL set", tostring(g.cRel or "the screen"))
 end
 
+-- B357 (review of 751da05, item 6): a behaviour to confirm with her (debug-log open point): in a hand-placed Auto group with a corner
+-- point the outline's corner stays on the point, so moving the display that makes the outline's edge moves the OTHER displays. The
+-- step does it through the mover view's arrow-key path (ns.MoverNudge, 20 px left) and records what moved; she answers (noVerdict).
+local function SetupEdge()
+    local ns, g = NS(), Group()
+    if not g then error("press Do it for me in step 1 first") end
+    if not (ns.MoverSelect and ns.MoverNudge) then error("XayaUI Rules has no mover nudge (older than 0.6.81)") end
+    g.cRel, g.cGroup, g.cFrame, g.cPoint, g.cRelPoint, g.cX, g.cY = nil, nil, nil, "BOTTOMLEFT", "CENTER", 0, 0
+    if ns.SetGroupSizeMode then ns.SetGroupSizeMode(g, "auto") end
+    local m = Members(g)
+    if #m < 2 then error("the QA test group needs its two sample displays: press Do it for me in step 1 again") end
+    if ns.SetPreview then ns.SetPreview(m, "visual", true) end
+    Refresh()
+    if not ns.unlocked and ns.ToggleUnlock then ns.ToggleUnlock(); st.unlockedByUs = true end
+    local edge, other, el, ol
+    for _, r in ipairs(m) do
+        local l = Drawn({ r })
+        if l and (not el or l < el) then edge, el = r, l end
+    end
+    for _, r in ipairs(m) do if r ~= edge then other = r; ol = Drawn({ r }); break end end
+    if not (edge and other and el and ol) then error("the sample displays are not on screen") end
+    if not st.edge then st.edge = { rule = edge, x = edge.visual.x, y = edge.visual.y } end
+    st.edgeFrom = { edge = el, other = ol, otherRule = other }
+    ns.MoverSelect("display", edge)
+    ns.MoverNudge(-20, 0)
+end
+local function CheckEdge()
+    local g = Group()
+    if not (g and st.edge and st.edgeFrom) then return nil, "press Do it for me first" end
+    local el = Drawn({ st.edge.rule })
+    local ol = Drawn({ st.edgeFrom.otherRule })
+    if not (el and ol) then return nil, "the sample displays are not on screen" end
+    local l, b = Drawn(Members(g))
+    local cx, cy = Centre()
+    return nil, ("The left-most display was nudged 20 px left (its X %s -> %s). On screen it moved X %+.1f; the other display moved X %+.1f. The outline's bottom-left is at (%.1f, %.1f); the group's point (screen centre) at (%.1f, %.1f)."):format(
+        tostring(st.edge.x), tostring(st.edge.rule.visual.x), el - st.edgeFrom.edge, ol - st.edgeFrom.other, l or -1, b or -1, cx, cy)
+end
+
 local function Done()
     local ns, p = NS(), Box()
     if p then p:Hide() end
@@ -302,6 +341,7 @@ local function Done()
     end
     local g = Group()
     if g and st.orig then for _, k in ipairs(KEYS) do g[k] = st.orig[k] end end
+    if st.edge and st.edge.rule.visual then st.edge.rule.visual.x, st.edge.rule.visual.y = st.edge.x, st.edge.y end   -- (B357's nudge)
     local t = Target()
     if t and ns then
         if ns.SetPreview then ns.SetPreview(Members(t), "visual", false) end
@@ -310,11 +350,12 @@ local function Done()
     end
     if ns then Refresh() end
     st.fid, st.orig, st.firstAt, st.xy, st.pickFrom, st.followFrom, st.delFrom, st.unlockedByUs = nil, nil, nil, nil, nil, nil, nil, nil
+    st.edge, st.edgeFrom = nil, nil
 end
 QA.GroupAnchorsTest = { State = st, Done = Done }   -- (tests)
 
-QA.Register("group-anchors", { title = "Group anchors: the grid's or outline's corner, and following another group (B350-B356)",
-    qa = "B350, B351, B352, B353, B354, B355, B356", order = 550, prefill = true, steps = {
+QA.Register("group-anchors", { title = "Group anchors: the grid's or outline's corner, and following another group (B350-B357)",
+    qa = "B350, B351, B352, B353, B354, B355, B356, B357", order = 550, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI makes a group |cffffd100QA anchor target|r (dynamic, growing Right, Size Auto, two sample icons) with |cffffd100This group's anchor point: Bottom left|r on the middle of the screen, X 0, Y 0.\n\n|cffffd100Expect:|r the two icons start exactly at the middle of the screen: the grid's bottom-left corner is on that point (before 0.6.82 they sat about half an icon left of and below it). The check reads where the icons are drawn.",
         setup = SetupGrid, check = CheckGrid },
     { text = "Press |cffffd100Do it for me|r: the |cffffd100QA test group|r (two hand-placed sample displays) gets |cffffd100Bottom left|r on the middle of the screen, then its second display stops showing (as when its conditions are not met).\n\n|cffffd100Expect:|r the outline of both displays has its bottom-left corner on the middle of the screen, and the first display did not move when the second one went away (the outline counts every switched-on display, showing or not).",
@@ -331,5 +372,7 @@ QA.Register("group-anchors", { title = "Group anchors: the grid's or outline's c
         setup = SetupList, check = CheckList },
     { text = "Press |cffffd100Do it for me|r: the QA anchor target is deleted (it goes to the Recycle Bin with its two sample rules).\n\n|cffffd100Expect:|r the QA test group stays exactly where it is, and is placed from the screen again (its box: Anchored to the screen).",
         setup = SetupDelete, check = CheckDelete },
+    { text = "A question for you (how it behaves now, to confirm). Press |cffffd100Do it for me|r: the QA test group gets |cffffd100Bottom left|r on the middle of the screen again (Size Auto), the mover view opens, and its LEFT-most display is nudged 20 px left (as 20 presses of the Left arrow key).\n\n|cffffd100What you will see:|r the outline's bottom-left corner stays on the point, so the display you moved stays where it was and the OTHER display moves 20 px right. Dragging it does the same when you let go; in a group with one display the display does not move at all. Moving a display that is not at the outline's edge moves only that display. The note records what moved.\n\n|cffffd100Question:|r is this what you want? Or should moving a display at the edge keep the others where they are (the group's X / Y would change instead)? Answer in the note.",
+        setup = SetupEdge, check = CheckEdge, noVerdict = true },
     { text = "Press |cffffd100Do it for me|r to put the QA test group's position back, delete the QA anchor target if it is still there, close the box and leave the mover view (Cancel moves) if this walkthrough opened it. Then |cffffd100Done|r.", done = true, setup = Done },
 } })

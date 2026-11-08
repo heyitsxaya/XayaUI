@@ -506,9 +506,27 @@ end
 -- A2/A3: the outline of a hand-placed group (l, b, r, t from its container's centre, container units), from saved data: every
 -- switched-on display directly in it that hangs from its container (not snapped to a game frame). nil when it has none, or when its
 -- displays are laid out by a dynamic group (it, or one around it).
+-- (review fix 4) Every display's refresh places its group (Container), and the outline walks every rule: during one refresh pass
+-- (ns.RefreshAllVisuals, which changes no saved position) each group's outline is measured once and kept for the rest of that pass,
+-- and only while ns.configVersion (bumped by every settings edit, ns.MarkDirty) and the group's size stay the same. Outside a pass it
+-- is measured each time (a drag or a nudge between two passes is read at once).
+GA.outlinePass, GA.outlineCache = nil, {}
 function GA.Outline(f)
-    if f.cType == "dynamic" or DynAncestor(f.id) then return nil end
     local W, H = math.max(1, f.cW or 1), math.max(1, f.cH or 1)
+    local pass = GA.outlinePass
+    if pass then
+        local e = GA.outlineCache[f.id]
+        if e and e.pass == pass and e.ver == (ns.configVersion or 0) and e.W == W and e.H == H then return e[1], e[2], e[3], e[4] end
+        local l, b, r, t = GA.MeasureOutline(f, W, H)
+        GA.outlineCache[f.id] = { l, b, r, t, pass = pass, ver = ns.configVersion or 0, W = W, H = H }
+        return l, b, r, t
+    end
+    return GA.MeasureOutline(f, W, H)
+end
+GA.outlineWalks = 0   -- (tests: how many times the rules were walked for an outline)
+function GA.MeasureOutline(f, W, H)
+    if f.cType == "dynamic" or DynAncestor(f.id) then return nil end
+    GA.outlineWalks = GA.outlineWalks + 1
     local l, b, r, t, parents
     for _, x in ipairs(ns.rules or {}) do
         local v = x.visual
@@ -529,6 +547,7 @@ function GA.Outline(f)
     return l, b, r, t
 end
 function ns.GroupOutline(f) if f then return GA.Outline(f) end end   -- (tests, the walkthrough)
+function ns.GroupOutlineWalks() return GA.outlineWalks end   -- (tests)
 function GA.Point(f) local pt = f.cPoint or "CENTER"; if not FIT_PTS[pt] then pt = "CENTER" end; return pt end
 -- Where the group's anchor point is, from its container's centre (container units), and whether the outline decides it (A3).
 -- Set size: the box's point. Auto: a hand-placed group with a non-Center point: that point of its outline; otherwise the 1 x 1
@@ -555,12 +574,24 @@ function GA.Dot(f)
     end
     return c.xuiDot
 end
--- the screen point (UIParent units) of a group's anchor point
+-- the screen point (UIParent units) of a group's anchor point. (review fix 5) Read from the dot when the group is followed (it has
+-- one), otherwise worked out from the container (its centre + GA.AnchorOffset): measuring a group never makes a dot (V14)
 function GA.AnchorXY(f)
-    local d = GA.Dot(f)
-    local x, y = d:GetCenter()
-    if not x then return nil end
-    local s = d:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local c = Container(f)
+    local d = c.xuiDot
+    local x, y, s
+    if d then
+        x, y = d:GetCenter()
+        if not x then return nil end
+        s = d:GetEffectiveScale()
+    else
+        local l, b, w, h = c:GetRect()
+        if not l then return nil end
+        local ox, oy = GA.AnchorOffset(f, c:GetWidth(), c:GetHeight())
+        x, y = l + w / 2 + ox, b + h / 2 + oy
+        s = c:GetEffectiveScale()
+    end
+    s = s / UIParent:GetEffectiveScale()
     return x * s, y * s
 end
 function ns.GroupAnchorXY(f) if f then return GA.AnchorXY(f) end end   -- (tests, the walkthrough)
@@ -613,6 +644,7 @@ function GA.Place(f, c)
         if ue and ue > 0 then pScale = math.max(0.01, (parentC:GetEffectiveScale() or ue) / ue) end
     end
     local px, py = (f.cX or 0) / (sc * pScale), (f.cY or 0) / (sc * pScale)
+    c.xuiOffDiv = sc * pScale   -- (review fix 2: the divisor of X / Y; ShiftGroup turns screen pixels into X / Y with the same one)
     local ox, oy, byOutline = GA.AnchorOffset(f, cw, ch)
     if byOutline then   -- A3: the outline's point (ox, oy from the container's centre) on the target's point
         c:SetPoint("CENTER", target, relPoint, px - ox, py - oy)
@@ -807,8 +839,9 @@ function GA.EdgeLayout(df, lines, dir, horiz, put)
         crossOff = crossOff + cross + sp
     end
 end
-local function LayoutDynamic(df)
-    if not df then return end
+-- a dynamic group's items as XayaUI lays them out now: one per rule (its first shown display; the rule's other display cues ride on
+-- it), sorted (rule order, then the group's Sort). Each item: { fr, w, h, extra, owner }. Limit is not applied here.
+function GA.DynItems(df)
     -- One slot per RULE (the rule is the container of its cues), in the rule's own list order: the order of the sidebar, which the
     -- up / down arrows and drag-and-drop change. A cue is not a slot of its own (0.6.4, #344): cues are kept in the list in the order
     -- they were made, so the old one-slot-per-cue layout ignored the sidebar order, and a rule's second display cue (a separate Text
@@ -836,7 +869,7 @@ local function LayoutDynamic(df)
             end
         end
     end
-    if #items == 0 then return end
+    if #items == 0 then return items end
     for i, it in ipairs(items) do it.i = i end
     table.sort(items, function(a, b) if a.pos ~= b.pos then return a.pos < b.pos end return a.i < b.i end)
     do   -- Sort (group option); every sort falls back to rule order on ties
@@ -861,6 +894,81 @@ local function LayoutDynamic(df)
             for i = 1, math.floor(n / 2) do items[i], items[n - i + 1] = items[n - i + 1], items[i] end
         end
     end
+    return items
+end
+-- a block growth (ns.DynamicBlock): put(it, x, y) gets each item's centre from the group frame's centre; cw / ch = the group frame's size
+function GA.FlowBlock(df, blk, lines, horiz, cw, ch, put)
+    local sp = df.cSpacing or 4
+    -- the block: each line's length along the main axis and its thickness across it
+    local thick, bMain, bCross = {}, 0, 0
+    for li, ln in ipairs(lines) do
+        local m, t = 0, 0
+        for i, it in ipairs(ln) do
+            m = m + (horiz and it.w or it.h) + ((i > 1) and sp or 0)
+            t = math.max(t, horiz and it.h or it.w)
+        end
+        thick[li] = t
+        if m > bMain then bMain = m end
+        bCross = bCross + t + ((li > 1) and sp or 0)
+    end
+    local bw, bh = bMain, bCross
+    if not horiz then bw, bh = bCross, bMain end
+    local hv, pv, cv = PT_V[blk.pinTo], PT_V[blk.pin], PT_V[blk.corner]
+    -- block centre (from the group frame's centre): the block's pin point on the group frame's pinTo point
+    local bx = hv[1] * cw - pv[1] * bw
+    local by = hv[2] * ch - pv[2] * bh
+    local ox, oy = bx + cv[1] * bw, by + cv[2] * bh   -- the corner every line starts from
+    local sx = blk.right and 1 or -1                   -- x grows right / left
+    local sy = blk.down and -1 or 1                    -- y grows down / up
+    local cross = 0
+    for li, ln in ipairs(lines) do
+        local main = 0
+        for _, it in ipairs(ln) do
+            local px, py   -- the item's own corner point
+            if horiz then px, py = ox + main * sx, oy + cross * sy else px, py = ox + cross * sx, oy + main * sy end
+            local cx, cy = px - cv[1] * it.w, py - cv[2] * it.h
+            if df.cAlign then   -- G10 Align: across the line, by its top / centre / bottom (rows) or left / centre / right (columns)
+                local a, b = cross, cross + thick[li]
+                if horiz then cy = CrossAlign(df.cAlign, true, math.min(oy + a * sy, oy + b * sy), math.max(oy + a * sy, oy + b * sy), it.h)
+                else cx = CrossAlign(df.cAlign, false, math.min(ox + a * sx, ox + b * sx), math.max(ox + a * sx, ox + b * sx), it.w) end
+            end
+            put(it, cx, cy)
+            main = main + (horiz and it.w or it.h) + sp
+        end
+        cross = cross + thick[li] + sp
+    end
+end
+-- the layout of a dynamic group's items ({ w, h }), whichever growth: put(it, x, y) gets each item's centre from the group frame's centre
+function GA.LayItems(df, items, cw, ch, put)
+    local dir = df.cGrowth or "RIGHT"
+    local blk = ns.DynamicBlock(df)   -- Centered / From anchor point / an edge growth pinned by a corner: one block (see above)
+    local horiz
+    if blk then horiz = blk.horiz else horiz = (dir == "RIGHT" or dir == "LEFT") end
+    local lines = GA.SplitLines(df, items, horiz)
+    if blk then GA.FlowBlock(df, blk, lines, horiz, cw, ch, put) else GA.EdgeLayout(df, lines, dir, horiz, put) end
+end
+-- (review fix 1) the middle of a dynamic group's grid from its group frame's centre (container units), for its settings NOW: the items
+-- it lays out now (shown, Limit applied); with nothing shown, every switched-on item from saved data (GA.SavedItems). The same items
+-- before and after an anchor change, so Reanchor keeps the grid where it is. 0, 0 for a hand-placed group (its displays hang from
+-- the container's centre whatever the point is).
+function GA.ContentOffset(f, c)
+    if f.cType ~= "dynamic" then return 0, 0 end
+    local items = GA.DynItems(f)
+    local lim = tonumber(f.cLimit) or 0
+    if lim > 0 then for i = #items, lim + 1, -1 do items[i] = nil end end
+    if #items == 0 then items = GA.SavedItems(f) end
+    if #items == 0 then return 0, 0 end
+    local l, b, r, t
+    GA.LayItems(f, items, c:GetWidth(), c:GetHeight(), function(it, x, y)
+        l = l and math.min(l, x - it.w / 2) or (x - it.w / 2); r = r and math.max(r, x + it.w / 2) or (x + it.w / 2)
+        b = b and math.min(b, y - it.h / 2) or (y - it.h / 2); t = t and math.max(t, y + it.h / 2) or (y + it.h / 2)
+    end)
+    return (l + r) / 2, (b + t) / 2
+end
+local function LayoutDynamic(df)
+    if not df then return end
+    local items = GA.DynItems(df)
+    if #items == 0 then return end
     do   -- G10 Limit (Xaya 2026-11-06: "Limit"): after sorting only the first N show; the rest wait (hidden, marked) until there is room
         local lim = tonumber(df.cLimit) or 0
         local keep = {}
@@ -877,62 +985,14 @@ local function LayoutDynamic(df)
         items = keep
         if #items == 0 then return end
     end
-    local dir = df.cGrowth or "RIGHT"
-    local blk = ns.DynamicBlock(df)   -- Centered / From anchor point: one block, laid out like Blizzard's flow (see above)
-    local horiz
-    if blk then horiz = blk.horiz else horiz = (dir == "RIGHT" or dir == "LEFT") end
-    local sp = df.cSpacing or 4
-    local lines = GA.SplitLines(df, items, horiz)
     local container = Container(df)
-    local function Put(it, x, y)
+    GA.LayItems(df, items, container:GetWidth(), container:GetHeight(), function(it, x, y)
         it.fr:ClearAllPoints()
         it.fr:SetPoint("CENTER", container, "CENTER", x, y)
         if it.extra then   -- the rule's other display cues: on the same slot
             for _, ef in ipairs(it.extra) do ef:ClearAllPoints(); ef:SetPoint("CENTER", container, "CENTER", x, y) end
         end
-    end
-    if blk then
-        -- the block: each line's length along the main axis and its thickness across it
-        local thick, bMain, bCross = {}, 0, 0
-        for li, ln in ipairs(lines) do
-            local m, t = 0, 0
-            for i, it in ipairs(ln) do
-                m = m + (horiz and it.w or it.h) + ((i > 1) and sp or 0)
-                t = math.max(t, horiz and it.h or it.w)
-            end
-            thick[li] = t
-            if m > bMain then bMain = m end
-            bCross = bCross + t + ((li > 1) and sp or 0)
-        end
-        local bw, bh = bMain, bCross
-        if not horiz then bw, bh = bCross, bMain end
-        local hv, pv, cv = PT_V[blk.pinTo], PT_V[blk.pin], PT_V[blk.corner]
-        -- block centre (from the group frame's centre): the block's pin point on the group frame's pinTo point
-        local bx = hv[1] * container:GetWidth() - pv[1] * bw
-        local by = hv[2] * container:GetHeight() - pv[2] * bh
-        local ox, oy = bx + cv[1] * bw, by + cv[2] * bh   -- the corner every line starts from
-        local sx = blk.right and 1 or -1                   -- x grows right / left
-        local sy = blk.down and -1 or 1                    -- y grows down / up
-        local cross = 0
-        for li, ln in ipairs(lines) do
-            local main = 0
-            for _, it in ipairs(ln) do
-                local px, py   -- the item's own corner point
-                if horiz then px, py = ox + main * sx, oy + cross * sy else px, py = ox + cross * sx, oy + main * sy end
-                local cx, cy = px - cv[1] * it.w, py - cv[2] * it.h
-                if df.cAlign then   -- G10 Align: across the line, by its top / centre / bottom (rows) or left / centre / right (columns)
-                    local a, b = cross, cross + thick[li]
-                    if horiz then cy = CrossAlign(df.cAlign, true, math.min(oy + a * sy, oy + b * sy), math.max(oy + a * sy, oy + b * sy), it.h)
-                    else cx = CrossAlign(df.cAlign, false, math.min(ox + a * sx, ox + b * sx), math.max(ox + a * sx, ox + b * sx), it.w) end
-                end
-                Put(it, cx, cy)
-                main = main + (horiz and it.w or it.h) + sp
-            end
-            cross = cross + thick[li] + sp
-        end
-        return
-    end
-    GA.EdgeLayout(df, lines, dir, horiz, Put)
+    end)
 end
 
 -- Fix A, "Nothing moves" (her answer for every existing Auto group with a point other than Center): once per profile, behind the
@@ -1273,37 +1333,45 @@ local function SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     return h, v
 end
 local SIDE_OPP = { LEFT = "RIGHT", RIGHT = "LEFT", TOP = "BOTTOM", BOTTOM = "TOP", [""] = "" }   -- (sides only; OPP above has the corners: #268 outer anchors read that one)
-local function PointXY(fr, pt)   -- a frame's point, in screen pixels
-    local l, b, r, t = ScreenRect(fr)
-    if not l then return nil end
-    local x = pt:find("LEFT") and l or (pt:find("RIGHT") and r or (l + r) / 2)
-    local y = pt:find("TOP") and t or (pt:find("BOTTOM") and b or (b + t) / 2)
-    return x, y
-end
 local function GroupScreenBounds(fo)
     local l, b, r, t = GroupBounds(fo)
     if not l then return nil end
     local us = UIParent:GetEffectiveScale()
     return l * us, b * us, r * us, t * us
 end
--- move the group's container by (dx, dy) screen pixels through its X / Y offset
+-- move the group's container by (dx, dy) screen pixels through its X / Y offset. One X / Y unit moves the container by
+-- ce / div screen pixels, div being the divisor Container placed it with (its scale, fit, and for a nested group anchored to the
+-- screen its parents' scales: pScale). (review fix 2: the parents' scales were left out, so such a group moved twice as far at 0.5.)
 local function ShiftGroup(fo, dx, dy)
     local c = Container(fo)
     local ce = c:GetEffectiveScale()
-    local sc = math.max(0.1, fo.cScale or 1)
+    local div = c.xuiOffDiv or math.max(0.1, fo.cScale or 1)
     if not ce or ce <= 0 then return end
-    fo.cX = math.floor((fo.cX or 0) + dx * sc / ce + 0.5)
-    fo.cY = math.floor((fo.cY or 0) + dy * sc / ce + 0.5)
+    fo.cX = math.floor((fo.cX or 0) + dx * div / ce + 0.5)
+    fo.cY = math.floor((fo.cY or 0) + dy * div / ce + 0.5)
     Container(fo)
 end
--- re-anchor a group without moving it on screen: the container's own point is measured before and after, and X / Y make up the difference
-local function Reanchor(fo, set, point)
+-- (review fix 1) the screen point (screen pixels) of the middle of what the group holds as it is drawn now: the container's centre plus
+-- the middle of the grid (a dynamic group: GA.ContentOffset) in the container's own units. A hand-placed group's displays hang from
+-- the container's centre whatever the anchor point is, so for it this is the container's centre.
+local function ContentXY(fo)
     local c = Container(fo)
-    local x0, y0 = PointXY(c, point)
+    local l, b, r, t = ScreenRect(c)
+    if not l then return nil end
+    local ox, oy = GA.ContentOffset(fo, c)
+    local s = c:GetEffectiveScale()
+    return (l + r) / 2 + ox * s, (b + t) / 2 + oy * s
+end
+-- re-anchor a group without moving what it shows: the middle of its contents (ContentXY) is measured before and after the change,
+-- and X / Y make up the difference. (review fix 1: it measured the container's own point; since 0.6.82 the anchor point also decides
+-- where a Right / Left / Down / Up grid sits on the container, so a new point made the icons jump.) Used by every path that promises
+-- "it stays where it is": the picker (a frame or a group), Anchor to the screen, a deleted followed group, Cancel moves for a link to
+-- a group that is gone. The settings page's point list does not come here (her answer: changing the point moves the icons).
+local function Reanchor(fo, set)
+    local x0, y0 = ContentXY(fo)
     set()
     fo.cX, fo.cY = 0, 0
-    c = Container(fo)
-    local x1, y1 = PointXY(c, point)
+    local x1, y1 = ContentXY(fo)
     if x0 and x1 then ShiftGroup(fo, x0 - x1, y0 - y1) end
     GroupPosChanged(fo)
 end
@@ -1316,7 +1384,7 @@ function ns.AnchorGroupToFrame(fo, target, name)
     local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local rel = (v .. h ~= "") and (v .. h) or "CENTER"
     local own = (SIDE_OPP[v] .. SIDE_OPP[h] ~= "") and (SIDE_OPP[v] .. SIDE_OPP[h]) or "CENTER"
-    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = "custom", name, nil, own, rel end, own)
+    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = "custom", name, nil, own, rel end)
     return true, own, rel
 end
 -- B: another group's box on screen (screen pixels): its set box, else what it shows now (as the group box hugs it), else its anchor point
@@ -1369,19 +1437,60 @@ function ns.AnchorGroupToGroup(fo, t)
     local h, v = SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
     local rel = (v .. h ~= "") and (v .. h) or "CENTER"
     local own = (SIDE_OPP[v] .. SIDE_OPP[h] ~= "") and (SIDE_OPP[v] .. SIDE_OPP[h]) or "CENTER"
-    Reanchor(fo, function() fo.cRel, fo.cGroup, fo.cFrame, fo.cPoint, fo.cRelPoint = "group", t.id, nil, own, rel end, own)
+    Reanchor(fo, function() fo.cRel, fo.cGroup, fo.cFrame, fo.cPoint, fo.cRelPoint = "group", t.id, nil, own, rel end)
     return true, own, rel
 end
 -- B: the followed group is deleted ("Stays put, link cleared"): every group that follows one of `ids` keeps its place on screen and
 -- is placed from the screen (or its parent group) from then on. Called by the Recycle Bin before the groups leave (RuleBin.lua).
+-- (review fix 3b) A group already in the Recycle Bin that follows one of `ids` gets the same rule: while the followed group is still
+-- here, its X / Y are changed so that, once restored, it sits where it sat when it was deleted, and the link is cleared. Its
+-- displays are in the bin with it, so only its container is measured (before / after: the change of target is all that differs,
+-- the same for what it holds). Exact when its parent group is not in the bin as well (then it is measured from the screen; the
+-- restore puts it back in that parent: see the debug log, open points).
+local function ReleaseBinned(a)
+    local had = containers[a.id]
+    local ok = pcall(function()
+        local c = Container(a)
+        local l, b, r, t = ScreenRect(c)
+        a.cRel, a.cGroup = nil, nil
+        if not l then return end
+        a.cX, a.cY = 0, 0
+        c = Container(a)
+        local l1, b1, r1, t1 = ScreenRect(c)
+        if l1 then ShiftGroup(a, (l + r) / 2 - (l1 + r1) / 2, (b + t) / 2 - (b1 + t1) / 2) end
+    end)
+    a.cRel, a.cGroup = nil, nil
+    local c = containers[a.id]
+    if c and not had then c:Hide(); containers[a.id] = nil end   -- (made only to measure: the restore makes its own)
+    return ok
+end
 function ns.ReleaseGroupAnchors(ids)
     local n = 0
     for _, a in ipairs(ns.folders or {}) do
         if a.cRel == "group" and a.cGroup ~= nil and ids[a.cGroup] and not ids[a.id] then
-            pcall(Reanchor, a, function() a.cRel, a.cGroup = nil, nil end, GA.Point(a))
+            pcall(Reanchor, a, function() a.cRel, a.cGroup = nil, nil end)
             if a.cRel == "group" then a.cRel, a.cGroup = nil, nil end   -- (a failed measure still clears the link)
             n = n + 1
         end
+    end
+    local bin = ns.RecycleDB and ns.RecycleDB()
+    for _, it in ipairs(bin and bin.items or {}) do
+        for _, a in ipairs(type(it.folders) == "table" and it.folders or {}) do
+            if type(a) == "table" and a.cRel == "group" and a.cGroup ~= nil and ids[a.cGroup] and not ids[a.id] then
+                ReleaseBinned(a)
+                n = n + 1
+            end
+        end
+    end
+    return n
+end
+-- (review fix 3) a link to a group that is not there (any more): cleared. For the Recycle Bin's restore (a group that was in the bin
+-- when the group it followed was deleted, from before review fix 3b) and for imports. Nothing moves: Container already ignores
+-- such a link (GA.Target). Returns how many were cleared.
+function ns.ClearStaleGroupLinks(list)
+    local n = 0
+    for _, a in ipairs(list or ns.folders or {}) do
+        if a.cRel == "group" and (a.cGroup == nil or not ns.FolderById(a.cGroup)) then a.cRel, a.cGroup = nil, nil; n = n + 1 end
     end
     return n
 end
@@ -1407,7 +1516,7 @@ function ns.SnapGroupFlush(fo)
 end
 function ns.UnanchorGroup(fo)
     if not fo then return end
-    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = nil, nil, nil, nil, nil end, "CENTER")
+    Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = nil, nil, nil, nil, nil end)
 end
 local function AnchorText(fo)
     if fo.cRel == "custom" and fo.cFrame then
@@ -3393,6 +3502,13 @@ end
 local refreshErrSeen = setmetatable({}, { __mode = "k" })
 function ns.RefreshAllVisuals()
     if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- a cue's group is its parent rule's group (Cues.lua)
+    local outer = GA.outlinePass   -- (review fix 4: outlines measured once per pass; a nested call shares the outer pass)
+    if not outer then GA.outlinePass = (GA.passNo or 0) + 1; GA.passNo = GA.outlinePass end
+    local okAll, errAll = pcall(GA.RefreshAllPass)
+    if not outer then GA.outlinePass = nil; wipe(GA.outlineCache) end
+    if not okAll then error(errAll, 0) end
+end
+function GA.RefreshAllPass()
     local parents = {}   -- D7: uid -> parent, built once for this pass
     for _, r in ipairs(ns.rules or {}) do if r.uid and not r.parentUid then parents[r.uid] = r end end
     for _, r in ipairs(ns.rules or {}) do
@@ -3487,8 +3603,19 @@ local function Restore(d)
             for _, k in ipairs(R_KEYS) do v[k] = c.entry[k] end
             v.snap = Copy(c.entry.snap)
         else
-            for _, k in ipairs(F_KEYS) do c.obj[k] = c.entry[k] end
-            pcall(Container, c.obj)
+            local f, e = c.obj, c.entry
+            if e.cRel == "group" and e.cGroup ~= nil and not ns.FolderById(e.cGroup) then
+                -- (review fix 3a) the group it followed when the mover view opened has been deleted since: its link is not brought back
+                -- (her answer for a deleted followed group: "Stays put, link cleared"); it keeps its place on screen
+                local ok = pcall(Reanchor, f, function()
+                    for _, k in ipairs(F_KEYS) do f[k] = e[k] end
+                    f.cRel, f.cGroup = nil, nil
+                end)
+                if not ok or f.cRel == "group" then f.cRel, f.cGroup = nil, nil end
+            else
+                for _, k in ipairs(F_KEYS) do f[k] = e[k] end
+                pcall(Container, f)
+            end
         end
     end
 end

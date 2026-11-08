@@ -335,4 +335,149 @@ if not RECORD:
     check("  ...the followed group with a set size: the follower sits on its box's chosen point (Bottom right)", near(g[0], w[0]) and near(g[1], w[1]), "%.2f,%.2f vs %.2f,%.2f" % (g + w))
     check("  ...the loop guard: the followed group cannot follow back, and a group never follows itself", L.eval("LOOP_NO"))
 
+if not RECORD:
+    # 7. Review fixes (Rules 0.6.82, on top of 751da05). Each check here fails on 751da05.
+    # 7a. "It stays where it is" (picker / Anchor to the screen) for a grid whose anchor point decides where it sits: the review measured
+    #     a Right group with Bottom left: first icon 315,215 -> 218,186 after Anchor to a frame. Reanchor now keeps the grid in place.
+    L.execute(r"""
+    ns.MarkDirty = ns.MarkDirty or function() ns.configVersion = (ns.configVersion or 0) + 1 end   -- (Engine.lua is not loaded here)
+    ns.Fire = ns.Fire or function() end
+    Reset()
+    ns.folders[1] = { id = "gR", name = "Right grid", cType = "dynamic", cGrowth = "RIGHT", cSpacing = 4, cPoint = "BOTTOMLEFT", cX = -600, cY = -400 }
+    ns.folders[2] = { id = "gO", name = "Other", cX = -1700, cY = -1000 }   -- (left of and below the grid: the group's point becomes Bottom left)
+    G = { Rule("gR", 30, 30), Rule("gR", 30, 30), Rule("gR", 30, 30) }
+    O = { Rule("gO", 30, 30, 0, 0) }
+    Show(G); Show(O)
+    C0 = Centers(G)
+    local ok, own, rel = ns.AnchorGroupToFrame(ns.folders[1], EUI, "EllesmereUIUnitFrames_Player")
+    OWN = tostring(own)
+    ns.RefreshAllVisuals(); Show(G); Show(O)
+    C1 = Centers(G)
+    local ok2, own2 = ns.AnchorGroupToGroup(ns.folders[1], ns.folders[2])
+    OWN2 = tostring(own2)
+    ns.RefreshAllVisuals(); Show(G); Show(O)
+    C2 = Centers(G)
+    ns.UnanchorGroup(ns.folders[1])
+    ns.RefreshAllVisuals(); Show(G); Show(O)
+    C3 = Centers(G)
+    PT3 = tostring(ns.folders[1].cPoint)
+    """)
+    def same_centers(a, b, tol=1.0):
+        return all(abs(a[i][1] - b[i][1]) <= tol and abs(a[i][2] - b[i][2]) <= tol for i in range(1, len(a) + 1))
+    def fmt(c): return "%.1f,%.1f" % (c[1][1], c[1][2])
+    c0, c1, c2, c3 = L.eval("C0"), L.eval("C1"), L.eval("C2"), L.eval("C3")
+    check("review 1: Right grid with Bottom left, Anchor to a frame (its point becomes %s): every icon stays where it was" % L.eval("OWN"),
+          L.eval("OWN") != "BOTTOMLEFT" and same_centers(c0, c1), "first icon %s -> %s" % (fmt(c0), fmt(c1)))
+    check("  ...anchored to another group (its point becomes %s): the icons stay" % L.eval("OWN2"), L.eval("OWN2") == "BOTTOMLEFT" and same_centers(c1, c2), "%s -> %s" % (fmt(c1), fmt(c2)))
+    check("  ...Anchor to the screen (point back to Center): the icons stay", L.eval("PT3") == "nil" and same_centers(c2, c3), "%s -> %s" % (fmt(c2), fmt(c3)))
+    # 7b. the same with nothing showing (out of the mover view): the grid of every switched-on item is kept, so it shows where it was
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "gH", name = "Hidden grid", cType = "dynamic", cGrowth = "DOWN", cSpacing = 2, cPoint = "TOPRIGHT", cX = -600, cY = -350, cScale = 0.75 }
+    H = { Rule("gH", 30, 30), Rule("gH", 30, 30) }
+    Show(H); D0 = Centers(H); Show(H, false)
+    ns.AnchorGroupToFrame(ns.folders[1], EUI, "EllesmereUIUnitFrames_Player")
+    HPT = tostring(ns.folders[1].cPoint)
+    ns.RefreshAllVisuals(); Show(H)
+    D1 = Centers(H)
+    """)
+    d0, d1 = L.eval("D0"), L.eval("D1")
+    check("  ...nothing showing when it is anchored (point %s): once shown, the Down grid is where it was" % L.eval("HPT"), L.eval("HPT") != "TOPRIGHT" and same_centers(d0, d1), "%s -> %s" % (fmt(d0), fmt(d1)))
+    # 7c. a hand-placed Auto group with a corner point (outline): the same paths keep it in place (parity with 7a)
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "gS", name = "Hand placed", cPoint = "TOPLEFT", cX = -650, cY = -380, cScale = 0.5 }
+    S = { Rule("gS", 40, 40, -30, 0), Rule("gS", 30, 20, 40, 25) }
+    Show(S); E0 = Centers(S)
+    ns.AnchorGroupToFrame(ns.folders[1], EUI, "EllesmereUIUnitFrames_Player"); ns.RefreshAllVisuals(); Show(S); E1 = Centers(S)
+    ns.UnanchorGroup(ns.folders[1]); ns.RefreshAllVisuals(); Show(S); E2 = Centers(S)
+    """)
+    e0, e1, e2 = L.eval("E0"), L.eval("E1"), L.eval("E2")
+    check("  ...a hand-placed group (outline, Top left): Anchor to a frame and to the screen keep its displays in place", same_centers(e0, e1) and same_centers(e1, e2), "%s -> %s -> %s" % (fmt(e0), fmt(e1), fmt(e2)))
+    # 7d. the settings page's point list still moves the icons (her answer), also for a grid: only cPoint changes
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "gP", name = "Point list", cType = "dynamic", cGrowth = "RIGHT", cSpacing = 4, cPoint = "BOTTOMLEFT", cX = 100, cY = 100 }
+    P = { Rule("gP", 30, 30), Rule("gP", 30, 30) }
+    Show(P); F0 = Centers(P)
+    ns.folders[1].cPoint = "TOPRIGHT"; ns.RefreshAllVisuals(); Show(P)
+    F1 = { BoxPoint(P, "TOPRIGHT") }
+    """)
+    f1 = pt2("F1")
+    check("  ...the settings page's point (Top right) still moves the icons: the grid's top-right is on the screen's top-right + X / Y", near(f1[0], 2020) and near(f1[1], 1180), "%.2f,%.2f" % f1)
+
+    # 7e. review 2: a nested group anchored to the screen inside a parent of scale 0.5 that follows a group that is deleted: it stays put
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "pP", name = "Parent", cScale = 0.5, cX = 100, cY = 50 }
+    ns.folders[2] = { id = "pT", name = "Followed", cX = 300, cY = 200 }
+    ns.folders[3] = { id = "pN", name = "Nested", parent = "pP", cAnchorTo = "screen", cRel = "group", cGroup = "pT", cX = 20, cY = 10 }
+    PT = { Rule("pT", 30, 30, 0, 0) }
+    PN = { Rule("pN", 30, 30, 0, 0) }
+    Show(PT); Show(PN)
+    N0 = Centers(PN)
+    REL = ns.ReleaseGroupAnchors({ pT = true })
+    ns.RefreshAllVisuals(); Show(PN)
+    N1 = Centers(PN)
+    NXY = { ns.folders[3].cX, ns.folders[3].cY }
+    NLINK = tostring(ns.folders[3].cRel) .. " " .. tostring(ns.folders[3].cGroup)
+    """)
+    n0, n1, nxy = L.eval("N0"), L.eval("N1"), L.eval("NXY")
+    check("review 2: nested in a parent of scale 0.5, anchored to the screen, its followed group deleted: it stays where it was (link cleared)",
+          L.eval("NLINK") == "nil nil" and same_centers(n0, n1), "%s -> %s, X / Y %s, %s" % (fmt(n0), fmt(n1), nxy[1], nxy[2]))
+
+    # 7f. review 5: measuring a group (its anchor point, for the picker's box or the unlocked handle) never makes the dot; a followed group has one
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "dM", name = "Measured", cSize = "set", cW = 120, cH = 60, cPoint = "BOTTOMLEFT", cX = 40, cY = 30 }
+    ns.folders[2] = { id = "dQ", name = "Quiet", cPoint = "TOPRIGHT", cX = -40, cY = 0 }
+    Rule("dQ", 30, 30, 0, 0)
+    AXY = { ns.GroupAnchorXY(ns.folders[1]) }
+    BXY = { PointAbs(ns.GroupFrame(ns.folders[1]), "BOTTOMLEFT") }
+    QXY = { ns.GroupAnchorXY(ns.folders[2]) }
+    NODOT = ns.GroupFrame(ns.folders[1]).xuiDot == nil and ns.GroupFrame(ns.folders[2]).xuiDot == nil
+    ns.folders[3] = { id = "dF", name = "Follower", cRel = "group", cGroup = "dQ" }
+    Rule("dF", 30, 30, 0, 0)
+    ns.RefreshAllVisuals()
+    DOTQ = ns.GroupFrame(ns.folders[2]).xuiDot ~= nil
+    QXY2 = { ns.GroupAnchorXY(ns.folders[2]) }
+    """)
+    a_, b_ = pt2("AXY"), pt2("BXY")
+    q1, q2 = pt2("QXY"), pt2("QXY2")
+    check("review 5: measuring a group's anchor point makes no dot frame (a set box and an outline group)", L.eval("NODOT"))
+    check("  ...the measured point is right without it: the set box's bottom-left", near(a_[0], b_[0]) and near(a_[1], b_[1]), "%.2f,%.2f vs %.2f,%.2f" % (a_ + b_))
+    check("  ...a group that is followed gets its dot, at the same point as measured without it", L.eval("DOTQ") and near(q1[0], q2[0]) and near(q1[1], q2[1]), "%.2f,%.2f vs %.2f,%.2f" % (q1 + q2))
+
+    # 7g. review 4: one refresh pass measures each hand-placed group's outline once (it walked every rule for every display before)
+    L.execute(r"""
+    Reset()
+    ns.folders[1] = { id = "oB", name = "Big hand placed", cPoint = "BOTTOMLEFT", cX = -300, cY = -200 }
+    OB = {}
+    for i = 1, 20 do OB[i] = Rule("oB", 20, 20, (i - 10) * 25, 0) end
+    Show(OB)
+    X0 = Centers({ OB[2] })[1][1]
+    local vp, calls = ns.VisualPoints, 0
+    ns.VisualPoints = function(...) calls = calls + 1; return vp(...) end   -- (the outline reads each display's points through it)
+    local w0 = ns.GroupOutlineWalks and ns.GroupOutlineWalks() or 0
+    ns.RefreshAllVisuals()
+    WALKS = ns.GroupOutlineWalks and (ns.GroupOutlineWalks() - w0) or -1
+    VPCALLS = calls
+    ns.VisualPoints = vp
+    -- the cache follows edits: a display moved (a settings edit bumps ns.configVersion) is in the next pass
+    OB[1].visual.x = -400; ns.configVersion = (ns.configVersion or 0) + 1
+    ns.RefreshAllVisuals(); Show(OB)
+    X1 = Centers({ OB[2] })[1][1]
+    -- and outside a pass the outline is read at once (a drag / a nudge between two passes)
+    OB[1].visual.x = -500
+    ns.GroupFrame(ns.folders[1]); ns.RefreshVisual(OB[1]); for i = 2, 20 do ns.RefreshVisual(OB[i]) end
+    X2 = Centers({ OB[2] })[1][1]
+    """)
+    walks, vpc = L.eval("WALKS"), L.eval("VPCALLS")
+    check("review 4: one refresh pass of a 20-display hand-placed group reads the displays' points about once each (not 20 x 20)", vpc <= 60, vpc)
+    check("  ...its outline is measured once in that pass", walks == 1, walks)
+    x0, x1, x2 = L.eval("X0"), L.eval("X1"), L.eval("X2")
+    check("  ...the next pass after a settings edit uses the new outline: the left display moved 175 px left, the outline's corner stays, the others move 175 right",
+          near(x1 - x0, 175), "%.2f" % (x1 - x0))
+    check("  ...outside a pass the outline is read at once (100 px more: the others 275 right of where they started)", near(x2 - x0, 275), "%.2f" % (x2 - x0))
+
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

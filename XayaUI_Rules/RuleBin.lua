@@ -331,6 +331,7 @@ local function restoreRules(it)
     local restoredIds = {}
     for _, f in ipairs(it.folders or {}) do
         if f.parent and remap[f.parent] then f.parent = remap[f.parent] end
+        if f.cRel == "group" and f.cGroup ~= nil and remap[f.cGroup] then f.cGroup = remap[f.cGroup] end   -- (B: a group it follows got a new ID too)
         restoredIds[f.id] = true
     end
     for _, f in ipairs(it.folders or {}) do
@@ -340,6 +341,9 @@ local function restoreRules(it)
         end
         ns.folders[#ns.folders + 1] = f
     end
+    -- (Rules 0.6.82 review fix 3b) a group that follows a group that is not there any more (deleted while this one was in the bin,
+    -- before that case was handled at the delete) loses the link: "Stays put, link cleared"; it is already drawn without it
+    if ns.ClearStaleGroupLinks then pcall(ns.ClearStaleGroupLinks, it.folders) end
     -- rules: keep each uid unless a live rule already has it
     local live = {}
     for _, r in ipairs(ns.rules or {}) do if type(r.uid) == "string" then live[r.uid] = true end end
