@@ -319,8 +319,8 @@ function proto:HighlightText() end
 function proto:SetCursorPosition(p) self._cursor = p end
 function proto:GetCursorPosition() return self._cursor or 0 end
 function proto:SetAutoFocus() end
-function proto:SetMultiLine() end
-function proto:IsMultiLine() return false end
+function proto:SetMultiLine(v) self._multi = v and true or false end
+function proto:IsMultiLine() return self._multi and true or false end
 function proto:SetMaxLetters() end
 function proto:GetMaxLetters() return 0 end
 function proto:SetNumeric() end
@@ -922,6 +922,15 @@ GetActionInfo = function() return nil end
 GetMacroInfo = function() return nil end
 GetNumMacros = function() return 0, 0 end
 GetBindingKey = function() return nil end
+-- key bindings (XayaUI 0.6.85 review of row 56): GetBindingFromClick(key) as Blizzard's key-taking frames read it (StaticPopup.lua:792,
+-- CinematicFrame.lua:117: the bare OnKeyDown key; the held modifiers count, an INFERENCE); a stand-in set of bindings, which a test
+-- can change (W.bindings["CTRL-Z"] = "..."). nil = unbound. Not the game's full default list.
+W.bindings = { PRINTSCREEN = "SCREENSHOT", ESCAPE = "TOGGLEGAMEMENU", W = "MOVEFORWARD", S = "MOVEBACKWARD", A = "TURNLEFT", D = "TURNRIGHT",
+  UP = "MOVEFORWARD", DOWN = "MOVEBACKWARD", LEFT = "TURNLEFT", RIGHT = "TURNRIGHT" }
+local function chord(key)
+  return (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "") .. tostring(key)
+end
+GetBindingFromClick = function(key) return W.bindings[chord(key)] end
 GetLootSpecialization = function() return 0 end
 GetMaxLevelForPlayerExpansion = function() return 90 end
 GetExpansionLevel = function() return 11 end
@@ -1059,10 +1068,17 @@ end
 local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
 W.keyFlagRead = "after"
 local function strataOf(f) while f do if f._strata then return STRATA_RANK[f._strata] or 3 end; f = f._parent end return 3 end
+-- W.gameRan: the binding the game ran for the last key that reached it (nil when no frame passed it on or the key is unbound);
+-- W.gameRanLog: every one, in order (a test reads both to see a key never does two things)
+W.gameRanLog = {}
 function W.pressKey(key)
+  W.gameRan = nil
   for _, o in ipairs(W.objects) do
     if o._kind == "EditBox" and o._focus and o:IsVisible() then
       if o._scripts.OnKeyDown then safecall(o._scripts.OnKeyDown, o, key) end
+      -- a focused box: Enter and Esc run its scripts (the game's EditBox OnEnterPressed / OnEscapePressed)
+      if key == "ENTER" and o._scripts.OnEnterPressed then safecall(o._scripts.OnEnterPressed, o)
+      elseif key == "ESCAPE" and o._scripts.OnEscapePressed then safecall(o._scripts.OnEscapePressed, o) end
       return o
     end
   end
@@ -1080,6 +1096,8 @@ function W.pressKey(key)
     if W.keyFlagRead == "before" then pass = before else pass = o._propagate end
     if not pass then return o end
   end
+  do local ok, a = pcall(GetBindingFromClick, key); W.gameRan = ok and a or W.bindings[key] end
+  if W.gameRan then W.gameRanLog[#W.gameRanLog + 1] = W.gameRan end
   return "game"
 end
 -- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown

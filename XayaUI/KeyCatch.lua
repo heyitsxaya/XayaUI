@@ -38,6 +38,24 @@
 --     hidden box, Options' Skin.lua search box notes; cleared here as well, so it never depends on that);
 --   * opts.onDone(box) runs after Enter / Escape / a click outside cleared it.
 -- V14: nothing is made until the first window or box asks for it (the event frames are created then).
+--
+-- (XayaUI 0.6.85, the review's should-fix items, 2026-11-09)
+-- * The screenshot key is found by what it does, not by its name: Blizzard's own key-taking frames read the binding first
+--   (Gethe/wow-ui-source, live branch, read 2026-11-09: StaticPopup.lua:792-797 `local bindingKey = GetBindingFromClick(key);` ...
+--   `elseif bindingKey == "SCREENSHOT" then RunBinding("SCREENSHOT"); return;`; CinematicFrame.lua:117 the same read). Those frames
+--   keep every key, so they run the screenshot themselves; a KeyCatch window passes it on instead (the game takes the picture). A key
+--   bound to SCREENSHOT (or named PRINTSCREEN) never reaches the window's handler and is never held, whatever she bound it to.
+--   GetBindingFromClick is not in the repo's API reference (docs/reference/api: absent); warcraft.wiki.gg (API GetBindingFromClick,
+--   read 2026-11-09): "command = GetBindingFromClick(keyOrButton)", returns "string - The command that keyOrButton is bound to"; what
+--   it returns for an unbound key and how modifiers count are not documented. INFERENCE: nil or "" means unbound, and the held
+--   modifiers count (Blizzard passes the bare OnKeyDown key). Fails safe: when the binding cannot be read, it is "unknown" (below).
+-- * In combat a key the window used would ALSO reach the game (the pass-on flag cannot be changed in combat, so it rests at true).
+--   A key must never do two things (V24): in combat the handler runs only for a key the game itself has no binding for (then the
+--   game does nothing with it); a key that is bound, or whose binding cannot be read, is the game's alone and the window does not act
+--   on it. Out of combat nothing changes: a used key is held for that key only.
+-- * ns.KeyFocusGuard(box, { enterLetsGo = true }): Enter lets go also in a box that has an Enter script of its own (run after it; for
+--   boxes XayaUI does not write, AceGUI's EditBox in the settings window: XayaUI_Options/Skin.lua). ns.KeyFocusRelease(box) stops
+--   guarding a box that is handed back (AceGUI recycles its widgets for other addons).
 -------------------------------------------------------------------------------
 local _, ns = ...
 
@@ -48,6 +66,15 @@ local windowHooked = setmetatable({}, { __mode = "k" })
 local combatWatch, mouseWatch
 
 local function Fighting() return InCombatLockdown and InCombatLockdown() and true or false end
+-- what the game does with this key (held modifiers included): the action's name, false = nothing (unbound), nil = unknown
+local function Binding(key)
+    if type(key) ~= "string" or not GetBindingFromClick then return nil end
+    local ok, action = pcall(GetBindingFromClick, key)
+    if not ok then return nil end
+    if action == nil or action == "" then return false end
+    return type(action) == "string" and action or nil
+end
+ns.KeyBinding = Binding
 local function Report(e) local h = geterrorhandler and geterrorhandler(); if h then pcall(h, e) end end
 -- the resting state: every key goes on to the game
 local function Pass(f)
@@ -89,9 +116,22 @@ function ns.KeyCatch(frame, handler)
     frame:HookScript("OnKeyDown", function(self, key)
         if not kc.active then return end
         local fight = Fighting()
+        local action = Binding(key)
+        -- what happened to the last key (the QA walkthrough reads it through ns.KeyCatchList; one table per window, reused)
+        local last = kc.last or {}
+        kc.last = last
+        last.key, last.fight, last.binding, last.used = key, fight, action, false
+        if action == "SCREENSHOT" or NEVER_HOLD[key] then   -- the screenshot key is the game's, untouched (Blizzard's StaticPopup / CinematicFrame)
+            if not fight then Pass(self) end
+            return
+        end
+        -- in combat the flag rests at true (set before the lockdown) and cannot change: a key the game uses (or may use) is left to it
+        -- alone, so it never does two things; the handler runs only for a key with no game binding
+        if fight and action ~= false then return end
         local ok, used = xpcall(kc.handler, Report, self, key, fight)
+        last.used = (ok and used == true) and true or false
         if fight then return end   -- restricted in combat: the flag stays at true (set before the lockdown)
-        if ok and used == true and not NEVER_HOLD[key] then
+        if ok and used == true then
             pcall(self.SetPropagateKeyboardInput, self, false)   -- this key only
             kc.held = true
             C_Timer.After(0, function()
@@ -115,7 +155,7 @@ function ns.KeyCatchList()
         local pass = nil   -- (true / false as the game reports it; nil = could not be read)
         if okP and type(prop) == "boolean" then pass = prop end
         out[#out + 1] = { frame = f, name = okN and name or nil, active = kc.active, shown = f:IsShown() and true or false,
-            keyboard = kc.kb, propagate = pass, held = kc.held }
+            keyboard = kc.kb, propagate = pass, held = kc.held, last = kc.last }
     end
     return out
 end
@@ -129,7 +169,15 @@ local function TopOf(f)
     end
     return p
 end
-local function Done(box)
+local letGo   -- the last time a guarded box let go of the keyboard: { how = "enter" / "escape" / "click" / "hide", t, win } (QA walkthrough)
+local function Note(box, how)
+    local o = guarded[box]
+    letGo = letGo or {}
+    letGo.how, letGo.t, letGo.win = how, GetTime and GetTime() or 0, o and o.win or nil
+end
+function ns.KeyFocusLastLetGo() return letGo end
+local function Done(box, how)
+    Note(box, how)
     box:ClearFocus()
     local o = guarded[box]
     if o and o.onDone then local ok, e = pcall(o.onDone, box); if not ok then Report(e) end end
@@ -138,32 +186,47 @@ local function WatchMouse()
     if mouseWatch then return end
     mouseWatch = CreateFrame("Frame")
     mouseWatch:RegisterEvent("GLOBAL_MOUSE_DOWN")
+    -- (a click: one pass over the guarded boxes, HasFocus each: about 30 own boxes plus the settings window's open page)
     mouseWatch:SetScript("OnEvent", function()
         for box, o in pairs(guarded) do
             if box:HasFocus() then
                 local keep = o.within or box
-                if not (keep.IsMouseOver and keep:IsMouseOver()) then Done(box) end
+                if not (keep.IsMouseOver and keep:IsMouseOver()) then Done(box, "click") end
             end
         end
     end)
 end
 
+local hookedBox = setmetatable({}, { __mode = "k" })   -- edit box -> its hooks are in (HookScript cannot be undone: they check guarded[])
+local enterHooked = setmetatable({}, { __mode = "k" })
+local function DoneEnter(self) Done(self, "enter") end
+local function DoneEscape(self) Done(self, "escape") end
+local function LetGoAfterEnter(self) local o = guarded[self]; if o and o.enterLetsGo and self:HasFocus() then Done(self, "enter") end end
 function ns.KeyFocusGuard(box, opts)
     if not box or guarded[box] then return box end
     opts = opts or {}
     guarded[box] = opts
     if box.SetAutoFocus then box:SetAutoFocus(false) end
-    if not box:GetScript("OnEscapePressed") then box:SetScript("OnEscapePressed", Done) end
-    if not (box.IsMultiLine and box:IsMultiLine()) and not box:GetScript("OnEnterPressed") then box:SetScript("OnEnterPressed", Done) end
-    box:HookScript("OnHide", function(self) if self:HasFocus() then self:ClearFocus() end end)
+    if not box:GetScript("OnEscapePressed") then box:SetScript("OnEscapePressed", DoneEscape) end
+    local multi = box.IsMultiLine and box:IsMultiLine()
+    if not multi and not box:GetScript("OnEnterPressed") then box:SetScript("OnEnterPressed", DoneEnter)
+    elseif not multi and opts.enterLetsGo and not enterHooked[box] then enterHooked[box] = true; box:HookScript("OnEnterPressed", LetGoAfterEnter) end   -- after the box's own Enter
+    if not hookedBox[box] then
+        hookedBox[box] = true
+        box:HookScript("OnHide", function(self) if guarded[self] and self:HasFocus() then Note(self, "hide"); self:ClearFocus() end end)
+    end
     local win = opts.window or TopOf(box)
     opts.win = win
     if win and win ~= box and not windowHooked[win] then
         windowHooked[win] = true
         win:HookScript("OnHide", function(w)
-            for b, o in pairs(guarded) do if o.win == w and b:HasFocus() then b:ClearFocus() end end
+            for b, o in pairs(guarded) do if o.win == w and b:HasFocus() then Note(b, "hide"); b:ClearFocus() end end
         end)
     end
     WatchMouse()
     return box
+end
+-- a box handed back (an AceGUI widget released for another addon): XayaUI stops acting on it; its hooks stay but do nothing
+function ns.KeyFocusRelease(box)
+    if box then guarded[box] = nil end
 end

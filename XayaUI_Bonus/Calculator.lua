@@ -3,6 +3,7 @@
 --   * /xui calc <sum>: the answer in chat, e.g. "/xui calc 23,249 / 3,472" -> "23,249 / 3,472 = 6.696141" (23249 / 3472 = 6.69614055...; the header said 6.696083 until Bonus 0.6.11).
 --   * /xui calc (nothing after it), or Calculator in the minimap button's list: a small window with a typed line and a keypad.
 --     Enter or = works the sum out; the answer replaces the line so the next sum can build on it; the last sums are listed above.
+--     (Bonus 0.6.38) Enter also takes the cursor out of the line, so movement and the screenshot key work again at once.
 --   * What it reads: numbers (3472, 3,472, 3.5, .5), k / m / b after a number (12k = 12,000), + - * / ^, x or the multiply sign,
 --     the divide sign, % after a number (15% = 0.15), brackets, a leading minus. Nothing else: no functions, no variables.
 -- Typed text is never run as code: the sum is read by the small parser below, never handed to loadstring or RunScript.
@@ -306,7 +307,10 @@ local function Build()
     local e = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
     e:SetHeight(LINE_H); e:SetAutoFocus(false); e:SetMaxLetters(MAX_LEN); e:SetJustifyH("RIGHT")
     e:SetPoint("TOPLEFT", f.history, "BOTTOMLEFT", 4, -G); e:SetPoint("TOPRIGHT", f.history, "BOTTOMRIGHT", 0, -G)
-    e:SetScript("OnEnterPressed", function(self) Work(self:GetText()) end)
+    -- Enter works the sum out AND lets go of the keyboard (XayaUI 0.6.85 review, V24: a line that kept the cursor after Enter kept
+    -- every key, movement and the screenshot key included, until Esc or a click elsewhere). The answer stays in the line, so the next
+    -- sum still builds on it: a click in the line (or the keypad, which needs no cursor) carries on.
+    e:SetScript("OnEnterPressed", function(self) Work(self:GetText()); self:ClearFocus() end)
     e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.edit = e
     if ns.KeyFocusGuard then ns.KeyFocusGuard(e, { within = f }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)

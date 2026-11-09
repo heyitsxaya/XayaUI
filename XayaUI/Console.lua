@@ -283,7 +283,10 @@ local function BuildWindow()
     cmd:SetScript("OnEnterPressed", function(self)
         local t = self:GetText() or ""
         self:SetText("")
-        if ns.ConsoleRun(t) then self:AddHistoryLine(t) end   -- (the line keeps the focus, ready for the next command)
+        if ns.ConsoleRun(t) then self:AddHistoryLine(t) end
+        -- (XayaUI 0.6.85 review, V24) Enter runs the command AND lets go of the keyboard: a line that kept the cursor kept every key,
+        -- movement and the screenshot key included, until Esc or a click elsewhere. A click in the line types the next command.
+        self:ClearFocus()
     end)
     cmd:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.cmd = cmd

@@ -8,6 +8,12 @@
 --   B393 the version pane: Esc closes the pane only (the settings window stays open);
 --   B394 the Calculator: a click on the game world takes the cursor out of its line, and the screenshot key works again;
 --   B395 the rule search box: Enter leaves the search in place and gives the keyboard back (you can walk).
+-- (2026-11-09, the review's should-fix items; XayaUI 0.6.85, Options 0.6.106, Bonus 0.6.38, Dev Assist 0.7.72; QA steps B396-B398)
+--   B396 a settings window text box (AceGUI's: a rule's name): Enter gives the keyboard back; the screenshot key, whatever key it is
+--        bound to, works with the window open (the check names her screenshot key, GetBindingKey("SCREENSHOT"));
+--   B397 the Calculator: Enter works the sum out and gives the keyboard back (you can walk at once);
+--   B398 in combat with the settings window open, Ctrl+Z does one thing only: the editor's undo when the game has no binding on it,
+--        her binding when it has one (the check reads what core decided for that key: ns.KeyCatchList's last key).
 -- Standing rule V22 (Xaya 2026-11-07): each check reads what the addon and the game report (SCREENSHOT_SUCCEEDED and
 -- PLAYER_STARTED_MOVING, events.md 1351 and 1217, listened to only while this walkthrough runs; the windows' key state through core's
 -- ns.KeyCatchList) and offers its verdict (prefill = true; recorded only on her click), with what it read in the note. The Done step
@@ -151,6 +157,72 @@ local function Check6()
     if walks == 0 then return nil, note .. " Press Enter in the search box, then walk (W), then Check." end
     return true, note
 end
+-- B396
+local function ScreenshotKey()
+    if not GetBindingKey then return nil end
+    local ok, k = pcall(GetBindingKey, "SCREENSHOT")
+    return ok and type(k) == "string" and k ~= "" and k or nil
+end
+local function Setup7()
+    local ns = NS()
+    if not (ns and ns.KeyFocusLastLetGo) then error("XayaUI is older than the 2026-11-09 key fixes (no text box record)") end
+    Watch(); OpenSettings(); st.t7 = GetTime()
+end
+local function Check7()
+    local ns, root = NS(), Root()
+    if not st.t7 then return nil, "press Do it for me first" end
+    if not root then return nil, "the settings window is not open: press Do it for me" end
+    local lg = ns.KeyFocusLastLetGo and ns.KeyFocusLastLetGo()
+    local byEnter = lg and lg.how == "enter" and lg.t >= st.t7 and lg.win == root.frame
+    local walks = byEnter and Since(st.moves, lg.t) or 0
+    local shots = Since(st.shots, st.t7, function(r) return r.settings end)
+    local key = ScreenshotKey()
+    local note = ("Your screenshot key: %s. A settings text box let go on Enter: %s. Walks since: %d. Screenshots with the window open: %d.")
+        :format(key or "none bound", byEnter and "yes" or "not yet", walks, shots)
+    if not byEnter then return nil, note .. " Click in a rule's Name box, press Enter, then walk (W), then Check." end
+    if walks == 0 then return nil, note .. " Walk (W), then Check." end
+    if key and shots == 0 then return nil, note .. " Press your screenshot key (" .. key .. "), then Check." end
+    return true, note
+end
+-- B397
+local function Setup8()
+    local ns = NS()
+    if not (ns and ns.Calculator_Open) then error("XayaUI Bonus Features (Calculator) is off or not loaded") end
+    Watch(); ns.Calculator_Open()
+    local c = Calc()
+    if c and c.edit then c.edit:SetText("12*3"); c.edit:SetCursorPosition(4); c.edit:SetFocus() end
+    if c and c.result then c.result:SetText("") end
+    st.t8 = GetTime()
+end
+local function Check8()
+    local c = Calc()
+    if not (st.t8 and c and c.edit) then return nil, "press Do it for me first" end
+    local res = c.result and c.result:GetText() or ""
+    local focus = c.edit:HasFocus()
+    local walks = Since(st.moves, st.t8)
+    local note = ("Answer shown: '%s'. The line has the cursor: %s. Walks since: %d."):format(res, focus and "yes" or "no", walks)
+    if res ~= "36" then return nil, note .. " Press Enter in the Calculator's line (12*3), then walk (W), then Check." end
+    if focus then return false, note .. " (the line kept the keyboard after Enter)" end
+    if walks == 0 then return nil, note .. " Walk (W), then Check." end
+    return true, note
+end
+-- B398
+local function Setup9() Watch(); OpenSettings(); st.t9 = GetTime() end
+local function Check9()
+    if not st.t9 then return nil, "press Do it for me first" end
+    local k = SettingsKeys()
+    if not k then return nil, "the settings window is not open: press Do it for me" end
+    local last = k.last
+    if not (last and last.fight and last.key == "Z") then
+        return nil, "Start a fight with the settings window open, press Ctrl+Z once during the fight, then Check (after the fight is fine)."
+    end
+    local bound = type(last.binding) == "string" and last.binding or nil
+    local note = ("Ctrl+Z in combat: your game binding %s; the editor %s."):format(bound and ("'" .. bound .. "' ran") or "(none)",
+        last.used and "undid" or "did not act")
+    if bound and last.used then return false, note .. " (both: the key did two things)" end
+    if last.binding == nil then return true, note .. " (the binding could not be read, so the key was left to the game)" end
+    return true, note
+end
 local function Done()
     local ns = NS()
     local c = Calc(); if c then c:Hide() end
@@ -160,13 +232,13 @@ local function Done()
     end
     if ev then ev:UnregisterAllEvents() end
     st.unlockedByUs, st.group, st.from = nil, nil, nil
-    st.t1, st.t2, st.t3, st.t4, st.t5, st.t6 = nil, nil, nil, nil, nil, nil
+    st.t1, st.t2, st.t3, st.t4, st.t5, st.t6, st.t7, st.t8, st.t9 = nil, nil, nil, nil, nil, nil, nil, nil, nil
     wipe(st.shots); wipe(st.moves)
 end
 QA.KeysTest = { State = st, Done = Done, EventFrame = function() return ev end }   -- (tests)
 
-QA.Register("keys", { title = "Keys reach the game: screenshots, walking, Esc, text boxes (B390-B395)",
-    qa = "B390, B391, B392, B393, B394, B395", order = 560, prefill = true, steps = {
+QA.Register("keys", { title = "Keys reach the game: screenshots, walking, Esc, text boxes (B390-B398)",
+    qa = "B390, B391, B392, B393, B394, B395, B396, B397, B398", order = 560, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: the settings window opens.\n\nPress |cffffd100Print Screen|r (your screenshot key). Then open any rule in the list, press |cffffd100Ctrl+Z|r (with nothing changed it says there is nothing to undo) and press |cffffd100Print Screen|r again. Then |cffffd100Check|r.\n\n|cffffd100Expect:|r both times the game says it saved a screenshot. The check counts the screenshots the game reports and reads whether the window passes keys on.",
         setup = Setup1, check = Check1 },
     { text = "Press |cffffd100Do it for me|r: the mover view opens with the QA test group selected.\n\nPress an |cffffd100arrow key|r once (the group moves 1 pixel), then |cffffd100Print Screen|r, then |cffffd100Check|r.\n\n|cffffd100Expect:|r the group moves and the screenshot is saved.",
@@ -179,5 +251,11 @@ QA.Register("keys", { title = "Keys reach the game: screenshots, walking, Esc, t
         setup = Setup5, check = Check5 },
     { text = "Press |cffffd100Do it for me|r: the settings window opens.\n\nType a few letters in |cffffd100Search rules|r (above the rule list), press |cffffd100Enter|r, then walk (W). Then |cffffd100Check|r.\n\n|cffffd100Expect:|r the search stays, the cursor leaves the box, and W walks (it does not type a w).",
         setup = Setup6, check = Check6 },
+    { text = "Press |cffffd100Do it for me|r: the settings window opens.\n\nOpen any rule, click in its |cffffd100Name|r box, press |cffffd100Enter|r (the name stays), then walk (W). Then press your |cffffd100screenshot key|r (the check names it; it need not be Print Screen). Then |cffffd100Check|r.\n\n|cffffd100Expect:|r after Enter the cursor leaves the box and W walks (it does not type a w); the screenshot is saved.",
+        setup = Setup7, check = Check7 },
+    { text = "Press |cffffd100Do it for me|r: the Calculator opens with 12*3 in its line and the cursor in it.\n\nPress |cffffd100Enter|r, then walk (W). Then |cffffd100Check|r.\n\n|cffffd100Expect:|r the answer 36 shows, the cursor leaves the line, and W walks at once (no Esc or click needed). A click in the line carries on from 36.",
+        setup = Setup8, check = Check8 },
+    { text = "Press |cffffd100Do it for me|r: the settings window opens.\n\nWith it open, start a fight (a training dummy) and press |cffffd100Ctrl+Z|r once during the fight. Then |cffffd100Check|r (after the fight is fine).\n\n|cffffd100Expect:|r Ctrl+Z does one thing only: if your key bindings use Ctrl+Z, that binding runs and nothing is undone; if not, the editor's undo runs (with nothing changed it says there is nothing to undo). Out of combat Ctrl+Z is always the editor's.",
+        setup = Setup9, check = Check9 },
     { text = "Press |cffffd100Do it for me|r to close the Calculator, the version pane and the mover view (if this walkthrough opened it), then |cffffd100Done|r.", done = true, setup = Done },
 } })
