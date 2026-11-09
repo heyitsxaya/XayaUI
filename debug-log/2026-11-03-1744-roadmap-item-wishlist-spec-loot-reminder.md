@@ -1,6 +1,0 @@
-# Roadmap: item wishlist >> spec loot reminder (build 0.5.99 local / 0.5.96 Drive, fork: main)
-Logged 2026-11-03-1744 UTC. Issue: #321 (filed 2026-11-03 after Xaya authorized the repo push). Roadmap: ROADMAP.md, section 9. Session: https://claude.ai/code/session_014bN6tVL9bjDjygA5a6XHFk
-
-Xaya: "roadmap: item wishlist >> spec loot reminder". Treated as a roadmap candidate, no code written. Reading (inference): a wishlist of items that drives a reminder to set the loot specialization before an instance. Checked the Blizzard API dump (12.1.5.70688): Get/SetLootSpecialization, PLAYER_LOOT_SPEC_UPDATED, GetItemSpecInfo, and journal loot reads exist; the journal selection calls are absent from the dump, so v1 proposes a manual item source. Spec: project doc claude/XAYAUI-ITEM-WISHLIST-LOOT-SPEC-REMINDER-2026-11-03.md; sketch: Feature sketches/RM-TBD-item-wishlist-spec-loot-reminder.md. Six open questions listed there. Also noticed: Drive XayaUI.toc is 0.5.96, local is 0.5.99 (sync behind on the Drive side; not touched).
-
-Update (same day): researched whether loot spec governs M+, Great Vault, and raid bosses. Blizzard Support says it applies to all three for armor and weapon drops; Vault read-timing, trinkets/rings/necks, and group versus personal loot are not established. Added question 7 (cover the weekly Vault?). Details: spec doc section 13.
