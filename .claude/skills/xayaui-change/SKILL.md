@@ -28,6 +28,7 @@ Read `docs/SESSION-START-SUMMARY.md` first in a new session.
    then they carry `unverified-in-game`.
 
 ## Standing rules (from Xaya)
+- **V25 Her six code criteria** (Xaya, 2026-11-09, REQUEST-LOG A23 SD-1): every line of code is reviewed against her six questions (performance in WoW: Midnight; optimized structure; maintainable, clean, efficient, reliable; breaks nothing else in the game; satisfactory UX/UI; never compromises the player's ability to play). Each is answered with evidence in the debug log (docs/process/VERIFICATION.md V25 says what counts); in-game cost, taint and behavior stay UNVERIFIED IN GAME until measured in the game. Testing a piece in isolation is not enough.
 - **Request log: nothing is ever dropped** (Xaya, 2026-11-05 23:5x UTC, her words): "set as your standing rule for ALL instances (current and future) that any time I make a comment, append it to a running log of tasks you MUST solve for. Nothing I submit to you unless otherwise explicitly retracted should EVER be dropped or ignored." Every message from Xaya (each
   request, correction, answer, screenshot description) is appended to `docs/process/REQUEST-LOG.md` in the same session turn, with
   her words verbatim, a status (open / needs her confirmation / built on branch X / on main at commit Y / done in game) and where it
