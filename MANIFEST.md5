@@ -750,6 +750,7 @@ e62439d6b9c7a0a6eac69d3d5735b088  docs/plans/DEBUG-TO-DEVASSIST-2026-11-06.md
 380f2b16f139ddfcfc51f7af62f48176  docs/plans/IDEA-CHAT-WORD-GAME-2026-11-05.md
 e80a5c2d309d09f70935f65abd599ec3  docs/plans/IDEA-UPGRADE-OPTIONS-2026-11-05.md
 506caa5ff165444cf81d48d0cbe750f2  docs/plans/INSTANCE-CAPTURE-2026-11-04.md
+6c6fdabdea7768fb6806761bc59ac987  docs/plans/MERGE-RULES-USE-CASES-2026-11-09.md
 4c63d40cff88cfffaf1a2b1a694154e8  docs/plans/NAMEPLATES-PLAN-2026-11-07.md
 9589dd5bc6607324cc314df8a20cddeb  docs/plans/NAMEPLATES-PLATER-INVENTORY-2026-11-07.md
 cfd02ac12f684b376eb4d592c6fc728c  docs/plans/PLATFORM-SPLIT-2026-11-07.md
@@ -776,7 +777,7 @@ b1ec74c7c4d5c09af9bcc0d13d71a590  docs/process/REQUEST-LOG-session-014bN6tStyDJV
 e24a795ddc5242549ac3b80d5c50d18f  docs/process/REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md
 65c810cdc4af2c51a175193ddf9a52a7  docs/process/REQUEST-LOG-session-014bN6tTZroPi49dAYwBbeGp.md
 fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rxEfggbnTEH3o.md
-efd3157d984b7dbc7930e1f04ec52bca  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
+24f31d09558468b94eb1055cb47b936b  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
 0466e4d799ae624302c5cf1c6d02e3be  docs/process/REQUEST-LOG.md
@@ -1070,7 +1071,7 @@ c3f1ac9107a9c73a14a507b221d3dce9  tests/sidebar_switches_run.py
 9218d9a33ff044bf7354f5701fb7ddd1  tests/theme_audit_run.py
 92f1976a10e8562f7c887adf05323793  tests/theme_gradient_borders_run.py
 3632256965d1862ad811bba884944976  tests/theme_paint_parity_golden.json
-a763b235b32ba51fcb693a5c260ded38  tests/theme_paint_parity_run.py
+0268ebc9f3a800f625e00f08b43c50dd  tests/theme_paint_parity_run.py
 3281a32efaea1f89ac776f02e7a8fb48  tests/theme_scopes_elements_run.py
 2935486619b9ec8aa3961a9d7f611d56  tests/timing_run.py
 b47b22d116c919edc43027abf68a4454  tests/toc_files_run.py

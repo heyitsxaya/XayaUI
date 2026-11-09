@@ -25,11 +25,14 @@ GOLDEN_FILE = os.path.join(HERE, "theme_paint_parity_golden.json")
 # the Blizzard Reskin tab", Options.lua gm_moved), which shifts the rows below it, so the golden's Display hashes cannot match. For
 # that case these hashes are of the same drawing without that row (taken from main without Reskin; checked to differ from the golden's
 # drawing only by that row and the shift it causes).
+# (2026-11-09) Re-recorded after merging main: tests/harness/world.lua on this branch gives a button's text through its font string
+# (GetFontString), as the game does, so the lines that main's stand-in recorded as "nil" now carry their label ("Close",
+# "Display", "Rules", ...). `--dump` against origin/main 1872f87 showed no other line changed in any of the four drawings.
 NO_RESKIN_DISPLAY = {
-    "class/display": ("5857c4d3587b550488ff858a2eac9a686fe227c37de0fdebbd61aa0466419263", 451),
-    "colorblind/display": ("427db09ea18004869b32495e7e0f7c570c95d5dec0495d6e82cc9064afada7be", 451),
-    "custom/display": ("a7d1caf1ba8ace1f003d2b221670be141038d09cedbca41636eb097ccd867635", 451),
-    "light/display": ("d72116e3f275e896d46dec991cdd9cb22ef8d167c3fc02a5a999ce933c15c70b", 471),
+    "class/display": ("a324407d7c13a890c1c4a0c923d9ee1890e76e0a2c2bb823ecae7867bd328f87", 451),
+    "colorblind/display": ("558c565cc0602ee6b37872925297e093a16e00833ca8715353cbc058475b7587", 451),
+    "custom/display": ("a7c0af7b965b0ea617a4ff65cc5a6c5a93a0f980a4b9ba7addad47c888633e71", 451),
+    "light/display": ("554330040253449dbe3d222666e329e2131efc4f5af68449f911fcc21642f15e", 471),
 }
 HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
 
