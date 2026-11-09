@@ -14,14 +14,14 @@ How this file works:
   rows with their session id; a cross-chat review of other sessions' requests is section B.
 
 Standing rules added 2026-11-08 (session 014bN6tUDLJ6T742DewZDg1s; her words verbatim; the full rows are in section A21):
-- **What main holds** (A21 #53): "moving forward, main should only be providing the following: * rules * bonus features * qol * and
-  settings that are necessary for the core addon to run". XayaUI Chat (Improved Chat) is part of QoL, so it is on main: A21 #55
+- **What main holds** (A22 #53): "moving forward, main should only be providing the following: * rules * bonus features * qol * and
+  settings that are necessary for the core addon to run". XayaUI Chat (Improved Chat) is part of QoL, so it is on main: A22 #55
   "again, XAYA CHAT BELONGS IN QOL"; #56 "WHY IS IT ITS OWN MODULE WHEN IT IS NESTED IN QOL"; #57 "IMPROVED CHAT IS PART OF QOL".
   Main = XayaUI (core), XayaUI_Rules, XayaUI_Rules_Options, XayaUI_Bonus, XayaUI_QoL with XayaUI_Chat, XayaUI_Options, and only what
-  the core needs to run (the layout change itself is still OPEN, A21 #53; folding XayaUI_Chat into XayaUI_QoL is OPEN, #56-#57).
-- **QA branch disconnected from main** (A21 #52): "disconnect QA and main mirroring." Done on `main` `c92f4c4` (the mirror workflow
+  the core needs to run (the layout change itself is still OPEN, A22 #53; folding XayaUI_Chat into XayaUI_QoL is OPEN, #56-#57).
+- **QA branch disconnected from main** (A22 #52): "disconnect QA and main mirroring." Done on `main` `c92f4c4` (the mirror workflow
   removed). With it (#54): "everything that we have done so far that is not in main should be on the QA branch" (OPEN).
-- **V23 Her five review questions** (A21 #50), applied to every change and, after the fix plan, to everything on main: "ask yourself
+- **V23 Her five review questions** (A22 #50), applied to every change and, after the fix plan, to everything on main: "ask yourself
   at all points: * is this data essential to an end user, or is it noise? * is this presentation easy or hard to navigate to someone
   who has the reading comprehension of a highschooler? * has this UI been optimized for ease of use for an average end user? * do
   all lines, indents, font weights, and styles in the addon's UI make sense? are they cohesive across the ENTIRE addon? do they
@@ -29,7 +29,7 @@ Standing rules added 2026-11-08 (session 014bN6tUDLJ6T742DewZDg1s; her words ver
   elements clearly and easily labeled?" Also (#48): "users do NOT need to know how data is acquired, they do not need to know
   anything other than distilled, ACTIONABLE data and information".
 - **American spelling** is already a standing rule: FA-16 (section A11, with her exception "Except use the spelling “grey” instead
-  of “gray”"), repeated in A21 #38 ("once again Claude has violated my strict rules around english - american spelling") and #46.
+  of “gray”"), repeated in A22 #38 ("once again Claude has violated my strict rules around english - american spelling") and #46.
 
 Status as of 2026-11-08 (UTC): `main` = `c92f4c4` (the qa-installer-branch mirror workflow removed: the QA branch is no longer built from main). Branch `claude/keen-pascal-60os7w` (session 014bN6tUDLJ6T742DewZDg1s, section A21) = `ab26ba5` plus this request-log cleanup, 43 commits ahead of `main`, none of them on `main` yet: the 2026-11-08 fix plan (docs), the Theme table rows, the movable X / Y box and arrow keys in the mover view, the Stat Calculator colors, hover notes and text order (QoL 0.7.54, Bonus 0.6.38), Maintain aspect ratio, the sidebar delete fixes, Count options, and section A21's rows 1-59. Rows still saying BRANCH are on a branch, not on `main`. "Not seen in game" applies to every MAIN row. Outdated rows (DONE in game, RETRACTED, superseded) moved verbatim to [REQUEST-LOG-ARCHIVE.md](REQUEST-LOG-ARCHIVE.md) on 2026-11-08; the index is at the end of this file.
 
@@ -591,7 +591,20 @@ lane, area context, CI gate) are in the "XayaUI Standing Process Rules (draft)" 
 | PS-58 | (quoting the #494 reply) "Make sure all toggles that a user might want to directly control are clear and easy to navigate to." (2026-11-08) | IN PROGRESS: read-only audit of every on/off switch (path, clicks, label clarity) running; layout proposal goes to the Open Questions doc for her pick; build after P5 | #494 |
 | PS-59 | "Also with the options panel on, right clicking an element object should open up an at-cursor menu to allow the user to select “element options” and modify position with x,y inputs" (2026-11-08) | BUILT on branch claude/lucid-mayer-pv4ytn (XayaUI 0.6.80, QA I3; not on main): as stated; which elements, what Element options opens, X/Y reference, reskinned Blizzard frames = the #495 proposals (needs her confirmation); debug-log/2026-11-08-0338-element-menu-0.6.80.md | #495, #61, #267 |
 
-## A21. Session 014bN6tUDLJ6T742DewZDg1s (2026-11-08 fix plan; branch `claude/keen-pascal-60os7w`)
+## A21. Issue triage and main slim-down (session_014bN6tUcjxM3wmJBjpyxQDS, 2026-11-08; branch `claude/confident-cray-42xtgz`)
+
+| Id | Her words | Status | Where |
+|---|---|---|---|
+| TRI-1 | "pull all issues and review them. see what can be consolidated into parent issues and close out duplicates or things that can be combined into larger tickets" | DONE on GitHub (2026-11-08): 5 duplicates closed (#49, #115, #116, #251, #370), 10 parent issues made | GitHub issues |
+| TRI-2 | "not yet. do a more extensive review and try to consolidate more aggressively where possible, please. I'm trying to make the outstanding more issues more manageable." / "you have full permission to reorganize, pull, archive, edit, and delete issues" | DONE on GitHub (2026-11-08): 278 open issues -> 24 parent issues, each a checklist linking its closed originals; none deleted | GitHub issues #202 #238 #297 #309 #325 #326 #329 #350 #359 #372 #464 #472 #475 #507-#517 |
+| TRI-3 | "how many of the issues that have outstanding questions can be put into a question prompt when I load up the game next?" | ANSWERED in chat: 95 of 131 issues (about 151 screens); waits on her pick (first batch of about 40, all, or none) | QAQuestions.lua when she picks |
+| TRI-4 | "For now, main is now going to include ONLY the following modules: * bonus features * rules * QoL * core + settings  All other things should be migrated to QA branch moving forward so I can focus on designing and optimizing the essential elements" | ON MAIN at 10f63c7 (PR #519; not checked in game), as amended by TRI-6 / TRI-7: XayaUI_Reskin, XayaUI_Nameplates, shelved/, roadmap-features/ and their tests leave main and live on qa-installer-branch (tools/qa-only-paths.txt; no sync between the branches, her "disconnect QA and main mirroring", main c92f4c4) | debug-log 2026-11-08 main slim-down |
+| TRI-5 | (her answers to two questions, 2026-11-08) Dev Assist: "Keep on main (Recommended)"; Media: "Keep on main as part of core (Recommended)" | ON MAIN at 10f63c7 with TRI-4 | same |
+| TRI-6 | "Anything else not listed for main should also migrate to the QA branch" (2026-11-08); her answer on shelved/ and roadmap-features/: "Move both to QA (Recommended)" | ON MAIN at 10f63c7 with TRI-4 (Nameplates, shelved/, roadmap-features/ to qa-installer-branch) | same |
+| TRI-7 | "The Chat is part of bonus features, so keep it on main — just remove all blizzard reskins for the time being" (2026-11-08) | ON MAIN at 10f63c7 with TRI-4: XayaUI_Chat stays on main; XayaUI_Reskin goes to qa-installer-branch | same |
+| TRI-8 | (her answer on the reskins inside kept modules, 2026-11-08) "1. The character reskin component should follow the same logic as improved chat: if no reskin is present, reskin it; otherwise let the current reskin run and only run the other components" | ON MAIN at 10f63c7 (QoL 0.7.54, core 0.6.84; not checked in game): without XayaUI_Reskin the look half is QoL's own (characterReskinLook); the look stays off beside EllesmereUIBlizzardSkin or ElvUI's character skin (ElvUI key names an INFERENCE), the features run either way; test tests/char_reskin_noreskin_run.py | XayaUI_QoL/CharacterReskin.lua |
+
+## A22. Session 014bN6tUDLJ6T742DewZDg1s (2026-11-08 fix plan; branch `claude/keen-pascal-60os7w`)
 Brought in on 2026-11-08 at her request (row 54: "instate the new request"). Rows 1-59 copied verbatim from
 `docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md` (statuses as of `ab26ba5`). That file stays this session's working
 copy; rows it adds later are copied here.

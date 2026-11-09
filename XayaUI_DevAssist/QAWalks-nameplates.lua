@@ -10,6 +10,8 @@
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
+-- (Dev Assist 0.7.72) XayaUI_Nameplates lives on qa-installer-branch since 2026-11-08: nothing here is listed where it is not installed
+if QA.Missing and QA.Missing("XayaUI_Nameplates") then return end
 
 local function NP() local ns = rawget(_G, "XayaUI_NS"); return ns and ns.Service and ns.Service("nameplates") end
 local function TC() local np = NP(); return np and np.TargetColor end

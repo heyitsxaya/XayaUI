@@ -21,6 +21,17 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "theme_paint_parity_golden.json")
+# Without XayaUI_Reskin (a QA-branch module) the Display page correctly leaves out one hint row ("The Esc menu's own look ... is under
+# the Blizzard Reskin tab", Options.lua gm_moved), which shifts the rows below it, so the golden's Display hashes cannot match. For
+# that case these hashes are of the same drawing without that row (taken from main without Reskin; checked to differ from the golden's
+# drawing only by that row and the shift it causes).
+NO_RESKIN_DISPLAY = {
+    "class/display": ("5857c4d3587b550488ff858a2eac9a686fe227c37de0fdebbd61aa0466419263", 451),
+    "colorblind/display": ("427db09ea18004869b32495e7e0f7c570c95d5dec0495d6e82cc9064afada7be", 451),
+    "custom/display": ("a7d1caf1ba8ace1f003d2b221670be141038d09cedbca41636eb097ccd867635", 451),
+    "light/display": ("d72116e3f275e896d46dec991cdd9cb22ef8d167c3fc02a5a999ce933c15c70b", 471),
+}
+HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
 
 LUA = r'''
 return function(W, L)
@@ -123,6 +134,11 @@ def main():
     results.append(("the same theme / page drawings were made as before W9a", sorted(got) == sorted(gold)))
     for k in sorted(gold):
         g = got.get(k)
+        if not HAS_RESKIN and k in NO_RESKIN_DISPLAY:
+            sha, nl = NO_RESKIN_DISPLAY[k]
+            ok = g is not None and g["sha"] == sha and "Blizzard Reskin tab" not in d.get(k, "")
+            results.append(("%s: (XayaUI_Reskin absent) every region of the window drawn as before W9a, without the Esc menu hint row (%d lines)%s" % (k, nl, "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
+            continue
         ok = g is not None and g["sha"] == gold[k]["sha"]
         results.append(("%s: every region of the window drawn as before W9a (%d lines)%s" % (k, gold[k]["lines"], "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
     results.append(("drawings are not empty (the window was open and skinned)", all(v["lines"] > 50 for v in got.values())))

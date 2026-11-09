@@ -121,10 +121,11 @@ if opts.fill then
     C.auraAlias = { [62618] = { [81782] = true } }
     C.learnedAuraDur = { [12345] = 8.5 }
   end
-  local R = ns.Settings("reskin")
-  R.rsk = { windows = true, tooltips = true, winOff = { bags = true }, shape = "SQUARE", bgAlpha = 0.8 }
+  local R = ns.Settings("reskin")   -- (QA-branch module: the keys are only written when XayaUI_Reskin is there)
+  if opts.hasReskin and R then R.rsk = { windows = true, tooltips = true, winOff = { bags = true }, shape = "SQUARE", bgAlpha = 0.8 }
   R.gm = { skin = true, accR = 0.5, matchReal = false }
   R.friendColors = { on = false }
+  end
   ns.Settings("qol").characterReskin = { enabled = true, chrome = false, stats = true, wide = true, widePx = 99, bgAlpha = 0.7, tallPx = 12,
     widePxTo42 = true, ilvl = false, enchants = true, gems = false, statList = true, statHide = { haste = true },
     statOrder = { core = { "crit", "haste" } }, statMode = { crit = "both" }, statName = { crit = "Crit!" }, statColor = { crit = { 1, 0, 0 } },
@@ -133,8 +134,8 @@ if opts.fill then
   Q.cursorTrail = { enabled = true, marker = "trail" }; Q.cursorHighlight = { enabled = true, size = 44 }; Q.cursor = { a = 1 }
   Q.shoppingList = { enabled = true, items = { { id = 2589, need = 20 } } }; Q.releaseGuard = { enabled = true, text = "NOPE" }
   Q.characterToolkit = Q.characterToolkit or {}; Q.characterToolkit.marker = "toolkit"
-  local Ch = ns.Settings("chat")
-  Ch.chat2 = Ch.chat2 or {}; Ch.chat2.fadeMarker = 7; Ch.chat = Ch.chat or {}; Ch.chat.marker = "c"
+  local Ch = ns.Settings("chat")   -- (QA-branch module: the keys are only written when XayaUI_Chat is there)
+  if opts.hasChat and Ch then Ch.chat2 = Ch.chat2 or {}; Ch.chat2.fadeMarker = 7; Ch.chat = Ch.chat or {}; Ch.chat.marker = "c" end
   local B = ns.Settings("bonus")
   B.notepad = { pages = { { title = "Raid", text = "pull at 5" } } }; B.calculator = { enabled = true, history = { "1+1 = 2" } }
   B.tooltips = B.tooltips or {}; B.tooltips.marker = 3; B.dataPanels = B.dataPanels or {}; B.dataPanels.markerA = "a"
@@ -205,6 +206,7 @@ end
 def run(saved, enabled=None, **opts):
     folders = H.find_addons()
     en = set(folders) if enabled is None else enabled
+    opts = dict(opts, hasChat="XayaUI_Chat" in folders, hasReskin="XayaUI_Reskin" in folders)   # QA-branch modules: absent on main
     L, world, loader = SEAM.build(folders, en, saved)
     res = L.eval("function(src, W, Ld, o) return loadstring(src)()(W, Ld, o) end")(DRIVER, world, loader, H.to_lua(L, opts))
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
@@ -268,6 +270,13 @@ def main():
     except ValueError:   # the code before P5: no store tables in Modules.lua at all
         lay = None
     stores = lay["stores"] if lay else {}
+    for m, on in sorted(((lay or {}).get("own") or {}).items()):
+        if on and m not in stores:   # a module with its own store whose addon folder is not here (QA branch only: Chat, Reskin)
+            addon = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin"}.get(m, "XayaUI_" + m)
+            for what in ("F: the before file holds old keys to copy", "M1: the store as copied deep-equals every old key", "M1: the module reads its own store",
+                         "M1: the store records the migration marks", "M1: copy, never move", "M2: nothing copied again / old key not reaching the store / setting kept",
+                         "O: module off: no Lua error, its store not created, old keys untouched"):
+                print("SKIP (QA-branch module absent: %s) %s: %s" % (addon, m, what))
     check("there is at least one module with its own store (negative control: none before P5)", len(stores) > 0, stores)
     if not stores:
         print("%d checks, %d failed" % (len(results), 1))

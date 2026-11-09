@@ -24,6 +24,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
+# QA-branch modules (XayaUI_Chat, XayaUI_Reskin, XayaUI_Nameplates) are absent on main: presence is read from the folder
+ROOT = os.path.dirname(HERE)
+HAS = {m: os.path.isdir(os.path.join(ROOT, "XayaUI_" + m)) for m in ("Chat", "Reskin", "Nameplates")}
+
 # produced by the old code (main 774980c) with --golden; see the docstring
 GOLDEN = (
     "XUIPROFILE1:95cd7060:eyJhZGRvblZlcnNpb24iOiIwLjYuNzMiLCJuYW1lIjoiIiwicGFydHMiOnsiYm9udXMiOnsiY2FsY3VsYXRvciI6e"
@@ -159,12 +163,15 @@ local function setup(W, L)
   DB.dataPanels = DB.dataPanels or {}; DB.dataPanels.markerA = "a"
   DB.tooltips = DB.tooltips or {}; DB.tooltips.selfAura = { build = "x", ids = { [1] = true } }; DB.tooltips.marker = 3
   DB.calculator = { enabled = true, history = { "1+1 = 2" }, x = 5, point = "CENTER" }
-  DB.chat2 = DB.chat2 or {}; DB.chat2.fadeMarker = 7; DB.chat2.whisperSounds = { list = { { who = "Friend-Realm" } }, fav = { enabled = true } }
-  DB.chat = DB.chat or {}; DB.chat.marker = "c"
+  if __HAS_CHAT__ then   -- (QA-branch module XayaUI_Chat: its two stores exist only where the folder is)
+    DB.chat2 = DB.chat2 or {}; DB.chat2.fadeMarker = 7; DB.chat2.whisperSounds = { list = { { who = "Friend-Realm" } }, fav = { enabled = true } }
+    DB.chat = DB.chat or {}; DB.chat.marker = "c"
+  end
   DB.characterReskin = DB.characterReskin or {}; DB.characterReskin.marker = true
   DB.reskinTabOff = true
   return ns
 end
+local HAS_CHAT, HAS_RESKIN, HAS_NP = __HAS_CHAT__, __HAS_RESKIN__, __HAS_NP__
 local SIX = { rules = true, themes = true, settings = true, qol = true, bonus = true, reskin = true }
 local function exportAll(ns)   -- the Export tab's Generate button with every part ticked
   local built = ns.BuildOptionsTable()
@@ -186,6 +193,7 @@ TEST_LUA = SETUP + r'''
 return function(W, L, GOLDEN, npOn)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local function skip(mod, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. mod .. ") " .. name, true, true } end
 local function section(name, fn) local ok, err = pcall(fn); if not ok then check(name .. ": ran to its end (a Lua error stopped it)", false, err) end end
 local ns = setup(W, L)
 check("settings window addon loaded", ns and ns.BuildOptionsTable ~= nil and ns.Profile ~= nil)
@@ -211,8 +219,36 @@ if not npOn then
     end
     local box = exportAll(ns)
     local folded = fold(box)
-    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved", folded == GOLDEN, tostring(folded):sub(1, 60))
-    check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
+    -- the old build's string carries parts of the QA-branch modules: with one absent, the old string is decoded and the keys of that
+    -- module taken out of it, and the two decoded profiles are compared whole (key by key, values included) instead of as strings
+    local gold = GOLDEN
+    local same = (folded == GOLDEN)
+    if not (HAS_CHAT and HAS_RESKIN) then
+      local gd = ns.Share.Read(GOLDEN, "profile")
+      local rk = type(gd) == "table" and gd.parts and gd.parts.reskin
+      if rk and not HAS_CHAT then rk.chat2 = nil; rk.chat = nil end
+      -- without XayaUI_Reskin the Character pane's own keys (Modules.lua LEGACY_SPLIT.characterReskin.sub) are not saved; QoL's half stays
+      if rk and rk.characterReskin and not HAS_RESKIN then
+        for _, k in ipairs({ "enabled", "chrome", "stats", "bgAlpha", "wide", "widePx", "widePxTo42", "tallPx" }) do rk.characterReskin[k] = nil end
+      end
+      -- ...and the Settings part's ui.friendColors (Modules.lua LEGACY_UNDER_UI.reskin: rsk, gm, friendColors) is XayaUI_Reskin's too
+      local st = type(gd) == "table" and gd.parts and gd.parts.settings
+      if st and st.ui and not HAS_RESKIN then st.ui.friendColors = nil; st.ui.rsk = nil; st.ui.gm = nil end
+      local function eq(x, y)
+        if type(x) ~= type(y) then return false end
+        if type(x) ~= "table" then return x == y end
+        for k, v in pairs(x) do if not eq(v, y[k]) then return false end end
+        for k in pairs(y) do if x[k] == nil then return false end end
+        return true
+      end
+      same = eq(ns.Share.Read(folded, "profile"), gd)
+    end
+    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved", same, tostring(folded):sub(1, 60))
+    if HAS_CHAT then
+      check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
+    else
+      skip("XayaUI_Chat", "A: ... those are the Sidebar's and the privacy cover's defaults, all of them")
+    end
     local six = ns.Share.Encode("profile", P.Snapshot(SIX, ""))
     check("A: the six parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
   end)
@@ -320,13 +356,25 @@ section("E: theme scopes", function()
   local base = {}
   for _, c in ipairs(T.CLASSES) do for prop in pairs(c[3]) do base[c[1] .. "." .. prop] = T.Col(c[1], prop) end end
   local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4] end
-  check("E: scopes are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
-    and T.Scope("reskin.tooltips") and T.Scope("reskin.tooltips").label == "Tooltips" and T.Scope("reskin.tooltips").parent == "reskin"
-    and T.Scope("reskin.chatpanel") and T.Scope("reskin.chatpanel").label == "Chat Panel" and T.Scope("reskin.charreskin").label == "Character Pane"
-    and T.Scope("reskin.gamemenu").label == "Esc Menu" and T.Scope("settings").label == "Settings window" and true or false)
-  local n = 0
-  for _, id in ipairs(T.scopeList or {}) do if id:find("^reskin%.") and id ~= "reskin.chatpanel" and id ~= "reskin.charreskin" then n = n + 1 end end
-  check("E: the 13 reskin pages each have a scope", n == 13, n)
+  if HAS_RESKIN then
+    check("E: scopes are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
+      and T.Scope("reskin.tooltips") and T.Scope("reskin.tooltips").label == "Tooltips" and T.Scope("reskin.tooltips").parent == "reskin"
+      and T.Scope("reskin.chatpanel") and T.Scope("reskin.chatpanel").label == "Chat Panel" and T.Scope("reskin.charreskin").label == "Character Pane"
+      and T.Scope("reskin.gamemenu").label == "Esc Menu" and T.Scope("settings").label == "Settings window" and true or false)
+    local n = 0
+    for _, id in ipairs(T.scopeList or {}) do if id:find("^reskin%.") and id ~= "reskin.chatpanel" and id ~= "reskin.charreskin" then n = n + 1 end end
+    check("E: the 13 reskin pages each have a scope", n == 13, n)
+  else
+    skip("XayaUI_Reskin", "E: scopes are registered with their page titles (Tooltips, Chat Panel, Esc Menu: registered by the Reskin pages)")
+    skip("XayaUI_Reskin", "E: the 13 reskin pages each have a scope")
+    -- what the folders present do register: the core's two and QoL's Character Pane
+    check("E (present modules): the core's scopes and QoL's Character Pane are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
+      and T.Scope("settings") and T.Scope("settings").label == "Settings window" and T.Scope("reskin.charreskin") and T.Scope("reskin.charreskin").label == "Character Pane" and true or false)
+    -- the checks below resolve colours through two pages the Reskin folder registers (reskin.tooltips, reskin.menus): stand-ins with the same
+    -- ids and parent, so the resolution order (core Theme.lua) is still asserted
+    T.RegisterScope({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })
+    T.RegisterScope({ id = "reskin.menus", label = "Menus", parent = "reskin" })
+  end
   check("E: nothing is stored while no scope overrides anything", CueRulesDB.theme.scopes == nil)
   T.SetScopeToken("reskin.tooltips", "buttonBg", { 0.9, 0.1, 0.1, 1 })
   T.SetScopeClassColor("reskin", "xui-window", "bg", { 0.2, 0.9, 0.2, 1 })
@@ -370,17 +418,25 @@ def runtime(enabled_filter):
 def main():
     if "--golden" in sys.argv:
         L, world, loader = runtime(lambda n: n not in ("XayaUI_DevAssist", "XayaUI_Nameplates"))
-        res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(GOLDEN_LUA, world, loader)
+        res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(fill(GOLDEN_LUA), world, loader)
         print("BUTTON " + str(res[1]))
         print("SIX " + str(res[2]))
         return
     bad, total, errs_all = 0, 0, []
+    fill = lambda src: (src.replace("__HAS_CHAT__", str(HAS["Chat"]).lower()).replace("__HAS_RESKIN__", str(HAS["Reskin"]).lower())
+                        .replace("__HAS_NP__", str(HAS["Nameplates"]).lower()))
     for np_on in (False, True):
+        if np_on and not HAS["Nameplates"]:
+            print("SKIP (QA-branch module absent: XayaUI_Nameplates) [Nameplates on] B: the Nameplates part (whole run: Export offers it, the string carries it, Import puts it back)")
+            continue
         L, world, loader = runtime(lambda n: n != "XayaUI_DevAssist" and (np_on or n != "XayaUI_Nameplates"))
-        res = L.eval("function(src, W, Ld, g, np) return loadstring(src)()(W, Ld, g, np) end")(TEST_LUA, world, loader, GOLDEN, np_on)
+        res = L.eval("function(src, W, Ld, g, np) return loadstring(src)()(W, Ld, g, np) end")(fill(TEST_LUA), world, loader, GOLDEN, np_on)
         tag = "[Nameplates on] " if np_on else "[Nameplates off] "
         for i in range(1, len(res) + 1):
             name, ok = res[i][1], res[i][2]
+            if len(res[i]) >= 3 and res[i][3]:
+                print(name.replace(") ", ") " + tag, 1))
+                continue
             print(("PASS " if ok else "FAIL ") + tag + name)
             total += 1
             if not ok:

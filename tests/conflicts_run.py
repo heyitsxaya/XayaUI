@@ -24,6 +24,17 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 import options_split_parity_run as P  # noqa: E402
 
+# Parts that live in the QA-branch modules (XayaUI_Chat, XayaUI_Reskin, XayaUI_Nameplates); main does not carry those folders. A part of
+# an absent module registers no flag and has no page, so the checks about it are skipped (printed), never silently.
+PART_MODULE = {"chatpanel": "XayaUI_Chat", "improvedchat": "XayaUI_Chat", "nameplates": "XayaUI_Nameplates",
+               "blizzwindows": "XayaUI_Reskin", "minimapshape": "XayaUI_Reskin", "rsktooltips": "XayaUI_Reskin", "objtracker": "XayaUI_Reskin",
+               "rsktoasts": "XayaUI_Reskin", "rskmenus": "XayaUI_Reskin", "rskbubbles": "XayaUI_Reskin", "rskstatusbars": "XayaUI_Reskin",
+               "rskmmbuttons": "XayaUI_Reskin", "friendcolors": "XayaUI_Reskin"}
+ROOT = os.path.dirname(HERE)
+ABSENT = sorted(m for m in set(PART_MODULE.values()) | {"XayaUI_Chat"} if not os.path.isdir(os.path.join(ROOT, m)))
+def absent_part(part): return PART_MODULE.get(part) in ABSENT
+def absent_label(*mods): return ", ".join(m for m in mods if m in ABSENT)
+
 STANDIN = r'''
 local LOADED_EXTRA = {}
 for _, n in ipairs(EXTRA or {}) do LOADED_EXTRA[n] = true end
@@ -114,7 +125,12 @@ def session(extra, enabled=None):
 
 
 def main():
-    bad = n = 0
+    bad = n = nskip = 0
+
+    def skip(name, *mods):
+        nonlocal nskip
+        nskip += 1
+        print("SKIP (QA-branch module absent: %s) %s" % (absent_label(*mods) if mods else ", ".join(ABSENT), name))
 
     def check(name, ok, detail=""):
         nonlocal bad, n
@@ -132,8 +148,15 @@ def main():
     reg = flagged["registered"]
     for part in ("chatpanel=", "improvedchat=", "blizzwindows=", "minimapshape=", "rsktooltips=", "objtracker=", "rsktoasts=", "rskmenus=",
                  "rskbubbles=", "rskstatusbars=", "rskmmbuttons=", "friendcolors=", "charreskin=", "nameplates=", "tooltips=", "datapanels="):
-        check("A %s each of its overlapping addons is registered by the part's own module" % part[:-1], part in reg, reg)
-    check("A the Chat Panel names ElvUI and EllesmereUIChat (her examples)", "chatpanel=ElvUI+EllesmereUIChat" in reg, reg)
+        nm = "A %s each of its overlapping addons is registered by the part's own module" % part[:-1]
+        if absent_part(part[:-1]):
+            skip(nm, PART_MODULE[part[:-1]])
+            continue
+        check(nm, part in reg, reg)
+    if absent_part("chatpanel"):
+        skip("A the Chat Panel names ElvUI and EllesmereUIChat (her examples)", "XayaUI_Chat")
+    else:
+        check("A the Chat Panel names ElvUI and EllesmereUIChat (her examples)", "chatpanel=ElvUI+EllesmereUIChat" in reg, reg)
     check("A no flag is registered for parts with no sourced overlap (Buttons, Esc Menu, Shopping List)",
           not any(p in reg for p in ("rskbuttons=", "gamemenu=", "shoppinglist=")), reg)
 
@@ -149,10 +172,16 @@ def main():
         if exp:
             check("D page %s: its flag is the first line on the page, in the warning orange" % key,
                   first == "xuiConflict" and text.startswith(" |cffff8a3d") and text.endswith("|r"), "%s | %s" % (first, text))
-    check("D wording (Chat Panel): \"Overlaps with ElvUI (loaded): both change the chat window.\"",
-          (pages.get("chatpanel") or (None,))[0] == " |cffff8a3dOverlaps with ElvUI (loaded): both change the chat window.|r", pages.get("chatpanel"))
-    check("D wording (Nameplates): one line per loaded addon",
-          (pages.get("nameplates") or (None,))[0] == " |cffff8a3dOverlaps with ElvUI (loaded): both change nameplates.\nOverlaps with Plater (loaded): both change nameplates.|r", pages.get("nameplates"))
+    nm = "D wording (Chat Panel): \"Overlaps with ElvUI (loaded): both change the chat window.\""
+    if absent_part("chatpanel"):
+        skip(nm, "XayaUI_Chat")
+    else:
+        check(nm, (pages.get("chatpanel") or (None,))[0] == " |cffff8a3dOverlaps with ElvUI (loaded): both change the chat window.|r", pages.get("chatpanel"))
+    nm = "D wording (Nameplates): one line per loaded addon"
+    if absent_part("nameplates"):
+        skip(nm, "XayaUI_Nameplates")
+    else:
+        check(nm, (pages.get("nameplates") or (None,))[0] == " |cffff8a3dOverlaps with ElvUI (loaded): both change nameplates.\nOverlaps with Plater (loaded): both change nameplates.|r", pages.get("nameplates"))
     check("D wording (Enhanced Tooltips): idTip's own sentence",
           "Overlaps with idTip (loaded): both change the IDs shown on tooltips." in str((pages.get("tooltips") or (None,))[0]), pages.get("tooltips"))
 
@@ -160,9 +189,17 @@ def main():
     pr = flagged["printed"]
     check("C exactly one login line about overlaps", len(pr) == 1, pr)
     line = pr[0] if pr else ""
-    check("C it lists each loaded addon (name order) with the parts that are on (defaults: Chat Panel, Improved Chat, Friend Colors, Nameplates, Enhanced Tooltips)",
-          line == "overlaps with other loaded addons: ElvUI (Chat Panel, Enhanced Tooltips, Friend Colors, Improved Chat, Nameplates); "
-                  "idTip (Enhanced Tooltips); Plater (Nameplates). Each part's settings page says what both change.", line)
+    # the parts that are on by default, by loaded addon; the parts of an absent module are not there to list
+    on_parts = {"ElvUI": ["Chat Panel", "Enhanced Tooltips", "Friend Colors", "Improved Chat", "Nameplates"], "idTip": ["Enhanced Tooltips"],
+                "Plater": ["Nameplates"]}
+    part_mod = {"Chat Panel": "XayaUI_Chat", "Improved Chat": "XayaUI_Chat", "Friend Colors": "XayaUI_Reskin", "Nameplates": "XayaUI_Nameplates"}
+    shown = {a: [p for p in ps if part_mod.get(p) not in ABSENT] for a, ps in on_parts.items()}
+    want_line = "overlaps with other loaded addons: " + "; ".join("%s (%s)" % (a, ", ".join(ps)) for a, ps in sorted(shown.items(), key=lambda kv: kv[0].lower()) if ps) + \
+                ". Each part's settings page says what both change."
+    nm = "C it lists each loaded addon (name order) with the parts that are on (defaults: Chat Panel, Improved Chat, Friend Colors, Nameplates, Enhanced Tooltips)"
+    if ABSENT:
+        print("NOTE: expected login line without the parts of the absent modules (%s): %s" % (", ".join(ABSENT), want_line))
+    check(nm, line == want_line, line)
     check("C parts that are switched off are not in the line (Blizzard Windows, Minimap, Data Panels ... are off by default)",
           not any(p in line for p in ("Blizzard Windows", "Minimap", "Data Panels", "Objective Tracker", "Character Pane")), line)
 
@@ -177,8 +214,11 @@ def main():
 
     # G off costs nothing
     no_chat = session(["ElvUI"], [f for f in folders if f != "XayaUI_Chat"])
-    check("G XayaUI Chat off: nothing of it is registered", "chatpanel=" not in no_chat["registered"] and "improvedchat=" not in no_chat["registered"],
-          no_chat["registered"])
+    if "XayaUI_Chat" in ABSENT:
+        skip("G XayaUI Chat off: nothing of it is registered", "XayaUI_Chat")
+    else:
+        check("G XayaUI Chat off: nothing of it is registered", "chatpanel=" not in no_chat["registered"] and "improvedchat=" not in no_chat["registered"],
+              no_chat["registered"])
     core_only = session(["ElvUI", "Plater"], [f for f in folders if f in ("XayaUI", "XayaUI_Options", "XayaUI_Media")])
     check("G every feature module off: nothing registered, no login line", core_only["registered"] == "" and core_only["printed"] == [],
           "%s | %s" % (core_only["registered"], core_only["printed"]))
@@ -204,13 +244,13 @@ def main():
         a, b = keep(base_dump), keep(with_dump)
         added, removed = sorted(b - a), sorted(a - b)
         only_flags = all(l.split(" :: ")[0].endswith(".xuiConflict") for l in added) and not removed
-        check("H the window with overlaps loaded = the window without them + %d flag line(s), nothing else" % len(added), only_flags and len(added) == 13,
+        check("H the window with overlaps loaded = the window without them + %d flag line(s), nothing else" % len(added), only_flags and len(added) == 13 - sum(1 for p in want if absent_part(p)),
               "added %s | removed %s" % ([l[:120] for l in added if not l.split(" :: ")[0].endswith(".xuiConflict")][:3] or len(added), removed[:3]))
     else:
         check("H the options window builds", False, "no dump")
 
     check("no Lua errors in the stand-in game", not errs, errs[:2])
-    print("%d checks, %d failed" % (n, bad))
+    print("%d checks, %d failed%s" % (n, bad, (", %d skipped (QA-branch module absent: %s)" % (nskip, ", ".join(ABSENT))) if nskip else ""))
     if bad == 0:
         print("ALL CHECKS PASS")
     sys.exit(1 if bad else 0)

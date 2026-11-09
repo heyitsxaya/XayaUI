@@ -80,6 +80,24 @@ local WANT = { "qol>chartoolkit", "bonus>statcalc", "bonus>statcalc>panelPart", 
   "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
   "qol>charpane",       -- (QoL 0.7.53, character pane split stage 1: QoL > Character Pane, the item level / enchants / gems / stat list)
   "reskin>friendcolors" }   -- (Reskin 0.6.8, CHAT-5)
+-- (QA-branch modules: main keeps only core, Options, Rules, QoL, Bonus, Dev Assist and Media. A row that belongs to an absent module is not in the tree:
+-- its checks are printed as SKIP, never silently; the rows of the others are checked exactly as before. XUI_ABSENT: { XayaUI_Chat = true, ... })
+local NEED = { ["reskin>chatpanel"] = "XayaUI_Chat", ["qol>improvedchat"] = "XayaUI_Chat", ["qol>nameplates"] = "XayaUI_Nameplates",
+  ["reskin>gamemenu"] = "XayaUI_Reskin", ["reskin>blizzwindows"] = "XayaUI_Reskin", ["reskin>minimapshape"] = "XayaUI_Reskin", ["reskin>rsktooltips"] = "XayaUI_Reskin",
+  ["reskin>objtracker"] = "XayaUI_Reskin", ["reskin>rsktoasts"] = "XayaUI_Reskin", ["reskin>rskmenus"] = "XayaUI_Reskin", ["reskin>rskbubbles"] = "XayaUI_Reskin",
+  ["reskin>rskstatusbars"] = "XayaUI_Reskin", ["reskin>rskmmbuttons"] = "XayaUI_Reskin", ["reskin>rskbuttons"] = "XayaUI_Reskin", ["reskin>friendcolors"] = "XayaUI_Reskin" }
+local function skip(addon, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. addon .. ") " .. name, true } end
+do
+  local present = {}
+  for _, k in ipairs(WANT) do
+    if NEED[k] and XUI_ABSENT[NEED[k]] then
+      skip(NEED[k], "A: the row " .. k .. " has an on / off for its tick box")
+      skip(NEED[k], "A: the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)")
+      skip(NEED[k], "A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)")
+    else present[#present + 1] = k end
+  end
+  WANT = present
+end
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
 check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
@@ -154,8 +172,13 @@ local function flipBuild(key)
 end
 found["qol>chartoolkit"].set({}, true)   -- its parts' switches matter only while the toolkit is on
 for _, k in ipairs(WANT) do
-  local ok, why = flipBuild(k)
-  check("A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)", ok, why)
+  if k == "reskin>charreskin" and XUI_ABSENT.XayaUI_Reskin then
+    -- its tick stores Blizzard Reskin's half of characterReskin: with XayaUI_Reskin absent the switch cannot change (see the report)
+    skip("XayaUI_Reskin", "A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)")
+  else
+    local ok, why = flipBuild(k)
+    check("A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)", ok, why)
+  end
 end
 found["qol>chartoolkit"].set({}, false)
 end)
@@ -479,11 +502,15 @@ check("G: a part's row starts 8 px right of where its parent's name starts (Calc
 -- (Options 0.6.63; UI-69, Xaya: "indents are now TOO large" [the Blizzard UI Reskin tab: Stat list under Character Pane, Layout ...
 -- under Chat Panel far to the right]) a part with no tick box and no open / close arrow keeps no empty slot: its NAME starts 8 px right
 -- of where its parent's name starts (UI-8, "Parent's name + 8 px"); before, the empty 16 px arrow slot + 3 put it 27 px in
+if XUI_ABSENT.XayaUI_Chat then
+  skip("XayaUI_Chat", "G: a part with no tick box (Chat Panel > Layout): its name starts 8 px right of its parent's name (UI-69)")
+else
 ACD:SelectGroup("CueRules", "reskin", "chatpanel"); settle()
 local cp, lay = row("reskin", "chatpanel"), row("reskin", "chatpanel\001layout")
 check("G: a part with no tick box (Chat Panel > Layout): its name starts 8 px right of its parent's name (UI-69)",
   cp and lay and cp.xuiTextL and lay.xuiTextL == cp.xuiTextL + 8,
   ("Chat Panel name at %s, Layout name at %s"):format(tostring(cp and cp.xuiTextL), tostring(lay and lay.xuiTextL)))
+end
 ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
 -- greying: Notepad off, then on
 click("bonus", "utilities\001notepad", false)
@@ -520,17 +547,23 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+    absent = [m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if not os.path.isdir(os.path.join(H.ROOT, m))]   # QA-branch modules
+    L.execute("XUI_ABSENT = { %s }" % ", ".join("%s = true" % m for m in absent))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
-    bad = 0
+    bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if str(name).startswith("SKIP ("):
+            print(name)
+            continue
+        nchecks += 1
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
-    print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
+    print("%d checks, %d failed, %d Lua errors" % (nchecks, bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 
 

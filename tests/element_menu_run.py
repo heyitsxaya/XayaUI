@@ -25,9 +25,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+ROOT = os.path.dirname(HERE)
+# XayaUI_Chat is a QA-branch module (absent on main): the checks about its sidebar strip are skipped (printed) while it is absent
+HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
+
 LUA = r'''
-return function(W, L)
+return function(W, L, HAS_CHAT)
 local R = {}
+local function skipChat(name) R[#R + 1] = { name, "skip" } end
 local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 5)
 local ns = rawget(_G, "XayaUI_NS")
@@ -79,8 +84,13 @@ ns.Notepad_SetShown(true); W.tick(0.1, 2)
 local note = _G.XayaUINotepad
 local ndb = ns.notepadDB
 local sidebar = _G.XayaUIChatSidebar
-check("the test's elements exist (display, data panel, Notepad, chat sidebar)", dfr and panel and note and sidebar and true or false,
-  tostring(dfr) .. tostring(panel) .. tostring(note) .. tostring(sidebar))
+if HAS_CHAT then
+  check("the test's elements exist (display, data panel, Notepad, chat sidebar)", dfr and panel and note and sidebar and true or false,
+    tostring(dfr) .. tostring(panel) .. tostring(note) .. tostring(sidebar))
+else
+  check("the test's elements exist (display, data panel, Notepad; XayaUI_Chat is absent: no chat sidebar)", dfr and panel and note and sidebar == nil and true or false,
+    tostring(dfr) .. tostring(panel) .. tostring(note) .. tostring(sidebar))
+end
 
 local defs, order = ns.ElementDefs()
 R.registered = table.concat(order, " ")
@@ -88,7 +98,8 @@ local panelUp, slotClick, dispUp, noteUp = panel:GetScript("OnMouseUp"), slot1:G
 -- A: window closed
 check("A closed: no element handler on any frame", ns.ElementHandlersAttached() == 0, ns.ElementHandlersAttached())
 check("A closed: no element menu frame exists", ns.ElementMenu() == nil and _G.XayaUIElementMenu == nil)
-check("A closed: the chat sidebar strip does not take the mouse", not sidebar:IsMouseEnabled())
+if HAS_CHAT then check("A closed: the chat sidebar strip does not take the mouse", not sidebar:IsMouseEnabled())
+else skipChat("A closed: the chat sidebar strip does not take the mouse") end
 opened = {}
 ns.ElementRightClick(panel, "OnMouseUp")
 check("A closed: right-click on a data panel opens its page (as before)", opened[1] == "bonus/datapanels", table.concat(opened, ","))
@@ -106,7 +117,8 @@ check("B the window is shown", ns.ElementWindowIsShown())
 ns.SetMoveUnlocked({ cue }, true); ns.Step(); W.tick(0.1, 2)
 check("B the frames carry the right-click while the window is shown", ns.ElementHandlersAttached() >= 4 and panel:GetScript("OnMouseUp") ~= panelUp
   and slot1:GetScript("OnClick") ~= slotClick and dfr:GetScript("OnMouseUp") ~= dispUp, ns.ElementHandlersAttached())
-check("B the chat sidebar strip takes the mouse while the window is shown", sidebar:IsMouseEnabled())
+if HAS_CHAT then check("B the chat sidebar strip takes the mouse while the window is shown", sidebar:IsMouseEnabled())
+else skipChat("B the chat sidebar strip takes the mouse while the window is shown") end
 local function visibleKids(m)
   local out = {}
   for _, k in ipairs({ m:GetChildren() }) do if k:IsShown() then out[#out + 1] = k end end
@@ -235,12 +247,17 @@ if slp then
 end
 
 -- F: no X / Y where the element has none, and for a Blizzard frame
-ns.ElementRightClick(sidebar, "OnMouseUp")
-R.sidebarMenu = menuShape()
-check("F chat sidebar: Element options only (its place is a side and a gap, no X / Y)", R.sidebarMenu == "[Element options]", R.sidebarMenu)
-opened = {}
-m.options:GetScript("OnClick")(m.options, "LeftButton")
-check("C Element options on the sidebar opens QoL > Improved Chat > Sidebar", opened[1] == "qol/improvedchat/sidebar", table.concat(opened, ","))
+if HAS_CHAT then
+  ns.ElementRightClick(sidebar, "OnMouseUp")
+  R.sidebarMenu = menuShape()
+  check("F chat sidebar: Element options only (its place is a side and a gap, no X / Y)", R.sidebarMenu == "[Element options]", R.sidebarMenu)
+  opened = {}
+  m.options:GetScript("OnClick")(m.options, "LeftButton")
+  check("C Element options on the sidebar opens QoL > Improved Chat > Sidebar", opened[1] == "qol/improvedchat/sidebar", table.concat(opened, ","))
+else
+  skipChat("F chat sidebar: Element options only (its place is a side and a gap, no X / Y)")
+  skipChat("C Element options on the sidebar opens QoL > Improved Chat > Sidebar")
+end
 local blz = W.new("Frame", "XuiTestBlizzardFrame", UIParent); blz:EnableMouse(true)
 local blzOwn = 0
 blz:SetScript("OnMouseUp", function() blzOwn = blzOwn + 1 end)
@@ -277,7 +294,8 @@ if ns.ElementWindowIsShown() then pcall(ns.ToggleUI) end; W.tick(0.1, 4)
 check("H window closed: the menu is hidden", not ns.ElementMenu():IsShown())
 check("H window closed: every frame has its own script back", ns.ElementHandlersAttached() == 0 and panel:GetScript("OnMouseUp") == panelUp
   and slot1:GetScript("OnClick") == slotClick and dfr:GetScript("OnMouseUp") == dispUp and note:GetScript("OnMouseUp") == noteUp)
-check("H window closed: the sidebar strip no longer takes the mouse", not sidebar:IsMouseEnabled())
+if HAS_CHAT then check("H window closed: the sidebar strip no longer takes the mouse", not sidebar:IsMouseEnabled())
+else skipChat("H window closed: the sidebar strip no longer takes the mouse") end
 opened = {}
 ns.ElementRightClick(slot1, "OnClick")
 check("H window closed: right-click on a data panel opens its page again (old behaviour)", opened[1] == "bonus/datapanels" and not ns.ElementMenu():IsShown(), table.concat(opened, ","))
@@ -311,17 +329,24 @@ def session(src, enabled):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(src, world, loader)
+    res = L.eval("function(src, W, Ld, c) return loadstring(src)()(W, Ld, c) end")(src, world, loader, HAS_CHAT)
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
     return res, errs
 
 
 def main():
     folders = H.find_addons()
-    bad = n = 0
+    bad = n = nskip = 0
+
+    def skip(name):
+        nonlocal nskip
+        nskip += 1
+        print("SKIP (QA-branch module absent: XayaUI_Chat) " + name)
 
     def check(name, ok, detail=""):
         nonlocal bad, n
+        if ok == "skip":
+            return skip(name)
         n += 1
         print(("ok  " if ok else "FAIL: ") + name + ("" if ok or not detail else "  [" + str(detail) + "]"))
         if not ok:
@@ -345,6 +370,9 @@ def main():
     for e1 in e:
         print("ERROR:", e1[:400]); bad += 1
     for off in ("XayaUI_Bonus", "XayaUI_Chat", "XayaUI_Rules", "XayaUI_QoL"):
+        if off == "XayaUI_Chat" and not HAS_CHAT:
+            skip("I %s off: nothing of it is registered" % off)
+            continue
         r, e = session(OFF, [k for k in every if k != off and not (off == "XayaUI_Rules" and k == "XayaUI_Rules_Options")])
         reg = str(r.registered).split()
         mine = {"XayaUI_Bonus": ("dataPanel:", "notepad", "calculator"), "XayaUI_Chat": ("chatSidebar", "chatDataPanel"),
@@ -355,7 +383,7 @@ def main():
     r, e = session(OFF, ["XayaUI", "XayaUI_Options", "XayaUI_Media"])
     check("I every feature module off: no element is registered, no handler, no menu frame",
           str(r.registered) == "" and r.attached == 0 and not r.menu, "%s %s %s" % (r.registered, r.attached, r.menu))
-    print("%d checks, %d failed" % (n, bad))
+    print("%d checks, %d failed%s" % (n, bad, (", %d skipped (QA-branch module absent: XayaUI_Chat)" % nskip) if nskip else ""))
     sys.exit(1 if bad else 0)
 
 

@@ -5,6 +5,8 @@
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
+-- (Dev Assist 0.7.72) XayaUI_Reskin lives on qa-installer-branch since 2026-11-08: nothing here is listed where it is not installed
+if QA.Missing and QA.Missing("XayaUI_Reskin") then return end
 local function NS() return rawget(_G, "XayaUI_NS") end
 -- (Dev Assist 0.7.55, P2 settings seam) XayaUI's settings through its views (core Modules.lua section 0b); an empty table without XayaUI
 local function Settings(m) local cns = NS(); return cns and cns.Settings and cns.Settings(m) or {} end

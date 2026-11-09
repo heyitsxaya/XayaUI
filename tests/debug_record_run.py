@@ -63,6 +63,7 @@ function NKIND(kind) local r = CueRulesDB.debugRecord; if not r then return 0 en
 function RESET() CHAT = {}; SINK = {}; WINDOW.open = false; WINDOW.calls = 0 end
 ''')
 fails = []
+skipped = []
 def check(name, ok, extra=""):
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
@@ -111,7 +112,10 @@ check("an ordinary message after a private one is recorded again", E("HAS('msg',
 # every message that can name another player goes through ns.PrintPrivate (wiring; the outcome is checked above)
 def src(p): return open(os.path.join(ROOT, p), encoding="utf-8").read()
 # (Dev Assist 0.7.5: /xui chat indent and /xui debug chatprobe moved to XayaUI Dev Assist, CoreDebug.lua and ChatProbe.lua)
-chatCore, chatProbe, notes, msgs = src("XayaUI_DevAssist/CoreDebug.lua"), src("XayaUI_DevAssist/ChatProbe.lua"), src("XayaUI_Bonus/NotepadShare.lua"), src("XayaUI_Chat/Messages.lua")
+chatCore, chatProbe, notes = src("XayaUI_DevAssist/CoreDebug.lua"), src("XayaUI_DevAssist/ChatProbe.lua"), src("XayaUI_Bonus/NotepadShare.lua")
+# XayaUI_Chat is a QA-branch module (absent on main): its files are not read and the check about its message is skipped, printed
+HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
+msgs = src("XayaUI_Chat/Messages.lua") if HAS_CHAT else ""
 check("wiring: /xui chat indent (prints the start of chat lines) is private",
       "local say = ns.PrintPrivate or ns.Print\n            say((\"  line %d: box left" in chatCore and "ns.Print((\"  line %d" not in chatCore)
 check("wiring: /xui debug chatprobe top-left frames (frame text can be a character name) are private",
@@ -119,7 +123,11 @@ check("wiring: /xui debug chatprobe top-left frames (frame text can be a charact
 check("wiring: shared-note messages naming the sender are private",
       "SayPrivate(pos and (\"Saved \" .. ShortName(o.sender)" in notes and "SayPrivate(\"Ignoring shared notes from \" .. ShortName(o.sender)" in notes
       and "Say(pos and (\"Saved \"" not in notes.replace("SayPrivate(", "") and "local p = ns.PrintPrivate or ns.Print" in notes)
-check("wiring: the Ctrl + right-click ignore message is private", "local say = ns.PrintPrivate or ns.Print" in msgs and "say(\"Ignoring \" .. name" in msgs)
+if HAS_CHAT:
+    check("wiring: the Ctrl + right-click ignore message is private", "local say = ns.PrintPrivate or ns.Print" in msgs and "say(\"Ignoring \" .. name" in msgs)
+else:
+    print("SKIP (QA-branch module absent: XayaUI_Chat) wiring: the Ctrl + right-click ignore message is private")
+    skipped.append("ignore message")
 L.execute("OUT = NS.CaptureOutput(function() NS.Print('collected line') end)")
 check("collected output (used for the engine status) is neither shown nor recorded as a message", E("OUT[1] == 'collected line' and not HAS('msg', 'collected line')"))
 
@@ -368,5 +376,5 @@ check("Settings: 'What to send' shows XayaUI.lua's path in a box to copy, and ty
 check("Settings: the developer file's box shows only when that addon says its file", E("SEND.sendDev.hidden() == false and SEND.sendDev.get():find('XayaUI_DevTest.lua', 1, true) ~= nil"))
 check("Settings: 'What to send' is shown even with Advanced Debugging off (a bug report needs it too)", E("DBG.send.hidden == nil"))
 
-print("FAILS: %d" % len(fails))
+print("FAILS: %d%s" % (len(fails), (" (%d skipped: QA-branch module absent: XayaUI_Chat)" % len(skipped)) if skipped else ""))
 sys.exit(1 if fails else 0)

@@ -15,6 +15,10 @@ FAILED_COUNT = re.compile(r"\b(\d+)\s+failed\b", re.I)    # "18 checks, 0 failed
 FAILS_COUNT = re.compile(r"\bFAILS:\s*(\d+)\b")             # "FAILS: 0", "FAILS:  0"
 NO_COUNT_PASS = re.compile(r"\bPASS(?:ED)?\b|\bpassed\b")  # "ALL CHECKS PASS", "all 12 passed" (no failure count printed)
 FAIL_WORD = re.compile(r"\bFAIL(?:S|ED|URES?)?\b", re.I)
+# the feature addons present in this checkout (main has no XayaUI_Reskin since 2026-11-08: tools/qa-only-paths.txt)
+ROOT = os.path.dirname(HERE)
+FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options")
+            if os.path.isdir(os.path.join(ROOT, a))]
 
 
 def line_passes(last):
@@ -37,12 +41,11 @@ def main(args):
         print(("ok   " if ok else "FAIL ") + os.path.basename(t) + "  " + last[:90])
     harness = [sys.executable, os.path.join(HERE, "harness", "run.py"), "--fresh-only"]
     if quick:
-        harness += ["--only", "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
+        harness += ["--only"] + FEATURES
     r = subprocess.run(harness)
     bad += 0 if r.returncode == 0 else 1
     if saved:
-        r = subprocess.run([sys.executable, os.path.join(HERE, "harness", "run.py"), "--saved", saved, "--only",
-                            "XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"])
+        r = subprocess.run([sys.executable, os.path.join(HERE, "harness", "run.py"), "--saved", saved, "--only"] + FEATURES)
         bad += 0 if r.returncode == 0 else 1
     print("ALL CHECKS PASS" if bad == 0 else "%d CHECK GROUP(S) FAILED" % bad)
     return 1 if bad else 0

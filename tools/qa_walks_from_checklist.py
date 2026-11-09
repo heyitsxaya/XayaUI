@@ -21,6 +21,9 @@ OUT = os.path.join(ROOT, "XayaUI_DevAssist", "QAWalks-Checklist.lua")
 CHUNK = 12
 LOOK = r"\b(label|labels|clip|clipped|clips|colou?r|colou?rs|font|width|wider|border|gutter|margin|skin|tab|tabs|truncat\w*|align\w*|look|icon size|spacing|overlap\w*|highlight\w*|tooltip|text size|layout|banner|theme)\b"
 USE = r"\b(combat|trigger\w*|fires?|firing|sound\w*|saves?|saved|reload|import|export|load(s|ed)?|cast\w*|aura\w*|proc\w*|delete\w*|crash\w*|error)\b"
+# Checklist sections for addons that live only on qa-installer-branch (tools/qa-only-paths.txt, 2026-11-08): their steps carry
+# `needs`, so Dev Assist (QAWalk.lua QA.Register) leaves them out where that addon is not installed.
+SECTION_NEEDS = {"G": "XayaUI_Reskin", "K": "XayaUI_Nameplates"}
 URGENT = [r"#268\b", r"#368\b", r"#369\b", r"#370\b", r"[Cc]haracter [Pp]ane", r"[Cc]haracter [Rr]eskin"]
 
 
@@ -49,6 +52,11 @@ def lua_str(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
 
 
+def needs_of(item):
+    m = re.match(r"^([A-Z])\.", item.get("section") or "")
+    return SECTION_NEEDS.get(m.group(1)) if m else None
+
+
 def build():
     its = items()
     used = set()
@@ -64,7 +72,7 @@ def build():
             k = (n // CHUNK) + 1
             total = (len(lst) + CHUNK - 1) // CHUNK
             add("%s-%d" % (prefix, k), "%s%s" % (title, (" (%d of %d)" % (k, total)) if total > 1 else ""), order + k * 0.01,
-                [(i["id"], ("[%s] " % i["id"]) + wow(i["text"])) for i in part])
+                [(i["id"], ("[%s] " % i["id"]) + wow(i["text"]), needs_of(i)) for i in part])
             for i in part:
                 used.add(i["id"])
 
@@ -77,7 +85,7 @@ def build():
         if cover:
             step += "\n\nThe QA step that covers it: %s (in the walkthroughs below)." % ", ".join(cover)
         step += "\n\n|cffffd100Your call:|r does this still happen in your game? Pass = it is fixed, Fail = it still happens (say what you see)."
-        bsteps.append(("bug%d" % n, step))
+        bsteps.append(("bug%d" % n, step, None))
     add("chk-bugs", "1. Open bugs to confirm", 100, bsteps)
     look = [i for i in its if not i["section"].startswith("B-engine") and re.search(LOOK, i["text"], re.I) and not re.search(USE, i["text"], re.I)]
     chunked("chk-look", "2. Looks and layout (no effect on use)", 200, look)
@@ -111,8 +119,8 @@ def build():
     ]
     for key, title, order, steps in walks:
         lines.append("QA.Register(%s, { title = %s, order = %s, generated = true, steps = {" % (lua_str(key), lua_str(title), repr(order)))
-        for key, s in steps:
-            lines.append("    { key = %s, text = %s }," % (lua_str(key), lua_str(s)))
+        for key, s, needs in steps:
+            lines.append("    { key = %s, text = %s%s }," % (lua_str(key), lua_str(s), (", needs = %s" % lua_str(needs)) if needs else ""))
         lines.append("} })")
     return "\n".join(lines) + "\n", walks, its
 
