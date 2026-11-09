@@ -63,3 +63,4 @@ QAWalks-aspect-ratio.lua
 QAWalks-sidebar-delete.lua
 QAWalks-merge-rules.lua
 QAWalks-group-anchors.lua
+QAWalks-keys.lua

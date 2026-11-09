@@ -925,6 +925,7 @@ local function Build()
         f.settingName = true; self:SetText(self.orig or ""); f.settingName = nil
         self:ClearFocus()
     end)
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(ne, { within = f }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     ne:SetScript("OnEnter", function(self)
         local db = DB(); local idx = db and IndexOf(db.current) or 1
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText("Rename this note", 1, 0.82, 0)
@@ -956,6 +957,7 @@ local function Build()
 
     eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     eb:SetScript("OnEditFocusLost", function() Flush() end)
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(eb, { within = f }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     eb:SetScript("OnKeyDown", function(_, key)
         if IsControlKeyDown() or (IsMetaKeyDown and IsMetaKeyDown()) then
             if key == "Z" then UndoApply(IsShiftKeyDown() and 1 or -1)

@@ -444,6 +444,7 @@ local function BuildWindow()
     sbox:SetScript("OnMouseUp", function(self) self:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
     copy:SetScript("OnClick", function() sbox:SetFocus(); sbox:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
     f.str, f.copy = sbox, copy
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(sbox) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     -- the summary
     local sf = CreateFrame("ScrollFrame", "XayaUIDebugReportScroll", f, "UIPanelScrollFrameTemplate")
     sf:SetPoint("TOPLEFT", M, -50); sf:SetPoint("BOTTOMRIGHT", -(M + 22), M + 24 + G)
@@ -453,6 +454,7 @@ local function BuildWindow()
     eb:SetScript("OnEscapePressed", function() f:Hide() end)
     sf:SetScrollChild(eb)
     f.text = eb
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIDebugReport") end
     return f
 end

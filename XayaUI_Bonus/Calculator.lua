@@ -309,6 +309,7 @@ local function Build()
     e:SetScript("OnEnterPressed", function(self) Work(self:GetText()) end)
     e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.edit = e
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(e, { within = f }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
 
     f.result = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     f.result:SetPoint("TOPLEFT", e, "BOTTOMLEFT", -4, -G); f.result:SetPoint("TOPRIGHT", e, "BOTTOMRIGHT", 0, -G)

@@ -700,6 +700,7 @@ local function BuildPositionBox()
             self:ClearFocus(); posBox.Fill()
         end)
         e:SetScript("OnEscapePressed", function(self) self:ClearFocus(); posBox.Fill() end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(e) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         return e
     end
     posBox.x = Field("X", "x", 10); posBox.y = Field("Y", "y", 100)

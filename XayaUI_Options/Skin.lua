@@ -213,6 +213,7 @@ ns.OptionsApi.FrameCloseButton = FrameCloseButton   -- (Dev Assist's walkthrough
 -------------------------------------------------------------------------------
 ns.treeFilter = ""
 local filterStamp = 0
+ns.OptionsApi.TreeFilter = function() return ns.treeFilter end   -- (Dev Assist's walkthrough "keys", B395: the rule search text)
 
 local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color
 -- a theme change also repaints every rule-list row (their text color was set when the row was drawn: dark text from Light mode stayed on a dark theme)
@@ -251,6 +252,7 @@ local function MakeSearchBox(parent)
     sb:SetScript("OnEditFocusGained", refreshHint)
     sb:SetScript("OnEditFocusLost", refreshHint)
     sb:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(sb, { onDone = function() ns.treeSearchRefocus = nil end }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     sb:SetScript("OnTextChanged", function(self)
         refreshHint(self)
         local q = (self:GetText() or ""):lower()
@@ -1190,6 +1192,7 @@ local function PaintNameEdit(w, arg)
             if self.xuiCancel then self.xuiCancel = nil; self:SetText(spec and tostring(spec.get() or "") or ""); return end
             if spec and self:GetText() ~= tostring(spec.get() or "") then spec.set(self:GetText()) end
         end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         f.xuiNameEB = eb
         f.xuiNameHint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         do local c = TC("xui-text-muted", "text", { 0.45, 0.45, 0.45, 1 }); f.xuiNameHint:SetTextColor(c[1], c[2], c[3]) end

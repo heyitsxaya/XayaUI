@@ -1562,6 +1562,7 @@ local function ShowGroupPosPopup(fo)
             local eb = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
             eb:SetSize(100, 20); eb:SetPoint("TOPLEFT", 110, y + 4); eb:SetAutoFocus(false); eb:SetMaxLetters(8)
             eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+            if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
             return eb
         end
         local function Apply()
@@ -3673,18 +3674,18 @@ local function KeyFrame()   -- made on the first opening of the mover view (V14)
     -- whether the game gives keys to a keyboard frame with no size, or ahead of other addons' keyboard frames below it, is not
     -- documented (INFERENCE: both made safe here; the mouse still goes through it, EnableMouse stays off)
     k:SetFrameStrata("FULLSCREEN_DIALOG"); k:SetSize(1, 1); k:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
-    k:EnableKeyboard(true)
-    k:SetScript("OnKeyDown", function(self, key)
+    -- (row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM SCREENSHOTTING") the keys go through core's ns.KeyCatch
+    -- (XayaUI/KeyCatch.lua): only an arrow that nudged something is held, for that key only; every other key, PRINTSCREEN included,
+    -- reaches the game, also in combat (this frame set the flag by hand only out of combat, so after an arrow, or when no key had been
+    -- pressed yet, a fight with the mover view open kept every key: movement and the screenshot key)
+    local function OnKey(_, key, inCombat)
         local n = NUDGE[key]
-        local used = n and not (InCombatLockdown and InCombatLockdown()) and mover.sel ~= nil
-        if not (InCombatLockdown and InCombatLockdown()) and self.SetPropagateKeyboardInput then
-            pcall(self.SetPropagateKeyboardInput, self, not used)   -- every other key still reaches the game
-        end
-        if used then
-            local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
-            ns.MoverNudge(n[1] * step, n[2] * step)
-        end
-    end)
+        if not (n and not inCombat and mover.sel ~= nil) then return false end
+        local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+        ns.MoverNudge(n[1] * step, n[2] * step)
+        return true
+    end
+    if ns.KeyCatch then ns.KeyCatch(k, OnKey) end
     mover.keys = k
     return k
 end
