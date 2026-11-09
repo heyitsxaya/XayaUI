@@ -15,9 +15,9 @@ FAILED_COUNT = re.compile(r"\b(\d+)\s+failed\b", re.I)    # "18 checks, 0 failed
 FAILS_COUNT = re.compile(r"\bFAILS:\s*(\d+)\b")             # "FAILS: 0", "FAILS:  0"
 NO_COUNT_PASS = re.compile(r"\bPASS(?:ED)?\b|\bpassed\b")  # "ALL CHECKS PASS", "all 12 passed" (no failure count printed)
 FAIL_WORD = re.compile(r"\bFAIL(?:S|ED|URES?)?\b", re.I)
-# the feature addons present in this checkout (main has no XayaUI_Reskin since 2026-11-08: tools/qa-only-paths.txt)
+# the feature addons present in this checkout (main holds XayaUI, XayaUI_Options and XayaUI_Rules: REQUEST-LOG A23)
 ROOT = os.path.dirname(HERE)
-FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options")
+FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Options")
             if os.path.isdir(os.path.join(ROOT, a))]
 
 

@@ -6,7 +6,7 @@
 -- the top tabs, the shared helpers (ns.OptionsApi), the feature tabs built from the pages each module registers, and the Platform
 -- pages (Settings, Profiles with the Recycle Bin, the minimap button, Debugging). The rule editor and the rules tree (the Rules tab)
 -- live in the rule editor (P3: XayaUI_Options/RuleEditor/); they reach this file only through ns.OptionsApi.Shared, and it reaches them through ns.OptionsApi.RuleEditor.
--- Since P4b (Options 0.6.87) that folder is its own load-on-demand addon, XayaUI_Rules_Options: ns.OptionsApi.LoadRuleEditor (below)
+-- Since Options 0.6.107 (A23 SD-6) that code is part of XayaUI Rules (XayaUI_Rules/Editor/), set up by ns.OptionsApi.LoadRuleEditor (below)
 -- loads it when the window opens while XayaUI Rules is on; the row painting every tab shares is TreePaint.lua.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
@@ -24,9 +24,9 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
--- (P3) what this window asks of the rule editor (XayaUI_Rules_Options since P4b; filled when it loads, empty while XayaUI Rules is off):
+-- (P3) what this window asks of the rule editor (XayaUI_Rules/Editor/ since Options 0.6.107; filled when it is set up, empty while XayaUI Rules is off):
 -- BuildRulesTab, SettingsRows, SelectedRule, StatusText, and the editor's hooks the window calls (published at the end of
--- XayaUI_Rules_Options/RuleSettings.lua); every call checks the entry is there
+-- XayaUI_Rules/Editor/RuleSettings.lua); every call checks the entry is there
 ns.OptionsApi.RuleEditor = {}
 local RE = ns.OptionsApi.RuleEditor
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
@@ -438,9 +438,9 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
 end
 -- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
 -- a rebuild that grows or shrinks the page needs a second pass a moment later, or the scroll area keeps its old height (content clips, no scrollbar)
-ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) the rule editor (XayaUI_Rules_Options/Editor.lua) adds Changed, SpellName, SpellTex, SearchBox
+ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) the rule editor (XayaUI_Rules/Editor/Editor.lua) adds Changed, SpellName, SpellTex, SearchBox
 -- (Options 0.6.83, P3 options split; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7) The rule editor and the rules tree live in
--- XayaUI_Rules_Options (loaded after this addon, P4b). What they use of this window, their only way in:
+-- XayaUI_Rules/Editor/ (set up after this addon loaded). What they use of this window, their only way in:
 ns.OptionsApi.Shared = { APP = APP, AceConfigRegistry = AceConfigRegistry, AceConfigDialog = AceConfigDialog, Tree = Tree, Notify = Notify,
     CoreS = CoreS, PlatS = PlatS, QolS = QolS, Col = Col, Rng = Rng, Tog = Tog, Sel = Sel }
 -- ...and what this file asks of them: ns.OptionsApi.RuleEditor (RE, made at the top of this file)
@@ -528,29 +528,26 @@ function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) e
 -- list rows and the Rule Creation tab of Settings, and the rule backups under Profiles > Export are left out (nothing of the rule editor
 -- is built); the rest of the window is the same.
 local function RulesOn() return (ns.Service and ns.Service("rules")) and true or false end
--- (Options 0.6.87, P4b; plan section 7 / Q1) The rule editor is the load-on-demand addon XayaUI_Rules_Options (## Dependencies:
--- XayaUI, XayaUI_Rules, XayaUI_Options). It is loaded once per session, after this addon finished loading: by core's ns.LoadOptions
--- (Modules.lua, through ns.Options.AfterLoad) and, for a caller that loaded this addon some other way, by Toggle; only while XayaUI
--- Rules is on, so with it off none of its files is read (V14). C_AddOns.LoadAddOn(name: uiAddon) -> loaded: bool?, value: string?
--- (docs/reference/api/namespaces.md:164, SecretArguments=AllowedWhenUntainted); core loads this addon the same way (Modules.lua).
--- EditorOn: the Rules tab and the rule rows of Settings are built only when the editor is there (XayaUI Rules on, editor loaded).
-ns.OptionsApi.RULE_EDITOR_ADDON = "XayaUI_Rules_Options"
+-- (Options 0.6.107, REQUEST-LOG A23 SD-6) The rule editor is part of XayaUI Rules (XayaUI_Rules/Editor/; it was the load-on-demand
+-- addon XayaUI_Rules_Options). The game reads its files with Rules at login; each file only adds one set-up function to
+-- ns.RuleEditorFiles, in .toc order. They run here, once per session, after this addon has finished loading: from core's
+-- ns.LoadOptions (Modules.lua, through ns.Options.AfterLoad) and, for a caller that loaded this addon some other way, from Toggle; only
+-- while XayaUI Rules is on. So no editor frame, popup, listener or hook exists before the window opens. A file whose set-up errors is
+-- reported through the game's error handler and the others still run, as when the game loads a .toc. The list is then dropped, so the
+-- set-up code itself can be freed (the functions it made stay).
+-- EditorOn: the Rules tab and the rule rows of Settings are built only when the editor is there (XayaUI Rules on, editor set up).
 local function EditorOn() return RulesOn() and ns.OptionsApi.RuleEditor.BuildRulesTab ~= nil end
 function ns.OptionsApi.LoadRuleEditor()
     if ns.OptionsApi.ruleEditorTried or not RulesOn() then return EditorOn() end
     ns.OptionsApi.ruleEditorTried = true
-    local A = C_AddOns
-    local ok, loaded, reason = false, nil, nil
-    if A and A.LoadAddOn then ok, loaded, reason = pcall(A.LoadAddOn, ns.OptionsApi.RULE_EDITOR_ADDON) end
-    if not (ok and loaded and EditorOn()) then
-        local state = ns.ModuleState and ns.ModuleState(ns.OptionsApi.RULE_EDITOR_ADDON)
-        if state == "disabled" then
-            ns.Print("the rule editor (XayaUI Rules Options) is switched off in the game's AddOns list: the Rules tab is left out. Turn it on, then /reload.")
-        elseif state == "missing" then
-            ns.Print("the rule editor (XayaUI Rules Options) is not installed: the XayaUI_Rules_Options folder belongs next to XayaUI in Interface\\AddOns. The Rules tab is left out.")
-        else
-            ns.Print("the rule editor could not load (" .. tostring(ok and reason or loaded) .. "): the Rules tab is left out. /xui bug shows errors.")
-        end
+    local files = ns.RuleEditorFiles
+    ns.RuleEditorFiles = nil
+    if type(files) == "table" then
+        local handler = (geterrorhandler and geterrorhandler()) or function(e) ns.Print(tostring(e)) end
+        for i = 1, #files do xpcall(files[i], handler) end
+    end
+    if not EditorOn() then
+        ns.Print("the rule editor could not be set up: the Rules tab is left out. /xui bug shows errors.")
     end
     return EditorOn()
 end
@@ -559,7 +556,7 @@ local function BuildAddonSettings()
     local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
     local dispRows, ruleRows = {}, nil
-    if EditorOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (XayaUI_Rules_Options/RuleSettings.lua)
+    if EditorOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (XayaUI_Rules/Editor/RuleSettings.lua)
     local page = { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
@@ -587,7 +584,7 @@ local function BuildAddonSettings()
                 get = function() return (PlatS.ui and PlatS.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
         } },
-        rules = ruleRows,   -- (P3) the Rule Creation tab: XayaUI_Rules_Options/RuleSettings.lua
+        rules = ruleRows,   -- (P3) the Rule Creation tab: XayaUI_Rules/Editor/RuleSettings.lua
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
@@ -961,7 +958,7 @@ function ns.InfoPass(root)
     walk(root)
 end
 local function BuildOptions()
-    ---------------------------------------------------------- Rules (XayaUI_Rules_Options/RulesTree.lua; P3)
+    ---------------------------------------------------------- Rules (XayaUI_Rules/Editor/RulesTree.lua; P3)
     local track, allQol, allBars
     if EditorOn() then track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab() end   -- (P4) none while XayaUI Rules is off (P4b: or its editor is missing)
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
@@ -1345,7 +1342,7 @@ do
         return a, b, c
     end
 end
--- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (XayaUI_Rules_Options/Sidebar.lua, Editor.lua)
+-- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (XayaUI_Rules/Editor/Sidebar.lua, Editor.lua)
 -- (P4b) nil while the rule editor is not loaded (XayaUI Rules off): the strip then reads as with no rule selected
 local function SelectedRule() local f = ns.OptionsApi.RuleEditor.SelectedRule; return f and f() end
 local function StatusText(rule) return ns.OptionsApi.RuleEditor.StatusText(rule) end

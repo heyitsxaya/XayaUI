@@ -13,7 +13,7 @@ Exit code 0 only when there is no FAIL.
 Usage:
   python3 tests/harness/run.py                    every combination, fresh install
   python3 tests/harness/run.py --saved PATH       also with a real SavedVariables file (e.g. Xaya's WTF\\...\\XayaUI.lua; never committed)
-  python3 tests/harness/run.py --only XayaUI_Chat  one combination: core plus the named addons
+  python3 tests/harness/run.py --only XayaUI_Rules one combination: core plus the named addons
   XUI_API_INDEX=path/api_index.json               documented API (build it with build_api_index.py); without it, widget methods and
                                                   events are not checked and the run says so
 """
@@ -23,13 +23,15 @@ import lupa.lua51 as lua51
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 CORE = "XayaUI"
-# (P4) XayaUI Rules (rule and aura tracking) is a module a player switches on and off like the others: every combination is run with it
-# on and with it off (the Platform and every other module must load and work without it)
-FEATURES = ["XayaUI_Rules", "XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_Options"]
-# (P4b) XayaUI_Rules_Options (the rule editor) is load-on-demand like XayaUI_Options and needs XayaUI Rules and XayaUI Options: it is
-# switched on in every combination, so it is loaded (when the window opens) exactly where both are on, and nothing of it anywhere else;
-# one more combination below has everything but it (a player who did not copy the folder)
-ALWAYS = ["XayaUI_Media", "XayaUI_Rules_Options"]
+# (P4) XayaUI Rules (rules, aura tracking and, since Rules 0.7.0, the rule editor) is a module a player switches on and off like the
+# others: every combination is run with it on and with it off (the Platform and the settings window must load and work without it).
+# Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (REQUEST-LOG A23); the other addons live on qa-installer-branch.
+FEATURES = ["XayaUI_Rules", "XayaUI_Options"]
+# support folders switched on in every combination (none on main)
+ALWAYS = []
+# (Rules 0.7.0, A23 SD-6) files of an addon that run only after another addon has loaded, so they may use that addon's names:
+# the rule editor (XayaUI_Rules/Editor/) runs only when the settings window (XayaUI_Options) has loaded (Options.lua LoadRuleEditor)
+RUNS_AFTER = {("XayaUI_Rules", "Editor/"): "XayaUI_Options"}
 
 
 def find_addons():
@@ -299,10 +301,12 @@ def boundary_checks(folders):
     out = []
     for (addon, f), c in code.items():
         for i, line in enumerate(c.split("\n"), 1):
+            extra = {dep for (a, sub), dep in RUNS_AFTER.items()
+                     if a == addon and os.path.relpath(f, folders[addon]).replace("\\", "/").startswith(sub)}
             for m in re.finditer(r"\bns\.([A-Za-z_]\w*)", line):
                 n = m.group(1)
                 o = owner.get(n)
-                if not o or addon in o or CORE in o or n in PUBLISHED or (o & allowed[addon]):
+                if not o or addon in o or CORE in o or n in PUBLISHED or (o & (allowed[addon] | extra)):
                     continue
                 out.append("%s:%d (%s) uses ns.%s, which belongs to %s; go through Modules.lua instead" % (
                     os.path.relpath(f, ROOT), i, addon, n, "/".join(sorted(o))))
@@ -334,11 +338,10 @@ def main():
     else:
         combos = [tuple(always) + c for r in range(len(features) + 1) for c in itertools.combinations(features, r)]
         combos.append(tuple(always) + tuple(features) + tuple(tools))
-        # (P4) and everything with XayaUI Rules off: Dev Assist and Nameplates too (Dev Assist names XayaUI Rules as an optional dependency)
+        # (P4) and everything with XayaUI Rules off
         if "XayaUI_Rules" in features:
             combos.append(tuple(always) + tuple(f for f in features if f != "XayaUI_Rules") + tuple(tools))
-        if "XayaUI_Rules_Options" in always:
-            combos.append(tuple(a for a in always if a != "XayaUI_Rules_Options") + tuple(features) + tuple(tools))
+        combos = list(dict.fromkeys(combos))   # with only two feature addons the extra runs repeat a subset: run each once
     datasets = [("fresh install", {})]
     if args.saved:
         datasets.append(("saved data " + os.path.basename(args.saved), read_saved_source(args.saved)))

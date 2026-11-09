@@ -65,7 +65,7 @@ local SETTINGS_KEYS = {
                   "backupPreCues", "setupBuildError", "setupShowError",
                   -- (core 0.6.84, Rules 0.6.82, group anchors fix A) the one-time "Nothing moves" update: its done flag and what it adjusted (Visual.lua)
                   "groupAnchorVer", "groupAnchorMoved",
-                  -- (P5) the rules' own switches, kept in CueRulesDB.ui before (LEGACY_UNDER_UI); only XayaUI Rules / Rules Options read them
+                  -- (P5) the rules' own switches, kept in CueRulesDB.ui before (LEGACY_UNDER_UI); only XayaUI Rules reads them
                   "snapMode", "auto", "creatorIDs", "folderOrdered", "defaultFolders", "defaultFoldersV", "hybridMigrated", "progressMigrated",
                   "skipSoundAllPrompt", "promptSave", "draftsMax", "draftsConfirmDiscard", "draftsConfirmDelete", "draftsCloseNotice" },
     -- (core 0.6.84; REQUEST-LOG TRI-8) characterReskinLook: the character reskin's look half while XayaUI Blizzard Reskin is not installed
@@ -1155,7 +1155,7 @@ function ns.LoadOptions()
     if not (A and A.LoadAddOn) then return false end
     local ok, loaded, reason = pcall(A.LoadAddOn, ns.OPTIONS_ADDON)
     if ok and loaded and ns.Options then
-        -- (XayaUI 0.6.77, P4b) the window's own parts that are separate load-on-demand addons (the rule editor, XayaUI_Rules_Options,
+        -- (XayaUI 0.6.77, P4b) the window's parts that are set up after it loads (the rule editor, XayaUI_Rules/Editor/,
         -- while XayaUI Rules is on) load now, after XayaUI_Options has finished loading; the window decides which (ns.Options.AfterLoad)
         if ns.Options.AfterLoad then Call(ns.Options.AfterLoad) end
         return true
