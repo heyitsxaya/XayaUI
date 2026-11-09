@@ -516,15 +516,17 @@ function ns.FolderContainerGroup(f)
     local STRATA = { "inherit", "BACKGROUND", "LOW", "MEDIUM", "HIGH", "DIALOG", "FULLSCREEN", "FULLSCREEN_DIALOG", "TOOLTIP" }
     local SV = { inherit = "(default - High)", BACKGROUND = "Background", LOW = "Low", MEDIUM = "Medium", HIGH = "High", DIALOG = "Dialog",
         FULLSCREEN = "Fullscreen", FULLSCREEN_DIALOG = "Fullscreen dialog", TOOLTIP = "Tooltip" }
-    local RELS = { "screen", "player", "target", "focus", "minimap", "chat", "custom" }
+    -- "group" (Rules 0.6.82, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #18, her words: "I should be able to anchor to another rule
+    -- group's position"; her decision: an "Another group" entry here with a group list): f.cRel = "group", f.cGroup = that group's id
+    local RELS = { "screen", "player", "target", "focus", "minimap", "chat", "custom", "group" }
     local RV = { screen = "Screen center (or the parent group)", player = "Player frame", target = "Target frame", focus = "Focus frame",
-        minimap = "Minimap", chat = "Main chat frame", custom = "Another frame (type its name)" }
+        minimap = "Minimap", chat = "Main chat frame", custom = "Another frame (type its name)", group = "Another group" }
     local function isDyn() return f.cType == "dynamic" end
     local g = { type = "group", inline = true, order = 5.4, name = "Group Type & Container",
         hidden = function() return not ns.KindHas({ folder = f.id }, "visual") end,
         args = {
             note = { type = "description", order = 0, width = "full", fontSize = "small",
-                name = "Every group is a container for the displays inside it (and inside its nested groups). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box (also what the anchor point refers to); a dynamic group wraps onto a new row / column when its items would exceed that size, or after the number of items you set in Items per row / column." },
+                name = "Every group is a container for the displays inside it (and inside its nested groups). Static: each display keeps its own position. Dynamic: the addon lays the visible displays out itself and ignores their own X / Y. The container settings below apply to everything inside. Width / height give the container a fixed box, and the anchor point is that box's point. In Auto size the anchor point is that point of what the group holds: the whole grid of a dynamic group, or the outline of every switched-on display of a static group (also ones not showing now); Center, Centered row and Centered column keep the group's centre. A dynamic group wraps onto a new row / column when its items would exceed that size, or after the number of items you set in Items per row / column." },
         } }
     AddSquareRadio(g.args, "ctype", 1, { static = "Static group  (items keep their own positions)", dynamic = "Dynamic group  (positions its items automatically)" },
         { "static", "dynamic" }, function() return isDyn() and "dynamic" or "static" end,
@@ -679,7 +681,34 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cAnchorTo == "screen" and "screen" or "parent" end,
         set = function(_, v) f.cAnchorTo = (v == "screen") and "screen" or nil; apply() end }
     g.args.rel = { type = "select", name = "Relative to", order = 4.1, width = "full", arg = { xuiSide = true }, values = RV, sorting = RELS,
-        get = function() return f.cRel or "screen" end, set = function(_, v) f.cRel = (v ~= "screen") and v or nil; apply() end }
+        get = function() return f.cRel or "screen" end,
+        set = function(_, v) f.cRel = (v ~= "screen") and v or nil; if v ~= "group" then f.cGroup = nil end; apply() end }
+    -- the groups this one may follow: not itself, none that would make a loop (Visual.lua ns.GroupAnchorAllowed), by their path
+    local function groupList()
+        local vals, order = {}, {}
+        for _, o in ipairs(ns.folders or {}) do
+            if ns.GroupAnchorAllowed and ns.GroupAnchorAllowed(f, o) then
+                local k = tostring(o.id)
+                vals[k] = ns.FolderPathText and ns.FolderPathText(o.id) or tostring(o.name)
+                order[#order + 1] = k
+            end
+        end
+        return vals, order
+    end
+    g.args.relGroup = { type = "select", name = "Group", order = 4.25, width = "full", arg = { xuiSide = true },
+        hidden = function() return f.cRel ~= "group" end,
+        values = function() return (groupList()) end,
+        sorting = function() local _, order = groupList(); return order end,
+        get = function()
+            if f.cGroup == nil then return nil end
+            local k = tostring(f.cGroup)
+            return (groupList())[k] and k or nil
+        end,
+        set = function(_, v)
+            local o = ns.FolderById(v) or ns.FolderById(tonumber(v))
+            f.cGroup = o and o.id or nil
+            apply()
+        end }
     g.args.relName = { type = "input", name = "Frame name", order = 4.2, width = "double", hidden = function() return f.cRel ~= "custom" end,
         desc = "The global name of any frame, e.g. PlayerFrame or MultiBarBottomLeft. If it does not exist the group falls back to the screen.",
         get = function() return f.cFrame or "" end, set = function(_, v) f.cFrame = (v ~= "") and v or nil; apply() end }

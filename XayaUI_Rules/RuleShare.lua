@@ -151,6 +151,14 @@ function ns.Share_ApplyRules(snap, mode)
             end
         end
         for _, a in ipairs(added) do a.nf.parent = (a.oldParent and map[a.oldParent]) or (wrap and wrap.id) or nil end
+        -- a group that follows another group (B, Rules 0.6.82): re-pointed to that group's new id; one that followed a group not in
+        -- the import is placed from the screen (or its parent group) instead, never from an unrelated group that has the old id here
+        for _, a in ipairs(added) do
+            if a.nf.cGroup ~= nil then
+                a.nf.cGroup = map[a.nf.cGroup]
+                if a.nf.cGroup == nil and a.nf.cRel == "group" then a.nf.cRel = nil end
+            end
+        end
         -- outcomes link to their parent by uid: give imported uids that already exist here a fresh value, and re-point the links
         local haveUid, uidMap = {}, {}
         for _, r in ipairs(ns.rules) do if type(r.uid) == "string" then haveUid[r.uid] = true end end

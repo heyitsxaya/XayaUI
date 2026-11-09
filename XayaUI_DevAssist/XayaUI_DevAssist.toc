@@ -62,3 +62,4 @@ QAWalks-stat-colors.lua
 QAWalks-aspect-ratio.lua
 QAWalks-sidebar-delete.lua
 QAWalks-merge-rules.lua
+QAWalks-group-anchors.lua

@@ -66,6 +66,13 @@ its switch too), and the Bonus pages, sorted by name, renumber: Data Panels 2 ->
 differ in 22-25 lines per variant (same line and node counts), each only in words of a name / desc / values text: gray -> grey, Grays -> Greys,
 ungrayed -> ungreyed (her exception; the Opacity & Fill / Overlay Layer descs and "(none - grey)"), colour(s / ed) -> color(s / ed), Colours -> Colors
 (the Nameplates page and its switch, Friend Colors' Social note, the chat Sidebar's Background desc); a word-by-word comparison found 0 other differences. `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+recorded the bug; now the list's order (e.g. {1="none",2="stacks"}). 0 other lines in every variant (debug-log 2026-11-08 count-options).
+Regenerated again on 2026-11-08 for Rules 0.6.82 (group anchors, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s rows 14, 18, 28): only the
+"cooldowns" tab changed, in every variant, 6690 -> 6694 nodes; `--dump` of 897ae70 and of the new code differ in exactly 8 removed and 12
+added lines per variant, on the 4 group pages the fixed state draws: `pageGroup.container` (only its xuiInfo, the settings note that now
+says what the anchor point refers to), `pageGroup.container.rel` (only its sorting / values: "Another group" added last) and the new
+`pageGroup.container.relGroup` select ("Group", order 4.25, hidden while Relative to is not Another group), 0 other lines in every variant
+(debug-log 2026-11-08 group-anchors). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

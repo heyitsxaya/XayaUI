@@ -63,6 +63,8 @@ local SETTINGS_KEYS = {
     core      = { "rules", "folders", "bars", "barGroup", "drafts", "moverDraft", "auraAlias", "auraModel", "auraSources", "auraTracker",
                   "classLearn", "learnedAuraDur", "learnedAuraStacks", "learnedCooldown", "procGlowSeen", "engineDisplay", "cuesVer",
                   "backupPreCues", "setupBuildError", "setupShowError",
+                  -- (core 0.6.84, Rules 0.6.82, group anchors fix A) the one-time "Nothing moves" update: its done flag and what it adjusted (Visual.lua)
+                  "groupAnchorVer", "groupAnchorMoved",
                   -- (P5) the rules' own switches, kept in CueRulesDB.ui before (LEGACY_UNDER_UI); only XayaUI Rules / Rules Options read them
                   "snapMode", "auto", "creatorIDs", "folderOrdered", "defaultFolders", "defaultFoldersV", "hybridMigrated", "progressMigrated",
                   "skipSoundAllPrompt", "promptSave", "draftsMax", "draftsConfirmDiscard", "draftsConfirmDelete", "draftsCloseNotice" },
