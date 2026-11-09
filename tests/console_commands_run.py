@@ -31,8 +31,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
+ROOT = os.path.dirname(HERE)
+# QA-branch modules are not on main; /xui help lists their commands only while they are loaded (checked from the folder)
+HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
+HAS_NAMEPLATES = os.path.isdir(os.path.join(ROOT, "XayaUI_Nameplates"))
+
 LUA = r'''
-return function(W, L)
+return function(W, L, HAS_CHAT, HAS_NAMEPLATES)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
@@ -54,8 +59,14 @@ end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
 -- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1; core 0.6.56 adds /xui report, REQUEST-LOG #82: + 1)
 -- (XayaUI_Nameplates 0.1.0 adds /xui nameplates, a player command: + 1; it is listed only while that addon is enabled)
-check("help: 20 lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report, /xui releaseguard: QoL 0.7.39, UI-57, and /xui nameplates)", #help - 1 == 20, #help - 1)
-check("help: /xui nameplates is listed (XayaUI_Nameplates 0.1.0)", (function() for _, c in ipairs(cmds) do if c == "/xui nameplates" then return true end end end)() == true, table.concat(cmds, " "))
+-- (main without the QA-branch modules: 16 lines; XayaUI_Chat adds /xui chat, /xui panel and /xui privacy: + 3; XayaUI_Nameplates: + 1)
+local wantLines = 16 + (HAS_CHAT and 3 or 0) + (HAS_NAMEPLATES and 1 or 0)
+check("help: " .. wantLines .. " lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report, /xui releaseguard: QoL 0.7.39, UI-57" .. (HAS_NAMEPLATES and ", and /xui nameplates" or "") .. (HAS_CHAT and ", /xui chat, /xui panel, /xui privacy" or "") .. ")", #help - 1 == wantLines, #help - 1)
+if HAS_NAMEPLATES then
+  check("help: /xui nameplates is listed (XayaUI_Nameplates 0.1.0)", (function() for _, c in ipairs(cmds) do if c == "/xui nameplates" then return true end end end)() == true, table.concat(cmds, " "))
+else
+  check("help: /xui nameplates is not listed while XayaUI_Nameplates is absent", (function() for _, c in ipairs(cmds) do if c == "/xui nameplates" then return false end end return true end)(), table.concat(cmds, " "))
+end
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
 check("help: /xui shop is listed", (function() for _, c in ipairs(cmds) do if c == "/xui shop" then return true end end end)() == true, table.concat(cmds, " "))
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
@@ -72,7 +83,11 @@ local has = {}
 for _, c in ipairs(cmds) do has[c] = true end
 check("help: /xui debug is listed, with what it does", has["/xui debug"] and table.concat(help, "\n"):find("diagnostic commands", 1, true) ~= nil)
 for _, c in ipairs({ "/xui", "/xui console", "/xui bug", "/xui unlock", "/xui chat", "/xui stats", "/xui cursor", "/xui notes" }) do
-  check("help: still lists " .. c, has[c] == true)
+  if c == "/xui chat" and not HAS_CHAT then
+    check("help: /xui chat (and /xui panel, /xui privacy) are not listed while XayaUI_Chat is absent", not (has["/xui chat"] or has["/xui panel"] or has["/xui privacy"]), table.concat(cmds, " "))
+  else
+    check("help: still lists " .. c, has[c] == true)
+  end
 end
 check("help: every '|' doubled (shown as one), none left single", pipe == nil, pipe)
 check("help: option lists read [on|off] again (no [on/off])", helpText:find("[highlight||trail]", 1, true) ~= nil and helpText:find("[on||off||options||status]", 1, true) ~= nil
@@ -333,7 +348,7 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
+    res = L.eval("function(src, W, Ld, c, n) return loadstring(src)()(W, Ld, c, n) end")(LUA, world, loader, HAS_CHAT, HAS_NAMEPLATES)
     bad = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]

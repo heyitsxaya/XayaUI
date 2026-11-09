@@ -62,8 +62,26 @@ function QA.SeenNote(id, i)
     return st and type(st.d) == "string" and st.d or nil
 end
 
+-- (Dev Assist 0.7.72) `needs` on a walkthrough or on one step: the addon it tests. Since 2026-11-08 main has no XayaUI_Reskin or
+-- XayaUI_Nameplates (tools/qa-only-paths.txt: they live on qa-installer-branch), and the same Dev Assist files serve both branches, so
+-- a walkthrough or step whose addon is not installed is not listed. Only "missing" counts (core ns.ModuleState): an installed but
+-- switched-off addon keeps its walkthroughs, whose steps may switch it on.
+function QA.Missing(addon)
+    local ns = rawget(_G, "XayaUI_NS")
+    if type(addon) ~= "string" or type(ns) ~= "table" or type(ns.ModuleState) ~= "function" then return false end
+    local ok, state = pcall(ns.ModuleState, addon)
+    return ok and state == "missing" or false
+end
+
 function QA.Register(id, def)
     if type(id) ~= "string" or type(def) ~= "table" or type(def.steps) ~= "table" then return end
+    if def.needs and QA.Missing(def.needs) then return end
+    local kept = {}
+    for _, st in ipairs(def.steps) do
+        if not (type(st) == "table" and st.needs and QA.Missing(st.needs)) then kept[#kept + 1] = st end
+    end
+    if #kept == 0 then return end
+    if #kept ~= #def.steps then def.steps = kept end
     if not QA.walks[id] then QA.list[#QA.list + 1] = id end
     def.id = id
     QA.walks[id] = def
@@ -236,6 +254,7 @@ local function Build()
     W.accept = Btn(W, "Accept", 150, function() QA.Accept() end); W.accept:SetPoint("BOTTOMRIGHT", -14, 82)
     W.noteLabel = W:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); W.noteLabel:SetPoint("BOTTOMLEFT", 14, 62); W.noteLabel:SetText("Note (optional): what did you see?")
     W.note = CreateFrame("EditBox", nil, W, "InputBoxTemplate"); W.note:SetSize(620, 20); W.note:SetPoint("BOTTOMLEFT", 20, 38); W.note:SetAutoFocus(false)
+    do local cns = rawget(_G, "XayaUI_NS"); if cns and cns.KeyFocusGuard then cns.KeyFocusGuard(W.note) end end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     W.pass = Btn(W, "Pass", 90, function() QA.Answer("P") end); W.pass:SetPoint("BOTTOMRIGHT", -14, 10)
     W.fail = Btn(W, "Fail", 90, function() QA.Answer("F") end); W.fail:SetPoint("RIGHT", W.pass, "LEFT", -8, 0)
     W.skip = Btn(W, "Skip", 90, function() QA.Answer("S") end); W.skip:SetPoint("RIGHT", W.fail, "LEFT", -8, 0)
@@ -253,6 +272,7 @@ local function Build()
     W.shot:SetPoint("BOTTOMLEFT", 14, 40); W.export:SetPoint("LEFT", W.shot, "RIGHT", 8, 0); W.import:SetPoint("LEFT", W.export, "RIGHT", 8, 0)
     W.again:SetPoint("LEFT", W.import, "RIGHT", 8, 0)
     W.code = CreateFrame("EditBox", nil, W, "InputBoxTemplate"); W.code:SetSize(620, 20); W.code:SetPoint("BOTTOMLEFT", 20, 72); W.code:SetAutoFocus(false)
+    do local cns = rawget(_G, "XayaUI_NS"); if cns and cns.KeyFocusGuard then cns.KeyFocusGuard(W.code) end end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     W.codeLabel = W:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); W.codeLabel:SetPoint("BOTTOMLEFT", 14, 96)
     W.importGo = Btn(W, "Show these results", 140, function() QA.FinishImport() end); W.importGo:SetPoint("BOTTOMRIGHT", -14, 40)
     -- (0.7.53, #465) where to go from the end page

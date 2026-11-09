@@ -100,7 +100,7 @@ QA.Register("settings-migration", { title = "Settings migration: each module's o
             if not s.copiedNow then return nil, "the copy was made in an earlier session (counts may have changed since) | " .. note end
             return (n[1] == o[1] and n[2] == o[2] and n[3] == o[3] and bkN == o[1]) and true or false, note
         end },
-    { text = "Press |cffffd100Do it for me|r: a marker (the time now) is written into one table of each module's own saved settings (Blizzard Reskin's friend colours, the Chat Panel, the calculator, the cursor trail, Dev Assist's record categories, the buff bars' group). The markers change nothing you see; part 2 takes them out again.\n\n|cffffd100Expect:|r the check reads every marker back.",
+    { text = "Press |cffffd100Do it for me|r: a marker (the time now) is written into one table of each module's own saved settings (Blizzard Reskin's friend colors, the Chat Panel, the calculator, the cursor trail, Dev Assist's record categories, the buff bars' group). The markers change nothing you see; part 2 takes them out again.\n\n|cffffd100Expect:|r the check reads every marker back.",
         setup = function()
             local stamp = tostring(time and time() or 0)
             for _, d in ipairs(MODS) do

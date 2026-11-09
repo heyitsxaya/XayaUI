@@ -148,6 +148,7 @@ local function GetRow(i)
         if ns.AuraSetup_Refresh then ns.AuraSetup_Refresh() end
     end)
     r.edit:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(r.edit) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     r:EnableMouse(true)
     r:SetScript("OnEnter", function(self)
         if not self.tipLines then return end

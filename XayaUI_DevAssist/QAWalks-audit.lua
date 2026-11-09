@@ -278,7 +278,7 @@ QA.Register("audit-chat", { title = "Chat: fade given back, ignore message, whol
 -------------------------------------------------------------------------------
 local BRIT = { "colour", "favour", "behaviour", "honour", "armour", "flavour", "centre", "catalogue", "neighbour", "labelled", "cancelled", "organis", "recognis", "customis", "realis", "gray" }
 QA.Register("audit-spelling", { title = "American spelling in the addon's texts (FA-16)", qa = "FA-16", order = 307, prefill = true, steps = {
-    { text = "Press |cffffd100Check again|r: the addon reads the texts it can reach (the minimap list and the Info pane's What's New, Getting Started and Help texts) and looks for British spellings (words ending in -our, -re or -ogue where American English writes -or, -er or -og, and -ise verbs) and that grey is spelled with an e, as you asked.\n\n|cffffd100Expect:|r none found.",
+    { text = "Press |cffffd100Check again|r: the addon reads the texts it can reach (the minimap list, the Info pane's What's New, Getting Started and Help texts, and the settings window's names, tooltips and list entries) and looks for British spellings (words ending in -our, -re or -ogue where American English writes -or, -er or -og, and -ise verbs) and that grey is spelled with an e, as you asked.\n\n|cffffd100Expect:|r none found.",
         check = function()
             local ns = NS(); local found, n = {}, 0
             local function scan(s)
@@ -292,6 +292,19 @@ QA.Register("audit-spelling", { title = "American spelling in the addon's texts 
             if ns and ns.LoadOptions then pcall(ns.LoadOptions) end
             local ip = ns and ns.Service and ns.Service("infoPaneData")   -- (XayaUI_Options InfoPane.lua)
             walk(ip and ip.Data(), 0)
+            -- (Dev Assist 0.7.72; FA-16 reported again 2026-11-08: a QoL > Nameplates tooltip read "Colours ... in the colour set on
+            -- this page") the settings window's own texts too: every page's and option's name, tooltip (desc / tip), its switch's
+            -- texts and the entries of its lists, as the window shows them
+            local od = ns and ns.Service and ns.Service("optionsDebug")   -- (XayaUI_Options Options.lua)
+            local okT, opts = pcall(function() return od and od.Tree and od.Tree() end)
+            local function walkOpts(t, d)
+                if d > 40 or type(t) ~= "table" then return end
+                scan(t.name); scan(t.desc); scan(t.tip)
+                if type(t.values) == "table" then for _, v in pairs(t.values) do scan(v) end end
+                if type(t.xuiSwitch) == "table" then walkOpts(t.xuiSwitch, d + 1) end
+                if type(t.args) == "table" then for _, c in pairs(t.args) do walkOpts(c, d + 1) end end
+            end
+            if okT then walkOpts(opts, 0) end
             if n == 0 then return nil, "no text could be read (the settings addon's texts were not found)" end
             return #found == 0, #found == 0 and ("%d texts read, none with a British spelling"):format(n) or (#found .. " found: " .. Short(table.concat(found, " | "), 160))
         end },

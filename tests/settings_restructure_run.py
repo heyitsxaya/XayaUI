@@ -22,10 +22,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
+# QA-branch modules: main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist and Media; Chat, Reskin and Nameplates are
+# on the QA branch only. A check about one of them runs when its folder is here; absent, it is printed as SKIP (never silently).
+ABSENT = [a for a in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if not os.path.isdir(os.path.join(H.ROOT, a))]
+
 LUA = r'''
 return function(W, L)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local function skip(addon, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. addon .. ") " .. name, true } end
 local function section(name, fn) local ok, err = pcall(fn); if not ok then check(name .. ": ran to its end (a Lua error stopped it)", false, err) end end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
@@ -137,7 +142,7 @@ section("D: Profiles", function()
   table.sort(ticks, function(a, b) return a.o < b.o end)
   local tn = {}
   for _, t in ipairs(ticks) do tn[#tn + 1] = t.n end
-  check("D: Export: one tick box per component", table.concat(tn, ", ") == "Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin, Nameplates", table.concat(tn, ", "))   -- (Options 0.6.80: parts are registered by their modules; XayaUI Nameplates is on in this run and adds its own, plan 6.1)
+  check("D: Export: one tick box per component", table.concat(tn, ", ") == "Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin" .. (XUI_HAS_NAMEPLATES and ", Nameplates" or ""), table.concat(tn, ", "))   -- (Options 0.6.80: parts are registered by their modules; XayaUI Nameplates is on in this run and adds its own, plan 6.1)
   check("D: the Recycle Bin page is there (its Empty button)", p.args.bin and p.args.bin.args and (p.args.bin.args.empty ~= nil or p.args.bin.args.summary ~= nil))
   local picked = {}
   local realSelect = ACD.SelectGroup
@@ -153,11 +158,13 @@ end)
 
 section("E: the profile codec", function()
   local P = ns.Profile
-  check("E: the profile component list exists (the six parts plus Nameplates, which is on in this run; Options 0.6.80)", P ~= nil and #P.COMPONENTS == 7, P and #P.COMPONENTS)
+  check("E: the profile component list exists (the six parts plus Nameplates, which is on in this run; Options 0.6.80)", P ~= nil and #P.COMPONENTS == (XUI_HAS_NAMEPLATES and 7 or 6), P and #P.COMPONENTS)   -- (Nameplates' own part exists only where XayaUI_Nameplates is: the Platform's six otherwise)
   local DB = ns.SettingsRoutedForTests()   -- (P5) each key where its module reads it now (its own store or CueRulesDB)
+  if XUI_HAS_CHAT then   -- (Chat's keys: written only where XayaUI_Chat is)
   DB.chat2 = DB.chat2 or {}
   DB.chat2.fadeMarker = 7
   DB.chat2.whisperSounds = { list = { { who = "Friendname-Realm" } }, fav = { enabled = true } }
+  end
   DB.calculator = { enabled = true, history = { "1+1 = 2" }, x = 5 }
   DB.ui = DB.ui or {}
   DB.ui.selStyle = "bar"; DB.ui.hybridMigrated = true
@@ -169,18 +176,21 @@ section("E: the profile codec", function()
   local held = {}
   for _, c in ipairs(P.Held(data)) do held[#held + 1] = c.key end
   check("E: it holds exactly the ticked components", table.concat(held, ",") == "settings,bonus,reskin", table.concat(held, ","))
+  if XUI_HAS_CHAT then
   local w = data.parts.reskin.chat2.whisperSounds
   check("E: other players' names never leave (whisper-sound senders)", w and w.list == nil and w.fav and w.fav.enabled == true, w and tostring(w.list))
+  else skip("XayaUI_Chat", "E: other players' names never leave (whisper-sound senders)") end
   check("E: the calculator's history and position never leave", data.parts.bonus.calculator.history == nil and data.parts.bonus.calculator.x == nil and data.parts.bonus.calculator.enabled == true)
   check("E: one-time upgrade flags never leave", data.parts.settings.ui.hybridMigrated == nil and data.parts.settings.ui.selStyle == "bar")
   -- import on a changed setup: only the ticked components land; settings merge
-  DB.chat2.fadeMarker = 1; DB.chat2.onlyMine = "keep"
+  if XUI_HAS_CHAT then DB.chat2.fadeMarker = 1; DB.chat2.onlyMine = "keep" end
   DB.ui.selStyle = "text"
   DB.dataPanels.markerA = "changed"
   local res = def.Apply(data, { inc = { reskin = true, settings = true }, rules = "add" })
-  check("E: the ticked components are applied", DB.chat2.fadeMarker == 7 and DB.ui.selStyle == "bar", tostring(DB.chat2.fadeMarker) .. " " .. tostring(DB.ui.selStyle))
+  check("E: the ticked components are applied", (not XUI_HAS_CHAT or DB.chat2.fadeMarker == 7) and DB.ui.selStyle == "bar", (XUI_HAS_CHAT and tostring(DB.chat2.fadeMarker) or "-") .. " " .. tostring(DB.ui.selStyle))   -- (Chat's half only where XayaUI_Chat is)
   check("E: an unticked component is left alone (Bonus Features)", DB.dataPanels.markerA == "changed", DB.dataPanels.markerA)
-  check("E: settings are merged: a value the profile lacks stays", DB.chat2.onlyMine == "keep")
+  if XUI_HAS_CHAT then check("E: settings are merged: a value the profile lacks stays", DB.chat2.onlyMine == "keep")
+  else skip("XayaUI_Chat", "E: settings are merged: a value the profile lacks stays") end
   check("E: ...and the import says what it applied and asks for a reload", res and res.reload == true and #res.done == 2, res and #(res.done or {}))
   -- rules alone: the rules string
   local built = ns.BuildOptionsTable()
@@ -220,17 +230,22 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s" % (str("XayaUI_Chat" not in ABSENT).lower(), str("XayaUI_Nameplates" not in ABSENT).lower()))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
-    bad = 0
+    bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
+        if str(name).startswith("SKIP ("):
+            print(name)
+            continue
+        nchecks += 1
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
-    print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
+    print("%d checks, %d failed, %d Lua errors" % (nchecks, bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 
 

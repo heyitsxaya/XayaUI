@@ -135,7 +135,7 @@ local function CheckEsc()
         parts[#parts + 1] = f[3] .. " " .. C3(now)
         if not Near(old, now) then bad[#bad + 1] = f[3] end
     end
-    return #bad == 0, ("Esc Menu row: %s%s"):format(table.concat(parts, ", "), #bad > 0 and (". Not the old colour: " .. table.concat(bad, ", ")) or "")
+    return #bad == 0, ("Esc Menu row: %s%s"):format(table.concat(parts, ", "), #bad > 0 and (". Not the old color: " .. table.concat(bad, ", ")) or "")
 end
 local function Restore()
     local T = TH(); local P = Plat()
@@ -149,13 +149,13 @@ QA.DebugW9bTest = { Drawn = Drawn, Restore = Restore, State = st }   -- (tests)
 
 QA.Register("debug-w9b", { title = "Theme per element: the Blizzard Reskin > Theme table (B297-B300, debug W9b)",
     qa = "B297, B298, B299, B300", order = 520, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin > Theme|r (every element's own theme and colours are put back by the last step).\n\n|cffffd100Expect:|r a table with the columns Element | Theme | Overrides | Comes from | Reset, one row per restyled element (the Blizzard Reskin pages, Chat Panel, Character Pane, Settings window). The check counts the rows.",
+    { text = "Press |cffffd100Do it for me|r: the settings window opens on |cffffd100Blizzard Reskin > Theme|r (every element's own theme and colors are put back by the last step).\n\n|cffffd100Expect:|r a table with the columns Element | Theme | Overrides | Comes from | Reset, one row per restyled element (the Blizzard Reskin pages, Chat Panel, Character Pane, Settings window). The check counts the rows.",
         setup = SetupPage, check = CheckPage },
-    { text = "Press |cffffd100Do it for me|r: the |cffffd100Settings window|r row's Theme is set to |cffffd100Light mode|r.\n\n|cffffd100Expect:|r this window turns white with a grey border at once; every other element keeps its look. The row says Comes from: this element. The check reads the window's colours before and after.",
+    { text = "Press |cffffd100Do it for me|r: the |cffffd100Settings window|r row's Theme is set to |cffffd100Light mode|r.\n\n|cffffd100Expect:|r this window turns white with a grey border at once; every other element keeps its look. The row says Comes from: this element. The check reads the window's colors before and after.",
         setup = SetupTheme, check = CheckTheme },
-    { text = "Press |cffffd100Do it for me|r: the row's |cffffd100Reset|r is pressed.\n\n|cffffd100Expect:|r the window has exactly the colours it had before step 2, and the row says Inherit and Global again.",
+    { text = "Press |cffffd100Do it for me|r: the row's |cffffd100Reset|r is pressed.\n\n|cffffd100Expect:|r the window has exactly the colors it had before step 2, and the row says Inherit and Global again.",
         setup = SetupReset, check = CheckReset },
-    { text = "If you used |cffffd100Use my own colors|r on the Esc Menu page before this update: the check compares those colours with the Esc Menu row's colours. Then press |cffffd100Esc|r. Does the Esc menu look exactly as before (the same panel, border, button, accent and title colours)?\n\nAnswer |cffffd100Pass|r if yes, |cffffd100Fail|r if not and say which colour changed.",
+    { text = "If you used |cffffd100Use my own colors|r on the Esc Menu page before this update: the check compares those colors with the Esc Menu row's colors. Then press |cffffd100Esc|r. Does the Esc menu look exactly as before (the same panel, border, button, accent and title colors)?\n\nAnswer |cffffd100Pass|r if yes, |cffffd100Fail|r if not and say which color changed.",
         noVerdict = true, check = function() local ok, note = CheckEsc(); if ok == nil then return nil, note end return true, note end },
-    { text = "Press |cffffd100Do it for me|r to put every element's own theme and colours back as they were, then |cffffd100Done|r.", done = true, setup = Restore },
+    { text = "Press |cffffd100Do it for me|r to put every element's own theme and colors back as they were, then |cffffd100Done|r.", done = true, setup = Restore },
 } })

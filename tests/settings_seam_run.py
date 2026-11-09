@@ -61,6 +61,25 @@ PLATFORM = {
 }
 SV_INIT = {"XayaUI/Core.lua", "XayaUI/Modules.lua"}   # saved-variable set-up, the seam itself, the profile parts
 
+# QA-branch modules: main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist and Media; Chat, Reskin and Nameplates are
+# on the QA branch only. A module's checks run when its folder is here; absent, they are printed as SKIP (never silently).
+QA_MODULES = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin", "nameplates": "XayaUI_Nameplates"}
+ABSENT = {m: a for m, a in QA_MODULES.items() if not os.path.isdir(os.path.join(ROOT, a))}
+
+
+def skip(addon, text):
+    print("SKIP (QA-branch module absent: %s) %s" % (addon, text))
+
+
+def emit(res):
+    """the checks a Lua chunk returned; an entry whose name starts with SKIP ( is a skipped check (printed, not counted)"""
+    for i in range(1, len(res) + 1):
+        if str(res[i][1]).startswith("SKIP ("):
+            print(res[i][1])
+        else:
+            check(res[i][1], res[i][2])
+
+
 results = []
 
 
@@ -237,6 +256,11 @@ def canon(saved):
     # (P5) each module's own store folded back into CueRulesDB as it was laid out before (tests/settings_stores.py): the old code's
     # golden hash then still says "nothing a player set changed and nothing was lost"; the copy's marks (storeVersion ...) are dropped
     merged = SST.project(merged, SST.layout(ROOT))
+    # (Rules 0.6.82, group anchors) the one-time "Nothing moves" update's own marks (its done flag, and the list of groups it adjusted
+    # when there were any; the scenario has none): taken out, so the rest stays compared with the old code's golden
+    if isinstance(merged.get("CueRulesDB"), dict):
+        merged["CueRulesDB"].pop("groupAnchorVer", None)
+        merged["CueRulesDB"].pop("groupAnchorMoved", None)
     # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
@@ -344,11 +368,15 @@ section("C2 profile import", function()
     bonus.apply(bonus.check({ calculator = { marker = "c" } }), "merge", 1)
     check("C2: a Bonus part applied: the held Bonus view reads it", V.bonus.calculator and V.bonus.calculator.marker == "c")
   end
+  if XUI_ABSENT.reskin or XUI_ABSENT.chat then
+    R[#R + 1] = { "SKIP (QA-branch module absent: " .. (XUI_ABSENT.reskin and "XayaUI_Reskin" or "XayaUI_Chat") .. ") C2: the Blizzard Reskin part applied: Chat's view reads chat2, the platform view reads the tab switch", true }
+  else
   local rk = ns.ProfilePartsByKey().reskin
   rk.apply(rk.check({ chat2 = { marker = 5 }, reskinTabOff = true }), "merge", 1)
   check("C2: the Blizzard Reskin part applied: Chat's view reads chat2, the platform view reads the tab switch",
     V.chat.chat2 and V.chat.chat2.marker == 5 and V.platform.reskinTabOff == true and ns.ReskinTabOn() == false)
   CueRulesDB.reskinTabOff = nil
+  end
 end)
 
 section("C3 Theme Reset everything", function()
@@ -379,6 +407,7 @@ section("C5 CueRulesDB replaced as a whole", function()
   -- replaced by a new one holding a marker, and each view held from before must read its marker at once
   local probe = { qol = "qol", chat = "chat", bonus = "calculator", devassist = "idProbe", core = "drafts", reskin = "rsk" }
   local keep, new = {}, { CueRulesDB = { ui = { x = 2 } } }
+  for m in pairs(XUI_ABSENT) do probe[m] = nil end   -- (a QA-branch module whose folder is absent has no store to replace)
   for m, k in pairs(probe) do
     local st = ns.SettingsStore(m)
     local var = (st.state == "own") and st.var or "CueRulesDB"
@@ -390,8 +419,12 @@ section("C5 CueRulesDB replaced as a whole", function()
   for m, k in pairs(probe) do local t = V[m][k]; if not (type(t) == "table" and t.marker == m) then bad[#bad + 1] = m end end
   check("C5: every backing table (CueRulesDB, each module's own store) replaced as a whole: each view held from before reads the new one at once",
     #bad == 0 and V.platform.ui.x == 2, table.concat(bad, ", "))
+  if XUI_ABSENT.reskin then
+    R[#R + 1] = { "SKIP (QA-branch module absent: XayaUI_Reskin) C5: (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)", true }
+  else
   check("C5: (P5) Reskin's view does not read the copy left in CueRulesDB.ui (it reads XayaUIReskinDB)",
     not rawequal(V.reskin.rsk, CueRulesDB.ui and CueRulesDB.ui.rsk))
+  end
   check("C5: ns.SettingsReady() follows it", ns.SettingsReady() == true)
   CueRulesDB = nil
   check("C5: with no CueRulesDB, the platform view reads nil and SettingsReady is false (nothing created by reading)",
@@ -460,7 +493,7 @@ check("E: a name that is not a module gives nil (XayaUI Nameplates keeps its own
 local bad = {}
 for _, m in ipairs(MODULES) do
   local v = ns.Settings(m)
-  for _, k in ipairs(ns.SettingsKeys(m)) do
+  for _, k in ipairs(XUI_ABSENT[m] and {} or ns.SettingsKeys(m)) do   -- (a QA-branch module whose folder is absent has no store: skipped, printed by the runner)
     local at = ns.SettingsStoredAt(m, k)
     -- (P5) a module with its own store (ns.SettingsStore(m).state == "own") keeps every key at the top of that saved variable
     local st = ns.SettingsStore(m)
@@ -500,7 +533,9 @@ end
 def runtime(enabled_filter):
     folders = H.find_addons()
     enabled = [n for n in folders if enabled_filter(n)]
-    return build(folders, enabled, {})
+    L, world, loader = build(folders, enabled, {})
+    L.execute("XUI_ABSENT = { %s }" % ", ".join("%s = true" % m for m in ABSENT))
+    return L, world, loader
 
 
 def main():
@@ -515,7 +550,12 @@ def main():
           "%d: %s" % (len(bad), "; ".join(bad[:12])))
     # B
     for tag, (h, errs, unknown, saved) in sessions(folders).items():
-        check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN.get(tag), h)
+        if tag.startswith("all on") and ABSENT:
+            # GOLDEN's "all on" hashes hold the saved data of every addon, Chat's, Reskin's and Nameplates' included: with those folders absent
+            # the data can differ only by them, and a hash cannot be filtered. "core only" (no such addon on) still compares.
+            skip(", ".join(ABSENT.values()), "B: %s: saved variables byte-identical to the old code's" % tag)
+        else:
+            check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN.get(tag), h)
         check("B: %s: no Lua error" % tag, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
         check("B: %s: no view was asked for a key its module does not own" % tag, unknown == "", unknown)
     # (P4) XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, and nothing of the rules is saved
@@ -531,20 +571,20 @@ def main():
     # C
     L, world, loader = runtime(lambda n: n not in ("XayaUI_Nameplates",))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(HELD_LUA, world, loader)
-    for i in range(1, len(res) + 1):
-        check(res[i][1], res[i][2])
+    emit(res)
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     check("C: no Lua error in the stand-in game", not errs, "; ".join(str(e)[:300] for e in errs[:3]))
     # D
     L, world, loader = runtime(lambda n: n in ("XayaUI", "XayaUI_Media"))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(OFF_LUA, world, loader)
-    for i in range(1, len(res) + 1):
-        check(res[i][1], res[i][2])
+    emit(res)
     # E
     L, world, loader = runtime(lambda n: True)
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(MAP_LUA, world, loader)
-    for i in range(1, len(res) + 1):
-        check(res[i][1], res[i][2])
+    emit(res)
+    for m, a in ABSENT.items():
+        if m in ("chat", "reskin"):
+            skip(a, "E: %s's view writes and reads exactly its store's <key> (part of the every-module check above)" % m)
     owners = owner_lists(ROOT) or {}
     every = sorted(k for ks in owners.values() for k in ks)
     # (core 0.6.83, character pane split stage 2) characterToolkit is split too: XayaUI Bonus Features keeps the Stat Calculator panel's

@@ -88,21 +88,42 @@ def load_api():
     return API
 
 
+def savedvars(L):
+    """tests/harness/savedvars.lua in runtime L: Serialize(value) -> Lua source, Load(source) -> value, LoadFile(file text)."""
+    return L.eval("function(p) return dofile(p) end")(os.path.join(HERE, "savedvars.lua"))
+
+
 def read_saved(path):
-    """Run a SavedVariables file in an empty Lua and return its globals as {var: value} (Python data)."""
+    """Run a SavedVariables file in an empty Lua and return its globals as {var: value} (Python data; for reports only: numeric
+    keys of non-list tables come back as strings. To start a session from the file use read_saved_source)."""
     L = lua51.LuaRuntime(unpack_returned_tuples=True)
     src = open(path, encoding="utf-8", errors="replace").read()
-    env = L.eval("function(src) local env = {}; local f = assert(loadstring(src)); setfenv(f, env); f(); return env end")(src)
+    env = savedvars(L).LoadFile(src)
     return {str(k): lua_to_py(env[k]) for k in env.keys()}
 
 
-def session(folders, enabled, saved, write_back=True, quick=False):
+def read_saved_source(path, addon=CORE):
+    """A SavedVariables file as the saved-data source a session starts from ({ [addon] = { VAR = value } } as Lua source), so its
+    key types (numbers stay numbers) reach the session as the game would load them (fix plan f6-3)."""
     L = lua51.LuaRuntime(unpack_returned_tuples=True)
+    sv = savedvars(L)
+    env = sv.LoadFile(open(path, encoding="utf-8", errors="replace").read())
+    t = L.table()
+    t[addon] = env
+    return sv.Serialize(t)
+
+
+def session(folders, enabled, saved, write_back=True, quick=False):
+    """One play session in a new Lua state. saved: what the last session saved, either Lua source from savedvars.lua (the
+    harness's own round trip and --saved PATH: key types kept, as the game's SavedVariables files keep them) or a Python dict
+    {addon: {VAR: value}} (tests that build saved data by hand)."""
+    L = lua51.LuaRuntime(unpack_returned_tuples=True)
+    sv = savedvars(L)
     api = to_lua(L, {k: v for k, v in load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(HERE, "world.lua"), api)
-    loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
-        os.path.join(HERE, "loader.lua"), world,
-        to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved or {}}))
+    opts = to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}})
+    opts["saved"] = sv.Load(saved) if isinstance(saved, str) else to_lua(L, saved or {})
+    loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(HERE, "loader.lua"), world, opts)
     t0 = time.time()
     S = L.eval("function(path, W, Ld, o) return dofile(path)(W, Ld, o) end")(
         os.path.join(HERE, "scenario.lua"), world, loader, to_lua(L, {"writeBack": write_back, "quick": quick}))
@@ -119,7 +140,8 @@ def session(folders, enabled, saved, write_back=True, quick=False):
         "unknownMethods": {k: v for k, v in world.unknownMethods.items()},
         "stats": {"commands": S.commands, "launchers": S.launchers, "optionNodes": S.optionNodes, "optionCalls": S.optionCalls,
                   "otherEvents": len(S.otherEvents) if S.otherEvents else 0, "noOptions": bool(S.noOptions)},
-        "saved": lua_to_py(S.saved) if S.saved else {},
+        "saved": lua_to_py(S.saved) if S.saved else {},           # Python data, for the drift report only
+        "savedSource": sv.Serialize(S.saved) if S.saved else "{}",  # what the next session loads (key types kept; f6-3)
         "saveIssues": [S.saveIssues[i] for i in range(1, len(S.saveIssues) + 1)] if S.saveIssues else [],
         "printed": [world.printed[i] for i in range(1, len(world.printed) + 1)],
     }
@@ -164,8 +186,8 @@ def diff(a, b, path="", out=None, limit=40):
 
 def run_combo(folders, enabled, saved, label):
     s1 = session(folders, enabled, saved)                 # a full play session
-    s2 = session(folders, enabled, s1["saved"], quick=True)   # then a plain reload on what it saved
-    s3 = session(folders, enabled, s2["saved"], quick=True)   # and another: s2 -> s3 must not change anything
+    s2 = session(folders, enabled, s1["savedSource"], quick=True)   # then a plain reload on what it saved (as Lua source, f6-3)
+    s3 = session(folders, enabled, s2["savedSource"], quick=True)   # and another: s2 -> s3 must not change anything
     fails, warns = [], []
     seen = set()
     for idx, s in ((1, s1), (2, s2), (3, s3)):
@@ -319,8 +341,7 @@ def main():
             combos.append(tuple(a for a in always if a != "XayaUI_Rules_Options") + tuple(features) + tuple(tools))
     datasets = [("fresh install", {})]
     if args.saved:
-        real = read_saved(args.saved)
-        datasets.append(("saved data " + os.path.basename(args.saved), {CORE: real}))
+        datasets.append(("saved data " + os.path.basename(args.saved), read_saved_source(args.saved)))
     if args.fresh_only:
         datasets = datasets[:1]
     api = load_api()

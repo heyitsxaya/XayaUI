@@ -83,7 +83,7 @@ local bad = {}
 for _, c in ipairs(cases) do if split(c[1]) ~= c[2] then bad[#bad + 1] = split(c[1]) end end
 check("a leading [codes] and a trailing (codes) group leave the title; their codes are kept", #bad == 0, join(bad))
 local keep = { "2. Looks and layout (no effect on use) (1 of 7)", "A group that keeps its arrangement (Align top + Space)",
-  "Chat: arrow, button strip (#229 items 1-4)", "Nameplates: target colour (XayaUI Nameplates 0.1.0)", "Review window (part 1)",
+  "Chat: arrow, button strip (#229 items 1-4)", "Nameplates: target color (XayaUI Nameplates 0.1.0)", "Review window (part 1)",
   "[Note] Something to check", "Calculator page: summary and info icon (trial)" }
 bad = {}
 for _, t in ipairs(keep) do if split(t) ~= t .. "|" then bad[#bad + 1] = split(t) end end

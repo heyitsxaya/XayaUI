@@ -219,8 +219,21 @@ function proto:Lower() end
 function proto:EnableMouse(v) self._mouse = v and true or false end
 function proto:IsMouseEnabled() return self._mouse end
 function proto:EnableMouseWheel() end
-function proto:EnableKeyboard() end
-function proto:SetPropagateKeyboardInput() end
+-- keyboard (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM
+-- SCREENSHOTTING"). Modelled from warcraft.wiki.gg (API Frame SetPropagateKeyboardInput, read 2026-11-08): keys go to the shown
+-- keyboard-enabled frames top-down, "stopping upon encountering the first frame which consumes input rather than propagates it"; key
+-- bindings (movement, PRINTSCREEN = screenshot) run only when no frame kept the key; the call is "#nocombat" (an error here, and the
+-- flag does not change; in the game an addon gets a blocked-action error); "You can call this function from OnKeyDown script handlers
+-- to consume only some keyboard events", so the flag is read after the frame's OnKeyDown (W.keyFlagRead = "after"); a test can set
+-- "before" (the flag as it is when the key arrives) to show a fix holds under either reading.
+-- INFERENCE (not documented): a keyboard-enabled frame consumes until SetPropagateKeyboardInput(true) (default false); an edit box
+-- with keyboard focus takes every key (W.pressKey).
+function proto:EnableKeyboard(v) self._keyboard = v and true or false end
+function proto:SetPropagateKeyboardInput(v)
+  if W.combat then error("SetPropagateKeyboardInput: blocked in combat (#nocombat since 10.1.5)", 2) end
+  self._propagate = v and true or false
+end
+function proto:GetPropagateKeyboardInput() return self._propagate and true or false end
 function proto:RegisterForClicks() end
 function proto:RegisterForDrag() end
 function proto:IsMouseOver() return false end
@@ -306,8 +319,8 @@ function proto:HighlightText() end
 function proto:SetCursorPosition(p) self._cursor = p end
 function proto:GetCursorPosition() return self._cursor or 0 end
 function proto:SetAutoFocus() end
-function proto:SetMultiLine() end
-function proto:IsMultiLine() return false end
+function proto:SetMultiLine(v) self._multi = v and true or false end
+function proto:IsMultiLine() return self._multi and true or false end
 function proto:SetMaxLetters() end
 function proto:GetMaxLetters() return 0 end
 function proto:SetNumeric() end
@@ -909,6 +922,15 @@ GetActionInfo = function() return nil end
 GetMacroInfo = function() return nil end
 GetNumMacros = function() return 0, 0 end
 GetBindingKey = function() return nil end
+-- key bindings (XayaUI 0.6.85 review of row 56): GetBindingFromClick(key) as Blizzard's key-taking frames read it (StaticPopup.lua:792,
+-- CinematicFrame.lua:117: the bare OnKeyDown key; the held modifiers count, an INFERENCE); a stand-in set of bindings, which a test
+-- can change (W.bindings["CTRL-Z"] = "..."). nil = unbound. Not the game's full default list.
+W.bindings = { PRINTSCREEN = "SCREENSHOT", ESCAPE = "TOGGLEGAMEMENU", W = "MOVEFORWARD", S = "MOVEBACKWARD", A = "TURNLEFT", D = "TURNRIGHT",
+  UP = "MOVEFORWARD", DOWN = "MOVEBACKWARD", LEFT = "TURNLEFT", RIGHT = "TURNRIGHT" }
+local function chord(key)
+  return (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "") .. tostring(key)
+end
+GetBindingFromClick = function(key) return W.bindings[chord(key)] end
 GetLootSpecialization = function() return 0 end
 GetMaxLevelForPlayerExpansion = function() return 90 end
 GetExpansionLevel = function() return 11 end
@@ -952,6 +974,57 @@ for e in ([[PLAYER_LOGIN PLAYER_LOGOUT ADDON_LOADED VARIABLES_LOADED PLAYER_ENTE
 -------------------------------------------------------------------------------
 -- unknown globals: recorded, never an error (see the header)
 -------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+-- combat lockdown and secret values (fix plan f6-1, the minimal slice; the rest of f6-1 is phase 9)
+-------------------------------------------------------------------------------
+-- Lockdown. In the game, while InCombatLockdown() is true, addon (insecure) code calling a protected method on a protected frame is
+-- blocked: the call does nothing, the game fires ADDON_ACTION_BLOCKED and the player sees "Interface action failed because of an
+-- AddOn". Here: on a frame marked protected, while W.combat is true, the methods below do nothing and the call is recorded in
+-- W.blocked and as an error (so the harness and the tests that read W.errors report it as a FAIL). ADDON_ACTION_BLOCKED itself is
+-- not fired (nothing in XayaUI listens to it).
+-- The methods: every one the stand-in implements that the 12.1.5 API documentation (docs/reference/api/api.json, widgetMethods)
+-- flags IsProtectedFunction on the frame / script-region API objects (SimpleFrameAPI, SimpleScriptRegionAPI,
+-- SimpleScriptRegionResizingAPI, SimpleRegionAPI). tests/harness_lockdown_run.py checks the list against the documentation.
+-- Which frames are protected: those a test marks with W.Protect(frame), and frames made from a template whose name contains
+-- "Secure" (as FrameXML's secure templates make a frame protected; XayaUI makes none today). Blizzard's own protected frames are
+-- NOT marked here (that is f6-1's phase 9 part: a list by name from FrameXML).
+-- Limit: the stand-in cannot tell secure code (a secure handler snippet) from addon code; every such call in combat counts as addon code.
+W.PROTECTED_METHODS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "ClearPoint", "SetAllPoints", "SetSize", "SetWidth",
+  "SetHeight", "SetParent", "SetScale", "EnableMouse", "SetFrameStrata", "SetFrameLevel" }
+W.blocked = {}
+function W.Protect(f, on) rawset(f, "_protected", on ~= false); return f end
+for _, m in ipairs(W.PROTECTED_METHODS) do
+  local real = proto[m]
+  if real then
+    proto[m] = function(self, ...)
+      if W.combat and rawget(self, "_protected") then
+        local what = ("%s:%s()"):format(self._name or tostring(self), m)
+        W.blocked[#W.blocked + 1] = what
+        W.errors[#W.errors + 1] = "ADDON_ACTION_BLOCKED (stand-in): " .. what .. " on a protected frame in combat lockdown\n" .. debug.traceback("", 2)
+        return
+      end
+      return real(self, ...)
+    end
+  end
+end
+function proto:IsProtected() local p = rawget(self, "_protected") and true or false; return p, p end
+do
+  local realCreate = CreateFrame
+  CreateFrame = function(kind, name, parent, template, id)
+    local f = realCreate(kind, name, parent, template, id)
+    if type(template) == "string" and template:find("Secure", 1, true) then rawset(f, "_protected", true) end
+    return f
+  end
+end
+
+-- Secret values. issecretvalue(v) answers W.secret[v] (as before). W.MarkSecret(v) marks a value secret for a test and returns it;
+-- W.ClearSecret(v) undoes it. Keys are values, so marking 5 makes every 5 secret: mark something unique (a string such as
+-- "secret-name-1", or a table). Nothing is marked by default: marking everything would fail code paths the game leaves readable.
+-- Limit: a secret here is only reported by issecretvalue / canaccessvalue; arithmetic or comparison on it does not error as it
+-- does in the game.
+function W.MarkSecret(v) W.secret = W.secret or {}; W.secret[v] = true; return v end
+function W.ClearSecret(v) if W.secret then W.secret[v] = nil end end
+
 local G_IGNORE = { _ENV = true, arg = true, __XUI_HARNESS = true }
 setmetatable(_G, { __index = function(t, k)
   if not G_IGNORE[k] then record(W.unknownGlobals, tostring(k), debug.traceback("", 2)) end
@@ -990,6 +1063,47 @@ function W.tick(dt, steps)
     end
   end
 end
+-- a key press as the game routes it (see "keyboard" above): returns "game" when no frame kept it (key bindings run: movement,
+-- PRINTSCREEN), else the frame that kept it
+local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+W.keyFlagRead = "after"
+local function strataOf(f) while f do if f._strata then return STRATA_RANK[f._strata] or 3 end; f = f._parent end return 3 end
+-- W.gameRan: the binding the game ran for the last key that reached it (nil when no frame passed it on or the key is unbound);
+-- W.gameRanLog: every one, in order (a test reads both to see a key never does two things)
+W.gameRanLog = {}
+function W.pressKey(key)
+  W.gameRan = nil
+  for _, o in ipairs(W.objects) do
+    if o._kind == "EditBox" and o._focus and o:IsVisible() then
+      if o._scripts.OnKeyDown then safecall(o._scripts.OnKeyDown, o, key) end
+      -- a focused box: Enter and Esc run its scripts (the game's EditBox OnEnterPressed / OnEscapePressed)
+      if key == "ENTER" and o._scripts.OnEnterPressed then safecall(o._scripts.OnEnterPressed, o)
+      elseif key == "ESCAPE" and o._scripts.OnEscapePressed then safecall(o._scripts.OnEscapePressed, o) end
+      return o
+    end
+  end
+  local list = {}
+  for _, o in ipairs(W.objects) do if o._keyboard and o:IsVisible() then list[#list + 1] = o end end
+  table.sort(list, function(a, b)
+    local sa, sb = strataOf(a), strataOf(b)
+    if sa ~= sb then return sa > sb end
+    return (a._level or 0) > (b._level or 0)
+  end)
+  for _, o in ipairs(list) do
+    local before = o._propagate
+    if o._scripts.OnKeyDown then safecall(o._scripts.OnKeyDown, o, key) end
+    local pass
+    if W.keyFlagRead == "before" then pass = before else pass = o._propagate end
+    if not pass then return o end
+  end
+  do local ok, a = pcall(GetBindingFromClick, key); W.gameRan = ok and a or W.bindings[key] end
+  if W.gameRan then W.gameRanLog[#W.gameRanLog + 1] = W.gameRan end
+  return "game"
+end
+-- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown
+-- begins after the PLAYER_REGEN_DISABLED event fires, and ends before the PLAYER_REGEN_ENABLED event fires")
+function W.enterCombat() W.fire("PLAYER_REGEN_DISABLED"); W.combat = true end
+function W.leaveCombat() W.combat = false; W.fire("PLAYER_REGEN_ENABLED") end
 function W.registeredEvents()
   local set = {}
   for _, o in ipairs(W.objects) do for e in pairs(o._events) do set[e] = true end end

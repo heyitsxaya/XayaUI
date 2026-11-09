@@ -628,6 +628,7 @@ local function Box(key)
             self:ClearFocus()
         end)
         eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         if key == "item" then
             -- an item dropped on the box (dragged from the bags, or carried on the cursor and clicked) is compared at once.
             -- GetCursorInfo (globals.md:158) is documented without returns; "item", itemID, itemLink is the form other UI code

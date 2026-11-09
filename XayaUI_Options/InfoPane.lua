@@ -30,7 +30,7 @@ P.INFO = {
     { key = "version", label = "Version info" },
     { key = "readme", label = "Readme" },
     { key = "help", label = "Help (FAQ)" },
-    { key = "credits", label = "Credits + Acknowledgements" },
+    { key = "credits", label = "Credits + Acknowledgments" },
 }
 P.state = { tab = "patch", sel = { patch = "whatsnew", info = "version" } }   -- session only
 
@@ -439,6 +439,7 @@ local function Build()
         e:SetScript("OnTextChanged", function(self, user) if user then self:SetText(self.value or ""); self:HighlightText() end end)
         e:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
         e:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(e) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         return e
     end)
     for _, k in ipairs({ f.navScroll, f.divider, f.scroll }) do f.body[#f.body + 1] = k end
@@ -447,22 +448,16 @@ local function Build()
     -- Esc closes the pane first (Xaya's pick); the settings window stays open until the next Esc. Out of combat the key is kept from
     -- the game, so it does not also close the settings window. In combat the game does not let addons hold keys back
     -- (SetPropagateKeyboardInput HasRestrictions): the pane is in UISpecialFrames, so Esc then closes it with the settings window.
-    f:SetScript("OnKeyDown", function(self, key)
-        if InCombatLockdown() then return end
-        if key == "ESCAPE" then
-            self:SetPropagateKeyboardInput(false)
-            self:Hide()
-        else
-            self:SetPropagateKeyboardInput(true)
-        end
-    end)
-    f:SetScript("OnShow", function(self)
-        if not InCombatLockdown() then self:EnableKeyboard(true); self:SetPropagateKeyboardInput(true) end
-    end)
-    f:SetScript("OnHide", function(self)
-        if not InCombatLockdown() then self:EnableKeyboard(false) end
-        GameTooltip:Hide()
-    end)
+    -- (row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM SCREENSHOTTING") through core's ns.KeyCatch
+    -- (XayaUI/KeyCatch.lua): only that Esc is held; every other key, PRINTSCREEN included, reaches the game; the keyboard is on only
+    -- while the pane is shown and out of combat.
+    local function OnKey(self, key, inCombat)
+        if inCombat or key ~= "ESCAPE" then return false end
+        self:Hide()
+        return true
+    end
+    f:SetScript("OnHide", function(self) GameTooltip:Hide() end)   -- (set before ns.KeyCatch, which hooks OnShow / OnHide)
+    if ns.KeyCatch then ns.KeyCatch(f, OnKey) end
     if UISpecialFrames then tinsert(UISpecialFrames, "XayaUIInfoPane") end
 
     if ns.Theme and ns.Theme.OnResolve then

@@ -104,7 +104,7 @@ XayaUI_NS = ns
 local fn = assert(loadfile(__PATH__)); fn("XayaUI_DevAssist", {})
 ns.SettingsOpenAllForTests()   -- (P5) XayaUI Dev Assist's ADDON_LOADED: its store (XayaUIDevAssistDB) opens
 '''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI_DevAssist", "ChatProbe.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
-lua.execute(r'''
+fails = lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
 local function has(pat) for _, l in ipairs(XayaUIDevAssistDB.chatProbe.lines) do if l:find(pat, 1, true) then return l end end end
@@ -148,4 +148,6 @@ check("works without the secrets API", XayaUIDevAssistDB.chatProbe and #XayaUIDe
 EnumerateFrames = nil; ns.printed = {}; ns.ChatProbe()
 check("works without EnumerateFrames", has("EnumerateFrames or screen size not available"))
 print(n .. " checks, " .. fails .. " failed")
+return fails
 ''')
+_sys.exit(1 if fails else 0)   # fix plan f1-9: a failure now fails the exit code too (it used to exit 0 whatever happened)

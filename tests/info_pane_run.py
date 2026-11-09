@@ -102,12 +102,12 @@ check("**bold** and `commands` are coloured, not shown with their markers",
 -- Info tab
 for _, b in ipairs(f.tabs) do if b.key == "info" then b:Click() end end
 nl = navLabels()
-check("Info lists Version info, Readme, Help (FAQ), Credits + Acknowledgements",
-  table.concat(nl, "|") == "Version info|Readme|Help (FAQ)|Credits + Acknowledgements", table.concat(nl, "|"))
+check("Info lists Version info, Readme, Help (FAQ), Credits + Acknowledgments",
+  table.concat(nl, "|") == "Version info|Readme|Help (FAQ)|Credits + Acknowledgments", table.concat(nl, "|"))
 txt = contentText()
 local ver = C_AddOns.GetAddOnMetadata("XayaUI", "Version")
 check("Version info shows the XayaUI version (what Addon Info showed)", txt:find("v" .. ver, 1, true) ~= nil and txt:find("Last updated:", 1, true) ~= nil)
-check("Version info points to the credits' new place", txt:find("Info > Credits + Acknowledgements", 1, true) ~= nil)
+check("Version info points to the credits' new place", txt:find("Info > Credits + Acknowledgments", 1, true) ~= nil)
 local repoBox = false
 for _, e in ipairs(f.editPool.list) do if e:IsShown() and e:GetText() == "https://github.com/heyitsxaya/XayaUI" then repoBox = true end end
 check("the source code link is a copyable box", repoBox)
@@ -120,7 +120,7 @@ P.Select("info", "credits")
 txt = contentText()
 local missing = {}
 for _, n in ipairs({ __CREDITS__ }) do if not txt:find(n, 1, true) then missing[#missing + 1] = n end end
-check("Credits + Acknowledgements has every credit, as before", #missing == 0, table.concat(missing, "; "))
+check("Credits + Acknowledgments has every credit, as before", #missing == 0, table.concat(missing, "; "))
 -- (Options 0.6.64; REQUEST-LOG B6, reading taken; her words, ATTR-1: "increase the gutter by 10px / credits and attribution are h1 /
 -- subheaders (code, ideas and design, etc) h2 / each section under a subheader should have an unrounded box with rows (no columns) on a
 -- slightly less transparent background (10%)". Before: an intro paragraph, capitalised collapsible section rows with a count, one box

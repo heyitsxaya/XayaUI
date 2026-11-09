@@ -283,17 +283,49 @@ function ns.GoHome(tab)
     else pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "smartTab", "all") end
 end
 -- (0.6.82; request log row 20, Xaya 2026-11-08: "deleting auras shifts the rule sidebar up still") After a delete the list goes back
--- to its top row (GoHome), and the window rebuild that follows re-selects that row through AceGUI's TreeGroup:Select, which scrolls the
+-- to its top row, and the window rebuild that follows re-selects that row through AceGUI's TreeGroup:Select, which scrolls the
 -- selected row into view: the list jumped to Loaded at the top. A delete keeps the list where it was instead: the scroll position is
 -- left on the tree's status table (xuiKeepScroll), and XayaUI_Options (TreePaint.lua, after the rebuild) puts it back and drops the
 -- scroll-to-selection. Rows above the deleted one keep their place, the next row moves up into its place; a list now shorter than the
--- view is held at its bottom by AceGUI's own clamp. Only when the delete stays in the same list (GoHome from Not Loaded opens Loaded).
+-- view is held at its bottom by AceGUI's own clamp.
+-- The top row is the one of the list the delete was made in: Rules > Enabled goes back to LOADED (Loaded and Not Loaded are one list,
+-- one sub-tab), Rules > Disabled to DISABLED, Smart Categories to All. Before (review of the row 20 fix): GoHome knows only Enabled and
+-- Smart Categories, so a delete made in Rules > Disabled opened Enabled > Loaded at the top.
 function ns.GoHomeKeepScroll(tab)
     tab = tab or ns.CurrentTab()
     local S = ns.RulesTreeStatus()
+    local sub = ns.CurrentSub()
+    if tab == "cooldowns" and sub == "disabledTab" then
+        if S then S.xuiKeepScroll = S.scrollvalue or 0 end
+        pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, "cooldowns", "disabledTab", "disabled")
+        return
+    end
     local dest = (tab == "cooldowns") and "enabledTab" or "smartTab"
-    if S and ns.CurrentSub() == dest then S.xuiKeepScroll = S.scrollvalue or 0 end
+    if S and sub == dest then S.xuiKeepScroll = S.scrollvalue or 0 end
     ns.GoHome(tab)
+end
+
+-- The extra aura IDs of one aura trigger (the built-in Buff / Aura's rule.buffAlt, a "Buff / Aura (another)" row's alt): numbers above 0,
+-- no repeats, never the trigger's own aura (mainID), at most ns.AURA_ALT_MAX. Each further argument is a list of IDs (numbers or digit
+-- strings) or a text ("123, 456"); they are read in order. Returns the list (nil when it is empty) and how many new IDs did not fit.
+-- The one place that builds such a list in the editor: the Trigger tab's boxes (Editor.lua, TriggersEditor.lua) and Merge N Selected
+-- (Sidebar.lua) all use it. (XayaUI_Rules/Triggers.lua NormalizeExtra keeps its own copy: that addon loads without this one.)
+ns.AURA_ALT_MAX = 30
+function ns.AuraIDList(mainID, ...)
+    local out, seen, over = {}, { [tonumber(mainID) or 0] = true }, 0
+    local function add(v)
+        local id = tonumber(v)
+        if not id or id <= 0 or seen[id] then return end
+        seen[id] = true
+        if #out < ns.AURA_ALT_MAX then out[#out + 1] = id else over = over + 1 end
+    end
+    for i = 1, select("#", ...) do
+        local src = select(i, ...)
+        if type(src) == "table" then for _, v in ipairs(src) do add(v) end
+        elseif type(src) == "string" then for n in src:gmatch("%d+") do add(n) end
+        elseif src ~= nil then add(src) end
+    end
+    return (#out > 0) and out or nil, over
 end
 
 local function RulePath(rule)

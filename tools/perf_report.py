@@ -1,22 +1,34 @@
 #!/usr/bin/env python3
 """Performance report from a recorded run (REQUEST-LOG A15 P-1 / P-5: "File + report tool").
 
-Input: the saved file the game writes at /reload or logout,
-  WTF/Account/<ACCOUNT>/SavedVariables/XayaUI.lua   (CueRulesDB: the detailed record, CueRulesDB.debugRecord.lines)
-recorded with XayaUI Dev Assist's Perf category on (the "Record this run?" prompt turns it on in Mythic 0 / Mythic+ dungeons).
+Input: the saved files the game writes at /reload or logout, in WTF/Account/<ACCOUNT>/SavedVariables/:
+  XayaUI.lua             CueRulesDB.debugRecord.lines: the detailed record, recorded with XayaUI Dev Assist's Perf category on
+                         (records made before Dev Assist 0.7.15 may also hold the run markers of the removed "Record this run?" prompt)
+  XayaUI_DevAssist.lua   XayaUIDevAssistDB.perfLog: the last /xui debug perf readings (XayaUI Rules' Engine.lua writes them there,
+                         only while Dev Assist is on). Optional: --devassist PATH, else the file next to XayaUI.lua when it is there.
+                         An old XayaUI.lua with CueRulesDB.perfLog (where it was kept before) is read too.
 
 Output (Markdown, to stdout or --out): per recorded run and per fight (boss or trash, length), the engine's own timing per fight,
-the game's per-addon CPU meter (C_AddOnProfiler) per fight and for the whole run, the slowest rules, and a ranked list of what
-to look at first. Only numbers that are in the file are shown; every derived number says how it was worked out.
+the game's per-addon CPU meter (C_AddOnProfiler) per fight and for the whole run, the slowest rules, a ranked list of what
+to look at first, and the kept perf readings. Only numbers that are in the files are shown; every derived number says how it was
+worked out.
 
-Usage: python3 tools/perf_report.py PATH/TO/XayaUI.lua [--out report.md]
-The file is read as data only (a small Lua-table reader below; nothing in it is run).
+Usage: python3 tools/perf_report.py PATH/TO/XayaUI.lua [--devassist PATH/TO/XayaUI_DevAssist.lua] [--out report.md]
+The files are read as data only (a small Lua-table reader below; nothing in them is run).
 """
-import argparse, re, sys
+import argparse, os, re, sys
 
 # ---------------------------------------------------------------------------------------------------------------------------
 # A reader for the game's SavedVariables format (Lua table constructors; strings, numbers, booleans, nil; "-- [n]" comments)
+# The patterns are compiled once and matched at the reader's position (fix plan f6-8: matching on self.s[self.i:] copied the
+# rest of the file for every number, key and assignment, which is quadratic in the file's size).
 # ---------------------------------------------------------------------------------------------------------------------------
+NUM = re.compile(r"-?(?:0x[0-9a-fA-F]+|\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+|inf|nan)")
+KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*=(?!=)")
+ASSIGN = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*=")
+ESCDIGITS = re.compile(r"\d{1,3}")
+
+
 class LuaReader:
     def __init__(self, text):
         self.s, self.i, self.n = text, 0, len(text)
@@ -49,7 +61,7 @@ class LuaReader:
             if c == "\\":
                 d = self.s[self.i + 1]
                 if d.isdigit():
-                    m = re.match(r"\d{1,3}", self.s[self.i + 1:])
+                    m = ESCDIGITS.match(self.s, self.i + 1)
                     out.append(chr(int(m.group(0)))); self.i += 1 + len(m.group(0))
                     continue
                 out.append(esc.get(d, d)); self.i += 2
@@ -64,7 +76,7 @@ class LuaReader:
             return self.table()
         if c in "\"'":
             return self.string()
-        m = re.match(r"-?(?:0x[0-9a-fA-F]+|\d+\.?\d*(?:[eE][-+]?\d+)?|\.\d+|inf|nan)", self.s[self.i:])
+        m = NUM.match(self.s, self.i)
         if m and m.group(0):
             self.i += len(m.group(0))
             t = m.group(0)
@@ -96,7 +108,7 @@ class LuaReader:
                 assert self.s[self.i] == "="; self.i += 1
                 d[k] = self.value()
                 continue
-            m = re.match(r"[A-Za-z_][A-Za-z0-9_]*\s*=(?!=)", self.s[self.i:])
+            m = KEY.match(self.s, self.i)
             if m:
                 k = m.group(0).split("=")[0].strip(); self.i += len(m.group(0))
                 d[k] = self.value()
@@ -113,7 +125,7 @@ class LuaReader:
             self.ws()
             if self.i >= self.n:
                 return out
-            m = re.match(r"([A-Za-z_][A-Za-z0-9_]*)\s*=", self.s[self.i:])
+            m = ASSIGN.match(self.s, self.i)
             if not m:
                 raise ValueError("expected NAME = at %d" % self.i)
             self.i += len(m.group(0))
@@ -234,7 +246,25 @@ def fmt(v, f="%.3f"):
     return "?" if v is None else f % v
 
 
-def report(saved):
+def perf_logs(saved, devassist=None):
+    """The kept /xui debug perf readings: [(source name, entries)]. XayaUIDevAssistDB.perfLog is where XayaUI Rules writes them
+    (XayaUI_Rules/Engine.lua, through Dev Assist's settings view; fix plan f1-11: this report used to read only CueRulesDB.perfLog,
+    which nothing writes any more); CueRulesDB.perfLog is read too for files saved before the move."""
+    out = []
+    for src in (devassist or {}, saved):   # XayaUI_DevAssist.lua first; a file holding both tables works too
+        dv = src.get("XayaUIDevAssistDB")
+        pl = dv.get("perfLog") if isinstance(dv, dict) else None
+        if pl:
+            out.append(("XayaUIDevAssistDB.perfLog", pl))
+            break
+    db =saved.get("CueRulesDB") or {}
+    if isinstance(db, dict) and db.get("perfLog"):
+        out.append(("CueRulesDB.perfLog, saved before the readings moved to Dev Assist", db["perfLog"]))
+    return out
+
+
+def report(saved, devassist=None):
+    """saved: XayaUI.lua's tables; devassist: XayaUI_DevAssist.lua's tables (optional)."""
     db = saved.get("CueRulesDB") or {}
     rec = db.get("debugRecord") or {}
     lines = rec.get("lines") or []
@@ -350,14 +380,17 @@ def report(saved):
         for i, (who, v) in enumerate(sorted(ranking.items(), key=lambda kv: -max(kv[1])), 1):
             w("%d. %s: %s ms/frame" % (i, who, ", ".join("%.4f" % x for x in v)))
         w("")
-    pl = db.get("perfLog") or []
-    if pl:
-        w("## /xui debug perf readings kept (CueRulesDB.perfLog, newest last)")
+    logs = perf_logs(saved, devassist)
+    for name, pl in logs:
+        w("## /xui debug perf readings kept (%s, newest last)" % name)
         w("")
         for e in pl:
             w("- %s (build %s, %s):" % (e.get("at", "?"), e.get("build", "?"), "in combat" if e.get("combat") else "out of combat"))
             for l in e.get("lines") or []:
                 w("  - " + str(l))
+        w("")
+    if not logs and devassist is None:
+        w("No /xui debug perf readings: they are kept in XayaUI_DevAssist.lua (XayaUIDevAssistDB.perfLog); pass it with --devassist.")
         w("")
     return "\n".join(out)
 
@@ -365,9 +398,15 @@ def report(saved):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("saved", help="WTF/Account/<ACCOUNT>/SavedVariables/XayaUI.lua")
+    ap.add_argument("--devassist", help="WTF/Account/<ACCOUNT>/SavedVariables/XayaUI_DevAssist.lua (the kept perf readings); "
+                                        "default: that file next to XayaUI.lua, when it is there")
     ap.add_argument("--out", help="write the report here instead of printing it")
     a = ap.parse_args(argv)
-    text = report(read_saved(a.saved))
+    dpath = a.devassist
+    if dpath is None:
+        guess = os.path.join(os.path.dirname(os.path.abspath(a.saved)), "XayaUI_DevAssist.lua")
+        dpath = guess if os.path.isfile(guess) else None
+    text = report(read_saved(a.saved), read_saved(dpath) if dpath else None)
     if a.out:
         with open(a.out, "w", encoding="utf-8") as fh:
             fh.write(text + "\n")

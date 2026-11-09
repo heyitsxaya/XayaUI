@@ -62,7 +62,17 @@ pages the fixed state draws, 0 other lines (debug-log 2026-11-08 aspect-ratio). 
 recorded the bug; now the list's order (e.g. {1="none",2="stacks"}). 0 other lines in every variant (debug-log 2026-11-08 count-options). Regenerated again on 2026-11-08 for Bonus 0.6.38 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37, "these are \"Stat Calculator\""):
 only the "bonus" tab, in every variant where XayaUI Bonus is on: `bonus.statcalc` is named "Stat Calculator" (was "Character Toolkit",
 its switch too), and the Bonus pages, sorted by name, renumber: Data Panels 2 -> 1, Enhanced Tooltips 3 -> 2, Stat Calculator 1 -> 3
-(3 lines per variant), plus the desc texts that named the path "Bonus Features > Character Toolkit" (now "... > Stat Calculator"; e.g. qol.chartoolkit.intro); 0 other lines. `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+(3 lines per variant), plus the desc texts that named the path "Bonus Features > Character Toolkit" (now "... > Stat Calculator"; e.g. qol.chartoolkit.intro); 0 other lines. Regenerated again on 2026-11-08 for American spelling (FA-16, tests/american_spelling_run.py; Chat 0.6.47, Nameplates 0.2.4, Reskin 0.6.25, Rules Options 0.6.82): `--dump` of 4e4e4be and of the new code
+differ in 22-25 lines per variant (same line and node counts), each only in words of a name / desc / values text: gray -> grey, Grays -> Greys,
+ungrayed -> ungreyed (her exception; the Opacity & Fill / Overlay Layer descs and "(none - grey)"), colour(s / ed) -> color(s / ed), Colours -> Colors
+(the Nameplates page and its switch, Friend Colors' Social note, the chat Sidebar's Background desc); a word-by-word comparison found 0 other differences. Regenerated again on 2026-11-09 (merge of the group anchors build): one help text under the group position settings respelled ("centre" -> "center", FA-16); 0 other lines. `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+recorded the bug; now the list's order (e.g. {1="none",2="stacks"}). 0 other lines in every variant (debug-log 2026-11-08 count-options).
+Regenerated again on 2026-11-08 for Rules 0.6.82 (group anchors, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s rows 14, 18, 28): only the
+"cooldowns" tab changed, in every variant, 6690 -> 6694 nodes; `--dump` of 897ae70 and of the new code differ in exactly 8 removed and 12
+added lines per variant, on the 4 group pages the fixed state draws: `pageGroup.container` (only its xuiInfo, the settings note that now
+says what the anchor point refers to), `pageGroup.container.rel` (only its sorting / values: "Another group" added last) and the new
+`pageGroup.container.relGroup` select ("Group", order 4.25, hidden while Relative to is not Another group), 0 other lines in every variant
+(debug-log 2026-11-08 group-anchors). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -72,6 +82,44 @@ import run as H  # noqa: E402  (the whole-addon harness)
 GOLDEN_FILE = os.path.join(HERE, "options_split_parity_golden.json")
 MODULES = ["XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_DevAssist", "XayaUI_Nameplates", "XayaUI_Media"]
 MODULE_KEY = {"XayaUI_Chat": "chat", "XayaUI_QoL": "qol", "XayaUI_Bonus": "bonus", "XayaUI_Reskin": "reskin"}
+# QA-branch modules (main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist, Media). Presence is read from the folder.
+ROOT = os.path.dirname(HERE)
+QA_MODULES = ["XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates"]
+ABSENT = [m for m in QA_MODULES if not os.path.isdir(os.path.join(ROOT, m))]
+ABSENT_LABEL = ", ".join(ABSENT)
+# The golden holds one hash per top tab of the whole window. These tabs hold pages, rows or profile parts that belong to the QA-branch
+# modules (found by diffing the dumps of the full checkout and the slim one), so their hashes cannot match without them.
+# Which tabs each absent module changes (probed 2026-11-08: with only Reskin and Nameplates absent, "settings" still matches and is
+# checked; with Chat absent too it does not).
+QA_TABS_BY = {
+    "XayaUI_Chat": {"chat", "qol", "reskin", "set", "settings", "profiles"},
+    "XayaUI_Reskin": {"qol", "reskin", "set", "profiles"},
+    "XayaUI_Nameplates": {"qol", "reskin", "set", "profiles"},
+}
+QA_TABS = set().union(*[QA_TABS_BY[m] for m in ABSENT]) if ABSENT else set()
+# the settings pages (module, key) each QA-branch module registers: filtered out of the golden's "registered" strings when it is absent
+QA_PAGE_KEYS = {
+    "XayaUI_Chat": {"improvedchat", "chatpanel"},
+    "XayaUI_Nameplates": {"nameplates"},
+    "XayaUI_Reskin": {"blizzwindows", "friendcolors", "gamemenu", "minimapshape", "objtracker", "rskbubbles", "rskbuttons", "rskmenus",
+                      "rskmmbuttons", "rskstatusbars", "rsktoasts", "rsktooltips"},
+}
+
+
+def filter_registered(reg, off=None):
+    """the golden's 'registered' string minus the pages of the absent QA-branch modules"""
+    drop = set()
+    for m in ABSENT:
+        drop |= QA_PAGE_KEYS[m]
+    if off == "XayaUI_QoL" and "XayaUI_Reskin" in ABSENT and "XayaUI_Chat" in ABSENT:
+        # the Theme page (Options' ScopeEditor) exists only while some element registered a theme scope; with Reskin, Chat (Chat Panel)
+        # and QoL (Character Pane) all away none did, so the page is correctly not there (checked: no 'rsktheme' lines in that dump)
+        drop.add("rsktheme")
+    out = []
+    for x in reg.split():
+        m, ks = x.split("=", 1)
+        out.append(m + "=" + ",".join(k for k in ks.split(",") if k and k not in drop))
+    return " ".join(out)
 
 LUA = r'''
 return function(W, L)
@@ -235,6 +283,11 @@ def main():
     if "--dump" in sys.argv:
         dump_dir = sys.argv[sys.argv.index("--dump") + 1]
         os.makedirs(dump_dir, exist_ok=True)
+    if "--golden" in sys.argv and ABSENT:
+        print("the golden is made on the full checkout (QA-branch modules absent: %s)" % ABSENT_LABEL)
+        sys.exit(1)
+    # an absent module's variant is still run (it is the all-on window): the groups' ids come from the process-wide random sequence, so
+    # the golden's "cooldowns" hashes only match when every variant runs in the golden's order
     variants = [None] + MODULES
     results = {}
     errs_all = []
@@ -255,7 +308,12 @@ def main():
             print("ERROR in the game stand-in [%s]: %s" % (tag, e[:400]))
         return
     golden = json.load(open(GOLDEN_FILE, encoding="utf-8"))
-    total = bad = 0
+    total = bad = skipped = 0
+
+    def skip(name):
+        nonlocal skipped
+        skipped += 1
+        print("SKIP (QA-branch module absent: %s) %s" % (ABSENT_LABEL, name))
 
     def check(name, ok, detail=""):
         nonlocal total, bad
@@ -264,8 +322,18 @@ def main():
             bad += 1
         print(("PASS " if ok else "FAIL ") + name + (("  " + detail) if (detail and not ok) else ""))
 
-    for off in variants:
+    for off in [None] + MODULES:
         tag = "all-on" if off is None else ("off-" + off)
+        if off in ABSENT:
+            # switching off a module that is not there is the all-on window: nothing to compare
+            for nm in ["[%s] the options table builds" % tag] + \
+                      ["[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t)
+                       for t in sorted(golden.get(tag, {}).get("tabs", {}))] + \
+                      ["[%s] the same settings pages are registered per module" % tag,
+                       "[%s] V14: the switched-off addon registered none of its settings pages" % tag] + \
+                      (["[%s] V14: its top tab is absent" % tag] if off in ("XayaUI_Chat", "XayaUI_Bonus") else []):
+                skip(nm)
+            continue
         got, want = results.get(tag), golden.get(tag)
         check("[%s] the options table builds" % tag, got is not None)
         if got is None or want is None:
@@ -273,10 +341,13 @@ def main():
             continue
         keys = sorted(set(got["tabs"]) | set(want["tabs"]))
         for t in keys:
-            check("[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t),
-                  got["tabs"].get(t) == want["tabs"].get(t), "got %s want %s" % (got["tabs"].get(t), want["tabs"].get(t)))
-        check("[%s] the same settings pages are registered per module" % tag, got["registered"] == want["registered"],
-              "got %s want %s" % (got["registered"], want["registered"]))
+            nm = "[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t)
+            if ABSENT and t in QA_TABS:
+                skip(nm)
+                continue
+            check(nm, got["tabs"].get(t) == want["tabs"].get(t), "got %s want %s" % (got["tabs"].get(t), want["tabs"].get(t)))
+        check("[%s] the same settings pages are registered per module" % tag, got["registered"] == filter_registered(want["registered"], off),
+              "got %s want %s" % (got["registered"], filter_registered(want["registered"], off)))
         # C: off costs nothing (V14): none of the pages the switched-off addon's files register exists
         if off:
             have = set()
@@ -327,7 +398,8 @@ def main():
               all(reg.get(m) == "" for m in ("rules", "core", "cooldowns")))
     for tag, e in errs_all:
         print("ERROR in the game stand-in [%s]: %s" % (tag, e[:600]))
-    print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))
+    print("%d checks, %d failed, %d Lua errors%s" % (total, bad, len(errs_all),
+          (", %d skipped (QA-branch module absent: %s)" % (skipped, ABSENT_LABEL)) if skipped else ""))
     sys.exit(1 if bad or errs_all else 0)
 
 

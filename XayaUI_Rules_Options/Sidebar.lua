@@ -1191,13 +1191,19 @@ local function RowMenu(button, root)
         root:CreateButton(rule.enabled and "Disable" or "Enable", function()
             rule.enabled = not rule.enabled; pcall(ns.RefreshVisual, rule); ns.MarkDirty(); Notify()
         end)
-        if ns.MultiHas and ns.MultiHas(rule) and ns.MultiCount() > 1 and #ns.MultiLinkTargets() >= 2 then
+        local multi = ns.MultiHas and ns.MultiHas(rule) and ns.MultiCount() > 1   -- the right-clicked rule is one of several selected
+        if multi and #ns.MultiLinkTargets() >= 2 then
             local n, linked = ns.MultiCount(), ns.MultiLinked()
             root:CreateButton(linked and ("Unlink " .. n .. " Selected") or ("Link " .. n .. " Selected (move together)"), function() ns.MultiLink(not linked) end)
         end
+        -- (0.6.82, request log rows 19 / 27) the selected rules' triggers into this one, the others to the Recycle Bin (RuleMerge.lua)
+        if multi then root:CreateButton("Merge " .. ns.MultiCount() .. " Selected", function() ns.MultiMerge(rule) end) end
         AddMoveMenu(root, rule, "rule")
         root:CreateDivider()
         root:CreateButton("Delete", function() AskConfirm("Delete the rule '" .. tostring(rule.name) .. "'? " .. ns.RecycleBinNote(), function() DeleteRule(rule) end) end)
+        -- (0.6.82, request log row 23, Xaya 2026-11-08: "should be able to right click multi delete") every selected rule, exactly as the
+        -- selection bar's Delete (N): edit-locked ones left out with the count, the question, one Recycle Bin item each, the list kept in place
+        if multi then root:CreateButton("Delete " .. ns.MultiCount() .. " Selected", function() ns.MultiDelete() end) end
         return true
     end
     local fold = last:match("^f%d") and FolderById(last)
@@ -1582,6 +1588,12 @@ do
     function ns.MultiCount() Prune(); local n = 0; for _ in pairs(sel) do n = n + 1 end; return n end
     function ns.MultiReset() wipe(sel); anchor = nil end
     function ns.MultiHas(rule) Prune(); return sel[rule] and true or false end
+    function ns.MultiSelected()   -- (0.6.82) the selected rules in list order (Merge N Selected, RuleMerge.lua)
+        Prune()
+        local out = {}
+        for _, r in ipairs(ns.rules or {}) do if sel[r] then out[#out + 1] = r end end
+        return out
+    end
     -- "Link N Selected (move together)" (Xaya, 2026-11-06: "linking aura functionality not possible in the drop down menu"; her answer
     -- "Link N selected"). A link joins displays (Visual.lua ns.LinkAura: dragging one moves the others), so the selected rules' displays
     -- are linked: each rule's display cues (ns.PreviewTargets), or the rule itself when it draws its own display.
@@ -1754,6 +1766,7 @@ function ns.SidebarRename(button)
                 end
             end
         end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         button.xuiRenameEB = eb
     end
     eb.xuiRule = rule; eb.xuiIsFolder = isFolder

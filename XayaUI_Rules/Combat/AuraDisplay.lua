@@ -346,6 +346,12 @@ end
 -------------------------------------------------------------------------------
 -- The same definition as Visual.lua ns.DynamicBlock (which wins when it is loaded), so the engine never ignores a growth setting;
 -- tests/layout_parity_run.py checks the two agree for every growth, anchor point and wrap side.
+local EDGE_BLOCK = {   -- (as Visual.lua's) [growth][extra lines on the other side] = horiz, right, down, corner
+    RIGHT = { [false] = { true, true, true, "TOPLEFT" }, [true] = { true, true, false, "BOTTOMLEFT" } },
+    LEFT = { [false] = { true, false, true, "TOPRIGHT" }, [true] = { true, false, false, "BOTTOMRIGHT" } },
+    DOWN = { [false] = { false, true, true, "TOPLEFT" }, [true] = { false, false, true, "TOPRIGHT" } },
+    UP = { [false] = { false, true, false, "BOTTOMLEFT" }, [true] = { false, false, false, "BOTTOMRIGHT" } },
+}
 function D._BlockFallback(fo)
     local dir = fo and fo.cGrowth or "RIGHT"
     local rev = fo and fo.cWrapRev and true or false
@@ -361,6 +367,14 @@ function D._BlockFallback(fo)
         local onRight, onBottom = pt:find("RIGHT", 1, true) ~= nil, pt:find("BOTTOM", 1, true) ~= nil
         return { horiz = (dir == "ANCHOR_ROW"), right = not onRight, down = not onBottom,
             corner = (onBottom and "BOTTOM" or "TOP") .. (onRight and "RIGHT" or "LEFT"), pin = pt, pinTo = pt }
+    elseif EDGE_BLOCK[dir] and fo then   -- (Rules 0.6.82, fix A) Auto size with a point other than Center: the whole grid's point
+        local pt = fo.cPoint
+        local auto
+        if fo.cSize == "set" or fo.cSize == "auto" then auto = (fo.cSize == "auto") else auto = not ((fo.cW or 0) > 0 or (fo.cH or 0) > 0) end
+        if pt and pt ~= "CENTER" and TO_CENTER[pt] and auto then
+            local e = EDGE_BLOCK[dir][rev]
+            return { horiz = e[1], right = e[2], down = e[3], corner = e[4], pin = pt, pinTo = pt }
+        end
     end
     return nil
 end
@@ -370,6 +384,12 @@ end
 -- that is pinned (`pin`) and the point of XayaUI's group frame it is pinned on (`pinTo`).
 local function FlowFor(dir, rev, fo)
     local A, F = AnchorUtil.FlowLayoutAxis, AnchorUtil.FlowDirection
+    -- a block first: an edge growth is one too in Auto size with a point other than Center (Rules 0.6.82, fix A: the whole grid's point
+    -- on the group's point; the start corner and directions are the edge growth's own, listed below)
+    local blk = fo and (ns.DynamicBlock or D._BlockFallback)(fo)
+    if blk then
+        return blk.horiz and A.Horizontal or A.Vertical, blk.corner, blk.right and F.Right or F.Left, blk.down and F.Down or F.Up, blk.pin, blk.pinTo
+    end
     if dir == "RIGHT" then
         if rev then return A.Horizontal, "BOTTOMLEFT", F.Right, F.Up end                -- extra rows go up
         return A.Horizontal, "TOPLEFT", F.Right, F.Down end                            -- wraps down
@@ -388,10 +408,7 @@ local function FlowFor(dir, rev, fo)
     -- container's size to the icons that are showing, in combat too (Blizzard_CustomAuraContainer.lua
     -- CustomAuraContainerFlowLayoutMixin:OnLayoutComplete -> container:SetSize), so a container pinned by the block's `pin` point
     -- grows and shrinks around it as auras come and go.
-    local b = fo and (ns.DynamicBlock or D._BlockFallback)(fo)
-    if b then
-        return b.horiz and A.Horizontal or A.Vertical, b.corner, b.right and F.Right or F.Left, b.down and F.Down or F.Up, b.pin, b.pinTo
-    end
+    -- (the blocks are returned at the top)
 end
 
 -- The longest a line may be before it wraps: the container's width / height and / or "items per row / column" (same rule as XayaUI's

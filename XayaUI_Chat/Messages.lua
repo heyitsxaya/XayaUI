@@ -238,6 +238,7 @@ function C.CopyBox(text, title)
         copy.edit:SetFont(STANDARD_TEXT_FONT, 13, ""); copy.edit:SetAutoFocus(false)
         copy.edit:SetScript("OnEscapePressed", function() copy:Hide() end)
         copy.edit:SetScript("OnEnterPressed", function() copy:Hide() end)
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(copy.edit) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         copy.edit:SetScript("OnTextChanged", function(self, user) if user and copy.text then self:SetText(copy.text); self:HighlightText() end end)
         if _G.UISpecialFrames then table.insert(_G.UISpecialFrames, "XayaUIChatCopy") end
         copy:Hide()

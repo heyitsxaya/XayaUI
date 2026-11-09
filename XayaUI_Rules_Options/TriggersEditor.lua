@@ -14,7 +14,7 @@ local Call, MAX_ROWS, ORDER, TYPES = S.Call, S.MAX_ROWS, S.ORDER, S.TYPES
 local unpack = unpack or table.unpack
 
 function ns.TriggerNameArg(rule, tok, j, order, onChange)
-    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in gray under the trigger number)",
+    return { type = "input", order = order, width = "full", name = "Name  (optional: shown in grey under the trigger number)",
         desc = "Names this trigger, up to 30 characters. The name shows under the trigger number and in dropdowns.",
         get = function() return ns.TriggerName(rule, tok, j) or "" end,
         set = function(_, v)
@@ -226,20 +226,15 @@ local function FieldArgs(rule, t, f, H, order, row)
         row[k .. "Search"] = H.SearchBox(order, function(id)
             id = tonumber(id) or 0
             if id == 0 or id == (tonumber(t.spellID) or 0) then return end
-            t[k] = type(t[k]) == "table" and t[k] or {}
-            for _, x in ipairs(t[k]) do if x == id then return end end
-            if #t[k] >= 30 then ns.Print("a trigger can watch at most 30 extra aura IDs"); return end
-            t[k][#t[k] + 1] = id; onN()
+            for _, x in ipairs(type(t[k]) == "table" and t[k] or {}) do if x == id then return end end
+            local out, over = ns.AuraIDList(t.spellID, t[k], { id })   -- the shared list rule (TreeHelpers.lua)
+            if over > 0 then ns.Print("a trigger can watch at most " .. ns.AURA_ALT_MAX .. " extra aura IDs"); return end
+            t[k] = out; onN()
         end, "Also count these auras: search to add another", f.search or "aura")
         row[k] = { type = "input", name = f.label, order = order + 0.1, width = "full", desc = f.desc,
             get = function() local l = type(t[k]) == "table" and t[k] or {}; local o = {}; for i, v in ipairs(l) do o[i] = tostring(v) end; return table.concat(o, ", ") end,
             set = function(_, v)
-                local out, seen = {}, { [tonumber(t.spellID) or 0] = true }
-                for n in tostring(v or ""):gmatch("%d+") do
-                    local id = tonumber(n)
-                    if id and id > 0 and not seen[id] and #out < 30 then seen[id] = true; out[#out + 1] = id end
-                end
-                t[k] = (#out > 0) and out or nil
+                t[k] = ns.AuraIDList(t.spellID, tostring(v or ""))   -- numbers, no repeats, not the main ID, at most 30 (TreeHelpers.lua)
                 onN()
             end }
         row[k .. "Names"] = { type = "description", order = order + 0.2, width = "full", fontSize = "medium",

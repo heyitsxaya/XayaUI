@@ -56,6 +56,7 @@ function ns.ShowCopyBox(title, text)
         eb:SetScript("OnEscapePressed", function() f:Hide() end)
         sf:SetScrollChild(eb)
         f.eb = eb
+        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
         local sel = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         sel:SetSize(110, 24); sel:SetPoint("BOTTOMLEFT", 12, 12); sel:SetText("Select all")
         sel:SetScript("OnClick", function() eb:SetFocus(); eb:HighlightText() end)
@@ -282,10 +283,14 @@ local function BuildWindow()
     cmd:SetScript("OnEnterPressed", function(self)
         local t = self:GetText() or ""
         self:SetText("")
-        if ns.ConsoleRun(t) then self:AddHistoryLine(t) end   -- (the line keeps the focus, ready for the next command)
+        if ns.ConsoleRun(t) then self:AddHistoryLine(t) end
+        -- (XayaUI 0.6.85 review, V24) Enter runs the command AND lets go of the keyboard: a line that kept the cursor kept every key,
+        -- movement and the screenshot key included, until Esc or a click elsewhere. A click in the line types the next command.
+        self:ClearFocus()
     end)
     cmd:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
     f.cmd = cmd
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(cmd) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     f.log = CreateFrame("ScrollingMessageFrame", nil, f)
     f.log:SetPoint("TOPLEFT", M, -(M + 18 + G)); f.log:SetPoint("BOTTOMRIGHT", -M, M + CMD_H + G)
     f.log:SetFontObject(GameFontHighlightSmall)

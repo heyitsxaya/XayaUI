@@ -63,10 +63,15 @@ local SETTINGS_KEYS = {
     core      = { "rules", "folders", "bars", "barGroup", "drafts", "moverDraft", "auraAlias", "auraModel", "auraSources", "auraTracker",
                   "classLearn", "learnedAuraDur", "learnedAuraStacks", "learnedCooldown", "procGlowSeen", "engineDisplay", "cuesVer",
                   "backupPreCues", "setupBuildError", "setupShowError",
+                  -- (core 0.6.84, Rules 0.6.82, group anchors fix A) the one-time "Nothing moves" update: its done flag and what it adjusted (Visual.lua)
+                  "groupAnchorVer", "groupAnchorMoved",
                   -- (P5) the rules' own switches, kept in CueRulesDB.ui before (LEGACY_UNDER_UI); only XayaUI Rules / Rules Options read them
                   "snapMode", "auto", "creatorIDs", "folderOrdered", "defaultFolders", "defaultFoldersV", "hybridMigrated", "progressMigrated",
                   "skipSoundAllPrompt", "promptSave", "draftsMax", "draftsConfirmDiscard", "draftsConfirmDelete", "draftsCloseNotice" },
-    qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "shoppingList", "releaseGuard" },
+    -- (core 0.6.84; REQUEST-LOG TRI-8) characterReskinLook: the character reskin's look half while XayaUI Blizzard Reskin is not installed
+    -- (main holds no Blizzard Reskin since 2026-11-08); with that addon installed the look half stays in its store (LEGACY_SPLIT below)
+    qol       = { "qol", "cursor", "cursorHighlight", "cursorTrail", "characterToolkit", "characterReskin", "characterReskinLook", "shoppingList",
+                  "releaseGuard" },
     chat      = { "chat", "chat2" },
     -- (core 0.6.83, character pane split stage 2) characterToolkit is split: the Stat Calculator's panel (XayaUI_Bonus/CharacterToolkit.lua)
     -- keeps its keys here, QoL the slot overlays' and tooltip lines' (LEGACY_SPLIT)

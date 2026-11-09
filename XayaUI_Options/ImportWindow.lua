@@ -50,6 +50,7 @@ local function Build()
     sf:SetScript("OnSizeChanged", function(_, w) box:SetWidth(math.max(50, w - 4)) end)
     sf:EnableMouse(true); sf:SetScript("OnMouseDown", function() box:SetFocus() end)
     box:SetScript("OnEscapePressed", function() f:Hide() end)
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(box) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
 
     f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     -- the status lines end a gutter above the buttons (12 from the bottom, 26 tall)

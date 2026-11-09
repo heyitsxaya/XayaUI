@@ -124,9 +124,17 @@ check("A the moved files are not in core, Chat or QoL", #files == 0, table.conca
 -- B ---------------------------------------------------------------------------------------------------------------------------
 check("B /xuitt does not exist without Dev Assist", SlashCmdList.XUITT == nil)
 local cw = joined(run("chat wrap"))
-check("B /xui chat wrap without Dev Assist: no measurement (the Chat Panel's own status instead)", not cw:find("Chat Panel wrap:", 1, true)
-  and cw:find("Chat Panel:", 1, true) ~= nil, cw:sub(1, 200))
-check("B /xui chat's word list has no wrap, indent or whispers", not cw:find("wrap", 1, true) and not cw:find("whispers", 1, true), cw:sub(1, 200))
+local NOCHAT = "is part of XayaUI Chat, which is not installed"
+if HAS_CHAT then
+  check("B /xui chat wrap without Dev Assist: no measurement (the Chat Panel's own status instead)", not cw:find("Chat Panel wrap:", 1, true)
+    and cw:find("Chat Panel:", 1, true) ~= nil, cw:sub(1, 200))
+  check("B /xui chat's word list has no wrap, indent or whispers", not cw:find("wrap", 1, true) and not cw:find("whispers", 1, true), cw:sub(1, 200))
+else
+  check("B /xui chat wrap without Dev Assist and without XayaUI Chat: no measurement, it says XayaUI Chat is not installed",
+    not cw:find("Chat Panel wrap:", 1, true) and cw:find(NOCHAT, 1, true) ~= nil, cw:sub(1, 200))
+  check("B /xui chat's word list has no wrap, indent or whispers (XayaUI Chat absent: the not-installed line only)",
+    not cw:find("wrap:", 1, true) and not cw:find("whispers:", 1, true) and not cw:find("indent:", 1, true), cw:sub(1, 200))
+end
 check("B /xui chat indent / whispers do nothing of theirs", not joined(run("chat indent")):find("Chat Panel indent:", 1, true)
   and not joined(run("chat whispers")):find("Chat whispers:", 1, true))
 local ui = CueRulesDB.ui
@@ -312,10 +320,23 @@ check("B /xuitt exists with Dev Assist", type(SlashCmdList.XUITT) == "function")
 local tt = printed(function() SlashCmdList.XUITT("aura 258920") end)
 check("B /xuitt aura 258920 reports the spell", tt:find("spell 258920", 1, true) ~= nil, tt:sub(1, 160))
 local cw = joined(run("chat wrap"))
-check("B /xui chat wrap with Dev Assist measures", cw:find("Chat Panel wrap:", 1, true) ~= nil or cw:find("not there to measure", 1, true) ~= nil, cw:sub(1, 160))
-check("B /xui chat indent with Dev Assist reports", joined(run("chat indent")):find("Chat Panel indent", 1, true) ~= nil)
-check("B /xui chat whispers with Dev Assist reports", joined(run("chat whispers")):find("Chat whispers:", 1, true) ~= nil)
-check("B /xui chat's word list names wrap, indent and whispers", joined(run("chat status")):find("history||wrap||indent||whispers||settings", 1, true) ~= nil)
+if HAS_CHAT then
+  check("B /xui chat wrap with Dev Assist measures", cw:find("Chat Panel wrap:", 1, true) ~= nil or cw:find("not there to measure", 1, true) ~= nil, cw:sub(1, 160))
+  check("B /xui chat indent with Dev Assist reports", joined(run("chat indent")):find("Chat Panel indent", 1, true) ~= nil)
+  check("B /xui chat whispers with Dev Assist reports", joined(run("chat whispers")):find("Chat whispers:", 1, true) ~= nil)
+  check("B /xui chat's word list names wrap, indent and whispers", joined(run("chat status")):find("history||wrap||indent||whispers||settings", 1, true) ~= nil)
+else
+  local NOCHAT = "is part of XayaUI Chat, which is not installed"
+  local ci, cwh, cs = joined(run("chat indent")), joined(run("chat whispers")), joined(run("chat status"))
+  check("B /xui chat wrap with Dev Assist and without XayaUI Chat: nothing to measure, it says XayaUI Chat is not installed",
+    cw:find(NOCHAT, 1, true) ~= nil and not cw:find("Chat Panel wrap:", 1, true), cw:sub(1, 160))
+  check("B /xui chat indent with Dev Assist and without XayaUI Chat: the same not-installed line, no report",
+    ci:find(NOCHAT, 1, true) ~= nil and not ci:find("Chat Panel indent", 1, true), ci:sub(1, 160))
+  check("B /xui chat whispers with Dev Assist and without XayaUI Chat: the same not-installed line, no report",
+    cwh:find(NOCHAT, 1, true) ~= nil and not cwh:find("Chat whispers:", 1, true), cwh:sub(1, 160))
+  check("B /xui chat's word list is not offered without XayaUI Chat (the not-installed line instead)",
+    cs:find(NOCHAT, 1, true) ~= nil and not cs:find("history||wrap||indent||whispers||settings", 1, true), cs:sub(1, 160))
+end
 local ui = CueRulesDB.ui
 W.safecall(SlashCmdList.XUISKIN, "pad 5"); W.safecall(SlashCmdList.XUISKIN, "alpha 0.5")
 check("B /xuiskin pad 5 and alpha 0.5 work with Dev Assist", ui.skinPad == 5 and ui.skinAlpha == 0.5, tostring(ui.skinPad) .. " " .. tostring(ui.skinAlpha))
@@ -365,6 +386,11 @@ end
 '''
 
 
+# XayaUI_Chat is a QA-branch module (absent on main). Without it /xui chat says so, and Dev Assist's chat words (wrap, indent, whispers)
+# have nothing to measure: the absent-case behaviour is asserted instead of the Chat Panel's own output.
+HAS_CHAT = os.path.isdir(os.path.join(H.ROOT, "XayaUI_Chat"))
+
+
 def session(lua, with_dev):
     folders = H.find_addons()
     enabled = [n for n in folders if with_dev or n != "XayaUI_DevAssist"]
@@ -377,6 +403,7 @@ def session(lua, with_dev):
     L.globals().W = world
     src = open(os.path.join(H.ROOT, "XayaUI", "DebugRecord.lua")).read().split("\n")
     L.globals().DR_UI_LINE_FROM_FILE = next(i + 1 for i, l in enumerate(src) if l.startswith("local function Ui()"))
+    lua = lua.replace("return function(W, L)", "return function(W, L)\nlocal HAS_CHAT = " + ("true" if HAS_CHAT else "false"), 1)
     res = L.eval("""function(src, W, Ld)
       local ok, err = pcall(function() return loadstring(src)()(W, Ld) end)
       if not ok then R = R or {}; R[#R + 1] = { "the run reached its end (it stopped on: " .. tostring(err):sub(1, 200) .. ")", false } end

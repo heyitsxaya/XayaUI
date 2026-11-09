@@ -248,6 +248,23 @@ BLOCKS += [
     ("DOWN", "CENTER", [(30, 30)] * 4, [1, 2, 3, 4], {"cWrapN": 2}),
     ("LEFT", "CENTER", [(30, 30)] * 4, [1, 3, 4], {}),
 ]
+# Rules 0.6.82, fix A (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s rows 14, 28; her answer "Whole grid's corner"): an edge growth
+# (Right, Left, Down, Up) in Auto size with a point other than Center: the WHOLE GRID's point sits on the group's point, the grid grows
+# away from it, also with auras down, wrapping (both sides), mixed sizes, a parent group and scale. Her case first: Right, Bottom left.
+# On the code before 0.6.82 the "icons' point on the group's point" checks fail (the grid hung from the 1 x 1 frame's centre).
+EDGE_A = [
+    ("RIGHT", "BOTTOMLEFT", [(30, 30)] * 4, [1, 2, 3, 4], {"cScale": 0.25}),
+    ("RIGHT", "BOTTOMLEFT", [(30, 30)] * 4, [2, 4], {}),
+    ("RIGHT", "BOTTOMRIGHT", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2}),
+    ("RIGHT", "TOPLEFT", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2, "cWrapRev": True}),
+    ("LEFT", "TOPRIGHT", [(36, 36), (24, 24), (30, 40)], [1, 2, 3], {"cX": 20, "cY": -15, "cScale": 1.5}),
+    ("LEFT", "BOTTOM", [(30, 30)] * 4, [1, 3, 4], {"cWrapN": 3, "cWrapRev": True}),
+    ("DOWN", "TOPLEFT", [(30, 30)] * 5, [1, 2, 3, 4, 5], {"cWrapN": 2}),
+    ("DOWN", "RIGHT", [(30, 30)] * 4, [1, 2, 4], {"cWrapN": 2, "cWrapRev": True, "cParent": (-150, 80)}),
+    ("UP", "BOTTOMRIGHT", [(40, 30), (24, 24), (30, 30)], [1, 2, 3], {"cScale": 0.8}),
+    ("UP", "LEFT", [(30, 30)] * 5, [1, 2, 3, 5], {"cWrapN": 2, "cWrapRev": True}),
+]
+BLOCKS += EDGE_A
 for k, (dir, pt, sizes, shown, extra) in enumerate(BLOCKS):
     n = len(sizes)
     L.execute(r'''
@@ -329,6 +346,8 @@ for k, (dir, pt, sizes, shown, extra) in enumerate(BLOCKS):
     rev = bool(extra.get("cWrapRev"))
     want = {"HCENTER": ("BOTTOM" if rev else "TOP", "CENTER"), "VCENTER": ("RIGHT" if rev else "LEFT", "CENTER"),
             "ANCHOR_ROW": (pt, pt), "ANCHOR_COL": (pt, pt)}.get(dir)
+    if dir in ("RIGHT", "LEFT", "DOWN", "UP") and pt != "CENTER":   # fix A: Auto size (cW = cH = 0 here), the whole grid's point
+        want = (pt, pt)
     if want:
         bl, bb, br, bt = (L.eval("BBOX")[q] for q in range(1, 5))
         VV = {"CENTER": (0, 0), "TOP": (0, .5), "BOTTOM": (0, -.5), "LEFT": (-.5, 0), "RIGHT": (.5, 0), "TOPLEFT": (-.5, .5), "TOPRIGHT": (.5, .5), "BOTTOMLEFT": (-.5, -.5), "BOTTOMRIGHT": (.5, -.5)}

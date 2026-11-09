@@ -21,6 +21,20 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "theme_paint_parity_golden.json")
+# Without XayaUI_Reskin (a QA-branch module) the Display page correctly leaves out one hint row ("The Esc menu's own look ... is under
+# the Blizzard Reskin tab", Options.lua gm_moved), which shifts the rows below it, so the golden's Display hashes cannot match. For
+# that case these hashes are of the same drawing without that row (taken from main without Reskin; checked to differ from the golden's
+# drawing only by that row and the shift it causes).
+# (2026-11-09) Re-recorded after merging main: tests/harness/world.lua on this branch gives a button's text through its font string
+# (GetFontString), as the game does, so the lines that main's stand-in recorded as "nil" now carry their label ("Close",
+# "Display", "Rules", ...). `--dump` against origin/main 1872f87 showed no other line changed in any of the four drawings.
+NO_RESKIN_DISPLAY = {
+    "class/display": ("a324407d7c13a890c1c4a0c923d9ee1890e76e0a2c2bb823ecae7867bd328f87", 451),
+    "colorblind/display": ("558c565cc0602ee6b37872925297e093a16e00833ca8715353cbc058475b7587", 451),
+    "custom/display": ("a7c0af7b965b0ea617a4ff65cc5a6c5a93a0f980a4b9ba7addad47c888633e71", 451),
+    "light/display": ("554330040253449dbe3d222666e329e2131efc4f5af68449f911fcc21642f15e", 471),
+}
+HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
 
 LUA = r'''
 return function(W, L)
@@ -123,6 +137,11 @@ def main():
     results.append(("the same theme / page drawings were made as before W9a", sorted(got) == sorted(gold)))
     for k in sorted(gold):
         g = got.get(k)
+        if not HAS_RESKIN and k in NO_RESKIN_DISPLAY:
+            sha, nl = NO_RESKIN_DISPLAY[k]
+            ok = g is not None and g["sha"] == sha and "Blizzard Reskin tab" not in d.get(k, "")
+            results.append(("%s: (XayaUI_Reskin absent) every region of the window drawn as before W9a, without the Esc menu hint row (%d lines)%s" % (k, nl, "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
+            continue
         ok = g is not None and g["sha"] == gold[k]["sha"]
         results.append(("%s: every region of the window drawn as before W9a (%d lines)%s" % (k, gold[k]["lines"], "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
     results.append(("drawings are not empty (the window was open and skinned)", all(v["lines"] > 50 for v in got.values())))
