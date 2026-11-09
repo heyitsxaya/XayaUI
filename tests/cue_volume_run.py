@@ -43,7 +43,7 @@ check("the game refuses the call: still plays, the old way (never silent by mist
 L.execute("REFUSE = false")
 c = play("{ enabled = true, source = 'file', value = 'Interface\\\\AddOns\\\\XayaUI\\\\Media\\\\Audio\\\\CC0\\\\Kenney\\\\bong_001.ogg', cueVolume = 40 }")
 check("a sound FILE: plays as before (the game has no per-sound volume for files)", c and c["fn"] == "PlaySoundFile")
-opt = open(os.path.join(ROOT, "XayaUI_Rules_Options", "Editor.lua"), encoding="utf-8").read()
+opt = open(os.path.join(ROOT, "XayaUI_Rules", "Editor", "Editor.lua"), encoding="utf-8").read()
 check("the cue's sound pane has the per-cue volume, switched off for files", "cueVolume = { type = \"range\"" in opt and 'disabled = function() return rule.sound.source ~= "kit" end' in opt)
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

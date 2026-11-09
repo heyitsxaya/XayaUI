@@ -175,22 +175,7 @@ L.execute("COMBAT = false")
 L.execute("SAVED_RULES = NS.rules; NS.rules = {}; NS.AuraAliasForget(); CALLS = 0; local o = C_UnitAuras.GetAuraDataByIndex; C_UnitAuras.GetAuraDataByIndex = function(...) CALLS = CALLS + 1; return o(...) end; NS._AuraAliasOnAura({ isFullUpdate = true }); C_UnitAuras.GetAuraDataByIndex = o; NS.rules = SAVED_RULES; NS.AuraAliasForget()")
 check("no rule lists an aura ID: no aura is read (off costs nothing)", L.eval("CALLS == 0"))
 
-# ---------------------------------------------------------------- 3. walkthrough J26: registered, and the F6 probe reports every answer
-qa_path = os.path.join(ROOT, "XayaUI_DevAssist", "QAWalks-externals.lua")
-L.execute(r'''WALKS = {}; XayaUI_DevQA = { Register = function(id, def) WALKS[id] = def end }; XayaUI_NS = NS''')
-L.execute("assert(loadfile(%s))()" % repr(qa_path).replace("'", '"'))
-check("J26 walkthrough registered with pre-fill and four steps", L.eval("WALKS['externals-combat'] ~= nil and WALKS['externals-combat'].qa == 'J26' and WALKS['externals-combat'].prefill == true and #WALKS['externals-combat'].steps == 4"))
-L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() error('restricted') end")
-check("F6 probe: a refused call is reported as an error", "ERROR" in str(L.eval("XayaUI_DevQA.ProbeExternalFilters()")))
-L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() return SECRET end")
-check("F6 probe: a secret list is reported as secret", "SECRET" in str(L.eval("XayaUI_DevQA.ProbeExternalFilters()")))
-L.execute("C_UnitAuras.GetUnitAuraInstanceIDs = function() return { 11, SECRET } end; C_UnitAuras.IsAuraFilteredOutByInstanceID = function() return false end")
-pr = str(L.eval("XayaUI_DevQA.ProbeExternalFilters()"))
-check("F6 probe: readable and secret IDs are counted, the filter check is read", "2 IDs, 1 readable, 1 secret" in pr and "filter check readable (false)" in pr and "BIG_DEFENSIVE" in pr, pr)
-r = L.eval("(function() local ok, note = WALKS['externals-combat'].steps[1].check(); return tostring(ok) .. ' ' .. tostring(note) end)()")
-check("J26 step 1 captures the aura rules (data capture)", str(r).startswith("true") and "aura rules" in str(r), r)
-# (Dev Assist 0.7.53, B6) whether an ID should have been learned is not something the addon can know: step 4 is data capture, her call
-check("J26 step 4 (IDs learned) is a question for her (noVerdict), no automatic Pass", L.eval("WALKS['externals-combat'].steps[4].noVerdict == true"))
+# (the J26 walkthrough and its F6 probe are XayaUI Dev Assist's, on another branch: their checks left with it)
 
 print()
 print("FAILS: %d" % len(fails))

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Keys reach the game, the review's should-fix items (XayaUI 0.6.85 / Options 0.6.106 / Bonus 0.6.38, XayaUI/KeyCatch.lua).
+"""Keys reach the game, the review's should-fix items (XayaUI 0.6.85 / Options 0.6.106, XayaUI/KeyCatch.lua).
 Xaya 2026-11-08 (docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md row 56, her words): "WHY DOES THE ADDON KEEP PREVENTING
 ME FROM SCREENSHOTTING"; row 59 (Delete / Ctrl+Z / Ctrl+Y): "they are just supposed to be baseline supported by the addon".
 
 What she sees:
   1. no XayaUI text box keeps the keyboard after she is done: the settings window's AceGUI boxes let go on Enter, a click elsewhere
-     and when the window closes (with the window skin on or off); the Calculator's line lets go after Enter works the sum out; the
-     Console's command line lets go after Enter runs the command;
+     and when the window closes (with the window skin on or off); the Console's
+     command line lets go after Enter runs the command;
   2. the screenshot key works by what it is bound to (her screenshot key may not be PRINTSCREEN): a XayaUI window never uses or keeps it;
   3. in combat the settings window's Delete / Ctrl+Z / Ctrl+Y still work, but a key never does two things: a key the game has a
      binding for is the game's alone in combat (the game does not let an addon keep a key back then).
@@ -184,20 +184,6 @@ do
 end
 AceGUI:Release(bw)
 
--- 1. the Calculator's line: Enter works the sum out and lets go
-if ns.Calculator_Open then
-  ns.Calculator_Open()
-  local cf = rawget(_G, "XayaUICalculator")
-  local e = cf and cf.edit
-  e:SetText("2+3")
-  W.pressKey("ENTER")
-  check("(regression) Calculator: Enter works the sum out (5)", cf.result:GetText() == "5", cf.result:GetText())
-  check("  ...and lets go of the keyboard: W and the screenshot key reach the game", not e:HasFocus() and who(W.pressKey("W")) == "game" and who(W.pressKey("PRINTSCREEN")) == "game",
-    tostring(e:HasFocus()))
-  check("(regression) the answer stays in the line, so the next sum builds on it", e:GetText() == "5", e:GetText())
-  cf:Hide()
-else check("the Calculator is there", false) end
-
 -- 1. the Console's command line: Enter runs the command and lets go
 if ns.ConsoleWindow then
   ns.ConsoleWindow(true)
@@ -218,7 +204,7 @@ end
 def main():
     results = []
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

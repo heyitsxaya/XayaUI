@@ -218,7 +218,7 @@ check("the trigger pane lists the sets worn", "Set 1234 (1234): 4" in str(L.eval
 # ---------------------------------------------------------------- gap 21: the game-played aura sound (D2)
 L.execute(r'''
 BP = { uid = "bp", name = "Boiling Point", enabled = true, useBuff = true, buffID = 1265968, buffAlt = { 1265969 }, buffState = "present",
-  cdState = "none", load = { mode = "always" }, sound = { enabled = true, source = "file", value = "Interface\\AddOns\\XayaUI_Media\\Sounds\\bp.ogg", channel = "Master" },
+  cdState = "none", load = { mode = "always" }, sound = { enabled = true, source = "file", value = "Interface\\AddOns\\SoundPack\\bp.ogg", channel = "Master" },
   gameSound = { enabled = true, when = "auto", channel = "Ambience", throttle = 1 } }
 NS.rules[#NS.rules + 1] = BP
 SOUNDS_ADDED, SOUNDS_REMOVED = {}, {}
@@ -391,31 +391,33 @@ note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 
 check("glow confirmed: the line says the aura is read from its proc glow in combat", "present from its proc glow" in note, note)
 
 # ---------------------------------------------------------------- Advanced Debugging record (core 0.6.20): aura answers as they change
-# (core 0.6.56, REQUEST-LOG #82: the detailed record, "Aura answers" among its kinds, is XayaUI Dev Assist's; it is loaded here as the
-# game would load it, after XayaUI, into XayaUI's namespace. Without it, Conditions.lua's hand-in point does nothing: checked below.)
+# (core 0.6.56, REQUEST-LOG #82: the detailed record, "Aura answers" among its kinds, is filled in by XayaUI Dev Assist, which is not
+# part of this branch. Without it, Conditions.lua's hand-in point does nothing: checked first. Then a minimal stand-in fills the two
+# hand-in points ns.RecordOn / ns.RecordLine (on while Advanced Debugging is on, keeps every line it is handed), so what Conditions.lua
+# hands in (only on a change, never breaking the read) is still checked.)
 L.execute(r'''
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true; CueRulesDB.debugRecord = nil
 AURAS[8802] = nil; BP2(8802); AURAS[8802] = { spellId = 8802, auraInstanceID = 882, applications = 0, expirationTime = 0, duration = 0 }; BP2(8802)
 ''')
-check("without XayaUI Dev Assist: no aura line is recorded (players keep only errors and warnings)", L.eval("CueRulesDB.debugRecord == nil"))
-L.execute("XayaUI_NS = NS")
-load(open(os.path.join(ROOT, "XayaUI_DevAssist", "DevRecord.lua"), encoding="utf-8").read(), "XayaUI_DevAssist/DevRecord.lua", ns)
+check("without a detailed record (no hand-in points): no aura line is recorded (players keep only errors and warnings)", L.eval("CueRulesDB.debugRecord == nil"))
 L.execute(r'''
+NS.RecordOn = function(kind) return CueRulesDB.ui.advancedDebug and true or false end
+NS.RecordLine = function(kind, line) CueRulesDB.debugRecord = CueRulesDB.debugRecord or { lines = {} }; local t = CueRulesDB.debugRecord.lines; t[#t + 1] = line end
 COMBAT = false; CueRulesDB.debugRecord = nil
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true
 AURAS[8801] = nil; BP2(8801); BP2(8801)
 AURAS[8801] = { spellId = 8801, auraInstanceID = 881, applications = 0, expirationTime = 0, duration = 0 }; BP2(8801); BP2(8801)
 function NREC(pat) local n = 0; for _, l in ipairs((CueRulesDB.debugRecord or { lines = {} }).lines) do if l:find(pat, 1, true) then n = n + 1 end end; return n end
 ''')
-check("Advanced Debugging: an aura's answer is recorded when it changes (missing, then present), not on every read",
+check("Advanced Debugging: an aura's answer is handed to the record when it changes (missing, then present), not on every read",
       L.eval("NREC('(8801): missing')") == 1 and L.eval("NREC('(8801): present')") == 1, (L.eval("NREC('(8801)')"),))
 L.execute("CueRulesDB.ui.advancedDebug = false; AURAS[8801] = nil; BP2(8801)")
-check("Advanced Debugging off: nothing more is recorded", L.eval("NREC('(8801)')") == 2)
+check("Advanced Debugging off: nothing more is handed in", L.eval("NREC('(8801)')") == 2)
 L.execute("CueRulesDB.ui.advancedDebug = true")
 okBad = L.eval("function() return pcall(function() return NS.AuraPresentList('not-a-number', { 'also bad' }) end) end")()
 check("Advanced Debugging on: a rule holding a non-numeric aura ID (an import, a typo) still reads without an error",
       okBad[0] is True if isinstance(okBad, tuple) else okBad is True, okBad)
-check("  ...and the record says which ID it was", L.eval("NREC('(not-a-number)')") == 1)
+check("  ...and the line handed in says which ID it was", L.eval("NREC('(not-a-number)')") == 1)
 L.execute("CueRulesDB.ui.advancedDebug = false")
 
 print("FAILS: %d" % len(fails))

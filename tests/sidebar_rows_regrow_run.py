@@ -9,9 +9,12 @@ loop guarded by `local _, mx = self.scrollbar and self.scrollbar:GetMinMaxValues
 value of a call, so mx was always nil and the grow loop never ran: the remembered count (xuiLines) could only shrink. Any refresh that
 measured little room (the window or tree briefly short during a redraw, a row taller than AceGUI's 18 px, a tree widget reused from
 another, shorter tree) lowered it for good. The same count also survived on AceGUI's recycled TreeGroup widgets.
-Loads the real addons in the stand-in game, opens the settings window on QoL > Cursor > Gradient Cursor Trail and checks what the
-player sees: every sidebar row is drawn after (1) opening, (2) a change made in the right-hand pane (the redraw a click there causes),
-(3) the window made short and then tall again, (4) a reused tree widget that last served a short tree.
+Loads the real addons in the stand-in game, opens the settings window on Settings > UI Options and checks what the player sees in the
+Settings tab's sidebar (UI Options, Minimap Button, Debugging; the same RefreshTree wrapper draws every tab's sidebar. The reports came
+from the QoL tab, whose addon, XayaUI QoL, is on the QA branch: main holds only XayaUI, XayaUI_Options and XayaUI_Rules, and the
+Settings tab is the one top-level sidebar there): every sidebar row is drawn after (1) opening, (2) a change made in the right-hand pane
+(the redraw a click there causes), (3) the window made short and then tall again, (4) a reused tree widget that last served a short
+tree (a remembered count below the sidebar's three rows).
 Stand-in: rows get AceGUI's own 18 px height (TreeGroup counts lines as (height - 20) / 18); the stand-in fires no OnSizeChanged, so
 after each redraw the test runs the tree frame's own handler, as the game does when the frame gets its height. Unlike
 sidebar_switches_run.py it does NOT clear the remembered count first: that clearing is what hid this defect.
@@ -38,7 +41,6 @@ ns = rawget(_G, "XayaUI_NS")
 check("settings window addon loaded", ns and ns.BuildOptionsTable ~= nil)
 if not (ns and ns.BuildOptionsTable) then return end
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.consoleAutoOpen = false
-CueRulesDB.characterToolkit = CueRulesDB.characterToolkit or {}; CueRulesDB.characterToolkit.enabled = true   -- its parts show as rows
 local reg, ACD = LibStub("AceConfigRegistry-3.0"), LibStub("AceConfigDialog-3.0")
 local function root() return ACD.OpenFrames and ACD.OpenFrames["CueRules"] end
 local function findW(w, pred)
@@ -48,14 +50,14 @@ local function findW(w, pred)
 end
 local function tree(tab) return findW(root(), function(w) local u = w.type == "TreeGroup" and w:GetUserDataTable(); return u and u.path and u.path[1] == tab and #u.path == 1 end) end
 local function sizeChanged()   -- what the game does when the tree frame gets its height: AceGUI's own OnSizeChanged (RefreshTree)
-  local t = tree("qol"); local f = t and t.treeframe and t.treeframe:GetScript("OnSizeChanged")
+  local t = tree("set"); local f = t and t.treeframe and t.treeframe:GetScript("OnSizeChanged")
   if f then f(t.treeframe) end
 end
 local function settle() W.tick(0.05, 6); sizeChanged() end
--- what the player sees in the QoL sidebar: rows drawn, rows the tree has, and whether those drawn fit inside the tree frame
+-- what the player sees in the Settings sidebar: rows drawn, rows the tree has, and whether those drawn fit inside the tree frame
 local function seen()
-  local t = tree("qol")
-  if not t then return 0, 0, false, "no QoL tree" end
+  local t = tree("set")
+  if not t then return 0, 0, false, "no Settings tree" end
   local shown, h = 0, 0
   for _, b in ipairs(t.buttons or {}) do if b:IsShown() then shown = shown + 1; h = h + (b:GetHeight() or 0) end end
   local tfh = t.treeframe and t.treeframe:GetHeight() or 0
@@ -63,35 +65,30 @@ local function seen()
 end
 local function allRows(label)
   local shown, total, fits, info = seen()
-  check(label .. ": every QoL sidebar row is drawn (they fit), none dropped", total > 0 and shown == total and fits, info)
+  check(label .. ": every Settings sidebar row is drawn (they fit), none dropped", total > 0 and shown == total and fits, info)
 end
 
 pcall(ns.ToggleUI); settle()
-ACD:SelectGroup("CueRules", "qol", "cursor", "trail"); settle()
-local t0 = tree("qol")
-check("the window is open on QoL > Cursor > Gradient Cursor Trail", root() ~= nil and t0 ~= nil)
+ACD:SelectGroup("CueRules", "set", "ui"); settle()
+local t0 = tree("set")
+check("the window is open on Settings > UI Options", root() ~= nil and t0 ~= nil)
 if not t0 then return end
-do   -- every group in the QoL sidebar open, so it has its full list of rows (Character Toolkit's parts, Cursor's parts)
+do   -- every group in the Settings sidebar open, so it has its full list of rows
   local st = t0.status or t0.localstatus
   st.groups = st.groups or {}
   for _, l in ipairs(t0.lines or {}) do if l.hasChildren then st.groups[l.uniquevalue] = true end end
   t0:RefreshTree(); settle()
 end
 do
-  local t, uvs = tree("qol"), {}
+  local t, uvs = tree("set"), {}
   for _, l in ipairs(t.lines or {}) do uvs[#uvs + 1] = tostring(l.uniquevalue):gsub("\001", ">") end
-  -- (QA-branch modules: Improved Chat's seven rows and Nameplates' one are in this sidebar only where XayaUI_Chat / XayaUI_Nameplates are; the
-  -- six rows of QoL's own parts are always asserted: Character Toolkit's two, Cursor's three, Release Guard)
-  local have = {}
-  for _, u in ipairs(uvs) do have[u] = true end
-  local own = have.charpane and have.chartoolkit and have.cursor and have["cursor>highlight"] and have["cursor>trail"] and have.releaseguard
-  check("the QoL sidebar has every part as a row (Character Toolkit's and Cursor's)", own and #uvs >= ((XUI_HAS_CHAT or XUI_HAS_NAMEPLATES) and 7 or 6), table.concat(uvs, ", "))
+  check("the Settings sidebar has its three rows: UI Options, Minimap Button, Debugging", table.concat(uvs, ", ") == "ui, minimap, debug", table.concat(uvs, ", "))
 end
 allRows("1 opened")
 
 -- 2. a change made in the right-hand pane: AceConfigDialog redraws the window (the redraw a click on a tick box or dropdown there causes)
 do
-  local c = CueRulesDB.cursorTrail or CueRulesDB.cursor
+  local c = CueRulesDB.ui
   if type(c) == "table" then c.xuiTestTouch = (c.xuiTestTouch or 0) + 1 end
   reg:NotifyChange("CueRules"); settle()
 end
@@ -117,13 +114,13 @@ allRows("3 the window tall again")
 
 -- 4. a tree widget reused by AceGUI keeps no count from the tree it served before
 do
-  local t = tree("qol")
-  t.xuiLines = 2   -- what a short tree elsewhere leaves on the widget
+  local t = tree("set")
+  t.xuiLines = 2   -- what a short tree elsewhere leaves on the widget (fewer than the sidebar's three rows)
   t:RefreshTree(); settle()
 end
 allRows("4 a remembered count of 2 from before")
 do   -- closing the window releases its widgets to AceGUI's pool (the next tree that is built may get this one)
-  local t = tree("qol")
+  local t = tree("set")
   t.xuiLines = 3
   ACD:Close("CueRules"); W.tick(0.05, 3)
   check("4 the window closed: its released tree widget forgets its fitted row count", root() == nil and t.xuiLines == nil, tostring(t.xuiLines))
@@ -144,8 +141,6 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    # QA-branch modules (Chat, Nameplates): absent on main
-    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s" % tuple(str(os.path.isdir(os.path.join(H.ROOT, m))).lower() for m in ("XayaUI_Chat", "XayaUI_Nameplates")))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

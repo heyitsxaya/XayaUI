@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""The rule type picker ("Choose what this rule shows", + New Rule) in the settings window (debug W1; Rules_Options 0.6.79, Options 0.6.94).
+"""The rule type picker ("Choose what this rule shows", + New Rule) in the settings window (debug W1; Rules_Options 0.6.79, Options 0.6.94;
+the rule editor has been part of XayaUI Rules since Rules 0.7.0: XayaUI_Rules/Editor/).
 #484 (Xaya, 2026-11-07, H6-H9 step 4, her words): "import button has wrong alignment, otherwise good".
 #487 (Xaya, 2026-11-07, Rules > Drafts after the audit-opt-bin walkthrough): "????????????????????????" - the picker was drawn at the
 top of the Drafts list, its rows overlapping each other.
@@ -13,10 +14,10 @@ player sees (V1, V11):
     one right under the Drafts page's own entries); it is forgotten (back on Smart Categories, no picker).
   D + New Rule pressed on Drafts: the picker shows there and the Drafts boxes hide while it is open (never drawn over each other).
   E the picker is forgotten when the window closes: reopened, no picker.
-  F the walkthrough "debug-w1" (Dev Assist 0.7.62, V22): registered with pre-fill; its checks run here and judge steps 3 and 4 Pass.
-Negative control: on main b0723dd (Rules_Options 0.6.78, Options 0.6.93; the same files as e0d6d16) A to F fail: Import's icon 8 px and
+  (Section F, the Dev Assist walkthrough "debug-w1", was removed with Dev Assist: it is not on this branch, REQUEST-LOG A23.)
+Negative control: on main b0723dd (Rules_Options 0.6.78, Options 0.6.93; the same files as e0d6d16) A to E fail: Import's icon 8 px and
 its text 22 px further right and 20 px lower than every other row; 76 px rows stacked 39 px apart; the picker still drawn on Drafts
-with the Drafts boxes, and still open after another sub-tab or a closed window; no walkthrough.
+with the Drafts boxes, and still open after another sub-tab or a closed window.
 Run: python3 tests/picker_rows_layout_run.py   (Lua 5.1 via lupa)"""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -162,25 +163,6 @@ section("E window closed", function()
   check("E: reopened, the picker is gone", count(rows()) == 0 and header() == nil, count(rows()))
 end)
 
-section("F the walkthrough (debug-w1, V22)", function()
-  local QA = rawget(_G, "XayaUI_DevQA")
-  local d = QA and QA.walks and QA.walks["debug-w1"]
-  check("F: the walkthrough is registered with pre-fill for B280-B283", d ~= nil and d.prefill == true and d.qa == "B280, B281, B282, B283" and #d.steps == 5)
-  if not d then return end
-  for i = 1, 4 do check("F: step " .. i .. " has a check", type(d.steps[i].check) == "function") end
-  check("F: the last step is Done, no verdict", d.steps[5].done == true and d.steps[5].noVerdict == true)
-  local v1, n1 = d.steps[1].check()
-  -- the stand-in's spec API (tests/harness/world.lua) has no Devourer: a verdict either way, and the game's answers in the note
-  check("F: step 1 reads the Specialization list and the game's answers", type(v1) == "boolean" and tostring(n1):find("GetNumSpecializationsForClassID(12) = ", 1, true) ~= nil, n1)
-  local v2, n2 = d.steps[2].check()
-  check("F: step 2 judges only a rule that shows the warning (none here: no verdict, says why)", v2 == nil and tostring(n2):find("no rule shows", 1, true) ~= nil, n2)
-  d.steps[3].setup(); W.tick(0.1, 10)
-  local v3, n3 = d.steps[3].check()
-  check("F: step 3 opens the picker and finds Import lined up with Dynamic Group", v3 == true, n3)
-  d.steps[4].setup(); W.tick(0.3, 6)
-  local v4, n4 = d.steps[4].check()
-  check("F: step 4 opens Drafts and finds no picker there", v4 == true, n4)
-end)
 return R
 end
 '''
@@ -188,7 +170,7 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = list(folders)   # Dev Assist on: section F runs the walkthrough
+    enabled = list(folders)   # every addon on this branch: XayaUI, XayaUI_Options, XayaUI_Rules (with its rule editor)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

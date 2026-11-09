@@ -8,11 +8,12 @@ Checks, on the real addons in the stand-in game (options tree only, nothing draw
     cannot drift apart);
   2 her answer for text inputs (UI-48, "Half width, two per row"): every one-line text input in every tab is half the row unless the
     module gave it a narrower width; multi-line boxes stay full; none is left stretching the row;
-  3 every left-pane switch (xuiSwitch) in every feature tab has a one-sentence hover text without "Off" (UI-42);
-  4 UI-49 ("Note theme has to tie into the skin.lua in some way"): the off grey comes from the theme's Muted text colour;
-  5 UI-50: the Theme page's Advanced customization switch (off by default) offers and applies the parked tab colours and class overrides;
-  6 UI-49: Skin.lua sets no colour as numbers except where it gives a widget's own look back (listed restores).
-Negative control: on main 687b624 (core 0.6.57) checks 1 to 3 fail (no ns.Style, full-row inputs, no hover sentences).
+  3 UI-49 ("Note theme has to tie into the skin.lua in some way"): the off grey comes from the theme's Muted text colour;
+  4 UI-50: the Theme page's Advanced customization switch (off by default) offers and applies the parked tab colours and class overrides;
+  5 UI-49: Skin.lua sets no colour as numbers except where it gives a widget's own look back (listed restores).
+Negative control: on main 687b624 (core 0.6.57) checks 1 and 2 fail (no ns.Style, full-row inputs).
+(The UI-42 check of the left-pane switches' hover sentences was dropped with the feature tabs that had them: QoL, Bonus, Chat and
+Reskin are on another branch; no tab of core, Options or Rules has a left-pane switch.)
 Run: python3 tests/display_standard_run.py   (Lua 5.1 via lupa)."""
 import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,24 +82,7 @@ local function walk(g, path, depth)
 end
 walk(T, "", 0)
 check("2: every one-line text input is at most half the row (" .. n .. " inputs)", n > 0 and #bad == 0, table.concat(bad, ", "):sub(1, 400))
--- 3 hover sentences
-local miss, sw = {}, 0
-local function sws(g, path, depth)
-  if type(g) ~= "table" or depth > 14 then return end
-  if type(g.xuiSwitch) == "table" then
-    sw = sw + 1
-    local t = g.xuiSwitch.tip
-    if not (type(t) == "string" and t ~= "" and t:match("[%.!?]$") and not t:sub(1, -2):find("[%.!?]%s") and not t:find("Off")) then
-      miss[#miss + 1] = path .. "=" .. tostring(t)
-    end
-  end
-  for k, o in pairs(type(g.args) == "table" and g.args or {}) do
-    if type(o) == "table" and o.type == "group" then sws(o, path .. ">" .. tostring(k), depth + 1) end
-  end
-end
-for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do sws(T and T.args and T.args[tab], tab, 0) end
-check("3: every left-pane switch has a one-sentence hover without \"Off\" (" .. sw .. " switches)", sw > 0 and #miss == 0, table.concat(miss, " | "):sub(1, 400))
--- 4 (UI-49 "theme has to tie into the skin.lua") the off grey is the theme's Muted text colour, and follows it when it changes
+-- 3 (UI-49 "theme has to tie into the skin.lua") the off grey is the theme's Muted text colour, and follows it when it changes
 local TH = ns.Theme
 local okM = false
 if TH and TH.cur and ns.OptionsApi and ns.OptionsApi.Muted then
@@ -108,8 +92,8 @@ if TH and TH.cur and ns.OptionsApi and ns.OptionsApi.Muted then
   okM = math.abs(c[1] - 0.11) < 0.001 and math.abs(c[2] - 0.22) < 0.001 and math.abs(c[3] - 0.33) < 0.001
   TH.cur.textMuted = keep
 end
-check("4: a switched-off row's grey is the theme's Muted text colour (and follows a theme change)", okM)
--- 5 (UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are not offered")
+check("3: a switched-off row's grey is the theme's Muted text colour (and follows a theme change)", okM)
+-- 4 (UI-50, her answer: "Advanced customization opens up them and more as options, but by default they are not offered")
 local adv, tabSw, ovr
 local function find(g, depth)
   if type(g) ~= "table" or depth > 14 then return end
@@ -124,16 +108,16 @@ local function find(g, depth)
 end
 find(T, 0)
 local function hid(o) local h = o and o.hidden; if type(h) == "function" then return h({}) and true or false end return h and true or false end
-check("5: the Theme page has an Advanced customization switch, off by default", adv ~= nil and adv.get({}) == false)
-check("5: ...off: the tab colours and the class overrides are not offered", tabSw ~= nil and hid(tabSw) and ovr ~= nil and hid(ovr))
+check("4: the Theme page has an Advanced customization switch, off by default", adv ~= nil and adv.get({}) == false)
+check("4: ...off: the tab colours and the class overrides are not offered", tabSw ~= nil and hid(tabSw) and ovr ~= nil and hid(ovr))
 CueRulesDB.theme = CueRulesDB.theme or {}; CueRulesDB.theme.tokens = CueRulesDB.theme.tokens or {}
 CueRulesDB.theme.tokens.tabBg = { 0.9, 0.1, 0.1, 1 }
 TH.Resolve()
 local offC = TH.Col("xui-tab", "bg")
-check("5: ...off: a saved tab colour does not apply (the look as before)", math.abs(offC[1] - 0.9) > 0.01, offC[1])
+check("4: ...off: a saved tab colour does not apply (the look as before)", math.abs(offC[1] - 0.9) > 0.01, offC[1])
 if adv then adv.set({}, true) end
 local onC = TH.Col("xui-tab", "bg")
-check("5: on: the tab colours and class overrides are offered, and the saved tab colour applies", tabSw ~= nil and not hid(tabSw)
+check("4: on: the tab colours and class overrides are offered, and the saved tab colour applies", tabSw ~= nil and not hid(tabSw)
   and ovr ~= nil and not hid(ovr) and math.abs(onC[1] - 0.9) < 0.01, onC[1])
 if adv then adv.set({}, false) end
 CueRulesDB.theme.tokens.tabBg = nil; TH.Resolve()
@@ -207,13 +191,12 @@ def main():
     bypass = theme_bypasses()
     want = parse_want()
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": {}}))
     lw = L.table_from([L.table_from([k, L.table_from([L.table_from([p, v]) for p, v in pairs])]) for k, pairs in want])
     res = L.eval("function(src, W, Ld, w) return loadstring(src)()(W, Ld, w) end")(LUA, world, loader, lw)
     bad = 0
@@ -224,7 +207,7 @@ def main():
         if not ok:
             bad += 1
     ok = not bypass
-    print(("PASS " if ok else "FAIL ") + "6: Skin.lua paints with theme colours: no numeric colour outside the listed restores (UI-49)"
+    print(("PASS " if ok else "FAIL ") + "5: Skin.lua paints with theme colours: no numeric colour outside the listed restores (UI-49)"
           + ("" if ok else "  [" + " | ".join(bypass)[:600] + "]"))
     bad += 0 if ok else 1
     if len(want) < 10:

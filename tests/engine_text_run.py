@@ -11,7 +11,7 @@ what the 12.1.5 API documents (Blizzard_APIDocumentationGenerated, build 70688):
   * a "Target Debuff (yours)" rule's display shows the debuff's own time and stacks when readable;
   * the companion texts (shield amount, charges) of a display the combat engine draws.
 Stand-in game (tests/engine_bench.py stubs). The game's own formatter and binding cannot run here: the stand-ins follow the
-documented contracts, and the in-game behaviour is still to be confirmed (see the debug-log entry). Run: python3 tests/engine_text_run.py"""
+documented contracts, and the in-game behaviour is still to be confirmed in game. Run: python3 tests/engine_text_run.py"""
 import os, sys
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
@@ -159,11 +159,6 @@ load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name)
 ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/Compat.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua", "XayaUI_Rules/Cues.lua", "XayaUI_Rules/Actions.lua", "XayaUI/Sound.lua", "XayaUI_Rules/Visual.lua", "XayaUI_Rules/Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
-# (core 0.6.56, REQUEST-LOG #81: /xui debug timing, the coverage report, is XayaUI Dev Assist's: the real function from
-# XayaUI_DevAssist/CoreDebug.lua, set where the test calls it)
-_cd = open(os.path.join(ROOT, "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
-_a = _cd.index("local TIME_REFS"); _b = _cd.index("local function TimingReport()"); _c = _cd.index("\nend\n", _b) + 5
-L.execute("local ns = NS\n" + _cd[_a:_c] + "\nNS.Timing.Report = TimingReport\n")
 L.execute(r'''
 local ns = NS
 ns.Print = function() end
@@ -308,11 +303,6 @@ check("a dropped display takes its companion with it", lua("return SHOWN_BEFORE 
 # 8. the engine steps at once on a new target / focus
 check("engine listens to PLAYER_TARGET_CHANGED and PLAYER_FOCUS_CHANGED", lua("return EVENTS.PLAYER_TARGET_CHANGED == true and EVENTS.PLAYER_FOCUS_CHANGED == true"))
 
-# 9. /xui debug timing says how each display gets its numbers, including the shield-amount limit
-lua('NS.EngineOwns = nil; NS.EngineCompanion = nil; R1.visual.absorb.abbreviate = true; R1.visual.absorb.hideZero = true; PRINTED = {}; NS.Print = function(m) PRINTED[#PRINTED + 1] = m end; NS.Timing.Report()')
-has = lambda name, words: lua("for _, l in ipairs(PRINTED) do if l:find(%r, 1, true) and l:find(%r, 1, true) then return true end end return false" % (name, words))
-check("/xui debug timing: abbreviate + hide zero on a hidden shield amount is explained, with the fix", has("AMS", "a zero shows as '0'"))
-check("/xui debug timing: a cooldown display's time is the game's countdown", has("Death Strike", "counted down by the game"))
-check("/xui debug timing: a debuff-row display's time comes from its row out of combat", has("Sigil debuff", "Target Debuff row out of combat"))
+# (/xui debug timing, the coverage report, is XayaUI Dev Assist's (on another branch): its checks left with it)
 
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

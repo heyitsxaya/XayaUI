@@ -1,4 +1,4 @@
-# Stub test for Drafts.lua (build 0.5.75): the Drafts page shows what each draft holds (triggers, cues, sound / icon) and compact buttons.
+# Stub test for XayaUI_Rules/Editor/Drafts.lua (build 0.5.75): the Drafts page shows what each draft holds (triggers, cues, sound / icon) and compact buttons.
 # Run from the repo root: python3 tests/drafts_run.py   Needs: pip install lupa. Stand-in game functions: checks the text and the layout fields, not how it looks.
 import os, sys
 import sys as _sys, os as _os
@@ -40,7 +40,16 @@ InCombatLockdown = function() return false end
 ''')
 lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI/Modules.lua")).replace("'", '"')))   # core contract (0.6.0)
 lua.execute('ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB")')   # (P5) XayaUI Rules on (its data stays in CueRulesDB here: keepOld)
-lua.execute('local fn = assert(loadfile(...)); fn("XayaUI", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules_Options/Drafts.lua")).replace("'", '"')))
+lua.execute('local fn = assert(loadfile(...)); fn("XayaUI_Rules", ns)'.replace("...", repr(os.path.join(ROOT, "XayaUI_Rules/Editor/Drafts.lua")).replace("'", '"')))
+# (Rules 0.7.0) the editor is part of XayaUI Rules: reading the file only queues its set-up function in ns.RuleEditorFiles; XayaUI_Options
+# (ns.OptionsApi.LoadRuleEditor) runs it when the settings window first opens with Rules on. Same here, by hand: one queued function, run once.
+lua.execute('''
+local N = _G.XayaUI_NS or ns
+assert(type(N.RuleEditorFiles) == "table" and #N.RuleEditorFiles == 1, "Drafts.lua queues exactly one set-up function")
+assert(type(ns.BuildDraftsPage) ~= "function", "nothing is built before the set-up function runs")
+for _, f in ipairs(N.RuleEditorFiles) do f() end
+N.RuleEditorFiles = nil
+''')
 fails = lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end

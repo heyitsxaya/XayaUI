@@ -235,26 +235,6 @@ check("game tooltip text: 'Shadowflame damage' is title-cased in the Shadow colo
 check("game tooltip text: a word inside a colour code is left alone", ns.BarColorizeTypes("|cffffffffFire damage|r") == "|cffffffffFire damage|r")
 check("game tooltip text: words naming no school are unchanged", ns.BarColorizeTypes("Deals 5 Chaos damage.") == "Deals 5 Chaos damage.")
 check("an aura tooltip's top-right 'Magic' takes the Magic colour", ns.BarColorizeTypes("Magic", true) == "|cff334df2Magic|r")
--- XayaUI_Bonus Enhanced Tooltips > Type colours: the game's own tooltip lines
-local TT = ns.TT
-if TT and TT.ColorTypes then
-  local lines = {}
-  local function fsOf(t) return { GetText = function() return t.v end, SetText = function(_, x) t.v = x end } end
-  local L1, L2, R1 = { v = "Immolation Aura" }, { v = "Deals 8 fire damage every 1 sec." }, { v = "Magic" }
-  _G.XUIBarTipTextLeft1, _G.XUIBarTipTextLeft2, _G.XUIBarTipTextRight1 = fsOf(L1), fsOf(L2), fsOf(R1)
-  local tip = { GetName = function() return "XUIBarTip" end, NumLines = function() return 2 end, AddLine = function() end, AddDoubleLine = function() end }
-  check("Type colours is on by default (its own switch on the Enhanced Tooltips page)", TT.SectionOn("typeColors"))
-  TT.OnIDData(tip, { id = 258920 }, { key = "spell", label = "Spell ID" })
-  check("a spell tooltip's 'fire damage' line is recoloured and title-cased by Enhanced Tooltips", L2.v == "Deals 8 |cffe6661aFire Damage|r every 1 sec.", L2.v)
-  check("...and the top-right dispel type takes its colour", R1.v == "|cff334df2Magic|r", R1.v)
-  TT.DB().typeColors.enabled = false
-  L2.v = "Deals 8 fire damage every 1 sec."
-  TT.OnIDData(tip, { id = 258920 }, { key = "spell", label = "Spell ID" })
-  check("Type colours off: the line is left as the game wrote it", L2.v == "Deals 8 fire damage every 1 sec.")
-  TT.DB().typeColors.enabled = true
-else
-  check("XayaUI_Bonus Enhanced Tooltips loaded (TT.ColorTypes)", false)
-end
 
 -- 5. values: reverse, direction, cooldown, stacks
 b.reverse = true; ns.RefreshVisual(cue)
@@ -389,7 +369,7 @@ end
 
 def part_a():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = folders
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

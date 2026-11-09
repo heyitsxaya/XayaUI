@@ -6,8 +6,11 @@ Rules""), and a page's section tabs (UI-48, her answer "24 px, 11 pt, even row";
 Checks, for each Rules sub-tab selected and for a narrow row (where AceGUI would stretch the tabs): Smart Categories, Enabled,
 Disabled, Drafts share the row evenly from its left edge; Auto-Generate Rules sits apart at the far right (16 px after the others);
 every tab 27 px tall with its name at 11.5 pt, outlined, each 90% of its even share (UI-76, O-146); the same widths and places whichever sub-tab is selected.
-Section tabs (Bonus Features > Data Panels): while Data Panels is off, no tab and no fill under the page (only its one sentence);
-while on, its tabs share the row evenly, 24 px tall, 11 pt, outlined.
+Section tabs (a feature page with section tabs and a switch, the shape of Bonus Features > Data Panels): while it is off, no tab and
+no fill under the page (only its switch's one sentence); while on, its tabs share the row evenly, 24 px tall, 11 pt, outlined. XayaUI
+Bonus Features is not on this branch (REQUEST-LOG A23), so the page is a stand-in the test registers itself (ns.RegisterSettingsPage
+under the Bonus Features tab, a master switch on the page row, three section tabs, no text of its own): the checks are of the settings
+window's own code (Options.lua GreyWhileOff, Skin.lua SkinTabGroup / SectionTabs, TreePaint.lua OneSentence).
 Limits of the stand-in: its tab labels measure 0 px wide (Auto-Generate Rules' width is then the 24 px padding, which the check allows);
 its buttons keep no font object, so the size is read from the tab's name text itself (what the player sees).
 Run: python3 tests/rules_subtabs_compact_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa; slow)."""
@@ -27,6 +30,18 @@ if ns and ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 5)
 ns = rawget(_G, "XayaUI_NS")
 check("settings window addon loaded", ns and ns.BuildOptionsTable ~= nil)
 if not (ns and ns.BuildOptionsTable) then return R end
+-- the stand-in feature page with section tabs (see the docstring): built like Data Panels' (a master switch, the parts as tabs)
+local standOn = false
+ns.RegisterSettingsPage("bonus", "xuitestsections", function()
+  local master = { type = "toggle", name = "Enable Test Panels", tip = "Shows test panels on your screen: one, two and three.",
+    get = function() return standOn end, set = function(_, v) standOn = v and true or false end }
+  local function part(name, order)
+    return { type = "group", name = name, order = order, args = { opt = { type = "toggle", name = name .. " option", order = 1,
+      get = function() return false end, set = function() end } } }
+  end
+  return { type = "group", name = "Test Panels", order = 10, childGroups = "tab", xuiSwitch = master,
+    args = { general = part("General", 1), second = part("Second", 2), third = part("Third", 3) } }
+end)
 local P = ns.NewRule(); P.name = "Demon Spikes"; P.enabled = true; P.useCd = true; P.spellID = 203720; P.cdState = "ready"; ns.NormalizeRule(P)
 ns.rules = { P }; CueRulesDB.rules = ns.rules
 local ACD = LibStub("AceConfigDialog-3.0")
@@ -138,7 +153,7 @@ do
   CueRulesDB.theme.size = keep
   ACD:SelectGroup("CueRules", "cooldowns", "smartTab"); W.tick(0.3, 3)
 end
--- section tabs: Bonus Features > Data Panels (off by default)
+-- section tabs: the stand-in feature page (off at first)
 local function findTabs(root, pred)
   if not root then return nil end
   if root.type == "TabGroup" and root.tabs and pred(root) then return root end
@@ -147,10 +162,10 @@ end
 local function dpTabs()
   return findTabs(ACD.OpenFrames["CueRules"], function(tg)
     local u = tg:GetUserDataTable(); local p = u and u.path
-    return p and p[1] == "bonus" and p[#p] == "datapanels" end)
+    return p and p[1] == "bonus" and p[#p] == "xuitestsections" end)
 end
-ns.Settings("bonus").dataPanels.general.enabled = false
-ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
+standOn = false
+ACD:SelectGroup("CueRules", "bonus", "xuitestsections"); W.tick(0.3, 3)
 local tg = dpTabs()
 local shownN = 0
 for _, t in ipairs(tg and tg.tabs or {}) do if t:IsShown() then shownN = shownN + 1 end end
@@ -160,22 +175,22 @@ if tg and tg.border then
   if tex and tex.GetVertexColor then fillA = select(4, tex:GetVertexColor()) or 1 end
   if not tex then local bc = tg.border.GetBackdropColor and { tg.border:GetBackdropColor() }; fillA = bc and bc[4] or 1 end
 end
-check("Data Panels off: no section tab and no fill under the page (UI-46 / UI-48)", tg ~= nil and shownN == 0 and (fillA or 0) < 0.01,
+check("feature page off: no section tab and no fill under the page (UI-46 / UI-48)", tg ~= nil and shownN == 0 and (fillA or 0) < 0.01,
   ("tabs %d, fill alpha %s"):format(shownN, tostring(fillA)))
 local said = {}
 local function texts(x) if not x then return end
   if x.type == "Label" and x.label then said[#said + 1] = x.label:GetText() end
   for _, c in ipairs(x.children or {}) do texts(c) end end
 texts(ACD.OpenFrames["CueRules"])
-check("  ...the page shows its one sentence", table.concat(said, " | "):find("Shows info panels on your screen: time, gold, frame rate and more.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
-ns.Settings("bonus").dataPanels.general.enabled = true
-ACD:SelectGroup("CueRules", "bonus", "datapanels"); W.tick(0.3, 3)
+check("  ...the page shows its one sentence", table.concat(said, " | "):find("Shows test panels on your screen: one, two and three.", 1, true) ~= nil, table.concat(said, " | "):sub(1, 200))
+standOn = true
+ACD:SelectGroup("CueRules", "bonus", "xuitestsections"); W.tick(0.3, 3)
 tg = dpTabs()
 local lay = tg and layout(tg) or {}
 local even = #lay > 0
 for i, e in ipairs(lay) do if math.abs(e.w - lay[1].w) > 0.5 or math.abs(e.x - (i - 1) * lay[1].w) > 0.5 then even = false end end
 local W1 = tg and (tg.frame.width or tg.frame:GetWidth()) or 0
-check("Data Panels on: its section tabs share the row evenly, edge to edge", even and math.abs(#lay * (lay[1] and lay[1].w or 0) - W1) < 1,
+check("feature page on: its section tabs share the row evenly, edge to edge", even and math.abs(#lay * (lay[1] and lay[1].w or 0) - W1) < 1,
   ("%d tabs, row %.1f"):format(#lay, W1))
 ok, why = sizeOK(lay, 24, 11)
 check("  ...24 px tall, 11 pt outlined", #lay > 0 and ok, why)
@@ -186,7 +201,7 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)   # every addon on this branch: XayaUI, XayaUI_Options, XayaUI_Rules (with its rule editor)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

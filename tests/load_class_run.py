@@ -1,4 +1,4 @@
-"""Load by class (Conditions.lua with the real Core) and the always-complete class / spec lists (the block in Options.lua).
+"""Load by class (Conditions.lua with the real Core) and the always-complete class / spec lists (the block in XayaUI_Rules/Editor/Editor.lua).
 A rule or group can be limited to any class from any character, and the lists never depend on who is logged in.
 Stand-in game (tests/engine_bench.py stubs). Run: python3 tests/load_class_run.py"""
 import os, sys
@@ -79,8 +79,8 @@ check("group Always override is separate; class gate holds for a rule that says 
 lua("NS.folders[1].loadClasses = { PALADIN = true, DEATHKNIGHT = true }")
 check("group allowing Paladin: rule loads", lua("local r = R({ mode = 'all' }); r.folder = 'f1'; return (loads(r))"))
 
-# the lists: the block in Options.lua, run against a stand-in class API (13 classes, 3 specs each; the character is a Paladin)
-src = open(os.path.join(ROOT, "XayaUI_Rules_Options/Editor.lua"), encoding="utf-8").read()
+# the lists: the block in the rule editor (XayaUI_Rules/Editor/Editor.lua), run against a stand-in class API (13 classes, 3 specs each; the character is a Paladin)
+src = open(os.path.join(ROOT, "XayaUI_Rules/Editor/Editor.lua"), encoding="utf-8").read()
 i = src.index("local SpecChoices   --"); j = src.index("-- Hero talent specializations of the character's class")
 L.globals().BLOCK = src[i:j]
 L.execute(r'''

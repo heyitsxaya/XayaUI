@@ -5,7 +5,9 @@ copies its keys out of CueRulesDB on its first load, never moves them. The saved
 every addon (tests/harness/scenario.lua, the golden scenario of tests/settings_seam_run.py) folded back into CueRulesDB as the code before
 P5 saved it (settings_stores.project; settings_seam_run.py B checks that fold against the pre-split golden hash), then a session that
 reads and writes CueRulesDB exactly as before P5 (ns.settingsTestHooks.keepOld) adds a large realistic set: 320 rules, 45 groups (nested),
-12 buff bars, and a distinct value for every module's keys (the split characterReskin with both halves, Reskin's keys inside ui).
+12 buff bars, and a distinct value for every installed module's keys (the split characterReskin with both halves, Reskin's keys inside ui;
+a QA-branch module whose folder is absent (Chat, Reskin, QoL, Bonus Features, Dev Assist: main holds only XayaUI, XayaUI_Options and
+XayaUI_Rules) gets no values and its checks are printed as SKIP).
   F  the "before" file: no module store exists in it (the keepOld session made none), and it holds every key the test copies
   M1 first load (every addon on): per module, the store as copied deep-equals the old keys (split / ui keys mapped), the store records
      migratedFrom "CueRulesDB", migratedAt, migratedBy (addon and version), migratedKeys; the module's view reads the store; every
@@ -126,6 +128,7 @@ if opts.fill then
   R.gm = { skin = true, accR = 0.5, matchReal = false }
   R.friendColors = { on = false }
   end
+  if opts.hasQoL then   -- (QA-branch module: the keys are only written when XayaUI_QoL is there)
   ns.Settings("qol").characterReskin = { enabled = true, chrome = false, stats = true, wide = true, widePx = 99, bgAlpha = 0.7, tallPx = 12,
     widePxTo42 = true, ilvl = false, enchants = true, gems = false, statList = true, statHide = { haste = true },
     statOrder = { core = { "crit", "haste" } }, statMode = { crit = "both" }, statName = { crit = "Crit!" }, statColor = { crit = { 1, 0, 0 } },
@@ -134,13 +137,16 @@ if opts.fill then
   Q.cursorTrail = { enabled = true, marker = "trail" }; Q.cursorHighlight = { enabled = true, size = 44 }; Q.cursor = { a = 1 }
   Q.shoppingList = { enabled = true, items = { { id = 2589, need = 20 } } }; Q.releaseGuard = { enabled = true, text = "NOPE" }
   Q.characterToolkit = Q.characterToolkit or {}; Q.characterToolkit.marker = "toolkit"
+  end
   local Ch = ns.Settings("chat")   -- (QA-branch module: the keys are only written when XayaUI_Chat is there)
   if opts.hasChat and Ch then Ch.chat2 = Ch.chat2 or {}; Ch.chat2.fadeMarker = 7; Ch.chat = Ch.chat or {}; Ch.chat.marker = "c" end
-  local B = ns.Settings("bonus")
+  local B = ns.Settings("bonus")   -- (QA-branch modules: the keys are only written when XayaUI_Bonus / XayaUI_DevAssist are there)
+  if opts.hasBonus then
   B.notepad = { pages = { { title = "Raid", text = "pull at 5" } } }; B.calculator = { enabled = true, history = { "1+1 = 2" } }
   B.tooltips = B.tooltips or {}; B.tooltips.marker = 3; B.dataPanels = B.dataPanels or {}; B.dataPanels.markerA = "a"
+  end
   local D = ns.Settings("devassist")
-  D.idProbe = { on = true, ids = { 1, 2, 3 } }; D.chatProbe = { lines = { "x" } }; D.idProbeStream = { { 1, "a" } }
+  if opts.hasDevAssist then D.idProbe = { on = true, ids = { 1, 2, 3 } }; D.chatProbe = { lines = { "x" } }; D.idProbeStream = { { 1, "a" } } end
 end
 if opts.change then   -- one setting changed per module (through its view, as the settings window does)
   local V = function(m) return ns.Settings(m) end
@@ -206,7 +212,8 @@ end
 def run(saved, enabled=None, **opts):
     folders = H.find_addons()
     en = set(folders) if enabled is None else enabled
-    opts = dict(opts, hasChat="XayaUI_Chat" in folders, hasReskin="XayaUI_Reskin" in folders)   # QA-branch modules: absent on main
+    opts = dict(opts, hasChat="XayaUI_Chat" in folders, hasReskin="XayaUI_Reskin" in folders, hasQoL="XayaUI_QoL" in folders,
+                hasBonus="XayaUI_Bonus" in folders, hasDevAssist="XayaUI_DevAssist" in folders)   # QA-branch modules: absent on main
     L, world, loader = SEAM.build(folders, en, saved)
     res = L.eval("function(src, W, Ld, o) return loadstring(src)()(W, Ld, o) end")(DRIVER, world, loader, H.to_lua(L, opts))
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
@@ -271,8 +278,9 @@ def main():
         lay = None
     stores = lay["stores"] if lay else {}
     for m, on in sorted(((lay or {}).get("own") or {}).items()):
-        if on and m not in stores:   # a module with its own store whose addon folder is not here (QA branch only: Chat, Reskin)
-            addon = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin"}.get(m, "XayaUI_" + m)
+        if on and m not in stores:   # a module with its own store whose addon folder is not here (QA branch only: Chat, Reskin, QoL, Bonus, Dev Assist)
+            addon = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin", "qol": "XayaUI_QoL", "bonus": "XayaUI_Bonus",
+                     "devassist": "XayaUI_DevAssist"}.get(m, "XayaUI_" + m)
             for what in ("F: the before file holds old keys to copy", "M1: the store as copied deep-equals every old key", "M1: the module reads its own store",
                          "M1: the store records the migration marks", "M1: copy, never move", "M2: nothing copied again / old key not reaching the store / setting kept",
                          "O: module off: no Lua error, its store not created, old keys untouched"):

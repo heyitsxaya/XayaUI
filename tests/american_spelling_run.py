@@ -2,7 +2,7 @@
 # "Make sure all UK/CAN/AUS/NZ spellings of words are not reflected into the addon (including words like “favour”). This also
 # applies to patch notes, what’s new text — literally every text in the addon should follow American spelling rules / Except use
 # the spelling “grey” instead of “gray”". Reported again 2026-11-08: "once again Claude has violated my strict rules around
-# english - american spelling" (a Nameplates tooltip read "Colours your target's health bar ... in the colour set on this page").
+# english - american spelling" (a tooltip read "Colours your target's health bar ... in the colour set on this page").
 #
 # Scans (git-tracked files only, V7):
 #   - every Lua string literal in XayaUI*/ (Libs excluded; comments stripped, so only text that can reach the screen is read)
@@ -10,7 +10,6 @@
 #   - the text files shipped inside the addon folders (README / CREDITS / walkthrough .md / .txt, the media script), except the
 #     third-party font and sound licences (OFL-*.txt, LICENSE-*.txt: other people's legal text)
 #   - PATCH-NOTES.md, docs/WHATS-NEW.md, docs/USER-GUIDE.md, docs/HELP-FAQ.md, docs/README-INGAME.md and docs/QA-CHECKLIST.md
-#     (docs/QA-CHECKLIST.md is generated into XayaUI_DevAssist/QAWalks-Checklist.lua by tools/qa_walks_from_checklist.py)
 # for the British / Commonwealth spellings below (whole words, any case, every inflection; camelCase and snake_case parts count as
 # words, so "ShownColour" and "STATUS_COLOUR" are found too). Her exception: "grey" is the spelling to use, so "gray" (and its
 # inflections) is a hit and "grey" is not. A hit is allowed only by an entry in ALLOW below, and each entry says why the string must
@@ -80,23 +79,11 @@ PHRASE_RX = re.compile(r"\bper cent\b", re.I)
 # A hit is allowed when the path matches, the word matches (None = any word) and the context is found in the string itself (or, for
 # a context starting "line:", on the string's source line). Each entry says why the string must stay as it is.
 ALLOW = [
-    # the Dev Assist audit walkthrough's own list of the spellings it searches the addon's text for (it has to name them)
-    ("XayaUI_DevAssist/QAWalks-audit.lua", None, "line:local BRIT = {", "the audit's search list of banned spellings"),
-    # a QA walkthrough's ID: saved QA results are stored under it, so renaming it would orphan her saved results; its title (the
-    # text shown) is American
-    ("XayaUI_DevAssist/QAWalks-nameplates.lua", "colour", "nameplates-target-colour", "walkthrough ID, keys saved QA results"),
-    # a slash-command word the player may type: "/xuidev catalogue" keeps working beside "/xuidev catalog" (compared, never shown)
-    ("XayaUI_DevAssist/DevAssist.lua", "catalogue", 'line:cmd == "catalogue" or cmd == "catalog"', "accepted slash-command alias"),
-    # the question flow's notes about the spelling decision itself: they have to name the British / "gray" spellings to ask about them
-    ("XayaUI_DevAssist/QAQuestions.lua", "catalogue", "file names (AuraCatalogue.lua)", "names the real file AuraCatalogue.lua"),
-    ("XayaUI_DevAssist/QAQuestions.lua", "gray", "Every addon: grey / gray", "the question is about grey vs gray"),
-    ("XayaUI_DevAssist/QAQuestions.lua", "gray", 'Kept your exception: player-visible "gray"', "names the word that was replaced"),
-    ("XayaUI_DevAssist/QAQuestions.lua", "gray", 'Use American "gray" everywhere', "the choice names the word"),
-    ("XayaUI_DevAssist/QAQuestions.lua", "centred", 'Titles centred over columns', "quotes her own earlier answer to explain the change"),
+    # (none at present: every hit in XayaUI, XayaUI_Options and XayaUI_Rules, the editor included, is respelled. The entries
+    # that used to be here all allowed strings of addons that are no longer on this branch.)
 ]
-# Table fields whose strings are her own words, verbatim (QAQuestions.lua's header: "words  Xaya's own words, VERBATIM (never
-# paraphrased)"): never respelled.
-ALLOW_FIELDS = [("XayaUI_DevAssist/QAQuestions.lua", "words", "her own words, verbatim")]
+# Table fields whose strings are her own words, verbatim, and are never respelled: (path, field, why). None at present.
+ALLOW_FIELDS = []
 
 # --- reading the sources --------------------------------------------------------------------------------------------------------
 def tracked():

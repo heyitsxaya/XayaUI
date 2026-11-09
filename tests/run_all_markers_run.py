@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """tests/run_all_markers_run.py: tests/run_all.py reads a test's last line correctly (fix plan f1-9).
 The old reader was a substring test (`any(s in last for s in ("0 failed", "PASS", "passed", "FAILS: 0"))`), so "18 checks, 10 failed"
-counted as a pass (it contains "0 failed"), as did "FAILS: 03" (it contains "FAILS: 0"), and the three runners chatprobe / drafts /
-minimap exited 0 whatever happened. Negative control: OLD below accepts the failing lines.
+counted as a pass (it contains "0 failed"), as did "FAILS: 03" (it contains "FAILS: 0"), and the runners drafts / minimap
+exited 0 whatever happened (so did chatprobe, whose addon now lives on another branch). Negative control: OLD below accepts the failing lines.
 Run: python3 tests/run_all_markers_run.py"""
 import importlib.util, os, subprocess, sys
 
@@ -42,8 +42,8 @@ check("negative control: the old substring reader took '18 checks, 10 failed' as
 check("negative control: the old reader took 'FAILS: 03' as a pass", OLD("FAILS: 03"))
 check("... the new one does not", not R.line_passes("FAILS: 03"))
 
-# the three runners that used to exit 0 on a failure now exit non-zero: each must end in a sys.exit on its fail count
-for n in ("chatprobe_run.py", "drafts_run.py", "minimap_run.py"):
+# the runners on this branch that used to exit 0 on a failure now exit non-zero: each must end in a sys.exit on its fail count
+for n in ("drafts_run.py", "minimap_run.py"):
     src = open(os.path.join(HERE, n), encoding="utf-8").read()
     check("%s returns its fail count from Lua and exits on it" % n, "return fails\n'''" in src and "exit(1 if fails else 0)" in src)
 

@@ -6,12 +6,11 @@ game (tests/harness places frames from their anchors) and measures them:
   - every control and every text with a box (two anchors, or a set width) sits at least UI_MARGIN inside the window's edges;
   - any two controls side by side (their heights overlap) are at least UI_GUTTER apart; any two controls stacked (their widths
     overlap) are at least UI_GUTTER apart;
-  - exempt, as in Blizzard's windows: title-bar close buttons, corner resize grips and bands across the window (a title bar, the
-    notepad's name row and toolbar) sit at the edge and may touch each other; full-window backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
-    hints (typography, only their margin is checked).
-Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
-window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus), the mover view's group X / Y
-popup and the frame picker (core), the notepad window and its name row (Bonus).
+  - exempt, as in Blizzard's windows: title-bar close buttons, corner resize grips and bands across the window (a title bar) sit at
+    the edge and may touch each other; full-window backgrounds and borders, segmented rows (a window may mark rows of tabs or filter
+    buttons that keep their 2 px seams: measure's opts.segment), single-line titles and hints (typography, only their margin is checked).
+Windows: the console window and the copy box (core), the import window (Options), the mover view's group X / Y popup and the frame
+picker (Rules, Visual.lua).
 Run: python3 tests/window_margins_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +18,7 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
 LUA = r'''
-return function(W, L, HAS_CHAT)
+return function(W, L)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 IsShiftKeyDown = function() return false end
@@ -131,65 +130,7 @@ if iw then
   iw.status:SetText("A long status line that the import window shows after it reads a paste, with a second line under it.")
   measure("import window", iw)
 end
--- 4. The Stat Calculator panel (XayaUI Bonus Features since Bonus 0.6.37; its settings are Bonus's) -----------------------------------
-ns.Settings("bonus").characterToolkit = ns.Settings("bonus").characterToolkit or {}
-ns.Settings("bonus").characterToolkit.enabled = true
-pcall(ns.CharToolkit_Apply)
-local okT, errT = pcall(ns.CharToolkit_Toggle)
-local tp = rawget(_G, "XayaUICharacterToolkit")
-check("the Stat Calculator panel opens", okT and tp ~= nil, errT)
-if tp then
-  local tabSet = {}
-  for _, b in ipairs(tp.tabs or {}) do tabSet[b] = true end
-  measure("Stat Calculator panel", tp, { segment = function(k) return tabSet[k] and "tabs" or nil end })
-  local lay = ns.CHARTOOLKIT_LAYOUT
-  check("Stat Calculator panel: its content inset is the core margin", lay and lay.pad == M and lay.content == lay.width - 2 * M, lay and lay.pad)
-end
--- 5. The chat history window (Chat) --------------------------------------------------------------------------------------------
-local okH, errH, hw
-if HAS_CHAT then
-  okH, errH = pcall(function() ns.Chat.History_Toggle() end)
-  hw = rawget(_G, "XayaUIChatHistory")
-  check("the chat history window opens", okH and hw ~= nil, errH)
-else
-  R[#R + 1] = { "the chat history window opens", true, true }
-  for _, w in ipairs({ "chat history window", "chat history window at its smallest (440 x 300)" }) do
-    R[#R + 1] = { w .. ": every control and text at least 10 px inside the edges", true, true }
-    R[#R + 1] = { w .. ": at least 10 px between two controls", true, true }
-  end
-end
-if hw then
-  hw.status:SetText("1000 newer messages. Click Refresh.")
-  local kb = {}
-  for _, b in ipairs(hw.kb or {}) do kb[b] = true end
-  measure("chat history window", hw, { segment = function(k) return kb[k] and "tabs" or nil end })
-  hw:SetSize(440, 300)   -- the smallest it can be made
-  local okS = pcall(function() hw:GetScript("OnSizeChanged")(hw) end)
-  measure("chat history window at its smallest (440 x 300)", hw, { segment = function(k) return kb[k] and "tabs" or nil end })
-end
--- 6. The notepad's popups (Bonus) -------------------------------------------------------------------------------------------------
-if type(ns.notepadDB) == "table" then ns.notepadDB.acceptShares = true end
-local okO, errO = pcall(ns.NotepadShare_Handle, "XUINOTE", "D|abcd|1|1|A shared note with a few words in it.", "PARTY", "Friend-Realm")
-local of = rawget(_G, "XayaUINoteOffer")
-check("a shared-note offer opens its window", okO and of ~= nil and of:IsShown(), errO or tostring(ns.notepadDB))
-if of then measure("shared-note offer", of) end
-local okSh, errSh = pcall(ns.NotepadShare_OpenShare)
-local sh = rawget(_G, "XayaUINoteShare")
-check("the share window opens", okSh and sh ~= nil, errSh)
-if sh then sh.status:SetText("A status line about the last send."); measure("share window", sh) end
-local okIO, errIO = pcall(ns.NotepadShare_OpenIO, "one")
-local io = rawget(_G, "XayaUINoteIO")
-check("the export / import window opens", okIO and io ~= nil, errIO)
-if io then
-  io.status:SetText("Press Ctrl+C to copy.")
-  local modes = { [io.m1 or 0] = true, [io.m2 or 0] = true, [io.m3 or 0] = true }
-  measure("export / import window", io, { segment = function(k) return modes[k] and "modes" or nil end })
-end
-local okRs, errRs = pcall(ns.Notepad_ToggleRestore)
-local rs = rawget(_G, "XayaUINotepadRestore")
-check("the notepad's restore list opens", okRs and rs ~= nil, errRs)
-if rs then measure("notepad restore list", rs) end
--- 7. The mover view's group X / Y popup and the frame picker (core, Visual.lua) ---------------------------------------------------
+-- 4. The mover view's group X / Y popup and the frame picker (XayaUI Rules, Visual.lua) -------------------------------------------
 ns.folders = { { id = "fA", name = "Active Mitigation" } }
 CueRulesDB.folders = ns.folders
 local function rule(name, x, y)
@@ -211,48 +152,31 @@ local okF, errF = pcall(ns.PickFrame, "Anchor the group 'Active Mitigation' to a
 local pk = rawget(_G, "XayaUIFramePicker")
 check("the frame picker opens", okF and pk ~= nil and pk:IsShown(), errF)
 if pk then measure("frame picker", pk) end
--- 8. The notepad window (Bonus) -------------------------------------------------------------------------------------------------
-local okN, errN = pcall(ns.Notepad_Toggle)
-local np = rawget(_G, "XayaUINotepad")
-check("the notepad opens", okN and np ~= nil and np:IsShown(), errN)
-if np then
-  measure("notepad (toolbar on top)", np)
-  local nrow
-  for _, k in ipairs({ np:GetChildren() }) do if rawget(k, "xuiEdge") and k._h == 22 then nrow = k end end
-  check("the notepad's name row is found", nrow ~= nil)
-  if nrow then measure("notepad name row (its sides)", nrow, { sidesOnly = true }) end
-end
 return R
 end
 '''
 
 
 def main():
-    HAS_CHAT = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Chat"))
     folders = H.find_addons()
-    enabled = [n for n in folders if n not in ("XayaUI_DevAssist", "XayaUI_Reskin")]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res = L.eval("function(src, W, Ld, c) return loadstring(src)()(W, Ld, c) end")(LUA, world, loader, HAS_CHAT)
+    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
-    nskip = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
-        if res[i][3]:
-            print("SKIP (QA-branch module absent: XayaUI_Chat) " + name)
-            nskip += 1
-            continue
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
             bad += 1
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
-    print("%d checks, %d failed, %d Lua errors" % (len(res) - nskip, bad, len(errs)))
+    print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 
 

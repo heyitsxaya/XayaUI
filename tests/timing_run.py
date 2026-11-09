@@ -60,11 +60,6 @@ load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name)
 ns = L.eval("{ settingsTestHooks = { keepOld = true } }"); L.globals().NS = ns  # (P5) XayaUI Rules' data stays in CueRulesDB here, as before P5 (Modules.lua: a declared store opens as "old")
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/Compat.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua", "XayaUI_Rules/Cues.lua", "XayaUI_Rules/Actions.lua", "XayaUI/Sound.lua", "XayaUI_Rules/Visual.lua", "XayaUI_Rules/Engine.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
-# (core 0.6.56, REQUEST-LOG #81: /xui debug timing, the coverage report, is XayaUI Dev Assist's: the real function from
-# XayaUI_DevAssist/CoreDebug.lua, set where the test calls it)
-_cd = open(os.path.join(ROOT, "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
-_a = _cd.index("local TIME_REFS"); _b = _cd.index("local function TimingReport()"); _c = _cd.index("\nend\n", _b) + 5
-L.execute("local ns = NS\n" + _cd[_a:_c] + "\nNS.Timing.Report = TimingReport\n")
 L.execute(r'''
 local ns = NS
 ns.Print = function() end
@@ -120,10 +115,4 @@ lua('SPOKEN = {}; CD_START = NOW; DS:TriggerAlertEvent(Enum.CooldownViewerAlertE
 t2 = L.eval("FIRST('SPEAK: strike soon', CD_START)"); want2 = L.eval("DS.xuiCdStartAt + 9")
 check("hidden cooldown: speech at 3 s left on the crossing frame", t2 is not None and 0 <= t2 - want2 <= frame + 1e-9, "fired %s, crossing %s" % (t2, want2))
 
-# 4. the coverage report says how each rule gets its time
-lua('PRINTED = {}; NS.Print = function(m) PRINTED[#PRINTED + 1] = m end; NS.Timing.Report()')
-check("/xui debug timing: both rules covered, with their sources", lua("local a, b = false, false; for _, l in ipairs(PRINTED) do if l:find('Anti%-Magic Shell') and l:find('measured 5.0s') then a = true end if l:find('Death Strike') and l:find('measured 12.0s') then b = true end end return a and b and PRINTED[1]:find('2 rules covered') ~= nil"),
-      lua("return table.concat(PRINTED, ' || ')"))
-lua('CueRulesDB.learnedAuraDur[48707] = nil; PRINTED = {}; NS.Timing.Report()')
-check("/xui debug timing: an unmeasured aura is flagged with the one fix", lua("for _, l in ipairs(PRINTED) do if l:find('^  !') and l:find('out of combat to measure') then return true end end return false"))
 print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)

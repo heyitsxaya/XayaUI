@@ -38,7 +38,7 @@ import settings_stores as SST  # noqa: E402  (P5: where each module keeps its se
 
 # (P4) made by --golden in a checkout of main 8ced2e3 (the code before the platform split), with the saved variables merged across
 # addon folders (canon below): XayaUITalentDB is declared by XayaUI_Rules since P4 instead of XayaUI, so the same data sits under
-# another folder name; "core only" is the old XayaUI folder, i.e. XayaUI + XayaUI_Rules (+ XayaUI_Media) now.
+# another folder name; "core only" is the old XayaUI folder, i.e. XayaUI + XayaUI_Rules now (+ XayaUI_Media, on the QA branch only).
 GOLDEN = {
     "all on: play session": "1b08cc0ea14304c0a73f991822050a4127a1cac9389a0e7be120f235d4cc3039",
     "all on: reload": "c40a90a6ecea2fe4643e3425aacf020d2040bd30321bedefde003f8635475845",
@@ -61,9 +61,11 @@ PLATFORM = {
 }
 SV_INIT = {"XayaUI/Core.lua", "XayaUI/Modules.lua"}   # saved-variable set-up, the seam itself, the profile parts
 
-# QA-branch modules: main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist and Media; Chat, Reskin and Nameplates are
-# on the QA branch only. A module's checks run when its folder is here; absent, they are printed as SKIP (never silently).
-QA_MODULES = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin", "nameplates": "XayaUI_Nameplates"}
+# QA-branch modules: main keeps only XayaUI (the Platform), XayaUI_Options and XayaUI_Rules (the rule editor is part of it, Rules 0.7.0);
+# Chat, Reskin, Nameplates, QoL, Bonus Features, Dev Assist and Media are on the QA branch only. A module's checks run when its folder is
+# here; absent, they are printed as SKIP (never silently). Modules.lua still lists their settings keys (its views exist for every module).
+QA_MODULES = {"chat": "XayaUI_Chat", "reskin": "XayaUI_Reskin", "nameplates": "XayaUI_Nameplates", "qol": "XayaUI_QoL",
+              "bonus": "XayaUI_Bonus", "devassist": "XayaUI_DevAssist"}
 ABSENT = {m: a for m, a in QA_MODULES.items() if not os.path.isdir(os.path.join(ROOT, a))}
 
 
@@ -293,6 +295,7 @@ def canon(saved):
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review
     # signature) name the new folder too; that name is the only difference allowed (checked by diffing both dumps, P4 debug log)
     # (P4b) and the rule editor's folder (XayaUI_Rules_Options, not loaded in these sessions: the window is not opened), the same way
+    # (Rules 0.7.0: the editor is part of XayaUI_Rules, so no such folder is listed any more and this finds nothing)
     text = text.replace(", XayaUI_Rules_Options 0 (not loaded)", "").replace(";XayaUI_Rules_Options=0", "")
     return text.replace(", XayaUI_Rules 0", "").replace(";XayaUI_Rules=0", "")
 
@@ -350,19 +353,36 @@ local function HOME(m) return _G[HVAR(m)] end
 section("C1 first-run defaults", function()
   check("C1: after the saved settings were set up, the core view held since load reads the same rules list the engine uses",
     V.core.rules ~= nil and rawequal(V.core.rules, HOME("core").rules) and rawequal(ns.rules, V.core.rules))
+  if XUI_ABSENT.qol then
+    R[#R + 1] = { "SKIP (QA-branch module absent: XayaUI_QoL) C1: ... and the QoL view reads the stats-text boxes set up at load (P5: by XayaUI QoL, in its store)", true }
+  else
   check("C1: ... and the QoL view reads the stats-text boxes set up at load (P5: by XayaUI QoL, in its store)",
     V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, HOME("qol").qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
+  end
   check("C1: ... and the platform view reads the defaults written into CueRulesDB.ui (console open, Advanced Debugging on)",
     rawequal(V.platform.ui, CueRulesDB.ui) and V.platform.ui.advancedDebug == true and V.platform.ui.trayOpen == true)
 end)
 
 section("C2 profile import", function()
+  if XUI_ABSENT.qol then
+    -- (XayaUI QoL is on the QA branch: its part is not registered) the same Platform plumbing (a db part, Modules.lua DbPart) through the
+    -- Platform's own "Settings" part: a key that was not there arrives as a new table, another key's value is merged into its table
+    local part = ns.ProfilePartsByKey().settings
+    local keepMinimap = CueRulesDB.minimap
+    CueRulesDB.minimap = nil
+    local res = part.apply(part.check({ minimap = { marker = 7 }, ui = { seamMarker = 9 } }), "merge", 1)
+    check("C2: the Settings profile part applied: the held platform view reads the new minimap table", res and V.platform.minimap ~= nil
+      and V.platform.minimap.marker == 7 and rawequal(V.platform.minimap, CueRulesDB.minimap), tostring(V.platform.minimap))
+    check("C2: ... and the merged window setting", V.platform.ui and V.platform.ui.seamMarker == 9)
+    CueRulesDB.minimap = keepMinimap; CueRulesDB.ui.seamMarker = nil
+  else
   local part = ns.ProfilePartsByKey().qol
   HOME("qol").cursorTrail = nil
   local res = part.apply(part.check({ cursorTrail = { marker = 7, enabled = false }, cursorHighlight = { marker = 9 } }), "merge", 1)
   check("C2: a QoL profile part applied: the held QoL view reads the new cursor trail table", res and V.qol.cursorTrail ~= nil
     and V.qol.cursorTrail.marker == 7 and rawequal(V.qol.cursorTrail, HOME("qol").cursorTrail), tostring(V.qol.cursorTrail))
   check("C2: ... and the merged cursor highlight value", V.qol.cursorHighlight and V.qol.cursorHighlight.marker == 9)
+  end
   local bonus = ns.ProfilePartsByKey().bonus
   if bonus then
     bonus.apply(bonus.check({ calculator = { marker = "c" } }), "merge", 1)
@@ -449,8 +469,14 @@ section("C6 hot-path caches", function()
   _G[hv] = old
   ns.SettingsChanged()
   local ep2 = ns.settingsEpoch
+  if XUI_ABSENT.qol then   -- (XayaUI QoL on the QA branch) the Platform's own db part, the same apply
+    local part = ns.ProfilePartsByKey().settings
+    part.apply(part.check({ ui = { seamMarker = 8 } }), "merge", 1)
+    CueRulesDB.ui.seamMarker = nil
+  else
   local part = ns.ProfilePartsByKey().qol
   part.apply(part.check({ cursorTrail = { marker = 8 } }), "merge", 1)
+  end
   check("C6: applying a profile part moves the epoch (hot caches look again)", ns.settingsEpoch > ep2)
 end)
 return R
@@ -551,7 +577,7 @@ def main():
     # B
     for tag, (h, errs, unknown, saved) in sessions(folders).items():
         if tag.startswith("all on") and ABSENT:
-            # GOLDEN's "all on" hashes hold the saved data of every addon, Chat's, Reskin's and Nameplates' included: with those folders absent
+            # GOLDEN's "all on" hashes hold the saved data of every addon, the QA-branch modules' included: with those folders absent
             # the data can differ only by them, and a hash cannot be filtered. "core only" (no such addon on) still compares.
             skip(", ".join(ABSENT.values()), "B: %s: saved variables byte-identical to the old code's" % tag)
         else:
@@ -583,7 +609,7 @@ def main():
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(MAP_LUA, world, loader)
     emit(res)
     for m, a in ABSENT.items():
-        if m in ("chat", "reskin"):
+        if m != "nameplates":   # (Nameplates has no view: its own XayaUINameplatesDB)
             skip(a, "E: %s's view writes and reads exactly its store's <key> (part of the every-module check above)" % m)
     owners = owner_lists(ROOT) or {}
     every = sorted(k for ks in owners.values() for k in ks)

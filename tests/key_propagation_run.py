@@ -148,21 +148,6 @@ W.keyFlagRead = "after"
 ns.MoverExit("cancel"); W.tick(0.05, 2)
 check("mover view closed: its key frame holds no keyboard", keys._keyboard == false and not keys:IsShown())
 
--- text boxes: the Calculator's line (a click outside, the window closing)
-if ns.Calculator_Open then
-  ns.Calculator_Open()
-  local cf = rawget(_G, "XayaUICalculator")
-  local e = cf and cf.edit
-  check("(regression) the Calculator opens with the cursor in its line, and typed keys go there", e and e:HasFocus() and W.pressKey("PRINTSCREEN") == e)
-  cf.IsMouseOver = function() return true end
-  W.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
-  check("(regression) a click inside the Calculator (its keys) keeps the cursor in the line", e:HasFocus())
-  cf.IsMouseOver = function() return false end
-  W.fire("GLOBAL_MOUSE_DOWN", "LeftButton")
-  check("a click outside the Calculator takes the cursor out of its line: PRINTSCREEN reaches the game", not e:HasFocus() and who(W.pressKey("PRINTSCREEN")) == "game", tostring(e:HasFocus()))
-  e:SetFocus(); cf:Hide()
-  check("closing the Calculator takes the cursor out of its line", not e:HasFocus())
-else check("the Calculator is there", false) end
 -- a one-line box with no Enter of its own: the debug report's string box
 if ns.ShowDebugReport then
   ns.ShowDebugReport(); W.tick(0.05, 2)
@@ -185,7 +170,7 @@ def static_audit():
     """Every XayaUI text box goes through ns.KeyFocusGuard; only core's KeyCatch.lua touches the keyboard flag."""
     out = []
     files = subprocess.run(["git", "ls-files", "XayaUI*/*.lua", "XayaUI*/**/*.lua"], cwd=ROOT, capture_output=True, text=True).stdout.split()
-    files = sorted(set(f for f in files if "/Libs/" not in f and "/QAWalks" not in f.replace("\\", "/")))
+    files = sorted(set(f for f in files if "/Libs/" not in f))
     # boxes that handle Enter / Escape / a click outside / hiding themselves (the reason is checked here too)
     EXEMPT = {("XayaUI/Modules.lua", "eb"): "GLOBAL_MOUSE_DOWN"}   # the element menu's X / Y boxes: the menu closes on a click outside
     missing, flag = [], []
@@ -216,7 +201,7 @@ def static_audit():
 def main():
     results = static_audit()
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

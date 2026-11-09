@@ -5,12 +5,16 @@
   Recycle Bin: "put into profiles instead as its own subtab"; the tab is "Profiles", "expanded as a category bucket to include all
   user-created customizations, settings, etc", "individual components can be selected to toggle").
 Loads the real addons in the stand-in game, opens the window and checks what the player sees and gets:
-  A the top tabs read exactly Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings, in that order; no Recycle Bin and
-    no Import / Export top tab; Settings shows beside the others (nothing hides when it is picked); the six share the top row evenly.
+  A the top tabs read exactly Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings, in that order, with the feature addons
+    installed (a feature tab is built from the pages its addon registers); on main, which holds no feature addon (XayaUI, XayaUI_Options and
+    XayaUI_Rules only), exactly Rules | Profiles | Settings. No Recycle Bin and no Import / Export top tab; Settings shows beside the
+    others (nothing hides when it is picked); the top tabs share the row evenly.
   B no toolbar: the window has no xuiToolbar shown, and the content starts under the title strip (-34, not -62).
   C "+ New Rule" is a flat button at the left end of the Rules row, before Smart Categories; the tabs follow it, Auto-Generate Rules
     stays at the far right; a click starts a new rule (the type picker); the button hides when that container shows another row.
-  D Profiles has the sub-tabs Import, Export, Recycle Bin; Export has one tick box per component; Recycle Bin is the old bin page.
+  D Profiles has the sub-tabs Import, Export, Recycle Bin; Export has one tick box per registered component (the Platform's Themes,
+    Settings and Blizzard Reskin, XayaUI Rules' Rules and groups, and QoL / Bonus Features / Nameplates where those addons are); Recycle
+    Bin is the old bin page.
   E the profile codec: a profile with some components round-trips; Import lists only the components the text holds; only ticked
     components are applied; settings are merged (a value the profile lacks stays); personal data never leaves (whisper-sound senders,
     calculator history, one-time upgrade flags); rules alone export as a rules string (XUI1); a pasted profile with an unknown
@@ -22,9 +26,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
-# QA-branch modules: main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist and Media; Chat, Reskin and Nameplates are
-# on the QA branch only. A check about one of them runs when its folder is here; absent, it is printed as SKIP (never silently).
-ABSENT = [a for a in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if not os.path.isdir(os.path.join(H.ROOT, a))]
+# QA-branch modules: main keeps only XayaUI (core), XayaUI_Options and XayaUI_Rules (the rule editor is part of it, Rules 0.7.0); Chat,
+# Reskin, Nameplates, QoL, Bonus Features, Dev Assist and Media are on the QA branch only. A check about one of them runs when its folder is
+# here; absent, it is printed as SKIP (never silently), or the check asserts what the window shows without it.
+ABSENT = [a for a in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates", "XayaUI_QoL", "XayaUI_Bonus")
+          if not os.path.isdir(os.path.join(H.ROOT, a))]
 
 LUA = r'''
 return function(W, L)
@@ -64,7 +70,9 @@ section("A: the top tabs", function()
   local names = {}
   for _, e in ipairs(l) do names[#names + 1] = e.n end
   local got = table.concat(names, " | ")
-  check("A: the top tabs read Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings", got == "Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings", got)
+  -- (with QoL and Bonus Features installed: the six tabs; main holds no feature addon, so no feature tab is built)
+  local want = XUI_HAS_QOL and "Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings" or "Rules | Profiles | Settings"
+  check("A: the top tabs read " .. want, got == want, got)
   check("A: no Recycle Bin top tab", built.args.recyclebin == nil)
   check("A: the Profiles tab is named Profiles (not Import / Export)", built.args.profiles and built.args.profiles.name == "Profiles", built.args.profiles and built.args.profiles.name)
 end)
@@ -75,10 +83,10 @@ check("the window opened", root() ~= nil)
 section("A/B: the window", function()
   ACD:SelectGroup("CueRules", "set", "ui"); W.tick(0.05, 6)
   local top = rowWith("set")
-  check("A: Settings picked: the top row still shows Rules, QoL, Profiles beside Settings", top ~= nil and (function()
+  check("A: Settings picked: the top row still shows Rules" .. (XUI_HAS_QOL and ", QoL" or "") .. ", Profiles beside Settings", top ~= nil and (function()
     local seen = {}
     for _, t in ipairs(shownTabs(top)) do seen[t.value] = true end
-    return seen.cooldowns and seen.qol and seen.profiles and seen.set
+    return seen.cooldowns and (seen.qol or not XUI_HAS_QOL) and seen.profiles and seen.set
   end)(), top and #shownTabs(top))
   if top then
     local shown = shownTabs(top)
@@ -88,7 +96,8 @@ section("A/B: the window", function()
       local _, rel, _, x = t:GetPoint(1)
       if math.abs(t:GetWidth() - each) > 0.5 or math.abs((x or -1) - (i - 1) * each) > 0.5 or rel ~= top.frame then bad[#bad + 1] = tostring(t.value) end
     end
-    check("A: the 6 top tabs share the row evenly, edge to edge", #shown == 6 and #bad == 0, #shown .. " " .. table.concat(bad, ","))
+    local nTop = XUI_HAS_QOL and 6 or 3
+    check("A: the " .. nTop .. " top tabs share the row evenly, edge to edge", #shown == nTop and #bad == 0, #shown .. " " .. table.concat(bad, ","))
   end
   local fr = root().frame
   check("B: no toolbar is shown above the tabs", not (fr.xuiToolbar and fr.xuiToolbar:IsShown()))
@@ -142,7 +151,10 @@ section("D: Profiles", function()
   table.sort(ticks, function(a, b) return a.o < b.o end)
   local tn = {}
   for _, t in ipairs(ticks) do tn[#tn + 1] = t.n end
-  check("D: Export: one tick box per component", table.concat(tn, ", ") == "Rules and groups, Themes, Settings, QoL, Bonus Features, Blizzard Reskin" .. (XUI_HAS_NAMEPLATES and ", Nameplates" or ""), table.concat(tn, ", "))   -- (Options 0.6.80: parts are registered by their modules; XayaUI Nameplates is on in this run and adds its own, plan 6.1)
+  -- (Options 0.6.80: parts are registered by their modules; QoL, Bonus Features and Nameplates add their own where they are, plan 6.1)
+  local wantTicks = "Rules and groups, Themes, Settings" .. (XUI_HAS_QOL and ", QoL" or "") .. (XUI_HAS_BONUS and ", Bonus Features" or "")
+    .. ", Blizzard Reskin" .. (XUI_HAS_NAMEPLATES and ", Nameplates" or "")
+  check("D: Export: one tick box per component (" .. wantTicks .. ")", table.concat(tn, ", ") == wantTicks, table.concat(tn, ", "))
   check("D: the Recycle Bin page is there (its Empty button)", p.args.bin and p.args.bin.args and (p.args.bin.args.empty ~= nil or p.args.bin.args.summary ~= nil))
   local picked = {}
   local realSelect = ACD.SelectGroup
@@ -158,37 +170,47 @@ end)
 
 section("E: the profile codec", function()
   local P = ns.Profile
-  check("E: the profile component list exists (the six parts plus Nameplates, which is on in this run; Options 0.6.80)", P ~= nil and #P.COMPONENTS == (XUI_HAS_NAMEPLATES and 7 or 6), P and #P.COMPONENTS)   -- (Nameplates' own part exists only where XayaUI_Nameplates is: the Platform's six otherwise)
+  -- (the Platform's Themes, Settings and Blizzard Reskin, and XayaUI Rules' Rules and groups: four; QoL's, Bonus Features' and Nameplates'
+  -- own parts exist only where their addons are)
+  local nParts = 4 + (XUI_HAS_QOL and 1 or 0) + (XUI_HAS_BONUS and 1 or 0) + (XUI_HAS_NAMEPLATES and 1 or 0)
+  check("E: the profile component list exists (" .. nParts .. " parts: one per registered part; Options 0.6.80)", P ~= nil and #P.COMPONENTS == nParts, P and #P.COMPONENTS)
+  -- the third component ticked besides Settings and Blizzard Reskin: Bonus Features where XayaUI_Bonus is, else the Platform's Themes
+  local THIRD = XUI_HAS_BONUS and "bonus" or "themes"
   local DB = ns.SettingsRoutedForTests()   -- (P5) each key where its module reads it now (its own store or CueRulesDB)
   if XUI_HAS_CHAT then   -- (Chat's keys: written only where XayaUI_Chat is)
   DB.chat2 = DB.chat2 or {}
   DB.chat2.fadeMarker = 7
   DB.chat2.whisperSounds = { list = { { who = "Friendname-Realm" } }, fav = { enabled = true } }
   end
+  if XUI_HAS_BONUS then   -- (Bonus Features' keys: written only where XayaUI_Bonus is)
   DB.calculator = { enabled = true, history = { "1+1 = 2" }, x = 5 }
+  DB.dataPanels = DB.dataPanels or {}; DB.dataPanels.markerA = "a"
+  else DB.theme.restructureMarker = "a" end
   DB.ui = DB.ui or {}
   DB.ui.selStyle = "bar"; DB.ui.hybridMigrated = true
-  DB.dataPanels = DB.dataPanels or {}; DB.dataPanels.markerA = "a"
-  local txt, err = ns.Share.Encode("profile", P.Snapshot({ settings = true, reskin = true, bonus = true }, "mine"))
+  local txt, err = ns.Share.Encode("profile", P.Snapshot({ settings = true, reskin = true, [THIRD] = true }, "mine"))
   check("E: a profile encodes", type(txt) == "string" and txt:find("^XUIPROFILE1:") ~= nil, err)
   local data, def = ns.Share.Read(txt)
   check("E: ...and reads back as a profile", data and def and def.kind == "profile", def)
   local held = {}
   for _, c in ipairs(P.Held(data)) do held[#held + 1] = c.key end
-  check("E: it holds exactly the ticked components", table.concat(held, ",") == "settings,bonus,reskin", table.concat(held, ","))
+  check("E: it holds exactly the ticked components", table.concat(held, ",") == (XUI_HAS_BONUS and "settings,bonus,reskin" or "themes,settings,reskin"), table.concat(held, ","))
   if XUI_HAS_CHAT then
   local w = data.parts.reskin.chat2.whisperSounds
   check("E: other players' names never leave (whisper-sound senders)", w and w.list == nil and w.fav and w.fav.enabled == true, w and tostring(w.list))
   else skip("XayaUI_Chat", "E: other players' names never leave (whisper-sound senders)") end
+  if XUI_HAS_BONUS then
   check("E: the calculator's history and position never leave", data.parts.bonus.calculator.history == nil and data.parts.bonus.calculator.x == nil and data.parts.bonus.calculator.enabled == true)
+  else skip("XayaUI_Bonus", "E: the calculator's history and position never leave") end
   check("E: one-time upgrade flags never leave", data.parts.settings.ui.hybridMigrated == nil and data.parts.settings.ui.selStyle == "bar")
   -- import on a changed setup: only the ticked components land; settings merge
   if XUI_HAS_CHAT then DB.chat2.fadeMarker = 1; DB.chat2.onlyMine = "keep" end
   DB.ui.selStyle = "text"
-  DB.dataPanels.markerA = "changed"
+  if XUI_HAS_BONUS then DB.dataPanels.markerA = "changed" else DB.theme.restructureMarker = "changed" end
   local res = def.Apply(data, { inc = { reskin = true, settings = true }, rules = "add" })
   check("E: the ticked components are applied", (not XUI_HAS_CHAT or DB.chat2.fadeMarker == 7) and DB.ui.selStyle == "bar", (XUI_HAS_CHAT and tostring(DB.chat2.fadeMarker) or "-") .. " " .. tostring(DB.ui.selStyle))   -- (Chat's half only where XayaUI_Chat is)
-  check("E: an unticked component is left alone (Bonus Features)", DB.dataPanels.markerA == "changed", DB.dataPanels.markerA)
+  if XUI_HAS_BONUS then check("E: an unticked component is left alone (Bonus Features)", DB.dataPanels.markerA == "changed", DB.dataPanels.markerA)
+  else check("E: an unticked component is left alone (Themes)", DB.theme.restructureMarker == "changed", DB.theme.restructureMarker); DB.theme.restructureMarker = nil end
   if XUI_HAS_CHAT then check("E: settings are merged: a value the profile lacks stays", DB.chat2.onlyMine == "keep")
   else skip("XayaUI_Chat", "E: settings are merged: a value the profile lacks stays") end
   check("E: ...and the import says what it applied and asks for a reload", res and res.reload == true and #res.done == 2, res and #(res.done or {}))
@@ -208,8 +230,9 @@ section("E: the profile codec", function()
   built = ns.BuildOptionsTable()
   local ia = built.args.profiles.args.import.args
   local function vis(o) local h = o.hidden; if type(h) == "function" then h = h() end; return not h end
-  check("E: Import shows a tick box for each held component", vis(ia.imp_settings) and vis(ia.imp_bonus) and vis(ia.imp_reskin) and not vis(ia.imp_rules) and not vis(ia.imp_qol))
-  check("E: ...each ticked to start", ia.imp_settings.get() and ia.imp_reskin.get())
+  check("E: Import shows a tick box for each held component", vis(ia.imp_settings) and vis(ia["imp_" .. THIRD]) and vis(ia.imp_reskin) and not vis(ia.imp_rules)
+    and (ia.imp_qol == nil or not vis(ia.imp_qol)))   -- (no QoL tick box at all where XayaUI_QoL is not: its part is not registered)
+  check("E: ...each ticked to start", ia.imp_settings.get() and ia.imp_reskin.get() and ia["imp_" .. THIRD].get())
   -- a doctored profile is cleaned
   local bad = { v = 1, parts = { evil = { x = 1 }, settings = { ui = "notatable", minimap = { hide = true }, errorLog = { 1 } } } }
   local clean = P.Check(bad)
@@ -230,7 +253,9 @@ def main():
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s" % (str("XayaUI_Chat" not in ABSENT).lower(), str("XayaUI_Nameplates" not in ABSENT).lower()))
+    has = lambda a: str(a not in ABSENT).lower()
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s"
+              % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), has("XayaUI_Bonus")))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):

@@ -26,7 +26,7 @@ CueRulesDB = {}
 ''')
 def load(f):
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
-load("XayaUI/Modules.lua"); load("XayaUI_Bonus/Tooltips.lua"); load("XayaUI_Rules/AuraSources.lua")
+load("XayaUI/Modules.lua"); load("XayaUI_Rules/AuraSources.lua")
 fails = 0
 def check(n, c):
     global fails
@@ -68,5 +68,5 @@ check("pass waits while the item index is incomplete", L.eval("AS.state.running"
 L.execute("inCombat = true; local p = AS.state.pos; before = p; frameFn({SetScript=function() end})")
 check("paused in combat", L.eval("AS.state.pos") == L.eval("before"))
 L.execute("secret[9101]=true; tips.item[2] = {lines={{type=19,tooltipType=1,tooltipID=9101}}}")
-check("secret aura id skipped by scan", L.eval("XayaUI_NS.TT.EmbeddedAuras({lines={{type=19,tooltipType=1,tooltipID=9101}}})[1]") is None)
+check("secret aura id skipped by scan", L.eval("AS.EmbeddedAuras({lines={{type=19,tooltipType=1,tooltipID=9101}}})[1]") is None)
 print("FAILS:", fails)

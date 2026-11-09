@@ -12,6 +12,9 @@ XayaUI_Rules/RuleShare.lua; no string format changed. Loads the real addons in t
     each with its default value) now in the Blizzard Reskin part; taken out, the string is the pre-split one byte for byte.
   C XayaUI Rules switched off: the rules strings say "needs XayaUI Rules" and change nothing; the theme still imports; the profile
     lists its rules part as "needs XayaUI Rules", skips it and imports the rest.
+  (QA-branch modules: main holds only XayaUI, XayaUI_Options and XayaUI_Rules. The golden profile holds the parts and keys of Chat, Blizzard
+  Reskin, QoL and Bonus Features: with those addons absent, B compares the profile without their data and A / C expect their parts listed
+  as "needs <addon>"; everything of the Platform and of XayaUI Rules is still compared.)
 Negative control: C fails on 8ced2e3 (there is no XayaUI Rules to switch off: the rules kind is always there). A and B pass there by
 design: they are the reference the new code must match.
 Run: python3 tests/share_strings_presplit_run.py"""
@@ -449,12 +452,13 @@ if rulesOn then
     end
     for _, k in ipairs({ "rule", "group", "all", "theme", "profile" }) do
       local ok, shown = now[k] == GOLD[k], tostring(now[k]):sub(1, 50)
-      if k == "profile" and not (XUI_HAS_CHAT and XUI_HAS_RESKIN) then
+      if k == "profile" and not (XUI_HAS_CHAT and XUI_HAS_RESKIN and XUI_HAS_QOL and XUI_HAS_BONUS) then
         -- the pre-split profile string holds the data of the QA-branch modules that are absent: Chat's two tables (chat, chat2) and, from
-        -- Reskin, its keys inside the Settings part (ui.friendColors, gm, rsk) and its half of characterReskin in the Blizzard Reskin part.
+        -- Reskin, its keys inside the Settings part (ui.friendColors, gm, rsk) and its half of characterReskin in the Blizzard Reskin part;
+        -- from QoL, its own part (qol) and its half of characterReskin; from Bonus Features, its own part (bonus).
         -- Nothing makes them without those addons, so the expected profile is taken at compare time without them and compared part by
         -- part, every key and value (the byte order of an encoded string follows how the tables were built, which differs once the golden
-        -- is read back and changed). Everything of core, QoL and Bonus in it still has to match.
+        -- is read back and changed). Everything of core (the Platform's parts) and of XayaUI Rules in it still has to match.
         local gd, nd = S.Read(GOLD.profile, "profile"), S.Read(now.profile, "profile")
         local P = type(gd) == "table" and gd.parts or {}
         if not XUI_HAS_CHAT and P.reskin then P.reskin.chat = nil; P.reskin.chat2 = nil end
@@ -462,6 +466,17 @@ if rulesOn then
           for _, key in ipairs(XUI_RESKIN_UI) do if P.settings and P.settings.ui then P.settings.ui[key] = nil end end
           for _, key in ipairs(XUI_RESKIN_SPLIT) do if P.reskin and P.reskin.characterReskin then P.reskin.characterReskin[key] = nil end end
         end
+        if not XUI_HAS_QOL then
+          P.qol = nil
+          local cr = P.reskin and P.reskin.characterReskin
+          if type(cr) == "table" then   -- QoL's half: every key Reskin does not keep
+            local mine = {}
+            for _, key in ipairs(XUI_RESKIN_SPLIT) do mine[key] = true end
+            for key in pairs(cr) do if not mine[key] then cr[key] = nil end end
+          end
+        end
+        if P.reskin and type(P.reskin.characterReskin) == "table" and next(P.reskin.characterReskin) == nil then P.reskin.characterReskin = nil end
+        if not XUI_HAS_BONUS then P.bonus = nil end
         ok = type(gd) == "table" and type(nd) == "table" and same(gd, nd)
       end
       check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), ok, shown)
@@ -518,12 +533,23 @@ section("A: profile string", function()
   local data, def = S.Read(GOLD.profile)
   check("A: profile: read as the profile kind", data and def and def.kind == "profile", def and def.kind or tostring(def))
   local miss = P.Missing(data)
+  -- (QA-branch modules, absent on main) the golden profile holds a QoL part and a Bonus Features part: without those addons no module
+  -- registers them, so Import lists them as "needs XayaUI QoL" / "needs XayaUI Bonus Features" (and skips them); every other part is offered
+  local absent = {}
+  if not XUI_HAS_BONUS then absent[#absent + 1] = "bonus=XayaUI Bonus Features" end
+  if not XUI_HAS_QOL then absent[#absent + 1] = "qol=XayaUI QoL" end
+  local function missList() local t = {}; for _, m in ipairs(miss) do t[#t + 1] = m.key .. "=" .. m.title end; return table.concat(t, ", ") end
   if rulesOn then
-    check("A: profile: every part it holds is offered (none missing)", #miss == 0, #miss)
+    local want = table.concat(absent, ", ")
+    check("A: profile: every part it holds is offered (none missing" .. (want ~= "" and (" but those of the absent QA-branch addons: " .. want) or "") .. ")",
+      missList() == want, missList())
     local res = def.Apply(data, { inc = { rules = true, themes = true, settings = true }, rules = "add" })
     check("A: profile: the rules part imported its rules", ruleNamed("Shared rule") ~= nil and ruleNamed("Its cue") ~= nil, res and res.done and table.concat(res.done, ","))
   else
-    check("C: profile: the rules part is listed as \"needs XayaUI Rules\"", #miss == 1 and miss[1].key == "rules" and miss[1].title == "XayaUI Rules", miss[1] and miss[1].title)
+    -- (P.Missing is in key order: bonus, qol, rules) the rules part, plus the parts of the absent QA-branch addons
+    absent[#absent + 1] = "rules=XayaUI Rules"
+    check("C: profile: the rules part is listed as \"needs XayaUI Rules\"" .. (#absent > 1 and " (beside the absent QA-branch addons' parts)" or ""),
+      missList() == table.concat(absent, ", "), missList())
     local built = ns.BuildOptionsTable()
     built.args.profiles.args.import.args.importBox.set({}, GOLD.profile)
     built = ns.BuildOptionsTable()
@@ -567,7 +593,9 @@ def main():
         L, world, loader = runtime(lambda n: n not in skip and (rules_on or n != "XayaUI_Rules"))
         # (QA-branch modules: absent on main) and, for the golden profile string, the keys Reskin owns (settings_stores.py reads them from Modules.lua)
         lay = SST.layout(H.ROOT)
-        L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s" % (str(os.path.isdir(os.path.join(H.ROOT, "XayaUI_Chat"))).lower(), str(os.path.isdir(os.path.join(H.ROOT, "XayaUI_Reskin"))).lower()))
+        has = lambda a: str(os.path.isdir(os.path.join(H.ROOT, a))).lower()
+        L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s"
+                  % (has("XayaUI_Chat"), has("XayaUI_Reskin"), has("XayaUI_QoL"), has("XayaUI_Bonus")))
         L.execute("XUI_RESKIN_UI = { %s }; XUI_RESKIN_SPLIT = { %s }" % (", ".join('"%s"' % k for k in lay["underUi"].get("reskin", [])),
                   ", ".join('"%s"' % k for k in lay["split"]["characterReskin"]["sub"] if lay["split"]["characterReskin"]["owner"] == "reskin")))
         res = L.eval("function(src, W, Ld, g, on) return loadstring(src)()(W, Ld, g, on) end")(TEST_LUA, world, loader, H.to_lua(L, GOLDEN), rules_on)

@@ -14,6 +14,13 @@ Regenerated on 2026-11-08 (debug-log 2026-11-08-1941) for a stand-in change only
 text, as in the game, so AceGUI's buttons (which read their label through it) show their label and are sized to it. Produced with
 `--golden` on a checkout of main 3eb0c4b with the new tests/harness/world.lua; the branch code with the OLD world.lua still matched the
 old golden (19 checks, 0 failed), so the addon changes of that commit draw nothing differently.
+Re-recorded on 2026-11-09 when main came to hold XayaUI, XayaUI_Options and XayaUI_Rules only (the rule editor moved into
+XayaUI_Rules/Editor/; Bonus, Chat, Dev Assist, Media and QoL went to another branch). Every change from the old golden is in the top tab
+row: the QoL, Bonus Features and Blizzard Reskin tabs (pages of the retired addons) are gone and the tabs left are wider. Confirmed with
+`--dump` on main e41c49e2^ with the retired addon folders deleted (core, Options, Rules and the separate Rules Options as they were):
+that drawing is byte for byte the one of this commit on all 16 theme / page pairs, so neither the folder move nor any change to core,
+Options or Rules draws anything differently. XayaUI_Reskin is not on main, so the Display page leaves out the Esc menu hint row
+("... is under the Blizzard Reskin tab", Options.lua gm_moved) in the golden too.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -21,20 +28,8 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "theme_paint_parity_golden.json")
-# Without XayaUI_Reskin (a QA-branch module) the Display page correctly leaves out one hint row ("The Esc menu's own look ... is under
-# the Blizzard Reskin tab", Options.lua gm_moved), which shifts the rows below it, so the golden's Display hashes cannot match. For
-# that case these hashes are of the same drawing without that row (taken from main without Reskin; checked to differ from the golden's
-# drawing only by that row and the shift it causes).
-# (2026-11-09) Re-recorded after merging main: tests/harness/world.lua on this branch gives a button's text through its font string
-# (GetFontString), as the game does, so the lines that main's stand-in recorded as "nil" now carry their label ("Close",
-# "Display", "Rules", ...). `--dump` against origin/main 1872f87 showed no other line changed in any of the four drawings.
-NO_RESKIN_DISPLAY = {
-    "class/display": ("a324407d7c13a890c1c4a0c923d9ee1890e76e0a2c2bb823ecae7867bd328f87", 451),
-    "colorblind/display": ("558c565cc0602ee6b37872925297e093a16e00833ca8715353cbc058475b7587", 451),
-    "custom/display": ("a7c0af7b965b0ea617a4ff65cc5a6c5a93a0f980a4b9ba7addad47c888633e71", 451),
-    "light/display": ("554330040253449dbe3d222666e329e2131efc4f5af68449f911fcc21642f15e", 471),
-}
-HAS_RESKIN = os.path.isdir(os.path.join(os.path.dirname(HERE), "XayaUI_Reskin"))
+# XayaUI_Reskin (with the Esc menu's own look) is not on main: the Display page leaves out the hint row "The Esc menu's own look ... is
+# under the Blizzard Reskin tab" (Options.lua gm_moved); checked below on every theme's Display drawing.
 
 LUA = r'''
 return function(W, L)
@@ -103,7 +98,7 @@ end
 
 def drawings():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
@@ -137,10 +132,9 @@ def main():
     results.append(("the same theme / page drawings were made as before W9a", sorted(got) == sorted(gold)))
     for k in sorted(gold):
         g = got.get(k)
-        if not HAS_RESKIN and k in NO_RESKIN_DISPLAY:
-            sha, nl = NO_RESKIN_DISPLAY[k]
-            ok = g is not None and g["sha"] == sha and "Blizzard Reskin tab" not in d.get(k, "")
-            results.append(("%s: (XayaUI_Reskin absent) every region of the window drawn as before W9a, without the Esc menu hint row (%d lines)%s" % (k, nl, "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
+        if k.endswith("/display"):
+            ok = g is not None and g["sha"] == gold[k]["sha"] and "Blizzard Reskin tab" not in d.get(k, "")
+            results.append(("%s: (XayaUI_Reskin absent) every region of the window drawn as before W9a, without the Esc menu hint row (%d lines)%s" % (k, gold[k]["lines"], "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))
             continue
         ok = g is not None and g["sha"] == gold[k]["sha"]
         results.append(("%s: every region of the window drawn as before W9a (%d lines)%s" % (k, gold[k]["lines"], "" if ok else "  [now %s lines]" % (g and g["lines"])), ok))

@@ -3,12 +3,16 @@
 Xaya, 2026-11-05: "XUI Console does nothing and has no input options" (screenshot: an empty console window, four buttons, nothing to
 type in), and of the /xui help list: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" (29 lines).
 What the player sees, checked here with the real addons in the stand-in game:
-  1. /xui help lists the player's commands (17 lines with the Shopping List's /xui shop): /xui debug, and the two shortcuts /xui status and /xui auras (Xaya 2026-11-06),
-     no other diagnostic command; pipes in it are doubled ("||", shown as "|"; she chose "Back to '|'" over "[on/off]").
+  1. /xui help lists the player's commands: on this branch (XayaUI core, XayaUI_Options and XayaUI_Rules; the feature addons that add
+     commands of their own live on another branch) exactly core's 8: /xui, /xui console, /xui bug, /xui report, /xui unlock, the two
+     shortcuts /xui status and /xui auras (Xaya 2026-11-06) and /xui debug, no other diagnostic command; pipes in it are doubled ("||",
+     shown as "|"; she chose "Back to '|'" over "[on/off]").
   2. /xui debug lists every diagnostic command as "/xui debug <name>"; each listed name runs; an unknown one says so and lists them;
      the loader check is /xui debug loader (was window: "Rename it" -> "/xui debug loader").
   3. The old forms (/xui chatprobe, /xui perf, /xui stats widthprobe ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug
-     ____", "7. Retire"): each prints /xui help instead. A feature's debug command whose addon is off says so as "/xui debug <name>".
+     ____", "7. Retire"): each prints /xui help instead (/xui stats is XayaUI QoL's command, not on this branch: core says that addon
+     is not installed). A developer debug command (XayaUI Dev Assist's, not on this branch) does not
+     exist: /xui debug <name> says there is no such command.
   4. The console window has a command line inside it, under the log, clear of the resize grip. With XayaUI's messages set to the
      chat window (Xaya's case), a command typed there prints in the console window and not in chat; the typed line is echoed;
      "/xui ..." and "/xayaui ..." work typed in full; another addon's slash command is refused, not run; afterwards messages go
@@ -31,13 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
-ROOT = os.path.dirname(HERE)
-# QA-branch modules are not on main; /xui help lists their commands only while they are loaded (checked from the folder)
-HAS_CHAT = os.path.isdir(os.path.join(ROOT, "XayaUI_Chat"))
-HAS_NAMEPLATES = os.path.isdir(os.path.join(ROOT, "XayaUI_Nameplates"))
-
 LUA = r'''
-return function(W, L, HAS_CHAT, HAS_NAMEPLATES)
+return function(W, L)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 L.startup()
@@ -57,18 +56,12 @@ for i = 2, #help do
   if p:gsub("||", ""):find("|", 1, true) then pipe = p end
 end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
--- (QoL 0.7.32 adds the Shopping List's /xui shop, a player command: 16 + 1; core 0.6.56 adds /xui report, REQUEST-LOG #82: + 1)
--- (XayaUI_Nameplates 0.1.0 adds /xui nameplates, a player command: + 1; it is listed only while that addon is enabled)
--- (main without the QA-branch modules: 16 lines; XayaUI_Chat adds /xui chat, /xui panel and /xui privacy: + 3; XayaUI_Nameplates: + 1)
-local wantLines = 16 + (HAS_CHAT and 3 or 0) + (HAS_NAMEPLATES and 1 or 0)
-check("help: " .. wantLines .. " lines (it was 29; 16 plus the Shopping List's /xui shop and /xui report, /xui releaseguard: QoL 0.7.39, UI-57" .. (HAS_NAMEPLATES and ", and /xui nameplates" or "") .. (HAS_CHAT and ", /xui chat, /xui panel, /xui privacy" or "") .. ")", #help - 1 == wantLines, #help - 1)
-if HAS_NAMEPLATES then
-  check("help: /xui nameplates is listed (XayaUI_Nameplates 0.1.0)", (function() for _, c in ipairs(cmds) do if c == "/xui nameplates" then return true end end end)() == true, table.concat(cmds, " "))
-else
-  check("help: /xui nameplates is not listed while XayaUI_Nameplates is absent", (function() for _, c in ipairs(cmds) do if c == "/xui nameplates" then return false end end return true end)(), table.concat(cmds, " "))
-end
+-- core's own player commands, in the order /xui help prints them (Core.lua CORE_HELP; XayaUI Rules is on, so its three are listed).
+-- Feature addons add theirs through ns.RegisterCommand; none of them is on this branch, so this is the whole list.
+local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug" }
+check("help: " .. #WANT .. " lines (it was 29), core's own commands only", #help - 1 == #WANT, #help - 1)
+check("help: exactly " .. table.concat(WANT, ", ") .. ", in that order", table.concat(cmds, ",") == table.concat(WANT, ","), table.concat(cmds, " "))
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
-check("help: /xui shop is listed", (function() for _, c in ipairs(cmds) do if c == "/xui shop" then return true end end end)() == true, table.concat(cmds, " "))
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
   "auras", "chatprobe", "mods", "groups", "icons" }
 local SHORT = { status = true, auras = true }
@@ -82,16 +75,12 @@ check("help: the shortcut /xui auras is listed, printing in chat", helpText:find
 local has = {}
 for _, c in ipairs(cmds) do has[c] = true end
 check("help: /xui debug is listed, with what it does", has["/xui debug"] and table.concat(help, "\n"):find("diagnostic commands", 1, true) ~= nil)
-for _, c in ipairs({ "/xui", "/xui console", "/xui bug", "/xui unlock", "/xui chat", "/xui stats", "/xui cursor", "/xui notes" }) do
-  if c == "/xui chat" and not HAS_CHAT then
-    check("help: /xui chat (and /xui panel, /xui privacy) are not listed while XayaUI_Chat is absent", not (has["/xui chat"] or has["/xui panel"] or has["/xui privacy"]), table.concat(cmds, " "))
-  else
-    check("help: still lists " .. c, has[c] == true)
-  end
+for _, c in ipairs({ "/xui", "/xui console", "/xui bug", "/xui unlock" }) do
+  check("help: still lists " .. c, has[c] == true)
 end
 check("help: every '|' doubled (shown as one), none left single", pipe == nil, pipe)
-check("help: option lists read [on|off] again (no [on/off])", helpText:find("[highlight||trail]", 1, true) ~= nil and helpText:find("[on||off||options||status]", 1, true) ~= nil
-  and not helpText:find("on/off", 1, true), helpText)
+check("help: option lists read [a|b] again (no [a/b])", helpText:find("[target||focus||pet]", 1, true) ~= nil
+  and not helpText:find("target/focus", 1, true) and not helpText:find("on/off", 1, true), helpText)
 
 -- 2. /xui debug -------------------------------------------------------------------------------------------------------------------
 local dbg = run("debug")
@@ -104,8 +93,8 @@ end
 check("debug: a header with the count", dbg[1] ~= nil and dbg[1]:match("^debug commands %((%d+)%)") ~= nil
   and tonumber(dbg[1]:match("%((%d+)%)")) == #dbg - 1, dbg[1])
 check("debug: every line is '/xui debug <name> ...'", badLine == nil, badLine)
--- (core 0.6.56, REQUEST-LOG #81: without XayaUI Dev Assist, which this test leaves off, only the player's diagnostics exist: status,
--- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's, tests/devassist_debug_tools_run.py)
+-- (core 0.6.56, REQUEST-LOG #81: without XayaUI Dev Assist, which is not on this branch, only the player's diagnostics exist: status,
+-- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's)
 local missing, extra = {}, {}
 local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true }
 for d in pairs(PLAYER) do if not names[d] then missing[#missing + 1] = d end end
@@ -140,15 +129,14 @@ check("debug window (its old name) is gone", (run("debug window")[1] or "") == '
 local helpLines = #help
 for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "mods", "seed", "stats widthprobe" }) do
   local before = ns.rules and #ns.rules or 0
-  local probeCalls, realProbe = 0, ns.CharWidthProbe_Run
-  if realProbe then ns.CharWidthProbe_Run = function(...) probeCalls = probeCalls + 1 end end
   local out = run(old)
-  ns.CharWidthProbe_Run = realProbe
   local isHelp = out[1] == help[1] and #out == helpLines
-  -- (a /xui stats word it does not know toggles the panel, as before; it must not start the width probe, which is XayaUI Dev Assist's
-  -- since core 0.6.56 and so not there at all in this test)
-  if old == "stats widthprobe" then isHelp = probeCalls == 0 end
-  check(("old form /xui %s no longer runs (prints /xui help)"):format(old), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
+  -- (/xui stats is XayaUI QoL's command, and XayaUI QoL is not on this branch: core names the addon it belongs to instead of printing
+  -- /xui help, Modules.lua's list of feature commands; it runs nothing either way)
+  if old == "stats widthprobe" then
+    isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors)."
+  end
+  check(("old form /xui %s no longer runs (prints /xui help%s)"):format(old, old == "stats widthprobe" and "; /xui stats: says XayaUI QoL is not installed" or ""), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
 end
 check("/xui debug status still runs", (function() local o = run("debug status"); return o[1] ~= nil and o[1] ~= help[1] end)())
 -- (core 0.6.56, REQUEST-LOG #81) without XayaUI Dev Assist, /xui debug chatprobe does not exist: it says so and lists the commands
@@ -341,14 +329,14 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res = L.eval("function(src, W, Ld, c, n) return loadstring(src)()(W, Ld, c, n) end")(LUA, world, loader, HAS_CHAT, HAS_NAMEPLATES)
+    res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]

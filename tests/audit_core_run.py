@@ -155,23 +155,13 @@ do
   ns.SetPreview({ A, B }, "visual", false)
   A.enabled, B.enabled = false, false
 end
--- D8: every /xui word of a feature addon is listed, so with that addon off the command says which addon to turn on
+-- D8: core's list of feature addons (Modules.lua; those addons are not on this branch) names the addon behind each of their /xui
+-- words, so with that addon off or not installed the command says which addon to turn on
 do
   local want = { stats = "XayaUI_QoL", shop = "XayaUI_QoL", reskin = "XayaUI_QoL", releaseguard = "XayaUI_QoL", calc = "XayaUI_Bonus", calculator = "XayaUI_Bonus" }
   local bad = {}
   for w, a in pairs(want) do local m = ns.ModuleOfCommand and ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
   check("D8 /xui stats, shop, reskin, releaseguard, calc, calculator name their addon", #bad == 0, table.concat(bad, ","))
-end
--- O-100 / FA-15 (Bonus 0.6.27, QoL 0.7.42; her answer "No word at all"): Notes, Calculator, Stat Calculator rows carry no on / off text;
--- the data panels row is named "Data Panels"
-do
-  local by = {}
-  for _, e in ipairs(ns.Launchers()) do by[e[1]] = e end
-  for _, k in ipairs({ "notes", "calc", "stats" }) do
-    local e = by[k]
-    check("O-100 minimap row '" .. k .. "' has no on / off text", e ~= nil and e[5] == nil, e and (e[5] and tostring(e[5]()) or "nil") or "no row")
-  end
-  check("O-100 minimap row 'data' is named Data Panels", by.data and by.data[2] == "Data Panels", by.data and by.data[2])
 end
 -- D57: a rule whose evaluation fails is recorded for /xui report; a cue migration that fails on one condition leaves it as it was
 do
@@ -242,7 +232,7 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

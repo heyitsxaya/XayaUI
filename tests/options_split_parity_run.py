@@ -1,20 +1,32 @@
 #!/usr/bin/env python3
 """Platform split P3 "Options split" (Options 0.6.83; docs/plans/PLATFORM-SPLIT-2026-11-07.md sections 7, 10 and risk R8): the rule
-editor and the rules tree moved out of XayaUI_Options/Options.lua into XayaUI_Options/RuleEditor/. A pure code move: the player must
-get exactly the same settings window. Loads the real addons in the stand-in game, sets up one fixed state (rules with cues and an
-outcome, nested groups, a disabled rule, a buff bar, a Recycle Bin item, a fixed clock) and builds the whole options table
-(ns.BuildOptionsTable, every page of every module that is on). Every node is written out: its key path, type, order, width, name,
-desc, the results of hidden / disabled / get / values / sorting / confirm / image called with an AceConfig-style info table, and every
-other plain field; functions that change something (set, func, validate) are only noted as present. Version strings, table addresses,
-dates and error positions are normalised.
-  A The dump of the new code equals the dump of the old code (Options 0.6.82, main bd03eb5), compared per top tab (sha256 and node
-    count), with every module on.
-  B The same with each feature module switched off in turn (Chat, QoL, Bonus Features, Blizzard Reskin, Dev Assist, Nameplates, Media).
-  C Off costs nothing (V14): a feature addon that is switched off has registered no settings page (ns.BuildSettingsPages(module)
-    is empty) and its top tab is absent; the rule editor's own files register no page of their own.
+editor and the rules tree moved out of XayaUI_Options/Options.lua (then to XayaUI_Options/RuleEditor/, later the addon
+XayaUI_Rules_Options, since Rules 0.7.0 XayaUI_Rules/Editor/). A pure code move: the player must get exactly the same settings window.
+Loads the real addons of this branch (XayaUI, XayaUI_Options, XayaUI_Rules with its rule editor) in the stand-in game, sets up one fixed
+state (rules with cues and an outcome, nested groups, a disabled rule, a buff bar, a Recycle Bin item, a fixed clock) and builds the whole
+options table (ns.BuildOptionsTable, every page of every module that is on). Every node is written out: its key path, type, order, width,
+name, desc, the results of hidden / disabled / get / values / sorting / confirm / image called with an AceConfig-style info table, and
+every other plain field; functions that change something (set, func, validate) are only noted as present. Version strings, table
+addresses, dates and error positions are normalised.
+  A The dump of the new code equals the golden dump, compared per top tab (sha256 and node count), with every addon on.
+  C The rule editor's own files register no settings page of their own (rules / core / cooldowns), and no module registers a page
+    (this branch holds no feature addon with settings pages).
   D (P4, platform split) XayaUI Rules switched off: the window is the all-on window minus exactly the rules' own parts (the Rules tab,
     the rule list rows and Rule Creation tab of Settings, the backups and the "Rules and groups" part of Profiles); every other line is
     the same. Fails on the code before P4 (there is no XayaUI_Rules folder to switch off: the Rules tab and the backups stay).
+  (B, the same comparison with each feature addon switched off in turn, and C's V14 checks of those addons' pages were removed with
+  them: XayaUI Chat, QoL, Bonus Features, Blizzard Reskin, Dev Assist, Nameplates and Media are not on this branch, REQUEST-LOG A23.)
+Regenerated on 2026-11-09 for the main slim-down (REQUEST-LOG A23; Rules 0.7.0, Options 0.6.107): the golden now holds the all-on
+window of this branch only. Confirmed before recording: (1) the dump of this code is byte for byte the dump of the code before the
+slim-down (1dc42131, with XayaUI_Rules_Options as its own addon) run with the feature addons' folders taken away (5 top tabs, 7205
+lines, same hashes, same registered pages), so the editor's move changed nothing; (2) the dump of 1dc42131 with its feature addons
+present reproduces the old golden's all-on "cooldowns" and "settings" hashes, and differs from this code's dump only in lines of the
+retired addons: their top tabs (qol, bonus, reskin), their Profiles parts (inc_ / imp_ bonus, qol; Blizzard Reskin's part 2 places
+up), their minimap list rows (Notes, Calculator, Stat Calculator, Data Panels, Chat Panel, Improved Chat, Chat privacy cover;
+"XayaUI Settings" 4 -> 1), Dev Assist's Settings > Debugging rows (devPages, gameDump, sendDev: now hidden), their registered pages,
+and 4 "cooldowns" lines whose order 1.05 the old dump printed as "<version>5" (XayaUI_Media's version "1.0" was normalised away
+inside the number); 0 other lines.
+History of the golden before the slim-down (recorded with the feature addons then on main):
 The golden values below were produced by `python3 tests/options_split_parity_run.py --golden` on a checkout of bd03eb5 (the code
 before the move). Regenerated once on 2026-11-08 for XayaUI 0.6.79 (PS-57, #480: reskin and module switches take effect on reload):
 the dumps before and after differed in exactly 16 lines (all-on variant; 5 to 16 per variant), each only in the `desc` text of a reskin or module switch that said it applied at once
@@ -80,46 +92,9 @@ sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"
 import run as H  # noqa: E402  (the whole-addon harness)
 
 GOLDEN_FILE = os.path.join(HERE, "options_split_parity_golden.json")
-MODULES = ["XayaUI_Chat", "XayaUI_QoL", "XayaUI_Bonus", "XayaUI_Reskin", "XayaUI_DevAssist", "XayaUI_Nameplates", "XayaUI_Media"]
-MODULE_KEY = {"XayaUI_Chat": "chat", "XayaUI_QoL": "qol", "XayaUI_Bonus": "bonus", "XayaUI_Reskin": "reskin"}
-# QA-branch modules (main keeps only core, Options, Rules, Rules_Options, QoL, Bonus, Dev Assist, Media). Presence is read from the folder.
-ROOT = os.path.dirname(HERE)
-QA_MODULES = ["XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates"]
-ABSENT = [m for m in QA_MODULES if not os.path.isdir(os.path.join(ROOT, m))]
-ABSENT_LABEL = ", ".join(ABSENT)
-# The golden holds one hash per top tab of the whole window. These tabs hold pages, rows or profile parts that belong to the QA-branch
-# modules (found by diffing the dumps of the full checkout and the slim one), so their hashes cannot match without them.
-# Which tabs each absent module changes (probed 2026-11-08: with only Reskin and Nameplates absent, "settings" still matches and is
-# checked; with Chat absent too it does not).
-QA_TABS_BY = {
-    "XayaUI_Chat": {"chat", "qol", "reskin", "set", "settings", "profiles"},
-    "XayaUI_Reskin": {"qol", "reskin", "set", "profiles"},
-    "XayaUI_Nameplates": {"qol", "reskin", "set", "profiles"},
-}
-QA_TABS = set().union(*[QA_TABS_BY[m] for m in ABSENT]) if ABSENT else set()
-# the settings pages (module, key) each QA-branch module registers: filtered out of the golden's "registered" strings when it is absent
-QA_PAGE_KEYS = {
-    "XayaUI_Chat": {"improvedchat", "chatpanel"},
-    "XayaUI_Nameplates": {"nameplates"},
-    "XayaUI_Reskin": {"blizzwindows", "friendcolors", "gamemenu", "minimapshape", "objtracker", "rskbubbles", "rskbuttons", "rskmenus",
-                      "rskmmbuttons", "rskstatusbars", "rsktoasts", "rsktooltips"},
-}
+# (REQUEST-LOG A23) this branch holds no feature addon to switch off in turn: the golden holds the all-on window only
+MODULES = []
 
-
-def filter_registered(reg, off=None):
-    """the golden's 'registered' string minus the pages of the absent QA-branch modules"""
-    drop = set()
-    for m in ABSENT:
-        drop |= QA_PAGE_KEYS[m]
-    if off == "XayaUI_QoL" and "XayaUI_Reskin" in ABSENT and "XayaUI_Chat" in ABSENT:
-        # the Theme page (Options' ScopeEditor) exists only while some element registered a theme scope; with Reskin, Chat (Chat Panel)
-        # and QoL (Character Pane) all away none did, so the page is correctly not there (checked: no 'rsktheme' lines in that dump)
-        drop.add("rsktheme")
-    out = []
-    for x in reg.split():
-        m, ks = x.split("=", 1)
-        out.append(m + "=" + ",".join(k for k in ks.split(",") if k and k not in drop))
-    return " ".join(out)
 
 LUA = r'''
 return function(W, L)
@@ -257,18 +232,6 @@ def run_variant(off):
     return dump, str(res[3]), errs
 
 
-def page_keys(addon):
-    """the page keys an addon's own files register (ns.RegisterSettingsPage(module, key, ...)), read from its files"""
-    out = set()
-    d = H.find_addons()[addon]
-    for base, _, files in os.walk(d):
-        for f in files:
-            if f.endswith(".lua"):
-                src = open(os.path.join(base, f), encoding="utf-8", errors="replace").read()
-                out |= set(re.findall(r'RegisterSettingsPage\(\s*"[a-z]+"\s*,\s*"(\w+)"', src))
-    return out
-
-
 def summarise(dump):
     tabs = {}
     for line in dump.split("\n"):
@@ -283,11 +246,8 @@ def main():
     if "--dump" in sys.argv:
         dump_dir = sys.argv[sys.argv.index("--dump") + 1]
         os.makedirs(dump_dir, exist_ok=True)
-    if "--golden" in sys.argv and ABSENT:
-        print("the golden is made on the full checkout (QA-branch modules absent: %s)" % ABSENT_LABEL)
-        sys.exit(1)
-    # an absent module's variant is still run (it is the all-on window): the groups' ids come from the process-wide random sequence, so
-    # the golden's "cooldowns" hashes only match when every variant runs in the golden's order
+    # the groups' ids come from the process-wide random sequence, so the "cooldowns" hash only matches when the all-on window is the
+    # first one built in the process, as when the golden was recorded
     variants = [None] + MODULES
     results = {}
     errs_all = []
@@ -308,12 +268,7 @@ def main():
             print("ERROR in the game stand-in [%s]: %s" % (tag, e[:400]))
         return
     golden = json.load(open(GOLDEN_FILE, encoding="utf-8"))
-    total = bad = skipped = 0
-
-    def skip(name):
-        nonlocal skipped
-        skipped += 1
-        print("SKIP (QA-branch module absent: %s) %s" % (ABSENT_LABEL, name))
+    total = bad = 0
 
     def check(name, ok, detail=""):
         nonlocal total, bad
@@ -324,16 +279,6 @@ def main():
 
     for off in [None] + MODULES:
         tag = "all-on" if off is None else ("off-" + off)
-        if off in ABSENT:
-            # switching off a module that is not there is the all-on window: nothing to compare
-            for nm in ["[%s] the options table builds" % tag] + \
-                      ["[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t)
-                       for t in sorted(golden.get(tag, {}).get("tabs", {}))] + \
-                      ["[%s] the same settings pages are registered per module" % tag,
-                       "[%s] V14: the switched-off addon registered none of its settings pages" % tag] + \
-                      (["[%s] V14: its top tab is absent" % tag] if off in ("XayaUI_Chat", "XayaUI_Bonus") else []):
-                skip(nm)
-            continue
         got, want = results.get(tag), golden.get(tag)
         check("[%s] the options table builds" % tag, got is not None)
         if got is None or want is None:
@@ -342,28 +287,13 @@ def main():
         keys = sorted(set(got["tabs"]) | set(want["tabs"]))
         for t in keys:
             nm = "[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t)
-            if ABSENT and t in QA_TABS:
-                skip(nm)
-                continue
             check(nm, got["tabs"].get(t) == want["tabs"].get(t), "got %s want %s" % (got["tabs"].get(t), want["tabs"].get(t)))
-        check("[%s] the same settings pages are registered per module" % tag, got["registered"] == filter_registered(want["registered"], off),
-              "got %s want %s" % (got["registered"], filter_registered(want["registered"], off)))
-        # C: off costs nothing (V14): none of the pages the switched-off addon's files register exists
-        if off:
-            have = set()
-            for x in got["registered"].split():
-                m, ks = x.split("=", 1)
-                have |= set(k for k in ks.split(",") if k)
-            own = page_keys(off)
-            check("[%s] V14: the switched-off addon registered none of its %d settings pages" % (tag, len(own)), not (own & have),
-                  "still registered: %s" % sorted(own & have))
-            if off in ("XayaUI_Chat", "XayaUI_Bonus"):
-                check("[%s] V14: its top tab is absent" % tag, MODULE_KEY[off] not in got["tabs"])
+        check("[%s] the same settings pages are registered per module" % tag, got["registered"] == want["registered"],
+              "got %s want %s" % (got["registered"], want["registered"]))
     # D (P4) XayaUI Rules switched off: no golden from the old code (the module did not exist). The window is the all-on window minus
     # exactly what belongs to the rules (the Rules tab, the rule list rows and the Rule Creation tab of Settings, the backups and the
     # "Rules and groups" tick boxes of Profiles); everything else is line for line the same. Lines that differ for a known reason:
-    # the Recycle Bin (no rule could be deleted into it), the order numbers of the other profile parts (one part fewer before them),
-    # and Dev Assist's detailed-record rows (they list rules and count the record's lines).
+    # the Recycle Bin (no rule could be deleted into it) and the order numbers of the other profile parts (one part fewer before them).
     on_dump, _, _ = run_variant(None)
     off_dump, off_reg, off_errs = run_variant("XayaUI_Rules")
     errs_all += [("off-XayaUI_Rules", e) for e in off_errs]
@@ -374,7 +304,7 @@ def main():
         RULES_ONLY = re.compile(r"^(cooldowns(\..*)?|(set\.ui|settings)\.rules(\..*)?|(set\.ui\.display|settings\.ui)\.(displayHeader|parentGradient|"
                                 r"selStyle|sidebarSpellIcons)|profiles\.export\.(savedH|backupIntro|saveName|savePick|save|p\d+(\..*)?)|"
                                 r"profiles\.(export\.inc|import\.imp)_rules)$")
-        KNOWN = re.compile(r"^(profiles\.bin(\..*)?|profiles\.(export\.inc|import\.imp)_\w+|(set|settings)\.debug\.devPages\.devrecord\.(recFocus|recordInfo))$")
+        KNOWN = re.compile(r"^(profiles\.bin(\..*)?|profiles\.(export\.inc|import\.imp)_\w+)$")
         removed = sorted(path(l) for l in on_lines - off_lines)
         added = sorted(path(l) for l in off_lines - on_lines)
         check("[off-XayaUI_Rules] the Rules tab is absent", not any(path(l) == "cooldowns" for l in off_lines))
@@ -396,10 +326,11 @@ def main():
         reg = dict(x.split("=", 1) for x in allon["registered"].split())
         check("the rule editor registers no settings page of its own (rules / core / cooldowns)",
               all(reg.get(m) == "" for m in ("rules", "core", "cooldowns")))
+        check("no module registers a settings page (this branch holds no feature addon with pages)",
+              all(v == "" for v in reg.values()) and len(reg) == 10, allon["registered"])
     for tag, e in errs_all:
         print("ERROR in the game stand-in [%s]: %s" % (tag, e[:600]))
-    print("%d checks, %d failed, %d Lua errors%s" % (total, bad, len(errs_all),
-          (", %d skipped (QA-branch module absent: %s)" % (skipped, ABSENT_LABEL)) if skipped else ""))
+    print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))
     sys.exit(1 if bad or errs_all else 0)
 
 

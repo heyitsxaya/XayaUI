@@ -1,4 +1,4 @@
-"""Offline test for XayaUI_CombatEngine/AuraDisplay.lua (Lua 5.1 via lupa).  Run: python3 tests/aura_display_run.py
+"""Offline test for XayaUI_Rules/Combat/AuraDisplay.lua (Lua 5.1 via lupa).  Run: python3 tests/aura_display_run.py
 
 The game's secure aura container cannot run outside the client, so this uses a STAND-IN that enforces the same argument
 rules Blizzard's own source enforces (Blizzard_CustomAuraContainer.lua validators, AuraContainerFlowLayout setters,
@@ -17,14 +17,9 @@ _cues = open(os.path.join(ROOT, "XayaUI_Rules", "Cues.lua"), encoding="utf-8").r
 _m = _re.search(r"^function ns\.CueGated\(p, cue\)\n.*?^end\n", _cues, _re.S | _re.M)
 assert _m, "ns.CueGated not found in Cues.lua"
 CUE_GATED_LUA = "[==[" + "local ns = NS\n" + _m.group(0) + "]==]"
-# (core 0.6.56, REQUEST-LOG #81: /xuiengine auto / on / off / reset are XayaUI Dev Assist's. This test loads them the way Dev Assist
-# registers them: the real functions from XayaUI_DevAssist/CoreDebug.lua, into a stand-in of Modules.lua's ns.RegisterSubcommand.)
-_cd = open(os.path.join(ROOT, "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
-_a = _cd.index("local function EngineAuto(rest)"); _b = _cd.index("-- Registration: XayaUI's lists")
-ENGINE_SUBS_LUA = "[==[" + "local ns = NS\n" + _cd[_a:_b] + """
-ns.RegisterSubcommand("xuiengine", "auto", EngineAuto); ns.RegisterSubcommand("xuiengine", "on", EngineGroup("on"))
-ns.RegisterSubcommand("xuiengine", "off", EngineGroup("off")); ns.RegisterSubcommand("xuiengine", "reset", EngineGroup("reset"))
-""" + "]==]"
+# (core 0.6.56, REQUEST-LOG #81: /xuiengine auto / on / off / reset belong to XayaUI Dev Assist, which is not on this branch. The
+# engine's own status, /xuiengine, is tested here; the saved settings those Dev Assist words changed are set below straight through
+# the engine's own seam, D.DB / D.FindFolder / D._guard.)
 L.execute(r'''
 -- ---- generic frame stand-in ----
 local function proxyFrame(kind)
@@ -191,15 +186,7 @@ assert(loadstring(CUE_GATED_SRC))()   -- the real ns.CueGated from Cues.lua (whi
 assert(loadfile(MODULES_PATH))("XayaUI", ns)   -- (core 0.6.75) the settings seam the engine reads its saved data through
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
-do   -- the stand-in of Modules.lua's subcommand list, and Dev Assist's /xuiengine words in it
-    local subs = {}
-    ns.RegisterSubcommand = function(slash, name, fn) subs[slash .. " " .. name] = fn end
-    ns.RunSubcommand = function(slash, w, a) local fn = subs[slash .. " " .. tostring(w)]; if not fn then return false end; fn(a); return true end
-    ns.SubcommandList = function() return "" end
-    ns.DevAssistOn = function() return true end
-    assert(loadstring(ENGINE_SUBS_SRC))()
-end
-'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA).replace("ENGINE_SUBS_SRC", ENGINE_SUBS_LUA))
+'''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA))
 
 
 fails = []
@@ -371,11 +358,11 @@ check("group unlocked: its container steps aside", lua("return NS.AuraDisplay._g
 lua('NS.groupUnlocked.fA = nil; NS.AuraDisplay.SyncLive()')
 check("locked again: all back", lua("return NS.AuraDisplay._groups.fA.frame.shown == true and NS.AuraDisplay._singles[S1].frame.shown == true"))
 
-# 5. keep a group with XayaUI, and back
-lua('SlashCmdList["XUIENGINE"]("off static group")')
-check("off <group>: its rules go back to XayaUI", not own("S1"))
-lua('SlashCmdList["XUIENGINE"]("reset static group")')
-check("reset <group>: drawn again", own("S1"))
+# 5. keep a group with XayaUI, and back (the saved per-group choice, found by name through the engine's own D.FindFolder)
+lua('local D = NS.AuraDisplay; D.DB().groups[assert(D.FindFolder("static group")).id] = false; D.Build()')
+check("a group kept with XayaUI (saved groups[id] = false): its rules go back to XayaUI", not own("S1"))
+lua('local D = NS.AuraDisplay; D.DB().groups[assert(D.FindFolder("static group")).id] = nil; D.Build()')
+check("the group's saved choice cleared (automatic again): drawn again", own("S1"))
 
 # 6. edits rebuild on their own (debounced) and combat defers
 check("edits are hooked (MarkDirty)", lua("return HOOKS.MarkDirty == true"))
@@ -412,8 +399,9 @@ check("guard: once kept, it does not step again this session", lua(G + "return n
 lua('NS.AuraDisplay._guard.kept = nil; NS.AuraDisplay._guard.leanAt = 2.0; blizzMs = 1.5; printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
 check("guard stage 2: lean mode lowered the cost but not enough: automatic mode off, all back to XayaUI, said in chat", lua(G + "return g.off == true and #e.guardTrips == 3 and e.guardTrips[3].step == 'off' and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
 check("guard stage 2 is not saved: the saved setting stays on", lua(G + "return e.auto == true and e.guardTrips[3].session == true"))
-lua('profilerMs = 0.1; blizzMs = 0; SlashCmdList["XUIENGINE"]("auto on")')
-check("auto on: everything back, lean mode cleared", lua(G + "return e.auto == true and not g.lean and not g.off") and own("U1") and own("SPEC"))
+# a /reload is the way back (the guard's state is this session's only): a new session starts with a clean guard and the saved setting on
+lua('profilerMs = 0.1; blizzMs = 0; local g = NS.AuraDisplay._guard; for _, k in ipairs({ "lean", "off", "kept", "leanAt", "leanHanded", "last", "own" }) do g[k] = nil end; g.bad = 0; NS.AuraDisplay.Build()')
+check("after a /reload (clean guard, saved setting on): everything back, lean mode gone", lua(G + "return e.auto == true and not g.lean and not g.off") and own("U1") and own("SPEC"))
 # a trip saved by an older version is undone once; a player's own "auto off" (no guard trip behind it) is kept
 lua('SAVED = CueRulesDB.engineDisplay; CueRulesDB.engineDisplay = { auto = false, lean = true, groups = {}, guardTrips = { { at = "t1", step = "lean" }, { at = "t2", step = "off" } } }; NS.AuraDisplay.Build()')
 check("old saved guard trip (lean + off) is undone and noted", lua("local e = CueRulesDB.engineDisplay; return e.auto == true and e.lean == nil and e.guardV == 2 and e.guardUndone and e.guardUndone.trip == 't2'") and own("U1"))

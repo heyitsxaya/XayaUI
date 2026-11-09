@@ -1,11 +1,11 @@
-# Maintain aspect ratio (art) - #313. Runs the real code blocks from Visual.lua (ArtNativeRatio) and Options.lua
-# (ResetArtAspect / KeepArtAspect / ArtAspectSet) under Lua 5.1 with small stubs.
+# Maintain aspect ratio (art) - #313. Runs the real code blocks from XayaUI_Rules/Visual.lua (ArtNativeRatio) and the rule
+# editor, XayaUI_Rules/Editor/Editor.lua (ResetArtAspect / KeepArtAspect / ArtAspectSet), under Lua 5.1 with small stubs.
 import re, sys, os
 import lupa.lua51 as l
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 vis = open(os.path.join(ROOT, "XayaUI_Rules/Visual.lua")).read()
-opt = open(os.path.join(ROOT, "XayaUI_Rules_Options/Editor.lua")).read()
+opt = open(os.path.join(ROOT, "XayaUI_Rules/Editor/Editor.lua")).read()
 vblock = vis[vis.index("local function GraphicSize"):vis.index("\nend\n", vis.index("function ns.ArtNativeRatio")) + 5]
 oblock = opt[opt.index("local artSeen"):opt.index("\nend\n", opt.index("function ns.ArtAspectSet")) + 5]
 

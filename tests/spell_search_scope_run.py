@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
-OPTIONS = os.path.join(HERE, "..", "XayaUI_Rules_Options", "SpellSearch.lua")   # (P3 options split: the search moved out of Options.lua)
+OPTIONS = os.path.join(HERE, "..", "XayaUI_Rules", "Editor", "SpellSearch.lua")   # (P3 options split moved the search out of Options.lua; Rules 0.7.0: the rule editor is part of XayaUI_Rules)
 
 LUA = r'''
 return function(W, L)
@@ -86,19 +86,19 @@ BREAKS = [
 
 def run(options_src=None):
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    if options_src is not None:   # a deliberate break: the loader reads RuleEditor/SpellSearch.lua through io.open; swap its text in
+    if options_src is not None:   # a deliberate break: the loader reads XayaUI_Rules/Editor/SpellSearch.lua through io.open; swap its text in
         L.globals().BROKEN_OPTIONS = options_src
         L.execute(r'''
 local realOpen = io.open
 io.open = function(path, mode)
-  if type(path) == "string" and path:find("XayaUI_Rules_Options[/\\]SpellSearch%.lua$") then
+  if type(path) == "string" and path:find("XayaUI_Rules[/\\]Editor[/\\]SpellSearch%.lua$") then
     return { read = function() return BROKEN_OPTIONS end, close = function() end, lines = function() return BROKEN_OPTIONS:gmatch("[^\n]*\n?") end }
   end
   return realOpen(path, mode)

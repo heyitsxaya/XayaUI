@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Platform split P4b (Options 0.6.87, XayaUI_Rules_Options 0.6.77; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1): the rule
-editor became its own load-on-demand addon and the row painting every tab shares (DecorateButton / DecorateTree / the feature tick
-boxes / left-aligned headings / ns.DecorateTrees) moved out of the editor into XayaUI_Options/TreePaint.lua, with the rules tree's
-parts called back as hooks (ns.OptionsApi.TreePaint.rules). A pure move: what the player sees in the window must not change.
+"""Platform split P4b (Options 0.6.87; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1): the row painting every tab shares
+(DecorateButton / DecorateTree / the feature tick boxes / left-aligned headings / ns.DecorateTrees) moved out of the rule editor into
+XayaUI_Options/TreePaint.lua, with the rules tree's parts called back as hooks (ns.OptionsApi.TreePaint.rules). A pure move: what the
+player sees in the window must not change. (P4b also made the editor a load-on-demand addon; since Rules 0.7.0 the editor is part of
+XayaUI Rules instead: XayaUI_Rules/Editor/, set up by Options' ns.OptionsApi.LoadRuleEditor when the window loads while Rules is on.)
 The options table is compared by tests/options_split_parity_run.py; this test compares what is DRAWN, which that one cannot see.
 Loads the real addons in the stand-in game, sets up one fixed state (rules in nested groups, a disabled rule, a sound-only rule),
 opens the window and visits every tab and Rules sub-tab (with a rule selected), runs the decorate pass and writes out every shown
@@ -10,24 +11,18 @@ tree row: key, height, alpha, mouse, the name's font, colour, text and anchor po
 each decoration on the row (open / close arrow, preview eye / headphone, locks, reorder arrows, feature tick box, QoL tick box,
 banner, selection bar, divider, Smart Categories note, type icon) whether it is shown, its anchor points, size and tick state; and
 every heading / button label's anchors and justification, and every top tab's tick box. Frame references are named by role.
-  A XayaUI Rules on: the drawing equals the one of the code before P4b (main 232552d), per tab (sha256 and line count).
-  B XayaUI Rules off: the same against the code before P4b with XayaUI Rules off (then the editor was read but the feature tabs were
-    painted by it; now the editor is not read and TreePaint paints them alone).
-  C V14: with XayaUI Rules off no file of XayaUI_Rules_Options was read and the rule editor's hooks are absent; with it on they are
-    registered.
-Regenerated on 2026-11-08 for Bonus 0.6.38 (#37): the Bonus Features row "Character Toolkit" reads "Stat Calculator" and sorts after
-Data Panels and Enhanced Tooltips (1 line per drawing with Bonus on); 0 other lines.
-The golden values were produced by `python3 tests/tree_paint_parity_run.py --golden` on a checkout of 232552d (before P4b);
-`--dump DIR` writes the drawings to compare by hand. Regenerated on 2026-11-08 for Options 0.6.104 (debug W9b, #472): `--dump` of
-accb5c8 and of the new code differ in exactly one line in each of the reskin and profiles drawings (both variants): the new
-Blizzard Reskin > Theme row ("row rsktheme ... text \"Theme\""); 0 other lines (debug-log 2026-11-08 debug-w9b). Regenerated again
-on 2026-11-08 for QoL 0.7.53 (character pane split stage 1): `--dump` of f870d78 and of the new code differ only in the qol drawings
-(on / off: the new row "charpane" "Character Pane" with its tick box, 2 lines) and the reskin drawings (on / off: the row "charreskin"
-"Character Pane" has no child page any more, its Stat list page moved to QoL > Character Pane, so it is drawn as a leaf like Blizzard
-Windows: text at 25 instead of 42, tick box at 6 instead of 23; 2 lines each); 0 other lines (debug-log 2026-11-08 character-split).
-Regenerated again for Bonus 0.6.37 (character pane split stage 2): `--dump` of stage 1 and of the new code differ only in the bonus
-drawings (on / off): the new row "statcalc" "Character Toolkit" with its tick box (the Stat Calculator, from QoL), 2 lines each; 0 other
-lines (the QoL row "Character Toolkit" keeps its parts, Slot Overlays and Tooltip lines, so it is drawn as before).
+  A XayaUI Rules on: the drawing equals the golden, per tab (sha256 and line count).
+  B XayaUI Rules off: the same against the golden with XayaUI Rules off (the editor is not read; TreePaint paints the tabs alone).
+  C V14: with XayaUI Rules off no file of XayaUI_Rules (so none of its editor) was read and the rule editor's hooks are absent; with
+    it on the editor was set up with the window (ns.RuleEditorFiles run and cleared) and its hooks are registered.
+The golden values were first produced by `python3 tests/tree_paint_parity_run.py --golden` on a checkout of 232552d (before P4b) and
+regenerated for later deliberate changes (Bonus 0.6.38, Options 0.6.104, QoL 0.7.53, Bonus 0.6.37); `--dump DIR` writes the drawings
+to compare by hand. Regenerated on 2026-11-09 for the main slim-down (main holds XayaUI, XayaUI_Options and XayaUI_Rules only; Rules
+0.7.0): `--dump` of 1dc4213 (the last commit with the retired addons, whose golden this test passed there) and of the new code
+differ only in (1) the top tabs QoL, Bonus Features and Blizzard Reskin, gone with their addons (3 "tab ... box" lines fewer in every
+drawing; their own drawings are no longer made), and (2) the Profiles drawing's left-over tree rows, which belong to the tab visited
+just before it: before, the Blizzard Reskin tree; now the Rules > Disabled tree (the first 12 lines of that drawing). The Profiles
+tabs, heading and button lines, every Rules drawing (rules-selected is byte-identical) and Settings are otherwise unchanged.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,21 +30,6 @@ sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"
 import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "tree_paint_parity_golden.json")
-# Chat, Reskin and Nameplates are QA-branch modules. Without them the Profiles, QoL and Blizzard Reskin trees correctly lack their
-# rows (Improved Chat, Nameplates, Chat Panel, Esc Menu, Minimap, ... ), so the golden's hashes of those three tabs cannot match.
-# For main without those modules these are the hashes of the same drawings without those rows (taken from main; checked that each
-# drawing's lines are a subsequence of the golden-era full drawing's lines, i.e. only module rows and their boxes went away).
-ROOT = os.path.dirname(HERE)
-QA_MODS = [m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if os.path.isdir(os.path.join(ROOT, m))]
-NO_QA_TABS = {
-    "on": {"profiles": ("3b30ff177027931399774a605e25f7f0814c974e74e241a07a32198f345cb8e1", 15),
-           "qol": ("17adaf045712c0bb86902475909fda9bfabdf267a6aa06186e910f7e2a4ded23", 18),
-           "reskin": ("d3741f4c440d302d5a073604c2514b61c18fe01df6c357747128b18417557d07", 12)},
-    "off": {"profiles": ("0ed66f5a3976667d03a27b0910b0e3d32331e9f238171e1cc76410d3da617292", 14),
-            "qol": ("88dd2b9a10bf5ba72f1982b4418b0066264c559a4c37b3bf8ca5375144c25d7b", 17),
-            "reskin": ("78f8ef089f9cf9eebdcdc67ac0b42819f5cb310dc7a19119223fefd841365a07", 11)},
-}
-
 LUA = r'''
 return function(W, L, rulesOn)
 L.startup()
@@ -161,26 +141,28 @@ if ns.rules and pick then
   visit("rules-smart", "cooldowns", "smartTab")
   visit("rules-disabled", "cooldowns", "disabledTab")
 end
-for _, tab in ipairs({ "qol", "bonus", "reskin", "profiles", "set" }) do visit(tab, tab) end
+for _, tab in ipairs({ "profiles", "set" }) do visit(tab, tab) end
 local hooks = ns.OptionsApi and ns.OptionsApi.TreePaint and ns.OptionsApi.TreePaint.rules
-return out, (hooks ~= nil)
+-- (Rules 0.7.0) the editor's files (XayaUI_Rules/Editor/) each add one set-up function to ns.RuleEditorFiles; LoadRuleEditor runs
+-- them and clears the list, so a list still there means the editor was read but not set up
+return out, (hooks ~= nil), (rawget(ns, "RuleEditorFiles") ~= nil)
 end
 '''
 
 
 def run_variant(rules_on):
     folders = H.find_addons()
-    enabled = [n for n in folders if n not in ("XayaUI_DevAssist",) and (rules_on or n != "XayaUI_Rules")]
+    enabled = [n for n in folders if rules_on or n != "XayaUI_Rules"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res, hooks = L.eval("function(src, W, Ld, on) return loadstring(src)()(W, Ld, on) end")(LUA, world, loader, rules_on)
+    res, hooks, pending = L.eval("function(src, W, Ld, on) return loadstring(src)()(W, Ld, on) end")(LUA, world, loader, rules_on)
     tabs = {res[i][1]: res[i][2] for i in range(1, len(res) + 1)}
     loaded = [loader.loadedOrder[i] for i in range(1, len(loader.loadedOrder) + 1)]
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
-    return tabs, bool(hooks), loaded, errs, folders
+    return tabs, bool(hooks), loaded, errs, bool(pending)
 
 
 def summary(tabs):
@@ -208,30 +190,25 @@ def main():
         results.append((name + (("  [" + detail + "]") if detail and not ok else ""), bool(ok)))
 
     for label, v in (("XayaUI Rules on", on), ("XayaUI Rules off", off)):
-        tabs, hooks, loaded, errs, folders = v
+        tabs, hooks, loaded, errs, pending = v
         want = gold["on" if v is on else "off"]
         got = summary(tabs)
         check("[%s] the same tabs were drawn as before P4b" % label, sorted(got) == sorted(want), "%s vs %s" % (sorted(got), sorted(want)))
         for k in sorted(want):
             g = got.get(k)
-            if len(QA_MODS) < 3 and k in NO_QA_TABS["on" if v is on else "off"]:
-                if QA_MODS:
-                    print("SKIP (QA-branch module absent: %s) [%s] %s: every row, decoration, heading and tab box drawn as before P4b"
-                          % (", ".join(m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if m not in QA_MODS), label, k))
-                    continue
-                sha, nl = NO_QA_TABS["on" if v is on else "off"][k]
-                check("[%s] %s: (XayaUI_Chat, XayaUI_Reskin, XayaUI_Nameplates absent) every row, decoration, heading and tab box drawn as before P4b, without those modules' rows (%d lines)" % (label, k, nl),
-                      g is not None and g["sha"] == sha, "now %s lines" % (g and g["lines"]))
-                continue
             check("[%s] %s: every row, decoration, heading and tab box drawn as before P4b (%d lines)" % (label, k, want[k]["lines"]),
                   g is not None and g["sha"] == want[k]["sha"], "now %s lines" % (g and g["lines"]))
         check("[%s] no Lua error" % label, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
-    tabs, hooks, loaded, errs, folders = on
-    check("[XayaUI Rules on] V14: XayaUI_Rules_Options loaded with the window and its row hooks are registered",
-          "XayaUI_Rules_Options" in loaded and hooks, "loaded %s, hooks %s" % (loaded, hooks))
-    tabs, hooks, loaded, errs, folders = off
-    check("[XayaUI Rules off] V14: no file of XayaUI_Rules_Options was read and no rule hook is registered",
-          "XayaUI_Rules_Options" not in loaded and not hooks and "XayaUI_Options" in loaded, "loaded %s, hooks %s" % (loaded, hooks))
+    # (Rules 0.7.0) the rule editor is part of XayaUI Rules (XayaUI_Rules/Editor/), set up by Options' LoadRuleEditor when the window
+    # loads; there is no XayaUI_Rules_Options addon any more
+    tabs, hooks, loaded, errs, pending = on
+    check("[XayaUI Rules on] V14: XayaUI_Rules (with its editor files) and XayaUI_Options loaded, the editor was set up with the window and its row hooks are registered",
+          "XayaUI_Rules" in loaded and "XayaUI_Options" in loaded and "XayaUI_Rules_Options" not in loaded and not pending and hooks,
+          "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))
+    tabs, hooks, loaded, errs, pending = off
+    check("[XayaUI Rules off] V14: no file of XayaUI_Rules (so none of its editor) was read and no rule hook is registered",
+          "XayaUI_Rules" not in loaded and not pending and not hooks and "XayaUI_Options" in loaded,
+          "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))
     bad = 0
     for name, ok in results:
         print(("PASS " if ok else "FAIL ") + name)

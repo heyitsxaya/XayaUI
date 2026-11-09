@@ -1,62 +1,38 @@
 {
  "off": {
-  "bonus": {
-   "lines": 17,
-   "sha": "9a92df46f53575d29c32b9173dfb49ddd9a73a5a76b61bf9fc0bd1be622f321f"
-  },
   "profiles": {
-   "lines": 31,
-   "sha": "d3451e1e3d690a6a7f1905a78da3b6d774e7dc9dd248b9a72b98ac57012dd4e0"
-  },
-  "qol": {
-   "lines": 28,
-   "sha": "00c749177be73821cc101743b3ab89d4e48a8399894647c371bba0de189138cb"
-  },
-  "reskin": {
-   "lines": 41,
-   "sha": "ac1a8c0eebc64a3011d4293708c90530cdd4dbf11116998cf319273bb6f52f77"
+   "lines": 7,
+   "sha": "0bb98908754097af4aa0c222af41fac2f713fcc20729c00819f7c8682c7db0b5"
   },
   "set": {
-   "lines": 13,
-   "sha": "c500e496f7777ebb720473b1e434afd795b6922b09cfa2d8914e4189529a1586"
+   "lines": 10,
+   "sha": "b6f920ae925b3288f9a42188fe9494fe9b3dbe7b209ab3df3e0959c053c9dbe2"
   }
  },
  "on": {
-  "bonus": {
-   "lines": 18,
-   "sha": "48a2d7016a593815d756223232f861bb7f2aa460bf8e7010b289597b2f84586e"
-  },
   "profiles": {
-   "lines": 32,
-   "sha": "84187d4f71ea8929b915a9c01316ede2171dfffa601625ed7c18e98221189259"
-  },
-  "qol": {
-   "lines": 29,
-   "sha": "81cc1702fec062186352c83d0627793cc07298b7fc8b884a89a2c979c50680a8"
-  },
-  "reskin": {
-   "lines": 42,
-   "sha": "dfb9f7e780079bfb7650bbf9a1fc832fddb04461a0c32b96874828566f9f7766"
+   "lines": 20,
+   "sha": "a13add092ab1f7abf96d9fd39f4ff87fbf66a42970973a893ee53fc64768d380"
   },
   "rules-disabled": {
-   "lines": 23,
-   "sha": "fa16a8bdd7d3b7c9d72686c4bcf9fabb54972c47deb0ee03aa72f54838945677"
+   "lines": 20,
+   "sha": "b7568dd79647edd76262f49bf31611aebeb6c8b304649aecaa7c7c058c017d03"
   },
   "rules-enabled": {
-   "lines": 48,
-   "sha": "e12afa07e3494021d3b1dec6035f42857360e37e2ccfb7b00fe379d71543f789"
+   "lines": 45,
+   "sha": "73eb07cba0423ea955e70f53cd8dad33bc6e6375c414816830d207f25d29cdf0"
   },
   "rules-selected": {
    "lines": 32,
    "sha": "f9d223de9347d2c39b359205c2f598b2fa51ab0f04d90d5c632917a05386a198"
   },
   "rules-smart": {
-   "lines": 54,
-   "sha": "f3d0ef69e437779de2e9c86810a3d4fd39c42ffd4cfaee4857e65b947d31d899"
+   "lines": 51,
+   "sha": "c6d36d8e655bf93786e14c4dcb3c5a89bcac7019dcf6584d21a31ce20347ddb9"
   },
   "set": {
-   "lines": 16,
-   "sha": "2a6317940b53ff91a78e3a87d973f739a40c97b9eea286fa875ebc564627b708"
+   "lines": 13,
+   "sha": "f635e02166c7e569796a8779ff973bfa2b8201bd9a6ea26b330f2d0ca0113110"
   }
  }
 }

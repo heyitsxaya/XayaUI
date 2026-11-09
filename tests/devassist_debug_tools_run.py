@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Debug tools to XayaUI Dev Assist, and the debug record with error codes (core 0.6.56, Options 0.6.55, Chat 0.6.20, QoL 0.7.33,
-Bonus 0.6.18, Reskin 0.6.5, Dev Assist 0.7.5; REQUEST-LOG #81 and #82).
+"""Debug tools to XayaUI Dev Assist, and the debug record with error codes (core 0.6.56, Options 0.6.55; REQUEST-LOG #81 and #82).
 Xaya, 2026-11-06, her answers (feature update summary session, FUS-4, and the question box):
   #81 "via" text "Tooltip, Dev Assist on"; developer diagnostics "Move all of them"; Combat Tracking Setup "Rule Creation"; /xuiskin
       "move pad and alpha to dev"; edge cases "Yes, as recommended" (players keep /xui debug perf and the console forms /xui debug
@@ -9,24 +8,24 @@ Xaya, 2026-11-06, her answers (feature update summary session, FUS-4, and the qu
       addon. these should have error codes built out, auto detection, and auto documenting with a simple debug report that someone can
       directly send to me -- either via import/export string or screenshot"; default "On, errors only"; kinds "Errors + warnings only";
       report "Both: string and screenshot view".
-What is checked, with the real addons in the stand-in game, once WITHOUT XayaUI Dev Assist (what a player has) and once WITH it:
-  A. every moved /xui debug command and its help line is absent without Dev Assist, present and working with it (each prints its
-     report); perf (engine meter), status, auras, loader and talents stay; perf ui moves; the moved code is not loaded by core
-     (none of its functions exists without Dev Assist).
-  B. /xuitt exists only with Dev Assist; /xui chat wrap / indent / whispers only with it; /xuiskin pad / alpha only with it, /xuiskin
-     alone still switches the skin; /xuiengine auto / on / off / reset only with it, full and refresh for everyone.
-  C. the Aura ID "via ..." text shows on the tooltip only while Dev Assist is loaded (Advanced Debugging on in both runs).
+Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (REQUEST-LOG A23): XayaUI Dev Assist, Chat, QoL and Bonus live on
+qa-installer-branch. What is checked, with main's addons in the stand-in game (what a player has: no Dev Assist):
+  A. every debug command that moved to Dev Assist and its help line is absent; perf (engine meter), status, auras, loader and talents
+     stay; perf ui is gone; the moved code is not loaded (none of its functions exists, XayaUI_Rules/Combat/AuraIDProbe.lua not loaded).
+  B. /xuitt does not exist; /xui chat wrap / indent / whispers only say XayaUI Chat is not installed; /xuiskin pad / alpha change
+     nothing, /xuiskin alone still switches the skin; /xuiengine auto / on / off / reset do nothing, full and refresh run for everyone.
+  C. Advanced Debugging is on by default.
   D. Combat Tracking Setup is on Settings > UI Options > Rule Creation, not on Settings > Debugging; the Debugging page keeps no
-     detailed-record switch and no probe switch without Dev Assist; with it, Dev Assist's settings (probe switch, detailed record) show.
-  E. the debug record: a Lua error raised in a XayaUI file is recorded with its folder's code (XUI-E001 core, XUI-E003 Chat, XUI-E004
-     QoL), an error from another addon's file is not; the error handler that was set before XayaUI is still called for every error;
-     the engine's safety stops (W003, W004) and an action the game blocked (W001, XayaUI only) are recorded as warnings; with Advanced
-     Debugging off nothing is recorded; the list keeps the newest 50.
+     detailed-record switch and no probe switch, and its Dev Assist settings group is hidden and empty.
+  E. the debug record: a Lua error raised in a XayaUI file is recorded with its folder's code (XUI-E001 core; core's table still codes
+     the qa-installer-branch folders: XUI-E003 Chat, XUI-E004 QoL), an error from another addon's file is not; the error handler that
+     was set before XayaUI is still called for every error; the engine's safety stops (W003, W004) and an action the game blocked
+     (W001, XayaUI only) are recorded as warnings; with Advanced Debugging off nothing is recorded; the list keeps the newest 50.
   F. no error: a session with logins, combat start and end, 30 s of engine steps and rules firing records nothing, the record's frame
      holds only the two "action blocked" events, the detailed-record hand-in points do not exist, and NO function of DebugRecord.lua
      runs (counted with a call hook: the measured cost while nothing goes wrong).
   G. /xui report shows the window: the summary (codes with their meaning, versions, game build, when) and the string; the string read
-     back (core's reader, and Dev Assist's /xuidev report reader) gives the same entries.
+     back with core's reader gives the same entries.
 Negative control: on a073b40 (before this change) the checks of A to G fail (count in the debug log).
 Run: python3 tests/devassist_debug_tools_run.py"""
 import os, sys
@@ -112,29 +111,21 @@ local gone = { "Probe", "IDProbe", "ProbeDebuffs", "ProbeLossOfControl", "Target
 local loaded = {}
 for _, k in ipairs(gone) do if ns[k] ~= nil then loaded[#loaded + 1] = k end end
 if ns.Timing and ns.Timing.Report then loaded[#loaded + 1] = "Timing.Report" end
-if ns.TT and (ns.TT.AuraReport or ns.TT.Probe or ns.TT.DumpLines) then loaded[#loaded + 1] = "TT probes" end
-if ns.Chat and (ns.Chat.IndentReport or ns.Chat.WhisperReport or ns.Chat.WhisperFacts or ns.Chat.whispers) then loaded[#loaded + 1] = "chat reports" end
 check("A the moved code is not loaded without Dev Assist", #loaded == 0, table.concat(loaded, ", "))
 local files = {}
-for _, f in ipairs({ "XayaUI_Rules/Combat/AuraIDProbe.lua", "XayaUI_Chat/Probe.lua", "XayaUI_QoL/CharacterWidthProbe.lua" }) do
+for _, f in ipairs({ "XayaUI_Rules/Combat/AuraIDProbe.lua" }) do
   if L.fileLoaded and L.fileLoaded(f) then files[#files + 1] = f end
 end
-check("A the moved files are not in core, Chat or QoL", #files == 0, table.concat(files, ", "))
+check("A the moved file is not in XayaUI Rules", #files == 0, table.concat(files, ", "))
 
 -- B ---------------------------------------------------------------------------------------------------------------------------
 check("B /xuitt does not exist without Dev Assist", SlashCmdList.XUITT == nil)
 local cw = joined(run("chat wrap"))
 local NOCHAT = "is part of XayaUI Chat, which is not installed"
-if HAS_CHAT then
-  check("B /xui chat wrap without Dev Assist: no measurement (the Chat Panel's own status instead)", not cw:find("Chat Panel wrap:", 1, true)
-    and cw:find("Chat Panel:", 1, true) ~= nil, cw:sub(1, 200))
-  check("B /xui chat's word list has no wrap, indent or whispers", not cw:find("wrap", 1, true) and not cw:find("whispers", 1, true), cw:sub(1, 200))
-else
-  check("B /xui chat wrap without Dev Assist and without XayaUI Chat: no measurement, it says XayaUI Chat is not installed",
-    not cw:find("Chat Panel wrap:", 1, true) and cw:find(NOCHAT, 1, true) ~= nil, cw:sub(1, 200))
-  check("B /xui chat's word list has no wrap, indent or whispers (XayaUI Chat absent: the not-installed line only)",
-    not cw:find("wrap:", 1, true) and not cw:find("whispers:", 1, true) and not cw:find("indent:", 1, true), cw:sub(1, 200))
-end
+check("B /xui chat wrap without Dev Assist and without XayaUI Chat: no measurement, it says XayaUI Chat is not installed",
+  not cw:find("Chat Panel wrap:", 1, true) and cw:find(NOCHAT, 1, true) ~= nil, cw:sub(1, 200))
+check("B /xui chat's word list has no wrap, indent or whispers (XayaUI Chat absent: the not-installed line only)",
+  not cw:find("wrap:", 1, true) and not cw:find("whispers:", 1, true) and not cw:find("indent:", 1, true), cw:sub(1, 200))
 check("B /xui chat indent / whispers do nothing of theirs", not joined(run("chat indent")):find("Chat Panel indent:", 1, true)
   and not joined(run("chat whispers")):find("Chat whispers:", 1, true))
 local ui = CueRulesDB.ui
@@ -157,9 +148,8 @@ local er = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("refresh") 
 check("B /xuiengine full and refresh still run for players", ef:find("automatic mode:", 1, true) ~= nil and er:find("automatic mode:", 1, true) ~= nil, ef:sub(1, 120))
 
 -- C ---------------------------------------------------------------------------------------------------------------------------
+-- (the Aura ID "via ..." tooltip text was XayaUI Bonus's tooltips, on qa-installer-branch; Advanced Debugging's default is core's)
 check("C Advanced Debugging is on (default)", ui.advancedDebug == true)
-local via = ns.TT and ns.TT.SourceText and ns.TT.SourceText({ src = { ["your casts"] = true, ["Cooldown Manager"] = true } })
-check("C the 'via ...' text is not shown without Dev Assist (Advanced Debugging on)", via == "", via)
 
 -- D ---------------------------------------------------------------------------------------------------------------------------
 local opts = settingsTable()
@@ -205,6 +195,8 @@ local spy0 = #spyCalls
 -- (as the game does: the active error handler gets the error's message)
 local function raiseFrom(path, msg) local f = loadstring("error('" .. msg .. "')", "@Interface/AddOns/" .. path); xpcall(f, function(e) return geterrorhandler()(e) end) end
 raiseFrom("XayaUI_Rules/Engine.lua", "boom in core")
+-- (XayaUI_Chat and XayaUI_QoL are on qa-installer-branch, not on main: these two raise from their paths to check core's folder codes,
+-- DebugRecord.lua ns.ERROR_CODES, which still name them for players who have them)
 raiseFrom("XayaUI_Chat/Frame.lua", "boom in chat")
 raiseFrom("XayaUI_QoL/StatMath.lua", "boom in qol")
 raiseFrom("SomeOtherAddon/Main.lua", "boom elsewhere")
@@ -285,115 +277,11 @@ return R
 end
 '''
 
-WITH = r'''
-return function(W, L)
-''' + COMMON + r'''
-L.startup()
-ns = rawget(_G, "XayaUI_NS")
-W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
-check("Dev Assist is loaded in this run", ns.DevAssistOn and ns.DevAssistOn())
--- A ---------------------------------------------------------------------------------------------------------------------------
-local names = debugNames()
-for _, n in ipairs(MOVED) do check("A with Dev Assist: /xui debug " .. n .. " is listed", names[n] ~= nil, names[n]) end
-for _, n in ipairs(KEPT) do check("A with Dev Assist: /xui debug " .. n .. " is listed", names[n] ~= nil, names[n]) end
-check("A with Dev Assist: perf ui is listed", joined(run("debug")):find("/xui debug perf ui  settings window rebuild timing", 1, true) ~= nil)
-local EXPECT = { probe = { "debug probe 203720", "probe spell 203720" }, timing = { "debug timing", "timing in combat:" },
-  model = { "debug model", "combat tracking model" }, tracker = { "debug tracker", "aura tracker |" }, mods = { "debug mods", "mods" },
-  groups = { "debug groups", "group probe:" }, media = { "debug media", "XayaUI_Media" }, map = { "debug map", "map: world map" },
-  debuffs = { "debug debuffs target 204598", "debuff probe: unit=target" }, loc = { "debug loc", "loss of control" },
-  gamemenu = { "debug gamemenu", "game menu button:" }, chatprobe = { "debug chatprobe", "chat probe:" },
-  ids = { "debug probe ids", "" }, perfui = { "debug perf ui", "rebuild timing ON" }, icons = { "debug icons", "" },
-  widthprobe = { "debug widthprobe off", "" } }
-local errs0 = #W.errors
-for k, e in pairs(EXPECT) do
-  local out = joined(run(e[1]))
-  check("A with Dev Assist: /xui " .. e[1] .. " runs" .. (e[2] ~= "" and (" and prints '" .. e[2] .. "'") or ""),
-    not out:find("there is no debug command", 1, true) and (e[2] == "" or out:find(e[2], 1, true) ~= nil), out:sub(1, 160))
-end
-local nr = #ns.rules
-run("debug seed")
-check("A with Dev Assist: /xui debug seed adds the three test rules", #ns.rules == nr + 3, #ns.rules - nr)
-check("A with Dev Assist: the moved commands made no Lua error", #W.errors == errs0, W.errors[#W.errors])
-run("debug perf ui")   -- (back off)
--- B ---------------------------------------------------------------------------------------------------------------------------
-check("B /xuitt exists with Dev Assist", type(SlashCmdList.XUITT) == "function")
-local tt = printed(function() SlashCmdList.XUITT("aura 258920") end)
-check("B /xuitt aura 258920 reports the spell", tt:find("spell 258920", 1, true) ~= nil, tt:sub(1, 160))
-local cw = joined(run("chat wrap"))
-if HAS_CHAT then
-  check("B /xui chat wrap with Dev Assist measures", cw:find("Chat Panel wrap:", 1, true) ~= nil or cw:find("not there to measure", 1, true) ~= nil, cw:sub(1, 160))
-  check("B /xui chat indent with Dev Assist reports", joined(run("chat indent")):find("Chat Panel indent", 1, true) ~= nil)
-  check("B /xui chat whispers with Dev Assist reports", joined(run("chat whispers")):find("Chat whispers:", 1, true) ~= nil)
-  check("B /xui chat's word list names wrap, indent and whispers", joined(run("chat status")):find("history||wrap||indent||whispers||settings", 1, true) ~= nil)
-else
-  local NOCHAT = "is part of XayaUI Chat, which is not installed"
-  local ci, cwh, cs = joined(run("chat indent")), joined(run("chat whispers")), joined(run("chat status"))
-  check("B /xui chat wrap with Dev Assist and without XayaUI Chat: nothing to measure, it says XayaUI Chat is not installed",
-    cw:find(NOCHAT, 1, true) ~= nil and not cw:find("Chat Panel wrap:", 1, true), cw:sub(1, 160))
-  check("B /xui chat indent with Dev Assist and without XayaUI Chat: the same not-installed line, no report",
-    ci:find(NOCHAT, 1, true) ~= nil and not ci:find("Chat Panel indent", 1, true), ci:sub(1, 160))
-  check("B /xui chat whispers with Dev Assist and without XayaUI Chat: the same not-installed line, no report",
-    cwh:find(NOCHAT, 1, true) ~= nil and not cwh:find("Chat whispers:", 1, true), cwh:sub(1, 160))
-  check("B /xui chat's word list is not offered without XayaUI Chat (the not-installed line instead)",
-    cs:find(NOCHAT, 1, true) ~= nil and not cs:find("history||wrap||indent||whispers||settings", 1, true), cs:sub(1, 160))
-end
-local ui = CueRulesDB.ui
-W.safecall(SlashCmdList.XUISKIN, "pad 5"); W.safecall(SlashCmdList.XUISKIN, "alpha 0.5")
-check("B /xuiskin pad 5 and alpha 0.5 work with Dev Assist", ui.skinPad == 5 and ui.skinAlpha == 0.5, tostring(ui.skinPad) .. " " .. tostring(ui.skinAlpha))
-local db = ns.Settings("core").engineDisplay
-W.safecall(SlashCmdList.XUIENGINE, "auto off")
-check("B /xuiengine auto off works with Dev Assist", db.auto == false)
-local help = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("") end))
-check("B /xuiengine's help names Dev Assist's words with it", help:find("/xuiengine auto on / off", 1, true) ~= nil and help:find("/xuiengine reset <group>", 1, true) ~= nil, help)
-W.safecall(SlashCmdList.XUIENGINE, "auto on")
-check("B /xuiengine auto on works with Dev Assist", db.auto == true)
--- C ---------------------------------------------------------------------------------------------------------------------------
-local via = ns.TT and ns.TT.SourceText and ns.TT.SourceText({ src = { ["your casts"] = true, ["Cooldown Manager"] = true } })
-check("C the 'via ...' text shows with Dev Assist", type(via) == "string" and plain(via):find("via Cooldown Manager, your casts", 1, true) ~= nil, via)
-ui.advancedDebug = false
-via = ns.TT.SourceText({ src = { ["your casts"] = true } })
-check("C ... whatever Advanced Debugging is (it follows Dev Assist only)", plain(via):find("via your casts", 1, true) ~= nil, via)
-ui.advancedDebug = true
--- D ---------------------------------------------------------------------------------------------------------------------------
-local opts = settingsTable()
-local dbg = opts and opts.args.set.args.debug.args
-local dp = dbg and dbg.devPages
-check("D with Dev Assist: its settings show on Settings > Debugging", dp and not hidden(dp) and dp.args.devprobe and dp.args.devrecord)
-check("D ... the game-data probe switch (row A20)", dp and dp.args.devprobe.args.debugProbe and dp.args.devprobe.args.debugProbe.name == "Also run the game-data probe (XayaUI Dev Assist)")
-check("D ... the detailed record's 11 kinds", (function() local n = 0; for k in pairs(dp and dp.args.devrecord.args or {}) do if k:match("^cat_") then n = n + 1 end end; return n == 11 end)())
-if ns.ToggleUI and ns.IsOptionsOpen and ns.IsOptionsOpen() then W.safecall(ns.ToggleUI) end
--- the detailed record exists with Dev Assist (Advanced Debugging on, its default categories)
-CueRulesDB.debugRecord = nil
-ns.LogKind("rule", "FIRED %s", "a test rule")
-local r = CueRulesDB.debugRecord
-check("D with Dev Assist the detailed record keeps a rule line", r and r.lines and #r.lines >= 1 and r.lines[#r.lines]:find("Rule", 1, true) ~= nil, r and r.lines and r.lines[1])
--- G: Dev Assist reads a report string back -----------------------------------------------------------------------------------
-CueRulesDB.errorLog = {}
-local f = loadstring("error('boom for the report')", "@Interface/AddOns/XayaUI_Bonus/Tooltips.lua"); W.safecall(f)
-ns.RecordWarn("XUI-W002", "a container call failed")
-local str = ns.DebugReportString()
-local GD = rawget(_G, "XayaUIDevAssist")
-local text, d = GD.ReadReport(str)
-check("G Dev Assist reads the string: the same entries", d and #d.entries == 2 and d.entries[1].code == CueRulesDB.errorLog[1].code
-  and d.entries[2].code == CueRulesDB.errorLog[2].code and d.entries[2].code == "XUI-E005", d and #d.entries)
-check("G Dev Assist shows them expanded (with each error's stack)", type(text) == "string" and text:find("XUI-E005", 1, true) ~= nil
-  and text:find("stack:", 1, true) ~= nil and text:find("XUI-W002", 1, true) ~= nil, text)
-check("G a damaged string is refused with a message", (function() local t, e = GD.ReadReport(str:sub(1, #str - 8)); return t == nil and type(e) == "string" end)())
-local rw = ns.DevAssistReportWindow and ns.DevAssistReportWindow()
-check("G /xuidev report opens Dev Assist's reader", (function() W.safecall(SlashCmdList.XAYAUIDEV, "report"); return rw ~= nil and rw:IsShown() end)())
-return R
-end
-'''
 
 
-# XayaUI_Chat is a QA-branch module (absent on main). Without it /xui chat says so, and Dev Assist's chat words (wrap, indent, whispers)
-# have nothing to measure: the absent-case behaviour is asserted instead of the Chat Panel's own output.
-HAS_CHAT = os.path.isdir(os.path.join(H.ROOT, "XayaUI_Chat"))
-
-
-def session(lua, with_dev):
+def session(lua):
     folders = H.find_addons()
-    enabled = [n for n in folders if with_dev or n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
@@ -403,7 +291,6 @@ def session(lua, with_dev):
     L.globals().W = world
     src = open(os.path.join(H.ROOT, "XayaUI", "DebugRecord.lua")).read().split("\n")
     L.globals().DR_UI_LINE_FROM_FILE = next(i + 1 for i, l in enumerate(src) if l.startswith("local function Ui()"))
-    lua = lua.replace("return function(W, L)", "return function(W, L)\nlocal HAS_CHAT = " + ("true" if HAS_CHAT else "false"), 1)
     res = L.eval("""function(src, W, Ld)
       local ok, err = pcall(function() return loadstring(src)()(W, Ld) end)
       if not ok then R = R or {}; R[#R + 1] = { "the run reached its end (it stopped on: " .. tostring(err):sub(1, 200) .. ")", false } end
@@ -416,8 +303,8 @@ def session(lua, with_dev):
 
 def main():
     bad, total, lua_errs = 0, 0, 0
-    for label, lua, dev in (("without Dev Assist", WITHOUT, False), ("with Dev Assist", WITH, True)):
-        res, errs = session(lua, dev)
+    for label, lua in (("without Dev Assist", WITHOUT),):
+        res, errs = session(lua)
         for name, ok in res:
             total += 1
             print(("PASS " if ok else "FAIL ") + "[" + label + "] " + name)
