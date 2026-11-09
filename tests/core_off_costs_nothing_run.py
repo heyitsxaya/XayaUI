@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""V14 "off costs nothing" for XayaUI core and XayaUI_Reskin (core 0.6.47, Reskin 0.6.2). Xaya, 2026-11-05: "anything that is
-disabled in the addon through a tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a
-standing rule for all current and future feature / element builds".
-Features: the XayaUI button in the Game Menu (GameMenu.lua), the XayaUI Game Menu look (XayaUI_Reskin/GameMenuSkin.lua), Advanced
-Debugging and its record categories (DebugRecord.lua, plus the proc-glow line in Conditions.lua), the game-played aura sound
-(AuraSound.lua, a per-rule switch), the minimap button (MinimapButton.lua) and the console window (Console.lua).
+"""V14 "off costs nothing" for XayaUI core (core 0.6.47). Xaya, 2026-11-05: "anything that is disabled in the addon through a tick
+box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future
+feature / element builds".
+Features: the XayaUI button in the Game Menu (GameMenuButton.lua), Advanced Debugging (DebugRecord.lua, plus the proc-glow line in
+Conditions.lua), the game-played aura sound (AuraSound.lua, a per-rule switch), the minimap button (MinimapButton.lua) and the console
+window (Console.lua).
 Per feature: saved off at login -> no frame, event, OnUpdate, hook or timer of it exists or runs; switched on through its own settings
 switch -> it works (the visible result is checked); switched off -> it stops at once (events let go, hooks return at once).
-Loads the real addons (XayaUI, XayaUI_Media, XayaUI_Reskin, XayaUI_Options) in the stand-in game (tests/harness). What a file made is
-found by wrapping CreateFrame, hooksecurefunc, GameMenuFrame:HookScript and C_Timer and reading which addon file called them.
+Loads main's addons (XayaUI, XayaUI_Rules, XayaUI_Options; REQUEST-LOG A23: the Game Menu look of XayaUI Blizzard Reskin and the
+detailed debug record of XayaUI Dev Assist live on qa-installer-branch) in the stand-in game (tests/harness). Since core 0.6.56 the
+record core keeps holds XayaUI's errors and warnings only, so with Advanced Debugging on its one frame listens to the two "action
+blocked" events and nothing else. What a file made is found by wrapping CreateFrame, hooksecurefunc, GameMenuFrame:HookScript and
+C_Timer and reading which addon file called them.
 Labels: "(works)" checks that a feature works when on; "(as before)" a fact that was already true; "(sanity)" no Lua error. They pass
-on the old code too. Every other check is
-a cost check and fails on core 0.6.46 / Reskin 0.6.1 (origin/main 00f5f8b), see the debug log.
+on the old code too. Every other check is a cost check; those kept from the first version fail on core 0.6.46 (origin/main 00f5f8b),
+see the debug log. B12 and D7 were rewritten for the record core keeps since 0.6.56 (errors and warnings only) and
+were not run against 0.6.46; A13 hands in stand-ins for the detailed record's hand-in points (ns.SetDebugHooks), since core alone has none.
 Run: python3 tests/core_off_costs_nothing_run.py   (Lua 5.1 via lupa; loads the settings window, so it takes a little while)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,14 +23,11 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
 ROOT = os.path.dirname(HERE)
-# XayaUI_Reskin is a QA-branch module (not on main): the checks about the Game Menu look (GameMenuSkin.lua) are skipped while it is absent
-HAS_RESKIN = os.path.isdir(os.path.join(ROOT, "XayaUI_Reskin"))
 
 LUA = r'''
-return function(W, L, MODE, HAS_RESKIN)
+return function(W, L, MODE)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { "[" .. MODE .. "] " .. name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
-local function skipReskin(name) R[#R + 1] = { "[" .. MODE .. "] " .. name, "skip" } end
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- meters: which addon file made a frame, placed a hook, started a timer (the first XayaUI file on the call stack)
@@ -49,7 +50,7 @@ for _, k in ipairs({ "After", "NewTimer", "NewTicker" }) do
   local raw = C_Timer[k]
   C_Timer[k] = function(...) timers[#timers + 1] = owner(); return raw(...) end
 end
-local GM, SKIN, DBG, SND, MINI, CON = "XayaUI/GameMenuButton.lua", "XayaUI_Reskin/GameMenuSkin.lua", "XayaUI/DebugRecord.lua",
+local GM, DBG, SND, MINI, CON = "XayaUI/GameMenuButton.lua", "XayaUI/DebugRecord.lua",
   "XayaUI_Rules/AuraSound.lua", "XayaUI/MinimapButton.lua", "XayaUI/Console.lua"
 local function frames(file) local n = 0; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then n = n + 1 end end; return n end
 local function events(file)
@@ -121,7 +122,7 @@ C_UnitAuras.RemoveAuraSound = function(id) REMOVED[#REMOVED + 1] = id end
 rawset(Enum, "UnitAuraSoundTrigger", { Added = 0, ApplicationsIncreased = 1, Removed = 2 })
 local instanceReads = 0   -- map / instance reads made by the debug record (other core files read them for their own work)
 local rawGII = GetInstanceInfo
-GetInstanceInfo = function(...) local o = owner(); if o == "XayaUI/DebugRecord.lua" or o == "XayaUI_DevAssist/DevRecord.lua" then instanceReads = instanceReads + 1 end; if rawGII then return rawGII(...) end end
+GetInstanceInfo = function(...) local o = owner(); if o == "XayaUI/DebugRecord.lua" then instanceReads = instanceReads + 1 end; if rawGII then return rawGII(...) end end
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- load and log in
@@ -131,12 +132,8 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 check("(sanity) core loaded", ns ~= nil and ns.rules ~= nil)
 if not ns then return R end
-local recLines = {}
-local rawRecordLine = ns.RecordLine
-ns.RecordLine = function(kind, text) recLines[#recLines + 1] = tostring(kind); return rawRecordLine(kind, text) end
-local function recCount(kind) local n = 0; for _, k in ipairs(recLines) do if k == kind then n = n + 1 end end; return n end
-local function recHas(text) local r = CueRulesDB.debugRecord; if not r then return false end
-  for _, l in ipairs(r.lines) do if l:find(text, 1, true) then return true end end return false end
+-- the events of the record core keeps (XayaUI's errors and warnings, core 0.6.56): the two "action blocked" events, nothing else
+local function onlyBlocked(set, n) return n == 2 and set.ADDON_ACTION_BLOCKED and set.ADDON_ACTION_FORBIDDEN and true or false end
 local syncs = 0
 local rawSync = ns.AuraSound.Sync
 ns.AuraSound.Sync = function(...) syncs = syncs + 1; return rawSync(...) end
@@ -163,13 +160,6 @@ local function switch(key, v)
   o.set({}, v); W.tick(0.05, 2)
   return true
 end
--- (Reskin 0.6.4: the row's tick box.) (Reskin 0.6.23; PS-57, #480) the tick box takes effect on reload; the look is then applied the way
--- the reskins' own apply does it (the hold let go; ns.SetReskinTab walks every registered reskin's apply), so its on / off code is
--- still measured here. tests/switch_reload_run.py checks the reload itself.
-local function skinSwitch(v)
-  local o = ns.GameMenuSkin_Options(function() end).xuiSwitch; o.set({}, v); W.tick(0.05, 2)
-  ns.SwitchApplyNow("reskin.gamemenu"); ns.SetReskinTab(ns.ReskinTabSaved()); W.tick(0.05, 2)
-end
 local function minimapSwitch(v) local o = ns.BuildMinimapTab(function() end).args.show; o.set({}, v); W.tick(0.05, 2) end
 
 if MODE == "off" then
@@ -178,8 +168,6 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   check("A1 Game Menu button saved off: GameMenu.lua made no frame and placed no hook", nothing(GM), cost(GM))
   check("A1b ...and added no theme-change listener", themeListeners(GM) == 0, themeListeners(GM))
-  if HAS_RESKIN then check("A2 Game Menu look saved off: GameMenuSkin.lua made no frame and placed no hook", nothing(SKIN), cost(SKIN))
-  else skipReskin("A2 Game Menu look saved off: GameMenuSkin.lua made no frame and placed no hook") end
   check("A3 Advanced Debugging saved off: DebugRecord.lua made no frame and registered no event (17 before)", nothing(DBG), cost(DBG))
   check("A4 no rule uses the game-played sound: AuraSound.lua made no frame, registered no event, placed no hook (on ns.MarkDirty before)",
     nothing(SND), cost(SND))
@@ -190,14 +178,11 @@ if MODE == "off" then
   check("A7 a loading screen starts no timer of the minimap button or the aura sound", ntimers(MINI, t0) == 0 and ntimers(SND, t0) == 0,
     ("minimap %d, sound %d"):format(ntimers(MINI, t0), ntimers(SND, t0)))
   -- the ESC menu, opened twice
-  M:SetAlpha(0.5)   -- (a mark: nothing of XayaUI may set Blizzard's menu alpha while both are off)
+  M:SetAlpha(0.5)   -- (a mark: nothing of XayaUI may set Blizzard's menu alpha while the button is off)
   openMenu(); closeMenu(); openMenu()
-  check("A8 ESC menu opened with both off: no XayaUI button, no slot, no look panel was made", _G.XayaUI_GameMenuButton == nil
-    and _G.XayaUI_GameMenuPanel == nil and slotCount() == 0, ("button %s, panel %s, slots %d"):format(tostring(_G.XayaUI_GameMenuButton),
-    tostring(_G.XayaUI_GameMenuPanel), slotCount()))
-  check("A9 ...and Blizzard's menu alpha was not touched (the look set it to 1 on every open while off)", M:GetAlpha() == 0.5, M:GetAlpha())
-  check("A10 ...and no saved data was built for the look (its defaults were written on the first open)", CueRulesDB.ui.gm == nil,
-    tostring(CueRulesDB.ui.gm))
+  check("A8 ESC menu opened with the button off: no XayaUI button and no slot was made", _G.XayaUI_GameMenuButton == nil
+    and slotCount() == 0, ("button %s, slots %d"):format(tostring(_G.XayaUI_GameMenuButton), slotCount()))
+  check("A9 ...and Blizzard's menu alpha was not touched", M:GetAlpha() == 0.5, M:GetAlpha())
   closeMenu()
   -- game events with Advanced Debugging off
   instanceReads = 0
@@ -206,10 +191,22 @@ if MODE == "off" then
   check("A11 zone change, combat, group and boss events with Advanced Debugging off: the map is not read (GetInstanceInfo calls)",
     instanceReads == 0, instanceReads)
   check("(as before) A12 ...and nothing is recorded", CueRulesDB.debugRecord == nil or #CueRulesDB.debugRecord.lines == 0)
-  recLines = {}
+  -- (Conditions.lua builds the proc-glow line only through ns.RecordOn / ns.RecordLine, the detailed record's hand-in points; core
+  -- alone has neither (tests/devassist_debug_tools_run.py F), so stand-ins are handed in the way a record keeper does it
+  -- (ns.SetDebugHooks): a RecordOn that says the record does not keep "Proc glows", and a RecordLine that counts the lines it is given)
+  local rawOn, rawLine = ns.RecordOn, ns.RecordLine
+  local recOn, glowAsks, glowLines = false, 0, {}
+  ns.SetDebugHooks({ RecordOn = function(kind) if kind == "glow" then glowAsks = glowAsks + 1 end; return recOn end,
+    RecordLine = function(kind, text) if kind == "glow" then glowLines[#glowLines + 1] = tostring(text) end end })
   ns.ObserveGlowPairing(6572)   -- Revenge's button glowed (ProcGlows.lua pairs it with Revenge!, 5302)
   check("A13 a proc-glow sighting with Advanced Debugging off builds no record line (the text was built before the check)",
-    recCount("glow") == 0, recCount("glow"))
+    #glowLines == 0 and glowAsks == 1, ("%d lines, record asked %d times"):format(#glowLines, glowAsks))
+  recOn, glowAsks, glowLines = true, 0, {}
+  ns.ObserveGlowPairing(6572)
+  check("(works) A13b ...and while the record keeps 'Proc glows' the sighting writes exactly one line, naming the button",
+    #glowLines == 1 and glowLines[1]:find("button 6572 glowed", 1, true) ~= nil, ("%d lines: %s"):format(#glowLines,
+    tostring(glowLines[1])))
+  ns.RecordOn, ns.RecordLine = rawOn, rawLine   -- the stand-ins removed again (nil: core alone has no record keeper)
   -- a rule edit with no rule using the game-played sound
   local s0, tm0 = syncs, #timers
   ns.MarkDirty(); W.tick(0.1, 10)
@@ -244,48 +241,17 @@ if MODE == "off" then
     and not xb:IsShown() and asks == 0 and nhooks(GM) >= 1, ("slots %d, shown %s, menu builds run %d"):format(slotCount(),
     tostring(xb:IsShown()), asks))
   closeMenu()
-  -- B5-B8 the Game Menu look (Blizzard UI Reskin > Esc Menu)
-  if not HAS_RESKIN then
-    for _, n in ipairs({ "(works) B5 the look switched on: its panel is drawn over the menu and Blizzard's menu is faded", "(works) B6 ...its hooks are placed now",
-      "B7 the look switched off with the menu closed: Blizzard's menu gets its alpha back at once",
-      "B8 ...the menu opened again: no panel, and Blizzard's alpha is not touched (the hooks return at once)" }) do skipReskin(n) end
-  else
-    skinSwitch(true)
-    openMenu()
-    local panel = _G.XayaUI_GameMenuPanel
-    check("(works) B5 the look switched on: its panel is drawn over the menu and Blizzard's menu is faded", panel ~= nil and panel:IsShown()
-      and M:GetAlpha() == 0, ("panel %s, alpha %s"):format(tostring(panel and panel:IsShown()), tostring(M:GetAlpha())))
-    check("(works) B6 ...its hooks are placed now", nhooks(SKIN) >= 2, cost(SKIN))
-    closeMenu()
-    skinSwitch(false)
-    check("B7 the look switched off with the menu closed: Blizzard's menu gets its alpha back at once", M:GetAlpha() == 1, M:GetAlpha())
-    M:SetAlpha(0.5)
-    openMenu()
-    check("B8 ...the menu opened again: no panel, and Blizzard's alpha is not touched (the hooks return at once)", not panel:IsShown()
-      and M:GetAlpha() == 0.5, ("panel %s, alpha %s"):format(tostring(panel:IsShown()), tostring(M:GetAlpha())))
-    closeMenu(); M:SetAlpha(1)
-  end
-  -- B9-B13 Advanced Debugging and its "Game state" category (Settings > Debugging)
+  -- B9-B13 Advanced Debugging (Settings > Debugging)
   check("(works) the Advanced Debugging switch is in the settings", switch("advancedDebug", true))
   local n1, l1, set1 = events(DBG)
-  check("(works) B9 Advanced Debugging on: the record's events are registered (combat, blocked actions, game state)",
-    set1.PLAYER_REGEN_DISABLED and set1.ZONE_CHANGED_NEW_AREA and set1.ADDON_ACTION_BLOCKED, l1)
-  W.fire("ZONE_CHANGED_NEW_AREA"); W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED")
-  check("(works) B10 ...a zone change and a combat are written to the record", recHas("zone: ") and recHas("combat 1 starts"),
-    CueRulesDB.debugRecord and #CueRulesDB.debugRecord.lines)
-  switch("cat_game", false)
-  local n2, l2, set2 = events(DBG)
-  check("B11 'Game state' switched off: its 10 events are let go; combat and blocked actions stay", not set2.ZONE_CHANGED_NEW_AREA
-    and not set2.ENCOUNTER_START and not set2.PLAYER_ENTERING_WORLD and set2.PLAYER_REGEN_DISABLED and n2 == 4, l2)
+  check("(works) B9 Advanced Debugging on: the record's events are registered (the two 'action blocked' events only)",
+    onlyBlocked(set1, n1), l1)
   instanceReads = 0
-  W.fire("ZONE_CHANGED_NEW_AREA")
-  check("B12 ...a zone change then reads nothing", instanceReads == 0, instanceReads)
-  switch("cat_game", true)
+  W.fire("ZONE_CHANGED_NEW_AREA"); W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED")
+  check("B12 ...a zone change and a combat read nothing and record nothing (no error happened)", instanceReads == 0
+    and CueRulesDB.debugRecord == nil, instanceReads)
   switch("advancedDebug", false)
   check("B13 Advanced Debugging switched off: every event of the record is let go", events(DBG) == 0, cost(DBG))
-  local nl = CueRulesDB.debugRecord and #CueRulesDB.debugRecord.lines or 0
-  W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED")
-  check("(works) B14 ...and a combat is no longer recorded", (CueRulesDB.debugRecord and #CueRulesDB.debugRecord.lines or 0) == nl)
   -- B15-B18 the game-played sound (the rule's own switch in its sound settings)
   local rule = ns.rules[1]
   local tick = find(options(), "gameSoundOn")
@@ -341,41 +307,27 @@ elseif MODE == "defaults" then
   openMenu()
   check("(works) C2 ...the ESC menu shows it", _G.XayaUI_GameMenuButton ~= nil and _G.XayaUI_GameMenuButton:IsShown() and slotCount() == 1)
   closeMenu()
-  local _, ld, setd = events(DBG)
-  check("(works) C3 Advanced Debugging is on by default: the record's events are registered", setd.PLAYER_REGEN_DISABLED
-    and setd.ZONE_CHANGED_NEW_AREA and setd.ADDON_ACTION_BLOCKED, ld)
+  local nd, ld, setd = events(DBG)
+  check("(works) C3 Advanced Debugging is on by default: the record's events are registered (the two 'action blocked' events only)",
+    onlyBlocked(setd, nd), ld)
   check("C3b ...and no PLAYER_LOGIN stays registered after the login (it fires once)", not setd.PLAYER_LOGIN, ld)
-  check("(works) C4 ...the login was recorded", recHas("XayaUI addons:") and recHas("now in: "))
   local _, lm, setm = events(MINI)
   check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil
     and _G.XayaUIMinimapButton:IsShown() and setm.PLAYER_ENTERING_WORLD, lm)
-  if HAS_RESKIN then check("C6 the Game Menu look is off by default: nothing of it exists", nothing(SKIN), cost(SKIN))
-  else skipReskin("C6 the Game Menu look is off by default: nothing of it exists") end
   check("C7 no rule uses the game-played sound: nothing of it exists", nothing(SND), cost(SND))
   check("C8 the console window is closed by default: nothing of it exists", nothing(CON), cost(CON))
 elseif MODE == "on" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- D. saved on at login: each works from the start
   ---------------------------------------------------------------------------------------------------------------------------------
-  openMenu()
-  local panel = _G.XayaUI_GameMenuPanel
-  if HAS_RESKIN then
-    check("(works) D1 the Game Menu look saved on: its panel is drawn when the menu opens", panel ~= nil and panel:IsShown() and M:GetAlpha() == 0)
-    check("(works) D2 ...the XayaUI row sits on core's slot (match mode)", slotCount() == 1)
-  else
-    skipReskin("(works) D1 the Game Menu look saved on: its panel is drawn when the menu opens")
-    skipReskin("(works) D2 ...the XayaUI row sits on core's slot (match mode)")
-  end
-  closeMenu()
   check("(works) D3 the console window saved open: open after login", _G.XayaUIConsoleWindow ~= nil and _G.XayaUIConsoleWindow:IsShown())
   local nc, lc = events(CON)
   check("D4 ...and no event of the console stays registered after the login", nc == 0, lc)
   check("(works) D5 a rule saved with the game-played sound: the game is asked to play it after the loading screen", #ADDED >= 1, #ADDED)
   local n5, l5 = events(SND)
   check("(works) D6 ...and its five events are registered", n5 == 5, l5)
-  local _, _, set6 = events(DBG)
-  check("D7 Advanced Debugging saved on with 'Game state' off: only combat and blocked actions are registered",
-    set6.PLAYER_REGEN_DISABLED and not set6.ZONE_CHANGED_NEW_AREA and not set6.PLAYER_ENTERING_WORLD, (select(2, events(DBG))))
+  local n6, l6, set6 = events(DBG)
+  check("D7 Advanced Debugging saved on: only the two 'action blocked' events are registered", onlyBlocked(set6, n6), l6)
 end
 return R
 end
@@ -383,7 +335,7 @@ end
 
 RULE = {"uid": "r1", "name": "Demon Spikes sound", "enabled": True, "useBuff": True, "buffID": 203819, "buffState": "present",
         "cdState": "none", "load": {"mode": "always"},
-        "sound": {"enabled": True, "source": "file", "value": "Interface\\AddOns\\XayaUI_Media\\Sounds\\test.ogg", "channel": "Master"}}
+        "sound": {"enabled": True, "source": "file", "value": "Interface\\AddOns\\XayaUI\\Media\\Audio\\CC0\\Kenney\\bong_001.ogg", "channel": "Master"}}
 
 
 def saved_for(mode):
@@ -393,37 +345,30 @@ def saved_for(mode):
     if mode == "on":
         r = dict(RULE)
         r["gameSound"] = {"enabled": True, "when": "auto", "channel": "Ambience", "throttle": 1}
-        return {"XayaUI": {"CueRulesDB": {"ui": {"gm": {"skin": True}, "consoleOpen": True, "advancedDebug": True,
-                                                "recCats": {"game": False}},
+        return {"XayaUI": {"CueRulesDB": {"ui": {"consoleOpen": True, "advancedDebug": True},
                                          "rules": [r]}}}
     return {}
 
 
 def world(mode):
     folders = H.find_addons()
-    # (core 0.6.56, REQUEST-LOG #82: the record's kinds of line are XayaUI Dev Assist's, so it is loaded here for the debug record's
-    # checks; what a player has without it is tests/devassist_debug_tools_run.py)
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Reskin", "XayaUI_Options", "XayaUI_Rules_Options", "XayaUI_DevAssist")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), w,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved_for(mode)}))
-    res = L.eval("function(src, W, Ld, mode, r) return loadstring(src)()(W, Ld, mode, r) end")(LUA, w, loader, mode, HAS_RESKIN)
+    res = L.eval("function(src, W, Ld, mode) return loadstring(src)()(W, Ld, mode) end")(LUA, w, loader, mode)
     return res, w
 
 
 def main():
-    total, bad, errs, skipped = 0, 0, 0, 0
+    total, bad, errs = 0, 0, 0
     for mode in ("off", "defaults", "on"):
         res, w = world(mode)
         for i in range(1, len(res) + 1):
             name, ok = res[i][1], res[i][2]
-            if ok == "skip":
-                skipped += 1
-                print("SKIP (QA-branch module absent: XayaUI_Reskin) " + name)
-                continue
             print(("PASS " if ok else "FAIL ") + name)
             total += 1
             if not ok:
@@ -431,8 +376,7 @@ def main():
         for i in range(1, len(w.errors) + 1):
             print("ERROR in the game stand-in [%s]: %s" % (mode, str(w.errors[i])[:700]))
             errs += 1
-    print("%d checks, %d failed, %d Lua errors%s" % (total, bad, errs,
-          (", %d skipped (QA-branch module absent: XayaUI_Reskin)" % skipped) if skipped else ""))
+    print("%d checks, %d failed, %d Lua errors" % (total, bad, errs))
     sys.exit(1 if bad or errs else 0)
 
 

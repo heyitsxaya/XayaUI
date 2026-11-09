@@ -1,34 +1,38 @@
 #!/usr/bin/env python3
-"""Platform services P1 (core 0.6.74, Options 0.6.80, QoL 0.7.46, Bonus 0.6.30, Chat 0.6.40, Reskin 0.6.20, Nameplates 0.2.2;
-docs/plans/PLATFORM-SPLIT-2026-11-07.md sections 6.1, 6.3 and 6.6). Loads the real addons in the stand-in game and checks what the
-player gets:
+"""Platform services P1 (core 0.6.74, Options 0.6.80; docs/plans/PLATFORM-SPLIT-2026-11-07.md sections 6.1, 6.3 and 6.6). Loads the
+real addons of this branch (XayaUI, XayaUI_Options, XayaUI_Rules with its rule editor) in the stand-in game and checks what the player gets:
   A byte-identical export: with every part ticked (the Export tab's Generate button) on a fixed setup, the profile string is exactly the
-    one the old code (main 774980c, the fixed P.COMPONENTS list) produced for the same setup (GOLDEN below, produced by
-    `python3 tests/profile_parts_run.py --golden` run against a checkout of 774980c); also with the six parts ticked by hand.
-  B Nameplates part (plan 6.1 "fixes today's gap"): with XayaUI Nameplates on, Export offers it, the string carries it (target colour
-    switch and colour, never the Put back store) with its own format version and addon, and Import puts the colour back.
-  C a part whose module is not loaded (XayaUI Nameplates off): the pasted profile keeps it, Import shows "needs XayaUI Nameplates" and
-    skips it; the other parts import.
+    one the old code (main 774980c, the fixed P.COMPONENTS list) produced for the same setup, minus the data of the feature addons that
+    are not on this branch (REQUEST-LOG A23: XayaUI Bonus, QoL, Chat, Blizzard Reskin and Nameplates live on qa-installer-branch): the
+    old string (GOLDEN below) is decoded, their parts and keys are taken out (the qol and bonus parts; the reskin part's chat2 / chat /
+    characterReskin; the settings part's ui.friendColors / rsk / gm), it is encoded again and compared byte for byte; also with the
+    four parts this branch registers (rules, themes, settings, reskin) ticked by hand.
+    Where GOLDEN came from: it is the BUTTON line of this file's earliest version in the history (2178a85f) run as `--golden` on a checkout of
+    main 774980c, with every addon of that checkout loaded except XayaUI DevAssist and XayaUI Nameplates (so the old setup's QoL,
+    Bonus, Chat and Blizzard Reskin keys were written and exported); that version's setup and its six-part list (rules, themes,
+    settings, qol, bonus, reskin) are in `git show 2178a85f:tests/profile_parts_run.py`.
+--golden on this version does NOT reproduce GOLDEN: it loads every addon of this branch, runs this version's setup (without the absent
+addons' keys) and prints this branch's Generate string (BUTTON) and the four-part Snapshot string (PARTS). BUTTON is the string section
+A compares, byte for byte, with GOLDEN less the absent addons' data; it is a diagnostic, not a way to regenerate GOLDEN.
+  C a part whose module is not loaded (XayaUI Nameplates, which is not on this branch): the pasted profile keeps it, Import shows
+    "needs XayaUI Nameplates" and skips it; the other parts import.
   D Recycle Bin kinds: a rule deleted and restored through the registered "rule" kind; an item of a kind no module registered reads
     "(<kind>: module not loaded)", Restore refuses it and it stays in the bin; a newly registered kind restores through its own call.
   E Theme scopes: no scope = exactly the old answer for every class and property; element override > element theme > module override >
-    global; the cache is dropped on Resolve; storage is sparse; the registered scopes and labels; scopes travel in the Themes part.
-  (Debug chat defaults, Chat 0.6.46) A's one allowed difference: the Blizzard Reskin part's chat2 / chat now carry the Sidebar's and
-    the privacy cover's defaults (all 37, each with its default value; decoded and compared with the old string: nothing else differs),
-    since they now reach the saved settings at login; taken out, the string is the old one byte for byte.
-Negative control: B-E fail on main 774980c (no ns.RegisterProfilePart / RegisterBinKind / Theme scopes; the bin restores any item as
-rules; Profiles drops unknown parts). A passes there by design: it is the reference the new code must match.
+    global; the cache is dropped on Resolve; storage is sparse; the core's registered scopes and labels; scopes travel in the Themes part.
+  (Section B, the Nameplates part exported and imported with XayaUI Nameplates on, and A's Chat-defaults allowance were removed with
+  those addons: they are not on this branch.)
+Negative control: C-E fail on main 774980c (no ns.RegisterProfilePart / RegisterBinKind / Theme scopes; the bin restores any item as
+rules; Profiles drops unknown parts). A passed there by design in that earliest version (its BUTTON line is GOLDEN): it is the reference
+the new code must match.
 Run: python3 tests/profile_parts_run.py"""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
-# QA-branch modules (XayaUI_Chat, XayaUI_Reskin, XayaUI_Nameplates) are absent on main: presence is read from the folder
-ROOT = os.path.dirname(HERE)
-HAS = {m: os.path.isdir(os.path.join(ROOT, "XayaUI_" + m)) for m in ("Chat", "Reskin", "Nameplates")}
-
-# produced by the old code (main 774980c) with --golden; see the docstring
+# the old code's string: --golden of this file's earliest version (2178a85f) on main 774980c, every addon but DevAssist and Nameplates
+# loaded; the --golden below cannot regenerate it (see the docstring)
 GOLDEN = (
     "XUIPROFILE1:95cd7060:eyJhZGRvblZlcnNpb24iOiIwLjYuNzMiLCJuYW1lIjoiIiwicGFydHMiOnsiYm9udXMiOnsiY2FsY3VsYXRvciI6e"
     "yJlbmFibGVkIjp0cnVlfSwiZGF0YVBhbmVscyI6eyJibCI6eyJhbmNob3IiOiJCT1RUT01MRUZUIiwiYmciOnRydWUsImJnQWxwaGEiOjQ1LCJ"
@@ -155,24 +159,13 @@ local function setup(W, L)
   DB.themes = { Mine = { base = "default", tokens = { label = { 0.5, 0.5, 0.5, 1 } }, classes = {}, font = "none", size = "L" } }
   DB.ui = DB.ui or {}; DB.ui.selStyle = "bar"; DB.ui.hybridMigrated = true; DB.ui._tmp = 1
   DB.minimap = { hide = true, minimapPos = 200 }
-  DB.cursorHighlight = DB.cursorHighlight or {}; DB.cursorHighlight.marker = 40; DB.cursorHighlight._x = 1
-  DB.cursorTrail = DB.cursorTrail or {}; DB.cursorTrail.marker = 12
-  DB.characterToolkit = DB.characterToolkit or {}; DB.characterToolkit.marker = 1
-  DB.releaseGuard = DB.releaseGuard or {}; DB.releaseGuard.marker = true
-  DB.cursor = { a = 1 }
-  DB.dataPanels = DB.dataPanels or {}; DB.dataPanels.markerA = "a"
-  DB.tooltips = DB.tooltips or {}; DB.tooltips.selfAura = { build = "x", ids = { [1] = true } }; DB.tooltips.marker = 3
-  DB.calculator = { enabled = true, history = { "1+1 = 2" }, x = 5, point = "CENTER" }
-  if __HAS_CHAT__ then   -- (QA-branch module XayaUI_Chat: its two stores exist only where the folder is)
-    DB.chat2 = DB.chat2 or {}; DB.chat2.fadeMarker = 7; DB.chat2.whisperSounds = { list = { { who = "Friend-Realm" } }, fav = { enabled = true } }
-    DB.chat = DB.chat or {}; DB.chat.marker = "c"
-  end
-  DB.characterReskin = DB.characterReskin or {}; DB.characterReskin.marker = true
+  -- (the keys of XayaUI QoL, Bonus, Chat and Blizzard Reskin the old setup wrote are left out: those addons are not on this branch)
   DB.reskinTabOff = true
   return ns
 end
-local HAS_CHAT, HAS_RESKIN, HAS_NP = __HAS_CHAT__, __HAS_RESKIN__, __HAS_NP__
-local SIX = { rules = true, themes = true, settings = true, qol = true, bonus = true, reskin = true }
+-- the parts this branch registers (Rules: rules; core: themes, settings, reskin); the old build's other two (qol, bonus) were XayaUI QoL's
+-- and XayaUI Bonus's, not on this branch
+local PARTS = { rules = true, themes = true, settings = true, reskin = true }
 local function exportAll(ns)   -- the Export tab's Generate button with every part ticked
   local built = ns.BuildOptionsTable()
   local st = ns.OptionsApi.ProfileState()
@@ -185,123 +178,72 @@ end
 GOLDEN_LUA = SETUP + r'''
 return function(W, L)
   local ns = setup(W, L)
-  return { exportAll(ns), ns.Share.Encode("profile", ns.Profile.Snapshot(SIX, "")) }
+  return { exportAll(ns), ns.Share.Encode("profile", ns.Profile.Snapshot(PARTS, "")) }
 end
 '''
 
 TEST_LUA = SETUP + r'''
-return function(W, L, GOLDEN, npOn)
+return function(W, L, GOLDEN)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
-local function skip(mod, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. mod .. ") " .. name, true, true } end
 local function section(name, fn) local ok, err = pcall(fn); if not ok then check(name .. ": ran to its end (a Lua error stopped it)", false, err) end end
 local ns = setup(W, L)
 check("settings window addon loaded", ns and ns.BuildOptionsTable ~= nil and ns.Profile ~= nil)
 if not (ns and ns.Profile) then return R end
 local P = ns.Profile
 
-if not npOn then
-  section("A: byte-identical export", function()
-    -- (Debug chat defaults, Chat 0.6.46) the one allowed difference from the old build's string: the Sidebar's (C.SIDEBAR_DEFAULTS)
-    -- and the privacy cover's (ns.CHAT_DEFAULTS) defaults now reach the saved settings at login (in the game they never did), so the
-    -- Blizzard Reskin part's chat2 / chat carry them, each with its default value. Taken out where they hold the default, the string
-    -- must be the old build's byte for byte.
-    local CD = ns.Service and ns.Service("chatDebug"); CD = CD and CD.C
-    local added = 0
-    local function fold(str)
-      local data = ns.Share.Read(str, "profile")
-      local rk = type(data) == "table" and data.parts and data.parts.reskin
-      for part, defs in pairs({ chat2 = CD and CD.SIDEBAR_DEFAULTS or {}, chat = ns.CHAT_DEFAULTS or {} }) do
-        local t = rk and rk[part]
-        if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
-      end
-      return data and ns.Share.Encode("profile", data)
-    end
-    local box = exportAll(ns)
-    local folded = fold(box)
-    -- the old build's string carries parts of the QA-branch modules: with one absent, the old string is decoded and the keys of that
-    -- module taken out of it, and the two decoded profiles are compared whole (key by key, values included) instead of as strings
-    local gold = GOLDEN
-    local same = (folded == GOLDEN)
-    if not (HAS_CHAT and HAS_RESKIN) then
-      local gd = ns.Share.Read(GOLDEN, "profile")
-      local rk = type(gd) == "table" and gd.parts and gd.parts.reskin
-      if rk and not HAS_CHAT then rk.chat2 = nil; rk.chat = nil end
-      -- without XayaUI_Reskin the Character pane's own keys (Modules.lua LEGACY_SPLIT.characterReskin.sub) are not saved; QoL's half stays
-      if rk and rk.characterReskin and not HAS_RESKIN then
-        for _, k in ipairs({ "enabled", "chrome", "stats", "bgAlpha", "wide", "widePx", "widePxTo42", "tallPx" }) do rk.characterReskin[k] = nil end
-      end
-      -- ...and the Settings part's ui.friendColors (Modules.lua LEGACY_UNDER_UI.reskin: rsk, gm, friendColors) is XayaUI_Reskin's too
-      local st = type(gd) == "table" and gd.parts and gd.parts.settings
-      if st and st.ui and not HAS_RESKIN then st.ui.friendColors = nil; st.ui.rsk = nil; st.ui.gm = nil end
-      local function eq(x, y)
-        if type(x) ~= type(y) then return false end
-        if type(x) ~= "table" then return x == y end
-        for k, v in pairs(x) do if not eq(v, y[k]) then return false end end
-        for k in pairs(y) do if x[k] == nil then return false end end
-        return true
-      end
-      same = eq(ns.Share.Read(folded, "profile"), gd)
-    end
-    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved", same, tostring(folded):sub(1, 60))
-    if HAS_CHAT then
-      check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
-    else
-      skip("XayaUI_Chat", "A: ... those are the Sidebar's and the privacy cover's defaults, all of them")
-    end
-    local six = ns.Share.Encode("profile", P.Snapshot(SIX, ""))
-    check("A: the six parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
-  end)
-  section("C: a part whose module is not loaded", function()
-    check("C: Nameplates is not offered while XayaUI Nameplates is off", P.BY_KEY.nameplates == nil)
-    local data = P.Snapshot({ settings = true }, "x")
-    data.parts.nameplates = { targetColor = false, color = { 1, 0, 0 } }
-    data.partInfo = { nameplates = { v = 1, module = "XayaUI_Nameplates", title = "XayaUI Nameplates", label = "Nameplates" } }
-    local txt = ns.Share.Encode("profile", data)
-    local back, def = ns.Share.Read(txt)
-    check("C: the pasted profile keeps the part", back and back.parts and type(back.parts.nameplates) == "table", back and back.parts and tostring(back.parts.nameplates))
-    local miss = P.Missing(back)
-    check("C: it is listed as missing, with its addon's title", #miss == 1 and miss[1].title == "XayaUI Nameplates", #miss)
-    local built = ns.BuildOptionsTable()
-    built.args.profiles.args.import.args.importBox.set({}, txt)
-    built = ns.BuildOptionsTable()
-    local ia = built.args.profiles.args.import.args
-    local line = ia.needs_nameplates and ia.needs_nameplates.name
-    check("C: Import shows the line \"needs XayaUI Nameplates\"", line == "needs XayaUI Nameplates", line)
-    local before = CueRulesDB.ui.selStyle
-    CueRulesDB.ui.selStyle = "text"
-    local res = def.Apply(back, { inc = { settings = true, nameplates = true }, rules = "add" })
-    check("C: Import skips it and says which addon it needs", res and res.skipped and res.skipped[1] == "XayaUI Nameplates" and #res.done == 1 and res.done[1] == "Settings",
-      res and table.concat(res.done or {}, ",") .. " / " .. table.concat(res.skipped or {}, ","))
-    check("C: ...and the other part still imports", CueRulesDB.ui.selStyle == before, CueRulesDB.ui.selStyle)
-    check("C: nothing of the skipped part was written anywhere", rawget(_G, "XayaUINameplatesDB") == nil)
-    local junk = P.Check({ v = 1, parts = { evil = { x = 1 }, settings = { minimap = { hide = true } } } })
-    check("C: a part that names no addon is still dropped", junk.parts.evil == nil and junk.parts.settings ~= nil)
-  end)
-else
-  section("B: the Nameplates part", function()
-    local NP = ns.Service("nameplates")
-    check("B: XayaUI Nameplates is on in this run", NP ~= nil)
-    local d = NP.DB()
-    d.color = { 0.2, 0.4, 0.6 }; d.targetColor = true; d.blizzBefore = { nameplateShowAll = "1" }
-    local built = ns.BuildOptionsTable()
-    local tick = built.args.profiles.args.export.args.inc_nameplates
-    check("B: Export offers a Nameplates tick box, ticked", tick and tick.name == "Nameplates" and tick.get() == true, tick and tick.name)
-    local box = exportAll(ns)
-    local data = ns.Share.Read(box)
-    local np = data and data.parts and data.parts.nameplates
-    check("B: the profile carries the target colour switch and colour", np and np.targetColor == true and np.color and math.abs(np.color[2] - 0.4) < 1e-9, np and tostring(np.color))
-    check("B: ...never the Put back store (blizzBefore)", np and np.blizzBefore == nil)
-    local info = data and data.partInfo and data.partInfo.nameplates
-    check("B: the part says its format version and addon", info and info.v == 1 and info.module == "XayaUI_Nameplates" and info.title == "XayaUI Nameplates", info and tostring(info.title))
-    check("B: the six older parts carry no part information (their strings stay as before)", data and data.partInfo and data.partInfo.rules == nil and data.partInfo.reskin == nil)
-    d.color = { 1, 1, 1 }; d.targetColor = false
-    local back, def = ns.Share.Read(box)
-    local res = def.Apply(back, { inc = { nameplates = true }, rules = "add" })
-    check("B: Import puts the colour and the switch back", math.abs(d.color[1] - 0.2) < 1e-9 and math.abs(d.color[3] - 0.6) < 1e-9 and d.targetColor == true, d.color[1])
-    check("B: ...and asks for a reload", res and res.reload == true and res.done[1] == "Nameplates", res and table.concat(res.done or {}, ","))
-  end)
-end
+section("A: byte-identical export", function()
+  -- the old build's string carries the data of feature addons that are not on this branch (REQUEST-LOG A23): it is decoded, their parts
+  -- and keys are taken out, and it is encoded again; the new build's string must be that, byte for byte
+  local gd = ns.Share.Read(GOLDEN, "profile")
+  local parts = type(gd) == "table" and gd.parts or {}
+  parts.qol = nil; parts.bonus = nil                       -- XayaUI QoL's and XayaUI Bonus's own parts
+  local rk = parts.reskin
+  if rk then rk.chat2 = nil; rk.chat = nil; rk.characterReskin = nil end   -- XayaUI Chat's two stores, the character pane (QoL / Blizzard Reskin)
+  local st = parts.settings
+  if st and st.ui then st.ui.friendColors = nil; st.ui.rsk = nil; st.ui.gm = nil end   -- Blizzard Reskin's keys (Modules.lua LEGACY_UNDER_UI.reskin)
+  local want = ns.Share.Encode("profile", gd)
+  local box = exportAll(ns)
+  check("A: the old build's string decodes and still holds this branch's four parts", rk ~= nil and parts.rules ~= nil and parts.themes ~= nil and st ~= nil and rk.reskinTabOff == true)
+  check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates not loaded), less the absent addons' data",
+    box == want, tostring(box):sub(1, 60))
+  local function eq(x, y)
+    if type(x) ~= type(y) then return false end
+    if type(x) ~= "table" then return x == y end
+    for k, v in pairs(x) do if not eq(v, y[k]) then return false end end
+    for k in pairs(y) do if x[k] == nil then return false end end
+    return true
+  end
+  check("A: ...and decoded, the two profiles are the same key by key (values included)", eq(ns.Share.Read(box, "profile"), gd))
+  local six = ns.Share.Encode("profile", P.Snapshot(PARTS, ""))
+  check("A: the four parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
+end)
+section("C: a part whose module is not loaded", function()
+  check("C: Nameplates is not offered while XayaUI Nameplates is not loaded", P.BY_KEY.nameplates == nil)
+  local data = P.Snapshot({ settings = true }, "x")
+  data.parts.nameplates = { targetColor = false, color = { 1, 0, 0 } }
+  data.partInfo = { nameplates = { v = 1, module = "XayaUI_Nameplates", title = "XayaUI Nameplates", label = "Nameplates" } }
+  local txt = ns.Share.Encode("profile", data)
+  local back, def = ns.Share.Read(txt)
+  check("C: the pasted profile keeps the part", back and back.parts and type(back.parts.nameplates) == "table", back and back.parts and tostring(back.parts.nameplates))
+  local miss = P.Missing(back)
+  check("C: it is listed as missing, with its addon's title", #miss == 1 and miss[1].title == "XayaUI Nameplates", #miss)
+  local built = ns.BuildOptionsTable()
+  built.args.profiles.args.import.args.importBox.set({}, txt)
+  built = ns.BuildOptionsTable()
+  local ia = built.args.profiles.args.import.args
+  local line = ia.needs_nameplates and ia.needs_nameplates.name
+  check("C: Import shows the line \"needs XayaUI Nameplates\"", line == "needs XayaUI Nameplates", line)
+  local before = CueRulesDB.ui.selStyle
+  CueRulesDB.ui.selStyle = "text"
+  local res = def.Apply(back, { inc = { settings = true, nameplates = true }, rules = "add" })
+  check("C: Import skips it and says which addon it needs", res and res.skipped and res.skipped[1] == "XayaUI Nameplates" and #res.done == 1 and res.done[1] == "Settings",
+    res and table.concat(res.done or {}, ",") .. " / " .. table.concat(res.skipped or {}, ","))
+  check("C: ...and the other part still imports", CueRulesDB.ui.selStyle == before, CueRulesDB.ui.selStyle)
+  check("C: nothing of the skipped part was written anywhere", rawget(_G, "XayaUINameplatesDB") == nil)
+  local junk = P.Check({ v = 1, parts = { evil = { x = 1 }, settings = { minimap = { hide = true } } } })
+  check("C: a part that names no addon is still dropped", junk.parts.evil == nil and junk.parts.settings ~= nil)
+end)
 
 section("D: Recycle Bin kinds", function()
   check("D: the six rule kinds are registered", ns.BinKind and ns.BinKind("rule") and ns.BinKind("group") and ns.BinKind("groupAll") and ns.BinKind("cue") and ns.BinKind("condition") and ns.BinKind("trigger") and true or false)
@@ -356,25 +298,17 @@ section("E: theme scopes", function()
   local base = {}
   for _, c in ipairs(T.CLASSES) do for prop in pairs(c[3]) do base[c[1] .. "." .. prop] = T.Col(c[1], prop) end end
   local function same(a, b) return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3] and a[4] == b[4] end
-  if HAS_RESKIN then
-    check("E: scopes are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
-      and T.Scope("reskin.tooltips") and T.Scope("reskin.tooltips").label == "Tooltips" and T.Scope("reskin.tooltips").parent == "reskin"
-      and T.Scope("reskin.chatpanel") and T.Scope("reskin.chatpanel").label == "Chat Panel" and T.Scope("reskin.charreskin").label == "Character Pane"
-      and T.Scope("reskin.gamemenu").label == "Esc Menu" and T.Scope("settings").label == "Settings window" and true or false)
-    local n = 0
-    for _, id in ipairs(T.scopeList or {}) do if id:find("^reskin%.") and id ~= "reskin.chatpanel" and id ~= "reskin.charreskin" then n = n + 1 end end
-    check("E: the 13 reskin pages each have a scope", n == 13, n)
-  else
-    skip("XayaUI_Reskin", "E: scopes are registered with their page titles (Tooltips, Chat Panel, Esc Menu: registered by the Reskin pages)")
-    skip("XayaUI_Reskin", "E: the 13 reskin pages each have a scope")
-    -- what the folders present do register: the core's two and QoL's Character Pane
-    check("E (present modules): the core's scopes and QoL's Character Pane are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
-      and T.Scope("settings") and T.Scope("settings").label == "Settings window" and T.Scope("reskin.charreskin") and T.Scope("reskin.charreskin").label == "Character Pane" and true or false)
-    -- the checks below resolve colours through two pages the Reskin folder registers (reskin.tooltips, reskin.menus): stand-ins with the same
-    -- ids and parent, so the resolution order (core Theme.lua) is still asserted
-    T.RegisterScope({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })
-    T.RegisterScope({ id = "reskin.menus", label = "Menus", parent = "reskin" })
-  end
+  -- the core registers two scopes (Theme.lua); the element pages that registered the others (Tooltips, Chat Panel, Esc Menu, the 13
+  -- Blizzard Reskin pages, QoL's Character Pane) belong to addons that are not on this branch
+  check("E: the core's scopes are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
+    and T.Scope("settings") and T.Scope("settings").label == "Settings window" and true or false)
+  local others = {}
+  for _, id in ipairs(T.scopeList or {}) do if id ~= "reskin" and id ~= "settings" then others[#others + 1] = id end end
+  check("E: ...and no other scope is registered (no element page of an absent addon)", #others == 0, table.concat(others, ","))
+  -- the checks below resolve colours through two element scopes under "reskin": registered here with the ids and parent the Blizzard
+  -- Reskin pages used, so the resolution order (core Theme.lua) is still asserted
+  T.RegisterScope({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })
+  T.RegisterScope({ id = "reskin.menus", label = "Menus", parent = "reskin" })
   check("E: nothing is stored while no scope overrides anything", CueRulesDB.theme.scopes == nil)
   T.SetScopeToken("reskin.tooltips", "buttonBg", { 0.9, 0.1, 0.1, 1 })
   T.SetScopeClassColor("reskin", "xui-window", "bg", { 0.2, 0.9, 0.2, 1 })
@@ -417,36 +351,27 @@ def runtime(enabled_filter):
 
 def main():
     if "--golden" in sys.argv:
-        L, world, loader = runtime(lambda n: n not in ("XayaUI_DevAssist", "XayaUI_Nameplates"))
-        res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(fill(GOLDEN_LUA), world, loader)
+        # this branch's strings (BUTTON: what section A compares with GOLDEN less the absent addons' data; PARTS: the four parts
+        # ticked by hand); GOLDEN itself came from this file's earliest version on main 774980c (see the docstring)
+        L, world, loader = runtime(lambda n: True)
+        res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(GOLDEN_LUA, world, loader)
         print("BUTTON " + str(res[1]))
-        print("SIX " + str(res[2]))
+        print("PARTS " + str(res[2]))
         return
-    bad, total, errs_all = 0, 0, []
-    fill = lambda src: (src.replace("__HAS_CHAT__", str(HAS["Chat"]).lower()).replace("__HAS_RESKIN__", str(HAS["Reskin"]).lower())
-                        .replace("__HAS_NP__", str(HAS["Nameplates"]).lower()))
-    for np_on in (False, True):
-        if np_on and not HAS["Nameplates"]:
-            print("SKIP (QA-branch module absent: XayaUI_Nameplates) [Nameplates on] B: the Nameplates part (whole run: Export offers it, the string carries it, Import puts it back)")
-            continue
-        L, world, loader = runtime(lambda n: n != "XayaUI_DevAssist" and (np_on or n != "XayaUI_Nameplates"))
-        res = L.eval("function(src, W, Ld, g, np) return loadstring(src)()(W, Ld, g, np) end")(fill(TEST_LUA), world, loader, GOLDEN, np_on)
-        tag = "[Nameplates on] " if np_on else "[Nameplates off] "
-        for i in range(1, len(res) + 1):
-            name, ok = res[i][1], res[i][2]
-            if len(res[i]) >= 3 and res[i][3]:
-                print(name.replace(") ", ") " + tag, 1))
-                continue
-            print(("PASS " if ok else "FAIL ") + tag + name)
-            total += 1
-            if not ok:
-                bad += 1
-        errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
-        for e in errs:
-            print("ERROR in the game stand-in:", str(e)[:600])
-        errs_all += errs
-    print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))
-    sys.exit(1 if bad or errs_all else 0)
+    bad, total = 0, 0
+    L, world, loader = runtime(lambda n: True)   # every addon on this branch
+    res = L.eval("function(src, W, Ld, g) return loadstring(src)()(W, Ld, g) end")(TEST_LUA, world, loader, GOLDEN)
+    for i in range(1, len(res) + 1):
+        name, ok = res[i][1], res[i][2]
+        print(("PASS " if ok else "FAIL ") + name)
+        total += 1
+        if not ok:
+            bad += 1
+    errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
+    for e in errs:
+        print("ERROR in the game stand-in:", str(e)[:600])
+    print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs)))
+    sys.exit(1 if bad or errs else 0)
 
 
 if __name__ == "__main__":

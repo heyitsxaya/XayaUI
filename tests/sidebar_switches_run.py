@@ -1,25 +1,37 @@
 #!/usr/bin/env python3
-"""Sidebar switches, the Utilities group, the talent scan in Settings (Options 0.6.40, QoL 0.7.18, Bonus 0.6.11). Xaya, 2026-11-05:
+"""Sidebar switches, the talent scan in Settings, the window's look (Options 0.6.40 / 0.6.55). Xaya, 2026-11-05:
   A "move all enable/disable toggles onto the sidebar instead for all bonus features and QoL items"
-  B "Under bonus features, create "Utilities" Group and nest Notepad and Calculator"
   C "scan belongs in Settings" (the "All talents (every class and spec)" section of Rules > Class/Spec Rule Creator)
+Main holds XayaUI, XayaUI_Options and XayaUI_Rules only. The rows with a sidebar tick box (A: QoL, Bonus Features, Chat and the
+Blizzard Reskin pages) and the Utilities group (B) belong to the modules that live on another branch, so on main the settings window has
+no QoL / Bonus Features / Chat / Blizzard Reskin tab and no row with a tick box of its own; this test checks that. The switch machinery
+itself is main's (XayaUI_Options TreePaint.lua Tree.RowSwitch / SwitchClick / SwitchTip / PaintRowSwitch, Options.lua GreyWhileOff /
+NestX / GreyRow) and acts on any feature page with a group.xuiSwitch, so the test registers its own stand-in pages in the Bonus Features
+tab (ns.RegisterSettingsPage, gated: they build nothing until the test turns them on) and checks the machinery on them exactly as it
+was checked on the retired modules' rows:
+  Test Alpha, Test Beta   a switch, no parts (Data Panels / Enhanced Tooltips)
+  Test Group              no switch, parts (Utilities / Cursor); its part Test Tool has a switch and one setting (Calculator / Notepad)
+  Test Kit                a switch and parts that are listed only while it is on (Character Toolkit): Kit Part (a switch) and
+                          Kit Layout (no switch, no parts; Chat Panel > Layout)
 Loads the real addons in the stand-in game, opens the settings window and checks what the player sees and gets:
-  A every QoL / Bonus Features row whose feature (or part) has one on / off carries a tick box left of its name showing the saved
-    state; no other row has one; the page no longer shows that switch; a click on the box changes the setting AND the feature on
-    screen (Notepad box, a data panel, the cursor highlight and its OnUpdate, the Character Toolkit's parts in the left pane), does not
-    select the row, and redraws the window once without building a new options tree; the box sits in the row's empty arrow slot, so it
-    costs those names nothing (on Character Toolkit, which has the arrow, only that name moves by the box's width).
-    Safety of that reuse: the whole options tree is built with each switch off and on and must be the same (functions aside).
-  B Bonus Features has a Utilities row with Calculator and Notepad under it (no Notepad row of its own any more); the Notepad page
-    opens there; the Calculator page's "Open calculator" button opens the calculator.
+  A the stand-in rows with a switch carry a tick box left of their name showing the saved state, no other row has one; the box sits in
+    the row's empty arrow slot (so it costs those names nothing; on Test Kit, which has parts, only that name moves by the box's width);
+    its hover reads the name, one sentence, Enabled / Disabled; a click on it changes the setting, does not select the row, and redraws
+    the window once without building a new options tree. Safety of that reuse: the whole options tree is built with each switch off and
+    on and must be the same (functions aside).
   C Settings > UI Options > Rule Creation holds the section (header, last-scan line, button); the button runs the real scan and its
     result shows there; the Rule Creator no longer has it.
+  G (Options 0.6.55) the top tabs share the row evenly (32 px, 14 pt outlined names); the left and right panes have no border line,
+    their fills stay, with one 1 px divider between them; a part's row starts 8 px right of its parent's name, a part with no box and
+    no arrow has its name 8 px right of its parent's (UI-69); a switched-off row's name is in the theme's Muted colour and its settings
+    are greyed, both clear when it is on again.
 Stand-in limits: the game hands a click to the topmost mouse-enabled frame (here: the box is a mouse-enabled child of the row, above
-it; the stand-in has no hit test). The stand-in fires no OnSizeChanged, so after each redraw the test runs the tree frame's own
-OnSizeChanged handler (AceGUI's, which redraws the rows in the game when the frame gets its height). Its rows also measure 0 px high,
-so Skin.lua's pass that fits the number of shown rows to their drawn heights cannot grow the list back after a redraw (a plain redraw
-of the old code ends the same way); the test clears that remembered count (xuiLines) before the refresh.
-A real check box flips its own tick before OnClick; the stand-in's Click does not, so the test flips it first, as the game would.
+it; the stand-in has no hit test). A real check box flips its own tick before OnClick; the stand-in's Click does not, so the test flips
+it first, as the game would.
+The stand-in fires no OnSizeChanged, so after each redraw the test runs the tree frame's own OnSizeChanged handler
+(AceGUI's, which redraws the rows in the game when the frame gets its height). Its rows also measure 0 px high, so Skin.lua's pass that
+fits the number of shown rows to their drawn heights cannot grow the list back after a redraw (a plain redraw of the old code ends the
+same way); the test clears that remembered count (xuiLines) before the refresh.
 Run: python3 tests/sidebar_switches_run.py   (slow: each redraw of the stand-in window takes many seconds here, not in the game)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +55,39 @@ if not (ns and ns.BuildOptionsTable) then return end
 local P = ns.NewRule(); P.name = "Demon Spikes"; P.enabled = true; P.useCd = true; P.spellID = 203720; P.cdState = "ready"; ns.NormalizeRule(P)
 ns.rules = { P }; CueRulesDB.rules = ns.rules
 
+-- The stand-in feature pages (see the header). Each build returns a fresh table, like a module's page; nothing while STAND is off.
+local STAND = false
+local SW = { alpha = true, beta = false, tool = false, kit = false, kitpart = false }
+local function sw(key, name, tip, desc)
+  return { type = "toggle", name = name, tip = tip, desc = desc, get = function() return SW[key] end, set = function(_, v) SW[key] = v and true or false end }
+end
+local function opt(name) return { type = "toggle", name = name, order = 1, get = function() return false end, set = function() end } end
+local SENT = { alpha = "Shows the alpha test panel on your screen.", tool = "Adds the test tool to your screen.",
+  kit = "Adds the test kit to your character window.", kitpart = "Adds the kit part to the test kit." }
+local BETA_DESC = "Turns the beta test panel on or off. Off: nothing of it runs."   -- no tip: the hover takes the desc's first sentence
+ns.RegisterSettingsPage("bonus", "xtalpha", function()
+  if not STAND then return nil end
+  return { type = "group", name = "Test Alpha", xuiSwitch = sw("alpha", "Test Alpha", SENT.alpha), args = { opt = opt("Alpha option") } }
+end)
+ns.RegisterSettingsPage("bonus", "xtbeta", function()
+  if not STAND then return nil end
+  return { type = "group", name = "Test Beta", xuiSwitch = sw("beta", "Test Beta", nil, BETA_DESC), args = { opt = opt("Beta option") } }
+end)
+ns.RegisterSettingsPage("bonus", "xtgroup", function()
+  if not STAND then return nil end
+  return { type = "group", name = "Test Group", childGroups = "tree", args = {
+    intro = { type = "description", order = 0, name = "Two test tools." },
+    xttool = { type = "group", name = "Test Tool", order = 1, xuiSwitch = sw("tool", "Test Tool", SENT.tool), args = { opt = opt("Tool option") } } } }
+end)
+ns.RegisterSettingsPage("bonus", "xtkit", function()
+  if not STAND then return nil end
+  local function off() return not SW.kit end
+  return { type = "group", name = "Test Kit", childGroups = "tree", xuiSwitch = sw("kit", "Test Kit", SENT.kit), args = {
+    intro = { type = "description", order = 0, name = "A test kit with two parts." },
+    kitpart = { type = "group", name = "Kit Part", order = 1, hidden = off, xuiSwitch = sw("kitpart", "Kit Part", SENT.kitpart), args = { opt = opt("Part option") } },
+    layout = { type = "group", name = "Kit Layout", order = 2, hidden = off, args = { opt = opt("Layout option") } } } }
+end)
+
 -------------------------------------------------------------------------------------------------------------------------------
 -- 1. The options tree (no drawing)
 -------------------------------------------------------------------------------------------------------------------------------
@@ -56,90 +101,16 @@ local function collect(g, path)
     if type(c) == "table" and c.type == "group" then local p = { unpack(path) }; p[#p + 1] = k; collect(c, p) end
   end
 end
-for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
--- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
--- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75;
--- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
--- (QoL 0.7.53 / Bonus 0.6.37, character pane split stage 2: the Stat Calculator's Panel and Spell Math parts are under Bonus Features >
--- Character Toolkit, bonus>statcalc, with its own switch; the Slot Overlays and Tooltip lines stay under QoL > Character Toolkit)
-local WANT = { "qol>chartoolkit", "bonus>statcalc", "bonus>statcalc>panelPart", "qol>chartoolkit>overlayPart", "bonus>statcalc>spells",
-  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
-  "bonus>utilities>calculator",
-  -- (S1 #48, Options 0.6.50: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
-  "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist",
-  -- (Reskin 0.6.9, BlizzardSkins.lua: Blizzard Windows, Minimap, Tooltips, Objective Tracker)
-  "reskin>blizzwindows", "reskin>minimapshape", "reskin>rsktooltips", "reskin>objtracker",
-  "reskin>rsktoasts",   -- (Reskin 0.6.11: Toasts and Pop-ups)
-  "reskin>rskmenus",    -- (Reskin 0.6.13: Menus)
-  "reskin>rskbubbles",  -- (Reskin 0.6.14: Chat Bubbles)
-  "reskin>rskstatusbars",  -- (Reskin 0.6.15: Status Bars)
-  "reskin>rskmmbuttons",   -- (Reskin 0.6.16: Minimap Buttons)
-  "reskin>rskbuttons",     -- (Reskin 0.6.17: Buttons)
-  -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
-  "qol>nameplates",
-  "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
-  "qol>charpane",       -- (QoL 0.7.53, character pane split stage 1: QoL > Character Pane, the item level / enchants / gems / stat list)
-  "reskin>friendcolors" }   -- (Reskin 0.6.8, CHAT-5)
--- (QA-branch modules: main keeps only core, Options, Rules, QoL, Bonus, Dev Assist and Media. A row that belongs to an absent module is not in the tree:
--- its checks are printed as SKIP, never silently; the rows of the others are checked exactly as before. XUI_ABSENT: { XayaUI_Chat = true, ... })
-local NEED = { ["reskin>chatpanel"] = "XayaUI_Chat", ["qol>improvedchat"] = "XayaUI_Chat", ["qol>nameplates"] = "XayaUI_Nameplates",
-  ["reskin>gamemenu"] = "XayaUI_Reskin", ["reskin>blizzwindows"] = "XayaUI_Reskin", ["reskin>minimapshape"] = "XayaUI_Reskin", ["reskin>rsktooltips"] = "XayaUI_Reskin",
-  ["reskin>objtracker"] = "XayaUI_Reskin", ["reskin>rsktoasts"] = "XayaUI_Reskin", ["reskin>rskmenus"] = "XayaUI_Reskin", ["reskin>rskbubbles"] = "XayaUI_Reskin",
-  ["reskin>rskstatusbars"] = "XayaUI_Reskin", ["reskin>rskmmbuttons"] = "XayaUI_Reskin", ["reskin>rskbuttons"] = "XayaUI_Reskin", ["reskin>friendcolors"] = "XayaUI_Reskin" }
-local function skip(addon, name) R[#R + 1] = { "SKIP (QA-branch module absent: " .. addon .. ") " .. name, true } end
-do
-  local present = {}
-  for _, k in ipairs(WANT) do
-    if NEED[k] and XUI_ABSENT[NEED[k]] then
-      skip(NEED[k], "A: the row " .. k .. " has an on / off for its tick box")
-      skip(NEED[k], "A: the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)")
-      skip(NEED[k], "A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)")
-    else present[#present + 1] = k end
-  end
-  WANT = present
-end
-for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
-check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
-check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
-  and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
-  and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
-  and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
--- (Options 0.6.58, REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default. all should just show a
--- one-sentence description and an enabled/disabled status") every switch has its one sentence (tip), never an "Off ..." text
-for _, k in ipairs(WANT) do
-  local sw = found[k]; local t = sw and sw.tip
-  local one = type(t) == "string" and t ~= "" and t:match("[%.!?]$") ~= nil and not t:sub(1, -2):find("[%.!?]%s") and not t:find("^Off")
-    and not t:find("Off:", 1, true)
-  check("A: the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)", one, t)
-end
--- the switch is no longer on the pages: no toggle anywhere in the QoL / Bonus Features tabs carries a switch's name (or the old
--- overview switches' names)
-local names = { ["panel"] = true, ["cursor highlight"] = true, ["gradient cursor trail"] = true, ["tooltip lines"] = true }
-for _, sw in pairs(found) do if type(sw.name) == "string" then names[sw.name:lower()] = true end end
-local left = {}
-local function toggles(g, path)
-  for k, c in pairs(type(g) == "table" and g.args or {}) do
-    if type(c) == "table" then
-      if c.type == "toggle" and type(c.name) == "string" and names[c.name:lower()] then left[#left + 1] = path .. ">" .. k .. " (" .. c.name .. ")" end
-      if c.type == "group" then toggles(c, path .. ">" .. k) end
-    end
-  end
-end
-toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus"); toggles(node(T, "reskin"), "reskin")
-check("A: the pages no longer show those switches (Enable Data Panels, Character Toolkit, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
-section("A: explanations", function()
-check("A: every switch keeps the explanation its old switch had (shown on the box's hover)", (function()
-  for _, k in ipairs({ "qol>chartoolkit", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
-    local sw = found[k]; if not (sw and type(sw.desc) == "string" and #sw.desc > 20) then return false end
-  end
-  -- (UI-65, 2026-11-07: the text was shortened from "Master switch. Off: ..." to two sentences)
-  return found["bonus>datapanels"].desc:find("Turns every data panel on or off", 1, true) ~= nil
-end)())
-end)
+collect(T, {})   -- (every tab of the window: Rules, Profiles, Settings and any module tab)
+-- (A23: main holds core, Options and Rules only) the tabs whose rows carry a sidebar tick box (QoL, Bonus Features, Chat, Blizzard
+-- Reskin) belong to the modules on the other branch: on main none of them is built and no row has a switch
+check("A: main has no QoL / Bonus Features / Chat / Blizzard Reskin tab, and no row carries a sidebar tick box (group.xuiSwitch)",
+  node(T, "qol") == nil and node(T, "bonus") == nil and node(T, "chat") == nil and node(T, "reskin") == nil and foundN == 0,
+  foundN .. " " .. (function() local t = {} for k in pairs(found) do t[#t + 1] = k end return table.concat(t, ",") end)())
 
--- reusing the drawn tree after a click is safe only if building it again would give the same tree: build it with every switch off
--- and on and compare everything but functions (a control first: two builds in a row are the same)
-section("A: the tree with each switch off and on", function()
+-- reusing the drawn tree after a switch click is safe only if building it again would give the same tree: two builds in a row must
+-- be the same (everything but functions). (Before A23 the test also built it with each module switch off and on; main has no such switch.)
+section("A: the tree built twice", function()
 local function shape(t, onpath)
   local keys = {}
   for k in pairs(t) do keys[#keys + 1] = k end
@@ -158,29 +129,45 @@ end
 local function firstDiff(a, b) local i = 1; while i <= #a and a:sub(i, i) == b:sub(i, i) do i = i + 1 end; return a:sub(math.max(1, i - 80), i + 40) .. " | " .. b:sub(math.max(1, i - 80), i + 40) end
 local S0 = shape(ns.BuildOptionsTable(), {})
 check("control: two builds of the options tree in a row are the same", S0 == shape(ns.BuildOptionsTable(), {}))
+
+-- the stand-in pages' switches: exactly those rows carry one; each tree is the same with the switch off and on
+STAND = true
+local T2 = ns.BuildOptionsTable()
+found, foundN = {}, 0
+collect(T2, {})
+local WANT = { "bonus>xtalpha", "bonus>xtbeta", "bonus>xtgroup>xttool", "bonus>xtkit", "bonus>xtkit>kitpart" }
+for _, k in ipairs(WANT) do check("A (stand-in): the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
+check("A (stand-in): no other row has one (Test Group, Kit Layout have no single on / off)", foundN == #WANT, foundN)
+check("control (stand-in): two builds of the options tree in a row are the same", shape(ns.BuildOptionsTable(), {}) == shape(ns.BuildOptionsTable(), {}))
 local function flipBuild(key)
-  local sw = found[key]
-  if not sw then return false, "no switch" end
-  local was = sw.get({}) and true or false
+  local s = found[key]
+  if not s then return false, "no switch" end
+  local was = s.get({}) and true or false
   local a = shape(ns.BuildOptionsTable(), {})
-  sw.set({}, not was)
-  local now = sw.get({}) and true or false
+  s.set({}, not was)
+  local now = s.get({}) and true or false
   local b = shape(ns.BuildOptionsTable(), {})
-  sw.set({}, was)
+  s.set({}, was)
   if now == was then return false, "the switch did not change" end
   return a == b, (a == b) and "" or firstDiff(a, b)
 end
-found["qol>chartoolkit"].set({}, true)   -- its parts' switches matter only while the toolkit is on
+found["bonus>xtkit"].set({}, true)   -- its part's switch matters only while the kit is on
 for _, k in ipairs(WANT) do
-  if k == "reskin>charreskin" and XUI_ABSENT.XayaUI_Reskin then
-    -- its tick stores Blizzard Reskin's half of characterReskin: with XayaUI_Reskin absent the switch cannot change (see the report)
-    skip("XayaUI_Reskin", "A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)")
-  else
-    local ok, why = flipBuild(k)
-    check("A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)", ok, why)
-  end
+  local ok, why = flipBuild(k)
+  check("A (stand-in): the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)", ok, why)
 end
-found["qol>chartoolkit"].set({}, false)
+found["bonus>xtkit"].set({}, false)
+-- (Options 0.6.58, REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default. all should just show a
+-- one-sentence description and an enabled/disabled status") every switch has its one sentence (its tip, or the first sentence of its
+-- desc: Tree.OneSentence), never an "Off ..." text
+for _, k in ipairs(WANT) do
+  local s = found[k]
+  local t = s and ns.OptionsApi.SwitchSentence and ns.OptionsApi.SwitchSentence(s, {})
+  local one = type(t) == "string" and t ~= "" and t:match("[%.!?]$") ~= nil and not t:sub(1, -2):find("[%.!?]%s") and not t:find("^Off")
+    and not t:find("Off:", 1, true)
+  check("A (stand-in): the row " .. k .. "'s switch has a one-sentence description for its hover (no \"Off\" text)", one, t)
+end
+STAND = false
 end)
 
 -- C in the tree: the Rule Creator no longer has the section; Settings > UI Options > Rule Creation has it (both settings layouts
@@ -231,7 +218,7 @@ local function box(tab, uv) local b = row(tab, uv); local x = b and b.xuiSwitchB
 local function selected(tab) local st = ACD:GetStatusTable("CueRules", { tab }); return st and st.groups and st.groups.selected end
 local function settle(steps)   -- a few frames, then what the game does when the tree frame gets its height (AceGUI's own OnSizeChanged:
   W.tick(0.05, steps or 6)       -- RefreshTree); the stand-in fires no OnSizeChanged, so without this a redrawn tree keeps one row
-  for _, tab in ipairs({ "bonus", "qol", "set", "reskin" }) do
+  for _, tab in ipairs({ "bonus", "set" }) do
     local t = tree(tab); local f = t and t.treeframe and t.treeframe:GetScript("OnSizeChanged")
     if f then t.xuiLines = nil; f(t.treeframe) end   -- (xuiLines: Skin.lua's fitted line count; see the header)
   end
@@ -250,180 +237,11 @@ local function oneRedraw(label)
     ("at the click %d redraws / %d builds; after 6 frames %d / %d"):format(clickR, clickF, redraws, fresh))
 end
 
--- a message from elsewhere (in the stand-in an aura-setup timer prints one) would open the console window, whose own redraw
--- (Tree.ViewChanged) would be counted here: the console's auto-open is off for this test
+-- a message from elsewhere (in the stand-in an aura-setup timer prints one) would open the console window and redraw the settings
+-- window (Tree.ViewChanged): the console's auto-open is off for this test
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.consoleAutoOpen = false
-ns.Settings("bonus").dataPanels.bl.enabled = true   -- one panel switched on, so the master switch shows on screen
 pcall(ns.ToggleUI); settle()
-ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
-check("the window is open on Bonus Features > Enhanced Tooltips", root() ~= nil and selected("bonus") == "tooltips", tostring(selected("bonus")))
-
--- A, Bonus Features
-section("A: Bonus Features", function()
-local bN, bD = box("bonus", "utilities\001notepad"), box("bonus", "datapanels")
-check("A: Notepad's row has a tick box, ticked like its setting (the Notepad on, its box hidden)", bN ~= nil and bN:GetChecked() == true
-  and ns.Settings("bonus").notepad.enabled == true and ns.Settings("bonus").notepad.shown == false)
-check("A: Data Panels' row has a tick box, unticked like the master switch", bD ~= nil and bD:GetChecked() == false and ns.Settings("bonus").dataPanels.general.enabled == false)
-check("A: Enhanced Tooltips' row has a tick box, ticked (on by default); none on Utilities", box("bonus", "tooltips") ~= nil
-  and box("bonus", "tooltips"):GetChecked() == true and box("bonus", "utilities") == nil
-  and row("bonus", "tooltips") ~= nil and row("bonus", "utilities") ~= nil)
-check("A: Calculator's row has a tick box, ticked (on by default, as it always was)", box("bonus", "utilities\001calculator") ~= nil
-  and box("bonus", "utilities\001calculator"):GetChecked() == true)
-do
-  local r, t, x = row("bonus", "datapanels"), row("bonus", "tooltips"), bD
-  local p, rel, rp, ox
-  if x then p, rel, rp, ox = x:GetPoint(1) end
-  check("A: the box sits on its row, in the empty arrow slot left of the name, above the row, and takes the mouse (a click on it is not the row's)",
-    x and x:GetParent() == r and p == "LEFT" and rel == r and rp == "LEFT" and ox == 6 and x:GetFrameLevel() > r:GetFrameLevel() and x:IsMouseEnabled(),
-    tostring(p) .. " " .. tostring(ox))
-  check("A: ...and the same name room as Enhanced Tooltips (also boxed) on the same level (#369)", r and t and r.xuiTextL == t.xuiTextL
-    and r.xuiTextR == t.xuiTextR and r.xuiTextR == 4, tostring(r and r.xuiTextL) .. "/" .. tostring(r and r.xuiTextR) .. " vs " .. tostring(t and t.xuiTextL) .. "/" .. tostring(t and t.xuiTextR))
-  check("A: the box ends before the name starts (no overlap, V11)", x and ox + x:GetWidth() <= r.xuiTextL - 2, tostring(ox) .. "+" .. tostring(x and x:GetWidth()) .. " vs " .. tostring(r.xuiTextL))
-end
-check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled; no \"Off\" text (UI-42)", (function()
-  local said = {}
-  local tip = GameTooltip
-  local oS, oA = tip.SetText, tip.AddLine
-  tip.SetText = function(self, t) said = { t }; return oS(self, t) end
-  tip.AddLine = function(self, t, ...) said[#said + 1] = t; return oA(self, t, ...) end
-  local f = bD:GetScript("OnEnter"); if f then f(bD) end
-  tip.SetText, tip.AddLine = oS, oA
-  local s = table.concat(said, " | ")
-  local want = ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.general and ns.Settings("bonus").dataPanels.general.enabled and "Enabled" or "Disabled"
-  return #said == 3 and said[1] == "Data Panels" and said[2] == "Shows info panels on your screen: time, gold, frame rate and more." and said[3] == want and not s:find("Off", 1, true), s
-end)())
-
--- (Bonus 0.6.14) the Notepad's box is the whole feature: shown first with Show Notepad (its page), then the row unticked and ticked
-ns.Notepad_SetShown(true); settle()
-check("A: Notepad: the box is clickable", click("bonus", "utilities\001notepad", false))
-check("A: Notepad box unticked: the Notepad is off, its box hidden, its events let go (Show Notepad stays saved)", ns.Settings("bonus").notepad.enabled == false
-  and ns.Settings("bonus").notepad.shown == true and _G.XayaUINotepad ~= nil and not _G.XayaUINotepad:IsShown())
-check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
-oneRedraw("A: Notepad box unticked")
-check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001notepad") and box("bonus", "utilities\001notepad"):GetChecked() == false)
-click("bonus", "utilities\001notepad", true)
-check("A: Notepad box ticked: on again, the box shows as saved", ns.Settings("bonus").notepad.enabled == true and _G.XayaUINotepad:IsShown())
-oneRedraw("A: Notepad box ticked")
-ns.Notepad_SetShown(false); settle()
--- (Bonus 0.6.16) the Calculator's box: the whole Calculator; shown first, then the row unticked and ticked
-ns.Calculator_Open(); settle()
-check("A: Calculator: the window opens while it is on", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
-check("A: Calculator: the box is clickable", click("bonus", "utilities\001calculator", false))
-check("A: Calculator box unticked: off, its window closed", ns.Settings("bonus").calculator.enabled == false and not _G.XayaUICalculator:IsShown())
-check("A: ...the row was not selected (Enhanced Tooltips is still open)", selected("bonus") == "tooltips", tostring(selected("bonus")))
-oneRedraw("A: Calculator box unticked")
-check("A: ...and the redrawn box shows it unticked", box("bonus", "utilities\001calculator") and box("bonus", "utilities\001calculator"):GetChecked() == false)
-ns.Calculator_Open(); settle()
-check("A: Calculator off: opening it does nothing", not _G.XayaUICalculator:IsShown())
-click("bonus", "utilities\001calculator", true)
-check("A: Calculator box ticked: on again (the window stays closed until opened)", ns.Settings("bonus").calculator.enabled == true and not _G.XayaUICalculator:IsShown())
-oneRedraw("A: Calculator box ticked")
-click("bonus", "tooltips", false)
-check("A: Enhanced Tooltips box unticked: the feature is off (nothing of it runs)", ns.Settings("bonus").tooltips.enabled == false and ns.TT.on == false)
-oneRedraw("A: Enhanced Tooltips box unticked")
-click("bonus", "tooltips", true)
-check("A: Enhanced Tooltips box ticked: on again", ns.Settings("bonus").tooltips.enabled == true and ns.TT.on == true)
-click("bonus", "datapanels", true)
-check("A: Data Panels box ticked: master switch on, the left panel shows", ns.Settings("bonus").dataPanels.general.enabled == true
-  and _G.XayaUIDataPanel_bl ~= nil and _G.XayaUIDataPanel_bl:IsShown())
-check("A: ...the row was not selected", selected("bonus") == "tooltips", tostring(selected("bonus")))
-oneRedraw("A: Data Panels box ticked")
-click("bonus", "datapanels", false)
-check("A: Data Panels box unticked: master off, the panel is hidden", ns.Settings("bonus").dataPanels.general.enabled == false and _G.XayaUIDataPanel_bl ~= nil and not _G.XayaUIDataPanel_bl:IsShown())
-oneRedraw("A: Data Panels box unticked")
-end)
-
--- B, Utilities
-section("B: Utilities", function()
-do
-  local u, c, n = row("bonus", "utilities"), row("bonus", "utilities\001calculator"), row("bonus", "utilities\001notepad")
-  check("B: Bonus Features has a Utilities row with Calculator and Notepad under it", u and c and n and u.level == 1 and c.level == 2 and n.level == 2)
-  local t = tree("bonus"); local order = {}
-  for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
-  -- (Bonus 0.6.37, character pane split stage 2) Character Toolkit (the Stat Calculator, from QoL) sorts first by its name
-  -- (2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: the Bonus node "Character Toolkit" is titled "Stat Calculator", so by name it sorts after Enhanced Tooltips)
-  check("B: the rows read Data Panels, Enhanced Tooltips, Stat Calculator, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
-    table.concat(order, ",") == "datapanels,tooltips,statcalc,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
--- (Bonus 0.6.37) Bonus Features > Character Toolkit: its own box; ticked, Panel and Spell Math show under it (Panel ticked by default)
-  check("A: Bonus Features > Character Toolkit's row has its own tick box, unticked; its parts are not listed while it is off", box("bonus", "statcalc")
-    and box("bonus", "statcalc"):GetChecked() == false and row("bonus", "statcalc\001panelPart") == nil)
-  click("bonus", "statcalc", true)
-  check("A: ...ticked: on (Bonus's own setting); Panel and Spell Math show under it (Panel ticked)", ns.Settings("bonus").characterToolkit.enabled == true
-    and box("bonus", "statcalc\001panelPart") and box("bonus", "statcalc\001spells") and box("bonus", "statcalc\001panelPart"):GetChecked() == true)
-  click("bonus", "statcalc", false)
-  check("A: ...unticked: off, its parts leave the list", ns.Settings("bonus").characterToolkit.enabled == false and row("bonus", "statcalc\001panelPart") == nil)
-
-  local up = node(ns.BuildOptionsTable(), "bonus", "utilities")
-  check("B: Utilities' own page is an overview of its tools", up and up.args.calcNote and up.args.calcNote.name:find("Calculator", 1, true)
-    and up.args.notesNote and up.args.notesNote.name:find("Notepad", 1, true))
-end
-ns.Notepad_OpenSettings(); settle()
-check("B: the Notepad's settings opener goes to Utilities > Notepad", selected("bonus") == "utilities\001notepad", tostring(selected("bonus")))
-check("A: the Notepad page has Show Notepad on it again (Bonus 0.6.14: the row's tick box is the whole Notepad)", findW(root(), function(w) return optName(w) == "Lock position and size" end) ~= nil
-  and findW(root(), function(w) return w.type == "CheckBox" and optName(w) == "Show Notepad" end) ~= nil)
--- (core 0.6.61, Bonus 0.6.24; UI-53) the page's long text is in its Description box, opened by the info icon: open it to read it
-if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = true end
-ACD:SelectGroup("CueRules", "bonus", "utilities", "calculator"); settle()
-local openBtn = findW(root(), function(w) return w.type == "Button" and optName(w) == "Open calculator" end)
-check("B: the Calculator page has an Open calculator button", openBtn ~= nil)
-check("B: ...and it says what the calculator is and how to open it", findW(root(), function(w) local u = w:GetUserDataTable(); local o = u and u.option
-  return o and type(o.name) == "string" and o.name:find("/xui calc", 1, true) ~= nil end) ~= nil)
-check("B: ...and its example answer is what the calculator gives (V5: page text and the calculator agree)", (function()
-  local v = ns.CalcEval and ns.CalcEval("23,249 / 3,472"); local a = v and ns.CalcFormat(v)
-  return a == "6.696141" and findW(root(), function(w) local u = w:GetUserDataTable(); local o = u and u.option
-    return o and type(o.name) == "string" and o.name:find("= " .. a, 1, true) ~= nil end) ~= nil, a
-end)())
-if openBtn then openBtn:Fire("OnClick"); W.tick(0.1, 3) end
-check("B: Open calculator opens the calculator", _G.XayaUICalculator ~= nil and _G.XayaUICalculator:IsShown())
-if ns.infoBoxOpen then ns.infoBoxOpen["bonus.calculator"] = nil end
-if _G.XayaUICalculator then _G.XayaUICalculator:Hide() end
-end)
-
--- A, QoL
-section("A: QoL", function()
-ACD:SelectGroup("CueRules", "qol", "cursor"); settle()
-check("A: QoL: Cursor Highlight and Gradient Cursor Trail rows have tick boxes (unticked, off by default); Cursor itself has none",
-  box("qol", "cursor\001highlight") and box("qol", "cursor\001trail") and box("qol", "cursor") == nil and row("qol", "cursor") ~= nil
-  and box("qol", "cursor\001highlight"):GetChecked() == false)
-check("A: the Cursor page no longer has the two switches", findW(root(), function(w) return w.type == "CheckBox"
-  and (optName(w) == "Cursor Highlight" or optName(w) == "Gradient Cursor Trail") end) == nil
-  and findW(root(), function(w) local u = w:GetUserDataTable(); return u and u.option and type(u.option.name) == "string" and u.option.name:find("Two separate effects", 1, true) ~= nil end) ~= nil)
-local function hlFrame() for _, o in ipairs(W.objects) do if o._strata == "TOOLTIP" and o._level == 70 and o._parent == UIParent and o._kind == "Frame" then return o end end end
-click("qol", "cursor\001highlight", true)
-local hf = hlFrame()
-check("A: Cursor Highlight ticked: on, its shape is shown and follows the cursor (OnUpdate set)", ns.Settings("qol").cursorHighlight.enabled == true and hf ~= nil
-  and hf:IsShown() and hf:GetScript("OnUpdate") ~= nil)
-check("A: ...the row was not selected (Cursor is still open)", selected("qol") == "cursor", tostring(selected("qol")))
-oneRedraw("A: Cursor Highlight ticked")
-click("qol", "cursor\001highlight", false)
-check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", ns.Settings("qol").cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
-oneRedraw("A: Cursor Highlight unticked")
-check("A: Character Toolkit's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chartoolkit") and box("qol", "chartoolkit"):GetChecked() == false
-  and row("qol", "chartoolkit\001overlayPart") == nil)
-local function ctPlace()
-  local c, u = row("qol", "chartoolkit"), row("qol", "cursor")
-  local x = c and c.xuiSwitchBox
-  local p, ox
-  if x then p, _, _, ox = x:GetPoint(1) end
-  return p == "LEFT" and ox == 6 + 17 and c.xuiTextL == u.xuiTextL + 17, tostring(ox) .. " " .. tostring(c and c.xuiTextL) .. " vs " .. tostring(u and u.xuiTextL)
-end
-check("A: Character Toolkit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
-click("qol", "chartoolkit", true)
--- (QoL 0.7.53, character pane split stage 2: QoL's Character Toolkit has Slot Overlays and Tooltip lines; Panel and Spell Math are under
--- Bonus Features > Character Toolkit, its own switch, checked below)
-check("A: Character Toolkit ticked: on; Slot Overlays and Tooltip lines now show under it, each with its own box (Tooltip lines ticked: on by default)",
-  ns.Settings("qol").characterToolkit.enabled == true and box("qol", "chartoolkit\001overlayPart")
-  and box("qol", "chartoolkit\001tipsPart") and box("qol", "chartoolkit\001tipsPart"):GetChecked() == true
-  and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false and row("qol", "chartoolkit\001panelPart") == nil)
-check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chartoolkit").xuiChev ~= nil and row("qol", "chartoolkit").xuiChev:IsShown())
-oneRedraw("A: Character Toolkit ticked")
-click("qol", "chartoolkit\001overlayPart", true)
-check("A: Slot Overlays ticked: the overlays setting is on", ns.Settings("qol").characterToolkit.overlays == true)
-click("qol", "chartoolkit\001overlayPart", false)
-click("qol", "chartoolkit", false)
-check("A: Character Toolkit unticked: off, and its parts leave the list", ns.Settings("qol").characterToolkit.enabled == false and row("qol", "chartoolkit\001overlayPart") == nil)
-oneRedraw("A: Character Toolkit unticked")
-end)
+check("the window is open", root() ~= nil)
 
 -- C, the window
 section("C: the window", function()
@@ -448,12 +266,14 @@ end)
 -- wider, and thicker" (her answer "32 px, 14 pt, outlined"); "replace the visual of the two column pane boxed display with a clean
 -- divider line and remove the frames" ("Borders go, fills stay"); "appropriately nested" ("Parent's name + 8 px"); "all options that
 -- are deselected should grey out" ("Left pane + their settings"). Negative control: every G check fails on Options 0.6.50 (main 22abdeb).
+-- (A23) the nesting and greying checks used the other branch's rows (Bonus Features > Utilities > Calculator / Notepad); they run on
+-- the stand-in pages below. The top row here is main's own (the stand-in pages are off).
 section("G: the window's look (Options 0.6.55)", function()
 ns.pageOpen = nil; ns.infoOpen = false
-ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
+ACD:SelectGroup("CueRules", "set", "ui", "display"); settle()
 local top = findW(root(), function(w)
   if w.type ~= "TabGroup" then return false end
-  for _, t in ipairs(w.tabs or {}) do if t:IsShown() and t.value == "qol" then return true end end
+  for _, t in ipairs(w.tabs or {}) do if t:IsShown() and t.value == "profiles" then return true end end
   return false end)
 check("G: the window's top tab row is found", top ~= nil)
 if top then
@@ -465,7 +285,11 @@ if top then
     local _, rel, _, x = t:GetPoint(1)
     if math.abs(t:GetWidth() - each) > 0.5 or math.abs((x or -1) - (i - 1) * each) > 0.5 or rel ~= top.frame then bad[#bad + 1] = tostring(t.value) .. " w" .. tostring(t:GetWidth()) .. " x" .. tostring(x) end
   end
-  check(("G: the %d top tabs share the row evenly, edge to edge, no overlap"):format(#shown), #shown >= 4 and #bad == 0, table.concat(bad, "; "))
+  -- (A23: main's top row is Rules | Profiles | Settings; the QoL, Bonus Features and Blizzard Reskin tabs are the other branch's modules')
+  local vals = {}
+  for _, t in ipairs(shown) do vals[#vals + 1] = tostring(t.value) end
+  check(("G: the %d top tabs (Rules, Profiles, Settings) share the row evenly, edge to edge, no overlap"):format(#shown),
+    table.concat(vals, ",") == "cooldowns,profiles,set" and #bad == 0, table.concat(vals, ",") .. " " .. table.concat(bad, "; "))
   local hBad, fBad = {}, {}
   for _, t in ipairs(shown) do
     if math.abs(t:GetHeight() - 32) > 0.01 then hBad[#hBad + 1] = tostring(t.value) .. " " .. tostring(t:GetHeight()) end
@@ -478,7 +302,8 @@ if top then
   check("G: ...each name 14 pt, outlined", #fBad == 0, table.concat(fBad, "; "))
   check("G: ...the box below starts under the taller row", top.borderoffset == 7 + 32 + 3 or top.borderoffset == 14 + 32 + 3, top.borderoffset)
 end
-local t = tree("bonus")
+local t = tree("set")
+check("G: the Settings tab's left pane is found", t ~= nil)
 if t then
   local _, _, _, la = t.treeframe:GetBackdropBorderColor()
   local _, _, _, lf = t.treeframe:GetBackdropColor()
@@ -492,44 +317,136 @@ if t then
     d and ("%s rel=%s rp=%s w=%s shown=%s"):format(tostring(p), tostring(rel == t.treeframe), tostring(rp), tostring(d:GetWidth()), tostring(d:IsShown())) or "none")
   if top then local _, _, _, ta = top.border:GetBackdropBorderColor(); check("G: ...and the tab row's box has no border line either", ta == 0, ta) end
 end
--- nesting: Calculator and Notepad under Utilities
-local u, c = row("bonus", "utilities"), row("bonus", "utilities\001calculator")
+end)
+
+-------------------------------------------------------------------------------------------------------------------------------
+-- 3. The sidebar switches, on the stand-in pages (see the header): the Bonus Features tab now holds Test Alpha, Test Beta,
+--    Test Group > Test Tool, Test Kit (> Kit Part, Kit Layout while it is on)
+-------------------------------------------------------------------------------------------------------------------------------
+STAND = true
+reg:NotifyChange("CueRules"); settle()
+ACD:SelectGroup("CueRules", "bonus", "xtbeta"); settle()
+check("the window is open on Bonus Features > Test Beta (the stand-in pages)", root() ~= nil and selected("bonus") == "xtbeta" and row("bonus", "xtalpha") ~= nil,
+  tostring(selected("bonus")))
+
+section("A: the stand-in rows", function()
+local bA, bB = box("bonus", "xtalpha"), box("bonus", "xtbeta")
+check("A: Test Alpha's row has a tick box, ticked like its setting", bA ~= nil and bA:GetChecked() == true and SW.alpha == true)
+check("A: Test Beta's row has a tick box, unticked like its setting", bB ~= nil and bB:GetChecked() == false and SW.beta == false)
+check("A: Test Tool's row has a tick box, unticked; none on Test Group", box("bonus", "xtgroup\001xttool") ~= nil
+  and box("bonus", "xtgroup\001xttool"):GetChecked() == false and box("bonus", "xtgroup") == nil and row("bonus", "xtgroup") ~= nil)
+do
+  local r, t, x = row("bonus", "xtalpha"), row("bonus", "xtbeta"), bA
+  local p, rel, rp, ox
+  if x then p, rel, rp, ox = x:GetPoint(1) end
+  check("A: the box sits on its row, in the empty arrow slot left of the name, above the row, and takes the mouse (a click on it is not the row's)",
+    x and x:GetParent() == r and p == "LEFT" and rel == r and rp == "LEFT" and ox == 6 and x:GetFrameLevel() > r:GetFrameLevel() and x:IsMouseEnabled(),
+    tostring(p) .. " " .. tostring(ox))
+  check("A: ...and the same name room as Test Beta (also boxed) on the same level (#369)", r and t and r.xuiTextL == t.xuiTextL
+    and r.xuiTextR == t.xuiTextR and r.xuiTextR == 4, tostring(r and r.xuiTextL) .. "/" .. tostring(r and r.xuiTextR) .. " vs " .. tostring(t and t.xuiTextL) .. "/" .. tostring(t and t.xuiTextR))
+  check("A: the box ends before the name starts (no overlap, V11)", x and r and r.xuiTextL and ox + x:GetWidth() <= r.xuiTextL - 2,
+    tostring(ox) .. "+" .. tostring(x and x:GetWidth()) .. " vs " .. tostring(r and r.xuiTextL))
+end
+local function hover(b)
+  local said = {}
+  local tip = GameTooltip
+  local oS, oA = tip.SetText, tip.AddLine
+  tip.SetText = function(self, t) said = { t }; return oS(self, t) end
+  tip.AddLine = function(self, t, ...) said[#said + 1] = t; return oA(self, t, ...) end
+  local f = b and b:GetScript("OnEnter"); if f then f(b) end
+  tip.SetText, tip.AddLine = oS, oA
+  return said, table.concat(said, " | ")
+end
+check("A: the box's hover: the feature's name, one sentence, Enabled / Disabled; no \"Off\" text (UI-42)", (function()
+  local said, s = hover(bA)
+  return #said == 3 and said[1] == "Test Alpha" and said[2] == SENT.alpha and said[3] == (SW.alpha and "Enabled" or "Disabled") and not s:find("Off", 1, true), s
+end)())
+check("A: ...a switch with no tip: its desc's first sentence, never the desc's \"Off:\" text (UI-42)", (function()
+  local said, s = hover(bB)
+  return #said == 3 and said[1] == "Test Beta" and said[2] == "Turns the beta test panel on or off." and said[3] == (SW.beta and "Enabled" or "Disabled")
+    and not s:find("Off", 1, true), s
+end)())
+
+-- a click on a box: the setting changes, the row is not selected, one redraw on the drawn tree, the redrawn box shows the new state
+check("A: Test Alpha: the box is clickable", click("bonus", "xtalpha", false))
+check("A: Test Alpha box unticked: its setting is off", SW.alpha == false)
+check("A: ...the row was not selected (Test Beta is still open)", selected("bonus") == "xtbeta", tostring(selected("bonus")))
+oneRedraw("A: Test Alpha box unticked")
+check("A: ...and the redrawn box shows it unticked", box("bonus", "xtalpha") and box("bonus", "xtalpha"):GetChecked() == false)
+click("bonus", "xtalpha", true)
+check("A: Test Alpha box ticked: on again, the box shows as saved", SW.alpha == true and box("bonus", "xtalpha") and box("bonus", "xtalpha"):GetChecked() == true)
+oneRedraw("A: Test Alpha box ticked")
+check("A: Test Tool (a part): the box is clickable", click("bonus", "xtgroup\001xttool", true))
+check("A: Test Tool box ticked: on", SW.tool == true)
+check("A: ...the row was not selected (Test Beta is still open)", selected("bonus") == "xtbeta", tostring(selected("bonus")))
+oneRedraw("A: Test Tool box ticked")
+check("A: ...and the redrawn box shows it ticked", box("bonus", "xtgroup\001xttool") and box("bonus", "xtgroup\001xttool"):GetChecked() == true)
+click("bonus", "xtgroup\001xttool", false)
+check("A: Test Tool box unticked: off", SW.tool == false)
+oneRedraw("A: Test Tool box unticked")
+
+-- a row with parts (Test Kit): its box sits right after the arrow slot; only that name moves by the box's width
+check("A: Test Kit's row has a tick box, unticked; its parts are not listed while it is off", box("bonus", "xtkit") and box("bonus", "xtkit"):GetChecked() == false
+  and row("bonus", "xtkit\001kitpart") == nil and row("bonus", "xtkit\001layout") == nil)
+local function ctPlace()
+  local c, u = row("bonus", "xtkit"), row("bonus", "xtgroup")
+  local x = c and c.xuiSwitchBox
+  local p, ox
+  if x then p, _, _, ox = x:GetPoint(1) end
+  return p == "LEFT" and ox == 6 + 17 and c.xuiTextL == u.xuiTextL + 17, tostring(ox) .. " " .. tostring(c and c.xuiTextL) .. " vs " .. tostring(u and u.xuiTextL)
+end
+check("A: Test Kit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1) (vs Test Group, arrow, no box)", ctPlace())
+click("bonus", "xtkit", true)
+check("A: Test Kit ticked: on; Kit Part and Kit Layout now show under it, Kit Part with its own box (unticked), Kit Layout with none",
+  SW.kit == true and box("bonus", "xtkit\001kitpart") and box("bonus", "xtkit\001kitpart"):GetChecked() == false
+  and row("bonus", "xtkit\001layout") ~= nil and box("bonus", "xtkit\001layout") == nil)
+check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("bonus", "xtkit").xuiChev ~= nil and row("bonus", "xtkit").xuiChev:IsShown())
+oneRedraw("A: Test Kit ticked")
+click("bonus", "xtkit\001kitpart", true)
+check("A: Kit Part ticked: its setting is on", SW.kitpart == true)
+click("bonus", "xtkit\001kitpart", false)
+end)
+
+section("G: nesting and greying (stand-in rows)", function()
+-- nesting: Test Tool under Test Group (Calculator / Notepad under Utilities)
+local u, c = row("bonus", "xtgroup"), row("bonus", "xtgroup\001xttool")
 local cb = c and c.xuiSwitchBox
 local cx
 if cb then _, _, _, cx = cb:GetPoint(1) end
-check("G: a part's row starts 8 px right of where its parent's name starts (Calculator's box under Utilities)", u and u.xuiTextL and cx == u.xuiTextL + 8,
-  ("Utilities name at %s, Calculator row %s box %s shown %s at %s"):format(tostring(u and u.xuiTextL), tostring(c ~= nil), tostring(cb ~= nil), tostring(cb and cb:IsShown()), tostring(cx)))
--- (Options 0.6.63; UI-69, Xaya: "indents are now TOO large" [the Blizzard UI Reskin tab: Stat list under Character Pane, Layout ...
--- under Chat Panel far to the right]) a part with no tick box and no open / close arrow keeps no empty slot: its NAME starts 8 px right
--- of where its parent's name starts (UI-8, "Parent's name + 8 px"); before, the empty 16 px arrow slot + 3 put it 27 px in
-if XUI_ABSENT.XayaUI_Chat then
-  skip("XayaUI_Chat", "G: a part with no tick box (Chat Panel > Layout): its name starts 8 px right of its parent's name (UI-69)")
-else
-ACD:SelectGroup("CueRules", "reskin", "chatpanel"); settle()
-local cp, lay = row("reskin", "chatpanel"), row("reskin", "chatpanel\001layout")
-check("G: a part with no tick box (Chat Panel > Layout): its name starts 8 px right of its parent's name (UI-69)",
-  cp and lay and cp.xuiTextL and lay.xuiTextL == cp.xuiTextL + 8,
-  ("Chat Panel name at %s, Layout name at %s"):format(tostring(cp and cp.xuiTextL), tostring(lay and lay.xuiTextL)))
-end
-ACD:SelectGroup("CueRules", "bonus", "tooltips"); settle()
--- greying: Notepad off, then on
-click("bonus", "utilities\001notepad", false)
-local n = row("bonus", "utilities\001notepad")
+check("G: a part's row starts 8 px right of where its parent's name starts (Test Tool's box under Test Group)", u and u.xuiTextL and cx == u.xuiTextL + 8,
+  ("Test Group name at %s, Test Tool row %s box %s shown %s at %s"):format(tostring(u and u.xuiTextL), tostring(c ~= nil), tostring(cb ~= nil), tostring(cb and cb:IsShown()), tostring(cx)))
+-- (Options 0.6.63; UI-69, Xaya: "indents are now TOO large") a part with no tick box and no open / close arrow keeps no empty slot: its
+-- NAME starts 8 px right of where its parent's name starts (UI-8, "Parent's name + 8 px"); before, the empty 16 px arrow slot + 3 put it 27 px in
+local kp, lay = row("bonus", "xtkit"), row("bonus", "xtkit\001layout")
+check("G: a part with no tick box (Test Kit > Kit Layout): its name starts 8 px right of its parent's name (UI-69)",
+  kp and lay and kp.xuiTextL and lay.xuiTextL == kp.xuiTextL + 8,
+  ("Test Kit name at %s, Kit Layout name at %s"):format(tostring(kp and kp.xuiTextL), tostring(lay and lay.xuiTextL)))
+click("bonus", "xtkit", false)
+-- (round 2 review) unticking Test Kit: one redraw that reuses the drawn tree, its setting off, and its hidden parts' rows gone
+oneRedraw("G: Test Kit unticked")
+check("G: Test Kit unticked: its setting is off", SW.kit == false)
+check("G: Test Kit unticked: its parts' rows are gone after the redraw (Kit Part, Kit Layout)",
+  row("bonus", "xtkit\001kitpart") == nil and row("bonus", "xtkit\001layout") == nil)
+-- greying: Test Tool off, then on
+local n = row("bonus", "xtgroup\001xttool")
 local r1, g1, b1 = -1, -1, -1
 if n then r1, g1, b1 = n.text:GetTextColor() end
-local np = node(ns.BuildOptionsTable(), "bonus", "utilities", "notepad")
+local np = node(ns.BuildOptionsTable(), "bonus", "xtgroup", "xttool")
 local leaf
 for k, v in pairs(np and np.args or {}) do if type(v) == "table" and v.type ~= "group" and v.type ~= "description" and type(v.disabled) == "function" then leaf = k; break end end
-local function dis() local v = np.args[leaf]; return v.disabled({ "bonus", "utilities", "notepad", leaf }) and true or false end
+local function dis() local v = np.args[leaf]; return v.disabled({ "bonus", "xtgroup", "xttool", leaf }) and true or false end
 local mg = ns.OptionsApi.Muted and ns.OptionsApi.Muted() or { -1, -1, -1 }   -- (UI-49: the grey is the theme's Muted text colour)
-check("G: Notepad unticked: its row name is grey (the theme's Muted text colour)", n ~= nil and math.abs(r1 - mg[1]) < 0.01 and math.abs(g1 - mg[2]) < 0.01 and math.abs(b1 - mg[3]) < 0.01, tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1))
+local function isMuted(r, g, b) return math.abs(r - mg[1]) < 0.01 and math.abs(g - mg[2]) < 0.01 and math.abs(b - mg[3]) < 0.01 end
+check("G: Test Tool unticked: its row name is grey (the theme's Muted text colour)", SW.tool == false and n ~= nil and isMuted(r1, g1, b1),
+  tostring(r1) .. "," .. tostring(g1) .. "," .. tostring(b1) .. " vs " .. tostring(mg[1]) .. "," .. tostring(mg[2]) .. "," .. tostring(mg[3]))
 check("G: ...and its settings are greyed (cannot be changed): " .. tostring(leaf), leaf ~= nil and dis() == true)
-click("bonus", "utilities\001notepad", true)
-n = row("bonus", "utilities\001notepad")
-local r2 = 0.5
-if n then r2 = n.text:GetTextColor() end
-check("G: Notepad ticked: its name is not grey, its settings can be changed", n and math.abs(r2 - 0.5) > 0.01 and leaf ~= nil and dis() == false, tostring(r2))
-check("G: Bonus Features' first row reads Data Panels", row("bonus", "datapanels") ~= nil and node(ns.BuildOptionsTable(), "bonus", "datapanels").name == "Data Panels")
+click("bonus", "xtgroup\001xttool", true)
+n = row("bonus", "xtgroup\001xttool")
+local r2, g2, b2 = -1, -1, -1
+if n then r2, g2, b2 = n.text:GetTextColor() end
+check("G: Test Tool ticked: its name is not grey, its settings can be changed", SW.tool == true and n ~= nil and not isMuted(r2, g2, b2) and leaf ~= nil and dis() == false,
+  tostring(r2) .. "," .. tostring(g2) .. "," .. tostring(b2))
+click("bonus", "xtgroup\001xttool", false)
 end)
 end)
 if not okAll then check("the test ran to its end (a Lua error stopped it)", false, errAll) end
@@ -540,22 +457,17 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n != "XayaUI_DevAssist"]
+    enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    absent = [m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if not os.path.isdir(os.path.join(H.ROOT, m))]   # QA-branch modules
-    L.execute("XUI_ABSENT = { %s }" % ", ".join("%s = true" % m for m in absent))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):
         name, ok = res[i][1], res[i][2]
-        if str(name).startswith("SKIP ("):
-            print(name)
-            continue
         nchecks += 1
         print(("PASS " if ok else "FAIL ") + name)
         if not ok:
