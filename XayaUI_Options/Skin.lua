@@ -2566,9 +2566,34 @@ local function ShadowPass(f, light, depth)
 end
 
 function ns.SkinRows() return SkinOn() end   -- Options.lua builds the list-row version of the New Rule picker only while the skin is on
+
+-- (XayaUI 0.6.85 review of row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM SCREENSHOTTING") the settings window's
+-- AceGUI text boxes let go of the keyboard when she is done: Enter (one-line EditBox: AceGUI's own Enter, AceGUIWidget-EditBox.lua:71-79,
+-- fires OnEnterPressed and hides the Okay button but keeps the cursor in the box, so every key, movement and the screenshot key included,
+-- stayed with the box until Esc), a click outside the widget, and the box or the window hiding (core ns.KeyFocusGuard, KeyCatch.lua).
+-- A MultiLineEditBox keeps Enter (a new line); its Accept button and Esc already let go (AceGUIWidget-MultiLineEditBox.lua:60, 346).
+-- Enter lets go also when the option's validation refuses the value (AceConfigDialog shows why; the text stays for a click back in).
+-- Not cosmetic: runs with the skin off too. The vendored library is not edited; a released widget (AceGUI hands it to other addons) is
+-- unguarded on release (AddRest), so another addon's box is never touched. Cost: one walk of the open page's widgets per decorate pass
+-- (Options.lua runs it the tick after a page is built), the same walk the skin already does.
+local function GuardBoxes(w, depth)
+    if not w or depth > 14 then return end
+    local t = w.type
+    if (t == "EditBox" or t == "MultiLineEditBox") and not w.xuiFocusGuard and ns.KeyFocusGuard then
+        local eb = (t == "EditBox") and w.editbox or w.editBox
+        if eb then
+            w.xuiFocusGuard = true
+            ns.KeyFocusGuard(eb, { within = w.frame, enterLetsGo = (t == "EditBox") })
+            AddRest(w, "focusguard", function(self) self.xuiFocusGuard = nil; if ns.KeyFocusRelease then ns.KeyFocusRelease(eb) end end)
+        end
+    end
+    for _, c in ipairs(w.children or {}) do GuardBoxes(c, depth + 1) end
+end
+
 local origDecorate = ns.DecorateTrees
 function ns.DecorateTrees(root, ...)
     if origDecorate then origDecorate(root, ...) end
+    do local r = root or (ACD.OpenFrames and ACD.OpenFrames[APP]); if r then pcall(GuardBoxes, r, 0) end end
     if not SkinOn() then return end
     root = root or (ACD.OpenFrames and ACD.OpenFrames[APP])
     if root then

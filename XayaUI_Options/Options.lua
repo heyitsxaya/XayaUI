@@ -1505,6 +1505,10 @@ local function EnsureChrome(of)
         -- FROM SCREENSHOTTING"): through core's ns.KeyCatch (XayaUI/KeyCatch.lua), which holds only a key the editor used and leaves every
         -- other key, PRINTSCREEN included, to the game, also in combat (this window set the flag by hand only out of combat, so in a fight it
         -- kept every key while it was open). The window is AceGUI's, recycled for other addons: c.keys is switched off on release.
+        -- In combat (XayaUI 0.6.85 review; her row 59: "they are just supposed to be baseline supported by the addon") Delete, Ctrl+Z and
+        -- Ctrl+Y still work, but only while the game has no binding on that key: the game does not let an addon keep a key back in
+        -- combat, so a bound key would do both things (delete a rule AND run her binding). A bound key is then the game's alone and
+        -- the editor leaves it (KeyCatch.lua decides; out of combat the editor uses the key and keeps it from the game, as before).
         if not c.keys and ns.KeyCatch then
             c.keys = ns.KeyCatch(fr, function(_, key)
                 if not c.owned then return false end
