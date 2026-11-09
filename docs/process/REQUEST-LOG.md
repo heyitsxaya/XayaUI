@@ -683,6 +683,7 @@ copy; rows it adds later are copied here.
 | SD-6 | "Now merge Rules with Rule Options." | In progress: mapping the editor's load path, namespaces and login cost before the merge | branch `claude/dazzling-brown-x9fqrm` |
 | SD-7 | "I want you to also move all of your claude folders and anything unnecessary to the addon running on the game itself to QA" | Narrowed by SD-8 | as SD-6 |
 | SD-8 | Her answer (question box, main scope; her earlier answer kept the tests for the 4 addons on main): "remove .claude, tools, debug-log" | Done on the branch: .claude, tools, debug-log removed (QA holds them; QA's .claude updated with V25 at 92bd3ff). docs and tests stay. MANIFEST.md5 stays (not in her list) but nothing on main can rebuild it now: asked | as SD-6 |
+| SD-9 | "I want you to delete all old, stale branches that don't have code that isn't on QA" | BLOCKED for this session: the git proxy refuses branch deletion (tried once on bundle-2300: remote hung up, branch still there). 55 branches have all their code on QA (54 by history, 1 by a merge that changes nothing); the command to delete them was given to her. 24 keep code QA lacks and stay | GitHub branches |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
