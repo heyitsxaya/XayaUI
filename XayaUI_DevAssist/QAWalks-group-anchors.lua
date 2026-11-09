@@ -106,7 +106,7 @@ local function CheckGrid()
     local cx, cy = Centre()
     local px, py = cx + (t.cX or 0), cy + (t.cY or 0)
     local ok = Near(l, px) and Near(b, py)
-    return ok, ("Grid of %d displays, its bottom-left at (%.1f, %.1f); the group's point (screen centre + X / Y) at (%.1f, %.1f): %s."):format(n, l, b, px, py,
+    return ok, ("Grid of %d displays, its bottom-left at (%.1f, %.1f); the group's point (screen center + X / Y) at (%.1f, %.1f): %s."):format(n, l, b, px, py,
         ok and "on it" or "OFF by " .. ("%.1f, %.1f"):format(l - px, b - py))
 end
 
@@ -137,7 +137,7 @@ local function CheckOutline()
     local cx, cy = Centre()
     local onPoint = ax and Near(ax, cx) and Near(ay, cy)
     local shown = m[2] and ns.DisplayFrame(m[2]) and ns.DisplayFrame(m[2]):IsShown()
-    return (stayed and onPoint) and true or false, ("Outline from the saved displays: bottom-left (%s, %s) from the group's centre; the group's anchor point at (%.1f, %.1f), the screen centre (%.1f, %.1f): %s. Sample 2 %s; sample 1 %s."):format(
+    return (stayed and onPoint) and true or false, ("Outline from the saved displays: bottom-left (%s, %s) from the group's center; the group's anchor point at (%.1f, %.1f), the screen center (%.1f, %.1f): %s. Sample 2 %s; sample 1 %s."):format(
         tostring(ol), tostring(ob), ax or -1, ay or -1, cx, cy, onPoint and "on it" or "NOT on it", shown and "still showing" or "not showing",
         stayed and "did not move" or "MOVED")
 end
@@ -327,7 +327,7 @@ local function CheckEdge()
     if not (el and ol) then return nil, "the sample displays are not on screen" end
     local l, b = Drawn(Members(g))
     local cx, cy = Centre()
-    return nil, ("The left-most display was nudged 20 px left (its X %s -> %s). On screen it moved X %+.1f; the other display moved X %+.1f. The outline's bottom-left is at (%.1f, %.1f); the group's point (screen centre) at (%.1f, %.1f)."):format(
+    return nil, ("The left-most display was nudged 20 px left (its X %s -> %s). On screen it moved X %+.1f; the other display moved X %+.1f. The outline's bottom-left is at (%.1f, %.1f); the group's point (screen center) at (%.1f, %.1f)."):format(
         tostring(st.edge.x), tostring(st.edge.rule.visual.x), el - st.edgeFrom.edge, ol - st.edgeFrom.other, l or -1, b or -1, cx, cy)
 end
 
