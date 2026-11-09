@@ -22,6 +22,24 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-09 — Rules Only
+
+### Rules 0.7.0
+
+**Install (read this first)**
+- Delete the XayaUI_Rules_Options folder from Interface\AddOns. The rule editor is now part of XayaUI Rules, so that folder is no longer used.
+- XayaUI Bonus Features, XayaUI Chat, XayaUI Dev Assist and XayaUI QoL are no longer part of this download for now. Switch them off in the game's AddOns list or delete their folders: an old copy left on would run against the new XayaUI.
+- Keep your XayaUI_Media folder if you put your own pictures or sounds in it. XayaUI still reads it.
+
+**Rule editor**
+- The rule editor is now part of XayaUI Rules. It works as before and is still built only the first time the settings window opens.
+  *Developers' notes: Not yet tested in game. Its code is now read at login with XayaUI Rules: about 1.4 MB of memory, measured in standard Lua 5.1, not in the game client.*
+
+### Options 0.6.107
+
+**Settings window**
+- The settings window now sets up the rule editor from XayaUI Rules instead of loading a separate addon.
+
 ## 2026-11-08 — Gradient Borders
 
 ### XayaUI 0.6.81
