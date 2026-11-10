@@ -1,8 +1,8 @@
-# Stub test for QoL > Character Toolkit (XayaUI_QoL 0.7.0): StatMath.lua (thresholds, lost rating, rating per 1%, next 1%, what-if,
-# item stat deltas, coins) and the phase-1 checks of the model (CharacterModel.lua) and panel (CharacterToolkit.lua), kept through the
+# Stub test for the Stat Calculator (QoL until Bonus 0.6.37; XayaUI_QoL 0.7.0): StatMath.lua (thresholds, lost rating, rating per 1%, next 1%, what-if,
+# item stat deltas, coins) and the phase-1 checks of the model (StatModel.lua) and panel (XayaUI_Bonus/StatCalculator.lua), kept through the
 # 0.7.0 rebuild (V9). The phase-2 checks (sections, value toggle, hover, sheet, What If, overlays, secrets, settings) are in
-# tests/char_toolkit2_run.py. Stand-in game world: tests/char_toolkit_world.lua.
-# Run from the repo root: python3 tests/char_toolkit_run.py   Needs: pip install lupa.
+# tests/char_statcalc2_run.py. Stand-in game world: tests/char_world.lua.
+# Run from the repo root: python3 tests/char_statcalc_run.py   Needs: pip install lupa.
 # The converter below is a TEST STAND-IN with a made-up bracket shape (rate 1/46 per point, penalties from 30%); it is not game data
 # and nothing from it ships. What it checks is that the scan FINDS whatever brackets the converter has, and finds none when there are none.
 import os, sys
@@ -99,7 +99,7 @@ check("Coins: negative or not a number -> nil", SM.Coins(-1) == nil and SM.Coins
 ''' .replace("__SM__", P("XayaUI_QoL/StatMath.lua")))
 
 
-# --- The phase-1 checks of the model and panel, on the 0.7.0 model (CharacterModel.lua) --------------------------------------------
+# --- The phase-1 checks of the model and panel, on the 0.7.0 model (StatModel.lua) --------------------------------------------
 # Each check keeps the number or outcome the 0.6.2 test asserted; the wording moved from one-line strings to label / value pairs.
 lua.execute(r'''
 SM_n, SM_fails = n, fails
@@ -108,14 +108,16 @@ n, fails = SM_n, SM_fails
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+-- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
+XayaUI_NS = ns; assert(loadfile(__TT__))("XayaUI_Bonus", ns); assert(loadfile(__TTUI__))("XayaUI_Bonus", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 
-local c = TKC()
+local c = CWC()
 check("off by default", c.enabled == false)
-check("defaults filled", c.panel == true and c.side == "right" and c.tooltips == true and type(c.spells) == "table" and c.overlays == false)
+check("defaults filled", c.panel == true and c.side == "right" and type(c.spells) == "table" and c.overlays == false)
 
-local m = ns.CharToolkit_Model()
+local m = ns.StatCalc_Model()
 local crit = row(m, "crit")
 check("crit: total 22.48%", crit and crit.value == "22.48%", crit and crit.value)
 check("crit: true rating 528, +11.48% from rating, lost 0, penalty 0%", pair(crit, "Rating") == "528" and pair(crit, "From rating") == "+11.48%"
@@ -138,13 +140,13 @@ check("armor: Agility -> armor read from the mastery text (2,637 x 101.8% = 2,68
 check("Agility line: the armor it gives (2,684, 101.8%)", pair(row(m, "stat2"), "Armor from it") == "2,684 (101.8%)", pair(row(m, "stat2"), "Armor from it"))
 local savedDesc = C_Spell.GetSpellDescription
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
-local m2 = ns.CharToolkit_Model()
+local m2 = ns.StatCalc_Model()
 check("armor: a mastery text with no armor link -> marked not given", pair(row(m2, "armor"), "Agility -> armor") == "not given by the game" and pair(row(m2, "armor"), "From Agility") == nil)
 check("Agility line: no armor link -> marked not given", pair(row(m2, "stat2"), "Agility -> armor") == "not given by the game")
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases Armor by 101.8% of your Strength." end; return savedDesc(id) end
-check("armor: the link names another stat than the primary one -> not used", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility") == nil)
+check("armor: the link names another stat than the primary one -> not used", pair(row(ns.StatCalc_Model(), "armor"), "From Agility") == nil)
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "|cffffffffIncreases Armor by 1,5% of your Agility.|r" end; return savedDesc(id) end
-check("armor: colour codes and a decimal comma are read (1,5% of 2,637 = 40)", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility") == "40 (1.5%, mastery)", pair(row(ns.CharToolkit_Model(), "armor"), "From Agility"))
+check("armor: colour codes and a decimal comma are read (1,5% of 2,637 = 40)", pair(row(ns.StatCalc_Model(), "armor"), "From Agility") == "40 (1.5%, mastery)", pair(row(ns.StatCalc_Model(), "armor"), "From Agility"))
 C_Spell.GetSpellDescription = savedDesc
 local ap = row(m, "ap")
 check("attack power: 1 Agility = 1.00 attack power", pair(ap, "1 Agility =") == "1.00 attack power", pair(ap, "1 Agility ="))
@@ -155,15 +157,15 @@ local g0 = row(m, "gcd")
 check("gcd: named GCD; before any GCD ran, the rule's value (1.5 / 1.2925 = 1.16 s) and the live reading not yet seen",
   g0.label == "GCD" and g0.value == "1.16 s" and pair(g0, "Rule") == "1.5 s / (1 + haste), never below 0.75 s" and pair(g0, "Live reading") == "cast any spell to read it",
   tostring(g0.label) .. " / " .. tostring(g0.value) .. " / " .. tostring(pair(g0, "Live reading")))
-ns.CharToolkit_ReadGCD()
-local g = row(ns.CharToolkit_Model(), "gcd")
+ns.StatCalc_ReadGCD()
+local g = row(ns.StatCalc_Model(), "gcd")
 check("gcd: the live reading listed beside the rule (1.16 s, the same)", g.value == "1.16 s" and pair(g, "Live reading") == "1.16 s", tostring(pair(g, "Live reading")))
 local keepHaste, keepClass = GetHaste, UnitClass
 GetHaste = function() return 150 end
-check("gcd: never below 0.75 s (150% haste)", row(ns.CharToolkit_Model(), "gcd").value == "0.75 s", row(ns.CharToolkit_Model(), "gcd").value)
+check("gcd: never below 0.75 s (150% haste)", row(ns.StatCalc_Model(), "gcd").value == "0.75 s", row(ns.StatCalc_Model(), "gcd").value)
 GetHaste = keepHaste
 UnitClass = function() return "Rogue", "ROGUE", 4 end
-local gr = row(ns.CharToolkit_Model(), "gcd")
+local gr = row(ns.StatCalc_Model(), "gcd")
 check("gcd: a rogue's is a fixed 1.00 s whatever the haste (29.25%), and the live reading that differs is flagged",
   gr.value == "1.00 s" and pair(gr, "Rule") == "Rogue: a fixed 1.0 s (energy)" and (pair(gr, "Live reading") or ""):find("the rule gives 1.00 s", 1, true) ~= nil,
   tostring(gr.value) .. " / " .. tostring(pair(gr, "Live reading")))
@@ -183,25 +185,25 @@ check("character section: spec, Agility, item level, movement, mastery text",
 check("items carry their tab", row(m, "crit").tab == "stats" and row(m, "armor").tab == "defense" and row(m, "ap").tab == "offense")
 check("gear is not built unless its tab is asked for", row(m, "gearSum") == nil)
 c.whatIfStats.crit = 852   -- (QoL 0.7.23: the All ratings amount is gone; crit's own amount takes the same converter path)
-local wcrit = row(ns.CharToolkit_Model(), "crit")   -- (the full model; the Stats tab is the stat map since QoL 0.7.14)
+local wcrit = row(ns.StatCalc_Model(), "crit")   -- (the full model; the Stats tab is the stat map since QoL 0.7.14)
 check("what if +852 crit: +18.52% (exactly to the 30% threshold)", pair(wcrit, "What if +852 rating") == "+18.52% (total 41.00%)", pair(wcrit, "What if +852 rating"))
 c.whatIfStats.crit = nil
-local gm = ns.CharToolkit_Model("gear")
-local gs = row(ns.CharToolkit_Model("stats"), "gearSum")   -- (QoL 0.7.23: the Summary is on the Stats tab)
+local gm = ns.StatCalc_Model("gear")
+local gs = row(ns.StatCalc_Model("stats"), "gearSum")   -- (QoL 0.7.23: the Summary is on the Stats tab)
 -- QoL 0.7.14: no per-slot list; a clicked slot shows its item level, ratings, sockets and durability in the comparison
 check("gear: no per-slot list any more (the comparison shows a clicked slot)", row(gm, "slot1") == nil)
-ns.CharModel.gearSlot = 1
-gm = ns.CharToolkit_Model("gear")
+ns.StatModel.gearSlot = 1
+gm = ns.StatCalc_Model("gear")
 local function cell(key, i) local r = row(gm, key); return r and r.cells and r.cells[i] end
 check("gear: a clicked slot's item level and ratings (Head: 336, crit 300, haste 200)", cell("gc_ilvl", 1) == "336" and cell("gc_crit", 1) == "300" and cell("gc_haste", 1) == "200",
   tostring(cell("gc_ilvl", 1)) .. " " .. tostring(cell("gc_crit", 1)))
 check("[0.7.23] gear: no durability or repair row in the comparison (Xaya: \"durability and repair can be removed from all stat calculator panes\")",
   row(gm, "gc_dur") == nil and row(gm, "gc_repair") == nil, cell("gc_dur", 1))
-ns.CharModel.gearSlot = 11
-gm = ns.CharToolkit_Model("gear")
+ns.StatModel.gearSlot = 11
+gm = ns.StatCalc_Model("gear")
 check("gear: its empty socket (Ring: 1)", cell("gc_sockets", 1) == "1", cell("gc_sockets", 1))
-ns.CharModel.gearSlot = nil
-gm = ns.CharToolkit_Model("stats")
+ns.StatModel.gearSlot = nil
+gm = ns.StatCalc_Model("stats")
 -- (QoL 0.7.15: the Summary is a table, Gear | Character | Elsewhere, one row per stat; QoL 0.7.23: on the Stats tab)
 check("gear totals: a column head Gear | Character | Elsewhere", gs and gs.kind == "colhead" and table.concat(gs.cols or {}, "|") == "Gear|Character|Elsewhere")
 local function sumCells(k) local r = row(gm, "gearSum_" .. k); return r and table.concat(r.cells, "|") end
@@ -211,80 +213,91 @@ check("gear totals: sockets", sumCells("sockets") == "1||" and row(gm, "gearSum_
 -- no converter: current figures only, said plainly
 local saved = GetCombatRatingBonusForCombatRatingValue
 GetCombatRatingBonusForCombatRatingValue = nil
-crit = row(ns.CharToolkit_Model(), "crit")
+crit = row(ns.StatCalc_Model(), "crit")
 check("no converter: average per 1% and a note", (pair(crit, "Rating per 1%") or ""):find("(average)", 1, true) and tipHas(crit, "not available"))
 GetCombatRatingBonusForCombatRatingValue = saved
 
 -- spell math
-local nums = ns.CharToolkit_Numbers("Rapidly slash your target for 6,944 Physical damage, and shatter 2 Lesser Soul Fragments. 15% more.")
+local nums = ns.StatCalc_Numbers("Rapidly slash your target for 6,944 Physical damage, and shatter 2 Lesser Soul Fragments. 15% more.")
 check("numbers: thousands separator read, percentages skipped", nums[1] == 6944 and nums[2] == 2 and #nums == 2, table.concat(nums, ","))
-check("resolve: spell link", ns.CharToolkit_ResolveSpell("|cff71d5ff|Hspell:263642:0|h[Fracture]|h|r") == 263642)
-check("resolve: name", ns.CharToolkit_ResolveSpell("Fracture") == 263642)
-check("resolve: id", ns.CharToolkit_ResolveSpell(" 263642 ") == 263642)
+check("resolve: spell link", ns.StatCalc_ResolveSpell("|cff71d5ff|Hspell:263642:0|h[Fracture]|h|r") == 263642)
+check("resolve: name", ns.StatCalc_ResolveSpell("Fracture") == 263642)
+check("resolve: id", ns.StatCalc_ResolveSpell(" 263642 ") == 263642)
 c.advanced = true
 c.spells = { { id = 263642, base = "ap", coeff = 200 } }
-local fr = row(ns.CharToolkit_Model("spells"), "spell263642")
+local fr = row(ns.StatCalc_Model("spells"), "spell263642")
 check("spell math: Fracture row, its spell ID with the name (#380; QoL 0.7.24: on the line under it)", fr ~= nil and fr.label == "Fracture" and fr.row.idText == "Spell ID: 263642" and fr.value == "", fr and fr.label)
 check("spell math: 6,944 = 200.0% of attack power, 1 Agility = 2.00 (QoL 0.7.24: her words \"1 agility = {value}\")", pair(fr, "6,944") == "200.0% of attack power; 1 Agility = 2.00", pair(fr, "6,944"))
 check("spell math: entered coefficient matches, no warning", pair(fr, "Entered") == "200.0% of attack power; measured 200.0%")
 c.spells[1].coeff = 150
-fr = row(ns.CharToolkit_Model("spells"), "spell263642")
+fr = row(ns.StatCalc_Model("spells"), "spell263642")
 check("spell math: a different entered coefficient is flagged", (pair(fr, "Entered") or ""):find("differs", 1, true) ~= nil)
 
--- tooltip label matching
-check("label: 'Critical Strike:' -> crit", ns.CharToolkit_KeyForLabel("Critical Strike:") == "crit")
-check("label: colored 'Mastery:' -> mastery", ns.CharToolkit_KeyForLabel("|cffffffffMastery:|r") == "mastery")
-check("label: 'Global Cooldown:' -> gcd", ns.CharToolkit_KeyForLabel("Global Cooldown:") == "gcd")
-check("label: 'Agility:' -> the Agility line", ns.CharToolkit_KeyForLabel("Agility:") == "stat2")
-check("label: unknown -> nil", ns.CharToolkit_KeyForLabel("Durability:") == nil)
+-- tooltip label matching (V25 R4: Enhanced Tooltips' TT.CharStatKey; was CharacterPane.lua's)
+check("label: 'Critical Strike:' -> crit", ns.TT.CharStatKey("Critical Strike:") == "crit")
+check("label: colored 'Mastery:' -> mastery", ns.TT.CharStatKey("|cffffffffMastery:|r") == "mastery")
+check("label: 'Global Cooldown:' -> gcd", ns.TT.CharStatKey("Global Cooldown:") == "gcd")
+check("label: 'Agility:' -> the Agility line", ns.TT.CharStatKey("Agility:") == "stat2")
+check("label: unknown -> nil", ns.TT.CharStatKey("Durability:") == nil)
 
 -- turning on: events registered, panel docks when the character window opens, tooltip lines appended
 CharacterFrame = mk("Frame"); PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 c.enabled = true
-TKA()
+CWA()
+ns.TT.DB().charStats = true; ns.TT.Sync()   -- (V25 R4) Enhanced Tooltips' option, off by default
 CharacterFrame.shown = true; PaperDollFrame:Show()
-check("panel shown docked with the character window", XayaUICharacterToolkit and XayaUICharacterToolkit:IsShown())
+check("panel shown docked with the character window", XayaUIStatCalculator and XayaUIStatCalculator:IsShown())
 check("stat row hooked", statRow.hooks.OnEnter and #statRow.hooks.OnEnter == 1)
 GameTooltip:SetOwner(statRow)
 statRow.hooks.OnEnter[1](statRow)
 -- (QoL 0.7.14, A8) a compact block: the stat map's lines for crit at the real numbers, two columns, no bars
 local function tl(pat) for _, l in ipairs(GameTooltip.lines or {}) do if tostring(l):find(pat, 1, true) then return tostring(l) end end end
 check("tooltip: a compact block under the crit tooltip: Rating | 528 = +11.48%", tl("Rating | 528 = +11.48%") ~= nil, table.concat(GameTooltip.lines or {}, " / "))
-check("  ...rating per 1% and the diminishing returns in words (next threshold)", tl("Rating per 1% | 46.0") ~= nil and (tl("Diminishing returns | ") or ""):find("next at", 1, true) ~= nil,
+-- (V25 R4; Xaya A22 #15 "Hide notes unless Dev Assist") a method note shows only while XayaUI Dev Assist is loaded (read once, with the
+-- other tie-ins); (V25 review) the next threshold in words is her A8 design's, not a method note: it shows to everyone
+check("  ...rating per 1% and the diminishing returns with the next threshold in words (A8), without XayaUI Dev Assist", tl("Rating per 1% | 46.0") ~= nil
+  and (tl("Diminishing returns | none yet") or ""):find("next at 1,380 rating (852 away)", 1, true) ~= nil, tl("Diminishing returns"))
+local oldDA = ns.DevAssistOn
+ns.DevAssistOn = function() return true end; ns.TT.CharStatsReadTieIns(true)
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+check("  ...and with Dev Assist loaded the note (next threshold in words) follows the value", (tl("Diminishing returns | ") or ""):find("next at", 1, true) ~= nil,
   tl("Diminishing returns"))
+ns.DevAssistOn = oldDA; ns.TT.CharStatsReadTieIns(true)
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
 check("  ...no long detail list (no 'Penalty on the next point', no 'Other sources')", tl("Penalty on the next point") == nil and tl("Other sources") == nil)
 c.whatIfStats = { crit = 852 }
 GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
 check("  ...your typed numbers on the Stats tab are left out of it (real numbers only)", tl("Rating | 528 = +11.48%") ~= nil and tl(" -> ") == nil, table.concat(GameTooltip.lines or {}, " / "))
 c.whatIfStats = {}
 PaperDollFrame:Hide()
-check("panel hides with the character window", not XayaUICharacterToolkit:IsShown())
+check("panel hides with the character window", not XayaUIStatCalculator:IsShown())
 for _, t in ipairs({ "sheet", "stats", "defense", "offense", "gear", "whatif", "spells" }) do
   c.tab = t
-  local ok, err = pcall(ns.CharToolkit_Render)
+  local ok, err = pcall(ns.StatCalc_Render)
   check("panel renders the " .. t .. " tab", ok, err)
 end
 c.tab = "sheet"
-c.enabled = false; TKA()
-check("off: panel hidden", not XayaUICharacterToolkit:IsShown())
+c.enabled = false; CWA()
+check("off: panel hidden", not XayaUIStatCalculator:IsShown())
 
 -- settings page and command
-local page = TKPage(function() end)
+local page = CWPage(function() end)
 check("settings page builds: feature node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree" and page.args.panelPart
   and page.args.overlayPart and page.args.spells)
 page.args.spells.args.add.set(nil, "Fracture")
 check("add spell via settings (duplicate ignored)", #c.spells == 1)
-check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#printed]:find("Character Toolkit", 1, true) ~= nil)
+check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#printed]:find("Stat Calculator:", 1, true) ~= nil)
 check("/xui stats while off says so", ns.RunCommand("stats", "") and printed[#printed]:find("is off", 1, true) ~= nil)
 CharacterFrame.shown = false
 ns.RunCommand("stats", "on")
 check("/xui stats on turns it on", c.enabled == true)
 ns.RunCommand("stats", "")
-check("/xui stats shows the panel on its own", XayaUICharacterToolkit:IsShown())
-check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return TKC().tab == "stats" end)())
+check("/xui stats shows the panel on its own", XayaUIStatCalculator:IsShown())
+check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return CWC().tab == "stats" end)())
 print(("%d checks, %d failed"):format(n, fails))
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
+   .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
+   .replace("__TTUI__", P("XayaUI_Bonus/TooltipsUI.lua")).replace("__TT__", P("XayaUI_Bonus/Tooltips.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

@@ -6,7 +6,7 @@
 # GameDialogDefs.lua:183; a stand-in dialog with GetButton1 here), its text, where a click lands (the box while it shows and takes the
 # mouse; Release when it has stepped aside), hidden as a ghost, not outside a raid by default; V14: nothing made or registered while off.
 # Negative control (V1): every check fails on the session branch head before this change (29a2f85: no Release Guard), except "(guard)".
-# Run from the repo root: python3 tests/release_guard_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/release_guard_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
@@ -74,7 +74,7 @@ end
 '''
 
 def world(db):
-    return (SETUP.replace("__DB__", db).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
+    return (SETUP.replace("__DB__", db).replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
             .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__RG__", P("XayaUI_QoL/ReleaseGuard.lua")))
 totals = []
 

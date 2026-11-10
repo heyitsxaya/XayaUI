@@ -12,7 +12,13 @@ On the real addons in the stand-in game:
   - the verdicts, on what QoL's count says (the "characterReskin" service's Drawn, set to each case): step 1 Pass with Blizzard Reskin
     off and item levels drawn, Fail with none drawn, no verdict (and what to do) while Blizzard Reskin is on; step 2 Pass with the look
     only, Fail when an item level is drawn; step 3 Pass with item levels back.
-Negative control: on f870d78 the walkthrough does not exist (the registration check fails).
+  - (V25 R4) the "character-stat-lines" walkthrough (E1z64): registered with prefill; every check runs in every mode and, with Bonus
+    Features off, says so; step 1 Pass on a new install, step 2 no verdict while unticked and Pass once ticked with Improved Character
+    Display on, step 3 no verdict while Improved Character Display is on and Pass once it is unticked.
+  - (V25) the "improved-character-display" (E1z228) and "statcalc-combat" (E1z229) walkthroughs: registered with prefill; every check
+    runs in every mode and says when XayaUI QoL / Bonus Features is off; the button steps' verdicts follow the button; the combat steps
+    give no verdict out of / still in combat and Pass when the panel and button hide in combat and come back after it.
+Negative control: on f870d78 the walkthrough does not exist (the registration check fails); before V25 R4 the R4 walkthrough does not.
 Run: python3 tests/qa_walk_character_split_run.py   (Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,10 +42,76 @@ for i, st in ipairs(def.steps) do
     check(("step %d's check runs without an error and says what it reads"):format(i), ok and type(note) == "string" and note ~= "", ok and note or v)
     if MODE == "qol-off" and i <= 4 then check(("  ...step %d: XayaUI QoL off: no verdict, says so"):format(i), ok and v == nil and tostring(note):find("XayaUI QoL is off", 1, true) ~= nil, note) end
     if MODE == "qol-off" and i == 5 then check("  ...step 5: XayaUI QoL off: no verdict (nothing to compare)", ok and v == nil, note) end
-    if MODE == "qol-off" and i == 6 then check("  ...step 6: XayaUI QoL off: Pass (no Character Toolkit page in Bonus Features, no Stat Calculator row, no error)", ok and v == true, note) end
+    if MODE == "qol-off" and i == 6 then check("  ...step 6: XayaUI QoL off: Pass (no Stat Calculator page in Bonus Features, no Stat Calculator row, no error)", ok and v == true, note) end
     if MODE == "bonus-off" and i == 4 then check("  ...step 4: XayaUI Bonus Features off: no verdict, says so", ok and v == nil and tostring(note):find("XayaUI Bonus Features is off", 1, true) ~= nil, note) end
     if MODE == "all-on" and i == 6 then check("  ...step 6 with XayaUI QoL on: no verdict, says to untick it", ok and v == nil and tostring(note):find("still on", 1, true) ~= nil, note) end
   end
+end
+-- (V25 R4) the character window stat tooltips walkthrough (QAWalks-character-split.lua "character-stat-lines", E1z64)
+local d2 = QA.walks["character-stat-lines"]
+check("R4 walkthrough is registered, with prefill", d2 ~= nil and d2.prefill == true and #d2.steps >= 4, d2 and #d2.steps)
+for i, st in ipairs(d2 and d2.steps or {}) do
+  if st.check then
+    local ok, v, note = pcall(st.check)
+    check(("R4 step %d's check runs without an error and says what it reads"):format(i), ok and type(note) == "string" and note ~= "", ok and note or v)
+    if MODE == "bonus-off" then check(("  ...R4 step %d: XayaUI Bonus Features off: no verdict, says so"):format(i), ok and v == nil and tostring(note):find("XayaUI Bonus Features is off", 1, true) ~= nil, note) end
+  end
+end
+-- (V25) the Improved Character Display (E1z228) and the Stat Calculator combat lock (E1z229) walkthroughs
+for _, wk in ipairs({ "improved-character-display", "statcalc-combat" }) do
+  local dw = QA.walks[wk]
+  check(wk .. " walkthrough is registered, with prefill", dw ~= nil and dw.prefill == true and #dw.steps >= 5, dw and #dw.steps)
+  for i, st in ipairs(dw and dw.steps or {}) do
+    if st.check then
+      local ok, v, note = pcall(st.check)
+      check(("%s step %d's check runs without an error and says what it reads"):format(wk, i), ok and type(note) == "string" and note ~= "", ok and note or v)
+      if MODE == "qol-off" and wk == "improved-character-display" then
+        check(("  ...%s step %d: XayaUI QoL off: no verdict, says so"):format(wk, i), ok and v == nil and tostring(note):find("XayaUI QoL is off", 1, true) ~= nil, note)
+      end
+      if MODE == "bonus-off" and wk == "statcalc-combat" then
+        check(("  ...%s step %d: XayaUI Bonus Features off: no verdict, says so"):format(wk, i), ok and v == nil and tostring(note):find("XayaUI Bonus Features is off", 1, true) ~= nil, note)
+      end
+    end
+  end
+end
+if MODE == "all-on" then
+  local dw, dc = QA.walks["improved-character-display"], QA.walks["statcalc-combat"]
+  local v1, n1 = dw.steps[1].check()
+  check("ICD step 1: data capture only (no verdict): the merge and the parts in the note", v1 == nil and tostring(n1):find("merge done: yes", 1, true) ~= nil, n1)
+  if not rawget(_G, "CharacterFrame") then rawset(_G, "CharacterFrame", CreateFrame("Frame", "CharacterFrame", UIParent)) end
+  local scS = ns.Service("statCalc")
+  local cd = ns.CharDisplay_Cfg(); cd.enabled = true; ns.CharDisplay_Apply()
+  scS.Cfg().enabled = true; ns.StatCalc_Apply()
+  CharacterFrame:Show()
+  check("ICD step 3: Improved Character Display, its button box, the Stat Calculator and its panel on, the window open: Pass (button shown)",
+    dw.steps[3].check() == true, select(2, dw.steps[3].check()))
+  cd.statCalcButton = false; ns.CharDisplay_Apply()
+  check("ICD step 4: the button box unticked: Pass (button hidden)", dw.steps[4].check() == true, select(2, dw.steps[4].check()))
+  cd.statCalcButton = nil; ns.CharDisplay_Apply()
+  check("combat step 1 out of combat, the panel docked and the button shown: Pass", (function() scS.Open("stats"); return dc.steps[1].check() end)() == true, select(2, dc.steps[1].check()))
+  check("combat step 2 out of combat: no verdict, says to fight", dc.steps[2].check() == nil and tostring(select(2, dc.steps[2].check())):find("not in combat", 1, true) ~= nil, select(2, dc.steps[2].check()))
+  W.enterCombat()
+  check("combat step 2 in combat: Pass (panel and button hidden)", dc.steps[2].check() == true, select(2, dc.steps[2].check()))
+  check("combat step 3 still in combat: no verdict, says to wait", dc.steps[3].check() == nil, select(2, dc.steps[3].check()))
+  W.leaveCombat()
+  check("combat step 3 after combat with the window open: Pass (both back)", dc.steps[3].check() == true, select(2, dc.steps[3].check()))
+  scS.Close(); CharacterFrame:Hide()
+  cd.enabled = false; ns.CharDisplay_Apply(); scS.Cfg().enabled = false; ns.StatCalc_Apply()
+end
+if MODE == "all-on" and d2 then
+  local function V2(i) return d2.steps[i].check() end
+  check("R4 step 1 on a new install: Pass (Character stats unticked, nothing hooked)", V2(1) == true, select(2, V2(1)))
+  check("R4 step 2 while unticked: no verdict, says to tick it", V2(2) == nil and tostring(select(2, V2(2))):find("Character stats is unticked", 1, true) ~= nil, select(2, V2(2)))
+  if not rawget(_G, "CharacterFrame") then rawset(_G, "CharacterFrame", CreateFrame("Frame", "CharacterFrame", UIParent)) end
+  local cd = ns.CharDisplay_Cfg(); cd.enabled = true; ns.CharDisplay_Apply()
+  local TT = ns.Service("tooltipsDebug").TT
+  TT.DB().charStats = true; TT.Sync()
+  check("R4 step 2 ticked, Enhanced Tooltips and Improved Character Display on: Pass, lines on and hooked, the crit lines captured in the note",
+    V2(2) == true and tostring(select(2, V2(2))):find("lines on | crit lines: ", 1, true) ~= nil, select(2, V2(2)))
+  check("R4 step 3 while Improved Character Display is on: no verdict, says to untick it", V2(3) == nil and tostring(select(2, V2(3))):find("still on", 1, true) ~= nil, select(2, V2(3)))
+  cd.enabled = false; ns.CharDisplay_Apply()
+  check("R4 step 3 Improved Character Display unticked: Pass (the lines stop at once, it was told)", V2(3) == true, select(2, V2(3)))
+  TT.DB().charStats = nil; TT.Sync()
 end
 if MODE == "p5" then
   local v, note = def.steps[5].check()
@@ -50,8 +122,8 @@ end
 if MODE ~= "all-on" then return R end
 -- (stage 2) the Stat Calculator opens from Bonus Features (Do it for me), once its switch is on
 local sc = ns.Service("statCalc")
-check("step 4 with Bonus Features > Character Toolkit off: no verdict, says to tick it", def.steps[4].check() == nil and tostring(select(2, def.steps[4].check())):find("is off", 1, true) ~= nil, select(2, def.steps[4].check()))
-sc.Cfg().enabled = true; if ns.CharToolkit_Apply then ns.CharToolkit_Apply() end
+check("step 4 with Bonus Features > Stat Calculator off: no verdict, says to tick it", def.steps[4].check() == nil and tostring(select(2, def.steps[4].check())):find("is off", 1, true) ~= nil, select(2, def.steps[4].check()))
+sc.Cfg().enabled = true; if ns.StatCalc_Apply then ns.StatCalc_Apply() end
 def.steps[4].setup()
 check("step 4: Do it for me opens the Stat Calculator: Pass, its tab and side in the note", def.steps[4].check() == true and tostring(select(2, def.steps[4].check())):find("panel open; tab stats", 1, true) ~= nil, select(2, def.steps[4].check()))
 check("step 5 on a new install: no verdict, says nothing was copied", def.steps[5].check() == nil and tostring(select(2, def.steps[5].check())):find("no copy recorded", 1, true) ~= nil, select(2, def.steps[5].check()))

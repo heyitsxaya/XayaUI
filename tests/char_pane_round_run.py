@@ -25,7 +25,7 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-CM = ns.CharModel
+CM = ns.StatModel
 placePane(540)
 blizzardSizing()
 function PaperDollItemSlotButton_Update(btn) end
@@ -45,7 +45,7 @@ C_Timer.After = function(d, fn) fn() end
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 CharacterStatsPane.pts = { { "TOPLEFT", CharacterFrame.InsetRight, "TOPLEFT", 3, -3 }, { "BOTTOMRIGHT", CharacterFrame.InsetRight, "BOTTOMRIGHT", -3, 3 } }
 CharacterStatsPane.shown = true
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.01 end
 function sameCol(a, b) return a and b and near(a[1], b[1]) and near(a[2], b[2]) and near(a[3], b[3]) end
@@ -53,9 +53,9 @@ function sameCol(a, b) return a and b and near(a[1], b[1]) and near(a[2], b[2]) 
 
 def lua_with(extra=""):
     lua = LuaRuntime()
-    src = (PRELUDE + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")) \
+    src = (PRELUDE + extra).replace("__WORLD__", P("tests/char_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")) \
         .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")) \
+        .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")) \
         .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua"))
     lua.execute(src)
     return lua
@@ -132,20 +132,20 @@ totals.append((lua.eval("n"), lua.eval("fails")))
 # B. The full stat list (#70, #71, #74)
 # ---------------------------------------------------------------------------------------------------------------------------------
 lua = lua_with(r'''
-CueRulesDB.characterReskin = { enabled = true }
+CueRulesDB.characterReskin = { enabled = true, features = true }   -- (V25 R2: the list is Improved Character Display's; its switch saved)
 ''')
 lua.execute(r'''
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
-local rc = ns.CharReskin_Cfg()
+local rc = RC()
 CM.gcd = { dur = 1.16, haste = 29.25 }
-CharacterFrame:Show(); PaperDollFrame:Show(); ns.CharReskin_Apply()
-local function recs() return ns.CharReskin_StatListRecs and ns.CharReskin_StatListRecs() or {} end
+CharacterFrame:Show(); PaperDollFrame:Show(); RSA()
+local function recs() return ns.CharDisplay_StatListRecs and ns.CharDisplay_StatListRecs() or {} end
 local function texts(kind) local t = {}; for _, r in ipairs(recs()) do if r.kind == kind then t[#t + 1] = r.text end end; return table.concat(t, "|") end
 local function rec(text) for _, r in ipairs(recs()) do if r.text == text then return r end end end
 local clean = CM.Build(setmetatable({ whatIf = 0, whatIfStats = {}, whatIfPrimary = false }, { __index = {} }), "stats")
 local n = 0
 for _, sec in ipairs(clean.sections) do if sec.key == "map_character" then for _, it in ipairs(sec.items) do if it.kind ~= "subhead" and it.kind ~= "colhead" then n = n + 1 end end end end
-checkp("the reskin on: the stats pane shows the Character Stats headings in order: Core Stats, Primary, General, Offensive, Defensive, Secondaries, Tertiaries", function()
+checkp("the reskin and Improved Character Display on: the stats pane shows the Character Stats headings in order: Core Stats, Primary, General, Offensive, Defensive, Secondaries, Tertiaries", function()
   return texts("group") == "Core Stats|Primary|General|Offensive|Defensive|Secondaries|Tertiaries", texts("group") end)
 checkp("  ...and every stat line of Character Stats (her answer \"Everything on\"): " .. n .. " lines, Agility first, Speed last", function()
   local s = {}; for _, r in ipairs(recs()) do if r.kind == "stat" then s[#s + 1] = r.text end end
@@ -156,11 +156,11 @@ checkp("  ...the values are the Stat Calculator's (Critical Strike 22.48%, Haste
 checkp("  ...each stat's name in its stat colour (Critical Strike, Versatility); headings in the label colour", function()
   return sameCol(rec("Critical Strike").color, CM.STAT_COLORS.crit) and sameCol(rec("Versatility").color, CM.STAT_COLORS.vers) and sameCol(rec("Secondaries").color, LABEL)
     and sameCol(rec("Critical Strike").fs.color, CM.STAT_COLORS.crit) end)
-checkp("  ...drawn on the reskin's own list over Blizzard's pane (a child of CharacterStatsPane, shown, an opaque fill under it)", function()
-  local L = ns.CharReskinParts.statList
+checkp("  ...drawn on Improved Character Display's own list over Blizzard's pane (a child of CharacterStatsPane, shown, an opaque fill under it)", function()
+  local L = ns.CharDisplayParts.statList
   return L and L.parent == CharacterStatsPane and L:IsShown() and L.fill and L.fill.color and L.fill.color[4] == 1 end)
--- (QoL 0.7.53, character pane split stage 1) the Stat list page is on QoL > Character Pane now (Blizzard Reskin keeps the look)
-local pg = ns.BuildCharPanePage(function() ns.CharReskin_Apply() end)
+-- (QoL 0.7.53, character pane split stage 1; V25 R2) the Stat list page is on QoL > Improved Character Display (Blizzard Reskin keeps the look)
+local pg = ns.BuildCharDisplayPage(function() RSA() end)
 local page = pg.args.statListPage or { args = {} }
 -- (a stand-in for a missing control on older code, so a check fails instead of the run stopping)
 local NOOP = function() end
@@ -197,14 +197,14 @@ checkp("groups and colours: the heading renamed \"My ratings\" and recoloured; C
 if page.args.reset then page.args.reset.func() end
 checkp("Reset the list: names, colours, order, modes back", function()
   return rec("Secondaries") ~= nil and rec("Critical Strike") ~= nil and rec("Critical Strike").value == "22.48%" and sameCol(rec("Critical Strike").color, CM.STAT_COLORS.crit) end)
-rc.statList = false; ns.CharReskin_Apply()
-checkp("the part switched off (Full stat list): the list hides, Blizzard's own list shows again", function() return not ns.CharReskinParts.statList:IsShown() end)
-rc.statList = true; ns.CharReskin_Apply()
--- (QoL 0.7.53, stage 1) the full stat list is QoL's: the reskin off leaves it; QoL's Character Pane off hides it
-rc.enabled = false; ns.CharReskin_Apply()
-checkp("the reskin off: the list stays (QoL's Character Pane feature, still on)", function() return ns.CharReskinParts.statList:IsShown() end)
-rc.features = false; ns.CharReskin_Apply()
-checkp("QoL's Character Pane off: the list hides", function() return not ns.CharReskinParts.statList:IsShown() end)
+rc.statList = false; RSA()
+checkp("the part switched off (Full stat list): the list hides, Blizzard's own list shows again", function() return not ns.CharDisplayParts.statList:IsShown() end)
+rc.statList = true; RSA()
+-- (QoL 0.7.53, stage 1; V25 R2) the full stat list is Improved Character Display's: the reskin off leaves it; that switch off hides it
+rc.enabled = false; RSA()
+checkp("the reskin off: the list stays (Improved Character Display, still on)", function() return ns.CharDisplayParts.statList:IsShown() end)
+rc.features = false; RSA()
+checkp("Improved Character Display off: the list hides", function() return not ns.CharDisplayParts.statList:IsShown() end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 
@@ -217,7 +217,7 @@ ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskin
 CharacterFrame:Show(); PaperDollFrame:Show()
 PaperDollFrame_UpdateStats()
 checkp("(guard) V14: the reskin off at login: no stat list frame, no height change", function()
-  return (ns.CharReskinParts or {}).statList == nil and CharacterFrame.h == 424 end)
+  return (ns.CharDisplayParts or {}).statList == nil and CharacterFrame.h == 424 end)
 ''')
 totals.append((lua.eval("n"), lua.eval("fails")))
 

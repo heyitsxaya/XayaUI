@@ -4,6 +4,8 @@
 --   2. Item level of the player under the mouse (yourself: equipped; others: Inspect, cached)
 --   3. Enemy forces (Mythic+ count and percent) on hostile units, read live from the game
 --   4. Formula lines on spell tooltips (cooldown / recharge and damage), derived from live game values only (Bonus 0.6.2)
+--   5. Extra lines on the character window's own stat tooltips, from XayaUI QoL's stat model (Bonus 0.6.39; off by default, and only
+--      while XayaUI QoL's Improved Character Display is on)
 -- Not here yet: crowd control, true sight, and casts need an enemy database that does not exist. That M+/instance data is meant to live in
 -- a separate optional sibling addon (data pack), not built; the base in this file never depends on it.
 --
@@ -44,6 +46,8 @@ TT.DEFAULTS = {
     -- (Bonus 0.6.20; Xaya 2026-11-06, REQUEST-LOG S8-10 "Also in game tooltips") spell and aura tooltips: "<school> damage" title-cased
     -- in its school's colour, a dispel type in brackets after it (or at an aura tooltip's top right) in its dispel colour
     typeColors = { enabled = true },
+    -- (Bonus 0.6.39, V25 R4) charStats: the extra lines on the character window's own stat tooltips (section 5). Not listed here on
+    -- purpose: off by default, and saved (true) only once ticked, so saved data and profile strings stay as they were until then.
 }
 
 local function fill(dst, src)
@@ -768,6 +772,183 @@ function TT.ForcesLine(tooltip, unit)
 end
 
 -------------------------------------------------------------------------------
+-- 5. Character window stat lines (Bonus 0.6.39; Stat Calculator V25 step R4). Xaya, REQUEST-LOG A24 #5: "any character pane tooltips
+-- get called by improved tooltips but do not by default get loaded. all functionality has inter-addon tie-ins that do not by default
+-- get used unless the other elements are enabled"; #6: "Yes, into Enhanced Tooltips (Recommended)". The extra lines under the character
+-- window's own stat tooltips (QoL 0.7.14 - 0.7.55: XayaUI_QoL/CharacterPane.lua) are an option of Enhanced Tooltips, OFF by default
+-- (saved as tooltips.charStats = true only once ticked; nil = off, so nothing changes in saved data or profiles until then). They are
+-- hooked only while Enhanced Tooltips, this option AND XayaUI QoL's Improved Character Display are on.
+-- The tie-ins (A24 #6): Improved Character Display ("charDisplay" service), the stat model ("statModel" service: every number comes
+-- from it) and XayaUI Dev Assist are read once at the login (only while Enhanced Tooltips and this option are on) and once the first
+-- time the Enhanced Tooltips page is built after a reload; no other check. After that Improved Character Display tells this file itself
+-- when it is switched on or off (its OnChange): nothing polls.
+-- Notes (a line's method text) show only while XayaUI Dev Assist is loaded (Xaya, REQUEST-LOG A22 #15: "Hide notes unless Dev Assist").
+-- Post-hooks only (HookScript on Blizzard's stat rows and PaperDollFrame, hooksecurefunc on PaperDollFrame_UpdateStats): Blizzard's code
+-- runs unchanged first. Which rows are hooked is kept in our own weak table, never on the rows. Once placed the hooks stay until /reload
+-- and return at once while the lines are off; the OnShow / stat-update hooks run only when the character window shows or updates.
+-------------------------------------------------------------------------------
+local cs = { read = false, pageRead = false, icdOn = false, notes = false, CM = nil, subscribed = false, hooked = false }
+TT.charStatsOn = false
+TT.charStatsState = cs   -- (read only; tests and Dev Assist)
+
+-- whether this option is ticked and Enhanced Tooltips is on (the saved settings only; the tie-ins are cs)
+function TT.CharStatsWanted()
+    local db = TT.DB()
+    return (db.enabled ~= false and db.charStats == true) and true or false
+end
+-- Improved Character Display is on (as last read or told)
+function TT.CharStatsDisplayOn() return cs.icdOn == true end
+
+-- Reads the tie-ins once (again = true: the first build of the Enhanced Tooltips page after a reload).
+function TT.CharStatsReadTieIns(again)
+    if cs.read and not again then return end
+    cs.read = true
+    local m = ns.Service and ns.Service("statModel")
+    cs.CM = (type(m) == "table" and type(m.CM) == "table") and m.CM or nil
+    local d = ns.Service and ns.Service("charDisplay")
+    local ok, on = pcall(function() return type(d) == "table" and d.On and d.On() end)
+    cs.icdOn = (ok and on == true and cs.CM ~= nil) and true or false
+    cs.notes = TT.SourcesOn()   -- (XayaUI Dev Assist loaded: the same reader as the aura "via" text, section 1)
+    -- Improved Character Display tells us when its switch changes (once subscribed; its file keeps the one callback)
+    if not cs.subscribed and type(d) == "table" and type(d.OnChange) == "function" then
+        cs.subscribed = true
+        pcall(d.OnChange, function(nowOn)
+            cs.icdOn = (nowOn == true and cs.CM ~= nil) and true or false
+            TT.CharStatsSync()
+        end)
+    end
+end
+
+local function Plain(s)
+    if type(s) ~= "string" or isSecret(s) then return nil end
+    s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("[:：]%s*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    return s:lower()
+end
+-- the game's own label of each Character Stats row (its global strings) -> the stat model's key
+local LABEL_KEYS = {
+    { "STAT_CRITICAL_STRIKE", "crit" }, { "STAT_HASTE", "haste" }, { "STAT_MASTERY", "mastery" }, { "STAT_VERSATILITY", "vers" },
+    { "STAT_AVOIDANCE", "avoidance" }, { "STAT_LIFESTEAL", "leech" }, { "STAT_SPEED", "speed2" }, { "STAT_ARMOR", "armor" },
+    { "STAT_DODGE", "dodge" }, { "STAT_PARRY", "parry" }, { "STAT_BLOCK", "block" }, { "STAT_ATTACK_POWER", "ap" },
+    { "WEAPON_SPEED", "speed" }, { "STAT_ATTACK_SPEED", "speed" }, { "DAMAGE", "damage" }, { "SPELL_STAT3_NAME", "stamina" },
+    { "STAT_STAGGER", "stagger" }, { "STAT_SPELLPOWER", "sp" }, { "STAT_AVERAGE_ITEM_LEVEL", "ilvl" },
+}
+function TT.CharStatKey(text)
+    local p = Plain(text)
+    if not p then return nil end
+    for _, e in ipairs(LABEL_KEYS) do
+        local g = Plain(_G[e[1]])
+        if g and g == p then return e[2] end
+    end
+    for i = 1, 4 do
+        local g = Plain(_G["SPELL_STAT" .. i .. "_NAME"])
+        if g and g == p and i ~= 3 then return "stat" .. i end
+    end
+    if p:find("global cooldown", 1, true) then return "gcd" end
+end
+
+-- the stat map card each character-window stat row shows in its tooltip (requirements A8)
+local MAP_KEY = { crit = "map_crit", haste = "map_haste", mastery = "map_mastery", vers = "map_vers", avoidance = "map_avoidance",
+    leech = "map_leech", speed2 = "map_speed2", armor = "map_armor", dodge = "map_dodge", parry = "map_parry", block = "map_block",
+    ap = "map_ap", speed = "map_aspeed", damage = "map_damage", stamina = "map_stamina", stagger = "map_stagger", sp = "map_sp", gcd = "map_gcd" }
+-- the model is read with the Stat Calculator panel's defaults (no typed numbers)
+local CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {}, statOpen = {}, spells = {} }
+
+-- The lines for one stat row: { { left, right } or { text } }, or nil. (QoL 0.7.14, requirements A8; Xaya: "do you see how these
+-- tooltips behave?", "no. I don't want a bar next to the threshold") a compact block under Blizzard's own text: the stat map's lines for
+-- this stat at your real numbers: rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then
+-- what it feeds (the "»" lines). No bars. A line's note shows only while XayaUI Dev Assist is loaded (A22 #15; a line that is only a
+-- note is left out without it), except the diminishing returns' next threshold in words, which the A8 design shows to everyone.
+function TT.CharStatLines(label)
+    local CM = cs.CM
+    if not CM then return nil end
+    local key = TT.CharStatKey(label)
+    if not key then return nil end
+    local notes = cs.notes == true
+    local mk = MAP_KEY[key] or ((key == "stat1" or key == "stat2" or key == "stat4") and "map_primary") or nil
+    local card = mk and CM.Build(CLEAN, "stats").byKey[mk] or nil
+    if key:match("^stat%d$") and card and card.label ~= (label and label:gsub("[:：]%s*$", "")) then card = nil end   -- not your primary stat
+    local lines = {}
+    if card then
+        if card.absolute then
+            local from
+            for _, p in ipairs(card.pairs or {}) do if p.label == "From rating" then from = tostring(p.value) end end
+            lines[#lines + 1] = { "Rating", CM.Big(card.absolute) .. (from and (" = " .. from) or "") }
+            if card.per and card.per ~= "" then lines[#lines + 1] = { "Rating per 1%", (card.per:gsub(" / 1%%$", "")) } end
+        end
+        for _, p in ipairs(card.pairs or {}) do
+            -- (V25) a line whose note is what the player acts on (keepNote: the diminishing returns' next threshold in words, her A8
+            -- design) keeps it without Dev Assist; the method notes do not (A22 #15)
+            local withNote = notes or p.keepNote == true
+            if p.label ~= "From rating" and (withNote or not CM.NoteOnly(p)) then
+                lines[#lines + 1] = { CM.PairLabel(p), CM.PairText(p, not withNote) }
+            end
+        end
+    else
+        local it = CM.Build(CLEAN, nil).byKey[key]
+        if not it then return nil end
+        for _, p in ipairs(it.pairs or {}) do
+            if p.short and (notes or not CM.NoteOnly(p)) then lines[#lines + 1] = { tostring(p.label) .. ": " .. CM.PairText(p, not notes) } end
+        end
+    end
+    if #lines == 0 then return nil end
+    return lines
+end
+
+-- OnEnter post-hook of one stat row
+local function AppendCharStat(frame)
+    if not TT.charStatsOn or not GameTooltip then return end
+    if GameTooltip.IsOwned and not GameTooltip:IsOwned(frame) then return end
+    local label = frame.Label and frame.Label.GetText and frame.Label:GetText()
+    local ok, lines = pcall(TT.CharStatLines, label)
+    if not ok or not lines then return end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("XayaUI", 0.2, 0.8, 1)
+    for _, l in ipairs(lines) do
+        if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
+        elseif l[2] ~= nil then GameTooltip:AddLine(l[1] .. ": " .. l[2], 0.85, 0.85, 0.85, true)
+        else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
+    end
+    GameTooltip:Show()
+end
+TT.AppendCharStat = AppendCharStat   -- (tests)
+
+local rowHooked = setmetatable({}, { __mode = "k" })
+function TT.HookCharStatRows()
+    local pane = _G.CharacterStatsPane
+    if not (pane and pane.GetChildren) then return end
+    for _, child in ipairs({ pane:GetChildren() }) do
+        if not rowHooked[child] and child.Label and child.HookScript then
+            rowHooked[child] = true
+            child:HookScript("OnEnter", AppendCharStat)
+        end
+    end
+end
+
+-- placed the first time the lines are on (from TT.Sync), never before (V14)
+local function HookCharStats()
+    if cs.hooked then return end
+    local owner = _G.PaperDollFrame or _G.CharacterFrame
+    if not (owner and owner.HookScript) then return end
+    cs.hooked = true
+    owner:HookScript("OnShow", function() if TT.charStatsOn then TT.HookCharStatRows() end end)
+    if type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
+        hooksecurefunc("PaperDollFrame_UpdateStats", function() if TT.charStatsOn then TT.HookCharStatRows() end end)
+    end
+end
+
+-- what TT.Sync does for this option: the tie-ins are read only while it is wanted
+function TT.CharStatsSync()
+    local want = TT.CharStatsWanted()
+    if want then TT.CharStatsReadTieIns() end
+    local on = (want and cs.icdOn and cs.CM ~= nil) and true or false
+    TT.charStatsOn = on
+    if on then
+        HookCharStats()
+        TT.HookCharStatRows()
+    end
+end
+
+-------------------------------------------------------------------------------
 -- Unit tooltips + hooks
 -------------------------------------------------------------------------------
 function TT.OnUnitData(tooltip, data)
@@ -856,4 +1037,5 @@ function TT.Sync()
     end
     TT.watching = want
     if TT.SectionOn("formulas") and TT.LoadClassData then pcall(TT.LoadClassData) end
+    TT.CharStatsSync()   -- (Bonus 0.6.39, V25 R4) section 5: the character window's stat lines
 end

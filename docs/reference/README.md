@@ -32,7 +32,7 @@ Terms (read 2026-11-04; details in `debug-log/2026-11-04-1550-terms-check-blizza
 - Does a function exist, what does it take and return, and is it secret-restricted? Look in `api/namespaces.md` or `api/globals.md` (search the name), or `api/api.json` from a script.
 - What does an enum hold? Look in `api/enums.md`. For example, `Enum.ItemCreationContext` has 192 values and is not in Blizzard's documentation.
 - Which talents and spells does a class have, and in which tree? Look in `spells/<CLASSTOKEN>.md`, or `spells/spells.json`, where each spell lists the talent nodes and tier sets that reference it.
-- A fact neither covers: ask for a new capture, or add a targeted check to `XayaUI_GameDump` (`/xuidump toolkit` is the pattern).
+- A fact neither covers: ask for a new capture, or add a targeted check to `XayaUI_GameDump` (`/xuidev statcalc` is the pattern).
 
 ## Keeping it current
 After a game patch, Xaya runs `/xuidump api` and `/xuidump static` in XayaUI Game Data Capture, then `/xuidump save`, and uploads `WTF\Account\<account>\SavedVariables\XayaUI_GameDump.lua`. Then:
@@ -44,6 +44,6 @@ python3 docs/reference/build_reference.py --saved <XayaUI_GameDump.lua> --docs <
 
 The second command builds the full version, which goes to Drive, not here. Blizzard's documentation folder comes from the wow-ui-source mirror (`Interface/AddOns/Blizzard_APIDocumentationGenerated`) or the in-client `/api` files.
 
-The generator reads only the game-data parts of the capture (`api`, `static`). It never writes out the character, aura, recorder or toolkit-check parts.
+The generator reads only the game-data parts of the capture (`api`, `static`). It never writes out the character, aura, recorder or Stat Calculator check parts.
 
 For a global-function list without other addons' names, make the capture with only XayaUI Game Data Capture enabled.

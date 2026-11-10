@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The Blizzard UI Reskin tab (Options 0.6.38, Chat 0.6.13, Reskin 0.6.1, QoL 0.7.14; Xaya 2026-11-05: "Take all reskins and put them
 into a new tab: Blizzard UI Reskin. Currently applies to: chat, character pane, Esc menu. Will apply in the future to: shopping list").
-Checks, on the real settings table built by the real addons: the new tab with its three pages (Character Pane, Chat Panel, Esc Menu) in
+Checks, on the real settings table built by the real addons: the new tab with its three pages (Character Reskin, titled Character Pane before V25 R2; Chat Panel, Esc Menu) in
 name order; the Chat tab gone (its only page moved); QoL without the Character Reskin page; the Esc-menu look out of Settings > UI
 Options > Display (the XayaUI menu button stays there, with one line saying where the look went) and out of the old single Settings
 tab; the tab stays shown beside the Settings tab (Options 0.6.72); opening a moved page from its new and from its old
@@ -39,12 +39,12 @@ if MODE == "all" then
     tab and tab.name)
   -- (QoL 0.7.32: the Shopping List page joined the tab; Xaya 2026-11-05: "Will apply in the future to: shopping list")
   -- (S1 #48: the tab's own switch is a tick box on the tab itself, Xaya 2026-11-06; tests/reskin_tab_switch_run.py checks it works)
-  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips; 0.6.11 Toasts and Pop-ups; 0.6.13 Menus; 0.6.14 Chat Bubbles; 0.6.15 Status Bars; 0.6.16 Minimap Buttons; Options 0.6.104 Theme, #472)", names(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", names(tab))
+  check("  ...its pages: Overview first, then the reskins in name order (Reskin 0.6.8 adds Friend Colors, CHAT-5; Reskin 0.6.9 adds Blizzard Windows, Minimap, Objective Tracker, Tooltips; 0.6.11 Toasts and Pop-ups; 0.6.13 Menus; 0.6.14 Chat Bubbles; 0.6.15 Status Bars; 0.6.16 Minimap Buttons; Options 0.6.104 Theme, #472)", names(tab) == "Overview | Blizzard Windows | Buttons | Character Reskin | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", names(tab))
   check("  ...each page is the real one (its switch is the tick box on its row)", tab.args.chatpanel and tab.args.chatpanel.args.layout and tab.args.charreskin.xuiSwitch
     and tab.args.charreskin.args.chrome and tab.args.gamemenu.xuiSwitch ~= nil and tab.args.gamemenu.args.match ~= nil)
   check("the Chat tab is gone (the Chat Panel was its only page)", built.args.chat == nil)
   check("QoL no longer has the Character Reskin page; its other pages stay", built.args.qol and built.args.qol.args.charreskin == nil
-    and built.args.qol.args.chartoolkit ~= nil and built.args.qol.args.cursor ~= nil)
+    and built.args.qol.args.chardisplay ~= nil and built.args.qol.args.cursor ~= nil)   -- (V25 R2: QoL > Improved Character Display)
   local disp = built.args.set and built.args.set.args.ui and built.args.set.args.ui.args.display and built.args.set.args.ui.args.display.args or {}
   local gmLeft = 0
   for k in pairs(disp) do if k:find("^gm_") and k ~= "gm_moved" then gmLeft = gmLeft + 1 end end
@@ -66,7 +66,7 @@ if MODE == "all" then
   ACD.OpenFrames = ACD.OpenFrames or {}; ACD.OpenFrames["CueRules"] = ACD.OpenFrames["CueRules"] or { frame = CreateFrame("Frame") }
   local function last() return picked[#picked] end
   ns.OpenSettingsPage("reskin", "charreskin")
-  check("opening the Character Pane: Blizzard UI Reskin > Character Pane", last() == "reskin>charreskin", last())
+  check("opening the Character Reskin: Blizzard UI Reskin > Character Reskin (V25 R2: titled Character Pane before)", last() == "reskin>charreskin", last())
   ns.OpenSettingsPage("chat", "chatpanel", "bar")
   check("an old ('chat', 'chatpanel') address still lands on the moved page", last() == "reskin>chatpanel>bar", last())
   ns.OpenSettingsPage("qol", "charreskin")
@@ -75,8 +75,8 @@ if MODE == "all" then
   check("the Chat Panel's own 'settings' buttons open it in the new tab", last() == "reskin>chatpanel>general", last())
   ns.RunCommand("reskin", "options")
   check("/xui reskin options opens it", last() == "reskin>charreskin", last())
-  ns.OpenSettingsPage("qol", "chartoolkit")
-  check("pages that did not move open where they were (QoL > Character Toolkit)", last() == "qol>chartoolkit", last())
+  ns.OpenSettingsPage("qol", "chardisplay")
+  check("pages that did not move open where they were (QoL > Improved Character Display)", last() == "qol>chardisplay", last())
   ACD.SelectGroup = realSelect
 elseif MODE == "noqolreskin" then
   check("XayaUI_QoL and XayaUI_Reskin off: the tab keeps Overview, the Chat Panel and its Theme page", tab ~= nil and names(tab) == "Overview | Chat Panel | Theme", names(tab))   -- (Options 0.6.104, #472: the Theme page lists the Chat Panel)

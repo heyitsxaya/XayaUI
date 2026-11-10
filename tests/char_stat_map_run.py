@@ -12,7 +12,7 @@
 # "» Ability Scaling" left the Stats tab (her answer "Both lists"; the scaling is on the Ability Scaling tab, checked here too); a typed
 # number no longer makes "now -> then": the value stays the current one and newValue holds the new one with its sign (her answer "New
 # value with sign"); the checks below say so where they changed (the drawing: tests/char_stat_round_run.py).
-# Run from the repo root: python3 tests/char_stat_map_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_stat_map_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Spell IDs 9101-9103 and their texts are TEST STAND-INS.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -36,16 +36,16 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
-local c = TKC()
+local CM = ns.StatModel
+local c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; CWA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 CM.gcd = { dur = 1.16, haste = 29.25 }
-local function drawn() return ns.CharToolkit_Drawn() end
-local function render() c.tab = "stats"; ns.CharToolkit_Render(); return drawn() end
+local function drawn() return ns.StatCalc_Drawn() end
+local function render() c.tab = "stats"; ns.StatCalc_Render(); return drawn() end
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = r.text end; return t end
 local function card(key) return drawn().model.byKey[key] end
@@ -76,7 +76,7 @@ end
 local d = render()
 check("Stats tab = the stat map: Gear Summary (QoL 0.7.28: first), Character Stats, Stat Weights (QoL 0.7.23)",
   table.concat(texts(d, "header"), "|") == "- Gear Summary|- Character Stats|- Stat Weights", table.concat(texts(d, "header"), "|"))
-check("no Show: % button (#382: it did nothing; QoL 0.7.40, B2: not made at all)", XayaUICharacterToolkit.modeBtn == nil)
+check("no Show: % button (#382: it did nothing; QoL 0.7.40, B2: not made at all)", XayaUIStatCalculator.modeBtn == nil)
 check("the Agility card: 2,637, its box holds the number itself", card("map_primary").value == "2,637" and d.boxes["sv:primary"] and d.boxes["sv:primary"].text == "2637", d.boxes["sv:primary"] and d.boxes["sv:primary"].text)
 check("  » Attack power: value +2,637, Pt value 1.00 (1 Agility = 1.00 attack power), no note", cells("map_primary", "» Attack power") == "+2,637|1.00|", cells("map_primary", "» Attack power"))
 check("  » Dodge +5.00% (the game's figure from Agility)", line("map_primary", "» Dodge") == "+5.00%", line("map_primary", "» Dodge"))
@@ -154,18 +154,18 @@ check("#379: Critical Strike's name is drawn in its own colour", critLabel and c
 check("#379: Defense's 'From Critical Strike' uses crit's colour", select(2, line("map_parry", "From Critical Strike")).labelColor == CM.STAT_COLORS.crit)
 
 -- 2. Change the numbers (#387, "the option to change the numbers") ----------------------------------------------------------
-ns.CharToolkit_SetInput("sv:crit", "700")
+ns.StatCalc_SetInput("sv:crit", "700")
 d = render()
 check("type 700 crit: the amount is +172, the box shows 700", c.whatIfStats.crit == 172 and d.boxes["sv:crit"].text == "700", c.whatIfStats.crit)
 check("  crit 22.48% with +26.22% under it (QoL 0.7.28: no \"now -> then\")", shows("map_crit") == "22.48% => +26.22%", shows("map_crit"))
 check("  parry from crit +10.15% with +13.46% under it", shows("map_crit", "» Parry") == "+10.15% => +13.46%", shows("map_crit", "» Parry"))
 check("  Defense > Parry: from Critical Strike +10.15% with +13.46% under it (note before DR)", cells("map_parry", "From Critical Strike") == "+10.15%||before DR"
   and shows("map_parry", "From Critical Strike") == "+10.15% => +13.46%", shows("map_parry", "From Critical Strike"))
-ns.CharToolkit_SetInput("sv:mastery", "1200")
+ns.StatCalc_SetInput("sv:mastery", "1200")
 d = render()
 check("type 1,200 mastery: 88.69% with +101.05% under it, armor from Agility grows in step (+2,684 with +3,058 under it)", shows("map_mastery") == "88.69% => +101.05%"
   and shows("map_mastery", "» Armor") == "+2,684 => +3,058", shows("map_mastery", "» Armor"))
-ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:primary", "2737")
 d = render()
 check("type 2,737 Agility: attack power +2,637 with +2,737 under it, armor +2,684 with +3,174 under it (both changes)", shows("map_primary", "» Attack power") == "+2,637 => +2,737"
   and shows("map_primary", "» Armor") == "+2,684 => +3,174" and shows("map_primary") == "2,637 => +2,737", shows("map_primary", "» Armor"))
@@ -181,7 +181,7 @@ check("  ...the Ability Scaling tab carries it: Fracture 6,944 with +7,144 under
     local f, i = m.byKey.spell9101, m.byKey.spell9102
     return f and i and f.row.entries[1].value == "6,944" and f.row.entries[1].newValue == "+7,144" and i.row.entries[1].value == "3,472" and i.row.entries[1].newValue == "+3,572"
   end)())
-check("  without a changed number there is no such line", (function() ns.CharToolkit_SetInput("sv:primary", ""); local v = CM.Build(c, "stats").byKey.map_primary; ns.CharToolkit_SetInput("sv:primary", "2737")
+check("  without a changed number there is no such line", (function() ns.StatCalc_SetInput("sv:primary", ""); local v = CM.Build(c, "stats").byKey.map_primary; ns.StatCalc_SetInput("sv:primary", "2737")
   for _, pp in ipairs(v.pairs) do if pp.label == "» Ability Scaling" or pp.label == "» Abilities with your number" then return false end end; return true end)())
 check("  dodge with your numbers is not given by the game: said in the note, not guessed", cells("map_primary", "» Dodge") == "+5.00%||with your numbers: not given by the game", cells("map_primary", "» Dodge"))
 check("  Defense > Armor shows the new total and damage reduction (each under the current one, with its sign)", card("map_armor").newValue ~= nil
@@ -189,23 +189,23 @@ check("  Defense > Armor shows the new total and damage reduction (each under th
   and not (card("map_armor").value or ""):find(" -> ", 1, true), tostring(card("map_armor").newValue))
 check("  Offense > Attack Power 3,472 with +3,572 under it, from Agility +2,637 with +2,737, DPS +992.0 with +1,020.6", shows("map_ap") == "3,472 => +3,572"
   and shows("map_ap", "From Agility") == "+2,637 => +2,737" and shows("map_ap", "» Damage per second") == "+992.0 => +1,020.6", tostring(shows("map_ap")) .. " " .. tostring(shows("map_ap", "» Damage per second")))
-ns.CharToolkit_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
+ns.StatCalc_SetInput("sv:haste", tostring(CM.svBase.haste + 300))
 d = render()
 check("type 300 more haste: Infernal Strike's recharge 9.6 s with a lower one under it (-N.N s recharge; estimate, its text names Haste)",
   (shows("map_haste", "Infernal Strike") or ""):find("^9%.6 s recharge => %-%d%.%d s recharge$") ~= nil, shows("map_haste", "Infernal Strike"))
 check("type 300 more haste: Attack Speed 2.00 s with -1.NN s under it (note: estimate), GCD 1.16 s with a lower one", (shows("map_aspeed") or ""):find("^2%.00 s => %-1%.%d%d s$") ~= nil
   and card("map_aspeed").note == "estimate" and (shows("map_gcd") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil
   and (shows("map_haste", "» GCD") or ""):find("^1%.16 s => %-1%.%d%d s$") ~= nil, tostring(shows("map_aspeed")) .. " / " .. tostring(shows("map_gcd")) .. " / " .. tostring(shows("map_haste", "» GCD")))
-ns.CharToolkit_SetInput("sv:haste", "")
-ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:mastery", "997"); ns.CharToolkit_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:haste", "")
+ns.StatCalc_SetInput("sv:crit", ""); ns.StatCalc_SetInput("sv:mastery", "997"); ns.StatCalc_SetInput("sv:primary", "")
 d = render()
 check("an empty box, or your own number, goes back to yours", c.whatIfStats.crit == nil and c.whatIfStats.mastery == nil and c.whatIfPrimary == nil and card("map_crit").value == "22.48%")
-check("the map and What If share the amounts (What If's crit box)", (function() ns.CharToolkit_SetInput("crit", "50"); local it = CM.Build(c, "stats").byKey.map_crit; ns.CharToolkit_SetInput("crit", "0"); return it.value .. " => " .. tostring(it.newValue) end)() == "22.48% => +23.57%")
+check("the map and What If share the amounts (What If's crit box)", (function() ns.StatCalc_SetInput("crit", "50"); local it = CM.Build(c, "stats").byKey.map_crit; ns.StatCalc_SetInput("crit", "0"); return it.value .. " => " .. tostring(it.newValue) end)() == "22.48% => +23.57%")
 
 -- 3. Layout (V11) and secrets ----------------------------------------------------------------------------------------------
-ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:crit", "700"); ns.StatCalc_SetInput("sv:primary", "2737")
 local function layoutOK(dd)
-  local W = ns.CHARTOOLKIT_LAYOUT.content   -- (read each time: the grip changes it)
+  local W = ns.STATCALC_LAYOUT.content   -- (read each time: the grip changes it)
   for _, r in ipairs(dd.layout) do
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) end
   end
@@ -221,7 +221,7 @@ local function layoutOK(dd)
 end
 for _, fs in ipairs({ 11, 8, 16 }) do c.fontSize = fs; local ok, why = layoutOK(render()); check("layout at text size " .. fs .. ": inside the width, no overlaps (with changed numbers)", ok, why) end
 c.fontSize = 11
-ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:crit", ""); ns.StatCalc_SetInput("sv:primary", "")
 SECRET = SECRET or {}
 local realRating = GetCombatRating
 GetCombatRating = function() return "SECRET_R" end
@@ -234,7 +234,7 @@ GetCombatRating = realRating; issecretvalue = function() return false end
 UnitName = function(u) if u == "player" then return "Xaya", nil end end
 UnitClass = function(u) if u == "player" then return "Demon Hunter", "DEMONHUNTER", 12 end end
 C_ClassColor = { GetClassColor = function(f) if f == "DEMONHUNTER" then return { r = 0.64, g = 0.19, b = 0.79 } end end }
-local P = XayaUICharacterToolkit
+local P = XayaUIStatCalculator
 render()
 -- (QoL 0.7.40, REQUEST-LOG #91: "name, class, and spec not needed on stat calculator. Instead, set this section to display currently
 -- equipped ilvl and on the right side max ilvl (in bags)"; tests/char_stat_round2_run.py checks it in full)
@@ -242,7 +242,7 @@ check("header: no name, spec or class any more (#91)", P.hName == nil and P.hSpe
 check("  ...equipped on the left, max (bags) on the right (GetAverageItemLevel 335.5 / 334.25)", P.hEq.text == "Equipped 334.2" or P.hEq.text == "Equipped 334.3",
   tostring(P.hEq.text) .. " | " .. tostring(P.hMax.text))
 check("  ...no role, no movement in it (#383)", not tostring(P.hEq.text):find("TANK", 1, true) and not tostring(P.hMax.text):lower():find("speed", 1, true))
-local L0 = ns.CHARTOOLKIT_LAYOUT
+local L0 = ns.STATCALC_LAYOUT
 check("  ...the tabs sit under the header", (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] == -(L0.pad + L0.header - 20 - ns.UI_GUTTER) end)(),
   (function() local pt = P.tabs[1].pts[#P.tabs[1].pts]; return pt and pt[5] end)())
 render()
@@ -263,15 +263,15 @@ check("  ...kept within its limits (760 x 300)", c.size.w == L0.maxW and c.heigh
 P:SetSize(300, 2000)
 P.grip.scripts.OnMouseUp(P.grip)
 check("  ...and the smallest / tallest it may be (340 x 1100)", c.size.w == L0.minW and c.heightSmall == L0.maxH, c.size.w .. "x" .. c.heightSmall)
-local page = TKPage(function() end)
+local page = CWPage(function() end)
 page.args.panelPart.args.layout.args.resetSize.func()
 render()
 check("settings: Reset size goes back to the default width (430 of content since QoL 0.7.21) and the two heights (440, 760; QoL 0.7.23)", c.size == nil and L0.content == 430
   and c.heightSmall == 440 and c.heightLarge == 760 and P.h == 440, L0.content)
 c.size = { w = "wide" }
-check("a broken saved size is dropped", TKC().size == nil)
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+check("a broken saved size is dropped", CWC().size == nil)
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

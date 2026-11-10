@@ -6,9 +6,9 @@
 Loads the real addons in the stand-in game, opens the settings window and checks what the player sees and gets:
   A every QoL / Bonus Features row whose feature (or part) has one on / off carries a tick box left of its name showing the saved
     state; no other row has one; the page no longer shows that switch; a click on the box changes the setting AND the feature on
-    screen (Notepad box, a data panel, the cursor highlight and its OnUpdate, the Character Toolkit's parts in the left pane), does not
+    screen (Notepad box, a data panel, the cursor highlight and its OnUpdate, the Stat Calculator's parts in the left pane), does not
     select the row, and redraws the window once without building a new options tree; the box sits in the row's empty arrow slot, so it
-    costs those names nothing (on Character Toolkit, which has the arrow, only that name moves by the box's width).
+    costs those names nothing (on Stat Calculator, which has the arrow, only that name moves by the box's width).
     Safety of that reuse: the whole options tree is built with each switch off and on and must be the same (functions aside).
   B Bonus Features has a Utilities row with Calculator and Notepad under it (no Notepad row of its own any more); the Notepad page
     opens there; the Calculator page's "Open calculator" button opens the calculator.
@@ -57,13 +57,17 @@ local function collect(g, path)
   end
 end
 for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, tab), { tab }) end
--- (QoL 0.7.24 / Bonus 0.6.14: qol>chartoolkit>tipsPart, Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
+-- (QoL 0.7.24 / Bonus 0.6.14: the Tooltip lines part (qol>chardisplay>tipsPart since V25 R2), Xaya #46 "Assume yes for now"; bonus>tooltips, #45 "Enhanced Tooltips";
 -- bonus>utilities>notepad is the whole Notepad now, #47; QoL 0.7.31: qol>releaseguard, the Release Guard's own row, REQUEST-LOG #75;
 -- bonus>utilities>calculator, Bonus 0.6.16: "Calculator needs its own enable / disable toggle")
 -- (QoL 0.7.53 / Bonus 0.6.37, character pane split stage 2: the Stat Calculator's Panel and Spell Math parts are under Bonus Features >
--- Character Toolkit, bonus>statcalc, with its own switch; the Slot Overlays and Tooltip lines stay under QoL > Character Toolkit)
-local WANT = { "qol>chartoolkit", "bonus>statcalc", "bonus>statcalc>panelPart", "qol>chartoolkit>overlayPart", "bonus>statcalc>spells",
-  "qol>chartoolkit>tipsPart", "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
+-- Stat Calculator, bonus>statcalc, with its own switch; the Slot Overlays and Tooltip lines stayed under the QoL page)
+-- (V25 R2: those two QoL pages are one page, QoL > Improved Character Display, qol>chardisplay, with the
+-- Slot Overlays and Tooltip lines parts)
+-- (V25 R4: the Tooltip lines part is gone from it; the lines are Bonus Features > Enhanced Tooltips' option "Character stats", a tick box
+-- on its page, not a row: Xaya A24 #5 / #6)
+local WANT = { "qol>chardisplay", "bonus>statcalc", "bonus>statcalc>panelPart", "qol>chardisplay>overlayPart", "bonus>statcalc>spells",
+  "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
   "bonus>utilities>calculator",
   -- (S1 #48, Options 0.6.50: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
   "reskin>charreskin", "reskin>chatpanel", "reskin>gamemenu", "reskin>shoppinglist",
@@ -78,7 +82,6 @@ local WANT = { "qol>chartoolkit", "bonus>statcalc", "bonus>statcalc>panelPart", 
   -- (XayaUI_Nameplates 0.1.0: its page's row carries Target colour; the row exists only while that addon is enabled)
   "qol>nameplates",
   "qol>improvedchat",   -- (Chat 0.6.33, UI-18 / UI-19 / UI-21: QoL > Improved Chat, its own switch)
-  "qol>charpane",       -- (QoL 0.7.53, character pane split stage 1: QoL > Character Pane, the item level / enchants / gems / stat list)
   "reskin>friendcolors" }   -- (Reskin 0.6.8, CHAT-5)
 -- (QA-branch modules: main keeps only core, Options, Rules, QoL, Bonus, Dev Assist and Media. A row that belongs to an absent module is not in the tree:
 -- its checks are printed as SKIP, never silently; the rows of the others are checked exactly as before. XUI_ABSENT: { XayaUI_Chat = true, ... })
@@ -100,10 +103,10 @@ do
 end
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
-check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator, Tooltip lines (her words)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
+check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator (her words); no Tooltip lines row any more (V25 R4)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
   and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
   and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
-  and found["qol>chartoolkit>tipsPart"] and found["qol>chartoolkit>tipsPart"].name == "Tooltip lines")
+  and found["qol>chardisplay>tipsPart"] == nil)
 -- (Options 0.6.58, REQUEST-LOG UI-42; Xaya 2026-11-06: "hovering over this should not show "off" by default. all should just show a
 -- one-sentence description and an enabled/disabled status") every switch has its one sentence (tip), never an "Off ..." text
 for _, k in ipairs(WANT) do
@@ -126,10 +129,10 @@ local function toggles(g, path)
   end
 end
 toggles(node(T, "qol"), "qol"); toggles(node(T, "bonus"), "bonus"); toggles(node(T, "reskin"), "reskin")
-check("A: the pages no longer show those switches (Enable Data Panels, Character Toolkit, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
+check("A: the pages no longer show those switches (Enable Data Panels, Stat Calculator, Tooltip lines, the reskins' own switches, ...)", #left == 0, table.concat(left, "; "))
 section("A: explanations", function()
 check("A: every switch keeps the explanation its old switch had (shown on the box's hover)", (function()
-  for _, k in ipairs({ "qol>chartoolkit", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
+  for _, k in ipairs({ "qol>chardisplay", "qol>cursor>highlight", "qol>cursor>trail", "bonus>datapanels" }) do
     local sw = found[k]; if not (sw and type(sw.desc) == "string" and #sw.desc > 20) then return false end
   end
   -- (UI-65, 2026-11-07: the text was shortened from "Master switch. Off: ..." to two sentences)
@@ -170,7 +173,7 @@ local function flipBuild(key)
   if now == was then return false, "the switch did not change" end
   return a == b, (a == b) and "" or firstDiff(a, b)
 end
-found["qol>chartoolkit"].set({}, true)   -- its parts' switches matter only while the toolkit is on
+found["qol>chardisplay"].set({}, true)   -- its parts' switches matter only while Improved Character Display is on
 for _, k in ipairs(WANT) do
   if k == "reskin>charreskin" and XUI_ABSENT.XayaUI_Reskin then
     -- its tick stores Blizzard Reskin's half of characterReskin: with XayaUI_Reskin absent the switch cannot change (see the report)
@@ -180,7 +183,7 @@ for _, k in ipairs(WANT) do
     check("A: the options tree is the same with " .. k .. " off and on (a tick may reuse the drawn tree)", ok, why)
   end
 end
-found["qol>chartoolkit"].set({}, false)
+found["qol>chardisplay"].set({}, false)
 end)
 
 -- C in the tree: the Rule Creator no longer has the section; Settings > UI Options > Rule Creation has it (both settings layouts
@@ -340,12 +343,12 @@ do
   check("B: Bonus Features has a Utilities row with Calculator and Notepad under it", u and c and n and u.level == 1 and c.level == 2 and n.level == 2)
   local t = tree("bonus"); local order = {}
   for _, b in ipairs(t.buttons) do if b:IsShown() then order[#order + 1] = tostring(b.uniquevalue):gsub("\001", ">") end end
-  -- (Bonus 0.6.37, character pane split stage 2) Character Toolkit (the Stat Calculator, from QoL) sorts first by its name
-  -- (2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: the Bonus node "Character Toolkit" is titled "Stat Calculator", so by name it sorts after Enhanced Tooltips)
+  -- (Bonus 0.6.37, character pane split stage 2) the Stat Calculator (from QoL) sorted first by its old name
+  -- (2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: the Bonus node is titled "Stat Calculator", so by name it sorts after Enhanced Tooltips)
   check("B: the rows read Data Panels, Enhanced Tooltips, Stat Calculator, Utilities > Calculator, Notepad (by name, #274); no Notepad row of its own",
     table.concat(order, ",") == "datapanels,tooltips,statcalc,utilities,utilities>calculator,utilities>notepad", table.concat(order, ","))
--- (Bonus 0.6.37) Bonus Features > Character Toolkit: its own box; ticked, Panel and Spell Math show under it (Panel ticked by default)
-  check("A: Bonus Features > Character Toolkit's row has its own tick box, unticked; its parts are not listed while it is off", box("bonus", "statcalc")
+-- (Bonus 0.6.37) Bonus Features > Stat Calculator: its own box; ticked, Panel and Spell Math show under it (Panel ticked by default)
+  check("A: Bonus Features > Stat Calculator's row has its own tick box, unticked; its parts are not listed while it is off", box("bonus", "statcalc")
     and box("bonus", "statcalc"):GetChecked() == false and row("bonus", "statcalc\001panelPart") == nil)
   click("bonus", "statcalc", true)
   check("A: ...ticked: on (Bonus's own setting); Panel and Spell Math show under it (Panel ticked)", ns.Settings("bonus").characterToolkit.enabled == true
@@ -398,31 +401,32 @@ oneRedraw("A: Cursor Highlight ticked")
 click("qol", "cursor\001highlight", false)
 check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", ns.Settings("qol").cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
 oneRedraw("A: Cursor Highlight unticked")
-check("A: Character Toolkit's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chartoolkit") and box("qol", "chartoolkit"):GetChecked() == false
-  and row("qol", "chartoolkit\001overlayPart") == nil)
+check("A: Improved Character Display's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chardisplay") and box("qol", "chardisplay"):GetChecked() == false
+  and row("qol", "chardisplay\001overlayPart") == nil)
 local function ctPlace()
-  local c, u = row("qol", "chartoolkit"), row("qol", "cursor")
+  local c, u = row("qol", "chardisplay"), row("qol", "cursor")
   local x = c and c.xuiSwitchBox
   local p, ox
   if x then p, _, _, ox = x:GetPoint(1) end
   return p == "LEFT" and ox == 6 + 17 and c.xuiTextL == u.xuiTextL + 17, tostring(ox) .. " " .. tostring(c and c.xuiTextL) .. " vs " .. tostring(u and u.xuiTextL)
 end
-check("A: Character Toolkit has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
-click("qol", "chartoolkit", true)
--- (QoL 0.7.53, character pane split stage 2: QoL's Character Toolkit has Slot Overlays and Tooltip lines; Panel and Spell Math are under
--- Bonus Features > Character Toolkit, its own switch, checked below)
-check("A: Character Toolkit ticked: on; Slot Overlays and Tooltip lines now show under it, each with its own box (Tooltip lines ticked: on by default)",
-  ns.Settings("qol").characterToolkit.enabled == true and box("qol", "chartoolkit\001overlayPart")
-  and box("qol", "chartoolkit\001tipsPart") and box("qol", "chartoolkit\001tipsPart"):GetChecked() == true
-  and box("qol", "chartoolkit\001overlayPart"):GetChecked() == false and row("qol", "chartoolkit\001panelPart") == nil)
-check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chartoolkit").xuiChev ~= nil and row("qol", "chartoolkit").xuiChev:IsShown())
-oneRedraw("A: Character Toolkit ticked")
-click("qol", "chartoolkit\001overlayPart", true)
+check("A: Improved Character Display has parts, so its box sits right after the arrow slot; only that name moves, by the box's width (16 + 1)", ctPlace())
+click("qol", "chardisplay", true)
+-- (QoL 0.7.53, character pane split stage 2; V25 R2: QoL > Improved Character Display has Slot Overlays and Tooltip lines (and its Stat
+-- list page); Panel and Spell Math are under Bonus Features > Stat Calculator, its own switch, checked below. Its switch is saved as
+-- characterReskin.features, an internal key kept from QoL 0.7.53)
+check("A: Improved Character Display ticked: on; Slot Overlays now shows under it with its own box (V25 R4: no Tooltip lines row)",
+  ns.Settings("qol").characterReskin.features == true and box("qol", "chardisplay\001overlayPart")
+  and row("qol", "chardisplay\001tipsPart") == nil
+  and box("qol", "chardisplay\001overlayPart"):GetChecked() == false and row("qol", "chardisplay\001panelPart") == nil)
+check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chardisplay").xuiChev ~= nil and row("qol", "chardisplay").xuiChev:IsShown())
+oneRedraw("A: Improved Character Display ticked")
+click("qol", "chardisplay\001overlayPart", true)
 check("A: Slot Overlays ticked: the overlays setting is on", ns.Settings("qol").characterToolkit.overlays == true)
-click("qol", "chartoolkit\001overlayPart", false)
-click("qol", "chartoolkit", false)
-check("A: Character Toolkit unticked: off, and its parts leave the list", ns.Settings("qol").characterToolkit.enabled == false and row("qol", "chartoolkit\001overlayPart") == nil)
-oneRedraw("A: Character Toolkit unticked")
+click("qol", "chardisplay\001overlayPart", false)
+click("qol", "chardisplay", false)
+check("A: Improved Character Display unticked: off, and its parts leave the list", ns.Settings("qol").characterReskin.features == false and row("qol", "chardisplay\001overlayPart") == nil)
+oneRedraw("A: Improved Character Display unticked")
 end)
 
 -- C, the window

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- CharacterModel.lua : the one stat model behind QoL > Character Toolkit (XayaUI QoL 0.7.0). No frames here: it reads the game and
+-- StatModel.lua (was CharacterModel.lua): the one stat model behind the Stat Calculator (XayaUI QoL 0.7.0). No frames here: it reads the game and
 -- returns plain data (sections of items, each item a label, a value, label/value detail pairs and hover lines; since QoL 0.7.15 a stat
 -- map line also carries its Pt value and note apart from its value, per / note, and CM.PairText joins them for one-column readers;
 -- a section with grid = true is drawn as a table, Stat | Rating | Current value | Pt value | Note | Change since QoL 0.7.20, a rating
@@ -41,7 +41,7 @@ ns = _G.XayaUI_NS or ns
 local SM = ns.StatMath
 
 local CM = {}
-ns.CharModel = CM
+ns.StatModel = CM
 
 local HIDDEN = setmetatable({}, { __tostring = function() return "<hidden>" end })
 CM.HIDDEN = HIDDEN
@@ -219,7 +219,7 @@ local function ThresholdsFor(idx, f, r0)
 end
 function CM.ClearCache() thresholdCache = {} end
 
--- the spec's primary stat index (1 Strength, 2 Agility, 4 Intellect), for the What If auto-fill (CharacterToolkit.lua)
+-- the spec's primary stat index (1 Strength, 2 Agility, 4 Intellect), for the What If auto-fill (the Stat Calculator, XayaUI_Bonus)
 function CM.PrimaryStatIndex() local sp = SpecIndex(); return PrimaryStat(sp and SpecInfo(sp) or {}) end
 
 local function Context(cfg)
@@ -1018,7 +1018,7 @@ function CM.GcdFor(haste)
     if not num(haste) then return nil end
     return math.max(CM.GCD_FLOOR, base / (1 + haste / 100))
 end
--- (QoL 0.7.53, character pane split stage 2: moved here from CharacterToolkit.lua, which is XayaUI Bonus Features' now) the model, flat:
+-- (QoL 0.7.53, character pane split stage 2: moved here from the Stat Calculator's file, which is XayaUI Bonus Features' now) the model, flat:
 -- one list of { section = title } markers and items with "label: value" lines (CM.PairLines), for settings c (the Stat Calculator's,
 -- or a clean set with no typed numbers); tab = a panel tab key, or nil for every section
 function CM.Flat(c, tab)
@@ -1039,7 +1039,7 @@ end
 -- statModel service), the character window's full stat list (CharacterReskin.lua) and the tests. A tooltip has one text column, so each
 -- line's Pt value follows its value (CM.PairText; the panel draws them in their own columns, QoL 0.7.15). QoL 0.7.24 (Xaya, the Note
 -- column: "Remove it entirely"): no note text here either, and a line that held only a note is left out. (QoL 0.7.53: moved here from
--- CharacterToolkit.lua's ns.CharToolkit_TooltipLines, unchanged.)
+-- the Stat Calculator file's tooltip-lines function, unchanged.)
 -- QoL 0.7.54 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #8 / #15, her answer "Hide notes unless Dev Assist"): the
 -- hover's notes (the item's tip paragraphs, Tip(it, ...)) show only while XayaUI Dev Assist is loaded, through the same reader as the
 -- aura "via" text (core's ns.DevAssistOn, Modules.lua; XayaUI_Bonus/Tooltips.lua TT.SourcesOn; her earlier answer FUS-4 "Tooltip, Dev
@@ -1114,7 +1114,7 @@ end
 -- (QoL 0.7.39; standing rule V21) read-only for Dev Assist's QA walkthrough (QAWalks-display.lua), through core's services.
 -- (QoL 0.7.53, character pane split stage 3; plan 4.2: "it stays one model, offered as the existing statModel service by the module that
 -- owns the base stat display (QoL), and read by Bonus through the service") CM: the one model, for XayaUI Bonus Features' Stat Calculator
--- (XayaUI_Bonus/CharacterToolkit.lua reads it only through this service: with XayaUI QoL off there is no service and no panel).
+-- (the Stat Calculator in XayaUI_Bonus reads it only through this service: with XayaUI QoL off there is no service and no panel).
 -- Model(tab): the flat model with no typed numbers (before: the Stat Calculator's settings, a call into the panel's file).
 local MODEL_CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {}, statOpen = {}, spells = {} }
 if ns.Provide then ns.Provide("statModel", { GcdRule = function() return CM.GcdRule() end, GcdFor = function(h) return CM.GcdFor(h) end,
@@ -2437,7 +2437,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     Tip(it, "A number typed on the Stats tab moves the first number: x " .. refName .. " then / now, x (1 + versatility then) / (1 + now), x (1 + the mastery percent then) / (1 + now). An estimate: it assumes the description already counts versatility and mastery.")
     Tip(it, "Durations, distances and target counts are skipped; other numbers that do not scale with " .. refName .. " (flat amounts) give meaningless ratios.")
     if s.hand then
-        Tip(it, "Added by hand in QoL > Character Toolkit > Spell Math.")
+        Tip(it, "Added by hand in Bonus Features > Stat Calculator > Spell Math.")
     elseif s.talent then
         Tip(it, ("A talent of your current trees that you have not picked. Measured against %s, like your other spells."):format(refName))
     else
@@ -2515,7 +2515,7 @@ local function SpellSection(ctx, out)
     out[#out + 1] = sec
     if not (c and c.advanced) then
         -- #377 (Xaya): "first time the tab is opened, show a button labelled 'configure spell data'" that pulls every spell and its
-        -- talent modifiers. The button turns Spell Math on and reads them (it is also in QoL > Character Toolkit > Spell Math).
+        -- talent modifiers. The button turns Spell Math on and reads them (it is also in Bonus Features > Stat Calculator > Spell Math).
         local b = Item("spellsConfigure", "Configure spell data", "action")
         b.action, b.value = "configureSpells", ""
         Tip(b, "Reads your spellbook and talents, measures each spell's numbers against your attack power or spell power, and lists them Active / Inactive with the talents that change them.")
@@ -2605,12 +2605,12 @@ local function SpellSection(ctx, out)
         if not t.picked and not t.passive and not known[t.id] then Add({ id = t.id, base = primaryBase, talent = true }, inact, true) end
     end
     if #sec.items == 1 then
-        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "add spells in QoL > Character Toolkit > Spell Math")
+        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "add spells in Bonus Features > Stat Calculator > Spell Math")
         elseif loading == 0 then sec.items[2] = Note("noSpells", "No spells in this filter", "") end
     end
     if noNumbers > 0 then
         local it = Note("spellsNoNumbers", ("%d without numbers"):format(noNumbers), "not listed")
-        Tip(it, "Spells whose description has no amount to measure. QoL > Character Toolkit > Spell Math: \"List spells without numbers\".")
+        Tip(it, "Spells whose description has no amount to measure. Bonus Features > Stat Calculator > Spell Math: \"List spells without numbers\".")
         sec.items[#sec.items + 1] = it
     end
     if loading > 0 then
@@ -2634,8 +2634,8 @@ end
 -------------------------------------------------------------------------------
 CM.svBase = {}   -- the number each box showed as "yours", by box key: the panel turns a typed number into a What If amount
 
--- One colour per stat, used for its name wherever it appears in the panel (#379, Xaya: "all secondaries in the toolkit should be
--- colorized"). The colours are XayaUI's choice (she named none); she can change them.
+-- One colour per stat, used for its name wherever it appears in the panel (#379: Xaya asked for every secondary stat in the
+-- Stat Calculator to be colorized; her words are in the REQUEST-LOG). The colours are XayaUI's choice (she named none); she can change them.
 -- (QoL 0.7.54, Xaya 2026-11-08 #46: "read mastery line -- does this read like real english to you?") the label under Armor names the
 -- mastery spell in her own wording (UI-37: "from mastery: fel blood passive"); the game names the spell "Mastery: Fel Blood", so its
 -- "Mastery: " prefix is dropped (it read "From mastery: Mastery: Fel Blood passive")
@@ -2768,7 +2768,7 @@ function CM.PairText(p, noNote)
     return v
 end
 -- (QoL 0.7.24) a detail line whose only content is its note: the Stat Calculator panel leaves it out (Xaya, the Note column: "Remove it
--- entirely"); the character window's own stat tooltips (the toolkit's Tooltip lines) still read it through CM.PairText
+-- entirely"); the character window's own stat tooltips (the Tooltip lines option) still read it through CM.PairText
 function CM.NoteOnly(p)
     if type(p) ~= "table" or not (p.note and p.note ~= "") then return false end
     return (p.value == nil or tostring(p.value) == "") and (p.per or "") == ""
@@ -2850,7 +2850,10 @@ local function MapRating(ctx, src, key, kit)
     else dr = "none yet" end
     if a.nextThreshold then drNote = With(drNote, ("next at %s rating (%s away)"):format(Big(a.nextThreshold.rating), Big(a.toNext))) end
     if w and #w.crossed > 0 then drNote = With(drNote, "your numbers cross " .. #w.crossed) end
-    if not quiet then MapNote(it, "Diminishing returns", dr, (a.lost or 0) > 0 and "warn" or nil, nil, drNote) end
+    -- (V25) the next threshold in words is part of what her A8 design shows on the character window's stat tooltips ("the next threshold
+    -- in words"): it is what the player acts on, not how the number was read, so it is not hidden with the method notes (keepNote;
+    -- XayaUI_Bonus/Tooltips.lua TT.CharStatLines)
+    if not quiet then local p = MapNote(it, "Diminishing returns", dr, (a.lost or 0) > 0 and "warn" or nil, nil, drNote); p.keepNote = true end
     if kit then kit(it, src, w) end
     -- the hover: where the numbers come from (short)
     it.tip = {}

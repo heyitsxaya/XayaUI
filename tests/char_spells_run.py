@@ -1,11 +1,11 @@
-# Stub test for QoL > Character Toolkit, Stat Calculator step 1 (XayaUI_QoL 0.7.7). Xaya 2026-11-04: "remove defense and offense tabs
+# Stub test for the Stat Calculator (QoL until Bonus 0.6.37), step 1 (XayaUI_QoL 0.7.7). Xaya 2026-11-04: "remove defense and offense tabs
 # from stat calculator, they should be filters for 'Spells' that show stat conversion rate into the offensive/defensive spell scaling"
 # and "spells pane still needs a full auto-populate". Checks: the tab row (no Defense / Offense tabs; a saved one opens Spells with
 # that filter), the spell list (hand-added first, then every spellbook spell with numbers; the rest counted, or listed with the
 # setting), spell power for an Intellect spec, the word-based filter (and a hand-set one), the stat sections under each filter,
 # skipped durations / distances / counts, descriptions asked for once and the redraw when they arrive, the filter buttons
 # (click, hover, hidden on other tabs, layout V11), and the settings page.
-# Run from the repo root: python3 tests/char_spells_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_spells_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # The spell IDs and descriptions below are TEST STAND-INS written for this test (made-up IDs 9001-9008); no game data.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -45,17 +45,17 @@ function ns.BuildSpellList()
 end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
-local c = TKC()
+local CM = ns.StatModel
+local c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-TKA()
+CWA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
-local function drawn() return ns.CharToolkit_Drawn() end
-local function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+local function drawn() return ns.StatCalc_Drawn() end
+local function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = r.text end; return t end
 local function keys(sec) local t = {}; for _, it in ipairs(sec and sec.items or {}) do t[#t + 1] = it.key end; return table.concat(t, ",") end
@@ -66,11 +66,11 @@ local function secTitles(m) local t = {}; for _, s in ipairs(m.sections) do t[#t
 local tabKeys = {}
 for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
 check("tabs: Stats, Gear, Spells (Defense and Offense are filters now; no Sheet, and What If folded into Stats and Gear, since QoL 0.7.14)", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
-c.tab = "defense"; c = TKC()
+c.tab = "defense"; c = CWC()
 check("a saved Defense tab opens Spells with the Defense filter", c.tab == "spells" and c.spellFilter == "defense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
-c.tab = "offense"; c = TKC()
+c.tab = "offense"; c = CWC()
 check("a saved Offense tab opens Spells with the Offense filter", c.tab == "spells" and c.spellFilter == "offense", tostring(c.tab) .. " " .. tostring(c.spellFilter))
-c.spellFilter = "bogus"; c = TKC()
+c.spellFilter = "bogus"; c = CWC()
 check("an unknown filter becomes None (all)", c.spellFilter == "all", c.spellFilter)
 local okD = pcall(CM.Build, c, "defense")
 check("the model still builds Defense / Offense for the tooltips and the sheet", okD and CM.Build(c, "defense").byKey.armor ~= nil and CM.Build(c, "offense").byKey.ap ~= nil)
@@ -193,7 +193,7 @@ check("  ...choosing Defense switches the filter and redraws (Active defensive s
 d = render("stats")
 check("  ...the filter icon is hidden on other tabs", not d.filterIcon.shown and #recs(d, "filtericon") == 0)
 -- layout (V11): inside the content width, no two text elements overlap
-local W = ns.CHARTOOLKIT_LAYOUT.content
+local W = ns.STATCALC_LAYOUT.content
 local function layoutOK(dd)
   for _, r in ipairs(dd.layout) do
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) end
@@ -216,8 +216,8 @@ end
 c.spellFilter = "all"
 render("spells")
 local renders = 0
-local savedRender = ns.CharToolkit_Render
-ns.CharToolkit_Render = function(...) renders = renders + 1; return savedRender(...) end
+local savedRender = ns.StatCalc_Render
+ns.StatCalc_Render = function(...) renders = renders + 1; return savedRender(...) end
 fire("SPELL_DATA_LOAD_RESULT", 424242, true)
 check("a description nobody here asked for: no redraw", renders == 0, renders)
 DESC[9006] = "Hurl a stone for 8,000 Physical damage."
@@ -228,7 +228,7 @@ check("the spellbook changes: the panel redraws", renders == 2, renders)
 render("gear"); renders = 0
 fire("SPELLS_CHANGED")
 check("on another tab: no redraw for spell events", renders == 0, renders)
-ns.CharToolkit_Render = savedRender
+ns.StatCalc_Render = savedRender
 
 -- 10b. #380 / #378: the spell ID beside the name; the spell's number lines at the panel's text size -------------------------------
 c.tab = "spells"; c.spellFilter = "all"; c.fontSize = 11
@@ -253,7 +253,7 @@ check("  ...other tabs do not take the spell math's full-size detail lines", sm 
 c.tab = "spells"
 
 -- 11. Settings -----------------------------------------------------------------------------------------------------------------
-local page = TKPage(function() end)
+local page = CWPage(function() end)
 local sp = page.args.spells.args
 check("settings: 'List spells without numbers' toggle", sp.spellsAll and sp.spellsAll.type == "toggle")
 sp.spellsAll.set(nil, true)
@@ -264,7 +264,7 @@ sp.s1.args.kind.set(nil, "both")
 check("  ...setting it stores the filter", c.spells[1].kind == "both", c.spells[1].kind)
 sp.s1.args.kind.set(nil, "auto")
 check("  ...'From its description' clears it", c.spells[1].kind == nil)
-c.spells[1].kind = "bogus"; c = TKC()
+c.spells[1].kind = "bogus"; c = CWC()
 check("a bad saved filter on a spell is dropped", c.spells[1].kind == nil)
 C_SpecializationInfo.GetSpecializationInfo = function() return 63, "Fire", "", 0, "DAMAGER", 4 end
 c.spells = {}
@@ -339,8 +339,8 @@ d = drawn()
 check("  ...a click turns Spell Math on and lists the spells", c.advanced == true and drawn().model.byKey.spell263642 ~= nil)
 local okL, whyL = layoutOK(d)
 check("layout with the button and both sections: inside the width, no overlaps", okL, whyL)
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

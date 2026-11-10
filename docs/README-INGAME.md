@@ -13,8 +13,8 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 - **XayaUI** holds the rules (cooldown, aura and other triggers), cues, conditions and actions, combat aura tracking, sharing and backups, themes, the console, the minimap button and the Esc-menu button. Every other XayaUI addon needs it.
 - **XayaUI Options** is the settings window. It loads the first time you open it, so it costs nothing until then.
 - **XayaUI Chat** holds the Chat Panel, the Chat Data Panel, message filters and sounds, history and the privacy cover.
-- **XayaUI QoL** holds the cursor highlight and trail, the Character Toolkit (Stat Calculator), the Character Reskin, the Shopping List and Release Guard.
-- **XayaUI Bonus Features** holds tooltip additions, the Notepad, the Calculator and custom data panels.
+- **XayaUI QoL** holds the cursor highlight and trail, Improved Character Display, the Character Reskin, the Shopping List and Release Guard.
+- **XayaUI Bonus Features** holds tooltip additions, the Notepad, the Calculator, custom data panels and the Stat Calculator.
 - **XayaUI Blizzard Reskin** puts XayaUI's look on Blizzard's frames without changing what they do (today: the Esc menu).
 - **XayaUI Media** is a support folder for your own pictures and sounds.
 
@@ -32,8 +32,9 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 
 - **Auto-Generate Rules.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Auto-Generate Rules.
 - **Chat Panel.** Reskins Blizzard's chat in place, with a Chat Data Panel, filters, history, per-tab sounds and a privacy cover. Blizzard UI Reskin > Chat Panel, or `/xui chat settings`.
-- **Character Reskin.** Blizzard's character window in XayaUI's look: item levels colored by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`.
-- **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. QoL > Character Toolkit, or `/xui stats`.
+- **Improved Character Display.** What XayaUI adds to Blizzard's character window: item levels colored by upgrade track, enchant and gem lines, the full stat list, slot marks and the Stat Calc button. QoL > Improved Character Display.
+- **Character Reskin.** Blizzard's character window in XayaUI's look: a clean border, theme colors, and a wider and taller window. Blizzard UI Reskin > Character Reskin, or `/xui reskin`.
+- **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. Bonus Features > Stat Calculator, or `/xui stats`.
 - **Shopping List.** What your gear is missing and what your tracked recipes need. Blizzard UI Reskin > Shopping List, or `/xui shop`.
 - **Release Guard.** Covers the Release Spirit button when you die so a misclick does not release you. QoL > Release Guard.
 - **Cursor Highlight and Trail.** A colored shape at the cursor and a trail of gradient dots, to find the mouse easily. Both off by default. QoL > Cursor, or `/xui cursor`.

@@ -1,14 +1,14 @@
 {
  "all-on": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "6e6819c398e03883",
@@ -19,11 +19,11 @@
     41
    ],
    "qol": [
-    "4adcab476e367724",
-    731
+    "dda0cfa425a6e2dc",
+    729
    ],
    "reskin": [
-    "d0e4e86def19de29",
+    "1977b12a245f3868",
     452
    ],
    "set": [
@@ -37,7 +37,7 @@
   }
  },
  "off-XayaUI_Bonus": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus= reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,nameplates,releaseguard bonus= reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
@@ -52,11 +52,11 @@
     39
    ],
    "qol": [
-    "4adcab476e367724",
-    731
+    "dda0cfa425a6e2dc",
+    729
    ],
    "reskin": [
-    "d0e4e86def19de29",
+    "1977b12a245f3868",
     452
    ],
    "set": [
@@ -70,15 +70,15 @@
   }
  },
  "off-XayaUI_Chat": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "4fe03c5326a02aaa",
@@ -89,11 +89,11 @@
     41
    ],
    "qol": [
-    "6372358a373e463d",
-    390
+    "4dfb8ed3c79e1aa7",
+    388
    ],
    "reskin": [
-    "7df976dcc8bfd638",
+    "715e80b23209e6d8",
     388
    ],
    "set": [
@@ -107,15 +107,15 @@
   }
  },
  "off-XayaUI_DevAssist": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging= nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging= nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "d451abc31812824c",
@@ -126,11 +126,11 @@
     41
    ],
    "qol": [
-    "4adcab476e367724",
-    731
+    "dda0cfa425a6e2dc",
+    729
    ],
    "reskin": [
-    "d0e4e86def19de29",
+    "1977b12a245f3868",
     452
    ],
    "set": [
@@ -144,15 +144,15 @@
   }
  },
  "off-XayaUI_Media": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "939c51cf4a55366e",
@@ -163,11 +163,11 @@
     41
    ],
    "qol": [
-    "4adcab476e367724",
-    731
+    "dda0cfa425a6e2dc",
+    729
    ],
    "reskin": [
-    "d0e4e86def19de29",
+    "1977b12a245f3868",
     452
    ],
    "set": [
@@ -181,15 +181,15 @@
   }
  },
  "off-XayaUI_Nameplates": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=blizzwindows,charreskin,chatpanel,friendcolors,gamemenu,minimapshape,objtracker,rskbubbles,rskbuttons,rskmenus,rskmmbuttons,rskstatusbars,rsktheme,rsktoasts,rsktooltips,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "e3d97f387c7865f3",
@@ -200,11 +200,11 @@
     39
    ],
    "qol": [
-    "8f47142b4715c813",
-    723
+    "d211694339aa5137",
+    721
    ],
    "reskin": [
-    "d0e4e86def19de29",
+    "1977b12a245f3868",
     452
    ],
    "set": [
@@ -225,8 +225,8 @@
     1
    ],
    "bonus": [
-    "7d58b744dcd1fe01",
-    385
+    "2900981f5c3e35a3",
+    388
    ],
    "cooldowns": [
     "18d35e5c87d24889",
@@ -255,15 +255,15 @@
   }
  },
  "off-XayaUI_Reskin": {
-  "registered": "chat= qol=charpane,chartoolkit,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=charreskin,chatpanel,rsktheme,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol=chardisplay,cursor,improvedchat,nameplates,releaseguard bonus=datapanels,statcalc,tooltips,utilities reskin=charreskin,chatpanel,rsktheme,shoppinglist debugging=devprobe,devrecord nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "1cb9c23bece196c6",
-    504
+    "43e6909a9816727b",
+    507
    ],
    "cooldowns": [
     "ed3718ad3f945d6d",
@@ -274,11 +274,11 @@
     41
    ],
    "qol": [
-    "4adcab476e367724",
-    731
+    "dda0cfa425a6e2dc",
+    729
    ],
    "reskin": [
-    "b6116299257f696d",
+    "25ac4d4a85df6ece",
     265
    ],
    "set": [

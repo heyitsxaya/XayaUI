@@ -1,5 +1,5 @@
 -- Stand-in geometry for Blizzard's character window (tests/char_pane_overlays_run.py, tests/char_reskin_run.py). Lua 5.1. Load it after
--- tests/char_toolkit_world.lua. It is NOT the game: it gives the world's stand-in frames real rectangles from their anchors, and
+-- tests/char_world.lua. It is NOT the game: it gives the world's stand-in frames real rectangles from their anchors, and
 -- font strings an ESTIMATED text size, so a test can assert where the player would see each label, socket and number.
 --
 -- The window, from Blizzard's live 12.1.5 source (Gethe/wow-ui-source, live branch, read 2026-11-05):
@@ -84,7 +84,7 @@ local baseCreateFrame = CreateFrame
 CreateFrame = function(kind, name, parent)
   local f = baseCreateFrame(kind, name, parent)
   geom(f)
-  f.src = debug.getinfo(2, "S").source   -- the file that made it (tests tell the reskin's frames from the toolkit's)
+  f.src = debug.getinfo(2, "S").source   -- the file that made it (tests tell the reskin's frames from Improved Character Display's)
   if type(parent) == "table" then parent.children = parent.children or {}; table.insert(parent.children, f) end
   return f
 end
@@ -160,7 +160,7 @@ function placePane(width)
     return b
   end
   local ids = {}
-  for _, s in ipairs(ns.CharModel.SLOTS) do ids[s[4]] = s[1] end
+  for _, s in ipairs(ns.StatModel.SLOTS) do ids[s[4]] = s[1] end
   for col, list in ipairs({ PANE_SLOTS_LEFT, PANE_SLOTS_RIGHT }) do
     local prev
     for _, name in ipairs(list) do

@@ -4,7 +4,7 @@
 -- "make sure every feature or significant change to the codebase / bug report fixes have an in game qa test walk through with pre-fill
 -- confirmation options or data capturing". One walkthrough per item, prefill = true (QAWalk.lua: the addon offers its own verdict on
 -- one button; nothing is recorded without the person's click). A step marked noVerdict asks something only the person can see.
--- Every read goes through core's service list (Modules.lua ns.Service): "statCalc" (XayaUI QoL, CharacterToolkit.lua) and "infoPane"
+-- Every read goes through core's service list (Modules.lua ns.Service): "statCalc" (XayaUI Bonus Features, StatCalculator.lua) and "infoPane"
 -- (XayaUI Options, InfoPane.lua; Options loads on demand, ns.LoadOptions). No other addon's own tables are named here.
 -- What "Do it for me" changes (the panel's tab, open / closed, which stats are open, a compared item) is remembered in the first step
 -- and put back in the last one. Listed in XayaUI_DevAssist.toc after the other QAWalks files; does nothing without the framework.
@@ -17,12 +17,12 @@ local function NS() return rawget(_G, "XayaUI_NS") end
 local function Svc(name) local ns = NS(); return ns and ns.Service and ns.Service(name) or nil end
 local function SC() return Svc("statCalc") end
 
--- "is the Stat Calculator there?" (XayaUI QoL loaded, the Character Toolkit on)
+-- "is the Stat Calculator there?" (XayaUI QoL loaded, the Stat Calculator on)
 local function Ready()
     local sc = SC()
     if not sc then return false, "XayaUI Bonus Features is not loaded (or is older than 0.6.37), or XayaUI QoL is off" end
     local c = sc.Cfg()
-    if not (c and c.enabled) then return false, "the Character Toolkit is off: XayaUI > Bonus Features > Stat Calculator" end
+    if not (c and c.enabled) then return false, "the Stat Calculator is off: XayaUI > Bonus Features > Stat Calculator" end
     if not c.panel then return false, "the Stat Calculator panel is off: Bonus Features > Stat Calculator > Panel" end
     return true
 end

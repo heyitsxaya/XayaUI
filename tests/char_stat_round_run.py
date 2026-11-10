@@ -15,7 +15,7 @@
 #   #68: "gear pane request for gear highlight dropped".
 # What it checks is what the player sees (V1, V11): drawn records (kind, x, y, width, text), the font strings' justification and
 # colour, the hover lines, the textures' colour, draw layer and thickness.
-# THE TEXT WIDTH: the shared stand-ins measure text as a fixed 6 px (tests/harness/world.lua) or not at all (tests/char_toolkit_world.lua),
+# THE TEXT WIDTH: the shared stand-ins measure text as a fixed 6 px (tests/harness/world.lua) or not at all (tests/char_world.lua),
 # which is how titles cut in game ("DR Thres...", "Comput...") passed before. Here the font strings measure text in one of three ways:
 # "est" (0.55 x size per character, the old layout estimate), "scaled" (0.6 x size per character: a wider font) and "flat8" (8 px per
 # character at any size), and report a wrapped height from that width. A title is "cut" when one of its words is wider than its column
@@ -26,7 +26,7 @@
 # their own values so a copied number cannot pass), blue / orange with a XayaUI colour-blind base theme (read from XayaUI/Theme.lua's
 # colorblind palette), the text colour when the same; a stat's name in its colour in the hovers and the Ability Scaling rows. Section K;
 # its checks fail on 930a0c7 (QoL 0.7.53 / Bonus 0.6.37), except those marked "(guard)".
-# Run from the repo root: python3 tests/char_stat_round_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_stat_round_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Spell IDs 9101-9103 and every number are TEST STAND-INS.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -102,7 +102,7 @@ end
 function oneLine(r) return textW(r.text, r.size) <= r.w + 0.01 end
 FILL = { hit = true, bucketbar = true, gsbar = true, gstile = true, gsseg = true, gscol = true, gsswatch = true }
 function layoutOK(dd)
-  local W = ns.CHARTOOLKIT_LAYOUT.content
+  local W = ns.STATCALC_LAYOUT.content
   for _, r in ipairs(dd.layout) do
     if r.x < -0.01 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) .. " x=" .. r.x .. " w=" .. r.w end
   end
@@ -142,24 +142,24 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-CM = ns.CharModel
-c = TKC()
+CM = ns.StatModel
+c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
-c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; CWA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 CM.gcd = { dur = 1.16, haste = 29.25 }
-LAY = ns.CHARTOOLKIT_LAYOUT
-function drawn() return ns.CharToolkit_Drawn() end
-function render(tab) c.tab = tab or "stats"; ns.CharToolkit_Render(); return drawn() end
+LAY = ns.STATCALC_LAYOUT
+function drawn() return ns.StatCalc_Drawn() end
+function render(tab) c.tab = tab or "stats"; ns.StatCalc_Render(); return drawn() end
 '''
 
 def world(extra):
-    return (COMMON + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
+    return (COMMON + extra).replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
         .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
+        .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
 
 totals = []
 def run(extra, body):
@@ -244,7 +244,7 @@ MEASURE = "est"
 -- B. A typed number (#60 e, #62 "New value with sign"): the current value, and under it the new value with its sign (QoL 0.7.28 to
 -- 0.7.53: in the accent; QoL 0.7.54 / Bonus 0.6.38: green when better, red when worse, section K)
 -- -----------------------------------------------------------------------------------------------------------------------------
-ns.CharToolkit_SetInput("sv:crit", "700")
+ns.StatCalc_SetInput("sv:crit", "700")
 d = render()
 local function changeUnder(dd, valueRec)
   for _, r in ipairs(recs(dd, valueRec.kind == "value" and "change" or "pairChange")) do
@@ -264,7 +264,7 @@ checkp("  ...no \"now -> then\" anywhere on the Stats tab", function()
 checkp("  ...the card's hover: the title line, then the new value on the line under it (\" | +26.22%\")", function()
   local h = hoverOf(d, "map_crit")
   return h:find("Critical Strike | 22.48%  (46.0 / 1%) /  | +26.22%", 1, true) ~= nil, h end)
-ns.CharToolkit_SetInput("sv:crit", "400")
+ns.StatCalc_SetInput("sv:crit", "400")
 d = render()
 checkp("typed 400 crit (lower than 528): 22.48% with a minus and the new value under it (-19.70%)", function()
   local v; for _, r in ipairs(recs(d, "value")) do if r.text == "22.48%" then v = r end end
@@ -275,12 +275,12 @@ checkp("  ...drawn in the game's red (less crit is worse)", function()
   local ch = v and changeUnder(d, v)
   local f = ch and fontAt(d, ch)
   return f and sameCol(f.color, RED), f and f.color and table.concat(f.color, ",") end)
-ns.CharToolkit_SetInput("sv:crit", "")
+ns.StatCalc_SetInput("sv:crit", "")
 
 -- -----------------------------------------------------------------------------------------------------------------------------
 -- C. The ability lists leave the Stats tab (#60 f, her answer "Both lists"); the Influences column (#66, #67)
 -- -----------------------------------------------------------------------------------------------------------------------------
-ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:primary", "2737")
 d = render()
 checkp("typed Agility: no \"Abilities (per 100)\" or \"Ability Scaling\" and no ability name drawn on the Stats tab", function()
   for _, r in ipairs(d.layout) do
@@ -318,12 +318,12 @@ checkp("Attack Power's row: only what it applies to in Modifies (Damage per seco
 checkp("Haste: its abilities' list is a name in Influences; the ability and its recharge are in that name's hover, not a nested row", function()
   local h = hoverOf(d, "map_haste:» Abilities (their text names Haste)")
   return h:find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil, h end)
-ns.CharToolkit_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:primary", "")
 
 -- -----------------------------------------------------------------------------------------------------------------------------
 -- D. Bucket bars and one indentation step by depth (#63)
 -- -----------------------------------------------------------------------------------------------------------------------------
-ns.CharToolkit_SetInput("sv:haste", "1500")
+ns.StatCalc_SetInput("sv:haste", "1500")
 for _, pw in ipairs({ 340, 450, 760 }) do
   c.size = { w = pw }
   d = render()
@@ -354,7 +354,7 @@ for _, pw in ipairs({ 340, 450, 760 }) do
   checkp(("(guard, V11) panel %d: Stats tab layout inside the width, no overlaps (bands and bars behind their text)"):format(pw), function() return layoutOK(d) end)
 end
 c.size = nil
-ns.CharToolkit_SetInput("sv:haste", "")
+ns.StatCalc_SetInput("sv:haste", "")
 d = render()
 checkp("the bucket bar's band is painted in the theme's accent colour (a shown texture of the panel, the bar's size)", function()
   local bar = find(d, "bucketbar", "General")
@@ -370,7 +370,7 @@ d = render()
 checkp("the Gear Summary is the Stats tab's first section, above Character Stats", function()
   return texts(d, "header") == "- Gear Summary|- Character Stats|- Stat Weights", texts(d, "header") end)
 checkp("its style is a setting (Panel > Layout > Gear Summary style): Split bars, Stat tiles, One stacked bar, Columns, Gear share, Table; Split bars to start with", function()
-  local pg = TKPage(function() end)
+  local pg = CWPage(function() end)
   local sel = pg.args.panelPart.args.layout.args.gearSumStyle
   local names = {}
   for _, k in ipairs(sel.sorting) do names[#names + 1] = sel.values[k] end
@@ -406,8 +406,8 @@ MASTERY_TEXT = "Increases Armor by 101.8% of your Agility and Fire damage you de
 local d = render("spells")
 checkp("the tabs read exactly Stats | Gear | Ability Scaling (the third keeps its saved key, spells)", function()
   local t = {}
-  for _, b in ipairs(XayaUICharacterToolkit.tabs) do t[#t + 1] = b.label end
-  return table.concat(t, " | ") == "Stats | Gear | Ability Scaling" and c.tab == "spells" and XayaUICharacterToolkit.tabs[3].key == "spells", table.concat(t, " | ") end)
+  for _, b in ipairs(XayaUIStatCalculator.tabs) do t[#t + 1] = b.label end
+  return table.concat(t, " | ") == "Stats | Gear | Ability Scaling" and c.tab == "spells" and XayaUIStatCalculator.tabs[3].key == "spells", table.concat(t, " | ") end)
 checkp("(guard) a saved spells tab opens it: the spell table is drawn", function() return find(d, "spellhead", "Spell Name") ~= nil end)
 for _, f in ipairs({ "all", "offense", "defense" }) do
   c.spellFilter = f
@@ -455,7 +455,7 @@ local is = rowOf(d, "Infernal Strike")
 checkp("Infernal Strike (Fire damage): Versatility: +2.61% and Mastery: +20.0% (the mastery text names Fire damage)", function()
   return tx(is.spellstat) == "Versatility: +2.61%|Mastery: +20.0%", tx(is.spellstat) end)
 checkp("(guard) Demon Spikes (no numbers but a percent) is not listed", function() return find(d, "spellname", "- Demon Spikes") == nil and find(d, "spellname", "+ Demon Spikes") == nil end)
-ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:primary", "2737")
 d = render("spells")
 fr = rowOf(d, "Fracture")
 checkp("typed Agility 2,737 (+100): Fracture's Computed Value 6,944, and under it +7,144 (x attack power then / now: 3,572 / 3,472)", function()
@@ -463,8 +463,8 @@ checkp("typed Agility 2,737 (+100): Fracture's Computed Value 6,944, and under i
   local ch = find(d, "spellchange", "+7,144")
   return v and ch and ch.x == v.x and ch.y > v.y, tx(fr.spellchange) end)
 checkp("  ...in the game's green (a larger number is better), not the theme's accent", function() local f = font(d, "+7,144"); return f and sameCol(f.color, GREEN) and not sameCol(f.color, ACCENT), f and f.color and table.concat(f.color, ",") end)
-ns.CharToolkit_SetInput("sv:primary", "")
-ns.CharToolkit_SetInput("sv:vers", "220")   -- 120 -> 220 versatility rating
+ns.StatCalc_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:vers", "220")   -- 120 -> 220 versatility rating
 d = render("spells")
 local vI = CM.Build(c, "stats").byKey.map_vers
 local v0, v1 = 2.61, nil
@@ -474,12 +474,12 @@ checkp("typed Versatility: Fracture's Computed Value moves by (1 + versatility t
   local src
   for _, r in ipairs(recs(d, "spellchange")) do src = src or r end
   return e and e.newValue and e.newValue:find("^%+7,") ~= nil and src ~= nil, e and e.newValue end)
-ns.CharToolkit_SetInput("sv:vers", "")
-ns.CharToolkit_SetInput("sv:haste", "1500"); ns.CharToolkit_SetInput("sv:crit", "900")
+ns.StatCalc_SetInput("sv:vers", "")
+ns.StatCalc_SetInput("sv:haste", "1500"); ns.StatCalc_SetInput("sv:crit", "900")
 d = render("spells")
 checkp("(guard) typed Haste and Critical Strike only: no Computed Value moves (they change how often or how hard, not the number)", function()
   return #recs(d, "spellchange") == 0, #recs(d, "spellchange") end)
-ns.CharToolkit_SetInput("sv:haste", ""); ns.CharToolkit_SetInput("sv:crit", "")
+ns.StatCalc_SetInput("sv:haste", ""); ns.StatCalc_SetInput("sv:crit", "")
 ''')
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -499,15 +499,15 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() return {} end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-CM = ns.CharModel
-c = TKC()
+CM = ns.StatModel
+c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
-function drawn() return ns.CharToolkit_Drawn() end
-function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+c.enabled = true; CWA(); CharacterFrame.shown = true; PaperDollFrame:Show()
+function drawn() return ns.StatCalc_Drawn() end
+function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 local function icon(dd, slot, cand) for _, b in ipairs(dd.icons) do if b.shown and b.slot == slot and (b.cand and true or false) == (cand or false) then return b end end end
 local function candIcon(dd, link) for _, b in ipairs(dd.icons) do if b.shown and b.cand and b.link == link then return b end end end
 local d = render("gear")
@@ -585,7 +585,7 @@ local function cardValue(dd, key)
   for _, r in ipairs(recs(dd, "value")) do if math.abs(r.y - hit.y) < 0.01 then return r end end
 end
 -- 1. lower is better: typed Haste 1,500 (from 1,200): the GCD card's new value is shorter, drawn green
-ns.CharToolkit_SetInput("sv:haste", "1500")
+ns.StatCalc_SetInput("sv:haste", "1500")
 local d = render()
 local gv = cardValue(d, "map_gcd")
 local gch = gv and changeUnder(d, gv)
@@ -602,23 +602,23 @@ checkp("  ...Haste's Modifies name \"GCD\": its hover's new-value line is green"
   local line = hl[2]
   return line ~= nil and tostring(line.r):find("^%-") ~= nil and sameCol(line.rc, GREEN), line and (tostring(line.r) .. " " .. table.concat(line.rc, ",")) end)
 -- less Haste: the GCD gets longer: red
-ns.CharToolkit_SetInput("sv:haste", "900")
+ns.StatCalc_SetInput("sv:haste", "900")
 d = render()
 gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
 checkp("typed less Haste: the GCD card's new value (longer, \"+1.xx s\") is drawn in the game's red", function()
   local f = gch and fontAt(d, gch)
   return gch and tostring(gch.text):find("^%+") ~= nil and f and sameCol(f.color, RED), T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
 -- the same: a change too small to show at two decimals (3 rating): the text colour
-ns.CharToolkit_SetInput("sv:haste", "1203")
+ns.StatCalc_SetInput("sv:haste", "1203")
 d = render()
 gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
 checkp("typed Haste 1,203 (+3 rating): the GCD's new value reads the same as now: drawn in the theme's text colour, not green or red", function()
   local f = gch and fontAt(d, gch)
   local same = gch and gv and tostring(gch.text):gsub("^[%+%-]", "") == tostring(gv.text)
   return same and f and sameCol(f.color, TEXT), T(gv) .. " / " .. T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
-ns.CharToolkit_SetInput("sv:haste", "")
+ns.StatCalc_SetInput("sv:haste", "")
 -- 2. damage taken: more Versatility = less damage taken = better (green)
-ns.CharToolkit_SetInput("sv:vers", "400")
+ns.StatCalc_SetInput("sv:vers", "400")
 local m = CM.Build(c, "stats").byKey.map_vers
 local dt
 for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Damage taken" then dt = p end end
@@ -628,9 +628,9 @@ d = render()
 local vb = btn(d, function(it) return it.kind == "infl" and it.label == "» Damage taken" end)
 local vl = vb and hoverCols(vb) or {}
 checkp("  ...its hover's new-value line is the game's green", function() return vl[2] ~= nil and sameCol(vl[2].rc, GREEN), vl[2] and table.concat(vl[2].rc, ",") end)
-ns.CharToolkit_SetInput("sv:vers", "")
+ns.StatCalc_SetInput("sv:vers", "")
 -- 3. Avoidance (fix plan f1-16): more Avoidance = less area damage taken: its line goes UP and that is better
-ns.CharToolkit_SetInput("sv:avoidance", "600")
+ns.StatCalc_SetInput("sv:avoidance", "600")
 m = CM.Build(c, "stats").byKey.map_avoidance
 local ad
 for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Area damage taken (less)" then ad = p end end
@@ -640,17 +640,17 @@ d = render()
 local ab = btn(d, function(it) return it.kind == "infl" and it.label == "» Area damage taken (less)" end)
 local al = ab and hoverCols(ab) or {}
 checkp("  ...its hover's new-value line is the game's green", function() return al[2] ~= nil and sameCol(al[2].rc, GREEN), al[2] and table.concat(al[2].rc, ",") end)
-ns.CharToolkit_SetInput("sv:avoidance", "")
+ns.StatCalc_SetInput("sv:avoidance", "")
 -- 4. a XayaUI colour-blind base theme: blue better, orange worse (the colorblind palette's accent and danger), never green / red
 CB_ACCENT, CB_DANGER = __CBACC__, __CBDAN__
 ns.Theme.BUILTIN = { colorblind = { pal = { accent = CB_ACCENT, danger = CB_DANGER } } }
 for _, base in ipairs({ "colorblind", "protan", "tritan" }) do
   ns.Theme.EffBase = function() return base end
-  ns.CharToolkit_SetInput("sv:crit", "700")
+  ns.StatCalc_SetInput("sv:crit", "700")
   d = render()
   local up = font(d, "+26.22%")
   up = up and { color = { up.color[1], up.color[2], up.color[3] } }   -- (copied now: the panel reuses its font strings on the next draw)
-  ns.CharToolkit_SetInput("sv:crit", "400")
+  ns.StatCalc_SetInput("sv:crit", "400")
   d = render()
   local down
   for _, f in ipairs(d.fonts) do if f.shown and tostring(f.text):find("^%-19%.") then down = f end end
@@ -659,7 +659,7 @@ for _, base in ipairs({ "colorblind", "protan", "tritan" }) do
       (up and table.concat(up.color, ",") or "none") .. " / " .. (down and table.concat(down.color, ",") or "none") end)
 end
 ns.Theme.EffBase = function() return "default" end
-ns.CharToolkit_SetInput("sv:crit", "700")
+ns.StatCalc_SetInput("sv:crit", "700")
 d = render()
 checkp("base theme \"default\": the game's green", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, GREEN) end)
 -- a saved theme whose own base is the colour-blind one counts too (as Theme.lua T.IsLight reads a saved theme's base)
@@ -669,7 +669,7 @@ ns.Theme.EffBase = function() return "Mine" end
 d = render()
 checkp("a saved theme started from a colour-blind theme: blue", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, CB_ACCENT) end)
 ns.Theme.EffBase = nil; CueRulesDB.themes = nil
-ns.CharToolkit_SetInput("sv:crit", "")
+ns.StatCalc_SetInput("sv:crit", "")
 -- 5. stat names in their colour in the hovers (title and lines); other labels keep the theme
 d = render()
 local cb = btn(d, function(it) return it.key == "map_crit" end)

@@ -1,9 +1,9 @@
-# Stub test for QoL > Character Toolkit phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
+# Stub test for the Stat Calculator (QoL until Bonus 0.6.37) phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
 # the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.14), the
 # What If pane (per-stat inputs and an item compare through the stand-in converter), the slot overlays, secret values shown as
 # "hidden in combat" and never compared, the settings page layout, layout bounds (V11), and the new game reads (dodge from Agility,
 # block reduction, attack power to DPS, base = stat - buffs, live GCD in combat, Mythic+ rating, durability and repair cost).
-# Run from the repo root: python3 tests/char_toolkit2_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_statcalc2_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
@@ -21,18 +21,20 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)   -- core loads Compat.lua after Modules.lua (XayaUI.toc)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+-- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
+XayaUI_NS = ns; assert(loadfile(__TT__))("XayaUI_Bonus", ns); assert(loadfile(__TTUI__))("XayaUI_Bonus", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
-local c = TKC()
+local CM = ns.StatModel
+local c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-TKA()
+CWA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
 
-local function drawn() return ns.CharToolkit_Drawn() end
-local function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+local function drawn() return ns.StatCalc_Drawn() end
+local function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = r.text end; return t end
 local function hasText(d, kind, s) for _, r in ipairs(recs(d, kind)) do if r.text == s then return r end end end
@@ -80,13 +82,13 @@ headerFor(d, "map_character").scripts.OnClick(headerFor(d, "map_character"))
 d = drawn()
 check("clicking it again unfolds it", hasText(d, "header", "- Character Stats") and valueOf(d, "Critical Strike") == "22.48%")
 check("theme: the panel background and the header text use the XayaUI theme's colors",
-  XayaUICharacterToolkit.bg.color[1] == 0.11 and d.headers[1].text.color[1] == 0.91, tostring(XayaUICharacterToolkit.bg.color[1]))
+  XayaUIStatCalculator.bg.color[1] == 0.11 and d.headers[1].text.color[1] == 0.91, tostring(XayaUIStatCalculator.bg.color[1]))
 check("theme: the theme's font is used", d.fonts[1].font[1] == "Fonts\\THEME.TTF", d.fonts[1].font[1])
 
 -- 2. Rating / percent: the "Show: %" button is hidden (QoL 0.7.14, #382 "the toggle does nothing"): no tab draws rating lines; the
 -- stat map shows the percent and the rating together. The model's value modes still serve the character window's tooltips.
 -- (QoL 0.7.40, REQUEST-LOG B2: the toggle is removed in all three places; the button is no longer made)
-check("no Show: % button is made at all (B2)", XayaUICharacterToolkit.modeBtn == nil)
+check("no Show: % button is made at all (B2)", XayaUIStatCalculator.modeBtn == nil)
 local full = CM.Build(c, nil)
 check("the model's rating mode still gives the rating (crit 528) and percent mode the percent (22.48%)",
   (CM.ValueFor(full.byKey.crit, "rating")) == "528" and (CM.ValueFor(full.byKey.crit, "percent")) == "22.48%")
@@ -96,7 +98,7 @@ d = render("stats")
 local function modelTip(key, mode)
   local it = CM.Build(c, nil).byKey[key]
   local out = {}
-  for _, l in ipairs(ns.CharToolkit_TooltipLines(it, mode or (it.kind == "rating" and "percent" or nil))) do
+  for _, l in ipairs(CM.TooltipLines(it, mode or (it.kind == "rating" and "percent" or nil))) do
     out[#out + 1] = (l[2] ~= nil) and (tostring(l[1]) .. " | " .. tostring(l[2])) or tostring(l[1])
   end
   return out
@@ -153,19 +155,19 @@ m = CM.Build(c, nil)
 check("spec read through C_SpecializationInfo (no old globals): Vengeance, Agility", m.byKey.spec.label == "Vengeance" and pair(m.byKey.spec, "Primary stat") == "Agility")
 combat = true
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.05, isActive = true } end
-ns.CharToolkit_ReadGCD()
+ns.StatCalc_ReadGCD()
 m = CM.Build(c, "offense")
 check("GCD read live in combat while the game shows it: listed as the live reading (1.05 s) beside the rule's 1.16 s, the difference flagged (UI-64)", m.byKey.gcd.value == "1.16 s" and (pair(m.byKey.gcd, "Live reading") or ""):find("^1%.05 s") ~= nil, tostring(pair(m.byKey.gcd, "Live reading")))
 C_Spell.GetSpellCooldown = function() return { startTime = SECRET, duration = SECRET, isActive = true } end
-ns.CharToolkit_ReadGCD()
+ns.StatCalc_ReadGCD()
 m = CM.Build(c, "offense")
 check("GCD secret in combat: the live reading says hidden in combat with the last readable value; the rule's value stays (1.16 s)", m.byKey.gcd.value == "1.16 s" and pair(m.byKey.gcd, "Live reading") == "last read 1.05 s", tostring(pair(m.byKey.gcd, "Live reading")))
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false
-ns.CharToolkit_ReadGCD()
+ns.StatCalc_ReadGCD()
 -- QoL 0.7.2: the Mythic+ rating was stashed in shelved/MythicPlusRating.lua. The test world still serves every Mythic+ call
--- (char_toolkit_world.lua), so these fail on 0.7.1, where the line was built from them.
-check("Mythic+ rating is not a line anywhere (the game gives it; the toolkit leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
+-- (char_world.lua), so these fail on 0.7.1, where the line was built from them.
+check("Mythic+ rating is not a line anywhere (the game gives it; the Stat Calculator leaves it out)", CM.Build(c, nil).byKey.mplus == nil and CM.Build(c, "stats").byKey.mplus == nil)
 check("the panel did not ask the server for Mythic+ details", mythicRequested == nil or mythicRequested == false)
 -- (QoL 0.7.23; Xaya 2026-11-05: "durability and repair can be removed from all stat calculator panes": the durability, repair cost,
 -- per-slot repair and vendor repair-all checks that stood here are now one check that none of it is built, on any tab)
@@ -219,11 +221,11 @@ for _, t in ipairs(CM.TABS) do tabKeys[#tabKeys + 1] = t[1] end
 check("no Sheet tab, no What If tab: Stats, Gear, Spells", table.concat(tabKeys, ",") == "stats,gear,spells", table.concat(tabKeys, ","))
 d = render("sheet")
 check("a saved Sheet tab opens Stats", c.tab == "stats" and hasText(d, "header", "- Character Stats") and #recs(d, "cell") == 0, c.tab)
-check("a fresh profile starts on Stats", ns.CHARTOOLKIT_DEFAULTS.tab == "stats", ns.CHARTOOLKIT_DEFAULTS.tab)
+check("a fresh profile starts on Stats", ns.STATCALC_DEFAULTS.tab == "stats", ns.STATCALC_DEFAULTS.tab)
 check("(QoL 0.7.40, B2) the old value-mode keys are dropped from saved settings", c.lineModes == nil and c.valueMode == nil)
 
 -- 6. Layout (V11) ----------------------------------------------------------------------------------------------------------
-local LAY = ns.CHARTOOLKIT_LAYOUT
+local LAY = ns.STATCALC_LAYOUT
 local function layoutOK(d)
   local W = LAY.content
   for _, r in ipairs(d.layout) do
@@ -247,13 +249,13 @@ for _, t in ipairs({ "stats", "defense", "offense", "gear", "spells" }) do
   check("layout " .. t .. ": every element inside the content width, no overlaps", ok, why)
 end
 -- the Gear comparison with an item picked: the side-by-side columns and the "what it changes" cards
-CM.gearSlot = 1; ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+CM.gearSlot = 1; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 for _, fs in ipairs({ 11, 8, 16 }) do
   c.fontSize = fs
   local ok, why = layoutOK(render("gear"))
   check("layout gear with a comparison at text size " .. fs .. ": inside the width, no overlaps", ok, why)
 end
-c.fontSize = 11; ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
+c.fontSize = 11; ns.StatCalc_SetInput("item", ""); CM.gearSlot = nil
 local function fits(kind, state)
   for _, r in ipairs(recs(d, kind)) do if #tostring(r.text) * 0.55 * r.size > r.w + 0.01 then return false, tostring(r.text) .. " (" .. state .. ")" end end
   return true
@@ -262,14 +264,14 @@ local tw = LAY.content / #CM.TABS
 local fit = true
 for _, t in ipairs(CM.TABS) do if #t[2] * 0.55 * 10 > tw - 4 then fit = false end end
 check("tab labels fit their tabs (estimated 0.55 x size per character at size 10)", fit)
-check("panel height stays within the character window", XayaUICharacterToolkit.h <= 600, XayaUICharacterToolkit.h)
+check("panel height stays within the character window", XayaUIStatCalculator.h <= 600, XayaUIStatCalculator.h)
 
 -- 7. Your numbers (the stat map's boxes; the What If tab before QoL 0.7.14) and the Gear comparison ------------------------------
 local function card(key) return CM.Build(c, "stats").byKey[key] end
 -- (QoL 0.7.28: a typed number's value is the current one with newValue, the new one with its sign, under it: "now => +then")
 local function mline(key, label) local it = card(key); for _, pp in ipairs(it and it.pairs or {}) do if pp.label == label then return pp.newValue and (pp.value .. " => " .. pp.newValue) or pp.value end end end
 local function cval(key) local it = card(key); return it and (it.newValue and (it.value .. " => " .. it.newValue) or it.value) end
-ns.CharToolkit_SetInput("crit", "852")
+ns.StatCalc_SetInput("crit", "852")
 check("crit +852: 22.48% with +41.00% under it, from rating +11.48% with +30.00% (the stand-in threshold)", cval("map_crit") == "22.48% => +41.00%"
   and mline("map_crit", "From rating") == "+11.48% => +30.00%", mline("map_crit", "From rating"))
 -- (QoL 0.7.15: the rating lost is the line's value, the thresholds its note)
@@ -279,28 +281,28 @@ check("  ...other stats untouched (haste shows its value now)", card("map_haste"
 d = render("stats")
 check("  ...the crit box holds the number itself (528 + 852 = 1380)", d.boxes["sv:crit"] and d.boxes["sv:crit"].text == "1380" and d.boxes["sv:crit"]:IsShown())
 check("  ...its box hides on other tabs", (function() local d2 = render("gear"); local hidden = not d2.boxes["sv:crit"]:IsShown(); render("stats"); return hidden end)())
-ns.CharToolkit_SetInput("crit", "1000")
+ns.StatCalc_SetInput("crit", "1000")
 check("crit +1000: thresholds apply (148 points past 1,380 count 90%)", mline("map_crit", "From rating") == ("+11.48%% => +%.2f%%"):format(30 + 148 / 46 * 0.9), mline("map_crit", "From rating"))
-ns.CharToolkit_SetInput("mastery", "100")
+ns.StatCalc_SetInput("mastery", "100")
 local mFrom = mline("map_mastery", "From rating") or ""
 local m0, m1 = mFrom:match("^%+([%d%.]+)%% => %+([%d%.]+)%%$")
 check("mastery +100: through the mastery factor (+6.09%, shown values rounded)", m0 and math.abs((tonumber(m1) - tonumber(m0)) - 6.09) < 0.011, mFrom)
-ns.CharToolkit_SetInput("crit", "-1000")
+ns.StatCalc_SetInput("crit", "-1000")
 check("crit -1000: stops at 0 rating (+11.48% with -0.00% under it: lower, so a minus, then the new value)", mline("map_crit", "From rating") == "+11.48% => -0.00%", mline("map_crit", "From rating"))
-ns.CharToolkit_SetInput("crit", "852")
+ns.StatCalc_SetInput("crit", "852")
 d = render("stats")
 check("Stats tab: crit +852 = +18.52%: 22.48%, and +41.00% drawn under it", valueOf(d, "Critical Strike") == "22.48%" and hasText(d, "change", "+41.00%") ~= nil, valueOf(d, "Critical Strike"))
 -- (QoL 0.7.23; Xaya 2026-11-05: "remove "all ratings" as an entry option")
-ns.CharToolkit_SetInput("all", "100")
+ns.StatCalc_SetInput("all", "100")
 d = render("stats")
 check("[0.7.23] no All ratings box on the map; an \"all\" amount reaches no card (haste unchanged)", not (d.boxes.all and d.boxes.all:IsShown())
   and valueOf(d, "Haste") == "29.25%" and not hasText(d, "label", "All ratings"), valueOf(d, "Haste"))
-ns.CharToolkit_SetInput("crit", "0"); ns.CharToolkit_SetInput("mastery", "0")
+ns.StatCalc_SetInput("crit", "0"); ns.StatCalc_SetInput("mastery", "0")
 check("0 clears a stat", c.whatIfStats.crit == nil and c.whatIf == 0)
 -- the Gear comparison (QoL 0.7.14; Xaya: "a gear COMPARISON sheet to see how different item slots will affect stats and therefore my
 -- ABILITIES"): Better Helm (346: crit 400, mastery 100, Agility 600, Stamina 900, armor 500) against Helm (336: crit 300, haste 200,
 -- Agility 500)
-ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 local gm = CM.Build(c, "gear")
 -- (QoL 0.7.24: one "Changes" table, Equipped | each picked item with its change on the line under it; the stat map's lines that change are
 -- rows "gc_<card>" / "gc_<card>:<line>" with now in the Equipped column, then in the item's. These helpers read them in the old shape.)
@@ -359,13 +361,13 @@ check("compare: no armor link in the mastery text -> the item's armor only (5,68
   eff("map_armor") and eff("map_armor").value)
 C_Spell.GetSpellDescription = savedDesc
 check("compare: the map's own boxes are untouched by a comparison", next(c.whatIfStats) == nil and c.whatIfPrimary == nil)
-ns.CharToolkit_SetInput("item", "999")
+ns.StatCalc_SetInput("item", "999")
 gm = CM.Build(c, "gear")
 check("compare by ID not loaded yet: says so and asks the game to load it", gm.byKey.gearLoading and gm.byKey.gearLoading.label:find("loading", 1, true) ~= nil and loadRequests[#loadRequests] == 999)
-ns.CharToolkit_SetInput("item", "3")
+ns.StatCalc_SetInput("item", "3")
 gm = CM.Build(c, "gear")
 check("compare by ID once loaded", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
-ns.CharToolkit_SetInput("item", "")
+ns.StatCalc_SetInput("item", "")
 d = render("gear")
 local ib = d.boxes.item
 ib.text, ib.focus = "", true
@@ -375,49 +377,49 @@ check("a shift-clicked item goes into the item box while it has focus", ib.text 
 ib.scripts.OnEnterPressed(ib)
 gm = CM.Build(c, "gear")
 check("Enter in the item box compares that item", cells("gc_ilvl") == "336|346|+10", cells("gc_ilvl"))
-ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
+ns.StatCalc_SetInput("item", ""); CM.gearSlot = nil
 d = render("stats")
 local cb = d.boxes["sv:crit"]
 cb.text = "648"; cb.scripts.OnEnterPressed(cb)
 check("Enter in a map box sets that stat's amount (648 - 528 = +120)", c.whatIfStats.crit == 120, c.whatIfStats.crit)
-ns.CharToolkit_SetInput("crit", "0")
+ns.StatCalc_SetInput("crit", "0")
 
 -- 8. Slot overlays -----------------------------------------------------------------------------------------------------------
-ns.CharToolkit_UpdateOverlays()
-check("overlays off by default: nothing on the head slot", ns.CharToolkit_OverlayText("HeadSlot") == nil)
-c.overlays = true; TKA()
-local il, mk1 = ns.CharToolkit_OverlayText("HeadSlot")
+ns.CharDisplay_UpdateOverlays()
+check("overlays off by default: nothing on the head slot", ns.CharDisplay_OverlayText("HeadSlot") == nil)
+c.overlays = true; CWA()
+local il, mk1 = ns.CharDisplay_OverlayText("HeadSlot")
 check("overlay: head shows its item level (336) and, with no slots ticked, E? (head takes an enchant this expansion: QoL 0.7.6 default)",
   il == "336" and mk1:find("E?", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
-il, mk1 = ns.CharToolkit_OverlayText("Finger0Slot")
+il, mk1 = ns.CharDisplay_OverlayText("Finger0Slot")
 check("overlay: ring shows 330 and its empty socket (1S)", il == "330" and mk1:find("1S", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
-check("overlay: an empty slot shows nothing", select(1, ns.CharToolkit_OverlayText("NeckSlot")) == "")
+check("overlay: an empty slot shows nothing", select(1, ns.CharDisplay_OverlayText("NeckSlot")) == "")
 -- QoL 0.7.6: this expansion's enchantable slots are checked until the player ticks their own
-local ES = ns.CharModel.EnchantSlots
-check("enchant default: the enchanted ring shows E, not E?", (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil
-  and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil)
+local ES = ns.StatModel.EnchantSlots
+check("enchant default: the enchanted ring shows E, not E?", (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil
+  and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil)
 check("enchant default: neck, back, wrist, waist, hands, trinkets not checked; head, shoulders, chest, legs, feet, rings, main hand checked",
   not ES(c)[2] and not ES(c)[15] and not ES(c)[9] and not ES(c)[6] and not ES(c)[10] and not ES(c)[13] and not ES(c)[14]
   and ES(c)[1] and ES(c)[3] and ES(c)[5] and ES(c)[7] and ES(c)[8] and ES(c)[11] and ES(c)[12] and ES(c)[16] and select(2, ES(c)) == true)
-GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.CharToolkit_UpdateOverlays()
-check("enchant default: an off-hand frill is not checked", (select(2, ns.CharToolkit_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) == nil and not ES(c)[17])
-GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.CharToolkit_UpdateOverlays()
-check("enchant default: an off-hand weapon is checked (E?)", (select(2, ns.CharToolkit_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) ~= nil)
-GEAR[17] = nil; ns.CharToolkit_UpdateOverlays()
-c.enchantSlots = { [1] = true, [11] = true }; ns.CharToolkit_UpdateOverlays()
-check("overlay: a ticked slot with no enchant shows E?", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
-check("overlay: a ticked slot with an enchant shows E", (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("|rE|r", 1, true) == nil
-  and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil and (select(2, ns.CharToolkit_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil)
-check("a list ticked before QoL 0.7.6 is kept: only its slots are checked", ns.CharModel.EnchantSlots(c)[3] == nil and select(2, ns.CharModel.EnchantSlots(c)) == false)
-c.ovIlvl = false; ns.CharToolkit_UpdateOverlays()
-check("overlay: item level switched off", select(1, ns.CharToolkit_OverlayText("HeadSlot")) == "")
+GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.CharDisplay_UpdateOverlays()
+check("enchant default: an off-hand frill is not checked", (select(2, ns.CharDisplay_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) == nil and not ES(c)[17])
+GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.CharDisplay_UpdateOverlays()
+check("enchant default: an off-hand weapon is checked (E?)", (select(2, ns.CharDisplay_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) ~= nil)
+GEAR[17] = nil; ns.CharDisplay_UpdateOverlays()
+c.enchantSlots = { [1] = true, [11] = true }; ns.CharDisplay_UpdateOverlays()
+check("overlay: a ticked slot with no enchant shows E?", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+check("overlay: a ticked slot with an enchant shows E", (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("|rE|r", 1, true) == nil
+  and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil)
+check("a list ticked before QoL 0.7.6 is kept: only its slots are checked", ns.StatModel.EnchantSlots(c)[3] == nil and select(2, ns.StatModel.EnchantSlots(c)) == false)
+c.ovIlvl = false; ns.CharDisplay_UpdateOverlays()
+check("overlay: item level switched off", select(1, ns.CharDisplay_OverlayText("HeadSlot")) == "")
 c.ovIlvl = true
 GEAR[1] = "|cffa335ee|Hitem:1:6000:::::::90:::::|h[Helm]|h|r"
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
-check("overlay follows Blizzard's slot redraw (enchant added: E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
+check("overlay follows Blizzard's slot redraw (enchant added: E?)", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
 GEAR[1] = "|cffa335ee|Hitem:1::::::::90:::::|h[Helm]|h|r"
-c.overlays = false; TKA()
-check("overlays off: hidden again", ns.CharToolkit_OverlayText("HeadSlot") == nil)
+c.overlays = false; CWA()
+check("overlays off: hidden again", ns.CharDisplay_OverlayText("HeadSlot") == nil)
 c.enchantSlots = {}
 
 -- 9. Secret values: hidden in combat, never compared or formatted ---------------------------------------------------------------
@@ -433,7 +435,7 @@ for _, name in ipairs({ "GetCombatRating", "GetCombatRatingBonus", "GetCritChanc
 end
 C_Spell.GetSpellCooldown = function() return { startTime = SECRET, duration = SECRET, isActive = true } end
 misuse = 0
-local okGCD, errGCD = pcall(ns.CharToolkit_ReadGCD)
+local okGCD, errGCD = pcall(ns.StatCalc_ReadGCD)
 check("secret values: reading a secret GCD runs without an error", okGCD, errGCD)
 c.whatIf = 50; c.whatIfStats = { crit = 10 }
 CM.gearSlot = 1
@@ -457,15 +459,15 @@ local bcrit = buttonFor(d, "map_crit")
 local okT, tlS = pcall(function() return tipLines(bcrit) end)
 check("secret values: the hover says why", okT and linesHave(tlS, "hides ratings while unit stats are restricted"))
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
-CharacterStatsPane.children = { statRow }; ns.CharToolkit_HookStatFrames()
+CharacterStatsPane.children = { statRow }; ns.TT.DB().charStats = true; ns.TT.Sync(); ns.TT.HookCharStatRows()   -- (V25 R4: Enhanced Tooltips' option)
 GameTooltip:SetOwner(statRow)
 local ok, err = pcall(statRow.hooks.OnEnter[1], statRow)
 check("secret values: the character window tooltip lines run without an error", ok and misuse == 0, err)
-ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 local okG, gmS = pcall(CM.Build, c, "gear")
 check("secret values: the gear comparison runs and says crit is hidden in combat (not left out)", okG and misuse == 0 and gmS.byKey.gc_map_crit
   and gmS.byKey.gc_map_crit.cells[2] == "hidden in combat", okG and "" or gmS)
-ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
+ns.StatCalc_SetInput("item", ""); CM.gearSlot = nil
 c.advanced = true; c.spells = { { id = 263642, base = "ap" } }
 local fr = CM.Build(c, "spells").byKey.spell263642
 check("secret values: Spell Math says attack power is hidden in combat", fr and pair(fr, "attack power") == "hidden in combat", fr and fr.pairs[1] and fr.pairs[1].value)
@@ -480,11 +482,11 @@ check("after combat (PLAYER_REGEN_ENABLED) the live reading shows again (1.16 s)
 c.whatIf = 0; c.whatIfStats = {}
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false
-ns.CharToolkit_ClearCache()
+ns.StatCalc_ClearCache()
 
 -- 10. Settings page: a feature node with parts under it, sections as tabs; no dropdown alone on a row ------------------------
-local page = TKPage(function() end)
-check("settings: Character Toolkit is a node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree"
+local page = CWPage(function() end)
+check("settings: the Stat Calculator and Improved Character Display pages (joined) have Panel, Slot Overlays and Spell Math as nodes", page.childGroups == "tree"
   and page.args.panelPart.type == "group" and page.args.overlayPart.type == "group" and page.args.spells.type == "group")
 check("settings: a part's sections are tabs (Panel: Layout, What If; Slot Overlays: Show, Enchant Slots); the Tooltips tab left Panel (QoL 0.7.24: Tooltip lines is a part of its own)",
   page.args.panelPart.childGroups == "tab" and page.args.panelPart.args.layout and page.args.panelPart.args.values and page.args.panelPart.args.tips == nil
@@ -514,35 +516,35 @@ lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
 page.args.overlayPart.xuiSwitch.set(nil, true)   -- the Slot Overlays row's tick box in the left pane (QoL 0.7.18)
-check("settings: the Slot overlays switch draws the overlays", ns.CharToolkit_OverlayText("HeadSlot") == "336")
+check("settings: the Slot overlays switch draws the overlays", ns.CharDisplay_OverlayText("HeadSlot") == "336")
 page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
-check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 do
   local cc = ns.Settings("qol").characterToolkit   -- (P5: where XayaUI QoL keeps it, its own store)
   page.args.overlayPart.args.enchants.args.slot1.set(nil, false)
   check("settings: unticking Head is kept and the other default slots stay ticked", cc.enchantSlotsSet == true and not cc.enchantSlots[1] and cc.enchantSlots[11] == true
-    and page.args.overlayPart.args.enchants.args.slot3.get() == true and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
+    and page.args.overlayPart.args.enchants.args.slot3.get() == true and (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
   page.args.overlayPart.args.enchants.args.reset.func()
   check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
-    and (select(2, ns.CharToolkit_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+    and (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
 end
 page.args.overlayPart.xuiSwitch.set(nil, false)
 check("[0.7.23] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
-ns.CharToolkit_SetInput("haste", "200")
+ns.StatCalc_SetInput("haste", "200")
 page.args.panelPart.args.values.args.clear.func()
 check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 and next(c.whatIfStats) == nil)
 check("theme changes repaint the open panel", type(themeListener) == "function" and pcall(themeListener))
 
 print(("%d checks, %d failed"):format(n, fails))
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
-   .replace("__COMPAT__", P("XayaUI/Compat.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
+   .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
+   .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__TTUI__", P("XayaUI_Bonus/TooltipsUI.lua")).replace("__TT__", P("XayaUI_Bonus/Tooltips.lua")))
 total_n, total_fails = lua.eval("n"), lua.eval("fails")
 
 # The shift-click hook goes where Compat.lua says the game's link insert lives (QoL 0.7.1): ChatFrameUtil.InsertLink in 12.x (above),
 # the fallback global ChatEdit_InsertLink only when that is all the client has, and nothing (no error) when neither exists.
-# CharacterToolkit.lua itself never names the fallback global (tests/harness/run.py fails the build if it does).
-def toolkit_world(prelude, body):
+# StatCalculator.lua itself never names the fallback global (tests/harness/run.py fails the build if it does).
+def statcalc_world(prelude, body):
     L = LuaRuntime()
     L.execute(r'''
 assert(loadfile(__WORLD__))()
@@ -552,32 +554,32 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
 local ok, err = pcall(function()
-  assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+  assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
   ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-  local c = TKC()
+  local c = CWC()
   CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
   CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
   c.enabled = true
-  TKA()
+  CWA()
   CharacterFrame.shown = true; PaperDollFrame:Show()
-  c.tab = "gear"; ns.CharToolkit_Render()
+  c.tab = "gear"; ns.StatCalc_Render()
 end)
 check("the panel builds and opens on Gear (the item box lives there since QoL 0.7.14)", ok, err)
-local ib = ok and ns.CharToolkit_Drawn().boxes.item
+local ib = ok and ns.StatCalc_Drawn().boxes.item
 LINK = "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"
 __BODY__
-'''.replace("__PRELUDE__", prelude).replace("__BODY__", body).replace("__WORLD__", P("tests/char_toolkit_world.lua"))
+'''.replace("__PRELUDE__", prelude).replace("__BODY__", body).replace("__WORLD__", P("tests/char_world.lua"))
        .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-       .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+       .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
     return L.eval("n"), L.eval("fails")
 
-r = toolkit_world("ChatFrameUtil = {}; ChatEdit_InsertLink = function(link) return false end   -- an older client: only the old global",
+r = statcalc_world("ChatFrameUtil = {}; ChatEdit_InsertLink = function(link) return false end   -- an older client: only the old global",
                   '''ib.text, ib.focus = "", true
 ChatEdit_InsertLink(LINK)
 ib.focus = false
 check("older client (only ChatEdit_InsertLink): a shift-clicked item still goes into the item box", ib.text == LINK, ib.text)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world("ChatFrameUtil = {}   -- neither the 12.x function nor the old global",
+r = statcalc_world("ChatFrameUtil = {}   -- neither the 12.x function nor the old global",
                   '''check("neither function exists: nothing is hooked and the item box still takes typed text",
   ChatEdit_InsertLink == nil and ib ~= false and (function() ib.text = "123"; return ib.text == "123" end)())''')
 total_n += r[0]; total_fails += r[1]
@@ -585,34 +587,34 @@ total_n += r[0]; total_fails += r[1]
 # ChatFrameUtil.InsertLink (Deprecated_ChatFrame.lua:43), so other addons' bags calling the old name never reached a hook on
 # ChatFrameUtil alone; the box also only listened while it had keyboard focus, and took no dropped item.
 COPY = "ChatFrameUtil = { InsertLink = function(link) return false end }; ChatEdit_InsertLink = ChatFrameUtil.InsertLink   -- 12.x: the old name is a copy"
-r = toolkit_world(COPY, '''ib.text, ib.focus = "", true
+r = statcalc_world(COPY, '''ib.text, ib.focus = "", true
 ChatEdit_InsertLink(LINK)   -- a bag addon that still calls the old name
 ib.focus = false
 check("12.x: an item shift-clicked through the old name (other addons' bags) goes into the item box", ib.text == LINK, ib.text)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world(COPY, '''ib.text, ib.focus = "", false
+r = statcalc_world(COPY, '''ib.text, ib.focus = "", false
 ChatFrameUtil.InsertLink(LINK)
 check("no focus, Gear shown, no chat box open: the shift-clicked item goes in and is compared at once",
-  ib.text == LINK and ns.CharModel.compareText == LINK, ib.text)
+  ib.text == LINK and ns.StatModel.compareText == LINK, ib.text)
 ib.text = ""
 ChatFrameUtil.GetActiveWindow = function() return { IsShown = function() return true end } end
 ChatFrameUtil.InsertLink(LINK)
 ChatFrameUtil.GetActiveWindow = nil
 check("no focus but a chat box open: the link goes to chat, not into the box", ib.text == "", ib.text)
-TKC().tab = "stats"; ns.CharToolkit_Render()
+CWC().tab = "stats"; ns.StatCalc_Render()
 ChatFrameUtil.InsertLink(LINK)
 check("no focus on another tab: the box does not take it", ib.text == "", ib.text)
-TKC().tab = "gear"; ns.CharToolkit_Render(); ns.CharToolkit_SetInput("item", ""); ib.text = ""
+CWC().tab = "gear"; ns.StatCalc_Render(); ns.StatCalc_SetInput("item", ""); ib.text = ""
 ChatFrameUtil.InsertLink("|cff71d5ff|Hspell:8936|h[Regrowth]|h|r")
 check("a spell link is not taken", ib.text == "", ib.text)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world(COPY, '''local cleared = false
+r = statcalc_world(COPY, '''local cleared = false
 GetCursorInfo = function() return "item", 3, LINK end
 ClearCursor = function() cleared = true end
 check("the item box takes a dropped item", type(ib.scripts.OnReceiveDrag) == "function")
 if ib.scripts.OnReceiveDrag then ib.scripts.OnReceiveDrag(ib) end
 check("  ...dropping an item from the bags puts it in the box, compares it, and empties the cursor",
-  ib.text == LINK and ns.CharModel.compareText == LINK and cleared, ib.text)
+  ib.text == LINK and ns.StatModel.compareText == LINK and cleared, ib.text)
 ib.text, cleared = "", false
 if ib.scripts.OnMouseUp then ib.scripts.OnMouseUp(ib, "LeftButton") end
 check("clicking the box with an item on the cursor does the same", ib.text == LINK and cleared, ib.text)
@@ -621,7 +623,7 @@ GetCursorInfo = function() return "spell", 1, 8936 end
 if ib.scripts.OnReceiveDrag then ib.scripts.OnReceiveDrag(ib) end
 check("a dropped spell is ignored and stays on the cursor", ib.text == "" and not cleared, ib.text)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world("", '''local panel = _G.XayaUICharacterToolkit
+r = statcalc_world("", '''local panel = _G.XayaUIStatCalculator
 check("the panel's title reads Stat Calculator (Xaya 2026-11-04)", panel and panel.title and panel.title.text == "Stat Calculator", panel and panel.title and panel.title.text)''')
 total_n += r[0]; total_fails += r[1]
 # Xaya 2026-11-04: "adding the item does not auto-fill in information and does[n't] prompt an item to slot in cases where there are
@@ -631,20 +633,20 @@ ITEMS["New Ring"] = { ilvl = 345, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRI
 GEAR[12] = "|cffa335ee|Hitem:4::::::::90:::::|h[Ring2]|h|r"
 NEWRING = "|cffa335ee|Hitem:5::::::::90:::::|h[New Ring]|h|r"
 """
-r = toolkit_world(RINGS + """C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 3 or 0 end,
+r = statcalc_world(RINGS + """C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and 3 or 0 end,
   GetContainerItemInfo = function(bag, i) local l = ({ NEWRING, "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r", nil })[i]
     if l then return { hyperlink = l, quality = 4, iconFileID = 1 } end end }
-""", '''local c = TKC()
-local CM = ns.CharModel
+""", '''local c = CWC()
+local CM = ns.StatModel
 -- Gear (QoL 0.7.14): click the first ring: the bags' rings are listed (the helm is not); pick one: compared with that ring
-c.tab = "gear"; ns.CharToolkit_SelectGearSlot(11)
+c.tab = "gear"; ns.StatCalc_SelectGearSlot(11)
 local gm = CM.Build(c, "gear")
 local owned = {}
 for _, ic in ipairs(gm.byKey.gearOwn and gm.byKey.gearOwn.icons or {}) do owned[#owned + 1] = ic.label end
 -- (QoL 0.7.24: the bag items are icons, gearOwn)
 check("a clicked ring lists the rings in your bags, not the helm", table.concat(owned, ",") == "New Ring", table.concat(owned, ","))
 check("  ...the item level with each", gm.byKey.gearOwn and gm.byKey.gearOwn.icons[1].ilvl == 345)
-ns.CharToolkit_PickItem(NEWRING, 11)
+ns.StatCalc_PickItem(NEWRING, 11)
 gm = CM.Build(c, "gear")
 local choices = {}
 for _, it in ipairs(gm.sections[2].items) do if it.kind == "choice" and not it.pick then choices[#choices + 1] = it end end
@@ -653,18 +655,18 @@ check("two rings equipped: both are offered to replace, the clicked one (Finger 
 local function c3(it) return it and (it.cells[1] .. "|" .. it.cells[2] .. "|" .. tostring(it.diffs[2])) end   -- (QoL 0.7.40: diffs, #90)
 check("  ...side by side against Ring (crit 100 | 300 | +200, mastery 400 | 0 | -400)", c3(gm.byKey.gc_crit) == "100|300|+200"
   and c3(gm.byKey.gc_mastery) == "400|0|-400", c3(gm.byKey.gc_crit))
-ns.CharToolkit_SetCompareSlot(12)
+ns.StatCalc_SetCompareSlot(12)
 gm = CM.Build(c, "gear")
 check("choosing the other ring compares against it (crit 50 | 300 | +250, haste 300 | 150 | -150)", c3(gm.byKey.gc_crit) == "50|300|+250"
   and c3(gm.byKey.gc_haste) == "300|150|-150" and gm.sections[2].title == "Compare: Ring slot #2", c3(gm.byKey.gc_crit))
 check("  ...the picked bag item is marked", gm.byKey.gearOwn and gm.byKey.gearOwn.icons[1].selected == true)
 check("  ...and the map's boxes are not filled by it (the comparison shows its own changes)", next(c.whatIfStats) == nil)
-ns.CharToolkit_SelectGearSlot(1)
+ns.StatCalc_SelectGearSlot(1)
 check("clicking the helm lets go of the ring (it does not fit)", (CM.compareText or "") == "" and CM.gearSlot == 1, CM.compareText)
 local function dropOn(slot)
-  for _, b in ipairs(ns.CharToolkit_Drawn().icons) do if b.slot == slot and b:IsShown() then return b end end
+  for _, b in ipairs(ns.StatCalc_Drawn().icons) do if b.slot == slot and b:IsShown() then return b end end
 end
-ns.CharToolkit_Render()
+ns.StatCalc_Render()
 local hb = dropOn(1)
 GetCursorInfo = function() return "item", 3, "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r" end
 local clearedC = false; ClearCursor = function() clearedC = true end
@@ -672,17 +674,17 @@ if hb and hb.scripts.OnReceiveDrag then hb.scripts.OnReceiveDrag(hb) end
 check("an item dropped on the helm's icon is compared with the helm, and the cursor emptied", hb ~= nil and CM.gearSlot == 1 and (CM.compareText or ""):find("Better Helm", 1, true) ~= nil and clearedC,
   CM.compareText)''')
 total_n += r[0]; total_fails += r[1]
-r = toolkit_world("", '''local c = TKC()
-local CM = ns.CharModel
+r = statcalc_world("", '''local c = CWC()
+local CM = ns.StatModel
 local prim = CM.Build(c, "stats").byKey.map_primary
 check("the primary stat (Agility for this spec) has its own box on the map (it was on What If)", prim ~= nil and prim.label == "Agility" and prim.input == "sv:primary", prim and prim.label)
-ns.CharToolkit_SetInput("sv:primary", tostring(CM.svBase.primary + 100))
+ns.StatCalc_SetInput("sv:primary", tostring(CM.svBase.primary + 100))
 prim = CM.Build(c, "stats").byKey.map_primary
 local apLine, armorLine
 for _, pp in ipairs(prim.pairs or {}) do if pp.label == "» Attack power" then apLine = pp end; if pp.label == "» Armor" then armorLine = pp end end
 check("  ...+100 Agility shows its attack power through the game's GetAttackPowerForStat (QoL 0.7.28: the new value with its sign)", c.whatIfPrimary == 100 and apLine and apLine.newValue ~= nil and apLine.newValue:find("^%+") ~= nil, apLine and apLine.newValue)
 check("  ...and the armor it gives through the mastery text, in the short view too", armorLine ~= nil and armorLine.newValue ~= nil and armorLine.short == true, armorLine and armorLine.newValue)
-ns.CharToolkit_SetInput("sv:primary", "")''')
+ns.StatCalc_SetInput("sv:primary", "")''')
 total_n += r[0]; total_fails += r[1]
 print("%d checks, %d failed" % (total_n, total_fails))
 sys.exit(1 if total_fails else 0)

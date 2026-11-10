@@ -1,8 +1,8 @@
 ## Interface: 120100
 ## Title: XayaUI Bonus Features
-## Notes: XayaUI extras: enhanced tooltips (IDs, item level, enemy forces), the Notepad, a little calculator, custom data panels, and the Stat Calculator (Character Toolkit; needs XayaUI QoL). Needs XayaUI.
+## Notes: XayaUI extras: enhanced tooltips (IDs, item level, enemy forces, extra lines on the character window's stat tooltips), the Notepad, a little calculator, custom data panels, and the Stat Calculator (a stats panel beside the character window; needs XayaUI QoL). Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.38
+## Version: 0.6.39
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUIBonusDB
@@ -17,5 +17,5 @@ Notepad.lua
 NotepadShare.lua
 Calculator.lua
 Utilities.lua
-CharacterToolkit.lua
+StatCalculator.lua
 ProfilePart.lua

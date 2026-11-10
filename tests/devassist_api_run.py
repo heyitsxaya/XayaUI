@@ -1,4 +1,4 @@
-# Stub test for XayaUI_DevAssist 0.4.0 ApiInventory.lua: /xuidump api (API inventory) and /xuidump toolkit (Character Toolkit checks)
+# Stub test for XayaUI_DevAssist 0.4.0 ApiInventory.lua: /xuidump api (API inventory) and /xuidump statcalc (Stat Calculator checks; /xuidev statcalc since V25 R3)
 # run against stand-in game calls. It checks that both captures run without errors, record what exists, skip secret values, and that
 # the item-level variant scan keeps only links the (stand-in) game produced. Nothing here is game data; the numbers are made up.
 # Run from the repo root: python3 tests/gamedump_api_run.py   Needs: pip install lupa.
@@ -66,8 +66,8 @@ XayaUIDevAssistDB = nil
 assert(loadfile(__GD__))("XayaUI_DevAssist")
 assert(loadfile(__API__))("XayaUI_DevAssist")
 local GD = XayaUIDevAssist
-check("captures are wired into the addon", type(GD.CaptureAPI) == "function" and type(GD.ProbeToolkit) == "function")
-check("/xuidump api and toolkit are commands", SlashCmdList.XAYAUIDEV ~= nil)
+check("captures are wired into the addon", type(GD.CaptureAPI) == "function" and type(GD.ProbeStatCalc) == "function")
+check("/xuidump api and statcalc are commands", SlashCmdList.XAYAUIDEV ~= nil)
 
 -- API inventory
 SlashCmdList.XAYAUIDEV("api")
@@ -86,24 +86,24 @@ check("api: widget methods listed", api.widgets.Frame and #api.widgets.Frame > 0
 check("api: build recorded", api.build.build == "70688" and api.build.toc == 120105)
 check("api: counts said in chat", (function() for _, s in ipairs(said) do if s:find("API inventory:", 1, true) then return true end end end)())
 
--- Character Toolkit checks
-SlashCmdList.XAYAUIDEV("toolkit")
+-- Stat Calculator checks
+SlashCmdList.XAYAUIDEV("statcalc")
 local p = XayaUIDevAssistDB.toolkitProbe
-check("toolkit: saved", type(p) == "table")
-check("toolkit: base cooldowns read for the current spec's spells only (off-spec line skipped)", #p.baseCooldowns == 2 and p.baseCooldowns[1].gcdMS == 1500 and p.baseCooldowns[2].cdMS == 8000)
-check("toolkit: GCD spell fields, secret ones marked", p.gcdSpell.duration == 1.14 and p.gcdSpell.startTime == "SECRET" and p.gcdSpell.isActive == true)
-check("toolkit: repair cost read where the game gives it", p.slots[1].repairCost == 2345 and p.slots[5].repairCost == nil)
-check("toolkit: tooltip-data keys listed per slot", p.slots[1].tooltipKeys and #p.slots[1].tooltipKeys >= 2)
-check("toolkit: GetRepairAllCost away from a vendor recorded as not available", p.repairAll == "not available here")
-check("toolkit: preview links per context, nil contexts left out", #p.variants == 4 and p.variantItemID == 500)
-check("toolkit: distinct item levels listed (636, 649, 662)", table.concat(p.variantLevels, ",") == "636,649,662", table.concat(p.variantLevels or {}, ","))
-check("toolkit: tooltip-by-context route sampled", type(p.tooltipByContext) == "table" and next(p.tooltipByContext) ~= nil)
-check("toolkit: stats with and without gems/enchant compared", p.statsWithGems.ITEM_MOD_CRIT_RATING_SHORT == 400 and p.statsBare.ITEM_MOD_CRIT_RATING_SHORT == 300)
-check("toolkit: bare link has enchant and gems emptied", p.statsBareLink:find("|Hitem:500::::::0:0:90|h", 1, true) ~= nil, p.statsBareLink)
-check("toolkit: stat pane, SetIgnoreParentAlpha, Mythic+ score", p.CharacterStatsPane == true and p.SetIgnoreParentAlpha == true and p.mplusScore == 3806)
-check("toolkit: rating constants", p.CR.CR_CRIT_MELEE == 9)
+check("stat calc checks: saved", type(p) == "table")
+check("stat calc checks: base cooldowns read for the current spec's spells only (off-spec line skipped)", #p.baseCooldowns == 2 and p.baseCooldowns[1].gcdMS == 1500 and p.baseCooldowns[2].cdMS == 8000)
+check("stat calc checks: GCD spell fields, secret ones marked", p.gcdSpell.duration == 1.14 and p.gcdSpell.startTime == "SECRET" and p.gcdSpell.isActive == true)
+check("stat calc checks: repair cost read where the game gives it", p.slots[1].repairCost == 2345 and p.slots[5].repairCost == nil)
+check("stat calc checks: tooltip-data keys listed per slot", p.slots[1].tooltipKeys and #p.slots[1].tooltipKeys >= 2)
+check("stat calc checks: GetRepairAllCost away from a vendor recorded as not available", p.repairAll == "not available here")
+check("stat calc checks: preview links per context, nil contexts left out", #p.variants == 4 and p.variantItemID == 500)
+check("stat calc checks: distinct item levels listed (636, 649, 662)", table.concat(p.variantLevels, ",") == "636,649,662", table.concat(p.variantLevels or {}, ","))
+check("stat calc checks: tooltip-by-context route sampled", type(p.tooltipByContext) == "table" and next(p.tooltipByContext) ~= nil)
+check("stat calc checks: stats with and without gems/enchant compared", p.statsWithGems.ITEM_MOD_CRIT_RATING_SHORT == 400 and p.statsBare.ITEM_MOD_CRIT_RATING_SHORT == 300)
+check("stat calc checks: bare link has enchant and gems emptied", p.statsBareLink:find("|Hitem:500::::::0:0:90|h", 1, true) ~= nil, p.statsBareLink)
+check("stat calc checks: stat pane, SetIgnoreParentAlpha, Mythic+ score", p.CharacterStatsPane == true and p.SetIgnoreParentAlpha == true and p.mplusScore == 3806)
+check("stat calc checks: rating constants", p.CR.CR_CRIT_MELEE == 9)
 SlashCmdList.XAYAUIDEV("status")
-check("status mentions api and toolkit captures", said[#said]:find("api: 2026-11-04 03:00", 1, true) ~= nil and said[#said]:find("toolkit checks: 2026-11-04 03:00", 1, true) ~= nil, said[#said])
+check("status mentions api and stat calc captures", said[#said]:find("api: 2026-11-04 03:00", 1, true) ~= nil and said[#said]:find("stat calc checks: 2026-11-04 03:00", 1, true) ~= nil, said[#said])
 io.write(("%d checks, %d failed\n"):format(n, fails))
 '''.replace("__GD__", P("XayaUI_DevAssist/DevAssist.lua")).replace("__API__", P("XayaUI_DevAssist/ApiInventory.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

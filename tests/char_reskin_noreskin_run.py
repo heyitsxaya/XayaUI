@@ -65,7 +65,7 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-local CM = ns.CharModel
+local CM = ns.StatModel
 for _, s in ipairs(CM.SLOTS) do
   local b = mk("ItemButton"); b.id = s[1]; local nt = reg(); b.GetNormalTexture = function() return nt end; b.normal = nt
   _G["Character" .. s[4]] = b; _G["Character" .. s[4] .. "Frame"] = reg()
@@ -79,7 +79,7 @@ C_Item.GetItemUpgradeInfo = function(link) local name = type(link) == "string" a
 GetInventoryItemQuality = function(_, slot) if GEAR[slot] then return 4 end end
 TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- XayaUI Blizzard Reskin not installed: no "reskin" store is declared   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 '''
@@ -87,9 +87,9 @@ ns.FireReady(); ns.SettingsOpenAllForTests()   -- XayaUI Blizzard Reskin not ins
 def run(case_lua, body):
     lua = LuaRuntime()
     code = (case_lua + ADDONS + SETUP + body)
-    for k, v in (("__WORLD__", "tests/char_toolkit_world.lua"), ("__GEOM__", "tests/char_pane_geometry.lua"), ("__MOD__", "XayaUI/Modules.lua"),
-                 ("__COMPAT__", "XayaUI/Compat.lua"), ("__SM__", "XayaUI_QoL/StatMath.lua"), ("__CM__", "XayaUI_QoL/CharacterModel.lua"),
-                 ("__CT__", "XayaUI_Bonus/CharacterToolkit.lua"), ("__CP__", "XayaUI_QoL/CharacterPane.lua"), ("__RS__", "XayaUI_QoL/CharacterReskin.lua")):
+    for k, v in (("__WORLD__", "tests/char_world.lua"), ("__GEOM__", "tests/char_pane_geometry.lua"), ("__MOD__", "XayaUI/Modules.lua"),
+                 ("__COMPAT__", "XayaUI/Compat.lua"), ("__SM__", "XayaUI_QoL/StatMath.lua"), ("__CM__", "XayaUI_QoL/StatModel.lua"),
+                 ("__CT__", "XayaUI_Bonus/StatCalculator.lua"), ("__ICD__", "XayaUI_QoL/ImprovedCharacterDisplay.lua"), ("__RS__", "XayaUI_QoL/CharacterReskin.lua")):
         code = code.replace(k, P(v))
     lua.execute(code)
     return lua.eval("n"), lua.eval("fails")
@@ -97,7 +97,7 @@ def run(case_lua, body):
 COMMON = r'''
 local rc = ns.CharReskin_Cfg()
 local Q = ns.Settings("qol")
-Q.characterReskin.features = true
+RC().features = true   -- (Improved Character Display's switch since V25 R2: XayaUIQoLDB.characterReskin.features)
 '''
 total = bad = 0
 cases = [
@@ -107,18 +107,18 @@ rc.enabled = true
 check("A: the switch is saved in QoL's own settings (XayaUIQoLDB.characterReskinLook)", type(Q.characterReskinLook) == "table" and Q.characterReskinLook.enabled == true)
 check("A: ...and it stays on (before 0.7.54 the look half was forced off on every read)", ns.CharReskin_Cfg().enabled == true)
 check("A: no other skin: the look is active", ns.CharReskin_LookActive() == true and ns.CharReskin_OtherSkin() == nil)
-ns.CharReskin_Apply()
+RSA()   -- (V25 R2: the look and Improved Character Display)
 check("A: ...and drawn: Blizzard's frame art faded", CharacterFrame.NineSlice.alpha == 0, CharacterFrame.NineSlice.alpha)
-check("A: the features run too: one item level on the Head slot (336)", CharacterHeadSlot.xuiIlvl and CharacterHeadSlot.xuiIlvl.text == "336")
+check("A: Improved Character Display runs too: one item level on the Head slot (336)", SD_(CharacterHeadSlot).ilvl and SD_(CharacterHeadSlot).ilvl.text == "336")
 '''),
   ('LOADED = { EllesmereUIBlizzardSkin = true }; STATE = { XayaUI_Reskin = "missing" }', COMMON + r'''
 rc.enabled = true
 check("B: EllesmereUIBlizzardSkin loaded: named as the other skin", ns.CharReskin_OtherSkin() == "EllesmereUIBlizzardSkin")
 check("B: ...the look stays off although its switch is on", ns.CharReskin_Cfg().enabled == true and ns.CharReskin_LookActive() == false)
-check("B: ...the features still run", ns.CharReskin_FeaturesActive() == true)
-ns.CharReskin_Apply()
+check("B: ...Improved Character Display still runs", ns.CharDisplay_Active() == true)
+RSA()   -- (V25 R2: the look and Improved Character Display)
 check("B: Blizzard's (the other skin's) frame art untouched", CharacterFrame.NineSlice.alpha == 1, CharacterFrame.NineSlice.alpha)
-check("B: ...and the item level still drawn (336)", CharacterHeadSlot.xuiIlvl and CharacterHeadSlot.xuiIlvl.text == "336")
+check("B: ...and the item level still drawn (336)", SD_(CharacterHeadSlot).ilvl and SD_(CharacterHeadSlot).ilvl.text == "336")
 '''),
   ('LOADED = { ElvUI = true }; STATE = { XayaUI_Reskin = "missing" }; ElvUI = { { private = { skins = { blizzard = { enable = true, character = false } } } } }', COMMON + r'''
 rc.enabled = true
@@ -127,7 +127,7 @@ check("C: ElvUI with its character skin off: no other skin, the look is active",
   ('LOADED = { ElvUI = true }; STATE = { XayaUI_Reskin = "missing" }; ElvUI = { {} }', COMMON + r'''
 rc.enabled = true
 check("D: ElvUI loaded, its settings not readable: counts as ElvUI skinning the window", ns.CharReskin_OtherSkin() == "ElvUI" and ns.CharReskin_LookActive() == false)
-check("D: ...the features still run", ns.CharReskin_FeaturesActive() == true)
+check("D: ...Improved Character Display still runs", ns.CharDisplay_Active() == true)
 '''),
   ('LOADED = {}; STATE = { XayaUI_Reskin = "disabled" }', COMMON + r'''
 rc.enabled = true

@@ -207,7 +207,7 @@ if not npOn then
     -- Blizzard Reskin part's chat2 / chat carry them, each with its default value. Taken out where they hold the default, the string
     -- must be the old build's byte for byte.
     local CD = ns.Service and ns.Service("chatDebug"); CD = CD and CD.C
-    local added = 0
+    local added, qolV = 0, nil
     local function fold(str)
       local data = ns.Share.Read(str, "profile")
       local rk = type(data) == "table" and data.parts and data.parts.reskin
@@ -215,6 +215,10 @@ if not npOn then
         local t = rk and rk[part]
         if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
       end
+      -- (QoL 0.7.56, Stat Calculator V25) the second allowed difference: the QoL part is format 2 (XayaUI_QoL/ProfilePart.lua), so the
+      -- string carries its part information (partInfo.qol, v = 2); keys and values unchanged. Taken out, the old string.
+      local qi = type(data) == "table" and data.partInfo and data.partInfo.qol
+      if qi then qolV = qi.v; data.partInfo.qol = nil; if next(data.partInfo) == nil then data.partInfo = nil end end
       return data and ns.Share.Encode("profile", data)
     end
     local box = exportAll(ns)
@@ -243,12 +247,13 @@ if not npOn then
       end
       same = eq(ns.Share.Read(folded, "profile"), gd)
     end
-    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved", same, tostring(folded):sub(1, 60))
+    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved and the QoL part's format 2", same, tostring(folded):sub(1, 60))
     if HAS_CHAT then
       check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
     else
       skip("XayaUI_Chat", "A: ... those are the Sidebar's and the privacy cover's defaults, all of them")
     end
+    check("A: ...the QoL part says it is format 2 (partInfo.qol.v = 2)", qolV == 2, qolV)
     local six = ns.Share.Encode("profile", P.Snapshot(SIX, ""))
     check("A: the six parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
   end)
@@ -359,7 +364,7 @@ section("E: theme scopes", function()
   if HAS_RESKIN then
     check("E: scopes are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
       and T.Scope("reskin.tooltips") and T.Scope("reskin.tooltips").label == "Tooltips" and T.Scope("reskin.tooltips").parent == "reskin"
-      and T.Scope("reskin.chatpanel") and T.Scope("reskin.chatpanel").label == "Chat Panel" and T.Scope("reskin.charreskin").label == "Character Pane"
+      and T.Scope("reskin.chatpanel") and T.Scope("reskin.chatpanel").label == "Chat Panel" and T.Scope("reskin.charreskin").label == "Character Reskin"
       and T.Scope("reskin.gamemenu").label == "Esc Menu" and T.Scope("settings").label == "Settings window" and true or false)
     local n = 0
     for _, id in ipairs(T.scopeList or {}) do if id:find("^reskin%.") and id ~= "reskin.chatpanel" and id ~= "reskin.charreskin" then n = n + 1 end end
@@ -369,7 +374,7 @@ section("E: theme scopes", function()
     skip("XayaUI_Reskin", "E: the 13 reskin pages each have a scope")
     -- what the folders present do register: the core's two and QoL's Character Pane
     check("E (present modules): the core's scopes and QoL's Character Pane are registered with their page titles", T.Scope and T.Scope("reskin") and T.Scope("reskin").label == "Blizzard Reskin"
-      and T.Scope("settings") and T.Scope("settings").label == "Settings window" and T.Scope("reskin.charreskin") and T.Scope("reskin.charreskin").label == "Character Pane" and true or false)
+      and T.Scope("settings") and T.Scope("settings").label == "Settings window" and T.Scope("reskin.charreskin") and T.Scope("reskin.charreskin").label == "Character Reskin" and true or false)
     -- the checks below resolve colours through two pages the Reskin folder registers (reskin.tooltips, reskin.menus): stand-ins with the same
     -- ids and parent, so the resolution order (core Theme.lua) is still asserted
     T.RegisterScope({ id = "reskin.tooltips", label = "Tooltips", parent = "reskin" })

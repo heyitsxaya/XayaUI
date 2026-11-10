@@ -11,7 +11,7 @@
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
-local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsTextBoxes.lua), nil while it is off
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local O = ns.OptionsApi.Shared
 local CoreS, PlatS, QolS, APP, AceConfigDialog, Tree = O.CoreS, O.PlatS, O.QolS, O.APP, O.AceConfigDialog, O.Tree

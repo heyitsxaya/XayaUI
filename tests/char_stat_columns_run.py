@@ -30,7 +30,7 @@
 # Influences column"); "» Abilities (per 100)" and "» Ability Scaling" left the Stats tab ("Both lists"); a typed number's new value is
 # drawn under the current one with its sign (kind "change"), not "now -> then"; every line is indented by its depth (Stat head and cards
 # at 12). The checks that drew those lines are rewritten below and say so; new checks with negative controls: char_stat_round_run.py.
-# Run from the repo root: python3 tests/char_stat_columns_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_stat_columns_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Spell IDs 9101-9103 and their texts are TEST STAND-INS.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -68,23 +68,25 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+-- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
+XayaUI_NS = ns; assert(loadfile(__TT__))("XayaUI_Bonus", ns); assert(loadfile(__TTUI__))("XayaUI_Bonus", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
-local c = TKC()
+local CM = ns.StatModel
+local c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
-c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
+c.enabled = true; CWA(); CharacterFrame.shown = true; PaperDollFrame:Show()
 -- (QoL 0.7.40, REQUEST-LOG #88: every stat is folded by default; these checks read the lines under the stats, so every stat is open
 -- here. The fold itself is checked in tests/char_stat_round2_run.py.)
 setmetatable(c.statOpen, { __index = function() return true end })
 CM.gcd = { dur = 1.16, haste = 29.25 }
-local P = XayaUICharacterToolkit
-local LAY = ns.CHARTOOLKIT_LAYOUT
+local P = XayaUIStatCalculator
+local LAY = ns.STATCALC_LAYOUT
 local GUT = ns.UI_GUTTER
-local function drawn() return ns.CharToolkit_Drawn() end
-local function render(tab) c.tab = tab or "stats"; ns.CharToolkit_Render(); return drawn() end
+local function drawn() return ns.StatCalc_Drawn() end
+local function render(tab) c.tab = tab or "stats"; ns.StatCalc_Render(); return drawn() end
 local function setWidth(w) c.size = { w = w, h = 600 }; P.sizing = nil end   -- the panel width the corner grip would leave (content = w - 20)
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if r.kind == kind then out[#out + 1] = r end end; return out end
 local function find(d, kind, text, nth)
@@ -330,7 +332,7 @@ okB, whyB = boxesOK(d, 8)
 check("[0.7.20] ...every box is still the last cell of its row, under Change", okB, whyB)
 
 -- 3. Layout (V11): smallest, default, just below and at the wide threshold, widest; text sizes; typed numbers ----------------
-ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737"); ns.CharToolkit_SetInput("sv:haste", "1500")
+ns.StatCalc_SetInput("sv:crit", "700"); ns.StatCalc_SetInput("sv:primary", "2737"); ns.StatCalc_SetInput("sv:haste", "1500")
 for _, pw in ipairs({ 340, 380, 450, 583, 584, 760 }) do
   for _, fs in ipairs({ 8, 11, 16 }) do
     c.fontSize = fs; setWidth(pw)
@@ -383,7 +385,7 @@ check("[0.7.28] the Agility hover with typed numbers: » Attack power +2,637 (1 
   tlT:find("» Attack power | +2,637  (1 = 1.00) /  | +2,737", 1, true) ~= nil and tlT:find("Ability Scaling", 1, true) == nil and tlT:find("bilities with your number", 1, true) == nil, tlT)
 local hInfl2 = find(d, "colhead", "Modifies")
 check("[0.7.28] ...the card's hover covers its row up to the Influences column (names hover on their own; the box stays clickable)", agiHover and hInfl2 and agiHover.w == hInfl2.x - GUT, agiHover and agiHover.w)
-ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:primary", ""); ns.CharToolkit_SetInput("sv:haste", "")
+ns.StatCalc_SetInput("sv:crit", ""); ns.StatCalc_SetInput("sv:primary", ""); ns.StatCalc_SetInput("sv:haste", "")
 c.size = nil
 
 -- 4. Hovers and the character window's tooltips keep every number -------------------------------------------------------------
@@ -404,23 +406,39 @@ check("(guard) the Agility hover lists » Attack power with its Pt value: '+2,63
 check("  ...and » Armor with its Pt value, no note (QoL 0.7.24: the note text is not moved to the hover): '+2,684  (1 = 1.02)'", has(tl, "» Armor | +2,684  (1 = 1.02)")
   and not has(tl, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(tl, " / "))
 check("[0.7.28] the Agility hover has no » Abilities (per 100) and no ability lines (her answer \"Both lists\")", not has(tl, "Abilities (per 100)") and not has(tl, "Fracture"), table.concat(tl, " / "))
-c.tooltips = true
+ns.TT.DB().charStats = true; ns.TT.Sync(); ns.TT.HookCharStatRows()   -- (V25 R4: Enhanced Tooltips' option, off by default)
 GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
 local cw = GameTooltip.lines or {}
-check("character window, Agility tooltip: » Attack power +2,637 (1 = 1.00) and » Armor with 1 = 1.02 and its note (one text column)",
-  has(cw, "» Attack power | +2,637  (1 = 1.00)") and has(cw, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(cw, " / "))
+-- (V25 R4; Xaya A22 #15 "Hide notes unless Dev Assist") a line's note follows its value only while XayaUI Dev Assist is loaded
+check("character window, Agility tooltip: » Attack power +2,637 (1 = 1.00) and » Armor with 1 = 1.02, no note without Dev Assist (one text column)",
+  has(cw, "» Attack power | +2,637  (1 = 1.00)") and has(cw, "» Armor | +2,684  (1 = 1.02)") and not has(cw, "101.8% of Agility"), table.concat(cw, " / "))
+ns.DevAssistOn = function() return true end; ns.TT.CharStatsReadTieIns(true)
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+cw = GameTooltip.lines or {}
+check("  ...with XayaUI Dev Assist loaded, » Armor's note follows it: '+2,684  (1 = 1.02); 101.8% of Agility, mastery'",
+  has(cw, "» Armor | +2,684  (1 = 1.02); 101.8% of Agility, mastery"), table.concat(cw, " / "))
+ns.DevAssistOn = nil; ns.TT.CharStatsReadTieIns(true)
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+cw = GameTooltip.lines or {}
 check("[0.7.28] ...and no » Abilities (per 100) or ability line in it (they left the Stats tab's card it reads)", not has(cw, "Abilities (per 100)") and not has(cw, "Fracture"), table.concat(cw, " / "))
 statRow.Label.text = "Critical Strike:"
 GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
 cw = GameTooltip.lines or {}
-check("(guard) character window, crit tooltip: Diminishing returns 'none yet; next at 1,380 rating (852 away)'", has(cw, "Diminishing returns | none yet; next at 1,380 rating (852 away)"), table.concat(cw, " / "))
+-- (V25 review) the next threshold in words is her A8 design's and shows to everyone; method notes ("before DR") only with Dev Assist
+check("character window, crit tooltip without Dev Assist: 'Diminishing returns | none yet; next at 1,380 rating (852 away)' and '» Parry | +10.15%  (52.0 crit rating = 1% parry)', no method notes",
+  has(cw, "Diminishing returns | none yet; next at 1,380 rating (852 away)") and has(cw, "» Parry | +10.15%  (52.0 crit rating = 1% parry)") and not has(cw, "before DR"), table.concat(cw, " / "))
+ns.DevAssistOn = function() return true end; ns.TT.CharStatsReadTieIns(true)   -- (V25 R4: the notes below show only with XayaUI Dev Assist)
+GameTooltip:SetOwner(statRow); statRow.hooks.OnEnter[1](statRow)
+cw = GameTooltip.lines or {}
+check("(guard) character window, crit tooltip (Dev Assist): Diminishing returns 'none yet; next at 1,380 rating (852 away)'", has(cw, "Diminishing returns | none yet; next at 1,380 rating (852 away)"), table.concat(cw, " / "))
 check("  ...» Parry with its words: '52.0 crit rating = 1% parry'", has(cw, "» Parry | +10.15%  (52.0 crit rating = 1% parry); before DR"), table.concat(cw, " / "))
+ns.DevAssistOn = nil; ns.TT.CharStatsReadTieIns(true)
 
 -- 5. The Gear tab: QoL 0.7.24 (Xaya 2026-11-05: "side by side and what it changes options are redundant. Rename the section to
 -- "Changes""): one Changes table, Stat | Pt value | Equipped | each picked item; the stat map's lines that change are its "Stat effects"
 -- rows (now in Equipped, then in the item's column); Ability Scaling became "Spell Changes". (Before: "What it changes" in the stat
 -- grid's columns, Current value "now -> then".) The full checks of the new section are in tests/char_spells_compare_run.py.
-CM.gearSlot = 1; ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+CM.gearSlot = 1; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 d = render("gear")
 local gChg = find(d, "header", "- Changes")
 local hEq, hIt, hPt = find(d, "mhead", "Equipped"), find(d, "mhead", "Better Helm"), find(d, "mhead", "Pt value")
@@ -474,7 +492,7 @@ for _, fs in ipairs({ 8, 11, 16 }) do
   local ok, why = layoutOK(render("gear"))
   check("(guard, V11) layout, Gear with a comparison, text size " .. fs .. ": inside the width, no overlaps", ok, why)
 end
-c.fontSize = 11; ns.CharToolkit_SetInput("item", ""); CM.gearSlot = nil
+c.fontSize = 11; ns.StatCalc_SetInput("item", ""); CM.gearSlot = nil
 
 -- 6. What did not change ------------------------------------------------------------------------------------------------------
 c.advanced = true
@@ -488,8 +506,9 @@ check("(guard) the Spells tab keeps its numbers: '6,944' | '... of attack power'
 c.advanced = false
 d = render()
 check("(guard) no Show: % button (#382; QoL 0.7.40, B2: not made at all, the settings' Rating lines gone too)", P.modeBtn == nil)
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
+   .replace("__TTUI__", P("XayaUI_Bonus/TooltipsUI.lua")).replace("__TT__", P("XayaUI_Bonus/Tooltips.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

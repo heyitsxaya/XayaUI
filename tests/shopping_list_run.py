@@ -7,7 +7,7 @@
 # your own default wins; Select other (used before, bags, the Auction House's list); + Add / To buy / remove; have / need; the tracked
 # recipes as Blizzard's tracker counts them; a name click searches the Auction House only while it is open; Blizzard's Professions
 # section restyled after its layout; the settings page; layout bounds; when the panel shows itself (UI-77).
-# Run from the repo root: python3 tests/shopping_list_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/shopping_list_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Every item, recipe, enchant and number below is a TEST STAND-IN (made-up IDs 7001-9100; no game data).
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -72,7 +72,7 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 local framesBefore = #created
 assert(loadfile(__SL__))("XayaUI_QoL", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
@@ -416,8 +416,8 @@ arg2("fontSize").set(nil, 12)
 check("a setting changed (text size) does not pop it up", not shown())
 arg2("panel").set(nil, false); arg2("panel").set(nil, true)
 check("the panel's own switch turned on shows it (you asked for it)", shown())
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
    .replace("__SL__", P("XayaUI_QoL/ShoppingList.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))

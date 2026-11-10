@@ -226,7 +226,11 @@ CHAT_DEFAULTS_ADDED = {
 CHAT_COLOUR_WRITTEN_BACK = {"privR": (0.04, 0), "privG": (0.04, 0), "privB": (0.06, 0)}
 
 
-STATS_HELP = "/xui stats [on||off||options||status]  Character Toolkit stat panel"
+STATS_HELP = "/xui stats [on||off||options||status]  Character Toolkit stat panel"   # the old code's line, as its golden holds it
+# (V25 R3) the Stat Calculator's own lines name it, no longer the old feature name: the new line and its old form (the golden's)
+STATS_RENAMED = (("/xui stats [on||off||options||status]  Stat Calculator panel", STATS_HELP),
+                 ("Stat Calculator is off. Turn it on in", "Character Toolkit is off. Turn it on in"),
+                 ("  Message  Stat Calculator: ", "  Message  Character Toolkit: "))
 
 
 def _stats_line_back(v):
@@ -236,6 +240,8 @@ def _stats_line_back(v):
         out = [_stats_line_back(x) for x in v]
         if all(isinstance(x, str) for x in out):
             # (2026-11-08, #37) the Bonus node is titled "Stat Calculator" now: the same line, its new path
+            for now, was in STATS_RENAMED:
+                out = [x.replace(now, was) for x in out]
             out = [x.replace("Turn it on in Bonus Features > Stat Calculator", "Turn it on in QoL > Character Toolkit").replace("Turn it on in Bonus Features > Character Toolkit", "Turn it on in QoL > Character Toolkit") for x in out]
             i = next((n for n, x in enumerate(out) if x.endswith(STATS_HELP)), None)
             c = next((n for n, x in enumerate(out) if "/xui cursor [highlight" in x), None)
@@ -261,6 +267,11 @@ def canon(saved):
     if isinstance(merged.get("CueRulesDB"), dict):
         merged["CueRulesDB"].pop("groupAnchorVer", None)
         merged["CueRulesDB"].pop("groupAnchorMoved", None)
+        # (V25 R2, QoL Improved Character Display) the one-time switch merge's own mark (characterReskin._merged; its "_" keeps it out of
+        # every profile). Diffing the dumps of c4ef771 and the new code (all on, play session): this one line, nothing else
+        cr = merged["CueRulesDB"].get("characterReskin")
+        if isinstance(cr, dict):
+            cr.pop("_merged", None)
     # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
@@ -288,6 +299,8 @@ def canon(saved):
     # /xui help lists it after QoL's own commands (before: between /xui cursor and /xui reskin); and its "is off" line names Bonus Features
     # > Character Toolkit instead of QoL > Character Toolkit. Diffing the dumps of f870d78 and the new code (all on, both sessions): these
     # 4 lines per session, nothing else; core only: none. Put back here, so the rest stays compared with the old code's golden.
+    # (V25 R3) and the Stat Calculator's lines name it, not the old feature name (STATS_RENAMED): the help line, the "is off" lines
+    # and the "no spell found" line (diffing the dumps: these lines, nothing else), put back the same way
     merged = _stats_line_back(merged)
     text = re.sub(r"0x[0-9a-f]+", "0x", json.dumps(merged, sort_keys=True))
     # the lists of installed XayaUI addons (the debug record's session line, the bug report that quotes it, Dev Assist's review

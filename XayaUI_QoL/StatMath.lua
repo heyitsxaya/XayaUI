@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- StatMath.lua : the arithmetic behind QoL > Character Toolkit (XayaUI QoL 0.7.0). No frames and no game calls here: every function
+-- StatMath.lua : the arithmetic behind the Stat Calculator (Bonus Features > Stat Calculator; XayaUI QoL 0.7.0). No frames and no game calls here: every function
 -- takes the game's own rating converter as an argument, f(rating) -> percent, so it can be tested offline with a stand-in.
 --
 -- Why a converter and not a table: XayaUI never ships stat tables from outside the game (#290). The game exposes
@@ -10,7 +10,7 @@
 --   lost rating      rating that buys nothing because of the penalty: rating - (percent now / base rate)
 --   next 1%          the exact extra rating for one more percent, found by bisection on the converter (crosses thresholds correctly)
 -- If the converter shows no penalty anywhere, no thresholds are reported. Whether the live converter applies diminishing returns is
--- NOT CONFIRMED IN GAME (#325); CharacterModel.lua compares it with the game's current value and says so when they disagree.
+-- NOT CONFIRMED IN GAME (#325); StatModel.lua compares it with the game's current value and says so when they disagree.
 -- 0.7.0 adds WhatIf (per-stat and item what-if through the converter), StatDelta (item compare) and Coins (repair cost).
 -------------------------------------------------------------------------------
 local _, ns = ...

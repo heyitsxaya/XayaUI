@@ -3,10 +3,10 @@
 # ilv tier (track ... AND upgrade tier (color gradient))"; "enchants + gems should show to the side of the character pane".
 # Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md rows A1-A5, A7. Checks: off by default and untouched while off;
 # the window's art faded and ours drawn (region names from Blizzard's live 12.1.5 CharacterFrame.xml / PaperDollFrame.xml /
-# SharedUIPanelTemplates.xml); tabs; one item level per slot coloured by track and step; the Character Toolkit's overlays leave theirs
+# SharedUIPanelTemplates.xml); tabs; one item level per slot coloured by track and step; the slot overlays leave theirs
 # out; enchant names beside the slots (and "No enchant"); the stat list; every part's own switch; switching off puts everything back;
 # the hooks; the error guard; secret values; the settings page.
-# Run from the repo root: python3 tests/char_reskin_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_reskin_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Every number, colour, track and enchant name below is a TEST STAND-IN (no game data).
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -51,7 +51,7 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-local CM = ns.CharModel
+local CM = ns.StatModel
 for _, s in ipairs(CM.SLOTS) do
   local b = mk("ItemButton"); b.id = s[1]; local nt = reg(); b.GetNormalTexture = function() return nt end; b.normal = nt
   _G["Character" .. s[4]] = b; _G["Character" .. s[4] .. "Frame"] = reg()
@@ -65,21 +65,23 @@ C_Item.GetItemUpgradeInfo = function(link) local name = type(link) == "string" a
 GetInventoryItemQuality = function(_, slot) if GEAR[slot] then return 4 end end
 TIP = { [11] = { { type = 15, leftText = "Enchanted: Radiant Mastery" } } }
 C_TooltipInfo.GetInventoryItem = function(_, slot) return { lines = TIP[slot] or {}, repairCost = REPAIR[slot] } end
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
-local rc = ns.CharReskin_Cfg()
-local tk = TKC()
+local rc = RC()   -- (V25 R2: the look and Improved Character Display as one table, tests/char_world.lua)
+local cwc = CWC()
 local function near(a, b) return type(a) == "number" and type(b) == "number" and math.abs(a - b) < 0.002 end
 local function col(t, r, g, b) return t and near(t[1], r) and near(t[2], g) and near(t[3], b) end
 
 -- 1. Off by default: Blizzard's window untouched ------------------------------------------------------------------------------
-check("off by default (A1: its own switch)", rc.enabled == false and ns.CharReskin_Active() == false)
+check("off by default (A1: its own switch)", rc.enabled == false and ns.CharReskin_Active() == false and ns.CharDisplay_Active() == false)
 check("  ...nothing faded while off", CharacterFrame.NineSlice.alpha == 1 and CharacterHeadSlotFrame.alpha == 1 and ns.CharReskinDiag.faded == 0)
 check("  ...and no hooks installed while off", #(CharacterFrame.hooks.OnShow or {}) == 0)
 
 -- 2. On: the window (A2) ------------------------------------------------------------------------------------------------------
-rc.enabled = true; ns.CharReskin_Apply()
+-- (V25 R2) and Improved Character Display on (the item level, enchants and stat list below are its parts; before, they followed the
+-- reskin's switch until their own was set)
+rc.enabled = true; rc.features = true; RSA()
 check("on: the frame art, portrait and paper-doll background faded", CharacterFrame.NineSlice.alpha == 0 and CharacterFrame.Bg.alpha == 0
   and CharacterFrame.TopTileStreaks.alpha == 0 and CharacterFrame.PortraitContainer.alpha == 0 and CharacterFrame.Background.alpha == 0)
 check("  ...the insets' art too (slots / model area and the stats pane)", CharacterFrame.Inset.Bg.alpha == 0 and CharacterFrame.Inset.NineSlice.alpha == 0
@@ -88,27 +90,27 @@ check("  ...the model's backgrounds and inner border, and the stats pane's class
   for _, n in ipairs(MODEL) do if _G[n].alpha ~= 0 then return false end end; return CharacterStatsPane.ClassBackground.alpha == 0 end)())
 check("  ...the title in the theme's title colour", col(CharacterFrame.TitleContainer.TitleText.color, 1, 0.82, 0))
 check("  ...tab art faded; the selected tab drawn in the selected colour, the others plain", CharacterFrameTab1.TabTextures[1].alpha == 0
-  and CharacterFrameTab1.xuiBg and CharacterFrameTab2.xuiBg and CharacterFrameTab1.xuiBg.color[1] ~= CharacterFrameTab2.xuiBg.color[1])
+  and RX_(CharacterFrameTab1).bg and RX_(CharacterFrameTab2).bg and RX_(CharacterFrameTab1).bg.color[1] ~= RX_(CharacterFrameTab2).bg.color[1])
 PanelTemplates_SetTab(CharacterFrame, 2)
-check("  ...switching tabs (PanelTemplates_SetTab) moves the selected colour", CharacterFrameTab2.xuiBg.color[1] ~= CharacterFrameTab1.xuiBg.color[1]
-  and near(CharacterFrameTab2.xuiBg.color[1], 0.22))
+check("  ...switching tabs (PanelTemplates_SetTab) moves the selected colour", RX_(CharacterFrameTab2).bg.color[1] ~= RX_(CharacterFrameTab1).bg.color[1]
+  and near(RX_(CharacterFrameTab2).bg.color[1], 0.22))
 PanelTemplates_SetTab(CharacterFrame, 1)
 
 -- 3. Slots: one item level, track-coloured (A3, A4) ---------------------------------------------------------------------------
 check("slots: the slot frame art and bevel faded (A3)", CharacterHeadSlotFrame.alpha == 0 and CharacterHeadSlot.normal.alpha == 0 and CharacterMainHandSlotFrame.alpha == 0)
-local hi, ri = CharacterHeadSlot.xuiIlvl, CharacterFinger0Slot.xuiIlvl
+local hi, ri = SD_(CharacterHeadSlot).ilvl, SD_(CharacterFinger0Slot).ilvl
 check("one item level per slot: Head 336, Ring 330", hi and hi.text == "336" and ri and ri.text == "330", hi and hi.text)
 check("  ...Head, Hero step 4 of 6: purple at 82% (55% + 45% x 3/5)", col(hi.color, 0.6 * 0.82, 0.2 * 0.82, 0.9 * 0.82), hi.color and table.concat(hi.color, ","))
 check("  ...Ring, Veteran step 1 of 8: green at its dimmest (55%)", col(ri.color, 0.1 * 0.55, 1.0 * 0.55, 0), ri.color and table.concat(ri.color, ","))
-check("  ...an empty slot shows none", CharacterNeckSlot.xuiIlvl and CharacterNeckSlot.xuiIlvl.text == "")
-check("  ...the track is kept for the hover (Hero 4/6)", CharacterHeadSlot.xuiTrack and CharacterHeadSlot.xuiTrack.track == "Hero" and CharacterHeadSlot.xuiTrack.step == 4)
--- the Character Toolkit's overlays leave their item level (and enchant mark) out while the reskin draws them
-tk.enabled, tk.overlays = true, true; TKA(); ns.CharToolkit_UpdateOverlays()
-check("the toolkit's slot overlay leaves out its item level while the reskin draws one (her screenshot had two)",
-  ns.CharToolkit_OverlayText("HeadSlot") ~= nil and not tostring(ns.CharToolkit_OverlayText("HeadSlot")):find("336", 1, true), tostring(ns.CharToolkit_OverlayText("HeadSlot")))
+check("  ...an empty slot shows none", SD_(CharacterNeckSlot).ilvl and SD_(CharacterNeckSlot).ilvl.text == "")
+check("  ...the track is kept for the hover (Hero 4/6)", SD_(CharacterHeadSlot).track and SD_(CharacterHeadSlot).track.track == "Hero" and SD_(CharacterHeadSlot).track.step == 4)
+-- the slot overlays leave their item level (and enchant mark) out while the reskin draws them
+cwc.enabled, cwc.overlays = true, true; CWA(); ns.CharDisplay_UpdateOverlays()
+check("the slot overlay leaves out its item level while the reskin draws one (her screenshot had two)",
+  ns.CharDisplay_OverlayText("HeadSlot") ~= nil and not tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true), tostring(ns.CharDisplay_OverlayText("HeadSlot")))
 
 -- 4. Enchants beside the slots (A5) -------------------------------------------------------------------------------------------
-local re, he = CharacterFinger0Slot.xuiEnchant, CharacterHeadSlot.xuiEnchant
+local re, he = SD_(CharacterFinger0Slot).enchant, SD_(CharacterHeadSlot).enchant
 check("the ring's enchant by name, from its tooltip line, without 'Enchanted: ' (green)", re and re.text == "Radiant Mastery" and col(re.color, 0.5, 1, 0.5), re and re.text)
 check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)", he and he.text == "No enchant" and col(he.color, 1, 0.56, 0.25), he and he.text)
 -- (QoL 0.7.22) the first row of the slot's block, 6 px from the slot (the sockets are rows of the block now); every position check is
@@ -116,50 +118,68 @@ check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)
 local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
 check("  ...left-column slots: to the right of the slot (6 px)", hr and math.abs(hr.l - (hs.r + 6)) < 0.01, rstr(hr))
 check("  ...right-column slots: to the left of the slot (6 px)", rr and math.abs(rr.r - (rs.l - 6)) < 0.01, rstr(rr))
-check("  ...the toolkit's overlay leaves its enchant mark out too (one per slot)", not tostring(ns.CharToolkit_OverlayText("HeadSlot") or ""):find("E%?"),
-  tostring(ns.CharToolkit_OverlayText("HeadSlot")))
+check("  ...the slot overlay leaves its enchant mark out too (one per slot)", not tostring(ns.CharDisplay_OverlayText("HeadSlot") or ""):find("E%?"),
+  tostring(ns.CharDisplay_OverlayText("HeadSlot")))
 local savedLine = ENCHANTED_TOOLTIP_LINE; ENCHANTED_TOOLTIP_LINE = nil
 check("CM.SlotEnchant without the game's prefix string: the whole line", CM.SlotEnchant(11) == "Enchanted: Radiant Mastery", CM.SlotEnchant(11))
 ENCHANTED_TOOLTIP_LINE = savedLine
 
 -- 5. The stat list (A7) -------------------------------------------------------------------------------------------------------
 check("stat list: header art faded, titles in the theme's label colour, a thin rule under each", CharacterStatsPane.AttributesCategory.Background.alpha == 0
-  and col(CharacterStatsPane.AttributesCategory.Title.color, 1, 0.82, 0) and CharacterStatsPane.AttributesCategory.xuiRule ~= nil)
+  and col(CharacterStatsPane.AttributesCategory.Title.color, 1, 0.82, 0) and RX_(CharacterStatsPane.AttributesCategory).rule ~= nil)
 check("  ...row art faded; our faint stripe only where Blizzard showed its own (every other row)", STATROWS[1].Background.alpha == 0
-  and STATROWS[2].xuiStripe.shown == true and STATROWS[1].xuiStripe.shown == false)
+  and RX_(STATROWS[2]).stripe.shown == true and RX_(STATROWS[1]).stripe.shown == false)
 check("  ...labels muted, values in the text colour", col(STATROWS[1].Label.color, 0.75, 0.75, 0.8) and col(STATROWS[1].Value.color, 0.96, 0.96, 0.98))
+-- (V25 rule "window closed = no editing code runs") the look's stats hook returns at once while the character window is closed
 statRow(true)
 PaperDollFrame_UpdateStats()
-check("  ...a row Blizzard adds later is styled when it updates the stats (hook)", STATROWS[4].Background.alpha == 0 and STATROWS[4].xuiStripe and STATROWS[4].xuiStripe.shown == true)
+check("  ...the window closed: a row Blizzard adds is left alone (the look's stats hook returns at once)", STATROWS[4].Background.alpha == 1 and RX_(STATROWS[4]).stripe == nil)
+CharacterFrame.shown = true
+PaperDollFrame_UpdateStats()
+check("  ...a row Blizzard adds later is styled when it updates the stats (hook)", STATROWS[4].Background.alpha == 0 and RX_(STATROWS[4]).stripe and RX_(STATROWS[4]).stripe.shown == true)
+-- (V25 own-data standard) what the look and Improved Character Display made is kept in their own tables, never as fields on Blizzard's frames
+local function xuiKeys(f) local t = {}; for k in pairs(f) do if type(k) == "string" and k:find("^xui") then t[#t + 1] = k end end; return table.concat(t, ",") end
+check("  ...no field of ours on Blizzard's slot button, tab, stat category or stat row", xuiKeys(CharacterHeadSlot) == "" and xuiKeys(CharacterFrameTab1) == ""
+  and xuiKeys(CharacterStatsPane.AttributesCategory) == "" and xuiKeys(STATROWS[2]) == "",
+  xuiKeys(CharacterHeadSlot) .. "|" .. xuiKeys(CharacterFrameTab1) .. "|" .. xuiKeys(STATROWS[2]))
 
 -- 6. Hooks keep it current ----------------------------------------------------------------------------------------------------
 ITEMS.Helm.ilvl = 340
+-- (V25 R2; her rule "window closed = no editing code runs": a lasting hook returns at once unless the window is open)
+CharacterFrame:Hide()
+local oldArt = CharacterHeadSlotFrame
+CharacterHeadSlotFrame = reg()   -- (a slot art region the look has not faded yet: the look's slot hook would fade it)
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
-check("a slot Blizzard updates (an item swapped) gets its new item level (hook)", CharacterHeadSlot.xuiIlvl.text == "340", CharacterHeadSlot.xuiIlvl.text)
+check("the window closed: Blizzard's slot update hook returns at once (nothing redrawn)", SD_(CharacterHeadSlot).ilvl.text == "336", SD_(CharacterHeadSlot).ilvl.text)
+check("  ...and the look's slot hook too (the slot art is not touched while the window is closed)", CharacterHeadSlotFrame.alpha == 1, CharacterHeadSlotFrame.alpha)
+CharacterHeadSlotFrame = oldArt
+CharacterFrame:Show()
+PaperDollItemSlotButton_Update(CharacterHeadSlot)
+check("a slot Blizzard updates (an item swapped) gets its new item level (hook)", SD_(CharacterHeadSlot).ilvl.text == "340", SD_(CharacterHeadSlot).ilvl.text)
 ITEMS.Helm.ilvl = 336
 
 -- 7. Each part has its own switch; off puts everything back -------------------------------------------------------------------
-rc.chrome = false; ns.CharReskin_Apply()
+rc.chrome = false; RSA()
 check("'Clean window' off: Blizzard's art back, the item levels stay", CharacterFrame.NineSlice.alpha == 1 and CharacterHeadSlotFrame.alpha == 1
-  and CharacterHeadSlot.xuiIlvl.shown and CharacterHeadSlot.xuiIlvl.text == "336")
-rc.chrome = true; rc.ilvl = false; ns.CharReskin_Apply(); ns.CharToolkit_UpdateOverlays()
-check("'Item level' off: ours hidden, the toolkit overlay's item level back", not CharacterHeadSlot.xuiIlvl.shown and tostring(ns.CharToolkit_OverlayText("HeadSlot")):find("336", 1, true) ~= nil,
-  tostring(ns.CharToolkit_OverlayText("HeadSlot")))
-rc.ilvl = true; rc.stats = false; ns.CharReskin_Apply()
-check("'Stat list' off: the row art and colours back", STATROWS[1].Background.alpha == 1 and col(STATROWS[1].Label.color, 1, 0.82, 0) and not STATROWS[2].xuiStripe.shown)
-rc.stats = true; rc.enabled = false; ns.CharReskin_Apply()
+  and SD_(CharacterHeadSlot).ilvl.shown and SD_(CharacterHeadSlot).ilvl.text == "336")
+rc.chrome = true; rc.ilvl = false; RSA(); ns.CharDisplay_UpdateOverlays()
+check("'Item level' off: ours hidden, the slot overlay's item level back", not SD_(CharacterHeadSlot).ilvl.shown and tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true) ~= nil,
+  tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+rc.ilvl = true; rc.stats = false; RSA()
+check("'Stat list' off: the row art and colours back", STATROWS[1].Background.alpha == 1 and col(STATROWS[1].Label.color, 1, 0.82, 0) and not RX_(STATROWS[2]).stripe.shown)
+rc.stats = true; rc.enabled = false; RSA()
 check("switched off: every faded region back to its alpha", CharacterFrame.NineSlice.alpha == 1 and CharacterFrame.Inset.Bg.alpha == 1 and _G[MODEL[1]].alpha == 1
   and CharacterHeadSlotFrame.alpha == 1 and CharacterHeadSlot.normal.alpha == 1 and CharacterFrameTab1.TabTextures[1].alpha == 1 and ns.CharReskinDiag.faded == 0)
 check("  ...every recoloured text back to its colour", col(CharacterFrame.TitleContainer.TitleText.color, 1, 0.82, 0) and col(CharacterStatsPane.AttributesCategory.Title.color, 1, 1, 1))
--- (QoL 0.7.53, character pane split stage 1) switching the reskin off takes the look away only: the item level and the enchant are QoL's
--- Character Pane features (their switch took the reskin's saved value, on, the first time it was read) and stay
-check("  ...the look's pieces hidden; the item level and the enchant (QoL's Character Pane, on) stay", CharacterHeadSlot.xuiIlvl.shown
-  and CharacterFinger0Slot.xuiEnchant.shown and not CharacterFrameTab1.xuiBg.shown and ns.CharReskin_Cfg().features == true)
+-- (QoL 0.7.53, character pane split stage 1; V25 R2) switching the reskin off takes the look away only: the item level and the enchant
+-- are Improved Character Display's and stay
+check("  ...the look's pieces hidden; the item level and the enchant (Improved Character Display, on) stay", SD_(CharacterHeadSlot).ilvl.shown
+  and SD_(CharacterFinger0Slot).enchant.shown and not RX_(CharacterFrameTab1).bg.shown and RC().features == true)
 PaperDollItemSlotButton_Update(CharacterHeadSlot); PaperDollFrame_UpdateStats()
 check("  ...and the hooks do nothing while off", CharacterHeadSlotFrame.alpha == 1 and STATROWS[1].Background.alpha == 1)
-rc.enabled = true; ns.CharReskin_Apply()
+rc.enabled = true; RSA()
 CharacterFrame:Show()
-check("on again: the window reskinned when it opens", CharacterFrame.NineSlice.alpha == 0 and CharacterHeadSlot.xuiIlvl.shown)
+check("on again: the window reskinned when it opens", CharacterFrame.NineSlice.alpha == 0 and SD_(CharacterHeadSlot).ilvl.shown)
 
 -- 8. Track colours (CM.TrackColor) ---------------------------------------------------------------------------------------------
 UPG.Helm = { trackString = "Myth", currentLevel = 6, maxLevel = 6 }
@@ -174,32 +194,44 @@ UPG.Helm = { trackString = "Hero", currentLevel = 4, maxLevel = 6 }
 issecretvalue = function(v) return v == "SECRET" end
 local savedU = C_Item.GetItemUpgradeInfo
 C_Item.GetItemUpgradeInfo = function() return { trackString = "SECRET", currentLevel = "SECRET", maxLevel = 6 } end
-local okS = pcall(ns.CharReskin_Apply)
-check("secret upgrade info (in combat): no error, the quality colour instead", okS and col(CharacterHeadSlot.xuiIlvl.color, 0.6, 0.2, 0.9) and not ns.CharReskinDiag.failed,
-  CharacterHeadSlot.xuiIlvl.color and table.concat(CharacterHeadSlot.xuiIlvl.color, ","))
+local okS = pcall(RSA)
+check("secret upgrade info (in combat): no error, the quality colour instead", okS and col(SD_(CharacterHeadSlot).ilvl.color, 0.6, 0.2, 0.9) and not ns.CharReskinDiag.failed,
+  SD_(CharacterHeadSlot).ilvl.color and table.concat(SD_(CharacterHeadSlot).ilvl.color, ","))
 C_Item.GetItemUpgradeInfo = savedU; issecretvalue = function() return false end
 local savedSI = CM.SlotInfo
 CM.SlotInfo = function() error("boom") end
 printed = {}
-ns.CharReskin_Apply()
-check("an error while applying turns the reskin off for the session and gives Blizzard's look back", ns.CharReskinDiag.failed == true
-  and CharacterFrame.NineSlice.alpha == 1 and not CharacterHeadSlot.xuiIlvl.shown and ns.CharReskin_Active() == false)
-check("  ...and says so once in chat", #printed == 1 and printed[1]:find("Character Reskin hit an error", 1, true) ~= nil, printed[1])
+RSA()
+-- (V25 R2) the item details are Improved Character Display's: an error there turns it off for the session; the look is not touched
+check("an error while drawing the item details turns Improved Character Display off for the session (its pieces hidden; the reskin's look stays)",
+  ns.CharDisplayDiag.failed == true and not SD_(CharacterHeadSlot).ilvl.shown and ns.CharDisplay_Active() == false
+  and ns.CharReskinDiag.failed == false and CharacterFrame.NineSlice.alpha == 0 and ns.CharReskin_Active() == true)
+check("  ...and says so once in chat", #printed == 1 and printed[1]:find("Improved Character Display hit an error", 1, true) ~= nil, table.concat(printed, " // "))
 CM.SlotInfo = savedSI
-ns.CharToolkit_UpdateOverlays()
-check("  ...after it the reskin no longer claims the slots: the toolkit's overlays draw their own item level again", ns.CharReskin_DrawsIlvl() == false
-  and tostring(ns.CharToolkit_OverlayText("HeadSlot")):find("336", 1, true) ~= nil, tostring(ns.CharToolkit_OverlayText("HeadSlot")))
+ns.CharDisplay_UpdateOverlays()
+check("  ...after it the item details no longer claim the slots: the slot marks draw their own item level again", ns.CharDisplay_DrawsIlvl() == false
+  and tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true) ~= nil, tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+-- the look's own guard: an error while restyling turns the reskin off for the session and gives Blizzard's look back
+local title = CharacterFrame.TitleContainer.TitleText
+local savedSTC = title.SetTextColor
+title.SetTextColor = function() error("boom") end
+printed = {}
+RSA()
+check("an error while restyling turns the reskin off for the session and gives Blizzard's look back", ns.CharReskinDiag.failed == true
+  and CharacterFrame.NineSlice.alpha == 1 and ns.CharReskin_Active() == false)
+check("  ...and says so once in chat", #printed == 1 and printed[1]:find("Character Reskin hit an error", 1, true) ~= nil, printed[1])
+title.SetTextColor = savedSTC
 
 -- 10. Settings page and /xui reskin --------------------------------------------------------------------------------------------
 local page = ns.BuildCharReskinPage(function() end)
--- (QoL 0.7.53, stage 1) the look parts stay on Blizzard UI Reskin > Character Pane; item level, enchants, gems and the full stat list
--- are on QoL > Character Pane (same labels), greyed by QoL's own switch
-check("settings: Blizzard UI Reskin > Character Pane with its switch and one per look part", page.name == "Character Pane" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
+-- (QoL 0.7.53, stage 1; V25 R2) the look parts stay on Blizzard UI Reskin > Character Reskin (titled Character Pane until V25 R2); item
+-- level, enchants, gems and the full stat list are on QoL > Improved Character Display (same labels), greyed by its own switch
+check("settings: Blizzard UI Reskin > Character Reskin with its switch and one per look part", page.name == "Character Reskin" and page.xuiSwitch and page.xuiSwitch.name == "Character Reskin" and page.args.enabled == nil and page.args.chrome
   and page.args.stats and page.args.ilvl == nil and page.args.enchants == nil and page.args.gems == nil and page.args.statList == nil and page.args.statListPage == nil)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.chrome.disabled(); rc.enabled = true; return d end)() == true)
-local qpage = ns.BuildCharPanePage(function() end)
-check("settings: QoL > Character Pane with its own switch and the feature parts (same labels)", qpage.name == "Character Pane" and qpage.xuiSwitch
-  and qpage.xuiSwitch.name == "Character Pane" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level on each slot" and qpage.args.enchants
+local qpage = ns.BuildCharDisplayPage(function() end)
+check("settings: QoL > Improved Character Display with its own switch and the feature parts (same labels)", qpage.name == "Improved Character Display" and qpage.xuiSwitch
+  and qpage.xuiSwitch.name == "Improved Character Display" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level on each slot" and qpage.args.enchants
   and qpage.args.gems and qpage.args.statList and qpage.args.statListPage and qpage.args.chrome == nil)
 check("  ...its parts are greyed out while its own switch is off, whatever the reskin's", (function()
   local f = rc.features; rc.features = false; local d = qpage.args.ilvl.disabled(); rc.features = f; return d end)() == true
@@ -228,8 +260,8 @@ local f = upgraded(nil)
 check("  ...a fresh install gets 42 and the marker", f.widePx == 42 and f.widePxTo42 == true, f.widePx)
 local b = upgraded({ enabled = true, wide = true, widePx = "240" })
 check("  ...a 240 saved as text counts too", b.widePx == 42, tostring(b.widePx))
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua"))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__GEOM__", P("tests/char_pane_geometry.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
    .replace("__RS__", P("XayaUI_QoL/CharacterReskin.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))

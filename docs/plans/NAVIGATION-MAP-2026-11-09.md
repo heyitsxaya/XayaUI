@@ -40,7 +40,7 @@ Each page keeps its on/off box on its sidebar row (her rule #3: "move all enable
 
 **Heading QoL** (main and QA)
 - **Character Pane**: item level, enchants, gems, the full stat list. On main it also holds the **look** settings, because without XayaUI_Reskin the look is QoL's own (TRI-8, built in 10f63c7: `XayaUIQoLDB.characterReskinLook`). INFERENCE from TRI-8 ("follow the same logic as improved chat"): the look sits inside this page the way Improved Chat's base look sits inside Improved Chat. This also removes the two pages both titled "Character Pane".
-- **Character Toolkit**
+- **Improved Character Display** (V25, REQUEST-LOG A24, 2026-11-10: the slot marks and stat-tooltip lines page and the Character Pane features above are one QoL page, with the Stat Calc button switch; the panel itself is Bonus Features > Stat Calculator)
 - **Cursor**: its colors move to Settings > Theme > QoL (row 36).
 - **Improved Chat**: gains the base chat look (rows 35, 43).
 - **Release Guard**

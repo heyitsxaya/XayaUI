@@ -625,7 +625,7 @@ if ns.Provide then
         ToggleUnlock = function(...) if ns.ToggleUnlock then return ns.ToggleUnlock(...) end end,
         MarkDirty = function(...) if ns.MarkDirty then return ns.MarkDirty(...) end end,
         CurrentSpecID = function(...) if ns.CurrentSpecID then return ns.CurrentSpecID(...) end end,
-        -- the spellbook and talent lists the rule editor's pickers use (Conditions.lua), read by XayaUI QoL's Character Toolkit
+        -- the spellbook and talent lists the rule editor's pickers use (Conditions.lua), read by the shared stat model (XayaUI QoL's StatModel.lua, for the Stat Calculator)
         BuildSpellList = function(...) return ns.BuildSpellList(...) end,
         BuildTalentList = function(...) return ns.BuildTalentList(...) end,
         ForgetSpellLists = function() ns.spellList, ns.talentList = nil, nil end,

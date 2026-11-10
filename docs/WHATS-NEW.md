@@ -62,7 +62,7 @@ greyed while the tab's **All reskins** box is unticked), or `/xui reskin on`.
   it turns itself off until `/reload` and says so in chat.
 
 ### Stat Calculator
-Turn it on: **QoL > Character Toolkit** (tick box in the left pane, then **Panel**). Open it with the **Stat Calc** button in the
+Turn it on: its QoL page at the time (tick box in the left pane, then **Panel**; since Bonus 0.6.37 **Bonus Features > Stat Calculator**). Open it with the **Stat Calc** button in the
 character window's title row, with **Stat Calculator** in the XayaUI minimap button's list, or with `/xui stats`
 (`/xui stats on`, `off`, `options`, `status`).
 
@@ -134,12 +134,12 @@ character window's title row, with **Stat Calculator** in the XayaUI minimap but
 
 **Character window tooltips**
 - Hovering a stat in the character window adds a short XayaUI block under Blizzard's text. It now has its own switch:
-  **QoL > Character Toolkit > Tooltip lines**; while it is off, nothing of it runs.
+  **Tooltip lines** on the Stat Calculator's QoL page at the time (since Bonus 0.6.39: **Bonus Features > Enhanced Tooltips > Character stats**); while it is off, nothing of it runs.
 
 **Settings summary**
 - Blizzard UI Reskin > Character Pane: every Character Reskin switch, Background opacity, Extra width, Extra height.
 - Blizzard UI Reskin > Character Pane > Stat list: the full stat list's lines, order, names and colors.
-- QoL > Character Toolkit (tick box in the left pane), with Panel, Slot Overlays, Spell Math and Tooltip lines under it.
+- The Stat Calculator's QoL page at the time (tick box in the left pane), with Panel, Slot Overlays, Spell Math and Tooltip lines under it (since V25: Panel and Spell Math are Bonus Features > Stat Calculator's, Slot Overlays QoL > Improved Character Display's, Tooltip lines Bonus Features > Enhanced Tooltips > Character stats).
 - Panel > Layout: side, detail level, rating lines, text size, Gear Summary style, background, Smaller / Larger height, Reset size.
 
 ### Also in this round: Release Guard (QoL 0.7.31)

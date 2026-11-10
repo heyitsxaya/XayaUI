@@ -424,7 +424,7 @@ if rulesOn then
     -- Sidebar's and the privacy cover's defaults (they reach the saved settings at login since 0.6.46; in the game they never did).
     -- Taken out where they hold their default, the string must be the pre-split one byte for byte (tests/profile_parts_run.py, A).
     local CD = ns.Service and ns.Service("chatDebug"); CD = CD and CD.C
-    local added, want = 0, 0
+    local added, want, qolInfo = 0, 0, false
     if CD then for _ in pairs(CD.SIDEBAR_DEFAULTS) do want = want + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do want = want + 1 end end
     do
       local data = S.Read(now.profile, "profile")
@@ -433,8 +433,15 @@ if rulesOn then
         local t = rk and rk[part]
         if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
       end
+      -- (QoL 0.7.56, Stat Calculator V25) the second allowed difference: the QoL part is format 2 (written after Improved Character
+      -- Display's merge; XayaUI_QoL/ProfilePart.lua), so the string carries that part's information (partInfo.qol, v = 2). Its keys
+      -- and values are unchanged; taken out, the string is the pre-split one.
+      local qi = type(data) == "table" and data.partInfo and data.partInfo.qol
+      qolInfo = qi and qi.v == 2 and qi.module == "XayaUI_QoL"
+      if qi then data.partInfo.qol = nil; if next(data.partInfo) == nil then data.partInfo = nil end end
       now.profile = data and S.Encode("profile", data)
     end
+    check("B: profile: the QoL part says it is format 2 (partInfo.qol, v = 2, XayaUI_QoL)", qolInfo == true)
     if XUI_HAS_CHAT then
       check("B: profile: the Chat defaults now saved are in it (" .. added .. " of " .. want .. ")", want > 0 and added == want, added)
     else
@@ -464,7 +471,7 @@ if rulesOn then
         end
         ok = type(gd) == "table" and type(nd) == "table" and same(gd, nd)
       end
-      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), ok, shown)
+      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved and the QoL part's format 2" or ""), ok, shown)
     end
     wipe(ns.rules); wipe(ns.folders)
   end)

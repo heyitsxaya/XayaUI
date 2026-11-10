@@ -20,7 +20,7 @@
 # the Table style keeps the table); Primary / General / Offensive / Defensive are bucket bars (a band at x 0, the name on it); the T/L
 # cell is two lines ("T: 1,200", then "L: 0.0"). The checks below follow that and say so; the new behaviour itself is checked, with its
 # negative controls, in tests/char_stat_round_run.py.
-# Run from the repo root: python3 tests/char_stat_window_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_stat_window_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Every number is a TEST STAND-IN (the world's Vengeance figures); the item texts below are stand-ins written for this test.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -72,9 +72,9 @@ CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 __DB__
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-CM = ns.CharModel
+CM = ns.StatModel
 -- every check runs inside pcall: a missing function or frame (older code) is a failed check, not a stopped run
 function checkp(name, fn)
   local ok, cond, extra = pcall(fn)
@@ -98,33 +98,33 @@ function clickRow(key) local _, r = launcher(key); r.scripts.OnClick(r) end
 '''
 
 def world(db_lua=""):
-    return (SETUP.replace("__DB__", db_lua).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
+    return (SETUP.replace("__DB__", db_lua).replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
             .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__MINI__", P("XayaUI/MinimapButton.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua"))
-            .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+            .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
 
 lua = LuaRuntime()
 lua.execute(world())
 lua.execute(r'''
-local c = TKC()
+local c = CWC()
 local GUT, PAD = ns.UI_GUTTER, ns.UI_MARGIN
-local LAY = ns.CHARTOOLKIT_LAYOUT
+local LAY = ns.STATCALC_LAYOUT
 
 -- 0. Off at login (V14): nothing of the panel, the button or the minimap row exists ------------------------------------------------
 openChar(); closeChar()
-checkp("(guard) V14, toolkit off at login: no panel frame, no character-window button, no Stat Calculator row in the minimap list",
-  function() return _G.XayaUICharacterToolkit == nil and _G.XayaUICharacterToolkitButton == nil and launcher("stats") == nil end)
-c.enabled = true; c.panel = false; TKA(); openChar()
-checkp("V14, toolkit on but its panel off: still no panel, no button, no minimap row; /xui stats says the panel is off",
+checkp("(guard) V14, Stat Calculator off at login: no panel frame, no character-window button, no Stat Calculator row in the minimap list",
+  function() return _G.XayaUIStatCalculator == nil and _G.XayaUIStatCalcButton == nil and launcher("stats") == nil end)
+c.enabled = true; c.panel = false; CWA(); openChar()
+checkp("V14, Stat Calculator on but its panel off: still no panel, no button, no minimap row; /xui stats says the panel is off",
   function()
     printed = {}
     ns.RunCommand("stats", "")
     local said = false
     for _, l in ipairs(printed) do if l:find("panel is off", 1, true) then said = true end end
-    return _G.XayaUICharacterToolkit == nil and _G.XayaUICharacterToolkitButton == nil and launcher("stats") == nil and said, table.concat(printed, " / ")
+    return _G.XayaUIStatCalculator == nil and _G.XayaUIStatCalcButton == nil and launcher("stats") == nil and said, table.concat(printed, " / ")
   end)
 closeChar()
-c.panel = true; TKA()
-local B = _G.XayaUICharacterToolkitButton
+c.panel = true; CWA()
+local B = _G.XayaUIStatCalcButton
 checkp("panel on: the character window gets a Stat Calc button (64 x 18) on it, made now", function()
   return B ~= nil and B.parent == CharacterFrame and B.w == 64 and B.h == 18 and B.text and B.text.text == "Stat Calc", B and (B.w .. "x" .. B.h) end)
 checkp("  ...in the title row, a gutter left of Blizzard's close button (RIGHT to its LEFT, 4 px)", function()
@@ -137,7 +137,7 @@ checkp("panel on: the minimap button's list shows a Stat Calculator row with jus
 
 -- 1. The button opens and closes the panel; the state is kept for the next time ------------------------------------------------------
 openChar()
-local Pn = _G.XayaUICharacterToolkit
+local Pn = _G.XayaUIStatCalculator
 checkp("(guard) the character window opens with the panel docked beside it (left open, the default)", function()
   local pt = Pn.pts[#Pn.pts]; return Pn:IsShown() and pt[1] == "TOPLEFT" and pt[2] == CharacterFrame and pt[3] == "TOPRIGHT" end)
 checkp("  ...the button shows the panel is open (the theme's selected colours)", function() return B.open == true and B:IsShown() end)
@@ -176,7 +176,7 @@ checkp("(guard) /xui stats opens it on its own and closes it (it did before too)
   ns.RunCommand("stats", ""); return open1 and not Pn:IsShown() end)
 
 -- 3. Min / Max heights and the corner grip ---------------------------------------------------------------------------------------
-if ns.CharToolkit_SetOpen then ns.CharToolkit_SetOpen(true) else pcall(ns.CharToolkit_Toggle) end   -- (the older code has no SetOpen)
+if ns.StatCalc_SetOpen then ns.StatCalc_SetOpen(true) else pcall(ns.StatCalc_Toggle) end   -- (the older code has no SetOpen)
 local SB = Pn.sizeBtn
 checkp("a Max button in the title row (40 x 18), a gutter left of the close button, clear of the title", function()
   local pt = SB.pts[#SB.pts]
@@ -188,7 +188,7 @@ checkp("(guard) the panel starts at the smaller height (440)", function() return
 checkp("Max: the panel takes the larger height (760; not full screen) and the button reads Min", function()
   SB.scripts.OnClick(SB); return Pn.h == 760 and c.sizeMode == "large" and SB.text.text == "Min", Pn.h end)
 checkp("Min: back to the smaller height", function() SB.scripts.OnClick(SB); return Pn.h == 440 and c.sizeMode == "small", Pn.h end)
-local page = TKPage(function() end)
+local page = CWPage(function() end)
 checkp("the two heights are settings (Panel > Layout: Smaller height 500, Larger height 900 move the panel's heights)", function()
   local L = page.args.panelPart.args.layout.args
   L.heightSmall.set(nil, 500); local h1 = Pn.h
@@ -199,12 +199,12 @@ checkp("the corner grip still resizes: dragged to 500 x 650 while large, the lar
   return c.heightLarge == 650 and c.size.w == 500 and Pn.h == 650 and Pn.w == 500 and Pn.grip.pts[1][1] == "BOTTOMRIGHT", c.heightLarge end)
 checkp("  ...Min then gives the smaller height (500) at the dragged width", function() SB.scripts.OnClick(SB); return Pn.h == 500 and Pn.w == 500, Pn.h end)
 checkp("(guard) a saved height past the limits is brought back inside them (1100 at most)", function()
-  c.heightLarge = 5000; return TKC().heightLarge == 1100 end)
+  c.heightLarge = 5000; return CWC().heightLarge == 1100 end)
 page.args.panelPart.args.layout.args.resetSize.func()
 
 -- 4. Character Stats: one section, its headings and lines in her order ----------------------------------------------------------
 CM.gcd = { dur = 1.16, haste = 29.25 }
-local function render(tab) c.tab = tab or "stats"; ns.CharToolkit_Render(); return ns.CharToolkit_Drawn() end
+local function render(tab) c.tab = tab or "stats"; ns.StatCalc_Render(); return ns.StatCalc_Drawn() end
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if r.kind == kind then out[#out + 1] = r end end; return out end
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = tostring(r.text) end; return table.concat(t, "|") end
 local function find(d, kind, text, nth)
@@ -424,11 +424,11 @@ CM.gcd = { dur = 1.16, haste = 29.25 }
 d = render()
 checkp("collapsible: clicking its header folds it (+ Stat Weights, no rows), the fold is saved, Character Stats stays", function()
   local h; for _, x in ipairs(d.headers) do if x.shown and x.key == "map_weights" then h = x end end
-  h.scripts.OnClick(h); local d2 = ns.CharToolkit_Drawn()
+  h.scripts.OnClick(h); local d2 = ns.StatCalc_Drawn()
   return find(d2, "header", "+ Stat Weights") ~= nil and #recs(d2, "wlabel") == 0 and c.collapsed.map_weights == true and find(d2, "label", "Haste") ~= nil end)
 checkp("  ...clicking it again opens it", function()
-  local h; for _, x in ipairs(ns.CharToolkit_Drawn().headers) do if x.shown and x.key == "map_weights" then h = x end end
-  h.scripts.OnClick(h); d = ns.CharToolkit_Drawn(); return find(d, "header", "- Stat Weights") ~= nil and #recs(d, "wlabel") == 9 end)
+  local h; for _, x in ipairs(ns.StatCalc_Drawn().headers) do if x.shown and x.key == "map_weights" then h = x end end
+  h.scripts.OnClick(h); d = ns.StatCalc_Drawn(); return find(d, "header", "- Stat Weights") ~= nil and #recs(d, "wlabel") == 9 end)
 checkp("narrow panel: the influences go under their row, from one indent in to the right edge", function()
   local r = wrow(d, "Haste"); return r.winfl.x == 12 and r.winfl.y > r.label.y and r.winfl.x + r.winfl.w == LAY.content, r.winfl.x end)
 c.size = { w = 760 }
@@ -438,11 +438,11 @@ checkp("wide panel (760): an Influences column head, and each row's influences o
   return hi and r.winfl.x == hi.x and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content, hi and hi.x end)
 -- the comparison's copy of the map has no tree headings and no Gear Summary
 c.size = nil
-CM.gearSlot = 1; ns.CharToolkit_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+CM.gearSlot = 1; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
 checkp("Gear > What it changes: no Character Stats headings, no Gear Summary rows, no Stat Weights in it", function()
   local dg = render("gear")
   return #recs(dg, "subhead") == 0 and #recs(dg, "wlabel") == 0 and find(dg, "colhead", "Elsewhere") == nil, #recs(dg, "subhead") end)
-CM.gearSlot = nil; ns.CharToolkit_SetInput("item", "")
+CM.gearSlot = nil; ns.StatCalc_SetInput("item", "")
 
 -- 6. Layout (V11): inside the width, no overlaps, at the panel widths and text sizes, typed numbers ----------------------------------
 local function layoutOK(dd)
@@ -462,7 +462,7 @@ local function layoutOK(dd)
   end end
   return true
 end
-ns.CharToolkit_SetInput("sv:crit", "700"); ns.CharToolkit_SetInput("sv:primary", "2737"); ns.CharToolkit_SetInput("sv:haste", "1500")
+ns.StatCalc_SetInput("sv:crit", "700"); ns.StatCalc_SetInput("sv:primary", "2737"); ns.StatCalc_SetInput("sv:haste", "1500")
 TIPS = { [11] = { { leftText = "Equip: increasing critical strike effectiveness by 2%" } } }
 PT = { 6, "RUNIC_POWER" }; POWERMAX = { [6] = 125, [5] = 6 }; RUNES = { { 100, 8.5, false } }
 for _, pw in ipairs({ 340, 450, 583, 584, 760 }) do
@@ -474,7 +474,7 @@ for _, pw in ipairs({ 340, 450, 583, 584, 760 }) do
   end
 end
 c.fontSize = 11; c.size = nil
-ns.CharToolkit_SetInput("sv:crit", ""); ns.CharToolkit_SetInput("sv:primary", ""); ns.CharToolkit_SetInput("sv:haste", "")
+ns.StatCalc_SetInput("sv:crit", ""); ns.StatCalc_SetInput("sv:primary", ""); ns.StatCalc_SetInput("sv:haste", "")
 
 -- 7. Secrets: the weights say hidden in combat, nothing is compared or formatted --------------------------------------------------
 local realRating = GetCombatRating
@@ -488,18 +488,40 @@ GetCombatRating = realRating
 
 -- 8. Off again (V14): the button hides, the minimap row goes, the panel closes ----------------------------------------------------
 openChar()
-c.enabled = false; TKA()
-checkp("toolkit switched off: the panel closes, the Stat Calc button hides, the Stat Calculator row leaves the minimap list", function()
+c.enabled = false; CWA()
+checkp("Stat Calculator switched off: the panel closes, the Stat Calc button hides, the Stat Calculator row leaves the minimap list", function()
   return not Pn:IsShown() and not B:IsShown() and launcher("stats") == nil end)
-c.enabled = true; TKA()
+c.enabled = true; CWA()
 checkp("  ...switched on again: the button and the row are back", function() return B:IsShown() and launcher("stats") ~= nil end)
-c.panel = false; TKA()
+c.panel = false; CWA()
 checkp("the panel part switched off: no button, no minimap row", function() return not B:IsShown() and launcher("stats") == nil and not Pn:IsShown() end)
-c.panel = true; c.panelOpen = false; TKA()
+c.panel = true; c.panelOpen = false; CWA()
+closeChar()
+
+-- 9. (V25 R2) the button is Improved Character Display's: its own switch, the Stat Calculator reached only through its service -------
+local D = ns.CharDisplay_Cfg()
+openChar()
+checkp("(guard) R2: the button is Improved Character Display's own frame, shown with the window", function() return ns.CharDisplay_Button() == B and B:IsShown() end)
+D.statCalcButton = false; CWA()
+checkp("R2: Improved Character Display > Stat Calc button off: the button hides; the panel still opens from the minimap row", function()
+  clickRow("stats"); local ok = not B:IsShown() and Pn:IsShown(); clickRow("stats"); return ok and not Pn:IsShown() end)
+D.statCalcButton = nil; CWA()
+checkp("R2: ...switched on again: the button is back", function() return B:IsShown() end)
+checkp("R2: the panel opened another way (the minimap row): the button shows it open at once (the Stat Calculator tells it; nothing polls)", function()
+  clickRow("stats"); local open = B.open == true; clickRow("stats"); return open and B.open == false end)
+D.enabled = false; CWA()
+checkp("R2: Improved Character Display off: no button, the Stat Calculator still opens from the minimap row", function()
+  clickRow("stats"); local ok = not B:IsShown() and Pn:IsShown(); clickRow("stats"); return ok end)
+D.enabled = true; D.ilvl, D.enchants, D.gems, D.statList = false, false, false, false; CWA()
+checkp("R2: ...on again: the button is back", function() return B:IsShown() end)
+local pg = ns.BuildCharDisplayPage(function() end)
+checkp("R2: the page's Stat Calc button tick box reads and writes its own switch", function()
+  local t = pg.args.statCalcButton; t.set(nil, false); local off = not B:IsShown() and D.statCalcButton == false
+  t.set(nil, true); return off and t.get() == true and D.statCalcButton == nil and B:IsShown() end)
 closeChar()
 ''')
 n1, f1 = lua.eval("n"), lua.eval("fails")
-saved_open = lua.eval("TKC().panelOpen")
+saved_open = lua.eval("CWC().panelOpen")
 
 # A second load (the next session) with the saved settings: the character window opens with the panel the way it was left.
 def next_session(open_state):
@@ -507,11 +529,12 @@ def next_session(open_state):
     db = "CueRulesDB = { characterToolkit = { enabled = true, panel = true, panelOpen = %s } }" % ("true" if open_state else "false")
     l2.execute(world(db))
     l2.execute(r'''
+ns.FireLogin()   -- (V25 R2) the login: Improved Character Display starts (and merges the old switches once), the button with it
 openChar()
-local Pn = _G.XayaUICharacterToolkit
+local Pn = _G.XayaUIStatCalculator
 checkp("%snext session, saved %s: the character window opens with the panel %s"
   , function() return %s, tostring(Pn and Pn:IsShown()) end)
-checkp("  ...and its Stat Calc button is there", function() return _G.XayaUICharacterToolkitButton ~= nil and _G.XayaUICharacterToolkitButton:IsShown() end)
+checkp("  ...and its Stat Calc button is there", function() return _G.XayaUIStatCalcButton ~= nil and _G.XayaUIStatCalcButton:IsShown() end)
 ''' % (("(guard) ", "open", "open", "Pn ~= nil and Pn:IsShown()") if open_state else ("", "closed", "closed", "Pn == nil or not Pn:IsShown()")))
     return l2.eval("n"), l2.eval("fails")
 checks = [(n1, f1)]

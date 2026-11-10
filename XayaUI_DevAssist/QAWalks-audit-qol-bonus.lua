@@ -4,7 +4,7 @@
 -- change to the codebase / bug report fixes have an in game qa test walk through with pre-fill confirmation options or data capturing".
 -- Every walkthrough sets prefill = true: where the addon can read the result, its verdict is offered on one button (Accept), recorded
 -- only on a click (QAWalk.lua). Steps the addon cannot judge are marked noVerdict and capture what they read into the check line.
--- XayaUI_QoL and XayaUI_Bonus are reached only through their services (ns.Service: "shoppingList", "charToolkitDebug", "calculatorDebug",
+-- XayaUI_QoL and XayaUI_Bonus are reached only through their services (ns.Service: "shoppingList", "statCalcDebug", "calculatorDebug",
 -- "dataPanelsDebug", "tooltipsDebug", "notepadDebug"), never by their functions. Test data is tagged "QA audit" and removed by each
 -- walkthrough's last step; every setting or saved list a step changes is remembered and put back by the last step. Your own data is
 -- never left changed. Does nothing without the framework. UNTESTED IN GAME.
@@ -119,15 +119,16 @@ QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list ke
 } })
 
 -------------------------------------------------------------------------------
--- Character Toolkit (QoL), D17: with "Show the panel" off, the panel's events are not registered
+-- Stat Calculator (Bonus Features), D17: with "Show the panel" off, the panel's events are not registered
 -------------------------------------------------------------------------------
 local ct = {}   -- remembered: { panel }
-local function CT() return SV("charToolkitDebug") end   -- (Dev Assist 0.7.70: XayaUI Bonus Features', the Stat Calculator moved there)
-QA.Register("audit-char-toolkit-events", { title = "Character Toolkit: panel off registers no panel events (D17)", qa = "E1z226", order = 332, prefill = true, steps = {
-    { text = "Press |cffffd100Do it for me|r: XayaUI remembers whether the Character Toolkit's panel is on, then switches the panel part off (the toolkit stays on).\n\n|cffffd100Expect:|r none of the panel's events are registered: no cooldown event (each cast would read the GCD for a hidden panel), no stat events.",
+local function CT() return SV("statCalcDebug") end   -- (Dev Assist 0.7.70: XayaUI Bonus Features', the Stat Calculator moved there)
+-- (V25 R3) the walkthrough id keeps its old internal name: XayaUIDevAssistDB.qa.results is keyed by it
+QA.Register("audit-char-toolkit-events", { title = "Stat Calculator: panel off registers no panel events (D17)", qa = "E1z226", order = 332, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: XayaUI remembers whether the Stat Calculator's panel is on, then switches the panel part off (the Stat Calculator stays on).\n\n|cffffd100Expect:|r none of the panel's events are registered: no cooldown event (each cast would read the GCD for a hidden panel), no stat events.",
         setup = function()
             local T = CT(); if not T then error("XayaUI QoL is off") end
-            local c = T.Cfg(); if not (c and c.enabled) then error("the Character Toolkit is off (Bonus Features > Stat Calculator; it needs XayaUI QoL on)") end
+            local c = T.Cfg(); if not (c and c.enabled) then error("the Stat Calculator is off (Bonus Features > Stat Calculator; it needs XayaUI QoL on)") end
             if ct.panel == nil then ct.panel = c.panel end
             c.panel = false; T.Apply()
         end,

@@ -28,6 +28,13 @@ Windows: text at 25 instead of 42, tick box at 6 instead of 23; 2 lines each); 0
 Regenerated again for Bonus 0.6.37 (character pane split stage 2): `--dump` of stage 1 and of the new code differ only in the bonus
 drawings (on / off): the new row "statcalc" "Character Toolkit" with its tick box (the Stat Calculator, from QoL), 2 lines each; 0 other
 lines (the QoL row "Character Toolkit" keeps its parts, Slot Overlays and Tooltip lines, so it is drawn as before).
+Regenerated again on 2026-11-10 for Stat Calculator V25 step R2 (QoL > Character Pane and the QoL slot marks page joined as QoL >
+Improved Character Display; Blizzard Reskin > Character Pane retitled Character Reskin): `--dump` of c4ef771 and of the new code differ
+only in (each variant, with and without the QA-branch modules; NO_QA_TABS made the same way, from a copy without those folders) the qol
+drawings: the row "charpane" "Character Pane" is now "chardisplay" "Improved Character Display" (same place, box and insets), the row
+"chartoolkit" with its tick box is gone, and the row "cursor" now in the second place reads colour 1.00 instead of 0.96 (the selected
+row's colour moved with the place; INFERENCE: AceGUI's tree selects the second line in the stand-in); the reskin and profiles drawings:
+the row "charreskin" reads "Character Reskin" (1 line each); 0 other lines.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -42,12 +49,12 @@ GOLDEN_FILE = os.path.join(HERE, "tree_paint_parity_golden.json")
 ROOT = os.path.dirname(HERE)
 QA_MODS = [m for m in ("XayaUI_Chat", "XayaUI_Reskin", "XayaUI_Nameplates") if os.path.isdir(os.path.join(ROOT, m))]
 NO_QA_TABS = {
-    "on": {"profiles": ("3b30ff177027931399774a605e25f7f0814c974e74e241a07a32198f345cb8e1", 15),
-           "qol": ("17adaf045712c0bb86902475909fda9bfabdf267a6aa06186e910f7e2a4ded23", 18),
-           "reskin": ("d3741f4c440d302d5a073604c2514b61c18fe01df6c357747128b18417557d07", 12)},
-    "off": {"profiles": ("0ed66f5a3976667d03a27b0910b0e3d32331e9f238171e1cc76410d3da617292", 14),
-            "qol": ("88dd2b9a10bf5ba72f1982b4418b0066264c559a4c37b3bf8ca5375144c25d7b", 17),
-            "reskin": ("78f8ef089f9cf9eebdcdc67ac0b42819f5cb310dc7a19119223fefd841365a07", 11)},
+    "on": {"profiles": ("905b891fce6db93b88efbb991cb99fbf047aedaa1225fcc0588eafc649667199", 15),
+           "qol": ("3c345c19c40545a81790a69d56758aadea976a0613ae501b68fc6f3df7496ce5", 16),
+           "reskin": ("61c54a18bde64fb3727a16a74ed6c30de783336b2b65d72260ef659ae8116ef1", 12)},
+    "off": {"profiles": ("da7abfc8df281a19ad0b6e57024ffaeeebb78b0004f7ce44e5795d3aed84ba2f", 14),
+            "qol": ("4b0892176617fe856d8ba6f8f1b98e37b32aae6fd81bae610c23b33aa0478fb0", 15),
+            "reskin": ("f11a4d359b5fa826d490e7f696f041e3ba2a74922b3011fd4c47ee6b175b689b", 11)},
 }
 
 LUA = r'''

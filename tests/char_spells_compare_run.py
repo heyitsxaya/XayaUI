@@ -1,4 +1,4 @@
-# Stub test for QoL > Character Toolkit (the Stat Calculator), XayaUI_QoL 0.7.24: the Spells tab's filter icon, spell columns, spell data
+# Stub test for the Stat Calculator (QoL until Bonus 0.6.37), XayaUI_QoL 0.7.24: the Spells tab's filter icon, spell columns, spell data
 # button, and the Gear tab's compare viewer. Xaya 2026-11-05, her words:
 #   Spells: "Filter tabs should be indicated by a filter icon on the right hand side with "none" by default (therefore showing all);
 #   Filter options should be "none" (show all), "offense," "defense," "utility""; "add columns to help clarity in info displays: Spell
@@ -15,7 +15,7 @@
 #   lost rating information".
 # Every check asserts what the player sees (drawn texts, positions, shown frames) and runs inside pcall, so on the code before QoL
 # 0.7.24 each one reports FAIL rather than stopping the run (negative control: debug-log 2026-11-05 ... qol-0.7.24).
-# Run from the repo root: python3 tests/char_spells_compare_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_spells_compare_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Spell IDs 9001-9104, the items, tooltip lines and numbers below are TEST STAND-INS written for this test; no game data.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -100,21 +100,21 @@ function ns.BuildSpellList()
 end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-CM = ns.CharModel
-c = TKC()
+CM = ns.StatModel
+c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 c.enabled = true
-TKA()
+CWA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
-function drawn() return ns.CharToolkit_Drawn() end
-function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+function drawn() return ns.StatCalc_Drawn() end
+function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 function find(d, kind, text, nth) local k = 0; for i, r in ipairs(d.layout) do if r.kind == kind and r.text == text then k = k + 1; if k == (nth or 1) then return r, i end end end end
 function T(r) return r and tostring(r.text) or "nil" end
-LAY = ns.CHARTOOLKIT_LAYOUT
+LAY = ns.STATCALC_LAYOUT
 function W() return LAY.content end
 function layoutOK(dd)
   for _, r in ipairs(dd.layout) do
@@ -141,7 +141,7 @@ checkp("filter: one filter icon at the right end of the Spells tab's top row (no
   return d.filterIcon and d.filterIcon.shown and fi and fi.x + fi.w == W() and #recs(d, "filter") == 0, fi and (fi.x .. "+" .. fi.w)
 end)
 checkp("  ...None by default: every spell shown, the icon muted with no dot, its hover says no filter is on", function()
-  local f = TKC()
+  local f = CWC()
   GameTooltip.lines = {}
   d.filterIcon.scripts.OnEnter(d.filterIcon)
   local said = false
@@ -166,21 +166,21 @@ checkp("  ...choosing Utility: the menu closes, the header says utility, only th
   return not d.filterMenu.shown and find(d, "header", "- Active utility spells") ~= nil and table.concat(names, ",") == "- Banner", table.concat(names, ",")
 end)
 checkp("  ...the icon shows the filter is on (label colour and a dot) and the choice is kept (saved, and read back after a reload)", function()
-  local again = TKC()
+  local again = CWC()
   local col = d.filterIcon.parts[1].color
   return again.spellFilter == "utility" and d.filterIcon.dot.shown and d.filterIcon.active == true and col and col[1] == 1 and col[2] == 0.82
 end)
 checkp("  ...Offense lists Fracture and Flame Ring; Defense lists Ward; neither lists Banner", function()
-  ns.CharToolkit_SetSpellFilter("offense"); local o = drawn().model.byKey
-  ns.CharToolkit_SetSpellFilter("defense"); local df = drawn().model.byKey
+  ns.StatCalc_SetSpellFilter("offense"); local o = drawn().model.byKey
+  ns.StatCalc_SetSpellFilter("defense"); local df = drawn().model.byKey
   return o.spell263642 and o.spell9001 and not o.spell9005 and not o.spell9008 and df.spell9005 and not df.spell9001 and not df.spell9008
 end)
 checkp("  ...a spell added by hand can be set to Utility (settings: Filter > Utility), and then shows under Utility", function()
-  local page = TKPage(function() end)
+  local page = CWPage(function() end)
   local kind = page.args.spells.args.s1.args.kind
   kind.set(nil, "utility")
-  local keep = TKC().spells[1].kind
-  ns.CharToolkit_SetSpellFilter("utility")
+  local keep = CWC().spells[1].kind
+  ns.StatCalc_SetSpellFilter("utility")
   local ok = keep == "utility" and drawn().model.byKey.spell263642 ~= nil and kind.values.utility == "Utility"
   kind.set(nil, "auto")
   return ok, keep
@@ -227,10 +227,10 @@ checkp("  ...(QoL 0.7.36, UI-39) a divider line between two spells, none above t
 end)
 checkp("  ...(QoL 0.7.36, UI-39) clicking a spell's row folds it to its name (\"+ Fracture\", no ID, numbers or modifiers); clicking again opens it", function()
   local nm = find(d, "spellname", "- Fracture")
-  ns.CharToolkit_ToggleSpell("spell:spell263642")
+  ns.StatCalc_ToggleSpell("spell:spell263642")
   local d2 = drawn()
   local folded = find(d2, "spellname", "+ Fracture") ~= nil and find(d2, "spellid", "Spell ID: 263642") == nil and find(d2, "spellvalue", "6,944") == nil
-  ns.CharToolkit_ToggleSpell("spell:spell263642")
+  ns.StatCalc_ToggleSpell("spell:spell263642")
   local d3 = drawn()
   local open = find(d3, "spellname", "- Fracture") ~= nil and find(d3, "spellid", "Spell ID: 263642") ~= nil
   d = d3
@@ -255,7 +255,7 @@ end)
 checkp("no \"Usable now\" anywhere on the Spells tab (the game calls every spell not usable here), nor in a spell's hover", function()
   for _, r in ipairs(d.layout) do if tostring(r.text):lower():find("usable now", 1, true) then return false, r.text end end
   for _, it in pairs(d.model.byKey) do
-    for _, l in ipairs(ns.CharToolkit_TooltipLines(it)) do if tostring(l[1]):lower():find("usable now", 1, true) then return false, l[1] end end
+    for _, l in ipairs(ns.StatModel.TooltipLines(it)) do if tostring(l[1]):lower():find("usable now", 1, true) then return false, l[1] end end
   end
   return d.model.byKey.spell9001 ~= nil
 end)
@@ -357,7 +357,7 @@ end)
 -------------------------------------------------------------------------------------------------------------------------------------
 -- 5. Gear: the bag items as icons, picking (highlight, the box), several at once
 -------------------------------------------------------------------------------------------------------------------------------------
-pcall(ns.CharToolkit_SelectGearSlot, 11)
+pcall(ns.StatCalc_SelectGearSlot, 11)
 d = drawn()
 checkp("bag items: the rings in your bags are icons in the Compare section (item level under each, best first), like the equipped row", function()
   local n, lv = 0, {}
@@ -419,7 +419,7 @@ checkp("  ...the typed / dropped item still works: Enter in the Item box with an
   return ok
 end)
 checkp("  ...Replacing / Replace instead name the slots \"Ring slot #1 (item level 330)\" and \"Ring slot #2 (item level 332)\"", function()
-  ns.CharToolkit_SelectGearSlot(11); ns.CharToolkit_SelectGearSlot(11)   -- (let go and select again: a clean start)
+  ns.StatCalc_SelectGearSlot(11); ns.StatCalc_SelectGearSlot(11)   -- (let go and select again: a clean start)
   local b = candIcon(drawn(), NEWRING); b.scripts.OnClick(b)
   local m = drawn().model
   return m.byKey.cmpSlot11 and m.byKey.cmpSlot11.label == "Replacing" and m.byKey.cmpSlot11.value == "Ring slot #1 (item level 330)"
@@ -445,7 +445,7 @@ local function mrow(label, nth)
   return out
 end
 -- (QoL 0.7.40, #90) a difference sits on its number's line, right after it (a space between), in brackets
-local function beside(cell, diff) return cell and diff and diff.y == cell.y and math.abs(diff.x - (cell.x + cell.w + ns.CharToolkit_TextW(" ", cell.size))) < 0.01 end
+local function beside(cell, diff) return cell and diff and diff.y == cell.y and math.abs(diff.x - (cell.x + cell.w + ns.StatCalc_TextW(" ", cell.size))) < 0.01 end
 checkp("Changes: one section named Changes, no Side by side and no What it changes", function()
   local hs = {}
   for _, r in ipairs(recs(d, "header")) do hs[#hs + 1] = r.text end
@@ -506,7 +506,7 @@ do
     return saveInfo(x)
   end
   C_Item.GetItemSetInfo = function(id) if id == 600 then return "Test Set" end end
-  ns.CharToolkit_Render(); local d2 = drawn()
+  ns.StatCalc_Render(); local d2 = drawn()
   local t = {}
   for _, r in ipairs(recs(d2, "mnote")) do t[#t + 1] = r.text end
   local s2 = table.concat(t, " / ")
@@ -558,14 +558,14 @@ for _, w in ipairs({ 340, 450, 760 }) do
 end
 c.size = nil; c.fontSize = 11
 checkp("the limit (the column rule for numbers with no difference beside them; QoL 0.7.40, #90: a bracketed difference widens the columns, see the layout checks above): three item columns at the default panel (450) up to text size 12, two at the narrowest (340)", function()
-  local a = ns.CharToolkit_MultiCols(12, 4).n
+  local a = ns.StatCalc_MultiCols(12, 4).n
   c.size = { w = 340 }; render("gear")
-  local b = ns.CharToolkit_MultiCols(11, 4).n
+  local b = ns.StatCalc_MultiCols(11, 4).n
   c.size = nil; render("gear")
   return a == 4 and b == 3 and CM.MAX_COMPARE == 3, a .. " / " .. b
 end)
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

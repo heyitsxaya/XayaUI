@@ -7,7 +7,8 @@
 --                     numeric global (CR_CRIT_MELEE and friends), and the methods each widget type really has. The game's /api
 --                     browser only lists documented functions; older globals (GetInventoryItemDurability, GetSpellBaseCooldown...)
 --                     and some enums (Enum.ItemCreationContext) are missing there.
---   /xuidev toolkit  .toolkitProbe: live answers to the open questions of QoL > Character Toolkit (see the list in ProbeToolkit).
+--   /xuidev statcalc .toolkitProbe (saved key, old internal name kept, V25 R3): live answers to the open questions of the Stat
+--                     Calculator and the character window (see the list in ProbeStatCalc).
 local GD = _G.XayaUIDevAssist
 if not GD then return end
 local issecret = issecretvalue or function() return false end
@@ -96,7 +97,7 @@ function GD.CaptureAPI()
 end
 
 -------------------------------------------------------------------------------
--- 2) Character Toolkit checks: what the game really answers for the calls the toolkit depends on
+-- 2) Stat Calculator checks: what the game really answers for the calls the Stat Calculator and the character window depend on
 -------------------------------------------------------------------------------
 local function BareLink(link)
     if type(link) ~= "string" then return link end
@@ -108,7 +109,7 @@ local function BareLink(link)
     end))
 end
 
-function GD.ProbeToolkit()
+function GD.ProbeStatCalc()
     local d = GD.DB()
     local p = { at = date("%Y-%m-%d %H:%M"), inCombat = InCombatLockdown and InCombatLockdown() or false }
     local lines = {}
@@ -251,5 +252,5 @@ function GD.ProbeToolkit()
     p.summary = lines
     d.toolkitProbe = p
     for _, l in ipairs(lines) do GD.Say(l) end
-    GD.Say("Character Toolkit checks saved. Best run once out of combat away from a vendor, once at a vendor; then /xuidev save (or /reload) and upload the file.")
+    GD.Say("Stat Calculator checks saved. Best run once out of combat away from a vendor, once at a vendor; then /xuidev save (or /reload) and upload the file.")
 end

@@ -17,7 +17,7 @@
 # Pass on the new code (pre-fill), reading only through core's service list.
 # Negative control (V1): every check fails on QoL 0.7.39 / Dev Assist 0.7.12 (main 6b25c9b) except those marked "(guard)"; debug-log
 # 2026-11-07 ... qol-0.7.40 has the counts.
-# Run from the repo root: python3 tests/char_stat_round2_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_stat_round2_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Every number, item and link here is a TEST STAND-IN.
 import os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,9 +42,9 @@ end
 '''
 
 def world(extra):
-    return (COMMON + EXTRA + extra).replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
+    return (COMMON + EXTRA + extra).replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")) \
         .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_QoL/StatMath.lua")) \
-        .replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")) \
+        .replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")) \
         .replace("__QAW__", P("XayaUI_DevAssist/QAWalk.lua")).replace("__QAS__", P("XayaUI_DevAssist/QAWalks-statcalc.lua"))
 
 totals = []
@@ -117,7 +117,7 @@ checkp("  ...each number in the Current value column (the head's x and width)", 
 checkp("  ...the other stats stay folded (Critical Strike: \"+\", no Diminishing returns row)", function()
   local m = mark(d, "Critical Strike"); return m and m.text == "+" and find(d, "pairLabel", "Diminishing returns") == nil end)
 -- typed change: the new value with its sign under a row's number (existing behaviour on those rows too)
-ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:primary", "2737")
 d = render()
 checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 with the sign, in the game's green (QoL 0.7.54 / Bonus 0.6.38: better; was the accent colour)", function()
   local fa = find(d, "pairLabel", "from Agility")
@@ -126,10 +126,10 @@ checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 
   for _, r in ipairs(recs(d, "pairChange")) do if v and r.x == v.x and r.y > v.y and r.y < v.y + 3 * v.size then ch = r end end
   local f = ch and fontAt(d, ch)
   return v and ch and v.text == "+2,637" and ch.text == "+2,737" and f and sameCol(f.color, GREEN), T(v) .. " / " .. T(ch) end)
-ns.CharToolkit_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:primary", "")
 -- remembered per stat: a rebuild from the saved settings keeps Attack Power open, every other stat folded
 local saved = ns.Settings("bonus").characterToolkit   -- (Bonus 0.6.37, character pane split stage 2: the panel's settings are Bonus's)
-local c2 = ns.CharToolkit_Cfg()
+local c2 = ns.StatCalc_Cfg()
 d = render()
 checkp("remembered per stat (saved settings): after a rebuild Attack Power is still open, Critical Strike folded", function()
   local a, k = mark(d, "Attack Power"), mark(d, "Critical Strike")
@@ -143,7 +143,7 @@ checkp("a second click folds it again: \"+\", no rows, nothing saved for it", fu
 -- saved junk is cleaned
 c.statOpen = c.statOpen or {}   -- (QoL 0.7.39 has no statOpen: the negative-control run keeps going)
 c.statOpen.bogus = "yes"; c.statOpen[5] = true
-TKC()
+CWC()
 checkp("a saved value other than true is dropped from statOpen", function() return c.statOpen.bogus == nil and c.statOpen[5] == nil end)
 -- every stat open: the layout at three widths, three text sizes, three measures
 for k in pairs(c.statOpen) do c.statOpen[k] = nil end
@@ -165,7 +165,7 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
         local ok, why = layoutOK(dd)
         if not ok then return false, why end
         if headsFit then for _, r in ipairs(recs(dd, "colhead")) do if cutWord(r) then return false, "cut: " .. r.text end end end
-        for _, r in ipairs(recs(dd, "fold")) do if r.x ~= 0 or r.w ~= ns.CHARTOOLKIT_INDENT then return false, "mark at " .. r.x end end
+        for _, r in ipairs(recs(dd, "fold")) do if r.x ~= 0 or r.w ~= ns.STATCALC_INDENT then return false, "mark at " .. r.x end end
         return find(dd, "pairLabel", "from Agility") ~= nil, "no from Agility row" end)
     end
   end
@@ -198,15 +198,15 @@ assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() return {} end
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-CM = ns.CharModel
-c = TKC()
+CM = ns.StatModel
+c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
-c.enabled = true; TKA(); CharacterFrame.shown = true; PaperDollFrame:Show()
-function drawn() return ns.CharToolkit_Drawn() end
-function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+c.enabled = true; CWA(); CharacterFrame.shown = true; PaperDollFrame:Show()
+function drawn() return ns.StatCalc_Drawn() end
+function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 function icon(dd, slot) for _, b in ipairs(dd.icons) do if b.shown and b.slot == slot and not b.cand then return b end end end
 function candIcon(dd, link) for _, b in ipairs(dd.icons) do if b.shown and b.cand and b.link == link then return b end end end
 function framed(b)
@@ -240,13 +240,13 @@ tu = candIcon(d, TUMOR); tu.scripts.OnClick(tu); d = drawn()
 checkp("(guard) a second click lets it go: no frame, no column", function()
   return not candIcon(d, TUMOR).selEdges[1].shown and find(d, "mhead", "Tumor of the Swarm") == nil end)
 -- the same item put in the box (shift-click / typed link) marks its icon too
-ns.CharToolkit_SetInput("item", OTHERT)
+ns.StatCalc_SetInput("item", OTHERT)
 d = drawn()
 checkp("an item shift-clicked into the box (|cnIQ3: link) marks its icon in the list too", function() return framed(candIcon(d, OTHERT)) end)
 checkp("(guard) the model: CM.ResolveItemLink keeps a named-colour link whole; two links of one item match (CM.InList by item string)", function()
   return CM.ResolveItemLink("  " .. TUMOR .. " ") == TUMOR and CM.InList({ "|Hitem:31::::::::90:::::|h[Tumor of the Swarm]|h" }, TUMOR) == 1
     and CM.InList({ NEWRING }, TUMOR) == nil end)
-ns.CharToolkit_SetInput("item", "")
+ns.StatCalc_SetInput("item", "")
 -- rings: several picked, each framed
 local r1 = icon(drawn(), 11); r1.scripts.OnClick(r1); d = drawn()
 local a = candIcon(d, NEWRING); a.scripts.OnClick(a); d = drawn()
@@ -273,7 +273,7 @@ local function besideOK(dd)
   local cells, n = recs(dd, "mcell"), 0
   for _, df in ipairs(recs(dd, "mdiff")) do
     local cell
-    for _, cc in ipairs(cells) do if cc.y == df.y and math.abs(df.x - (cc.x + cc.w + ns.CharToolkit_TextW(" ", cc.size))) < 0.01 then cell = cc end end
+    for _, cc in ipairs(cells) do if cc.y == df.y and math.abs(df.x - (cc.x + cc.w + ns.StatCalc_TextW(" ", cc.size))) < 0.01 then cell = cc end end
     if not cell then return false, "under or apart: " .. tostring(df.text) .. " at " .. df.x .. "," .. df.y end
     if not tostring(df.text):find("^%([%+%-][%d,%.]+%)$") then return false, "not in brackets: " .. tostring(df.text) end
     n = n + 1
@@ -320,7 +320,7 @@ run(STATWORLD, r'''
 UnitName = function(u) if u == "player" then return "Xaya", nil end end
 UnitClass = function(u) if u == "player" then return "Demon Hunter", "DEMONHUNTER", 12 end end
 C_ClassColor = { GetClassColor = function(f) if f == "DEMONHUNTER" then return { r = 0.64, g = 0.19, b = 0.79 } end end }
-local Pn = XayaUICharacterToolkit
+local Pn = XayaUIStatCalculator
 local d = render()
 local function allPanelText()
   local t = {}
@@ -342,7 +342,7 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
     c.size = { w = pw }
     render()
     checkp(("header, panel %d, measure %s: each text on one line in its half; the halves never meet (a gutter between)"):format(pw, m), function()
-      local W, L = ns.CHARTOOLKIT_LAYOUT.content, ns.CHARTOOLKIT_LAYOUT
+      local W, L = ns.STATCALC_LAYOUT.content, ns.STATCALC_LAYOUT
       local a, b = Pn.hEq, Pn.hMax
       local size = a.font[2]
       local fits = textW(a.text, size) <= a.w and textW(b.text, b.font[2]) <= b.w
@@ -351,7 +351,7 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
 end
 MEASURE = "est"; c.size = nil
 checkp("  ...the tabs sit under the one-line header (title row, gutter, header, gutter)", function()
-  local L = ns.CHARTOOLKIT_LAYOUT
+  local L = ns.STATCALC_LAYOUT
   local pt = Pn.tabs[1].pts[#Pn.tabs[1].pts]
   return pt and pt[5] == -(L.pad + L.header - 20 - ns.UI_GUTTER) and L.header < 18 + 10 + 32 + 10 + 20 + 10, pt and pt[5] end)
 local realAvg = GetAverageItemLevel
@@ -364,15 +364,15 @@ GetAverageItemLevel = realAvg; render()
 -- E. B2
 checkp("B2: no \"Show: % / rating\" button is made in the title row (it was made and hidden)", function() return Pn.modeBtn == nil end)
 checkp("B2: the old functions of the toggle are gone (FlipLine, SetValueMode, ModeFor)", function()
-  return ns.CharToolkit_FlipLine == nil and ns.CharToolkit_SetValueMode == nil and ns.CharToolkit_ModeFor == nil end)
-local pg = TKPage(function() end)
+  return ns.StatCalc_FlipLine == nil and ns.StatCalc_SetValueMode == nil and ns.StatCalc_ModeFor == nil end)
+local pg = CWPage(function() end)
 checkp("B2: Settings > Panel > Layout has no \"Rating lines\"; Your numbers has no \"Reset line flips\" (Clear all stays)", function()
   local p = pg.args.panelPart.args
   return p.layout.args.valueMode == nil and p.values.args.resetLines == nil and p.values.args.clear ~= nil end)
 ns.Settings("bonus").characterToolkit.valueMode = "rating"; ns.Settings("bonus").characterToolkit.lineModes = { crit = "rating" }   -- (Bonus 0.6.37: the panel's keys)
-c = TKC()
+c = CWC()
 checkp("B2: an old profile's valueMode / lineModes are dropped when the settings are read (harmless: nothing reads them)", function()
-  return c.valueMode == nil and c.lineModes == nil and ns.CHARTOOLKIT_DEFAULTS.valueMode == nil and ns.CHARTOOLKIT_DEFAULTS.lineModes == nil end)
+  return c.valueMode == nil and c.lineModes == nil and ns.STATCALC_DEFAULTS.valueMode == nil and ns.STATCALC_DEFAULTS.lineModes == nil end)
 d = render()
 local h, b = hoverOf(d, "map_crit")
 checkp("B2: Critical Strike's hover offers no % / rating flip; a click opens its lines instead of flipping", function()
@@ -390,7 +390,7 @@ checkp("B2: Critical Strike's hover offers no % / rating flip; a click opens its
 _qp = os.path.join(ROOT, "XayaUI_DevAssist", "QAWalks-statcalc.lua")
 qas = open(_qp, encoding="utf-8").read() if os.path.exists(_qp) else ""   # (absent before Dev Assist 0.7.13)
 code = re.sub(r"--[^\n]*", "", qas)
-bad = [w for w in ("CharToolkit_", "CharModel", "XayaUICharacterToolkit", "CueRulesDB", "ns.InfoPane", "XayaUIInfoPane") if w in code]
+bad = [w for w in ("StatCalc_", "StatModel", "XayaUIStatCalculator", "CueRulesDB", "ns.InfoPane", "XayaUIInfoPane") if w in code]
 n_static = 1; f_static = 0 if not bad else 1
 print(("ok:   " if not bad else "FAIL: ") + "(guard) QAWalks-statcalc.lua reads the addons only through ns.Service (no QoL / Options table named)" + ("" if not bad else "  -> " + ", ".join(bad)))
 totals.append((n_static, f_static))
@@ -416,9 +416,9 @@ local function go(id, i) local s = st(id, i); if s.setup then s.setup() end; if 
 checkp("walk A step 1 (Do it for me opens Stats): Pass", function() return go("statcalc-rows", 1) end)
 checkp("walk A step 2 (Attack Power folded): Pass", function() return go("statcalc-rows", 2) end)
 checkp("walk A step 3 (Do it for me opens it, from rows drawn): Pass", function() return go("statcalc-rows", 3) end)
-ns.CharToolkit_SetInput("sv:primary", "2737")
+ns.StatCalc_SetInput("sv:primary", "2737")
 checkp("walk A step 4 (typed number: a new value under a row): Pass", function() return go("statcalc-rows", 4) end)
-ns.CharToolkit_SetInput("sv:primary", "")
+ns.StatCalc_SetInput("sv:primary", "")
 checkp("walk A step 5 (still open after a rebuild, others folded): Pass", function() return go("statcalc-rows", 5) end)
 checkp("walk A step 6 (Do it for me folds it): Pass", function() return go("statcalc-rows", 6) end)
 checkp("walk A last step puts the tab and the open stats back", function() local ok = go("statcalc-rows", 7); return ok and c.statOpen.map_ap == nil end)

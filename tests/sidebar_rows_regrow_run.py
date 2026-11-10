@@ -71,7 +71,7 @@ ACD:SelectGroup("CueRules", "qol", "cursor", "trail"); settle()
 local t0 = tree("qol")
 check("the window is open on QoL > Cursor > Gradient Cursor Trail", root() ~= nil and t0 ~= nil)
 if not t0 then return end
-do   -- every group in the QoL sidebar open, so it has its full list of rows (Character Toolkit's parts, Cursor's parts)
+do   -- every group in the QoL sidebar open, so it has its full list of rows (Improved Character Display's parts, Cursor's parts)
   local st = t0.status or t0.localstatus
   st.groups = st.groups or {}
   for _, l in ipairs(t0.lines or {}) do if l.hasChildren then st.groups[l.uniquevalue] = true end end
@@ -81,11 +81,12 @@ do
   local t, uvs = tree("qol"), {}
   for _, l in ipairs(t.lines or {}) do uvs[#uvs + 1] = tostring(l.uniquevalue):gsub("\001", ">") end
   -- (QA-branch modules: Improved Chat's seven rows and Nameplates' one are in this sidebar only where XayaUI_Chat / XayaUI_Nameplates are; the
-  -- six rows of QoL's own parts are always asserted: Character Toolkit's two, Cursor's three, Release Guard)
+  -- rows of QoL's own parts are always asserted: Improved Character Display (V25 R2: one page for the two the character window had;
+  -- off by default, so its parts are not listed), Cursor's three, Release Guard)
   local have = {}
   for _, u in ipairs(uvs) do have[u] = true end
-  local own = have.charpane and have.chartoolkit and have.cursor and have["cursor>highlight"] and have["cursor>trail"] and have.releaseguard
-  check("the QoL sidebar has every part as a row (Character Toolkit's and Cursor's)", own and #uvs >= ((XUI_HAS_CHAT or XUI_HAS_NAMEPLATES) and 7 or 6), table.concat(uvs, ", "))
+  local own = have.chardisplay and have.cursor and have["cursor>highlight"] and have["cursor>trail"] and have.releaseguard
+  check("the QoL sidebar has every part as a row (Improved Character Display's and Cursor's)", own and #uvs >= ((XUI_HAS_CHAT or XUI_HAS_NAMEPLATES) and 6 or 5), table.concat(uvs, ", "))
 end
 allRows("1 opened")
 

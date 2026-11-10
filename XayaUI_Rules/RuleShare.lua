@@ -5,7 +5,7 @@
 -- and this file registers its kind there (Share.RegisterKind). No string format changed: every string shared before still imports.
 -------------------------------------------------------------------------------
 local addonName, ns = ...; ns = XayaUI_NS or ns   -- the Platform's namespace (XayaUI/Core.lua)
-local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsText.lua), nil while it is off
+local function QoLBoxes() local s = ns.Service and ns.Service("statsText"); return s and s.Boxes() end   -- (P5) XayaUI QoL's stats-text boxes (XayaUI_QoL/StatsTextBoxes.lua), nil while it is off
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 local Share = ns.Share   -- (the Platform's Share.lua)

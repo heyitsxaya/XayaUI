@@ -2,7 +2,8 @@
 """Left-pane feature rows and what their tick boxes switch, and the world map report (QoL 0.7.24, Bonus 0.6.14, core 0.6.49).
 Xaya, her words (docs/process/REQUEST-LOG.md):
   #45 "yes, give an enable / disable "Enhanced Tooltips" as a feature"
-  #46 "Assume yes for now" (the Character Toolkit's "Tooltip lines" get their own row and tick box)
+  #46 "Assume yes for now" (the "Tooltip lines" get their own row and tick box; QoL > Improved Character Display in V25 R2; since V25 R4
+      the option "Character stats" of Bonus Features > Enhanced Tooltips, off by default: her A24 #5 / #6)
   #47 "No. It should only enable or disable notepad functionality in its entirety" (the Notepad row's tick box)
   #30 "map eclipses full screen" [the world map full screen]; 2026-11-06: it happens "only with XayaUI on". The cause was not found
       offline (debug log of QoL 0.7.24): what is built is the /xui debug map report, checked here.
@@ -10,7 +11,7 @@ Xaya, her words (docs/process/REQUEST-LOG.md):
       demand in any way".
 Part 1 loads the real addons XayaUI, XayaUI_Media, XayaUI_Bonus and XayaUI_Options in the whole-addon stand-in (tests/harness) and
 meters, as tests/options_bonus_off_costs_nothing_run.py does, which addon file made a frame, registered an event or placed a tooltip
-post-call. Part 2 loads core's Modules.lua with XayaUI_QoL in the character window stand-in (tests/char_toolkit_world.lua,
+post-call. Part 2 loads core's Modules.lua with XayaUI_QoL in the character window stand-in (tests/char_world.lua,
 tests/char_pane_geometry.lua through tests/char_pane_overlays_run.py's prelude).
 Every check fails on the code before this change (the bundle at 1d7bbe2), except those labelled "(works)" (the feature works when on)
 and "(as before)" (a fact that was already true), which pass on both: see the debug log.
@@ -188,7 +189,7 @@ def harness(mode):
     return out, errs
 
 
-# Part 2: the character window stand-in (the Character Toolkit's Tooltip lines row; the map counter on the Character Reskin's calls)
+# Part 2: the character window stand-in (Enhanced Tooltips' Character stats option, V25 R4; the map counter on the Character Reskin's calls)
 PANE = r'''
 R2 = {}
 local function check2(name, ok, extra) R2[#R2 + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
@@ -196,32 +197,35 @@ local hooked = {}
 local rawHSF = hooksecurefunc
 hooksecurefunc = function(a, b, c) local k = type(a) == "table" and b or a; hooked[k] = (hooked[k] or 0) + 1; return rawHSF(a, b, c) end
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
-local rc, tk = ns.CharReskin_Cfg(), TKC()
--- #46: the toolkit on, its Tooltip lines saved off
+local rc, cwc = ns.CharReskin_Cfg(), CWC()
+-- #46 (V25 R4; Xaya A24 #5 / #6): the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips'
+-- option "Character stats" now (Tooltips.lua section 5), off by default; Improved Character Display (on here) has no Tooltip lines row
+XayaUI_NS = ns; assert(loadfile(__TT__))("XayaUI_Bonus", ns); assert(loadfile(__TTUI__))("XayaUI_Bonus", ns)
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = CharacterStatsPane or mk("Frame"); CharacterStatsPane.children = { statRow }
-tk.enabled, tk.tooltips, tk.panel = true, false, false
+cwc.enabled, cwc.panel = true, false
 CharacterFrame:Show(); PaperDollFrame:Show()
-TKA()
-local page = TKPage(function() end)
-local tp = page.args.tipsPart
-check2("#46 the Character Toolkit has a \"Tooltip lines\" row of its own with its own tick box (xuiSwitch named \"Tooltip lines\"), unticked as saved",
-  tp and tp.type == "group" and tp.name == "Tooltip lines" and tp.xuiSwitch and tp.xuiSwitch.name == "Tooltip lines" and tp.xuiSwitch.get({}) == false, tp and tp.name)
-check2("#46 ...Panel no longer has a Tooltips tab (the switch moved to the row); the row is listed only while the toolkit is on",
-  page.args.panelPart.args.tips == nil and tp and tp.hidden() == false and (function() tk.enabled = false; local h = tp.hidden(); tk.enabled = true; return h end)() == true)
-check2("#46 Tooltip lines off (V14): no hook on PaperDollFrame_UpdateStats from the toolkit, no hover hook on the stat rows",
+CWA()
+ns.TT.Sync()   -- (what the login does: Tooltips.lua's ns.AtLogin(TT.Sync))
+local page = CWPage(function() end)
+local ett = ns.BuildTooltipsTab(function() end)
+local opt = ett and ett.args.charStats and ett.args.charStats.args.enabled
+check2("#46 Improved Character Display has no Tooltip lines row any more; Enhanced Tooltips has a Character stats option, unticked by default",
+  page.args.tipsPart == nil and opt ~= nil and opt.type == "toggle" and opt.get({}) == false and opt.disabled() == false, opt and opt.name)
+check2("#46 ...the Stat Calculator's Panel has no Tooltips tab", page.args.panelPart.args.tips == nil)
+check2("#46 off by default (V14): no hook on PaperDollFrame_UpdateStats from it, no hover hook on the stat rows",
   (hooked.PaperDollFrame_UpdateStats or 0) == 0 and (statRow.hooks.OnEnter == nil or #statRow.hooks.OnEnter == 0), tostring(hooked.PaperDollFrame_UpdateStats))
-if tp and tp.xuiSwitch then tp.xuiSwitch.set({}, true) end
+if opt then opt.set({}, true) end
 GameTooltip.lines = {}
 local hk = statRow.hooks.OnEnter and statRow.hooks.OnEnter[1]
 if hk then GameTooltip:SetOwner(statRow); hk(statRow) end
 local said = table.concat(GameTooltip.lines or {}, " | ")
-check2("(works) #46 its tick box on: the stat rows are hooked once and the Agility tooltip gets the toolkit's lines",
-  tk.tooltips == true and hk ~= nil and #statRow.hooks.OnEnter == 1 and (hooked.PaperDollFrame_UpdateStats or 0) == 1 and said:find("XayaUI", 1, true) ~= nil, said)
-if tp and tp.xuiSwitch then tp.xuiSwitch.set({}, false) end
+check2("(works) #46 the option ticked: the stat rows are hooked once and the Agility tooltip gets the XayaUI lines",
+  hk ~= nil and #statRow.hooks.OnEnter == 1 and (hooked.PaperDollFrame_UpdateStats or 0) == 1 and said:find("XayaUI", 1, true) ~= nil, said)
+if opt then opt.set({}, false) end
 GameTooltip.lines = {}
 if hk then hk(statRow) end
-check2("#46 ...off again: the hook returns at once (no line added; a /reload removes it)", tp ~= nil and hk ~= nil and tk.tooltips == false and #(GameTooltip.lines or {}) == 0, #(GameTooltip.lines or {}))
+check2("#46 ...unticked again: the hook returns at once (no line added; a /reload removes it)", opt ~= nil and hk ~= nil and #(GameTooltip.lines or {}) == 0, #(GameTooltip.lines or {}))
 -- #30: the map report counts the Character Reskin's calls into Blizzard's panel layout
 rc.enabled, rc.wide = true, true
 ns.CharReskin_Apply()
@@ -246,7 +250,8 @@ def pane():
     cd = open(os.path.join(HERE, "..", "XayaUI_DevAssist", "CoreDebug.lua"), encoding="utf-8").read()
     a = cd.index("local function MapLines()"); b = cd.index("\nend\n", a) + 5
     lua.execute("DA_MAPLINES = function(ns) " + cd[a:b] + " return MapLines() end")
-    lua.execute(PANE)
+    lua.execute(PANE.replace("__TTUI__", "'" + os.path.join(ROOT, "XayaUI_Bonus", "TooltipsUI.lua").replace("\\", "/") + "'")
+                .replace("__TT__", "'" + os.path.join(ROOT, "XayaUI_Bonus", "Tooltips.lua").replace("\\", "/") + "'"))
     res = lua.eval("R2")
     return [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]
 

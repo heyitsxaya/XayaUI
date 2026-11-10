@@ -217,8 +217,8 @@ ns.OptionsApi.SIDE_COL = { expand = 4, preview = 4 + 19, note = 4 + 19 * 2, lock
 -- and the box sits above the row; INFERENCE, standard behaviour the rule rows' eye / lock buttons rely on too, not stated in the
 -- API documentation). Rows whose page has no single on / off (Utilities, Cursor) get no box.
 -- Where the box sits (#369: a row's name room is precious): every row keeps a 16 px slot left of its name for the open / close
--- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (Character
--- Toolkit) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
+-- arrow, empty on a row without parts; the box takes that slot, so it costs those names nothing. On a row that has parts (the Stat
+-- Calculator) the box sits right after the arrow slot and only that row's name moves right by the box's width; it stays there while
 -- the parts are hidden too, so the box never moves under the mouse when it is clicked.
 -- Only rows of the feature tabs are looked at (the Rules trees skip at once: the window repaints every row 4 times a second).
 Tree.SWITCH_W, Tree.SWITCH_GAP = ns.Style.switch.size, 1   -- box size (the arrow slot's width); space after the arrow on a row that has one
@@ -241,7 +241,7 @@ function Tree.RowSwitch(button)
     if type(hid) == "function" then local ok, h = pcall(hid, info); hid = ok and h end
     if hid then return nil end
     -- parts: the node lists parts under it in the left pane (so it has the open / close arrow), even while they are hidden (the
-    -- Character Toolkit hides its parts while it is off): the box keeps one place whether the arrow shows or not
+    -- Stat Calculator hides its parts while it is off): the box keeps one place whether the arrow shows or not
     local parts = false
     if (g.childGroups or "tree") == "tree" then
         for _, c in pairs(type(g.args) == "table" and g.args or {}) do

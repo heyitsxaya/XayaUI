@@ -72,7 +72,20 @@ Regenerated again on 2026-11-08 for Rules 0.6.82 (group anchors, REQUEST-LOG ses
 added lines per variant, on the 4 group pages the fixed state draws: `pageGroup.container` (only its xuiInfo, the settings note that now
 says what the anchor point refers to), `pageGroup.container.rel` (only its sorting / values: "Another group" added last) and the new
 `pageGroup.container.relGroup` select ("Group", order 4.25, hidden while Relative to is not Another group), 0 other lines in every variant
-(debug-log 2026-11-08 group-anchors). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+(debug-log 2026-11-08 group-anchors). Regenerated again on 2026-11-10 for the Stat Calculator V25 restructure (QoL 0.7.56, Bonus 0.6.39):
+(1) the 14 failures the golden already had at c4ef771 come from one cause: the QA-branch merge a8aa0c4 put back the British spellings
+5abefac had fixed in XayaUI_Nameplates (the QoL tab's Nameplates page: "Target colour", "Colours ...") and XayaUI_Reskin/FriendColors.lua
+(the Reskin tab's Social note: "coloured"); `--dump` of 6bc8165 (the last golden) and of c4ef771 differ in exactly those 8 lines (all-on),
+nothing else (the same cause fails american_spelling_run and FA-16). (2) `--dump` of c4ef771 and of the new code differ (all-on: 693 lines;
+every variant with XayaUI QoL on 682-693, QoL off 5) only in: the QoL pages Character Pane (`qol.charpane.*`, 300 lines) and the slot
+marks' page (`qol.chartoolkit.*`, 32) joined node for node into `qol.chardisplay.*` (330 lines: the new page node "Improved Character
+Display" with its switch and intro, the Stat Calc button's tick box, the Stat list's own wording; the Tooltip lines part left); the QoL
+pages renumbered by name (Cursor 1, Improved Chat 3, Nameplates 4, Release Guard 5); Blizzard Reskin > Character Pane renamed Character
+Reskin (its node, intro, and the Theme table's four cells); Bonus Features > Enhanced Tooltips' new group Character stats (3 nodes) and
+its switch desc; Bonus Features > Stat Calculator's switch desc, intro and Panel desc (the button needs Improved Character Display; hidden
+in combat). The golden was produced with `--golden` on the new code with only XayaUI_Nameplates and XayaUI_Reskin taken from 6bc8165
+(American spelling), so the 14 spelling failures stay visible here until those two files are fixed (debug-log 2026-11-10 stat-calculator-v25).
+`--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

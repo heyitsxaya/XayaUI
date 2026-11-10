@@ -1,9 +1,9 @@
-# Stub test for QoL > Character Toolkit, Gear tab icons (XayaUI_QoL 0.7.9). Xaya 2026-11-04: "gear pane should show small icons of the
+# Stub test for the Stat Calculator (QoL until Bonus 0.6.37), Gear tab icons (XayaUI_QoL 0.7.9). Xaya 2026-11-04: "gear pane should show small icons of the
 # gear equipped". Checks: an "Equipped" section first on the Gear tab; one icon per equipped item in slot order (shirt and tabard left
 # out); the game's texture, item level and quality colour; the game's item tooltip on hover (GameTooltip:SetInventoryItem, as
 # Blizzard's ItemUtil.DisplayEquipSlotTooltip does), the item link as a fallback; the game's modified click; a missing texture shows
 # the question mark; nothing equipped; icons hidden on other tabs; layout (V11).
-# Run from the repo root: python3 tests/char_gear_icons_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua.
+# Run from the repo root: python3 tests/char_gear_icons_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Textures, item levels and quality colours below are TEST STAND-INS (made-up values), not game data.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -30,20 +30,20 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
-local c = TKC()
+local CM = ns.StatModel
+local c = CWC()
 CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 GameTooltip = mk("GameTooltip")
 invSet = {}
 GameTooltip.SetInventoryItem = function(self, unit, slot) invSet[#invSet + 1] = unit .. ":" .. slot; return true end
 c.enabled = true
-TKA()
+CWA()
 CharacterFrame.shown = true; PaperDollFrame:Show()
-local function drawn() return ns.CharToolkit_Drawn() end
-local function render(tab) c.tab = tab; ns.CharToolkit_Render(); return drawn() end
+local function drawn() return ns.StatCalc_Drawn() end
+local function render(tab) c.tab = tab; ns.StatCalc_Render(); return drawn() end
 local function recs(d, kind) local out = {}; for _, r in ipairs(d.layout) do if not kind or r.kind == kind then out[#out + 1] = r end end; return out end
 local function texts(d, kind) local t = {}; for _, r in ipairs(recs(d, kind)) do t[#t + 1] = r.text end; return t end
 local function shownIcons(d) local t = {}; for _, b in ipairs(d.icons or {}) do if b.shown then t[#t + 1] = b end end; return t end
@@ -108,7 +108,7 @@ end
 check("no line hover area sits over the icons", not cover)
 
 -- 3. Layout (V11) --------------------------------------------------------------------------------------------------------------
-local W = ns.CHARTOOLKIT_LAYOUT.content
+local W = ns.STATCALC_LAYOUT.content
 local function layoutOK(dd)
   for _, r in ipairs(dd.layout) do
     if r.x < 0 or r.x + r.w > W + 0.01 or r.w <= 0 then return false, r.kind .. " " .. tostring(r.text) .. " x=" .. r.x .. " w=" .. r.w end
@@ -154,8 +154,8 @@ GetInventoryItemQuality = function() return "SECRET" end
 local okS, mS = pcall(CM.Build, c, "gear")
 check("secret texture / quality: not used (question mark, plain border)", okS and mS.byKey.gearIcons.icons[1].tex == nil and mS.byKey.gearIcons.icons[1].color == nil, okS and "" or mS)
 GetInventoryItemTexture, GetInventoryItemQuality = savedT, savedQ
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+   .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

@@ -75,7 +75,7 @@ GameTooltip.AddDoubleLine = function(self, a, bb, lr, lg, lb, rr, rg, rbb)
 end
 GameTooltip.NumLines = function() return n end
 local sc = ns.Service("statCalc")
-sc.Cfg().enabled = true; if ns.CharToolkit_Apply then ns.CharToolkit_Apply() end
+sc.Cfg().enabled = true; if ns.StatCalc_Apply then ns.StatCalc_Apply() end
 local ok0 = def.steps[1].check()
 check("step 1 before Do it for me: not tested (no verdict)", ok0 == nil, tostring(ok0))
 local function run(i) local st = def.steps[i]; if st.setup then st.setup() end; W.tick(0.1, 3); return st.check() end
@@ -101,7 +101,7 @@ local T = ns.Theme
 local real = T.EffBase
 for _, base in ipairs({ "colorblind", "protan" }) do
   T.EffBase = function() return base end
-  if ns.CharToolkit_Render then ns.CharToolkit_Render() end
+  if ns.StatCalc_Render then ns.StatCalc_Render() end
   local ok4b, n4b = def.steps[4].check()
   local cb = T.BUILTIN.colorblind.pal
   check(("step 4 with the %s base theme: Pass, crit blue (%.2f,%.2f,%.2f), haste orange"):format(base, cb.accent[1], cb.accent[2], cb.accent[3]),

@@ -5,7 +5,7 @@ BOTTOMLEFT 130, 16; PANEL_DEFAULT_WIDTH and the inset offsets as globals, values
 with the window closed, and without the Inset; it widens the window, moves the Inset's right edge, widens the model, centres the main
 hand slot, calls UpdateUIPanelPositions; it prints blocked-action events while on; "off" restores through the window's own UpdateSize
 and stops listening; px is clamped; nothing runs at load.
-Run: python3 tests/char_width_probe_run.py   Needs: pip install lupa. Stand-in world: tests/char_toolkit_world.lua."""
+Run: python3 tests/char_width_probe_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua."""
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
@@ -89,7 +89,7 @@ ns.CharWidthProbe_Run("off")
 ns.CharWidthProbe_Run("5")
 check("px is clamped to 40", CharacterFrame.w == 378, CharacterFrame.w)
 ns.CharWidthProbe_Run("off")
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__PROBE__", P("XayaUI_DevAssist/CharacterWidthProbe.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))

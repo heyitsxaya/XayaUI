@@ -89,7 +89,7 @@ local function shownNames(t)
   for _, e in ipairs(l) do out[#out + 1] = e.n end
   return table.concat(out, " | ")
 end
-check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", names(tab))
+check("the tab's first row is Overview, then the reskins in name order", names(tab) == "Overview | Blizzard Windows | Buttons | Character Reskin | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", names(tab))
 local ov = tab.args.reskinOverview
 local all = ov and ov.args and ov.args.enable
 check("  ...the switch is on the Overview page (right pane): Enable Blizzard Reskin (Options 0.6.72 name)", all ~= nil and all.type == "toggle" and all.name == "Enable Blizzard Reskin"
@@ -171,7 +171,7 @@ local s1b = state()
 check("after the reload: every reskin whose own box is ticked has started", s1b.chat and s1b.char and s1b.gm and s1b.shop, fmt(s1b))
 check("  ...the Shopping List starts without popping its panel up (UI-77; nothing is missing on the stand-in's gear)", not s1b.shopShown)
 check("  ...the row boxes are no longer greyed", greyed() == 0, greyed())
-check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Blizzard Windows | Buttons | Character Pane | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", shownNames(tab))
+check("after the reload: the reskins' rows are listed under Overview", shownNames(tab) == "Overview | Blizzard Windows | Buttons | Character Reskin | Chat Bubbles | Chat Panel | Esc Menu | Friend Colors | Menus | Minimap | Minimap Buttons | Objective Tracker | Shopping List | Status Bars | Theme | Toasts and Pop-ups | Tooltips", shownNames(tab))
 -- unticked: saved off and asked again; the reskins keep running until the reload, then all four stop, their own switches kept
 all.set(nil, false); W.tick(0.1, 10)
 StaticPopup_Show = rawPopup

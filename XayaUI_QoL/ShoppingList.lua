@@ -16,7 +16,7 @@
 --                     first reagent, counted over every quality with ProfessionsUtil.AccumulateReagentsInPossession; we do the same.
 --   Auction House     AuctionHouseFrame.SearchBar:SetSearchText(text) and :StartSearch() (Blizzard_AuctionHouseSearchBar.lua:194-207);
 --                     C_AuctionHouse.SendBrowseQuery with itemClassFilters (structures.md:331-349); AUCTION_HOUSE_BROWSE_RESULTS_UPDATED.
---   your gear         the Stat Calculator's model (CharacterModel.lua): CM.SlotInfo (link, enchanted, gems per socket, empty sockets),
+--   your gear         the Stat Calculator's model (StatModel.lua): CM.SlotInfo (link, enchanted, gems per socket, empty sockets),
 --                     CM.SlotEnchant (the enchant's name from the tooltip), CM.EnchantSlots (the slots that take an enchant).
 --   history           the game keeps none: XayaUI counts what it sees on your gear (this character only), from the first look.
 -- NOT RUN IN GAME when written (QA E2a-E2d).
@@ -25,7 +25,7 @@ local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local QolS = ns.Settings("qol")   -- (QoL 0.7.47, P2 settings seam; QoL 0.7.49, P5: QoL's own XayaUIQoLDB; Modules.lua section 0b)
 if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "XayaUIQoLDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
-local CM = ns.CharModel
+local CM = ns.StatModel
 local Shop = {}
 ns.Shop = Shop
 -- (the Dev Assist QA walkthroughs reach the Shopping List through this service: a feature is never called by name from another addon)
@@ -240,13 +240,13 @@ function Shop.GemSuggestion(c)
     end
 end
 
--- What is missing on your gear: a slot that takes an enchant (the Character Toolkit's enchant slots) whose item has none; an item
+-- What is missing on your gear: a slot that takes an enchant (Improved Character Display's enchant slots) whose item has none; an item
 -- with empty sockets.
 -- The one-per-character gem (C10): when none is in your sockets, the first empty socket gets it and the rest get your gem.
 function Shop.Missing(c)
     local out = {}
-    local tk = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg() or nil   -- (QoL 0.7.53: QoL's half of the toolkit settings, CharacterPane.lua)
-    local wanted = CM.EnchantSlots(tk)
+    local cd = ns.CharDisplay_EnchantCfg and ns.CharDisplay_EnchantCfg() or nil   -- (V25 R2: Improved Character Display's Enchant Slots)
+    local wanted = CM.EnchantSlots(cd)
     local infos, oneOfWorn, firstEmpty = {}, false, nil
     for _, s in ipairs(CM.SLOTS) do
         local slot = s[1]

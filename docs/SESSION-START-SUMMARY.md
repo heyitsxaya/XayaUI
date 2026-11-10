@@ -91,11 +91,11 @@ Project documents outside the repo (Claude project docs, the Drive `Feature sket
 | `XayaUI` | 0.6.46 | core: rules, cues, conditions (incl. load by zone / instance / difficulty / size / encounter / item), actions, combat aura engine (`Combat/`), themes, mover view, console and debug record, minimap and ESC-menu buttons |
 | `XayaUI_Options` | 0.6.40 | the settings window (loads on first open; Ace3 libs) |
 | `XayaUI_Chat` | 0.6.14 | Chat Panel, Chat Bar, filters, history, tab sounds and whisper sound overrides, privacy cover |
-| `XayaUI_QoL` | 0.7.18 | Cursor Highlight, Gradient Cursor Trail, Character Toolkit / Stat Calculator panel (one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
+| `XayaUI_QoL` | 0.7.18 | Cursor Highlight, Gradient Cursor Trail, Stat Calculator panel (in XayaUI_Bonus since Bonus 0.6.37, `XayaUI_Bonus/StatCalculator.lua`; one model; Sheet, Stats, Gear with icons, What If with the armor chain, Spells with All / Offense / Defense filters; slot overlays with this expansion's enchant slots by default) |
 | `XayaUI_Bonus` | 0.6.11 | tooltips, data panels, Utilities (Notepad, Calculator `/xui calc`) |
 | `XayaUI_Reskin` | 0.6.1 | Game Menu skin |
 | `XayaUI_Media`, `XayaUI_DevAssist` | 1.0, 0.7.2 | user media folder; XayaUI Dev Assist, the developer tool (was `XayaUI_GameDump` before 0.7.0): API, talents, Cooldown Manager catalogue, aura log, `/xuidev probe` (`/xuidump` still works) |
-Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`). Nothing is saved per character yet.
+Saved settings: one account-wide table, `CueRulesDB` (QoL parts use `CueRulesDB.cursorHighlight`, `.cursorTrail`, `.characterToolkit`; that key keeps its old internal name after the V25 R3 rename, players never see it). Nothing is saved per character yet.
 
 ## 4. Active items
 
@@ -119,11 +119,11 @@ Running when this was written (worktree agents; results land as merges on the se
 core / Reskin V14 fixes (core 0.6.47, Reskin 0.6.2, QA B140+); character pane fix (QoL 0.7.19, E1z11+: one item level per slot,
 enchant lines wrapped, XayaUI's own gem sockets / socketed gems). V14 audit of every feature: scratchpad report summarised in the
 debug log of the Chat 0.6.14 entry; still to fix: Options driver after the window closes, Bonus (Notepad share pump, Data Panels
-driver, hidden Notepad, tooltip post-calls), QoL Character Reskin / Toolkit off in a session, Drafts copy with drafts off.
+driver, hidden Notepad, tooltip post-calls), QoL Character Reskin / Stat Calculator off in a session, Drafts copy with drafts off.
 Decisions waiting on Xaya (asked 2026-11-05): disabled rules cost nothing?; "DO NOT RELEASE" (QoL click-blocking cover recommended,
 or a warning rule template, or both); chat history "should not show except for on the last tab" (3 readings offered); Stat Calculator
 (Spells tab columns, rating Pt value form, #382 controls, note column width); cursor themes (Frost / Gold label colors; label and Add
-button tinting); tick boxes (Tooltips' four switches, Tooltip lines row, Notepad's box meaning, Utilities order, Reskin tab);
+button tinting); tick boxes (Tooltips' four switches, Character stats option (was the Tooltip lines row; Bonus Features > Enhanced Tooltips since V25 R4), Notepad's box meaning, Utilities order, Reskin tab);
 `/xui chat whispers` counters always on with the panel?. Known defect: chat privacy cover defaults never merged on a fresh install.
 Next free numbers after the running agents: core 0.6.48, Options 0.6.41, QoL 0.7.20, Bonus 0.6.12, Chat 0.6.15, Reskin 0.6.3;
 QA B132-B139 (B140+ for the core V14 agent), E1z12+, D11, F9.
@@ -133,7 +133,7 @@ QA B132-B139 (B140+ for the core V14 agent), E1z12+, D11, F9.
 - Stat Calculator: Spells auto-fill + Offense / Defense filters (QoL 0.7.7, QA E1t), armor chain (0.7.8, E1u), Gear icons (0.7.9,
   E1v), "Spell ID: N" and readable spell lines (0.7.11, #378 #380, E1w), `/xui stats widthprobe` (0.7.12, E1x: the in-game test
   before the wider character window; task 46).
-- #351 phase 2: `ns.UI_MARGIN` / `ns.UI_GUTTER` in core `XayaUI/Modules.lua`; console, copy box, Import window, toolkit panel,
+- #351 phase 2: `ns.UI_MARGIN` / `ns.UI_GUTTER` in core `XayaUI/Modules.lua`; console, copy box, Import window, Stat Calculator panel,
   chat history, notepad and its popups, mover popups (B76-B80; `tests/window_margins_run.py`).
 - Core 0.6.38: Actions > "Speak it" was silent (B81). Core 0.6.39: the Game Menu grew on every open (Xaya's live report; B82).
 - Other sessions: engine core / Options 0.6.34-0.6.35; Dev Assist session: Bonus 0.6.8 (calculator, `e3cf896`), Dev Assist
@@ -157,8 +157,8 @@ the QA steps above in game.
 
 **Three Claude sessions work in parallel (2026-11-04 evening, coordinated by send_message):**
 - this one: settings window, Stat Calculator / Character Reskin plans, chat, mover view, load conditions;
-- `session_014bN6tSy3HbUDWYQsk69naX` (PR #386): owns `XayaUI_DevAssist/` and QA section J, and the toolkit's Enchant Slots
-  default (QoL 0.7.6, CharacterToolkit.lua / CharacterModel.lua SlotOverlay);
+- `session_014bN6tSy3HbUDWYQsk69naX` (PR #386): owns `XayaUI_DevAssist/` and QA section J, and the slot overlays' Enchant Slots
+  default (QoL 0.7.6, SlotOverlay; today `XayaUI_QoL/ImprovedCharacterDisplay.lua` / `XayaUI_QoL/StatModel.lua`);
 - one instance (Xaya, 2026-11-04 evening: "one claude instance is working on the outstanding rule and combat engine issues"; most
   likely `session_014bN6tV8wAAEXAShpTKqUfz`, told by message): rule evaluation and the combat engine (Combat/, Triggers.lua, the
   cooldown / aura reads, Fel Flame Fortification, Boiling Point, B4-B6). This session stays out of those.
@@ -212,7 +212,7 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
   - DECISIONS-2026-11-04.
 
 1. **Build the two harness indexes before any full-suite run** (both gitignored; section 6 has the steps). Without
-   `framexml_index.json` the harness skips its deprecated-name check. That is how `CharacterToolkit.lua` (QoL 0.7.0) named the
+   `framexml_index.json` the harness skips its deprecated-name check. That is how the Stat Calculator's file (QoL 0.7.0; today `XayaUI_Bonus/StatCalculator.lua`) named the
    fallback-only global `ChatEdit_InsertLink` unnoticed; fixed in QoL 0.7.1 / core 0.6.23 through `Compat.lua`.
 2. **In-game captures for the data pulls** (Xaya's list, 2026-11-04). The offline part is done: `docs/reference/content/` (see
    `debug-log/2026-11-04-1523-content-data-pulls-offline.md`).
@@ -273,7 +273,7 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
    - ask Blizzard;
    - ask the wago.tools operator.
    Until she answers, do not add new client-table data to shipped addon files.
-4. **Waiting on the game:** Advanced Debugging QA B50-B57; Character Toolkit QA E1d-E1o (E1o: shift-click with the deprecation
+4. **Waiting on the game:** Advanced Debugging QA B50-B57; Stat Calculator QA E1d-E1o (E1o: shift-click with the deprecation
    fallbacks off).
 5. "Task #38" in the previous handoff was that session's own task number. GitHub issue #38 is an unrelated, closed sound-preview
    issue.
@@ -287,7 +287,7 @@ Backlog in Xaya's priority order (work the first one not blocked; see the rule i
 | Retrospective aura gaps | 1, 2, 4, 6-12, 15, 22 fixed in code (core 0.6.13); 5 and 21 partly; 20 reported only; 13 left on purpose; 16 waits on Xaya | in-game QA B33-B40; then gaps 3, 14, 17-19 |
 | Cues vs conditions (core 0.6.14) | a cue no condition lists follows the rule's triggers; a switched-off rule silences its cues | QA B41; Xaya may prefer that a switched-off condition frees its cues (decision 5) |
 | UI bugs in existing features (Xaya: before new features) | fixed in code: #333 art picker (0.6.15), #352 lone dropdowns, #286 red buttons, #99 cut-off labels (0.6.16), #336 art rows (0.6.17) | next without a decision: #351 one margin / gutter everywhere (large); the rest wait on decisions |
-| Character Toolkit (QoL 0.7.0-0.7.1) | phase 2 merged; 0.7.1 hooks shift-click through `Compat.lua`; offline tests pass, **unverified in game** | QA E1d-E1o; Toolkit questions in the decisions file |
+| Stat Calculator (QoL 0.7.0-0.7.1) | phase 2 merged; 0.7.1 hooks shift-click through `Compat.lua`; offline tests pass, **unverified in game** | QA E1d-E1o; Stat Calculator questions in the decisions file |
 | Content data pulls | offline part built (`docs/reference/content/`, build 12.1.5.70783): items, item spells and auras, instances with Mythic+ enemy forces, class / spec IDs | in-game captures (item 2 above) |
 | Old-branch features not on `main` | #88 Recycle Bin ported (0.6.12) | #125 strata / level and the old chat features wait on decisions |
 | #30 Recycle Bin for themes, notes, backups | **deferred** (Xaya, 2026-11-04) | |
@@ -327,7 +327,7 @@ Proposed order (not a commitment): ROADMAP section 12.
 - **Main holds only the essential addons (Xaya, 2026-11-08, her words):** "For now, main is now going to include ONLY the following modules: * bonus features * rules * QoL * core + settings  All other things should be migrated to QA branch moving forward so I can focus on designing and optimizing the essential elements"; then "Anything else not listed for main should also migrate to the QA branch" and "The Chat is part of bonus features, so keep it on main — just remove all blizzard reskins for the time being". Her answers: Dev Assist and Media stay on main; shelved/ and roadmap-features/ move to the QA branch; the Character Reskin stays in QoL and "should follow the same logic as improved chat: if no reskin is present, reskin it; otherwise let the current reskin run and only run the other components". So `main` = XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Rules_Options, XayaUI_Chat, XayaUI_QoL, XayaUI_Bonus, XayaUI_DevAssist, XayaUI_Media (+ docs, tests, tools, debug-log). XayaUI_Reskin, XayaUI_Nameplates, shelved/, roadmap-features/ and the Reskin / Nameplates tests are listed in `tools/qa-only-paths.txt` and live only on `qa-installer-branch`: work on them is committed to that branch (never to main). That branch is separate from main: Xaya, 2026-11-08, "disconnect QA and main mirroring" (main c92f4c4 removed the mirror workflow; `tools/sync-qa-branch.sh` is kept as a record only), so a change those modules need in core / Options / QoL / Chat is made on main and, if the QA branch needs it, brought there separately. Tests that cover both check folder presence and print `SKIP (QA-branch module absent: ...)` for the module part on main; Dev Assist walkthroughs and checklist steps carry `needs = "<addon>"` and are not listed where that addon is not installed.
 - **Git:** one branch per session as assigned; push with `git push -u origin <branch>`; open a draft PR. Tag pushes and branch deletions are refused by the session's git proxy (403): do not retry; list them for Xaya. GitHub actions go through the GitHub MCP tools; `gh` only for search (`gh api -X GET search/issues -f q='repo:heyitsxaya/XayaUI is:issue ...'`).
 - **Sync beyond GitHub** (local AddOns folder, Drive copy, checksums in both): described in `debug-log/2026-11-02-handoff-*.md`. Those notes predate the 0.6.0 folder layout, so check them before following them (unverified).
-- **Game API facts:** check `docs/reference/` FIRST (Xaya's core reference, 2026-11-04: the live client's API with signatures and secret rules, and every class's talents and spells; the full private version with spell text is in Drive "Blizzard API Data"), then the 12.1.5 API documentation or an in-game probe (`XayaUI_DevAssist`, `/xuidev api` / `toolkit`) before relying on them; say which.
+- **Game API facts:** check `docs/reference/` FIRST (Xaya's core reference, 2026-11-04: the live client's API with signatures and secret rules, and every class's talents and spells; the full private version with spell text is in Drive "Blizzard API Data"), then the 12.1.5 API documentation or an in-game probe (`XayaUI_DevAssist`, `/xuidev api` / `statcalc`) before relying on them; say which.
 
 ## 7. Key files
 `docs/process/` (verification rules, retrospective), `tools/precheck.py`, `docs/reference/` (core reference: API, talents/spells, `charges.md`, `procs.md`), `docs/ROADMAP.md`, `docs/USER-GUIDE.md`, `docs/QA-CHECKLIST.md`, `README.md`, `MANIFEST.md5`, `debug-log/`, `XayaUI/Modules.lua` (feature contract), `XayaUI/Core.lua` (`ns.Print`, saved settings), `XayaUI_Options/Options.lua` (settings window), `tests/run_all.py`, `tests/harness/` (whole-addon harness), `tools/manifest.py`, `shelved/` (old QoL Elements, loaded by nothing).

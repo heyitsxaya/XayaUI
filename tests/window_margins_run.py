@@ -7,7 +7,7 @@ game (tests/harness places frames from their anchors) and measures them:
   - any two controls side by side (their heights overlap) are at least UI_GUTTER apart; any two controls stacked (their widths
     overlap) are at least UI_GUTTER apart;
   - exempt, as in Blizzard's windows: title-bar close buttons, corner resize grips and bands across the window (a title bar, the
-    notepad's name row and toolbar) sit at the edge and may touch each other; full-window backgrounds and borders, segmented rows (the toolkit's tabs and filter buttons keep their 2 px seams), single-line titles and
+    notepad's name row and toolbar) sit at the edge and may touch each other; full-window backgrounds and borders, segmented rows (the Stat Calculator's tabs and filter buttons keep their 2 px seams), single-line titles and
     hints (typography, only their margin is checked).
 Windows: the console window and the copy box (core), the import window (Options), the Stat Calculator panel (QoL), the chat history
 window (Chat), the notepad's shared-note offer, share, export / import and restore windows (Bonus), the mover view's group X / Y
@@ -134,15 +134,15 @@ end
 -- 4. The Stat Calculator panel (XayaUI Bonus Features since Bonus 0.6.37; its settings are Bonus's) -----------------------------------
 ns.Settings("bonus").characterToolkit = ns.Settings("bonus").characterToolkit or {}
 ns.Settings("bonus").characterToolkit.enabled = true
-pcall(ns.CharToolkit_Apply)
-local okT, errT = pcall(ns.CharToolkit_Toggle)
-local tp = rawget(_G, "XayaUICharacterToolkit")
+pcall(ns.StatCalc_Apply)
+local okT, errT = pcall(ns.StatCalc_Toggle)
+local tp = rawget(_G, "XayaUIStatCalculator")
 check("the Stat Calculator panel opens", okT and tp ~= nil, errT)
 if tp then
   local tabSet = {}
   for _, b in ipairs(tp.tabs or {}) do tabSet[b] = true end
   measure("Stat Calculator panel", tp, { segment = function(k) return tabSet[k] and "tabs" or nil end })
-  local lay = ns.CHARTOOLKIT_LAYOUT
+  local lay = ns.STATCALC_LAYOUT
   check("Stat Calculator panel: its content inset is the core margin", lay and lay.pad == M and lay.content == lay.width - 2 * M, lay and lay.pad)
 end
 -- 5. The chat history window (Chat) --------------------------------------------------------------------------------------------

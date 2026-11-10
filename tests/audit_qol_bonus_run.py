@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Function audit 2026-11-07 (docs/process/FUNCTION-AUDIT-2026-11-07.md), QoL / Bonus rows that have no closer test file:
-  D17 (QoL, Character Toolkit): with "Show the panel" off (toolkit on), the panel's stat / unit events and SPELL_UPDATE_COOLDOWN are
+  D17 (the Stat Calculator, Bonus Features since 0.6.37): with "Show the panel" off (Stat Calculator on), the panel's stat / unit events and SPELL_UPDATE_COOLDOWN are
       not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on.
   D50 (Bonus, Data Panels): "Remove block" before the "Editing block" slider was ever used removes the block without a Lua error.
   D52 (Bonus, Enhanced Tooltips): with "Aura IDs" off, a spell / item hover runs no aura lookup (TT.AurasFor) and writes no saved
       db.selfAura (V14); with it on, it still does.
   D53 (Bonus, Notepad Share): the Share window sends the note it named when it opened, not the note that is current at click time.
 The Shopping List rows (FA-7, D13-D16) are in tests/shopping_list_run.py; D49 / D51 in tests/calculator_run.py.
-Part 1 runs in the Character Toolkit stand-in (tests/char_toolkit_world.lua); part 2 loads the real XayaUI, XayaUI_Media and
+Part 1 runs in the character window stand-in (tests/char_world.lua); part 2 loads the real XayaUI, XayaUI_Media and
 XayaUI_Bonus in the whole-addon stand-in game (tests/harness). Every check fails on the code before the fix (see the debug log
 debug-log/2026-11-07-*-audit-qol-bonus-fixes.md) unless it is marked "(as before)".
 Run from the repo root: python3 tests/audit_qol_bonus_run.py   (Lua 5.1 via lupa)."""
@@ -24,7 +24,7 @@ def P(rel): return "'" + os.path.join(ROOT, rel).replace("\\", "/") + "'"
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
-# Part 1: D17, Character Toolkit
+# Part 1: D17, Stat Calculator
 # ---------------------------------------------------------------------------------------------------------------------------------
 def part1():
     lua = LuaRuntime()
@@ -34,39 +34,39 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
-assert(loadfile(__CP__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
+assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
-local CM = ns.CharModel
+local CM = ns.StatModel
 local gcdReads = 0
 local rawGCD = CM.ReadGCD
 CM.ReadGCD = function(...) gcdReads = gcdReads + 1; return rawGCD(...) end
 local function registered(e) for _, f in ipairs(created) do if f.events and f.events[e] then return true end end; return false end
-local c = TKC()
+local c = CWC()
 c.enabled, c.panel, c.overlays = true, false, false
-TKA()
-check("D17: toolkit on, panel part off: SPELL_UPDATE_COOLDOWN is not registered", not registered("SPELL_UPDATE_COOLDOWN"))
+CWA()
+check("D17: Stat Calculator on, panel part off: SPELL_UPDATE_COOLDOWN is not registered", not registered("SPELL_UPDATE_COOLDOWN"))
 check("  ...no unit stat event (UNIT_STATS, UNIT_SPELL_HASTE) is registered", not registered("UNIT_STATS") and not registered("UNIT_SPELL_HASTE"))
 check("  ...no stat event (COMBAT_RATING_UPDATE, MASTERY_UPDATE) is registered", not registered("COMBAT_RATING_UPDATE") and not registered("MASTERY_UPDATE"))
 fire("SPELL_UPDATE_COOLDOWN")
 check("  ...a cast does no GCD read for the hidden panel", gcdReads == 0, gcdReads)
 c.overlays = true
-TKA()
+CWA()
 check("  ...slot overlays on: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = true
-TKA()
+CWA()
 check("(as before) panel part on: SPELL_UPDATE_COOLDOWN, UNIT_STATS and COMBAT_RATING_UPDATE are registered", registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS") and registered("COMBAT_RATING_UPDATE"))
 local before = gcdReads
 fire("SPELL_UPDATE_COOLDOWN")
 check("(as before) ...and a cast reads the GCD", gcdReads == before + 1, gcdReads - before)
 c.panel = false
-TKA()
+CWA()
 check("  ...panel part off again: its events are let go at once", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_EQUIPMENT_CHANGED"))
 c.enabled = false
-TKA()
-check("(as before) toolkit off: nothing of it is registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("PLAYER_SPECIALIZATION_CHANGED"))
-'''.replace("__WORLD__", P("tests/char_toolkit_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-       .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/CharacterModel.lua")).replace("__CT__", P("XayaUI_Bonus/CharacterToolkit.lua")).replace("__CP__", P("XayaUI_QoL/CharacterPane.lua")))
+CWA()
+check("(as before) Stat Calculator off: nothing of it is registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("PLAYER_SPECIALIZATION_CHANGED"))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
+       .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua")))
     return int(lua.eval("n")), int(lua.eval("fails"))
 
 
@@ -228,7 +228,7 @@ P("audit-shopping-list", 4, "D14 To buy adds up (1 + 2 = 3)")
 P("audit-shopping-list", 5, "D15 /xui shop with the Reskin tab off changes nothing")
 P("audit-shopping-list", 6, "shopping list last step: put back")
 P("audit-char-toolkit-events", 1, "D17 panel part off: no panel event")
-P("audit-char-toolkit-events", 2, "char toolkit last step: put back")
+P("audit-char-toolkit-events", 2, "stat calculator last step: put back")
 P("audit-calculator", 1, "D49 1 / 3 x 3 = 1")
 P("audit-calculator", 2, "D49 1e-07 x 10")
 P("audit-calculator", 3, "D51 12kx3")
@@ -252,7 +252,7 @@ end
 P("audit-tooltips-aura-off", 3, "tooltips last step: put back")
 P("audit-notepad-share", 1, "D53 the Share window keeps note A")
 P("audit-notepad-share", 3, "notepad share last step: put back")
-check("everything put back: To buy, Shopping List on / off and panel, Character Toolkit panel, notes, Aura IDs, Left Panel blocks, saved sums",
+check("everything put back: To buy, Shopping List on / off and panel, Stat Calculator panel, notes, Aura IDs, Left Panel blocks, saved sums",
   #c.buy == before.buy and c.enabled == before.enabled and c.panel == before.panel and (ct and ct.panel) == before.ctPanel
   and #(ns.notepadDB and ns.notepadDB.notes or {}) == before.notes and ns.Service("tooltipsDebug").TT.DB().ids.aura == before.aura
   and (ns.Settings("bonus").dataPanels and ns.Settings("bonus").dataPanels.bl and ns.Settings("bonus").dataPanels.bl.slots) == before.slots

@@ -19,7 +19,7 @@
 --                                                             only after the Group Finder's Mythic+ tab has been opened once.
 --
 -- To bring it back:
---   1. Paste MythicPlusItem into XayaUI_QoL/CharacterModel.lua above StatItem, where Item, SetValue, Pair, Tip, Field, R, N, num,
+--   1. Paste MythicPlusItem into XayaUI_QoL/StatModel.lua above StatItem, where Item, SetValue, Pair, Tip, Field, R, N, num,
 --      Big and HIDDEN are already local.
 --   2. Add `sec.items[#sec.items + 1] = MythicPlusItem()` after the item level line in the "Character" section of the "stats" tab.
 --   3. Call the one-time RequestMapInfo (below) where the panel is first shown.

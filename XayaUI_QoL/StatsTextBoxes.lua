@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- StatsText.lua (XayaUI_QoL 0.7.49; platform split P5, docs/plans/PLATFORM-SPLIT-2026-11-07.md section 5): the shelved QoL "stats text"
+-- StatsTextBoxes.lua (XayaUI_QoL 0.7.49; platform split P5, docs/plans/PLATFORM-SPLIT-2026-11-07.md section 5): the shelved QoL "stats text"
 -- boxes' defaults and their saved list. Moved here from the Platform's XayaUI/Core.lua (P4 left them there; PS-52: "The QoL 'stats text'
 -- box defaults that P4 left in the Platform's Core.lua move to QoL now"). The boxes themselves are shelved (shelved/QoL.lua is not
 -- loaded); the list is still kept, shared by the rules' backups and the rules tree (the "statsText" service below).

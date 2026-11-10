@@ -83,7 +83,7 @@ local LOOK = {
   { id = "buttons",     mod = "reskin", label = "Buttons",             read = function() return BSL().buttons and true or false end },
   { id = "gamemenu",    mod = "reskin", label = "Esc Menu",            read = function() return ns.GameMenuSkin_Live() and true or false end },
   { id = "friendcolors",mod = "reskin", label = "Friend Colors",       read = function() return ns.FriendColors_Active() and true or false end },
-  { id = "charreskin",  mod = "reskin", label = "Character Pane",      read = function() return ns.CharReskin_Active() and true or false end },
+  { id = "charreskin",  mod = "reskin", label = "Character Reskin",    read = function() return ns.CharReskin_Active() and true or false end },   -- (V25 R2: the page and its reload prompt were "Character Pane")
   { id = "shoppinglist",label = "Shopping List",       read = function() return events("XayaUI_QoL/ShoppingList.lua", "AUCTION_HOUSE_SHOW") > 0 end },
   { id = "nameplates",  mod = "nameplates", label = "Nameplates",          read = function() return NP and NP.TargetColor and NP.TargetColor.Listening() or false end },
 }

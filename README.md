@@ -40,8 +40,8 @@ On `main`:
 | `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
 | `XayaUI_Rules_Options` | XayaUI Rules Options | The rule editor (the settings window's Rules tab), loaded when the window opens while XayaUI Rules is on (since 0.6.77; was part of `XayaUI_Options`). |
 | `XayaUI_Chat` | XayaUI Chat | Chat Panel (Blizzard's chat windows restyled) and Improved Chat (Chat Data Panel, filters, sounds, history, fade, privacy cover). |
-| `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail; Character Toolkit stat panel (friends and bags later). |
-| `XayaUI_Bonus` | XayaUI Bonus Features | Tooltip additions, Notepad, custom data panels. |
+| `XayaUI_QoL` | XayaUI QoL | Cursor highlight and trail; Improved Character Display; Character Reskin; Shopping List; Release Guard (the Stat Calculator panel is in XayaUI Bonus Features). |
+| `XayaUI_Bonus` | XayaUI Bonus Features | Tooltip additions, Notepad, Calculator, custom data panels, the Stat Calculator (needs XayaUI QoL). |
 | `XayaUI_Media` | XayaUI Media | Your own pictures and sounds (a support folder; see its README). |
 | `XayaUI_DevAssist` | XayaUI Dev Assist | A developer and debugging tool; not needed to play (was `XayaUI_GameDump`, "Game Data Capture", before 0.7.0: delete that old folder). |
 

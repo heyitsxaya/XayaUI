@@ -1,4 +1,5 @@
--- Stand-in game world for the Character Toolkit tests (tests/char_toolkit_run.py, tests/char_toolkit2_run.py). Lua 5.1.
+-- Stand-in game world for the character window tests (the Stat Calculator, Improved Character Display, the Character Reskin;
+-- tests/char_statcalc_run.py, tests/char_statcalc2_run.py and the other char_* tests). Lua 5.1.
 -- Every number here is a TEST STAND-IN (Xaya's Vengeance screenshot figures where she gave them, made-up values elsewhere); none of it
 -- ships. Frames record what the addon does to them (points, sizes, text, colors, shown state, scripts, hooks) so the tests can
 -- assert what the player would see.
@@ -210,34 +211,75 @@ function has(r, pat) for _, l in ipairs(r and r.lines or {}) do if l:find(pat, 1
 function pair(it, label) for _, p in ipairs(it and it.pairs or {}) do if p.label == label then return p.value, p.tone end end end
 function tipHas(it, pat) for _, l in ipairs(it and it.tip or {}) do if l:find(pat, 1, true) then return true end end; return false end
 
--- (character pane split stage 2: QoL 0.7.53 / Bonus 0.6.37) the Character Toolkit's settings are in two halves now: the Stat
--- Calculator panel's keys in XayaUI Bonus Features (ns.CharToolkit_Cfg, XayaUI_Bonus/CharacterToolkit.lua), the slot overlays' and
--- the tooltip lines' in XayaUI QoL (ns.CharPane_ToolkitCfg, XayaUI_QoL/CharacterPane.lua); each has its own switch `enabled`. The tests
--- written before the split set the toolkit up as one table: TKC() is that table (reads and writes each key in its half; `enabled` is
--- written to both and read from the panel's), TKA() applies both halves, TKPage() is the two settings pages as one (the QoL page's
--- parts and the Bonus page's, in one args table). TEST HELPERS only: the game has no such joined table.
-TK_QOL = { tooltips = true, overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true, enchantSlotsSet = true }
-function TKC()
-  local p = ns.CharToolkit_Cfg and ns.CharToolkit_Cfg()
-  local q = ns.CharPane_ToolkitCfg and ns.CharPane_ToolkitCfg()
+-- (character pane split stage 2: QoL 0.7.53 / Bonus 0.6.37; V25 R2) the old one-table settings are in two places now: the Stat
+-- Calculator panel's keys in XayaUI Bonus Features (ns.StatCalc_Cfg, XayaUI_Bonus/StatCalculator.lua), the slot overlays', the
+-- tooltip lines' and the Stat Calc button's in XayaUI QoL's Improved Character Display (ns.CharDisplay_Cfg, XayaUI_QoL/
+-- ImprovedCharacterDisplay.lua); each has its own switch `enabled`. The tests written before the split set them up as one table:
+-- CWC() is that table (reads and writes each key in its half; `enabled` is written to both and read from the panel's), CWA() applies
+-- both halves, CWPage() is the two settings pages as one (the QoL page's parts and the Bonus page's, in one args table). TEST HELPERS
+-- only: the game has no such joined table.
+CW_QOL = { tooltips = true, overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true, enchantSlotsSet = true,
+  statCalcButton = true }
+function CWC()
+  local p = ns.StatCalc_Cfg and ns.StatCalc_Cfg()
+  local q = ns.CharDisplay_Cfg and ns.CharDisplay_Cfg()
   if not (p or q) then return nil end
   return setmetatable({}, {
-    __index = function(_, k) if TK_QOL[k] then return q and q[k] end; if p then return p[k] end; return q and q[k] end,
+    __index = function(_, k) if CW_QOL[k] then return q and q[k] end; if p then return p[k] end; return q and q[k] end,
     __newindex = function(_, k, v)
-      if k == "enabled" then if p then p[k] = v end; if q then q[k] = v end
-      elseif TK_QOL[k] then if q then q[k] = v end
+      if k == "enabled" then
+        if p then p[k] = v end
+        -- (V25 R2) the old shared switch showed no item details: as the one-time merge does for a player who had only it on, switching
+        -- it on from off starts the item level / enchants / gems / full stat list parts off (a test that wants them sets them after
+        -- this, or switches Improved Character Display on first: RC().features)
+        if q then
+          if v and not q.enabled then q.ilvl, q.enchants, q.gems, q.statList = false, false, false, false end
+          q[k] = v
+        end
+      elseif CW_QOL[k] then if q then q[k] = v end
       elseif p then p[k] = v end
     end })
 end
-function TKA()
-  if ns.CharPane_ToolkitApply then ns.CharPane_ToolkitApply() end
-  if ns.CharToolkit_Apply then ns.CharToolkit_Apply() end
+function CWA()
+  if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
+  if ns.StatCalc_Apply then ns.StatCalc_Apply() end
 end
-function TKPage(notify)
-  local a = ns.BuildCharToolkitPanelPage and ns.BuildCharToolkitPanelPage(notify) or { args = {} }
-  local b = ns.BuildCharToolkitPage and ns.BuildCharToolkitPage(notify) or { args = {} }
+function CWPage(notify)
+  local a = ns.BuildStatCalcPage and ns.BuildStatCalcPage(notify) or { args = {} }
+  local b = ns.BuildCharDisplayPage and ns.BuildCharDisplayPage(notify) or { args = {} }
   local out = { name = a.name, xuiSwitch = a.xuiSwitch, childGroups = a.childGroups, type = a.type, args = {} }
   for k, v in pairs(b.args or {}) do out.args[k] = v end
   for k, v in pairs(a.args or {}) do out.args[k] = v end
   return out
 end
+
+-- (V25 R2) the Character Reskin's look (ns.CharReskin_Cfg, XayaUI_QoL/CharacterReskin.lua) and Improved Character Display
+-- (ns.CharDisplay_Cfg, XayaUI_QoL/ImprovedCharacterDisplay.lua) as one table, for the tests written while both were one file: a look key
+-- goes to the look, `features` (the old QoL > Character Pane switch) to Improved Character Display's switch, every other key to Improved
+-- Character Display. RSA() applies both. TEST HELPERS only: the game has no such joined table.
+RS_LOOK = { enabled = true, chrome = true, stats = true, wide = true, widePx = true, bgAlpha = true, tallPx = true, widePxTo42 = true }
+function RC()
+  return setmetatable({}, {
+    __index = function(_, k)
+      if RS_LOOK[k] then local l = ns.CharReskin_Cfg and ns.CharReskin_Cfg(); return l and l[k] end
+      local d = ns.CharDisplay_Cfg and ns.CharDisplay_Cfg()
+      if k == "features" then return d and d.enabled end
+      return d and d[k]
+    end,
+    __newindex = function(_, k, v)
+      if RS_LOOK[k] then local l = ns.CharReskin_Cfg and ns.CharReskin_Cfg(); if l then l[k] = v end; return end
+      local d = ns.CharDisplay_Cfg and ns.CharDisplay_Cfg()
+      if not d then return end
+      if k == "features" then d.enabled = v else d[k] = v end
+    end })
+end
+function RSA()
+  if ns.CharReskin_Apply then ns.CharReskin_Apply() end
+  if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
+end
+
+-- (V25 own-data standard) what Improved Character Display drew on a slot button and what the Character Reskin made on a tab, stat
+-- category or stat row live in the addon's own weak tables keyed by Blizzard's frame (never fields on it): read only, an empty table
+-- when nothing was made
+function SD_(b) local f = ns.CharDisplay_SlotData; return (f and b and f(b)) or {} end
+function RX_(fr) local f = ns.CharReskin_Extra; return (f and fr and f(fr)) or {} end
