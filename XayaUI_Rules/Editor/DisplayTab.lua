@@ -183,6 +183,30 @@ end
 -- Controls are the cue editor's own builders (ns.UI), fed a proxy table: reading gives the first display's value, writing sets every
 -- display's own field (a table value, such as a color, is copied for each display so no two displays share one table).
 -------------------------------------------------------------------------------
+-- The group Display tab's color-picker state (audit D43, review R4). File level: it must outlive a rebuild of the tab.
+-- pick: the copy taken at the first change of one picker session; pickHush: a color set made with the picker open is running;
+-- pickNotify: the window redraw that waits for the picker to close.
+local pick, pickHush, pickNotify, pickHooked
+local function Picking() local P = rawget(_G, "ColorPickerFrame"); return (P and P.IsShown and P:IsShown()) and true or false end
+-- the picker closed: drop the copy and make the one redraw, on the next frame (AceGUI sends Cancel's color right after the close)
+local function PickClosed()
+    if not (pick or pickNotify) then return end   -- the picker was used for something else
+    if not C_Timer then pick = nil; return end
+    C_Timer.After(0, function()
+        pick = nil
+        if Picking() then return end   -- reopened at once (another swatch): the redraw waits for that close
+        local n = pickNotify; pickNotify = nil
+        if n then pcall(n) end
+    end)
+end
+local function WatchPicker()
+    if pickHooked then return end
+    local P = rawget(_G, "ColorPickerFrame")
+    if not (P and P.HookScript) then return end
+    pickHooked = true
+    P:HookScript("OnHide", PickClosed)
+end
+
 local function Sig(v)
     if type(v) ~= "table" then return tostring(v) end
     local p = {}
@@ -213,7 +237,9 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     local function none() return #list() == 0 end
     local function on()
         for _, d in ipairs(list()) do pcall(ns.RefreshVisual, d) end
-        ns.MarkDirty(); Notify()
+        ns.MarkDirty()
+        -- (review R4) a color set while the picker is open does not redraw the window: one redraw when it closes (PickClosed)
+        if pickHush and Picking() then pickNotify = Notify else pickNotify = nil; Notify() end
     end
     -- sub = nil: the display's visual table; otherwise one of its sub-tables (text, count, absorb, border, bg)
     local function Proxy(sub)
@@ -539,8 +565,8 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     -- the setter wrote it to every display: Cancel overwrote the others. Now the first change made while a picker is open keeps a copy of
     -- every display's settings (and the group's forced bar colors); a `set` that brings back the start color (Cancel, or dragging back to
     -- it) puts each display's own copy back instead. The copy is dropped once the picker is closed.
-    local pick
-    local function Picking() local P = rawget(_G, "ColorPickerFrame"); return (P and P.IsShown and P:IsShown()) and true or false end
+    -- (review R4) the copy is kept per group and control at file level, not on this build's option table: the window was rebuilt
+    -- after the first drag, the next set then took a new copy of the already dragged color, and Cancel still overwrote.
     local function Near(a, b) return math.abs((tonumber(a) or 1) - (tonumber(b) or 1)) < 0.0005 end
     local function Same(x, y)
         if type(x) ~= "table" or type(y) ~= "table" then return x == y end
@@ -548,14 +574,18 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
         for k in pairs(y) do if x[k] == nil then return false end end
         return true
     end
-    local function GuardColor(o)
+    local function GuardColor(o, key)
         local set, get = o.set, o.get
+        key = tostring(f.id) .. "\001" .. key
         o.set = function(info, r, g, b, a)
-            if not pick or pick.o ~= o then
-                local s = { o = o, start = { get(info) }, vis = {}, barCustom = type(f.barCustom) == "table" and ns.Copy(f.barCustom) or nil }
+            local open = Picking()
+            if open then WatchPicker() end
+            if not pick or pick.key ~= key then
+                local s = { key = key, start = { get(info) }, vis = {}, barCustom = type(f.barCustom) == "table" and ns.Copy(f.barCustom) or nil }
                 for _, d in ipairs(list()) do s.vis[d] = ns.Copy(d.visual) end
                 pick = s
             end
+            pickHush = open
             local s = pick
             local st = s.start
             if Near(st[1], r) and Near(st[2], g) and Near(st[3], b) and Near(st[4], a) then
@@ -569,11 +599,18 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
             else
                 set(info, r, g, b, a)
             end
+            pickHush = false
             if not Picking() then pick = nil end
         end
     end
-    local function GuardAll(t) for _, o in pairs(t or {}) do if type(o) == "table" then if o.type == "color" and o.set then GuardColor(o) elseif o.args then GuardAll(o.args) end end end end
-    GuardAll(args)
+    local function GuardAll(t, path)
+        for k, o in pairs(t or {}) do
+            if type(o) == "table" then
+                if o.type == "color" and o.set then GuardColor(o, path .. "." .. tostring(k)) elseif o.args then GuardAll(o.args, path .. "." .. tostring(k)) end
+            end
+        end
+    end
+    GuardAll(args, "")
     return args
 end
 end

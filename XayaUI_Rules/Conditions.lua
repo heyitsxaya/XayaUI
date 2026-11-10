@@ -1466,9 +1466,50 @@ end
 
 -- Talent requirements: rule.talents = { {id=, state="known"|"notKnown"}, ... } combined by rule.talentMode
 -- (none = ignore, all = every entry must match, any = at least one). Returns true/false/nil(unknown), detail text.
+local CheckTalentsRaw
+-- (review R3) during an engine step the answer is kept per rule until talents or settings change: ns.talentEpoch (Engine.lua: spec,
+-- trait, spellbook and entering-world events) or ns.configVersion (an edit). Talents cannot change in combat, so a step no longer
+-- rebuilds tables and strings for every rule. Outside a step (editor, /xui debug status) it is computed fresh, as before.
+-- (review R3 follow-up) out of combat the kept answer is also re-read once a second, so a talent change that came without those events
+-- still shows within a second. That re-read only compares each entry's known / not known with the kept one (no tables, no strings) and
+-- rebuilds the answer only when one differs. In combat nothing is re-read: talents cannot change there.
+local talentMemo = setmetatable({}, { __mode = "k" })
+-- each counted entry's result: 1 = matches, 2 = does not, 3 = unknown. fill: store them in m.codes; else: true when all are as stored.
+local function TalentCodes(rule, m, fill)
+    local codes, n = m.codes, 0
+    local tl = rule.talents
+    if type(tl) == "table" then
+        for _, t in ipairs(tl) do
+            if type(t) == "table" and t.state ~= "none" then
+                n = n + 1
+                local known = ns.ReadTalentKnown(t.id)
+                local c = (known == nil) and 3 or ((known == (t.state ~= "notKnown")) and 1 or 2)
+                if fill then codes[n] = c elseif codes[n] ~= c then return false end
+            end
+        end
+    end
+    if fill then m.nCodes = n; return true end
+    return n == m.nCodes
+end
 function ns.CheckTalents(rule)
     local mode = rule.talentMode
     if mode == nil or mode == "" or mode == "none" then return true, "no talent requirement" end
+    if not (ns.InStep and ns.InStep()) then return CheckTalentsRaw(rule, mode) end
+    local ep, ver, list = ns.talentEpoch or 0, ns.configVersion or 0, rule.talents
+    local m = talentMemo[rule]
+    if m and m.ep == ep and m.ver == ver and m.mode == mode and m.list == list then
+        if InCombatLockdown and InCombatLockdown() then return m.ok, m.detail end
+        local sec = math.floor(GetTime())
+        if m.sec == sec then return m.ok, m.detail end
+        if TalentCodes(rule, m, false) then m.sec = sec; return m.ok, m.detail end
+    end
+    local ok, detail = CheckTalentsRaw(rule, mode)
+    if not m then m = { codes = {} }; talentMemo[rule] = m end
+    m.ep, m.ver, m.mode, m.list, m.ok, m.detail, m.sec = ep, ver, mode, list, ok, detail, math.floor(GetTime())
+    TalentCodes(rule, m, true)
+    return ok, detail
+end
+function CheckTalentsRaw(rule, mode)
     -- #2 (core 0.6.56; Xaya: three-click toggle Known / Not known / not set): an entry set to "none" (not set) has no bearing (#18); a
     -- saved entry without a state keeps reading as Known, as before
     local list = {}

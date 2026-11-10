@@ -356,16 +356,22 @@ function ns.RemapCopies()
     copies = nil
 end
 
--- Does this rule have outcomes? (cached once per engine tick; the options window recomputes on demand)
-local hasOut, hasTick = {}, nil
+-- Does this rule have outcomes? (review R18 follow-up) One table, refilled only when the rule list or a setting changes (the same list
+-- table, its length, ns.configVersion) and at most once a second besides, for a change that did not call ns.MarkDirty. Before, a new
+-- table was built on every engine step, routed re-checks included.
+local hasOut, hasList, hasN, hasVer, hasSec = {}, nil, -1, nil, nil
 function ns.HasOutcomes(rule)
     if rule.parentUid or type(rule.uid) ~= "string" then return false end
-    if ns.tickID == nil or hasTick ~= ns.tickID then
-        hasOut = {}
-        for _, r in ipairs(ns.rules or {}) do
+    local list = ns.rules
+    if not list then return false end
+    local n, ver, sec = #list, ns.configVersion or 0, math.floor(GetTime())
+    if list ~= hasList or n ~= hasN or ver ~= hasVer or sec ~= hasSec then
+        for k in pairs(hasOut) do hasOut[k] = nil end
+        for i = 1, n do
+            local r = list[i]
             if type(r.parentUid) == "string" and not r.isCue then hasOut[r.parentUid] = true end
         end
-        hasTick = ns.tickID
+        hasList, hasN, hasVer, hasSec = list, n, ver, sec
     end
     return hasOut[rule.uid] == true
 end

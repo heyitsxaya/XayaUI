@@ -258,8 +258,12 @@ check("settings: Keep up to (5 to 100, default 30)", SR.draftsMax and SR.draftsM
 check("settings: confirm discard / confirm delete / chat notice, all on by default", SR.draftsConfirmDiscard.get() and SR.draftsConfirmDelete.get() and SR.draftsCloseNotice.get())
 for i = 1, 12 do table.insert(ns.Settings("core").drafts, { id = "x" .. i, uid = "x" .. i, name = "D" .. i, ts = i, rules = {} }) end
 SR.draftsMax.set(nil, 8)
-check("settings: lowering 'Keep up to' trims the oldest drafts at once", #ns.Settings("core").drafts == 8 and ns.Settings("core").drafts[1].id == "x1", #ns.Settings("core").drafts)
+-- (review R7) the slider no longer trims at each step: the drafts stay until the window closes, and the intro says how many go then
+check("settings: lowering 'Keep up to' keeps every draft while the window is open", #ns.Settings("core").drafts == 12, #ns.Settings("core").drafts)
 check("drafts intro states the chosen number", DT.args.intro.name():find("Up to 8 drafts") ~= nil)
+check("drafts intro says the oldest 4 go when the window closes", DT.args.intro.name():find("oldest 4 will be dropped", 1, true) ~= nil)
+ns.DraftsTrim()   -- what the window's close runs (Drafts.lua DraftsOnClose)
+check("settings: on close the oldest drafts beyond 'Keep up to' are dropped", #ns.Settings("core").drafts == 8 and ns.Settings("core").drafts[1].id == "x1", #ns.Settings("core").drafts)
 SR.draftsMax.set(nil, 500)
 check("settings: 'Keep up to' is clamped to 100", ns.DraftsMax() == 100)
 SR.draftsConfirmDelete.set(nil, false)

@@ -12,6 +12,13 @@ local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
 local dirty = true
 local TICK = 0.2
 local MIN_GAP = 0.05   -- events (UNIT_AURA, cooldown updates) fire many times a second in combat; re-evaluating on each one is what costs frames
+-- (review R18) routed cd / aura re-checks: the first after a quiet spell still runs on the very next frame; in a burst (a raid fight) they
+-- run at most once per ROUTED_GAP instead of on every rendered frame. A held re-check waits at most this long (no event is lost).
+local ROUTED_GAP = 1 / 30
+-- (review R18 follow-up) frame times wobble by a millisecond or two: two 60 fps frames often add up to a hair under 1/30 s. Compared
+-- against the gap less this slack, a burst re-checks every 2nd frame at 60 fps (every 4th at 120) instead of often waiting a 3rd (5th).
+local ROUTED_DUE = ROUTED_GAP - 0.004
+local sinceRouted = ROUTED_GAP   -- seconds since the last routed re-check
 local acc = 0
 local sinceStep = 0
 local forceNow = false   -- an edit in the options window re-evaluates at once, without waiting for MIN_GAP
@@ -188,7 +195,7 @@ end
 
 -- D4 / #309 event routing (core 0.6.56; Xaya 2026-11-06: "either way reduce the ms as much as possible. avoid at all costs compromising on
 -- performance of rules while minimizing cpu and ram costs"). A cooldown event re-checks only the rules that read cooldowns, a player
--- aura event only the rules that read your auras, on the very next frame (no 50 ms gap). Every other event, and the 0.2 s tick, steps
+-- aura event only the rules that read your auras, on the very next frame (no 50 ms gap; in a burst at most once per ROUTED_GAP, review R18). Every other event, and the 0.2 s tick, steps
 -- every rule as before. A plain tick (no event pending) skips a rule that reads only your auras when an aura event already re-checked
 -- it since the last full step (an aura change always comes with UNIT_AURA; a time-left threshold forces a full step through Timing.lua).
 -- What a rule reads (its own triggers, or its parent's for a cue / condition): "cd", "aura", "other" (anything else: tick + events).
@@ -222,6 +229,18 @@ local routedFilter = {}           -- reused for every routed re-check (no table 
 local lastCtx                     -- the last full step's context, reused by routed re-checks
 local lastFullAt                  -- GetTime() of the last full step
 
+-- (review R18) a routed re-check reuses the last full step's context, so a rule that step found not loaded (load conditions or talents;
+-- Conditions.lua Evaluate marks it info.skipped) answers false again and nothing of it can change: it is left out. A cue / condition
+-- follows its parent rule. Kept: a rule whose display follows the buff even while not loaded (ns.NeedsPresence), and previews.
+local function NotLoadedRouted(rule)
+    local p = rule
+    if rule.parentUid then p = ns.FindParentRule and ns.FindParentRule(rule); if not p then return false end end
+    local rt = ns.runtime[p]
+    local info = rt and rt.info
+    if not (info and info.skipped == true) then return false end
+    return not (ns.NeedsPresence and ns.NeedsPresence(p))
+end
+
 local function Step()
     if not ns.rules then return end
     local filter, skipFresh = stepFilter, stepSkipFresh
@@ -249,6 +268,7 @@ local function Step()
             if filter then
                 local d = Deps(rule)
                 go = (filter.cd and d.cd) or (filter.aura and d.aura) or false
+                if go and not off and not (pvV and pvV[rule]) and not (pvS and pvS[rule]) and NotLoadedRouted(rule) then go = false end
                 if go and filter.aura and d.aura then auraCheckedAt[rule] = now end
             elseif skipFresh and not off then
                 local d = Deps(rule)
@@ -414,7 +434,12 @@ f:SetScript("OnEvent", function(_, event, arg1)
         if ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
     end
-    if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then ns.talentList = nil; ns.spellList = nil end
+    if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" then
+        ns.talentList = nil; ns.spellList = nil
+        -- (review R3) talents may have changed: the kept talent answers (Conditions.lua CheckTalents) are read again; another unit's spec
+        -- change does not count
+        if event ~= "PLAYER_SPECIALIZATION_CHANGED" or arg1 == "player" then ns.talentEpoch = (ns.talentEpoch or 0) + 1 end
+    end
     -- audit D54 (core 0.6.67): On Initialization runs again after a spec change (USER-GUIDE Actions tab; Actions.lua), for every rule
     -- (the event carries unitTarget, events.md 1215, and is registered for every unit: only the player's own spec change counts)
     if event == "PLAYER_SPECIALIZATION_CHANGED" and arg1 == "player" then for _, rt in pairs(ns.runtime or {}) do rt.inited = nil end end
@@ -452,6 +477,7 @@ local Timing = ns.Timing
 f:SetScript("OnUpdate", function(_, elapsed)
     acc = acc + elapsed
     sinceStep = sinceStep + elapsed
+    sinceRouted = sinceRouted + elapsed
     -- a time-left threshold ("2 s left") is crossed on this frame: step now, not at the next tick (Timing.lua deadlines)
     if Timing and GetTime() >= Timing.NextDeadline() then dirty, forceNow = true, true; Timing.ClearDeadline() end
     if acc >= TICK or (dirty and (forceNow or sinceStep >= MIN_GAP)) then
@@ -462,11 +488,12 @@ f:SetScript("OnUpdate", function(_, elapsed)
         routed.cd, routed.aura = nil, nil   -- a full step covers them
         SafeStep()
         stepSkipFresh = nil
-    elseif routed.cd or routed.aura then
-        -- D4: the rules that read what changed, this frame (at most once per frame); the full step keeps its own pace
+    elseif (routed.cd or routed.aura) and sinceRouted >= ROUTED_DUE then
+        -- D4: the rules that read what changed, this frame (at most once per ROUTED_GAP, review R18); the full step keeps its own pace
         routedFilter.cd, routedFilter.aura = routed.cd, routed.aura
         stepFilter = routedFilter
         routed.cd, routed.aura = nil, nil
+        sinceRouted = 0
         SafeStep()
         stepFilter = nil
     end

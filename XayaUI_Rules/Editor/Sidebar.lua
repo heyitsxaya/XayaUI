@@ -21,6 +21,7 @@ local Notify = O.Notify
 local P = ns.OptionsApi.RuleEditorParts
 local FolderById, FolderChain, FolderPath, FolderRules, FolderTopRules, FolderValues = P.FolderById, P.FolderChain, P.FolderPath, P.FolderRules, P.FolderTopRules, P.FolderValues
 local IsInFolder, RulePath, StartNewRule, tf = P.IsInFolder, P.RulePath, P.StartNewRule, P.tf
+local Ours = ns.OptionsApi.TreePaint.Ours   -- (review R13) a pooled AceGUI widget that is in XayaUI's window right now (TreePaint.lua)
 
 
 -------------------------------------------------------------------------------
@@ -1043,21 +1044,37 @@ local function DuplicateRule(rule)
     ns.MarkDirty(); Notify()
     ns.SelectKeep(RulePath(c))
 end
--- copies a folder with its rules and subfolders (children keep their names; the top copy gets " Copy")
-local function DuplicateFolder(f, parentId, top)
-    local nf = ns.NewFolder(f.name .. (top and " Copy" or ""), parentId)
-    for _, r in ipairs(ns.rules) do
-        if r.folder == f.id then
-            local c = ns.Copy(r); c.folder = nf.id
+-- copies a folder with its rules and subfolders (children keep their names; the top copy gets " Copy").
+-- (review R12) Each copied group keeps every setting of its group (container type and layout, place, box, load override, load IDs,
+-- sound channel, ...); only what makes it a group of its own is new: id, parent, origin, no built-in category flag, no edit lock. A
+-- copied group that follows another copied group follows that one's copy. Before, a copy kept only the name: a Dynamic Group came out
+-- as a plain group with no layout, load override or sound channel.
+local GROUP_OWN = { id = true, name = true, parent = true, origin = true, default = true, editLocked = true }
+local function CopyGroups(f, parentId, name, map, made)
+    local nf = ns.NewFolder(name, parentId)
+    for k, v in pairs(f) do if not GROUP_OWN[k] then nf[k] = ns.Copy(v) end end
+    map[f.id] = nf.id; made[#made + 1] = nf
+    local kids = {}
+    for _, ff in ipairs(ns.folders) do if ff.parent == f.id then kids[#kids + 1] = ff end end
+    for _, ff in ipairs(kids) do CopyGroups(ff, nf.id, ff.name, map, made) end
+    return nf
+end
+local function DuplicateFolder(f, parentId)
+    local map, made = {}, {}
+    local nf = CopyGroups(f, parentId, tostring(f.name or "Group") .. " Copy", map, made)
+    for _, c in ipairs(made) do if c.cGroup ~= nil and map[c.cGroup] then c.cGroup = map[c.cGroup] end end
+    local copies = {}
+    for i = 1, #ns.rules do   -- (the copies are added after the originals; their order inside each group is kept)
+        local r = ns.rules[i]
+        if r.folder and map[r.folder] then
+            local c = ns.Copy(r); c.folder = map[r.folder]
             ns.rules[#ns.rules + 1] = c
-            pcall(ns.RefreshVisual, c)
+            copies[#copies + 1] = c
             if ns.RememberCopy then ns.RememberCopy(r, c) end
         end
     end
-    if ns.RemapCopies then ns.RemapCopies() end
-    local kids = {}
-    for _, ff in ipairs(ns.folders) do if ff.parent == f.id and ff ~= nf then kids[#kids + 1] = ff end end
-    for _, ff in ipairs(kids) do DuplicateFolder(ff, nf.id, false) end
+    if ns.RemapCopies then ns.RemapCopies() end   -- once, for the whole copied set (outcomes in a nested group find their parent's copy)
+    for _, c in ipairs(copies) do pcall(ns.RefreshVisual, c) end
     return nf
 end
 local function DeleteFolder(f)
@@ -1224,7 +1241,7 @@ local function RowMenu(button, root)
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
         end)
         root:CreateButton("Duplicate", function()
-            local nf = DuplicateFolder(fold, fold.parent, true)
+            local nf = DuplicateFolder(fold, fold.parent)
             ns.MarkDirty(); Notify()
             pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(nf))
         end)
@@ -1377,7 +1394,7 @@ function ns.HookSidebarBlank(tree)
     tf.xuiBlankHook = true
     tf:EnableMouse(true)   -- rows and the search box sit on top and take their own clicks; only free space reaches the frame
     tf:HookScript("OnMouseUp", function(self, mouse)
-        if mouse == "RightButton" then pcall(ns.ShowBlankMenu, self) end
+        if mouse == "RightButton" and Ours(self.obj) then pcall(ns.ShowBlankMenu, self) end   -- (review R13) not on another addon's tree
     end)
 end
 
@@ -1848,20 +1865,30 @@ function R.Begin(button)
     local isRootRow = (rk0 == "all" or rk0 == "loaded" or rk0 == "notloaded" or rk0 == "disabled" or rk0 == "smart" or (inSC and rk0:match("^smart_") ~= nil))
     return vis, snd, rawObjs, inSC, hasIcons, isRootRow, false
 end
+-- (review R13) The row hooks stay on AceGUI's pooled buttons for good (HookScript cannot be undone), so each one acts only while the
+-- row is in XayaUI's window (TreePaint Ours). OnDragStop is left open: StopDrag does nothing unless a drag of ours is running.
 function R.Hooks(button)
-    if button.obj and not (button.obj.treeframe and button.obj.treeframe.xuiBlankHook) then pcall(ns.HookSidebarBlank, button.obj) end
-    if not button.xuiDrag then
-        button.xuiDrag = true
+    local tree = button.obj
+    if tree and tree.treeframe then
+        if not tree.treeframe.xuiBlankHook then pcall(ns.HookSidebarBlank, tree)
+        elseif not tree.treeframe.xuiBlankMouse then tree.treeframe:EnableMouse(true) end   -- (taken back by R.Release)
+        tree.treeframe.xuiBlankMouse = true
+    end
+    if not button.xuiClicks then   -- (taken back by R.Release; set again when the tree is XayaUI's again)
+        button.xuiClicks = true
         button:RegisterForDrag("LeftButton")
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        button:HookScript("OnClick", function(self, mouse) ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
-        button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
-        button:HookScript("OnDragStart", function(self) local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
+    end
+    if not button.xuiDrag then
+        button.xuiDrag = true
+        button:HookScript("OnClick", function(self, mouse) if not Ours(self.obj) then return end; ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
+        button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" and Ours(self.obj) then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
+        button:HookScript("OnDragStart", function(self) if not Ours(self.obj) then return end; local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
         button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end
     if not button.xuiDblHooked then
         button.xuiDblHooked = true
-        button:HookScript("OnDoubleClick", function(self) if ns.SidebarRename then ns.SidebarRename(self) end end)
+        button:HookScript("OnDoubleClick", function(self) if ns.SidebarRename and Ours(self.obj) then ns.SidebarRename(self) end end)
     end
     if button.xuiRenameEB and button.xuiRenameEB:IsShown() and not button.xuiRenameEB:HasFocus() then button.xuiRenameEB:Hide() end
     do   -- a rule that was just created (no name yet) opens its name box in the sidebar
@@ -1869,9 +1896,18 @@ function R.Hooks(button)
         local rnum = tostring(button.uniquevalue or ""):match("rule(%d+)$")
         if pr and rnum and ns.rules[tonumber(rnum)] == pr and C_Timer then
             ns.pendingRename = nil
-            C_Timer.After(0.15, function() if button:IsShown() and ns.SidebarRename then ns.SidebarRename(button) end end)
+            C_Timer.After(0.15, function() if button:IsShown() and ns.SidebarRename and Ours(button.obj) then ns.SidebarRename(button) end end)
         end
     end
+end
+-- (review R13) the tree went to another addon (TreePaint ReturnRows): rows take only left clicks again and do not drag, as AceGUI
+-- made them, and the sidebar's free space no longer takes the mouse
+function R.Release(tree)
+    for _, b in ipairs(tree.buttons or {}) do
+        if b.xuiClicks then b.xuiClicks = nil; b:RegisterForClicks("LeftButtonUp"); b:RegisterForDrag() end
+    end
+    local frame = tree.treeframe
+    if frame and frame.xuiBlankMouse then frame.xuiBlankMouse = nil; frame:EnableMouse(false) end
 end
 function R.Reorder(button, level, x0)
     ns.PaintReorder(button, level, x0)

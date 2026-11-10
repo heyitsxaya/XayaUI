@@ -45,10 +45,12 @@ function ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)
             set = function(_, v) ns.Settings("core").promptSave = v and true or false; if ns.DraftsApplySetting then ns.DraftsApplySetting() end end },
         -- draft settings (0.6.4): what asks first, how many are kept, the chat notice. Grayed out while drafts are off.
         draftsMax = { type = "range", name = "Keep up to (drafts)", order = 11.1, min = 5, max = 100, step = 1,
-            desc = "The newest drafts are kept; older ones beyond this number are dropped (lowering it drops them at once).",
+            desc = "The newest drafts are kept; older ones beyond this number are dropped when the window closes.",
             disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,
             get = function() return ns.DraftsMax and ns.DraftsMax() or 30 end,
-            set = function(_, v) ns.Settings("core").draftsMax = v; if ns.DraftsTrim then ns.DraftsTrim() end end },
+            -- (review R7) only the number is stored here: the slider calls set on every step of a drag, and trimming at each step
+            -- deleted drafts for good on the way past a low number. The trim runs when the window closes (Drafts.lua DraftsOnClose).
+            set = function(_, v) ns.Settings("core").draftsMax = v end },
         draftsConfirmDiscard = { type = "toggle", name = "Confirm Discard changes", order = 11.2,
             desc = "Ask before throwing away a rule's unsaved changes.",
             disabled = function() return not (ns.DraftsEnabled and ns.DraftsEnabled()) end,

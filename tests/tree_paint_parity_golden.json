@@ -23,12 +23,12 @@
    "sha": "73eb07cba0423ea955e70f53cd8dad33bc6e6375c414816830d207f25d29cdf0"
   },
   "rules-selected": {
-   "lines": 32,
-   "sha": "f9d223de9347d2c39b359205c2f598b2fa51ab0f04d90d5c632917a05386a198"
+   "lines": 59,
+   "sha": "bb2db83662ca9ad798fc516efd6643e4232967e2207f73ffc575280dd099cdcb"
   },
   "rules-smart": {
-   "lines": 51,
-   "sha": "c6d36d8e655bf93786e14c4dcb3c5a89bcac7019dcf6584d21a31ce20347ddb9"
+   "lines": 30,
+   "sha": "b11d8ea74df63883c86c0e5fcf6d62b7702480ac3a4a8658bde2703c628c3169"
   },
   "set": {
    "lines": 13,

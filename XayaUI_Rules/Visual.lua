@@ -1103,21 +1103,53 @@ function ns.SetGroupSizeMode(f, mode)
         f.cSize = "set"
     end
 end
-local function GroupBounds(f)
-    local l, b, r, t
-    local us = UIParent:GetEffectiveScale()
-    for rule, fr in pairs(frames) do
-        if fr:IsShown() and InFolder(rule.folder, f.id) then
-            local fl, fb, fw, fh = fr:GetRect()
-            if fl then
-                local s = fr:GetEffectiveScale() / us
-                fl, fb, fw, fh = fl * s, fb * s, fw * s, fh * s
-                l = l and math.min(l, fl) or fl; b = b and math.min(b, fb) or fb
-                r = r and math.max(r, fl + fw) or (fl + fw); t = t and math.max(t, fb + fh) or (fb + fh)
-            end
-        end
+-- What a group shows now, in UIParent units (l, b, r, t; nil when nothing): XayaUI's own shown frames in it or nested in it, and
+-- (review R19) the combat engine's slots in it (Combat/AuraDisplay.lua ns.EngineSlotsEach). The engine draws buff displays in the
+-- game's own aura containers and keeps XayaUI's frames for them hidden; whether such an aura is up is not something the game lets
+-- addons know in combat, so an engine slot counts while it may show (loaded, talents, not unlocked). A single slot is measured as
+-- XayaUI's own icon frame it sits on; a dynamic group's container as XayaUI's layout of the members that may show (GA.LayItems),
+-- worked out once per change and kept. The containers' own geometry is never read (it can be secret in combat).
+local gbRoot, gbUs, gbL, gbB, gbR, gbT   -- (the measure in progress; module locals so the watcher allocates nothing)
+local engineExt = {}   -- [folderId] = { l, b, r, t, ver =, cfg = }: a dynamic engine group's grid from its group frame's centre
+local function GBAdd(fl, fb, fr, ft)
+    gbL = gbL and math.min(gbL, fl) or fl; gbB = gbB and math.min(gbB, fb) or fb
+    gbR = gbR and math.max(gbR, fr) or fr; gbT = gbT and math.max(gbT, ft) or ft
+end
+local function GBFrame(fr)
+    local fl, fb, fw, fh = fr:GetRect()
+    if not fl then return end
+    local s = fr:GetEffectiveScale() / gbUs
+    GBAdd(fl * s, fb * s, (fl + fw) * s, (fb + fh) * s)
+end
+local function GBEngine(host, fid, sizes)
+    if not InFolder(fid, gbRoot) then return end
+    if host then GBFrame(host); return end
+    local c, fo = containers[fid], ns.FolderById(fid)
+    if not (c and fo) then return end
+    local ver, cfg = ns.EngineSlotsVersion and ns.EngineSlotsVersion() or 0, ns.configVersion or 0
+    local e = engineExt[fid]
+    if not (e and e.ver == ver and e.cfg == cfg) then
+        local l, b, r, t
+        GA.LayItems(fo, sizes, c:GetWidth(), c:GetHeight(), function(it, x, y)
+            l = l and math.min(l, x - it.w / 2) or (x - it.w / 2); r = r and math.max(r, x + it.w / 2) or (x + it.w / 2)
+            b = b and math.min(b, y - it.h / 2) or (y - it.h / 2); t = t and math.max(t, y + it.h / 2) or (y + it.h / 2)
+        end)
+        e = { l, b, r, t, ver = ver, cfg = cfg }
+        engineExt[fid] = e
     end
-    return l, b, r, t
+    if not e[1] then return end
+    local cx, cy = c:GetCenter()
+    if not cx then return end
+    local s = c:GetEffectiveScale() / gbUs
+    GBAdd((cx + e[1]) * s, (cy + e[2]) * s, (cx + e[3]) * s, (cy + e[4]) * s)
+end
+local function GroupBounds(f)
+    gbRoot, gbUs, gbL, gbB, gbR, gbT = f.id, UIParent:GetEffectiveScale(), nil, nil, nil, nil
+    for rule, fr in pairs(frames) do
+        if fr:IsShown() and InFolder(rule.folder, f.id) then GBFrame(fr) end
+    end
+    if ns.EngineSlotsEach then pcall(ns.EngineSlotsEach, GBEngine) end
+    return gbL, gbB, gbR, gbT
 end
 -- The group's box (G5 / G11; #372 "puts an assigned color / texture under the aura"; the WeakAuras group-tab border, CHAT-3d): a
 -- border and / or a background behind the group's items. Auto size: it hugs what is showing now (GroupBounds) plus padding and
@@ -1168,12 +1200,21 @@ function ns.UpdateGroupBox(f)
     end
     b:Show()
 end
+-- (review R20) A deleted group leaves ns.folders, so the loops below never visit it again: every pass stamps the boxes of the groups
+-- that still exist and hides the rest. The frame is kept, so a Restore (same id) shows it again.
+local boxPass = 0
+local function HideOrphanBoxes()
+    for _, b in pairs(boxes) do if b.xuiPass ~= boxPass and b:IsShown() then b:Hide() end end
+end
 function ns.UpdateGroupBoxes()
     local anyAuto = false
+    boxPass = boxPass + 1
     for _, f in ipairs(ns.folders or {}) do
         if BoxOn(f) or boxes[f.id] then pcall(ns.UpdateGroupBox, f) end
+        if boxes[f.id] then boxes[f.id].xuiPass = boxPass end
         if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then anyAuto = true end
     end
+    HideOrphanBoxes()
     if anyAuto then
         if not boxWatch then
             boxWatch = CreateFrame("Frame")
@@ -1183,9 +1224,12 @@ function ns.UpdateGroupBoxes()
                 if self.t < 0.2 then return end
                 self.t = 0
                 local still = false
+                boxPass = boxPass + 1
                 for _, f in ipairs(ns.folders or {}) do
+                    if boxes[f.id] then boxes[f.id].xuiPass = boxPass end
                     if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(ns.UpdateGroupBox, f) end
                 end
+                HideOrphanBoxes()
                 if not still then self:SetScript("OnUpdate", nil); boxWatch = nil end
             end)
         end
@@ -2056,11 +2100,37 @@ local function ArrDims(r) local v = r.visual; return tonumber(v.x) or 0, tonumbe
 -- audit D18 (core 0.6.67): centres stay exact here and are rounded once, when X / Y are stored (SetVisualCenterOffset). Rounding the
 -- centre too moved a display 1 px per apply whenever its centre fell on a half pixel (odd size with a corner anchor, ...), and the
 -- arrangement is re-applied on every refresh: displays crept and the mover view reported moves nobody made.
-local function ArrR(n) return n end
+-- (review R21) That alone still crept when the displays mix odd and even sizes: a display rounded half a pixel past the shared edge
+-- made that edge the new reference on the next apply. So each placed centre is snapped here to where the display's whole-number X / Y
+-- really puts it (k = stored X / Y minus centre), and on the side that never passes the reference: Align left / right / top / bottom
+-- round towards the inside of the edge (the display that sets the edge stays where it is, so the edge never moves); Align center /
+-- middle put the reference on the widest / tallest display's own grid first (the others then lie within half a pixel of it, so the
+-- reference comes back the same); Distribute and Space round to the nearest pixel from ends that do not move. Applying again then
+-- changes nothing.
+local ArrKX, ArrKY = setmetatable({}, { __mode = "k" }), setmetatable({}, { __mode = "k" })   -- (per call: centre -> stored X / Y offset)
+local function ArrSnap(k, c, dir)   -- the centre nearest c that a whole-number X / Y can give; dir "up" / "down" never passes c
+    local s = c + k
+    if dir == "up" then s = math.ceil(s - 1e-6) elseif dir == "down" then s = math.floor(s + 1e-6) else s = math.floor(s + 0.5) end
+    return s - k
+end
+local function ArrWidest(l, horiz)   -- the widest (horiz) / tallest display; the first in the list on a tie
+    local best, bs
+    for _, r in ipairs(l) do
+        local _, _, w, h = ArrDims(r)
+        local sz = horiz and w or h
+        if not bs or sz > bs then best, bs = r, sz end
+    end
+    return best
+end
 function ns.ArrangeList(l, xMode, yMode, gap)
     if #l < 2 or not (xMode or yMode) then return false end
     gap = tonumber(gap) or 8
-    for _, r in ipairs(l) do local cx, cy = ns.VisualCenterOffset(r); r.visual.x, r.visual.y = cx, cy end
+    for _, r in ipairs(l) do
+        local v = r.visual
+        local cx, cy = ns.VisualCenterOffset(r)
+        ArrKX[r], ArrKY[r] = (tonumber(v.x) or 0) - cx, (tonumber(v.y) or 0) - cy
+        v.x, v.y = cx, cy
+    end
     local function sorted(horiz)
         local t = {}
         for i, r in ipairs(l) do t[i] = r end
@@ -2074,36 +2144,46 @@ function ns.ArrangeList(l, xMode, yMode, gap)
     if xMode == "left" or xMode == "center" or xMode == "right" then
         local lo, hi = math.huge, -math.huge
         for _, r in ipairs(l) do local x, _, w = ArrDims(r); lo = math.min(lo, x - w / 2); hi = math.max(hi, x + w / 2) end
+        local mid
+        if xMode == "center" then local wr = ArrWidest(l, true); mid = ArrSnap(ArrKX[wr], (lo + hi) / 2) end
         for _, r in ipairs(l) do local _, _, w = ArrDims(r)
-            r.visual.x = ArrR(xMode == "left" and lo + w / 2 or xMode == "right" and hi - w / 2 or (lo + hi) / 2) end
+            if xMode == "left" then r.visual.x = ArrSnap(ArrKX[r], lo + w / 2, "up")
+            elseif xMode == "right" then r.visual.x = ArrSnap(ArrKX[r], hi - w / 2, "down")
+            else r.visual.x = ArrSnap(ArrKX[r], mid) end
+        end
     elseif xMode == "distribute" then
         local t = sorted(true)
         local a, b = ArrDims(t[1]), ArrDims(t[#t])
-        for i, r in ipairs(t) do r.visual.x = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+        for i, r in ipairs(t) do r.visual.x = ArrSnap(ArrKX[r], a + (b - a) * (i - 1) / (#t - 1)) end
     elseif xMode == "space" then
         local t, cur = sorted(true)
         for i, r in ipairs(t) do
             local x, _, w = ArrDims(r)
-            if i == 1 then cur = x + w / 2 else r.visual.x = ArrR(cur + gap + w / 2); cur = r.visual.x + w / 2 end
+            if i == 1 then cur = x + w / 2 else r.visual.x = ArrSnap(ArrKX[r], cur + gap + w / 2); cur = r.visual.x + w / 2 end
         end
     end
     if yMode == "top" or yMode == "middle" or yMode == "bottom" then
         local top, bot = -math.huge, math.huge
         for _, r in ipairs(l) do local _, y, _, h = ArrDims(r); top = math.max(top, y + h / 2); bot = math.min(bot, y - h / 2) end
+        local mid
+        if yMode == "middle" then local hr = ArrWidest(l, false); mid = ArrSnap(ArrKY[hr], (top + bot) / 2) end
         for _, r in ipairs(l) do local _, _, _, h = ArrDims(r)
-            r.visual.y = ArrR(yMode == "top" and top - h / 2 or yMode == "bottom" and bot + h / 2 or (top + bot) / 2) end
+            if yMode == "top" then r.visual.y = ArrSnap(ArrKY[r], top - h / 2, "down")
+            elseif yMode == "bottom" then r.visual.y = ArrSnap(ArrKY[r], bot + h / 2, "up")
+            else r.visual.y = ArrSnap(ArrKY[r], mid) end
+        end
     elseif yMode == "distribute" then
         local t = sorted(false)
         local _, a = ArrDims(t[1]); local _, b = ArrDims(t[#t])
-        for i, r in ipairs(t) do r.visual.y = ArrR(a + (b - a) * (i - 1) / (#t - 1)) end
+        for i, r in ipairs(t) do r.visual.y = ArrSnap(ArrKY[r], a + (b - a) * (i - 1) / (#t - 1)) end
     elseif yMode == "space" then
         local t, cur = sorted(false)
         for i, r in ipairs(t) do
             local _, y, _, h = ArrDims(r)
-            if i == 1 then cur = y - h / 2 else r.visual.y = ArrR(cur - gap - h / 2); cur = r.visual.y - h / 2 end
+            if i == 1 then cur = y - h / 2 else r.visual.y = ArrSnap(ArrKY[r], cur - gap - h / 2); cur = r.visual.y - h / 2 end
         end
     end
-    for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y) end
+    for _, r in ipairs(l) do ns.SetVisualCenterOffset(r, r.visual.x, r.visual.y); ArrKX[r], ArrKY[r] = nil, nil end
     return true
 end
 local arranging = false

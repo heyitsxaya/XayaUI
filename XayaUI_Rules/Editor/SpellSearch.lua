@@ -16,6 +16,7 @@ local O = ns.OptionsApi.Shared
 local APP, AceConfigDialog = O.APP, O.AceConfigDialog
 local P = ns.OptionsApi.RuleEditorParts
 local SpellTex = P.SpellTex
+local Ours = ns.OptionsApi.TreePaint.Ours   -- (review R16) a pooled AceGUI widget that is in XayaUI's window right now (TreePaint.lua)
 
 
 -- Full Blizzard spell tooltip on the talent icon (an AceGUI Icon whose option carries arg.xuiSpell = the talent row).
@@ -413,7 +414,7 @@ local function SP_Render()
         SP.all:Hide()
     end
 end
-local function SP_Hide() if SP then SP:Hide(); SP.owner = nil end end
+local function SP_Hide() if SP then SP:Hide(); SP.owner, SP.pick = nil, nil end end
 -- The settings window closed: stop the scans and the aura-source pass, and free both whole-game indexes and the near set. What the
 -- pass already learned stays (CueRulesDB.auraSources, small); a later "Search all" starts the indexes again from the first ID.
 function ns.SearchOnClose()
@@ -431,11 +432,21 @@ function ns.SearchOnClose()
     end
 end
 ns.SpellSearchTest = { SX = SX, SI = SI, Search = function(q, k) return SearchSpells(q, k) end }   -- (tests)
+-- (review R16) What a search box picks into is read from the widget's option, never kept on the box: AceGUI hands its edit boxes to
+-- other addons after release, and a box that is not in XayaUI's window right now (TreePaint Ours) has no search. The popup keeps the
+-- pick of the box it opened for (SP.pick) until it hides; the window closing hides it (ns.SearchOnClose).
+local function SearchOf(eb)
+    local w = eb and eb.obj
+    if not Ours(w) then return nil end
+    local opt = w.userdata.option
+    local arg = type(opt) == "table" and opt.arg
+    if type(arg) ~= "table" or type(arg.xuiSearch) ~= "function" then return nil end
+    return arg.xuiSearch, arg.xuiSearchKind
+end
 local function SP_Pick(id)
-    local eb = SP and SP.owner
-    if not (eb and eb.xuiSearchFn and id) then return end
-    local fn, kind = eb.xuiSearchFn, eb.xuiSearchKind
+    local eb, fn = SP and SP.owner, SP and SP.pick
     SP_Hide()
+    if not (id and fn and eb and Ours(eb.obj)) then return end
     eb:SetText(""); eb:ClearFocus()
     local ok, err = pcall(fn, id)   -- an error in the pick handler used to vanish and leave the ID box unchanged
     if not ok then ns.Print("search pick failed: " .. tostring(err)) end
@@ -474,10 +485,11 @@ local function SP_Build()
         b.hl = b:CreateTexture(nil, "HIGHLIGHT"); b.hl:SetAllPoints(); b.hl:SetColorTexture(1, 0.82, 0, 0.18)
         -- mouse DOWN so the pick lands before the edit box loses focus
         b:SetScript("OnMouseDown", function(self) SP_Pick(self.id) end)
+        -- (review R14 / R15) GameTooltip's own fields are never written (one of them turned the game's gear comparison off until
+        -- /reload): the compare tooltips Blizzard opens for a hovered result are hidden by the hook above instead
         b:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             SX.HookCompare(); SP.tipRow = self
-            GameTooltip.supportsItemComparison = false
             if SP.kind == "item" then
                 if not pcall(GameTooltip.SetItemByID, GameTooltip, self.id) then GameTooltip:SetText("Item " .. tostring(self.id)) end
             elseif not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText("Spell " .. tostring(self.id)) end
@@ -485,7 +497,7 @@ local function SP_Build()
             SX.NoCompare()
             if C_Timer then C_Timer.After(0, function() if SP and SP.tipRow == self then SX.NoCompare() end end) end
         end)
-        b:SetScript("OnLeave", function() GameTooltip:Hide(); GameTooltip.supportsItemComparison = nil; if SP then SP.tipRow = nil end; SX.NoCompare() end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide(); if SP then SP.tipRow = nil end; SX.NoCompare() end)
         SP.rows[i] = b
     end
     SP.footer = SP:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -524,11 +536,12 @@ local function SP_Build()
     return SP
 end
 local function SP_Update(eb)
+    local fn, kind = SearchOf(eb)
     local q = eb:GetText() or ""
-    if #q < 2 and not tonumber(q) then SP_Hide(); return end
+    if not fn or (#q < 2 and not tonumber(q)) then SP_Hide(); return end
     SP_Build()
-    SP.owner = eb
-    SP.kind = eb.xuiSearchKind
+    SP.owner, SP.pick = eb, fn
+    SP.kind = kind
     SP.results, SP.offset = SearchSpells(q, SP.kind), 0
     SP:ClearAllPoints()
     SP:SetPoint("TOPLEFT", eb, "BOTTOMLEFT", -4, -2)
@@ -538,28 +551,25 @@ local function SP_Update(eb)
 end
 AttachSearch = function(w)
     local eb = w.editbox
-    if not eb then return end
-    local opt = w.GetUserData and w:GetUserData("option")
-    eb.xuiSearchFn = opt and type(opt.arg) == "table" and opt.arg.xuiSearch or nil
-    eb.xuiSearchKind = opt and type(opt.arg) == "table" and opt.arg.xuiSearchKind or nil
-    if eb.xuiSearchFn and not eb.xuiSearchHooked then
-        eb.xuiSearchHooked = true
-        eb:HookScript("OnEditFocusGained", function(self) if self.xuiSearchFn then SX.near = nil; SX.Start(self.xuiSearchKind) end end)
-        eb:HookScript("OnTextChanged", function(self, user)
-            if not (self.xuiSearchFn and user) then return end
-            SX.Start(self.xuiSearchKind)
-            self.xuiStamp = (self.xuiStamp or 0) + 1
-            local stamp = self.xuiStamp
-            C_Timer.After(0.15, function() if self.xuiStamp == stamp and self:HasFocus() then SP_Update(self) end end)
-        end)
-        eb:HookScript("OnEnterPressed", function(self)
-            if self.xuiSearchFn and SP and SP:IsShown() and SP.owner == self and SP.results[1] then SP_Pick(SP.results[1]) end
-        end)
-        eb:HookScript("OnEscapePressed", function(self) if SP and SP.owner == self then SP_Hide() end end)
-        eb:HookScript("OnEditFocusLost", function(self)
-            C_Timer.After(0.2, function() if SP and SP.owner == self and not self:HasFocus() then SP_Hide() end end)
-        end)
-    end
+    if not eb or eb.xuiSearchHooked or not SearchOf(eb) then return end
+    eb.xuiSearchHooked = true   -- (review R16) the hooks stay on the pooled box: each acts only while SearchOf finds a search, or for the popup it opened
+    eb:HookScript("OnEditFocusGained", function(self) local fn, kind = SearchOf(self); if fn then SX.near = nil; SX.Start(kind) end end)
+    eb:HookScript("OnTextChanged", function(self, user)
+        if not user then return end
+        local fn, kind = SearchOf(self)
+        if not fn then if SP and SP.owner == self then SP_Hide() end; return end
+        SX.Start(kind)
+        self.xuiStamp = (self.xuiStamp or 0) + 1
+        local stamp = self.xuiStamp
+        C_Timer.After(0.15, function() if self.xuiStamp == stamp and self:HasFocus() then SP_Update(self) end end)
+    end)
+    eb:HookScript("OnEnterPressed", function(self)
+        if SP and SP:IsShown() and SP.owner == self and SP.results[1] then SP_Pick(SP.results[1]) end
+    end)
+    eb:HookScript("OnEscapePressed", function(self) if SP and SP.owner == self then SP_Hide() end end)
+    eb:HookScript("OnEditFocusLost", function(self)
+        C_Timer.After(0.2, function() if SP and SP.owner == self and not self:HasFocus() then SP_Hide() end end)
+    end)
 end
 
 end

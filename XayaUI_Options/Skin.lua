@@ -251,7 +251,9 @@ local function MakeSearchBox(parent)
     local function refreshHint(self) sb.hint:SetShown(self:GetText() == "" and not self:HasFocus()) end
     sb:SetScript("OnEditFocusGained", refreshHint)
     sb:SetScript("OnEditFocusLost", refreshHint)
-    sb:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+    -- (review R25) Escape drops the refocus record first: the guard's onDone does not run for a box's own Escape, and the record
+    -- would put the focus back in the cleared box after the next filter debounce
+    sb:SetScript("OnEscapePressed", function(self) ns.treeSearchRefocus = nil; self:SetText(""); self:ClearFocus() end)
     if ns.KeyFocusGuard then ns.KeyFocusGuard(sb, { onDone = function() ns.treeSearchRefocus = nil end }) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
     sb:SetScript("OnTextChanged", function(self)
         refreshHint(self)

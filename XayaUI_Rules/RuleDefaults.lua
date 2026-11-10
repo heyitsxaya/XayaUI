@@ -242,11 +242,21 @@ function ns.BeginStepIndex() stepSerial = stepSerial + 1; BeginStepIndex0() end
 -- Kept-index check (#309): an index built from a list is reused while the list still holds the same entries, in the same order, with
 -- the same identifying fields. Any difference (an entry added, removed, moved, or a uid / parentUid / id / cue flag changed, whether or
 -- not the edit announced itself) rebuilds the index exactly as a fresh build would.
+-- (review R18 follow-up) the entry-by-entry walk runs at most once a second while the same list table keeps its length and no setting
+-- changed (ns.configVersion, ns.MarkDirty); in between, steps (routed re-checks up to 30 a second) reuse the last verdict. An added or
+-- removed entry changes the length; moves and uid rewrites call ns.MarkDirty; anything else is caught by the once-a-second walk.
+local function WalkDue(list, kList, kVer, kSec)
+    if list ~= kList or (ns.configVersion or 0) ~= kVer then return true end
+    return math.floor(GetTime()) ~= kSec
+end
 local fiKept, fiN, fiF, fiId = nil, -1, {}, {}
+local fiList, fiVer, fiSec
 local function FolderIndexValid(list)
     local n = #list
     if not fiKept or n ~= fiN then return false end
+    if not WalkDue(list, fiList, fiVer, fiSec) then return true end
     for i = 1, n do local f = list[i]; if fiF[i] ~= f or fiId[i] ~= f.id then return false end end
+    fiList, fiVer, fiSec = list, ns.configVersion or 0, math.floor(GetTime())
     return true
 end
 local function FolderIndex()
@@ -265,6 +275,7 @@ local function FolderIndex()
             end
             for i = n + 1, fiN do fiF[i], fiId[i] = nil, nil end
             fiKept, fiN = fi, n
+            fiList, fiVer, fiSec = list, ns.configVersion or 0, math.floor(GetTime())
         end
         stepIdx.folders = fi
     end
@@ -273,13 +284,16 @@ end
 
 -- parents[uid] = first parent rule with that uid; kids[uid] = every rule whose parentUid is uid, in rule order
 local riKept, riN, riR, riU, riP, riC = nil, -1, {}, {}, {}, {}
+local riList, riVer, riSec
 local function RuleIndexValid(list)
     local n = #list
     if not riKept or n ~= riN then return false end
+    if not WalkDue(list, riList, riVer, riSec) then return true end   -- (review R18 follow-up, see WalkDue)
     for i = 1, n do
         local r = list[i]
         if riR[i] ~= r or riU[i] ~= r.uid or riP[i] ~= r.parentUid or riC[i] ~= (r.isCue and true or false) then return false end
     end
+    riList, riVer, riSec = list, ns.configVersion or 0, math.floor(GetTime())
     return true
 end
 local function RuleIndex()
@@ -306,6 +320,7 @@ local function RuleIndex()
             for i = n + 1, riN do riR[i], riU[i], riP[i], riC[i] = nil, nil, nil, nil end
             ri = { parents = parents, kids = kids, cues = {}, conds = {} }
             riKept, riN = ri, n
+            riList, riVer, riSec = list, ns.configVersion or 0, math.floor(GetTime())
         end
         stepIdx.rules = ri
     end

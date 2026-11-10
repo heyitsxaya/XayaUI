@@ -451,6 +451,9 @@ local function BuildWindow()
     local eb = CreateFrame("EditBox", nil, sf)
     eb:SetMultiLine(true); eb:SetAutoFocus(false); eb:SetFontObject(ChatFontNormal)
     eb:SetWidth(680 - 2 * M - 30); eb:SetMaxLetters(0)
+    -- (review R22) the summary is for reading and screenshots: no mouse, so a click never gives it the keyboard (PRINTSCREEN, typing
+    -- into the report); the click reaches the window, which drags. The string box below stays the one to copy from.
+    eb:EnableMouse(false)
     eb:SetScript("OnEscapePressed", function() f:Hide() end)
     sf:SetScrollChild(eb)
     f.text = eb

@@ -29,14 +29,17 @@
 --   * a key the handler used is held for that key only (out of combat); PRINTSCREEN is never held;
 --   * in combat the flag is never touched (restricted); the handler still runs and says what it would do (inCombat = true);
 --   * the keyboard is switched on only while the window is shown and out of combat (EnableKeyboard is a protected function: never
---     called in combat); the result's SetActive(false) lets go of the keyboard (a recycled AceGUI window that another addon gets).
+--     called in combat); the result's SetActive(false) lets go of the keyboard (a recycled AceGUI window that another addon gets);
+--   * a window first set up in combat is hooked only when combat ends (review R1: an OnKeyDown script turns its keyboard on, and
+--     its flag could not be set, so it held every key until the fight ended).
 -- ns.KeyFocusGuard(editBox, opts): a text box never keeps the keyboard after the player is done with it:
 --   * no focus on show (SetAutoFocus(false)); Escape clears the focus (a box's own Escape script is kept); Enter clears it in a
 --     one-line box that has no Enter script of its own;
 --   * a mouse click outside opts.within (default: the box) clears it (GLOBAL_MOUSE_DOWN);
 --   * the box or its window (opts.window, default: its top frame under UIParent) hiding clears it (the game also drops the focus of a
 --     hidden box, Options' Skin.lua search box notes; cleared here as well, so it never depends on that);
---   * opts.onDone(box) runs after Enter / Escape / a click outside cleared it.
+--   * a fight starting clears it (review R23);
+--   * opts.onDone(box) runs after Enter / Escape / a click outside / a fight starting cleared it.
 -- V14: nothing is made until the first window or box asks for it (the event frames are created then).
 --
 -- (XayaUI 0.6.85, the review's should-fix items, 2026-11-09)
@@ -82,7 +85,7 @@ local function Pass(f)
 end
 -- out of combat only: keyboard on while active and shown, the flag at rest either way
 local function Apply(f, kc)
-    if Fighting() then return end
+    if Fighting() or not kc.ready then return end
     Pass(f)
     local want = kc.active and f:IsShown() and true or false
     if f.EnableKeyboard and kc.kb ~= want then f:EnableKeyboard(want); kc.kb = want end
@@ -95,22 +98,15 @@ local function WatchCombat()
     combatWatch:RegisterEvent("PLAYER_REGEN_ENABLED")
     combatWatch:SetScript("OnEvent", function(_, ev)
         for f, kc in pairs(catches) do
+            if not kc.ready then
+                if ev == "PLAYER_REGEN_ENABLED" then kc.setup() end   -- a window first made in combat: set up now (review R1)
             -- before the lockdown begins: the flag goes back to true, so no key is kept from the game in the fight
-            if ev == "PLAYER_REGEN_DISABLED" then kc.held = nil; Pass(f) else Apply(f, kc) end
+            elseif ev == "PLAYER_REGEN_DISABLED" then kc.held = nil; Pass(f) else Apply(f, kc) end
         end
     end)
 end
 
-function ns.KeyCatch(frame, handler)
-    if not frame then return nil end
-    local kc = catches[frame]
-    if kc then kc.handler = handler; return kc end
-    kc = { frame = frame, handler = handler, active = true }
-    catches[frame] = kc
-    function kc.SetActive(on)
-        kc.active = on and true or false
-        Apply(frame, kc)
-    end
+local function Hook(frame, kc)
     frame:HookScript("OnShow", function(self) Apply(self, kc) end)
     frame:HookScript("OnHide", function(self) Apply(self, kc) end)
     frame:HookScript("OnKeyDown", function(self, key)
@@ -142,8 +138,29 @@ function ns.KeyCatch(frame, handler)
             Pass(self)
         end
     end)
+end
+
+function ns.KeyCatch(frame, handler)
+    if not frame then return nil end
+    local kc = catches[frame]
+    if kc then kc.handler = handler; return kc end
+    kc = { frame = frame, handler = handler, active = true }
+    catches[frame] = kc
+    function kc.SetActive(on)
+        kc.active = on and true or false
+        Apply(frame, kc)
+    end
     WatchCombat()
-    Apply(frame, kc)
+    -- (review R1) a window first made in combat gets no OnKeyDown yet: an OnKeyDown script switches the frame's keyboard on
+    -- (INFERENCE: AceGUI's Keybinding widget turns it off right after setting one), and in combat the pass-on flag cannot be set, so
+    -- every key (movement, PRINTSCREEN) would stay with the window until the fight ends. Set up at PLAYER_REGEN_ENABLED instead.
+    function kc.setup()
+        if kc.ready then return end
+        kc.ready = true
+        Hook(frame, kc)
+        Apply(frame, kc)
+    end
+    if not Fighting() then kc.setup() end
     return kc
 end
 -- (QA walkthrough and tests) every window that takes keys, with what the game reads from it
@@ -169,7 +186,7 @@ local function TopOf(f)
     end
     return p
 end
-local letGo   -- the last time a guarded box let go of the keyboard: { how = "enter" / "escape" / "click" / "hide", t, win } (QA walkthrough)
+local letGo   -- the last time a guarded box let go of the keyboard: { how = "enter" / "escape" / "click" / "hide" / "combat", t, win } (QA walkthrough)
 local function Note(box, how)
     local o = guarded[box]
     letGo = letGo or {}
@@ -182,16 +199,31 @@ local function Done(box, how)
     local o = guarded[box]
     if o and o.onDone then local ok, e = pcall(o.onDone, box); if not ok then Report(e) end end
 end
+-- (review R23) a fight starting lets go too: a box left with the keyboard (several take it when they open) would get her movement and
+-- keybinds. PLAYER_REGEN_DISABLED, and ADDON_RESTRICTION_STATE_CHANGED (events.md 37: type, state) when an encounter, a Mythic+ run
+-- or a PvP match restricts addons (Enum.AddOnRestrictionType Combat 0 / Encounter 1 / ChallengeMode 2 / PvPMatch 3; state
+-- Activating 1 / Active 2; enums.md 485-504). ClearFocus is not a protected function (widgets.md), so it may run in combat.
+local FIGHT_TYPE = { [0] = true, [1] = true, [2] = true, [3] = true }
 local function WatchMouse()
     if mouseWatch then return end
     mouseWatch = CreateFrame("Frame")
     mouseWatch:RegisterEvent("GLOBAL_MOUSE_DOWN")
+    mouseWatch:RegisterEvent("PLAYER_REGEN_DISABLED")
+    mouseWatch:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
     -- (a click: one pass over the guarded boxes, HasFocus each: about 30 own boxes plus the settings window's open page)
-    mouseWatch:SetScript("OnEvent", function()
+    mouseWatch:SetScript("OnEvent", function(_, ev, kind, state)
+        local fight = ev == "PLAYER_REGEN_DISABLED"
+        if ev == "ADDON_RESTRICTION_STATE_CHANGED" then
+            if not (FIGHT_TYPE[kind] and (state == 1 or state == 2)) then return end
+            fight = true
+        end
         for box, o in pairs(guarded) do
             if box:HasFocus() then
-                local keep = o.within or box
-                if not (keep.IsMouseOver and keep:IsMouseOver()) then Done(box, "click") end
+                if fight then Done(box, "combat")
+                else
+                    local keep = o.within or box
+                    if not (keep.IsMouseOver and keep:IsMouseOver()) then Done(box, "click") end
+                end
             end
         end
     end)

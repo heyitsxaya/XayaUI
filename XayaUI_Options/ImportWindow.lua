@@ -139,5 +139,6 @@ end
 function ns.OpenImportWindow()
     W = W or Build()
     W:Show(); W:Raise()
-    W.box:SetFocus()
+    -- (review R23) not in combat: a focused box would take her movement and keybinds; a click in the box focuses it
+    if not (InCombatLockdown and InCombatLockdown()) then W.box:SetFocus() end
 end

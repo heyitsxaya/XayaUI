@@ -286,7 +286,7 @@ local function StoreDraft(uid, group, isNew)
     table.insert(list, 1, { id = uid .. ":" .. tostring(time()), uid = uid, name = (nm ~= "") and nm or "Unnamed rule", ts = time(), isNew = isNew and true or nil, rules = Copies(group) })
     while #list > ns.DraftsMax() do table.remove(list) end
 end
--- the "Keep up to" number was lowered: drop the oldest drafts beyond it now
+-- the "Keep up to" number was lowered: drop the oldest drafts beyond it (when the window closes, review R7)
 function ns.DraftsTrim()
     local list = Drafts()
     while #list > ns.DraftsMax() do table.remove(list) end
@@ -300,6 +300,7 @@ function ns.DraftsOnClose()
     if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
     if not ns.DraftsEnabled() then wipe(baseline); return end   -- autosave mode: everything stays as edited
+    ns.DraftsTrim()   -- (review R7) a lowered "Keep up to" takes effect now, not at each step of its slider
     local moved, names = 0, {}
     for uid, b in pairs(baseline) do
         local group = GroupOf(uid)
@@ -652,7 +653,12 @@ function ns.BuildDraftsPage()
             func = function() if ns.OpenDraftSettings then ns.OpenDraftSettings() end end },
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             hidden = function() return not ns.DraftsEnabled() and #Drafts() == 0 end,
-            name = function() return "Changes you did not save before closing the window are kept here. Restore loads a draft into its rule (or recreates a rule that was never saved); then select Save changes on the rule to keep it. Up to " .. ns.DraftsMax() .. " drafts are kept, newest first." end },
+            name = function()
+                local s = "Changes you did not save before closing the window are kept here. Restore loads a draft into its rule (or recreates a rule that was never saved); then select Save changes on the rule to keep it. Up to " .. ns.DraftsMax() .. " drafts are kept, newest first."
+                local over = #Drafts() - ns.DraftsMax()   -- (review R7) "Keep up to" was lowered: say what the close will drop
+                if over > 0 then s = s .. " |cffffd100The oldest " .. over .. " will be dropped when the window closes.|r" end
+                return s
+            end },
     }
     local list = Drafts()
     if #list == 0 then

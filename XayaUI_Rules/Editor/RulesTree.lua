@@ -19,7 +19,7 @@ local CoreS, PlatS, APP, AceConfigDialog, Tree, Notify = O.CoreS, O.PlatS, O.APP
 local Rng, Sel = O.Rng, O.Sel
 local P = ns.OptionsApi.RuleEditorParts
 local AddSquareRadio, BAR_LAYOUT, BAR_LAYOUT_ORDER, BuildBar, BuildBox, BuildRule = P.AddSquareRadio, P.BAR_LAYOUT, P.BAR_LAYOUT_ORDER, P.BuildBar, P.BuildBox, P.BuildRule
-local CHANNEL_ORDER, CHANNEL_VALUES, FolderById, FolderPath, FolderRules, FolderTopRules = P.CHANNEL_ORDER, P.CHANNEL_VALUES, P.FolderById, P.FolderPath, P.FolderRules, P.FolderTopRules
+local CHANNEL_ORDER, CHANNEL_VALUES, FolderById, FolderChain, FolderRules, FolderTopRules = P.CHANNEL_ORDER, P.CHANNEL_VALUES, P.FolderById, P.FolderChain, P.FolderRules, P.FolderTopRules
 local IsInFolder, RoleChoices, RulePath, SearchBox, SpecChoices, TokenHelp = P.IsInFolder, P.RoleChoices, P.RulePath, P.SearchBox, P.SpecChoices, P.TokenHelp
 
 -------------------------------------------------------------------------------
@@ -511,6 +511,20 @@ end
 -- ns function (not a local) to stay under Lua's 200-locals-per-chunk limit.
 function ns.FolderContainerGroup(f)
     local function apply() ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end
+    -- (review R8) A slider (and a colour swatch) calls set on every step of a drag. Each step now redraws this group only (its frame, the
+    -- displays in it and its box); the window redraws once at the end, by itself (AceConfigDialog re-opens the page on the slider's mouse
+    -- up and on the colour picker's confirm). apply() redrew every display and rebuilt the whole window on each step: the drag stuttered.
+    local function applyStep()
+        ns.MarkDirty()
+        local rt = ns.runtime   -- (each display redrawn places the group's frame again from its settings: Visual.lua ParentFor)
+        for _, r in ipairs(FolderRules(f.id)) do
+            if (r.visual and r.visual.enabled) or (ns.IsPreview and ns.IsPreview(r, "visual")) then
+                if pcall(ns.RefreshVisual, r) then pcall(ns.SetVisualShown, r, rt and rt[r] and rt[r].visualWanted) end
+            end
+        end
+        if ns.UpdateGroupBox then pcall(ns.UpdateGroupBox, f) end
+        if ns.unlocked and ns.RefreshGroupTags then pcall(ns.RefreshGroupTags) end
+    end
     local POINTS = { "CENTER", "TOP", "BOTTOM", "LEFT", "RIGHT", "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
     local PV = {}
     for _, p in ipairs(POINTS) do PV[p] = p:sub(1, 1) .. p:sub(2):lower() end
@@ -568,7 +582,7 @@ function ns.FolderContainerGroup(f)
     g.args.limit = { type = "range", name = "Limit (show at most)", order = 2.101, min = 0, max = 40, step = 1,
         desc = "Shows at most this many items after sorting; the rest appear as shown ones go. 0 = no limit.",
         hidden = function() return not isDyn() end,
-        get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; apply() end }
+        get = function() return tonumber(f.cLimit) or 0 end, set = function(_, v) f.cLimit = (v > 0) and v or nil; applyStep() end }
     g.args.align = { type = "select", name = "Align", order = 2.102, arg = { xuiSide = true },
         desc = "Sets which side items of different sizes line up on.",
         hidden = function() return not isDyn() end,
@@ -586,7 +600,7 @@ function ns.FolderContainerGroup(f)
     g.args.spacing = { type = "range", name = "Spacing", order = 2.1, min = 0, max = 200, step = 1,
         desc = "Space between items, in pixels.",
         hidden = function() return not isDyn() end,
-        get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; apply() end }
+        get = function() return f.cSpacing or 4 end, set = function(_, v) f.cSpacing = v; applyStep() end }
     g.args.wrapOn = { type = "toggle", order = 2.11,
         name = function() return growsAcross() and "Wrap into rows" or "Wrap into columns" end,
         desc = "Starts a new row or column after a set number of items. A box width or height below also wraps when items would not fit.",
@@ -596,7 +610,7 @@ function ns.FolderContainerGroup(f)
     g.args.wrapN = { type = "range", order = 2.115, min = 1, max = 50, step = 1,
         name = function() return growsAcross() and "Items per row" or "Items per column" end,
         hidden = function() return not (isDyn() and wrapOn()) end,
-        get = function() return tonumber(f.cWrapN) or 6 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; apply() end }
+        get = function() return tonumber(f.cWrapN) or 6 end, set = function(_, v) f.cWrapN = (v > 0) and v or nil; applyStep() end }
     g.args.wrapDir = { type = "select", order = 2.12,
         hidden = function() return fromAnchor() or not (isDyn() and (wrapOn() or (tonumber(f.cW) or 0) > 0 or (tonumber(f.cH) or 0) > 0)) end,
         name = function() return growsAcross() and "New rows go" or "New columns go" end,
@@ -608,9 +622,9 @@ function ns.FolderContainerGroup(f)
         sorting = { "fwd", "rev" },
         get = function() return f.cWrapRev and "rev" or "fwd" end, set = function(_, v) f.cWrapRev = (v == "rev") or nil; apply() end }
     g.args.alpha = { type = "range", name = "Group opacity", order = 3, min = 0, max = 1, step = 0.05,
-        get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; apply() end }
+        get = function() return f.cAlpha or 1 end, set = function(_, v) f.cAlpha = (v < 1) and v or nil; applyStep() end }
     g.args.scale = { type = "range", name = "Group scale", order = 3.01, min = 0.25, max = 3, step = 0.05,
-        get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; apply() end }
+        get = function() return f.cScale or 1 end, set = function(_, v) f.cScale = (v ~= 1) and v or nil; applyStep() end }
     -- Size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows"). Auto (the
     -- default) fits what is showing; Set gives the box a width and height, and only then can it clip. Wrap is the dynamic group's
     -- "Wrap into rows / columns" tick box above.
@@ -635,9 +649,9 @@ function ns.FolderContainerGroup(f)
         if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
     end
     g.args.width = { type = "range", name = "Width", order = 3.05, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
-        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); apply(); askFit() end }
+        get = function() return f.cW or 1 end, set = function(_, v) f.cW = math.max(1, v); applyStep(); askFit() end }
     g.args.height = { type = "range", name = "Height", order = 3.06, min = 1, max = 1500, step = 1, hidden = function() return not setSize() end,
-        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); apply(); askFit() end }
+        get = function() return f.cH or 1 end, set = function(_, v) f.cH = math.max(1, v); applyStep(); askFit() end }
     g.args.fit = { type = "toggle", name = "Scale items to fit the box", order = 3.065, width = "full",
         hidden = function() return not setSize() or isDyn() end,
         desc = "Shrinks (never enlarges) this group's displays to fit the width and height above. Their saved positions and sizes do not change.",
@@ -647,7 +661,7 @@ function ns.FolderContainerGroup(f)
     -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /
     -- texture under the aura)"; WeakAuras' group tab has a border, CHAT-3d)
     local function col(key, dflt) return function() local c = f[key] or dflt; return c[1], c[2], c[3], c[4] end end
-    local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; apply() end end
+    local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; applyStep() end end
     g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
     g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
         set = function(_, v) f.cBorder = v and true or nil; apply() end }
@@ -663,11 +677,11 @@ function ns.FolderContainerGroup(f)
         set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
     g.args.pad = { type = "range", name = "Padding around the items", order = 3.086, min = 0, max = 40, step = 1,
         hidden = function() return not (f.cBorder or f.cBg) end,
-        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; apply() end }
+        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; applyStep() end }
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,
-        get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; apply() end }
+        get = function() return f.cLevel or 0 end, set = function(_, v) f.cLevel = (v > 0) and v or nil; applyStep() end }
     -- #372: "the relative / point on the frame should both be left-hand put into two columns with labels on the left and right-hand side
     -- with dropdown menus": each of Relative to, this group's point and the frame's point is one row, its label on the left and its
     -- dropdown on the right (the skin's label-left mode, arg.xuiSide)
@@ -719,9 +733,9 @@ function ns.FolderContainerGroup(f)
     g.args.relPoint = { type = "select", name = "Point on the frame it is relative to", order = 4.4, width = "full", arg = { xuiSide = true }, values = PV, sorting = POINTS,
         get = function() return f.cRelPoint or f.cPoint or "CENTER" end, set = function(_, v) f.cRelPoint = v; apply() end }
     g.args.x = { type = "range", name = "X offset", order = 4.5, min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
-        get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; apply() end }
+        get = function() return f.cX or 0 end, set = function(_, v) f.cX = (v ~= 0) and v or nil; applyStep() end }
     g.args.y = { type = "range", name = "Y offset", order = 4.6, min = -1500, max = 1500, step = 1, softMin = -600, softMax = 600,
-        get = function() return f.cY or 0 end, set = function(_, v) f.cY = (v ~= 0) and v or nil; apply() end }
+        get = function() return f.cY or 0 end, set = function(_, v) f.cY = (v ~= 0) and v or nil; applyStep() end }
     return g
 end
 
@@ -752,7 +766,8 @@ function ns.FolderArrangeGroup(f)
             gap = { type = "range", order = 3, width = "double", name = "Gap for Space (pixels)", min = 0, max = 200, step = 1,
                 hidden = function() return f.cArrX ~= "space" and f.cArrY ~= "space" end,
                 get = function() return f.cArrGap or 8 end,
-                set = function(_, v) f.cArrGap = (v ~= 8) and v or nil; apply() end },
+                -- (review R8) a slider step: the displays only; the window redraws itself on mouse up
+                set = function(_, v) f.cArrGap = (v ~= 8) and v or nil; ns.ApplyGroupArrangement(f); ns.MarkDirty() end },
         } }
 end
 
@@ -976,7 +991,7 @@ function ns.FolderLoadConditions(f)
         } }
 end
 
--- Sidebar search: while the box has text, every group / category row that holds no matching rule is hidden, the (n) counts show
+-- Sidebar search: while the box has text, every group / category row (not a box on a page) that holds no matching rule is hidden, the (n) counts show
 -- matches only, and the rows leading to a match are opened (once per change of the text, so you can still collapse them afterwards).
 function ns.ApplyTreeFilter(out)
     local q = ns.treeFilter
@@ -994,7 +1009,9 @@ function ns.ApplyTreeFilter(out)
         local total = 0
         if depth > 20 or type(g.args) ~= "table" then return 0 end
         for k, v in pairs(g.args) do
-            if type(v) == "table" and v.type == "group" then
+            -- (review R9) inline groups are boxes on a page (a group's Group / Display / Load / Config bodies), not sidebar rows: they hold
+            -- no rule, so wrapping them hid the open group's whole page while the box had text
+            if type(v) == "table" and v.type == "group" and not (v.inline or v.guiInline or v.dialogInline) then
                 local h = hit(k)
                 if h ~= nil then
                     if h then total = total + 1 end
@@ -1318,12 +1335,30 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
     -- belongs to; groups with nothing in that state are left out. Ungrouped rules stay in the flat list. Moving a rule into a group
     -- therefore shows up in these lists on the next refresh.
     do
+        local nIn = P.FolderRuleCounts()   -- (review R17) each group's rule count, nested groups included, counted once for this build
+        -- (review R17) the listed rules directly in each group (their indexes, in rule order): each group below reads its own, not every rule
+        local inFolder, NONE = {}, {}
+        for i, rule in ipairs(ns.rules or {}) do
+            if ruleGroups[i] and rule.folder ~= nil then
+                local l = inFolder[rule.folder]
+                if not l then l = {}; inFolder[rule.folder] = l end
+                l[#l + 1] = i
+            end
+        end
+        -- is the group drawn as a row of its own here (it exists, and is not a cue category)? Once per group, not once per rule
+        local drawn = {}
+        local function Drawn(id)
+            if id == nil or not groups[id] then return false end
+            local v = drawn[id]
+            if v == nil then local f = FolderById(id); v = (f and not ns.CueTransparent(f)) and true or false; drawn[id] = v end
+            return v
+        end
         local function Scoped(f, scopeArgs, allowEmpty)
             local g = groups[f.id]
             if not g then return nil end
             local kids, count = {}, 0
-            for i, rule in ipairs(ns.rules or {}) do
-                if ruleGroups[i] and rule.folder == f.id and scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
+            for _, i in ipairs(inFolder[f.id] or NONE) do
+                if scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
             end
             for _, sf in ipairs(ns.folders or {}) do
                 if sf.parent == f.id and sf.id ~= f.id then
@@ -1331,7 +1366,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                     if n then kids[sf.id] = n; count = count + c end
                 end
             end
-            if count == 0 and not next(kids) and not (#FolderRules(f.id) == 0 and ((allowEmpty == "loaded" and f.xuiScope ~= "notloaded" and f.xuiScope ~= "disabled") or ((allowEmpty == "notloaded" or allowEmpty == "disabled") and f.xuiScope == allowEmpty))) then return nil end   -- an empty group is listed in the list it was created from (Loaded by default)
+            if count == 0 and not next(kids) and not ((nIn[f.id] or 0) == 0 and ((allowEmpty == "loaded" and f.xuiScope ~= "notloaded" and f.xuiScope ~= "disabled") or ((allowEmpty == "notloaded" or allowEmpty == "disabled") and f.xuiScope == allowEmpty))) then return nil end   -- an empty group is listed in the list it was created from (Loaded by default)
             local args = {}
             for k, v in pairs(g.args or {}) do
                 if not (type(k) == "string" and (k:match("^rule%d+$") or k:match("^f%d+$"))) then args[k] = v end
@@ -1358,8 +1393,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
             end
             for i, rule in ipairs(ns.rules or {}) do
                 local key = "rule" .. i
-                local rf = rule.folder and groups[rule.folder] and ns.FolderById(rule.folder)
-                if scopeArgs[key] and rf and not ns.CueTransparent(rf) then moved[#moved + 1] = key end
+                if scopeArgs[key] and Drawn(rule.folder) then moved[#moved + 1] = key end
             end
             for _, key in ipairs(moved) do scopeArgs[key] = nil end   -- listed under their group instead
             for id, n in pairs(top) do scopeArgs[id] = n end
@@ -1384,10 +1418,10 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                 local g = groups[f.id]
                 if g and not ns.CueTransparent(f) then
                     local kids, count = {}, 0
-                    for i, rule in ipairs(ns.rules or {}) do
-                        if ruleGroups[i] and rule.folder == f.id and scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
+                    for _, i in ipairs(inFolder[f.id] or NONE) do
+                        if scopeArgs["rule" .. i] then kids["rule" .. i] = ruleGroups[i]; count = count + 1 end
                     end
-                    if count > 0 or (#FolderRules(f.id) == 0 and f.xuiScope == allowEmpty) then
+                    if count > 0 or ((nIn[f.id] or 0) == 0 and f.xuiScope == allowEmpty) then
                         local args = {}
                         for k, v in pairs(g.args or {}) do
                             if not (type(k) == "string" and (k:match("^rule%d+$") or k:match("^f%d+$"))) then args[k] = v end
@@ -1401,8 +1435,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
             end
             for i, rule in ipairs(ns.rules or {}) do
                 local key = "rule" .. i
-                local rf = rule.folder and groups[rule.folder] and ns.FolderById(rule.folder)
-                if scopeArgs[key] and rf and not ns.CueTransparent(rf) then moved[#moved + 1] = key end
+                if scopeArgs[key] and Drawn(rule.folder) then moved[#moved + 1] = key end
             end
             for _, key in ipairs(moved) do scopeArgs[key] = nil end   -- listed under their own group instead
             for id, n in pairs(top) do scopeArgs[id] = n end
@@ -1504,24 +1537,67 @@ do
     end
 end
 -- open the window (if needed) and jump to a rule; used by clicking an aura on screen while unlocked
+-- (review R10) A display on screen mostly belongs to a cue, and a cue (or condition) has no row of its own: it is shown inside its rule.
+-- So the rule's row is opened, on its Cues (Conditions) tab, in the list that is open (Enabled / Disabled stay; Smart Categories keeps
+-- the type row). Before, the cue's own Smart Categories path was asked for: no such row, so the window fell back to the Smart
+-- Categories front page, and any rule with a type switched the window to Smart Categories.
 function ns.OptionsApi.EditRule(rule)
-    if not ns.rules then return end
+    if not ns.rules or not rule then return end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
     end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, RulePath(rule))
+    local top, tab = rule, nil
+    local par = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule)
+    if par then top, tab = par, (rule.isCue and "cues" or "conditions") end
+    local path
+    if ns.CurrentTab() == "smartcat" then path = { RulePath(top) }   -- (no type: RulePath gives its Enabled / Disabled row)
+    else
+        local okc, ctx = pcall(ns.ReadContext)
+        path = { ns.ScopePath(top, okc and ctx or nil) }
+    end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(path))
+    if tab and AceConfigDialog.GetStatusTable then   -- the rule's own tab row: its status lives at its full path
+        local st = AceConfigDialog:GetStatusTable(APP, path)
+        if st then st.groups = st.groups or {}; st.groups.selected = tab end
+    end
     Notify()
 end
 
 -- open the window (if needed) and jump to a group's page; used by the group name tabs of the mover view (Visual.lua)
+-- (review R11) A group's row is in Enabled > Loaded / Not Loaded or Disabled (Smart Categories lists types only: its group rows are
+-- hidden, so the old Smart Categories path fell back to that tab's front page). The list that is open is tried first.
 function ns.OptionsApi.EditFolder(f)
     if not (f and ns.FolderById and ns.FolderById(f.id)) then return end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
     end
-    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, FolderPath(f))
+    if ns.CueTransparent(f) then Notify(); return end   -- a built-in category / cue-type folder has no row of its own: stay where it is
+    -- where it is listed (as BuildRulesTab lists it): Loaded / Not Loaded when it or a nested group holds such a rule, Disabled when it
+    -- holds a disabled rule itself; an empty group in the list it was made in
+    local okc, ctx = pcall(ns.ReadContext)
+    local has, any = {}, false
+    for _, r in ipairs(FolderTopRules(f.id)) do
+        any = true
+        local sc = ns.RuleScope(r, okc and ctx or nil)
+        if sc ~= "disabled" or r.folder == f.id then has[sc] = true end
+    end
+    if not any then has[f.xuiScope == "notloaded" and "notloaded" or (f.xuiScope == "disabled" and "disabled" or "loaded")] = true end
+    local order = { "loaded", "notloaded", "disabled" }
+    local sub, cur = ns.CurrentSub(), ns.CurrentScope()
+    if sub == "disabledTab" then order = { "disabled", "loaded", "notloaded" }
+    elseif sub == "enabledTab" and cur == "notloaded" then order = { "notloaded", "loaded", "disabled" } end
+    local scope
+    for _, sc in ipairs(order) do if has[sc] then scope = sc; break end end
+    if not scope then Notify(); return end   -- (only disabled rules, all in nested groups: no row anywhere)
+    local p
+    if scope == "disabled" then p = { "cooldowns", "disabledTab", "disabled", f.id }   -- the Disabled list is flat
+    else
+        p = { "cooldowns", "enabledTab", scope }
+        for _, c in ipairs(FolderChain(f)) do if not ns.CueTransparent(c) then p[#p + 1] = c.id end end
+    end
+    pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(p))
     Notify()
 end
 

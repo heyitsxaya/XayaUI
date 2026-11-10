@@ -38,6 +38,7 @@ reset()
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("cooldown event: the cooldown rule is re-checked on the next frame; the aura and other rules are not", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
   tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
+W.tick(0.04, 1)   -- (review R18: routed re-checks run at most once per 1/30 s; a change after a quiet spell is still next-frame)
 reset()
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("aura event: the aura rule and its cue are re-checked on the next frame; the cooldown and other rules are not", (n[AU] or 0) >= 1 and (n[cue] or 0) >= 1
@@ -46,6 +47,7 @@ check("aura event: the aura rule and its cue are re-checked on the next frame; t
 local played = 0
 PlaySound = function() played = played + 1 end
 ns.BuffPresent = function(id) if id == 1001 then return true, "test" end return false, "test" end
+W.tick(0.04, 1)   -- (review R18) a quiet spell first
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("an aura appearing plays its sound on the next frame (not up to 50 ms later)", played == 1, played)
 -- a plain tick right after: the aura-only rule (fresh) is skipped, the others are stepped

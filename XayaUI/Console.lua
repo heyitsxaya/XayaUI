@@ -44,7 +44,6 @@ function ns.ShowCopyBox(title, text)
         f.title:SetPoint("TOPLEFT", 12, -10)
         f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         f.hint:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
-        f.hint:SetText("The text is selected. Press Ctrl+C to copy it, then Esc to close.")
         local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
         close:SetPoint("TOPRIGHT", -2, -2)
         local sf = CreateFrame("ScrollFrame", "XayaUICopyBoxScroll", f, "UIPanelScrollFrameTemplate")
@@ -67,6 +66,12 @@ function ns.ShowCopyBox(title, text)
     copyBox.title:SetText(title or "Copy")
     copyBox.eb:SetText(text or "")
     copyBox:Show()
+    -- (review R23) opened in combat it does not take the keyboard: her movement and keybinds stay hers; Select all selects it then
+    if InCombatLockdown and InCombatLockdown() then
+        copyBox.hint:SetText("Press Select all, then Ctrl+C to copy the text. Esc closes this window.")
+        return
+    end
+    copyBox.hint:SetText("The text is selected. Press Ctrl+C to copy it, then Esc to close.")
     copyBox.eb:SetFocus()
     copyBox.eb:HighlightText()
 end

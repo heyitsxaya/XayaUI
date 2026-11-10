@@ -1913,6 +1913,8 @@ local function BuildRule(i, rule)
     local barArgs, barTextArgs
     if V.kind == "bar" and ns.BarCueSettings then
         local B = ns.BarCueSettings(V)
+        -- bon (with a window redraw) only for the choices that show or hide other rows; sliders and colors use `on`: AceConfigDialog
+        -- calls their set on every drag step and redraws by itself on mouse up / picker close (review R5: a full rebuild per drag step)
         local function bon() Changed(rule); Notify() end
         local SRC = { auto = "Automatic", aura = "Aura time left", cooldown = "Spell cooldown / recharge", stacks = "Stacks", charges = "Charges" }
         local SRC_ORDER = { "auto", "aura", "cooldown", "stacks", "charges" }
@@ -1922,8 +1924,8 @@ local function BuildRule(i, rule)
         local function hdr(name, order) return { type = "header", name = name, order = order } end
         barArgs = {
             sizeH = hdr("Size", 1),
-            w = Rng(V, "w", "Width", 1.1, 20, 800, 1, bon),
-            h = Rng(V, "h", "Height", 1.2, 4, 200, 1, bon),
+            w = Rng(V, "w", "Width", 1.1, 20, 800, 1, on),
+            h = Rng(V, "h", "Height", 1.2, 4, 200, 1, on),
             trackH = hdr("Tracks", 2),
             source = Sel(B, "source", "Tracks", 2.1, SRC, SRC_ORDER, bon, { width = "double",
                 desc = "Sets what the bar tracks. Automatic: the aura's time left when the rule watches an aura, else the spell's cooldown." }),
@@ -1933,7 +1935,7 @@ local function BuildRule(i, rule)
                     if id <= 0 then return "|cffffd100The rule has no " .. ((sr == "cooldown" or sr == "charges") and "cooldown spell" or "aura") .. " yet.|r Add one on the Trigger tab." end
                     return "Now: " .. SRC[sr] .. " of " .. SpellName(id)
                 end },
-            max = Rng(B, "max", "Maximum (0 = what the game says)", 2.3, 0, 50, 1, bon, { width = "double", hidden = function() return not counting() end,
+            max = Rng(B, "max", "Maximum (0 = what the game says)", 2.3, 0, 50, 1, on, { width = "double", hidden = function() return not counting() end,
                 desc = "The value at which the bar is full. 0 uses the game's maximum: the aura's maximum stacks, or the spell's maximum charges." }),
             maxNow = { type = "description", order = 2.4, width = "full", fontSize = "medium", hidden = function() return not counting() end,
                 name = function()
@@ -1955,7 +1957,7 @@ local function BuildRule(i, rule)
             colH = hdr("Color", 4),
             colorMode = Sel(B, "colorMode", "Color", 4.1, { auto = "Automatic (the type the tooltip names, then the dispel type, then blue)", fixed = "Fixed color" },
                 { "auto", "fixed" }, bon, { width = "double" }),
-            color = Col(B, "color", "Bar color", 4.2, bon, { hidden = function() return B.colorMode ~= "fixed" end }),
+            color = Col(B, "color", "Bar color", 4.2, on, { hidden = function() return B.colorMode ~= "fixed" end }),
             colorNow = { type = "description", order = 4.3, width = "full", fontSize = "medium", hidden = function() return B.colorMode == "fixed" end,
                 name = function()
                     local okc, r, g, b2, a, why, t, d = pcall(ns.BarCueColor, rule, nil)
@@ -1981,66 +1983,66 @@ local function BuildRule(i, rule)
             cusMagic = { type = "color", name = "Magic", order = 4.60, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Magic", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Magic"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Magic"] = { r, g, b2, 1 }; on() end },
             cusCurse = { type = "color", name = "Curse", order = 4.61, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Curse", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Curse"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Curse"] = { r, g, b2, 1 }; on() end },
             cusDisease = { type = "color", name = "Disease", order = 4.62, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Disease", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Disease"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Disease"] = { r, g, b2, 1 }; on() end },
             cusPoison = { type = "color", name = "Poison", order = 4.63, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Poison", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Poison"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Poison"] = { r, g, b2, 1 }; on() end },
             cusBleed = { type = "color", name = "Bleed", order = 4.64, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Bleed", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Bleed"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Bleed"] = { r, g, b2, 1 }; on() end },
             cusPhysical = { type = "color", name = "Physical", order = 4.65, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Physical", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Physical"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Physical"] = { r, g, b2, 1 }; on() end },
             cusHoly = { type = "color", name = "Holy", order = 4.66, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Holy", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Holy"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Holy"] = { r, g, b2, 1 }; on() end },
             cusFire = { type = "color", name = "Fire", order = 4.67, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Fire", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Fire"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Fire"] = { r, g, b2, 1 }; on() end },
             cusNature = { type = "color", name = "Nature", order = 4.68, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Nature", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Nature"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Nature"] = { r, g, b2, 1 }; on() end },
             cusFrost = { type = "color", name = "Frost", order = 4.69, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Frost", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Frost"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Frost"] = { r, g, b2, 1 }; on() end },
             cusShadow = { type = "color", name = "Shadow", order = 4.70, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Shadow", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Shadow"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Shadow"] = { r, g, b2, 1 }; on() end },
             cusArcane = { type = "color", name = "Arcane", order = 4.71, hasAlpha = false,
                 hidden = function() return B.colorMode == "fixed" or B.style ~= "custom" or select(3, ns.BarCueStyle(rule)) ~= nil end,
                 get = function() local r, g, b2 = ns.BarTypeColor("Arcane", "custom", B.custom); if not r then local f = ns.BAR_FALLBACK_COLOR; return f[1], f[2], f[3], 1 end return r, g, b2, 1 end,
-                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Arcane"] = { r, g, b2, 1 }; bon() end },
+                set = function(_, r, g, b2) B.custom = B.custom or {}; B.custom["Arcane"] = { r, g, b2, 1 }; on() end },
             iconH = hdr("Icon and spark", 5),
             icon = Sel(B, "icon", "Icon", 5.1, { left = "Left", right = "Right", none = "None" }, { "left", "right", "none" }, bon,
                 { desc = "On a vertical bar, left is the top end and right the bottom end." }),
             spark = Tog(B.spark, "enabled", "Spark", 5.2, bon, { desc = "A bright mark on the moving edge of the fill." }),
-            sparkColor = Col(B.spark, "color", "Spark color", 5.3, bon, { hidden = function() return not B.spark.enabled end }),
-            sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, bon, { hidden = function() return not B.spark.enabled end }),
+            sparkColor = Col(B.spark, "color", "Spark color", 5.3, on, { hidden = function() return not B.spark.enabled end }),
+            sparkW = Rng(B.spark, "w", "Spark width", 5.4, 1, 64, 1, on, { hidden = function() return not B.spark.enabled end }),
             bgH = hdr("Background and border", 6),
             bg = Tog(V.bg, "enabled", "Background", 6.1, bon),
-            bgColor = Col(V.bg, "color", "Background color", 6.2, bon, { hidden = function() return not V.bg.enabled end }),
+            bgColor = Col(V.bg, "color", "Background color", 6.2, on, { hidden = function() return not V.bg.enabled end }),
             border = Tog(V.border, "enabled", "Border", 6.3, bon),
-            borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, bon, { hidden = function() return not V.border.enabled end }),
-            borderColor = Col(V.border, "color", "Border color", 6.5, bon, { hidden = function() return not V.border.enabled end }),
-            alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, bon),
+            borderSize = Rng(V.border, "size", "Border size", 6.4, 1, 10, 1, on, { hidden = function() return not V.border.enabled end }),
+            borderColor = Col(V.border, "color", "Border color", 6.5, on, { hidden = function() return not V.border.enabled end }),
+            alpha = Rng(V, "alpha", "Opacity", 6.6, 0, 1, 0.05, on),
         }
-        local nameArgs = TextStyleArgs(B.name, bon, 10)
+        local nameArgs = TextStyleArgs(B.name, on, 10)
         nameArgs.enabled = Tog(B.name, "enabled", "Show the spell / aura name", 1, bon)
         barTextArgs = { name = Sub("cq_barname", "Name Text", 0.5, nameArgs) }
     end
@@ -2199,8 +2201,18 @@ local function BuildRule(i, rule)
     -- The unsaved-changes bar (Save changes / Add to drafts / Discard) is a strip under the window (ns.SaveBarUpdate), not part of the tabs.
     -- Display tab (0.6.3, DisplayTab.lua): the rule as the container of its cues. Not on cues / conditions themselves.
     local displayTab = (ns.BuildDisplayTab and not rule.isCue and not rule.parentUid) and ns.BuildDisplayTab(rule, Notify, Changed) or nil
+    local function locked() return ns.IsEditLocked(rule) end
     for _, g in ipairs({ ruleTab, trigger, load, conditionsTab, cuesTab, actionsTab, displayTab }) do
-        ns.LockArgs(g.args, function() return ns.IsEditLocked(rule) end)
+        ns.LockArgs(g.args, locked)
+    end
+    -- (review R6) a cue is edited in its rule's Cues tab with the parts below (OutcomesEditor.lua EmbedCue), which sit in no tab:
+    -- lock them too (IsEditLocked follows the parent rule's lock). Only a cue's parts are shown anywhere.
+    if rule.isCue then
+        local xp = actions.xuiParts
+        ns.LockArgs({ xp.colorSub, xp.posSub, xp.animSub }, locked)
+        for _, t in ipairs({ xp.tex, xp.textBody, xp.soundBody, xp.speechBody, xp.barArgs or false, xp.barTextArgs or false }) do
+            if t then ns.LockArgs(t, locked) end
+        end
     end
     local rg = {
         type = "group", childGroups = "tab", order = 1000 + i,

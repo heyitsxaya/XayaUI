@@ -23,6 +23,9 @@ differ only in (1) the top tabs QoL, Bonus Features and Blizzard Reskin, gone wi
 drawing; their own drawings are no longer made), and (2) the Profiles drawing's left-over tree rows, which belong to the tab visited
 just before it: before, the Blizzard Reskin tree; now the Rules > Disabled tree (the first 12 lines of that drawing). The Profiles
 tabs, heading and button lines, every Rules drawing (rules-selected is byte-identical) and Settings are otherwise unchanged.
+Review R10 (2026-11-10): ns.EditRule keeps the list that is open, so rules-selected is now the Enabled list with the rule selected under
+its groups (was: the window switched to Smart Categories), and rules-smart no longer has that rule selected; only these two "on"
+entries were regenerated, from HEAD plus the R10 change alone.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

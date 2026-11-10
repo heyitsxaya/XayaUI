@@ -885,6 +885,7 @@ local function BuildGroup(fo, members)
     local sp = tonumber(fo.cSpacing) or 4
     local limit = WrapLimit(fo, axis == AnchorUtil.FlowLayoutAxis.Horizontal, iw, ih, sp)
     local sortKey, rev = SortOf(fo)
+    g.rev = rev and true or false   -- (R19: the order SlotSizes lists the members in)
     local ok, err = pcall(function()
         if not g.frame then
             g.fmtFallback = nil
@@ -1103,6 +1104,38 @@ local function ApplyMods(s, display)
 end
 D._ApplyMods = ApplyMods
 
+-- (review R19) Where the engine's icons may show, for a group's Auto-size box (Visual.lua GroupBounds). Whether an aura is up is not
+-- asked (in combat the game does not tell addons), so a display the engine draws counts while its slot may show: built, loaded, its
+-- talents (Allowed), not unlocked. put(host, folderId) for a single slot: XayaUI's own icon frame it sits on (hidden, in place);
+-- put(nil, folderId, sizes) for a dynamic group's container: the sizes of its members that may show, in layout order (rebuilt only
+-- when they change; ns.EngineSlotsVersion changes with them). The containers' own geometry is never read (secret in combat).
+local slotsVer = 0
+local function SlotSizes(g)
+    local out, n = {}, #g.members
+    local iw, ih   -- (one shared aura group: every icon at member 1's size, BuildGroup)
+    if g.mode ~= "manual" and g.members[1] then iw, ih = DisplaySize(g.members[1].spec.display.visual) end
+    for k = 1, n do
+        local i = (g.mode == "manual" and g.rev) and (n - k + 1) or k
+        if g.allowed[i] then
+            local w, h = DisplaySize(g.members[i].spec.display.visual)
+            out[#out + 1] = { w = iw or w, h = ih or h }
+        end
+    end
+    return out
+end
+function ns.EngineSlotsVersion() return slotsVer end
+function ns.EngineSlotsEach(put)
+    for _, store in ipairs(STORES) do
+        for _, s in pairs(store) do
+            local d = s.spec and s.spec.display
+            if s.ok and s.frame and s.host and d and s.frame:IsShown() then put(s.host, d.folder) end
+        end
+    end
+    for fid, g in pairs(groups) do
+        if g.ok and g.frame and g.sizes and g.sizes[1] and g.frame:IsShown() then put(nil, fid, g.sizes) end
+    end
+end
+
 function D.SyncLive()
     for _, store in ipairs(STORES) do
         for _, s in pairs(store) do
@@ -1122,6 +1155,7 @@ function D.SyncLive()
                 if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
             end
             if changed then
+                g.sizes = SlotSizes(g); slotsVer = slotsVer + 1   -- (R19: what XayaUI's group box measures)
                 if g.mode == "manual" then
                     -- one aura group per member: switch the member's own group on or off (an empty ID set would also show
                     -- nothing, Blizzard_AuraContainerUtil.lua: includeSpellIDs rejects every aura not in it)

@@ -33,20 +33,63 @@ local function FolderChain(f)
     end
     return chain
 end
--- is folder fid equal to, or nested anywhere inside, folder ancestorId?
+-- is folder fid equal to, or nested anywhere inside, folder ancestorId? (a damaged, looping parent chain stops after FOLDER_DEPTH steps;
+-- review R17: was a new table per call)
+local FOLDER_DEPTH = 32
 local function IsInFolder(fid, ancestorId)
-    local f, seen = FolderById(fid), {}
-    while f and not seen[f.id] do
+    local f, d = FolderById(fid), 0
+    while f and d < FOLDER_DEPTH do
         if f.id == ancestorId then return true end
-        seen[f.id] = true
-        f = f.parent and FolderById(f.parent) or nil
+        f, d = f.parent and FolderById(f.parent) or nil, d + 1
     end
     return false
 end
+-- the groups by id (the first one with an id wins, as FolderById)
+local function FolderMap()
+    local m = {}
+    for _, f in ipairs(ns.folders or {}) do if f.id ~= nil and m[f.id] == nil then m[f.id] = f end end
+    return m
+end
+-- Every rule in group fid or in a group nested inside it. (review R17) Each group's answer is worked out once per call, not once per
+-- rule with a list search per step of its chain: with 60 groups and 600 rules one call took about 56 ms and 4 MB, and a window build
+-- made about two per group.
 local function FolderRules(fid)
     local l = {}
-    for _, r in ipairs(ns.rules or {}) do if r.folder and IsInFolder(r.folder, fid) then l[#l + 1] = r end end
+    if fid == nil then return l end
+    local byId, inside = FolderMap(), {}
+    for _, r in ipairs(ns.rules or {}) do
+        local id = r.folder
+        if id ~= nil then
+            local yes = inside[id]
+            if yes == nil then
+                local f, d = byId[id], 0
+                yes = false
+                while f and d < FOLDER_DEPTH do
+                    if f.id == fid then yes = true; break end
+                    local known = inside[f.id]
+                    if known ~= nil then yes = known; break end
+                    f, d = f.parent ~= nil and byId[f.parent] or nil, d + 1
+                end
+                inside[id] = yes
+            end
+            if yes then l[#l + 1] = r end
+        end
+    end
     return l
+end
+-- (review R17) How many rules each group holds, its nested groups included (n[id] = #FolderRules(id); nil = none), in one pass over
+-- the rules: for the window build, which asked FolderRules once or twice per group.
+local function FolderRuleCounts()
+    local byId, n, stamp = FolderMap(), {}, {}
+    for i, r in ipairs(ns.rules or {}) do
+        local f, d = r.folder ~= nil and byId[r.folder] or nil, 0
+        while f and d < FOLDER_DEPTH and stamp[f.id] ~= i do   -- (stamp: a looping chain counts each group once, as IsInFolder)
+            stamp[f.id] = i
+            n[f.id] = (n[f.id] or 0) + 1
+            f, d = f.parent ~= nil and byId[f.parent] or nil, d + 1
+        end
+    end
+    return n
 end
 -- The rules of a group without the cues and conditions inside them (audit D42: the group's Enabled box and Enable / Disable All Rules
 -- Inside switched a condition the player had turned off back on; the Delete Group confirmation counted cue rows as rules).
@@ -392,7 +435,7 @@ end
 
 -- for the other files of this folder (ns.OptionsApi.RuleEditorParts)
 P.FolderById, P.FolderChain, P.FolderPath, P.FolderRules, P.FolderTopRules, P.FolderValues = FolderById, FolderChain, FolderPath, FolderRules, FolderTopRules, FolderValues
-P.IsInFolder, P.RulePath = IsInFolder, RulePath
+P.IsInFolder, P.RulePath, P.FolderRuleCounts = IsInFolder, RulePath, FolderRuleCounts
 end
 ns.RuleEditorFiles = ns.RuleEditorFiles or {}
 ns.RuleEditorFiles[#ns.RuleEditorFiles + 1] = EditorFileInit

@@ -21,6 +21,14 @@ local APP, AceConfigDialog, Tree = O.APP, O.AceConfigDialog, O.Tree
 ns.OptionsApi.TreePaint = ns.OptionsApi.TreePaint or {}
 local TP = ns.OptionsApi.TreePaint
 
+-- (review R13) AceGUI keeps one pool of widgets for every addon, so a tree or edit box XayaUI's window used can next be another
+-- addon's. AceConfigDialog writes the app's name into each control it makes and AceGUI wipes it on release: a widget is XayaUI's
+-- only while it says APP. Every hook XayaUI leaves on a pooled widget (they cannot be taken off) checks this first.
+function TP.Ours(w)
+    local u = type(w) == "table" and w.userdata
+    return (type(u) == "table" and u.appName == APP) and true or false
+end
+
 local function MakeChevron(button)
     local b = CreateFrame("Button", nil, button)
     b:SetSize(16, 16)
@@ -110,9 +118,9 @@ function ns.HookRowHover(button)
     if button.xuiTxtHook then return end
     button.xuiTxtHook = true
     local function again(self)
-        if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) or not self.xuiFontDone then return end
+        if not (self.xuiFontDone and TP.Ours(self.obj)) then return end   -- (review R13) only while the row is in XayaUI's window
         ns.PaintRowText(self)
-        C_Timer.After(0, function() if self.xuiFontDone then ns.PaintRowText(self) end end)
+        C_Timer.After(0, function() if self.xuiFontDone and TP.Ours(self.obj) then ns.PaintRowText(self) end end)
     end
     button:HookScript("OnEnter", again)
     button:HookScript("OnLeave", again)
@@ -491,12 +499,36 @@ local function KeepScroll(tree)
     tree:RefreshTree()
 end
 
+-- (review R13) The tree went to another addon (AceGUI's pool): its rows go back to how AceGUI draws them, once, before that owner's
+-- first redraw. XayaUI's parts on a row are kept on keys that start with "xui"; the rules tree's own part is TP.rules.Release.
+local function ReturnRows(tree)
+    tree.xuiPainted = nil
+    for _, b in ipairs(tree.buttons or {}) do
+        for k, v in pairs(b) do
+            if type(k) == "string" and k:sub(1, 3) == "xui" and type(v) == "table" and type(v.Hide) == "function" then v:Hide() end
+        end
+        for _, g in ipairs(b.xuiGuides or {}) do g:Hide() end
+        b:SetHeight(b.xuiH0 or 18); b:SetAlpha(1); b:EnableMouse(true)
+        if b.toggle then b.toggle:SetAlpha(1); b.toggle:EnableMouse(true) end
+        if b.text and b.text.SetFontObject then b.text:SetFontObject(b:GetNormalFontObject() or GameFontNormal) end   -- (PaintRowText set its own font)
+        b.xuiGone, b.xuiLastUV, b.xuiNoteH, b.xuiFontDone, b.xuiTextL, b.xuiTextR = nil, nil, nil, nil, nil, nil
+    end
+    if TP.rules and TP.rules.Release then pcall(TP.rules.Release, tree) end
+end
+
 local function DecorateTree(tree)
     if afterRebuild then pcall(KeepScroll, tree) end
     if not tree.xuiHooked then
         tree.xuiHooked = true
         local orig = tree.RefreshTree
+        -- (review R13) The wrapper stays on the widget (AceGUI hands the same tree back to XayaUI's next pane, which must paint at
+        -- once), but it paints only while the tree is XayaUI's; another addon's tree gets AceGUI's RefreshTree and its rows back.
         tree.RefreshTree = function(self, ...)
+            if not TP.Ours(self) then
+                if self.xuiPainted then pcall(ReturnRows, self) end
+                return orig(self, ...)
+            end
+            self.xuiPainted = true
             orig(self, ...)
             ns.OptionsApi.WithCueMemo(function()   -- (Options 0.6.69) one cue lookup pass for all the visible rows
                 for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
@@ -509,6 +541,7 @@ local function DecorateTree(tree)
             if (status.treewidth or 0) <= 175 then pcall(tree.SetTreeWidth, tree, 270, true) end
         end
     end
+    tree.xuiPainted = true
     for _, b in ipairs(tree.buttons or {}) do
         if b:IsShown() then ns.SafeDecorate(b)
         else
