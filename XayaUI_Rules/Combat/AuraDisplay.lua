@@ -1035,8 +1035,13 @@ function D.Build()
                 Own(g, m.rule)
                 if not g.ok then left[#left + 1] = { m.rule, "its group failed: " .. tostring(g.err) } end
             end
-        elseif groups[fo.id] then
-            local g = groups[fo.id]
+        end
+    end
+    -- (review R20) retire every group not built by this pass: one left with no members, and one whose folder was deleted (it is no
+    -- longer in ns.folders, so the loop above never sees it; its container would keep showing its old buffs next to the members'
+    -- new slots). Out of combat only: D.Build returns above in combat lockdown. A restored group (same id) is built again.
+    for _, g in pairs(groups) do
+        if g.serial ~= serial then
             g.ok = false
             if g.frame then g.frame:Hide() end
         end
