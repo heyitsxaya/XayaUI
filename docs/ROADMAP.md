@@ -281,3 +281,5 @@ This is my suggestion, not a commitment.
 New chats start from `docs/SESSION-START-SUMMARY.md` (rules, active items, pending actions, how to work here). This file stays the full tracker; `debug-log/` is the history.
 
 This file is the summary. Detailed specs, stress tests, and decision graphs for individual items are kept in the project's Claude documents and the shared Drive `Feature sketches` folder, which are outside this repository. Each item's issue (or, for the 2026-11-03 candidates, its drafted issue text) carries the open questions.
+
+- **Group background settings** (Xaya, 2026-11-10, REQUEST-LOG A23 SD-17, her words): "Another option in the future can be a “group background settings” modification that perhaps solves this issue from another angle but not for today’s build". Today a group's border / background is drawn on each display.
