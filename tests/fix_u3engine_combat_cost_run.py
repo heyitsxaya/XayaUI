@@ -62,9 +62,15 @@ W.tick(0.3, 2)
 picked[5001] = false
 W.fire("TRAIT_CONFIG_UPDATED", 1); full(2)
 local before = played("7001")
+-- (follow-up: out of combat the kept answer is re-read once a second, see tests/fix_r2_engine_followups_run.py; in combat never)
+W.enterCombat(); full(1)
 talentReads = 0
 full(20)
-check("R3: 20 steps with no talent change read no talent again (101 rules with a talent requirement)", talentReads == 0, talentReads)
+check("R3: in combat, 20 steps with no talent change read no talent again (101 rules with a talent requirement)", talentReads == 0, talentReads)
+W.leaveCombat(); full(1)
+talentReads = 0
+full(20)
+check("R3: out of combat, 20 steps (1.2 s) read the 201 talent entries at most twice (once a second), not on every step", talentReads <= 2 * 201, talentReads)
 check("R3: the talent not picked: the rule does not load, its cue is silent", played("7001") == before and not (ns.runtime[T] and ns.runtime[T].active))
 picked[5001] = true
 W.fire("TRAIT_CONFIG_UPDATED", 1); full(1)
@@ -117,7 +123,7 @@ local a1 = played("7002")
 buffs[1001] = true
 local frames = 0
 for i = 1, 12 do W.fire("UNIT_AURA", "player"); W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1); if played("7002") > a1 then frames = i; break end end
-check("R18: a buff appearing inside the burst plays its cue within 1/30 s (4 frames at 120 fps), no event lost", frames >= 1 and frames <= 5, frames)
+check("R18: a buff appearing inside the burst plays its cue within 1/30 s (4 frames at 120 fps), no event lost", frames >= 1 and frames <= 4, frames)
 ns.Evaluate = E0
 return R
 end

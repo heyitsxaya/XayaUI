@@ -35,8 +35,9 @@ buffs[1003] = true
 local T = mk("talent rule", function(r) r.useBuff, r.buffID, r.buffState, r.cdState = true, 1003, "present", "none"
   r.talentMode, r.talents = "all", { { id = 5001, state = "known" } } end)
 soundCue(T, "7001")
--- A: loaded, reads a cooldown and buff 1001; its cue plays when the buff appears
-local A = mk("aura rule", function(r) r.useBuff, r.buffID, r.buffState, r.useCooldown, r.spellID, r.cdState = true, 1001, "present", true, 187827, "any" end)
+-- A: loaded, reads a cooldown and buff 1001, has a display of its own (shown while it holds); its cue plays when the buff appears
+local A = mk("aura rule", function(r) r.useBuff, r.buffID, r.buffState, r.useCooldown, r.spellID, r.cdState = true, 1001, "present", true, 187827, "any"
+  r.visual.enabled, r.visual.trigger = true, "condition" end)
 soundCue(A, "7002")
 -- 50 rules with talent requirements that never load (another spec)
 for i = 1, 50 do
@@ -136,8 +137,9 @@ local function quietFrame() W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1); W.
 local kbRouted = garbage(routedFrame, 30)
 local kbQuiet = garbage(quietFrame, 30)
 local per = kbRouted - kbQuiet
-check("R18: a routed re-check (1 cooldown rule, 450 rules in all, 200 with a condition) makes under 1 KB of garbage (before: a new outcome table each time)",
-  per < 1, ("%.2f KB per routed re-check"):format(per))
+-- what is left (about 1 KB) is reading that one rule's cooldown and buff; the outcome table of all 200 conditions was about 10 KB more
+check("R18: a routed re-check (1 cooldown rule with a display, 450 rules in all, 200 with a condition) makes under 2 KB of garbage, not a new outcome table",
+  per < 2, ("%.2f KB per routed re-check"):format(per))
 
 -- a rule list changed without ns.MarkDirty (same length) is still seen within about a second: condition 1 moves to parent 2
 local cond1
