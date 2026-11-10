@@ -512,8 +512,9 @@ end
 function ns.FolderContainerGroup(f)
     local function apply() ns.MarkDirty(); pcall(ns.RefreshAllVisuals); Notify() end
     -- (review R8) A slider (and a colour swatch) calls set on every step of a drag. Each step now redraws this group only (its frame, the
-    -- displays in it and its box); the window redraws once at the end, by itself (AceConfigDialog re-opens the page on the slider's mouse
-    -- up and on the colour picker's confirm). apply() redrew every display and rebuilt the whole window on each step: the drag stuttered.
+    -- displays in it and their group border / background, SD-17); the window redraws once at the end, by itself (AceConfigDialog re-opens
+    -- the page on the slider's mouse up and on the colour picker's confirm). apply() redrew every display and rebuilt the whole window on
+    -- each step: the drag stuttered.
     local function applyStep()
         ns.MarkDirty()
         local rt = ns.runtime   -- (each display redrawn places the group's frame again from its settings: Visual.lua ParentFor)
@@ -522,7 +523,7 @@ function ns.FolderContainerGroup(f)
                 if pcall(ns.RefreshVisual, r) then pcall(ns.SetVisualShown, r, rt and rt[r] and rt[r].visualWanted) end
             end
         end
-        if ns.UpdateGroupBox then pcall(ns.UpdateGroupBox, f) end
+        if ns.RefreshGroupDeco then pcall(ns.RefreshGroupDeco, f) end   -- (SD-17) its border / background, on each display
         if ns.unlocked and ns.RefreshGroupTags then pcall(ns.RefreshGroupTags) end
     end
     local POINTS = { "CENTER", "TOP", "BOTTOM", "LEFT", "RIGHT", "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }
@@ -658,24 +659,34 @@ function ns.FolderContainerGroup(f)
         get = function() return f.cFit and true or false end, set = function(_, v) f.cFit = v and true or nil; apply() end }
     g.args.clip = { type = "toggle", name = "Clip (hide anything outside the box)", order = 3.07, width = "full", hidden = function() return not setSize() end,
         get = function() return f.cClip and true or false end, set = function(_, v) f.cClip = v and true or nil; apply() end }
-    -- Border and background (G5 "border follows", G11 #372 "a property for group display: background (puts an assigned color /
-    -- texture under the aura)"; WeakAuras' group tab has a border, CHAT-3d)
+    -- Border and background (G5, G11 #372 "a property for group display: background (puts an assigned color / texture under the
+    -- aura)"; WeakAuras' group tab has a border, CHAT-3d). (SD-17, Xaya 2026-11-10: "Make it apply to individual auras, not the whole
+    -- container"; "Every group has this same behavior") Drawn on each display of the group (Visual.lua ns.PaintGroupDeco), the
+    -- labels say so. Same saved keys as before.
     local function col(key, dflt) return function() local c = f[key] or dflt; return c[1], c[2], c[3], c[4] end end
     local function setCol(key) return function(_, r, gg, b, a) f[key] = { r, gg, b, a }; applyStep() end end
-    g.args.boxH = { type = "header", name = "Border and background", order = 3.08 }
+    g.args.boxH = { type = "header", name = "Border and background on each display", order = 3.08 }
+    g.args.boxNote = { type = "description", order = 3.0805, width = "full", fontSize = "small",
+        name = "|cff999999These are drawn around every display in this group, one by one, not as one box around the whole group. Groups inside this one use them too, unless they turn on their own.|r" }
     g.args.border = { type = "toggle", name = "Border", order = 3.081, get = function() return f.cBorder and true or false end,
+        desc = "Draws a border around each display in this group.",
         set = function(_, v) f.cBorder = v and true or nil; apply() end }
     g.args.borderColor = { type = "color", name = "Border color", order = 3.082, hasAlpha = true, hidden = function() return not f.cBorder end,
+        desc = "The color of the border around each display.",
         get = col("cBdColor", { 0.6, 0.6, 0.65, 1 }), set = setCol("cBdColor") }
     g.args.bg = { type = "toggle", name = "Background", order = 3.083, get = function() return f.cBg and true or false end,
+        desc = "Puts a color or texture behind each display in this group.",
         set = function(_, v) f.cBg = v and true or nil; apply() end }
     g.args.bgColor = { type = "color", name = "Background color", order = 3.084, hasAlpha = true, hidden = function() return not f.cBg end,
+        desc = "The color behind each display.",
         get = col("cBgColor", { 0, 0, 0, 0.45 }), set = setCol("cBgColor") }
     g.args.bgTex = { type = "input", name = "Background texture (file path or ID; empty = the color only)", order = 3.085, width = "full",
+        desc = "A picture to put behind each display instead of the plain color.",
         hidden = function() return not f.cBg end,
         get = function() return f.cBgTex and tostring(f.cBgTex) or "" end,
         set = function(_, v) v = tostring(v or ""):gsub("^%s+", ""):gsub("%s+$", ""); f.cBgTex = (v ~= "") and (tonumber(v) or v) or nil; apply() end }
-    g.args.pad = { type = "range", name = "Padding around the items", order = 3.086, min = 0, max = 40, step = 1,
+    g.args.pad = { type = "range", name = "Padding around each display", order = 3.086, min = 0, max = 40, step = 1,
+        desc = "How far the border and background reach past the edge of each display, in pixels.",
         hidden = function() return not (f.cBorder or f.cBg) end,
         get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; applyStep() end }
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,

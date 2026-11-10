@@ -1128,6 +1128,10 @@ end
 --   LOG (line)       a line for the debug console
 --   THEME_CHANGED    the theme changed: re-skin open windows
 --   EDITED           ns.MarkDirty ran (the window's undo journal listens)
+--   RULES_DISABLED   (V26) /xui disable: every rule is off now, in or out of combat (XayaUI_Rules/Engine.lua ns.SetRulesDisabled). The
+--                    engine has stopped stepping and hidden XayaUI's own rule displays; a part that shows or plays anything for a rule
+--                    on its own (glows, the game-played aura sounds, engine containers) stops it here
+--   RULES_ENABLED    (V26) /xui enable ran (never in combat: it waits for combat to end); the engine steps again
 -------------------------------------------------------------------------------
 local listeners = {}
 function ns.On(event, fn)
@@ -1142,13 +1146,94 @@ function ns.Fire(event, ...)
 end
 
 -------------------------------------------------------------------------------
+-- 6b. Combat lock (V26; Xaya 2026-11-10, docs/process/VERIFICATION.md: "unless flagged for exemption (e.g. debugging), /xui and its
+-- editing windows cannot be opened in active combat"). Her answers: asked in combat -> one chat line, and it opens by itself when combat
+-- ends (only the last request is kept); already open when combat starts -> it closes then and reopens where she was after combat.
+--   ns.CombatLock(key, opener, message)  in combat: prints message (one line) and keeps opener to run when combat ends (PLAYER_REGEN_ENABLED),
+--                                        replacing any earlier request; out of combat, or for an exempt key: runs opener now.
+--   ns.CombatLockQueue(key, opener)      the same, without a message: for a window that closed itself as combat started (its own line)
+--   ns.CombatLockCancel(key)             drops a kept request with this key (/xui disable drops a waiting /xui enable)
+--   ns.InCombatLock()                    true while the lock holds (combat lockdown)
+-- Combat end is listened for only while a request waits (no event otherwise). Combat start (PLAYER_REGEN_DISABLED) fires just before the
+-- lockdown begins, so a window that closes then uses ns.CombatLockQueue rather than the lock check.
+-------------------------------------------------------------------------------
+-- What V26 locks, and where each lock is (every locked key below goes through ns.CombatLock):
+--   settings  the settings window, the rule editor and its popups: ns.ToggleUI, ns.LoadOptions, ns.EditRule, ns.EditFolder,
+--             ns.OpenSettingsPage (section 7; /xui, /xui config, /xui options, the minimap button and its list, the ESC-menu button, the
+--             game's AddOns entry and the addon compartment all open through these) and XayaUI_Options/Options.lua (Toggle, OpenPage,
+--             closing at combat start)
+--   unlock    the mover (/xui unlock; Core.lua)
+--   auraSetup the Combat Tracking Setup window (XayaUI_Rules/Combat/AuraSetup.lua): it changes combat tracking
+--   talents   /xui debug talents (the scan; XayaUI_Rules/TalentDump.lua): it changes saved talent data
+--   enable    /xui enable (Core.lua): it changes combat tracking, so it runs when combat ends
+-- Exempt (her words: the error / bug report, the console window, read-only /xui commands, "Only things that read or maintain their
+-- exact state", and "The only thing that can be allowed in combat ... is /disable"). A key listed here is never held back.
+local COMBAT_LOCK_EXEMPT = {
+    report = "/xui report: the debug report only reads XayaUI's own errors and warnings (V26: exempt by name)",
+    bug = "/xui bug: the bug report only reads errors (V26: exempt by name)",
+    console = "/xui console: the console window shows messages; a locked command typed in it is still locked (V26: exempt by name)",
+    status = "/xui status and /xui debug status: only read every rule's answer (V26: read-only)",
+    auras = "/xui auras and /xui debug auras: only list aura IDs (V26: read-only)",
+    loader = "/xui debug loader: only says whether the settings window can load (V26: read-only)",
+    perf = "/xui debug perf: only times the engine; it changes no rule (V26: read-only)",
+    talentsRead = "/xui debug talents status and /xui debug talents <name>: only read the last scan (V26: read-only)",
+    help = "/xui help and /xui debug: only list the commands (V26: read-only)",
+    disable = "/xui disable: every rule off at once; her words: \"The only thing that can be allowed in combat is with respect to the combat engine is /disable\"",
+}
+-- Not held back here: the feature addons' own /xui words (chat, notes, data, shop ...). They do not touch combat tracking (her example:
+-- "notes for instance should not interact with combat"); any of them that opens the settings window is locked by ns.OpenSettingsPage.
+function ns.CombatLockExempt(key) return COMBAT_LOCK_EXEMPT[key] end
+local function InLock() return (InCombatLockdown and InCombatLockdown()) and true or false end
+ns.InCombatLock = InLock
+-- slots: the windows share one ("only the last request kept"); /xui enable has its own, so a window request never drops it
+local LOCK_SLOT = { enable = "rules" }
+local pendingKey, pendingFn = {}, {}
+local lockFrame
+local function RunPending()
+    if lockFrame then lockFrame:UnregisterEvent("PLAYER_REGEN_ENABLED") end
+    for _, slot in ipairs({ "rules", "window" }) do   -- rules first: a window opened after /xui enable shows rules running
+        local fn = pendingFn[slot]
+        pendingKey[slot], pendingFn[slot] = nil, nil
+        if fn then Call(fn) end
+    end
+end
+function ns.CombatLockQueue(key, opener)
+    if type(opener) ~= "function" then return end
+    local slot = LOCK_SLOT[key] or "window"
+    pendingKey[slot], pendingFn[slot] = key, opener
+    if not lockFrame then lockFrame = CreateFrame("Frame"); lockFrame:SetScript("OnEvent", RunPending) end
+    lockFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+end
+function ns.CombatLock(key, opener, message)
+    if type(opener) ~= "function" then return false end
+    if COMBAT_LOCK_EXEMPT[key] or not InLock() then opener(); return true end
+    if message and ns.Print then ns.Print(message) end
+    ns.CombatLockQueue(key, opener)
+    return false
+end
+function ns.CombatLockCancel(key)
+    for slot, k in pairs(pendingKey) do if k == key then pendingKey[slot], pendingFn[slot] = nil, nil end end
+end
+function ns.CombatLockPending(slot) return pendingKey[slot or "window"] end   -- (tests, /xui debug notes)
+
+-------------------------------------------------------------------------------
 -- 7. The settings window. Its code is the addon XayaUI_Options, which the game loads only when asked (## LoadOnDemand). Everything
 -- outside it opens the window through these functions, so nothing else needs to know whether it is loaded yet. XayaUI_Options
 -- fills in ns.Options = { Toggle, EditRule, OpenPage, IconReport, IsOpen, SkinOn } when it loads.
 -------------------------------------------------------------------------------
 ns.OPTIONS_ADDON = "XayaUI_Options"
 local optionsWarned
+-- (V26) the lines a locked opener prints in combat (Modules.lua section 6b)
+local LOCK_SETTINGS = "the settings window can't open during combat. It will open when combat ends."
+local LOCK_EDITOR = "the rule editor can't open during combat. It will open when combat ends."
+local LoadOptionsNow
 function ns.LoadOptions()
+    if ns.Options then return true end
+    -- (V26) the window's code is not loaded in combat (loading it is opening it); it loads when combat ends
+    if InLock() then ns.CombatLock("settings", LoadOptionsNow, LOCK_SETTINGS); return false end
+    return LoadOptionsNow()
+end
+function LoadOptionsNow()
     if ns.Options then return true end
     if not isReady then ns.Print("saved settings are not ready yet; try again in a moment."); return false end
     local A = C_AddOns

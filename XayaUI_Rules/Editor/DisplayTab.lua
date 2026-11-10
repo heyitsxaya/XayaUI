@@ -374,6 +374,9 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     }
     bd.diff = DiffLine(9, "border", { { "enabled", "Border" }, { "size", "Border size" }, { "color", "Border color" } })
     bd.diff2 = DiffLine(9.1, "bg", { { "enabled", "Background fill" }, { "color", "Background color" } })
+    -- (SD-17) the group's own border / background (Group tab) is now drawn on each display too: say how the two differ
+    bd.groupNote = { type = "description", order = 0.5, width = "full", fontSize = "small",
+        name = "|cff999999These change each display's own border and background. The group's border and background (Group tab) are drawn on each display as well.|r" }
     args.border = Section("bd", "Every display: border and background", 5, bd)
 
     -- Bar colour style (RM-BARS; Xaya 2026-11-06, REQUEST-LOG S8-10: "Cue sets it, group overrides if forcibly set; otherwise it shows

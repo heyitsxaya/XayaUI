@@ -575,7 +575,7 @@ local function BarButtonInit(w, h, display, single, rec)
     end
 end
 
-local function ButtonInit(w, h, display, single, rec)
+local function LookInit(w, h, display, single, rec)
     if display and display.visual and display.visual.kind == "bar" and ns.BarCueSettings then return BarButtonInit(w, h, display, single, rec) end
     local v = (display and display.visual) or {}
     local zoom = 0.08 + (tonumber(v.zoom) or 0)
@@ -640,6 +640,27 @@ local function ButtonInit(w, h, display, single, rec)
     end
 end
 
+-- (SD-17, Xaya 2026-11-10: a group's border / background "apply to individual auras, not the whole container") Every button the
+-- engine makes also gets its group's border / background (Visual.lua ns.PaintGroupDeco), on the button itself. The button and the
+-- textures made for it are kept in the slot's own list (rec.deco), never in fields of the game's frames, so a settings change draws
+-- them again on every button already made (ns.EngineGroupDeco). Which group: the display's (display.folder, read at each paint, so a
+-- move to another group follows), or for a shared aura group of a dynamic group (Blizzard's sorts: one button look for every member)
+-- the dynamic group itself (fid).
+local function DecoButton(btn, rec, display, fid)
+    local e = { btn = btn, display = display, fid = fid }
+    rec.deco = rec.deco or {}
+    rec.deco[#rec.deco + 1] = e
+    if ns.PaintGroupDeco and ns.GroupDecoFor then e.d = ns.PaintGroupDeco(btn, nil, ns.GroupDecoFor(fid or (display and display.folder))) end
+end
+local function ButtonInit(w, h, display, single, rec, fid)
+    local look = LookInit(w, h, display, single, rec)
+    if not rec then return look end
+    return function(btn)
+        look(btn)
+        DecoButton(btn, rec, (not fid) and display or nil, fid)
+    end
+end
+
 -- Sort of a dynamic group (Group tab, "Sort"; Xaya 2026-11-04: Default, Expiration, Name, Important, Manual).
 --   manual      the group's own member numbers: one aura group per member, numbered in rule order (layoutIndex). Blizzard's flow
 --               lays groups out by that number and skips empty ones ("Empty groups do not contribute spacing or force a new line",
@@ -695,7 +716,7 @@ end
 --   Blizzard sort            one shared group (keyed by member 1's look) is used and the member groups are switched off
 -- A hidden container does not listen to aura events (Blizzard_AuraContainer.lua: ShouldRegisterForDynamicEvents = IsVisible() and
 -- IsEnabled()), but its buttons stay in memory, so the container itself is never replaced while the group exists.
-local function EnsureGroup(g, key, kind, w, h, sp, display, rec, sortKey, rev)
+local function EnsureGroup(g, key, kind, w, h, sp, display, rec, sortKey, rev, fid)
     g.keyOf = g.keyOf or {}
     local name = g.keyOf[key]
     if name then return name, false end
@@ -708,7 +729,7 @@ local function EnsureGroup(g, key, kind, w, h, sp, display, rec, sortKey, rev)
         sortDirection = dir,
         maxFrameCount = (kind == "main") and math.huge or 1,
         layout = { elementSpacing = sp, lineSpacing = sp, groupSpacing = 0, groupLineSpacing = sp, elementWidth = w, elementHeight = h },
-        initializeFrame = ButtonInit(w, h, display, false, rec),
+        initializeFrame = ButtonInit(w, h, display, false, rec, fid),
     })
     g.keyOf[key] = name
     g.made = g.made or {}
@@ -890,7 +911,7 @@ local function BuildGroup(fo, members)
         if not g.frame then
             g.fmtFallback = nil
             g.frame = BareContainer("player")
-            g.keyOf, g.made, g.nKeys = {}, {}, 0
+            g.keyOf, g.made, g.nKeys, g.deco = {}, {}, 0, {}
         end
         local c = g.frame
         local active = {}
@@ -911,7 +932,7 @@ local function BuildGroup(fo, members)
                 active[name] = true
             end
         else
-            local name = EnsureGroup(g, "\nmain\n" .. LookKey(display) .. "#" .. iw .. "x" .. ih, "main", iw, ih, sp, display, g, sortKey, rev)
+            local name = EnsureGroup(g, "\nmain\n" .. LookKey(display) .. "#" .. iw .. "x" .. ih, "main", iw, ih, sp, display, g, sortKey, rev, fo.id)
             c:SetAuraGroupSortMethod(name, SortArgs(sortKey, rev))
             c:SetAuraGroupCandidateFilters(name, { includeSpellIDs = g.ids })
             c:SetAuraGroupLayout(name, { elementSpacing = sp, lineSpacing = sp, elementWidth = iw, elementHeight = ih, layoutIndex = 1 })
@@ -949,7 +970,7 @@ local function BuildSingle(p, spec, store, key)
         if s.frame and (s.unit ~= spec.unit or s.filter ~= spec.filter or s.w ~= w or s.h ~= h or s.look ~= look) then s.frame:Hide(); s.frame = nil end
         if not s.frame then
             s.fmtFallback = nil
-            s.arts, s.btns, s.modSig = {}, {}, nil   -- (the old container's buttons are gone)
+            s.arts, s.btns, s.modSig, s.deco = {}, {}, nil, {}   -- (the old container's buttons are gone)
             s.frame = NewContainer(spec.unit, spec.filter, spec.ids, w, h, 0, display, 1, true, s)
             s.unit, s.filter, s.w, s.h, s.look = spec.unit, spec.filter, w, h, look
         else
@@ -1109,7 +1130,30 @@ local function ApplyMods(s, display)
 end
 D._ApplyMods = ApplyMods
 
--- (review R19) Where the engine's icons may show, for a group's Auto-size box (Visual.lua GroupBounds). Whether an aura is up is not
+-- (SD-17) A group's border / background changed (or a rebuild, through Visual.lua's refresh of every display): drawn again on every
+-- aura button the engine has made. Only then, never on a timer; no table is made.
+local function DecoSlot(rec)
+    local list = rec.deco
+    if not list then return end
+    for i = 1, #list do
+        local e = list[i]
+        local fo = ns.GroupDecoFor(e.fid or (e.display and e.display.folder))
+        if fo or e.d then
+            local ok, d = pcall(ns.PaintGroupDeco, e.btn, e.d, fo)
+            if ok then e.d = d end
+        end
+    end
+end
+function ns.EngineGroupDeco()
+    if not (ns.PaintGroupDeco and ns.GroupDecoFor) then return end
+    for _, store in ipairs(STORES) do
+        for _, s in pairs(store) do DecoSlot(s) end
+    end
+    for _, g in pairs(groups) do DecoSlot(g) end
+end
+
+-- (review R19) Where the engine's icons may show, for the mover view's outline and tag, centering and anchoring to a group (Visual.lua
+-- GroupBounds; no longer for a group border box, SD-17). Whether an aura is up is not
 -- asked (in combat the game does not tell addons), so a display the engine draws counts while its slot may show: built, loaded, its
 -- talents (Allowed), not unlocked. put(host, folderId) for a single slot: XayaUI's own icon frame it sits on (hidden, in place);
 -- put(nil, folderId, sizes) for a dynamic group's container: the sizes of its members that may show, in layout order (rebuilt only
@@ -1160,7 +1204,7 @@ function D.SyncLive()
                 if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
             end
             if changed then
-                g.sizes = SlotSizes(g); slotsVer = slotsVer + 1   -- (R19: what XayaUI's group box measures)
+                g.sizes = SlotSizes(g); slotsVer = slotsVer + 1   -- (R19: what the mover outline measures, Visual.lua GroupBounds)
                 if g.mode == "manual" then
                     -- one aura group per member: switch the member's own group on or off (an empty ID set would also show
                     -- nothing, Blizzard_AuraContainerUtil.lua: includeSpellIDs rejects every aura not in it)

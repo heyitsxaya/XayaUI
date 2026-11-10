@@ -1103,7 +1103,9 @@ function ns.SetGroupSizeMode(f, mode)
         f.cSize = "set"
     end
 end
--- What a group shows now, in UIParent units (l, b, r, t; nil when nothing): XayaUI's own shown frames in it or nested in it, and
+-- What a group shows now, in UIParent units (l, b, r, t; nil when nothing), for the mover view's outline and tag, centering and anchoring
+-- to a group (no longer for a border box: SD-17 draws a group's border / background on each display): XayaUI's own shown frames in it
+-- or nested in it, and
 -- (review R19) the combat engine's slots in it (Combat/AuraDisplay.lua ns.EngineSlotsEach). The engine draws buff displays in the
 -- game's own aura containers and keeps XayaUI's frames for them hidden; whether such an aura is up is not something the game lets
 -- addons know in combat, so an engine slot counts while it may show (loaded, talents, not unlocked). A single slot is measured as
@@ -1151,117 +1153,81 @@ local function GroupBounds(f)
     if ns.EngineSlotsEach then pcall(ns.EngineSlotsEach, GBEngine) end
     return gbL, gbB, gbR, gbT
 end
--- The group's box (G5 / G11; #372 "puts an assigned color / texture under the aura"; the WeakAuras group-tab border, CHAT-3d): a
--- border and / or a background behind the group's items. Auto size: it hugs what is showing now (GroupBounds) plus padding and
--- follows as items come and go; Set size: it is the container's box. Off (neither border nor background): nothing is made (V14), and
--- the watcher that follows Auto boxes runs only while one such box exists.
-local boxes, boxWatch = {}, nil
-local function BoxOn(f) return (f.cBorder or f.cBg) and true or false end
-function ns.GroupBox(f) return f and boxes[f.id] or nil end
--- (review R19 follow-up) The look (backdrop, colours, texture, strata) is applied on a refresh or a settings change only; the Auto
--- watcher moves / resizes the box only when what it measures has changed. No tables are made per tick (the default colours are kept).
+-- A group's border and background (G5 / G11; #372 "puts an assigned color / texture under the aura"). (SD-17, Xaya 2026-11-10, her
+-- words: "Make it apply to individual auras, not the whole container"; "Every group has this same behavior".) They are drawn on EACH
+-- display: XayaUI's own display frames (RefreshVisual) and every aura button the combat engine makes (Combat/AuraDisplay.lua, its own
+-- list of the buttons it set up). There is no box around the group and nothing follows one: they are drawn when a display is set up or
+-- a setting changes, never per frame. Off (neither border nor background): no texture is made (V14). The saved keys are unchanged
+-- (cBorder, cBdColor, cBdSize, cBg, cBgColor, cBgTex, cPad); cPad is now the padding around each display.
+-- Which group's settings a display takes: its own group's, or, when that group has neither on, the nearest group around it that has
+-- (the old box of a group also went round its nested groups' items).
+local function DecoGroup(folderId)
+    local id, n = folderId, 0
+    while id and n < 32 do
+        local f = ns.FolderById and ns.FolderById(id)
+        if not f then return nil end
+        if f.cBorder or f.cBg then return f end
+        id, n = f.parent, n + 1
+    end
+    return nil
+end
+ns.GroupDecoFor = DecoGroup
 local DEF_BG, DEF_BD = { 0, 0, 0, 0.45 }, { 0.6, 0.6, 0.65, 1 }
-local function BoxLook(f, b, c)
-    if c then
-        if c.GetFrameStrata then b:SetFrameStrata(c:GetFrameStrata()) end
-        if c.GetFrameLevel then b:SetFrameLevel(math.max(0, c:GetFrameLevel())) end
+-- Draw group fo's border / background on one display `owner` (fo nil: hide them). d = the textures kept for that display by the
+-- caller (in the caller's own table), nil until something is first switched on; returned. bgOn = the frame that holds the background
+-- (default owner; XayaUI's frames pass the holder under their outline glow, so the background never covers the glow). The background
+-- reaches cPad past the display's edges, under everything the display draws; the border lies along the inside of that padded edge.
+function ns.PaintGroupDeco(owner, d, fo, bgOn)
+    if not fo then
+        if d then d.bg:Hide(); for i = 1, 4 do d[i]:Hide() end end
+        return d
     end
-    local bg = f.cBgColor or DEF_BG
-    if f.cBg then
-        local tex = f.cBgTex
-        if type(tex) == "string" and tex ~= "" or type(tex) == "number" then b.bg:SetTexture(tex); b.bg:SetVertexColor(bg[1] or 1, bg[2] or 1, bg[3] or 1, bg[4] or 1)
-        else b.bg:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.45) end
-        b.bg:Show()
-    else b.bg:Hide() end
-    if b.SetBackdrop then
-        if f.cBorder then
-            local bd, edge = f.cBdColor or DEF_BD, math.max(1, tonumber(f.cBdSize) or 1)
-            if b.xuiEdge ~= edge then   -- (a new backdrop table only when the edge size changes: the template keeps the table it is given)
-                b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = edge }); b.xuiEdge = edge
-            end
-            b:SetBackdropBorderColor(bd[1] or 1, bd[2] or 1, bd[3] or 1, bd[4] or 1)
-        elseif b.xuiEdge then b:SetBackdrop(nil); b.xuiEdge = nil end
+    if not d then
+        d = { bg = (bgOn or owner):CreateTexture(nil, "BACKGROUND", nil, -8) }
+        for i = 1, 4 do d[i] = owner:CreateTexture(nil, "OVERLAY", nil, -8) end
     end
-end
--- Auto size: the box around what the group shows now, moved / resized only when that changed (b.xuiX/Y/W/H = where it was put).
-local function BoxPlaceAuto(f, b)
-    local pad = tonumber(f.cPad) or 4
-    local l, bt, r, t = GroupBounds(f)
-    if not l then if b:IsShown() then b:Hide() end; return end
-    local x, y, w, h = l - pad, bt - pad, (r - l) + 2 * pad, (t - bt) + 2 * pad
-    if b.xuiX ~= x or b.xuiY ~= y or b.xuiW ~= w or b.xuiH ~= h then
-        b:ClearAllPoints()
-        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
-        b:SetSize(w, h)
-        b.xuiX, b.xuiY, b.xuiW, b.xuiH = x, y, w, h
-    end
-    if not b:IsShown() then b:Show() end
-end
-function ns.UpdateGroupBox(f)
-    local b = boxes[f.id]
-    if not BoxOn(f) then if b then b:Hide() end; return end
-    local c = containers[f.id]
-    if not b then
-        b = CreateFrame("Frame", nil, UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-        if b.EnableMouse then b:EnableMouse(false) end
-        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
-        boxes[f.id] = b
-    end
-    b.xuiX = nil   -- (a refresh always places the box again)
-    if ns.GroupSizeMode(f) == "set" and c then
-        local pad = tonumber(f.cPad) or 4
-        if b:GetParent() ~= c then b:SetParent(c) end
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", c, "TOPLEFT", -pad, pad); b:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", pad, -pad)
-        b:Show()
-    else
-        if b:GetParent() ~= UIParent then b:SetParent(UIParent) end
-        BoxPlaceAuto(f, b)
-    end
-    BoxLook(f, b, c)   -- (after the size is set, as before; also while hidden, so a box the watcher shows later has its look)
-end
--- The watcher's tick for one Auto box: placement only (a box not made yet gets the full update once).
-local function BoxTick(f)
-    local b = boxes[f.id]
-    if not b then return ns.UpdateGroupBox(f) end
-    BoxPlaceAuto(f, b)
-end
--- (review R20) A deleted group leaves ns.folders, so the loops below never visit it again: every pass stamps the boxes of the groups
--- that still exist and hides the rest. The frame is kept, so a Restore (same id) shows it again.
-local boxPass = 0
-local function HideOrphanBoxes()
-    for _, b in pairs(boxes) do if b.xuiPass ~= boxPass and b:IsShown() then b:Hide() end end
-end
-function ns.UpdateGroupBoxes()
-    local anyAuto = false
-    boxPass = boxPass + 1
-    for _, f in ipairs(ns.folders or {}) do
-        if BoxOn(f) or boxes[f.id] then pcall(ns.UpdateGroupBox, f) end
-        if boxes[f.id] then boxes[f.id].xuiPass = boxPass end
-        if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then anyAuto = true end
-    end
-    HideOrphanBoxes()
-    if anyAuto then
-        if not boxWatch then
-            boxWatch = CreateFrame("Frame")
-            boxWatch.t = 0
-            boxWatch:SetScript("OnUpdate", function(self, e)
-                self.t = self.t + (e or 0)
-                if self.t < 0.2 then return end
-                self.t = 0
-                local still = false
-                boxPass = boxPass + 1
-                for _, f in ipairs(ns.folders or {}) do
-                    if boxes[f.id] then boxes[f.id].xuiPass = boxPass end
-                    if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(BoxTick, f) end
-                end
-                HideOrphanBoxes()
-                if not still then self:SetScript("OnUpdate", nil); boxWatch = nil end
-            end)
+    local p = tonumber(fo.cPad) or 4
+    if fo.cBg then
+        local bg, c, tex = d.bg, fo.cBgColor or DEF_BG, fo.cBgTex
+        if d.bgPad ~= p then   -- (placed again only when the padding changed)
+            bg:ClearAllPoints()
+            bg:SetPoint("TOPLEFT", owner, "TOPLEFT", -p, p); bg:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", p, -p)
+            d.bgPad = p
         end
-    elseif boxWatch then boxWatch:SetScript("OnUpdate", nil); boxWatch = nil end
+        if (type(tex) == "string" and tex ~= "") or type(tex) == "number" then
+            bg:SetTexture(tex); bg:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)
+        else
+            bg:SetVertexColor(1, 1, 1, 1)   -- (a texture used before leaves its tint: the plain color must not be tinted by it)
+            bg:SetColorTexture(c[1] or 0, c[2] or 0, c[3] or 0, c[4] or 0.45)
+        end
+        bg:Show()
+    else d.bg:Hide() end
+    if fo.cBorder then
+        local c, s = fo.cBdColor or DEF_BD, math.max(1, tonumber(fo.cBdSize) or 1)
+        if d.bdPad ~= p or d.edge ~= s then
+            local t, b, l, r = d[1], d[2], d[3], d[4]
+            for i = 1, 4 do d[i]:ClearAllPoints() end
+            t:SetPoint("TOPLEFT", owner, "TOPLEFT", -p, p); t:SetPoint("TOPRIGHT", owner, "TOPRIGHT", p, p); t:SetHeight(s)
+            b:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", -p, -p); b:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", p, -p); b:SetHeight(s)
+            l:SetPoint("TOPLEFT", owner, "TOPLEFT", -p, p); l:SetPoint("BOTTOMLEFT", owner, "BOTTOMLEFT", -p, -p); l:SetWidth(s)
+            r:SetPoint("TOPRIGHT", owner, "TOPRIGHT", p, p); r:SetPoint("BOTTOMRIGHT", owner, "BOTTOMRIGHT", p, -p); r:SetWidth(s)
+            d.bdPad, d.edge = p, s
+        end
+        for i = 1, 4 do d[i]:SetColorTexture(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1); d[i]:Show() end
+    else for i = 1, 4 do d[i]:Hide() end end
+    return d
 end
-function ns.GroupBoxWatching() return boxWatch ~= nil end   -- (tests)
+local function PaintFrameDeco(fr, rule)
+    fr.xuiGrpDeco = ns.PaintGroupDeco(fr, fr.xuiGrpDeco, DecoGroup(rule.folder), fr.olHolder)
+end
+-- A group's border / background setting changed (the editor, each step of a slider or color drag): drawn again on its displays and
+-- its nested groups' (f nil: every display), and on the engine's aura buttons.
+function ns.RefreshGroupDeco(f)
+    for rule, fr in pairs(frames) do
+        if not f or InFolder(rule.folder, f.id) then pcall(PaintFrameDeco, fr, rule) end
+    end
+    if ns.EngineGroupDeco then pcall(ns.EngineGroupDeco) end
+end
 -- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
 -- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
 local posPopup
@@ -1485,8 +1451,6 @@ function GA.GroupUnderCursor(forFo)
             if not hit and tag and tag:IsShown() and (tag:GetAlpha() or 0) > 0 then
                 hl, hb, hr, ht = ScreenRect(tag); hit = inside(hl, hb, hr, ht)
             end
-            local box = boxes[g.id]
-            if not hit and box and box:IsShown() then hl, hb, hr, ht = ScreenRect(box); hit = inside(hl, hb, hr, ht) end
             if hit then
                 local l, b, r, t = ol, ob, orr, ot
                 if not l then l, b, r, t = hl, hb, hr, ht end
@@ -2929,6 +2893,7 @@ function ns.RefreshVisual(rule)
     end
     LayoutOutline(fr, rule, v)
     LayoutBorder(fr, v)
+    PaintFrameDeco(fr, rule)   -- (SD-17) its group's border / background, on this display
     if v.glow then
         fr.glow:SetSize(math.max(8, v.w or 128) * 1.9, math.max(8, v.h or 128) * 1.9)
         fr.glow:Show()
@@ -3632,7 +3597,7 @@ function GA.RefreshAllPass()
         end
     end
     if ns.unlocked then ns.RefreshGroupTags() end   -- a group made or changed while everything is unlocked gets its mover-view tag
-    pcall(ns.UpdateGroupBoxes)   -- the groups' border / background boxes (G5 / G11)
+    if ns.EngineGroupDeco then pcall(ns.EngineGroupDeco) end   -- (SD-17) groups' border / background on the engine's aura buttons (ours: RefreshVisual)
 end
 
 -------------------------------------------------------------------------------
