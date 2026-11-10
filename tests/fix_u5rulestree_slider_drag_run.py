@@ -9,7 +9,8 @@ them), with 200 rules with a display outside the group:
   A dragging X offset 20 steps: the group's frame follows every step (its offset is the slider's value at each step)
   B ...the window is not rebuilt during the drag (no full options build), and no display outside the group is redrawn
   C ...on mouse up the window redraws once and shows the slider at the dropped value; the group stays there
-  D the same for Group opacity (the group's frame takes each value) and the border colour (the box takes each colour) without a rebuild
+  D the same for Group opacity (the group's frame takes each value) and the border colour (each display's group border takes each
+    colour; SD-17: drawn on each display, no box) without a rebuild
   E a display inside the group is still shown and hangs from the group's frame after the drag
 Run: python3 tests/fix_u5rulestree_slider_drag_run.py   (Lua 5.1 via lupa)."""
 import os, sys
@@ -112,13 +113,20 @@ builds = 0
 for step = 1, 5 do
   local r = step * 0.2
   if cp then cp:Fire("OnValueChanged", r, 0, 0, 1) end   -- (AceGUI's colour picker fires this while the colour wheel is dragged)
-  local box = ns.GroupBox(f)
-  local ok, br = false, nil
-  if box and box.GetBackdropBorderColor then ok, br = pcall(box.GetBackdropBorderColor, box) end
-  if ok and type(br) == "number" and math.abs(br - r) < 0.01 then colours = colours + 1 end
+  -- (SD-17) the group's border is drawn on each display: every member shows four border strips in the new colour
+  local all = true
+  for _, m in ipairs(members) do
+    local fr, n = ns.VisualFramesOf(m)[1], 0
+    for _, t in ipairs(fr and fr._regions or {}) do
+      local c = t._color
+      if t:IsShown() and c and math.abs((c[1] or -1) - r) < 0.01 and math.abs(c[2] or -1) < 0.01 and math.abs((c[4] or -1) - 1) < 0.01 then n = n + 1 end
+    end
+    if n < 4 then all = false end
+  end
+  if all then colours = colours + 1 end
   W.tick(1 / 60, 1)
 end
-check("D changing the border colour: the box takes each colour, no rebuild", cp and colours == 5 and builds == 0, tostring(cp) .. " colours " .. colours .. " builds " .. builds)
+check("D changing the border colour: every display's border takes each colour, no rebuild", cp and colours == 5 and builds == 0, tostring(cp) .. " colours " .. colours .. " builds " .. builds)
 -- E
 local fr = ns.VisualFramesOf and ns.VisualFramesOf(members[1])[1]
 local function hangsFrom(x, p) local d = 0; while x and d < 20 do if x == p then return true end; x = x:GetParent(); d = d + 1 end; return false end

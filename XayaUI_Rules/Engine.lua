@@ -404,7 +404,7 @@ function ns.PerfCommand(arg)
     end
 end
 
-ns.Step = function() return Step() end
+ns.Step = function() if ns.RulesDisabled then return end return Step() end   -- (V26: nothing steps while /xui disable holds)
 
 -- (ns.configVersion: settings changed, so memos keyed on settings - load checks - start over)
 function ns.MarkDirty() dirty = true; forceNow = true; barsDirty = true; ns.configVersion = (ns.configVersion or 0) + 1; ns.Fire("EDITED") end
@@ -444,13 +444,14 @@ f:SetScript("OnEvent", function(_, event, arg1)
     -- (the event carries unitTarget, events.md 1215, and is registered for every unit: only the player's own spec change counts)
     if event == "PLAYER_SPECIALIZATION_CHANGED" and arg1 == "player" then for _, rt in pairs(ns.runtime or {}) do rt.inited = nil end end
     -- auto-capture status into the ring-buffer log at combat start/end, since /xui debug status can't be typed mid-fight
+    -- (V26: not while every rule is off by /xui disable: a snapshot may check rules)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
         snapAcc = 0
-        if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat start") end
+        if ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat start") end
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
-        if ns.LogStatusSnapshot then ns.LogStatusSnapshot("combat end") end
+        if ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat end") end
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM"
         or event == "ACTIONBAR_SLOT_CHANGED" or event == "UPDATE_BONUS_ACTIONBAR" or event == "ACTIONBAR_PAGE_CHANGED" then barsDirty = true end
@@ -474,7 +475,7 @@ local function SafeStep()
     end
 end
 local Timing = ns.Timing
-f:SetScript("OnUpdate", function(_, elapsed)
+local function OnUpdate(_, elapsed)
     acc = acc + elapsed
     sinceStep = sinceStep + elapsed
     sinceRouted = sinceRouted + elapsed
@@ -506,4 +507,36 @@ f:SetScript("OnUpdate", function(_, elapsed)
     else
         snapAcc = 0
     end
-end)
+end
+f:SetScript("OnUpdate", OnUpdate)
+
+-- (V26) /xui disable (Xaya 2026-11-10, her answer: "/xui disable: all rules off"): the emergency off for every rule, allowed in combat.
+-- The engine's per-frame driver is taken off at once (no step, no rule checked, no cue fired, no sound played by XayaUI, nothing per frame);
+-- each rule's running state is cleared without its After It Ends actions (they can play a sound or post a message), XayaUI's own rule
+-- displays are hidden (XayaUI's frames: allowed in combat), previews end, and RULES_DISABLED tells the parts that show or play something
+-- for a rule on their own (Modules.lua section 6). Session only: nothing is saved, so a /reload turns rules back on (no saved switch for
+-- this existed). /xui enable (never in combat: Core.lua waits for combat end) puts the driver back and steps every rule at once.
+function ns.SetRulesDisabled(on)
+    on = on and true or false
+    if on == (ns.RulesDisabled == true) then return false end
+    ns.RulesDisabled = on or nil
+    if on then
+        f:SetScript("OnUpdate", nil)
+        routed.cd, routed.aura = nil, nil
+        if ns.AnyPreview and ns.AnyPreview() and ns.ClearPreview then pcall(ns.ClearPreview) end
+        for _, rule in ipairs(ns.rules or {}) do
+            local rt = ns.runtime[rule]
+            if rt then
+                rt.active, rt.inited, rt.pvLast, rt.offDone = false, nil, nil, nil
+                if rt.visualWanted then rt.visualWanted = false; if ns.SetVisualShown then pcall(ns.SetVisualShown, rule, false) end end
+            end
+        end
+        ns.Fire("RULES_DISABLED")
+    else
+        dirty, forceNow, barsDirty = true, true, true
+        acc, sinceStep, sinceRouted = 0, 0, ROUTED_GAP
+        f:SetScript("OnUpdate", OnUpdate)
+        ns.Fire("RULES_ENABLED")
+    end
+    return true
+end

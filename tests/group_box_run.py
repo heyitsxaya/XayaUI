@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Group size and the group's box (core 0.6.55, Options 0.6.54; G5 / G11 of docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md).
+"""Group size and the group's border / background controls (core 0.6.55, Options 0.6.54; G5 / G11 of
+docs/plans/GROUP-PAGE-REQUIREMENTS-2026-11-06.md).
 Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows"; #372 "a property for
 group display: background (puts an assigned color / texture under the aura)".
 Checks, on the real addons in the stand-in game (real frame positions):
 - a group with no size reads Auto; a group saved with a width / height reads Set (old data keeps its box);
-- Auto + Background: the box hugs the displays that are showing, plus the padding, and follows when one hides;
-- Set + Border: the box is the container's width x height (plus padding); switching to Auto keeps the numbers aside and back;
+- switching Set -> Auto keeps the numbers aside and back;
 - Clip only works with a set size (in Auto it would hide everything);
-- off (no border, no background): no box frame is made and no watcher runs (V14);
 - the Group tab shows Size, Width / Height / Clip only for Set, and the border / background controls.
-Old code: no ns.GroupSizeMode / ns.UpdateGroupBox: those checks fail.
+(SD-17, round 3: the one border / background box around the group is gone; a group's border and background are drawn on each
+display. Its checks moved to tests/fix_r3_border_run.py: the box checks that were here are removed.)
+Old code: no ns.GroupSizeMode: those checks fail.
 Run: python3 tests/group_box_run.py   (Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +24,7 @@ local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  ["
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
-check("core has the group size and box functions", ns and ns.GroupSizeMode and ns.UpdateGroupBox and ns.UpdateGroupBoxes)
+check("core has the group size functions", ns and ns.GroupSizeMode and ns.SetGroupSizeMode)
 if not (ns and ns.GroupSizeMode) then return R end
 local f = ns.NewFolder("Box test")
 local function mkRule(name, x, y)
@@ -42,38 +43,14 @@ check("a group with no size reads Auto", ns.GroupSizeMode(f) == "auto")
 local old = { cW = 300, cH = 120 }
 check("a group saved with a width / height reads Set (old data keeps its box)", ns.GroupSizeMode(old) == "set")
 
--- off: nothing made
-ns.UpdateGroupBoxes()
-check("V14: no border and no background: no box frame, no watcher", ns.GroupBox(f) == nil and not ns.GroupBoxWatching())
-
--- Auto + background: hugs the showing displays
-f.cBg = true; f.cPad = 4
-ns.RefreshAllVisuals(); W.tick(0.1, 3)
-local box = ns.GroupBox(f)
+-- Set: the container's width x height; numbers kept aside in Auto
 local function rect(fr) local l, b, w, h = fr:GetRect(); return l, b, l + w, b + h end
-local function union(list) local L, B, Rr, T; for _, fr in ipairs(list) do if fr:IsShown() then local l, b, r, t = rect(fr); L = L and math.min(L, l) or l; B = B and math.min(B, b) or b; Rr = Rr and math.max(Rr, r) or r; T = T and math.max(T, t) or t end end; return L, B, Rr, T end
 local function near(a, b) return a and b and math.abs(a - b) < 0.6 end
-local ul, ub, ur, ut = union({ fa, fb })
-local bl, bb, br, bt; if box then bl, bb, br, bt = rect(box) end
-check("Auto + Background: a box is made and shown", box and box:IsShown(), ("box %s, A shown %s"):format(tostring(box), tostring(fa:IsShown())))
-check("  ...it hugs the showing displays plus the padding (4)", box and ul and near(bl, ul - 4) and near(bb, ub - 4) and near(br, ur + 4) and near(bt, ut + 4),
-  ("box %s %s %s %s / items %s %s %s %s"):format(tostring(bl), tostring(bb), tostring(br), tostring(bt), tostring(ul), tostring(ub), tostring(ur), tostring(ut)))
-if not (box and ul) then return R end
-check("  ...and a watcher follows it (Auto)", ns.GroupBoxWatching())
-ns.SetPreview({ B }, "visual", false); ns.runtime[B].visualWanted = false; pcall(ns.SetVisualShown, B, false); W.tick(0.25, 2)
-local ul2, ub2, ur2, ut2 = union({ fa })
-local bl2, bb2, br2, bt2 = rect(box)
-check("  ...one display hides: the box shrinks to what is still showing", near(br2, ur2 + 4) and near(bt2, ut2 + 4), ("%s / %s"):format(tostring(br2), tostring(ur2 + 4)))
-ns.SetPreview({ B }, "visual", true); ns.runtime[B].visualWanted = true; pcall(ns.SetVisualShown, B, true)
-
--- Set + border: the container's box; numbers kept aside in Auto
-ns.SetGroupSizeMode(f, "set"); f.cW, f.cH = 300, 120; f.cBorder = true
+ns.SetGroupSizeMode(f, "set"); f.cW, f.cH = 300, 120
 ns.RefreshAllVisuals(); W.tick(0.1, 2)
 local c = ns.GroupFrame(f)
 local cl, cb, cr, ct = rect(c)
-local sl, sb, sr, st = rect(box)
-check("Set: the box is the container's width x height plus the padding", near(sr - sl, (cr - cl) + 8) and near(st - sb, (ct - cb) + 8) and near(cr - cl, 300),
-  ("box %.1f x %.1f, container %.1f x %.1f"):format(sr - sl, st - sb, cr - cl, ct - cb))
+check("Set: the container is the width x height", near(cr - cl, 300) and near(ct - cb, 120), ("container %.1f x %.1f"):format(cr - cl, ct - cb))
 ns.SetGroupSizeMode(f, "auto")
 check("switching to Auto clears the size for every reader and keeps the numbers aside", f.cW == nil and f.cH == nil and f.cSetW == 300 and f.cSetH == 120)
 ns.SetGroupSizeMode(f, "set")
@@ -83,10 +60,6 @@ f.cClip = true; ns.RefreshAllVisuals(); pcall(ns.GroupFrame, f)
 check("Clip works with a set size", c.clips == true or (c.GetClipsChildren and c:GetClipsChildren()) == true)
 ns.SetGroupSizeMode(f, "auto"); ns.RefreshAllVisuals(); pcall(ns.GroupFrame, f)
 check("  ...and is off in Auto (it would hide everything in a 1 x 1 anchor)", not (c.clips == true or (c.GetClipsChildren and c:GetClipsChildren()) == true))
-
--- off again
-f.cBg, f.cBorder = nil, nil; ns.RefreshAllVisuals(); W.tick(0.3, 2)
-check("border and background off: the box hides and the watcher stops", not box:IsShown() and not ns.GroupBoxWatching())
 
 -- G8: a nested group anchored to the screen or to its parent group
 local inner = ns.NewFolder("Inner", f.id)

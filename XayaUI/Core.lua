@@ -385,9 +385,12 @@ local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its me
     "/xui unlock (drag displays and groups; again to lock)",
     "/xui status (every rule's answer right now, and why; in chat)",
     "/xui auras [target|focus|pet] [debuffs] or <spellID> (aura IDs, and whether XayaUI can follow them in combat; in chat)",
-    "/xui debug (diagnostic commands, shown in the console window: lists them)" }
+    "/xui debug (diagnostic commands, shown in the console window: lists them)",
+    -- (V26) the emergency off, which works in combat, and its way back
+    "/xui disable (turn every rule off right away, even in combat; they stay off until you turn them on again or reload)",
+    "/xui enable (turn rules back on; in combat it waits until combat ends)" }
 -- (P4) the lines above that are XayaUI Rules' commands: left out of /xui help while it is switched off
-local RULES_HELP = { [CORE_HELP[5]] = true, [CORE_HELP[6]] = true, [CORE_HELP[7]] = true }
+local RULES_HELP = { [CORE_HELP[5]] = true, [CORE_HELP[6]] = true, [CORE_HELP[7]] = true, [CORE_HELP[9]] = true, [CORE_HELP[10]] = true }
 
 -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read"): the command in the theme's accent text
 -- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. Pipes in the text (option lists such as
@@ -463,6 +466,32 @@ local function RunShortcut(name, arg)
     else ns.PrintHelp() end
 end
 
+-- (V26) /xui disable and /xui enable: the Rules on-off switch (XayaUI_Rules/Engine.lua ns.SetRulesDisabled, through the "rules" service).
+-- disable is exempt from the combat lock (Modules.lua section 6b: her words, "The only thing that can be allowed in combat ... is
+-- /disable"); enable is locked (it changes combat tracking): in combat it says so in one line and runs when combat ends.
+local function RulesEnableNow()
+    local R = RulesSvc()
+    if not (R and R.SetDisabled) then return end
+    if R.SetDisabled(false) then ns.Print("rules are on again.") end
+end
+local function RulesSwitch(cmd)
+    local R = RulesSvc()
+    if not (R and R.SetDisabled) then ns.Print(ns.ModuleMissingText(cmd)); return end
+    if cmd == "disable" then
+        if ns.CombatLockCancel then ns.CombatLockCancel("enable") end   -- a waiting /xui enable is dropped: the newest word wins
+        if R.SetDisabled(true) then
+            ns.Print("every rule is off now: none will check, show anything or play a sound. Type /xui enable to turn them back on (a /reload also does).")
+        else
+            ns.Print("rules are already off. Type /xui enable to turn them back on.")
+        end
+    elseif not R.Disabled() then
+        if ns.CombatLockCancel then ns.CombatLockCancel("enable") end
+        ns.Print("rules are already on.")
+    else
+        ns.CombatLock("enable", RulesEnableNow, "rules can't be turned back on during combat. They will turn on when combat ends.")
+    end
+end
+
 SLASH_XAYAUI1 = "/xui"
 SLASH_XAYAUI2 = "/xayaui"
 SlashCmdList["XAYAUI"] = function(msg)
@@ -477,7 +506,14 @@ SlashCmdList["XAYAUI"] = function(msg)
         RunInChat(RunShortcut, cmd, arg)
     elseif cmd == "unlock" then
         local R = RulesSvc()
-        if R and R.ToggleUnlock then R.ToggleUnlock() else ns.Print(ns.ModuleMissingText("unlock")) end
+        if not (R and R.ToggleUnlock) then ns.Print(ns.ModuleMissingText("unlock"))
+        -- (V26) the mover is locked in combat: one line, and it opens when combat ends (opens, never toggles shut: it may be open by then)
+        elseif ns.InCombatLock and ns.InCombatLock() then
+            ns.CombatLock("unlock", function() if not (R.Unlocked and R.Unlocked()) then R.ToggleUnlock() end end,
+                "the mover (/xui unlock) can't open during combat. It will open when combat ends.")
+        else R.ToggleUnlock() end
+    elseif cmd == "disable" or cmd == "enable" then
+        RulesSwitch(cmd)
     elseif cmd == "console" then
         if ns.ConsoleWindow then ns.ConsoleWindow() end
     elseif cmd == "bug" then

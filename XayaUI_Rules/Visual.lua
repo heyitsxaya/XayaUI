@@ -1105,10 +1105,9 @@ function ns.SetGroupSizeMode(f, mode)
 end
 -- What a group shows now, in UIParent units (l, b, r, t; nil when nothing), for the mover view's outline and tag, centering and anchoring
 -- to a group (no longer for a border box: SD-17 draws a group's border / background on each display): XayaUI's own shown frames in it
--- or nested in it, and
--- (review R19) the combat engine's slots in it (Combat/AuraDisplay.lua ns.EngineSlotsEach). The engine draws buff displays in the
--- game's own aura containers and keeps XayaUI's frames for them hidden; whether such an aura is up is not something the game lets
--- addons know in combat, so an engine slot counts while it may show (loaded, talents, not unlocked). A single slot is measured as
+-- or nested in it, and (review R19) the combat engine's slots in it (Combat/AuraDisplay.lua ns.EngineSlotsEach). The engine draws
+-- buff displays in the game's own aura containers and keeps XayaUI's frames for them hidden; whether such an aura is up is not
+-- something the game lets addons know in combat, so an engine slot counts while it may show (loaded, talents, not unlocked). A single slot is measured as
 -- XayaUI's own icon frame it sits on; a dynamic group's container as XayaUI's layout of the members that may show (GA.LayItems),
 -- worked out once per change and kept. The containers' own geometry is never read (it can be secret in combat).
 local gbRoot, gbUs, gbL, gbB, gbR, gbT   -- (the measure in progress; module locals so the watcher allocates nothing)
@@ -1174,16 +1173,15 @@ end
 ns.GroupDecoFor = DecoGroup
 local DEF_BG, DEF_BD = { 0, 0, 0, 0.45 }, { 0.6, 0.6, 0.65, 1 }
 -- Draw group fo's border / background on one display `owner` (fo nil: hide them). d = the textures kept for that display by the
--- caller (in the caller's own table), nil until something is first switched on; returned. bgOn = the frame that holds the background
--- (default owner; XayaUI's frames pass the holder under their outline glow, so the background never covers the glow). The background
--- reaches cPad past the display's edges, under everything the display draws; the border lies along the inside of that padded edge.
-function ns.PaintGroupDeco(owner, d, fo, bgOn)
+-- caller (in the caller's own table), nil until something is first switched on; returned. The background reaches cPad past the
+-- display's edges, under everything the display draws on itself; the border lies along the inside of that padded edge.
+function ns.PaintGroupDeco(owner, d, fo)
     if not fo then
         if d then d.bg:Hide(); for i = 1, 4 do d[i]:Hide() end end
         return d
     end
     if not d then
-        d = { bg = (bgOn or owner):CreateTexture(nil, "BACKGROUND", nil, -8) }
+        d = { bg = owner:CreateTexture(nil, "BACKGROUND", nil, -8) }
         for i = 1, 4 do d[i] = owner:CreateTexture(nil, "OVERLAY", nil, -8) end
     end
     local p = tonumber(fo.cPad) or 4
@@ -1218,7 +1216,7 @@ function ns.PaintGroupDeco(owner, d, fo, bgOn)
     return d
 end
 local function PaintFrameDeco(fr, rule)
-    fr.xuiGrpDeco = ns.PaintGroupDeco(fr, fr.xuiGrpDeco, DecoGroup(rule.folder), fr.olHolder)
+    fr.xuiGrpDeco = ns.PaintGroupDeco(fr, fr.xuiGrpDeco, DecoGroup(rule.folder))
 end
 -- A group's border / background setting changed (the editor, each step of a slider or color drag): drawn again on its displays and
 -- its nested groups' (f nil: every display), and on the engine's aura buttons.

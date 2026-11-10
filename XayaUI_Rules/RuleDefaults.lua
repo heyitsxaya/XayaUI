@@ -639,6 +639,10 @@ if ns.Provide then
         PerfCommand = function(...) if ns.PerfCommand then return ns.PerfCommand(...) end end,
         TalentCommand = function(...) if ns.TalentCommand then return ns.TalentCommand(...) end end,
         ToggleUnlock = function(...) if ns.ToggleUnlock then return ns.ToggleUnlock(...) end end,
+        -- (V26) /xui disable and /xui enable (Core.lua): every rule off or on again (Engine.lua ns.SetRulesDisabled; session only)
+        SetDisabled = function(on) if ns.SetRulesDisabled then return ns.SetRulesDisabled(on) end return false end,
+        Disabled = function() return ns.RulesDisabled == true end,
+        Unlocked = function() return ns.unlocked and true or false end,
         MarkDirty = function(...) if ns.MarkDirty then return ns.MarkDirty(...) end end,
         CurrentSpecID = function(...) if ns.CurrentSpecID then return ns.CurrentSpecID(...) end end,
         -- the spellbook and talent lists the rule editor's pickers use (Conditions.lua), read by XayaUI QoL's Character Toolkit

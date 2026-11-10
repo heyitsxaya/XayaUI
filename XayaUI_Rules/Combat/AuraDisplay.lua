@@ -650,7 +650,10 @@ local function DecoButton(btn, rec, display, fid)
     local e = { btn = btn, display = display, fid = fid }
     rec.deco = rec.deco or {}
     rec.deco[#rec.deco + 1] = e
-    if ns.PaintGroupDeco and ns.GroupDecoFor then e.d = ns.PaintGroupDeco(btn, nil, ns.GroupDecoFor(fid or (display and display.folder))) end
+    if ns.PaintGroupDeco and ns.GroupDecoFor then   -- (inside the game's button creation: a failure must stay here, quietly)
+        local ok, d = pcall(ns.PaintGroupDeco, btn, nil, ns.GroupDecoFor(fid or (display and display.folder)))
+        if ok then e.d = d end
+    end
 end
 local function ButtonInit(w, h, display, single, rec, fid)
     local look = LookInit(w, h, display, single, rec)

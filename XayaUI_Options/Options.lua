@@ -896,6 +896,13 @@ ns.OptionsApi.Profile = ns.Profile   -- Profiles.lua (loaded before this file): 
 -- a page a feature registered (ns.RegisterSettingsPage), by module and key; sub = a tab inside the page. Used through
 -- ns.OpenSettingsPage (Modules.lua) by /xui chat settings, /xui data, right-click on a data strip, the Notepad's gear, and more.
 function ns.OptionsApi.OpenPage(module, key, ...)
+    -- (V26) in combat: one line, and the page opens when combat ends (core Modules.lua ns.CombatLock)
+    if ns.InCombatLock and ns.InCombatLock() and not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
+        local n, path = select("#", ...), { ... }
+        ns.CombatLock("settings", function() ns.OptionsApi.OpenPage(module, key, unpack(path, 1, n)) end,
+            "the settings window can't open during combat. It will open when combat ends.")
+        return
+    end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then pcall(ns.OptionsApi.Toggle) end
     ns.pageOpen = nil; ns.infoOpen = false
     Notify()
@@ -1157,6 +1164,10 @@ function ns.OptionsApi.Toggle()
     if RulesOn() and not ns.rules then ns.Print("saved data is not ready yet (rules table is nil).") return end   -- (P4: only while XayaUI Rules is on)
     if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP] then
         AceConfigDialog:Close(APP)
+    elseif ns.InCombatLock and ns.InCombatLock() then
+        -- (V26) never opens in combat: one line, and it opens when combat ends (core Modules.lua ns.CombatLock; closing is never held back)
+        ns.CombatLock("settings", function() if not ns.OptionsApi.IsOpen() then ns.OptionsApi.Toggle() end end,
+            "the settings window can't open during combat. It will open when combat ends.")
     else
         -- (Options 0.6.68, REQUEST-LOG A15 P-16: her first open made 3 full builds, 2603 + 739 + 650 ms) The first opening picks the
         -- Rules sub-tab BEFORE the window opens: SelectGroup builds the tree once and only asks for a redraw; Open then reuses that same
@@ -1649,6 +1660,7 @@ function Tree.Closed()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if of and of.frame and of.frame:IsShown() then return end   -- another addon's window (AceGUI reuses frames) hid, not this one
     driver:SetScript("OnUpdate", nil)
+    driver:UnregisterEvent("PLAYER_REGEN_DISABLED")   -- (V26) the combat-start close is listened for only while the window is open
     Tree.openFrame = nil   -- (A23 SD-12) every lasting hook returns at once from now on
     if ns.OptionsApi.TreePaint and ns.OptionsApi.TreePaint.ReturnAll then pcall(ns.OptionsApi.TreePaint.ReturnAll) end   -- (A23 SD-12; review R13)
     acc, sigAcc = 0, 0
@@ -1707,11 +1719,60 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if of and of.frame and of.frame:IsShown() then driver:RegisterEvent("PLAYER_REGEN_DISABLED") end   -- (V26) only while open
     if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
     -- (Options 0.6.92; #495, PS-59) while the window is shown a right-click on a XayaUI element opens its menu (core Modules.lua section 11)
     if of and of.frame and of.frame:IsShown() and ns.ElementWindowShown then ns.ElementWindowShown(true) end
     if of and of.frame and of.frame:IsShown() and not driver:GetScript("OnUpdate") then driver:SetScript("OnUpdate", Tree.Tick) end
 end
+
+-- (V26; Xaya 2026-11-10, her answer for a window open when combat starts: "Close, reopen after") At combat start (PLAYER_REGEN_DISABLED,
+-- just before the lockdown) the window closes by its normal path (its OnHide hook: unsaved rule edits go to Drafts, the searches stop,
+-- the driver stops), the rule editor's popups close with it, and it opens again when combat ends where she was: the tab, sub-tab and
+-- selected rule or group with its tab (the window's own selection path, read from AceConfigDialog's status tables before it closes).
+-- The rule editor's popups (XayaUI's own frames and dialogs: hiding them is allowed); the version / help pane only reads, so it stays.
+Tree.POPUP_FRAMES = { "XayaUISpellSearch", "XayaUISoundAllDialog", "XayaUIInfoPopup", "XayaUIImportWindow", "XayaUIThemeAsk" }
+Tree.POPUP_DIALOGS = { "XAYAUI_CONFIRM", "XAYAUI_RENAME", "XAYAUI_EXPORT", "XAYAUI_GROUP_FIT", "XAYAUI_AP_SAY", "XAYAUI_AP_ALERT" }
+-- the selection path the window shows: each level's selected group (a tree level holds its whole "a\001b" path), at most 16 levels
+function Tree.WherePath()
+    local path = {}
+    if not AceConfigDialog.GetStatusTable then return path end
+    for _ = 1, 16 do
+        local st = AceConfigDialog:GetStatusTable(APP, path)
+        local sel = st and st.groups and st.groups.selected
+        if type(sel) ~= "string" or sel == "" then break end
+        local n0 = #path
+        for seg in sel:gmatch("[^\001]+") do path[#path + 1] = seg end
+        if #path == n0 then break end
+    end
+    return path
+end
+function Tree.Reopen(where)
+    if ns.OptionsApi.IsOpen() then return end
+    local now = Tree.WherePath()
+    local same = #now == #where
+    for i = 1, #where do if now[i] ~= where[i] then same = false end end
+    -- (only when the path changed while closed: the status tables keep it otherwise, and a select is a second build)
+    if not same and #where > 0 then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(where)) end
+    ns.OptionsApi.Toggle()   -- (Toggle drops the redraw the select asked for: one build)
+end
+function Tree.CombatStart()
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if not (of and of.frame and of.frame:IsShown()) then return end
+    local where = Tree.WherePath()
+    for _, n in ipairs(Tree.POPUP_FRAMES) do
+        local p = rawget(_G, n)
+        if p and p.IsShown and p:IsShown() then pcall(p.Hide, p) end
+    end
+    if StaticPopup_Hide then for _, w in ipairs(Tree.POPUP_DIALOGS) do pcall(StaticPopup_Hide, w) end end
+    -- hidden now, before the lockdown begins (AceConfigDialog:Close waits for the next frame); its OnClose lets the window go as usual
+    if of.Hide then pcall(of.Hide, of) else pcall(of.frame.Hide, of.frame) end
+    if AceConfigDialog.OpenFrames[APP] then pcall(AceConfigDialog.Close, AceConfigDialog, APP) end
+    if Tree.openFrame and Tree.Closed then pcall(Tree.Closed) end   -- (only if the OnHide hook did not see it: unregisters this event)
+    ns.Print("the settings window closed because combat started. It will open again where you left it when combat ends.")
+    if ns.CombatLockQueue then ns.CombatLockQueue("settings", function() Tree.Reopen(where) end) end
+end
+driver:SetScript("OnEvent", Tree.CombatStart)
 
 -------------------------------------------------------------------------------
 -- Publish what core may call (Modules.lua section 7). The game's Options > AddOns entry and the addon compartment click live in

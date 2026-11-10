@@ -65,9 +65,14 @@ local fr = of.frame
 check("settings window: open, it takes keys and passes them on at rest (no key pressed yet)", fr._keyboard == true and fr:GetPropagateKeyboardInput() == true,
   tostring(fr._keyboard) .. " / " .. tostring(fr:GetPropagateKeyboardInput()))
 W.enterCombat()
+-- (V26, lock-core round 3: the settings window closes as combat starts and opens again when it ends; these checks still hold)
+check("(V26) combat starts: the settings window closes", not fr:IsShown())
 do local g = who(W.pressKey("PRINTSCREEN")); check("settings window just opened, combat starts: PRINTSCREEN reaches the game", g == "game", g) end
 check("  ...and movement (W) reaches the game", who(W.pressKey("W")) == "game")
 W.leaveCombat()
+-- (V26) combat end opened the window again, in AceConfigDialog's own frame: the checks below use that one
+W.tick(0.05, 2); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame
+check("(V26) combat ends: the settings window is open again", fr:IsShown())
 check("(regression) out of combat PRINTSCREEN reaches the game", who(W.pressKey("PRINTSCREEN")) == "game")
 local d0 = deletes
 local got = W.pressKey("DELETE")
@@ -82,6 +87,7 @@ local nErr = #W.errors
 W.pressKey("DELETE"); W.pressKey("A")
 check("(regression) in combat no window touches the restricted flag (no blocked-action error)", #W.errors == nErr, W.errors[#W.errors])
 W.leaveCombat()
+W.tick(0.05, 2); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame   -- (V26: opened again after combat)
 -- the other reading of the game (the flag as it is when the key arrives): the next key, a frame later, still reaches the game
 W.keyFlagRead = "before"
 W.pressKey("DELETE"); W.tick(0.02, 1)
@@ -107,7 +113,8 @@ if c and c.info and ns.InfoPane then
 else check("the version pane is there", false) end
 
 -- the window is AceGUI's and is recycled for other addons: after release it takes no keys
-AceGUI:Release(of); ACD.OpenFrames["CueRules"] = nil
+-- (V26: each combat closed the window and the end of combat opened it again in AceConfigDialog's own frame: close it the normal way)
+if ACD.OpenFrames["CueRules"] then ACD:Close("CueRules") end; ACD.OpenFrames["CueRules"] = nil
 check("settings window released: the frame holds no keyboard", fr._keyboard == false, tostring(fr._keyboard))
 local other = AceGUI:Create("Frame")   -- another addon's window (often the same frame, recycled)
 other.frame:Show()

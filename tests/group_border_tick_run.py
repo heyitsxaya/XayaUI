@@ -3,9 +3,10 @@
 Xaya (2026-11-07, walkthrough "3. Combat displays" step B23, group Personal Buff Tr... > Group tab > Border and background): "ticking border
 in the border and background preview seems to cause an error". The error text was not captured (open question D3), so this test tries
 to reproduce it on the real addons in the stand-in game, with the settings window open on the group's Group tab and the box ticked
-through the window's own option (XayaUI_Rules_Options/RulesTree.lua g.args.border -> apply -> XayaUI_Rules/Visual.lua ns.UpdateGroupBox).
+through the window's own option (XayaUI_Rules/Editor/RulesTree.lua g.args.border -> apply -> XayaUI_Rules/Visual.lua; since SD-17,
+round 3, the border is drawn on each display: ns.PaintGroupDeco, ns.RefreshGroupDeco).
 After every step it counts: Lua errors in the stand-in (the game's error handler), XayaUI's own error record (CueRulesDB.errorLog, what
-/xui report shows) and an error from ns.UpdateGroupBox called WITHOUT its usual pcall (the callers in Visual.lua swallow its errors).
+/xui report shows) and an error from ns.RefreshGroupDeco called WITHOUT a pcall around it.
 Cases:
   1 the report's group: dynamic, Centered row, spacing 4, five members showing; Border ticked; then padding, colour, unticked, ticked
   2 the same with the window's flat skin off
@@ -16,8 +17,8 @@ Cases:
   7 a nested dynamic group with Border inside a group with Border
   8 the other growth directions of a dynamic group (Right, Left, Up, Down, Centered column, From anchor row / column) with Border
 These are regression guards: on 0f2cea4 (the code the report came from, unchanged in these paths) none of them reproduces an error in
-the stand-in, so they pass there too. Each case also checks the box is drawn (shown, with the default border colour
-{0.6, 0.6, 0.65, 1}; the colour stays as it is: open question A15).
+the stand-in, so they pass there too. Each case also checks the border is drawn on each showing display (SD-17: no box around the
+group any more) with the default border colour {0.6, 0.6, 0.65, 1} (the colour stays as it is: open question A15).
 Run: python3 tests/group_border_tick_run.py   (Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,8 +34,8 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 if ns and ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 5)
 ns = rawget(_G, "XayaUI_NS")
-check("the settings window addon and the group box are loaded", ns and ns.FolderContainerGroup and ns.UpdateGroupBox and ns.OptionsApi and ns.OptionsApi.EditFolder)
-if not (ns and ns.FolderContainerGroup and ns.UpdateGroupBox) then return R end
+check("the settings window addon and the group border painter are loaded", ns and ns.FolderContainerGroup and ns.RefreshGroupDeco and ns.OptionsApi and ns.OptionsApi.EditFolder)
+if not (ns and ns.FolderContainerGroup and ns.RefreshGroupDeco) then return R end
 ns.Print = function() end
 local function logCount() local l = CueRulesDB and CueRulesDB.errorLog; local n = 0; for _, e in ipairs(type(l) == "table" and l or {}) do n = n + (tonumber(e.n) or 1) end; return n end
 local function logText() local l = CueRulesDB and CueRulesDB.errorLog; local t = {}; for _, e in ipairs(type(l) == "table" and l or {}) do t[#t + 1] = tostring(e.code) .. " " .. tostring(e.msg) end; return table.concat(t, " | ") end
@@ -84,7 +85,7 @@ local function open(f)
   W.tick(0.1, 3)
   return ns.FolderContainerGroup(f).args
 end
--- one step: run it, tick the world (the Auto box watcher runs every 0.2 s), and count every kind of error
+-- one step: run it, tick the world, and count every kind of error
 local function methodKeys() local t = {}; for k in pairs(W.unknownMethods) do t[k] = true end; for k in pairs(W.badMethods) do t[k] = true end; return t end
 local function step(label, fn)
   local e0, l0, m0 = #W.errors, logCount(), methodKeys()
@@ -105,19 +106,33 @@ local function tickBorder(CGx, on)
   elseif not w then CGx.border.set(nil, on) end
 end
 local function direct(label, f)
-  local okU, errU = pcall(ns.UpdateGroupBox, f)
-  check(label .. ": ns.UpdateGroupBox itself raises no error (its callers would hide one)", okU, errU)
+  local okU, errU = pcall(ns.RefreshGroupDeco, f)
+  check(label .. ": ns.RefreshGroupDeco itself raises no error (its callers would hide one)", okU, errU)
+end
+-- (SD-17) the group's border is drawn on each display: every display of the group that is showing has four shown strips in the
+-- default border colour; with none showing, no strip in that colour is visible anywhere in the group
+local function strips(fr)
+  local n = 0
+  local near = function(x, y) return type(x) == "number" and math.abs(x - y) < 0.01 end
+  for _, t in ipairs(fr._regions or {}) do
+    local c = t._color
+    if t:IsVisible() and c and near(c[1], 0.6) and near(c[2], 0.6) and near(c[3], 0.65) and near(c[4], 1) then n = n + 1 end
+  end
+  return n
 end
 local function boxDrawn(label, f, wantShown)
-  local b = ns.GroupBox(f)
+  local shown, drawn, seen = 0, 0, 0
+  for _, r in ipairs(ns.rules) do
+    if r.folder == f.id then
+      local fr = ns.VisualFramesOf(r)[1]
+      if fr and fr:IsShown() then shown = shown + 1; if strips(fr) >= 4 then drawn = drawn + 1 end end
+      if fr then seen = seen + strips(fr) end
+    end
+  end
   if wantShown then
-    local okB, br, bg, bb, ba = false, nil, nil, nil, nil
-    if b and b.GetBackdropBorderColor then okB, br, bg, bb, ba = pcall(b.GetBackdropBorderColor, b) end
-    local near = function(x, y) return type(x) == "number" and math.abs(x - y) < 0.01 end
-    check(label .. ": the box is drawn with the default border colour {0.6, 0.6, 0.65, 1}", b and b:IsShown() and okB and near(br, 0.6) and near(bg, 0.6) and near(bb, 0.65) and near(ba, 1),
-      ("box %s shown %s colour %s %s %s %s"):format(tostring(b), tostring(b and b:IsShown()), tostring(br), tostring(bg), tostring(bb), tostring(ba)))
+    check(label .. ": the border is drawn on each showing display, default colour {0.6, 0.6, 0.65, 1}", shown > 0 and drawn == shown, drawn .. " of " .. shown)
   else
-    check(label .. ": no box is shown", not (b and b:IsShown()), tostring(b and b:IsShown()))
+    check(label .. ": no border is visible (no display showing)", shown == 0 and seen == 0, shown .. " shown, " .. seen .. " strips")
   end
 end
 
@@ -127,8 +142,8 @@ local CG = open(f1)
 check("1 the window shows the group's Border tick box (Group tab)", widget("CheckBox", "Border") ~= nil)
 step("1 dynamic Centered row, spacing 4: Border ticked (a click on the drawn tick box)", function() tickBorder(CG, true) end)
 check("1 ...it is ticked (saved on the group)", f1.cBorder == true)
-check("1 ...the window now draws Border color and Padding around the items", widget("ColorPicker", "Border color") ~= nil and widget("Slider", "Padding around the items") ~= nil,
-  tostring(widget("ColorPicker", "Border color")) .. " / " .. tostring(widget("Slider", "Padding around the items")))
+check("1 ...the window now draws Border color and Padding around each display", widget("ColorPicker", "Border color") ~= nil and widget("Slider", "Padding around each display") ~= nil,
+  tostring(widget("ColorPicker", "Border color")) .. " / " .. tostring(widget("Slider", "Padding around each display")))
 direct("1", f1); boxDrawn("1", f1, true)
 step("1 padding 0 / 10", function() CG.pad.set(nil, 0); CG.pad.set(nil, 10) end)
 step("1 border colour changed and back", function() CG.borderColor.set(nil, 1, 0, 0, 1); CG.borderColor.set(nil, 0.6, 0.6, 0.65, 1) end)

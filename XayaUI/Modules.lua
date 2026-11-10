@@ -772,7 +772,8 @@ ns.MODULES = {
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
     -- (P4) rule and aura tracking: the commands Core.lua keeps for it (unlock, status, perf, talents) and AuraList.lua's auras
-    { addon = "XayaUI_Rules",   title = "XayaUI Rules",           commands = { "unlock", "status", "auras" }, debug = { "status", "perf", "talents", "auras" },
+    -- (V26) disable / enable: the Rules on-off switch (Core.lua)
+    { addon = "XayaUI_Rules",   title = "XayaUI Rules",           commands = { "unlock", "status", "auras", "disable", "enable" }, debug = { "status", "perf", "talents", "auras" },
       sharePrefixes = { "XUI1" } },   -- (its share kind: a rules string pasted while it is off says it needs this addon; Share.lua)
 }
 
@@ -1151,7 +1152,8 @@ end
 -- ends (only the last request is kept); already open when combat starts -> it closes then and reopens where she was after combat.
 --   ns.CombatLock(key, opener, message)  in combat: prints message (one line) and keeps opener to run when combat ends (PLAYER_REGEN_ENABLED),
 --                                        replacing any earlier request; out of combat, or for an exempt key: runs opener now.
---   ns.CombatLockQueue(key, opener)      the same, without a message: for a window that closed itself as combat started (its own line)
+--   ns.CombatLockQueue(key, opener)      for a window that closed itself as combat started (it prints its own line): kept per key, so
+--                                        every window that was open comes back; a request for the same key made in the fight replaces it
 --   ns.CombatLockCancel(key)             drops a kept request with this key (/xui disable drops a waiting /xui enable)
 --   ns.InCombatLock()                    true while the lock holds (combat lockdown)
 -- Combat end is listened for only while a request waits (no event otherwise). Combat start (PLAYER_REGEN_DISABLED) fires just before the
@@ -1185,36 +1187,51 @@ local COMBAT_LOCK_EXEMPT = {
 function ns.CombatLockExempt(key) return COMBAT_LOCK_EXEMPT[key] end
 local function InLock() return (InCombatLockdown and InCombatLockdown()) and true or false end
 ns.InCombatLock = InLock
--- slots: the windows share one ("only the last request kept"); /xui enable has its own, so a window request never drops it
+-- requests made in the fight: the windows share one slot ("only the last request kept"); /xui enable has its own, so a window
+-- request never drops it. Windows closed by combat start: one entry per key, in the order they closed (resumeKeys).
 local LOCK_SLOT = { enable = "rules" }
 local pendingKey, pendingFn = {}, {}
+local resumeKeys, resumeFn = {}, {}
 local lockFrame
-local function RunPending()
-    if lockFrame then lockFrame:UnregisterEvent("PLAYER_REGEN_ENABLED") end
-    for _, slot in ipairs({ "rules", "window" }) do   -- rules first: a window opened after /xui enable shows rules running
-        local fn = pendingFn[slot]
-        pendingKey[slot], pendingFn[slot] = nil, nil
-        if fn then Call(fn) end
+local function Arm()
+    if not lockFrame then
+        lockFrame = CreateFrame("Frame")
+        lockFrame:SetScript("OnEvent", function()
+            lockFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local rk, rf = resumeKeys, resumeFn
+            resumeKeys, resumeFn = {}, {}
+            local rulesFn, winKey, winFn = pendingFn.rules, pendingKey.window, pendingFn.window
+            pendingKey.rules, pendingFn.rules, pendingKey.window, pendingFn.window = nil, nil, nil, nil
+            if rulesFn then Call(rulesFn) end   -- rules first: a window opened after /xui enable shows rules running
+            for _, k in ipairs(rk) do if k ~= winKey and rf[k] then Call(rf[k]) end end   -- (a request for the same window wins)
+            if winFn then Call(winFn) end   -- the request she made in the fight last: on top
+        end)
     end
+    lockFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 function ns.CombatLockQueue(key, opener)
     if type(opener) ~= "function" then return end
-    local slot = LOCK_SLOT[key] or "window"
-    pendingKey[slot], pendingFn[slot] = key, opener
-    if not lockFrame then lockFrame = CreateFrame("Frame"); lockFrame:SetScript("OnEvent", RunPending) end
-    lockFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    if not resumeFn[key] then resumeKeys[#resumeKeys + 1] = key end
+    resumeFn[key] = opener
+    Arm()
 end
 function ns.CombatLock(key, opener, message)
     if type(opener) ~= "function" then return false end
     if COMBAT_LOCK_EXEMPT[key] or not InLock() then opener(); return true end
     if message and ns.Print then ns.Print(message) end
-    ns.CombatLockQueue(key, opener)
+    local slot = LOCK_SLOT[key] or "window"
+    pendingKey[slot], pendingFn[slot] = key, opener
+    Arm()
     return false
 end
 function ns.CombatLockCancel(key)
     for slot, k in pairs(pendingKey) do if k == key then pendingKey[slot], pendingFn[slot] = nil, nil end end
+    if resumeFn[key] then
+        resumeFn[key] = nil
+        for i = #resumeKeys, 1, -1 do if resumeKeys[i] == key then table.remove(resumeKeys, i) end end
+    end
 end
-function ns.CombatLockPending(slot) return pendingKey[slot or "window"] end   -- (tests, /xui debug notes)
+function ns.CombatLockPending(slot) return pendingKey[slot or "window"], #resumeKeys end   -- (tests, /xui debug notes)
 
 -------------------------------------------------------------------------------
 -- 7. The settings window. Its code is the addon XayaUI_Options, which the game loads only when asked (## LoadOnDemand). Everything
@@ -1258,13 +1275,34 @@ function LoadOptionsNow()
     end
     return false
 end
-function ns.ToggleUI() if ns.LoadOptions() then ns.Options.Toggle() end end
-function ns.EditRule(rule) if rule and ns.LoadOptions() then ns.Options.EditRule(rule) end end
-function ns.EditFolder(f) if f and ns.LoadOptions() and ns.Options.EditFolder then ns.Options.EditFolder(f) end end
+function ns.IsOptionsOpen() return ns.Options and ns.Options.IsOpen and ns.Options.IsOpen() or false end
+-- (V26) in combat each of these prints one line and opens when combat ends (section 6b); closing an open window is never held back.
+-- What runs after combat opens (never toggles shut): the window may have reopened by itself by then.
+local function OpenUI() if not ns.IsOptionsOpen() and ns.LoadOptions() then ns.Options.Toggle() end end
+function ns.ToggleUI()
+    if InLock() and not ns.IsOptionsOpen() then ns.CombatLock("settings", OpenUI, LOCK_SETTINGS); return end
+    if ns.LoadOptions() then ns.Options.Toggle() end
+end
+function ns.EditRule(rule)
+    if not rule then return end
+    if InLock() then ns.CombatLock("settings", function() ns.EditRule(rule) end, LOCK_EDITOR); return end
+    if ns.LoadOptions() then ns.Options.EditRule(rule) end
+end
+function ns.EditFolder(f)
+    if not f then return end
+    if InLock() then ns.CombatLock("settings", function() ns.EditFolder(f) end, LOCK_EDITOR); return end
+    if ns.LoadOptions() and ns.Options.EditFolder then ns.Options.EditFolder(f) end
+end
 -- module = "chat" | "qol" | "bonus" | "reskin" | "core"; key = the page registered with ns.RegisterSettingsPage; sub = a tab inside it
 -- ... = the path below the page: a part (left-pane child node) and/or a tab, e.g. ("chat", "chatpanel", "bar", "tab_blocksHdr")
-function ns.OpenSettingsPage(module, key, ...) if ns.LoadOptions() then ns.Options.OpenPage(module, key, ...) end end
-function ns.IsOptionsOpen() return ns.Options and ns.Options.IsOpen and ns.Options.IsOpen() or false end
+function ns.OpenSettingsPage(module, key, ...)
+    if InLock() then
+        local n, path = select("#", ...), { ... }
+        ns.CombatLock("settings", function() ns.OpenSettingsPage(module, key, unpack(path, 1, n)) end, LOCK_SETTINGS)
+        return
+    end
+    if ns.LoadOptions() then ns.Options.OpenPage(module, key, ...) end
+end
 
 -- The game's own Options > AddOns list gets an entry that opens the real window, and the addon compartment (the minimap "addons"
 -- menu) calls XayaUI_OnCompartmentClick (named in XayaUI.toc). Both live here so they work before the window's code is loaded.

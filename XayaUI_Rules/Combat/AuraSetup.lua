@@ -9,7 +9,8 @@
 --   Step 3  Review    every ability with its duration, where the number came from, and a box to override it
 --
 -- Opens from /xui debug model setup, from Settings > Advanced, or once automatically the first time a class/spec has
--- no saved setup.  It never opens in combat.
+-- no saved setup.  It never opens in combat (V26: asked in combat it says so in one line and opens when combat ends; open
+-- when combat starts, it closes and reopens on the same step when combat ends).
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
@@ -301,17 +302,29 @@ local function Build()
     frame:SetScript("OnHide", function() M.SetLearning(false) end)
     M.OnSpellDataLoaded = function() if frame:IsShown() and C_Timer then C_Timer.After(0.3, ns.AuraSetup_Refresh) end end
     M.OnLoadoutChanged = function() if frame:IsShown() then ns.AuraSetup_Refresh() end end
+    -- (V26: "Any functionality that directly interacts with combat tracking ... gets forcibly locked while in combat") combat start
+    -- closes the window (its own frame: allowed; learning stops through OnHide) and it reopens on the same step when combat ends. The
+    -- event is listened for only while the window shows.
     local ev = CreateFrame("Frame")
-    ev:RegisterEvent("PLAYER_REGEN_DISABLED"); ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-    ev:SetScript("OnEvent", function(_, e)
+    ev:SetScript("OnEvent", function()
         if not frame:IsShown() then return end
-        if e == "PLAYER_REGEN_DISABLED" then M.SetLearning(false) elseif step == 2 then M.SetLearning(true) end
-        ns.AuraSetup_Refresh()
+        local at = step
+        frame:Hide()
+        ns.Print("Combat Tracking Setup closed because combat started. It will open again when combat ends.")
+        if ns.CombatLockQueue then ns.CombatLockQueue("auraSetup", function() ns.AuraSetup_Open(at) end) end
     end)
+    frame.combatEv = ev   -- registered by ns.AuraSetup_Open (a new frame is already shown, so OnShow would miss the first opening)
+    frame:HookScript("OnHide", function() ev:UnregisterEvent("PLAYER_REGEN_DISABLED") end)
 end
 
-function ns.AuraSetup_Open()
-    if InCombat() then ns.Print("combat tracking setup cannot open in combat."); return end
+-- atStep: the step to show (1 when nil; the step it was on when combat closed it)
+function ns.AuraSetup_Open(atStep)
+    -- (V26) locked in combat: one line, and it opens when combat ends (Modules.lua ns.CombatLock); without core's lock, as before
+    if InCombat() then
+        if ns.CombatLock then ns.CombatLock("auraSetup", function() ns.AuraSetup_Open(atStep) end, "Combat Tracking Setup can't open during combat. It will open when combat ends.")
+        else ns.Print("Combat Tracking Setup can't open during combat.") end
+        return
+    end
     if not frame then
         local ok, err = pcall(Build)
         if not ok then
@@ -325,7 +338,8 @@ function ns.AuraSetup_Open()
     end
     M.Refresh()
     frame:Show()
-    local okS, errS = pcall(ShowStep, 1)
+    if frame.combatEv then frame.combatEv:RegisterEvent("PLAYER_REGEN_DISABLED") end
+    local okS, errS = pcall(ShowStep, (atStep == 2 or atStep == 3) and atStep or 1)
     if not okS then
         ns.Print("setup window error: " .. tostring(errS))
         local db = ns.SettingsReady("core") and CoreS

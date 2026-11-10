@@ -78,7 +78,7 @@ function ns.ScanAllTalents(done)
     if not (C_ClassTalents and C_ClassTalents.InitializeViewLoadout and C_Traits and Constants and Constants.TraitConsts) then
         return false, "This game version has no talent view API, so there is nothing to scan."
     end
-    if InCombatLockdown() then return false, "Cannot scan in combat." end
+    if InCombatLockdown() then return false, "the talent scan can't run during combat." end
     -- audit D9 (core 0.6.67): the talent window is PlayerSpellsFrame in this client (Dev Assist's scan checks the same); the older
     -- ClassTalentFrame is checked too in case a client still has it.
     for _, w in ipairs({ rawget(_G, "PlayerSpellsFrame"), rawget(_G, "ClassTalentFrame") }) do
@@ -92,6 +92,15 @@ function ns.ScanAllTalents(done)
     local i = 0
     local f = CreateFrame("Frame")
     f:SetScript("OnUpdate", function(self)
+        -- (V26) the scan changes the game's talent view (InitializeViewLoadout): it stops when combat starts, keeps the last good scan,
+        -- and runs again when combat ends (only while the scan runs: about 13 frames)
+        if InCombatLockdown() then
+            self:SetScript("OnUpdate", nil)
+            scanning = false
+            if ns.Print then ns.Print("the talent scan stopped because combat started. It will run again when combat ends.") end
+            if ns.CombatLockQueue then ns.CombatLockQueue("talents", function() local ok, msg = ns.ScanAllTalents(done); if not ok and ns.Print then ns.Print(msg) end end) end
+            return
+        end
         i = i + 1   -- one class per frame so the game never hitches
         local classID = classIDs[i]
         if not classID then
@@ -131,8 +140,10 @@ end
 function ns.TalentCommand(arg)
     arg = (arg or ""):match("^%s*(.-)%s*$")
     if arg == "" then
-        local ok, msg = ns.ScanAllTalents()
-        ns.Print(msg)
+        -- (V26: "Lock it") the scan changes state: in combat one line, and it runs when combat ends (Modules.lua ns.CombatLock).
+        -- status and <name> only read the last scan: exempt
+        local function Scan() local _, msg = ns.ScanAllTalents(); ns.Print(msg) end
+        if ns.CombatLock then ns.CombatLock("talents", Scan, "the talent scan can't run during combat. It will run when combat ends.") else Scan() end
     elseif arg == "status" then ns.Print(ns.TalentStatus())
     else
         local db, hits = XayaUITalentDB, 0
