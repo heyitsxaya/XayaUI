@@ -109,13 +109,15 @@ local AceGUI = LibStub("AceGUI-3.0")
 decorates = 0; local w = AceGUI:Create("Label"); frames(20)
 check("a new widget made while open: decorated on the next pass (once)", decorates == 1)
 AceGUI:Release(w)
--- combat: rules that load only in combat move between LOADED and NOT LOADED; the lists are not rebuilt during or after the fight
+-- combat: rules that load only in combat move between LOADED and NOT LOADED; the lists are not rebuilt during the fight.
+-- (V26, lock-core round 3: the window closes as combat starts and opens again when combat ends: no build in the fight, one to reopen)
 builds = 0
-W.combat = true; W.fire("PLAYER_REGEN_DISABLED"); frames(180)
-check("combat start with the window open: no rebuild during the fight (Options 0.6.65: one full build): " .. builds, builds == 0)
+W.fire("PLAYER_REGEN_DISABLED"); W.combat = true; frames(180)
+check("combat start with the window open: it closes (V26) and nothing is built during the fight (Options 0.6.65: one full build): " .. builds, builds == 0 and not shown())
 W.combat = false; W.fire("PLAYER_REGEN_ENABLED"); frames(180)
-check("combat end, the same rules loaded as before: no rebuild (Options 0.6.65: another full build): " .. builds, builds == 0)
+check("combat end: the window opens again with ONE build (V26; Options 0.6.65 built once more with the window left open): " .. builds, builds == 1 and shown())
 -- a lasting change out of combat still moves a rule
+builds = 0
 ns.rules[2].load = { mode = "never" }; if ns.MarkStateDirty then ns.MarkStateDirty() end; frames(120)
 check("a rule that stops loading out of combat: the lists are redrawn (one build)", builds >= 1)
 ns.ToggleUI(); frames(5)

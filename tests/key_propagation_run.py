@@ -71,7 +71,7 @@ do local g = who(W.pressKey("PRINTSCREEN")); check("settings window just opened,
 check("  ...and movement (W) reaches the game", who(W.pressKey("W")) == "game")
 W.leaveCombat()
 -- (V26) combat end opened the window again, in AceConfigDialog's own frame: the checks below use that one
-W.tick(0.05, 2); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame
+W.tick(0.1, 5); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame
 check("(V26) combat ends: the settings window is open again", fr:IsShown())
 check("(regression) out of combat PRINTSCREEN reaches the game", who(W.pressKey("PRINTSCREEN")) == "game")
 local d0 = deletes
@@ -87,7 +87,7 @@ local nErr = #W.errors
 W.pressKey("DELETE"); W.pressKey("A")
 check("(regression) in combat no window touches the restricted flag (no blocked-action error)", #W.errors == nErr, W.errors[#W.errors])
 W.leaveCombat()
-W.tick(0.05, 2); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame   -- (V26: opened again after combat)
+W.tick(0.1, 5); of = ACD.OpenFrames["CueRules"] or of; fr = of.frame   -- (V26: opened again after combat)
 -- the other reading of the game (the flag as it is when the key arrives): the next key, a frame later, still reaches the game
 W.keyFlagRead = "before"
 W.pressKey("DELETE"); W.tick(0.02, 1)

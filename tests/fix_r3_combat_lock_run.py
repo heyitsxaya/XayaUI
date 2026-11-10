@@ -206,7 +206,19 @@ if ns.AuraSetup_Open then
     check("E3 combat starts: Combat Tracking Setup closes, with one line", shutE3 and has(got, "closed because combat started"), joined(got))
     peace()
     check("E4 combat ends: it (shut through the fight) opens again on step 3", shutE3 and sf:IsShown() and sf.finish:IsShown())
+    -- both windows open when combat starts: each comes back (a window that closed for combat is not "a request")
+    if not windowOpen() then slash(""); W.tick(0.1, 4) end
+    fight()
+    local bothShut = not windowOpen() and not sf:IsShown()
+    peace()
+    check("E5 settings window and Combat Tracking Setup both open at combat start: both close, both open again after", bothShut and windowOpen() and sf:IsShown(),
+      ("shut=%s window=%s setup=%s"):format(tostring(bothShut), tostring(windowOpen()), tostring(sf:IsShown())))
+    -- a window open at combat start, and a request made in the fight: both open after (the request on top)
     sf:Hide()
+    fight(); ns.AuraSetup_Open(); peace()
+    check("E6 settings window open at combat start + Combat Tracking Setup asked for in the fight: both open after", windowOpen() and sf:IsShown())
+    sf:Hide()
+    if windowOpen() then ns.Options.Toggle(); W.tick(0.1, 4) end
   end
 else
   check("E Combat Tracking Setup is loaded", false)

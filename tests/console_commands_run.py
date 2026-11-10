@@ -58,7 +58,8 @@ end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
 -- core's own player commands, in the order /xui help prints them (Core.lua CORE_HELP; XayaUI Rules is on, so its three are listed).
 -- Feature addons add theirs through ns.RegisterCommand; none of them is on this branch, so this is the whole list.
-local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug" }
+-- (V26, lock-core round 3: /xui disable and /xui enable added, XayaUI Rules' on-off switch)
+local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug", "/xui disable", "/xui enable" }
 check("help: " .. #WANT .. " lines (it was 29), core's own commands only", #help - 1 == #WANT, #help - 1)
 check("help: exactly " .. table.concat(WANT, ", ") .. ", in that order", table.concat(cmds, ",") == table.concat(WANT, ","), table.concat(cmds, " "))
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)

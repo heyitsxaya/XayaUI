@@ -25,10 +25,11 @@ local out = ns.CaptureOutput(function() SlashCmdList.XAYAUI("help") end)
 local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])
-check("core's eight commands, one per line", #out - 1 == 8 and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
+-- (V26, lock-core round 3: ten since /xui disable and /xui enable were added)
+check("core's ten commands, one per line", #out - 1 == 10 and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
 -- the commands, in core's order (the colored part of each line, pipes doubled)
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status",
-  "/xui auras [target||focus||pet] [debuffs] or <spellID>", "/xui debug" }
+  "/xui auras [target||focus||pet] [debuffs] or <spellID>", "/xui debug", "/xui disable", "/xui enable" }
 local got = {}
 for i = 2, #out do got[#got + 1] = out[i]:match("^  |cff%x%x%x%x%x%x(.-)|r") or out[i] end
 check("the commands are core's, in its order (with XayaUI Rules on: unlock, status and auras included)",
