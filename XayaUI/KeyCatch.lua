@@ -40,6 +40,10 @@
 --     hidden box, Options' Skin.lua search box notes; cleared here as well, so it never depends on that);
 --   * a fight starting clears it (review R23);
 --   * opts.onDone(box) runs after Enter / Escape / a click outside / a fight starting cleared it.
+--   * (A23 SD-12) the click / fight watcher's events are registered only while a guarded box has the keyboard (the box's
+--     OnEditFocusGained / OnEditFocusLost, hooked: a box's own focus scripts must be set before it is guarded); with no box focused, a
+--     click costs nothing. warcraft.wiki.gg (UIHANDLER OnEditFocusGained / OnEditFocusLost): "Fires when the frame gains / loses
+--     keyboard focus" (INFERENCE: SetFocus / ClearFocus and a click count, as for Blizzard's own boxes).
 -- V14: nothing is made until the first window or box asks for it (the event frames are created then).
 --
 -- (XayaUI 0.6.85, the review's should-fix items, 2026-11-09)
@@ -100,15 +104,20 @@ local function WatchCombat()
         for f, kc in pairs(catches) do
             if not kc.ready then
                 if ev == "PLAYER_REGEN_ENABLED" then kc.setup() end   -- a window first made in combat: set up now (review R1)
-            -- before the lockdown begins: the flag goes back to true, so no key is kept from the game in the fight
-            elseif ev == "PLAYER_REGEN_DISABLED" then kc.held = nil; Pass(f) else Apply(f, kc) end
+            -- (A23 SD-12) a window that was let go with its keyboard off (the settings window's frame, now another addon's) is not touched
+            elseif kc.active or kc.kb or kc.held then
+                -- before the lockdown begins: the flag goes back to true, so no key is kept from the game in the fight
+                if ev == "PLAYER_REGEN_DISABLED" then kc.held = nil; Pass(f) else Apply(f, kc) end
+            end
         end
     end)
 end
 
 local function Hook(frame, kc)
-    frame:HookScript("OnShow", function(self) Apply(self, kc) end)
-    frame:HookScript("OnHide", function(self) Apply(self, kc) end)
+    -- (A23 SD-12) a window that was let go (SetActive(false): the settings window's AceGUI frame, recycled for another addon) with its
+    -- keyboard already off is not touched again
+    frame:HookScript("OnShow", function(self) if kc.active or kc.kb then Apply(self, kc) end end)
+    frame:HookScript("OnHide", function(self) if kc.active or kc.kb then Apply(self, kc) end end)
     frame:HookScript("OnKeyDown", function(self, key)
         if not kc.active then return end
         local fight = Fighting()
@@ -204,13 +213,23 @@ end
 -- or a PvP match restricts addons (Enum.AddOnRestrictionType Combat 0 / Encounter 1 / ChallengeMode 2 / PvPMatch 3; state
 -- Activating 1 / Active 2; enums.md 485-504). ClearFocus is not a protected function (widgets.md), so it may run in combat.
 local FIGHT_TYPE = { [0] = true, [1] = true, [2] = true, [3] = true }
+local WATCHED = { "GLOBAL_MOUSE_DOWN", "PLAYER_REGEN_DISABLED", "ADDON_RESTRICTION_STATE_CHANGED" }
+local listening = false
+-- (A23 SD-12) the watcher's events, on only while a guarded box has the keyboard
+local function Listen(on)
+    if on == listening or not mouseWatch then return end
+    listening = on
+    for _, ev in ipairs(WATCHED) do if on then mouseWatch:RegisterEvent(ev) else mouseWatch:UnregisterEvent(ev) end end
+end
+local function AnyFocus(except)
+    for box in pairs(guarded) do if box ~= except and box:HasFocus() then return true end end
+    return false
+end
 local function WatchMouse()
     if mouseWatch then return end
     mouseWatch = CreateFrame("Frame")
-    mouseWatch:RegisterEvent("GLOBAL_MOUSE_DOWN")
-    mouseWatch:RegisterEvent("PLAYER_REGEN_DISABLED")
-    mouseWatch:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
-    -- (a click: one pass over the guarded boxes, HasFocus each: about 30 own boxes plus the settings window's open page)
+    -- (a click: one pass over the guarded boxes, HasFocus each: about 30 own boxes plus the settings window's open page; only while
+    -- one of them has the keyboard)
     mouseWatch:SetScript("OnEvent", function(_, ev, kind, state)
         local fight = ev == "PLAYER_REGEN_DISABLED"
         if ev == "ADDON_RESTRICTION_STATE_CHANGED" then
@@ -226,8 +245,11 @@ local function WatchMouse()
                 end
             end
         end
+        if not AnyFocus() then Listen(false) end   -- (also when a box lost the keyboard without its OnEditFocusLost being seen)
     end)
 end
+local function FocusGained(self) if guarded[self] then Listen(true) end end
+local function FocusLost(self) if guarded[self] and not AnyFocus(self) then Listen(false) end end
 
 local hookedBox = setmetatable({}, { __mode = "k" })   -- edit box -> its hooks are in (HookScript cannot be undone: they check guarded[])
 local enterHooked = setmetatable({}, { __mode = "k" })
@@ -246,6 +268,8 @@ function ns.KeyFocusGuard(box, opts)
     if not hookedBox[box] then
         hookedBox[box] = true
         box:HookScript("OnHide", function(self) if guarded[self] and self:HasFocus() then Note(self, "hide"); self:ClearFocus() end end)
+        box:HookScript("OnEditFocusGained", FocusGained)
+        box:HookScript("OnEditFocusLost", FocusLost)
     end
     local win = opts.window or TopOf(box)
     opts.win = win
@@ -256,9 +280,11 @@ function ns.KeyFocusGuard(box, opts)
         end)
     end
     WatchMouse()
+    if box:HasFocus() then Listen(true) end   -- (it had the keyboard before it was guarded)
     return box
 end
 -- a box handed back (an AceGUI widget released for another addon): XayaUI stops acting on it; its hooks stay but do nothing
 function ns.KeyFocusRelease(box)
     if box then guarded[box] = nil end
+    if listening and not AnyFocus() then Listen(false) end
 end

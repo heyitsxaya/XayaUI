@@ -1158,6 +1158,45 @@ end
 local boxes, boxWatch = {}, nil
 local function BoxOn(f) return (f.cBorder or f.cBg) and true or false end
 function ns.GroupBox(f) return f and boxes[f.id] or nil end
+-- (review R19 follow-up) The look (backdrop, colours, texture, strata) is applied on a refresh or a settings change only; the Auto
+-- watcher moves / resizes the box only when what it measures has changed. No tables are made per tick (the default colours are kept).
+local DEF_BG, DEF_BD = { 0, 0, 0, 0.45 }, { 0.6, 0.6, 0.65, 1 }
+local function BoxLook(f, b, c)
+    if c then
+        if c.GetFrameStrata then b:SetFrameStrata(c:GetFrameStrata()) end
+        if c.GetFrameLevel then b:SetFrameLevel(math.max(0, c:GetFrameLevel())) end
+    end
+    local bg = f.cBgColor or DEF_BG
+    if f.cBg then
+        local tex = f.cBgTex
+        if type(tex) == "string" and tex ~= "" or type(tex) == "number" then b.bg:SetTexture(tex); b.bg:SetVertexColor(bg[1] or 1, bg[2] or 1, bg[3] or 1, bg[4] or 1)
+        else b.bg:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.45) end
+        b.bg:Show()
+    else b.bg:Hide() end
+    if b.SetBackdrop then
+        if f.cBorder then
+            local bd, edge = f.cBdColor or DEF_BD, math.max(1, tonumber(f.cBdSize) or 1)
+            if b.xuiEdge ~= edge then   -- (a new backdrop table only when the edge size changes: the template keeps the table it is given)
+                b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = edge }); b.xuiEdge = edge
+            end
+            b:SetBackdropBorderColor(bd[1] or 1, bd[2] or 1, bd[3] or 1, bd[4] or 1)
+        elseif b.xuiEdge then b:SetBackdrop(nil); b.xuiEdge = nil end
+    end
+end
+-- Auto size: the box around what the group shows now, moved / resized only when that changed (b.xuiX/Y/W/H = where it was put).
+local function BoxPlaceAuto(f, b)
+    local pad = tonumber(f.cPad) or 4
+    local l, bt, r, t = GroupBounds(f)
+    if not l then if b:IsShown() then b:Hide() end; return end
+    local x, y, w, h = l - pad, bt - pad, (r - l) + 2 * pad, (t - bt) + 2 * pad
+    if b.xuiX ~= x or b.xuiY ~= y or b.xuiW ~= w or b.xuiH ~= h then
+        b:ClearAllPoints()
+        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, y)
+        b:SetSize(w, h)
+        b.xuiX, b.xuiY, b.xuiW, b.xuiH = x, y, w, h
+    end
+    if not b:IsShown() then b:Show() end
+end
 function ns.UpdateGroupBox(f)
     local b = boxes[f.id]
     if not BoxOn(f) then if b then b:Hide() end; return end
@@ -1168,37 +1207,24 @@ function ns.UpdateGroupBox(f)
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
         boxes[f.id] = b
     end
-    local pad = tonumber(f.cPad) or 4
-    b:ClearAllPoints()
+    b.xuiX = nil   -- (a refresh always places the box again)
     if ns.GroupSizeMode(f) == "set" and c then
+        local pad = tonumber(f.cPad) or 4
         if b:GetParent() ~= c then b:SetParent(c) end
+        b:ClearAllPoints()
         b:SetPoint("TOPLEFT", c, "TOPLEFT", -pad, pad); b:SetPoint("BOTTOMRIGHT", c, "BOTTOMRIGHT", pad, -pad)
+        b:Show()
     else
         if b:GetParent() ~= UIParent then b:SetParent(UIParent) end
-        local l, bt, r, t = GroupBounds(f)
-        if not l then b:Hide(); return end
-        b:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - pad, bt - pad)
-        b:SetSize((r - l) + 2 * pad, (t - bt) + 2 * pad)
+        BoxPlaceAuto(f, b)
     end
-    if c then
-        if c.GetFrameStrata then b:SetFrameStrata(c:GetFrameStrata()) end
-        if c.GetFrameLevel then b:SetFrameLevel(math.max(0, c:GetFrameLevel())) end
-    end
-    local bg = f.cBgColor or { 0, 0, 0, 0.45 }
-    if f.cBg then
-        local tex = f.cBgTex
-        if type(tex) == "string" and tex ~= "" or type(tex) == "number" then b.bg:SetTexture(tex); b.bg:SetVertexColor(bg[1] or 1, bg[2] or 1, bg[3] or 1, bg[4] or 1)
-        else b.bg:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.45) end
-        b.bg:Show()
-    else b.bg:Hide() end
-    if b.SetBackdrop then
-        if f.cBorder then
-            local bd = f.cBdColor or { 0.6, 0.6, 0.65, 1 }
-            b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = math.max(1, tonumber(f.cBdSize) or 1) })
-            b:SetBackdropBorderColor(bd[1] or 1, bd[2] or 1, bd[3] or 1, bd[4] or 1)
-        else b:SetBackdrop(nil) end
-    end
-    b:Show()
+    BoxLook(f, b, c)   -- (after the size is set, as before; also while hidden, so a box the watcher shows later has its look)
+end
+-- The watcher's tick for one Auto box: placement only (a box not made yet gets the full update once).
+local function BoxTick(f)
+    local b = boxes[f.id]
+    if not b then return ns.UpdateGroupBox(f) end
+    BoxPlaceAuto(f, b)
 end
 -- (review R20) A deleted group leaves ns.folders, so the loops below never visit it again: every pass stamps the boxes of the groups
 -- that still exist and hides the rest. The frame is kept, so a Restore (same id) shows it again.
@@ -1227,7 +1253,7 @@ function ns.UpdateGroupBoxes()
                 boxPass = boxPass + 1
                 for _, f in ipairs(ns.folders or {}) do
                     if boxes[f.id] then boxes[f.id].xuiPass = boxPass end
-                    if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(ns.UpdateGroupBox, f) end
+                    if BoxOn(f) and ns.GroupSizeMode(f) == "auto" then still = true; pcall(BoxTick, f) end
                 end
                 HideOrphanBoxes()
                 if not still then self:SetScript("OnUpdate", nil); boxWatch = nil end

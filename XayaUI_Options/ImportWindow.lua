@@ -8,6 +8,10 @@ local _, ns = ...
 ns = _G.XayaUI_NS or ns
 
 local W
+local HELP_PASTE = "Paste exported rules or a theme below (Ctrl+V). It is read as you paste; nothing changes until you press Import. Rules always go into a new folder of their own."
+-- (review R23 follow-up) the box without the keyboard (opened in combat, or let go when a fight started or she clicked elsewhere):
+-- Ctrl+V does nothing until she clicks the box, so the help says so (no longer than the other text: it fits the same space)
+local HELP_CLICK = "Click the box below, then paste exported rules or a theme (Ctrl+V). Nothing changes until you press Import. Rules always go into a new folder of their own."
 
 local function Color(class, prop, fb)
     local TH = ns.Theme
@@ -36,7 +40,7 @@ local function Build()
     f.title:SetPoint("TOPLEFT", 14, -12); f.title:SetText("Import")
     f.help = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.help:SetPoint("TOPLEFT", 14, -38); f.help:SetPoint("TOPRIGHT", -14, -38)
-    f.help:SetJustifyH("LEFT"); f.help:SetText("Paste exported rules or a theme below (Ctrl+V). It is read as you paste; nothing changes until you press Import. Rules always go into a new folder of their own.")
+    f.help:SetJustifyH("LEFT"); f.help:SetText(HELP_PASTE)
 
     -- multi-line paste box
     local sf = CreateFrame("ScrollFrame", "XayaUIImportScroll", f, "UIPanelScrollFrameTemplate")
@@ -50,7 +54,10 @@ local function Build()
     sf:SetScript("OnSizeChanged", function(_, w) box:SetWidth(math.max(50, w - 4)) end)
     sf:EnableMouse(true); sf:SetScript("OnMouseDown", function() box:SetFocus() end)
     box:SetScript("OnEscapePressed", function() f:Hide() end)
-    if ns.KeyFocusGuard then ns.KeyFocusGuard(box) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
+    box:SetScript("OnEditFocusGained", function() f.help:SetText(HELP_PASTE) end)   -- (R23 follow-up) has the keyboard again: paste at once
+    -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding / a fight starting (core KeyCatch.lua). After the box's
+    -- own focus script: the guard hooks it (A23 SD-12), and a later SetScript would drop that hook.
+    if ns.KeyFocusGuard then ns.KeyFocusGuard(box, { onDone = function() f.help:SetText(HELP_CLICK) end }) end
 
     f.status = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     -- the status lines end a gutter above the buttons (12 from the bottom, 26 tall)
@@ -140,5 +147,7 @@ function ns.OpenImportWindow()
     W = W or Build()
     W:Show(); W:Raise()
     -- (review R23) not in combat: a focused box would take her movement and keybinds; a click in the box focuses it
-    if not (InCombatLockdown and InCombatLockdown()) then W.box:SetFocus() end
+    local fighting = InCombatLockdown and InCombatLockdown()
+    W.help:SetText(fighting and HELP_CLICK or HELP_PASTE)
+    if not fighting then W.box:SetFocus() end
 end

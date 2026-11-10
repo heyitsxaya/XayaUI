@@ -1507,11 +1507,12 @@ function ns.OptionsApi.FillRule(stub)
 end
 -- AceConfigDialog draws a group through FeedGroup(appName, options, container, rootframe, path) (AceConfigDialog-3.0.lua, the copy in
 -- Libs/; a method looked up on the library table at each call): every row-only rule on the path is filled first. Other addons' windows
--- pass straight through.
+-- pass straight through, as the first and cheapest check (A23 SD-12).
 do
     local FeedGroup0 = AceConfigDialog.FeedGroup
     AceConfigDialog.FeedGroup = function(self, appName, options, container, rootframe, path, ...)
-        if appName == APP and type(options) == "table" and type(path) == "table" then
+        if appName ~= APP then return FeedGroup0(self, appName, options, container, rootframe, path, ...) end
+        if type(options) == "table" and type(path) == "table" then
             local g = options
             for n = 1, #path do
                 g = type(g) == "table" and type(g.args) == "table" and g.args[path[n]] or nil

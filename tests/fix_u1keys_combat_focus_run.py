@@ -23,6 +23,29 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
+-- (A23 SD-12) the game's focus scripts, for core KeyCatch.lua (it listens for clicks only while a guarded box has the keyboard):
+-- SetFocus / ClearFocus run OnEditFocusGained / OnEditFocusLost and one box has the keyboard (the stand-in runs no script; INFERENCE as
+-- in tests/fix_r2_closed_window_quiet_run.py)
+do
+  local P
+  local idx = getmetatable(CreateFrame("Frame")).__index
+  for i = 1, 50 do local n, v = debug.getupvalue(idx, i); if not n then break end; if n == "proto" then P = v end end
+  local cur
+  function P:SetFocus()
+    if cur == self then return end
+    local prev = cur
+    cur = self
+    if prev and prev._focus then prev._focus = false; local f = prev._scripts.OnEditFocusLost; if f then f(prev) end end
+    self._focus = true
+    local g = self._scripts.OnEditFocusGained; if g then g(self) end
+  end
+  function P:ClearFocus()
+    if not self._focus then return end
+    self._focus = false
+    if cur == self then cur = nil end
+    local f = self._scripts.OnEditFocusLost; if f then f(self) end
+  end
+end
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local function who(x) if x == "game" then return "game" end if type(x) == "table" then return (x.GetName and x:GetName()) or tostring(x._kind) end return tostring(x) end
 

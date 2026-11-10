@@ -315,7 +315,7 @@ local rawStep = Step
 -- One step with its lookup index (Core.lua) and the group layouts it queued; the index is dropped even if the step fails.
 local function IndexedStep()
     if ns.Timing then ns.Timing.ClearDeadline() end   -- this step's checks register the next moments anew
-    ns.BeginStepIndex()
+    ns.BeginStepIndex(stepFilter ~= nil)   -- a routed re-check reuses the kept rule / group index unless settings changed (review R18)
     if ns.BeginVisualStep then ns.BeginVisualStep() end
     local ok, err = pcall(rawStep)
     if ns.FlushLayouts then pcall(ns.FlushLayouts) end

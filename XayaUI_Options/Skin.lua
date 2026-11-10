@@ -120,6 +120,7 @@ local function OnRelease(w, restoreFn)
     w.xuiRelWrapped = true
     local orig = w.OnRelease
     w.OnRelease = function(self, ...)
+        if not self.xuiRestore then if orig then return orig(self, ...) end return end   -- (A23 SD-12) not XayaUI's now: AceGUI's own release
         local r = self.xuiRestore
         self.xuiRestore = nil
         if r then pcall(r, self) end
@@ -141,6 +142,7 @@ local function AddRest(w, key, fn)
     w.xuiRestWrapped = true
     local orig = w.OnRelease
     w.OnRelease = function(self, ...)
+        if not self.xuiRest then if orig then return orig(self, ...) end return end   -- (A23 SD-12) not XayaUI's now: AceGUI's own release
         local r = self.xuiRest
         self.xuiRest = nil
         if r then for _, f in pairs(r) do pcall(f, self) end end
@@ -217,8 +219,9 @@ ns.OptionsApi.TreeFilter = function() return ns.treeFilter end   -- (Dev Assist'
 
 local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color
 -- a theme change also repaints every rule-list row (their text color was set when the row was drawn: dark text from Light mode stayed on a dark theme)
-if TH and TH.OnResolve then TH.OnResolve(function() if C_Timer then C_Timer.After(0.05, function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end) end end) end
-ns.On("THEME_CHANGED", function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end)   -- live theme edits (Theme.lua)
+-- (A23 SD-12) only while the window is open: closed, it is painted afresh when it opens (Options.lua's Open wrapper decorates it)
+if TH and TH.OnResolve then TH.OnResolve(function() if ACD.OpenFrames[APP] and C_Timer then C_Timer.After(0.05, function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end) end end) end
+ns.On("THEME_CHANGED", function() if ACD.OpenFrames[APP] and ns.DecorateTrees then pcall(ns.DecorateTrees) end end)   -- live theme edits (Theme.lua)
 
 -- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
 -- Filtering ends in Notify(), which rebuilds the tree and can release / hide the box, dropping its keyboard focus (the next letter then
@@ -916,7 +919,7 @@ local function SkinTree(w)
                     if not ok then Fail(err) end
                 end)
             end
-            dr:SetScript("OnMouseDown", function(f, button)
+            local md1 = function(f, button)
                 if button and button ~= "LeftButton" then return end
                 if running then Finish() end
                 local scale = tf:GetEffectiveScale()
@@ -937,9 +940,17 @@ local function SkinTree(w)
                         Fail(err)
                     end
                 end)
-            end)
+            end
+            -- (A23 SD-12) the tree's own drag handle is AceGUI's (shared with other addons): its scripts are put back on release
+            local md0, mu0, hd0 = dr:GetScript("OnMouseDown"), dr:GetScript("OnMouseUp"), dr:GetScript("OnHide")
+            dr:SetScript("OnMouseDown", md1)
             dr:SetScript("OnMouseUp", function() local ok, err = pcall(Finish); if not ok then Fail(err) end end)
             dr:SetScript("OnHide", function() pcall(Finish) end)
+            AddRest(w, "safedrag", function()
+                pcall(Finish)
+                dr:SetScript("OnMouseDown", md0); dr:SetScript("OnMouseUp", mu0); dr:SetScript("OnHide", hd0)
+                dr.xuiSafeDrag = nil
+            end)
         end
     end
     if not w.xuiSelHooked then
@@ -969,7 +980,11 @@ local function SkinTree(w)
     if not w.xuiPartHooked then   -- re-partition inside every refresh (outermost wrapper: runs after Options.lua's row decorating)
         w.xuiPartHooked = true
         local origRefresh = w.RefreshTree
+        local Ours = ns.OptionsApi.TreePaint.Ours   -- (review R13) the tree is in XayaUI's window right now (TreePaint.lua)
+        -- The wrapper stays on the widget (AceGUI hands the same tree back to XayaUI's next pane, whose first refresh must fit at once);
+        -- (A23 SD-12) another addon's tree, or a released one, gets AceGUI's RefreshTree straight away.
         w.RefreshTree = function(self, ...)
+            if not Ours(self) then return origRefresh(self, ...) end
             if ns.Trace then ns.Trace("tree RefreshTree") end
             -- AceGUI sizes its scroll window assuming 18px rows, but ours are taller and of different heights. So we choose the number
             -- of visible lines ourselves: refresh with a pretend height, measure the rows that really got drawn, and adjust until they
@@ -2361,6 +2376,8 @@ local function Walk(w, depth)
             local po = w.pullout
             po.xuiWideOpen = true
             local origOpen = po.Open
+            -- (A23 SD-12) the list is AceGUI's (shared with other addons): its own Open is put back on release
+            AddRest(w, "wideopen", function() po.Open = origOpen; po.xuiWideOpen = nil end)
             po.Open = function(self, ...)
                 origOpen(self, ...)
                 -- AceGUI reuses its list rows and only sets their height once (17, highlight 14). A texture picker makes them 60 tall; if one of
@@ -2412,7 +2429,9 @@ local function Walk(w, depth)
                 end
                 w.SetText = function(self, s) return origSetText(self, small(s)) end
                 if w.text then w.text:SetText(small(w.text:GetText())) end
-                AddRest(w, "texpick", function(self) self.xuiTexPick = nil; self.SetText = origSetText; if self.pullout then self.pullout.Open = origOpen end end)
+                local texOpen = po.Open
+                -- (A23 SD-12) only its own wrapper is taken off: "wideopen" above puts AceGUI's Open back, in either order
+                AddRest(w, "texpick", function(self) self.xuiTexPick = nil; self.SetText = origSetText; if po.Open == texOpen then po.Open = origOpen end end)
             end
         end
         -- the open list was see-through (text over the page): give every dropdown list a solid dark panel

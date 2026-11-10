@@ -288,8 +288,10 @@ local function StoreDraft(uid, group, isNew)
 end
 -- the "Keep up to" number was lowered: drop the oldest drafts beyond it (when the window closes, review R7)
 function ns.DraftsTrim()
-    local list = Drafts()
-    while #list > ns.DraftsMax() do table.remove(list) end
+    local list = ns.SettingsReady("core") and CoreS.drafts
+    if type(list) ~= "table" then return end   -- no drafts kept: nothing to drop (and no empty list made)
+    local max = ns.DraftsMax()
+    while #list > max do table.remove(list) end
 end
 
 -- the window closed (or the game is logging out): unsaved rules go to Drafts and go back to their saved version
@@ -299,8 +301,9 @@ function ns.DraftsOnClose()
     WatchLogout(false)
     if ns.UndoReset then ns.UndoReset() end
     cache = { t = -1 }
+    ns.DraftsTrim()   -- (review R7) a lowered "Keep up to" takes effect now, not at each step of its slider; also with drafts off since
+                      -- (R7 follow-up) the Drafts page still says the oldest will be dropped when the window closes
     if not ns.DraftsEnabled() then wipe(baseline); return end   -- autosave mode: everything stays as edited
-    ns.DraftsTrim()   -- (review R7) a lowered "Keep up to" takes effect now, not at each step of its slider
     local moved, names = 0, {}
     for uid, b in pairs(baseline) do
         local group = GroupOf(uid)

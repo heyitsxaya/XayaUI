@@ -85,6 +85,11 @@ added lines per variant, on the 4 group pages the fixed state draws: `pageGroup.
 says what the anchor point refers to), `pageGroup.container.rel` (only its sorting / values: "Another group" added last) and the new
 `pageGroup.container.relGroup` select ("Group", order 4.25, hidden while Relative to is not Another group), 0 other lines in every variant
 (debug-log 2026-11-08 group-anchors). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+Regenerated on 2026-11-10 for bundle 1 (docs/plans/RULES-REVIEW-2026-11-10.md): `--dump` of 0345f8f9 (before bundle 1; it reproduces the
+old golden's every hash) and of the new code differ in 1129 lines, same 7205 nodes and paths: 1127 nodes under `.cues.` (bar, tex, anim,
+bartext, txt_*, pos, color, snd_*) gain `disabled()=nil` (R6: the edit lock now covers a cue's options; not locked here) and
+`set.ui.rules.draftsMax` / `settings.rules.draftsMax` change their desc to "...dropped when the window closes." (R7); 0 other lines.
+The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

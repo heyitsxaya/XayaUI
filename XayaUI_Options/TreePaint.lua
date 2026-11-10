@@ -515,6 +515,15 @@ local function ReturnRows(tree)
     end
     if TP.rules and TP.rules.Release then pcall(TP.rules.Release, tree) end
 end
+-- (A23 SD-12) Every tree XayaUI painted goes back at once when the window closes (Options.lua Tree.Closed), so that while it is closed
+-- the RefreshTree wrapper below finds nothing to put back and only passes through. (A tree handed on while the window is open is put
+-- back at its new owner's first redraw, as before.)
+local painted = setmetatable({}, { __mode = "k" })
+function TP.ReturnAll()
+    for tree in pairs(painted) do
+        if not TP.Ours(tree) then painted[tree] = nil; if tree.xuiPainted then pcall(ReturnRows, tree) end end
+    end
+end
 
 local function DecorateTree(tree)
     if afterRebuild then pcall(KeepScroll, tree) end
@@ -524,11 +533,8 @@ local function DecorateTree(tree)
         -- (review R13) The wrapper stays on the widget (AceGUI hands the same tree back to XayaUI's next pane, which must paint at
         -- once), but it paints only while the tree is XayaUI's; another addon's tree gets AceGUI's RefreshTree and its rows back.
         tree.RefreshTree = function(self, ...)
-            if not TP.Ours(self) then
-                if self.xuiPainted then pcall(ReturnRows, self) end
-                return orig(self, ...)
-            end
-            self.xuiPainted = true
+            if not TP.Ours(self) then if self.xuiPainted then pcall(ReturnRows, self) end return orig(self, ...) end
+            self.xuiPainted = true; painted[self] = true
             orig(self, ...)
             ns.OptionsApi.WithCueMemo(function()   -- (Options 0.6.69) one cue lookup pass for all the visible rows
                 for _, b in ipairs(self.buttons or {}) do if b:IsShown() then ns.SafeDecorate(b) end end
@@ -542,6 +548,7 @@ local function DecorateTree(tree)
         end
     end
     tree.xuiPainted = true
+    painted[tree] = true
     for _, b in ipairs(tree.buttons or {}) do
         if b:IsShown() then ns.SafeDecorate(b)
         else
@@ -577,7 +584,8 @@ function ns.HookRelease(w)
     w.xuiRelHook = true
     local orig = w.OnRelease
     w.OnRelease = function(self, ...)
-        if self.xuiLeftOn then ns.LeftRestore(self) end
+        if not self.xuiLeftOn then if orig then return orig(self, ...) end return end   -- (A23 SD-12) not XayaUI's now: AceGUI's own release
+        ns.LeftRestore(self)
         if orig then return orig(self, ...) end
     end
 end

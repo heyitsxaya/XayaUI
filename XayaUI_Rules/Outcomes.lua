@@ -356,22 +356,24 @@ function ns.RemapCopies()
     copies = nil
 end
 
--- Does this rule have outcomes? (review R18 follow-up) One table, refilled only when the rule list or a setting changes (the same list
--- table, its length, ns.configVersion) and at most once a second besides, for a change that did not call ns.MarkDirty. Before, a new
--- table was built on every engine step, routed re-checks included.
-local hasOut, hasList, hasN, hasVer, hasSec = {}, nil, -1, nil, nil
+-- Does this rule have outcomes? (review R18 follow-up) During an engine step the step index answers (RuleDefaults.lua, kept between
+-- steps). Outside a step (the options window) one table is refilled when the rule list, a setting or the step changed. Before, a new
+-- table of every rule's outcomes was built on every engine step, routed re-checks included.
+local hasOut, hasList, hasN, hasVer, hasTick = {}, nil, -1, nil, nil
 function ns.HasOutcomes(rule)
     if rule.parentUid or type(rule.uid) ~= "string" then return false end
+    local conds = ns.StepChildrenOf and ns.StepChildrenOf(rule, "conds")
+    if conds then return #conds > 0 end
     local list = ns.rules
     if not list then return false end
-    local n, ver, sec = #list, ns.configVersion or 0, math.floor(GetTime())
-    if list ~= hasList or n ~= hasN or ver ~= hasVer or sec ~= hasSec then
+    local n, ver, tick = #list, ns.configVersion or 0, ns.tickID
+    if list ~= hasList or n ~= hasN or ver ~= hasVer or tick ~= hasTick or tick == nil then
         for k in pairs(hasOut) do hasOut[k] = nil end
         for i = 1, n do
             local r = list[i]
             if type(r.parentUid) == "string" and not r.isCue then hasOut[r.parentUid] = true end
         end
-        hasList, hasN, hasVer, hasSec = list, n, ver, sec
+        hasList, hasN, hasVer, hasTick = list, n, ver, tick
     end
     return hasOut[rule.uid] == true
 end

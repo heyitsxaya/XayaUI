@@ -5,7 +5,7 @@ kept answer is re-read once a second there), while in combat no talent is read a
 R18: with real frame-time wobble, cooldown / aura re-checks inside a burst still come every 2nd frame at 60 fps (every 4th at 120 fps),
 so a buff that appears in a raid fight reaches its cue within 2 frames at 60 fps, and the cap of about 30 re-checks a second holds.
 R18: a routed re-check no longer builds a table of every rule's outcomes (Outcomes.lua) or walks the whole rule and group lists
-(RuleDefaults.lua) each time; a rule list changed without announcing it is still seen within about a second.
+(RuleDefaults.lua) each time; a rule list changed without announcing it is still seen at the next full step, an announced edit at once.
 Run: python3 tests/fix_r2_engine_followups_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -137,6 +137,19 @@ local function quietFrame() W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1); W.
 local kbRouted = garbage(routedFrame, 30)
 local kbQuiet = garbage(quietFrame, 30)
 local per = kbRouted - kbQuiet
+-- the whole-list walk: one rule that reads neither cooldowns nor auras counts how often its "isCue" field is read (it has none, so
+-- every read goes through its metatable); a routed re-check that does not step it has no reason to read it
+local probe = P[200]
+local cueReads = 0
+setmetatable(probe, { __index = function(_, k) if k == "isCue" then cueReads = cueReads + 1 end end })
+local routedReads = 0
+for _ = 1, 10 do   -- each: a full step, a quiet frame, then a frame with only the routed re-check (counted)
+  W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1); W.tick(0.04, 1)
+  cueReads = 0; W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(0.001, 1); routedReads = routedReads + cueReads
+end
+setmetatable(probe, nil)
+check("R18: 10 routed re-checks with no settings change do not walk the whole rule list (a rule they do not step is not read)",
+  routedReads == 0, routedReads)
 -- what is left (about 1 KB) is reading that one rule's cooldown and buff; the outcome table of all 200 conditions was about 10 KB more
 check("R18: a routed re-check (1 cooldown rule with a display, 450 rules in all, 200 with a condition) makes under 2 KB of garbage, not a new outcome table",
   per < 2, ("%.2f KB per routed re-check"):format(per))
@@ -148,10 +161,9 @@ local function parentInStep() ns.BeginStepIndex(); local p = ns.FindParentRule(c
 full(1)
 check("R18: (setup) the step index has condition 1 under rule 1", parentInStep() == P[1], parentInStep() and parentInStep().name)
 cond1.parentUid = P[2].uid   -- no ns.MarkDirty
-local seenAfter
-for i = 1, 25 do full(1); if parentInStep() == P[2] and ns.HasOutcomes(P[1]) == false then seenAfter = i * 0.06; break end end
-check("R18: a condition moved to another rule without announcing it is seen within about a second (step index and outcome list)",
-  seenAfter ~= nil and seenAfter <= 1.1, seenAfter or "never")
+full(1)
+check("R18: a condition moved to another rule without announcing it is seen at the next full step (step index and outcome list)",
+  parentInStep() == P[2] and ns.HasOutcomes(P[1]) == false and ns.HasOutcomes(P[2]) == true, parentInStep() and parentInStep().name)
 -- an announced change is seen at once
 cond1.parentUid = P[1].uid; ns.MarkDirty()
 ns.BeginStepIndex(); local p1 = ns.FindParentRule(cond1); ns.EndStepIndex()

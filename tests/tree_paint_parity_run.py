@@ -26,6 +26,9 @@ tabs, heading and button lines, every Rules drawing (rules-selected is byte-iden
 Review R10 (2026-11-10): ns.EditRule keeps the list that is open, so rules-selected is now the Enabled list with the rule selected under
 its groups (was: the window switched to Smart Categories), and rules-smart no longer has that rule selected; only these two "on"
 entries were regenerated, from HEAD plus the R10 change alone.
+Bundle-1 review U5-rulestree: rules-smart changed from run to run (the 'all/rule5' row's xuiSub 153 or 127 px wide: the sidebar
+230 or 204) because AceGUI picks a pooled widget with next(), in memory-address order. The stand-in now hands out released AceGUI
+widgets last-released-first (fixPoolOrder); the golden is unchanged (it is the 230 px drawing), and every drawing is the same on every run.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,8 +37,44 @@ import run as H  # noqa: E402
 
 GOLDEN_FILE = os.path.join(HERE, "tree_paint_parity_golden.json")
 LUA = r'''
-return function(W, L, rulesOn)
+return function(W, L, rulesOn, poolOrder)
 L.startup()
+-- (bundle-1 review U5-rulestree) AceGUI hands out a released widget with next() over a table keyed by the widgets, an order that
+-- follows memory addresses and so changed from run to run: the window rebuild for Smart Categories got either the outer tab group it
+-- had released or another pooled one still sized from an earlier, narrow use; that one's first layout pass let AceGUI cap the sidebar
+-- (min(400, width - 50)), so the drawn sidebar was 204 or 230 px wide. Here released widgets are handed out in a fixed order
+-- (poolOrder "lifo": the last released first; "fifo": the first released first), so the drawing is the same on every run.
+local function fixPoolOrder()
+  local AG = LibStub and LibStub("AceGUI-3.0", true)
+  local pools = AG and AG.objPools
+  if pools and poolOrder and W.poolStartup == nil then
+    local held = {}   -- widget type -> released widgets, in release order (the pool table itself stays empty but for the one next() is to find)
+    local function proxy(wt, old)
+      local list = {}
+      for o in pairs(old) do list[#list + 1] = o end
+      held[wt] = list
+      return setmetatable({}, {
+        __index = function(_, o) for _, x in ipairs(list) do if x == o then return true end end return nil end,
+        __newindex = function(_, o, v) if v then list[#list + 1] = o end end,
+      })
+    end
+    local startup = 0
+    for wt, pool in pairs(pools) do for _ in pairs(pool) do startup = startup + 1 end; pools[wt] = proxy(wt, pool) end
+    W.poolStartup = startup   -- released before this point (their order could not be fixed): must be none
+    setmetatable(pools, { __newindex = function(t, wt, v) rawset(t, wt, proxy(wt, v)) end })
+    local create = AG.Create
+    AG.Create = function(self, wt, ...)
+      local P, list = rawget(pools, wt), held[wt]
+      if P and list and #list > 0 and next(P) == nil then
+        rawset(P, table.remove(list, poolOrder == "fifo" and 1 or #list), true)
+      end
+      return create(self, wt, ...)
+    end
+  end
+end
+fixPoolOrder()   -- AceGUI comes with XayaUI Options, which loads on demand: the order is fixed as soon as it has loaded
+local loadAddOn = C_AddOns.LoadAddOn
+C_AddOns.LoadAddOn = function(...) local a, b = loadAddOn(...); fixPoolOrder(); return a, b end
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
 local pick
@@ -153,7 +192,7 @@ end
 '''
 
 
-def run_variant(rules_on):
+def run_variant(rules_on, pool_order="lifo"):
     folders = H.find_addons()
     enabled = [n for n in folders if rules_on or n != "XayaUI_Rules"]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
@@ -161,11 +200,11 @@ def run_variant(rules_on):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res, hooks, pending = L.eval("function(src, W, Ld, on) return loadstring(src)()(W, Ld, on) end")(LUA, world, loader, rules_on)
+    res, hooks, pending = L.eval("function(src, W, Ld, on, po) return loadstring(src)()(W, Ld, on, po) end")(LUA, world, loader, rules_on, pool_order)
     tabs = {res[i][1]: res[i][2] for i in range(1, len(res) + 1)}
     loaded = [loader.loadedOrder[i] for i in range(1, len(loader.loadedOrder) + 1)]
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
-    return tabs, bool(hooks), loaded, errs, bool(pending)
+    return tabs, bool(hooks), loaded, errs, bool(pending), world.poolStartup
 
 
 def summary(tabs):
@@ -193,7 +232,9 @@ def main():
         results.append((name + (("  [" + detail + "]") if detail and not ok else ""), bool(ok)))
 
     for label, v in (("XayaUI Rules on", on), ("XayaUI Rules off", off)):
-        tabs, hooks, loaded, errs, pending = v
+        tabs, hooks, loaded, errs, pending, pool0 = v
+        check("[%s] the stand-in hands out released AceGUI widgets in a fixed order (none were released before it took over)" % label,
+              pool0 == 0, "%s released before" % pool0)
         want = gold["on" if v is on else "off"]
         got = summary(tabs)
         check("[%s] the same tabs were drawn as before P4b" % label, sorted(got) == sorted(want), "%s vs %s" % (sorted(got), sorted(want)))
@@ -204,11 +245,11 @@ def main():
         check("[%s] no Lua error" % label, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
     # (Rules 0.7.0) the rule editor is part of XayaUI Rules (XayaUI_Rules/Editor/), set up by Options' LoadRuleEditor when the window
     # loads; there is no XayaUI_Rules_Options addon any more
-    tabs, hooks, loaded, errs, pending = on
+    tabs, hooks, loaded, errs, pending, _ = on
     check("[XayaUI Rules on] V14: XayaUI_Rules (with its editor files) and XayaUI_Options loaded, the editor was set up with the window and its row hooks are registered",
           "XayaUI_Rules" in loaded and "XayaUI_Options" in loaded and "XayaUI_Rules_Options" not in loaded and not pending and hooks,
           "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))
-    tabs, hooks, loaded, errs, pending = off
+    tabs, hooks, loaded, errs, pending, _ = off
     check("[XayaUI Rules off] V14: no file of XayaUI_Rules (so none of its editor) was read and no rule hook is registered",
           "XayaUI_Rules" not in loaded and not pending and not hooks and "XayaUI_Options" in loaded,
           "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))

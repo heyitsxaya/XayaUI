@@ -961,6 +961,17 @@ local function AskRename(current, cb) ShowPopup("XAYAUI_RENAME", "Rename", { cur
 local function AskConfirm(text, cb) ShowPopup("XAYAUI_CONFIRM", text, { cb = cb }) end
 
 -- Export one rule (right-click > Export): shows the export text in a popup, selected, ready for Ctrl+C.
+-- (review R23) The box is the game's own popup box, shared by every popup. In combat it gets no keyboard (the game's popup box takes
+-- it by itself when shown: INFERENCE, its template sets no autoFocus and the game's default is on), and while this popup shows the
+-- box is guarded (core KeyCatch.lua), so a fight starting lets go of it. On hide it is handed back as it was (its autofocus too), so
+-- other popups work as before. window = the box: no hook on the game's popup frame itself.
+local exportBox, exportAuto
+local function ReleaseExportBox()
+    if not exportBox then return end
+    if ns.KeyFocusRelease then ns.KeyFocusRelease(exportBox) end
+    if exportAuto ~= nil and exportBox.SetAutoFocus then exportBox:SetAutoFocus(exportAuto) end
+    exportBox, exportAuto = nil, nil
+end
 StaticPopupDialogs["XAYAUI_EXPORT"] = {
     text = "%s", button1 = CLOSE, hasEditBox = true, editBoxWidth = 360, maxLetters = 0, timeout = 0, whileDead = true,
     hideOnEscape = true, preferredIndex = 3,
@@ -968,9 +979,17 @@ StaticPopupDialogs["XAYAUI_EXPORT"] = {
         local eb = PopupEditBox(self)
         if eb then
             if eb.SetMaxLetters then eb:SetMaxLetters(0) end
-            eb:SetText((data and data.text) or ""); eb:HighlightText(); eb:SetFocus()
+            eb:SetText((data and data.text) or ""); eb:HighlightText()
+            if ns.KeyFocusGuard and eb ~= exportBox then
+                ReleaseExportBox()
+                if eb.IsAutoFocus then exportAuto = eb:IsAutoFocus() and true or false end
+                exportBox = eb
+                ns.KeyFocusGuard(eb, { window = eb })
+            end
+            if InCombatLockdown and InCombatLockdown() then eb:ClearFocus() else eb:SetFocus() end
         end
     end,
+    OnHide = function() ReleaseExportBox() end,
     EditBoxOnTextChanged = function(eb)
         local data = eb:GetParent().data
         if data and data.text and eb:GetText() ~= data.text then eb:SetText(data.text); eb:HighlightText() end   -- read-only
@@ -1866,7 +1885,7 @@ function R.Begin(button)
     return vis, snd, rawObjs, inSC, hasIcons, isRootRow, false
 end
 -- (review R13) The row hooks stay on AceGUI's pooled buttons for good (HookScript cannot be undone), so each one acts only while the
--- row is in XayaUI's window (TreePaint Ours). OnDragStop is left open: StopDrag does nothing unless a drag of ours is running.
+-- row is in XayaUI's window (TreePaint Ours). OnDragStop returns at once unless a drag of ours is running (A23 SD-12).
 function R.Hooks(button)
     local tree = button.obj
     if tree and tree.treeframe then
@@ -1884,7 +1903,7 @@ function R.Hooks(button)
         button:HookScript("OnClick", function(self, mouse) if not Ours(self.obj) then return end; ns.Trace("click"); if mouse == "RightButton" then ShowRowMenu(self) else ns.MultiClick(self, mouse) end end)
         button:HookScript("OnMouseDown", function(self, mouse) if mouse == "LeftButton" and Ours(self.obj) then local ok, e = pcall(drag.Arm, self); if not ok then drag.fail(e) end end end)   -- #343
         button:HookScript("OnDragStart", function(self) if not Ours(self.obj) then return end; local ok, e = pcall(StartDrag, self); if not ok then drag.fail(e) end end)
-        button:HookScript("OnDragStop", function(self) local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
+        button:HookScript("OnDragStop", function(self) if not drag.obj then return end; local ok, e = pcall(StopDrag, self); if not ok then drag.fail(e) end end)
     end
     if not button.xuiDblHooked then
         button.xuiDblHooked = true

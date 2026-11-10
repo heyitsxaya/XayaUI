@@ -1144,7 +1144,9 @@ AceConfigDialog:SetDefaultSize(APP, 780, 860)   -- tall rectangle
 
 -- anything outside the window that changed settings asks for a redraw (Modules.lua section 6). "view": only a switch's state
 -- changed (the console window opened or closed), nothing in the tree, so the redraw reuses it (Tree.ViewChanged).
+-- (A23 SD-12) closed: nothing to redraw (the next opening builds the tree afresh), so the listener returns at once
 ns.On("CONFIG_CHANGED", function(what)
+    if not Tree.openFrame then return end
     if what == "view" then Tree.ViewChanged() else Notify() end
 end)
 
@@ -1160,6 +1162,7 @@ function ns.OptionsApi.Toggle()
         -- Rules sub-tab BEFORE the window opens: SelectGroup builds the tree once and only asks for a redraw; Open then reuses that same
         -- tree (Tree.keep) and the redraw SelectGroup asked for is dropped (Open has just drawn it). One build instead of three.
         if firstOpen and not EditorOn() then firstOpen = false end   -- (P4) no Rules tab: the window opens on its first tab
+        if RE.FixSelection then pcall(RE.FixSelection) end   -- (A23 SD-12) a selected rule that changed list while the window was closed
         if firstOpen then
             firstOpen = false
             local ui = PlatS.ui
@@ -1186,6 +1189,9 @@ do
     if hooksecurefunc then
         hooksecurefunc(AceConfigDialog, "Open", function(_, app)
             if app ~= APP then return end
+            -- (A23 SD-12) the frame XayaUI's window is in while it is open (AceGUI's frames are shared): every lasting hook of this
+            -- addon and the rule editor returns at once while this is nil (Tree.Closed clears it)
+            do local of0 = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]; Tree.openFrame = of0 and of0.frame or nil end
             -- (Options 0.6.68, A15 P-16: a switch made two full builds, 616 + 739 ms) AceConfigDialog redraws the window itself right
             -- after a control's set (a full Open); a redraw the set asked for (Notify -> NotifyChange, next frame) would build it again
             Tree.DropPending()
@@ -1196,7 +1202,8 @@ do
             local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
             if of and of.frame and not of.frame.xuiDraftHook then   -- window closed (button, Esc, toggle): unsaved rules go to Drafts
                 of.frame.xuiDraftHook = true
-                of.frame:HookScript("OnHide", function()
+                of.frame:HookScript("OnHide", function(self)
+                    if self ~= Tree.openFrame then return end   -- (A23 SD-12) the frame went to another addon: its window closed, not XayaUI's
                     if RE.DraftsOnClose then pcall(RE.DraftsOnClose) end
                     if RE.SearchOnClose then pcall(RE.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
                     if Tree.Closed then pcall(Tree.Closed) end   -- stop the driver; clear previews, the kept tree, the strips (Options 0.6.41)
@@ -1206,12 +1213,14 @@ do
         -- every pane the window builds (an opening, a redraw, a click on a row): with "Use drafts" off the rule shown gets its first
         -- undo state here, before it can be edited (Drafts.lua ns.UndoFirstState; Options 0.6.41, instead of copying every rule)
         hooksecurefunc(AceConfigDialog, "FeedGroup", function(_, app)
-            if app == APP then Tree.decorateDue = true end   -- a pane was drawn (a tab or row click): the next tick decorates it
-            if app == APP and RE.UndoFirstState then pcall(RE.UndoFirstState) end
+            if app ~= APP then return end   -- (A23 SD-12) another addon's window
+            Tree.decorateDue = true   -- a pane was drawn (a tab or row click): the next tick decorates it
+            if RE.UndoFirstState then pcall(RE.UndoFirstState) end
         end)
         -- any widget made (a dropdown's list, a pane's controls, a scrolled-in row): the next tick decorates it (Options 0.6.68)
         local AceGUI = LibStub and LibStub("AceGUI-3.0", true)
-        if AceGUI and AceGUI.Create then hooksecurefunc(AceGUI, "Create", function() Tree.decorateDue = true end) end
+        -- (A23 SD-12) only while the window is open (another addon's window makes widgets too)
+        if AceGUI and AceGUI.Create then hooksecurefunc(AceGUI, "Create", function() if Tree.openFrame then Tree.decorateDue = true end end) end
     end
 end
 ns.optionsLoaded = true
@@ -1328,12 +1337,13 @@ do
     end
     ns.origOpen = AceConfigDialog.Open
     AceConfigDialog.Open = function(self, app, ...)
-        if app == APP then ns.Trace("Open (full window rebuild)") end
+        if app ~= APP then return ns.origOpen(self, app, ...) end   -- (A23 SD-12) other addons' windows: straight through, first
+        ns.Trace("Open (full window rebuild)")
         local t0 = debugprofilestop and debugprofilestop() or 0
         local a, b, c = ns.origOpen(self, app, ...)
         local t1 = debugprofilestop and debugprofilestop() or 0
-        if app == APP then pcall(ns.DecorateTrees, nil, true); Tree.decorateDue = false end   -- (decorated: nothing new to catch on the next tick; true: a rebuild, TreePaint.lua KeepScroll)
-        if app == APP and debugprofilestop then
+        pcall(ns.DecorateTrees, nil, true); Tree.decorateDue = false   -- (decorated: nothing new to catch on the next tick; true: a rebuild, TreePaint.lua KeepScroll)
+        if debugprofilestop then
             local t2 = debugprofilestop()
             ns.perf = ns.perf or { n = 0 }
             ns.perf.n = ns.perf.n + 1; ns.perf.build, ns.perf.skin = t1 - t0, t2 - t1
@@ -1495,7 +1505,8 @@ local function EnsureChrome(of)
         c.info:SetScript("OnClick", function() if ns.InfoPane then ns.InfoPane.Open() end end)
         if not ns.infoLinkThemed and ns.Theme and ns.Theme.OnResolve then
             ns.infoLinkThemed = true
-            ns.Theme.OnResolve(function() local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
+            -- (A23 SD-12) closed: nothing to repaint (the link is painted again when the window opens, EnsureChrome below)
+            ns.Theme.OnResolve(function() if not Tree.openFrame then return end; local lk = ns.infoLink; if lk and lk.Paint then lk:Paint() end end)
         end
 
         -- Delete and Ctrl+Z / Ctrl+Y (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s row 56, her words: "WHY DOES THE ADDON KEEP PREVENTING ME
@@ -1539,6 +1550,7 @@ local function EnsureChrome(of)
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
         of.OnRelease = function(self, ...)
+            if not c.owned then if orig then return orig(self, ...) end return end   -- (A23 SD-12) another addon's window: AceGUI's own release
             c.owned = nil
             if c.keys then c.keys.SetActive(false) end   -- the next addon to get this window gets it without XayaUI's keys
             pcall(RE.SaveRulesSub)
@@ -1556,6 +1568,7 @@ local function EnsureChrome(of)
             if orig then return orig(self, ...) end
         end
     end
+    if not c.owned and c.info.Paint then c.info:Paint() end   -- (A23 SD-12) the theme may have changed while the window was closed
     c.owned = true
     if c.keys then c.keys.SetActive(true) end
     c.arrow:Show()
@@ -1636,6 +1649,8 @@ function Tree.Closed()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if of and of.frame and of.frame:IsShown() then return end   -- another addon's window (AceGUI reuses frames) hid, not this one
     driver:SetScript("OnUpdate", nil)
+    Tree.openFrame = nil   -- (A23 SD-12) every lasting hook returns at once from now on
+    if ns.OptionsApi.TreePaint and ns.OptionsApi.TreePaint.ReturnAll then pcall(ns.OptionsApi.TreePaint.ReturnAll) end   -- (A23 SD-12; review R13)
     acc, sigAcc = 0, 0
     Tree.last, Tree.keep, Tree.loadSeen = nil, nil, nil   -- the kept tree (and the load answers seen) are let go
     if ns.SetWindowOpen then ns.SetWindowOpen(false) end

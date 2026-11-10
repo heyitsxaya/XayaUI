@@ -553,9 +553,10 @@ AttachSearch = function(w)
     local eb = w.editbox
     if not eb or eb.xuiSearchHooked or not SearchOf(eb) then return end
     eb.xuiSearchHooked = true   -- (review R16) the hooks stay on the pooled box: each acts only while SearchOf finds a search, or for the popup it opened
-    eb:HookScript("OnEditFocusGained", function(self) local fn, kind = SearchOf(self); if fn then SX.near = nil; SX.Start(kind) end end)
+    -- (A23 SD-12) each returns at its first line while the box is not in XayaUI's window (Ours) or the popup is not its own
+    eb:HookScript("OnEditFocusGained", function(self) if not Ours(self.obj) then return end; local fn, kind = SearchOf(self); if fn then SX.near = nil; SX.Start(kind) end end)
     eb:HookScript("OnTextChanged", function(self, user)
-        if not user then return end
+        if not (user and Ours(self.obj)) then if SP and SP.owner == self then SP_Hide() end return end
         local fn, kind = SearchOf(self)
         if not fn then if SP and SP.owner == self then SP_Hide() end; return end
         SX.Start(kind)
@@ -568,6 +569,7 @@ AttachSearch = function(w)
     end)
     eb:HookScript("OnEscapePressed", function(self) if SP and SP.owner == self then SP_Hide() end end)
     eb:HookScript("OnEditFocusLost", function(self)
+        if not (SP and SP.owner == self) then return end
         C_Timer.After(0.2, function() if SP and SP.owner == self and not self:HasFocus() then SP_Hide() end end)
     end)
 end

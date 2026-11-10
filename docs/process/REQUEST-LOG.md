@@ -699,6 +699,7 @@ copy; rows it adds later are copied here.
 | SD-22 | (missed, logged late) "Move it to QA, half of it is going to be scrapped. What are you doing?" | Done (a8aa0c4, 92bd3ff) | qa-installer-branch |
 | SD-23 | (missed, logged late) "you have the connection." [screenshot: claude.ai GitHub Integration: account connected, Claude GitHub App installed on heyitsxaya, repository status OK for heyitsxaya/XayaUI]; then "tell me full instructions for how to do it in terminal"; then "how do I delete it" | ANSWERED: the block is this cloud session's git proxy (HTTP 403 on ref delete), not the connection; terminal steps and folder removal given in chat | SD-9 |
 | SD-24 | "Be sure to print every condition and criterion I explicitly stated to you" | DONE in chat (every row of A23, verbatim); the same list sent to the Stat Calculator session (SD-18) | chat |
+| SD-25 | Her answer (question box, game-played aura sound and "Only when mounted" / "Only when not mounted"): "mounted or not mounted tracking is supported by most addons. there is no excuse to not capture this re: option 2. it should be option two with zero justifications for failure." | OPEN, round 3: the game's copy follows the mount state, including a dismount straight into a pull | XayaUI_Rules/AuraSound.lua |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
