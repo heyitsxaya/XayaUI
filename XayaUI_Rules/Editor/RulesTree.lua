@@ -688,7 +688,7 @@ function ns.FolderContainerGroup(f)
     g.args.pad = { type = "range", name = "Padding around each display", order = 3.086, min = 0, max = 40, step = 1,
         desc = "How far the border and background reach past the edge of each display, in pixels.",
         hidden = function() return not (f.cBorder or f.cBg) end,
-        get = function() return tonumber(f.cPad) or 4 end, set = function(_, v) f.cPad = v; applyStep() end }
+        get = function() return tonumber(f.cPad) or 0 end, set = function(_, v) f.cPad = v; applyStep() end }   -- (SD-32: 0 px when none is saved, as Visual.lua draws it)
     g.args.strata = { type = "select", name = "Layer (strata)", order = 3.2, values = SV, sorting = STRATA,
         get = function() return f.cStrata or "inherit" end, set = function(_, v) f.cStrata = (v ~= "inherit") and v or nil; apply() end }
     g.args.level = { type = "range", name = "Z-index within the layer (0 = automatic)", order = 3.3, min = 0, max = 200, step = 1,

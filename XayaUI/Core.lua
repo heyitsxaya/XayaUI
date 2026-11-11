@@ -472,7 +472,8 @@ end
 local function RulesEnableNow()
     local R = RulesSvc()
     if not (R and R.SetDisabled) then return end
-    if R.SetDisabled(false) then ns.Print("rules are on again.") end
+    -- (V26) rules start fresh, as after a /reload (Engine.lua ns.SetRulesDisabled cleared each rule's state): said in the same line
+    if R.SetDisabled(false) then ns.Print("rules are on again. They start fresh, as after a /reload, so each rule's On Initialization actions run again.") end
 end
 local function RulesSwitch(cmd)
     local R = RulesSvc()
@@ -480,7 +481,10 @@ local function RulesSwitch(cmd)
     if cmd == "disable" then
         if ns.CombatLockCancel then ns.CombatLockCancel("enable") end   -- a waiting /xui enable is dropped: the newest word wins
         if R.SetDisabled(true) then
-            ns.Print("every rule is off now: none will check, show anything or play a sound. Type /xui enable to turn them back on (a /reload also does).")
+            -- (V26) only what is true: the engine stops checking (Engine.lua), every XayaUI display hides (Visual.lua; the game's aura
+            -- containers fade in a fight and hide when it ends, Combat/AuraDisplay.lua), glows stop (Actions.lua), the game-played aura
+            -- sounds are taken back (AuraSound.lua). A sound or spoken line already playing is not cut off: it finishes.
+            ns.Print("every rule is off now: rules stop checking, and their displays, glows and sounds stop (a sound already playing finishes). Type /xui enable to turn them back on (a /reload also does).")
         else
             ns.Print("rules are already off. Type /xui enable to turn them back on.")
         end
@@ -507,8 +511,9 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif cmd == "unlock" then
         local R = RulesSvc()
         if not (R and R.ToggleUnlock) then ns.Print(ns.ModuleMissingText("unlock"))
-        -- (V26) the mover is locked in combat: one line, and it opens when combat ends (opens, never toggles shut: it may be open by then)
-        elseif ns.InCombatLock and ns.InCombatLock() then
+        -- (V26) only OPENING the mover is locked in combat: one line, and it opens when combat ends (opens, never toggles shut: it may be
+        -- open by then). Closing is never held back: an open mover view closes at once, as out of combat (Visual.lua ns.ToggleUnlock).
+        elseif ns.InCombatLock and ns.InCombatLock() and not (R.Unlocked and R.Unlocked()) then
             ns.CombatLock("unlock", function() if not (R.Unlocked and R.Unlocked()) then R.ToggleUnlock() end end,
                 "the mover (/xui unlock) can't open during combat. It will open when combat ends.")
         else R.ToggleUnlock() end

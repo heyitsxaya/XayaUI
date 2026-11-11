@@ -5,7 +5,8 @@ Checks, on the real addons in the stand-in game (the game's aura container is a 
 engine's own set-up on them, as Blizzard's container does):
 - the one box around the group is gone (no ns.UpdateGroupBox / ns.GroupBox, no 0.2 s watcher);
 - a static group with Border + Background: EACH of its displays has the background (its own edges plus the padding, the default
-  see-through black) and the four border strips along that padded edge (the default light grey);
+  see-through black) and the four border strips along that padded edge (the default light grey); (SD-32, her answer "0 px
+  (Recommended)", round 4) a group with no saved padding has 0 px: on the display's own edges, and the slider reads 0;
 - nothing ticks per frame for it: turning both on adds no per-frame (OnUpdate) script, and 2 s with nothing changing draws nothing;
 - a change made with the editor's own options reaches ALL of the group's displays (background color, padding, border color, border
   off, background texture);
@@ -156,8 +157,8 @@ local ou0 = onUpdates()
 local CG = ns.FolderContainerGroup(S).args
 CG.border.set(nil, true); CG.bg.set(nil, true); W.tick(0.25, 6)
 check("Border and Background ticked in the editor (saved on the group, same keys as before)", S.cBorder == true and S.cBg == true)
-local okA, dA = decoOn(fa, 4, DEF_BG, DEF_BD); local okB, dB = decoOn(fb, 4, DEF_BG, DEF_BD)
-check("SD-17: display A has its own background (its edges plus the padding 4) and border", okA, dA)
+local okA, dA = decoOn(fa, 0, DEF_BG, DEF_BD); local okB, dB = decoOn(fb, 0, DEF_BG, DEF_BD)
+check("SD-17: display A has its own background and border (SD-32: no padding saved, so 0 px: on its own edges)", okA, dA)
 check("  ...and display B too (each display, not one box around both)", okB, dB)
 local function bigBox()   -- a shown texture or frame covering both displays (the old box) anywhere
   local al, ab, ar, at = rect(fa); local bl, bb, br, bt = rect(fb)
@@ -180,9 +181,11 @@ check("  ...and 2 s with nothing changing draw nothing again", P0 ~= nil and pai
 -- a change in the editor reaches every display of the group
 CG.bgColor.set(nil, 1, 0, 0, 0.5)
 local RED = { 1, 0, 0, 0.5 }
-okA, dA = decoOn(fa, 4, RED, DEF_BD); okB, dB = decoOn(fb, 4, RED, DEF_BD)
+okA, dA = decoOn(fa, 0, RED, DEF_BD); okB, dB = decoOn(fb, 0, RED, DEF_BD)
 check("background color changed (one step of the color picker): both displays take it at once", okA and okB, dA .. " / " .. dB)
 check("  ...one paint per display of the group, not a redraw of everything", P0 ~= nil and paints > 0 and paints <= 12, paints)
+check("SD-32: the Padding slider of a group with no saved padding reads 0, and nothing is saved by reading it", CG.pad.get() == 0 and S.cPad == nil,
+  tostring(CG.pad.get()) .. " / " .. tostring(S.cPad))
 CG.pad.set(nil, 7)
 okA, dA = decoOn(fa, 7, RED, DEF_BD); okB, dB = decoOn(fb, 7, RED, DEF_BD)
 check("padding 7: both displays' border and background reach 7 past their edges", okA and okB, dA .. " / " .. dB)

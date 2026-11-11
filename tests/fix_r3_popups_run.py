@@ -4,8 +4,9 @@ Loads the real addons in the stand-in game (tests/harness) and checks what the p
 - Export popup (right-click > Export): opened in combat, or once a fight starts, the box has no keyboard, so the popup text says how to
   copy (click the box, then Ctrl+A and Ctrl+C); when she clicks the box the export text is selected again (a click puts the cursor in
   the box and drops the selection: INFERENCE, UNVERIFIED IN GAME; the test models it by clearing the selection before the click).
-- Rename popup (right-click > Rename, when the row is not on screen to rename in place): guarded like the Export popup. Opened in
-  combat it does not take the keyboard and says to click the box to type; opened out of combat it has the keyboard with the name
+- Rename popup (right-click > Rename, when the row is not on screen to rename in place): guarded like the Export popup. Picked in
+  combat from a menu left open, it does not open at all (V26, round 4: the menu's choices change nothing in combat; one plain line
+  says why; this replaced the round-3 check that it opened without the keyboard); opened out of combat it has the keyboard with the name
   selected, and lets go when a fight starts; closed, the game's popup box is handed back as it was.
 - The stand-in (tests/harness/world.lua) runs a box's OnEditFocusGained / OnEditFocusLost for SetFocus / ClearFocus and for a click
   (W.click), and one box has the keyboard at a time, as in the game.
@@ -162,14 +163,19 @@ section("rename popup", function()
   local fn = rename()
   check("(test set-up) the row's menu has Rename", fn ~= nil)
   if not fn then return end
+  -- (V26, round 4: tests/fix_r4_menus_run.py) a menu choice made in combat changes nothing: no popup opens, so nothing can take the
+  -- keyboard; one plain line says why. (Before round 4 the popup opened without the keyboard; that path is no longer reachable.)
   W.enterCombat()
+  local said, P0 = {}, ns.Print
+  ns.Print = function(s) said[#said + 1] = tostring(s) end
+  local shownBefore = dlg:IsShown() and dlg.which == "XAYAUI_RENAME"
   fn()
+  ns.Print = P0
   local g = who(W.pressKey("W"))
-  check("Rename popup opened in combat: it does not take the keyboard (W reaches the game)", dlg:IsShown() and dlg.which == "XAYAUI_RENAME" and g == "game" and not eb:HasFocus(), g)
-  check("Rename popup opened in combat: it says to click the box to type", says():find("Click the box to type", 1, true) ~= nil, says())
-  W.click(eb)
-  check("(regression) ...she clicks the box: it has the keyboard", eb:HasFocus())
-  dlg:Hide()
+  check("Rename picked from a menu left open into combat: no Rename popup opens and W reaches the game",
+    not shownBefore and not (dlg:IsShown() and dlg.which == "XAYAUI_RENAME") and g == "game" and not eb:HasFocus(), g)
+  check("  ...the name is unchanged and one plain line says why", r.name == "Old name" and #said == 1 and said[1]:find("during combat", 1, true) ~= nil,
+    table.concat(said, " / "))
   W.leaveCombat()
   fn = rename()
   if fn then fn() end

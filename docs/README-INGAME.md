@@ -51,10 +51,13 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - `/xui status` prints every rule's answer right now, and why.
 - `/xui auras` prints aura IDs, and whether XayaUI can follow them in combat.
 - `/xui unlock` lets you drag displays and groups; type it again to lock.
+- `/xui disable` turns every rule off at once, in combat too; `/xui enable` turns them back on (after combat, if you are in a fight). A /reload also turns them back on.
 - `/xui bug` makes a bug report.
 - `/xui debug` lists the diagnostic commands.
 - `/xui chat`, `/xui panel`, `/xui privacy` for the Chat Panel, the Chat Data Panel and the privacy cover.
 - `/xui reskin`, `/xui stats`, `/xui shop`, `/xui cursor` for the QoL features.
 - `/xui notes`, `/xui calc`, `/xui data` for the Bonus Features.
+
+In combat the settings window, the rule editor and the mover do not open: one chat line says so, and the one you asked for opens by itself when combat ends. A window that is open when combat starts closes and opens again afterwards.
 
 The full manual is docs/USER-GUIDE.md in the XayaUI source code (Info > Version info has the link).

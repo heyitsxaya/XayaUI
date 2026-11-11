@@ -516,6 +516,9 @@ f:SetScript("OnUpdate", OnUpdate)
 -- displays are hidden (XayaUI's frames: allowed in combat), previews end, and RULES_DISABLED tells the parts that show or play something
 -- for a rule on their own (Modules.lua section 6). Session only: nothing is saved, so a /reload turns rules back on (no saved switch for
 -- this existed). /xui enable (never in combat: Core.lua waits for combat end) puts the driver back and steps every rule at once.
+-- Rules start fresh after /xui enable, as after a /reload: each rule's running and loaded state was cleared here, so its On
+-- Initialization actions run again and a rule still true runs its During actions again (its glow comes back: Actions.lua stopped every
+-- glow at RULES_DISABLED). The enable line says so (XayaUI/Core.lua).
 function ns.SetRulesDisabled(on)
     on = on and true or false
     if on == (ns.RulesDisabled == true) then return false end

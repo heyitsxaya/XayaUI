@@ -147,10 +147,12 @@ L.execute("COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); LOCK = true")
 check("a fight starts while mounted: 'Only when mounted' still held", H(7002) == 1)
 L.execute("MOUNTED = false; FIRE('PLAYER_MOUNT_DISPLAY_CHANGED')")
 check("dismount during that fight: 'Only when mounted' is taken back at once", H(7002) == 0)
-check("  ...'Only when not mounted' is not added during combat lockdown (no restricted call); XayaUI plays it itself",
-      H(7001) == 0 and L.eval("NS.AuraSound.Owns(NOTMOUNTED)") is False)
-check("  ...and the pane says it is applied when combat ends, and XayaUI plays it until then",
-      "Waiting" in st("NOTMOUNTED") and "XayaUI plays the sound itself" in st("NOTMOUNTED"), st("NOTMOUNTED"))
+# (round 4, SD-31 "A: never miss it": intended change) 'Only when not mounted' was added as that fight started, while still mounted,
+# so it is already held when the dismount comes in lockdown; before round 4 it was missing for the whole fight (tests/fix_r4_sound_run.py)
+check("  ...'Only when not mounted' is held for the fight (added as it started, before the lockdown; SD-31)",
+      H(7001) == 1 and L.eval("NS.AuraSound.Owns(NOTMOUNTED)") is True)
+check("  ...and the pane says the game plays it, not that it waits for the end of combat",
+      "The game plays this sound" in st("NOTMOUNTED") and "Waiting" not in st("NOTMOUNTED"), st("NOTMOUNTED"))
 L.execute("COMBAT = false; LOCK = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
 check("that fight ends: the game holds 'Only when not mounted'", H(7001) == 1, st("NOTMOUNTED"))
 check("the game was never asked to add a sound during combat lockdown", L.eval("ADDS_IN_LOCK") == 0, L.eval("ADDS_IN_LOCK"))

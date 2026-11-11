@@ -1380,6 +1380,22 @@ local function AnchorTitleButtons(c, fr)
     c.arrow:SetPoint("TOPRIGHT", fr, "TOPRIGHT", -32, -4)
 end
 
+-- (V26; round-3 review) the rules-off line (EnsureChrome builds it as c.off). Shown while rules are off (/xui disable) and the window is
+-- open and not collapsed. Synced when the window opens, on the driver's pass while it is open (one flag compared), when it is expanded,
+-- and at once on RULES_DISABLED / RULES_ENABLED (below; they return at their first line while the window is closed, A23 SD-12).
+Tree.RULES_OFF_TEXT = "Rules are off. Type /xui enable to turn them back on."
+function Tree.SyncRulesOff(of)
+    local c = of and of.xuiChrome
+    if not (c and c.off) then return end
+    local want = (ns.RulesDisabled and c.owned and not c.collapsed) and true or false
+    if c.off:IsShown() ~= want then c.off:SetShown(want) end
+end
+local function RulesSwitched()
+    if not Tree.openFrame then return end   -- (A23 SD-12) closed: the line is synced when the window opens
+    Tree.SyncRulesOff(AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP])
+end
+ns.On("RULES_DISABLED", RulesSwitched)
+ns.On("RULES_ENABLED", RulesSwitched)
 local function SetCollapsed(of, collapsed)
     local c = of and of.xuiChrome
     local fr = of and of.frame
@@ -1406,6 +1422,7 @@ local function SetCollapsed(of, collapsed)
     else
         for _, child in ipairs(c.hidden or {}) do child:Show() end
         c.hidden = nil
+        Tree.SyncRulesOff(of)   -- (V26) rules may have been turned on while it was collapsed
         fr:SetBackdropColor(0, 0, 0, 1)
         fr:SetBackdropBorderColor(1, 1, 1, 1)
         fr:EnableMouse(true)
@@ -1557,6 +1574,18 @@ local function EnsureChrome(of)
         c.clr.text:SetPoint("LEFT", 0, 0); c.clr.text:SetText("Clear selection")
         c.clr:SetScript("OnClick", function() if RE.MultiClear then RE.MultiClear() end end)
         c.delSel:Hide(); c.clr:Hide()
+        -- (V26; round-3 review) while rules are off (/xui disable) one plain line in the bottom strip, right of the version link, says
+        -- so: the editor's previews and the sidebar's movement unlocks show nothing then. Text only: it takes no mouse.
+        c.off = CreateFrame("Frame", nil, fr)
+        c.off:SetHeight(16)
+        c.off:SetPoint("LEFT", c.info, "RIGHT", 16, 0)
+        c.off:SetFrameLevel(fr:GetFrameLevel() + 10)
+        c.off.text = c.off:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        c.off.text:SetPoint("LEFT", 0, 0)
+        c.off.text:SetTextColor(1, 0.5, 0.25)
+        c.off.text:SetText(Tree.RULES_OFF_TEXT)
+        c.off:SetWidth(math.floor((c.off.text:GetStringWidth() or 0) + 4.5))
+        c.off:Hide()
 
         -- AceGUI recycles Frame widgets: undo everything on release so other addons' windows stay untouched
         local orig = of.OnRelease
@@ -1575,6 +1604,7 @@ local function EnsureChrome(of)
             c.close:Hide()
             c.arrow:Hide()
             if c.help then c.help:Hide() end
+            if c.off then c.off:Hide() end   -- (V26) the next addon to get this window never shows XayaUI's rules-off line
             if ns.InfoPane then ns.InfoPane.Close() end   -- the pane belongs to the settings window
             if orig then return orig(self, ...) end
         end
@@ -1615,6 +1645,7 @@ local function EnsureChrome(of)
             c.delSel:Hide(); c.clr:Hide()   -- bottom-left duplicate removed: the sidebar bar has Delete / Move to / Clear
         else c.delSel:Hide(); c.clr:Hide() end
     end
+    Tree.SyncRulesOff(of)
 end
 
 -- The debug console strip under the window: shown, placed and filled, or hidden. Run by the driver below every 0.25 s, and at once
@@ -1719,6 +1750,7 @@ function Tree.Tick(_, e)
 end
 function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if not Tree.pickerHooked then Tree.WatchPicker() end   -- (V26) once per session
     if of and of.frame and of.frame:IsShown() then driver:RegisterEvent("PLAYER_REGEN_DISABLED") end   -- (V26) only while open
     if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
     -- (Options 0.6.92; #495, PS-59) while the window is shown a right-click on a XayaUI element opens its menu (core Modules.lua section 11)
@@ -1730,7 +1762,10 @@ end
 -- just before the lockdown) the window closes by its normal path (its OnHide hook: unsaved rule edits go to Drafts, the searches stop,
 -- the driver stops), the rule editor's popups close with it, and it opens again when combat ends where she was: the tab, sub-tab and
 -- selected rule or group with its tab (the window's own selection path, read from AceConfigDialog's status tables before it closes).
--- The rule editor's popups (XayaUI's own frames and dialogs: hiding them is allowed); the version / help pane only reads, so it stays.
+-- The rule editor's popups (XayaUI's own frames and dialogs: hiding them is allowed) close too, and so does Blizzard's color picker
+-- when a swatch in XayaUI's window opened it (Tree.WatchPicker; another addon's picker is left alone). The version / help pane is
+-- XayaUI's and only reads, but it closes with the window (its OnRelease); when it was open it opens again with the window after combat,
+-- on the tab and section it showed (InfoPane.lua keeps them; it opens scrolled to the top).
 Tree.POPUP_FRAMES = { "XayaUISpellSearch", "XayaUISoundAllDialog", "XayaUIInfoPopup", "XayaUIImportWindow", "XayaUIThemeAsk" }
 Tree.POPUP_DIALOGS = { "XAYAUI_CONFIRM", "XAYAUI_RENAME", "XAYAUI_EXPORT", "XAYAUI_GROUP_FIT", "XAYAUI_AP_SAY", "XAYAUI_AP_ALERT" }
 -- the selection path the window shows: each level's selected group (a tree level holds its whole "a\001b" path), at most 16 levels
@@ -1756,10 +1791,45 @@ function Tree.Reopen(where)
     if not same and #where > 0 then pcall(AceConfigDialog.SelectGroup, AceConfigDialog, APP, unpack(where)) end
     ns.OptionsApi.Toggle()   -- (Toggle drops the redraw the select asked for: one build)
 end
+-- (V26) Blizzard's ColorPickerFrame is shared by every addon. XayaUI notes when the picker opens from a swatch in its own window: the
+-- picker shows from inside the swatch's click (AceGUI's ColorPicker widget: ColorSwatch_OnClick), so the frame under the mouse
+-- (GetMouseFoci, globals.md) is that swatch; it is XayaUI's when its parent chain reaches XayaUI's open window (INFERENCE: the mouse
+-- focus during the click is the clicked button; unverified in game). The OnShow / OnHide hooks are post-hooks (HookScript), placed
+-- once when the window first opens; while the window is closed OnShow only clears the note.
+function Tree.WatchPicker()
+    local P = rawget(_G, "ColorPickerFrame")
+    if Tree.pickerHooked or not (P and P.HookScript) then return end
+    Tree.pickerHooked = true
+    P:HookScript("OnShow", function()
+        Tree.pickerOurs = nil
+        local win = Tree.openFrame
+        if not win then return end   -- (A23 SD-12) the window is closed: not XayaUI's
+        local foci = GetMouseFoci and GetMouseFoci()
+        if type(foci) ~= "table" then return end
+        for _, rg in ipairs(foci) do
+            local p = rg
+            for _ = 1, 32 do
+                if p == nil then break end
+                if p == win then Tree.pickerOurs = true; return end
+                p = p.GetParent and p:GetParent() or nil
+            end
+        end
+    end)
+    P:HookScript("OnHide", function() Tree.pickerOurs = nil end)
+end
+-- closes the picker only when XayaUI's swatch opened it (out of combat: PLAYER_REGEN_DISABLED comes before the lockdown). Hide is what
+-- AceGUI's swatch itself calls on it; the colors picked so far are already in the rule (each change is set as it is made).
+function Tree.ClosePicker()
+    local P = rawget(_G, "ColorPickerFrame")
+    if Tree.pickerOurs and P and P:IsShown() then pcall(P.Hide, P) end
+    Tree.pickerOurs = nil
+end
 function Tree.CombatStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if not (of and of.frame and of.frame:IsShown()) then return end
     local where = Tree.WherePath()
+    local pane = (ns.InfoPane and ns.InfoPane.IsShown and ns.InfoPane.IsShown()) and true or false   -- read before the window closes it
+    Tree.ClosePicker()
     for _, n in ipairs(Tree.POPUP_FRAMES) do
         local p = rawget(_G, n)
         if p and p.IsShown and p:IsShown() then pcall(p.Hide, p) end
@@ -1770,7 +1840,12 @@ function Tree.CombatStart()
     if AceConfigDialog.OpenFrames[APP] then pcall(AceConfigDialog.Close, AceConfigDialog, APP) end
     if Tree.openFrame and Tree.Closed then pcall(Tree.Closed) end   -- (only if the OnHide hook did not see it: unregisters this event)
     ns.Print("the settings window closed because combat started. It will open again where you left it when combat ends.")
-    if ns.CombatLockQueue then ns.CombatLockQueue("settings", function() Tree.Reopen(where) end) end
+    if ns.CombatLockQueue then
+        ns.CombatLockQueue("settings", function()
+            Tree.Reopen(where)
+            if pane and ns.OptionsApi.IsOpen() and ns.InfoPane and not ns.InfoPane.IsShown() then ns.InfoPane.Open() end
+        end)
+    end
 end
 driver:SetScript("OnEvent", Tree.CombatStart)
 

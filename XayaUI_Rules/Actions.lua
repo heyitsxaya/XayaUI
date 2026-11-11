@@ -127,13 +127,18 @@ local function GlowTargets(rule, a)
     end
     return out
 end
+-- (V26) every frame a rule's glow action lit and no action has stopped yet (weak keys: this list never keeps a frame alive). Written
+-- only when a glow starts or stops (a rule's moment), never per frame. /xui disable stops them all (RULES_DISABLED below).
+local lit = setmetatable({}, { __mode = "k" })
+local function StopOn(lib, f)
+    pcall(lib.PixelGlow_Stop, f, GLOW_KEY); pcall(lib.AutoCastGlow_Stop, f, GLOW_KEY)
+    pcall(lib.ButtonGlow_Stop, f); pcall(lib.ProcGlow_Stop, f, GLOW_KEY)
+    lit[f] = nil
+end
 local function GlowStop(rule, a)
     local lib = LCG()
     if not lib then return end
-    for _, f in ipairs(GlowTargets(rule, a)) do
-        pcall(lib.PixelGlow_Stop, f, GLOW_KEY); pcall(lib.AutoCastGlow_Stop, f, GLOW_KEY)
-        pcall(lib.ButtonGlow_Stop, f); pcall(lib.ProcGlow_Stop, f, GLOW_KEY)
-    end
+    for _, f in ipairs(GlowTargets(rule, a)) do StopOn(lib, f) end
 end
 local function GlowStart(rule, a)
     local lib = LCG()
@@ -146,6 +151,7 @@ local function GlowStart(rule, a)
     local col = { a.glowR or 0.95, a.glowG or 0.95, a.glowB or 0.32, alpha }
     local x, y, lvl = GN(a, "glowX"), GN(a, "glowY"), GN(a, "glowLevel")
     for _, f in ipairs(GlowTargets(rule, a)) do
+        lit[f] = true
         local t = a.glowType
         if t == "pixel" then
             local len = GN(a, "pixLen"); if len == 0 then len = nil end   -- 0 = the library works the length out from the frame
@@ -177,7 +183,7 @@ end
 
 -- phase: "init" | "start" | "finish". Called by the engine; never for cues / conditions.
 function ns.RunActions(rule, phase)
-    if rule.parentUid then return end
+    if rule.parentUid or ns.RulesDisabled then return end   -- (V26) /xui disable: no rule's action runs until /xui enable
     local a = Existing(rule, phase)
     if phase == "finish" then
         local s = Existing(rule, "start")
@@ -189,6 +195,20 @@ function ns.RunActions(rule, phase)
     if a.glowOn and phase ~= "finish" then pcall(GlowStart, rule, a) end
     if phase == "finish" and a.glowOn then pcall(GlowStop, rule, a) end   -- an explicit "stop glow" after the end
     if a.codeOn and a.code and a.code ~= "" then DoCode(rule, phase, a) end
+end
+
+-- (V26) /xui disable (Xaya 2026-11-10, "/xui disable: all rules off"; Engine.lua ns.SetRulesDisabled fires RULES_DISABLED, in or out of
+-- combat): every glow a rule's action lit stops at once (On Initialization and During glows, kept ones included), and no After It
+-- Ends action runs for it (those can post a message or play a sound). One pass over the frames lit, once. LibCustomGlow's Stop calls
+-- are the same ones a rule's end already makes in combat. RULES_ENABLED needs no work here: rules start fresh (Engine.lua), so the
+-- engine's first step after /xui enable runs each rule's On Initialization actions again and During for a rule that is true, which
+-- lights their glows again.
+if ns.On then
+    ns.On("RULES_DISABLED", function()
+        local lib = LCG()
+        if not lib then return end
+        for f in pairs(lit) do StopOn(lib, f) end   -- (clearing a key during pairs is allowed in Lua 5.1)
+    end)
 end
 
 -------------------------------------------------------------------------------

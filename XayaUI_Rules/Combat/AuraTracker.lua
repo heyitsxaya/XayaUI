@@ -255,7 +255,7 @@ local function MakeLink(castID, ids, quality, auraID)
 end
 
 local function ConfirmLink(castID, rel, before)
-    if not (IdDiffUsable() and Restricted()) then return end
+    if ns.RulesDisabled or not (IdDiffUsable() and Restricted()) then return end   -- (V26) a check left waiting at /xui disable does nothing
     local after = Snap(true)
     if not after then return end
     local now = GetTime()
@@ -380,7 +380,7 @@ end
 -- Public: exact observations (called by ns.BuffPresent for true/false only)
 -------------------------------------------------------------------------------
 function T.Observe(id, present, src, ref)
-    if present == nil or not T.Enabled() then return end
+    if present == nil or ns.RulesDisabled or not T.Enabled() then return end
     local now = GetTime()
     local s = State(id)
     s.queriedAt = now
@@ -515,13 +515,13 @@ end
 function T.ClearConsumer(castID) local d = DB(); if d then d.consumers[castID] = nil end end
 
 function T.OnCastSent(castID)
-    if not IdDiffUsable() or not Restricted() then return end
+    if ns.RulesDisabled or not IdDiffUsable() or not Restricted() then return end   -- (V26) rules off: no aura-ID list read
     if not RelevantTargets(castID) then return end
     pre[castID] = Snap(true)
 end
 
 function T.OnCastWindows(castID)
-    if not T.Enabled() then return end
+    if ns.RulesDisabled or not T.Enabled() then return end   -- (V26) rules off: no evidence kept, no check scheduled
     local M = Model()
     local now = GetTime()
     local cons = ConsumerList(castID)
@@ -572,12 +572,9 @@ end
 T.ResetAll = ResetAll
 
 local f = CreateFrame("Frame")
-f:RegisterEvent("PLAYER_REGEN_DISABLED")
-f:RegisterEvent("PLAYER_REGEN_ENABLED")
-f:RegisterEvent("PLAYER_DEAD")
-f:RegisterEvent("PLAYER_ENTERING_WORLD")
-f:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-f:RegisterEvent("TRAIT_CONFIG_UPDATED")
+local EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_DEAD", "PLAYER_ENTERING_WORLD", "PLAYER_SPECIALIZATION_CHANGED",
+    "TRAIT_CONFIG_UPDATED" }
+for _, e in ipairs(EVENTS) do f:RegisterEvent(e) end
 f:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_REGEN_DISABLED" then
         combat.on, combat.t0 = true, GetTime()
@@ -599,6 +596,26 @@ f:SetScript("OnEvent", function(_, event, unit)
         for _, s in pairs(S) do s.link = nil end
     end
 end)
+
+-- (V26) /xui disable (Engine.lua ns.SetRulesDisabled; in or out of combat): the tracker stops its event work. Its six events are
+-- released (Frame:UnregisterEvent: no HasRestrictions or IsProtectedFunction flag in widgets.md), the cast hooks above and a link
+-- check still waiting return at their first line, and what it had gathered is dropped (it describes a fight the rules no longer
+-- follow). /xui enable (never in combat: XayaUI/Core.lua waits for combat end) takes the events back and starts from nothing, as after
+-- a /reload; the aura-ID capability is tested again.
+if ns.On then
+    ns.On("RULES_DISABLED", function()
+        for _, e in ipairs(EVENTS) do f:UnregisterEvent(e) end
+        ResetAll("off")
+        combat.on, combat.t0 = false, nil
+    end)
+    ns.On("RULES_ENABLED", function()
+        for _, e in ipairs(EVENTS) do f:RegisterEvent(e) end
+        ResetAll("on")
+        cap.ids = nil
+        local fighting = InCombatLockdown and InCombatLockdown() and true or false
+        combat.on, combat.t0 = fighting, fighting and GetTime() or nil
+    end)
+end
 
 -- Hooks into the model (set after both files loaded; AuraModel calls them under pcall).
 local function Install()

@@ -1381,20 +1381,12 @@ end
 
 -- Blizzard's Menu code (Blizzard_Menu/Menu.lua) gives a menu the strata FULLSCREEN_DIALOG, or TOOLTIP when its owner region is
 -- at TOOLTIP strata. The options window is also FULLSCREEN_DIALOG and sits higher in level, so the menu opened behind it.
--- Fix: use an invisible TOOLTIP-strata frame laid over the clicked row as the menu's owner region.
-local menuOwner
-local function MenuOwner(button)
-    if not menuOwner then
-        menuOwner = CreateFrame("Frame", nil, UIParent)
-        menuOwner:SetFrameStrata("TOOLTIP")
-        menuOwner:EnableMouse(false)
-    end
-    menuOwner:ClearAllPoints()
-    menuOwner:SetPoint("TOPLEFT", button, "TOPLEFT")
-    menuOwner:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT")
-    menuOwner:Show()
-    return menuOwner
-end
+-- Fix: use an invisible TOOLTIP-strata frame laid over the clicked row as the menu's owner region (XayaUI's one menu owner,
+-- Visual.lua ns.ContextMenuOwner: hidden when combat starts or the window closes).
+-- (V26) Every choice in the sidebar's menus (the row menu, the blank-space menu, Move Selected To) goes through Visual.lua's
+-- ns.GuardMenu: in combat it changes nothing and prints one line; once the settings window has closed it changes nothing.
+local function MenuOwner(button) return ns.ContextMenuOwner(button, "TOOLTIP", drag.OpenNow) end
+local function Guarded(root) return ns.GuardMenu(root, drag.OpenNow) end
 
 local function ShowRowMenu(button)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
@@ -1410,7 +1402,7 @@ local function ShowRowMenu(button)
                 end
             end)
         end
-        shown = RowMenu(button, root)
+        shown = RowMenu(button, Guarded(root))
     end)
     if not ok then ns.Print("context menu error: " .. tostring(err)) end
 end
@@ -1436,6 +1428,7 @@ function ns.ShowBlankMenu(frame)
                 end
             end)
         end
+        root = Guarded(root)
         root:CreateTitle("Create")
         root:CreateButton("New Rule", function() StartNewRule(nil) end)
         root:CreateButton("New Group", function() NewGroup(false) end)
@@ -1730,6 +1723,7 @@ do
                     if menu and menu.SetFrameStrata then pcall(menu.SetFrameStrata, menu, "TOOLTIP"); if menu.Raise then pcall(menu.Raise, menu) end end
                 end)
             end
+            root = Guarded(root)
             root:CreateTitle("Move " .. ns.MultiCount() .. " selected rule(s) to")
             root:CreateButton("Top Level (no group)", function() ns.MultiMove(nil) end)
             local _, fOrder = FolderValues()

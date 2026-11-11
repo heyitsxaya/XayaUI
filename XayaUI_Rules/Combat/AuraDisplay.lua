@@ -57,6 +57,12 @@ local pendingBuild, lastError
 local serial = 0       -- build number: a slot built by the latest build carries it
 local LIMIT_MS, NEED = 1.0, 3
 local LEAN_REASON = "lean mode: not for the spec you are playing"
+-- (V26, SD-16: nothing configures the engine through the console) Reasons a player reads (Conditions.lua ns.HiddenAuraNote) name no
+-- command. Both states below are saved only by XayaUI Dev Assist's /xuiengine off <group> and /xuiengine auto off (a developer tool,
+-- not on main; the guard's own trips last until /reload and are undone at load, DB()): the settings window has no switch for them
+-- and a /reload keeps them, so the text says where they were set and that only there can they be changed back.
+local KEPT_REASON = "its group is set to stay with XayaUI (set with the developer tool XayaUI Dev Assist; only Dev Assist can change it back)"
+local AUTO_OFF_REASON = "automatic engine drawing is off (switched off with the developer tool XayaUI Dev Assist; only Dev Assist can turn it back on)"
 local guard = { bad = 0 }   -- .lean / .off: this session's trips (never saved)
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
@@ -1031,7 +1037,7 @@ function D.Build()
             if not s then
                 if why ~= "" then left[#left + 1] = { p, why } end
             elseif KeptWithXayaUI(s.display.folder) then
-                left[#left + 1] = { p, "its group is kept with XayaUI (/xuiengine reset <group> to undo)" }
+                left[#left + 1] = { p, KEPT_REASON }
             elseif guard.lean and not LoadsForSpec(p, spec) then
                 left[#left + 1] = { p, LEAN_REASON }
             else
@@ -1242,7 +1248,7 @@ function D.Status()
     if db.auto == false or guard.off then
         Say(guard.off and db.auto ~= false
             and ("automatic engine drawing is OFF for this session (performance guard): XayaUI draws every display itself. " .. (DevOn() and "/xuiengine auto on, or a /reload, turns it back on." or "A /reload turns it back on."))
-            or ("automatic engine drawing is OFF: XayaUI draws every display itself." .. (DevOn() and " /xuiengine auto on to turn it on." or " It was switched off with XayaUI Dev Assist's /xuiengine auto off: turn it on there.")))
+            or ("automatic engine drawing is OFF: XayaUI draws every display itself." .. (DevOn() and " /xuiengine auto on to turn it on." or " It was switched off with the developer tool XayaUI Dev Assist, and only Dev Assist can turn it back on.")))
         if lastError then Say("last engine error: " .. lastError) end
         return
     end
@@ -1539,7 +1545,7 @@ function D.OwnerOf(rule)
     end
     for _, e in ipairs(left) do if e[1] == p then return false, e[2] end end
     local db = DB()
-    if db and db.auto == false then return false, "automatic engine drawing is off (/xuiengine auto on)" end
+    if db and db.auto == false then return false, AUTO_OFF_REASON end
     if guard.off then return false, "automatic engine drawing is off for this session (performance guard)" end
     return nil
 end

@@ -40,6 +40,9 @@ The same command answers it:
 ### Why can't XayaUI add the aura to the Cooldown Manager for me?
 Blizzard keeps that window closed to addons. When a rule needs it, the rule's Display and Cues tabs say where to add it.
 
+### Why is my group's border drawn around each icon, not around the whole group?
+A group's **Border** and **Background** (group page > Group tab > Border and background on each display) are drawn on each display in the group, one by one, in every group, including the icons the combat engine draws in combat. **Padding around each display** sets how far they reach past each display's edge; it starts at 0, right on the edge. Groups inside the group use them too, unless they turn on their own.
+
 ## What the game won't allow
 
 ### Why is there no trigger for health, mana, rage or the combat log?
@@ -61,6 +64,14 @@ The game restricts chat actions to other players in several kinds of content, an
 
 ### Where are the commands?
 `/xui help` lists the commands you use. The diagnostic ones are under `/xui debug`; `/xui debug` alone lists them. Any `/xui debug` command opens the XayaUI console and prints there.
+
+### Why won't the settings window open in combat?
+The settings window, the rule editor, the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and `/xui enable` are locked in combat, because rules and combat tracking are changed only there. Ask in combat and one chat line says so, for example "the settings window can't open during combat. It will open when combat ends.": it then opens by itself when combat ends (only your last request is kept).
+- **Open when combat starts:** the window closes (unsaved rule edits go to Rule Drafts) and opens again where you were when combat ends. The mover closes and opens again with your unsaved moves.
+- **Still allowed in combat:** `/xui disable`, closing any window, `/xui report`, `/xui bug`, `/xui console`, `/xui help`, `/xui status`, `/xui auras`, `/xuiengine` and the `/xui debug` commands that only read.
+
+### How do I turn every rule off at once?
+Type `/xui disable`. It works in combat too: every rule stops checking, and their displays, glows and sounds stop (a sound already playing finishes). They stay off until you type `/xui enable` or `/reload`. `/xui enable` waits until combat ends if you are in a fight; rules then start fresh, as after a /reload.
 
 ### Where are XayaUI's messages?
 In the main chat window, the XayaUI console window (`/xui console`), or both: choose under Settings > Debugging, "XayaUI's messages".

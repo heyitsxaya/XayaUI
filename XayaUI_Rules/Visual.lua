@@ -1110,7 +1110,7 @@ end
 -- something the game lets addons know in combat, so an engine slot counts while it may show (loaded, talents, not unlocked). A single slot is measured as
 -- XayaUI's own icon frame it sits on; a dynamic group's container as XayaUI's layout of the members that may show (GA.LayItems),
 -- worked out once per change and kept. The containers' own geometry is never read (it can be secret in combat).
-local gbRoot, gbUs, gbL, gbB, gbR, gbT   -- (the measure in progress; module locals so the watcher allocates nothing)
+local gbRoot, gbUs, gbL, gbB, gbR, gbT   -- (the measure in progress; module locals so a measure allocates no table)
 local engineExt = {}   -- [folderId] = { l, b, r, t, ver =, cfg = }: a dynamic engine group's grid from its group frame's centre
 local function GBAdd(fl, fb, fr, ft)
     gbL = gbL and math.min(gbL, fl) or fl; gbB = gbB and math.min(gbB, fb) or fb
@@ -1157,7 +1157,8 @@ end
 -- display: XayaUI's own display frames (RefreshVisual) and every aura button the combat engine makes (Combat/AuraDisplay.lua, its own
 -- list of the buttons it set up). There is no box around the group and nothing follows one: they are drawn when a display is set up or
 -- a setting changes, never per frame. Off (neither border nor background): no texture is made (V14). The saved keys are unchanged
--- (cBorder, cBdColor, cBdSize, cBg, cBgColor, cBgTex, cPad); cPad is now the padding around each display.
+-- (cBorder, cBdColor, cBdSize, cBg, cBgColor, cBgTex, cPad); cPad is now the padding around each display. (SD-32, her answer "0 px
+-- (Recommended)") A group with no saved padding draws them on the display's own edge (0 px); a saved padding is used as saved.
 -- Which group's settings a display takes: its own group's, or, when that group has neither on, the nearest group around it that has
 -- (the old box of a group also went round its nested groups' items).
 local function DecoGroup(folderId)
@@ -1184,7 +1185,7 @@ function ns.PaintGroupDeco(owner, d, fo)
         d = { bg = owner:CreateTexture(nil, "BACKGROUND", nil, -8) }
         for i = 1, 4 do d[i] = owner:CreateTexture(nil, "OVERLAY", nil, -8) end
     end
-    local p = tonumber(fo.cPad) or 4
+    local p = tonumber(fo.cPad) or 0   -- (SD-32: 0 px when none is saved)
     if fo.cBg then
         local bg, c, tex = d.bg, fo.cBgColor or DEF_BG, fo.cBgTex
         if d.bgPad ~= p then   -- (placed again only when the padding changed)
@@ -1426,7 +1427,7 @@ function ns.AnchorGroupToFrame(fo, target, name)
     Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = "custom", name, nil, own, rel end)
     return true, own, rel
 end
--- B: another group's box on screen (screen pixels): its set box, else what it shows now (as the group box hugs it), else its anchor point
+-- B: another group's box on screen (screen pixels): its set box, else what it shows now (GroupScreenBounds), else its anchor point
 function GA.BoxRect(t)
     if ns.GroupSizeMode(t) == "set" then return ScreenRect(Container(t)) end
     local l, b, r, tp = GroupScreenBounds(t)
@@ -1436,7 +1437,7 @@ function GA.BoxRect(t)
     local us = UIParent:GetEffectiveScale()
     return x * us, y * us, x * us, y * us
 end
--- B: the group (that forFo may follow) whose mover tag, outline (what it shows, 4 px out) or group box is under the cursor; the
+-- B: the group (that forFo may follow) whose mover tag or outline (what it shows, 4 px out) is under the cursor; the
 -- smallest one when they overlap (a nested group inside its parent). Returns { fo, l, b, r, t } (the outline to draw, screen pixels).
 function GA.GroupUnderCursor(forFo)
     local cx, cy = GetCursorPosition()
@@ -2343,9 +2344,74 @@ local DRAG_UP_WINDOW = 0.3   -- seconds after OnDragStop in which a left release
 -- A drag that moved the display this little (px, each axis) was a click with a shaky hand, not a move (core 0.6.43): Xaya's saved
 -- displays shifted by 2-4 px after clicks in the mover view (her XayaUI.lua, 2026-11-04, compared by the Dev Assist session).
 local CLICK_SLOP = 5
+-------------------------------------------------------------------------------
+-- (V26) The context menus XayaUI opens: the display menu below (its entries are also the rows of core's element menu, Modules.lua
+-- section 11) and the settings window's sidebar menus (Editor/Sidebar.lua: a row's menu, the blank-space menu, Move Selected To).
+-- The game's menu can stay on screen after the window or the mover view it came from has closed, and into a fight. Every choice in
+-- these menus goes through MenuChoice: in combat it changes nothing and prints one line; once its window or mover view has closed it
+-- changes nothing. Reading what is ticked (a radio's or check box's state) is not gated: it changes nothing.
+-- The menus open on XayaUI's own owner frame (ns.ContextMenuOwner), which is hidden when combat starts (PLAYER_REGEN_DISABLED, an event
+-- registered only while the owner is shown) and when its window or mover view closes (MenuOwnerCheck). UNVERIFIED IN GAME: whether
+-- the game's menu closes with its owner; if it stays up, its choices still change nothing.
+-------------------------------------------------------------------------------
+local MENU_COMBAT = "menus can't be used during combat, so nothing was changed."
+local function MenuChoice(isOpen, fn)
+    if type(fn) ~= "function" then return fn end
+    return function(...)
+        if InCombatLockdown and InCombatLockdown() then ns.Print(MENU_COMBAT); return end
+        if isOpen and not isOpen() then return end
+        return fn(...)
+    end
+end
+ns.MenuChoice = MenuChoice
+-- A menu description whose choices all go through MenuChoice: CreateButton(text, choice, ...), CreateCheckbox / CreateRadio(text,
+-- isSelected, choice, ...); a submenu made from it is guarded the same way; every other call goes straight to the description. Built
+-- when a menu opens, never while it is shown.
+local function GuardMenu(desc, isOpen)
+    if type(desc) ~= "table" then return desc end
+    return setmetatable({}, { __index = function(_, k)
+        local v = desc[k]
+        if type(v) ~= "function" then return v end
+        if k == "CreateButton" then
+            return function(_, text, fn, ...) return GuardMenu(v(desc, text, MenuChoice(isOpen, fn), ...), isOpen) end
+        elseif k == "CreateCheckbox" or k == "CreateRadio" then
+            return function(_, text, isSel, fn, ...) return GuardMenu(v(desc, text, isSel, MenuChoice(isOpen, fn), ...), isOpen) end
+        end
+        return function(_, ...) return v(desc, ...) end
+    end })
+end
+ns.GuardMenu = GuardMenu
+-- One owner frame for every context menu XayaUI opens (the game keeps one context menu open at a time), laid over the clicked region;
+-- it draws nothing and takes no mouse. strata: "TOOLTIP" raises the game's menu above the settings window (Sidebar.lua).
+local menuOwner, menuOwnerOpen
+function ns.ContextMenuOwner(region, strata, isOpen)
+    if not menuOwner then
+        menuOwner = CreateFrame("Frame", nil, UIParent)
+        menuOwner:EnableMouse(false)
+        menuOwner:SetScript("OnEvent", function(self) self:Hide() end)   -- PLAYER_REGEN_DISABLED: combat starts
+        menuOwner:SetScript("OnHide", function(self) self:UnregisterEvent("PLAYER_REGEN_DISABLED"); menuOwnerOpen = nil end)
+    end
+    menuOwner:SetFrameStrata(strata or "HIGH")
+    menuOwner:ClearAllPoints()
+    menuOwner:SetPoint("TOPLEFT", region, "TOPLEFT")
+    menuOwner:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT")
+    menuOwnerOpen = isOpen
+    menuOwner:Show()
+    menuOwner:RegisterEvent("PLAYER_REGEN_DISABLED")
+    return menuOwner
+end
+function ns.ContextMenuOwnerShown() return menuOwner ~= nil and menuOwner:IsShown() end   -- (tests)
+-- the window or mover view the open menu came from has closed: its owner goes too
+local function MenuOwnerCheck()
+    if menuOwner and menuOwner:IsShown() and not (menuOwnerOpen and menuOwnerOpen()) then menuOwner:Hide() end
+end
+-- the display menu belongs to the mover view (or this display's own unlock) or to the settings window (core's element menu)
+local function VisualMenuOpen(rule) return Unl(rule) or (ns.WindowOpen and ns.WindowOpen()) or false end
+
 -- (Rules 0.6.78; #495) the menu's entries as a list, so the settings window's element menu (core Modules.lua section 11) keeps the same
 -- entries, built by the same code: { title = text } | { divider = true } | { text, func } | { text, sub = fn(menuDescription) } |
--- { radio = text, checked = fn, func }. ns.ShowVisualMenu builds the game's context menu from it exactly as before.
+-- { radio = text, checked = fn, func }. ns.ShowVisualMenu builds the game's context menu from it exactly as before. (V26) Every func
+-- and every choice a sub builds goes through MenuChoice (above), for both menus.
 local function VisualMenuParts(rule)
     local v = rule.visual
     local parts = {}
@@ -2403,12 +2469,19 @@ local function VisualMenuParts(rule)
     add({ text = "Edit This Aura", func = function() if ns.EditRule then ns.EditRule(rule) end end })
     local fo = rule.folder and ns.FolderById(rule.folder)
     if fo then add({ text = "Edit Its Group (" .. tostring(fo.name) .. ")", func = function() if ns.EditFolder then ns.EditFolder(fo) end end }) end
+    local function isOpen() return VisualMenuOpen(rule) end
+    for _, p in ipairs(parts) do
+        if p.func then p.func = MenuChoice(isOpen, p.func) end
+        if p.sub then local build = p.sub; p.sub = function(d) return build(GuardMenu(d, isOpen)) end end
+    end
     return parts
 end
 ns.VisualMenuParts = VisualMenuParts
 function ns.ShowVisualMenu(rule, anchor)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
-    MenuUtil.CreateContextMenu(anchor, function(_, root)
+    if InCombatLockdown and InCombatLockdown() then ns.Print("menus can't be opened during combat."); return end
+    local strata = anchor and anchor.GetFrameStrata and anchor:GetFrameStrata()
+    MenuUtil.CreateContextMenu(ns.ContextMenuOwner(anchor, strata, function() return VisualMenuOpen(rule) end), function(_, root)
         for _, p in ipairs(VisualMenuParts(rule)) do
             if p.title then root:CreateTitle(p.title)
             elseif p.divider then root:CreateDivider()
@@ -3575,6 +3648,7 @@ function ns.EndWindowState()
         if ns.MoverCombatStarting() then ns.MoverCombatClose("combat") else ns.ToggleUnlock() end
     end
     ns.unlockedByWindow = nil
+    MenuOwnerCheck()   -- (V26) a context menu opened from the window (or a window-made unlock) goes with it
     if ns.MarkDirty then ns.MarkDirty() end
 end
 
@@ -3795,6 +3869,7 @@ local function Lock()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
     if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
     LockWatchSync()   -- (V26) the combat-start event is let go with the view
+    MenuOwnerCheck()   -- (V26) a display's menu opened in the view goes with it
 end
 -- leave the mover view: Save keeps the moves, Cancel puts every display and group back where it was when the view opened
 function ns.MoverExit(choice)
@@ -3927,6 +4002,7 @@ function ns.MoverCombatClose(reason)
     if mover.keys then mover.keys:Hide() end   -- (no key is taken in the fight)
     pcall(AfterMoverChange)
     LockWatchSync()
+    MenuOwnerCheck()   -- (V26) a display's menu opened in the view goes with it (combat: the owner's own event hides it too)
     local moved = #ns.MoverChanges() > 0
     if reason == "off" then
         ns.Print(moved and "the mover closed because rules are off. It will open again with your unsaved moves when you type /xui enable."

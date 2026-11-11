@@ -96,6 +96,10 @@ display's own border and background. The group's ... are drawn on each display a
 `boxH` renamed "Border and background on each display" with an xuiInfo note (the new boxNote text, "...one by one, not as one box
 around the whole group..."), `pad` renamed "Padding around each display", and a new desc on border, borderColor, bg, bgColor, bgTex
 and pad (each says "each display"); 0 other lines (the round-3 combat lock and sound changes draw no other line here).
+Updated on 2026-11-11 for round 4 (SD-32, her answer "0 px (Recommended)": a group with no saved padding has 0 px): `--dump` of the
+code before the change (round 3 plus the other round-4 units' edits at that moment) and of the new code differ in exactly 4 lines, all
+"cooldowns", each a `pageGroup.container.pad` node on the 4 group pages the fixed state draws, only in `get()=4` -> `get()=0`; same
+6698 nodes; 0 other lines. Only the all-on "cooldowns" hash changed (1877b5cde0ef9cca -> 0c8c6b423b53037c).
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

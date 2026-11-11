@@ -13,7 +13,8 @@
 -- AddPrivateAuraAppliedSound onto it, and no Blizzard UI code calls it. Also unconfirmed: whether a /reload clears the game's
 -- registrations (the QA step checks for a doubled sound). AddAuraSound is called out of combat lockdown only ("HasRestrictions",
 -- the flag the protected TargetUnit also carries; what is restricted is not documented; a refused call is reported and XayaUI keeps
--- playing the sound itself). RemoveAuraSound carries no such flag, so a copy is taken back at once, in combat too (SD-25).
+-- playing the sound itself when it can see the aura). RemoveAuraSound carries no such flag, so a copy is taken back at once, in combat
+-- too (SD-25).
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local issecret = ns.IsSecret or issecretvalue or function() return false end
@@ -222,6 +223,7 @@ end
 
 local Start, Stop, Users, MountWatch   -- (below: the feature's events, V14)
 local gated = {}   -- (SD-25) [rule] = its plan, for every rule whose copy follows the mount state (kept ready for OnMount)
+local inFight = false   -- (SD-31) from PLAYER_REGEN_DISABLED to PLAYER_REGEN_ENABLED, seen only while the mount events are listened to
 
 -- Hand one plan to the game. Never called in combat lockdown (AddAuraSound "HasRestrictions"). The info tables are made once per plan
 -- and kept on it, so a mount / dismount that adds the copy again makes only the small list of IDs.
@@ -286,7 +288,7 @@ function A.Sync()
             if p.mount == nil then want[r] = p
             else
                 gated[r] = p   -- (SD-25) kept ready: OnMount adds / takes it back as the mount state changes
-                if p.mount == mounted then want[r] = p end
+                if p.mount == mounted or (p.mount == false and inFight) then want[r] = p end   -- (SD-31: held for the whole fight)
             end
         elseif A.Settings(r) and A.Settings(r).enabled then lastWhy[r] = okP and why or ("something went wrong (" .. tostring(p):gsub("^.-:%d+: ", "") .. ")")
         else lastWhy[r] = nil end
@@ -304,23 +306,31 @@ end
 
 -- (SD-25) The mount state changed, or a fight is about to start: bring the mount-following copies in line at once, no delay, so a
 -- dismount straight into a pull is covered. Taking a copy back (RemoveAuraSound, no restriction flag) is done in combat too. Adding
--- one is not done in combat lockdown: PLAYER_REGEN_DISABLED comes before the lockdown (INFERENCE), so a dismount in the same moment
--- as the pull is added there; a dismount later in a fight that started mounted waits for the end of combat (`pending`), and until
--- then XayaUI plays the sound itself (A.Owns is false). Makes no table unless a copy is added.
-local function OnMount()
+-- one is never done in combat lockdown (AddAuraSound "HasRestrictions"); PLAYER_REGEN_DISABLED comes before the lockdown (INFERENCE).
+-- (SD-31, Xaya: "A: never miss it") A copy that follows "Only when not mounted" is added as each fight starts (PLAYER_REGEN_DISABLED),
+-- even while mounted, and kept for the whole fight, so being knocked off the mount in the fight (the dismount comes during lockdown,
+-- when nothing can be added) still has it. Her accepted trade-off: it may also play while still mounted in that fight. When the fight
+-- ends (PLAYER_REGEN_ENABLED, after the lockdown) it is taken back if she is mounted. A copy that follows "Only when mounted" is
+-- unchanged. Bounded: one pass over the mount-following rules only, on these two events and the end of combat. Makes no table
+-- unless a copy is added. event: the game event, or nil (the end of a fight).
+local function OnMount(event)
     if ns.RulesDisabled then return end   -- (V26: nothing is handed to the game while rules are off)
+    if event == "PLAYER_REGEN_DISABLED" then inFight = true end
     local m = MountedNow()
-    if m == nil then A.Queue(); return end
     local locked = InCombatLockdown and InCombatLockdown()
     for r, p in pairs(gated) do
-        if p.mount == m then
+        local hold
+        if p.mount == false and inFight then hold = true   -- (SD-31) mounted or not, for the whole fight
+        elseif m ~= nil then hold = (p.mount == m) end   -- (mount state unknown: left as it is; the sync below re-plans)
+        if hold == true then
             if not registered[r] then
                 if locked then pending = true else Register(r, p) end
             end
-        elseif registered[r] then
+        elseif hold == false and registered[r] then
             Unregister(r)
         end
     end
+    if m == nil then A.Queue() end
 end
 A.OnMount = OnMount
 
@@ -346,11 +356,13 @@ function A.StatusLine(rule)
     local offMount = gate ~= nil and not r and mountNow ~= nil and mountNow ~= gate
     if pending and (not r or not (okNow and now and now.sig == r.sig)) and not offMount then
         return "|cffffd100Waiting:|r the game takes changes only out of combat; this one is applied when combat ends" ..
-            (r and " (until then the game keeps the previous setting)." or ". Until then XayaUI plays the sound itself.")
+            (r and " (until then the game keeps the previous setting)." or (". Until then XayaUI plays the sound itself only" ..
+            " if it can see the aura, and many auras are hidden from addons in combat."))
     end
     if offMount then   -- (SD-25) held back only while the mount state is not the one it is set to
-        return ('|cffffd100Not playing right now|r because it is set to "%s". The game plays it again as soon as you %s.'):format(
-            MountLabel(gate), gate and "mount" or "dismount")
+        return ('|cffffd100Not playing right now|r because it is set to "%s". The game plays it again as soon as you %s.%s'):format(
+            MountLabel(gate), gate and "mount" or "dismount", gate and "" or   -- (SD-31)
+            " It is also set up as each fight starts, so it still plays if you are knocked off your mount during the fight.")
     end
     if r then
         local p = okNow and now or nil
@@ -367,17 +379,18 @@ function A.StatusLine(rule)
         if gate == true then   -- (SD-25)
             extra = extra .. (' It follows "%s", so the game stops playing it when you dismount.'):format(MountLabel(true))
         elseif gate == false then
-            extra = extra .. (' It follows "%s", so the game stops playing it when you mount. If a fight starts while you are mounted' ..
-                ' and you dismount during it, XayaUI plays it itself until that fight ends.'):format(MountLabel(false))
+            extra = extra .. (' It follows "%s", so the game stops playing it when you mount. It is also set up as each fight' ..   -- (SD-31)
+                ' starts, even while you are mounted, so it still plays if you are knocked off your mount during the fight; until' ..
+                ' that fight ends it may also play while you are still mounted.'):format(MountLabel(false))
         end
         return ("|cff55ff55The game plays this sound|r %s (aura%s %s, channel %s).%s%s This is not yet confirmed in game, so check once that it plays."):format(
             what, (p and #p.ids > 1) and "s" or "", p and table.concat(p.ids, ", ") or "?", p and p.channel or "?",
             r.partial and (" The game refused some of the aura IDs (" .. r.partial .. ").") or "", extra)
     end
-    if lastWhy[rule] then return "|cffffd100Not played by the game:|r " .. tostring(lastWhy[rule]) .. ". XayaUI plays the sound itself as before." end
+    if lastWhy[rule] then return "|cffffd100Not played by the game:|r " .. tostring(lastWhy[rule]) .. ". XayaUI plays the sound itself as before, when it can see the aura." end
     local okP, p, why = pcall(A.Plan, rule)
     if okP and p then return "|cffffd100Not set up yet|r (it is set up a moment after you change a setting)." end
-    return "|cffffd100Not played by the game:|r " .. tostring(why or "unknown") .. ". XayaUI plays the sound itself as before."
+    return "|cffffd100Not played by the game:|r " .. tostring(why or "unknown") .. ". XayaUI plays the sound itself as before, when it can see the aura."
 end
 
 -- When to resync: login, end of combat, spec / talent / gear / zone / group / Mythic+ / resting changes, and every rule edit (debounced; out of combat only).
@@ -426,8 +439,11 @@ Start = function()
         evf = CreateFrame("Frame")
         if evf.SetScript then
             evf:SetScript("OnEvent", function(_, event)
-                if event == "PLAYER_MOUNT_DISPLAY_CHANGED" or event == "PLAYER_REGEN_DISABLED" then OnMount(); return end
-                if event == "PLAYER_REGEN_ENABLED" and not pending then return end
+                if event == "PLAYER_MOUNT_DISPLAY_CHANGED" or event == "PLAYER_REGEN_DISABLED" then OnMount(event); return end
+                if event == "PLAYER_REGEN_ENABLED" then
+                    if inFight then inFight = false; OnMount() end   -- (SD-31) the fight is over: back to the mount state now
+                    if not pending then return end
+                end
                 if event == "GROUP_ROSTER_UPDATE" then
                     local g, r = IsInGroup and IsInGroup(), IsInRaid and IsInRaid()
                     if not (issecret(g) or issecret(r)) then
@@ -444,7 +460,7 @@ Start = function()
 end
 Stop = function()
     if not live then return end
-    live, mountOn = false, false
+    live, mountOn, inFight = false, false, false
     inGroup, inRaid = nil, nil   -- (round 3, R2 blocker) not seen while stopped: the next roster event after Start re-plans
     if evf and evf.UnregisterAllEvents then evf:UnregisterAllEvents() end
 end
