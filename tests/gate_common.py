@@ -50,7 +50,7 @@ ADDONS = ("XayaUI", "XayaUI_Rules", "XayaUI_Options")
 # ---------------------------------------------------------------------------------------------------------------------------------
 GAME_LUA = r'''
 return function(W)
-local G = { auras = {}, byInstance = {}, cds = {}, mounted = false, group = false, raid = false, nextInstance = 100 }
+local G = { auras = {}, byInstance = {}, cds = {}, mounted = false, group = false, raid = false, nextInstance = 100, buttons = {}, known = {} }
 -- enums the combat engine reads (Blizzard_AuraContainerUtil.lua / AnchorUtil; values as in tests/aura_display_run.py)
 AnchorUtil = AnchorUtil or {}
 AnchorUtil.FlowLayoutAxis = AnchorUtil.FlowLayoutAxis or { Horizontal = 0, Vertical = 1 }
@@ -70,21 +70,34 @@ CreateFrame = function(kind, name, parent, template, id)
     rawset(f, "AddAuraGroup", function(self, key, filter, o)
       self.groups[key] = o
       if type(o) == "table" and type(o.initializeFrame) == "function" then
+        -- Blizzard's container makes its aura buttons itself and shows one while a matching aura is up (G.syncContainers)
         local b = realCreate("Button", nil, self)
+        b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide()
         for _, m in ipairs({ "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
             "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }) do rawset(b, m, noop) end
-        b:EnableMouse(false)   -- (Blizzard's aura buttons: the engine sets their mouse itself)
         pcall(o.initializeFrame, b)
+        G.buttons[#G.buttons + 1] = { button = b, opts = o, container = self }
       end
     end)
   end
   return f
 end
--- the auras the player has right now: [spellID] = aura data (the game's AuraData fields the rules read)
-local function auraFor(id) return G.auras[id] end
+-- the auras the player has right now: [spellID] = aura data (the game's AuraData fields the rules read). Like the game, every read
+-- hands back a new table (the game builds the AuraData table for each call).
+local function copy(a) if not a then return nil end; local t = {}; for k, v in pairs(a) do t[k] = v end; return t end
+local function auraFor(id) return copy(G.auras[id]) end
+-- Blizzard's container: an aura button shows while an aura its group asks for is up (the game's secure code; not XayaUI's work)
+function G.syncContainers()
+  for _, e in ipairs(G.buttons) do
+    local ids = e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
+    local up = false
+    if type(ids) == "table" then for _, id in pairs(ids) do if G.auras[id] then up = true; break end end end
+    e.button:SetShown(up and e.container:IsShown())
+  end
+end
 C_UnitAuras.GetUnitAuraBySpellID = function(unit, id) if unit == "player" then return auraFor(id) end return nil end
 C_UnitAuras.GetPlayerAuraBySpellID = function(id) return auraFor(id) end
-C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, iid) return G.byInstance[iid] end
+C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, iid) return copy(G.byInstance[iid]) end
 C_UnitAuras.GetAuraDataBySpellName = function() return nil end
 -- the target's debuffs cast by the player ("HARMFUL|PLAYER"): a list the scenario keeps (G.targetDebuffs)
 G.targetDebuffs, G.target = {}, false
@@ -93,12 +106,21 @@ local UE0 = UnitExists
 UnitExists = function(u) if u == "target" then return G.target end return UE0(u) end
 C_UnitAuras.AddAuraSound = function() G.nextInstance = G.nextInstance + 1; return G.nextInstance end
 C_UnitAuras.RemoveAuraSound = function() end
+-- a spell's cooldown (SpellCooldownInfo): a new table per call, as the game returns
 C_Spell.GetSpellCooldown = function(id)
   local c = G.cds[tonumber(id) or 0]
-  if c then return c end
-  return G.readyCD
+  if c and W.now < c.startTime + c.duration then
+    return { startTime = c.startTime, duration = c.duration, isEnabled = true, modRate = 1, isActive = true, isOnGCD = false }
+  end
+  return { startTime = 0, duration = 0, isEnabled = true, modRate = 1, isActive = false, isOnGCD = false }
 end
-G.readyCD = { startTime = 0, duration = 0, isEnabled = true, modRate = 1 }
+-- the profile's cooldown spells are known (the spellbook)
+C_SpellBook = C_SpellBook or {}
+local KN0 = C_SpellBook.IsSpellKnownOrInSpellBook
+C_SpellBook.IsSpellKnownOrInSpellBook = function(id, bank, ov) if G.known[id] then return true end if KN0 then return KN0(id, bank, ov) end return false end
+local IPS0 = IsPlayerSpell
+IsPlayerSpell = function(id) if G.known[id] then return true end if IPS0 then return IPS0(id) end return false end
+for i = 1, 40 do G.known[400000 + i] = true end
 IsMounted = function() return G.mounted end
 IsInGroup = function() return G.group end
 IsInRaid = function() return G.raid end
@@ -116,7 +138,7 @@ function G.lose(id)
   if a then G.auras[id] = nil; G.byInstance[a.auraInstanceID] = nil end
   return a
 end
-function G.cast(id, dur) G.cds[id] = { startTime = W.now, duration = dur, isEnabled = true, modRate = 1 } end
+function G.cast(id, dur) G.cds[id] = { startTime = W.now, duration = dur } end
 function G.clear() G.auras, G.byInstance, G.cds = {}, {}, {} end
 return G
 end
@@ -883,11 +905,12 @@ local function gainOne(dur)
   local a = G.gain(id, dur)
   active[#active + 1] = a
   local rem = old and { old.auraInstanceID } or nil
+  G.syncContainers()
   W.fire("UNIT_AURA", "player", { addedAuras = { a }, removedAuraInstanceIDs = rem })
 end
 local function loseOldest()
   local a = table.remove(active, 1)
-  if a and G.auras[a.spellId] == a then G.lose(a.spellId); W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { a.auraInstanceID } }) end
+  if a and G.auras[a.spellId] == a then G.lose(a.spellId); G.syncContainers(); W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { a.auraInstanceID } }) end
 end
 local function storm(i)
   local a = active[(i % math.max(#active, 1)) + 1]
@@ -954,7 +977,7 @@ for cyc = 1, 3 do
 end
 -- idle out of combat: every aura and cooldown gone, nothing on screen changing
 setPhase("idle settle")
-G.clear(); active = {}
+G.clear(); active = {}; G.syncContainers()
 W.fire("UNIT_AURA", "player", { isFullUpdate = true }); W.fire("SPELL_UPDATE_COOLDOWN")
 frames(5)
 for w = 1, 3 do
