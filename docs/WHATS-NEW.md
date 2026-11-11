@@ -264,7 +264,9 @@ From the debug round (request log FUS-1 to FUS-5, her answers in the question bo
   `/xuiengine` auto, on, off and reset. Without Dev Assist they are not there. (`/xui debug seed` adds three test rules to your own rules,
   which is why players should not have it.)
 - **What players keep:** `/xui debug perf`, `/xui debug loader`, `/xui status`, `/xui auras`, `/xuiskin` (turns the window skin off),
-  and `/xuiengine full` and `refresh`.
+  and `/xuiengine`, which shows the combat engine's status and changes nothing. (`/xuiengine full` and `refresh` were removed later, in
+  the 2026-11-10 rules rebuild: rules and the engine are set only in the settings window. The engine builds itself again whenever a
+  rule or group changes and at every /reload, and the performance guard's lean mode lasts until the next /reload.)
 - **Tooltip "via ..." source text** (the grey "via this tooltip", "via Cooldown Manager" and so on at the end of an Aura ID line) now
   shows only while XayaUI Dev Assist is enabled.
 - **Combat Tracking Setup moved** from the Debugging page to Settings > UI Options > Rule Creation.
@@ -284,7 +286,8 @@ appeared at core 0.6.55-0.6.56 / Options 0.6.54-0.6.55). Nothing here has been r
 - **Tabs:** Group | Display | Load | Config, with Group first. Config holds the name, an Enabled switch (for all rules inside), the group
   type, Sound Channel Override, new rule / nested group / delete, and "Made by: <character> (made here / imported, date)".
 - **Size** (Group tab): Auto (fits what is showing) or Set (width and height, optional Clip). Border and Background have tick boxes with
-  color, texture and padding; in Auto the box follows the displays that are showing.
+  color, texture and padding. (Since the 2026-11-10 rules rebuild they are drawn on each display in the group, the combat engine's
+  icons included, not as one box around the group; a group with no saved padding uses 0 px.)
 - **Nested groups:** "Anchored to: The parent group / The screen".
 - **Static groups, Align & Arrange:** Horizontal and Vertical choices (Align left / center / right, Distribute, Space with a gap). The
   choice is now saved: a display you drag, nudge, add or resize goes back into line; None places them freely.
