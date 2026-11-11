@@ -8,8 +8,9 @@ Session-start summary: `STAT-CALCULATOR-V25-SESSION-SUMMARY.md`. Request log: A2
 | Read-only review | DONE 2026-11-10 (83 agents; 125 findings: 57 confirmed, 14 uncertain, 0 refuted, 54 unverified lows; 9 high, 0 critical; 29/29 scoped tests pass in the harness) | `STAT-CALCULATOR-REVIEW-2026-11-10.md` |
 | Boundary + names + pages | DONE (A24 #3-#6; map `STAT-CALCULATOR-BOUNDARY-MAP-2026-11-10.md`) | asked of Xaya with options |
 | Fix bundle chosen | DONE: 9 confirmed highs + 23 confirmed mediums (A24 #3) |
-| Restructure (split, renames, button move, tooltip lines to Enhanced Tooltips) | RUNNING (workflow) | — |
-| Fixes + tests | — | — |
+| Restructure (split, renames, button move, tooltip lines to Enhanced Tooltips) | DONE, checkpoint f34cc33 | — |
+| Fixes + tests (32 findings: 22 fixed, 10 resolved by the restructure, 0 not fixed) | DONE, 5695993 (each test fails on f34cc33, passes after; 4 units, reviewer + round 2 each) | debug-log/2026-11-11-0020-... |
+| V27-V32 release-gate audit + fixes | RUNNING (workflow) | — |
 | Checks, landing on QA | — | — |
 | Main follow-up note | — | — |
 
@@ -37,3 +38,8 @@ Plan: the build workflow (started before V27 arrived) runs to the end; then a V2
 ## Xaya's rebuild standards V25-V32 (relayed 2026-11-10; source: docs/process/VERIFICATION.md on origin/claude/dazzling-brown-x9fqrm, section "Xaya's rebuild standards")
 Binding for this work: V25, V26, V27, V28 (window closed = no editing code runs), V29 (input bugs never again: every key/focus path through core KeyCatch / KeyFocusGuard, boxes let go at combat start, a test presses the screenshot and a movement key in and out of combat), V30 (self-contained modules), V31 (test/review process), V32 (load conditions honored exactly).
 Plan: the post-build audit checks the new files against V27-V32 too (read the section in full from that branch). V29 depends on core KeyCatch, which is older on QA than main: the test is written against QA's core and the dependency flagged.
+
+- 2026-11-11: fix bundle committed 5695993. Full suite RESULT: PASS with 3 groups failing that already failed at c4ef771 (British spellings put back in XayaUI_Nameplates / XayaUI_Reskin FriendColors by QA merge a8aa0c4; outside scope). precheck FAILS: 0; lua_pitfalls FAILS: 0.
+- Open for Xaya: SC-102 columns vs one-line titles; armor rows may double count; two-hander compare counts main hand only; wording ('» Armor per 1%', case of Modifies names, help hovers for all players); Slot overlays shows nothing with defaults (A/B/C); 'Stat list colors' invisible under the full stat list; greyed slot-mark boxes unticked; old Tooltip lines not migrated (players must re-tick); DR "next at N rating" now shown without Dev Assist (to confirm).
+- Core items (not edited): XayaUI/DebugRecord.lua:71 XUI-E004 text 'Character Toolkit'; comments in Modules.lua / Core.lua; core-owned Blizzard Reskin profile part handling of characterReskin.features.
+- Internal keys kept (invisible; renaming resets settings): XayaUIBonusDB.characterToolkit, XayaUIQoLDB.characterToolkit, CueRulesDB.characterToolkit, core SETTINGS_KEYS / LEGACY_SPLIT / keyMoves 'characterToolkit', XayaUIDevAssistDB.toolkitProbe, walk id 'audit-char-toolkit-events'.
