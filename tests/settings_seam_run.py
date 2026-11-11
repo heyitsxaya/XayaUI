@@ -278,6 +278,9 @@ def canon(saved):
         cr = merged["CueRulesDB"].get("characterReskin")
         if isinstance(cr, dict):
             cr.pop("_merged", None)
+            # (A24 #7, QoL Improved Character Display) the one-time move to the Item level / Enchants options' own mark
+            # (characterReskin._slotOpts; its "_" keeps it out of every profile)
+            cr.pop("_slotOpts", None)
             # (Stat Calculator V25 release gate, QoL 0.7.58, finding G-015) Improved Character Display's Stat list page builds its
             # per-stat rows only while the feature and its Stat list part are on (V14: no stat model built for a switched-off feature).
             # In these sessions the feature is off, so the scenario no longer finds those rows' color pickers and no longer writes the

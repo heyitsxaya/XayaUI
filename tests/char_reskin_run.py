@@ -104,10 +104,11 @@ check("  ...Head, Hero step 4 of 6: purple at 82% (55% + 45% x 3/5)", col(hi.col
 check("  ...Ring, Veteran step 1 of 8: green at its dimmest (55%)", col(ri.color, 0.1 * 0.55, 1.0 * 0.55, 0), ri.color and table.concat(ri.color, ","))
 check("  ...an empty slot shows none", SD_(CharacterNeckSlot).ilvl and SD_(CharacterNeckSlot).ilvl.text == "")
 check("  ...the track is kept for the hover (Hero 4/6)", SD_(CharacterHeadSlot).track and SD_(CharacterHeadSlot).track.track == "Hero" and SD_(CharacterHeadSlot).track.step == 4)
--- the slot overlays leave their item level (and enchant mark) out while the reskin draws them
-cwc.enabled, cwc.overlays = true, true; CWA(); ns.CharDisplay_UpdateOverlays()
-check("the slot overlay leaves out its item level while the reskin draws one (her screenshot had two)",
-  ns.CharDisplay_OverlayText("HeadSlot") ~= nil and not tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true), tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+-- (A24 #7) one item level per slot: the marks on the slot have none (her screenshot had two; the Slot Overlays' item level is gone)
+cwc.enabled = true; CWA(); rc.enchantStyle = "slot"; RSA()
+check("the marks on the slot carry no second item level (Enchants on the slot: the head shows E? and one 336)",
+  ns.CharDisplay_SlotMarks("HeadSlot") ~= nil and not tostring(ns.CharDisplay_SlotMarks("HeadSlot")):find("336", 1, true) and SD_(CharacterHeadSlot).ilvl.text == "336", tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
+rc.enchantStyle = nil; RSA()
 
 -- 4. Enchants beside the slots (A5) -------------------------------------------------------------------------------------------
 local re, he = SD_(CharacterFinger0Slot).enchant, SD_(CharacterHeadSlot).enchant
@@ -118,8 +119,8 @@ check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)
 local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
 check("  ...left-column slots: to the right of the slot (6 px)", hr and math.abs(hr.l - (hs.r + 6)) < 0.01, rstr(hr))
 check("  ...right-column slots: to the left of the slot (6 px)", rr and math.abs(rr.r - (rs.l - 6)) < 0.01, rstr(rr))
-check("  ...the slot overlay leaves its enchant mark out too (one per slot)", not tostring(ns.CharDisplay_OverlayText("HeadSlot") or ""):find("E%?"),
-  tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+check("  ...no enchant mark on the slot too (Enchants beside the slot; one per slot)", not tostring(ns.CharDisplay_SlotMarks("HeadSlot") or ""):find("E%?"),
+  tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
 local savedLine = ENCHANTED_TOOLTIP_LINE; ENCHANTED_TOOLTIP_LINE = nil
 check("CM.SlotEnchant without the game's prefix string: the whole line", CM.SlotEnchant(11) == "Enchanted: Radiant Mastery", CM.SlotEnchant(11))
 ENCHANTED_TOOLTIP_LINE = savedLine
@@ -162,9 +163,9 @@ ITEMS.Helm.ilvl = 336; ForgetModel()
 rc.chrome = false; RSA()
 check("'Clean window' off: Blizzard's art back, the item levels stay", CharacterFrame.NineSlice.alpha == 1 and CharacterHeadSlotFrame.alpha == 1
   and SD_(CharacterHeadSlot).ilvl.shown and SD_(CharacterHeadSlot).ilvl.text == "336")
-rc.chrome = true; rc.ilvl = false; RSA(); ns.CharDisplay_UpdateOverlays()
-check("'Item level' off: ours hidden, the slot overlay's item level back", not SD_(CharacterHeadSlot).ilvl.shown and tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true) ~= nil,
-  tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+rc.chrome = true; rc.ilvl = false; RSA()
+check("'Item level' off: no item level on the slot and none in a mark (A24 #7: one option)", not SD_(CharacterHeadSlot).ilvl.shown and not tostring(ns.CharDisplay_SlotMarks("HeadSlot") or ""):find("336", 1, true),
+  tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
 rc.ilvl = true; rc.stats = false; RSA()
 check("'Stat list colors' off: the row art and colours back", STATROWS[1].Background.alpha == 1 and col(STATROWS[1].Label.color, 1, 0.82, 0) and not RX_(STATROWS[2]).stripe.shown)
 rc.stats = true; rc.enabled = false; RSA()
@@ -209,8 +210,8 @@ check("an error while drawing the item details turns Improved Character Display 
 check("  ...and says so once in chat", #printed == 1 and printed[1]:find("Improved Character Display hit an error", 1, true) ~= nil, table.concat(printed, " // "))
 CM.SlotInfo = savedSI
 ns.CharDisplay_UpdateOverlays()
-check("  ...after it the item details no longer claim the slots: the slot marks draw their own item level again", ns.CharDisplay_DrawsIlvl() == false
-  and tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true) ~= nil, tostring(ns.CharDisplay_OverlayText("HeadSlot")))
+check("  ...after it no mark carries an item level (A24 #7: the item level is the Item level option's only)", not tostring(ns.CharDisplay_SlotMarks("HeadSlot") or ""):find("336", 1, true),
+  tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
 -- the look's own guard: an error while restyling turns the reskin off for the session and gives Blizzard's look back
 local title = CharacterFrame.TitleContainer.TitleText
 local savedSTC = title.SetTextColor
@@ -230,8 +231,8 @@ check("settings: Blizzard UI Reskin > Character Reskin with its switch and one p
   and page.args.stats and page.args.ilvl == nil and page.args.enchants == nil and page.args.gems == nil and page.args.statList == nil and page.args.statListPage == nil)
 check("  ...the parts are greyed out while it is off", (function() rc.enabled = false; local d = page.args.chrome.disabled(); rc.enabled = true; return d end)() == true)
 local qpage = ns.BuildCharDisplayPage(function() end)
-check("settings: QoL > Improved Character Display with its own switch and the feature parts (same labels)", qpage.name == "Improved Character Display" and qpage.xuiSwitch
-  and qpage.xuiSwitch.name == "Improved Character Display" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level on each slot" and qpage.args.enchants
+check("settings: QoL > Improved Character Display with its own switch and the feature parts (A24 #7: \"Item level\" and \"Enchants\")", qpage.name == "Improved Character Display" and qpage.xuiSwitch
+  and qpage.xuiSwitch.name == "Improved Character Display" and qpage.args.ilvl and qpage.args.ilvl.name == "Item level" and qpage.args.enchants and qpage.args.enchants.name == "Enchants"
   and qpage.args.gems and qpage.args.statList and qpage.args.statListPage and qpage.args.chrome == nil)
 check("  ...its parts are greyed out while its own switch is off, whatever the reskin's", (function()
   local f = rc.features; rc.features = false; local d = qpage.args.ilvl.disabled(); rc.features = f; return d end)() == true

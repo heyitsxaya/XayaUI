@@ -88,6 +88,17 @@ if MODE == "all-on" then
   cd.statCalcButton = false; ns.CharDisplay_Apply()
   check("ICD step 4: the button box unticked: Pass (button hidden)", dw.steps[4].check() == true, select(2, dw.steps[4].check()))
   cd.statCalcButton = nil; ns.CharDisplay_Apply()
+  -- (A24 #7) step 5 no longer asks for the gone Slot Overlays: Item level and Enchants with its Style On the slot
+  cd.ilvl, cd.enchants, cd.enchantStyle = true, true, nil; ns.CharDisplay_Apply()
+  local v5, n5 = dw.steps[5].check()
+  check("ICD step 5 with Enchants beside the slot: no verdict, says to pick On the slot (no mention of Slot Overlays)", v5 == nil
+    and tostring(n5):find("On the slot", 1, true) ~= nil and tostring(n5):find("Slot Overlays", 1, true) == nil, n5)
+  cd.enchantStyle = "slot"; ns.CharDisplay_Apply(); ns.CharDisplay_UpdateOverlays()
+  -- (this stand-in has no gear: nothing is drawn, so the verdict is Fail, never a false Pass; the Pass with gear is tests/slot_options_run.py E7)
+  local v5b, n5b = dw.steps[5].check()
+  check("ICD step 5 with Item level and Enchants on the slot, the window open, no gear: the verdict follows what is drawn (Fail, 0 marks)",
+    v5b == false and tostring(n5b):find("slot marks on 0 slots", 1, true) ~= nil, n5b)
+  cd.enchantStyle = nil; ns.CharDisplay_Apply()
   check("combat step 1 out of combat, the panel docked and the button shown: Pass", (function() scS.Open("stats"); return dc.steps[1].check() end)() == true, select(2, dc.steps[1].check()))
   check("combat step 2 out of combat: no verdict, says to fight", dc.steps[2].check() == nil and tostring(select(2, dc.steps[2].check())):find("not in combat", 1, true) ~= nil, select(2, dc.steps[2].check()))
   W.enterCombat()

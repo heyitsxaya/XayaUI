@@ -24,17 +24,17 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-11 — Stat Calculator Fixes
 
-### Bonus Features 0.6.41
+### Bonus Features 0.6.42
 
 **Stat Calculator**
-- In combat it now stays hidden and silent, does no work, and lets go of the keyboard; it comes back after combat.
-- Stat Weights shows an Influences column when the titles fit.
+- In combat it hides silently until combat ends, does no work and lets go of the keyboard.
+- Stat Weights always has an Influences column; titles wrap, bottom-aligned.
 
-### Quality of Life 0.7.58
+### Quality of Life 0.7.59
 
 **Character window**
-- The Stat Calculator's Gear tab compares against the item worn in that slot, and Ability Scaling works with XayaUI Rules off.
-- Drags on gem and enchant lines turn the character.
+- The Stat Calculator's Gear tab compares with the worn item, and Ability Scaling works with XayaUI Rules off.
+- One Item level and one Enchants option, each on or beside the slot. Drags on gem and enchant lines turn the character.
 
 ## 2026-11-08 — Gradient Borders
 

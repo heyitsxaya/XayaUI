@@ -216,7 +216,8 @@ if not npOn then
         if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
       end
       -- (QoL 0.7.56, Stat Calculator V25) the second allowed difference: the QoL part is format 2 (XayaUI_QoL/ProfilePart.lua), so the
-      -- string carries its part information (partInfo.qol, v = 2); keys and values unchanged. Taken out, the old string.
+      -- string carries its part information (partInfo.qol, v = 2); keys and values unchanged. Taken out, the old string. (A24 #7, the Item
+      -- level / Enchants options) format 3 since; still only that number differs.
       local qi = type(data) == "table" and data.partInfo and data.partInfo.qol
       if qi then qolV = qi.v; data.partInfo.qol = nil; if next(data.partInfo) == nil then data.partInfo = nil end end
       return data and ns.Share.Encode("profile", data)
@@ -247,13 +248,13 @@ if not npOn then
       end
       same = eq(ns.Share.Read(folded, "profile"), gd)
     end
-    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved and the QoL part's format 2", same, tostring(folded):sub(1, 60))
+    check("A: Generate with every part ticked gives exactly the old build's string (XayaUI Nameplates off), but for the Chat defaults now saved and the QoL part's format 3", same, tostring(folded):sub(1, 60))
     if HAS_CHAT then
       check("A: ... those are the Sidebar's and the privacy cover's defaults, all of them (" .. added .. ")", CD and added == (function() local n = 0 for _ in pairs(CD.SIDEBAR_DEFAULTS) do n = n + 1 end for _ in pairs(ns.CHAT_DEFAULTS) do n = n + 1 end return n end)(), added)
     else
       skip("XayaUI_Chat", "A: ... those are the Sidebar's and the privacy cover's defaults, all of them")
     end
-    check("A: ...the QoL part says it is format 2 (partInfo.qol.v = 2)", qolV == 2, qolV)
+    check("A: ...the QoL part says it is format 3 (partInfo.qol.v = 3; A24 #7)", qolV == 3, qolV)
     local six = ns.Share.Encode("profile", P.Snapshot(SIX, ""))
     check("A: the six parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
   end)

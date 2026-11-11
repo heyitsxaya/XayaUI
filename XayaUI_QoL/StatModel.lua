@@ -1363,9 +1363,10 @@ function CM.EnchantSlots(c)
     return t, true
 end
 
--- What the overlay on one character-window slot shows: { ilvl = text or nil, marks = { { text, tone, why } } }.
--- opts: { ilvl = bool, sockets = bool, enchants = bool, enchantSlots = { [slot] = true }, enchantDefault = bool }.
+-- The marks on one character-window slot: { marks = { { text, tone, why } } }.
+-- opts: { sockets = bool, enchants = bool, enchantSlots = { [slot] = true }, enchantDefault = bool }.
 -- "No enchant" is flagged only on the slots in enchantSlots (CM.EnchantSlots: this expansion's slots, or the player's own ticks).
+-- (A24 #7) the marks no longer carry an item level: the one item level per slot is Improved Character Display's Item level option.
 -- No item level on the shirt and the tabard (QoL 0.7.19; their item level is 1 and says nothing; the Gear tab leaves them out too).
 CM.NO_ILVL = { [4] = true, [19] = true }
 function CM.SlotOverlay(slot, opts)
@@ -1373,7 +1374,6 @@ function CM.SlotOverlay(slot, opts)
     local s = CM.SlotInfo(slot)
     local o = { marks = {} }
     if not s then return o end
-    if opts.ilvl ~= false and s.ilvl and not CM.NO_ILVL[slot] then o.ilvl = tostring(math.floor(s.ilvl + 0.5)) end
     if opts.sockets ~= false and s.sockets > 0 then
         o.marks[#o.marks + 1] = { s.sockets .. "S", "warn", ("%d empty socket%s (no gem in it)"):format(s.sockets, s.sockets == 1 and "" or "s") }
     end

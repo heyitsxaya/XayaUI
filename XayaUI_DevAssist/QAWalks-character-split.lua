@@ -33,7 +33,7 @@ local function Line(d)
 end
 
 QA.Register("character-split", { title = "Character window split: the item level, enchants and stat list are QoL's (Improved Character Display), the reskin is the look, the Stat Calculator is Bonus's (E1z227, F30)", area = "QoL", qa = "E1z227, F30", order = 521, prefill = true, steps = {
-    { text = "Switch XayaUI Blizzard Reskin off: untick it in the AddOns list (or untick |cffffd100Enable Blizzard Reskin|r on Blizzard Reskin > Overview), then |cffffd100/reload|r. QoL > Improved Character Display ticked, with Item level on each slot, Enchants, Gems and Full stat list ticked. Open the character window (C) with your gear on.\n\n|cffffd100Expect:|r an item level on each slot, the enchant (or \"No enchant\") and the gems beside the slots, the full stat list in the stats pane, and Blizzard's own window art (no reskin).",
+    { text = "Switch XayaUI Blizzard Reskin off: untick it in the AddOns list (or untick |cffffd100Enable Blizzard Reskin|r on Blizzard Reskin > Overview), then |cffffd100/reload|r. QoL > Improved Character Display ticked, with Item level, Enchants, Gems and Full stat list ticked. Open the character window (C) with your gear on.\n\n|cffffd100Expect:|r an item level on each slot, the enchant (or \"No enchant\") and the gems beside the slots, the full stat list in the stats pane, and Blizzard's own window art (no reskin).",
         check = function()
             local d, why = Drawn()
             if not d then return nil, why end
@@ -177,9 +177,13 @@ local function ICD()
     local ns = NS()
     local q = ns and ns.Settings and ns.Settings("qol") or {}
     local p, t = type(q.characterReskin) == "table" and q.characterReskin or {}, type(q.characterToolkit) == "table" and q.characterToolkit or {}
-    d.on, d.merged, d.btnSwitch, d.overlaysOn = p.features == true, p._merged == true, t.statCalcButton ~= false, t.overlays == true
-    d.parts = ("item level %s, enchants %s, gems %s, full stat list %s, slot overlays %s"):format(tostring(p.ilvl), tostring(p.enchants),
-        tostring(p.gems), tostring(p.statList), tostring(t.overlays))
+    -- (A24 #7) the Slot Overlays are gone: one Item level and one Enchants option, each with a style ("On the slot" / "Beside the slot")
+    local function Style(v, beside) if v == beside then return "beside the slot" end; return "on the slot" end
+    d.on, d.merged, d.btnSwitch = p.features == true, p._merged == true, t.statCalcButton ~= false
+    d.ilvlOn, d.enchOnSlot = p.ilvl == true, p.enchants == true and t.enchantStyle == "slot"
+    d.parts = ("item level %s (%s), enchants %s (%s), gems %s, full stat list %s, empty sockets mark %s"):format(tostring(p.ilvl),
+        Style(t.ilvlStyle, "beside"), tostring(p.enchants), t.enchantStyle == "slot" and "on the slot" or "beside the slot", tostring(p.gems),
+        tostring(p.statList), tostring(t.socketMark == true))
     return d
 end
 local function ICDLine(d)
@@ -219,14 +223,15 @@ QA.Register("improved-character-display", { title = "Improved Character Display:
             if d.btnSwitch then return nil, "the Stat Calc button tick box is still ticked: untick it | " .. ICDLine(d) end
             return d.button == false, ICDLine(d)
         end },
-    { text = "Tick |cffffd100Slot Overlays|r (its tick box on its row under Improved Character Display) and open the character window (C) with your gear on.\n\n|cffffd100Expect:|r marks on the item slots (item level, empty sockets, E? / E on the enchant slots you ticked).",
+    { text = "On QoL > Improved Character Display, tick |cffffd100Item level|r and |cffffd100Enchants|r and set the Enchants |cffffd100Style|r to |cffffd100On the slot|r. Open the character window (C) with your gear on.\n\n|cffffd100Expect:|r an item level on each item slot and E? / E at the top of the enchant slots you ticked (Improved Character Display > Enchant Slots).",
         check = function()
             local d, why = ICD()
             if not d then return nil, why end
             if not d.on then return nil, "Improved Character Display is off: tick it | " .. ICDLine(d) end
-            if not d.overlaysOn then return nil, "Slot Overlays is unticked: tick it | " .. ICDLine(d) end
+            if not d.ilvlOn then return nil, "Item level is unticked: tick it | " .. ICDLine(d) end
+            if not d.enchOnSlot then return nil, "Enchants is unticked or its Style is Beside the slot: tick it and pick On the slot | " .. ICDLine(d) end
             if not WindowShown() then return nil, "open the character window (C), then check again | " .. ICDLine(d) end
-            return (d.marks or 0) > 0, ICDLine(d)
+            return (d.marks or 0) > 0 and (d.ilvl or 0) > 0, ICDLine(d)
         end },
     { done = true, text = "Leave the parts as you like them, then press |cffffd100Done|r." },
 } })

@@ -66,7 +66,9 @@ for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, ta
 -- Slot Overlays and Tooltip lines parts)
 -- (V25 R4: the Tooltip lines part is gone from it; the lines are Bonus Features > Enhanced Tooltips' option "Character stats", a tick box
 -- on its page, not a row: Xaya A24 #5 / #6)
-local WANT = { "qol>chardisplay", "bonus>statcalc", "bonus>statcalc>panelPart", "qol>chardisplay>overlayPart", "bonus>statcalc>spells",
+-- (A24 #7: the Slot Overlays part and its switch are gone; its marks are the Item level / Enchants options' style On the slot, on the
+-- page; the Enchant Slots are a page under it with no switch of its own)
+local WANT = { "qol>chardisplay", "bonus>statcalc", "bonus>statcalc>panelPart", "bonus>statcalc>spells",
   "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
   "bonus>utilities>calculator",
   -- (S1 #48, Options 0.6.50: one per reskin in the Blizzard UI Reskin tab; the tab's own switch is a box on the tab, not a row)
@@ -103,7 +105,7 @@ do
 end
 for _, k in ipairs(WANT) do check("A: the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
 check("A: no other row has one (Cursor, Utilities have no single on / off)", foundN == #WANT, foundN)
-check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator (her words); no Tooltip lines row any more (V25 R4)", found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
+check("A: the switches' names: Enhanced Tooltips, Notepad, Calculator (her words); no Tooltip lines row any more (V25 R4); no Slot Overlays switch (A24 #7)", found["qol>chardisplay>overlayPart"] == nil and found["qol>chardisplay>enchantSlotsPage"] == nil and found["bonus>tooltips"] and found["bonus>tooltips"].name == "Enhanced Tooltips"
   and found["bonus>utilities>notepad"] and found["bonus>utilities>notepad"].name == "Notepad"
   and found["bonus>utilities>calculator"] and found["bonus>utilities>calculator"].name == "Calculator"
   and found["qol>chardisplay>tipsPart"] == nil)
@@ -402,7 +404,7 @@ click("qol", "cursor\001highlight", false)
 check("A: Cursor Highlight unticked: hidden and nothing runs (no OnUpdate)", ns.Settings("qol").cursorHighlight.enabled == false and hf ~= nil and not hf:IsShown() and hf:GetScript("OnUpdate") == nil)
 oneRedraw("A: Cursor Highlight unticked")
 check("A: Improved Character Display's row has a tick box, unticked; its parts are not listed while it is off", box("qol", "chardisplay") and box("qol", "chardisplay"):GetChecked() == false
-  and row("qol", "chardisplay\001overlayPart") == nil)
+  and row("qol", "chardisplay\001enchantSlotsPage") == nil and row("qol", "chardisplay\001overlayPart") == nil)
 local function ctPlace()
   local c, u = row("qol", "chardisplay"), row("qol", "cursor")
   local x = c and c.xuiSwitchBox
@@ -415,17 +417,15 @@ click("qol", "chardisplay", true)
 -- (QoL 0.7.53, character pane split stage 2; V25 R2: QoL > Improved Character Display has Slot Overlays and Tooltip lines (and its Stat
 -- list page); Panel and Spell Math are under Bonus Features > Stat Calculator, its own switch, checked below. Its switch is saved as
 -- characterReskin.features, an internal key kept from QoL 0.7.53)
-check("A: Improved Character Display ticked: on; Slot Overlays now shows under it with its own box (V25 R4: no Tooltip lines row)",
-  ns.Settings("qol").characterReskin.features == true and box("qol", "chardisplay\001overlayPart")
-  and row("qol", "chardisplay\001tipsPart") == nil
-  and box("qol", "chardisplay\001overlayPart"):GetChecked() == false and row("qol", "chardisplay\001panelPart") == nil)
+-- (A24 #7) no Slot Overlays row: its marks are the Item level / Enchants options' style On the slot; Enchant Slots shows under it, a
+-- page with no box of its own
+check("A: Improved Character Display ticked: on; Enchant Slots now shows under it without a box; no Slot Overlays row (A24 #7; V25 R4: no Tooltip lines row)",
+  ns.Settings("qol").characterReskin.features == true and row("qol", "chardisplay\001enchantSlotsPage") ~= nil and box("qol", "chardisplay\001enchantSlotsPage") == nil
+  and row("qol", "chardisplay\001overlayPart") == nil and row("qol", "chardisplay\001tipsPart") == nil and row("qol", "chardisplay\001panelPart") == nil)
 check("A: ...and the box stays where it was now that the arrow shows (it never moves under the mouse)", ctPlace() and row("qol", "chardisplay").xuiChev ~= nil and row("qol", "chardisplay").xuiChev:IsShown())
 oneRedraw("A: Improved Character Display ticked")
-click("qol", "chardisplay\001overlayPart", true)
-check("A: Slot Overlays ticked: the overlays setting is on", ns.Settings("qol").characterToolkit.overlays == true)
-click("qol", "chardisplay\001overlayPart", false)
 click("qol", "chardisplay", false)
-check("A: Improved Character Display unticked: off, and its parts leave the list", ns.Settings("qol").characterReskin.features == false and row("qol", "chardisplay\001overlayPart") == nil)
+check("A: Improved Character Display unticked: off, and its parts leave the list", ns.Settings("qol").characterReskin.features == false and row("qol", "chardisplay\001enchantSlotsPage") == nil)
 oneRedraw("A: Improved Character Display unticked")
 end)
 

@@ -98,16 +98,19 @@ assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bo
 assert(loadfile(__RS__))("XayaUI_QoL", ns)
 -- what the player sees on one slot
 function shownText(fs) return fs and fs.shown and (fs.alpha or 1) > 0 and fs.text ~= nil and fs.text ~= "" end
+-- (A24 #7) every item level of ours on or beside a slot: on the slot, the beside row, and any number in a mark on the slot
 function ilvlTexts(name)
   local n, b = 0, _G["Character" .. name]
   if shownText(SD_(b).ilvl) then n = n + 1 end
-  local ti = ns.CharDisplay_OverlayText(name)
-  if ti and ti ~= "" then n = n + 1 end
+  local row = SD_(b).ilvlRow
+  if row and row.shown and shownText(row.text) then n = n + 1 end
+  local mk = ns.CharDisplay_SlotMarks(name)
+  if mk and mk:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):find("%d%d") then n = n + 1 end
   return n
 end
 FOREIGN = {}   -- another addon's item level on a slot (her pane: a large purple number)
 function allIlvls(name) local n = ilvlTexts(name); local f = FOREIGN[name]; if f and f.shown then n = n + 1 end; return n end
-function marks(name) local _, m = ns.CharDisplay_OverlayText(name); return (m or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+function marks(name) local m = ns.CharDisplay_SlotMarks(name); return (m or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
 function sockets(name) local b, out = _G["Character" .. name], {}; for _, f in ipairs(SD_(b).sockets or {}) do if f.shown then out[#out + 1] = f end end; return out end
 -- every visible row of a slot's block (enchant, embellishment, sockets): { frame, its rectangle }
 function rowsOf(name)
@@ -243,11 +246,11 @@ run(lua, r'''
 ns.FireReady(); ns.SettingsDeclareStore("reskin", "XayaUI_Reskin", "XayaUIReskinDB"); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI (XayaUI Blizzard Reskin on: it keeps the look half): their settings stores open (Modules.lua section 0c)
 rc, cwc = RC(), CWC()
 -- her settings: reskin on, Clean window off, item level, enchants, gems, stat list on (the wider window: its default, on);
--- the slot overlays on (and the Stat Calculator)
+-- the slot marks on (A24 #7: the Empty sockets mark; the Slot Overlays switch is gone) (and the Stat Calculator)
 rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
 -- (V25 R2) Improved Character Display's switch (before, the item details followed the reskin's switch until QoL's own was set)
 rc.features = true
-cwc.enabled, cwc.overlays, cwc.panel = true, true, false
+cwc.enabled, cwc.panel = true, false; rc.socketMark = true
 CharacterFrame:Show(); PaperDollFrame:Show()
 CWA(); RSA()
 CharacterModelScene.ControlFrame:Hide()
@@ -567,18 +570,20 @@ check("E. the slots with no position yet when the window opens: the blocks are l
 local combos, badc = 0, {}
 -- (QoL 0.7.53, character pane split stage 1; V25 R2) icd: Improved Character Display's switch (the old QoL Character Pane and slot marks
 -- switches are one since V25 R2: the item level, enchant and gem parts and the slot marks need it), on its own from the reskin's (ron: the
--- look, the wider window); tov: its Slot Overlays part
+-- look, the wider window); tov: (A24 #7) the two options' other style (Item level beside the slot, Enchants on the slot), the Empty
+-- sockets mark ticked throughout
+rc.socketMark = true
 for _, ron in ipairs({ false, true }) do for _, ril in ipairs({ false, true }) do for _, ren in ipairs({ false, true }) do for _, rge in ipairs({ false, true }) do
 for _, icd in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do for _, rwi in ipairs({ false, true }) do
   rc.enabled, rc.ilvl, rc.enchants, rc.gems, rc.wide, rc.features = ron, ril, ren, rge, rwi, icd
-  cwc.overlays = tov
+  rc.ilvlStyle, rc.enchantStyle = tov and "beside" or nil, tov and "slot" or nil
   RSA(); CWA(); ns.CharDisplay_UpdateOverlays()
   combos = combos + 1
   local wantW = (ron and rwi) and 780 or 540
   if CharacterFrame.w ~= wantW then badc[#badc + 1] = ("width %d (want %d) r%s w%s"):format(CharacterFrame.w, wantW, tostring(ron), tostring(rwi)) end
   for _, name in ipairs(ALL) do
     local slot = SLOT_ID[name]
-    local drawer = icd and (ril or tov)
+    local drawer = icd and ril
     local want = (drawer and GEAR[slot] and slot ~= 4 and slot ~= 19) and 1 or 0
     local il = ilvlTexts(name)
     local sockMarks = (#sockets(name) > 0 and 1 or 0) + (marks(name):find("%dS") and 1 or 0)
@@ -591,8 +596,9 @@ for _, icd in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) d
   end
   if ron and rwi then local _, ov = layoutProblems(false, true); for _, x in ipairs(ov) do badc[#badc + 1] = "over the model: " .. x end end
 end end end end end end end
-check(("F. every combination of the reskin's (with the wider window), Improved Character Display's and its slot marks' switches (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
+check(("F. every combination of the reskin's (with the wider window), Improved Character Display's switches and the two options' styles (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
   #badc == 0, list(badc, 2))
+rc.ilvlStyle, rc.enchantStyle = nil, nil
 rc.enabled, rc.wide = true, true; RSA()
 local onW, onBg = CharacterFrame.w, PARTS().bg and PARTS().bg.shown
 rc.enabled = false; rc.features = false; RSA()   -- (QoL 0.7.53: QoL's Character Pane off too, so no listener stays)
@@ -648,15 +654,15 @@ local rc = RC(); rc.wide = true; RSA()
 check("  ...switched on: one hook on UpdateSize and one on the Character tab, wider (582, the default +42); off again: Blizzard's width, the hooks return at once (a /reload removes them)",
   hooksFrom("UpdateSize", "CharacterReskin.lua") == 1 and pdHooksFrom("CharacterReskin.lua") == 1 and CharacterFrame.w == 582 and (function()
     rc.wide = false; RSA(); local w1 = CharacterFrame.w; CharacterFrame:UpdateSize(); return w1 == 540 and CharacterFrame.w == 540 end)(), CharacterFrame.w)
--- Improved Character Display is on, its slot overlays off: it does not hook the slot buttons
+-- Improved Character Display is on, its marks and item parts off: it does not hook the slot buttons
 local hooksOff = hooksFrom("PaperDollItemSlotButton_Update", "ImprovedCharacterDisplay.lua")
 timers = {}
 fire("PLAYER_EQUIPMENT_CHANGED", 1, true)
 local t02 = 0
 for _, d in ipairs(timers) do if d == 0.2 then t02 = t02 + 1 end end
-local cwc = CWC(); cwc.overlays = true; CWA()
-check("V14: Improved Character Display on with its slot overlays and item parts off: no hook on the slot buttons and no overlay refresh on an item event; switched on: one hook, the overlay drawn",
-  hooksOff == 0 and t02 == 0 and hooksFrom("PaperDollItemSlotButton_Update", "ImprovedCharacterDisplay.lua") == 1 and ns.CharDisplay_OverlayText("HeadSlot") ~= nil, hooksOff .. " hooks, " .. t02 .. " refreshes")
+rc.socketMark = true; RSA()
+check("V14: Improved Character Display on with its marks and item parts off: no hook on the slot buttons and no mark refresh on an item event; the Empty sockets mark switched on (A24 #7): one hook, the mark drawn",
+  hooksOff == 0 and t02 == 0 and hooksFrom("PaperDollItemSlotButton_Update", "ImprovedCharacterDisplay.lua") == 1 and ns.CharDisplay_SlotMarks("Finger0Slot") ~= nil, hooksOff .. " hooks, " .. t02 .. " refreshes")
 -- the reskin switched off: its event frame listens to nothing
 rc.ilvl = true; RSA()
 local listening = {}
@@ -688,7 +694,7 @@ rc, cwc = RC(), CWC()
 rc.enabled, rc.chrome, rc.ilvl, rc.enchants, rc.gems, rc.stats = true, false, true, true, true, true
 -- (V25 R2) Improved Character Display's switch (before, the item details followed the reskin's switch until QoL's own was set)
 rc.features = true
-cwc.enabled, cwc.overlays, cwc.panel = true, true, false
+cwc.enabled, cwc.panel = true, false; rc.socketMark = true
 CharacterFrame:Show(); PaperDollFrame:Show()
 CWA(); RSA()
 CharacterModelScene.ControlFrame:Hide()

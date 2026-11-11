@@ -17,6 +17,8 @@ What the player sees, on the stand-in character window (tests/char_world.lua, te
        button) into QoL > Improved Character Display's one switch, at the login: what showed before shows after, nothing else.
        M5 / M6: a profile string made before the merge (QoL part format 1) imported after it is read the same way; a string made now
        (format 2) is imported as it is. (M5 / M6 fail before QoL 0.7.56: the old switch in the string was not read.)
+       (A24 #7) the slot marks are the Item level / Enchants options' style On the slot now (and the Empty sockets mark): the one-time
+       move after the merge keeps what showed (tests/slot_options_run.py has the full table); M1-M6 assert what the slots show.
 Negative control: XUI_ROOT=<checkout of f870d78> python3 tests/char_pane_split_run.py fails S1a, S1b, S1c, S1e.
 Every number, item and enchant below is a TEST STAND-IN.
 Run from the repo root: python3 tests/char_pane_split_run.py   Needs: pip install lupa."""
@@ -171,8 +173,10 @@ checkp("  ...and only the look: no item level, enchant or gem of ours on any slo
   end
   return n == 0, n end)
 checkp("  ...no stat list of ours (Blizzard's own stays)", function() return not listShown() end)
-checkp("  ...the slot marks are told nothing is drawn (they may draw their own)", function()
-  return ns.CharDisplay_DrawsIlvl() == false and ns.CharDisplay_DrawsEnchants() == false and ns.CharDisplay_DrawsSockets() == false end)
+checkp("  ...and no mark on any slot (A24 #7: nothing of Improved Character Display draws while it is off)", function()
+  local n = 0
+  for _, s in ipairs(ns.StatModel.SLOTS) do if ns.CharDisplay_SlotMarks(s[4]) then n = n + 1 end end
+  return n == 0 and ns.CharDisplay_Draws() == nil, n end)
 '''))
 
 # S1d / S1e: a fresh install, XayaUI Blizzard Reskin off ---------------------------------------------------------------------------
@@ -226,10 +230,12 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = true, overlays 
   characterReskin = { features = false, ilvl = true, enchants = true, gems = true, statList = true } }
 ''', False, r'''
 openWindow()
-checkp("M1 merge: only the slot marks were on: Improved Character Display on, the item details off (nothing new shows), the marks drawn", function()
+checkp("M1 merge: only the slot marks were on: Improved Character Display on, the item details off (nothing new shows); A24 #7: the marks' item level, enchant check and empty-socket count show on the slots as before", function()
   local c = ns.CharDisplay_Cfg()
-  return c.enabled == true and c.ilvl == false and c.enchants == false and c.gems == false and c.statList == false and c.overlays == true
-    and XayaUIQoLDB.characterToolkit.tooltips == true and ilvlShown("HeadSlot") == nil and not listShown() and ns.CharDisplay_OverlayText("HeadSlot") ~= nil end)
+  local function plain(t) return (tostring(t or "")):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+  return c.enabled == true and c.gems == false and c.statList == false and XayaUIQoLDB.characterToolkit.tooltips == true
+    and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == nil and plain(ns.CharDisplay_SlotMarks("HeadSlot")) == "E?"
+    and plain(ns.CharDisplay_SlotMarks("Finger0Slot")):find("1S", 1, true) ~= nil and not listShown(), plain(ns.CharDisplay_SlotMarks("HeadSlot")) end)
 '''))
 # M2 the old Character Pane switch on, the slot marks' page off: on, with the item details only (the marks off)
 totals.append(lua_with(r'''
@@ -240,8 +246,8 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = false, overlays
 openWindow()
 checkp("M2 merge: only the item details were on: Improved Character Display on with them; the marks switched off (V25 R4: the old tooltip lines value is not touched: Enhanced Tooltips' option now)", function()
   local c = ns.CharDisplay_Cfg()
-  return c.enabled == true and c.ilvl == true and c.overlays == false and XayaUIQoLDB.characterToolkit.tooltips == true and ilvlShown("HeadSlot") == "336"
-    and ns.CharDisplay_OverlayText("HeadSlot") == nil end)
+  return c.enabled == true and c.ilvl == true and XayaUIQoLDB.characterToolkit.overlays == false and XayaUIQoLDB.characterToolkit.tooltips == true and ilvlShown("HeadSlot") == "336"
+    and ns.CharDisplay_SlotMarks("HeadSlot") == nil end)
 checkp("  ...it runs once: switched off afterwards it stays off at the next read (the mark is kept)", function()
   local c = ns.CharDisplay_Cfg(); c.enabled = false; ns.CharDisplay_Merge()
   return ns.CharDisplay_Cfg().enabled == false and XayaUIQoLDB.characterReskin._merged == true end)
@@ -256,7 +262,7 @@ openWindow()
 checkp("M3 merge: only the Stat Calc button showed: Improved Character Display on, the button shown, every other part off", function()
   local c = ns.CharDisplay_Cfg()
   local b = ns.CharDisplay_Button and ns.CharDisplay_Button()
-  return c.enabled == true and c.ilvl == false and c.statList == false and c.overlays == false and b ~= nil and b:IsShown()
+  return c.enabled == true and c.ilvl == false and c.enchants == false and c.statList == false and c.socketMark == nil and b ~= nil and b:IsShown()
     and ilvlShown("HeadSlot") == nil end)
 '''))
 # M4 nothing was on: stays off, no part changed
@@ -279,15 +285,16 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = false, overlays
 ''', False, r'''
 assert(loadfile(__PP__))("XayaUI_QoL", ns)
 local part = ns.ProfilePartsByKey().qol
-checkp("M5 setup: merged install, Improved Character Display off; the QoL profile part is format 2", function()
-  return ns.CharDisplay_On() == false and part and part.version == 2 end)
+checkp("M5 setup: merged install, Improved Character Display off; the QoL profile part is format 3 (A24 #7)", function()
+  return ns.CharDisplay_On() == false and part and part.version == 3 end)
 local okA = pcall(part.apply, { characterToolkit = { enabled = true, overlays = true } }, "merge", 1)
 openWindow()
-checkp("M5 an older string (QoL part format 1) with the slot marks on: after the import Improved Character Display is on and the marks show", function()
+checkp("M5 an older string (QoL part format 1) with the slot marks on: after the import Improved Character Display is on and the marks show (A24 #7: the enchant check on the slot, the item level on the slot)", function()
   local c = ns.CharDisplay_Cfg()
-  return okA and ns.CharDisplay_On() == true and c.overlays == true and ns.CharDisplay_OverlayText("HeadSlot") ~= nil, tostring(ns.CharDisplay_OverlayText("HeadSlot")) end)
+  local mk = (tostring(ns.CharDisplay_SlotMarks("HeadSlot") or "")):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+  return okA and ns.CharDisplay_On() == true and mk == "E?" and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == nil, mk end)
 checkp("  ...the item details that string says nothing about stay off (as the merge does)", function()
-  local c = ns.CharDisplay_Cfg(); return c.ilvl == false and c.statList == false and ilvlShown("HeadSlot") == nil end)
+  local c = ns.CharDisplay_Cfg(); return c.gems == false and c.statList == false and not listShown() end)
 '''.replace("__PP__", PP)))
 totals.append(lua_with(r'''
 CueRulesDB = {}
@@ -297,8 +304,8 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = false, overlays
 assert(loadfile(__PP__))("XayaUI_QoL", ns)
 local part = ns.ProfilePartsByKey().qol
 pcall(part.apply, { characterToolkit = { enabled = true, overlays = true } }, "merge", 2)
-checkp("M5 the same values in a string made now (format 2): imported as they are, nothing switched on (the old switch is not read)", function()
-  return ns.CharDisplay_On() == false and ns.CharDisplay_Cfg().overlays == true end)
+checkp("M5 the same values in a string made at format 2: imported as they are, nothing switched on (the old switch is not read); A24 #7: its marks are moved (Empty sockets ticked)", function()
+  return ns.CharDisplay_On() == false and ns.CharDisplay_Cfg().socketMark == true end)
 '''.replace("__PP__", PP)))
 totals.append(lua_with(r'''
 CueRulesDB = {}
@@ -308,13 +315,14 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = false, overlays
 assert(loadfile(__PP__))("XayaUI_QoL", ns)
 local part = ns.ProfilePartsByKey().qol
 openWindow()
-checkp("M6 setup: Improved Character Display on with the slot marks", function() return ns.CharDisplay_OverlayText("HeadSlot") ~= nil end)
+checkp("M6 setup: Improved Character Display on with the slot marks ticked (A24 #7: Empty sockets kept; it yields to the gems beside the slots, as before)", function()
+  return ns.CharDisplay_On() == true and ns.CharDisplay_Cfg().socketMark == true and ns.CharDisplay_SlotMarks("Finger0Slot") == nil end)
 pcall(part.apply, { characterToolkit = { enabled = false, overlays = true } }, "merge", 1)
 openWindow()
 checkp("M6 an older string whose slot marks' page was off (no marks showed): after the import no marks; the item details stay", function()
   local c = ns.CharDisplay_Cfg()
-  return c.enabled == true and c.overlays == false and ns.CharDisplay_OverlayText("HeadSlot") == nil and ilvlShown("HeadSlot") == "336",
-    tostring(ns.CharDisplay_OverlayText("HeadSlot")) end)
+  return c.enabled == true and c.socketMark == nil and ns.CharDisplay_SlotMarks("HeadSlot") == nil and ilvlShown("HeadSlot") == "336",
+    tostring(ns.CharDisplay_SlotMarks("HeadSlot")) end)
 '''.replace("__PP__", PP)))
 
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)

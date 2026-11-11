@@ -1056,11 +1056,13 @@ end
 -- Column widths that fit `avail` (QoL 0.7.28). Each column c = { min, line, want }: every column gets its min first (the widest word of
 -- its title and cells: nothing is cut), then each title on one line (line), then each column's wanted width (its widest cell: want),
 -- smallest need first, while there is room; what is left goes to column `rest`. Only when even the mins do not fit (the narrowest panel
--- at the largest text sizes) are the columns scaled down to fit.
-local function FitCols(cols, avail, rest)
+-- at the largest text sizes) are the columns scaled down to fit. `levels` (optional, A24 #7) replaces { "line", "want" } for one
+-- table: the Stat Weights pane puts "two" (each title on at most two lines) before "line"; every other table passes none.
+local FIT_LEVELS = { "line", "want" }
+local function FitCols(cols, avail, rest, levels)
     local w, used = {}, 0
     for i, c in ipairs(cols) do w[i] = c.min or 0; used = used + w[i] end
-    for _, lvl in ipairs({ "line", "want" }) do
+    for _, lvl in ipairs(levels or FIT_LEVELS) do
         local order = {}
         for i, c in ipairs(cols) do
             local need = math.max(0, (c[lvl] or 0) - w[i])
@@ -1417,7 +1419,7 @@ local function RenderGrid(c, items, y, hasBox)
 end
 
 -- The Stat Weights pane (QoL 0.7.23): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences. Influences is a column of
--- its own (SC-102, below; until then only from content 560 up, else under its row). Every
+-- its own at every width and text size (SC-102 and A24 #7, below). Every
 -- cell wraps inside its column. A row's hover is the whole row: "{stat} increases / decreases {other stat} by {amount}", one line per
 -- influence (CM: it.tip).
 -- QoL 0.7.28 (Xaya 2026-11-06, her words: "center columns under stat weights and make sure titles do not get clipped; numbers should be
@@ -1428,10 +1430,13 @@ end
 -- columns; every cell starts at its column's left edge; the T/L cell is two lines.
 local WT_TITLES = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
 -- (SC-102; Xaya S1 #36, her exact columns "Stat | Rating (P / %) | PPP | | DR Threshold | T/L Rating | Influences") Influences is the sixth
--- column wherever all six titles fit on one line beside the cells' widest words (the default width at the default text; until then only
--- from content 560 up), otherwise a labeled line under each row (WeightCols, round 2: one-line titles, #60, are kept): it takes the
--- width the other five leave, its names wrap at their spaces, and its cell is the model's text without the leading "Influences: " (the
--- column's title says it). The model still writes that label into it.influences (StatModel.lua); this strips that one leading label only.
+-- column. (A24 #7, Xaya 2026-11-11, her words: "2 but make sure all headings (top row) are vertically middle-aligned or bottom-aligned
+-- and all rows beneath are uniformly vertically aligned amongst themselves"; option 2 was "Influences is always its own column, and
+-- titles wrap onto two lines when needed") it is a column at every width and text size: the labeled line under each row (round 2) is
+-- gone, and a column title wraps at its spaces where its column is narrower than the title (#60's one-line titles give way in this pane
+-- only). It takes the width the other five leave, its names wrap at their spaces, and its cell is the model's text without the leading
+-- "Influences: " (the column's title says it). The model still writes that label into it.influences (StatModel.lua); this strips that
+-- one leading label only.
 local INFL_LABEL = "Influences: "
 local function InflText(t)
     t = tostring(t or "")
@@ -1439,6 +1444,21 @@ local function InflText(t)
     return t
 end
 ns.StatCalc_InflText = InflText   -- (tests)
+-- (A24 #7, option 2: "titles wrap onto two lines when needed") the narrowest width at which a title wraps onto at most two lines: the
+-- best place to break it at a space, measured like TextW (the game wraps at spaces, filling each line first, so at this width the
+-- first line takes at least the words before that break and the rest fits the second). A one-word title: its own width.
+local function TwoLineW(text, size)
+    local words = {}
+    for word in tostring(text or ""):gmatch("%S+") do words[#words + 1] = word end
+    if #words < 2 then return TextW(text, size) end
+    local best
+    for k = 1, #words - 1 do
+        local wk = math.max(TextW(table.concat(words, " ", 1, k), size), TextW(table.concat(words, " ", k + 1), size))
+        if not best or wk < best then best = wk end
+    end
+    return best
+end
+local WT_LEVELS = { "two", "line", "want" }
 local function WeightCols(items, size)
     size = size or 11
     local hs = size - 1
@@ -1447,7 +1467,7 @@ local function WeightCols(items, size)
     local spec = {}
     for i = 1, 6 do
         local t = titles[i] or ""
-        spec[i] = { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) }
+        spec[i] = { min = WordW(t, hs), two = TwoLineW(t, hs), line = TextW(t, hs), want = TextW(t, hs) }
     end
     local function Cell(i, text, sz)
         for line in (tostring(text or "") .. "\n"):gmatch("(.-)\n") do
@@ -1466,35 +1486,25 @@ local function WeightCols(items, size)
         end
     end
     spec[6].want = spec[6].min
-    -- (round 2) Influences is a column only when all six column titles fit on one line each AND every cell's widest word fits beside
-    -- them: the kept rule "every column title on one line at the default width" (#60, tests/char_stat_round_run.py) is never broken to
-    -- make room for the sixth column. Where that does not fit (a wide font at the default width, the narrowest panels, the largest text)
-    -- the influences go under their row, as before, so nothing is cut. (OPEN for Xaya, V16: S1 #36's six columns vs #60's one-line titles
-    -- where both cannot hold.)
-    local need = 5 * GUT
-    for i = 1, 6 do need = need + math.max(spec[i].min, spec[i].line) end
-    local g = { wide = need <= W, titles = titles }
-    local n = g.wide and 6 or 5
-    if g.wide then
-        for i = 1, 6 do spec[i].min = math.max(spec[i].min, spec[i].line) end
-    else
-        spec[6] = nil
-    end
-    local w = FitCols(spec, W - (n - 1) * GUT, g.wide and 6 or 1)
+    -- (A24 #7) always six columns. FitCols gives every column its widest word first (title and cells: nothing cut), then each title
+    -- on at most two lines (her option 2's words), then each title on one line, then each column's widest cell, while there is room;
+    -- Influences takes what is left. A title whose column stays narrower than it wraps at its spaces (RenderWeights bottom-aligns the
+    -- titles). KNOWN LIMITS, reported to Xaya with the full case list (tests/char_stat_round_run.py section L), what gives there is her
+    -- choice and none is built: (1) where the widest words alone do not fit, FitCols scales the columns down and a word can be cut
+    -- (with Influences always a column this reaches more widths and text sizes than before); (2) where the widest words fit but not
+    -- every title on two lines, a title can wrap onto three lines.
+    local g = { titles = titles }
+    local w = FitCols(spec, W - 5 * GUT, 6, WT_LEVELS)
     g.w = w
     g.stat, g.rat, g.ppp, g.dr, g.tl = w[1], w[2], w[3], w[4], w[5]
     g.rx = g.stat + GUT
     g.px = g.rx + g.rat + GUT
     g.dx = g.px + g.ppp + GUT
     g.tx = g.dx + g.dr + GUT
-    if g.wide then
-        g.ix = g.tx + g.tl + GUT
-        g.iw = math.max(0, W - g.ix)
-        g.w[6] = g.iw
-    else
-        g.ix, g.iw = 12, W - 12
-    end
-    g.xs = { 0, g.rx, g.px, g.dx, g.tx, g.wide and g.ix or nil }
+    g.ix = g.tx + g.tl + GUT
+    g.iw = math.max(0, W - g.ix)
+    g.w[6] = g.iw
+    g.xs = { 0, g.rx, g.px, g.dx, g.tx, g.ix }
     return g
 end
 ns.StatCalc_WeightCols = WeightCols   -- (tests)
@@ -1507,9 +1517,24 @@ local function RenderWeights(c, items, y)
         local top = y
         if it.kind == "weighthead" then
             local cs, hs = it.cols or {}, size - 1
-            local h = 0
-            for i = 1, (g.wide and 6 or 5) do
-                h = math.max(h, PlaceFS(FS(), g.xs[i], y, g.w[i], hs, cs[i] or "", cMuted, "CENTER", true, "wcolhead"))
+            -- (A24 #7, bottom-aligned: her words allow "middle-aligned or bottom-aligned"; bottom chosen) every title is placed, then
+            -- each one shorter than the tallest is moved down by the difference, so all six titles end on the same line. Heights are
+            -- whole pixels (PlaceFS rounds up), so every moved y stays whole (V27). One pass of six, only when the pane is drawn.
+            local h, placed = 0, {}
+            for i = 1, 6 do
+                local f = FS()
+                local fh = PlaceFS(f, g.xs[i], y, g.w[i], hs, cs[i] or "", cMuted, "CENTER", true, "wcolhead")
+                placed[i] = { f = f, h = fh, rec = layout[#layout] }
+                h = math.max(h, fh)
+            end
+            for i = 1, 6 do
+                local p = placed[i]
+                local dy = h - p.h
+                if dy > 0 then
+                    p.f:ClearAllPoints()
+                    p.f:SetPoint("TOPLEFT", content, "TOPLEFT", g.xs[i], -(y + dy))
+                    p.rec.y = y + dy
+                end
             end
             local hb = Btn()
             hb.item = it
@@ -1527,12 +1552,9 @@ local function RenderWeights(c, items, y)
             h = math.max(h, ph)
             h = math.max(h, PlaceLines(g.dx, y, g.dr, size, cs[3] or "", cText, "LEFT", "wdr"))
             h = math.max(h, PlaceLines(g.tx, y, g.tl, size, cs[4] or "", cText, "LEFT", "wtl"))
-            if g.wide then
-                h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, size - 1, InflText(it.influences), cMuted, "LEFT", true, "winfl"))
-            else
-                -- (round 2) under the row there is no Influences title over it: the line keeps its "Influences: " label, as before SC-102
-                h = h + 1 + PlaceFS(FS(), g.ix, y + h + 1, g.iw, size - 1, INFL_LABEL .. InflText(it.influences), cMuted, "LEFT", true, "winfl")
-            end
+            -- (A24 #7) Influences is always on the row, in its column. Every cell of a row is top-aligned at the row's y, and the row
+            -- is as tall as its tallest cell: one alignment for every row of the pane.
+            h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, size - 1, InflText(it.influences), cMuted, "LEFT", true, "winfl"))
             y = y + h + 1
             local b = Btn()   -- the whole row hovers: what the stat feeds, in words
             b.item = it

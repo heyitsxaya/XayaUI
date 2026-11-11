@@ -442,14 +442,16 @@ d = render()
 checkp("wide panel (760): an Influences column head, and each row's influences on the row itself in that column", function()
   local hi, r = find(d, "wcolhead", "Influences"), wrow(d, "Haste")
   return hi and r.winfl.x == hi.x and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content, hi and hi.x end)
--- (kept code: the fallback where six one-line column titles do not fit, e.g. panel 340 at text 11) the influences go under their row,
--- from one indent in to the right edge, with their own "Influences: " label (no column title names them there)
+-- (A24 #7, Xaya 2026-11-11, option 2: "Influences is always its own column, and titles wrap onto two lines when needed") the narrow
+-- panel too: six column heads, and each row's influences on the row itself in the Influences column, to the right edge, unlabeled
+-- (until A24 #7 they went under their row here, labeled "Influences: ")
 c.size = { w = 340 }
 d = render()
-checkp("narrow panel (340, text 11): five column heads; the influences go under their row, from one indent in to the right edge, labeled", function()
-  local r = wrow(d, "Haste")
-  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating" and r.winfl.x == 12 and r.winfl.y > r.label.y
-    and r.winfl.x + r.winfl.w == LAY.content and T(r.winfl):find("^Influences: GCD") ~= nil, texts(d, "wcolhead") .. " x=" .. tostring(r.winfl.x) .. " " .. T(r.winfl) end)
+checkp("narrow panel (340, text 11): six column heads; each row's influences on the row itself in the Influences column, to the right edge (A24 #7)", function()
+  local hi, r = find(d, "wcolhead", "Influences"), wrow(d, "Haste")
+  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating|Influences" and hi ~= nil and r.winfl.x == hi.x
+    and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content and T(r.winfl):find("^GCD") ~= nil,
+    texts(d, "wcolhead") .. " x=" .. tostring(r.winfl.x) .. " " .. T(r.winfl) end)
 -- the comparison's copy of the map has no tree headings and no Gear Summary
 c.size = nil
 CM.gearSlot = 1; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")

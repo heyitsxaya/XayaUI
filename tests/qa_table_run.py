@@ -121,7 +121,7 @@ local eng = RowOf("audit-engine")
 check("a row's Codes cell shows every code in full; the Title cell the title without them", eng and eng.codes:GetText() == "D28, D56, D57, B263, B264"
   and eng.title:GetText():find("^Combat tracking: hidden buffs are not guessed") and not eng.title:GetText():find("D28", 1, true), eng and (eng.codes:GetText() .. " / " .. eng.title:GetText()))
 local look = RowOf("chk-look-1")
-check("  ...a title with ordinary words in parentheses is shown whole, no codes", look and look.title:GetText() == "2. Looks and layout (no effect on use) (1 of 7)"
+check("  ...a title with ordinary words in parentheses is shown whole, no codes", look and look.title:GetText():find("^2%. Looks and layout %(no effect on use%) %(1 of %d+%)$") ~= nil   -- the chunk count grows with the checklist
   and look.codes:GetText() == "", look and look.title:GetText())
 local chat = RowOf("chat-210-mover-collapse")
 check("  ...#210 moves from the title to Codes", chat and chat.codes:GetText() == "#210, D21" and chat.title:GetText() == "Chat: move, resize and hide the chat",

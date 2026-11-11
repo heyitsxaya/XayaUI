@@ -1,6 +1,6 @@
 # Stub test for the Stat Calculator (QoL until Bonus 0.6.37) phase 2 (XayaUI_QoL 0.7.0): what the panel shows. Sections with headers (and folding them),
 # the rating / percent toggle (every line and one line), the conversion hover, detail pairs, no Sheet tab (QoL 0.7.14), the
-# What If pane (per-stat inputs and an item compare through the stand-in converter), the slot overlays, secret values shown as
+# What If pane (per-stat inputs and an item compare through the stand-in converter), the slot marks, secret values shown as
 # "hidden in combat" and never compared, the settings page layout, layout bounds (V11), and the new game reads (dodge from Agility,
 # block reduction, attack power to DPS, base = stat - buffs, live GCD in combat, Mythic+ rating, durability and repair cost).
 # Run from the repo root: python3 tests/char_statcalc2_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
@@ -392,42 +392,43 @@ cb.text = "648"; cb.scripts.OnEnterPressed(cb)
 check("Enter in a map box sets that stat's amount (648 - 528 = +120)", c.whatIfStats.crit == 120, c.whatIfStats.crit)
 ns.StatCalc_SetInput("crit", "0")
 
--- 8. Slot overlays -----------------------------------------------------------------------------------------------------------
+-- 8. Slot marks (A24 #7: the Slot Overlays are gone; the enchant check E? / E is the Enchants option with its Style On the slot, the
+--    empty-socket count is "Empty sockets"; the item level is the Item level option's, never a mark: tests/slot_options_run.py) -------
+local q = ns.CharDisplay_Cfg()
+local function marks(slotName) return ns.CharDisplay_SlotMarks(slotName) or "" end
 ns.CharDisplay_UpdateOverlays()
-check("overlays off by default: nothing on the head slot", ns.CharDisplay_OverlayText("HeadSlot") == nil)
-c.overlays = true; CWA()
-local il, mk1 = ns.CharDisplay_OverlayText("HeadSlot")
-check("overlay: head shows its item level (336) and, with no slots ticked, E? (head takes an enchant this expansion: QoL 0.7.6 default)",
-  il == "336" and mk1:find("E?", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
-il, mk1 = ns.CharDisplay_OverlayText("Finger0Slot")
-check("overlay: ring shows 330 and its empty socket (1S)", il == "330" and mk1:find("1S", 1, true) ~= nil, tostring(il) .. " / " .. tostring(mk1))
-check("overlay: an empty slot shows nothing", select(1, ns.CharDisplay_OverlayText("NeckSlot")) == "")
+check("marks off by default: nothing on the head slot", ns.CharDisplay_SlotMarks("HeadSlot") == nil)
+q.enchants, q.enchantStyle, q.socketMark = true, "slot", true; CWA()
+check("Enchants on the slot: head shows E?, with no slots ticked (head takes an enchant this expansion: QoL 0.7.6 default), and no item level among the marks",
+  marks("HeadSlot"):find("E?", 1, true) ~= nil and marks("HeadSlot"):find("336", 1, true) == nil, marks("HeadSlot"))
+check("Empty sockets: the ring shows its empty socket (1S)", marks("Finger0Slot"):find("1S", 1, true) ~= nil, marks("Finger0Slot"))
+check("marks: an empty slot shows nothing", marks("NeckSlot") == "")
 -- QoL 0.7.6: this expansion's enchantable slots are checked until the player ticks their own
 local ES = ns.StatModel.EnchantSlots
-check("enchant default: the enchanted ring shows E, not E?", (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil
-  and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil)
+check("enchant default: the enchanted ring shows E, not E?", marks("Finger0Slot"):find("E?", 1, true) == nil and marks("Finger0Slot"):find("E|r", 1, true) ~= nil)
 check("enchant default: neck, back, wrist, waist, hands, trinkets not checked; head, shoulders, chest, legs, feet, rings, main hand checked",
   not ES(c)[2] and not ES(c)[15] and not ES(c)[9] and not ES(c)[6] and not ES(c)[10] and not ES(c)[13] and not ES(c)[14]
   and ES(c)[1] and ES(c)[3] and ES(c)[5] and ES(c)[7] and ES(c)[8] and ES(c)[11] and ES(c)[12] and ES(c)[16] and select(2, ES(c)) == true)
 GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.CharDisplay_UpdateOverlays()
-check("enchant default: an off-hand frill is not checked", (select(2, ns.CharDisplay_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) == nil and not ES(c)[17])
+check("enchant default: an off-hand frill is not checked", marks("SecondaryHandSlot"):find("E?", 1, true) == nil and not ES(c)[17])
 GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.CharDisplay_UpdateOverlays()
-check("enchant default: an off-hand weapon is checked (E?)", (select(2, ns.CharDisplay_OverlayText("SecondaryHandSlot")) or ""):find("E?", 1, true) ~= nil)
+check("enchant default: an off-hand weapon is checked (E?)", marks("SecondaryHandSlot"):find("E?", 1, true) ~= nil)
 GEAR[17] = nil; ns.CharDisplay_UpdateOverlays()
 c.enchantSlots = { [1] = true, [11] = true }; ns.CharDisplay_UpdateOverlays()
-check("overlay: a ticked slot with no enchant shows E?", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
-check("overlay: a ticked slot with an enchant shows E", (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("|rE|r", 1, true) == nil
-  and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E|r", 1, true) ~= nil and (select(2, ns.CharDisplay_OverlayText("Finger0Slot")) or ""):find("E?", 1, true) == nil)
+check("marks: a ticked slot with no enchant shows E?", marks("HeadSlot"):find("E?", 1, true) ~= nil)
+check("marks: a ticked slot with an enchant shows E", marks("Finger0Slot"):find("|rE|r", 1, true) == nil
+  and marks("Finger0Slot"):find("E|r", 1, true) ~= nil and marks("Finger0Slot"):find("E?", 1, true) == nil)
 check("a list ticked before QoL 0.7.6 is kept: only its slots are checked", ns.StatModel.EnchantSlots(c)[3] == nil and select(2, ns.StatModel.EnchantSlots(c)) == false)
-c.ovIlvl = false; ns.CharDisplay_UpdateOverlays()
-check("overlay: item level switched off", select(1, ns.CharDisplay_OverlayText("HeadSlot")) == "")
-c.ovIlvl = true
+q.enchantStyle = nil; ns.CharDisplay_UpdateOverlays()
+check("Enchants beside the slot: no E? / E on the slots (the enchant shows beside them); the ring's 1S stays", marks("HeadSlot"):find("E", 1, true) == nil
+  and marks("Finger0Slot"):find("1S", 1, true) ~= nil and marks("Finger0Slot"):find("E", 1, true) == nil, marks("HeadSlot") .. " / " .. marks("Finger0Slot"))
+q.enchantStyle = "slot"
 GEAR[1] = "|cffa335ee|Hitem:1:6000:::::::90:::::|h[Helm]|h|r"
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
-check("overlay follows Blizzard's slot redraw (enchant added: E?)", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
+check("marks follow Blizzard's slot redraw (enchant added: no E?)", marks("HeadSlot"):find("E?", 1, true) == nil)
 GEAR[1] = "|cffa335ee|Hitem:1::::::::90:::::|h[Helm]|h|r"
-c.overlays = false; CWA()
-check("overlays off: hidden again", ns.CharDisplay_OverlayText("HeadSlot") == nil)
+q.enchants, q.enchantStyle, q.socketMark = false, nil, nil; CWA()
+check("Enchants and Empty sockets off: the marks are hidden again", ns.CharDisplay_SlotMarks("HeadSlot") == nil)
 c.enchantSlots = {}
 
 -- 9. Secret values: hidden in combat, never compared or formatted ---------------------------------------------------------------
@@ -530,11 +531,10 @@ ns.StatCalc_ClearCache()
 
 -- 10. Settings page: a feature node with parts under it, sections as tabs; no dropdown alone on a row ------------------------
 local page = CWPage(function() end)
-check("settings: the Stat Calculator and Improved Character Display pages (joined) have Panel, Slot Overlays and Spell Math as nodes", page.childGroups == "tree"
-  and page.args.panelPart.type == "group" and page.args.overlayPart.type == "group" and page.args.spells.type == "group")
-check("settings: a part's sections are tabs (Panel: Layout, What If; Slot Overlays: Show, Enchant Slots); the Tooltips tab left Panel (QoL 0.7.24: Tooltip lines is a part of its own)",
-  page.args.panelPart.childGroups == "tab" and page.args.panelPart.args.layout and page.args.panelPart.args.values and page.args.panelPart.args.tips == nil
-  and page.args.overlayPart.childGroups == "tab" and page.args.overlayPart.args.show and page.args.overlayPart.args.enchants)
+check("settings: the Stat Calculator and Improved Character Display pages (joined) have Panel, Enchant Slots and Spell Math as nodes (A24 #7: no Slot Overlays part)", page.childGroups == "tree"
+  and page.args.panelPart.type == "group" and page.args.enchantSlotsPage.type == "group" and page.args.spells.type == "group" and page.args.overlayPart == nil)
+check("settings: Panel's sections are tabs (Layout, What If); the Tooltips tab left Panel (QoL 0.7.24: Tooltip lines is a part of its own)",
+  page.args.panelPart.childGroups == "tab" and page.args.panelPart.args.layout and page.args.panelPart.args.values and page.args.panelPart.args.tips == nil)
 local function selectsShareRows(group)
   local list = {}
   for k, e in pairs(group.args or {}) do if type(e) == "table" and e.type ~= "group" and e.type ~= "description" and e.type ~= "header" then list[#list + 1] = e end end
@@ -559,20 +559,22 @@ check("settings: no Rating lines setting and no Reset line flips (B2)", lay.valu
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
-page.args.overlayPart.xuiSwitch.set(nil, true)   -- the Slot Overlays row's tick box in the left pane (QoL 0.7.18)
-check("settings: the Slot overlays switch draws the overlays", ns.CharDisplay_OverlayText("HeadSlot") == "336")
-page.args.overlayPart.args.enchants.args.slot1.set(nil, true)
-check("settings: ticking Head in Enchant Slots flags it (E?)", (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
-do
+do   -- (A24 #7) the enchant check is Enchants with its Style On the slot; the Enchant Slots are a page of their own
+  local q = ns.CharDisplay_Cfg()
+  local function marks(slotName) return ns.CharDisplay_SlotMarks(slotName) or "" end
+  page.args.enchants.set(nil, true); page.args.enchantStyle.set(nil, "slot")
+  check("settings: Enchants with its Style On the slot draws the enchant check (head E?)", marks("HeadSlot"):find("E?", 1, true) ~= nil, marks("HeadSlot"))
+  local es = page.args.enchantSlotsPage.args
   local cc = ns.Settings("qol").characterToolkit   -- (P5: where XayaUI QoL keeps it, its own store)
-  page.args.overlayPart.args.enchants.args.slot1.set(nil, false)
+  es.slot1.set(nil, false)
   check("settings: unticking Head is kept and the other default slots stay ticked", cc.enchantSlotsSet == true and not cc.enchantSlots[1] and cc.enchantSlots[11] == true
-    and page.args.overlayPart.args.enchants.args.slot3.get() == true and (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) == nil)
-  page.args.overlayPart.args.enchants.args.reset.func()
+    and es.slot3.get() == true and marks("HeadSlot"):find("E?", 1, true) == nil)
+  es.reset.func()
   check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
-    and (select(2, ns.CharDisplay_OverlayText("HeadSlot")) or ""):find("E?", 1, true) ~= nil)
+    and marks("HeadSlot"):find("E?", 1, true) ~= nil)
+  page.args.enchants.set(nil, false); page.args.enchantStyle.set(nil, "beside")
+  check("settings: Enchants off: no marks", ns.CharDisplay_SlotMarks("HeadSlot") == nil and q.enchantStyle == nil)
 end
-page.args.overlayPart.xuiSwitch.set(nil, false)
 check("[0.7.23] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
 ns.StatCalc_SetInput("haste", "200")
 page.args.panelPart.args.values.args.clear.func()

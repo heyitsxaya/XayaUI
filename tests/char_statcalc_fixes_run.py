@@ -19,9 +19,10 @@ Improved Character Display's Stat Calc button (XayaUI_QoL/ImprovedCharacterDispl
       a stand-in here); later builds do not.
   F6  SC-102 (round 2): at the default panel width (450) and the default text (11, and 10) the Stat Weights head has six column titles,
       the last "Influences", and every row's influences sit in that column on the row itself, inside the panel, without "Influences: "
-      in front (under the row, where there is no title, the line keeps its "Influences: " label). At 450 and every text size 10-14 every column title is on one line (the kept #60 rule, tests/char_stat_round_run.py);
-      where six one-line titles do not fit (text 12-14 in this world's measure) the influences go under their row instead (from one
-      indent in, x 12, to the right edge). No word cut, no overlap among the pane's cells (V11).
+      in front. (A24 #7, Xaya 2026-11-11, option 2: "Influences is always its own column, and titles wrap onto two lines when needed")
+      at 450 and every text size 10-14: six column titles, the last "Influences", none cut (a title may wrap: her answer replaces #60's
+      one-line titles for this pane; tests/char_stat_round_run.py section L checks the alignment), and every row's influences in that
+      column on the row itself (the labeled line under the row is gone). No word cut, no overlap among the pane's cells (V11).
   F7  SC-085 / SC-049 (round 2): the bag and talent events are heard only while their tab is shown, so a change made while the panel
       is on another tab, closed, or hidden by combat is read when the tab is next drawn: the Gear tab's bag list after the bags changed
       on Stats, and after the panel was closed; the talent scan is read again (CM.ClearTalents) on the first Ability Scaling draw after
@@ -241,32 +242,25 @@ for fs = 10, 14 do
   local d = drawn()
   local heads = recs(d, "wcolhead")
   local six = #heads == 6
-  checkp(("F6 Stat Weights at 450 wide, text %d: every column title on one line (the kept #60 rule)"):format(fs), function()
-    if #heads < 5 then return false, #heads .. " titles" end
-    for _, h in ipairs(heads) do if est(h.text, h.size) > h.w + 0.01 then return false, h.text .. " w=" .. h.w end end
+  checkp(("F6 Stat Weights at 450 wide, text %d: no column title cut (a title may wrap, A24 #7)"):format(fs), function()
+    if #heads < 6 then return false, #heads .. " titles" end
+    for _, h in ipairs(heads) do if cut(h) then return false, h.text .. " cut (" .. cut(h) .. ") w=" .. h.w end end
     return true end)
-  if fs <= 11 then
-    checkp(("F6 Stat Weights at 450 wide, text %d (the default and smaller): six column titles, the last Influences"):format(fs), function()
-      local names = {}
-      for _, h in ipairs(heads) do names[#names + 1] = h.text end
-      return six and heads[6].text == "Influences", table.concat(names, "|") end)
-  end
-  checkp(("F6 Stat Weights at 450 wide, text %d: each row's influences %s, inside the panel, \"Influences: \" in front only under the row; nothing cut, no overlap"):format(fs,
-    six and "in the Influences column on its own row" or "under its row (no room for six one-line titles)"), function()
+  checkp(("F6 Stat Weights at 450 wide, text %d: six column titles, the last Influences (A24 #7: at every text size)"):format(fs), function()
+    local names = {}
+    for _, h in ipairs(heads) do names[#names + 1] = h.text end
+    return six and heads[6].text == "Influences", table.concat(names, "|") end)
+  checkp(("F6 Stat Weights at 450 wide, text %d: each row's influences in the Influences column on its own row, inside the panel, no \"Influences: \" in front; nothing cut, no overlap"):format(fs), function()
+    if not six then return false, #heads .. " titles" end
     local labels = {}
     for _, r in ipairs(recs(d, "wlabel")) do labels[#labels + 1] = r end
     local infl = recs(d, "winfl")
     if #infl == 0 or #infl ~= #labels then return false, #infl .. " influence cells for " .. #labels .. " rows" end
     for i, r in ipairs(infl) do
-      if six then
-        if r.x ~= heads[6].x or r.y ~= labels[i].y then return false, "row " .. labels[i].text .. ": x " .. r.x .. " (title " .. heads[6].x .. "), y " .. r.y .. " (row " .. labels[i].y .. ")" end
-      else
-        if r.x ~= 12 or not (r.y > labels[i].y) then return false, "row " .. labels[i].text .. ": x " .. r.x .. ", y " .. r.y .. " (row " .. labels[i].y .. ")" end
-      end
+      if r.x ~= heads[6].x or r.y ~= labels[i].y then return false, "row " .. labels[i].text .. ": x " .. r.x .. " (title " .. heads[6].x .. "), y " .. r.y .. " (row " .. labels[i].y .. ")" end
       if r.x + r.w > LAY.content + 0.01 then return false, "row " .. labels[i].text .. " past the right edge" end
-      -- (in the column the title names them; under the row the line keeps its own "Influences: " label, as before)
-      if six and tostring(r.text):find("^Influences: ") then return false, "still prefixed: " .. r.text end
-      if not six and not tostring(r.text):find("^Influences: ") then return false, "under the row without its label: " .. r.text end
+      -- (the column's title names them)
+      if tostring(r.text):find("^Influences: ") then return false, "still prefixed: " .. r.text end
     end
     local all = {}
     for _, k in ipairs({ "wcolhead", "wlabel", "wrating", "wppp", "wpppdr", "wdr", "wtl", "winfl" }) do

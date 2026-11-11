@@ -18,7 +18,8 @@ game (tests/harness), with the saved variables carried over a /reload:
       from QoL); an import writes each key to its half and the switch to both.
   S3  XayaUI QoL off: XayaUI Bonus Features shows nothing extra (no Stat Calculator page, no /xui stats, no Stat Calculator row in the
       minimap list), saves nothing for it, no Lua error; the "statModel" service is XayaUI QoL's and absent. XayaUI Bonus Features
-      off: QoL > Improved Character Display (with its Slot Overlays part; V25 R2; Tooltip lines moved to Enhanced Tooltips in V25 R4) is there, no Stat Calculator page or command, QoL's settings untouched.
+      off: QoL > Improved Character Display (with its Item level and Enchants options and its Enchant Slots page; A24 #7 replaced the Slot
+      Overlays part; Tooltip lines moved to Enhanced Tooltips in V25 R4) is there, no Stat Calculator page or command, QoL's settings untouched.
       Both on: Bonus reads the model only through the service (its file never names ns.StatModel).
 Negative control: on f870d78 M1, M3, P (the panel's keys in Bonus's store), S3 (Bonus page) fail: the panel is QoL's there.
 Run: python3 tests/char_statcalc_split_run.py   (Lua 5.1 via lupa)."""
@@ -64,9 +65,11 @@ out.statCalc = ns.Service("statCalc") ~= nil
 local pages = ns.BuildSettingsPages and ns.BuildSettingsPages("bonus") or {}
 out.bonusPage = pages.statcalc ~= nil and pages.statcalc.name or false
 local qp = ns.BuildSettingsPages and ns.BuildSettingsPages("qol") or {}
--- (V25 R2) the slot overlays are a part of QoL > Improved Character Display, which has no panel part; (V25 R4) the tooltip lines are
--- Bonus Features > Enhanced Tooltips' option, not a part of this page
-out.qolPage = qp.chardisplay ~= nil and (qp.chardisplay.args.overlayPart ~= nil and qp.chardisplay.args.tipsPart == nil and qp.chardisplay.args.panelPart == nil) or false
+-- (V25 R2) QoL > Improved Character Display has no panel part; (V25 R4) the tooltip lines are Bonus Features > Enhanced Tooltips'
+-- option, not a part of this page; (A24 #7) the Slot Overlays part is gone: one Item level and one Enchants option (each with a style)
+-- and the Enchant Slots page
+out.qolPage = qp.chardisplay ~= nil and (qp.chardisplay.args.ilvl ~= nil and qp.chardisplay.args.enchants ~= nil and qp.chardisplay.args.enchantSlotsPage ~= nil
+  and qp.chardisplay.args.overlayPart == nil and qp.chardisplay.args.tipsPart == nil and qp.chardisplay.args.panelPart == nil) or false
 out.statsCmd = false
 local said = {}
 local rawPrint = ns.Print
@@ -147,7 +150,7 @@ def main():
     check("  ...CueRulesDB is unchanged", norm(store(s1, "XayaUI", "CueRulesDB").get("characterToolkit")) == norm(OLD_SAVED))
     check("  ...the Stat Calculator reads Bonus's copy (side left, text size 13)", out.get("panelSide") == "left" and out.get("panelFont") == 13,
           (out.get("panelSide"), out.get("panelFont")))
-    check("  ...its page is Bonus Features > Stat Calculator; QoL > Improved Character Display has Slot Overlays and no panel part (nor Tooltip lines: V25 R4)",
+    check("  ...its page is Bonus Features > Stat Calculator; QoL > Improved Character Display has Item level, Enchants and Enchant Slots (A24 #7) and no panel part (nor Tooltip lines: V25 R4)",
           out.get("bonusPage") == "Stat Calculator" and out.get("qolPage") is True, (out.get("bonusPage"), out.get("qolPage")))
     check("  ...no Lua error", not errs, errs[:2])
     # M2: the next load
@@ -190,7 +193,7 @@ def main():
           and "characterToolkit" not in b6 and "keyMoves" not in b6, sorted(b6))
     check("  ...no Lua error", not errs6, errs6[:2])
     out7, s7, errs7 = session(lambda n: ALL(n) and n != "XayaUI_Bonus", copy.deepcopy(p5))
-    check("S3 XayaUI Bonus Features off: QoL > Improved Character Display (Slot Overlays) is there; no Stat Calculator page or command",
+    check("S3 XayaUI Bonus Features off: QoL > Improved Character Display (Item level, Enchants, Enchant Slots) is there; no Stat Calculator page or command",
           out7.get("qolPage") is True and out7.get("bonusPage") is False and out7.get("statsCmd") is False, (out7.get("qolPage"), out7.get("bonusPage"), out7.get("statsCmd")))
     check("  ...QoL's characterToolkit keeps every old key; no Lua error", kept(OLD_SAVED, store(s7, "XayaUI_QoL", "XayaUIQoLDB").get("characterToolkit")) and not errs7, errs7[:2])
     check("S3 both on: the statModel service is there and Bonus Features' Stat Calculator answers (/xui stats status)",

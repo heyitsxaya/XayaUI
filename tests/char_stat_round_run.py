@@ -116,6 +116,56 @@ function layoutOK(dd)
   end end
   return true
 end
+-- (A24 #7 round 2) THE KNOWN LIMITS of the Stat Weights pane with Influences always a column, every case in these stand-in fonts,
+-- reported to Xaya in full (what gives there is her choice; none is built). Keys are "font:panel width:text size". The checks below
+-- (sections A and L) hold the lists EXACT both ways: a listed case must still show the limit, an unlisted case must not, so a change
+-- that cuts a word or adds a third title line anywhere new fails, and a stale entry fails too.
+-- CUT_LIMIT: the widest words of the six columns alone do not fit, FitCols scales the columns down and words are cut (titles and
+-- cells). On af1f2ba (influences under the row where six one-line titles did not fit) only est 340/16, scaled 340/14, 340/16, 380/16
+-- and flat8 340 (every size) cut.
+CUT_LIMIT = {}
+for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:14", "est:380:16", "est:450:16",
+    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
+    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do CUT_LIMIT[k] = true end
+for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do CUT_LIMIT["flat8:" .. pw .. ":" .. fs] = true end end
+-- LINES3_LIMIT: nothing is cut, but the widest words leave too little room for every title on two lines (her option 2: "titles wrap
+-- onto two lines when needed"), so one wraps onto three ("Rating (P / %)" at 40 px). Where words are cut, lines are not counted.
+LINES3_LIMIT = { ["est:380:12"] = true }
+-- every cut word in the Stat Weights pane (titles and cells)
+function wCuts(d)
+  local out = {}
+  for _, k in ipairs({ "wcolhead", "wlabel", "wrating", "wppp", "wpppdr", "wdr", "wtl", "winfl" }) do
+    for _, r in ipairs(recs(d, k)) do if cutWord(r) then out[#out + 1] = k .. " '" .. tostring(r.text) .. "' (" .. cutWord(r) .. ") w=" .. r.w end end
+  end
+  return out
+end
+-- how many lines a title takes in its column: the game wraps at spaces, filling each line first
+function titleLines(r)
+  local n, cur = 1, nil
+  for w in tostring(r.text or ""):gmatch("%S+") do
+    local t = cur and (cur .. " " .. w) or w
+    if cur and textW(t, r.size) > r.w + 0.01 then n = n + 1; cur = w else cur = t end
+  end
+  return n
+end
+-- the exact known-limit check for one drawn case: (name suffix, check function)
+function limitCheck(d, key)
+  local cuts = wCuts(d)
+  if CUT_LIMIT[key] then
+    return "KNOWN LIMIT (reported to Xaya; her choice what gives): the widest words do not fit and words are cut, as listed", function()
+      return #cuts > 0, "listed in CUT_LIMIT but nothing is cut: take " .. key .. " off the list" end
+  end
+  local most, which = 0, ""
+  for _, h in ipairs(recs(d, "wcolhead")) do local n = titleLines(h); if n > most then most, which = n, h.text end end
+  if LINES3_LIMIT[key] then
+    return "no word cut; KNOWN LIMIT (reported to Xaya): a title wraps onto three lines, as listed", function()
+      if #cuts > 0 then return false, table.concat(cuts, "; ") end
+      return most == 3, "listed in LINES3_LIMIT, longest title " .. which .. " on " .. most .. " lines" end
+  end
+  return "no title or cell word cut; every title on at most two lines (option 2)", function()
+    if #cuts > 0 then return false, table.concat(cuts, "; ") end
+    return most <= 2, which .. " on " .. most .. " lines" end
+end
 function hoverOf(d, key)
   for _, b in ipairs(d.buttons) do if b.shown and b.item and b.item.key == key then GameTooltip.lines = {}; b.scripts.OnEnter(b); return table.concat(GameTooltip.lines or {}, " / "), b end end
   return "", nil
@@ -177,35 +227,49 @@ local function weights(dd)
   local heads, rows = recs(dd, "wcolhead"), {}
   return heads
 end
-for _, m in ipairs({ "scaled", "flat8" }) do
+-- (A24 #7, Xaya 2026-11-11: "2 but make sure all headings (top row) are vertically middle-aligned or bottom-aligned ..."; option 2:
+-- "Influences is always its own column, and titles wrap onto two lines when needed") her new answer replaces #60's one-line titles for
+-- the Stat Weights pane only: a title may wrap, never be cut. #60's one-line check stays for every other table (the Stats grid's heads
+-- and the Ability Scaling heads below). Section L checks the six columns and the alignment.
+-- The default panel at the default text in all three stand-in fonts: six titles, none cut (a title may wrap) where the widest words
+-- fit; "flat8" (8 px per character at any size, a much wider font) is a listed KNOWN LIMIT there (CUT_LIMIT, above): its widest
+-- words of the six columns alone need more than the default panel has. (Until A24 #7 its default panel cut nothing.)
+for _, m in ipairs({ "est", "scaled", "flat8" }) do
   MEASURE = m
   c.size, c.fontSize = nil, 11
   local d = render()
-  checkp(("Stat Weights, default panel, text %s: every column title on one line, none cut (\"Rating (P / %%)\", \"DR Threshold\" whole)"):format(m), function()
-    local hs = recs(d, "wcolhead")
-    if #hs < 5 then return false, #hs .. " titles" end
-    for _, r in ipairs(hs) do
-      if cutWord(r) then return false, "cut: " .. r.text .. " (" .. cutWord(r) .. ") w=" .. r.w end
-      if m == "scaled" and not oneLine(r) then return false, "wraps: " .. r.text .. " w=" .. r.w end
-    end
-    return true end)
+  local key = m .. ":450:11"
+  local hs = recs(d, "wcolhead")
+  if CUT_LIMIT[key] then
+    checkp(("Stat Weights, default panel, text 11, font %s: six column titles; KNOWN LIMIT (listed, reported to Xaya): a word is cut"):format(m), function()
+      return #hs == 6 and #wCuts(d) > 0, #hs .. " titles, " .. #wCuts(d) .. " cut" end)
+  else
+    checkp(("Stat Weights, default panel, text 11, font %s: six column titles, none cut (\"Rating (P / %%)\", \"DR Threshold\" whole; a title may wrap, A24 #7)"):format(m), function()
+      if #hs ~= 6 then return false, #hs .. " titles" end
+      for _, r in ipairs(hs) do
+        if cutWord(r) then return false, "cut: " .. r.text .. " (" .. cutWord(r) .. ") w=" .. r.w end
+      end
+      return true end)
+  end
 end
 MEASURE = "scaled"
--- (KNOWN LIMIT, reported: at the narrowest panel, 340, with text size 16 the widest words alone, "Versatility", "Threshold", "Rating",
--- "29.25%", need about 354 px of the 320 there; FitCols then scales the columns down and a word can be cut. 380 wide is enough.)
+-- Every panel width at text 8, 11, 12, 14 and 16 (12 and 14 added in A24 #7 round 2): no title or cell word cut, except the cases
+-- listed in CUT_LIMIT (above), each named in its check; in every case six columns inside the width, no overlaps.
 for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
-  for _, fs in ipairs({ 8, 11, 16 }) do
+  for _, fs in ipairs({ 8, 11, 12, 14, 16 }) do
     MEASURE = (pw <= 380 and fs == 16) and "est" or "scaled"
-    if not (pw == 340 and fs == 16) then
     c.size, c.fontSize = { w = pw }, fs
     local d = render()
-    checkp(((fs == 8 and "(guard: the old widths held at text 8) " or "") .. "Stat Weights, panel %d, text %d (" .. MEASURE .. "): no title cut, no cell word cut, inside the width, no overlaps"):format(pw, fs), function()
-      for _, k in ipairs({ "wcolhead", "wlabel", "wrating", "wppp", "wpppdr", "wdr", "wtl" }) do
-        for _, r in ipairs(recs(d, k)) do if cutWord(r) then return false, k .. " '" .. r.text .. "' cut (" .. cutWord(r) .. ") w=" .. r.w end end
-      end
+    local key = MEASURE .. ":" .. pw .. ":" .. fs
+    local lim = CUT_LIMIT[key]
+    checkp(((fs == 8 and "(guard: the old widths held at text 8) " or "") .. "Stat Weights, panel %d, text %d (" .. MEASURE .. "): "
+      .. (lim and "KNOWN LIMIT (listed, reported to Xaya): words are cut; six columns" or "no title cut, no cell word cut") .. ", inside the width, no overlaps"):format(pw, fs), function()
+      if #recs(d, "wcolhead") ~= 6 then return false, #recs(d, "wcolhead") .. " titles" end
+      local cuts = wCuts(d)
+      if lim and #cuts == 0 then return false, "listed in CUT_LIMIT but nothing is cut" end
+      if not lim and #cuts > 0 then return false, table.concat(cuts, "; ") end
       local ok, why = layoutOK(d)
       return ok, why end)
-    end
   end
 end
 c.size, c.fontSize = nil, 11
@@ -719,6 +783,115 @@ for _, l in ipairs(on) do if l.r == nil and tostring(l.l):len() > 40 then note =
 checkp("the crit card's hover without XayaUI Dev Assist: the title and its numbers, no note paragraph; with it, the notes too", function()
   return note ~= nil and not hasLine(off, note) and hasLine(off, "Critical Strike") and #on > #off, tostring(note) end)
 ''').replace("__CBACC__", CB_ACC).replace("__CBDAN__", CB_DAN))
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# L. A24 #7 (Xaya 2026-11-11, her words: "2 but make sure all headings (top row) are vertically middle-aligned or bottom-aligned and
+#    all rows beneath are uniformly vertically aligned amongst themselves"; option 2: "Influences is always its own column, and titles
+#    wrap onto two lines when needed"). In the Stat Weights pane, at every panel width and text size: six column titles, the last
+#    Influences, and each row's influences on the row itself in that column (never a labeled line under the row); the titles share
+#    one bottom edge (bottom-aligned chosen; her words allow middle or bottom), and the shown font strings sit where the records say;
+#    every cell of every row starts at its row's top, the same gap after every row; whole pixels (V27).
+#    Negative control (V1): fails on af1f2ba (the influences went under their row where six one-line titles did not fit, and the
+#    titles were top-aligned).
+# ---------------------------------------------------------------------------------------------------------------------------------
+run(STATWORLD, r'''
+local CELLS = { "wlabel", "wrating", "wppp", "wdr", "wtl", "winfl" }
+local function whole(v) return v == math.floor(v) end
+local function rows(d)
+  local out = {}
+  for _, r in ipairs(recs(d, "wlabel")) do out[#out + 1] = { label = r, top = r.y } end
+  return out
+end
+local wrapped, shiftedTitle = false, false
+for _, m in ipairs({ "est", "scaled" }) do
+  MEASURE = m
+  for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
+    for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do
+      c.size, c.fontSize = { w = pw }, fs
+      local d = render()
+      local heads = recs(d, "wcolhead")
+      local tag = ("panel %d, text %d (%s)"):format(pw, fs, m)
+      checkp("A24 #7 Stat Weights, " .. tag .. ": six column titles, the last Influences; each row's influences on the row itself in that column, no \"Influences: \" label", function()
+        if #heads ~= 6 or heads[6].text ~= "Influences" then return false, texts(d, "wcolhead") end
+        local labels, infl = recs(d, "wlabel"), recs(d, "winfl")
+        if #labels == 0 or #infl ~= #labels then return false, #infl .. " influence cells for " .. #labels .. " rows" end
+        for i, r in ipairs(infl) do
+          if r.x ~= heads[6].x or r.w ~= heads[6].w or r.y ~= labels[i].y then
+            return false, labels[i].text .. ": x " .. r.x .. " w " .. r.w .. " y " .. r.y .. " (title x " .. heads[6].x .. " w " .. heads[6].w .. ", row y " .. labels[i].y .. ")"
+          end
+          if tostring(r.text):find("^Influences: ") then return false, "labeled: " .. r.text end
+          if not fontAt(d, r) then return false, "no shown font string at " .. labels[i].text .. "'s influences" end
+        end
+        return true end)
+      checkp("A24 #7 Stat Weights, " .. tag .. ": the column titles are bottom-aligned (one bottom edge), each drawn where its record says", function()
+        local bottom
+        for _, h in ipairs(heads) do
+          bottom = bottom or (h.y + h.h)
+          if h.y + h.h ~= bottom then return false, h.text .. " ends at " .. (h.y + h.h) .. ", not " .. bottom end
+          if not fontAt(d, h) then return false, "no shown font string for " .. h.text .. " at y " .. h.y end
+          if h.h > h.size then wrapped = true end
+          if h.y > heads[1].y or h.y < heads[1].y then shiftedTitle = true end
+        end
+        return #heads == 6 end)
+      checkp("A24 #7 Stat Weights, " .. tag .. ": every cell of every row starts at its row's top; the same gap after every row", function()
+        local rs, gap = rows(d), nil
+        for i, row in ipairs(rs) do
+          local nextTop = rs[i + 1] and rs[i + 1].top or math.huge
+          local bottom = row.top
+          for _, k in ipairs(CELLS) do
+            local first
+            for _, r in ipairs(recs(d, k)) do
+              if r.y >= row.top and r.y < nextTop and (not first or r.y < first.y) then first = r end
+              if r.y >= row.top and r.y < nextTop then bottom = math.max(bottom, r.y + r.h) end
+            end
+            if first and first.y ~= row.top then return false, row.label.text .. ": " .. k .. " '" .. tostring(first.text) .. "' at y " .. first.y .. ", row top " .. row.top end
+          end
+          for _, r in ipairs(recs(d, "wpppdr")) do if r.y >= row.top and r.y < nextTop then bottom = math.max(bottom, r.y + r.h) end end
+          if rs[i + 1] then
+            local g = nextTop - bottom
+            gap = gap or g
+            if g ~= gap then return false, row.label.text .. ": gap " .. g .. " after it, " .. gap .. " after the first row" end
+          end
+        end
+        return #rs > 1, #rs .. " rows" end)
+      checkp("A24 #7 Stat Weights, " .. tag .. ": whole pixels (V27): every title and cell at a whole x, y, width and height", function()
+        for _, k in ipairs({ "wcolhead", "wlabel", "wrating", "wppp", "wpppdr", "wdr", "wtl", "winfl" }) do
+          for _, r in ipairs(recs(d, k)) do
+            if not (whole(r.x) and whole(r.y) and whole(r.w) and whole(r.h)) then return false, k .. " '" .. tostring(r.text) .. "' " .. r.x .. "," .. r.y .. " " .. r.w .. "x" .. r.h end
+          end
+        end
+        return true end)
+    end
+  end
+end
+-- (A24 #7 round 2) every width x text size x the three stand-in fonts: no word cut and every title on at most two lines (her option
+-- 2: "titles wrap onto two lines when needed"), except the listed KNOWN LIMITS (CUT_LIMIT, LINES3_LIMIT, above), each named in its
+-- check and held exact both ways
+for _, m in ipairs({ "est", "scaled", "flat8" }) do
+  MEASURE = m
+  for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
+    for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do
+      c.size, c.fontSize = { w = pw }, fs
+      local d = render()
+      local name, fn = limitCheck(d, m .. ":" .. pw .. ":" .. fs)
+      checkp(("A24 #7 Stat Weights, panel %d, text %d (%s): "):format(pw, fs, m) .. name, fn)
+    end
+  end
+end
+checkp("A24 #7 (guard: the alignment checks above met a wrapped title moved down under the others, so bottom-alignment was exercised)", function()
+  return wrapped and shiftedTitle end)
+-- the default panel at the default text in the wider stand-in font: "Rating (P / %)" wraps onto two lines and is not cut; the other
+-- titles sit one line lower, on its bottom line
+MEASURE = "scaled"
+c.size, c.fontSize = nil, 11
+local d = render()
+local rp, st = find(d, "wcolhead", "Rating (P / %)"), find(d, "wcolhead", "Stat")
+checkp("A24 #7 default panel, text 11 (scaled): \"Rating (P / %)\" wraps onto two lines, uncut; \"Stat\" sits lower, on the same bottom line", function()
+  return rp and st and rp.h == 2 * rp.size and not cutWord(rp) and st.y == rp.y + rp.size and st.y + st.h == rp.y + rp.h,
+    rp and st and ("Rating y " .. rp.y .. " h " .. rp.h .. "; Stat y " .. st.y .. " h " .. st.h) or "missing" end)
+MEASURE = "est"
+c.size, c.fontSize = nil, 11
+''')
 
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)
 print("%d checks, %d failed" % (n, fails))

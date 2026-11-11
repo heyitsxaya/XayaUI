@@ -284,8 +284,9 @@ check("off: panel hidden", not XayaUIStatCalculator:IsShown())
 
 -- settings page and command
 local page = CWPage(function() end)
-check("settings page builds: feature node with Panel, Slot Overlays and Spell Math under it", page.childGroups == "tree" and page.args.panelPart
-  and page.args.overlayPart and page.args.spells)
+check("settings page builds: feature node with Panel, Enchant Slots and Spell Math under it (A24 #7: no Slot Overlays part; Item level and Enchants with their Style)",
+  page.childGroups == "tree" and page.args.panelPart and page.args.enchantSlotsPage and page.args.spells and page.args.overlayPart == nil
+  and page.args.ilvlStyle and page.args.enchantStyle)
 page.args.spells.args.add.set(nil, "Fracture")
 check("add spell via settings (duplicate ignored)", #c.spells == 1)
 check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#printed]:find("Stat Calculator:", 1, true) ~= nil)

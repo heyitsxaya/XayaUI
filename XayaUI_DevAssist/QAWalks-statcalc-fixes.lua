@@ -187,7 +187,7 @@ QA.Register("statcalc-fixes", { title = "Stat Calculator: combat lets go of the 
             return ok, ("panel %s; cooldown event %s; stat models built since it closed: %d"):format(sc.Shown() and "shown" or "closed",
                 cd and "registered" or "not registered", (tonumber(dbg.Builds()) or 0) - (tonumber(at) or 0))
         end },
-    { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Scroll down to |cffffd100Stat Weights|r. (Leave the panel at its default width: do not drag its corner.)\n\n|cffffd100Expect:|r six column titles, the last one |cffffd100Influences|r, and each stat's influences (for example \"Parry (+10.15%)\" for Critical Strike) on the stat's own row under that title, not on a line under the row, without \"Influences:\" in front. Every column title stays on one line.\n\n|cffffd100Note:|r the sixth column is used only when all six titles fit on one line. If your game font is wider, you may instead see five titles and each stat's influences on a line under its row, starting with \"Influences:\". That is the open choice between the six columns and one-line titles (SC-102, for Xaya), not a fault: the addon then offers no verdict; Pass if nothing is cut or overlapping, and say so in the note.",
+    { text = "Press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Scroll down to |cffffd100Stat Weights|r. (Leave the panel at its default width: do not drag its corner.)\n\n|cffffd100Expect:|r six column titles, the last one |cffffd100Influences|r, and each stat's influences (for example \"Parry (+10.15%)\" for Critical Strike) on the stat's own row under that title, not on a line under the row, without \"Influences:\" in front. The sixth column is always there: a title wraps onto a second line when it needs to, and the titles line up along their bottom edge (Xaya, A24 #7). The walkthrough \"Stat Calculator: Stat Weights Influences column at every width\" checks the narrow panel and large text.",
         setup = function()
             local sc, dbg, why = Ready(); if not sc then error(why) end
             if InCombat() then error("you are in combat: wait for it to end") end
@@ -213,12 +213,8 @@ QA.Register("statcalc-fixes", { title = "Stat Calculator: combat lets go of the 
             local c = sc.Cfg()
             local w = c and c.size and c.size.w
             if rows == 0 then return nil, "no Stat Weights rows are drawn: open the Stats tab and unfold Stat Weights" end
-            -- (round 2) five titles, every row's influences under it with its "Influences:" label: the kept one-line-titles fallback where
-            -- six one-line titles do not fit this font (the open SC-102 choice): no verdict from the addon
-            if heads == 5 and head == nil and prefixed == rows then
-                return nil, ("five column titles; all %d rows have their influences on a line under the row, labeled (six one-line titles do not fit this font at panel width %s: the open SC-102 choice, not a fault)"):format(
-                    rows, w and tostring(w) or "default (450)")
-            end
+            -- (A24 #7, Stat Calculator V25) Influences is always the sixth column: the five-title fallback with an "Influences:" line under
+            -- each row is gone, so five titles is a Fail, no longer the open SC-102 choice
             local ok = heads == 6 and head ~= nil and onRow == rows and prefixed == 0
             return ok, ("%d column titles (Influences %s); %d of %d rows have their influences in that column; %d still start with \"Influences:\"; panel width %s"):format(
                 heads, head and "there" or "missing", onRow, rows, prefixed, w and tostring(w) or "default (450)")

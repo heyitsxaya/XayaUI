@@ -1,11 +1,17 @@
 -------------------------------------------------------------------------------
 -- ImprovedCharacterDisplay.lua : QoL > Improved Character Display (Stat Calculator V25 step R2; Xaya, REQUEST-LOG A24 #3-#6). Everything
 -- XayaUI changes or draws on Blizzard's character window itself, in one place with one page and one switch:
---   * one item level per slot, colored by upgrade track and step; beside each slot a block with the enchant, the embellishment and each
---     gem (was the features half of CharacterReskin.lua, QoL > Character Pane);
+--   * one item level per slot, colored by upgrade track and step, and each slot's enchant: one "Item level" option and one "Enchants"
+--     option, each with a style, "On the slot" or "Beside the slot" (Xaya, REQUEST-LOG A24 #7, her answer "1 with the caveat needs
+--     review in game"; option 1: "One 'Item level' option and one 'Enchants' option, each with a style choice: on the slot or beside it.
+--     The overlap is gone."). They replace the two sets that drew the same things twice (the Slot Overlays marks: item level, "2S",
+--     "E?" / "E"; and the item details: the item level on the slot, the enchant beside it). Beside each slot a block with the item level
+--     (style Beside the slot), the enchant and the embellishment (Enchants beside the slot) and each gem (was the features half of
+--     CharacterReskin.lua, QoL > Character Pane). UNVERIFIED IN GAME: the whole layout of the merged options waits for her in-game
+--     review (Dev Assist walkthrough "slot-options");
 --   * the full stat list over the stats pane: every Character Stats line, in her order, names and colors (same origin);
---   * the slot marks: item level / empty sockets / missing enchant on the slots (was the old CharacterPane.lua's Slot Overlays
---     part);
+--   * the marks on the slots: the enchant check E? / E (Enchants, style On the slot) and the empty-socket count "2S" (its existing
+--     tick box Empty sockets; the gems and sockets were left as they were: their placement is a choice for Xaya);
 --   * the Stat Calc button in the window's title row: opens or closes the Stat Calculator (Bonus Features > Stat Calculator) through its
 --     "statCalc" service, with its own switch here (was the Stat Calculator file's own, XayaUI Bonus Features).
 -- The extra lines on the window's own stat tooltips are XayaUI Bonus Features' (Enhanced Tooltips > Character stats, XayaUI_Bonus/
@@ -23,8 +29,9 @@
 -- Off by default (V14): while it is off nothing is created, hooked, registered or read. Plain frames only (nothing protected): it works in
 -- and out of combat. Own frames only; Blizzard's are read and post-hooked (HookScript / hooksecurefunc), never changed.
 -- Saved settings (internal keys, kept: see "Settings" below): XayaUIQoLDB.characterReskin (the switch `features`, the item level /
--- enchant / gem / stat list parts and the stat list's choices) and XayaUIQoLDB.characterToolkit (QoL's half: the slot marks, the tooltip
--- lines' switch, the enchant slots, the Stat Calc button's switch). NOT RUN IN GAME: everything here is UNVERIFIED IN GAME.
+-- enchant / gem / stat list parts, the two styles and the stat list's choices) and XayaUIQoLDB.characterToolkit (QoL's half: the
+-- empty-socket mark, the marks' text size, the old slot marks' keys, the tooltip lines' old switch, the enchant slots, the Stat Calc
+-- button's switch). NOT RUN IN GAME: everything here is UNVERIFIED IN GAME.
 -- Reverse read (diagnostic only, V25 G-029): the Character Reskin's "characterReskin" service Drawn reads this file's "charDisplay"
 -- service Drawn (read only, for its /xui reskin status and Dev Assist counts); nothing else of the reskin reads this file's state.
 -- (V27 gate fixes, U1 G-001 to G-034) the rows beside the slots and the full stat list are hover only: clicks and camera drags pass
@@ -58,18 +65,30 @@ end
 -- them would change every profile string and break older ones. Players never see these names. One view, Cfg(), reads and writes each
 -- field in its table; its `enabled` (the page's switch) is characterReskin's `features`.
 local SHARED_KEYS = { overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true,
-    enchantSlotsSet = true, statCalcButton = true }
+    enchantSlotsSet = true, statCalcButton = true, socketMark = true, ilvlStyle = true, enchantStyle = true }
 local SHARED_DEFAULTS = {
     -- (tooltips: the extra lines on the stat tooltips' switch until V25 R4; they are Enhanced Tooltips' option now, XayaUI Bonus
     -- Features' tooltips.charStats, off by default. A value saved here before is no longer read.)
-    overlays = false,      -- item level / socket / enchant marks on the character window's slots
+    -- (A24 #7) the old Slot Overlays switch and its three marks: no longer read except by the one-time move to the two options
+    -- (MigrateSlotOptions below); their defaults are still saved, as `enabled` and `tooltips` are, so a profile string made with every
+    -- default stays byte for byte what it was
+    overlays = false,
     ovIlvl = true, ovSockets = true, ovEnchants = true,
-    ovSize = 11,
+    ovSize = 11,           -- the text size of the marks on the slots (E? / E and the empty-socket count)
     enchantSlots = {},     -- slot IDs the player ticked to flag when they have no enchant; empty = this expansion's slots (CM.EnchantSlots)
     -- enchantSlotsSet: true once the player has changed a tick (then enchantSlots is used even when empty)
     -- statCalcButton: false only once the player switches the Stat Calc button off (nil = on; never saved at its default)
+    -- socketMark: true while the empty-socket count ("2S") on the slots is ticked (nil = off; never saved at its default)
+    -- ilvlStyle / enchantStyle: the two options' styles (A24 #7; below, at PANE_DEFAULTS). Kept in this table, QoL's own profile part,
+    -- so that importing a profile string sets them both ways (ProfilePart.lua: an absent style in a format-3 string is the default)
 }
+-- (A24 #7) ilvl: the Item level option; enchants: the Enchants option (the enchant, and beside the slot the embellishment); gems: the
+-- gems and sockets beside the slots (unchanged). The styles (characterToolkit, above): ilvlStyle "beside" (nil = "On the slot", where
+-- the item level showed before) and enchantStyle "slot" (nil = "Beside the slot", where the enchant showed before); neither is saved at
+-- its default, so a profile string made with every default stays byte for byte what it was. DECISION for Xaya: these defaults for a new
+-- player.
 local PANE_DEFAULTS = { ilvl = true, enchants = true, gems = true, statList = true }
+local STYLE_SLOT, STYLE_BESIDE = "slot", "beside"
 -- the stat list's own choices (QoL 0.7.31; her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"), by Character
 -- Stats key: statHide[key] = true (hidden), statOrder[group key] = { stat keys }, statMode[key] = "percent" | "rating" | "both",
 -- statName[key] / groupName[group key] = text, statColor[key] / groupColor[group key] = { r, g, b }
@@ -194,10 +213,88 @@ function ns.CharDisplay_MergeOlder(oldTk)
     if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
 end
 
+-- (A24 #7) the one-time move of each player's settings from the two overlapping sets to the two options, so that each player sees
+-- what they saw before. Before it: the Slot Overlays (switch `overlays`; marks ovIlvl, ovEnchants, ovSockets) drew a mark only where the
+-- item details (ilvl, enchants, gems) did not draw the same thing (one of each per slot). The move, read from the saved values:
+--   * Item level: on when either item level showed (the item details' `ilvl`, or the Slot Overlays' item level); style On the slot in
+--     both cases, because both drew their item level on the slot (the old mark's own look, white at the Text size, is not kept: the
+--     item level keeps the item details' look, colored by its track);
+--   * Enchants: the item details' enchant beside the slot on -> Enchants on, Beside the slot (where both were ticked, only that one
+--     showed, so Beside the slot is kept); else the Slot Overlays' enchant check on -> Enchants on, On the slot; else off;
+--   * the empty-socket count "2S": ticked (socketMark) when the Slot Overlays and its Empty sockets were both on; it still shows only
+--     while the gems beside the slots are off, as before.
+-- Runs after the switch merge above (it reads what that merge left), once: the mark `_slotOpts` starts with "_", so profiles never
+-- carry it. The old keys are kept as they are (nothing is deleted); a profile string made before (its QoL part older than format 3)
+-- runs the move again over what it imported (ns.CharDisplay_RemapOlder).
+-- `cur` (only from ns.CharDisplay_RemapOlder, below): the Item level / Enchants settings as they are now (already the two options),
+-- read in place of the item details' old keys when an older profile string brought the old slot marks' keys without the item details'
+-- ones; an option that is on keeps its style then.
+local function MigrateSlotOptions(cur)
+    if paneT._slotOpts then return end
+    local marks = sharedT.overlays == true
+    local markIlvl, markEnch, markSock = marks and sharedT.ovIlvl ~= false, marks and sharedT.ovEnchants ~= false, marks and sharedT.ovSockets ~= false
+    local src = cur or paneT
+    local detIlvl, detEnch = src.ilvl ~= false, src.enchants ~= false   -- (nil: the default, on)
+    paneT.ilvl = (detIlvl or markIlvl) and true or false
+    sharedT.ilvlStyle = (cur and detIlvl and cur.ilvlStyle == STYLE_BESIDE) and STYLE_BESIDE or nil   -- (nil: On the slot)
+    if detEnch then   -- (nil: Beside the slot)
+        paneT.enchants, sharedT.enchantStyle = true, (cur and cur.enchantStyle == STYLE_SLOT) and STYLE_SLOT or nil
+    elseif markEnch then paneT.enchants, sharedT.enchantStyle = true, STYLE_SLOT  -- On the slot
+    else paneT.enchants, sharedT.enchantStyle = false, nil end
+    sharedT.socketMark = markSock or nil
+    paneT._slotOpts = true
+end
+ns.CharDisplay_MigrateSlotOptions = function() if ns.SettingsReady("qol") then Tables(); if paneT._merged then MigrateSlotOptions() end end end   -- (tests)
+-- (A24 #7) a profile string made before the two options (its QoL part is format 1 or 2; XayaUI_QoL/ProfilePart.lua calls this after
+-- the import wrote its values): its old keys are read the way the one-time move reads saved settings. The QoL part is applied before
+-- the Blizzard Reskin part that carries the item details' keys (core Modules.lua: order 40 and 60, in one pass), so the move runs on
+-- the next frame, once both are in. Only when the string holds the old slot marks' keys.
+-- (review round 2) When the string's Blizzard Reskin part is not imported with it (ProfilePart.lua tells ns.CharDisplay_NoteDetailsImport
+-- when that part carries the item details' keys), the item level / enchant values saved now already mean the two options: they are
+-- read as they were here (each option that is on keeps its style), never as the old keys, so an Enchants On the slot does not turn into
+-- Beside the slot and an Item level beside the slot stays there; the string's old slot marks are added the same way as at the move.
+local remapArmed, remapNow, detailsImported = false, nil, false
+function ns.CharDisplay_RemapOlder(oldTk)
+    if type(oldTk) ~= "table" or not ns.SettingsReady("qol") or remapArmed then return end
+    if oldTk.overlays == nil and oldTk.ovIlvl == nil and oldTk.ovEnchants == nil and oldTk.ovSockets == nil then return end
+    Tables()
+    remapArmed, detailsImported = true, false
+    remapNow = { ilvl = paneT.ilvl, enchants = paneT.enchants, ilvlStyle = sharedT.ilvlStyle, enchantStyle = sharedT.enchantStyle }
+    local function run()
+        local cur = (not detailsImported) and remapNow or nil
+        remapArmed, remapNow, detailsImported = false, nil, false
+        if not ns.SettingsReady("qol") then return end
+        Tables()
+        if not paneT._merged then return end   -- (the login's merge and move have not run yet: they read the imported values themselves)
+        paneT._slotOpts = nil
+        MigrateSlotOptions(cur)
+        if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
+    end
+    if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+end
+-- (review round 2) called by XayaUI_QoL/ProfilePart.lua just before the Blizzard Reskin part of an import is written: whether it carries
+-- the item details' old keys (characterReskin's ilvl / enchants), while an older QoL part's move above waits for the next frame
+function ns.CharDisplay_NoteDetailsImport(rk)
+    if remapArmed and type(rk) == "table" and (rk.ilvl ~= nil or rk.enchants ~= nil) then detailsImported = true end
+end
+
+-- (A24 #7) a profile string made with the two options (its QoL part is format 3 or later; ProfilePart.lua calls this after the import
+-- wrote its values): the merge import writes only the keys a string holds, and a style at its default is not saved, so a style the
+-- string does not hold is its default. Same for the Empty sockets mark. Only when the string holds QoL's character settings at all.
+function ns.CharDisplay_ImportStyles(tk)
+    if type(tk) ~= "table" or not ns.SettingsReady("qol") then return end
+    Tables()
+    sharedT.ilvlStyle = (tk.ilvlStyle == STYLE_BESIDE) and STYLE_BESIDE or nil
+    sharedT.enchantStyle = (tk.enchantStyle == STYLE_SLOT) and STYLE_SLOT or nil
+    sharedT.socketMark = (tk.socketMark == true) or nil
+    if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
+end
+
 local function Cfg()
     if not ns.SettingsReady("qol") then return nil end
     Tables()
     if not paneT._merged and ns.LoggedIn and ns.LoggedIn() then Merge() end
+    if paneT._merged and not paneT._slotOpts then MigrateSlotOptions() end
     for k, v in pairs(SHARED_DEFAULTS) do if sharedT[k] == nil then sharedT[k] = CopyVal(v) end end
     -- the old page's switch: no longer read (only by the merge above), but its default is still saved as before so that a profile
     -- string made with every default stays byte for byte what it was (tests/profile_parts_run.py, share_strings_presplit_run.py)
@@ -209,6 +306,9 @@ local function Cfg()
     sharedT.ovSize = math.max(8, math.min(16, tonumber(sharedT.ovSize) or 11))
     if type(sharedT.enchantSlots) ~= "table" then sharedT.enchantSlots = {} end
     if sharedT.enchantSlotsSet ~= true then sharedT.enchantSlotsSet = nil end
+    if sharedT.socketMark ~= true then sharedT.socketMark = nil end
+    if sharedT.ilvlStyle ~= STYLE_BESIDE then sharedT.ilvlStyle = nil end
+    if sharedT.enchantStyle ~= STYLE_SLOT then sharedT.enchantStyle = nil end
     for _, k in ipairs(LIST_TABLES) do if type(paneT[k]) ~= "table" then paneT[k] = {} end end
     for k, v in pairs(PANE_DEFAULTS) do
         if paneT[k] == nil then paneT[k] = v end
@@ -278,12 +378,34 @@ ns.CharDisplay_Active = function() return Active() end
 -- what the drawing code reads: the settings while this is on, nil while it is off
 local function Eff() if not Active() then return nil end return CfgFast() end
 local Guard, UpdateButton, GeoSig   -- (below)
+-- (A24 #7) what each option draws where (c: the settings view). The Item level: on the slot (the item details' font string) or as the
+-- first row of the block beside the slot. The Enchants: the enchant check E? / E on the slot (a mark), or the enchant and the
+-- embellishment rows beside the slot. The gems and sockets beside the slots and the empty-socket mark are unchanged.
+local function IlvlOnSlot(c) return c.ilvl == true and c.ilvlStyle ~= STYLE_BESIDE end
+local function IlvlBeside(c) return c.ilvl == true and c.ilvlStyle == STYLE_BESIDE end
+local function EnchOnSlot(c) return c.enchants == true and c.enchantStyle == STYLE_SLOT end
+local function EnchBeside(c) return c.enchants == true and c.enchantStyle ~= STYLE_SLOT end
+-- a block beside the slots (item level beside, enchant beside or gems): the layout, the camera buttons and the second pass need it
+local function BlockOn(c) return IlvlBeside(c) or EnchBeside(c) or c.gems == true end
+-- the item details: anything drawn by the slot layout (UpdateSlots)
+local function DetailsOn(c) return c.ilvl == true or BlockOn(c) end
+-- the marks on the slots: the enchant check (Enchants on the slot) or the empty-socket count, which shows only while the gems beside
+-- the slots do not (one of each per slot; QoL 0.7.14, 0.7.19)
+local function MarksOn(c) return EnchOnSlot(c) or (c.socketMark == true and not (c.gems == true and Active())) end
+ns.CharDisplay_Draws = function()   -- (tests, Dev Assist: read only) where each option draws now
+    local c = CfgFast()
+    if not (c and On()) then return nil end
+    return { ilvl = c.ilvl == true and (IlvlBeside(c) and STYLE_BESIDE or STYLE_SLOT) or nil,
+        enchants = c.enchants == true and (EnchOnSlot(c) and STYLE_SLOT or STYLE_BESIDE) or nil, gems = c.gems == true,
+        socketMark = c.socketMark == true and not (c.gems == true and Active()) }
+end
 
 -------------------------------------------------------------------------------
--- Slot marks on the character window: item level, empty sockets, missing enchant (slots the player ticks). (Was the old CharacterPane.lua's
--- Slot Overlays, QoL 0.7.0 - 0.7.55.)
+-- Marks on the character window's slots: the enchant check E? / E (Enchants, style On the slot; slots the player ticks) and the
+-- empty-socket count "2S". (Was the old CharacterPane.lua's Slot Overlays, QoL 0.7.0 - 0.7.55; its item level mark went in A24 #7: the
+-- Item level option draws the one item level on the slot.)
 -------------------------------------------------------------------------------
-local overlays = setmetatable({}, { __mode = "k" })   -- slot button -> our overlay frame (own data, keyed by Blizzard's frame)
+local overlays = setmetatable({}, { __mode = "k" })   -- slot button -> our marks frame (own data, keyed by Blizzard's frame)
 -- (own data, keyed by Blizzard's frame; V25 standard: never a field on Blizzard's slot button) slot button -> what the item details
 -- drew on it: ilvl (our item level font string), ilvlText, ilvlDup, track, label (the block's layout), enchant, enchantRow, emb, embRow,
 -- sockets (rows)
@@ -304,17 +426,15 @@ local function OvSetFont(fs, size, flags)
     local path = OvFontPath(fs)
     if path then pcall(fs.SetFont, fs, path, size, flags or "") end
 end
--- while the item details draw their own item level / enchant / sockets on the slot, the marks leave theirs out: one of each per slot
--- (QoL 0.7.14, 0.7.19; her screenshot had two item levels per slot)
-local function DrawsIlvl() local c = Eff(); return (c and c.ilvl == true) and true or false end
-local function DrawsEnchants() local c = Eff(); return (c and c.enchants == true) and true or false end
+-- the gems beside the slots draw the sockets: the empty-socket mark leaves its count out (one per slot; QoL 0.7.14). After an error in
+-- the item details (Guard) they no longer draw, and the mark shows its count again.
 local function DrawsSockets() local c = Eff(); return (c and c.gems == true) and true or false end
-ns.CharDisplay_DrawsIlvl, ns.CharDisplay_DrawsEnchants, ns.CharDisplay_DrawsSockets = DrawsIlvl, DrawsEnchants, DrawsSockets   -- (tests)
 local function UpdateOverlay(button)
     local c = Cfg()
     if not (button and c) then return end
     local o = overlays[button]
-    if not (On() and c.overlays) then
+    local sock, ench = c.socketMark == true and not DrawsSockets(), EnchOnSlot(c)
+    if not (On() and (sock or ench)) then
         if o then o:Hide() end
         return
     end
@@ -324,19 +444,14 @@ local function UpdateOverlay(button)
         o = CreateFrame("Frame", nil, button)
         o:SetAllPoints(button)
         if o.SetFrameLevel and button.GetFrameLevel then o:SetFrameLevel((button:GetFrameLevel() or 1) + 3) end
-        o.ilvl = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        o.ilvl:SetPoint("BOTTOM", o, "BOTTOM", 0, 2)
         o.marks = o:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         o.marks:SetPoint("TOP", o, "TOP", 0, -2)
-        o.ilvl.xuiOwn, o.marks.xuiOwn = true, true   -- (our own font strings: the duplicate check lists only other addons' text)
+        o.marks.xuiOwn = true   -- (our own font string: the duplicate check lists only other addons' text)
         overlays[button] = o
     end
     local eSlots, eDefault = CM.EnchantSlots(c)
-    local data = CM.SlotOverlay(slot, { ilvl = c.ovIlvl and not DrawsIlvl(), sockets = c.ovSockets and not DrawsSockets(),
-        enchants = c.ovEnchants and not DrawsEnchants(), enchantSlots = eSlots, enchantDefault = eDefault })
-    OvSetFont(o.ilvl, c.ovSize, "OUTLINE")
+    local data = CM.SlotOverlay(slot, { sockets = sock, enchants = ench, enchantSlots = eSlots, enchantDefault = eDefault })
     OvSetFont(o.marks, math.max(8, c.ovSize - 2), "OUTLINE")
-    o.ilvl:SetText(data.ilvl or "")
     local parts = {}
     for _, mk in ipairs(data.marks) do
         local col = ToneColor(mk[2], { 1, 1, 1, 1 })
@@ -348,18 +463,18 @@ local function UpdateOverlay(button)
 end
 local function UpdateOverlays()
     local c = Cfg()
-    if not (c and On() and c.overlays) and next(overlays) == nil then return end   -- off and never drawn: nothing to do (V14)
+    if not (c and On() and MarksOn(c)) and next(overlays) == nil then return end   -- off and never drawn: nothing to do (V14)
     for _, s in ipairs(CM.SLOTS) do
         local b = SlotButton(s[4])
         if b then UpdateOverlay(b) end
     end
 end
 ns.CharDisplay_UpdateOverlays = UpdateOverlays
--- the marks drawn on one slot: ilvl text, marks text (tests)
-function ns.CharDisplay_OverlayText(slotName)
+-- the marks drawn on one slot (their text, with its color codes), or nil when none shows there (tests, Dev Assist)
+function ns.CharDisplay_SlotMarks(slotName)
     local o = overlays[SlotButton(slotName)]
     if not o or not o:IsShown() then return nil end
-    return o.ilvl:GetText(), o.marks:GetText()
+    return o.marks:GetText()
 end
 local overlayPending
 -- (V27, U1 G-011) one run function for the file (no closure per event), armed only while the window is open
@@ -591,6 +706,7 @@ end
 local function EachRow(btn, fn, arg)
     local d = slotData[btn]
     if not d then return end
+    if d.ilvlRow then fn(d.ilvlRow, arg) end
     if d.enchantRow then fn(d.enchantRow, arg) end
     if d.embRow then fn(d.embRow, arg) end
     if d.sockets then for _, f in ipairs(d.sockets) do fn(f, arg) end end
@@ -825,7 +941,8 @@ end
 ns.CharDisplay_WantsItem = WantsItem   -- (tests)
 local function EmbCount() local n = 0; for _, t in pairs(tipCache) do if t and t.embellished then n = n + 1 end end; return n end
 
--- the rows of one slot's block, from the item (each part only while its switch is on)
+-- the rows of one slot's block, from the item (each part only while its option is on, in its style Beside the slot): the item level,
+-- the enchant, the embellishment, the gems
 local function BlockItems(btn, slot, info, tip, c)
     local items = {}
     local just = Justify(SlotName(slot))
@@ -834,10 +951,23 @@ local function BlockItems(btn, slot, info, tip, c)
         if not d[key] then d[key] = NewRow(btn, just, false) end
         return d[key]
     end
-    if c.enchants then SD(btn).enchant = row("enchantRow").text end
+    local enchBeside = EnchBeside(c)
+    if enchBeside then SD(btn).enchant = row("enchantRow").text end
     if not info then return items end
-    if c.enchants then
-        local slotsWanted = CM.EnchantSlots(c)   -- (the Slot Overlays' Enchant Slots, this page's)
+    -- (A24 #7) the Item level, style Beside the slot: the first row, the same number and track color it has on the slot. INFERENCE /
+    -- DECISION for Xaya: its place in the block (first) and its hover (the item level and, when the game gives one, its upgrade track).
+    local d0 = SD(btn)
+    if IlvlBeside(c) and d0.ilvlText then
+        local col = d0.ilvlCol or { 1, 1, 1, 1 }
+        local lines = { { "Item level " .. d0.ilvlText, col } }
+        local tr = d0.track
+        if type(tr) == "table" and type(tr.track) == "string" and num(tr.step) and num(tr.max) then
+            lines[2] = { ("%s %d/%d"):format(tr.track, tr.step, tr.max), GREY }
+        end
+        items[#items + 1] = { text = d0.ilvlText, col = col, tip = lines, row = row("ilvlRow") }
+    end
+    if enchBeside then
+        local slotsWanted = CM.EnchantSlots(c)   -- (this page's Enchant Slots)
         local ench = tip and tip.enchant
         local it
         if ench then
@@ -846,7 +976,7 @@ local function BlockItems(btn, slot, info, tip, c)
             if not ench:find("%d") then lines[2] = { NO_EFFECT_TEXT, GREY } end
             it = { text = CM.ShortEnchant(ench), col = GOOD, tip = lines }
         elseif info.enchanted == false and slotsWanted[slot] then
-            it = { text = NO_ENCHANT_TEXT, col = WARN, tip = { { NO_ENCHANT_TEXT, WARN }, { "This slot takes an enchant (Improved Character Display > Slot Overlays > Enchant Slots).", GREY } } }
+            it = { text = NO_ENCHANT_TEXT, col = WARN, tip = { { NO_ENCHANT_TEXT, WARN }, { "This slot takes an enchant (Improved Character Display > Enchant Slots).", GREY } } }
         elseif info.enchanted == true then
             it = { text = "Enchanted", col = GOOD, tip = { { "Enchanted", GOOD }, { NO_EFFECT_TEXT, GREY } } }
         end
@@ -920,42 +1050,40 @@ local function UpdateSlot(btn, c, tips)
     local name = num(slot) and SlotName(slot)
     if not name then return end
     -- the item is read only for the parts that are on (V14)
-    local info = (c.ilvl or c.enchants or c.gems) and CM.SlotInfo(slot) or nil
-    -- item level (none on the shirt and the tabard: theirs is 1)
+    local info = DetailsOn(c) and CM.SlotInfo(slot) or nil
+    -- item level (none on the shirt and the tabard: theirs is 1), colored by its track; drawn on the slot or beside it (A24 #7)
     local d = SD(btn)
-    if c.ilvl then
+    d.ilvlText, d.ilvlCol, d.track = nil, nil, nil
+    if c.ilvl and info and info.ilvl and not CM.NO_ILVL[slot] then
+        local q = CM.N(GetInventoryItemQuality, "player", slot)
+        local col, track = CM.TrackColor(info.link, q)
+        d.ilvlText, d.ilvlCol, d.track = tostring(math.floor(info.ilvl + 0.5)), col or { 1, 1, 1, 1 }, track
+    end
+    if IlvlOnSlot(c) then
         if not d.ilvl and btn.CreateFontString then
             d.ilvl = Mine(btn:CreateFontString(nil, "OVERLAY", "GameFontNormal"))
             d.ilvl:SetPoint("BOTTOM", btn, "BOTTOM", 0, 2)
             SetSize(d.ilvl, 12, "OUTLINE")
         end
         if d.ilvl then
-            if info and info.ilvl and not CM.NO_ILVL[slot] then
-                local q = CM.N(GetInventoryItemQuality, "player", slot)
-                local col, track = CM.TrackColor(info.link, q)
-                d.ilvlText = tostring(math.floor(info.ilvl + 0.5))
-                col = col or { 1, 1, 1, 1 }
-                d.ilvl:SetTextColor(col[1], col[2], col[3], 1)
-                d.track = track
-            else
-                d.ilvlText, d.track = nil, nil
-            end
+            local col = d.ilvlCol
+            if col then d.ilvl:SetTextColor(col[1], col[2], col[3], 1) end
             ShowIlvl(btn)
         end
     elseif d.ilvl then d.ilvl:Hide() end
-    -- the block beside the slot: enchant, embellishment, gems (LayoutBlock)
+    -- the block beside the slot: item level, enchant, embellishment, gems (LayoutBlock)
     local tip
-    if c.enchants then
+    if EnchBeside(c) then
         if tips then tip = tips[slot] or nil else tip = info and SlotTipCached(slot) or nil end
         tipCache[slot] = tip or false
     end
     EachRow(btn, HideRow)
-    if c.enchants or c.gems then
+    if BlockOn(c) then
         local items = BlockItems(btn, slot, info, tip, c)
         LayoutBlock(btn, name, items)
         SetBlockAlpha(btn, (d.label and d.label.camHit and CamShown()) and 0 or 1)
     else d.label = nil end
-    if c.ilvl or c.enchants or c.gems then
+    if DetailsOn(c) then
         WantInfo(info)
         -- (G-008) what this layout was made for: the slot's item link (nil: an empty slot) and where the slot and the model are
         -- (whole-pixel reads). The slot hook lays a slot out again only when one of these changed.
@@ -975,7 +1103,7 @@ local function RecheckDup()
     local all = dupQ.all
     dupQ.all = false
     local c = Eff()
-    if not (Active() and c.ilvl) then for k in pairs(dupQ.only) do dupQ.only[k] = nil end; return end
+    if not (Active() and IlvlOnSlot(c)) then for k in pairs(dupQ.only) do dupQ.only[k] = nil end; return end
     local n = 0
     for _, s in ipairs(CM.SLOTS) do
         local b = SlotBtn(s[4])
@@ -992,7 +1120,7 @@ end
 -- btn: only that slot (another addon's hook on Blizzard's slot redraw), else every slot
 local function RunDupCheck() if Active() then Guard(RecheckDup) else dupPending = false end end
 local function QueueDupCheck(c, btn)
-    if not (c and c.ilvl) or not (C_Timer and C_Timer.After) then return end
+    if not (c and IlvlOnSlot(c)) or not (C_Timer and C_Timer.After) then return end
     if btn then dupQ.only[btn] = true else dupQ.all = true end
     if dupPending then return end
     dupPending = true
@@ -1019,7 +1147,7 @@ end
 local UpdateSlots
 local function QueueRelayout(c)
     if not relayout.want then return end
-    if relayout.pending or not (c and (c.enchants or c.gems)) or not (C_Timer and C_Timer.After) then return end
+    if relayout.pending or not (c and BlockOn(c)) or not (C_Timer and C_Timer.After) then return end
     relayout.want, relayout.pending = false, true
     local before = GeoKey(Geometry())
     C_Timer.After(0, function()
@@ -1030,7 +1158,7 @@ local function QueueRelayout(c)
         elseif d > 0.5 then diag.relayout = ("the window's size changed; the positions read right after it differed by %.1f px from the next frame's: laid out again"):format(d)
         else diag.relayout = "the window's size changed; the same positions in both passes (laid out again anyway)" end
         local c2 = Eff()
-        if c2 and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end
+        if c2 and BlockOn(c2) then Guard(UpdateSlots, c2) end
     end)
 end
 -- the window's width or height was changed by this file or by Blizzard's UpdateSize: the next slot layout queues a second pass
@@ -1039,9 +1167,9 @@ local function SizeChanged() relayout.want = true end
 UpdateSlots = function(c)
     local n, labels, cut, cam, socks = 0, 0, 0, 0, 0
     diag.noGeometry = false
-    -- every equipped item's tooltip first (the embellishment line counts them), only while the enchant part is on
+    -- every equipped item's tooltip first (the embellishment line counts them), only while the enchants show beside the slots
     local tips = nil
-    if c.enchants then
+    if EnchBeside(c) then
         tips = {}
         tipCache = {}
         for _, s in ipairs(CM.SLOTS) do
@@ -1060,13 +1188,13 @@ UpdateSlots = function(c)
         end
     end
     diag.slots, diag.labels, diag.cut, diag.camHit, diag.sockets = n, labels, cut, cam, socks
-    diag.embellished = c.enchants and EmbCount() or 0
+    diag.embellished = EnchBeside(c) and EmbCount() or 0
     QueueDupCheck(c)
     -- the window is open but its slots had no position yet (INFERENCE: possible in the frame it opens): try again next frame, 3 times at most
     local cf = _G.CharacterFrame
     if diag.noGeometry and retries < 3 and C_Timer and C_Timer.After and type(cf) == "table" and cf.IsShown and cf:IsShown() then
         retries = retries + 1
-        C_Timer.After(0, function() local c2 = Eff(); if Active() and (c2.enchants or c2.gems) then Guard(UpdateSlots, c2) end end)
+        C_Timer.After(0, function() local c2 = Eff(); if Active() and BlockOn(c2) then Guard(UpdateSlots, c2) end end)
     elseif not diag.noGeometry then retries = 0 end
     QueueRelayout(c)
 end
@@ -1422,7 +1550,7 @@ Guard = function(fn, ...)
     local first = not diag.failed
     diag.failed, diag.lastError = true, tostring(err)
     SetOwnShown(false)
-    pcall(UpdateOverlays)   -- the slot marks draw their own item level again (the item details no longer claim the slots)
+    pcall(UpdateOverlays)   -- the empty-socket mark shows its count again (the gems beside the slots no longer draw)
     if first and ns.Print then ns.Print("Improved Character Display hit an error and is off until /reload: " .. tostring(err)) end   -- (said once)
     return false
 end
@@ -1447,7 +1575,7 @@ local function RunSlots()
     local all = slotAll
     slotAll = false
     local c = Eff()
-    if not (c and (c.ilvl or c.enchants or c.gems) and WindowShown()) then ClearSlotQ(); return end
+    if not (c and DetailsOn(c) and WindowShown()) then ClearSlotQ(); return end
     if all then ClearSlotQ(); Guard(UpdateSlots, c); return end
     for btn in pairs(slotQ) do   -- (the slot hook also queued each one's duplicate check)
         slotQ[btn] = nil
@@ -1482,9 +1610,9 @@ local function OnEvent(_, event, arg1)
     if event == "GET_ITEM_INFO_RECEIVED" and not WantsItem(arg1) then return end   -- (G-008) not an item the slots show
     DropTips()
     local c = CfgFast()
-    local details = Active() and (c.ilvl or c.enchants or c.gems)
+    local details = Active() and DetailsOn(c)
     if event ~= "GET_ITEM_INFO_RECEIVED" and not details then NoteWanted() end   -- (the slots changed; the full pass below refills it)
-    if c.overlays then RefreshOverlays() end
+    if MarksOn(c) then RefreshOverlays() end
     if details then QueueAllSlots() end
 end
 -- open: whether the window is open (nil: read it); the item events only while it is
@@ -1496,7 +1624,7 @@ SetEvents = function(c, open)
     pcall(ev.RegisterEvent, ev, "PLAYER_SPECIALIZATION_CHANGED")
     pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
     if open == nil then open = WindowShown() end
-    if open and (c.overlays or c.ilvl or c.enchants or c.gems) then for _, e in ipairs(SLOT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
+    if open and (MarksOn(c) or DetailsOn(c)) then for _, e in ipairs(SLOT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
 end
 NeedRegen = function()
     if regenWanted then return end
@@ -1529,13 +1657,13 @@ local function ApplyNow()
     DropTips()   -- (a window open or a settings change: every slot's tooltip is read once more)
     -- (round 2: deferring this to the window's OnShow while it is closed was tried and left out: tests/char_reskin_run.py and
     -- tests/char_reskin_noreskin_run.py, outside this unit, expect the slots drawn at an Apply with the window closed; open question)
-    local details = Active() and (c.ilvl or c.enchants or c.gems)
+    local details = Active() and DetailsOn(c)
     if Active() then
         UpdateSlots(c)
         if c.statList then UpdateStatList(c, true); listStale = false end   -- (QoL 0.7.31) our full stat list over Blizzard's pane
     end
     UpdateOverlays()
-    if c.overlays and not details then NoteWanted() end
+    if MarksOn(c) and not details then NoteWanted() end
     SetEvents(c)
     SetThemeListener(true)
     diag.applied = true
@@ -1547,7 +1675,7 @@ end
 local function OnWindowSize(what)
     if what == "size" then SizeChanged(); return end
     local c = Eff()
-    if c and (c.ilvl or c.enchants or c.gems) then Guard(UpdateSlots, c) end
+    if c and DetailsOn(c) then Guard(UpdateSlots, c) end
 end
 local listening = false
 local function Listen()
@@ -1560,7 +1688,7 @@ end
 -- the hooks: each is placed the first time a part that needs it is on, and returns at its first line while the character window is
 -- closed (WindowShown first, the cheapest test: G-016), then while this (or that part) is off (a /reload removes them; V14 limit 2)
 local hooked, ownerHooked, slotHooked, camHooked, statsHooked = false, false, false, false, false
-local function OnCam() if not WindowShown() then return end; local c2 = Eff(); if c2 and (c2.enchants or c2.gems) then Guard(UpdateCamHide) end end
+local function OnCam() if not WindowShown() then return end; local c2 = Eff(); if c2 and BlockOn(c2) then Guard(UpdateCamHide) end end
 local function Hook(c)
     if not hooked then
         hooked = true
@@ -1575,31 +1703,31 @@ local function Hook(c)
         if regenWanted then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED") end
     end
     -- the slot marks follow the Character tab (the window's own OnShow above covers the rest)
-    if c.overlays and not ownerHooked then
+    if MarksOn(c) and not ownerHooked then
         local owner = Owner()
         if owner and owner.HookScript then
             ownerHooked = true
-            owner:HookScript("OnShow", function() if not (WindowShown() and On()) then return end; local c2 = CfgFast(); if c2.overlays then UpdateOverlays() end end)
+            owner:HookScript("OnShow", function() if not (WindowShown() and On()) then return end; local c2 = CfgFast(); if MarksOn(c2) then UpdateOverlays() end end)
         end
     end
     -- Blizzard redraws one slot button at a time; the marks and the item details follow (post-hook, Blizzard's code runs unchanged
     -- first). (G-008) the item details: queued into the once-per-frame slot pass, and only for a slot whose item link or place changed
     -- since its last layout
-    if (c.overlays or c.ilvl or c.enchants or c.gems) and not slotHooked and type(hooksecurefunc) == "function"
+    if (MarksOn(c) or DetailsOn(c)) and not slotHooked and type(hooksecurefunc) == "function"
         and type(_G.PaperDollItemSlotButton_Update) == "function" then
         slotHooked = true
         hooksecurefunc("PaperDollItemSlotButton_Update", function(btn)
             if not (WindowShown() and On()) then return end
             local c2 = CfgFast()
-            if c2.overlays then UpdateOverlay(btn) end
-            if Active() and (c2.ilvl or c2.enchants or c2.gems) and type(btn) == "table" then
+            if MarksOn(c2) then UpdateOverlay(btn) end
+            if Active() and DetailsOn(c2) and type(btn) == "table" then
                 QueueSlot(btn)
                 QueueDupCheck(c2, btn)   -- (another addon's text on this slot may have changed with it: this slot only)
             end
         end)
     end
     -- the model's camera buttons: the blocks that meet them hide while they show
-    if (c.enchants or c.gems) and not camHooked then
+    if BlockOn(c) and not camHooked then
         local m = _G.CharacterModelScene
         local camf = type(m) == "table" and m.ControlFrame or nil
         if type(camf) == "table" and camf.HookScript then
@@ -1648,7 +1776,7 @@ end
 -- at the login (every addon's settings are open then: the one-time merge can read what each part showed before), and only while on
 ns.WhenSettingsReady("qol", function()
     if ns.AtLogin then
-        ns.AtLogin(function() if Cfg() then Merge(); if On() then ns.CharDisplay_Apply() end end end)
+        ns.AtLogin(function() if Cfg() then Merge(); MigrateSlotOptions(); if On() then ns.CharDisplay_Apply() end end end)
     end
 end)
 
@@ -1671,11 +1799,12 @@ ns.Provide("charDisplay", {
             local d = type(b) == "table" and slotData[b] or nil   -- (read only: nothing is made for a slot nothing was drawn on)
             if d then
                 if d.ilvl and d.ilvl.IsShown and d.ilvl:IsShown() then il = il + 1 end
+                if d.ilvlRow and d.ilvlRow.IsShown and d.ilvlRow:IsShown() then il = il + 1 end   -- (A24 #7: Item level beside the slot)
                 if d.enchant and d.enchant.IsShown and d.enchant:IsShown() then en = en + 1 end
                 for _, f in ipairs(d.sockets or {}) do if f.IsShown and f:IsShown() then so = so + 1 end end
             end
         end
-        local marks = 0   -- (V25) slots with a slot mark shown (the slot overlays), for the Improved Character Display walkthrough
+        local marks = 0   -- (V25) slots with a mark shown on them (E? / E, 2S), for the Improved Character Display walkthroughs
         for _, o in pairs(overlays) do if o.IsShown and o:IsShown() then marks = marks + 1 end end
         local L = own.statList
         return { ilvl = il, enchants = en, sockets = so, marks = marks, statList = (L ~= nil and L:IsShown()) and true or false,
@@ -1683,6 +1812,8 @@ ns.Provide("charDisplay", {
     end,
 })
 ns.Provide("charDisplayDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.CharDisplay_Apply() end,
+    -- (A24 #7, read only, for the walkthrough "slot-options") where each option draws now, and the marks on one slot
+    Draws = function() return ns.CharDisplay_Draws() end, SlotMarks = function(slotName) return ns.CharDisplay_SlotMarks(slotName) end,
     Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end,
     -- (U1, read only, for the walkthrough) the rows beside the slots and the stat list: how many take clicks (should be 0), how many
     -- take hover, how many are faded out under the camera buttons and still take hover (should be 0); the stat list's builds / layouts
@@ -1706,9 +1837,12 @@ ns.Provide("charDisplayDebug", { Cfg = function() return Cfg() end, Apply = func
 
 -------------------------------------------------------------------------------
 -- Settings page: QoL > Improved Character Display (V25 R2; her A24 #5: one page). It joins QoL > Character Pane (the item level,
--- enchants, gems, the full stat list and its Stat list page; same labels, same order), the QoL page of the slot marks (its parts Slot
--- Overlays, same labels) and the Stat Calc button's own switch. (Its part Tooltip lines moved to Bonus Features > Enhanced Tooltips >
--- Character stats in V25 R4.) Its on / off is the tick box on its row.
+-- enchants, gems, the full stat list and its Stat list page), the QoL page of the slot marks and the Stat Calc button's own switch. (Its
+-- part Tooltip lines moved to Bonus Features > Enhanced Tooltips > Character stats in V25 R4.) Its on / off is the tick box on its row.
+-- (A24 #7) the Slot Overlays part (its own switch, the Item level / Empty sockets / Enchant check marks greyed while the item details
+-- drew the same thing) and the item details' "Item level on each slot" / "Enchants beside the slots" are replaced by one "Item level"
+-- option and one "Enchants" option, each with a Style: "On the slot" / "Beside the slot" (her words). The Empty sockets mark, the
+-- marks' Text size and the Enchant Slots tab stay (the Enchant Slots as a page of its own). UNVERIFIED IN GAME.
 -------------------------------------------------------------------------------
 function ns.BuildCharDisplayPage(Notify)
     -- (the tie-in rule) the first time this page is built after a reload, the Stat Calculator's service is read once more (read only:
@@ -1804,10 +1938,11 @@ function ns.BuildCharDisplayPage(Notify)
             end
         end
     end
-    -- the slot marks (QoL 0.7.0; was their own page's part Slot Overlays, same labels): its tick box is on its row in the left pane
+    -- the enchant slots (QoL 0.7.0; was the Slot Overlays' Enchant Slots tab, same labels): the slots the Enchants option checks, in
+    -- either style, and the Shopping List's missing-enchant list reads
     local slotToggles = {
         note = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "Ticked to start with: the slots this expansion's enchants cover (head, shoulders, chest, legs, feet, both rings, main hand, and off hand when it holds a weapon). Change any tick and your own choice is kept. A ticked slot with no enchant shows E? (orange); an enchanted one shows E (green)." },
+            name = "Ticked to start with: the slots this expansion's enchants cover (head, shoulders, chest, legs, feet, both rings, main hand, and off hand when it holds a weapon). Change any tick and your own choice is kept. With Enchants on the slot, a ticked slot with no enchant shows E? (orange) and an enchanted one E (green); beside the slot, a ticked slot with no enchant shows \"No enchant\" (orange)." },
         reset = { type = "execute", order = 99, name = "This expansion's slots",
             desc = "Resets to the slots this expansion's enchants cover.",
             func = function() local c = C(); c.enchantSlots = {}; c.enchantSlotsSet = nil; Changed() end },
@@ -1828,45 +1963,35 @@ function ns.BuildCharDisplayPage(Notify)
                 Changed()
             end }
     end
-    -- (SC-069 / SC-103) a slot mark that cannot show because the matching item detail on this page already shows the same thing on the
-    -- slot: its tick box is greyed and unticked (nothing looks switched on while doing nothing), its hover says why and which option to
-    -- turn off. The test is the drawing code's own (DrawsIlvl / DrawsEnchants / DrawsSockets, read by UpdateOverlay above), so the box
-    -- and the slot never disagree. The saved choice is kept: the box is ticked again once the other option is off. Read only while the
-    -- options window draws this page.
-    local function Mark(key, order, name, desc, blocks, other)
-        local t = T(key, order, name, desc)
-        t.disabled = function() return blocks() end
-        t.get = function() if blocks() then return false end; return C()[key] and true or false end
-        t.desc = function()
-            if not blocks() then return desc end
-            return ("Greyed: \"%s\" already shows this; turn it off to use this mark."):format(other)
-        end
-        return t
+    -- (A24 #7) each option's Style: "On the slot" / "Beside the slot" (her words); greyed while its option (or the page) is off. The
+    -- option's tick box and its Style share one row (the page's rule: no dropdown alone on a row, tests/char_statcalc2_run.py).
+    local STYLE_VALUES, STYLE_ORDER = { [STYLE_SLOT] = "On the slot", [STYLE_BESIDE] = "Beside the slot" }, { STYLE_SLOT, STYLE_BESIDE }
+    local function Style(key, order, optKey, default, desc)
+        return { type = "select", order = order, name = "Style", desc = desc, values = STYLE_VALUES, sorting = STYLE_ORDER,
+            disabled = function() return isOff() or not C()[optKey] end,
+            get = function() local v = C()[key]; return (v == STYLE_SLOT or v == STYLE_BESIDE) and v or default end,
+            set = function(_, v) if v ~= STYLE_SLOT and v ~= STYLE_BESIDE then return end; C()[key] = (v ~= default) and v or nil; Changed() end }
     end
-    -- (review round 2) the Text size slider is greyed while no mark above can show (each is unticked or greyed), so it never looks live
-    -- while changing nothing on the slots. Same decision as the marks' own (the drawing code's Draws* test and the saved tick).
-    local function noMark()
-        local c = C()
-        return not ((c.ovIlvl and not DrawsIlvl()) or (c.ovSockets and not DrawsSockets()) or (c.ovEnchants and not DrawsEnchants()))
+    -- the empty-socket count "2S" on the slots (QoL 0.7.0, the Slot Overlays' Empty sockets, same label; kept as it was, A24 #7 did not
+    -- decide the gems and sockets): it shows only while "Gems and sockets beside the slots" is off; until then its box is greyed and
+    -- unticked and its hover names that option (SC-069). The test is the drawing code's own (DrawsSockets, read by UpdateOverlay), so
+    -- the box and the slot never disagree (after an error stops the item details, the mark shows again and the box is live). The saved
+    -- choice is kept.
+    local function gemsBeside() return DrawsSockets() end
+    local sockMark = T("socketMark", 5.5, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top of the slot.", "full")
+    sockMark.disabled = function() return isOff() or gemsBeside() end
+    sockMark.get = function() if gemsBeside() then return false end; return C().socketMark == true end
+    sockMark.set = function(_, v) C().socketMark = v and true or nil; Changed() end
+    sockMark.desc = function()
+        if not gemsBeside() then return "Shows how many sockets have no gem (for example 2S) at the top of the slot." end
+        return "Greyed: \"Gems and sockets beside the slots\" already shows this; turn it off to use this mark."
     end
-    local overlayPart = {
-        type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
-        xuiSwitch = T("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", nil, nil, nil, "Shows marks on the character window's item slots."),
-        args = {
-            show = { type = "group", name = "Show", order = 1, args = {
-                ovIlvl = Mark("ovIlvl", 2, "Item level", "Shows the item level at the bottom of the slot.",
-                    DrawsIlvl, "Item level on each slot"),
-                ovSockets = Mark("ovSockets", 3, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top.",
-                    DrawsSockets, "Gems and sockets beside the slots"),
-                ovEnchants = Mark("ovEnchants", 4, "Enchant check", "Shows E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab.",
-                    DrawsEnchants, "Enchants beside the slots"),
-                ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1, disabled = noMark,
-                    desc = function() if noMark() then return "Greyed: no mark above shows on the slots." end; return "Size of the marks' text." end,
-                    get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
-            } },
-            enchants = { type = "group", name = "Enchant Slots", order = 2, args = slotToggles },
-        },
-    }
+    -- (review round 2) the Text size slider is greyed while no mark shows on the slots (Enchants on the slot, or Empty sockets), so it
+    -- never looks live while changing nothing
+    local function noMark() local c = C(); return isOff() or not (EnchOnSlot(c) or (c.socketMark == true and not DrawsSockets())) end
+    local markSize = { type = "range", order = 5.6, name = "Text size", min = 8, max = 16, step = 1, disabled = noMark,
+        desc = function() if noMark() then return "Greyed: no mark shows on the slots." end; return "Size of the marks' text on the slots (E?, E and the empty-socket count)." end,
+        get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end }
     -- the Stat Calc button's own switch (V25 R2; A24 #3: the button is this page's and "has its own on/off"). On by default: it shows
     -- only while the Stat Calculator's panel is on, as before.
     local button = { type = "toggle", order = 7, width = "full", disabled = isOff, name = "Stat Calc button",
@@ -1874,23 +1999,27 @@ function ns.BuildCharDisplayPage(Notify)
         get = function() return C().statCalcButton ~= false end,
         set = function(_, v) if v then C().statCalcButton = nil else C().statCalcButton = false end; Changed() end }
     local switch = { type = "toggle", order = 1, name = "Improved Character Display",
-        desc = "Turns on what XayaUI adds to the character window: item levels, enchants, gems, the full stat list, the slot marks and the Stat Calc button. While it is off nothing is created, registered or read.",
-        tip = "Item levels, enchants, gems, the full stat list, slot marks and the Stat Calc button on the character window.",
+        desc = "Turns on what XayaUI adds to the character window: item levels, enchants, gems, the full stat list and the Stat Calc button. While it is off nothing is created, registered or read.",
+        tip = "Item levels, enchants, gems, the full stat list and the Stat Calc button on the character window.",
         get = function() return C().enabled end,
         set = function(_, v) if not ns.SettingsReady("qol") then return end; C().enabled = v and true or false; Changed() end }
     return {
         type = "group", name = "Improved Character Display", order = 2, childGroups = "tree", xuiSwitch = switch,
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "What XayaUI adds to the character window: one item level per slot, the enchant, embellishment and gems beside each slot, the full stat list in the stats pane, the Stat Calc button, and, with its own tick box on the left, marks on the item slots. Extra lines on the stat tooltips are an option of Bonus Features > Enhanced Tooltips (Character stats). Its look (border, colors, the wider window) is Blizzard Reskin > Character Reskin. Off by default." },
+                name = "What XayaUI adds to the character window: one item level per slot and each slot's enchant, on the slot or beside it; the embellishment and gems beside each slot; the full stat list in the stats pane; the Stat Calc button. Extra lines on the stat tooltips are an option of Bonus Features > Enhanced Tooltips (Character stats). Its look (border, colors, the wider window) is Blizzard Reskin > Character Reskin. Off by default." },
             statListPage = { type = "group", name = "Stat list", order = 50, args = listArgs,
                 hidden = function() if isOff() then return true end; FillList(); return false end },
-            ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
-            enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
+            ilvl = T("ilvl", 3, "Item level", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. On the slot it is hidden where another addon already shows the same number.", nil, isOff),
+            ilvlStyle = Style("ilvlStyle", 3.5, "ilvl", STYLE_SLOT, "On the slot: at the bottom of the slot. Beside the slot: the first line beside it."),
+            enchants = T("enchants", 4, "Enchants", "Shows each slot's enchant: on the slot, E? (orange) where a slot from Enchant Slots has none and E (green) where it has one. Beside the slot, the enchant's name and the embellishment, or \"No enchant\" in orange; hover a line for what it does.", nil, isOff),
+            enchantStyle = Style("enchantStyle", 4.5, "enchants", STYLE_BESIDE, "On the slot: E? or E at the top of the slot. Beside the slot: the enchant's name and the embellishment beside it."),
             gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),
+            socketMark = sockMark,
+            markSize = markSize,
             statList = T("statList", 6.5, "Full stat list (every Character Stats line)", "Shows every Character Stats line in the stats pane, in XayaUI's own list. Pick what shows, the order, names and colors on its Stat list page.", "full", isOff),
             statCalcButton = button,
-            overlayPart = overlayPart,
+            enchantSlotsPage = { type = "group", name = "Enchant Slots", order = 20, args = slotToggles, hidden = isOff },
         },
     }
 end
@@ -1904,16 +2033,18 @@ local function OtherTextLines()
     local shown = {}
     for i = 1, math.min(#other, 8) do shown[i] = other[i] end
     ns.Print(("Text on the slots that is not XayaUI's (%d): %s%s"):format(#other, table.concat(shown, "; "), #other > 8 and "; ..." or ""))
-    ns.Print(("XayaUI's item level is hidden on %d slot(s) where that text shows the same number. To keep one: turn the other addon's item level off, or \"Item level on each slot\" in Improved Character Display."):format(diag.dupes or 0))
+    ns.Print(("XayaUI's item level is hidden on %d slot(s) where that text shows the same number. To keep one: turn the other addon's item level off, or \"Item level\" in Improved Character Display (or its Style: Beside the slot)."):format(diag.dupes or 0))
 end
 ns.RegisterCommand("reskin", function(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     if arg ~= "status" and arg ~= "" then return end
     local c = Cfg()
     if not c then return end
-    ns.Print(("Improved Character Display: %s%s%s; %d slots; slot overlays %s."):format(c.enabled and "on" or "off",
+    local function opt(on, style) if not (c.enabled and on) then return "off" end; return style == STYLE_SLOT and "on the slot" or "beside the slot" end
+    ns.Print(("Improved Character Display: %s%s%s; %d slots; item level %s; enchants %s; empty sockets mark %s."):format(c.enabled and "on" or "off",
         diag.failed and " (stopped after an error)" or "", diag.lastError and (", last error: " .. diag.lastError) or "", diag.slots or 0,
-        (c.enabled and c.overlays) and "on" or "off"))
+        opt(c.ilvl, IlvlBeside(c) and STYLE_BESIDE or STYLE_SLOT), opt(c.enchants, EnchOnSlot(c) and STYLE_SLOT or STYLE_BESIDE),
+        (c.enabled and MarksOn(c) and c.socketMark) and "on" or "off"))
     ns.Print(("Size change: %s."):format(diag.relayout or "none seen since login"))
     ns.Print(("Full stat list: %s."):format((c.enabled and c.statList) and tostring(diag.statList or "drawn when the stats pane shows") or "off"))
     ns.Print(("Slot blocks: %d (%d cut to fit, %d hidden while the camera buttons show); sockets drawn: %d; embellished items: %d."):format(

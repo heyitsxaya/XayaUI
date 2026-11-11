@@ -95,6 +95,14 @@ of the new code differ in exactly 292 removed lines per variant (XayaUI QoL off:
 per-stat rows of Improved Character Display > Stat list are no longer built while the feature or its Stat list part is off (the fixed
 state has it off; before, they were drawn greyed); 0 other lines, every other tab unchanged. Made the same way (only XayaUI_Nameplates and
 XayaUI_Reskin from 6bc8165), so the same 14 spelling failures stay visible.
+Regenerated again on 2026-11-11 for A24 #7 (Xaya: one "Item level" and one "Enchants" option, each with a style): only the
+"qol" tab's hashes were replaced in every variant (every other tab kept as it was). `--dump` of af1f2ba and of the new code differ in
+exactly 32 removed and 29 added lines per variant with XayaUI QoL on (XayaUI QoL off: 0), all `qol.chardisplay*`: the Slot Overlays part
+(`qol.chardisplay.overlayPart.*`: its node, Show tab with ovIlvl / ovEnchants / ovSockets / ovSize, Enchant Slots tab, off summary) is
+gone; the Enchant Slots are the page `qol.chardisplay.enchantSlotsPage.*` (same toggles and reset); the new `ilvlStyle` / `enchantStyle`
+selects, `socketMark` (Empty sockets) and `markSize` (Text size); the page node's, intro's, `ilvl`'s and `enchants`' texts and widths;
+0 lines outside `qol.chardisplay`. Made the same way (only XayaUI_Nameplates and XayaUI_Reskin from 6bc8165), so the same 14 spelling
+failures stay visible.
 `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

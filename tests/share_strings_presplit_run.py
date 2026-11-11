@@ -434,14 +434,15 @@ if rulesOn then
         if type(t) == "table" then for k, v in pairs(defs) do if t[k] == v then t[k] = nil; added = added + 1 end end end
       end
       -- (QoL 0.7.56, Stat Calculator V25) the second allowed difference: the QoL part is format 2 (written after Improved Character
-      -- Display's merge; XayaUI_QoL/ProfilePart.lua), so the string carries that part's information (partInfo.qol, v = 2). Its keys
+      -- Display's merge; XayaUI_QoL/ProfilePart.lua), so the string carries that part's information (partInfo.qol). (A24 #7) Format 3
+      -- since the move to the Item level / Enchants options (a style is not saved at its default, so the keys are unchanged). Its keys
       -- and values are unchanged; taken out, the string is the pre-split one.
       local qi = type(data) == "table" and data.partInfo and data.partInfo.qol
-      qolInfo = qi and qi.v == 2 and qi.module == "XayaUI_QoL"
+      qolInfo = qi and qi.v == 3 and qi.module == "XayaUI_QoL"
       if qi then data.partInfo.qol = nil; if next(data.partInfo) == nil then data.partInfo = nil end end
       now.profile = data and S.Encode("profile", data)
     end
-    check("B: profile: the QoL part says it is format 2 (partInfo.qol, v = 2, XayaUI_QoL)", qolInfo == true)
+    check("B: profile: the QoL part says it is format 3 (partInfo.qol, v = 3, XayaUI_QoL; A24 #7)", qolInfo == true)
     if XUI_HAS_CHAT then
       check("B: profile: the Chat defaults now saved are in it (" .. added .. " of " .. want .. ")", want > 0 and added == want, added)
     else
@@ -471,7 +472,7 @@ if rulesOn then
         end
         ok = type(gd) == "table" and type(nd) == "table" and same(gd, nd)
       end
-      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved and the QoL part's format 2" or ""), ok, shown)
+      check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved and the QoL part's format 3" or ""), ok, shown)
     end
     wipe(ns.rules); wipe(ns.folders)
   end)

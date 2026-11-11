@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Function audit 2026-11-07 (docs/process/FUNCTION-AUDIT-2026-11-07.md), QoL / Bonus rows that have no closer test file:
   D17 (the Stat Calculator, Bonus Features since 0.6.37): with "Show the panel" off (Stat Calculator on), the panel's stat / unit events and SPELL_UPDATE_COOLDOWN are
-      not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on and the character window is
+      not registered and a cast does no GCD read (V14); the slot marks (A24 #7: Enchants on the slot) keep their events while they are on and the character window is
       open (gate G-011, 2026-11-11: let go while it is closed); the panel's stat / unit events only while the panel is shown (gate G-014). SC-081 (Bonus, 2026-11-10):
       SPELL_UPDATE_COOLDOWN is registered only while the panel is shown (out of combat), so with the panel closed a cast reads no GCD.
   D50 (Bonus, Data Panels): "Remove block" before the "Editing block" slider was ever used removes the block without a Lua error.
@@ -54,12 +54,14 @@ check("  ...no unit stat event (UNIT_STATS, UNIT_SPELL_HASTE) is registered", no
 check("  ...no stat event (COMBAT_RATING_UPDATE, MASTERY_UPDATE) is registered", not registered("COMBAT_RATING_UPDATE") and not registered("MASTERY_UPDATE"))
 fire("SPELL_UPDATE_COOLDOWN")
 check("  ...a cast does no GCD read for the hidden panel", gcdReads == 0, gcdReads)
-c.overlays = true
+-- (A24 #7) the slot marks are the Enchants option with its Style On the slot (the Slot Overlays switch is gone)
+local q = ns.CharDisplay_Cfg()
+q.enchants, q.enchantStyle = true, "slot"
 CWA()
 -- (gate G-011, Improved Character Display: the slot events are listened to only while the character window is open)
-check("G-011 slot overlays on, character window closed: their events are not registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
+check("G-011 slot marks on (Enchants on the slot), character window closed: their events are not registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
 CharacterFrame:Show()
-check("  ...slot overlays on, window open: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
+check("  ...slot marks on, window open: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
 CharacterFrame:Hide()
 check("G-011 ...the character window closed: the slot events are let go", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
@@ -81,7 +83,7 @@ ns.StatCalc_SetOpen(false)
 check("  ...the panel closed again: SPELL_UPDATE_COOLDOWN and UNIT_STATS are let go", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = false
 CWA()
-CharacterFrame:Show()   -- (G-011: the slot overlays' events are there only while the character window is open)
+CharacterFrame:Show()   -- (G-011: the slot marks' events are there only while the character window is open)
 check("  ...panel part off again: its events are let go at once", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_EQUIPMENT_CHANGED"))
 CharacterFrame:Hide()
 c.enabled = false
