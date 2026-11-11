@@ -314,12 +314,13 @@ checkp("a secret maximum (SecretWhenUnitPowerMaxRestricted) reads \"not given no
 local realMax = UnitPowerMax
 UnitPowerMax = nil
 d = render()
-checkp("no UnitPowerMax at all: no number, and no note (QoL 0.7.24: the note cell and its \"not given by the game\" are gone; the line shows its name)", function()
-  local l = lineOf(d, "label", "Fury"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
+checkp("no UnitPowerMax at all: no number; the value reads \"not given by the game\" and there is no note (QoL 0.7.24 dropped the note cell; SC-099 put the words in the value)", function()
+  local l = lineOf(d, "label", "Fury"); return l.label ~= nil and T(l.value) == "not given by the game" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 UnitPowerMax = realMax; POWERMAX = { [17] = 120 }
 -- critical strike effectiveness: summed from the items' own text, each source on hover
 TIPS = { [11] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle" }, { leftText = "|cff00ff00Equip: +40 Critical Strike, increasing critical strike effectiveness by 2%.|r" } },
          [12] = { { leftText = "Enchanted: Enchant Ring - Eyes of the Eagle, increasing critical strike effectiveness by 2%" } } }
+ForgetModel()   -- (the model keeps the crit reading by the worn item links; here the text changes under the same links)
 d = render()
 checkp("Critical strike effectiveness: +4% (2% + 2% read from two rings' tooltip text); no note", function()
   local l = lineOf(d, "label", "Critical Strike Effectiveness"); return T(l.value) == "+4%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
@@ -329,13 +330,15 @@ checkp("  ...its hover lists each source: the slot, the line (colour codes taken
     and tipHas(it, "Finger 2: Enchanted: Enchant Ring - Eyes of the Eagle, increasing critical strike effectiveness by 2% (+2%)")
     and tipHas(it, "read from your equipped items' own tooltip text") end)
 TIPS = {}
+ForgetModel()
 d = render()
 checkp("  ...no such text on any item: none found (not a made-up 0)", function() return T(lineOf(d, "label", "Critical Strike Effectiveness").value) == "none found" end)
 local realTip = C_TooltipInfo
 C_TooltipInfo = nil
+ForgetModel()
 d = render()
-checkp("  ...no tooltip data at all: no number and no note (the line shows its name)", function()
-  local l = lineOf(d, "label", "Critical Strike Effectiveness"); return l.label ~= nil and l.value == nil and l.note == nil, T(l.note) end)
+checkp("  ...no tooltip data at all: no number; the value reads \"not given by the game\" and there is no note (SC-099)", function()
+  local l = lineOf(d, "label", "Critical Strike Effectiveness"); return l.label ~= nil and T(l.value) == "not given by the game" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
 C_TooltipInfo = realTip
 -- All ratings, durability and repair are gone
 c.whatIf = 500
@@ -365,10 +368,11 @@ checkp("Stat Weights sits below Character Stats (its header further down than ev
   local wh, last = find(d, "header", "- Stat Weights"), 0
   for _, r in ipairs(recs(d, "label")) do last = math.max(last, r.y) end
   return wh and wh.y > last end)
-checkp("its column heads (narrow panel): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating, left to right", function()
+-- (SC-102, Bonus: Xaya S1 #36) Influences is the sixth column at the default width too (until then a line under each row below content 560)
+checkp("its column heads (default panel): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences, left to right", function()
   local t = recs(d, "wcolhead")
-  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating" and t[1].x < t[2].x and t[2].x < t[3].x and t[3].x < t[4].x and t[4].x < t[5].x,
-    texts(d, "wcolhead") end)
+  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating|Influences" and t[1].x < t[2].x and t[2].x < t[3].x and t[3].x < t[4].x
+    and t[4].x < t[5].x and t[5].x < t[6].x, texts(d, "wcolhead") end)
 checkp("its rows: Agility, Stamina, Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed", function()
   return texts(d, "wlabel") == "Agility|Stamina|Critical Strike|Haste|Mastery|Versatility|Avoidance|Leech|Speed", texts(d, "wlabel") end)
 local gcdAmt, asAmt = ("%.2f"):format(1.5 - 1.5 / 1.2925), ("%.2f"):format(2.0 * 1.2925 - 2.0)   -- (GCD: the standard rule, UI-64)
@@ -376,8 +380,9 @@ checkp("Haste: 1,200 / 29.25% | 46.0 / 1% | 1,380 | T: 1,200 [line break] L: 0.0
   local r = wrow(d, "Haste")
   return T(r.wrating) == "1,200 / 29.25%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 1,200" and T(r.wtl2) == "L: 0.0",
     T(r.wrating) .. " | " .. T(r.wppp) .. " | " .. T(r.wdr) .. " | " .. T(r.wtl) .. " / " .. T(r.wtl2) end)
+-- (SC-102) the cell under the Influences title is the names only: no "Influences: " in front of them
 checkp("  ...Influences: GCD (-" .. gcdAmt .. " s), Attack Speed (-" .. asAmt .. " s)", function()
-  return T(wrow(d, "Haste").winfl) == ("Influences: GCD (-%s s), Attack Speed (-%s s)"):format(gcdAmt, asAmt), T(wrow(d, "Haste").winfl) end)
+  return T(wrow(d, "Haste").winfl) == ("GCD (-%s s), Attack Speed (-%s s)"):format(gcdAmt, asAmt), T(wrow(d, "Haste").winfl) end)
 local function hover(dd, key)
   for _, b in ipairs(dd.buttons) do if b.shown and b.item and b.item.key == key then GameTooltip.lines = {}; b.scripts.OnEnter(b); return table.concat(GameTooltip.lines, "\n") end end
   return ""
@@ -388,15 +393,15 @@ checkp("  ...hovering the row: \"Haste decreases GCD by " .. gcdAmt .. " s\" and
 checkp("Critical Strike: 528 / 22.48% | 46.0 / 1% | 1,380 | T: 528 [line break] L: 0.0 | Influences: Parry (+10.15%)", function()
   local r = wrow(d, "Critical Strike")
   return T(r.wrating) == "528 / 22.48%" and T(r.wppp) == "46.0 / 1%" and T(r.wdr) == "1,380" and T(r.wtl) == "T: 528" and T(r.wtl2) == "L: 0.0"
-    and T(r.winfl) == "Influences: Parry (+10.15%)", T(r.winfl) end)
+    and T(r.winfl) == "Parry (+10.15%)", T(r.winfl) end)
 checkp("  ...hover: \"Critical Strike increases Parry by 10.15%\"", function() return hover(d, "w_crit"):find("Critical Strike increases Parry by 10.15%", 1, true) ~= nil end)
 checkp("Agility: 2,637, no rating columns (no diminishing returns); Influences: Attack Power (+2,637), Dodge (+5.00%), Armor (+2,684)", function()
   local r = wrow(d, "Agility")
-  return T(r.wrating) == "2,637" and T(r.winfl) == "Influences: Attack Power (+2,637), Dodge (+5.00%), Armor (+2,684)", T(r.winfl) end)
+  return T(r.wrating) == "2,637" and T(r.winfl) == "Attack Power (+2,637), Dodge (+5.00%), Armor (+2,684)", T(r.winfl) end)
 checkp("  ...hover: \"Agility increases Attack Power by 2,637\", \"Agility increases Dodge by 5.00%\"", function()
   local h = hover(d, "w_primary"); return h:find("Agility increases Attack Power by 2,637", 1, true) ~= nil and h:find("Agility increases Dodge by 5.00%", 1, true) ~= nil, h end)
 checkp("Stamina: hover \"Stamina increases Health by 1,476,516\"", function() return hover(d, "w_stamina"):find("Stamina increases Health by 1,476,516", 1, true) ~= nil end)
-checkp("Mastery: Influences: Armor (+2,684) (the mastery text's percent of Agility)", function() return T(wrow(d, "Mastery").winfl) == "Influences: Armor (+2,684)", T(wrow(d, "Mastery").winfl) end)
+checkp("Mastery: Influences: Armor (+2,684) (the mastery text's percent of Agility)", function() return T(wrow(d, "Mastery").winfl) == "Armor (+2,684)", T(wrow(d, "Mastery").winfl) end)
 checkp("Versatility: hover \"Versatility decreases Damage taken by 1.30%\" and \"Versatility increases Damage and healing done by 2.61%\"", function()
   local h = hover(d, "w_vers")
   return h:find("Versatility decreases Damage taken by 1.30%", 1, true) ~= nil and h:find("Versatility increases Damage and healing done by 2.61%", 1, true) ~= nil, h end)
@@ -429,13 +434,22 @@ checkp("collapsible: clicking its header folds it (+ Stat Weights, no rows), the
 checkp("  ...clicking it again opens it", function()
   local h; for _, x in ipairs(ns.StatCalc_Drawn().headers) do if x.shown and x.key == "map_weights" then h = x end end
   h.scripts.OnClick(h); d = ns.StatCalc_Drawn(); return find(d, "header", "- Stat Weights") ~= nil and #recs(d, "wlabel") == 9 end)
-checkp("narrow panel: the influences go under their row, from one indent in to the right edge", function()
-  local r = wrow(d, "Haste"); return r.winfl.x == 12 and r.winfl.y > r.label.y and r.winfl.x + r.winfl.w == LAY.content, r.winfl.x end)
+checkp("default panel (450): each row's influences on the row itself, under the Influences title, to the right edge (SC-102)", function()
+  local hi, r = find(d, "wcolhead", "Influences"), wrow(d, "Haste")
+  return hi ~= nil and r.winfl.x == hi.x and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content, hi and hi.x end)
 c.size = { w = 760 }
 d = render()
 checkp("wide panel (760): an Influences column head, and each row's influences on the row itself in that column", function()
   local hi, r = find(d, "wcolhead", "Influences"), wrow(d, "Haste")
   return hi and r.winfl.x == hi.x and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content, hi and hi.x end)
+-- (kept code: the fallback where six one-line column titles do not fit, e.g. panel 340 at text 11) the influences go under their row,
+-- from one indent in to the right edge, with their own "Influences: " label (no column title names them there)
+c.size = { w = 340 }
+d = render()
+checkp("narrow panel (340, text 11): five column heads; the influences go under their row, from one indent in to the right edge, labeled", function()
+  local r = wrow(d, "Haste")
+  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating" and r.winfl.x == 12 and r.winfl.y > r.label.y
+    and r.winfl.x + r.winfl.w == LAY.content and T(r.winfl):find("^Influences: GCD") ~= nil, texts(d, "wcolhead") .. " x=" .. tostring(r.winfl.x) .. " " .. T(r.winfl) end)
 -- the comparison's copy of the map has no tree headings and no Gear Summary
 c.size = nil
 CM.gearSlot = 1; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
@@ -463,7 +477,7 @@ local function layoutOK(dd)
   return true
 end
 ns.StatCalc_SetInput("sv:crit", "700"); ns.StatCalc_SetInput("sv:primary", "2737"); ns.StatCalc_SetInput("sv:haste", "1500")
-TIPS = { [11] = { { leftText = "Equip: increasing critical strike effectiveness by 2%" } } }
+TIPS = { [11] = { { leftText = "Equip: increasing critical strike effectiveness by 2%" } } }; ForgetModel()
 PT = { 6, "RUNIC_POWER" }; POWERMAX = { [6] = 125, [5] = 6 }; RUNES = { { 100, 8.5, false } }
 for _, pw in ipairs({ 340, 450, 583, 584, 760 }) do
   for _, fs in ipairs({ 8, 11, 16 }) do
@@ -483,7 +497,7 @@ misuse = 0
 d = render()
 checkp("secret ratings in combat: the Stat Weights rows read hidden in combat (cells and influences), no secret misused", function()
   local r = wrow(d, "Haste")
-  return T(r.wrating) == "hidden in combat" and T(r.winfl) == "Influences: hidden in combat" and misuse == 0, T(r.wrating) end)
+  return T(r.wrating) == "hidden in combat" and T(r.winfl) == "hidden in combat" and misuse == 0, T(r.wrating) end)
 GetCombatRating = realRating
 
 -- 8. Off again (V14): the button hides, the minimap row goes, the panel closes ----------------------------------------------------

@@ -85,6 +85,11 @@ Reskin (its node, intro, and the Theme table's four cells); Bonus Features > Enh
 its switch desc; Bonus Features > Stat Calculator's switch desc, intro and Panel desc (the button needs Improved Character Display; hidden
 in combat). The golden was produced with `--golden` on the new code with only XayaUI_Nameplates and XayaUI_Reskin taken from 6bc8165
 (American spelling), so the 14 spelling failures stay visible here until those two files are fixed (debug-log 2026-11-10 stat-calculator-v25).
+Regenerated again on 2026-11-11 for the Stat Calculator V25 fix bundle (QoL 0.7.57; SC-069, SC-103): `--dump` of f34cc33 and of the new
+code differ in exactly 10 lines per variant (XayaUI QoL off: 0), only in: the four Slot Overlays > Show items (`qol.chardisplay.overlayPart.
+show.ovIlvl / ovSockets / ovEnchants / ovSize`: desc now a function, the greyed reason; Text size gained a desc; Empty sockets lost its
+"Hidden while ..." sentence) and Blizzard Reskin > Character Reskin's `reskin.charreskin.stats` (name "Stat list" -> "Stat list colors", its
+desc). Made the same way (only XayaUI_Nameplates and XayaUI_Reskin from 6bc8165), so the same 14 spelling failures stay visible.
 `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Function audit 2026-11-07 (docs/process/FUNCTION-AUDIT-2026-11-07.md), QoL / Bonus rows that have no closer test file:
   D17 (the Stat Calculator, Bonus Features since 0.6.37): with "Show the panel" off (Stat Calculator on), the panel's stat / unit events and SPELL_UPDATE_COOLDOWN are
-      not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on.
+      not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on. SC-081 (Bonus, 2026-11-10):
+      SPELL_UPDATE_COOLDOWN is registered only while the panel is shown (out of combat), so with the panel closed a cast reads no GCD.
   D50 (Bonus, Data Panels): "Remove block" before the "Editing block" slider was ever used removes the block without a Lua error.
   D52 (Bonus, Enhanced Tooltips): with "Aura IDs" off, a spell / item hover runs no aura lookup (TT.AurasFor) and writes no saved
       db.selfAura (V14); with it on, it still does.
@@ -55,10 +56,20 @@ check("  ...slot overlays on: their events are registered (PLAYER_EQUIPMENT_CHAN
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = true
 CWA()
-check("(as before) panel part on: SPELL_UPDATE_COOLDOWN, UNIT_STATS and COMBAT_RATING_UPDATE are registered", registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS") and registered("COMBAT_RATING_UPDATE"))
+-- (SC-081, Bonus: the cooldown read only while the panel is shown) the panel part on but the panel closed: the stat events are listened
+-- to (the panel is right when it opens, and combat starts are heard), the cooldown event is not: a cast costs the Stat Calculator nothing
+check("(as before) panel part on: UNIT_STATS and COMBAT_RATING_UPDATE are registered", registered("UNIT_STATS") and registered("COMBAT_RATING_UPDATE"))
+check("SC-081 panel part on, panel closed: SPELL_UPDATE_COOLDOWN is not registered", not registered("SPELL_UPDATE_COOLDOWN"))
 local before = gcdReads
 fire("SPELL_UPDATE_COOLDOWN")
-check("(as before) ...and a cast reads the GCD", gcdReads == before + 1, gcdReads - before)
+check("  ...and a cast reads no GCD", gcdReads == before, gcdReads - before)
+ns.StatCalc_SetOpen(true)
+check("SC-081 the panel shown (on its own): SPELL_UPDATE_COOLDOWN is registered, and opening read the GCD once", registered("SPELL_UPDATE_COOLDOWN") and gcdReads == before + 1, gcdReads - before)
+before = gcdReads
+fire("SPELL_UPDATE_COOLDOWN")
+check("(as before) ...and while it is shown a cast reads the GCD", gcdReads == before + 1, gcdReads - before)
+ns.StatCalc_SetOpen(false)
+check("  ...the panel closed again: SPELL_UPDATE_COOLDOWN is let go", not registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS"))
 c.panel = false
 CWA()
 check("  ...panel part off again: its events are let go at once", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_EQUIPMENT_CHANGED"))
@@ -195,7 +206,7 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local QA, ns = rawget(_G, "XayaUI_DevQA"), rawget(_G, "XayaUI_NS")
 if not QA then check("Dev Assist QA framework", false); return R end
 assert(loadstring(WALKSRC, "@Interface/AddOns/XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua"))()
-local ids = { "audit-shopping-list", "audit-shopping-ah", "audit-char-toolkit-events", "audit-calculator", "audit-data-panels-remove",
+local ids = { "audit-shopping-list", "audit-shopping-ah", "audit-statcalc-events", "audit-calculator", "audit-data-panels-remove",
   "audit-tooltips-aura-off", "audit-notepad-share" }
 for _, id in ipairs(ids) do
   local d = QA.walks[id]
@@ -227,8 +238,8 @@ P("audit-shopping-list", 3, "D13 Forget: nothing re-counted")
 P("audit-shopping-list", 4, "D14 To buy adds up (1 + 2 = 3)")
 P("audit-shopping-list", 5, "D15 /xui shop with the Reskin tab off changes nothing")
 P("audit-shopping-list", 6, "shopping list last step: put back")
-P("audit-char-toolkit-events", 1, "D17 panel part off: no panel event")
-P("audit-char-toolkit-events", 2, "stat calculator last step: put back")
+P("audit-statcalc-events", 1, "D17 panel part off: no panel event")
+P("audit-statcalc-events", 2, "stat calculator last step: put back")
 P("audit-calculator", 1, "D49 1 / 3 x 3 = 1")
 P("audit-calculator", 2, "D49 1e-07 x 10")
 P("audit-calculator", 3, "D51 12kx3")

@@ -95,10 +95,11 @@ check("  column heads (QoL 0.7.20): Primary Stat | Current value | Pt value | Ch
 check("  ...the crit card's rating for the Rating column: 528 (as text)", card("map_crit").ratingText == "528", card("map_crit").ratingText)
 -- mastery: armor from mastery and armor per 1% mastery (her question)
 check("Mastery card: » Armor value +2,684, note 101.8% of Agility", cells("map_mastery", "» Armor") == "+2,684||101.8% of Agility", cells("map_mastery", "» Armor"))
-check("  » Armor per 1% mastery: +30 (2,637 x 101.8 / 88.69 / 100), note 16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery") == "+30||16.4 mastery rating", cells("map_mastery", "» Armor per 1% mastery"))
+-- (V25 unit B, SC-101: "» Armor per 1% mastery" is "» Armor per 1%" in the Modifies column; the qualifier went to its note)
+check("  » Armor per 1%: +30 (2,637 x 101.8 / 88.69 / 100), note per 1% mastery; 16.4 mastery rating", cells("map_mastery", "» Armor per 1%") == "+30||per 1% mastery; 16.4 mastery rating", cells("map_mastery", "» Armor per 1%"))
 check("Haste card: » GCD 1.16 s (the standard rule, UI-64), » Attack speed 2.00 s", line("map_haste", "» GCD") == "1.16 s" and line("map_haste", "» Attack speed") == "2.00 s", tostring(line("map_haste", "» GCD")))
-check("  » Abilities whose text names Haste, each on its own nested line with its recharge now", cells("map_haste", "» Abilities (their text names Haste)") == "||"
-  and sub("map_haste", "» Abilities (their text names Haste)") == "Infernal Strike=9.6 s recharge", sub("map_haste", "» Abilities (their text names Haste)"))
+check("  » Abilities whose text names Haste, each on its own nested line with its recharge now", cells("map_haste", "» Abilities") == "||"
+  and sub("map_haste", "» Abilities") == "Infernal Strike=9.6 s recharge", sub("map_haste", "» Abilities"))
 check("Versatility card: » Damage and healing done +2.61%, » Damage taken -1.30% with Pt value 92.0 / 1%",
   line("map_vers", "» Damage and healing done") == "+2.61%" and cells("map_vers", "» Damage taken") == "-1.30%|92.0 / 1%|", cells("map_vers", "» Damage taken"))
 -- Xaya 2026-11-08 (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #46): "remove (every ability)"; "remove top line \"from rating\" under versatility"
@@ -123,19 +124,23 @@ check("  Damage 8,138 - 8,945, Attack Speed 2.00 s, Weapon DPS 4,270.7 ((8,138.2
 check("  GCD 1.16 s by the standard rule (1.5 / 1.2925), its rule, from Haste 29.25%, the rating for -0.01 s, and the live reading as a check (UI-62 / UI-64)",
   card("map_gcd").label == "GCD" and card("map_gcd").value == "1.16 s"
   and (select(2, line("map_gcd", "Rule")).note or "") == "1.5 s / (1 + haste), never below 0.75 s" and line("map_gcd", "From Haste") == "29.25%"
-  and (select(2, line("map_gcd", "For -0.01 s")).note or ""):find("^[%d,]+ more haste rating$") ~= nil and line("map_gcd", "Live reading") ~= nil,
+  and (line("map_gcd", "For -0.01 s") or ""):find("^[%d,]+ more haste rating$") ~= nil and line("map_gcd", "Live reading") ~= nil,   -- (V25 unit B, SC-099: the rating is the value now, was the note)
   tostring(card("map_gcd").value) .. " / " .. tostring(line("map_gcd", "Live reading")))
 check("  #379: the GCD's 'From Haste' uses haste's colour", select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
-check("Defense > Armor: armor for the next 1% and base, buffs and talents", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
-  and line("map_armor", "Base, buffs and talents") == "5,685", tostring(line("map_armor", "Armor for the next 1%")) .. " / " .. tostring(line("map_armor", "Base, buffs and talents")))
+-- (V25 unit B, SC-099) "Base, buffs and talents" showed the base only: now Base armor, From buffs and talents and Bonus armor, each with its number
+-- (round 2: Bonus armor only when there is some, as the detail list; this stand-in has none)
+check("Defense > Armor: armor for the next 1%, Base armor 5,685, From buffs and talents +0, no Bonus armor row (none)", (line("map_armor", "Armor for the next 1%") or ""):match("^%d") ~= nil
+  and line("map_armor", "Base armor") == "5,685" and line("map_armor", "From buffs and talents") == "+0" and line("map_armor", "Bonus armor") == nil
+  and line("map_armor", "Base, buffs and talents") == nil,
+  tostring((line("map_armor", "Base armor"))) .. " / " .. tostring((line("map_armor", "From buffs and talents"))) .. " / " .. tostring((line("map_armor", "Bonus armor"))))
 check("  no shield: Block 0.00% (QoL 0.7.23: always listed, her list names it), no » lines; no stagger", card("map_block") and card("map_block").value == "0.00%"
   and #card("map_block").pairs == 0 and card("map_stagger") == nil, card("map_block") and card("map_block").value)
 local gb, gs, sh = GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield
 GetBlockChance = function() return 25 end; GetShieldBlock = function() return 3000 end; C_PaperDollInfo.OffhandHasShield = function() return true end
 d = render()
 check("with a shield: Block 25.00%, » a block reduces the hit by 20.00% (3,000 through armor effectiveness)", card("map_block") and card("map_block").value == "25.00%"
-  and line("map_block", "» A block reduces the hit by") == "20.00%", card("map_block") and line("map_block", "» A block reduces the hit by"))
+  and line("map_block", "» Block reduction") == "20.00%", card("map_block") and line("map_block", "» Block reduction"))
 GetBlockChance, GetShieldBlock, C_PaperDollInfo.OffhandHasShield = gb, gs, sh
 d = render()
 -- the Spells filters only filter spells now (B12)

@@ -285,7 +285,7 @@ checkp("  ...hover: its hover says what it does; click: the spellbook and talent
   GameTooltip.lines = {}
   d.spellBtn.scripts.OnEnter(d.spellBtn)
   local said = false
-  for _, l in ipairs(GameTooltip.lines) do if tostring(l):find("Reads your spellbook and talents again", 1, true) then said = true end end
+  for _, l in ipairs(GameTooltip.lines) do if tostring(l):find("read your spells and talents again", 1, true) then said = true end end
   ns.spellList, ns.talentList = "cached", "cached"
   d.spellBtn.scripts.OnClick(d.spellBtn)
   return said and ns.spellList == nil and ns.talentList == nil

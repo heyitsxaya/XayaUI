@@ -196,6 +196,16 @@ ns.InfoPaneData = {
     { "b", 1, "Off by default. Turn it on under QoL > Release Guard. Works in raids only to start, or in raids and dungeons, or everywhere." },
   },
   patches = {
+    { date = "2026-11-11", title = "Stat Calculator Fixes", blocks = {
+      { "h3", "Bonus Features 0.6.40" },
+      { "grp", "Stat Calculator" },
+      { "b", 1, "In combat it now stays hidden and silent, does no work, and lets go of the keyboard; it comes back after combat." },
+      { "b", 1, "Stat Weights shows an Influences column when the titles fit." },
+      { "h3", "Quality of Life 0.7.57" },
+      { "grp", "Stat Calculator" },
+      { "b", 1, "The Gear tab compares against the item you really wear in that slot." },
+      { "b", 1, "Ability Scaling works with XayaUI Rules off." },
+    } },
     { date = "2026-11-08", title = "Gradient Borders", blocks = {
       { "h3", "XayaUI 0.6.81" },
       { "grp", "Themes" },

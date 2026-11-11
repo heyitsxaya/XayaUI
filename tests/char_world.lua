@@ -283,3 +283,46 @@ end
 -- when nothing was made
 function SD_(b) local f = ns.CharDisplay_SlotData; return (f and b and f(b)) or {} end
 function RX_(fr) local f = ns.CharReskin_Extra; return (f and fr and f(fr)) or {} end
+
+-- (V25 unit B: the stat model's kept reads, XayaUI_QoL/StatModel.lua) helpers for the tests; nothing above changes.
+-- ForgetModel(): the model reads everything again (CM.ClearCache). The model keeps an equipped slot by its item link, a compared item by its
+-- link, the crit-effectiveness text by the equipped links (in the game a new gem, enchant or upgrade gives a new link). A test that
+-- changes this world's ITEMS / GEMS / GEM_INFO / tooltip lines while GEAR keeps the same link calls this first, as a link change would.
+function ForgetModel() local CM = ns and ns.StatModel; if CM and CM.ClearCache then CM.ClearCache() end end
+-- CountCalls(t, key, name): wrap t[key] so each call adds one to CALLS[name] (how many game reads a build makes)
+CALLS = {}
+function CountCalls(t, key, name)
+  local f = t and t[key]
+  if type(f) ~= "function" then return end
+  name = name or key
+  CALLS[name] = CALLS[name] or 0
+  t[key] = function(...) CALLS[name] = (CALLS[name] or 0) + 1; return f(...) end
+end
+function ResetCalls() for k in pairs(CALLS) do CALLS[k] = 0 end end
+-- StandInSpellBook(lines): a stand-in C_SpellBook (12.1.5 documentation, namespaces.md:4464-4495) from
+-- lines = { { name =, offSpecID =, items = { { spellID =, name =, isPassive =, isOffSpec =, itemType = } } } }; opt-in, so the tests
+-- written before it see no spellbook. Each item's name is also what C_Spell.GetSpellName answers for its spell ID (SPELLBOOK_NAMES).
+SPELLBOOK_NAMES = {}
+function StandInSpellBook(lines)
+  Enum = Enum or {}
+  Enum.SpellBookSpellBank = { Player = 0, Pet = 1 }
+  Enum.SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 }
+  local flat, infos, off = {}, {}, 0
+  for i, ln in ipairs(lines) do
+    infos[i] = { name = ln.name or ("Line " .. i), iconID = 0, itemIndexOffset = off, numSpellBookItems = #ln.items, isGuild = false,
+      shouldHide = false, offSpecID = ln.offSpecID }
+    for _, it in ipairs(ln.items) do
+      off = off + 1
+      flat[off] = { actionID = it.spellID or 0, spellID = it.spellID, itemType = it.itemType or 1, name = it.name or "", subName = "",
+        iconID = 0, isPassive = it.isPassive == true, isOffSpec = it.isOffSpec == true, skillLineIndex = i }
+      if it.spellID and it.name then SPELLBOOK_NAMES[it.spellID] = it.name end
+    end
+  end
+  C_SpellBook = {
+    GetNumSpellBookSkillLines = function() return #infos end,
+    GetSpellBookSkillLineInfo = function(i) return infos[i] end,
+    GetSpellBookItemInfo = function(slot, bank) if bank == 0 then return flat[slot] end end,
+  }
+  local baseName = C_Spell.GetSpellName
+  C_Spell.GetSpellName = function(id) return SPELLBOOK_NAMES[id] or baseName(id) end
+end

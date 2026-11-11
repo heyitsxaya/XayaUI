@@ -343,16 +343,24 @@ check("  ...lines that do not change are left out (every Haste line listed chang
 check("  ...cards that do not change are left out (Versatility, Avoidance)", eff("map_vers") == nil and eff("map_avoidance") == nil)
 -- (QoL 0.7.54, fix plan f1-16) more Avoidance means less area damage taken: "» Area damage taken (less)" going up is better (green), not
 -- worse; the direction is a flag set where the line is made (lowerBetter), not the word "taken" in its label. Fails on QoL 0.7.53.
+-- (the stand-in changes the item's stats under the same link; in the game a link's stats are fixed, so the model keeps what a compared
+-- link gives (its cache, KC.cmpStatic / KC.cmpDerived): the test clears it, as a new item would)
 ITEMS["Better Helm"].stats.ITEM_MOD_CR_AVOIDANCE_SHORT = 300
+CM.ClearCache()
 gm = CM.Build(c, "gear")
-local avV, avT = effLine("map_avoidance", "» Area damage taken (less)")
-check("compare: +300 Avoidance: \"» Area damage taken (less)\" goes up and is coloured better (good), f1-16", avV ~= nil and avV:find(" -> ", 1, true) ~= nil and avT == "good",
+-- (the line's label since the model's rename, StatModel.lua: "» Area damage taken"; was "» Area damage taken (less)")
+local avV, avT = effLine("map_avoidance", "» Area damage taken")
+check("compare: +300 Avoidance: \"» Area damage taken\" goes up and is coloured better (good), f1-16", avV ~= nil and avV:find(" -> ", 1, true) ~= nil and avT == "good",
   tostring(avV) .. " " .. tostring(avT))
 local gcV, gcT = effLine("map_haste", "» GCD")
 check("  ...(guard) less haste: the GCD gets longer and stays worse (warn): lower is better for seconds", gcV ~= nil and gcT == "warn", tostring(gcV) .. " " .. tostring(gcT))
 ITEMS["Better Helm"].stats.ITEM_MOD_CR_AVOIDANCE_SHORT = nil
+CM.ClearCache()
 gm = CM.Build(c, "gear")
-check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs)", tipHas(gm.byKey.gearCols, "on-use and proc effects are listed under the table"))
+-- (since the model's SC-098 change, StatModel.lua DevTip: how it is worked out shows with XayaUI Dev Assist only, it.devTip)
+check("compare: what the item tables leave out is said (gems, enchants, set bonuses, on-use and procs), with Dev Assist (devTip)", (function()
+  for _, l in ipairs(gm.byKey.gearCols and gm.byKey.gearCols.devTip or {}) do if l:find("on-use and proc effects are listed under the table", 1, true) then return true end end
+  return false end)())
 local savedDesc = C_Spell.GetSpellDescription
 C_Spell.GetSpellDescription = function(id) if id == 203747 then return "Increases your damage done by 12.0%." end; return savedDesc(id) end
 gm = CM.Build(c, "gear")
@@ -423,6 +431,10 @@ check("overlays off: hidden again", ns.CharDisplay_OverlayText("HeadSlot") == ni
 c.enchantSlots = {}
 
 -- 9. Secret values: hidden in combat, never compared or formatted ---------------------------------------------------------------
+-- (V26 "Hide silently", SC-117: until Bonus 2026-11-10 this section drew every tab of the panel in combat and passed. In combat the panel
+-- draws nothing: ns.StatCalc_Render and every input build no stat model and draw nothing; the model itself still runs with secret
+-- readers (Enhanced Tooltips' lines read it in combat). The panel's own "hidden in combat" text and hover are checked below with the
+-- readers secret and combat = false: the game can keep a value secret outside combat too.)
 combat = true
 local function S() return SECRET end
 local saved = {}
@@ -439,10 +451,34 @@ local okGCD, errGCD = pcall(ns.StatCalc_ReadGCD)
 check("secret values: reading a secret GCD runs without an error", okGCD, errGCD)
 c.whatIf = 50; c.whatIfStats = { crit = 10 }
 CM.gearSlot = 1
+local rawBuild9 = CM.Build
+local builds9 = 0
+CM.Build = function(...) builds9 = builds9 + 1; return rawBuild9(...) end
+local layout9 = drawn().layout
+local tab9 = c.tab
 for _, t in ipairs({ "stats", "defense", "offense", "gear", "spells" }) do
   local ok, err = pcall(render, t)
-  check("secret values: the " .. t .. " tab draws without an error", ok, err)
+  check("in combat: drawing the " .. t .. " tab runs without an error, builds no stat model and draws nothing (V26)", ok and builds9 == 0 and drawn().layout == layout9,
+    err or builds9)
 end
+c.tab = tab9
+local whatIf9 = c.whatIfStats.crit
+local inputs9 = {
+  { "SetInput", function() ns.StatCalc_SetInput("crit", "500") end }, { "PickItem", function() ns.StatCalc_PickItem("|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r", 1) end },
+  { "SelectGearSlot", function() ns.StatCalc_SelectGearSlot(11) end }, { "SetCompareSlot", function() ns.StatCalc_SetCompareSlot(12) end },
+  { "Action", function() ns.StatCalc_Action("refreshSpells") end }, { "SizeMode", function() ns.StatCalc_SizeMode() end },
+  { "ToggleStat", function() ns.StatCalc_ToggleStat("crit") end }, { "ToggleSpell", function() ns.StatCalc_ToggleSpell("spell:1") end },
+  { "SetSpellFilter", function() ns.StatCalc_SetSpellFilter("defense") end } }
+for _, inp in ipairs(inputs9) do
+  local ok, err = pcall(inp[2])
+  check("in combat: " .. inp[1] .. " builds no stat model and draws nothing (V26)", ok and builds9 == 0 and drawn().layout == layout9, err or builds9)
+end
+check("  ...and changes nothing it keeps (the typed number, the size mode, the folds, the filter, the compared slot)", c.whatIfStats.crit == whatIf9
+  and c.sizeMode ~= "large" and not (c.statOpen or {}).crit and not (c.collapsed or {})["spell:1"] and c.spellFilter ~= "defense" and CM.gearSlot == 1,
+  tostring(c.whatIfStats.crit) .. " " .. tostring(c.sizeMode) .. " " .. tostring(c.spellFilter) .. " " .. tostring(CM.gearSlot))
+CharacterFrame:Hide(); PaperDollFrame:Hide(); CharacterFrame:Show(); PaperDollFrame:Show()
+check("  ...the character window still opens in combat (ours never stops it)", CharacterFrame:IsShown() and PaperDollFrame:IsShown() and builds9 == 0, builds9)
+CM.Build = rawBuild9
 check("secret values: never compared, formatted or used in arithmetic", misuse == 0, misuse)
 local okM, mm = pcall(CM.Build, c, nil)
 m = okM and mm or { byKey = {} }
@@ -451,6 +487,7 @@ check("secret values: crit shows hidden in combat (percent and rating)", v("crit
 check("secret values: Agility, armor, attack power and dodge show hidden in combat", v("stat2") == "hidden in combat"
   and v("armor") == "hidden in combat" and v("ap") == "hidden in combat" and v("dodge") == "hidden in combat")
 check("secret values: the GCD shows hidden in combat", v("gcd") == "hidden in combat")
+combat = false   -- (the panel draws only out of combat; the readers stay secret)
 local okS = pcall(render, "stats")
 d = drawn()
 check("secret values: the Stats tab shows hidden in combat", okS and valueOf(d, "Critical Strike") == "hidden in combat", valueOf(d, "Critical Strike"))
@@ -458,16 +495,23 @@ check("secret values: \"hidden in combat\" fits its value column", (fits("value"
 local bcrit = buttonFor(d, "map_crit")
 local okT, tlS = pcall(function() return tipLines(bcrit) end)
 check("secret values: the hover says why", okT and linesHave(tlS, "hides ratings while unit stats are restricted"))
+for _, t in ipairs({ "defense", "offense", "gear", "spells" }) do
+  local ok, err = pcall(render, t)
+  check("secret values (out of combat): the " .. t .. " tab draws without an error", ok, err)
+end
+check("  ...never compared, formatted or used in arithmetic", misuse == 0, misuse)
+c.tab = "stats"
+combat = true   -- (the model-level checks below run in combat: Enhanced Tooltips reads the model then)
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Critical Strike:"
 CharacterStatsPane.children = { statRow }; ns.TT.DB().charStats = true; ns.TT.Sync(); ns.TT.HookCharStatRows()   -- (V25 R4: Enhanced Tooltips' option)
 GameTooltip:SetOwner(statRow)
 local ok, err = pcall(statRow.hooks.OnEnter[1], statRow)
 check("secret values: the character window tooltip lines run without an error", ok and misuse == 0, err)
-ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r")
+combat = false; ns.StatCalc_SetInput("item", "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"); combat = true   -- (an input changes nothing in combat: V26)
 local okG, gmS = pcall(CM.Build, c, "gear")
 check("secret values: the gear comparison runs and says crit is hidden in combat (not left out)", okG and misuse == 0 and gmS.byKey.gc_map_crit
   and gmS.byKey.gc_map_crit.cells[2] == "hidden in combat", okG and "" or gmS)
-ns.StatCalc_SetInput("item", ""); CM.gearSlot = nil
+combat = false; ns.StatCalc_SetInput("item", ""); combat = true; CM.gearSlot = nil
 c.advanced = true; c.spells = { { id = 263642, base = "ap" } }
 local fr = CM.Build(c, "spells").byKey.spell263642
 check("secret values: Spell Math says attack power is hidden in combat", fr and pair(fr, "attack power") == "hidden in combat", fr and fr.pairs[1] and fr.pairs[1].value)

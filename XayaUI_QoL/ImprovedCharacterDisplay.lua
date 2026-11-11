@@ -48,9 +48,9 @@ end
 -- the `both` key `enabled`; characterReskin with Blizzard Reskin's), and the profile parts write them under these names, so renaming
 -- them would change every profile string and break older ones. Players never see these names. One view, Cfg(), reads and writes each
 -- field in its table; its `enabled` (the page's switch) is characterReskin's `features`.
-local TK_KEYS = { overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true,
+local SHARED_KEYS = { overlays = true, ovIlvl = true, ovSockets = true, ovEnchants = true, ovSize = true, enchantSlots = true,
     enchantSlotsSet = true, statCalcButton = true }
-local TK_DEFAULTS = {
+local SHARED_DEFAULTS = {
     -- (tooltips: the extra lines on the stat tooltips' switch until V25 R4; they are Enhanced Tooltips' option now, XayaUI Bonus
     -- Features' tooltips.charStats, off by default. A value saved here before is no longer read.)
     overlays = false,      -- item level / socket / enchant marks on the character window's slots
@@ -66,19 +66,19 @@ local PANE_DEFAULTS = { ilvl = true, enchants = true, gems = true, statList = tr
 -- statName[key] / groupName[group key] = text, statColor[key] / groupColor[group key] = { r, g, b }
 local LIST_TABLES = { "statHide", "statOrder", "statMode", "statName", "statColor", "groupName", "groupColor" }
 ns.CHARDISPLAY_DEFAULTS = { enabled = false, statCalcButton = true }
-for k, v in pairs(TK_DEFAULTS) do ns.CHARDISPLAY_DEFAULTS[k] = v end
+for k, v in pairs(SHARED_DEFAULTS) do ns.CHARDISPLAY_DEFAULTS[k] = v end
 for k, v in pairs(PANE_DEFAULTS) do ns.CHARDISPLAY_DEFAULTS[k] = v end
 
-local tkT, paneT
+local sharedT, paneT
 local view = setmetatable({}, {
     __index = function(_, k)
         if k == "enabled" then return paneT.features == true end
-        if TK_KEYS[k] then return tkT[k] end
+        if SHARED_KEYS[k] then return sharedT[k] end
         return paneT[k]
     end,
     __newindex = function(_, k, v)
         if k == "enabled" then paneT.features = v and true or false
-        elseif TK_KEYS[k] then tkT[k] = v
+        elseif SHARED_KEYS[k] then sharedT[k] = v
         else paneT[k] = v end
     end,
 })
@@ -87,7 +87,7 @@ local function Tables()
     if type(t) ~= "table" then t = {}; QolS.characterToolkit = t end
     local p = QolS.characterReskin
     if type(p) ~= "table" then p = {}; QolS.characterReskin = p end
-    tkT, paneT = t, p
+    sharedT, paneT = t, p
 end
 
 -- The tie-ins (Xaya A24 #6: "Tie-ins between elements/addons cost nothing unless the other element is on; whether it is on is read
@@ -140,10 +140,10 @@ end
 local function Merge()
     if paneT._merged then return end
     ReadTieIns()
-    local feat, tkOn, btn = OldFeatures(), tkT.enabled == true, scAvail == true
-    if feat or tkOn or btn then
+    local feat, sharedOn, btn = OldFeatures(), sharedT.enabled == true, scAvail == true
+    if feat or sharedOn or btn then
         if not feat then paneT.ilvl, paneT.enchants, paneT.gems, paneT.statList = false, false, false, false end
-        if not tkOn then tkT.overlays = false end
+        if not sharedOn then sharedT.overlays = false end
         paneT.features = true
     end
     paneT._merged = true
@@ -165,7 +165,7 @@ function ns.CharDisplay_MergeOlder(oldTk)
             paneT.features = true
         end
     else
-        tkT.overlays = false
+        sharedT.overlays = false
     end
     if ns.CharDisplay_Apply then ns.CharDisplay_Apply() end
 end
@@ -174,17 +174,17 @@ local function Cfg()
     if not ns.SettingsReady("qol") then return nil end
     Tables()
     if not paneT._merged and ns.LoggedIn and ns.LoggedIn() then Merge() end
-    for k, v in pairs(TK_DEFAULTS) do if tkT[k] == nil then tkT[k] = CopyVal(v) end end
+    for k, v in pairs(SHARED_DEFAULTS) do if sharedT[k] == nil then sharedT[k] = CopyVal(v) end end
     -- the old page's switch: no longer read (only by the merge above), but its default is still saved as before so that a profile
     -- string made with every default stays byte for byte what it was (tests/profile_parts_run.py, share_strings_presplit_run.py)
-    if tkT.enabled == nil then tkT.enabled = false end
+    if sharedT.enabled == nil then sharedT.enabled = false end
     -- (V25 R4) the old Tooltip lines switch: no longer read (the lines are Enhanced Tooltips' option now, XayaUI Bonus Features'
     -- tooltips.charStats), but its old default is still saved, for the same reason as `enabled` above (profile strings and saved data
     -- stay byte for byte what they were)
-    if tkT.tooltips == nil then tkT.tooltips = true end
-    tkT.ovSize = math.max(8, math.min(16, tonumber(tkT.ovSize) or 11))
-    if type(tkT.enchantSlots) ~= "table" then tkT.enchantSlots = {} end
-    if tkT.enchantSlotsSet ~= true then tkT.enchantSlotsSet = nil end
+    if sharedT.tooltips == nil then sharedT.tooltips = true end
+    sharedT.ovSize = math.max(8, math.min(16, tonumber(sharedT.ovSize) or 11))
+    if type(sharedT.enchantSlots) ~= "table" then sharedT.enchantSlots = {} end
+    if sharedT.enchantSlotsSet ~= true then sharedT.enchantSlotsSet = nil end
     for _, k in ipairs(LIST_TABLES) do if type(paneT[k]) ~= "table" then paneT[k] = {} end end
     for k, v in pairs(PANE_DEFAULTS) do
         if paneT[k] == nil then paneT[k] = v end
@@ -1456,15 +1456,40 @@ function ns.BuildCharDisplayPage(Notify)
                 Changed()
             end }
     end
+    -- (SC-069 / SC-103) a slot mark that cannot show because the matching item detail on this page already shows the same thing on the
+    -- slot: its tick box is greyed and unticked (nothing looks switched on while doing nothing), its hover says why and which option to
+    -- turn off. The test is the drawing code's own (DrawsIlvl / DrawsEnchants / DrawsSockets, read by UpdateOverlay above), so the box
+    -- and the slot never disagree. The saved choice is kept: the box is ticked again once the other option is off. Read only while the
+    -- options window draws this page.
+    local function Mark(key, order, name, desc, blocks, other)
+        local t = T(key, order, name, desc)
+        t.disabled = function() return blocks() end
+        t.get = function() if blocks() then return false end; return C()[key] and true or false end
+        t.desc = function()
+            if not blocks() then return desc end
+            return ("Greyed: \"%s\" already shows this; turn it off to use this mark."):format(other)
+        end
+        return t
+    end
+    -- (review round 2) the Text size slider is greyed while no mark above can show (each is unticked or greyed), so it never looks live
+    -- while changing nothing on the slots. Same decision as the marks' own (the drawing code's Draws* test and the saved tick).
+    local function noMark()
+        local c = C()
+        return not ((c.ovIlvl and not DrawsIlvl()) or (c.ovSockets and not DrawsSockets()) or (c.ovEnchants and not DrawsEnchants()))
+    end
     local overlayPart = {
         type = "group", name = "Slot Overlays", order = 20, childGroups = "tab", hidden = isOff,
         xuiSwitch = T("overlays", 1, "Slot overlays", "Marks on the character window's item slots. Off by default.", nil, nil, nil, "Shows marks on the character window's item slots."),
         args = {
             show = { type = "group", name = "Show", order = 1, args = {
-                ovIlvl = T("ovIlvl", 2, "Item level", "Shows the item level at the bottom of the slot."),
-                ovSockets = T("ovSockets", 3, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top. Hidden while the gems and sockets show beside the slots."),
-                ovEnchants = T("ovEnchants", 4, "Enchant check", "Shows E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab."),
-                ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1,
+                ovIlvl = Mark("ovIlvl", 2, "Item level", "Shows the item level at the bottom of the slot.",
+                    DrawsIlvl, "Item level on each slot"),
+                ovSockets = Mark("ovSockets", 3, "Empty sockets", "Shows how many sockets have no gem (for example 2S) at the top.",
+                    DrawsSockets, "Gems and sockets beside the slots"),
+                ovEnchants = Mark("ovEnchants", 4, "Enchant check", "Shows E? on a ticked slot with no enchant, E when it has one. Pick the slots on the Enchant Slots tab.",
+                    DrawsEnchants, "Enchants beside the slots"),
+                ovSize = { type = "range", order = 5, name = "Text size", min = 8, max = 16, step = 1, disabled = noMark,
+                    desc = function() if noMark() then return "Greyed: no mark above shows on the slots." end; return "Size of the marks' text." end,
                     get = function() return C().ovSize end, set = function(_, v) C().ovSize = v; Changed() end },
             } },
             enchants = { type = "group", name = "Enchant Slots", order = 2, args = slotToggles },

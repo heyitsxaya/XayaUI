@@ -785,11 +785,45 @@ end
 -- Notes (a line's method text) show only while XayaUI Dev Assist is loaded (Xaya, REQUEST-LOG A22 #15: "Hide notes unless Dev Assist").
 -- Post-hooks only (HookScript on Blizzard's stat rows and PaperDollFrame, hooksecurefunc on PaperDollFrame_UpdateStats): Blizzard's code
 -- runs unchanged first. Which rows are hooked is kept in our own weak table, never on the rows. Once placed the hooks stay until /reload
--- and return at once while the lines are off; the OnShow / stat-update hooks run only when the character window shows or updates.
+-- and return at once while the lines are off; the OnShow / OnHide / stat-update hooks run only when the character window shows, hides or
+-- updates.
+-- Kept models (SC-047, SC-035; review docs/plans/STAT-CALCULATOR-REVIEW-2026-11-10.md): the two stat models these lines read (the stat
+-- map, CM.Build(CLEAN, "stats"), and the flat list, CM.Build(CLEAN, nil)) are built on the first hover that needs one and kept in this
+-- file's own table (kept, below) between hovers, so running the mouse down the stat list costs one build per change in stats, not one
+-- per hover. They are dropped (never compared: nothing here looks at a number, secret or not) whenever they may be stale:
+--   * Blizzard's PaperDollFrame_UpdateStats runs (the post-hook below). INFERENCE: Blizzard's PaperDollFrame.lua is not in
+--     docs/reference; from Blizzard's UI code as we know it, the pane's own OnEvent queues PaperDollFrame_UpdateStats while the window is
+--     shown on the player's stat, rating, aura, attack power, damage, speed, mastery, versatility, item level and equipment events
+--     (UNIT_STATS, COMBAT_RATING_UPDATE, MASTERY_UPDATE, UNIT_AURA, PLAYER_EQUIPMENT_CHANGED, PLAYER_AVG_ITEM_LEVEL_UPDATE, ...). Every
+--     number the window itself shows changes through it, so the lines change with the window's own numbers.
+--   * the window shows and hides (PaperDollFrame OnShow / OnHide): nothing is kept while it is closed, and a reopen reads afresh.
+--   * a few changes the model reads that may change no number the window shows, so Blizzard need not call PaperDollFrame_UpdateStats
+--     for them (CHARSTAT_DROP_EVENTS below, registered only while the window is shown and the lines are on): an item swapped for one
+--     with the same stats or a gem / enchant / socket change (the crit-effect line reads the item tooltips), item data arriving late
+--     (GET_ITEM_INFO_RECEIVED: the model's item reads can be empty until then), the spellbook changing (the haste card lists your
+--     abilities). Each only clears the kept table; the next hover builds again.
+--   * combat ends or the addon restriction lifts (PLAYER_REGEN_ENABLED, ADDON_RESTRICTION_STATE_CHANGED, same list): a model built in
+--     combat holds the secret reads as CM.HIDDEN ("hidden in combat"), and Blizzard need not run PaperDollFrame_UpdateStats when
+--     combat ends (INFERENCE: not documented either way), so without this the lines would stay empty after combat.
+--   * the option, Enhanced Tooltips or Improved Character Display is switched (TT.CharStatsSync), and the tie-ins are read again.
+-- Nothing is kept outside an open window: a hover with the window not shown (not possible from Blizzard's rows; a Dev Assist check can
+-- ask) builds and keeps nothing. Combat: the character window still opens in combat; a hover there builds at most once per stat change,
+-- as out of combat (no extra work), and what was built in combat is dropped when combat ends (above).
 -------------------------------------------------------------------------------
-local cs = { read = false, pageRead = false, icdOn = false, notes = false, CM = nil, subscribed = false, hooked = false }
+local cs = { read = false, pageRead = false, icdOn = false, notes = false, CM = nil, subscribed = false, hooked = false,
+    builds = 0, drops = 0, windowOpen = false, ev = nil }
 TT.charStatsOn = false
-TT.charStatsState = cs   -- (read only; tests and Dev Assist)
+TT.charStatsState = cs   -- (read only; tests and Dev Assist). cs.builds: how many models these lines have built since the login;
+-- cs.drops: how many times a kept model was dropped (a drop with nothing kept is not counted)
+-- the kept models ("stats": the stat map; "all": the flat list); own table, nothing on Blizzard's frames
+local kept = {}
+local function DropKept()
+    if kept.stats or kept.all then cs.drops = cs.drops + 1 end
+    kept.stats = nil; kept.all = nil
+end
+TT.CharStatsDrop = DropKept
+-- how many models are kept now (read only; tests and Dev Assist): 0 while the window is closed
+function TT.CharStatsKept() return (kept.stats and 1 or 0) + (kept.all and 1 or 0) end
 
 -- whether this option is ticked and Enhanced Tooltips is on (the saved settings only; the tie-ins are cs)
 function TT.CharStatsWanted()
@@ -803,6 +837,7 @@ function TT.CharStatsDisplayOn() return cs.icdOn == true end
 function TT.CharStatsReadTieIns(again)
     if cs.read and not again then return end
     cs.read = true
+    DropKept()   -- (a new read may name another model)
     local m = ns.Service and ns.Service("statModel")
     cs.CM = (type(m) == "table" and type(m.CM) == "table") and m.CM or nil
     local d = ns.Service and ns.Service("charDisplay")
@@ -853,6 +888,16 @@ local MAP_KEY = { crit = "map_crit", haste = "map_haste", mastery = "map_mastery
 -- the model is read with the Stat Calculator panel's defaults (no typed numbers)
 local CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {}, statOpen = {}, spells = {} }
 
+-- one model, kept between hovers while the window is open (see the section head for when it is dropped)
+local function Model(CM, kind)
+    local m = kept[kind]
+    if m then return m end
+    cs.builds = cs.builds + 1
+    m = CM.Build(CLEAN, kind == "stats" and "stats" or nil)
+    if cs.windowOpen then kept[kind] = m end
+    return m
+end
+
 -- The lines for one stat row: { { left, right } or { text } }, or nil. (QoL 0.7.14, requirements A8; Xaya: "do you see how these
 -- tooltips behave?", "no. I don't want a bar next to the threshold") a compact block under Blizzard's own text: the stat map's lines for
 -- this stat at your real numbers: rating and what it gives, rating per 1%, diminishing returns and the next threshold in words, then
@@ -865,7 +910,7 @@ function TT.CharStatLines(label)
     if not key then return nil end
     local notes = cs.notes == true
     local mk = MAP_KEY[key] or ((key == "stat1" or key == "stat2" or key == "stat4") and "map_primary") or nil
-    local card = mk and CM.Build(CLEAN, "stats").byKey[mk] or nil
+    local card = mk and Model(CM, "stats").byKey[mk] or nil
     if key:match("^stat%d$") and card and card.label ~= (label and label:gsub("[:：]%s*$", "")) then card = nil end   -- not your primary stat
     local lines = {}
     if card then
@@ -884,7 +929,7 @@ function TT.CharStatLines(label)
             end
         end
     else
-        local it = CM.Build(CLEAN, nil).byKey[key]
+        local it = Model(CM, "all").byKey[key]
         if not it then return nil end
         for _, p in ipairs(it.pairs or {}) do
             if p.short and (notes or not CM.NoteOnly(p)) then lines[#lines + 1] = { tostring(p.label) .. ": " .. CM.PairText(p, not notes) } end
@@ -924,16 +969,67 @@ function TT.HookCharStatRows()
     end
 end
 
+-- Changes the kept models read that may not run PaperDollFrame_UpdateStats (section head). 12.1.5 documentation, events.md:
+--   PLAYER_EQUIPMENT_CHANGED (equipmentSlot: number, hasCurrent: bool) · SynchronousEvent · PaperDollInfo   (line 1174)
+--   GET_ITEM_INFO_RECEIVED (itemID: number, success: bool) · SynchronousEvent · Item                      (line 673)
+--   SOCKET_INFO_UPDATE · SynchronousEvent · ItemSocketInfo                                                  (line 1409)
+--   ENCHANT_SPELL_COMPLETED (successful: bool, enchantedItem: ItemLocation (ItemLocationMixin)?) · SynchronousEvent · Spell (line 558)
+--   SPELLS_CHANGED · UniqueEvent · SpellBook                                                                (line 1428)
+--   PLAYER_REGEN_ENABLED · SynchronousEvent · Unit                                                          (line 1207)
+--   ADDON_RESTRICTION_STATE_CHANGED (type: AddOnRestrictionType, state: AddOnRestrictionState) · SynchronousEvent · RestrictedActions
+--                                                                                                           (line 37)
+-- None of their payloads is read (each only clears the kept table). Registered only while the window is shown and the lines are on.
+-- (PLAYER_SPECIALIZATION_CHANGED is not listed: a spec change changes the window's own numbers, and SPELLS_CHANGED follows it. INFERENCE.)
+local CHARSTAT_DROP_EVENTS = { "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED", "SOCKET_INFO_UPDATE", "ENCHANT_SPELL_COMPLETED", "SPELLS_CHANGED",
+    "PLAYER_REGEN_ENABLED", "ADDON_RESTRICTION_STATE_CHANGED" }
+TT.CHARSTAT_DROP_EVENTS = CHARSTAT_DROP_EVENTS
+local function CharStatEvents(listen)
+    local ev = cs.ev
+    if not ev then return end
+    ev:UnregisterAllEvents()
+    if listen then for _, e in ipairs(CHARSTAT_DROP_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
+end
+
+local hookOwner   -- the frame the window hooks sit on (PaperDollFrame, else CharacterFrame); a local, nothing written on it
+local function OwnerVisible()
+    if not hookOwner then return false end
+    local ok, v = pcall(function() if hookOwner.IsVisible then return hookOwner:IsVisible() end end)
+    if ok and v ~= nil then return v and true or false end
+    local ok2, s = pcall(function() return hookOwner:IsShown() end)
+    return (ok2 and s) and true or false
+end
+
 -- placed the first time the lines are on (from TT.Sync), never before (V14)
 local function HookCharStats()
     if cs.hooked then return end
     local owner = _G.PaperDollFrame or _G.CharacterFrame
     if not (owner and owner.HookScript) then return end
     cs.hooked = true
-    owner:HookScript("OnShow", function() if TT.charStatsOn then TT.HookCharStatRows() end end)
-    if type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
-        hooksecurefunc("PaperDollFrame_UpdateStats", function() if TT.charStatsOn then TT.HookCharStatRows() end end)
+    hookOwner = owner
+    if not cs.ev and type(CreateFrame) == "function" then
+        cs.ev = CreateFrame("Frame")
+        cs.ev:SetScript("OnEvent", DropKept)
     end
+    owner:HookScript("OnShow", function()
+        cs.windowOpen = true
+        if not TT.charStatsOn then return end
+        DropKept()
+        CharStatEvents(true)
+        TT.HookCharStatRows()
+    end)
+    owner:HookScript("OnHide", function()
+        cs.windowOpen = false
+        if kept.stats or kept.all then DropKept() end
+        if TT.charStatsOn then CharStatEvents(false) end
+    end)
+    if type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
+        hooksecurefunc("PaperDollFrame_UpdateStats", function()
+            if not TT.charStatsOn then return end
+            DropKept()
+            TT.HookCharStatRows()
+        end)
+    end
+    cs.windowOpen = OwnerVisible()   -- (the lines switched on with the window already open)
 end
 
 -- what TT.Sync does for this option: the tie-ins are read only while it is wanted
@@ -942,10 +1038,12 @@ function TT.CharStatsSync()
     if want then TT.CharStatsReadTieIns() end
     local on = (want and cs.icdOn and cs.CM ~= nil) and true or false
     TT.charStatsOn = on
+    DropKept()
     if on then
         HookCharStats()
         TT.HookCharStatRows()
     end
+    CharStatEvents(on and cs.windowOpen)
 end
 
 -------------------------------------------------------------------------------

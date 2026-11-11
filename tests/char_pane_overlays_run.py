@@ -355,6 +355,7 @@ check("  ...an empty socket: the game's string for its type (\"Prismatic Socket\
 -- a gem whose name the game has not loaded yet: the icon only, the name when the item info arrives (GET_ITEM_INFO_RECEIVED)
 local saved = GEM_INFO[240889].name
 GEM_INFO[240889].name = nil
+ForgetModel()   -- (a fresh read: the model keeps a loaded slot by its item link)
 RSA()
 local hb = sockets("HeadSlot")[1]
 local before = hb and hb.text and hb.text.text

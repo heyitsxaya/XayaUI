@@ -123,8 +123,9 @@ QA.Register("audit-shopping-ah", { title = "Shopping List: Auction House list ke
 -------------------------------------------------------------------------------
 local ct = {}   -- remembered: { panel }
 local function CT() return SV("statCalcDebug") end   -- (Dev Assist 0.7.70: XayaUI Bonus Features', the Stat Calculator moved there)
--- (V25 R3) the walkthrough id keeps its old internal name: XayaUIDevAssistDB.qa.results is keyed by it
-QA.Register("audit-char-toolkit-events", { title = "Stat Calculator: panel off registers no panel events (D17)", qa = "E1z226", order = 332, prefill = true, steps = {
+-- (SC-009 / SC-025, 2026-11-10) renamed from its old id: a result saved under the old id stays in XayaUIDevAssistDB.qa.results as a
+-- Dev Assist record only (nothing reads it); this walkthrough starts with no result
+QA.Register("audit-statcalc-events", { title = "Stat Calculator: panel off registers no panel events (D17)", qa = "E1z226", order = 332, prefill = true, steps = {
     { text = "Press |cffffd100Do it for me|r: XayaUI remembers whether the Stat Calculator's panel is on, then switches the panel part off (the Stat Calculator stays on).\n\n|cffffd100Expect:|r none of the panel's events are registered: no cooldown event (each cast would read the GCD for a hidden panel), no stat events.",
         setup = function()
             local T = CT(); if not T then error("XayaUI QoL is off") end
@@ -140,8 +141,13 @@ QA.Register("audit-char-toolkit-events", { title = "Stat Calculator: panel off r
         setup = function() local T = CT(); if T and ct.panel ~= nil then local c = T.Cfg(); c.panel = ct.panel; T.Apply() end; ct = { done = true } end,
         check = function() local T = CT(); if not T then return false, "XayaUI QoL is off" end
             local c = T.Cfg()
-            local ok = ct.done == true and ((c.panel and T.Registered("SPELL_UPDATE_COOLDOWN")) or (not c.panel and not T.Registered("SPELL_UPDATE_COOLDOWN")))
-            return ok and true or false, ("panel %s; cooldown event %s"):format(c.panel and "on" or "off", T.Registered("SPELL_UPDATE_COOLDOWN") and "registered" or "not registered") end },
+            -- (SC-081) the panel part on: the stat events are back; the cooldown event only while the panel is shown
+            local sc = SV("statCalc")
+            local shown = (sc and sc.Shown and sc.Shown()) and true or false
+            local cd = T.Registered("SPELL_UPDATE_COOLDOWN")
+            local ok = ct.done == true and ((c.panel and T.Registered("UNIT_STATS") and cd == shown) or (not c.panel and not T.Registered("UNIT_STATS") and not cd))
+            return ok and true or false, ("panel %s, %s; stat events %s; cooldown event %s"):format(c.panel and "on" or "off", shown and "shown" or "closed",
+                T.Registered("UNIT_STATS") and "registered" or "not registered", cd and "registered" or "not registered") end },
 } })
 
 -------------------------------------------------------------------------------

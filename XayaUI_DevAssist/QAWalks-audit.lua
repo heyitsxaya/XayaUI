@@ -308,7 +308,7 @@ QA.Register("audit-spelling", { title = "American spelling in the addon's texts 
             if n == 0 then return nil, "no text could be read (the settings addon's texts were not found)" end
             return #found == 0, #found == 0 and ("%d texts read, none with a British spelling"):format(n) or (#found .. " found: " .. Short(table.concat(found, " | "), 160))
         end },
-    { text = "Look around the settings window (Display tab of a bar cue, Character Pane > Stat list, Release Guard, Enhanced Tooltips) and the What's New pane.\n\n|cffffd100Expect:|r \"color\", \"center\", \"catalog\", \"flavor\", and \"grey\" everywhere. Note any word that still looks British.",
+    { text = "Look around the settings window (Display tab of a bar cue, Improved Character Display > Stat list, Release Guard, Enhanced Tooltips) and the What's New pane.\n\n|cffffd100Expect:|r \"color\", \"center\", \"catalog\", \"flavor\", and \"grey\" everywhere. Note any word that still looks British.",
         noVerdict = true, check = function() return true, "by eye: note anything you find" end },
 } })
 

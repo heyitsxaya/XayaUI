@@ -144,7 +144,7 @@ check("  ...no field of ours on Blizzard's slot button, tab, stat category or st
   xuiKeys(CharacterHeadSlot) .. "|" .. xuiKeys(CharacterFrameTab1) .. "|" .. xuiKeys(STATROWS[2]))
 
 -- 6. Hooks keep it current ----------------------------------------------------------------------------------------------------
-ITEMS.Helm.ilvl = 340
+ITEMS.Helm.ilvl = 340; ForgetModel()   -- (the model keeps a worn slot by its item link; in the game a swapped item has a new link)
 -- (V25 R2; her rule "window closed = no editing code runs": a lasting hook returns at once unless the window is open)
 CharacterFrame:Hide()
 local oldArt = CharacterHeadSlotFrame
@@ -156,7 +156,7 @@ CharacterHeadSlotFrame = oldArt
 CharacterFrame:Show()
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
 check("a slot Blizzard updates (an item swapped) gets its new item level (hook)", SD_(CharacterHeadSlot).ilvl.text == "340", SD_(CharacterHeadSlot).ilvl.text)
-ITEMS.Helm.ilvl = 336
+ITEMS.Helm.ilvl = 336; ForgetModel()
 
 -- 7. Each part has its own switch; off puts everything back -------------------------------------------------------------------
 rc.chrome = false; RSA()
@@ -166,7 +166,7 @@ rc.chrome = true; rc.ilvl = false; RSA(); ns.CharDisplay_UpdateOverlays()
 check("'Item level' off: ours hidden, the slot overlay's item level back", not SD_(CharacterHeadSlot).ilvl.shown and tostring(ns.CharDisplay_OverlayText("HeadSlot")):find("336", 1, true) ~= nil,
   tostring(ns.CharDisplay_OverlayText("HeadSlot")))
 rc.ilvl = true; rc.stats = false; RSA()
-check("'Stat list' off: the row art and colours back", STATROWS[1].Background.alpha == 1 and col(STATROWS[1].Label.color, 1, 0.82, 0) and not RX_(STATROWS[2]).stripe.shown)
+check("'Stat list colors' off: the row art and colours back", STATROWS[1].Background.alpha == 1 and col(STATROWS[1].Label.color, 1, 0.82, 0) and not RX_(STATROWS[2]).stripe.shown)
 rc.stats = true; rc.enabled = false; RSA()
 check("switched off: every faded region back to its alpha", CharacterFrame.NineSlice.alpha == 1 and CharacterFrame.Inset.Bg.alpha == 1 and _G[MODEL[1]].alpha == 1
   and CharacterHeadSlotFrame.alpha == 1 and CharacterHeadSlot.normal.alpha == 1 and CharacterFrameTab1.TabTextures[1].alpha == 1 and ns.CharReskinDiag.faded == 0)

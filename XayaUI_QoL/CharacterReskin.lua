@@ -30,8 +30,8 @@
 --     then a thin border, the theme's pane color behind the stats pane, a softer fill behind the model, theme-colored title and tabs.
 --   * Wider window (QoL 0.7.22, requirement A6; on by default with the reskin): the room between the slot columns and the model that
 --     Improved Character Display's blocks use (notes at "The wider window" below).
---   * Stat list: the row and header art goes; theme-colored headers with a thin rule, labels, values and a faint stripe on every other
---     row (where Blizzard shows its own).
+--   * Stat list colors (Blizzard's own stat list): the row and header art goes; theme-colored headers with a thin rule, labels, values
+--     and a faint stripe on every other row (where Blizzard shows its own).
 --   * Safety (as the Game Menu skin): any error while applying turns the reskin off for the session and gives Blizzard's look back.
 -- NOT RUN IN GAME when written: QA E1z6 (E1z40-E1z44 for QoL 0.7.22). The split itself is UNVERIFIED IN GAME.
 -------------------------------------------------------------------------------
@@ -763,7 +763,8 @@ function ns.BuildCharReskinPage(Notify)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "Blizzard's character window in XayaUI's look: a solid background, a clean flat window, a wider window that gives the item details room beside the model, and a tidy stat list. The item level, enchant and gem details and the full stat list are in QoL > Improved Character Display. The window works as before, in and out of combat. Off by default." },
             chrome = T("chrome", 2, "Clean window", "Removes Blizzard's frame art for a thin border and theme colors. Off keeps Blizzard's art over the solid background.", "full", isOff),
-            stats = T("stats", 6, "Stat list", "Colors the stat list with the theme, with a faint stripe on every other row instead of Blizzard's art.", "full", isOff),
+            -- (SC-103) "Stat list colors", not "Stat list": Improved Character Display has a page named Stat list (XayaUI's own full list)
+            stats = T("stats", 6, "Stat list colors", "Colors Blizzard's stat list with the theme and a faint stripe on every other row (not seen under Improved Character Display's full stat list).", "full", isOff),
             wide = T("wide", 7, "Wider window (room for the enchant names)", "Widens the Character tab so the enchant and gem lines sit between the slots and the model. Changes out of combat only.", "full", isOff),
             widePx = R("widePx", 8, "Extra width", "Sets how much wider than Blizzard's window, in pixels (default 42). Each side of the model gets half.", 0, 300, 1, false,
                 function() return isOff() or not C().wide end),

@@ -22,6 +22,20 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-11 — Stat Calculator Fixes
+
+### Bonus Features 0.6.40
+
+**Stat Calculator**
+- In combat it now stays hidden and silent, does no work, and lets go of the keyboard; it comes back after combat.
+- Stat Weights shows an Influences column when the titles fit.
+
+### Quality of Life 0.7.57
+
+**Stat Calculator**
+- The Gear tab compares against the item you really wear in that slot.
+- Ability Scaling works with XayaUI Rules off.
+
 ## 2026-11-08 — Gradient Borders
 
 ### XayaUI 0.6.81

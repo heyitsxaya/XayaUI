@@ -75,6 +75,19 @@ local CM = setmetatable({}, { __index = function(_, k) local m = Model(); if m t
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
 local function isSecret(v) return CM.IsSecret(v) end
 
+-- (V26, Xaya A24 #3 "Hide silently") in combat the panel and the Stat Calc button are hidden with no message, and nothing opens it:
+-- `combatHidden` is set at PLAYER_REGEN_DISABLED (the game fires it just before its combat lockdown begins) and cleared at
+-- PLAYER_REGEN_ENABLED; InCombatLockdown() covers the time this file was not listening (switched on, or the login, in combat).
+-- Plain frames only (nothing protected), so hiding them in combat is allowed; the character window itself is never touched.
+-- (SC-001 / SC-045) Every way in (the draw, ns.StatCalc_Render, and every input: a typed number, a picked item, a fold, a tab, a
+-- filter, the Min / Max button, the statCalc service's wrappers) checks this first: in combat nothing here builds the stat model,
+-- draws, or changes the saved settings, and nothing is said. The stat model itself (StatModel.lua) has no such gate: Enhanced
+-- Tooltips' character-stat lines read it in combat.
+local combatHidden = false
+local function InCombat() return combatHidden or (type(InCombatLockdown) == "function" and InCombatLockdown() and true) or false end
+-- (QAWalks-statcalc-fixes.lua) how many stat models this file has built (ns.StatCalc_Render); read only, through statCalcDebug.Builds
+local modelBuilds = 0
+
 -------------------------------------------------------------------------------
 -- Settings
 -------------------------------------------------------------------------------
@@ -177,6 +190,7 @@ ns.StatCalc_Cfg = Cfg
 -- (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #88: "make each stat collapsible"; her answer "Collapsed (Recommended)") open or fold one stat
 -- of the Stats tab (its rows: what feeds it, with the number); remembered per stat in the saved settings (statOpen), folded by default
 function ns.StatCalc_ToggleStat(key)
+    if InCombat() then return end   -- (V26) nothing changes or draws in combat
     local c = Cfg(); if not (c and type(key) == "string") then return end
     c.statOpen[key] = (not c.statOpen[key]) and true or nil
     ns.StatCalc_Render()
@@ -304,6 +318,14 @@ local function Paint(fs, col) if fs and col then fs:SetTextColor(col[1], col[2],
 -- Panel
 -------------------------------------------------------------------------------
 local panel, scroll, content
+-- (SC-081 / SC-020) the panel's own show / hide: which events it listens to while it is shown (below, "Events"); declared here because
+-- the panel is made (Build) before that part of the file
+local OnPanelShown, OnPanelHidden, NoteWantedItems, SyncPanelEvents
+-- (SC-085 / SC-049, round 2) the bag list and the talent scan the model keeps (StatModel.lua: KC.owned until CM.ForgetOwned, the talent
+-- scan until CM.ClearTalents) are kept right by BAG_UPDATE_DELAYED / the talent events only while their tab is shown (TAB_EVENTS). While
+-- those events are not heard (panel closed, another tab, combat) a change is missed, so the tab's first draw after that reads them again,
+-- once. Set whenever the panel's events stop covering that tab (RegisterPanelEvents); used by ns.StatCalc_Render before the model build.
+local bagsStale, talentsStale = true, true
 -- spacing from core (#351 phase 2, XayaUI/Modules.lua): PAD = the margin inside the panel, GUT = the gutter between two controls
 local PANEL_W, PAD, GUT = 450, ns.UI_MARGIN, ns.UI_GUTTER   -- 450 (QoL 0.7.21, Xaya: "up to 450px" so every column fits; was 380)
 local TITLE_H = 18            -- the title row (the mode button is 18 tall)
@@ -417,6 +439,7 @@ end
 
 -- (QoL 0.7.36, UI-39) fold or open one spell of the Ability Scaling table ("spell:<item key>"), then draw again
 function ns.StatCalc_ToggleSpell(key)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not (c and key) then return end
     c.collapsed = c.collapsed or {}
     c.collapsed[key] = (not c.collapsed[key]) and true or nil
@@ -438,6 +461,7 @@ local function Hdr()
         h.text:SetPoint("LEFT", h, "LEFT", 0, 1)
         h.text:SetJustifyH("LEFT")
         h:SetScript("OnClick", function(self)
+            if InCombat() then return end   -- (V26)
             local c = Cfg(); if not (c and self.key) then return end
             -- (a section folded by default, the Inactive spells, keeps an explicit false once opened)
             if self.defaultFolded then c.collapsed[self.key] = not self.folded
@@ -474,6 +498,7 @@ local function SpellDataButton()
 end
 -- the filter menu: None (shows all), Offense, Defense, Utility; the chosen one is saved (c.spellFilter) and marked
 function ns.StatCalc_SetSpellFilter(f)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     c.spellFilter = f
     c.spellFilter = CM.FilterOf(c)
@@ -532,6 +557,7 @@ local function FilterIcon()
     end
     b.dot = b:CreateTexture(nil, "OVERLAY"); b.dot:SetSize(5, 5); b.dot:SetPoint("TOPRIGHT", b, "TOPRIGHT", -1, -1)
     b:SetScript("OnClick", function(self)
+        if InCombat() then return end   -- (V26)
         local m = FilterMenu()
         if m:IsShown() then m:Hide() else m:Show(); ns.StatCalc_Render() end
     end)
@@ -659,6 +685,7 @@ end
 -- Panel input: a stat map box ("sv:" + stat key), a What If stat key, "primary", or "item" (the Gear comparison's
 -- item: a link or an ID). (QoL 0.7.14: a compared item no longer fills the map's boxes; the Gear tab shows what it changes itself.)
 function ns.StatCalc_SetInput(key, text)
+    if InCombat() then return end   -- (V26, SC-001) a typed number or a compared item in combat changes nothing and builds nothing
     local c = Cfg(); if not c then return end
     if key == "item" then
         local t = tostring(text or "")
@@ -688,12 +715,14 @@ function ns.StatCalc_SetInput(key, text)
 end
 -- the equipped item to compare against when two could be replaced (Gear > "Replace instead")
 function ns.StatCalc_SetCompareSlot(slot)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     CM.compareSlot, CM.gearSlot = slot, slot
     ns.StatCalc_Render()
 end
 -- the Spells tab's buttons: Configure spell data (turns Spell Math on and reads everything, #377) and Refresh spell data
 function ns.StatCalc_Action(action)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     if action == "configureSpells" then c.advanced = true end
     if action == "configureSpells" or action == "refreshSpells" then
@@ -706,6 +735,7 @@ end
 -- Gear: a clicked equipped item picks its slot; an item compared before that does not fit the slot is let go. QoL 0.7.24 (Xaya:
 -- "clicking it again should deselect it"): a click on the selected one lets it go and clears the comparison.
 function ns.StatCalc_SelectGearSlot(slot)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     local st = CM.CompareState and CM.CompareState()
     if slot ~= nil and st and st.slot == slot then
@@ -727,6 +757,7 @@ end
 -- QoL 0.7.24: a bag item clicked again is let go (several can be picked: CM.compareLinks); the box shows the last one picked. add:
 -- never let go (a dropped item).
 function ns.StatCalc_PickItem(text, slot, add)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     local t = tostring(text or "")
     if slot then CM.gearSlot, CM.compareSlot = slot, slot end
@@ -858,6 +889,7 @@ local function Build()
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
         b.key, b.label = t[1], t[2]
         b:SetScript("OnClick", function()
+            if InCombat() then return end   -- (V26)
             local c = Cfg(); if not c then return end
             c.tab = t[1]
             if scroll then scroll:SetVerticalScroll(0) end
@@ -906,6 +938,10 @@ local function Build()
     if type(hooksecurefunc) == "function" and type(hookTargets) == "function" then
         for _, t in ipairs(hookTargets("InsertLink")) do pcall(hooksecurefunc, t[1], t[2], InsertLink) end
     end
+    -- (SC-081 / SC-020) our own frame's show and hide (HookScript on the panel itself, never on a Blizzard frame): the events that matter
+    -- only while it is shown (the cooldown read, bags on Gear, talents on Ability Scaling) are listened to then, and let go when it hides
+    panel:HookScript("OnShow", function() if OnPanelShown then OnPanelShown() end end)
+    panel:HookScript("OnHide", function() if OnPanelHidden then OnPanelHidden() end end)
     panel:Hide()
 end
 
@@ -1352,26 +1388,35 @@ local function RenderGrid(c, items, y, hasBox)
 end
 
 -- The Stat Weights pane (QoL 0.7.23): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences. Influences is a column of
--- its own once the panel is wide enough (content 560 or wider), else it goes under its row, from one indent in to the right edge. Every
+-- its own (SC-102, below; until then only from content 560 up, else under its row). Every
 -- cell wraps inside its column. A row's hover is the whole row: "{stat} increases / decreases {other stat} by {amount}", one line per
 -- influence (CM: it.tip).
 -- QoL 0.7.28 (Xaya 2026-11-06, her words: "center columns under stat weights and make sure titles do not get clipped; numbers should be
 -- left-aligned; T/L rating should be T: # [line break] L: "; her answer "Titles centred over columns"; in game "Rating (P / %)" wrapped
 -- and "DR Thres..." was cut at the default width): the widths come from the titles and cells as the game measures them (TextW), not
 -- from fixed numbers: every column is at least as wide as the widest word of its title and cells (nothing is cut), then wide enough
--- for its title on one line, then for its widest cell (FitCols); the Stat column (narrow panel) or Influences (wide panel) takes the
--- rest. Titles are centred over their columns; every cell starts at its column's left edge; the T/L cell is two lines.
-local WT_WIDE = 560
+-- for its title on one line, then for its widest cell (FitCols); Influences takes the rest (SC-102). Titles are centred over their
+-- columns; every cell starts at its column's left edge; the T/L cell is two lines.
 local WT_TITLES = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
+-- (SC-102; Xaya S1 #36, her exact columns "Stat | Rating (P / %) | PPP | | DR Threshold | T/L Rating | Influences") Influences is the sixth
+-- column wherever all six titles fit on one line beside the cells' widest words (the default width at the default text; until then only
+-- from content 560 up), otherwise a labeled line under each row (WeightCols, round 2: one-line titles, #60, are kept): it takes the
+-- width the other five leave, its names wrap at their spaces, and its cell is the model's text without the leading "Influences: " (the
+-- column's title says it). The model still writes that label into it.influences (StatModel.lua); this strips that one leading label only.
+local INFL_LABEL = "Influences: "
+local function InflText(t)
+    t = tostring(t or "")
+    if t:sub(1, #INFL_LABEL) == INFL_LABEL then return t:sub(#INFL_LABEL + 1) end
+    return t
+end
+ns.StatCalc_InflText = InflText   -- (tests)
 local function WeightCols(items, size)
     size = size or 11
     local hs = size - 1
     local titles = WT_TITLES
     for _, it in ipairs(items or {}) do if it.kind == "weighthead" and type(it.cols) == "table" then titles = it.cols end end
-    local g = { wide = W >= WT_WIDE, titles = titles }
-    local n = g.wide and 6 or 5
     local spec = {}
-    for i = 1, n do
+    for i = 1, 6 do
         local t = titles[i] or ""
         spec[i] = { min = WordW(t, hs), line = TextW(t, hs), want = TextW(t, hs) }
     end
@@ -1387,8 +1432,24 @@ local function WeightCols(items, size)
             local cs = it.cells or {}
             for j = 1, 4 do Cell(j + 1, cs[j], size) end
             if it.pppDR then Cell(3, it.pppDR, size - 1) end
-            if g.wide then spec[6].min = math.max(spec[6].min, WordW(it.influences, size - 1)) end
+            -- (the names wrap at their spaces: only the widest word is a must; the rest of the width goes to this column)
+            spec[6].min = math.max(spec[6].min, WordW(InflText(it.influences), size - 1))
         end
+    end
+    spec[6].want = spec[6].min
+    -- (round 2) Influences is a column only when all six column titles fit on one line each AND every cell's widest word fits beside
+    -- them: the kept rule "every column title on one line at the default width" (#60, tests/char_stat_round_run.py) is never broken to
+    -- make room for the sixth column. Where that does not fit (a wide font at the default width, the narrowest panels, the largest text)
+    -- the influences go under their row, as before, so nothing is cut. (OPEN for Xaya, V16: S1 #36's six columns vs #60's one-line titles
+    -- where both cannot hold.)
+    local need = 5 * GUT
+    for i = 1, 6 do need = need + math.max(spec[i].min, spec[i].line) end
+    local g = { wide = need <= W, titles = titles }
+    local n = g.wide and 6 or 5
+    if g.wide then
+        for i = 1, 6 do spec[i].min = math.max(spec[i].min, spec[i].line) end
+    else
+        spec[6] = nil
     end
     local w = FitCols(spec, W - (n - 1) * GUT, g.wide and 6 or 1)
     g.w = w
@@ -1397,7 +1458,13 @@ local function WeightCols(items, size)
     g.px = g.rx + g.rat + GUT
     g.dx = g.px + g.ppp + GUT
     g.tx = g.dx + g.dr + GUT
-    if g.wide then g.ix = g.tx + g.tl + GUT; g.iw = w[6] else g.ix = 12; g.iw = W - 12 end
+    if g.wide then
+        g.ix = g.tx + g.tl + GUT
+        g.iw = math.max(0, W - g.ix)
+        g.w[6] = g.iw
+    else
+        g.ix, g.iw = 12, W - 12
+    end
     g.xs = { 0, g.rx, g.px, g.dx, g.tx, g.wide and g.ix or nil }
     return g
 end
@@ -1432,9 +1499,10 @@ local function RenderWeights(c, items, y)
             h = math.max(h, PlaceLines(g.dx, y, g.dr, size, cs[3] or "", cText, "LEFT", "wdr"))
             h = math.max(h, PlaceLines(g.tx, y, g.tl, size, cs[4] or "", cText, "LEFT", "wtl"))
             if g.wide then
-                h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, size - 1, it.influences or "", cMuted, "LEFT", true, "winfl"))
+                h = math.max(h, PlaceFS(FS(), g.ix, y, g.iw, size - 1, InflText(it.influences), cMuted, "LEFT", true, "winfl"))
             else
-                h = h + 1 + PlaceFS(FS(), g.ix, y + h + 1, g.iw, size - 1, it.influences or "", cMuted, "LEFT", true, "winfl")
+                -- (round 2) under the row there is no Influences title over it: the line keeps its "Influences: " label, as before SC-102
+                h = h + 1 + PlaceFS(FS(), g.ix, y + h + 1, g.iw, size - 1, INFL_LABEL .. InflText(it.influences), cMuted, "LEFT", true, "winfl")
             end
             y = y + h + 1
             local b = Btn()   -- the whole row hovers: what the stat feeds, in words
@@ -2151,6 +2219,9 @@ local function RenderHeader(c)
 end
 
 function ns.StatCalc_Render()
+    -- (V26, SC-001 / SC-045) the one gate for every draw: in combat no stat model is built and nothing is drawn, whoever asks (an input,
+    -- an event, the theme, the character window's hooks, a walkthrough); the panel is hidden then and is drawn again after combat
+    if InCombat() then return end
     local c = Cfg(); if not c or not panel then return end
     ApplyWidth(c)
     RenderHeader(c)
@@ -2178,6 +2249,14 @@ function ns.StatCalc_Render()
     end
     nFS, nBtn, nHdr, nIcon, nTex = 0, 0, 0, 0, 0
     for _, eb in pairs(boxes) do eb.xuiUsed = false end
+    if c.tab == "gear" and bagsStale then
+        bagsStale = false
+        if CM.ForgetOwned then CM.ForgetOwned() end
+    elseif c.tab == "spells" and talentsStale then
+        talentsStale = false
+        if CM.ClearTalents then CM.ClearTalents() end
+    end
+    modelBuilds = modelBuilds + 1
     local m = CM.Build(c, c.tab)
     panel.model = m
     local y
@@ -2194,6 +2273,8 @@ function ns.StatCalc_Render()
     -- the height: the Min / Max mode's (QoL 0.7.23; before, the content's height up to the character window's, or the dragged one)
     if not panel.sizing then panel:SetHeight(c.sizeMode == "large" and c.heightLarge or c.heightSmall) end
     Place()
+    if NoteWantedItems then NoteWantedItems(c, m) end   -- (SC-020) the items this draw shows: GET_ITEM_INFO_RECEIVED redraws only for them
+    if SyncPanelEvents then SyncPanelEvents(c) end       -- (SC-020) a new tab listens to its own events (Gear: bags; Ability Scaling: talents)
 end
 
 -- what the panel drew last: { model, layout records, mode button text }; for the tests
@@ -2212,12 +2293,7 @@ end
 -- Display's Stat Calc button registers here (statCalc.OnState) once, while it is on; nothing else does. Told at the same moments the
 -- button was repainted before the move (the window's show, Apply, SetOpen).
 local stateListeners = {}
--- (V26, Xaya A24 #3 "Hide silently") in combat the panel and the Stat Calc button are hidden with no message, and nothing opens it:
--- `combatHidden` is set at PLAYER_REGEN_DISABLED (the game fires it just before its combat lockdown begins) and cleared at
--- PLAYER_REGEN_ENABLED; InCombatLockdown() covers the time this file was not listening (switched on, or the login, in combat).
--- Plain frames only (nothing protected), so hiding them in combat is allowed; the character window itself is never touched.
-local combatHidden = false
-local function InCombat() return combatHidden or (type(InCombatLockdown) == "function" and InCombatLockdown() and true) or false end
+-- (V26) combatHidden and InCombat(): at the top of this file
 local function PanelAvailable()
     local c = Cfg()
     return (c and c.enabled and c.panel and not InCombat()) and true or false
@@ -2281,18 +2357,74 @@ local STAT_EVENTS = { "COMBAT_RATING_UPDATE", "MASTERY_UPDATE", "PLAYER_EQUIPMEN
 local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "UNIT_RANGED_ATTACK_POWER", "UNIT_ATTACK_SPEED", "UNIT_DAMAGE",
     "UNIT_MAXHEALTH", "UNIT_RESISTANCES", "UNIT_SPELL_HASTE" }
 -- (QoL 0.7.23: durability, repair and the vendor events left with the Durability and repair section)
+-- (SC-081) only while the panel is shown, out of combat: the cooldown read (SPELL_UPDATE_COOLDOWN fires on every cast; with the panel
+-- closed a cast costs this file nothing). (SC-085 / SC-049, event side) and per tab: the bags while Gear is shown (an item looted with
+-- the tab open shows at once), the talents while Ability Scaling is shown (BAG_UPDATE_DELAYED, events.md:146; TRAIT_CONFIG_UPDATED,
+-- events.md:1536; PLAYER_TALENT_UPDATE, events.md:1222).
+local SHOWN_EVENTS = { "SPELL_UPDATE_COOLDOWN" }
+local TAB_EVENTS = { gear = { "BAG_UPDATE_DELAYED" }, spells = { "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE" } }
 
+-- one redraw at most every 0.25 s, only while the panel is up and out of combat (SC-020: one function for the whole file, not a new
+-- closure per call)
+local function RunRefresh()
+    pending = false
+    if panel and panel:IsShown() and not InCombat() then ns.StatCalc_Render() end
+end
 local function Refresh()
     if pending then return end
     pending = true
-    local run = function() pending = false; if panel and panel:IsShown() and not InCombat() then ns.StatCalc_Render() end end
-    if C_Timer and C_Timer.After then C_Timer.After(0.25, run) else run() end
+    if C_Timer and C_Timer.After then C_Timer.After(0.25, RunRefresh) else RunRefresh() end
 end
 
 local function ReadGCD()
     if CM.ReadGCD() and panel and panel:IsShown() then Refresh() end
 end
 ns.StatCalc_ReadGCD = ReadGCD
+
+-- (SC-020) the items the last draw shows or asked for: every equipped slot (1-19, INVSLOT_FIRST_EQUIPPED to INVSLOT_LAST_EQUIPPED, read
+-- as Blizzard's PaperDollFrame.lua reads them: GetInventoryItemLink, undocumented in docs/reference/api, INFERENCE), the compared items
+-- (their links, or the typed item ID the model asked the game to load), and on the Gear tab every item icon it drew (the equipped
+-- icons and the bag items for the picked slot). GET_ITEM_INFO_RECEIVED (itemID: number, success: bool; events.md:673) redraws only
+-- for one of these, so the Auction House or a bag sort does not redraw the panel. Kept in one table, refilled per draw.
+local wantItems = {}
+local function ItemIdOf(x)
+    if x == nil or isSecret(x) then return nil end
+    if type(x) == "number" then return x end
+    if type(x) ~= "string" then return nil end
+    local id = x:match("item:(%d+)") or x:match("^%s*(%d+)%s*$")
+    return id and tonumber(id) or nil
+end
+local function Want(x) local id = ItemIdOf(x); if id then wantItems[id] = true end end   -- (one function for the file, SC-020)
+NoteWantedItems = function(c, m)
+    for k in pairs(wantItems) do wantItems[k] = nil end
+    if type(GetInventoryItemLink) == "function" then
+        for slot = 1, 19 do Want(GetInventoryItemLink("player", slot)) end   -- (not protected: a plain call)
+    end
+    for _, l in ipairs(type(CM.compareLinks) == "table" and CM.compareLinks or {}) do Want(l) end
+    Want(CM.compareText)
+    if c and c.tab == "gear" and type(m) == "table" then
+        for _, sec in ipairs(m.sections or {}) do
+            for _, it in ipairs(sec.items or {}) do
+                for _, ic in ipairs(type(it.icons) == "table" and it.icons or {}) do Want(ic.link) end
+            end
+        end
+    end
+end
+local function WantsItem(id)
+    if id == nil or isSecret(id) or type(id) ~= "number" then return false end
+    return wantItems[id] == true
+end
+-- (SC-020) the tabs whose model reads the target (StatModel.lua: HasAttackableTarget / C_PaperDollInfo.GetArmorEffectivenessAgainstTarget,
+-- "» Against your target"): the stat map, so the Stats tab, and the Gear tab while it compares an item (its "Changes" build the stat
+-- map once per compared item, CM.StatMapSections). Ability Scaling reads no target: tab-targeting does not redraw it.
+local function ReadsTarget(c)
+    if not c then return false end
+    if c.tab == "stats" then return true end
+    if c.tab == "gear" then
+        return (type(CM.compareLinks) == "table" and #CM.compareLinks > 0) or (type(CM.compareText) == "string" and CM.compareText ~= "")
+    end
+    return false
+end
 
 -- the character window opened: the panel docks beside it when it was left open (c.panelOpen, kept between sessions; QoL 0.7.23, Xaya
 -- 2026-11-05: "remember the last-left state on next open")
@@ -2313,25 +2445,54 @@ local function ShowIfDocked()
 end
 
 -- the panel's events (D17, V14: only while the Stat Calculator and its "Show the panel" part are on). (V26) In combat the frame listens
--- to PLAYER_REGEN_ENABLED only: no stat, unit or cooldown event reaches this file until combat ends.
-local function RegisterPanelEvents(c)
+-- to PLAYER_REGEN_ENABLED only: no stat, unit or cooldown event reaches this file until combat ends. (SC-081 / SC-020) What it listens
+-- to follows one key: off (nothing), combat, closed (the stat events, so the panel is right when it opens, and the start of combat), or
+-- open on a tab (also the cooldown read and that tab's own events). The frame's events change only when the key changes: at the panel's
+-- show and hide, a tab change, combat, and Apply (force).
+local evKey
+local function EventsKey(c)
+    if not (c and c.enabled and c.panel) then return nil end
+    if InCombat() then return "combat" end
+    if not (panel and panel:IsShown()) then return "closed" end
+    return "open:" .. tostring(c.tab)
+end
+local function RegisterPanelEvents(c, force)
     if not ev then return end
+    local key = EventsKey(c)
+    if key == evKey and not force then return end
+    evKey = key
+    -- (round 2) a tab whose own events stop being heard here may miss a change: its next first draw reads again (bagsStale / talentsStale)
+    if key ~= "open:gear" then bagsStale = true end
+    if key ~= "open:spells" then talentsStale = true end
     ev:UnregisterAllEvents()
-    if not (c and c.enabled and c.panel) then return end
-    if InCombat() then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED"); return end
+    if key == nil then return end
+    if key == "combat" then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED"); return end
     for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     for _, e in ipairs(UNIT_EVENTS) do
         if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
     end
-    pcall(ev.RegisterEvent, ev, "SPELL_UPDATE_COOLDOWN")
+    if key == "closed" then return end
+    for _, e in ipairs(SHOWN_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
+    for _, e in ipairs(TAB_EVENTS[c.tab] or {}) do pcall(ev.RegisterEvent, ev, e) end
 end
+SyncPanelEvents = function(c) RegisterPanelEvents(c) end
+-- (SC-081) the panel shows (never in combat: nothing shows it then): one GCD read, so the last readable GCD is there without listening
+-- to every cast while the panel is closed; then its shown-only events
+OnPanelShown = function()
+    if InCombat() then return end
+    CM.ReadGCD()
+    RegisterPanelEvents(Cfg())
+end
+OnPanelHidden = function() RegisterPanelEvents(Cfg()) end
 
 -- (V26, "Hide silently") combat starts: the panel hides (its saved open state, c.panelOpen, is kept), the Stat Calc button is told
--- (TellState: not available), and the events stop. No message.
+-- (TellState: not available), and the events stop. No message. (SC-002 / SC-019) First every Change box lets go of the keyboard
+-- (EditBox:ClearFocus), so a box never keeps the keys when combat starts, whatever core's KeyFocusGuard version does on hide.
 local combatWas, combatAlone = false, false
 local function EnterCombat()
     if combatHidden then return end
     combatHidden = true
+    for _, eb in pairs(boxes) do if eb.ClearFocus then eb:ClearFocus() end end
     combatWas = panel ~= nil and panel:IsShown() or false
     combatAlone = combatWas and panel.standalone == true
     if combatWas then panel:Hide() end
@@ -2362,11 +2523,13 @@ end
 local function OnEvent(_, event, unit)
     if event == "PLAYER_REGEN_DISABLED" then EnterCombat(); return end
     if event == "PLAYER_REGEN_ENABLED" then
-        CM.gcdHidden = false   -- out of combat the last readable GCD shows again
+        -- out of combat the last readable GCD shows again. (SC-081, round 2) No read here: the panel reads it when it shows again
+        -- (OnPanelShown, from LeaveCombat when it reopens); a closed panel reads it at its next open.
+        CM.gcdHidden = false
         LeaveCombat()
         return
     end
-    if combatHidden then return end
+    if InCombat() then return end
     if event == "SPELL_UPDATE_COOLDOWN" then ReadGCD(); return end
     -- the Spells tab: a description it asked for arrived, or the spellbook changed (core resets its spell list on SPELLS_CHANGED)
     if event == "SPELL_DATA_LOAD_RESULT" or event == "SPELLS_CHANGED" then
@@ -2377,7 +2540,28 @@ local function OnEvent(_, event, unit)
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     -- (Bonus 0.6.37: the slot overlays' refresh is XayaUI QoL's own, ImprovedCharacterDisplay.lua)
     if unit and unit ~= "player" and event:find("^UNIT_") then return end
-    if panel and panel:IsShown() then Refresh() end
+    if not (panel and panel:IsShown()) then return end
+    local c = Cfg()
+    -- (SC-020) busy events redraw only when what the panel shows changed
+    if event == "GET_ITEM_INFO_RECEIVED" then if WantsItem(unit) then Refresh() end; return end
+    if event == "PLAYER_TARGET_CHANGED" then if ReadsTarget(c) then Refresh() end; return end
+    -- (SC-085, event side) bags changed while Gear is shown: the model's bag list is read again (CM.ForgetOwned, when the model has it)
+    if event == "BAG_UPDATE_DELAYED" then
+        if c and c.tab == "gear" then
+            if CM.ForgetOwned then CM.ForgetOwned() end
+            Refresh()
+        end
+        return
+    end
+    -- (SC-049, event side) talents changed while Ability Scaling is shown: the model's talent scan is read again
+    if event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_TALENT_UPDATE" then
+        if c and c.tab == "spells" then
+            CM.ClearTalents()
+            Refresh()
+        end
+        return
+    end
+    Refresh()
 end
 
 -- (the extra lines on the character window's own stat tooltips: Enhanced Tooltips' option since V25 R4, XayaUI_Bonus/Tooltips.lua section 5)
@@ -2408,6 +2592,7 @@ function ns.StatCalc_Apply()
     local c = Cfg(); if not c then return end
     if not c.enabled then
         if ev then ev:UnregisterAllEvents() end
+        evKey = nil
         if panel then panel:Hide() end
         TellState()
         return
@@ -2427,7 +2612,7 @@ function ns.StatCalc_Apply()
     -- (V26) switched on in combat: it listens for the end of combat only, and shows nothing until then.
     -- The flag is read again from the game here: it may be stale when the events were off while combat ended.
     combatHidden = (type(InCombatLockdown) == "function" and InCombatLockdown()) and true or false
-    RegisterPanelEvents(c)
+    RegisterPanelEvents(c, true)
     if not ownerHooked then
         local owner = Owner()
         if owner and owner.HookScript then
@@ -2490,6 +2675,7 @@ function ns.StatCalc_Toggle()
 end
 -- the Min / Max button: the other of the two heights
 function ns.StatCalc_SizeMode(mode)
+    if InCombat() then return end   -- (V26)
     local c = Cfg(); if not c then return end
     c.sizeMode = mode or ((c.sizeMode == "large") and "small" or "large")
     if c.sizeMode ~= "large" then c.sizeMode = "small" end
@@ -2507,8 +2693,18 @@ ns.WhenSettingsReady("bonus", function()
     end)
 end)
 -- (audit QA walkthrough, D17) which of the Stat Calculator's events are registered now; its settings, and Apply after changing them
+-- (QAWalks-statcalc-fixes.lua) Builds: how many stat models the panel has built since the reload (a number, read only: nothing can set it);
+-- InCombat: whether the panel counts the player as in combat (V26)
 if ns.Provide then ns.Provide("statCalcDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.StatCalc_Apply() end,
-    Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end }) end
+    Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end,
+    Builds = function() return modelBuilds end,
+    InCombat = function() return InCombat() end,
+    -- the Change boxes the panel made and whether any has the keyboard (EditBox:HasFocus)
+    BoxFocus = function()
+        local n, focused = 0, false
+        for _, eb in pairs(boxes) do n = n + 1; if eb.HasFocus and eb:HasFocus() then focused = true end end
+        return focused, n
+    end }) end
 
 -------------------------------------------------------------------------------
 -- Settings: Bonus Features > Stat Calculator (a feature node; its parts Panel and Spell Math are nodes under it, and each
@@ -2528,8 +2724,16 @@ local function ResolveSpell(text)
 end
 ns.StatCalc_ResolveSpell = ResolveSpell
 
+-- (SC-050, tie-in side; Xaya: a tie-in is read once at load and once at the first options-window open after a reload, no repeated
+-- checks) the page's first build after a reload asks the model to read its tie-ins (which other XayaUI parts are on) once more, when
+-- the model offers that (CM.ReadTieIns); later builds do not.
+local pageBuilt = false
 function ns.BuildStatCalcPage(Notify)
     if not Cfg() then return nil end   -- (Bonus 0.6.37) no page without XayaUI QoL's model (nothing extra while it is off)
+    if not pageBuilt then
+        pageBuilt = true
+        if CM.ReadTieIns then pcall(CM.ReadTieIns, true) end
+    end
     local function C() return Cfg() or CopyVal(ns.STATCALC_DEFAULTS) end
     local function Changed() ns.StatCalc_Apply(); if Notify then Notify() end end
     local isOff = function() return not C().enabled end

@@ -271,10 +271,10 @@ D().diamond = nil
 check("  ...and the settings page a box for it", (function() local pg = ns.BuildShoppingListPage(function() end)
   for _, t in pairs(pg.args) do if type(t) == "table" and t.args and t.args.defDiamond then return true end end; return pg.args.defDiamond ~= nil end)())
 if dpop then dpop:Hide() end
-SOCKETS.Ring = { 8100 }
+SOCKETS.Ring = { 8100 }; ForgetModel()   -- (the model keeps a worn slot by its item link; in the game a gem change gives a new link)
 miss2 = Shop.Missing(c)
 check("  ...one worn (in the ring): the helm's socket asks for your normal gem again", find2("diamond", 1) == nil and find2("gem", 1) ~= nil)
-SOCKETS.Ring = { 8001 }; C_Item.GetItemUniquenessByID = nil; h.gems[8100] = nil
+SOCKETS.Ring = { 8001 }; C_Item.GetItemUniquenessByID = nil; h.gems[8100] = nil; ForgetModel()
 
 -- 10. Settings and off again ---------------------------------------------------------------------------------------------------
 local page = ns.BuildShoppingListPage(function() end)
@@ -321,10 +321,10 @@ h = Shop.History(c)
 check("  ...after Forget (and the look at your gear it triggers): no enchant counted", next(h.ench) == nil, h.ench[11] and h.ench[11][7000] and h.ench[11][7000].n)
 check("  ...no gem counted", next(h.gems) == nil, h.gems[8001] and h.gems[8001].n)
 check("  ...so the ring's enchant is not offered as 'used 1x'", has(Shop.Options(c, "ench:11"), "Amani Mastery", "used") == nil)
-SOCKETS.Helm = { 8001 }
+SOCKETS.Helm = { 8001 }; ForgetModel()   -- (the model keeps a worn slot by its item link; in the game a gem change gives a new link)
 Shop.Observe(c)
 check("  ...a gem newly put in a socket afterwards is counted (1x)", h.gems[8001] and h.gems[8001].n == 1, h.gems[8001] and h.gems[8001].n)
-SOCKETS.Helm = { 0 }; Shop.Observe(c)
+SOCKETS.Helm = { 0 }; ForgetModel(); Shop.Observe(c)
 
 -- D14: the same item from two rows: To buy holds the needs added; the same row twice does not double
 c.buy = {}

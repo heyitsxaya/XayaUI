@@ -316,7 +316,7 @@ checkp("Attack Power's row: only what it applies to in Modifies (Damage per seco
   for _, r in ipairs(namesOn(d, "Attack Power")) do t[#t + 1] = r.kind .. ":" .. r.text end
   return table.concat(t, " ") == "infl:Damage per second" and #recs(d, "feed") == 0, table.concat(t, " ") end)
 checkp("Haste: its abilities' list is a name in Influences; the ability and its recharge are in that name's hover, not a nested row", function()
-  local h = hoverOf(d, "map_haste:» Abilities (their text names Haste)")
+  local h = hoverOf(d, "map_haste:» Abilities")
   return h:find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil, h end)
 ns.StatCalc_SetInput("sv:primary", "")
 
@@ -633,11 +633,11 @@ ns.StatCalc_SetInput("sv:vers", "")
 ns.StatCalc_SetInput("sv:avoidance", "600")
 m = CM.Build(c, "stats").byKey.map_avoidance
 local ad
-for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Area damage taken (less)" then ad = p end end
-checkp("typed Avoidance 600: \"» Area damage taken (less)\" goes up and its new value means better (f1-16: not matched by \"taken\")", function()
+for _, p in ipairs(m and m.pairs or {}) do if p.label == "» Area damage taken" then ad = p end end
+checkp("typed Avoidance 600: \"» Area damage taken\" goes up and its new value means better (f1-16: not matched by \"taken\")", function()
   return ad and ad.newValue and ad.newValue:find("^%+") ~= nil and ad.newTone == "better", ad and (tostring(ad.newValue) .. " " .. tostring(ad.newTone)) end)
 d = render()
-local ab = btn(d, function(it) return it.kind == "infl" and it.label == "» Area damage taken (less)" end)
+local ab = btn(d, function(it) return it.kind == "infl" and it.label == "» Area damage taken" end)
 local al = ab and hoverCols(ab) or {}
 checkp("  ...its hover's new-value line is the game's green", function() return al[2] ~= nil and sameCol(al[2].rc, GREEN), al[2] and table.concat(al[2].rc, ",") end)
 ns.StatCalc_SetInput("sv:avoidance", "")

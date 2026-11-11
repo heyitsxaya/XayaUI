@@ -297,9 +297,9 @@ check("  (QoL 0.7.28) Critical Strike's Influences: Parry; hover +10.15% (52.0 c
 local dr = lineCells(d, "pairLabel", "Diminishing returns")
 check("  Diminishing returns: value none yet; no note (\"next at 1,380 rating (852 away)\" is gone)", T(dr.value) == "none yet" and dr.note == nil
   and drawnText("next at 1,380 rating") == nil, T(dr.value) .. " | " .. T(dr.note))
-check("[0.7.28] Haste's Influences: GCD (QoL 0.7.39, UI-62), Attack speed, Abilities (their text names Haste); the ability and its recharge are in that name's hover, indented",
-  inflOn(d, "Haste") == "GCD, Attack speed, Abilities (their text names Haste)"
-  and nameHover(d, "map_haste:» Abilities (their text names Haste)"):find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil,
+check("[0.7.28] Haste's Influences: GCD (QoL 0.7.39, UI-62), Attack speed, Abilities; the ability and its recharge are in that name's hover, indented",
+  inflOn(d, "Haste") == "GCD, Attack speed, Abilities"
+  and nameHover(d, "map_haste:» Abilities"):find("    Infernal Strike | 9.6 s recharge", 1, true) ~= nil and find(d, "pairLabel", "Infernal Strike") == nil,
   inflOn(d, "Haste"))
 check("[0.7.20] no comma-joined ability list remains on the Stats tab: every drawn text that names an ability is that name alone", joinedText(d) == nil, joinedText(d))
 local ok1, why1 = layoutOK(d)
@@ -465,7 +465,7 @@ local fr, inf = mrow("Fracture"), mrow("Infernal Strike", 2)   -- (the first Inf
 check("[0.7.24] ...Ability Scaling is now Spell Changes, after the stat rows: Fracture 6,944 -> 7,144, Infernal Strike 3,472 -> 3,572",
   sch and fr.label and fr.label.y > sch.y and T(fr.cells[1]) == "6,944" and T(fr.cells[2]) == "7,144" and T(inf.cells[1]) == "3,472" and T(inf.cells[2]) == "3,572"
   and find(d, "mlabel", "» Ability Scaling") == nil, T(fr.cells[2]))
-local gha = find(d, "mlabel", "» Abilities (their text names Haste)")
+local gha = find(d, "mlabel", "» Abilities")
 local ghi = mrow("Infernal Strike", 1)
 check("[0.7.20] ...200 less haste: haste's ability kept under its » line, nested one indent further: Infernal Strike 9.6 s -> a longer recharge",
   gha and ghi.label and ghi.label.y > gha.y and ghi.label.x > gha.x and T(ghi.cells[1]) == "9.6 s" and T(ghi.cells[2]):find("^%d+%.%d s recharge$") ~= nil,

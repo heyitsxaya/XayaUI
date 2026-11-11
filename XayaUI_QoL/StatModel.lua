@@ -27,6 +27,8 @@
 --     GetItemInfoInstant (MayReturnNothing), C_Item.RequestLoadItemDataByID, C_TooltipInfo.GetInventoryItem (MayReturnNothing),
 --     GetRuneCooldown (MayReturnNothing; QoL 0.7.23), C_TooltipInfo.GetHyperlink (MayReturnNothing; QoL 0.7.24, a compared item's
 --     effect lines). (C_Spell.IsSpellUsable is no longer read since QoL 0.7.24: the Spells tab's "Usable now" line is gone.)
+--     V25 unit B: C_SpellBook.GetNumSpellBookSkillLines / GetSpellBookSkillLineInfo / GetSpellBookItemInfo (the spellbook without XayaUI
+--     Rules; MayReturnNothing) and C_ClassTalents.GetActiveConfigID (the talent scan's key), quoted where they are read.
 --   undocumented, read the way Blizzard's UI reads them: GetInventoryItemLink, GetAverageItemLevel (PaperDollFrame.lua),
 --     InCombatLockdown, GetSpecialization / GetSpecializationInfo / GetSpecializationMasterySpells (older globals, used only when the
 --     C_ ones are missing), ATTACK_POWER_MAGIC_NUMBER (a value in Blizzard's PaperDollFrame.lua: the character window's "increases
@@ -147,6 +149,9 @@ local function Pair(it, label, value, tone, short)
     it.pairs[#it.pairs + 1] = { label = label, value = value, tone = tone, short = short and true or nil }
 end
 local function Tip(it, line) it.tip[#it.tip + 1] = line end
+-- (V25 unit B, SC-098) a help hover's how-it-is-worked-out line (a game call, a formula, a caveat): shown only while XayaUI Dev Assist is
+-- loaded (CM.TooltipLines), so every player reads only what the column means or what a click does (it.tip of a HELP_KINDS item)
+local function DevTip(it, line) it.devTip = it.devTip or {}; it.devTip[#it.devTip + 1] = line end
 local function SetValue(it, v, f) it.value, it.tone = Show(v, f); if v == HIDDEN then it.hidden = true end end
 
 local function SpellName(id)
@@ -217,7 +222,53 @@ local function ThresholdsFor(idx, f, r0)
     thresholdCache[idx] = { r0 = r0, list = list }
     return list
 end
-function CM.ClearCache() thresholdCache = {} end
+-- (V25 unit B: SC-035, SC-047, SC-049, SC-050, SC-085) the model's other kept reads, one table so the file stays far from Lua 5.1's local
+-- limit. Each is keyed by what it was read from, so a stale entry is never used:
+--   slot[slot]      = { link, info }: CM.SlotInfo by the slot's item link (SC-035)
+--   owned[slot]     = { key, list }: the bag items that fit the slot, keyed by the bags' sizes and free slots and the slot's own item
+--                     link (round 2: a loot, sale, destroy or equip changes the key), and dropped by CM.ForgetOwned() (SC-085)
+--   cmpStatic[link] = what a compared item's link alone gives (its stats, item level, tooltip, sockets, set); cmpDerived[key] = its
+--                     stat-map rows, keyed by (item link, equipped link, CM.LiveKey()) (SC-085)
+--   crit            = { key = the equipped links, total, src }: CritEffect (SC-047)
+--   haste           = { list = the spell list read, ids, complete }: the haste card's abilities (SC-047)
+--   talentLower     = the picked talents' lowercased descriptions for the current talent scan; mods[spellID] = TalentModifiers (SC-049)
+--   spells          = { key, ids, list }: the spellbook read in this file when XayaUI Rules is not there (SC-050), checked against the
+--                     spellbook's own spell IDs on each use (round 2), so a spell swapped by a talent shows at once
+-- CM.ClearCache() empties all of them; CM.ClearTalents() the talent and spell parts; CM.ForgetSpells() the spell part; CM.ForgetOwned()
+-- the bag part.
+local KC = { slot = {}, owned = {}, cmpStatic = {}, cmpDerived = {}, mods = {} }
+local talentScan, talentFor   -- (CM.Talents, below: the talent scan and the talent config it was read for)
+function CM.ClearCache()
+    thresholdCache = {}
+    KC.slot, KC.owned, KC.cmpStatic, KC.cmpDerived, KC.mods, KC.cmpStaticN = {}, {}, {}, {}, {}, 0
+    KC.crit, KC.haste, KC.talentLower, KC.spells = nil, nil, nil, nil
+    talentScan, talentFor = nil, nil
+end
+-- (SC-085) the bag items each slot lists are read again on the next Gear render (the Stat Calculator calls this on BAG_UPDATE_DELAYED,
+-- and on the Gear tab's first draw after its events were not heard; the kept list is also checked against the bags on each use, CM.OwnedFor)
+function CM.ForgetOwned() KC.owned = {} end
+-- (V25 unit B, round 2) the spellbook changed (SPELLS_CHANGED): this file's own spellbook read and the haste abilities are read again
+function CM.ForgetSpells() KC.spells, KC.haste = nil, nil end
+
+-- (V25 unit B, SC-050; Xaya A24 #5 / #6: "tie-ins cost nothing unless the other element is on; whether it is on is read once at load,
+-- and once at the first options-window open after a reload; no repeated checks") XayaUI Rules' "rules" service (its spellbook list,
+-- XayaUI_Rules/Conditions.lua ns.BuildSpellList) is looked up once, at first use, and once more when the Stat Calculator's page is
+-- first built (CM.ReadTieIns(true), called by XayaUI_Bonus/StatCalculator.lua). No build looks it up again. Without it, this file reads
+-- the spellbook itself (ReadSpellbook, below). Returns whether the service is there.
+local tieIns = { read = 0 }   -- read: 0 not yet, 1 at first use, 2 read again (the options window)
+function CM.ReadTieIns(again)
+    if tieIns.read == 0 or (again and tieIns.read < 2) then
+        local s = ns.Service and ns.Service("rules") or nil
+        if s ~= tieIns.rules then KC.haste, KC.spells = nil, nil end   -- (another spell list source: read it again)
+        tieIns.rules = (type(s) == "table") and s or nil
+        tieIns.read = again and 2 or 1
+    end
+    return tieIns.rules ~= nil
+end
+local function RulesService()
+    if tieIns.read == 0 then CM.ReadTieIns() end
+    return tieIns.rules
+end
 
 -- the spec's primary stat index (1 Strength, 2 Agility, 4 Intellect), for the What If auto-fill (the Stat Calculator, XayaUI_Bonus)
 function CM.PrimaryStatIndex() local sp = SpecIndex(); return PrimaryStat(sp and SpecInfo(sp) or {}) end
@@ -1100,9 +1151,15 @@ function CM.TooltipLines(it, mode)
         out[#out + 1] = { " " }
         for _, l in ipairs(it.influenceTips) do out[#out + 1] = { l } end
     end
-    if #(it.tip or {}) > 0 and (HELP_KINDS[it.kind] or CM.NotesOn()) then
+    local notes = CM.NotesOn()
+    if #(it.tip or {}) > 0 and (HELP_KINDS[it.kind] or notes) then
         out[#out + 1] = { " " }
         for _, l in ipairs(it.tip) do out[#out + 1] = { l } end
+    end
+    -- (V25 unit B, SC-098) how a help hover's numbers are worked out: XayaUI Dev Assist only
+    if #(it.devTip or {}) > 0 and notes then
+        out[#out + 1] = { " " }
+        for _, l in ipairs(it.devTip) do out[#out + 1] = { l } end
     end
     -- (QoL 0.7.40, B2: no "Click: show the rating on this line" any more; #88: a stat with rows says what a click does)
     if it.foldable ~= nil then
@@ -1222,9 +1279,30 @@ end
 -- Empty sockets (QoL 0.7.19): sockets without a gem (CM.SlotSockets), no longer the stat table's EMPTY_SOCKET_ count, which lists the
 -- item's sockets whether a gem is in them or not (INFERENCE from Xaya's screenshot of 2026-11-05: "1S" / "2S" marks on slots whose
 -- gems are in; the API docs do not say). The stat table's socket keys are kept for the socket type on hover (socketTypes).
+-- V25 unit B (SC-035): kept per slot, keyed by the slot's item link, and read again only when the link changes. GetInventoryItemLink is
+-- not in the 12.1.5 documentation this repo carries (docs/reference/api: it is in the "undocumented" list at the top of this file, read as
+-- PaperDollFrame.lua reads it); its secrecy is unknown, and a secret answer is HIDDEN through R() and gives nil here, never a key.
+-- INFERENCE (the item link format, warcraft.wiki.gg "ItemLink", as CM.LinkEnchanted reads it): the link carries the item's enchant ID, its
+-- gem IDs and its bonus IDs (item level, upgrades), so a change of gear, gem, enchant or upgrade gives a new link and the slot is read
+-- again. A slot whose item data has not loaded yet (no stats, no item level, a gem without its name: C_Item.GetItemStats /
+-- GetDetailedItemLevelInfo / GetItemNameByID are MayReturnNothing until the item is cached) is not kept, so GET_ITEM_INFO_RECEIVED's
+-- redraw reads it again and fills it in. The returned table is shared: readers do not change it.
+local function SlotComplete(s)
+    if not (s.statsRead and s.ilvl ~= nil and s.gems ~= nil) then return false end
+    for _, g in ipairs(s.gems) do if g.gemID and not g.name then return false end end
+    return true
+end
+local ReadSlot
 function CM.SlotInfo(slot)
     local link = R(GetInventoryItemLink, "player", slot)
-    if type(link) ~= "string" then return nil end
+    if type(link) ~= "string" then KC.slot[slot] = nil; return nil end
+    local kept = KC.slot[slot]
+    if kept and kept.link == link then return kept.info end
+    local s = ReadSlot(slot, link)
+    KC.slot[slot] = SlotComplete(s) and { link = link, info = s } or nil
+    return s
+end
+ReadSlot = function(slot, link)
     local s = { slot = slot, link = link, ilvl = ItemLevel(link), sockets = 0, ratings = {}, socketTypes = {} }
     local st = ItemStats(link)
     s.statsRead = st ~= nil
@@ -1464,7 +1542,8 @@ local function GearSummaryItems()
     local sum = Item("gearSum", "", "colhead")
     sum.cmp, sum.cols = true, { "Gear", "Character", "Elsewhere" }
     local sumItems = { sum }
-    local EXPLAIN = "Gear: the rating the item stat tables list for everything you wear. Character: your rating now. Elsewhere: the character's rating minus the gear's: gems, enchants, buffs, or effects the tables leave out."
+    local EXPLAIN = "Gear: the rating your worn items list. Character: your rating now. Elsewhere: the rest (gems, enchants, buffs and other effects)."
+    local EXPLAIN_DEV = "Gear is the sum of the item stat tables (C_Item.GetItemStats) of everything you wear; Elsewhere is the character's rating (GetCombatRating) minus the gear's."
     for _, gs in ipairs(GEAR_STATS) do
         local have = N(GetCombatRating, IDX[gs[3]])
         local g = totals[gs[2]] or 0
@@ -1497,6 +1576,7 @@ local function GearSummaryItems()
         sumItems[#sumItems + 1] = r
     end
     Tip(sum, EXPLAIN)
+    DevTip(sum, EXPLAIN_DEV)   -- (V25 unit B, SC-098: how it is worked out, Dev Assist only)
     return sumItems
 end
 CM.GearSummaryItems = GearSummaryItems
@@ -1590,24 +1670,38 @@ local function PrimaryFrom(stats, p)
     return total
 end
 
--- The equipped items an item could replace: every slot whose item has the same equip location (two rings, two trinkets, a
--- one-hand weapon in either hand). CM.compareSlot (chosen on the What If tab, Xaya 2026-11-04: "prompt an item to slot in cases
--- where there are more than one slot available") picks one; with no choice, the lower item level is replaced (as before).
+-- The equipped items an item could replace: the item in each slot the item fits (CM.SlotsForLink: two rings, two trinkets, a one-hand
+-- weapon in either hand when you can dual wield). CM.compareSlot (chosen on the What If tab, Xaya 2026-11-04: "prompt an item to slot in
+-- cases where there are more than one slot available") picks one; with no choice, the lower item level is replaced (as before).
+-- V25 unit B (SC-034): by slot, no longer by an identical equip location, so a one-hand sword over a main-hand-only mace, a robe over a
+-- chest, a shield over an off-hand frill and a two-hander over a one-hander each compare against the item really in that slot (before,
+-- they found none and showed every stat as a pure gain). A two-hander fits the main hand only (LOC_SLOTS); that it also takes the
+-- off-hand item off is not in the 12.1.5 documentation (INFERENCE): its numbers are not counted, and the comparison says so in words
+-- (gc_offhand, GearCompareSections) instead of guessing.
 function CM.CompareCandidates(link)
     local loc = link and EquipLoc(link)
     local out = {}
     if not loc then return out, nil end
-    for _, sl in ipairs(SLOTS) do
-        local s = CM.SlotInfo(sl[1])
-        if s and EquipLoc(s.link) == loc then out[#out + 1] = s end
+    for _, slot in ipairs(CM.SlotsForLink(link)) do
+        local s = CM.SlotInfo(slot)
+        if s then out[#out + 1] = s end
     end
     return out, loc
 end
+-- (round 2; review: with no slot chosen, a dual-wielder's one-hand weapon could be compared with a shield or an off-hand frill in the
+-- off hand when that had the lower item level) with no choice, a one-hand weapon is compared only with a weapon (the main hand's, or
+-- the off hand's when it holds a one-hand or off-hand weapon); choosing the off-hand slot still compares with whatever is there.
+local OFFHAND_WEAPON = { INVTYPE_WEAPON = true, INVTYPE_WEAPONOFFHAND = true }
 local function Replaced(link)
-    local cands = CM.CompareCandidates(link)
+    local cands, loc = CM.CompareCandidates(link)
     local old
     for _, s in ipairs(cands) do if CM.compareSlot and s.slot == CM.compareSlot then old = s end end
-    if not old then for _, s in ipairs(cands) do if not old or (s.ilvl or 0) < (old.ilvl or 0) then old = s end end end
+    if not old then
+        for _, s in ipairs(cands) do
+            local skip = loc == "INVTYPE_WEAPON" and s.slot == 17 and not OFFHAND_WEAPON[EquipLoc(s.link) or ""]
+            if not skip and (not old or (s.ilvl or 0) < (old.ilvl or 0)) then old = s end
+        end
+    end
     return old, cands
 end
 -- what the compared item changes, for filling the What If boxes: rating by What If key, and the primary stat
@@ -1664,9 +1758,40 @@ local function BagCount()
     local k = _G.Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumBagSlots
     return num(k) and k or 4
 end
+-- V25 unit B (SC-085): kept per slot until CM.ForgetOwned() (the Stat Calculator calls it on BAG_UPDATE_DELAYED) or CM.ClearCache(); a
+-- list with an item whose item level has not loaded yet is not kept (it is read again on the next render). The list is shared: readers
+-- do not change it.
+-- (round 2; review: the bag list went stale after a loot, sale or destroy while the panel was closed, on another tab or in combat) the
+-- kept list is also keyed by the bags' sizes and free slots and by the item links worn in the slot and its pair (two rings, two
+-- trinkets, the two hands), about 12 cheap reads per Gear render instead of every bag slot:
+--   C_Container.GetContainerNumSlots(containerIndex: BagIndex) → numSlots: number (namespaces.md:1298)
+--   C_Container.GetContainerNumFreeSlots(bagIndex: BagIndex) → numFreeSlots: number, bagFamily: number? (namespaces.md:1297)
+-- Neither is flagged secret; a secret answer reads as "?" in the key (never compared as a number). An item gained, sold, destroyed or
+-- moved to another bag changes a bag's free slots; equipping one from the bags changes the worn link. INFERENCE (not in the docs): an
+-- item changed in place (an upgrade in the bags) changes neither: BAG_UPDATE_DELAYED (CM.ForgetOwned) covers that while Gear is shown.
+local PAIR_SLOT = { [11] = 12, [12] = 11, [13] = 14, [14] = 13, [16] = 17, [17] = 16 }
+local function OwnedKey(slot)
+    local CC = C_Container
+    local t = { tostring(R(GetInventoryItemLink, "player", slot)), tostring(PAIR_SLOT[slot] and R(GetInventoryItemLink, "player", PAIR_SLOT[slot]) or "") }
+    for bag = 0, BagCount() do
+        local n = CC and CC.GetContainerNumSlots and N(CC.GetContainerNumSlots, bag)
+        local f = CC and CC.GetContainerNumFreeSlots and N(CC.GetContainerNumFreeSlots, bag)
+        t[#t + 1] = (num(n) and tostring(n) or "?") .. ":" .. (num(f) and tostring(f) or "?")
+    end
+    return table.concat(t, "\001")
+end
+local ReadOwned
 function CM.OwnedFor(slot)
+    local key = OwnedKey(slot)
+    local kept = KC.owned[slot]
+    if kept and kept.key == key then return kept.list end
+    local out, complete = ReadOwned(slot)
+    KC.owned[slot] = complete and { key = key, list = out } or nil
+    return out
+end
+ReadOwned = function(slot)
     local out = {}
-    if not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo) then return out end
+    if not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo) then return out, true end
     for bag = 0, BagCount() do
         local n = N(C_Container.GetContainerNumSlots, bag)
         for i = 1, (num(n) and n or 0) do
@@ -1680,7 +1805,9 @@ function CM.OwnedFor(slot)
         end
     end
     table.sort(out, function(a, b) return (a.ilvl or 0) > (b.ilvl or 0) end)
-    return out
+    local complete = true
+    for _, o in ipairs(out) do if o.ilvl == nil then complete = false end end
+    return out, complete
 end
 
 local function QualityColor(q)
@@ -1691,8 +1818,8 @@ end
 
 -- whether a "now -> then" change is better (green) or worse (orange): lower is better on a line the Stats tab marks lowerBetter (times:
 -- the global cooldown, attack speed, recharges; and damage taken), higher for everything else. (QoL 0.7.54, fix plan f1-16: the flag is
--- set where the line is made; before, any value in seconds or any label with "taken" counted, so Avoidance's "» Area damage taken
--- (less)", where more is better, showed a gain as worse.)
+-- set where the line is made; before, any value in seconds or any label with "taken" counted, so Avoidance's "» Area damage taken",
+-- where more is better, showed a gain as worse.)
 local function Dir(lowerBetter, value)
     if type(value) ~= "string" then return nil end
     local a, b = value:match("^(.-) %-> (.*)$")
@@ -1751,6 +1878,8 @@ function CM.CompareState()
     if links[1] then
         st.old, st.cands = Replaced(links[1])
         if st.old then st.slot = st.old.slot else st.slot = CM.SlotsForLink(links[1])[1] or st.slot end
+        -- (V25 unit B, SC-034) nothing found to replace: the item in the slot itself, when one is there
+        if not st.old and st.slot then st.old = CM.SlotInfo(st.slot) end
     elseif st.slot then
         st.old = CM.SlotInfo(st.slot)
     end
@@ -1760,6 +1889,60 @@ end
 local function LinkColor(link)
     local r, g, b = tostring(link or ""):match("^|c%x%x(%x%x)(%x%x)(%x%x)")
     if r then return { tonumber(r, 16) / 255, tonumber(g, 16) / 255, tonumber(b, 16) / 255, 1 } end
+end
+
+-- (V25 unit B, SC-085) what a compared item's link alone gives: its stats, item level, color and name (and, once read, its tooltip
+-- lines and empty sockets). Kept per link once the game has sent the item's stats and item level (C_Item.GetItemStats /
+-- GetDetailedItemLevelInfo are MayReturnNothing until then).
+local CMP_STATIC_MAX = 40   -- (the bag lists of a slot plus the compared items fit well under this; XayaUI's choice, not a game limit)
+local function CmpStatic(l)
+    local k = KC.cmpStatic[l]
+    if k then return k end
+    local stt = ItemStats(l)
+    k = { stats = stt or {}, ilvl = ItemLevel(l), color = LinkColor(l), name = l:match("%[(.-)%]") or "This item" }
+    if stt ~= nil and k.ilvl ~= nil then
+        -- (round 2; review: one entry per item ever compared, unbounded) at most CMP_STATIC_MAX links are kept; past that the table
+        -- starts again (the items still compared are read again once on their next draw)
+        KC.cmpStaticN = (KC.cmpStaticN or 0) + 1
+        if KC.cmpStaticN > CMP_STATIC_MAX then KC.cmpStatic, KC.cmpStaticN = {}, 1 end
+        KC.cmpStatic[l] = k
+    end
+    return k
+end
+-- (V25 unit B, SC-085) one text for the live readings a compared item's stat-map rows are worked out from (spec, level, the mastery's own
+-- text, primary stats and
+-- Stamina, health, every rating and its bonus, the percents, armor, attack power, attack speed, shield block, an attackable target, the
+-- last GCD reading). The same text = the same rows, so they are drawn from the kept ones; nil when any reading is secret right now (in
+-- combat), then nothing is kept. Every read is one of the game calls listed at the top of this file (each SecretWhenUnitStatsRestricted
+-- or unflagged); a secret value is never compared or turned into text (R() gives HIDDEN, and the key is dropped).
+local LIVE_IDX = { "dodge", "parry", "block", "critMelee", "critRanged", "critSpell", "speed", "leech", "haste", "avoidance", "mastery", "versDone", "versTaken" }
+function CM.LiveKey()
+    local t, ok = {}, true
+    local function Add(...)
+        for i = 1, select("#", ...) do
+            local v = select(i, ...)
+            if v == HIDDEN then ok = false; return end
+            local tv = type(v)
+            t[#t + 1] = (tv == "number" or tv == "boolean" or tv == "string") and tostring(v) or "-"
+        end
+        t[#t + 1] = "|"
+    end
+    local spec = SpecIndex()
+    Add(spec); Add(R(UnitEffectiveLevel, "player"))
+    for _, mid in ipairs(MasterySpells(spec)) do Add(SpellDesc(mid)) end   -- (the mastery's own text: armor and attack power from mastery)
+    for i = 1, 4 do Add(R(UnitStat, "player", i)) end
+    Add(R(UnitHealthMax, "player")); Add(R(UnitHPPerStamina, "player")); Add(R(GetUnitMaxHealthModifier, "player"))
+    for _, k in ipairs(LIVE_IDX) do Add(R(GetCombatRating, IDX[k])); Add(R(GetCombatRatingBonus, IDX[k])) end
+    Add(R(GetMasteryEffect)); Add(R(GetHaste)); Add(R(GetCritChance)); Add(R(GetVersatilityBonus, IDX.versDone)); Add(R(GetVersatilityBonus, IDX.versTaken))
+    Add(R(GetDodgeChance)); Add(R(GetParryChance)); Add(R(GetBlockChance)); Add(R(GetDodgeChanceFromAttribute)); Add(R(GetParryChanceFromAttribute))
+    Add(R(GetLifesteal)); Add(R(GetAvoidance)); Add(R(GetSpeed))
+    Add(R(UnitArmor, "player")); Add(R(UnitAttackPower, "player")); Add(R(UnitAttackSpeed, "player")); Add(R(GetShieldBlock))
+    local tgt = HasAttackableTarget()
+    Add(tgt); if tgt then Add(R(UnitEffectiveLevel, "target")) end
+    local g = CM.gcd
+    Add(type(g) == "table" and g.dur or nil, type(g) == "table" and g.haste or nil, CM.gcdHidden == true)
+    if not ok then return nil end
+    return table.concat(t, ",")
 end
 
 function GearCompareSections(ctx, out)
@@ -1818,18 +2001,21 @@ function GearCompareSections(ctx, out)
     local eqStats = old and old.stats or {}
     local cs = {}
     for _, l in ipairs(links) do
-        local stt = ItemStats(l) or {}
-        cs[#cs + 1] = { link = l, name = l:match("%[(.-)%]") or "This item", stats = stt, ilvl = ItemLevel(l), color = LinkColor(l),
-            dP = PrimaryFrom(stt, p) - PrimaryFrom(eqStats, p) }
+        local k = CmpStatic(l)   -- (V25 unit B, SC-085: kept per link)
+        cs[#cs + 1] = { link = l, name = k.name, stats = k.stats, ilvl = k.ilvl, color = k.color, static = k,
+            dP = PrimaryFrom(k.stats, p) - PrimaryFrom(eqStats, p) }
     end
     local chg = { key = "gearChanges", title = "Changes", multi = true, items = {} }
     local head = Item("gearCols", "Columns", "mhead")
     head.cols, head.colColors = { "Stat", "Pt value", "Equipped" }, {}
     for _, cd in ipairs(cs) do head.cols[#head.cols + 1] = cd.name; head.colColors[#head.cols] = cd.color end
-    Tip(head, ("Equipped: the item in your %s. Each column after it: an item you picked (up to %d; click it again to let it go), its number, and in brackets beside it the change from the equipped one."):format(
-        CM.CompareSlotLabel(slot), CM.MAX_COMPARE))
-    Tip(head, "Pt value: the rating that makes 1% of the stat now (N / 1%), or the attack power one point of your primary stat gives.")
-    Tip(head, "The items' stats come from the game's item stat tables (C_Item.GetItemStats) at the item level in the link. Gems, enchants and set bonuses are not in them; on-use and proc effects are listed under the table, as the game's tooltip words them.")
+    -- (V25 unit B, SC-098) the hover every player sees says what each column means in one plain line; how the numbers are read (the
+    -- game call, what it leaves out) shows only with XayaUI Dev Assist (DevTip)
+    Tip(head, ("Equipped: the item in your %s. Each column after it: an item you picked, with the change from the equipped one in brackets."):format(
+        CM.CompareSlotLabel(slot)))
+    Tip(head, "Pt value: the rating that makes 1% of the stat now, or what one point of your primary stat gives.")
+    DevTip(head, ("Up to %d items side by side; click one again to let it go."):format(CM.MAX_COMPARE))
+    DevTip(head, "The items' stats come from the game's item stat tables (C_Item.GetItemStats) at the item level in the link. Gems, enchants and set bonuses are not in them; on-use and proc effects are listed under the table, as the game's tooltip words them.")
     chg.items[1] = head
     local function Each(fn) local t = {}; for i, cd in ipairs(cs) do t[i] = fn(cd) end; return t end
     local function Row(key, label, a, bs, color, lowerBetter, per)
@@ -1943,13 +2129,30 @@ function GearCompareSections(ctx, out)
         for _, s in ipairs(g) do if not s.gemID then n = n + 1 end end
         return n
     end
-    Row("sockets", "Empty sockets", old and Empty(old.link), Each(function(cd) return Empty(cd.link) end), nil, true)
+    -- (round 2) the equipped item's sockets when they were read (old.gems: CM.SlotSockets gave a list); not read yet = unknown, not 0
+    Row("sockets", "Empty sockets", old and old.gems and old.sockets or nil, Each(function(cd)
+        local k = cd.static
+        if k.empty == nil then k.empty = Empty(cd.link) end
+        return k.empty
+    end), nil, true)
     if old or #cs > 0 then
         local it = Item("gc_enchant", "Enchant", "mrow")
         local function E(v) return v == true and "yes" or (v == false and "none" or "?") end
         it.cells = { old and E(old.enchanted) or "empty" }
         for i, cd in ipairs(cs) do it.cells[i + 1] = E(CM.LinkEnchanted(cd.link)) end
         chg.items[#chg.items + 1] = it
+    end
+    -- (V25 unit B, SC-034) a two-hander is compared with the main-hand item only. That it also takes the off-hand item off is not in the
+    -- 12.1.5 documentation (INFERENCE; some specs hold two), so the off-hand item's numbers are not taken away: said in words, not guessed
+    if slot == 16 then
+        local two = false
+        for _, cd in ipairs(cs) do if EquipLoc(cd.link) == "INVTYPE_2HWEAPON" then two = true end end
+        local oh = two and CM.SlotInfo(17) or nil
+        if oh then
+            local n = Item("gc_offhand", ("Compared with your main hand only: your off-hand item (%s) is not counted."):format(CM.LinkName(oh.link) or "off hand"), "note")
+            n.value, n.minor, n.tone = "", true, "mute"
+            chg.items[#chg.items + 1] = n
+        end
     end
     if #cs == 0 then
         local n = Item("gearPickHint", ("Click an item in your bags above, or put one in the box, to compare it; click more to see up to %d side by side."):format(CM.MAX_COMPARE), "note")
@@ -1961,7 +2164,17 @@ function GearCompareSections(ctx, out)
     -- changes for any item, the equipped column "now", each item's column "then"
     local derived, dList = {}, {}
     local function V(stt, k) return num(stt[k]) and stt[k] or 0 end
-    for i, cd in ipairs(cs) do
+    -- (V25 unit B, SC-085) one item's rows: the stat map with the item's changes as the amounts, as records { key, label, color, now,
+    -- after, per, sub, tip, order, lowerBetter }, kept by (item link, equipped link, CM.LiveKey(), detail); a live reading that is hidden
+    -- right now (in combat) gives no key and the rows are worked out again
+    local live = CM.LiveKey()
+    -- (only the rows of the current readings are kept: a reading that changes drops the older rows, so the table never grows while the
+    -- Gear tab stays open through buffs and procs)
+    if live ~= KC.cmpLive then KC.cmpDerived, KC.cmpLive = {}, live end
+    local function Rows(cd)
+        local dkey = live and (cd.link .. "\001" .. tostring(old and old.link or "") .. "\001" .. live .. "\001" .. tostring(ctx.cfg and ctx.cfg.detail))
+        if dkey and KC.cmpDerived[dkey] then return KC.cmpDerived[dkey] end
+        local recs, seen = {}, {}
         local ratings = {}
         local delta = SM.StatDelta(cd.stats, eqStats)
         for _, gs in ipairs(GEAR_STATS) do
@@ -1983,14 +2196,9 @@ function GearCompareSections(ctx, out)
                 if it.kind ~= "colhead" and it.kind ~= "subhead" and it.kind ~= "cmprow" then   -- (the tree's headings, the Gear Summary)
                     ci = ci + 1
                     local function Put(key, label, color, now, after, per, sub, pi, lowerBetter)
-                        local r = derived[key]
-                        if not r then
-                            r = { key = key, label = label, color = color, now = now, after = {}, per = per, sub = sub, tip = it.tip, order = ci * 1000 + pi,
-                                lowerBetter = lowerBetter == true }
-                            derived[key] = r; dList[#dList + 1] = r
-                        end
-                        if r.now == nil then r.now = now end
-                        r.after[i] = after
+                        recs[#recs + 1] = { key = key, label = label, color = color, now = now, after = after, per = per, sub = sub, tip = it.tip,
+                            order = ci * 1000 + pi, lowerBetter = lowerBetter == true }
+                        seen[key] = true
                     end
                     local ck = "gc_" .. it.key
                     local k = type(it.input) == "string" and it.input:match("^sv:(.+)$")
@@ -2010,8 +2218,8 @@ function GearCompareSections(ctx, out)
                         if v then a, b = v:match("^(.-) %-> (.*)$") end
                         if pr.change and not a then a, b = "", (pr.value ~= nil and pr.value ~= "") and tostring(pr.value) or whole end   -- (a change by itself: "+500")
                         if a and not scaling then
-                            if not derived[ck] then Put(ck, it.label, it.labelColor, nil, nil, nil, nil, 0) end   -- (its card's name first)
-                            if pr.nested and head and not derived[ck .. ":" .. head.label] then
+                            if not seen[ck] then Put(ck, it.label, it.labelColor, nil, nil, nil, nil, 0) end   -- (its card's name first)
+                            if pr.nested and head and not seen[ck .. ":" .. head.label] then
                                 Put(ck .. ":" .. head.label, head.label, head.labelColor, nil, nil, nil, 1, headPi)
                             end
                             Put(ck .. ":" .. (pr.nested and (head and head.label or "") .. ":" or "") .. pr.label, pr.label, pr.labelColor, a, b, pr.per, pr.nested and 2 or 1, pi, pr.lowerBetter)
@@ -2020,11 +2228,25 @@ function GearCompareSections(ctx, out)
                 end
             end
         end
+        if dkey then KC.cmpDerived[dkey] = recs end
+        return recs
+    end
+    for i, cd in ipairs(cs) do
+        for _, rec in ipairs(Rows(cd)) do
+            local r = derived[rec.key]
+            if not r then
+                r = { key = rec.key, label = rec.label, color = rec.color, now = rec.now, after = {}, per = rec.per, sub = rec.sub, tip = rec.tip,
+                    order = rec.order, lowerBetter = rec.lowerBetter }
+                derived[rec.key] = r; dList[#dList + 1] = r
+            end
+            if r.now == nil then r.now = rec.now end
+            r.after[i] = rec.after
+        end
     end
     if #dList > 0 then
         table.sort(dList, function(x, y) return x.order < y.order end)
         local sh = Item("gearEffectsHead", "Stat effects", "msubhead")
-        Tip(sh, "What each item does through your stats (the Stats tab's lines that change): equipped = now, each item = with it instead.")
+        Tip(sh, "What each item changes through your stats: equipped now, then with each item instead.")
         chg.items[#chg.items + 1] = sh
         for _, r in ipairs(dList) do
             local it = Item(r.key, r.label, "mrow")
@@ -2047,13 +2269,18 @@ function GearCompareSections(ctx, out)
     -- the equipped item's, and the RPPM wording (no game call gives an item's proc rate: ROADMAP RM-RPPM)
     local eqTip = old and CM.SlotTip(old.slot) or nil
     local tips, any, procLike = {}, eqTip and #eqTip.effects > 0, false
-    for i, cd in ipairs(cs) do tips[i] = CM.LinkTip(cd.link); if tips[i] and #tips[i].effects > 0 then any = true end end
+    for i, cd in ipairs(cs) do
+        local k = cd.static   -- (V25 unit B, SC-085: the item's tooltip read once per link; not kept while the game has not sent it)
+        if k.tip == nil then k.tip = CM.LinkTip(cd.link) end
+        tips[i] = k.tip
+        if tips[i] and #tips[i].effects > 0 then any = true end
+    end
     local function KindsOf(t) for _, k in ipairs(t and t.effectKinds or {}) do if k == "equip" or k == "proc" then procLike = true end end end
     KindsOf(eqTip)
     for i = 1, #cs do KindsOf(tips[i]) end
     if any then
         local sh = Item("gearFxHead", "On-use and proc effects", "msubhead")
-        Tip(sh, "The item's own effect lines (Use, Equip and proc lines of the game's tooltip), word for word.")
+        Tip(sh, "Each item's own Use, Equip and proc effects, as its tooltip words them.")
         chg.items[#chg.items + 1] = sh
         local function FNote(key, text, tone)
             local n = Item(key, text, "note"); n.value, n.tone = "", tone
@@ -2125,7 +2352,9 @@ function GearCompareSections(ctx, out)
     -- spellbook's damage spells with the largest first number; up to 6.
     if #cs > 0 then
         local sh = Item("gearSpellHead", "Spell Changes", "msubhead")
-        Tip(sh, "Each spell's first number in its own description (talents and buffs already in it), times attack power with the item / attack power now. Only the primary stat's attack power moves it; crit, haste, mastery and versatility change how often or how hard, not the number in the text.")
+        Tip(sh, "How each spell's number changes with the item.")
+        -- (V25 unit B, SC-098) the formula and its caveat: Dev Assist only
+        DevTip(sh, "Each spell's first number in its own description (talents and buffs already in it), times attack power with the item / attack power now. Only the primary stat's attack power moves it; crit, haste, mastery and versatility change how often or how hard, not the number in the text.")
         chg.items[#chg.items + 1] = sh
         local function SNote(key, text)
             local n = Item(key, text, "note"); n.value, n.minor = "", true
@@ -2172,7 +2401,7 @@ function GearCompareSections(ctx, out)
                 Tip(it, "From the spell's description (its first number), as on the Ability Scaling tab.")
                 chg.items[#chg.items + 1] = it
             end
-            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description (Ability Scaling tab: Configure spell data lists them).") end
+            if #list == 0 then SNote("gearSpellNone", "No damage spell with a number in its description was found in your spellbook.") end   -- (V25 unit B, SC-050)
         end
     end
 
@@ -2268,8 +2497,90 @@ local function RequestDesc(id)
     if C_Spell and C_Spell.RequestLoadSpellData then R(C_Spell.RequestLoadSpellData, id) end
 end
 
+-- V25 unit B (SC-050): the spellbook read in this file, for when XayaUI Rules is not there (before, the Ability Scaling tab, the haste
+-- abilities and the Gear tab's Spell Changes listed nothing without it). Our own code, filtering as XayaUI Rules' ns.BuildSpellList does
+-- (XayaUI_Rules/Conditions.lua: every skill line that is not another spec's, its active spells; sorted by name, then ID), so both give
+-- the same list (tests/char_statmodel_fixes_run.py compares them). Game calls (12.1.5 documentation, namespaces.md:4464-4495,
+-- structures.md:6497-6518, enums.md:12086, 12113):
+--   C_SpellBook.GetNumSpellBookSkillLines() → numSpellBookSkillLines: number
+--   C_SpellBook.GetSpellBookSkillLineInfo(skillLineIndex: luaIndex) → skillLineInfo: SpellBookSkillLineInfo · MayReturnNothing,
+--     SecretArguments=AllowedWhenUntainted (fields name, iconID, itemIndexOffset, numSpellBookItems, isGuild, shouldHide, specID?, offSpecID?)
+--   C_SpellBook.GetSpellBookItemInfo(spellBookItemSlotIndex: luaIndex, spellBookItemSpellBank: SpellBookSpellBank) →
+--     spellBookItemInfo: SpellBookItemInfo · MayReturnNothing, SecretArguments=AllowedWhenUntainted (fields actionID, spellID?, itemType,
+--     name, subName, iconID, isPassive, isOffSpec, skillLineIndex?)
+--   Enum.SpellBookSpellBank.Player = 0; Enum.SpellBookItemType.Spell = 1
+-- None is flagged secret; a secret answer still reads as nothing (R(), Field()). Kept until CM.ClearTalents() / CM.ForgetSpells() /
+-- CM.ClearCache(), or until the skill lines' layout (their offsets and counts) or their spell IDs change. Returns { { id, name } }.
+local function SpellbookLayout()
+    local SB = C_SpellBook
+    local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+    if not (SB and SB.GetNumSpellBookSkillLines and SB.GetSpellBookSkillLineInfo and SB.GetSpellBookItemInfo) or bank == nil then return nil end
+    local n = N(SB.GetNumSpellBookSkillLines)
+    if not num(n) then return nil end
+    local lines, key = {}, { tostring(SpecIndex()) }
+    for i = 1, math.min(math.floor(n), 64) do
+        local line = R(SB.GetSpellBookSkillLineInfo, i)
+        if type(line) == "table" and line ~= HIDDEN then
+            local off, cnt, offSpec = Field(line, "itemIndexOffset"), Field(line, "numSpellBookItems"), Field(line, "offSpecID")
+            lines[#lines + 1] = { off = num(off) and off or 0, n = num(cnt) and cnt or 0, other = offSpec ~= nil }
+            key[#key + 1] = ("%d:%d:%s"):format(lines[#lines].off, lines[#lines].n, offSpec ~= nil and "o" or "")
+        end
+    end
+    return lines, table.concat(key, ","), bank
+end
+-- (round 2; review: a talent or choice node that swaps one active spell for another leaves the layout as it was, so a list kept by the
+-- layout alone went stale with XayaUI Rules off) each use reads the active lines' spell IDs (one GetSpellBookItemInfo per slot of the
+-- current spec's lines, no name read, no sort) and keeps the list only while those IDs are the same: a swapped spell shows at once,
+-- and a repeat build reads no spell name and returns the same list table (so the haste abilities, kept by that table, stay kept).
+-- This costs only players without XayaUI Rules (with it, Rules' own list is used, SpellbookList below). A spell whose name has not
+-- loaded yet is left out and the list is not kept, so it is read again next time.
+local function ReadSpellbook()
+    local lines, key, bank = SpellbookLayout()
+    if not lines then return {} end
+    local ST = Enum and Enum.SpellBookItemType
+    local ids, seen = {}, {}
+    for _, ln in ipairs(lines) do
+        if not ln.other then
+            for j = 1, ln.n do
+                local it = R(C_SpellBook.GetSpellBookItemInfo, ln.off + j, bank)
+                if type(it) == "table" and it ~= HIDDEN then
+                    local sid, itype = Field(it, "spellID"), Field(it, "itemType")
+                    if num(sid) and Field(it, "isPassive") ~= true and Field(it, "isOffSpec") ~= true and (itype == nil or not ST or itype == ST.Spell) and not seen[sid] then
+                        seen[sid] = true
+                        ids[#ids + 1] = sid
+                    end
+                end
+            end
+        end
+    end
+    local idKey = key .. "|" .. table.concat(ids, ",")
+    local kept = KC.spells
+    if kept and kept.key == idKey then return kept.list end
+    local list, complete = {}, true
+    for _, sid in ipairs(ids) do
+        local name = C_Spell and C_Spell.GetSpellName and R(C_Spell.GetSpellName, sid)
+        if type(name) == "string" then list[#list + 1] = { id = sid, name = name } else complete = false end
+    end
+    table.sort(list, function(a, b) if a.name == b.name then return a.id < b.id end return a.name < b.name end)
+    KC.spells = complete and { key = idKey, list = list } or nil
+    return list
+end
+CM.ReadSpellbook = ReadSpellbook
+-- the spellbook's active spells: XayaUI Rules' list when it is there (core keeps it until spells change), else this file's own read.
+-- Returns the list (the same table while it is unchanged, so the haste abilities below can be kept by it).
+local function SpellbookList()
+    local RS = RulesService()
+    if RS and type(RS.BuildSpellList) == "function" then
+        local ok, list = pcall(RS.BuildSpellList)
+        if ok and type(list) == "table" then return list end
+    end
+    return ReadSpellbook()   -- (no XayaUI Rules, or its list failed: this file's own read)
+end
+CM.SpellbookList = SpellbookList
+
 -- The spells the Spells tab lists: the ones added by hand first (any spell ID, with their own settings), then every active spell of
--- the current spec's spellbook (ns.BuildSpellList, the list the rule editor's spell pickers use; core resets it when spells change).
+-- the current spec's spellbook (ns.BuildSpellList, the list the rule editor's spell pickers use; core resets it when spells change;
+-- V25 unit B, SC-050: this file's own read of the spellbook when XayaUI Rules is not there).
 -- Xaya 2026-11-04: "spells pane still needs a full auto-populate". A listed spell is measured against spell power when the primary
 -- stat is Intellect, else attack power (INFERENCE: how Intellect and Strength / Agility specs' spells scale; not read from the game).
 function CM.SpellList(c, primary)
@@ -2280,10 +2591,8 @@ function CM.SpellList(c, primary)
             out[#out + 1] = { id = s.id, base = s.base, coeff = s.coeff, kind = s.kind, hand = true }
         end
     end
-    local okL, list = false, nil
-    local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
-    if RS then okL, list = pcall(RS.BuildSpellList) end
-    if okL and type(list) == "table" then
+    local list = SpellbookList()
+    if type(list) == "table" then
         local base = (primary == 4) and "sp" or "ap"
         for _, sp in ipairs(list) do
             local id = type(sp) == "table" and sp.id or nil
@@ -2452,16 +2761,30 @@ end
 
 -- Your talent trees (the active loadout): each talent's spell, whether it is picked, and whether it is passive. The same C_Traits
 -- walk as core's ns.BuildTalentList, plus the node's activeEntry (structures.md TraitNodeInfo: activeEntry = { entryID, rank }) and
--- C_Spell.IsSpellPassive (namespaces.md:4439). Kept until core's talent list is rebuilt (spec, talent or spellbook change).
-local talentScan, talentFor
+-- C_Spell.IsSpellPassive (namespaces.md:4439).
+-- V25 unit B (SC-049): kept for the active talent config, whether XayaUI Rules is on or not (before, only while Rules' talent list was
+-- there to key it), until CM.ClearTalents() (the Stat Calculator calls it on its talent events) or CM.ClearCache():
+--   C_ClassTalents.GetActiveConfigID() → activeConfigID: number? (namespaces.md:869; no secret flag; nil = no config: nothing is kept)
+-- (talentScan / talentFor are declared with the other kept reads, above CM.ClearCache)
+-- (round 2; review: a talent changed inside the same loadout keeps the config ID, so the scan went stale with XayaUI Rules on, where
+-- before it followed Rules' talent list) with XayaUI Rules there, the kept scan is also tied to Rules' own talent list (its
+-- BuildTalentList gives the same table until Rules resets it on TRAIT_CONFIG_UPDATED, SPELLS_CHANGED and a spec change,
+-- XayaUI_Rules/Engine.lua): a new table means the talents changed and the scan is read again. Without Rules, the Stat Calculator clears
+-- the scan (CM.ClearTalents) on its talent events and on Ability Scaling's first draw after those events were not heard.
+local function RulesTalentList()
+    local RS = RulesService()
+    if not (RS and type(RS.BuildTalentList) == "function") then return nil end
+    local ok, list = pcall(RS.BuildTalentList)
+    return ok and type(list) == "table" and list or nil
+end
+local talentRules   -- (the Rules talent list the kept scan was read with)
 function CM.Talents()
-    local ok, key = false, nil
-    local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
-    if RS then ok, key = pcall(RS.BuildTalentList) end
-    if not ok then key = nil end
-    if talentScan and key ~= nil and talentFor == key then return talentScan end
-    local out, seen = {}, {}
     local configID = C_ClassTalents and R(C_ClassTalents.GetActiveConfigID)
+    local rl = RulesTalentList()
+    if talentScan and num(configID) and talentFor == configID and talentRules == rl then return talentScan end
+    talentRules = rl
+    KC.talentLower, KC.mods = nil, {}
+    local out, seen = {}, {}
     if num(configID) and C_Traits then
         local cfg = R(C_Traits.GetConfigInfo, configID)
         for _, treeID in ipairs(type(cfg) == "table" and type(cfg.treeIDs) == "table" and cfg.treeIDs or {}) do
@@ -2486,25 +2809,52 @@ function CM.Talents()
             end
         end
     end
-    talentScan, talentFor = out, key
+    if num(configID) then talentScan, talentFor = out, configID else talentScan, talentFor = nil, nil end
     return out
 end
-function CM.ClearTalents() talentScan, talentFor = nil, nil end
+-- (V25 unit B) a talent, spec or spellbook change: the talent scan, the talent modifiers, this file's spellbook read, the haste abilities
+-- and the compared items' rows (their recharges) are read again
+function CM.ClearTalents()
+    talentScan, talentFor = nil, nil
+    KC.talentLower, KC.mods, KC.spells, KC.haste, KC.cmpDerived = nil, {}, nil, nil, {}
+end
 
 -- The picked talents whose own description names a spell: how the game words "this talent changes that spell" (#377: "talent
 -- modifiers"). A word match on the spell's name in the talent's text; the game has no list of which talents change a spell.
+-- V25 unit B (SC-049): the picked talents' descriptions are read and lowercased once per talent scan (KC.talentLower), and each spell's
+-- answer is kept (KC.mods) until the scan is read again; the match is on the lowercased name. A talent whose description has not
+-- arrived yet is asked for (RequestDesc) and the answers are not kept until every description is in.
+local function TalentLower(talents)
+    local tl = KC.talentLower
+    if not (tl and tl.scan == talents) then
+        tl = { scan = talents, list = {}, missing = {} }
+        for _, t in ipairs(talents) do if t.picked then tl.missing[#tl.missing + 1] = t end end
+        KC.talentLower = tl
+    end
+    if #tl.missing > 0 then   -- (only the descriptions not read yet are read again)
+        local still = {}
+        for _, t in ipairs(tl.missing) do
+            local d = SpellDesc(t.id)
+            if type(d) == "string" and d ~= "" and not IsSecret(d) then tl.list[#tl.list + 1] = { id = t.id, name = t.name, text = PlainLower(d) }
+            else still[#still + 1] = t; RequestDesc(t.id) end
+        end
+        tl.missing = still
+    end
+    tl.complete = #tl.missing == 0
+    return tl
+end
 local function TalentModifiers(spellID, name, talents)
+    local kept = KC.mods[spellID]
+    if kept then return kept end
     local outT = {}
     if type(name) ~= "string" or #name < 4 then return outT end
-    for _, t in ipairs(talents) do
-        if t.picked and t.id ~= spellID and t.name ~= name then
-            local d = SpellDesc(t.id)
-            if type(d) == "string" and d ~= "" then
-                if d:find(name, 1, true) then outT[#outT + 1] = t.name end
-            else RequestDesc(t.id) end
-        end
+    local tl = TalentLower(talents)
+    local lname = name:lower()
+    for _, t in ipairs(tl.list) do
+        if t.id ~= spellID and t.name ~= name and t.text:find(lname, 1, true) then outT[#outT + 1] = t.name end
     end
     table.sort(outT)
+    if tl.complete then KC.mods[spellID] = outT end
     return outT
 end
 
@@ -2518,7 +2868,8 @@ local function SpellSection(ctx, out)
         -- talent modifiers. The button turns Spell Math on and reads them (it is also in Bonus Features > Stat Calculator > Spell Math).
         local b = Item("spellsConfigure", "Configure spell data", "action")
         b.action, b.value = "configureSpells", ""
-        Tip(b, "Reads your spellbook and talents, measures each spell's numbers against your attack power or spell power, and lists them Active / Inactive with the talents that change them.")
+        Tip(b, "Click to list your spells and the talents that change them.")
+        DevTip(b, "Reads your spellbook and talents, measures each spell's numbers against your attack power or spell power, and lists them Active / Inactive with the talents that change them.")
         sec.items[1] = b
         sec.items[2] = Note("spellsOff", "Spell Math is off", "Configure spell data above lists your spells")
         return
@@ -2529,7 +2880,8 @@ local function SpellSection(ctx, out)
     sec.spells = true
     local rb = Item("spellsRefresh", "Refresh spell data", "action")
     rb.action, rb.value = "refreshSpells", ""
-    Tip(rb, "Reads your spellbook and talents again (after a talent or spec change the panel also does this by itself) and asks the game again for any spell text it has not sent.")
+    Tip(rb, "Click to read your spells and talents again.")
+    DevTip(rb, "After a talent or spec change the panel also does this by itself; it asks the game again for any spell text it has not sent (C_Spell.RequestLoadSpellData).")
     sec.items[1] = rb
     local base, pos, neg = R(UnitAttackPower, "player")
     local ap = num(base) and (base + (num(pos) and pos or 0) + (num(neg) and neg or 0)) or nil
@@ -2605,7 +2957,8 @@ local function SpellSection(ctx, out)
         if not t.picked and not t.passive and not known[t.id] then Add({ id = t.id, base = primaryBase, talent = true }, inact, true) end
     end
     if #sec.items == 1 then
-        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "add spells in Bonus Features > Stat Calculator > Spell Math")
+        -- (V25 unit B, SC-050) said in plain words; Spell Math is not the cause (before: "add spells in ... Spell Math")
+        if #list == 0 then sec.items[2] = Note("noSpells", "No spells found", "the game listed no active spells in your spellbook")
         elseif loading == 0 then sec.items[2] = Note("noSpells", "No spells in this filter", "") end
     end
     if noNumbers > 0 then
@@ -2791,12 +3144,15 @@ local function GridHead(key, ratingHead, changeHead)
     -- (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #87 / #88, her answers "\"Modified By\" only" and "Only \"Modifies\" column") the sixth
     -- column is "Modifies": only what the stat applies to (names); what feeds the stat ("from Agility +2,616") is a row under the stat
     h.grid, h.cols = true, { "Stat", ratingHead or "", "Current value", "Pt value", changeHead or "", "Modifies" }
-    if ratingHead then Tip(h, "Rating: your rating now. A number you type stays in its Change box; Current value shows what it changes.") end
-    Tip(h, "Current value: the game's figure now; under it, the new value your typed numbers give, with + when it is higher and - when lower: green when the result is better, red when it is worse (blue and orange with a XayaUI color-blind theme), the text color when it reads the same.")
-    Tip(h, "Pt value: what one point of the card's stat gives (1 Agility = 1.00 attack power), or \"N / 1%\": how much of the card's rating makes 1% of that line.")
-    Tip(h, "Modifies: what the stat applies to (Attack power, Dodge, Armor ...). Hover a name for its value, its Pt value and the new value your typed numbers give.")
-    Tip(h, "Under a stat (click it to open or fold): one row per contribution that feeds it, with its number (from Agility +2,616). Folded (the default), those rows are in the stat's hover.")
-    if changeHead then Tip(h, "Change: type a number in the box (the number itself, not an amount) and press Enter; every value it moves shows the new value under it. Clear it to go back to yours.") end
+    -- (V25 unit B, SC-098) one plain line per column: what it means or what clicking does; "card" (internal word) is "stat"
+    if ratingHead then Tip(h, "Rating: your rating now.") end
+    Tip(h, "Current value: the game's figure now; under it, the new value your typed numbers give (green when better, red when worse).")
+    Tip(h, "Pt value: what one point of the stat gives, or how much of the stat's rating makes 1% of that line.")
+    Tip(h, "Modifies: what the stat applies to. Hover a name for its numbers.")
+    Tip(h, "Click a stat to show or fold the rows that feed it.")
+    if changeHead then Tip(h, "Change: type a number and press Enter to see what it would do; clear it to go back to yours.") end
+    DevTip(h, "Current value colors: blue and orange with a XayaUI color-blind theme; the text color when the new value reads the same. A typed number stays in its Change box (the number itself, not an amount).")
+    DevTip(h, "Pt value: \"1 = N\" is one point of the stat (1 Agility = 1.00 attack power); \"N / 1%\" is the stat's rating that makes 1% of the line. Folded rows (the default) are in the stat's hover.")
     return h
 end
 CM.GridHead = GridHead   -- (the Gear comparison, defined above this, uses it)
@@ -2899,9 +3255,9 @@ end
 -- INFERENCE (not documented): UnitPowerMax gives 0 for a pool your class does not have; a druid may list more than two (forms).
 -- A secret answer reads "not given now"; a call that is missing or gives nothing reads "not given by the game".
 local NOW_NA = "not given now"
--- a line whose number the game does not give: the words go in its note cell (the value column is too narrow for them; the grid draws
--- a note with no value on the line itself), the value stays empty
-local function NotGiven(it) it.value, it.note, it.tone = "", NA, "mute"; return it end
+-- a line whose number the game does not give. V25 unit B (SC-099): the words are its value (before, they were its note, which the panel no
+-- longer draws, so the line showed its name and nothing else)
+local function NotGiven(it) it.value, it.note, it.tone = NA, nil, "mute"; return it end
 local POWER_DRAIN = { [0] = true, [2] = true, [3] = true }
 local POWER_EXTRA = { 0, 4, 5, 6, 7, 8, 9, 11, 12, 13, 16, 19 }   -- the class resources a second pool can be (not Rage / Focus / Energy / Fury / Pain: forms)
 local POWER_TOKEN = { [0] = "MANA", [1] = "RAGE", [2] = "FOCUS", [3] = "ENERGY", [4] = "COMBO_POINTS", [5] = "RUNES", [6] = "RUNIC_POWER",
@@ -2940,7 +3296,7 @@ local function PowerItems(cur)
             end
             if dur == HIDDEN then MapNote(it, "One recharges in", NOW_NA, "mute")
             elseif dur then MapNote(it, "One recharges in", F(dur, 1) .. " s")
-            else MapNote(it, "One recharges in", "", "mute", nil, { note = "read while a rune recharges" }) end
+            else MapNote(it, "One recharges in", "none recharging now", "mute") end   -- (V25 unit B, SC-099: was a note only)
             Tip(it, "Runes from UnitPowerMax; a rune's recharge time is the duration GetRuneCooldown gives for a rune that is recharging.")
         elseif POWER_DRAIN[pt] then
             it.value, it.note = Big(mx), "total"
@@ -2948,7 +3304,8 @@ local function PowerItems(cur)
             if base == nil and i == 1 then base, cast = R(GetPowerRegen) end
             if base == HIDDEN then MapNote(it, "Generation", NOW_NA, "mute")
             elseif num(base) then
-                MapNote(it, "Generation", F(base, 2) .. "/s", nil, nil, num(cast) and { note = ("while casting %s/s"):format(F(cast, 2)) } or nil)
+                MapNote(it, "Generation", F(base, 2) .. "/s")
+                if num(cast) then MapNote(it, "While casting", F(cast, 2) .. "/s") end   -- (V25 unit B, SC-099: was the note of Generation)
             else MapNote(it, "Generation", NA, "mute") end
             Tip(it, "The total from UnitPowerMax; the rate from GetPowerRegenForPowerType (base, and while casting). The game gives no amount per point of any stat.")
         else
@@ -2969,11 +3326,24 @@ end
 -- namespaces.md:4711, every line's left and right text): each "critical strike effectiveness by N%" is added up. INFERENCE: the
 -- English words; on another language nothing matches and the line says none was found. Talents and buffs are not in item text.
 -- Returns the total (nil when no item tooltip could be read) and the sources { slot, line, pct }.
+-- V25 unit B (SC-047): kept by the equipped items' links (one text of all 18; an item link carries its enchant and gems, see CM.SlotInfo),
+-- so a build with the same gear reads no tooltip; a slot with an item whose tooltip the game did not give (MayReturnNothing: not loaded
+-- yet) or a secret link keeps nothing, and it is read again next time.
 local function CritEffect()
     if not (C_TooltipInfo and C_TooltipInfo.GetInventoryItem) then return nil, {} end
-    local total, src, read = 0, {}, false
+    local keyT, keyOK = {}, true
     for _, sl in ipairs(SLOTS) do
+        local l = R(GetInventoryItemLink, "player", sl[1])
+        if l == HIDDEN then keyOK = false; break end
+        keyT[#keyT + 1] = type(l) == "string" and l or ""
+    end
+    local key = keyOK and table.concat(keyT, "\001") or nil
+    local kept = KC.crit
+    if key and kept and kept.key == key then return kept.total, kept.src end
+    local total, src, read, missing = 0, {}, false, false
+    for i, sl in ipairs(SLOTS) do
         local lines = TipLines(sl[1])
+        if not lines and keyT[i] ~= nil and keyT[i] ~= "" then missing = true end
         if lines then
             read = true
             for _, ln in ipairs(lines) do
@@ -2989,6 +3359,7 @@ local function CritEffect()
             end
         end
     end
+    if key and not missing then KC.crit = { key = key, total = read and total or nil, src = src } end
     return read and total or nil, src
 end
 CM.CritEffect = CritEffect
@@ -3020,7 +3391,10 @@ local function StatMapSections(ctx, out)
     local p = ctx.primary
     local _, eff = R(UnitStat, "player", p)
     local dP = ctx.whatIfPrimary or 0
-    local apct = ArmorPerPrimary(ctx)
+    -- (V25 unit B, SC-047) the mastery's own text is read once per build: the armor percent and its spell's name, and the percents by
+    -- what they modify (before, each was read twice: Attack Power and the Mastery card, Armor and the Primary card)
+    local apct, apctSrc = ArmorPerPrimary(ctx)
+    local mnBuild = MasteryNumbers(ctx)
     local mst = byKey.mastery
     -- the armor percent with your numbers: the mastery text's percent moves with your mastery (INFERENCE: mastery effects are linear in
     -- mastery percent; the game fills the text in with the current value)
@@ -3141,14 +3515,15 @@ local function StatMapSections(ctx, out)
                 MapNote(it, "From Haste", num(h0) and P(h0) or "", nil, "haste")
                 if now > CM.GCD_FLOOR + 0.005 then
                     local need = HasteRatingFor((base / (now - 0.01) - 1) * 100)
-                    if need then MapNote(it, "For -0.01 s", "", nil, nil, { note = Big(need) .. " more haste rating" }) end
+                    -- (V25 unit B, SC-099: the number was in the note only)
+                    if need then MapNote(it, "For -0.01 s", Big(need) .. " more haste rating") end
                 else
-                    MapNote(it, "Floor", "", "mute", nil, { note = "at the 0.75 s floor: more haste does not shorten it" })
+                    MapNote(it, "Floor", "0.75 s reached", "mute", nil, { note = "more haste does not shorten it" })
                 end
             end
         else
             SetValue(it, nil)
-            MapNote(it, "Rule", "", "mute", nil, { note = "not readable right now (class, spec or form hidden)" })
+            MapNote(it, "Rule", "not readable now", "mute", nil, { note = "class, spec or form hidden" })   -- (V25 unit B, SC-099)
         end
         if CM.gcdHidden then
             MapNote(it, "Live reading", HID, "mute", nil, (g and num(g.dur)) and { note = "last read " .. S2(g.dur) } or nil)
@@ -3158,7 +3533,7 @@ local function StatMapSections(ctx, out)
             MapNote(it, "Live reading", S2(g.dur), off and "warn" or nil, nil,
                 off and { note = "differs from the rule (" .. S2(exp) .. "): a buff, a talent or the ability's own GCD" } or nil)
         else
-            MapNote(it, "Live reading", "", "mute", nil, { note = "cast any spell to read it" })
+            MapNote(it, "Live reading", "cast any spell to read it", "mute")   -- (V25 unit B, SC-099: was the note only)
         end
         Tip(it, "The standard GCD: most are 1.5 s, shortened by haste as a cast time is (1.5 / (1 + haste)), never below 0.75 s; rogues, druids in Cat Form, Brewmaster and Windwalker monks have a fixed 1.0 s that haste does not shorten. The live reading is the game's own (spell 61304) the last time one ran; a buff or talent can make it differ.")
         Add(it)
@@ -3191,7 +3566,7 @@ local function StatMapSections(ctx, out)
     Add(SubHead("sub_offensive", "Offensive", 2))
     do
         local base, pos, neg = R(UnitAttackPower, "player")
-        local mn = MasteryNumbers(ctx)
+        local mn = mnBuild
         if base == HIDDEN then
             local it = Item("map_ap", AP_NAME); SetValue(it, HIDDEN); Add(it)
         elseif num(base) and (p == 1 or p == 2 or base > 0) then
@@ -3211,7 +3586,7 @@ local function StatMapSections(ctx, out)
             local bd = (num(pos) and pos or 0) + (num(neg) and neg or 0)
             if bd ~= 0 then MapNote(it, "Buffs and debuffs", SB(bd), bd > 0 and "good" or "warn") end
             local apFromSP = N(GetOverrideAPBySpellPower)
-            if num(apFromSP) and apFromSP > 0 then MapNote(it, "From spell power", P(apFromSP * 100, 0), nil, nil, { note = "of spell power" }) end
+            if num(apFromSP) and apFromSP > 0 then MapNote(it, "From spell power", P(apFromSP * 100, 0) .. " of spell power") end   -- (V25 unit B, SC-099)
             local magic = _G.ATTACK_POWER_MAGIC_NUMBER
             if num(magic) and magic > 0 then
                 MapNote(it, "» Damage per second", Was(ap / magic, apAfter and apAfter / magic or nil, function(v) return "+" .. BF(v) end))
@@ -3235,7 +3610,7 @@ local function StatMapSections(ctx, out)
                 end
             end
             if num(heal) and num(sp) and heal ~= sp then MapNote(it, "Healing bonus", Big(heal)) end
-            if num(spFromAP) and spFromAP > 0 then MapNote(it, "From attack power", P(spFromAP * 100, 0), nil, nil, { note = "of attack power" }) end
+            if num(spFromAP) and spFromAP > 0 then MapNote(it, "From attack power", P(spFromAP * 100, 0) .. " of attack power") end   -- (V25 unit B, SC-099)
             Tip(it, "Spell power as the character window shows it: your lowest school (GetSpellBonusDamage).")
             Add(it)
         end
@@ -3319,7 +3694,10 @@ local function StatMapSections(ctx, out)
     -- 4. Core Stats > Defensive: Armor, Dodge, Parry, Block (and Stagger for a Brewmaster)
     Add(SubHead("sub_defensive", "Defensive", 2))
     do
-        local _, armor = R(UnitArmor, "player")
+        -- (V25 unit B, SC-099) R() gives HIDDEN as its only value when any return is secret: the effective armor is then HIDDEN ("hidden
+        -- in combat"), not the missing second value ("unavailable")
+        local ar1, armor = R(UnitArmor, "player")
+        if ar1 == HIDDEN then armor = HIDDEN end
         local it = Item("map_armor", L("STAT_ARMOR", "Armor"))
         it.bigPairs = true
         SetValue(it, armor, Big)
@@ -3347,16 +3725,21 @@ local function StatMapSections(ctx, out)
             -- "why not just "from mastery: fel blood passive" in this case?") the label names the mastery spell the percent was read from
             -- (its name as the game gives it, ArmorPerPrimary's second return; Fel Blood for Vengeance); "From mastery" if no name
             if armorFromP then
-                local _, msrc = ArmorPerPrimary(ctx)
-                local lbl = CM.MasteryLabel(msrc)
+                local lbl = CM.MasteryLabel(apctSrc)
                 MapNote(it, lbl, Was(armorFromP, delta ~= 0 and armorFromPAfter or nil, SB), nil, "mastery", PerPoint(apct / 100))
             end
+            -- V25 unit B (SC-099): each part on its own row with its number (before, one row "Base, buffs and talents" showed the base
+            -- only: the rest was in its note, which the panel no longer draws). UnitArmor(unit) → base, effective, real, bonus
+            -- (globals.md:558, SecretWhenUnitStatsRestricted): Base armor = base; From buffs and talents = effective - base; Bonus armor
+            -- = bonus. A secret answer reads "hidden in combat" (R() gives HIDDEN; it is never compared or subtracted).
             local abase, _, _, abonus = R(UnitArmor, "player")
-            if num(abase) then
-                -- the base is the value; buffs and talents and the bonus armor are its note (QoL 0.7.15)
-                local bn = (armor ~= abase) and With(nil, SB(armor - abase) .. " buffs and talents") or nil
-                if num(abonus) and abonus > 0 then bn = With(bn, "bonus armor " .. Big(abonus)) end
-                MapNote(it, "Base, buffs and talents", Big(abase), nil, nil, bn)
+            if abase == HIDDEN then
+                MapNote(it, "Base armor", HID, "mute"); MapNote(it, "From buffs and talents", HID, "mute")
+            elseif num(abase) then
+                MapNote(it, "Base armor", Big(abase))
+                MapNote(it, "From buffs and talents", SB(armor - abase))
+                -- (round 2; review: "Bonus armor 0" on every character was noise) shown only when there is some, as the detail list does
+                if num(abonus) and abonus > 0 then MapNote(it, "Bonus armor", Big(abonus)) end
             end
             Tip(it, "Armor from UnitArmor; damage reduction from C_PaperDollInfo.GetArmorEffectiveness against your level (not linear: each 1% costs more armor). The mastery part is read from your mastery's own text.")
         end
@@ -3397,7 +3780,7 @@ local function StatMapSections(ctx, out)
         local sb, fx = N(GetShieldBlock), ArmorEff()
         if num(sb) and sb > 0 and num(ctx.level) and type(fx) == "function" then
             local red = N(fx, sb, ctx.level)
-            if num(red) then MapNote(bl, "» A block reduces the hit by", P(red * 100)) end
+            if num(red) then MapNote(bl, "» Block reduction", P(red * 100), nil, nil, { note = "a block reduces the hit by this" }) end   -- (V25 unit B, SC-101)
             if HasAttackableTarget() then
                 local v = N(ArmorVsTarget(), sb)
                 if num(v) then MapNote(bl, "» Against your target", P(v * 100)) end
@@ -3446,8 +3829,9 @@ local function StatMapSections(ctx, out)
                 local gNow = CM.GcdFor(h0)
                 local gAfter = (num(h1) and num(h0) and math.abs(h1 - h0) > 0.0005) and CM.GcdFor(h1) or nil
                 if hasted and num(gNow) then LowerBetter(MapNote(it, "» GCD", Was(gNow, gAfter, function(v) return F(v, 2) .. " s" end)))
-                elseif hasted == false then MapNote(it, "» GCD", "", "mute", nil, { note = "a fixed 1.0 s: haste does not shorten it" })
-                else MapNote(it, "» GCD", "", "mute", nil, { note = "not readable right now" }) end
+                -- (V25 unit B, SC-099: what the player needs is the value; was the note only)
+                elseif hasted == false then MapNote(it, "» GCD", "fixed 1.0 s", "mute", nil, { note = "haste does not shorten it" })
+                else MapNote(it, "» GCD", "not readable now", "mute") end
             end
             local mh = N(UnitAttackSpeed, "player")
             if num(mh) then
@@ -3456,13 +3840,26 @@ local function StatMapSections(ctx, out)
             end
             -- abilities whose own text mentions Haste (English word match; the game has no list of what haste shortens), with their
             -- recharge now where they have charges (C_Spell.GetSpellCharges; secret while cooldowns are restricted)
-            local okL, list = false, nil
-            local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' "rules" service; nil while it is switched off
-            if RS then okL, list = pcall(RS.BuildSpellList) end
+            -- (V25 unit B, SC-047 / SC-050) the spellbook from SpellbookList (XayaUI Rules' list, else this file's own read); which of its
+            -- spells name Haste is kept per list read (KC.haste), so a build with the same spell list reads and lowercases no description;
+            -- a list with a description not loaded yet is read again next time
+            local list = SpellbookList()
+            local hk = KC.haste
+            if not (hk and hk.list == list and hk.complete) then
+                hk = { list = list, ids = {}, complete = true }
+                for _, sp in ipairs(type(list) == "table" and list or {}) do
+                    local id = type(sp) == "table" and sp.id or nil
+                    local d = num(id) and SpellDesc(id)
+                    if type(d) == "string" and d ~= "" then
+                        if d:lower():find("haste", 1, true) then hk.ids[#hk.ids + 1] = id end
+                    elseif num(id) then hk.complete = false end
+                end
+                KC.haste = hk
+            end
             local names = {}
-            for _, sp in ipairs((okL and type(list) == "table") and list or {}) do
-                local d = num(sp.id) and SpellDesc(sp.id)
-                if type(d) == "string" and d:lower():find("haste", 1, true) then
+            for _, id in ipairs(hk.ids) do
+                local sp = { id = id }
+                do
                     local ch = C_Spell and C_Spell.GetSpellCharges and R(C_Spell.GetSpellCharges, sp.id)
                     local dur = (type(ch) == "table") and Field(ch, "cooldownDuration") or nil
                     local dur2 = (num(dur) and dur > 0 and num(h0) and num(h1) and math.abs(h1 - h0) > 0.0005) and dur * (1 + h0 / 100) / (1 + h1 / 100) or nil
@@ -3472,8 +3869,10 @@ local function StatMapSections(ctx, out)
             end
             -- each ability on its own nested line, its recharge in the value cell (QoL 0.7.20: "ability names should be nested under
             -- abilities"; before, one list in the note)
+            -- (V25 unit B, SC-101: a name for the Modifies column; how the list is found is in the stat's Dev Assist notes, the Tip below.
+            -- No pair note here: a line with no value and only a note is left out of the panel, CM.NoteOnly)
             if #names > 0 then
-                MapNote(it, "» Abilities (their text names Haste)", "")
+                MapNote(it, "» Abilities", "")
                 for _, nm in ipairs(names) do LowerBetter(MapSub(it, nm[1], nm[2])) end   -- (recharge in seconds: shorter is better)
             end
             Tip(it, "The global cooldown and attack speed with your numbers are estimates: the game's figure now, times (1 + haste now) / (1 + haste then).")
@@ -3490,10 +3889,11 @@ local function StatMapSections(ctx, out)
                 if per1 then
                     local a = src.analysis or {}
                     local per2 = a.perPctNow or a.perPctBase
-                    MapNote(it, "» Armor per 1% mastery", SB(per1), nil, nil, per2 and { note = F(per2) .. " mastery rating" } or nil)
+                    -- (V25 unit B, SC-101: a short name for the Modifies column, for her confirmation; the qualifier is the note)
+                    MapNote(it, "» Armor per 1%", SB(per1), nil, nil, { note = "per 1% mastery" .. (per2 and ("; " .. F(per2) .. " mastery rating") or "") })
                 end
             end
-            local mn = MasteryNumbers(ctx)
+            local mn = mnBuild
             if mn.ap then
                 local after = (num(src.total) and src.total > 0 and num(src.totalAfter)) and mn.ap * src.totalAfter / src.total or nil
                 MapNote(it, "» Attack power", Was(mn.ap, after, SP))
@@ -3526,16 +3926,17 @@ local function StatMapSections(ctx, out)
     -- 6. Tertiaries
     Add(SubHead("sub_tertiary", "Tertiaries", 1))
     Add(ColHead("map_cols3"))
-    local function Simple(key, what, other, up)
+    local function Simple(key, what, other, up, note)
         if byKey[key] then
             Add(MapRating(ctx, byKey[key], key, function(it, src)
-                MapNote(it, what, Was(src.total or 0, src.totalAfter, SP))
+                MapNote(it, what, Was(src.total or 0, src.totalAfter, SP), nil, nil, note and { note = note } or nil)
                 if num(src.total) then Feeds(key, other, nil, P(math.abs(src.total)), up) end
             end))
         end
     end
-    Simple("avoidance", "» Area damage taken (less)", "Area damage taken", false)
-    Simple("leech", "» Healed for (of damage done)", "Healing from damage done", true)
+    -- (V25 unit B, SC-101) names for the Modifies column, as the Stat Weights rows name them; the qualifier is the note
+    Simple("avoidance", "» Area damage taken", "Area damage taken", false, "less area damage taken")
+    Simple("leech", "» Healing from damage done", "Healing from damage done", true, "healed for this much of the damage you do")
     Simple("speed2", "» Movement speed", "Movement speed", true)
 
     -- (QoL 0.7.28: the Gear Summary is its own section at the top of the tab, CM.GearSummarySection, added first above)
