@@ -805,13 +805,18 @@ end
 --   * combat ends or the addon restriction lifts (PLAYER_REGEN_ENABLED, ADDON_RESTRICTION_STATE_CHANGED, same list): a model built in
 --     combat holds the secret reads as CM.HIDDEN ("hidden in combat"), and Blizzard need not run PaperDollFrame_UpdateStats when
 --     combat ends (INFERENCE: not documented either way), so without this the lines would stay empty after combat.
---   * the option, Enhanced Tooltips or Improved Character Display is switched (TT.CharStatsSync), and the tie-ins are read again.
+--   * the option, Enhanced Tooltips or Improved Character Display is switched (TT.CharStatsSync): the kept models are cleared and the
+--     lines re-applied. The tie-ins are NOT read again on a switch: they are read once at the login (when the option is wanted) and once
+--     at the first build of the Enhanced Tooltips page after a reload (TT.CharStatsReadTieIns); Improved Character Display reports its
+--     own switch through its OnChange callback, which is given only while this option is wanted (TT.CharStatsSync, V14). Its On() is
+--     read once more when that callback is given, and, until it is given, by the page's greyed state while the page is drawn
+--     (TT.CharStatsDisplayOn; U3 round 2), so a switch of Improved Character Display without a reload is still seen.
 -- Nothing is kept outside an open window: a hover with the window not shown (not possible from Blizzard's rows; a Dev Assist check can
 -- ask) builds and keeps nothing. Combat: the character window still opens in combat; a hover there builds at most once per stat change,
 -- as out of combat (no extra work), and what was built in combat is dropped when combat ends (above).
 -------------------------------------------------------------------------------
 local cs = { read = false, pageRead = false, icdOn = false, notes = false, CM = nil, subscribed = false, hooked = false,
-    builds = 0, drops = 0, windowOpen = false, ev = nil }
+    builds = 0, drops = 0, windowOpen = false, ev = nil, display = nil, rowCount = -1, rowWalks = 0, labelPlains = 0 }
 TT.charStatsOn = false
 TT.charStatsState = cs   -- (read only; tests and Dev Assist). cs.builds: how many models these lines have built since the login;
 -- cs.drops: how many times a kept model was dropped (a drop with nothing kept is not counted)
@@ -830,10 +835,24 @@ function TT.CharStatsWanted()
     local db = TT.DB()
     return (db.enabled ~= false and db.charStats == true) and true or false
 end
--- Improved Character Display is on (as last read or told)
-function TT.CharStatsDisplayOn() return cs.icdOn == true end
+-- Improved Character Display is on. Once its OnChange callback is given, as last told (no read). Before that (the option has not been
+-- wanted since the reload) nothing tells us of a switch, so this reads the service's On() (one call, no loop): it is called only by
+-- the Enhanced Tooltips page's greyed / hidden functions while the page is drawn and by the walkthrough, never on a hover or event
+-- (U3 round 2: without it a live switch of Improved Character Display left the option greyed, or not greyed, until /reload).
+-- INFERENCE: read on the page's redraw while the option is unticked; whether this fits her "tie-ins read once" ruling is hers to say.
+local function ReadDisplayOn()
+    local d = cs.display
+    local ok, on = pcall(function() return type(d) == "table" and d.On and d.On() end)
+    cs.icdOn = (ok and on == true and cs.CM ~= nil) and true or false
+end
+function TT.CharStatsDisplayOn()
+    if not cs.subscribed and cs.read then ReadDisplayOn() end
+    return cs.icdOn == true
+end
 
--- Reads the tie-ins once (again = true: the first build of the Enhanced Tooltips page after a reload).
+-- Reads the tie-ins once (again = true: the first build of the Enhanced Tooltips page after a reload). Only reads: the OnChange
+-- subscription is made by TT.CharStatsSync, and only while the option is wanted (G-018, V14: the page build with the option off reads
+-- whether Improved Character Display is on, for the option's disabled state, and subscribes to nothing).
 function TT.CharStatsReadTieIns(again)
     if cs.read and not again then return end
     cs.read = true
@@ -841,17 +860,26 @@ function TT.CharStatsReadTieIns(again)
     local m = ns.Service and ns.Service("statModel")
     cs.CM = (type(m) == "table" and type(m.CM) == "table") and m.CM or nil
     local d = ns.Service and ns.Service("charDisplay")
-    local ok, on = pcall(function() return type(d) == "table" and d.On and d.On() end)
-    cs.icdOn = (ok and on == true and cs.CM ~= nil) and true or false
+    cs.display = (type(d) == "table") and d or nil
+    ReadDisplayOn()
     cs.notes = TT.SourcesOn()   -- (XayaUI Dev Assist loaded: the same reader as the aura "via" text, section 1)
-    -- Improved Character Display tells us when its switch changes (once subscribed; its file keeps the one callback)
-    if not cs.subscribed and type(d) == "table" and type(d.OnChange) == "function" then
-        cs.subscribed = true
-        pcall(d.OnChange, function(nowOn)
-            cs.icdOn = (nowOn == true and cs.CM ~= nil) and true or false
-            TT.CharStatsSync()
-        end)
-    end
+end
+
+-- Improved Character Display tells us when its switch changes. Given once (its file keeps the one callback), from TT.CharStatsSync and
+-- only while the option is wanted. Should the option be switched off later, the callback stays (a callback cannot be taken back here);
+-- it then only notes the new value (for the option's disabled state on the page) and re-applies nothing.
+-- (U3 round 2) When it is given, On() is read once more first: Improved Character Display may have been switched since the last read
+-- (nothing told us while no callback was given), and the lines must go on only when both are on (her decision).
+local function SubscribeDisplay()
+    if cs.subscribed then return end
+    ReadDisplayOn()
+    local d = cs.display
+    if not (d and type(d.OnChange) == "function") then return end
+    cs.subscribed = true
+    pcall(d.OnChange, function(nowOn)
+        cs.icdOn = (nowOn == true and cs.CM ~= nil) and true or false
+        if TT.CharStatsWanted() or TT.charStatsOn then TT.CharStatsSync() end
+    end)
 end
 
 local function Plain(s)
@@ -859,7 +887,8 @@ local function Plain(s)
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("[:：]%s*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
     return s:lower()
 end
--- the game's own label of each Character Stats row (its global strings) -> the stat model's key
+-- the game's own label of each Character Stats row (its global strings) -> the stat model's key. Their plain forms are made once, on the
+-- first hover after a reload (labelPlain below), not on every hover (G-013, V27): the global strings do not change in a session.
 local LABEL_KEYS = {
     { "STAT_CRITICAL_STRIKE", "crit" }, { "STAT_HASTE", "haste" }, { "STAT_MASTERY", "mastery" }, { "STAT_VERSATILITY", "vers" },
     { "STAT_AVOIDANCE", "avoidance" }, { "STAT_LIFESTEAL", "leech" }, { "STAT_SPEED", "speed2" }, { "STAT_ARMOR", "armor" },
@@ -867,17 +896,31 @@ local LABEL_KEYS = {
     { "WEAPON_SPEED", "speed" }, { "STAT_ATTACK_SPEED", "speed" }, { "DAMAGE", "damage" }, { "SPELL_STAT3_NAME", "stamina" },
     { "STAT_STAGGER", "stagger" }, { "STAT_SPELLPOWER", "sp" }, { "STAT_AVERAGE_ITEM_LEVEL", "ilvl" },
 }
+-- plain label -> key; the first entry wins, as the old in-order search did (LABEL_KEYS, then SPELL_STAT1/2/4_NAME; SPELL_STAT3_NAME
+-- is the Stamina row of LABEL_KEYS)
+local labelPlain
+local function LabelPlain()
+    if labelPlain then return labelPlain end
+    labelPlain = {}
+    for _, e in ipairs(LABEL_KEYS) do
+        local g = Plain(_G[e[1]])
+        cs.labelPlains = cs.labelPlains + 1
+        if g and labelPlain[g] == nil then labelPlain[g] = e[2] end
+    end
+    for i = 1, 4 do
+        if i ~= 3 then
+            local g = Plain(_G["SPELL_STAT" .. i .. "_NAME"])
+            cs.labelPlains = cs.labelPlains + 1
+            if g and labelPlain[g] == nil then labelPlain[g] = "stat" .. i end
+        end
+    end
+    return labelPlain
+end
 function TT.CharStatKey(text)
     local p = Plain(text)
     if not p then return nil end
-    for _, e in ipairs(LABEL_KEYS) do
-        local g = Plain(_G[e[1]])
-        if g and g == p then return e[2] end
-    end
-    for i = 1, 4 do
-        local g = Plain(_G["SPELL_STAT" .. i .. "_NAME"])
-        if g and g == p and i ~= 3 then return "stat" .. i end
-    end
+    local k = LabelPlain()[p]
+    if k then return k end
     if p:find("global cooldown", 1, true) then return "gcd" end
 end
 
@@ -957,10 +1000,17 @@ local function AppendCharStat(frame)
 end
 TT.AppendCharStat = AppendCharStat   -- (tests)
 
+-- (G-013, V27) the pane's children are walked (one table) only when their count changed since the last walk: a stat update with the
+-- same rows (the usual case, possibly many times in combat) costs one count. INFERENCE: Blizzard's stat rows come from a frame pool on
+-- the pane, so a new row is a new child (the count rises) and a released row stays a child; rows are never swapped at the same count.
 local rowHooked = setmetatable({}, { __mode = "k" })
 function TT.HookCharStatRows()
     local pane = _G.CharacterStatsPane
     if not (pane and pane.GetChildren) then return end
+    local count = select("#", pane:GetChildren())
+    if count == cs.rowCount then return end
+    cs.rowCount = count
+    cs.rowWalks = cs.rowWalks + 1
     for _, child in ipairs({ pane:GetChildren() }) do
         if not rowHooked[child] and child.Label and child.HookScript then
             rowHooked[child] = true
@@ -1035,7 +1085,7 @@ end
 -- what TT.Sync does for this option: the tie-ins are read only while it is wanted
 function TT.CharStatsSync()
     local want = TT.CharStatsWanted()
-    if want then TT.CharStatsReadTieIns() end
+    if want then TT.CharStatsReadTieIns(); SubscribeDisplay() end
     local on = (want and cs.icdOn and cs.CM ~= nil) and true or false
     TT.charStatsOn = on
     DropKept()

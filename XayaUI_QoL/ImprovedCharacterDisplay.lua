@@ -25,6 +25,12 @@
 -- Saved settings (internal keys, kept: see "Settings" below): XayaUIQoLDB.characterReskin (the switch `features`, the item level /
 -- enchant / gem / stat list parts and the stat list's choices) and XayaUIQoLDB.characterToolkit (QoL's half: the slot marks, the tooltip
 -- lines' switch, the enchant slots, the Stat Calc button's switch). NOT RUN IN GAME: everything here is UNVERIFIED IN GAME.
+-- Reverse read (diagnostic only, V25 G-029): the Character Reskin's "characterReskin" service Drawn reads this file's "charDisplay"
+-- service Drawn (read only, for its /xui reskin status and Dev Assist counts); nothing else of the reskin reads this file's state.
+-- (V27 gate fixes, U1 G-001 to G-034) the rows beside the slots and the full stat list are hover only: clicks and camera drags pass
+-- through (SetMouseClickEnabled(false) + SetMouseMotionEnabled(true), set out of combat); item events are listened to only while the
+-- window is open and only for the equipped items and their gems; the stat list is rebuilt only when a number it shows changed, and
+-- not in combat (once when combat ends); positions are whole pixels.
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -33,6 +39,9 @@ if ns.SettingsDeclareStore then ns.SettingsDeclareStore("qol", "XayaUI_QoL", "Xa
 local CM = ns.StatModel
 
 local function num(v) return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge end
+-- (V27 "Whole-pixel", U1 G-010) every position, size and offset this file stores or sets is a whole pixel: halves and the game's
+-- rectangle / text-height reads are rounded once, where they are taken
+local function Px(v) return math.floor(v + 0.5) end
 local function CopyVal(v)
     if type(v) ~= "table" then return v end
     local t = {}
@@ -93,11 +102,13 @@ end
 -- The tie-ins (Xaya A24 #6: "Tie-ins between elements/addons cost nothing unless the other element is on; whether it is on is read
 -- once at load, and once at the first options-window open after a reload; no repeated checks"). The Stat Calculator's service is read
 -- here once when this is first on (at the login, or when it is switched on) and once more the first time this page is built. At the
--- first read this file also gives the Stat Calculator its one callback (OnState): from then on the Stat Calculator tells this file
--- itself when its panel opens or closes, is switched on or off, or hides for combat (V26), so it is never read again.
+-- first read made while this is ON (ns.CharDisplay_Apply) this file also gives the Stat Calculator its one callback (OnState): from then
+-- on the Stat Calculator tells this file itself when its panel opens or closes, is switched on or off, or hides for combat (V26), so it
+-- is never read again. (V14, U1 G-017) the page build's read only reads (Available, Shown): while this is off nothing is subscribed, so
+-- the Stat Calculator's combat start / end and panel changes call nothing here.
 local statCalc, scAvail, scOpen, tieRead, pageRead, subscribed = nil, false, false, false, false, false
 local OnStatCalcState   -- (below, at the button)
-local function ReadTieIns(again)
+local function ReadTieIns(again, subscribe)
     if tieRead and not again then return end
     tieRead = true
     statCalc = ns.Service and ns.Service("statCalc") or nil
@@ -105,7 +116,7 @@ local function ReadTieIns(again)
         local okA, a = pcall(function() return statCalc.Available and statCalc.Available() end)
         local okS, o = pcall(function() return statCalc.Shown and statCalc.Shown() end)
         scAvail, scOpen = (okA and a == true), (okS and o == true)
-        if not subscribed and statCalc.OnState then
+        if subscribe and not subscribed and statCalc.OnState then
             subscribed = true
             pcall(statCalc.OnState, function(open, available) OnStatCalcState(open, available) end)
         end
@@ -137,10 +148,23 @@ local function OldFeatures()
     end
     return false
 end
+-- (V32, U1 G-034) whether the Stat Calc button showed is read from the Stat Calculator's SAVED settings (its service's Cfg(): the Stat
+-- Calculator and its panel on), not from Available(), which is false in combat (V26): a first login on the new version in combat
+-- merges the same as one out of combat. Nothing is subscribed here (the merge can run while this stays off). A service without Cfg
+-- (an older Stat Calculator) falls back to Available().
+local function ButtonShowedSaved()
+    local sc = ns.Service and ns.Service("statCalc") or nil
+    if not sc then return false end
+    if type(sc.Cfg) == "function" then
+        local ok, c = pcall(sc.Cfg)
+        return (ok and type(c) == "table" and c.enabled == true and c.panel == true) and true or false
+    end
+    local ok, a = pcall(function() return sc.Available and sc.Available() end)
+    return (ok and a == true) and true or false
+end
 local function Merge()
     if paneT._merged then return end
-    ReadTieIns()
-    local feat, sharedOn, btn = OldFeatures(), sharedT.enabled == true, scAvail == true
+    local feat, sharedOn, btn = OldFeatures(), sharedT.enabled == true, ButtonShowedSaved()
     if feat or sharedOn or btn then
         if not feat then paneT.ilvl, paneT.enchants, paneT.gems, paneT.statList = false, false, false, false end
         if not sharedOn then sharedT.overlays = false end
@@ -237,13 +261,23 @@ local function SetOwnShown(on) for _, t in ipairs(own.all) do if t.SetShown then
 -- On: the page's switch. Active: On, and the item details (the slot blocks, the item level, the full stat list) have not stopped after an
 -- error this session (Guard below). The slot marks and the Stat Calc button need On only: an error in the item
 -- details does not take them away (before V25 R2 they were other files').
-local function On() local c = Cfg(); return (c ~= nil and paneT.features == true) and true or false end
+-- (V14 / V27, U1 G-016) the lasting hooks call On() on every Blizzard redraw: Cfg()'s default-filling loops run again only when the
+-- settings changed (core's ns.settingsEpoch moved) or after ns.CharDisplay_Apply; otherwise the switch is one read of the saved table.
+local cfgEpoch = nil
+local function CfgFast()
+    local e = ns.settingsEpoch
+    if e ~= nil and cfgEpoch == e and paneT then return view end
+    local c = Cfg()
+    if c then cfgEpoch = ns.settingsEpoch end
+    return c
+end
+local function On() local c = CfgFast(); return (c ~= nil and paneT.features == true) and true or false end
 local function Active() return On() and not diag.failed end
 ns.CharDisplay_On = function() return On() end
 ns.CharDisplay_Active = function() return Active() end
 -- what the drawing code reads: the settings while this is on, nil while it is off
-local function Eff() if not Active() then return nil end return Cfg() end
-local Guard, UpdateButton   -- (below)
+local function Eff() if not Active() then return nil end return CfgFast() end
+local Guard, UpdateButton, GeoSig   -- (below)
 
 -------------------------------------------------------------------------------
 -- Slot marks on the character window: item level, empty sockets, missing enchant (slots the player ticks). (Was the old CharacterPane.lua's
@@ -328,11 +362,12 @@ function ns.CharDisplay_OverlayText(slotName)
     return o.ilvl:GetText(), o.marks:GetText()
 end
 local overlayPending
+-- (V27, U1 G-011) one run function for the file (no closure per event), armed only while the window is open
+local function RunOverlays() overlayPending = false; if WindowShown() then UpdateOverlays() end end
 local function RefreshOverlays()
-    if overlayPending then return end
+    if overlayPending or not WindowShown() then return end
     overlayPending = true
-    local run = function() overlayPending = false; if WindowShown() then UpdateOverlays() end end
-    if C_Timer and C_Timer.After then C_Timer.After(0.2, run) else run() end
+    if C_Timer and C_Timer.After then C_Timer.After(0.2, RunOverlays) else RunOverlays() end
 end
 
 -------------------------------------------------------------------------------
@@ -400,12 +435,12 @@ local function Justify(name) return (name == "MainHandSlot" or not (LEFT_SLOTS[n
 local function Geometry()
     local head, hands = Rect(SlotBtn("HeadSlot")), Rect(SlotBtn("HandsSlot"))
     if not (head and hands) then return nil end
-    local g = { mid = (head.r + hands.l) / 2, colL = head.l, colR = hands.r }
+    local g = { mid = Px((head.r + hands.l) / 2), colL = head.l, colR = hands.r }
     local model = Rect(_G.CharacterModelScene)
     if model then
         g.model = model
-        local cx = (model.l + model.r) / 2
-        g.cam = { l = cx - CAM_W / 2, r = cx + CAM_W / 2, t = model.t - CAM_TOP, b = model.t - CAM_TOP - CAM_H }
+        local cx, hw = Px((model.l + model.r) / 2), Px(CAM_W / 2)
+        g.cam = { l = cx - hw, r = cx + hw, t = model.t - CAM_TOP, b = model.t - CAM_TOP - CAM_H }
     end
     local mh, oh = Rect(SlotBtn("MainHandSlot")), Rect(SlotBtn("SecondaryHandSlot"))
     if mh and oh then
@@ -433,7 +468,8 @@ local function LabelBoxes(g, name, r)
     local left, m = LEFT_SLOTS[name], g.model
     -- (QoL 0.7.31) with Extra height the slots are further apart: a block may use half the gap above and below its slot (not above the
     -- first slot of a column or below its last)
-    local eg = (ns.CharReskin_TallGap and ns.CharReskin_TallGap() or 0) / 2
+    local eg = Px((tonumber(ns.CharReskin_TallGap and ns.CharReskin_TallGap()) or 0) / 2)
+    local hg = Px(GUT / 2)
     local box = { t = r.t + SLOT_PAD + ((name == "HeadSlot" or name == "HandsSlot") and 0 or eg),
         b = r.b - SLOT_PAD - ((name == "WristSlot" or name == "Trinket1Slot") and 0 or eg) }
     -- (QoL 0.7.28; Xaya 2026-11-06 at 0.7.27's 380 px window: "character pane now missing all previous information around gems,
@@ -442,11 +478,11 @@ local function LabelBoxes(g, name, r)
     -- the middle, over the model's sides, at any window width (the 0.7.19 layout), so no block is hidden for lack of room
     if left then
         box.l = r.r + BLOCK_OFF
-        box.r = (m and m.l - MODEL_GAP - box.l >= MIN_COL) and (m.l - MODEL_GAP) or (g.mid - GUT / 2)
+        box.r = (m and m.l - MODEL_GAP - box.l >= MIN_COL) and (m.l - MODEL_GAP) or (g.mid - hg)
         if box.r - box.l < 1 then return {} end
     else
         box.r = r.l - BLOCK_OFF
-        box.l = (m and box.r - (m.r + MODEL_GAP) >= MIN_COL) and (m.r + MODEL_GAP) or (g.mid + GUT / 2)
+        box.l = (m and box.r - (m.r + MODEL_GAP) >= MIN_COL) and (m.r + MODEL_GAP) or (g.mid + hg)
         if box.r - box.l < 1 then return {} end
     end
     local w = g.weap
@@ -480,13 +516,13 @@ local function Measure(fs, text, size, w, words)
     local h = fs:GetStringHeight()
     if CM.IsSecret(h) or not num(h) then return nil end
     if words and not WordsFit(fs, text, w) then return nil end
-    return h
+    return Px(h)
 end
 
 -- the top edge for a block of height h in box: level with the slot's middle, kept inside the box; moved above or below the camera
 -- buttons when there is room. Returns the top and whether the block still meets the camera buttons.
 local function PlaceTop(g, box, h, cy)
-    local top = math.min(box.t, math.max(box.b + h, cy + h / 2))
+    local top = Px(math.min(box.t, math.max(box.b + h, cy + Px(h / 2))))
     local cam = g.cam
     if not (cam and Overlaps({ l = box.l, r = box.r, t = top, b = top - h }, cam)) then return top, false end
     local below = math.min(top, cam.b - 1)
@@ -496,10 +532,36 @@ local function PlaceTop(g, box, h, cy)
     return top, true
 end
 
--- rows: a frame that takes the mouse (only the row's own rectangle, never the slot) with its text; socket rows also an icon
+-- (V27 "Hover only, clicks pass"; U1 G-001 / G-002 / G-005) our display over Blizzard's window (the rows beside the slots, which run
+-- over the model's sides at Blizzard's width; the full stat list over the stats pane) shows a hover tooltip but never takes a click or
+-- a camera drag: SetMouseClickEnabled(false) + SetMouseMotionEnabled(true). Both are IsProtectedFunction (widgets.md:283-284); these
+-- frames are not protected, so the calls are probably allowed in combat (INFERENCE), but as her reading says they are set out of
+-- combat: a frame made or changed in combat keeps the game's default until PLAYER_REGEN_ENABLED (a plain new Frame takes no mouse at
+-- all, INFERENCE), then gets its setting once. The queue is filled only by such a frame and emptied at that event.
+local NeedRegen   -- (below, at the events: registers PLAYER_REGEN_ENABLED while something waits for it)
+local function InCombat() return (type(InCombatLockdown) == "function" and InCombatLockdown()) and true or false end
+local HoverOnly, FlushMouse
+do
+    local mouseWant = setmetatable({}, { __mode = "k" })   -- own frame -> motion wanted, waiting for combat to end
+    local function ApplyMouse(f, motion)
+        if f.SetMouseClickEnabled then pcall(f.SetMouseClickEnabled, f, false) end
+        if f.SetMouseMotionEnabled then pcall(f.SetMouseMotionEnabled, f, motion and true or false) end
+    end
+    HoverOnly = function(f, motion)
+        motion = motion ~= false
+        f.xuiMotion = motion
+        if InCombat() then mouseWant[f] = motion; if NeedRegen then NeedRegen() end; return end
+        mouseWant[f] = nil
+        ApplyMouse(f, motion)
+    end
+    FlushMouse = function() for f, m in pairs(mouseWant) do mouseWant[f] = nil; ApplyMouse(f, m) end end
+    ns.CharDisplay_MouseQueued = function() return next(mouseWant) ~= nil end   -- (tests, Dev Assist)
+end
+
+-- rows: a hover-only frame (only the row's own rectangle, never the slot) with its text; socket rows also an icon
 local function RowEnter(f)
     local tt, d = _G.GameTooltip, f.tip
-    if not (tt and d) then return end
+    if not (tt and d) or f.xuiFaded then return end   -- (G-002) a row faded out under the camera buttons shows no tooltip
     tt:SetOwner(f, "ANCHOR_RIGHT")
     if d.link and tt.SetHyperlink and pcall(tt.SetHyperlink, tt, d.link) then tt:Show(); return end
     for _, l in ipairs(d) do local c = l[2] or GEM_COL; tt:AddLine(l[1], c[1], c[2], c[3], true) end
@@ -508,7 +570,7 @@ end
 local function RowLeave() if _G.GameTooltip then _G.GameTooltip:Hide() end end
 local function NewRow(btn, justify, socket)
     local f = Own(CreateFrame("Frame", nil, btn))
-    if f.EnableMouse then f:EnableMouse(true) end
+    HoverOnly(f, true)   -- (G-001) hover tooltip only: a click or a camera drag that starts on a row reaches the model
     f:SetScript("OnEnter", RowEnter); f:SetScript("OnLeave", RowLeave)
     local fs = Mine(f:CreateFontString(nil, "OVERLAY", "GameFontNormal"))
     if fs.SetWordWrap then fs:SetWordWrap(true) end
@@ -525,20 +587,28 @@ local function NewRow(btn, justify, socket)
     end
     return f
 end
-local function BlockRows(btn)
-    local t = {}
+-- fn(row, arg) for each row of a slot's block (no table made per call)
+local function EachRow(btn, fn, arg)
     local d = slotData[btn]
-    if not d then return t end
-    if d.enchantRow then t[#t + 1] = d.enchantRow end
-    if d.embRow then t[#t + 1] = d.embRow end
-    for _, f in ipairs(d.sockets or {}) do t[#t + 1] = f end
-    return t
+    if not d then return end
+    if d.enchantRow then fn(d.enchantRow, arg) end
+    if d.embRow then fn(d.embRow, arg) end
+    if d.sockets then for _, f in ipairs(d.sockets) do fn(f, arg) end end
 end
 local function ShowRow(f, on)
     f:SetShown(on); f.text:SetShown(on)
     if not on then f.tip = nil; f.text:SetText("") end
 end
-local function SetBlockAlpha(btn, a) for _, f in ipairs(BlockRows(btn)) do f:SetAlpha(a); f.text:SetAlpha(a) end end
+-- (G-002) a row faded to alpha 0 (it meets the camera buttons) also lets go of the mouse: no hover, no tooltip, clicks pass to the
+-- camera buttons; shown again, it takes hover again. Changed only when its state changes.
+local function RowAlpha(f, a)
+    f:SetAlpha(a); f.text:SetAlpha(a)
+    local faded = a <= 0
+    f.xuiFaded = faded
+    if f.xuiMotion ~= (not faded) then HoverOnly(f, not faded) end
+end
+local function HideRow(f) ShowRow(f, false) end
+local function SetBlockAlpha(btn, a) EachRow(btn, RowAlpha, a) end
 
 -- one layout try: every row wrapped to the box's width at one font size and icon size; nil when it does not fit the box's height.
 -- oneLine: each row cut to one line at a word; compact: the sockets as icons in one row, no names.
@@ -555,7 +625,7 @@ local function Fit(box, items, size, S, oneLine, compact)
             if not sockOff then sockOff = off + gap; off = sockOff + S end
             rows[i] = { text = "", h = 0, rh = S, w = 0, off = sockOff, compact = true }
         else
-            local w = box.r - box.l - (it.socket and (S + ICON_GAP) or 0)
+            local w = math.floor(box.r - box.l - (it.socket and (S + ICON_GAP) or 0))
             if w < 12 then return nil end
             local fs, text, h = it.row.text, it.text, 0
             if text ~= "" then
@@ -592,7 +662,7 @@ local function LayoutBlock(btn, name, items)
     local g, r = Geometry(), Rect(btn)
     local boxes = (g and r) and LabelBoxes(g, name, r) or {}
     if #boxes == 0 then if not (g and r) then diag.noGeometry = true end; return end   -- not laid out yet: UpdateSlots retries
-    local cy = WEAPON_SLOTS[name] and (boxes[1].t + boxes[1].b) / 2 or (r.t + r.b) / 2
+    local cy = Px(WEAPON_SLOTS[name] and (boxes[1].t + boxes[1].b) / 2 or (r.t + r.b) / 2)
     local pick
     local function try(p)
         if not p then return false end
@@ -616,7 +686,8 @@ local function LayoutBlock(btn, name, items)
     end
     if not pick then return end
     local box, S, just = pick.box, pick.S, Justify(name)
-    local bw, sockX = box.r - box.l, 0
+    local bw, sockX = math.floor(box.r - box.l), 0
+    local ox, oy = Px(box.l - r.l), Px(box.r - r.l)   -- (whole-pixel offsets from the slot's corner)
     for i, it in ipairs(items) do
         local rw, f = pick.rows[i], it.row
         local fs, y = f.text, pick.top - rw.off
@@ -624,16 +695,16 @@ local function LayoutBlock(btn, name, items)
         f:ClearAllPoints(); fs:ClearAllPoints()
         if rw.compact then
             f:SetSize(S, S)
-            if just == "LEFT" then f:SetPoint("TOPLEFT", btn, "TOPLEFT", box.l - r.l + sockX, y - r.t)
-            else f:SetPoint("TOPRIGHT", btn, "TOPLEFT", box.r - r.l - sockX, y - r.t) end
+            if just == "LEFT" then f:SetPoint("TOPLEFT", btn, "TOPLEFT", ox + sockX, Px(y - r.t))
+            else f:SetPoint("TOPRIGHT", btn, "TOPLEFT", oy - sockX, Px(y - r.t)) end
             sockX = sockX + S + COMPACT_GAP
             fs:SetText(""); fs:SetWidth(1)
             fs:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
         else
             SetSize(fs, pick.size); fs:SetWidth(rw.w); fs:SetText(rw.text)
             f:SetSize(bw, rw.rh)
-            f:SetPoint("TOPLEFT", btn, "TOPLEFT", box.l - r.l, y - r.t)
-            local ty = -(rw.rh - rw.h) / 2
+            f:SetPoint("TOPLEFT", btn, "TOPLEFT", ox, Px(y - r.t))
+            local ty = -Px((rw.rh - rw.h) / 2)
             if it.socket then
                 if just == "LEFT" then fs:SetPoint("TOPLEFT", f, "TOPLEFT", S + ICON_GAP, ty)
                 else fs:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(S + ICON_GAP), ty) end
@@ -643,7 +714,7 @@ local function LayoutBlock(btn, name, items)
         end
         if it.socket then
             f.bg:ClearAllPoints(); f.bg:SetSize(S, S)
-            local iy = rw.compact and 0 or -(rw.rh - S) / 2
+            local iy = rw.compact and 0 or -Px((rw.rh - S) / 2)
             f.bg:SetPoint(just == "LEFT" and "TOPLEFT" or "TOPRIGHT", f, just == "LEFT" and "TOPLEFT" or "TOPRIGHT", 0, iy)
             if it.gemID then f.gem:SetTexture(it.icon or "Interface\\Icons\\INV_Misc_QuestionMark"); f.gem:Show() else f.gem:Hide() end
         end
@@ -655,7 +726,8 @@ local function LayoutBlock(btn, name, items)
     SD(btn).label = pick
 end
 
--- the camera buttons show: the blocks that meet them hide until they go (alpha only; nothing else changes)
+-- the camera buttons show: the blocks that meet them hide until they go (alpha 0, and those rows let go of the mouse: no hover, no
+-- tooltip, the camera buttons get the clicks; G-002)
 local function CamShown()
     local m = _G.CharacterModelScene
     local cf = type(m) == "table" and m.ControlFrame or nil
@@ -696,6 +768,61 @@ local function ShowIlvl(btn)
 end
 
 local tipCache = {}   -- slot -> what its tooltip says (CM.SlotTip) or false; read only while the enchant part is on
+-- (V27, U1 G-008) a slot's tooltip read (C_TooltipInfo + ParseTip, CM.SlotTip) kept per slot, keyed by the slot's item link, as
+-- CM.SlotInfo keeps its item read: read again only when the link changes, or after an item event or a window open (DropTips: the
+-- tooltip can carry text the game had not loaded yet, or a set count that other slots change)
+local DropTips, SlotLink, SlotTipCached, WantInfo, NoteWanted, WantsItem, ClearWanted
+do
+local tipByLink = {}
+DropTips = function() for k in pairs(tipByLink) do tipByLink[k] = nil end end
+SlotLink = function(slot)
+    local link = CM.R(GetInventoryItemLink, "player", slot)
+    if type(link) ~= "string" or CM.IsSecret(link) then return nil end
+    return link
+end
+SlotTipCached = function(slot)
+    local link = SlotLink(slot)
+    if not link then tipByLink[slot] = nil; return nil end
+    local k = tipByLink[slot]
+    if k and k.link == link then return k.tip or nil end
+    local t = CM.SlotTip(slot)
+    diag.tipReads = (diag.tipReads or 0) + 1
+    tipByLink[slot] = { link = link, tip = t or false }
+    return t
+end
+-- (G-008) the item IDs the slots show (each equipped item and each gem in it): GET_ITEM_INFO_RECEIVED (itemID: number, success: bool;
+-- events.md:673) redraws only for one of these (the Stat Calculator's SC-020 rule), not for loot, the Auction House or chat links.
+-- Refilled at each full pass over the slots (window open, settings, item events), one table for the file.
+local wantItems = {}
+ClearWanted = function() for k in pairs(wantItems) do wantItems[k] = nil end end
+local function ItemIdOf(link)
+    if type(link) ~= "string" or CM.IsSecret(link) then return nil end
+    local id = link:match("item:(%d+)")
+    return id and tonumber(id) or nil
+end
+WantInfo = function(info)
+    if type(info) ~= "table" then return end
+    local id = ItemIdOf(info.link)
+    if id then wantItems[id] = true end
+    for _, g in ipairs(info.gems or {}) do if num(g.gemID) then wantItems[g.gemID] = true end end
+end
+NoteWanted = function()
+    ClearWanted()
+    for _, s in ipairs(CM.SLOTS) do
+        local link = SlotLink(s[1])
+        if link then
+            local id = ItemIdOf(link)
+            if id then wantItems[id] = true end
+            WantInfo(CM.SlotInfo(s[1]))   -- (kept per link by the model: no new read for a loaded slot)
+        end
+    end
+end
+WantsItem = function(id)
+    if id == nil or CM.IsSecret(id) or type(id) ~= "number" then return false end
+    return wantItems[id] == true
+end
+end
+ns.CharDisplay_WantsItem = WantsItem   -- (tests)
 local function EmbCount() local n = 0; for _, t in pairs(tipCache) do if t and t.embellished then n = n + 1 end end; return n end
 
 -- the rows of one slot's block, from the item (each part only while its switch is on)
@@ -767,6 +894,26 @@ local function BlockItems(btn, slot, info, tip, c)
     return items
 end
 
+-- where a slot and the model are now (left, top; the model's left), rounded; nil for a value not readable or secret
+do
+    local function PxRead(f, m)
+        if type(f) ~= "table" or type(f[m]) ~= "function" then return nil end
+        local v = f[m](f)
+        if CM.IsSecret(v) or not num(v) then return nil end
+        return Px(v)
+    end
+    GeoSig = function(btn) return PxRead(btn, "GetLeft"), PxRead(btn, "GetTop"), PxRead(_G.CharacterModelScene, "GetLeft") end
+end
+-- the slot shows what its last layout was made for (same item link, same place): nothing to redo
+local function LaidSame(btn)
+    local d = slotData[btn]
+    local lay = d and d.lay
+    if not lay then return false end
+    local slot = btn.GetID and btn:GetID()
+    if not num(slot) or lay.link ~= SlotLink(slot) then return false end
+    local l, t, ml = GeoSig(btn)
+    return l ~= nil and t ~= nil and l == lay.l and t == lay.t and ml == lay.ml
+end
 local function UpdateSlot(btn, c, tips)
     if type(btn) ~= "table" then return end
     local slot = btn.GetID and btn:GetID()
@@ -799,36 +946,57 @@ local function UpdateSlot(btn, c, tips)
     -- the block beside the slot: enchant, embellishment, gems (LayoutBlock)
     local tip
     if c.enchants then
-        if tips then tip = tips[slot] or nil else tip = info and CM.SlotTip(slot) or nil end
+        if tips then tip = tips[slot] or nil else tip = info and SlotTipCached(slot) or nil end
         tipCache[slot] = tip or false
     end
-    for _, f in ipairs(BlockRows(btn)) do ShowRow(f, false) end
+    EachRow(btn, HideRow)
     if c.enchants or c.gems then
         local items = BlockItems(btn, slot, info, tip, c)
         LayoutBlock(btn, name, items)
         SetBlockAlpha(btn, (d.label and d.label.camHit and CamShown()) and 0 or 1)
     else d.label = nil end
+    if c.ilvl or c.enchants or c.gems then
+        WantInfo(info)
+        -- (G-008) what this layout was made for: the slot's item link (nil: an empty slot) and where the slot and the model are
+        -- (whole-pixel reads). The slot hook lays a slot out again only when one of these changed.
+        local lay = d.lay or {}
+        d.lay = lay
+        lay.link = info and info.link or nil
+        lay.l, lay.t, lay.ml = GeoSig(btn)
+    else d.lay = nil end
 end
 
 local retries = 0
 local dupPending = false
+-- (G-008) which slots to look at again: every slot (a full pass) or only the ones Blizzard redrew (the slot hook)
+local dupQ = { all = false, only = setmetatable({}, { __mode = "k" }) }
 local function RecheckDup()
     dupPending = false
+    local all = dupQ.all
+    dupQ.all = false
     local c = Eff()
-    if not (Active() and c.ilvl) then return end
+    if not (Active() and c.ilvl) then for k in pairs(dupQ.only) do dupQ.only[k] = nil end; return end
     local n = 0
     for _, s in ipairs(CM.SLOTS) do
         local b = SlotBtn(s[4])
         local d = type(b) == "table" and slotData[b] or nil
-        if d and d.ilvl then ShowIlvl(b); if d.ilvlDup then n = n + 1 end end
+        if d and d.ilvl then
+            if all or dupQ.only[b] then ShowIlvl(b) end
+            if d.ilvlDup then n = n + 1 end
+        end
     end
+    for k in pairs(dupQ.only) do dupQ.only[k] = nil end
     diag.dupes = n
 end
--- another addon may write its text after ours: look again on the next frame (once per frame at most; only while the item level is on)
-local function QueueDupCheck(c)
-    if dupPending or not (c and c.ilvl) or not (C_Timer and C_Timer.After) then return end
+-- another addon may write its text after ours: look again on the next frame (once per frame at most; only while the item level is on);
+-- btn: only that slot (another addon's hook on Blizzard's slot redraw), else every slot
+local function RunDupCheck() if Active() then Guard(RecheckDup) else dupPending = false end end
+local function QueueDupCheck(c, btn)
+    if not (c and c.ilvl) or not (C_Timer and C_Timer.After) then return end
+    if btn then dupQ.only[btn] = true else dupQ.all = true end
+    if dupPending then return end
     dupPending = true
-    C_Timer.After(0, function() if Active() then Guard(RecheckDup) else dupPending = false end end)
+    C_Timer.After(0, RunDupCheck)
 end
 
 -- (QoL 0.7.33; Insivius via Xaya: "Text breaks if you make the window wider and then bring it back down"; her answer "Fix + diagnostic",
@@ -877,10 +1045,11 @@ UpdateSlots = function(c)
         tips = {}
         tipCache = {}
         for _, s in ipairs(CM.SLOTS) do
-            local t = CM.SlotTip(s[1])
-            if t and CM.R(GetInventoryItemLink, "player", s[1]) then tips[s[1]] = t; tipCache[s[1]] = t end
+            local t = SlotTipCached(s[1])
+            if t then tips[s[1]] = t; tipCache[s[1]] = t end
         end
     end
+    ClearWanted()   -- (refilled by each slot below, WantInfo)
     for _, s in ipairs(CM.SLOTS) do
         local btn = SlotBtn(s[4])
         if type(btn) == "table" then
@@ -925,21 +1094,41 @@ end
 -- Stat Calculator's), headings in the label colour, unless she picked others. A rating stat shows its percent, its rating, or both
 -- ("528 / 22.48%", the Stat Weights' "Rating (P / %)" form). Hover a line: the Stat Calculator's hover for it. Built only while the
 -- reskin and this part are on (V14); redrawn after Blizzard's PaperDollFrame_UpdateStats (the hook the stat list already has), at
--- most once per frame. Plain frames only (nothing protected): it works in and out of combat; values the game hides show "hidden in combat".
+-- most once per frame, and only when a number it shows changed (U1 G-007); in combat it keeps its numbers and is drawn once when combat
+-- ends (PLAYER_REGEN_ENABLED; DECISION to confirm with Xaya). Opening the window draws it, in or out of combat. Plain frames only (nothing
+-- protected), hover only (G-005); values the game hides show "hidden in combat".
 local LIST_CLEAN = { whatIf = 0, whatIfStats = {}, whatIfPrimary = false, detail = "all", collapsed = {} }
 local LIST_ROW, LIST_HEAD, LIST_SIZE, LIST_PAD = 14, 17, 11, 4
 local RATING_STAT = { map_crit = true, map_haste = true, map_mastery = true, map_vers = true, map_avoidance = true, map_leech = true, map_speed2 = true }
 -- the groups and their stat lines as Character Stats has them now: { { key, label, level, stats = { item, ... } } }, and the items by key
-function ns.CharDisplay_ListModel()
-    if not (CM and CM.Build) then return {}, {} end
+-- buf (the stat list's own, UpdateStatList): its tables are emptied and refilled instead of new ones made per update (V25(2)); without
+-- it (the settings page, which keeps what it gets) new tables are returned
+function ns.CharDisplay_ListModel(buf)
+    local groups, items, pool, ng = nil, nil, nil, 0
+    if buf then
+        groups, items, pool = buf.groups, buf.items, buf.pool
+        for i = #groups, 1, -1 do groups[i] = nil end
+        for k in pairs(items) do items[k] = nil end
+    else
+        groups, items = {}, {}
+    end
+    if not (CM and CM.Build) then return groups, items end
     local ok, m = pcall(CM.Build, LIST_CLEAN, "stats")
-    if not ok or type(m) ~= "table" then return {}, {} end
-    local groups, items, cur = {}, {}, nil
+    if not ok or type(m) ~= "table" then return groups, items end
+    local cur = nil
     for _, sec in ipairs(m.sections or {}) do
         if sec.key == "map_character" then
             for _, it in ipairs(sec.items) do
                 if it.kind == "subhead" then
-                    cur = { key = it.key, label = it.label, level = it.level, stats = {} }
+                    ng = ng + 1
+                    if pool then
+                        cur = pool[ng] or { stats = {} }
+                        pool[ng] = cur
+                        for i = #cur.stats, 1, -1 do cur.stats[i] = nil end
+                        cur.key, cur.label, cur.level = it.key, it.label, it.level
+                    else
+                        cur = { key = it.key, label = it.label, level = it.level, stats = {} }
+                    end
                     groups[#groups + 1] = cur
                 elseif cur and (it.kind == "input" or it.kind == "stat" or it.kind == "rating") then
                     cur.stats[#cur.stats + 1] = it
@@ -971,7 +1160,79 @@ function ns.CharDisplay_ListValue(c, it)
 end
 local function ListColor(t, fb) if type(t) == "table" and num(t[1]) and num(t[2]) and num(t[3]) then return { t[1], t[2], t[3], 1 } end; return fb end
 local listPending = false
-local function UpdateStatList(c)
+local UpdateStatList
+do
+-- (V27, U1 G-007) a stat line's font string, placed and filled (one function for the file, no closure per update); returns its
+-- whole-pixel height
+local function ListFS(L, x, y, width, s, col, justify, size)
+    L.nFs = L.nFs + 1
+    local f = L.fs[L.nFs]
+    if not f then f = L.content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); L.fs[L.nFs] = f end
+    SetSize(f, size or LIST_SIZE, "")
+    f:ClearAllPoints(); f:SetPoint("TOPLEFT", L.content, "TOPLEFT", x, -y); f:SetWidth(width)
+    if f.SetJustifyH then f:SetJustifyH(justify or "LEFT") end
+    if f.SetWordWrap then f:SetWordWrap(true) end
+    f:SetText(s or ""); f:SetTextColor(col[1], col[2], col[3], col[4] or 1); f:Show()
+    local h = f.GetStringHeight and f:GetStringHeight() or LIST_SIZE
+    if CM.IsSecret(h) or not (num(h) and h > 0) then h = LIST_SIZE end
+    return Px(h), f
+end
+local function RowBtnEnter(self)
+    if not (GameTooltip and self.item) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(self.name or "", 1, 1, 1)
+    local lines = CM.TooltipLines(self.item)   -- (QoL 0.7.53: the model's, StatModel.lua)
+    for i, l in ipairs(lines) do
+        if i > 1 then
+            if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
+            else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
+        end
+    end
+    GameTooltip:Show()
+end
+local function RowBtnLeave() if GameTooltip then GameTooltip:Hide() end end
+local function ListWheel(self, d)
+    local cur = (self.GetVerticalScroll and self:GetVerticalScroll()) or 0
+    local maxS = math.max(0, (self.contentH or 0) - ((self.GetHeight and self:GetHeight()) or 0))
+    if self.SetVerticalScroll then self:SetVerticalScroll(math.max(0, math.min(maxS, cur - d * LIST_ROW * 2))) end
+end
+local function RowBtnWheel(self, d) local L = own.statList; if L then ListWheel(L, d) end end
+-- (G-007, round 2) what the list shows, compared field by field against the last layout's values kept in one reused array: the width,
+-- then each group's key and label and each stat line's key, label, value, rating, hidden state and tone. No string or table is made
+-- per update (V25(2)). All the same as the last layout: nothing it shows changed, so it is not laid out again. A secret value (the
+-- game's restricted numbers) is never compared: it counts as changed (fail safe: the list is laid out).
+local lastVals, lastN = {}, 0
+local function Put(n, v)
+    if CM.IsSecret(v) then lastVals[n] = false; return true end
+    if lastVals[n] ~= v then lastVals[n] = v; return true end
+    return false
+end
+local function ListChanged(groups, w)
+    local n, ch = 1, Put(1, w)
+    for _, g in ipairs(groups) do
+        n = n + 1; if Put(n, g.key) then ch = true end
+        n = n + 1; if Put(n, g.label) then ch = true end
+        for _, it in ipairs(g.stats) do
+            n = n + 1; if Put(n, it.key) then ch = true end
+            n = n + 1; if Put(n, it.label) then ch = true end
+            n = n + 1; if Put(n, it.value) then ch = true end
+            n = n + 1; if Put(n, num(it.absolute) and it.absolute or false) then ch = true end
+            n = n + 1; if Put(n, it.hidden == true) then ch = true end
+            n = n + 1; if Put(n, it.tone) then ch = true end
+        end
+    end
+    if n ~= lastN then
+        ch = true
+        for i = n + 1, lastN do lastVals[i] = nil end
+        lastN = n
+    end
+    return ch
+end
+-- the list's model tables, reused from update to update (the settings page builds its own: it keeps them)
+local listBuf = { groups = {}, items = {}, pool = {} }
+diag.listBuilds, diag.listLayouts = 0, 0
+-- force: lay the list out even when its numbers did not change (a settings, theme or window change: ApplyNow)
+UpdateStatList = function(c, force)
     local pane = _G.CharacterStatsPane
     if type(pane) ~= "table" or not pane.CreateTexture then return end
     local L = own.statList
@@ -979,62 +1240,59 @@ local function UpdateStatList(c)
         L = Own(CreateFrame("ScrollFrame", nil, pane))
         L:SetAllPoints(pane)
         if L.SetFrameLevel and pane.GetFrameLevel then L:SetFrameLevel((pane:GetFrameLevel() or 1) + 10) end
-        L:EnableMouse(true)
+        HoverOnly(L, true)   -- (G-005) hover and the wheel only: a click passes through
         if L.EnableMouseWheel then L:EnableMouseWheel(true) end
         L.fill = L:CreateTexture(nil, "BACKGROUND"); L.fill:SetAllPoints(L)
         L.content = CreateFrame("Frame", nil, L)
         L.content:SetSize(1, 1)
         if L.SetScrollChild then L:SetScrollChild(L.content) end
-        L:SetScript("OnMouseWheel", function(self, d)
-            local cur = (self.GetVerticalScroll and self:GetVerticalScroll()) or 0
-            local maxS = math.max(0, (self.contentH or 0) - ((self.GetHeight and self:GetHeight()) or 0))
-            if self.SetVerticalScroll then self:SetVerticalScroll(math.max(0, math.min(maxS, cur - d * LIST_ROW * 2))) end
-        end)
-        L.fs, L.btns, L.rules = {}, {}, {}
+        L:SetScript("OnMouseWheel", ListWheel)
+        L.fs, L.btns, L.rules, L.recs, L.keys, L.nFs = {}, {}, {}, {}, {}, 0
         own.statList = L
     end
+    local w = (L.GetWidth and L:GetWidth()) or 0
+    if CM.IsSecret(w) or not num(w) or w <= 0 then w = (pane.GetWidth and pane:GetWidth()) or 190 end
+    if CM.IsSecret(w) or not num(w) or w <= 0 then w = 190 end
+    w = Px(w)
+    -- the rating -> percent reads (the Stat Calculator's model): INFERENCE pending Xaya's confirmation that this math is allowed under
+    -- V27 when it runs once per actual change (here: once per Blizzard stat update while the window is open, out of combat)
+    local groups, items = ns.CharDisplay_ListModel(listBuf)
+    diag.listBuilds = diag.listBuilds + 1
+    local changed = ListChanged(groups, w)
+    if not force and not changed and L:IsShown() then return end
+    diag.listLayouts = diag.listLayouts + 1
     local pbg = TC("xui-pane", "bg", { 0.04, 0.04, 0.04, 1 })
     L.fill:SetColorTexture(pbg[1], pbg[2], pbg[3], 1)
-    local w = (L.GetWidth and L:GetWidth()) or 0
-    if not num(w) or w <= 0 then w = (pane.GetWidth and pane:GetWidth()) or 190 end
     L.content:SetWidth(w)
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     local text = TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+    local mute = TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 })
     local line = TC("xui-window", "border", { 0.35, 0.35, 0.4, 1 })
-    local nFs, nBtn, nRule = 0, 0, 0
-    local function FS(x, y, width, s, col, justify, size)
-        nFs = nFs + 1
-        local f = L.fs[nFs]
-        if not f then f = L.content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); L.fs[nFs] = f end
-        SetSize(f, size or LIST_SIZE, "")
-        f:ClearAllPoints(); f:SetPoint("TOPLEFT", L.content, "TOPLEFT", x, -y); f:SetWidth(width)
-        if f.SetJustifyH then f:SetJustifyH(justify or "LEFT") end
-        if f.SetWordWrap then f:SetWordWrap(true) end
-        f:SetText(s or ""); f:SetTextColor(col[1], col[2], col[3], col[4] or 1); f:Show()
-        local h = f.GetStringHeight and f:GetStringHeight() or LIST_SIZE
-        return (num(h) and h > 0) and h or LIST_SIZE, f
-    end
-    local recs = {}
-    local groups = ns.CharDisplay_ListModel()
-    local items = {}
-    for _, g in ipairs(groups) do for _, it in ipairs(g.stats) do items[it.key] = it end end
-    local y = LIST_PAD
-    for _, g in ipairs(groups) do
-        local keys = {}
+    local nBtn, nRule = 0, 0
+    L.nFs = 0
+    local recs = L.recs
+    for i = #recs, 1, -1 do recs[i] = nil end
+    -- each group's shown keys in her order, once (reused tables); Core Stats shows when one of its level-2 groups has a line
+    local keysBy, anyL2 = L.keys, false
+    for gi, g in ipairs(groups) do
+        local keys = keysBy[gi] or {}
+        keysBy[gi] = keys
+        for i = #keys, 1, -1 do keys[i] = nil end
         for _, k in ipairs(ns.CharDisplay_ListOrder(c, g)) do if not c.statHide[k] then keys[#keys + 1] = k end end
+        if g.level == 2 and #keys > 0 then anyL2 = true end
+    end
+    local lw = math.floor((w - 2 * LIST_PAD - 10) * 0.58)
+    local y = LIST_PAD
+    for gi, g in ipairs(groups) do
+        local keys = keysBy[gi]
         -- a heading shows when it has a line to show under it (Core Stats: when one of its four groups has one)
         local show = #keys > 0
-        if g.key == "sub_core" then
-            show = false
-            for _, g2 in ipairs(groups) do
-                if g2.level == 2 then for _, k in ipairs(ns.CharDisplay_ListOrder(c, g2)) do if not c.statHide[k] then show = true end end end
-            end
-        end
+        if g.key == "sub_core" then show = anyL2 end
         if show then
             local name = (c.groupName[g.key] and c.groupName[g.key] ~= "") and c.groupName[g.key] or g.label
             local col = ListColor(c.groupColor[g.key], label)
             local x = (g.level == 2) and 6 or LIST_PAD
-            local h, f = FS(x, y + 2, w - x - LIST_PAD, name, col, "LEFT", g.level == 2 and LIST_SIZE or LIST_SIZE + 1)
+            local h, f = ListFS(L, x, y + 2, w - x - LIST_PAD, name, col, "LEFT", g.level == 2 and LIST_SIZE or LIST_SIZE + 1)
             nRule = nRule + 1
             local r = L.rules[nRule]
             if not r then r = L.content:CreateTexture(nil, "ARTWORK"); L.rules[nRule] = r end
@@ -1046,33 +1304,20 @@ local function UpdateStatList(c)
                 local it = items[k]
                 local sname = (c.statName[k] and c.statName[k] ~= "") and c.statName[k] or it.label
                 local scol = ListColor(c.statColor[k], it.labelColor or text)
-                local lw = math.floor((w - 2 * LIST_PAD - 10) * 0.58)
                 local lx = 10
-                local lh, lf = FS(lx, y, lw, sname, scol, "LEFT")
+                local lh, lf = ListFS(L, lx, y, lw, sname, scol, "LEFT")
                 local val = ns.CharDisplay_ListValue(c, it)
-                local vh, vf = FS(lx + lw + 4, y, w - (lx + lw + 4) - LIST_PAD, val, (it.hidden or it.tone == "mute") and TC("xui-text-muted", "text", { 0.6, 0.6, 0.65, 1 }) or text, "RIGHT")
+                local vh, vf = ListFS(L, lx + lw + 4, y, w - (lx + lw + 4) - LIST_PAD, val, (it.hidden or it.tone == "mute") and mute or text, "RIGHT")
                 local rowH = math.max(LIST_ROW, lh + 2, vh + 2)
                 nBtn = nBtn + 1
                 local b = L.btns[nBtn]
                 if not b then
                     b = CreateFrame("Button", nil, L.content)
-                    b:EnableMouse(true)
+                    HoverOnly(b, true)   -- (G-005) hover tooltip and highlight only: a click passes through
                     local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.06)
-                    b:SetScript("OnEnter", function(self)
-                        if not (GameTooltip and self.item) then return end
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                        GameTooltip:AddLine(self.name or "", 1, 1, 1)
-                        local lines = CM.TooltipLines(self.item)   -- (QoL 0.7.53: the model's, StatModel.lua)
-                        for i, l in ipairs(lines) do
-                            if i > 1 then
-                                if l[2] ~= nil and GameTooltip.AddDoubleLine then GameTooltip:AddDoubleLine(l[1], l[2], 0.75, 0.75, 0.8, 0.95, 0.95, 0.95)
-                                else GameTooltip:AddLine(l[1], 0.85, 0.85, 0.85, true) end
-                            end
-                        end
-                        GameTooltip:Show()
-                    end)
-                    b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
-                    b:SetScript("OnMouseWheel", function(_, d) local sc = L:GetScript("OnMouseWheel"); if sc then sc(L, d) end end)
+                    b:SetScript("OnEnter", RowBtnEnter)
+                    b:SetScript("OnLeave", RowBtnLeave)
+                    b:SetScript("OnMouseWheel", RowBtnWheel)
                     L.btns[nBtn] = b
                 end
                 b.item, b.name = it, sname
@@ -1083,20 +1328,30 @@ local function UpdateStatList(c)
             y = y + 3
         end
     end
-    for i = nFs + 1, #L.fs do L.fs[i]:Hide() end
+    for i = L.nFs + 1, #L.fs do L.fs[i]:Hide() end
     for i = nBtn + 1, #L.btns do L.btns[i]:Hide(); L.btns[i].item = nil end
     for i = nRule + 1, #L.rules do L.rules[i]:Hide() end
     L.content:SetHeight(math.max(1, y))
-    L.contentH, L.recs = y, recs
+    L.contentH = y
     L:Show()
     diag.statList = ("%d lines shown"):format(#recs)
 end
+end
 local function HideStatList() if own.statList then own.statList:Hide() end end
+-- (G-007) Blizzard's stat update asks for a redraw: at most once per frame, and not in combat (the list is marked stale and drawn once
+-- when combat ends, PLAYER_REGEN_ENABLED). DECISION to confirm with Xaya: in combat the list keeps its last numbers until combat ends
+-- (the alternative is a redraw at most every N seconds, compared against a stored time).
+local listStale = false
+local function RunStatList()
+    listPending = false
+    local c = Eff()
+    if c and c.statList and WindowShown() then Guard(UpdateStatList, c, false) end
+end
 local function QueueStatList()
+    if InCombat() then listStale = true; if NeedRegen then NeedRegen() end; return end
     if listPending then return end
     listPending = true
-    local function run() listPending = false; local c = Eff(); if c and Active() and c.statList then Guard(UpdateStatList, c) end end
-    if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+    if C_Timer and C_Timer.After then C_Timer.After(0, RunStatList) else RunStatList() end
 end
 function ns.CharDisplay_StatListRecs() return own.statList and own.statList:IsShown() and own.statList.recs or nil end   -- (tests)
 
@@ -1172,29 +1427,81 @@ Guard = function(fn, ...)
     return false
 end
 
--- the events: the spec / level (the model's cache), and the item events only while the slot marks or an item detail part is on; off,
--- the frame listens to nothing (V14). Item data that arrives later (an item level, a gem's name or a tooltip line the game had not sent
--- yet) redraws the slots once per frame at most, only while the window is open.
+-- the events: the spec / level (the model's cache), and the item events only while the slot marks or an item detail part is on AND the
+-- character window is open (V27 / V28, U1 G-011: registered in the window's OnShow, let go in its OnHide); off, the frame listens to
+-- nothing (V14). Item data that arrives later (an item level, a gem's name or a tooltip line the game had not sent yet) redraws the
+-- slots once per frame at most, only for an item the slots show (G-008). PLAYER_REGEN_ENABLED only while something waits for the end
+-- of combat (a row's mouse setting, the stat list marked stale).
 local SLOT_EVENTS = { "PLAYER_EQUIPMENT_CHANGED", "GET_ITEM_INFO_RECEIVED", "SOCKET_INFO_UPDATE", "ENCHANT_SPELL_COMPLETED" }
 local ev, slotPending
-local function OnEvent(_, event)
-    if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache(); return end
-    if not On() then return end
-    local c = Cfg()
-    if c.overlays then RefreshOverlays() end
-    if Active() and (c.ilvl or c.enchants or c.gems) and not slotPending and WindowShown() then
-        slotPending = true
-        local run = function() slotPending = false; local c2 = Eff(); if c2 then Guard(UpdateSlots, c2) end end
-        if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+local pageGroups   -- (G-015) the settings page's stat list groups, kept until the spec or level changes (below, at the page)
+local regenWanted = false
+-- (G-008) one queue for the slots, run once per frame: every slot (an item event, the window's size) or only the slots Blizzard redrew
+-- whose item link or place changed since their last layout (the slot hook)
+local ClearSlotQ, QueueAllSlots, QueueSlot
+do
+local slotQ, slotAll = {}, false
+ClearSlotQ = function() for k in pairs(slotQ) do slotQ[k] = nil end end
+local function RunSlots()
+    slotPending = false
+    local all = slotAll
+    slotAll = false
+    local c = Eff()
+    if not (c and (c.ilvl or c.enchants or c.gems) and WindowShown()) then ClearSlotQ(); return end
+    if all then ClearSlotQ(); Guard(UpdateSlots, c); return end
+    for btn in pairs(slotQ) do   -- (the slot hook also queued each one's duplicate check)
+        slotQ[btn] = nil
+        if not Guard(UpdateSlot, btn, c) then ClearSlotQ(); return end
     end
 end
-local function SetEvents(c)
+local function ArmSlots()
+    if slotPending then return end
+    slotPending = true
+    if C_Timer and C_Timer.After then C_Timer.After(0, RunSlots) else RunSlots() end
+end
+QueueAllSlots = function() slotAll = true; ArmSlots() end
+QueueSlot = function(btn)
+    if slotAll or LaidSame(btn) then return end
+    slotQ[btn] = true
+    ArmSlots()
+end
+end
+local SetEvents
+local function OnRegen()
+    regenWanted = false
+    FlushMouse()
+    local stale = listStale
+    listStale = false
+    SetEvents(CfgFast())
+    if stale and WindowShown() then QueueStatList() end
+end
+local function OnEvent(_, event, arg1)
+    if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache(); pageGroups = nil; return end
+    if event == "PLAYER_REGEN_ENABLED" then OnRegen(); return end
+    if not WindowShown() or not On() then return end
+    if event == "GET_ITEM_INFO_RECEIVED" and not WantsItem(arg1) then return end   -- (G-008) not an item the slots show
+    DropTips()
+    local c = CfgFast()
+    local details = Active() and (c.ilvl or c.enchants or c.gems)
+    if event ~= "GET_ITEM_INFO_RECEIVED" and not details then NoteWanted() end   -- (the slots changed; the full pass below refills it)
+    if c.overlays then RefreshOverlays() end
+    if details then QueueAllSlots() end
+end
+-- open: whether the window is open (nil: read it); the item events only while it is
+SetEvents = function(c, open)
     if not ev then return end
     ev:UnregisterAllEvents()
+    if regenWanted then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED") end
     if not (c and On()) then return end
     pcall(ev.RegisterEvent, ev, "PLAYER_SPECIALIZATION_CHANGED")
     pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
-    if c.overlays or c.ilvl or c.enchants or c.gems then for _, e in ipairs(SLOT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
+    if open == nil then open = WindowShown() end
+    if open and (c.overlays or c.ilvl or c.enchants or c.gems) then for _, e in ipairs(SLOT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end end
+end
+NeedRegen = function()
+    if regenWanted then return end
+    regenWanted = true
+    if ev then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED") end
 end
 
 -- a theme change repaints; the listener is there only while this is on (V14)
@@ -1209,7 +1516,9 @@ end
 local function ApplyNow()
     local c = Cfg()
     if not c then return end
+    cfgEpoch = nil
     if not On() then
+        pageGroups = nil   -- (switched on again later: the page's stat list is read afresh)
         SetOwnShown(false); diag.applied = false; SetEvents(nil); SetThemeListener(false)
         for _, o in pairs(overlays) do o:Hide() end
         UpdateButton()
@@ -1217,11 +1526,16 @@ local function ApplyNow()
     end
     -- a part switched off gives its pieces back: hide every piece, then draw the parts that are on
     SetOwnShown(false)
+    DropTips()   -- (a window open or a settings change: every slot's tooltip is read once more)
+    -- (round 2: deferring this to the window's OnShow while it is closed was tried and left out: tests/char_reskin_run.py and
+    -- tests/char_reskin_noreskin_run.py, outside this unit, expect the slots drawn at an Apply with the window closed; open question)
+    local details = Active() and (c.ilvl or c.enchants or c.gems)
     if Active() then
         UpdateSlots(c)
-        if c.statList then UpdateStatList(c) end   -- (QoL 0.7.31) our full stat list over Blizzard's pane
+        if c.statList then UpdateStatList(c, true); listStale = false end   -- (QoL 0.7.31) our full stat list over Blizzard's pane
     end
     UpdateOverlays()
+    if c.overlays and not details then NoteWanted() end
     SetEvents(c)
     SetThemeListener(true)
     diag.applied = true
@@ -1240,37 +1554,48 @@ local function Listen()
     if listening then return end
     listening = true
     if ns.CharReskin_OnWindowSize then ns.CharReskin_OnWindowSize(OnWindowSize) end
-    -- (the Stat Calculator's callback was given at the first read of its service, ReadTieIns: nothing is read again here)
+    -- (the Stat Calculator's callback was given at the first read of its service made while this is on, ReadTieIns)
 end
 
--- the hooks: each is placed the first time a part that needs it is on, and returns at once while this (or that part) is off, and
--- while the character window is closed (a /reload removes them; V14 limit 2)
+-- the hooks: each is placed the first time a part that needs it is on, and returns at its first line while the character window is
+-- closed (WindowShown first, the cheapest test: G-016), then while this (or that part) is off (a /reload removes them; V14 limit 2)
 local hooked, ownerHooked, slotHooked, camHooked, statsHooked = false, false, false, false, false
+local function OnCam() if not WindowShown() then return end; local c2 = Eff(); if c2 and (c2.enchants or c2.gems) then Guard(UpdateCamHide) end end
 local function Hook(c)
     if not hooked then
         hooked = true
         local cf = _G.CharacterFrame
-        if type(cf) == "table" and cf.HookScript then cf:HookScript("OnShow", function() if On() then Guard(ApplyNow) end end) end
+        if type(cf) == "table" and cf.HookScript then
+            cf:HookScript("OnShow", function() if On() then Guard(ApplyNow) end end)
+            -- (G-011) the window closed: the item events are let go (the spec / level ones stay while this is on)
+            cf:HookScript("OnHide", function() if ev then SetEvents(CfgFast(), false); ClearSlotQ() end end)
+        end
         ev = CreateFrame("Frame")
         ev:SetScript("OnEvent", OnEvent)
+        if regenWanted then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED") end
     end
     -- the slot marks follow the Character tab (the window's own OnShow above covers the rest)
     if c.overlays and not ownerHooked then
         local owner = Owner()
         if owner and owner.HookScript then
             ownerHooked = true
-            owner:HookScript("OnShow", function() if not On() then return end; local c2 = Cfg(); if c2.overlays then UpdateOverlays() end end)
+            owner:HookScript("OnShow", function() if not (WindowShown() and On()) then return end; local c2 = CfgFast(); if c2.overlays then UpdateOverlays() end end)
         end
     end
-    -- Blizzard redraws one slot button at a time; the marks and the item details follow (post-hook, Blizzard's code runs unchanged first)
+    -- Blizzard redraws one slot button at a time; the marks and the item details follow (post-hook, Blizzard's code runs unchanged
+    -- first). (G-008) the item details: queued into the once-per-frame slot pass, and only for a slot whose item link or place changed
+    -- since its last layout
     if (c.overlays or c.ilvl or c.enchants or c.gems) and not slotHooked and type(hooksecurefunc) == "function"
         and type(_G.PaperDollItemSlotButton_Update) == "function" then
         slotHooked = true
         hooksecurefunc("PaperDollItemSlotButton_Update", function(btn)
-            if not (On() and WindowShown()) then return end
-            local c2 = Cfg()
+            if not (WindowShown() and On()) then return end
+            local c2 = CfgFast()
             if c2.overlays then UpdateOverlay(btn) end
-            if Active() and (c2.ilvl or c2.enchants or c2.gems) and Guard(UpdateSlot, btn, c2) then QueueDupCheck(c2) end
+            if Active() and (c2.ilvl or c2.enchants or c2.gems) and type(btn) == "table" then
+                QueueSlot(btn)
+                QueueDupCheck(c2, btn)   -- (another addon's text on this slot may have changed with it: this slot only)
+            end
         end)
     end
     -- the model's camera buttons: the blocks that meet them hide while they show
@@ -1279,22 +1604,25 @@ local function Hook(c)
         local camf = type(m) == "table" and m.ControlFrame or nil
         if type(camf) == "table" and camf.HookScript then
             camHooked = true
-            camf:HookScript("OnShow", function() local c2 = Eff(); if c2 and (c2.enchants or c2.gems) then Guard(UpdateCamHide) end end)
-            camf:HookScript("OnHide", function() local c2 = Eff(); if c2 and (c2.enchants or c2.gems) then Guard(UpdateCamHide) end end)
+            camf:HookScript("OnShow", OnCam)
+            camf:HookScript("OnHide", OnCam)
         end
     end
-    -- the full stat list is redrawn after Blizzard's own stat update, at most once per frame (QoL 0.7.31)
+    -- the full stat list is redrawn after Blizzard's own stat update, at most once per frame, only when a number it shows changed, and
+    -- not in combat (G-007: once when combat ends)
     if c.statList and not statsHooked and type(hooksecurefunc) == "function" and type(_G.PaperDollFrame_UpdateStats) == "function" then
         statsHooked = true
         hooksecurefunc("PaperDollFrame_UpdateStats", function()
+            if not WindowShown() then return end
             local c2 = Eff()
-            if c2 and c2.statList and WindowShown() then QueueStatList() end
+            if c2 and c2.statList then QueueStatList() end
         end)
     end
 end
 
 -- (V25 R4) tells Enhanced Tooltips' stat lines (the one listener, set through the service) when this is switched on or off
 local onListener, toldOn = nil, nil
+local wasOn = false   -- (round 2) whether this was on at the last Apply: the tie-ins are read only when it switches on
 local function TellOn()
     if not onListener then return end
     local now = On()
@@ -1305,10 +1633,18 @@ end
 function ns.CharDisplay_Apply()
     local c = Cfg()
     if not c then return end
-    if On() then ReadTieIns(); Listen(); Hook(c) end
+    cfgEpoch = nil
+    -- (G-017) the Stat Calculator is read and subscribed to the first time this is on (read again then if only the page read it).
+    -- (round 2) read only when this is switched on (off -> on, the login included), never on a settings or theme change while it stays
+    -- on: with the Stat Calculator missing (XayaUI Bonus Features off) or without OnState nothing is read again until the next switch-on
+    local on = On()
+    if on and not wasOn then ReadTieIns(not subscribed, true) end
+    wasOn = on
+    if on then Listen(); Hook(c) end
     if hooked then Guard(ApplyNow) else UpdateButton() end
     TellOn()
 end
+
 -- at the login (every addon's settings are open then: the one-time merge can read what each part showed before), and only while on
 ns.WhenSettingsReady("qol", function()
     if ns.AtLogin then
@@ -1347,7 +1683,26 @@ ns.Provide("charDisplay", {
     end,
 })
 ns.Provide("charDisplayDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.CharDisplay_Apply() end,
-    Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end })
+    Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end,
+    -- (U1, read only, for the walkthrough) the rows beside the slots and the stat list: how many take clicks (should be 0), how many
+    -- take hover, how many are faded out under the camera buttons and still take hover (should be 0); the stat list's builds / layouts
+    Mouse = function()
+        local rows, clicks, hover, faded, fadedHover = 0, 0, 0, 0, 0
+        local function look(f)
+            if not (f.IsShown and f:IsShown()) then return end
+            rows = rows + 1
+            local ck = f.IsMouseClickEnabled and f:IsMouseClickEnabled()
+            local mv = f.IsMouseMotionEnabled and f:IsMouseMotionEnabled()
+            if ck then clicks = clicks + 1 end
+            if mv then hover = hover + 1 end
+            if f.xuiFaded then faded = faded + 1; if mv then fadedHover = fadedHover + 1 end end
+        end
+        for _, s in ipairs(CM.SLOTS) do local b = _G["Character" .. s[4]]; if type(b) == "table" then EachRow(b, look) end end
+        local L = own.statList
+        if L then look(L); for _, b in ipairs(L.btns) do look(b) end end
+        return { rows = rows, clicks = clicks, hover = hover, faded = faded, fadedHover = fadedHover, queued = ns.CharDisplay_MouseQueued() }
+    end,
+    ListCounts = function() return { builds = diag.listBuilds or 0, layouts = diag.listLayouts or 0, stale = listStale == true } end })
 
 -------------------------------------------------------------------------------
 -- Settings page: QoL > Improved Character Display (V25 R2; her A24 #5: one page). It joins QoL > Character Pane (the item level,
@@ -1356,8 +1711,9 @@ ns.Provide("charDisplayDebug", { Cfg = function() return Cfg() end, Apply = func
 -- Character stats in V25 R4.) Its on / off is the tick box on its row.
 -------------------------------------------------------------------------------
 function ns.BuildCharDisplayPage(Notify)
-    -- (the tie-in rule) the first time this page is built after a reload, the Stat Calculator's service is read once more
-    if not pageRead then pageRead = true; ReadTieIns(true) end
+    -- (the tie-in rule) the first time this page is built after a reload, the Stat Calculator's service is read once more (read only:
+    -- nothing is subscribed while this is off; G-017)
+    if not pageRead then pageRead = true; ReadTieIns(true, false) end
     local function C() return Cfg() or CopyVal(ns.CHARDISPLAY_DEFAULTS) end
     local function Changed() ns.CharDisplay_Apply(); if Notify then Notify() end end
     -- a check box that reads and writes one key; disabled (the item detail rows) or hidden (the parts) while the page's switch is off
@@ -1369,7 +1725,14 @@ function ns.BuildCharDisplayPage(Notify)
     -- (QoL 0.7.31) the full stat list's own page (her answer "Show / hide each stat, Order, % / rating / both, Groups and colours"): every
     -- group heading and stat line of Character Stats as the game gives them for this character now (other classes' resources differ)
     local listOff = function() return isOff() or not C().statList end
-    local groups = ns.CharDisplay_ListModel()
+    -- (V14 / V27, U1 G-015) the settings window rebuilds every page on any change: the stat model is built for this page only while
+    -- Improved Character Display and its Stat list part are on, once, and kept until the spec or level changes (OnEvent drops it);
+    -- off, the Stat list page lists no stats (it shows again once the part is ticked).
+    -- (release gate integration) the rows are not added while the tree is built: the tree's shape must not depend on a switch, because
+    -- a click on a sidebar tick box redraws the tree drawn last (XayaUI_Options TreePaint.lua Tree.SwitchClick / Tree.Keep;
+    -- tests/sidebar_switches_run.py). FillList adds them, once per built tree, from the Stat list page's own `hidden` (read by
+    -- AceConfigDialog's BuildSubGroups before that page's args are walked), so a tree built while this was off gets its rows when it
+    -- is drawn again after the switch is ticked on. Read only while the options window draws the tree.
     local function Col(t) if type(t) == "table" then return t[1], t[2], t[3], 1 end end
     local listArgs = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -1378,58 +1741,67 @@ function ns.BuildCharDisplayPage(Notify)
             desc = "Shows every stat again in Character Stats' order as a percent, and resets every name and color.",
             func = function() local c = C(); for _, k in ipairs(LIST_TABLES) do c[k] = {} end; Changed() end },
     }
-    for gi, g in ipairs(groups) do
-        local gk = g.key
-        listArgs["g" .. gi] = { type = "group", inline = true, order = gi * 100, name = function() local n = C().groupName[gk]; return (n and n ~= "") and n or g.label end,
-            args = {
-                name = { type = "input", order = 1, name = "Heading", disabled = listOff, desc = "The heading's text (empty: '" .. g.label .. "').",
-                    get = function() return C().groupName[gk] or "" end, set = function(_, v) v = tostring(v or ""); C().groupName[gk] = (v ~= "") and v or nil; Changed() end },
-                color = { type = "color", order = 2, name = "Color", disabled = listOff,
-                    get = function() local t = C().groupColor[gk]; if t then return Col(t) end; local l = TC("xui-label", "text", { 1, 0.82, 0, 1 }); return l[1], l[2], l[3], 1 end,
-                    set = function(_, r, gg, b) C().groupColor[gk] = { r, gg, b }; Changed() end },
-                plain = { type = "execute", order = 3, name = "Default color", width = "half", disabled = listOff,
-                    func = function() C().groupColor[gk] = nil; Changed() end },
-            } }
-        for i = 1, #g.stats do
-            local function Key() return ns.CharDisplay_ListOrder(C(), g)[i] end
-            local function Item() local k = Key(); for _, it in ipairs(g.stats) do if it.key == k then return it end end end
-            local function Move(d)
-                local c = C()
-                local list = ns.CharDisplay_ListOrder(c, g)
-                local j = i + d
-                if j < 1 or j > #list then return end
-                list[i], list[j] = list[j], list[i]
-                c.statOrder[gk] = list
-                Changed()
-            end
-            listArgs["g" .. gi .. "s" .. i] = { type = "group", inline = true, order = gi * 100 + i,
-                name = function() local it = Item(); if not it then return "" end; local n = C().statName[it.key]; return "    " .. ((n and n ~= "") and n or it.label) end,
+    local filled = false
+    local function FillList()
+        if filled then return end
+        local cNow = Cfg()
+        if not (cNow and cNow.enabled and cNow.statList) then return end
+        filled = true
+        if not pageGroups then pageGroups = ns.CharDisplay_ListModel() end
+        local groups = pageGroups
+        for gi, g in ipairs(groups) do
+            local gk = g.key
+            listArgs["g" .. gi] = { type = "group", inline = true, order = gi * 100, name = function() local n = C().groupName[gk]; return (n and n ~= "") and n or g.label end,
                 args = {
-                    show = { type = "toggle", order = 1, name = "Show", width = "half", disabled = listOff,
-                        get = function() local k = Key(); return k and not C().statHide[k] end,
-                        set = function(_, v) local k = Key(); if k then C().statHide[k] = (not v) and true or nil; Changed() end end },
-                    mode = { type = "select", order = 2, name = "Shows", disabled = listOff,
-                        values = { percent = "Percent", rating = "Rating", both = "Both (rating / percent)" }, sorting = { "percent", "rating", "both" },
-                        hidden = function() return not ns.CharDisplay_HasRating(Key()) end,
-                        get = function() return C().statMode[Key()] or "percent" end,
-                        set = function(_, v) local k = Key(); if k then C().statMode[k] = (v ~= "percent") and v or nil; Changed() end end },
-                    up = { type = "execute", order = 3, name = "Up", width = "half", disabled = function() return listOff() or i == 1 end, func = function() Move(-1) end },
-                    down = { type = "execute", order = 4, name = "Down", width = "half", disabled = function() return listOff() or i == #g.stats end, func = function() Move(1) end },
-                    name = { type = "input", order = 5, name = "Name", disabled = listOff,
-                        get = function() local k = Key(); return (k and C().statName[k]) or "" end,
-                        set = function(_, v) local k = Key(); if k then v = tostring(v or ""); C().statName[k] = (v ~= "") and v or nil; Changed() end end },
-                    color = { type = "color", order = 6, name = "Color", disabled = listOff,
-                        get = function()
-                            local k, it = Key(), Item()
-                            local t = k and C().statColor[k]
-                            if t then return Col(t) end
-                            local d = (it and it.labelColor) or TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
-                            return d[1], d[2], d[3], 1
-                        end,
-                        set = function(_, r, gg, b) local k = Key(); if k then C().statColor[k] = { r, gg, b }; Changed() end end },
-                    plain = { type = "execute", order = 7, name = "Default color", width = "half", disabled = listOff,
-                        func = function() local k = Key(); if k then C().statColor[k] = nil; Changed() end end },
+                    name = { type = "input", order = 1, name = "Heading", disabled = listOff, desc = "The heading's text (empty: '" .. g.label .. "').",
+                        get = function() return C().groupName[gk] or "" end, set = function(_, v) v = tostring(v or ""); C().groupName[gk] = (v ~= "") and v or nil; Changed() end },
+                    color = { type = "color", order = 2, name = "Color", disabled = listOff,
+                        get = function() local t = C().groupColor[gk]; if t then return Col(t) end; local l = TC("xui-label", "text", { 1, 0.82, 0, 1 }); return l[1], l[2], l[3], 1 end,
+                        set = function(_, r, gg, b) C().groupColor[gk] = { r, gg, b }; Changed() end },
+                    plain = { type = "execute", order = 3, name = "Default color", width = "half", disabled = listOff,
+                        func = function() C().groupColor[gk] = nil; Changed() end },
                 } }
+            for i = 1, #g.stats do
+                local function Key() return ns.CharDisplay_ListOrder(C(), g)[i] end
+                local function Item() local k = Key(); for _, it in ipairs(g.stats) do if it.key == k then return it end end end
+                local function Move(d)
+                    local c = C()
+                    local list = ns.CharDisplay_ListOrder(c, g)
+                    local j = i + d
+                    if j < 1 or j > #list then return end
+                    list[i], list[j] = list[j], list[i]
+                    c.statOrder[gk] = list
+                    Changed()
+                end
+                listArgs["g" .. gi .. "s" .. i] = { type = "group", inline = true, order = gi * 100 + i,
+                    name = function() local it = Item(); if not it then return "" end; local n = C().statName[it.key]; return "    " .. ((n and n ~= "") and n or it.label) end,
+                    args = {
+                        show = { type = "toggle", order = 1, name = "Show", width = "half", disabled = listOff,
+                            get = function() local k = Key(); return k and not C().statHide[k] end,
+                            set = function(_, v) local k = Key(); if k then C().statHide[k] = (not v) and true or nil; Changed() end end },
+                        mode = { type = "select", order = 2, name = "Shows", disabled = listOff,
+                            values = { percent = "Percent", rating = "Rating", both = "Both (rating / percent)" }, sorting = { "percent", "rating", "both" },
+                            hidden = function() return not ns.CharDisplay_HasRating(Key()) end,
+                            get = function() return C().statMode[Key()] or "percent" end,
+                            set = function(_, v) local k = Key(); if k then C().statMode[k] = (v ~= "percent") and v or nil; Changed() end end },
+                        up = { type = "execute", order = 3, name = "Up", width = "half", disabled = function() return listOff() or i == 1 end, func = function() Move(-1) end },
+                        down = { type = "execute", order = 4, name = "Down", width = "half", disabled = function() return listOff() or i == #g.stats end, func = function() Move(1) end },
+                        name = { type = "input", order = 5, name = "Name", disabled = listOff,
+                            get = function() local k = Key(); return (k and C().statName[k]) or "" end,
+                            set = function(_, v) local k = Key(); if k then v = tostring(v or ""); C().statName[k] = (v ~= "") and v or nil; Changed() end end },
+                        color = { type = "color", order = 6, name = "Color", disabled = listOff,
+                            get = function()
+                                local k, it = Key(), Item()
+                                local t = k and C().statColor[k]
+                                if t then return Col(t) end
+                                local d = (it and it.labelColor) or TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })
+                                return d[1], d[2], d[3], 1
+                            end,
+                            set = function(_, r, gg, b) local k = Key(); if k then C().statColor[k] = { r, gg, b }; Changed() end end },
+                        plain = { type = "execute", order = 7, name = "Default color", width = "half", disabled = listOff,
+                            func = function() local k = Key(); if k then C().statColor[k] = nil; Changed() end end },
+                    } }
+            end
         end
     end
     -- the slot marks (QoL 0.7.0; was their own page's part Slot Overlays, same labels): its tick box is on its row in the left pane
@@ -1511,7 +1883,8 @@ function ns.BuildCharDisplayPage(Notify)
         args = {
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
                 name = "What XayaUI adds to the character window: one item level per slot, the enchant, embellishment and gems beside each slot, the full stat list in the stats pane, the Stat Calc button, and, with its own tick box on the left, marks on the item slots. Extra lines on the stat tooltips are an option of Bonus Features > Enhanced Tooltips (Character stats). Its look (border, colors, the wider window) is Blizzard Reskin > Character Reskin. Off by default." },
-            statListPage = { type = "group", name = "Stat list", order = 50, hidden = isOff, args = listArgs },
+            statListPage = { type = "group", name = "Stat list", order = 50, args = listArgs,
+                hidden = function() if isOff() then return true end; FillList(); return false end },
             ilvl = T("ilvl", 3, "Item level on each slot", "Shows one item level per slot, colored by its upgrade track and brighter with each upgrade step. Hidden on a slot where another addon already shows the same number.", "full", isOff),
             enchants = T("enchants", 4, "Enchants beside the slots", "Shows each slot's enchant or embellishment beside it, and \"No enchant\" in orange where one is missing. Hover a line for what it does.", "full", isOff),
             gems = T("gems", 5, "Gems and sockets beside the slots", "Shows each socket under the enchant: the gem's icon and name, or the empty socket's type in orange. Hover a gem for its tooltip.", "full", isOff),

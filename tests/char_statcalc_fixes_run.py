@@ -161,8 +161,8 @@ ns.StatCalc_SetInput("sv:crit", "")
 -- F3 (SC-081) ----------------------------------------------------------------------------------------------------------------------
 checkp("F3 the panel shown: SPELL_UPDATE_COOLDOWN is registered", function() return registered("SPELL_UPDATE_COOLDOWN") end)
 ns.StatCalc_SetOpen(false)
-checkp("F3 the panel closed (its part still on): SPELL_UPDATE_COOLDOWN is not registered; the stat events are", function()
-  return not registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS") and registered("PLAYER_REGEN_DISABLED") end)
+checkp("F3 the panel closed (its part still on): SPELL_UPDATE_COOLDOWN is not registered; nor the stat events (gate G-014); the start of combat is", function()
+  return not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_REGEN_DISABLED") end)
 g0 = gcdReads
 local bb = builds
 fire("SPELL_UPDATE_COOLDOWN"); fire("SPELL_UPDATE_COOLDOWN"); fire("SPELL_UPDATE_COOLDOWN")

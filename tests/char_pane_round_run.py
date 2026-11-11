@@ -114,7 +114,8 @@ checkp("in combat nothing of the height changes; it waits for the end of combat 
   return CharacterFrame.h == 424 and ev ~= nil and ev.events.PLAYER_REGEN_ENABLED == true, CharacterFrame.h end)
 combat = false
 fire("PLAYER_REGEN_ENABLED")
-checkp("  ...combat ends: the window grows (424 -> 524), gaps 4 + 100 / 7", function() return CharacterFrame.h == 524 and all(gaps(LEFT), 4 + 100 / 7), CharacterFrame.h end)
+checkp("  ...combat ends: the window grows (424 -> 524), gaps 4 + 15 twice then 4 + 14 (whole pixels: 19,19,18,18,18,18,18; G-009)", function()
+  return CharacterFrame.h == 524 and table.concat(gaps(LEFT), ",") == "19,19,18,18,18,18,18", CharacterFrame.h .. " " .. table.concat(gaps(LEFT), ",") end)
 rc.wide = false; ns.CharReskin_Apply()
 checkp("(guard) the wider window off: Extra height does nothing (Blizzard's height and gaps)", function() return CharacterFrame.h == 424 and all(gaps(RIGHT), 4), CharacterFrame.h end)
 rc.wide = true; rc.tallPx = 0; ns.CharReskin_Apply()
@@ -162,6 +163,9 @@ checkp("  ...drawn on Improved Character Display's own list over Blizzard's pane
 -- (QoL 0.7.53, character pane split stage 1; V25 R2) the Stat list page is on QoL > Improved Character Display (Blizzard Reskin keeps the look)
 local pg = ns.BuildCharDisplayPage(function() RSA() end)
 local page = pg.args.statListPage or { args = {} }
+-- (Stat Calculator V25 release gate, G-015 + the sidebar's kept tree) the rows are added when the window draws the page (its hidden is
+-- read first, as AceConfigDialog does), not while the tree is built
+if type(page.hidden) == "function" then page.hidden() end
 -- (a stand-in for a missing control on older code, so a check fails instead of the run stopping)
 local NOOP = function() end
 local DUMMY = { name = function() return "" end, args = setmetatable({}, { __index = function() return { set = NOOP, func = NOOP, hidden = NOOP } end }) }

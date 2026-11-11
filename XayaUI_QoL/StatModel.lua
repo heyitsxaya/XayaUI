@@ -269,6 +269,14 @@ local function RulesService()
     if tieIns.read == 0 then CM.ReadTieIns() end
     return tieIns.rules
 end
+-- (V25 gate G-028, V30) the Stat Calculator's Configure / Refresh spell data: XayaUI Rules' kept spellbook and talent lists are read
+-- again on their next use. The Rules service comes from the tie-in read above (once at load, once at the first options-window open);
+-- nothing looks it up again here, and the Stat Calculator never names the Rules service itself. Returns whether Rules was told.
+function CM.ForgetRulesLists()
+    local RS = RulesService()
+    if RS and type(RS.ForgetSpellLists) == "function" then RS.ForgetSpellLists(); return true end
+    return false
+end
 
 -- the spec's primary stat index (1 Strength, 2 Agility, 4 Intellect), for the What If auto-fill (the Stat Calculator, XayaUI_Bonus)
 function CM.PrimaryStatIndex() local sp = SpecIndex(); return PrimaryStat(sp and SpecInfo(sp) or {}) end

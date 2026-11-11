@@ -253,6 +253,12 @@ def _stats_line_back(v):
     return v
 
 
+G015_COLORS_WRITTEN_BACK = {
+    "statColor": {"map_armor": [0.96, 0.96, 0.98], "map_aspeed": [0.96, 0.96, 0.98], "map_avoidance": [0.35, 0.8, 0.85], "map_block": [0.96, 0.96, 0.98], "map_crit": [1, 0.45, 0.35], "map_critfx": [0.96, 0.96, 0.98], "map_damage": [0.96, 0.96, 0.98], "map_dodge": [0.96, 0.96, 0.98], "map_gcd": [0.96, 0.96, 0.98], "map_haste": [1, 0.82, 0.3], "map_health": [0.96, 0.96, 0.98], "map_leech": [1, 0.45, 0.7], "map_mastery": [0.72, 0.55, 1], "map_movespeed": [0.96, 0.96, 0.98], "map_parry": [0.96, 0.96, 0.98], "map_power0": [0.96, 0.96, 0.98], "map_power11": [0.96, 0.96, 0.98], "map_power12": [0.96, 0.96, 0.98], "map_power13": [0.96, 0.96, 0.98], "map_power16": [0.96, 0.96, 0.98], "map_power17": [0.96, 0.96, 0.98], "map_power19": [0.96, 0.96, 0.98], "map_power4": [0.96, 0.96, 0.98], "map_power5": [0.96, 0.96, 0.98], "map_power6": [0.96, 0.96, 0.98], "map_power7": [0.96, 0.96, 0.98], "map_power8": [0.96, 0.96, 0.98], "map_power9": [0.96, 0.96, 0.98], "map_primary": [1, 0.95, 0.75], "map_speed2": [0.55, 0.75, 1], "map_stamina": [0.95, 0.55, 0.45], "map_vers": [0.4, 0.85, 0.45], "map_wdps": [0.96, 0.96, 0.98]},
+    "groupColor": {"sub_core": [1, 1, 1], "sub_defensive": [1, 1, 1], "sub_general": [1, 1, 1], "sub_offensive": [1, 1, 1], "sub_primary": [1, 1, 1], "sub_secondary": [1, 1, 1], "sub_tertiary": [1, 1, 1]},
+}
+
+
 def canon(saved):
     # (P4) the saved variables merged across addon folders ({variable: value}; every variable name is declared by one folder only)
     merged = {}
@@ -272,6 +278,16 @@ def canon(saved):
         cr = merged["CueRulesDB"].get("characterReskin")
         if isinstance(cr, dict):
             cr.pop("_merged", None)
+            # (Stat Calculator V25 release gate, QoL 0.7.58, finding G-015) Improved Character Display's Stat list page builds its
+            # per-stat rows only while the feature and its Stat list part are on (V14: no stat model built for a switched-off feature).
+            # In these sessions the feature is off, so the scenario no longer finds those rows' color pickers and no longer writes the
+            # color each showed back into statColor / groupColor. Diffing the dumps of 5695993 and the new code (all on, play session):
+            # exactly these 40 entries are missing, nothing else. Put back here (only where absent), so the rest stays compared.
+            for part, keys in G015_COLORS_WRITTEN_BACK.items():
+                t = cr.get(part)
+                if isinstance(t, dict):
+                    for k, v in keys.items():
+                        t.setdefault(k, v)
     # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:

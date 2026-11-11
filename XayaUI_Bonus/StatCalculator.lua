@@ -653,12 +653,19 @@ local function Box(key)
         eb:SetAutoFocus(false)
         if eb.SetFontObject then eb:SetFontObject("GameFontHighlightSmall") end
         eb.key = key
-        eb:SetScript("OnEnterPressed", function(self)
-            ns.StatCalc_SetInput(self.key, self:GetText())
-            self:ClearFocus()
-        end)
-        eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-        if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
+        -- Enter commits the typed value; letting go of the keyboard is core's (V29, gate G-024): KeyFocusGuard with enterLetsGo clears
+        -- the focus after this script (core KeyCatch.lua), and installs its own Esc (the box has none of its own: the template's Esc
+        -- handler, if InputBoxTemplate carries one in the game, is removed here so core's runs. INFERENCE: not checked against the live
+        -- template). Core also lets go on a click outside (GLOBAL_MOUSE_DOWN) and when the panel hides.
+        eb:SetScript("OnEnterPressed", function(self) ns.StatCalc_SetInput(self.key, self:GetText()) end)
+        eb:SetScript("OnEscapePressed", nil)
+        if ns.KeyFocusGuard then
+            ns.KeyFocusGuard(eb, { enterLetsGo = true })
+        else
+            -- (only with a core without KeyFocusGuard; tests/statcalc_keys_run.py fails then) Enter and Esc still let go
+            eb:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
+            eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        end
         if key == "item" then
             -- an item dropped on the box (dragged from the bags, or carried on the cursor and clicked) is compared at once.
             -- GetCursorInfo (globals.md:158) is documented without returns; "item", itemID, itemLink is the form other UI code
@@ -726,8 +733,9 @@ function ns.StatCalc_Action(action)
     local c = Cfg(); if not c then return end
     if action == "configureSpells" then c.advanced = true end
     if action == "configureSpells" or action == "refreshSpells" then
-        local RS = ns.Service and ns.Service("rules")   -- (QoL 0.7.48, P4) XayaUI Rules' cached spellbook and talent lists (Conditions.lua) are read again
-        if RS then RS.ForgetSpellLists() end
+        -- (QoL 0.7.48, P4) XayaUI Rules' cached spellbook and talent lists (Conditions.lua) are read again. (G-028, V30) through the
+        -- model, which owns the Rules tie-in (read once at load and once at the first options-window open): this file never looks it up
+        if CM.ForgetRulesLists then CM.ForgetRulesLists() end
         CM.ClearTalents(); CM.ResetSpellRequests()
     end
     ns.StatCalc_Render()
@@ -918,9 +926,11 @@ local function Build()
     -- box is open to take it (the Gear tab since QoL 0.7.14; What If before). INFERENCE: not run in game yet.
     local lastLink, lastAt
     local function InsertLink(link)
-        if type(link) ~= "string" or isSecret(link) or not link:find("|Hitem:", 1, true) then return end
+        -- (gate G-020, V28) the hook stays until /reload: with the panel closed (or the Stat Calculator off) it returns at once, before
+        -- any work on the link
         local eb = boxes.item
         if not (eb and eb.xuiUsed and panel and panel:IsShown()) then return end
+        if type(link) ~= "string" or isSecret(link) or not link:find("|Hitem:", 1, true) then return end
         local c = Cfg()
         local focused = eb.HasFocus and eb:HasFocus()
         if not focused then
@@ -941,18 +951,33 @@ local function Build()
     -- (SC-081 / SC-020) our own frame's show and hide (HookScript on the panel itself, never on a Blizzard frame): the events that matter
     -- only while it is shown (the cooldown read, bags on Gear, talents on Ability Scaling) are listened to then, and let go when it hides
     panel:HookScript("OnShow", function() if OnPanelShown then OnPanelShown() end end)
-    panel:HookScript("OnHide", function() if OnPanelHidden then OnPanelHidden() end end)
+    panel:HookScript("OnHide", function(self)
+        -- (gate G-006) a drag or resize cut off by the hide (combat, the character window closing) ends here: no OnMouseUp / OnDragStop
+        -- may come, and a set panel.sizing would stop every later draw from setting the size
+        self:StopMovingOrSizing(); self.sizing = nil
+        if OnPanelHidden then OnPanelHidden() end
+    end)
     panel:Hide()
 end
 
+-- (gate U2 round 2, V27 cost) Place() runs on every redraw: the strata is only set when it differs from the one the panel has
+local function SetStrata(want)
+    if panel:GetFrameStrata() ~= want then panel:SetFrameStrata(want) end
+end
 local function Place()
     local c = Cfg(); if not c or not panel then return end
     panel:ClearAllPoints()
     local cf = _G.CharacterFrame
     if Docked() then
+        -- (gate G-003) docked, the panel sits in the character window's own strata (MEDIUM when it cannot be read), so another of the
+        -- game's windows opened over the character window (Group Finder, the bags) is not covered by it. On its own it stays HIGH
+        -- (her call on the stand-alone panel is open). INFERENCE: in-game stacking UNVERIFIED IN GAME.
+        local st = cf.GetFrameStrata and cf:GetFrameStrata()
+        SetStrata((type(st) == "string" and not isSecret(st) and st ~= "") and st or "MEDIUM")
         if c.side == "left" then panel:SetPoint("TOPRIGHT", cf, "TOPLEFT", -GUT, 0)
         else panel:SetPoint("TOPLEFT", cf, "TOPRIGHT", GUT, 0) end
     else
+        SetStrata("HIGH")
         panel:SetPoint("CENTER", UIParent, "CENTER", c.free.x or 0, c.free.y or 0)
     end
 end
@@ -971,9 +996,13 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     f:SetText(text or "")
     Paint(f, col)
     local h = (wrap and f:GetStringHeight()) or size
-    if not num(h) or h < size then h = size end
+    if isSecret(h) or not num(h) or h < size then h = size end
+    -- (gate G-010, V27 whole pixels) the game's measured height can be fractional; every next y stays whole. Rounded up (round 2), so
+    -- the next row never starts inside a wrapped line's real height (13.4 -> 14)
+    h = math.ceil(h)
     Rec(kind or "text", x, y, w, h, text, size)
     layout[#layout].justify = justify or "LEFT"   -- (QoL 0.7.36: the tests read a column's alignment)
+    layout[#layout].wrap = wrap and true or false   -- (gate U2 round 2: the tests read which heights were measured)
     return h
 end
 -- (QoL 0.7.28) a text with line breaks ("T: 1,430\nL: 12.2"): each line its own font string, one under the other; returns the height
@@ -2361,7 +2390,13 @@ local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "U
 -- closed a cast costs this file nothing). (SC-085 / SC-049, event side) and per tab: the bags while Gear is shown (an item looted with
 -- the tab open shows at once), the talents while Ability Scaling is shown (BAG_UPDATE_DELAYED, events.md:146; TRAIT_CONFIG_UPDATED,
 -- events.md:1536; PLAYER_TALENT_UPDATE, events.md:1222).
-local SHOWN_EVENTS = { "SPELL_UPDATE_COOLDOWN" }
+-- (gate G-023) ADDON_RESTRICTION_STATE_CHANGED (type: AddOnRestrictionType, state: AddOnRestrictionState) · SynchronousEvent ·
+-- RestrictedActions (events.md:37); Enum.AddOnRestrictionState Inactive = 0, Activating = 1, Active = 2 (enums.md:485)
+local SHOWN_EVENTS = { "SPELL_UPDATE_COOLDOWN", "ADDON_RESTRICTION_STATE_CHANGED" }
+-- (gate G-012 / G-014) the panel closed: only what does work then (see RegisterPanelEvents). PLAYER_REGEN_ENABLED stays too (once per
+-- combat end): it clears the model's "GCD hidden in combat" mark (CM.gcdHidden), which Enhanced Tooltips' lines also read, when the
+-- lockdown was seen without this frame hearing PLAYER_REGEN_DISABLED (tests/char_statcalc2_run.py plays that case)
+local CLOSED_EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_SPECIALIZATION_CHANGED", "PLAYER_LEVEL_UP" }
 local TAB_EVENTS = { gear = { "BAG_UPDATE_DELAYED" }, spells = { "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE" } }
 
 -- one redraw at most every 0.25 s, only while the panel is up and out of combat (SC-020: one function for the whole file, not a new
@@ -2446,9 +2481,12 @@ end
 
 -- the panel's events (D17, V14: only while the Stat Calculator and its "Show the panel" part are on). (V26) In combat the frame listens
 -- to PLAYER_REGEN_ENABLED only: no stat, unit or cooldown event reaches this file until combat ends. (SC-081 / SC-020) What it listens
--- to follows one key: off (nothing), combat, closed (the stat events, so the panel is right when it opens, and the start of combat), or
--- open on a tab (also the cooldown read and that tab's own events). The frame's events change only when the key changes: at the panel's
--- show and hide, a tab change, combat, and Apply (force).
+-- to follows one key: off (nothing), combat, closed, or open on a tab. (gate G-012 / G-014, V27 / V28) Closed: only the start and end of
+-- combat (V26: the Stat Calc button is told) and the spec / level change (the model's kept spec data is dropped); no stat or unit event, since
+-- every open draws a fresh model (CM.Build in ns.StatCalc_Render) and bags / talents are read again through bagsStale / talentsStale.
+-- Open on a tab: the stat and unit events, the cooldown read, that tab's own events, and the addon restriction change (V29: a Change
+-- box lets go of the keyboard when a Mythic+ / encounter / PvP restriction starts, gate G-023). The frame's events change only when
+-- the key changes: at the panel's show and hide, a tab change, combat, and Apply (force).
 local evKey
 local function EventsKey(c)
     if not (c and c.enabled and c.panel) then return nil end
@@ -2467,11 +2505,14 @@ local function RegisterPanelEvents(c, force)
     ev:UnregisterAllEvents()
     if key == nil then return end
     if key == "combat" then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED"); return end
+    if key == "closed" then
+        for _, e in ipairs(CLOSED_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
+        return
+    end
     for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     for _, e in ipairs(UNIT_EVENTS) do
         if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
     end
-    if key == "closed" then return end
     for _, e in ipairs(SHOWN_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     for _, e in ipairs(TAB_EVENTS[c.tab] or {}) do pcall(ev.RegisterEvent, ev, e) end
 end
@@ -2489,12 +2530,24 @@ OnPanelHidden = function() RegisterPanelEvents(Cfg()) end
 -- (TellState: not available), and the events stop. No message. (SC-002 / SC-019) First every Change box lets go of the keyboard
 -- (EditBox:ClearFocus), so a box never keeps the keys when combat starts, whatever core's KeyFocusGuard version does on hide.
 local combatWas, combatAlone = false, false
+-- every Change box lets go of the keyboard (combat starts, or an addon restriction becomes active: V29)
+local function LetGoOfKeys()
+    for _, eb in pairs(boxes) do if eb.ClearFocus then eb:ClearFocus() end end
+end
+-- (gate G-023) a restriction (combat, encounter, Mythic+, PvP: Enum.AddOnRestrictionType) is activating or active: the boxes let go.
+-- A state that is not a plain number (missing, or secret) counts as active (fail safe). The type is not read: every kind lets go.
+local RESTRICTION_INACTIVE = (Enum and Enum.AddOnRestrictionState and Enum.AddOnRestrictionState.Inactive) or 0
+local function OnRestriction(state)
+    if state ~= nil and not isSecret(state) and type(state) == "number" and state == RESTRICTION_INACTIVE then return end
+    LetGoOfKeys()
+end
 local function EnterCombat()
     if combatHidden then return end
     combatHidden = true
-    for _, eb in pairs(boxes) do if eb.ClearFocus then eb:ClearFocus() end end
+    LetGoOfKeys()
     combatWas = panel ~= nil and panel:IsShown() or false
     combatAlone = combatWas and panel.standalone == true
+    if panel then panel:StopMovingOrSizing(); panel.sizing = nil end   -- (gate G-006) a drag or resize in progress ends now
     if combatWas then panel:Hide() end
     RegisterPanelEvents(Cfg())
     TellState()
@@ -2520,8 +2573,9 @@ local function LeaveCombat()
     TellState()
 end
 
-local function OnEvent(_, event, unit)
+local function OnEvent(_, event, unit, arg2)
     if event == "PLAYER_REGEN_DISABLED" then EnterCombat(); return end
+    if event == "ADDON_RESTRICTION_STATE_CHANGED" then OnRestriction(arg2); return end   -- (type, state): the state is the second
     if event == "PLAYER_REGEN_ENABLED" then
         -- out of combat the last readable GCD shows again. (SC-081, round 2) No read here: the panel reads it when it shows again
         -- (OnPanelShown, from LeaveCombat when it reopens); a closed panel reads it at its next open.
@@ -2539,8 +2593,8 @@ local function OnEvent(_, event, unit)
     end
     if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_LEVEL_UP" then CM.ClearCache() end
     -- (Bonus 0.6.37: the slot overlays' refresh is XayaUI QoL's own, ImprovedCharacterDisplay.lua)
+    if not (panel and panel:IsShown()) then return end   -- (gate G-014) the cheap check first
     if unit and unit ~= "player" and event:find("^UNIT_") then return end
-    if not (panel and panel:IsShown()) then return end
     local c = Cfg()
     -- (SC-020) busy events redraw only when what the panel shows changed
     if event == "GET_ITEM_INFO_RECEIVED" then if WantsItem(unit) then Refresh() end; return end
@@ -2569,7 +2623,16 @@ end
 -------------------------------------------------------------------------------
 -- On / off
 -------------------------------------------------------------------------------
-local ownerHooked, themeHooked = false, false
+local ownerHooked, themeOn = false, false
+-- (gate G-019, V14) the theme listener: in while the Stat Calculator and its panel are on, taken out (core Theme.OffResolve) when
+-- either is switched off, as Improved Character Display does (ImprovedCharacterDisplay.lua SetThemeListener). One function for the file.
+local function OnTheme() if panel and panel:IsShown() then ns.StatCalc_Render() end end
+local function SetThemeListener(on)
+    local T = ns.Theme
+    if not (T and T.OnResolve) then return end
+    if on and not themeOn then T.OnResolve(OnTheme); themeOn = true
+    elseif not on and themeOn and T.OffResolve then T.OffResolve(OnTheme); themeOn = false end
+end
 
 -------------------------------------------------------------------------------
 -- The Stat Calculator row in XayaUI's minimap button list (QoL 0.7.23; Xaya 2026-11-05, her words: "it should also have its own open
@@ -2593,11 +2656,13 @@ function ns.StatCalc_Apply()
     if not c.enabled then
         if ev then ev:UnregisterAllEvents() end
         evKey = nil
+        SetThemeListener(false)
         if panel then panel:Hide() end
         TellState()
         return
     end
     -- (Bonus 0.6.37) with the panel off this file has nothing to listen to (the overlays and the tooltip lines are XayaUI QoL's)
+    SetThemeListener(c.panel and true or false)
     if not c.panel and not ev then
         if panel then panel:Hide() end
         TellState()
@@ -2626,10 +2691,6 @@ function ns.StatCalc_Apply()
                 if panel.standalone and cc and cc.enabled and cc.panel then ns.StatCalc_Render() else panel:Hide() end
             end)
         end
-    end
-    if not themeHooked and ns.Theme and ns.Theme.OnResolve then
-        themeHooked = true
-        ns.Theme.OnResolve(function() if panel and panel:IsShown() then ns.StatCalc_Render() end end)
     end
     if panel then
         if not c.panel then panel:Hide()
@@ -2699,6 +2760,14 @@ if ns.Provide then ns.Provide("statCalcDebug", { Cfg = function() return Cfg() e
     Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end,
     Builds = function() return modelBuilds end,
     InCombat = function() return InCombat() end,
+    -- (gate G-006, QAWalks-statcalc-fixes.lua) a resize under way (the corner grip held), and the panel's size now (read only)
+    Sizing = function() return (panel ~= nil and panel.sizing == true) and true or false end,
+    PanelSize = function() if panel then return panel:GetWidth(), panel:GetHeight() end end,
+    -- (gate G-003) the panel's strata and the character window's (read only)
+    Strata = function()
+        local cf = _G.CharacterFrame
+        return panel and panel:GetFrameStrata() or nil, (cf and cf.GetFrameStrata) and cf:GetFrameStrata() or nil
+    end,
     -- the Change boxes the panel made and whether any has the keyboard (EditBox:HasFocus)
     BoxFocus = function()
         local n, focused = 0, false

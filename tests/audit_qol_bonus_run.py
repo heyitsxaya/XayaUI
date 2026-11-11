@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Function audit 2026-11-07 (docs/process/FUNCTION-AUDIT-2026-11-07.md), QoL / Bonus rows that have no closer test file:
   D17 (the Stat Calculator, Bonus Features since 0.6.37): with "Show the panel" off (Stat Calculator on), the panel's stat / unit events and SPELL_UPDATE_COOLDOWN are
-      not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on. SC-081 (Bonus, 2026-11-10):
+      not registered and a cast does no GCD read (V14); the slot overlays keep their events while they are on and the character window is
+      open (gate G-011, 2026-11-11: let go while it is closed); the panel's stat / unit events only while the panel is shown (gate G-014). SC-081 (Bonus, 2026-11-10):
       SPELL_UPDATE_COOLDOWN is registered only while the panel is shown (out of combat), so with the panel closed a cast reads no GCD.
   D50 (Bonus, Data Panels): "Remove block" before the "Editing block" slider was ever used removes the block without a Lua error.
   D52 (Bonus, Enhanced Tooltips): with "Aura IDs" off, a spell / item hover runs no aura lookup (TT.AurasFor) and writes no saved
@@ -35,6 +36,9 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 assert(loadfile(__SM__))("XayaUI_QoL", ns)
 assert(loadfile(__CM__))("XayaUI_QoL", ns)
+-- (gate G-011) the character window stand-in, closed: Improved Character Display hooks its OnShow / OnHide and listens to the item
+-- events only while it is open
+CharacterFrame = CharacterFrame or mk("Frame")
 assert(loadfile(__ICD__))("XayaUI_QoL", ns); assert(loadfile(__CT__))("XayaUI_Bonus", ns)   -- (character pane split stage 2: QoL's part, then the Stat Calculator, XayaUI Bonus Features')
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 local CM = ns.StatModel
@@ -52,13 +56,18 @@ fire("SPELL_UPDATE_COOLDOWN")
 check("  ...a cast does no GCD read for the hidden panel", gcdReads == 0, gcdReads)
 c.overlays = true
 CWA()
-check("  ...slot overlays on: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
+-- (gate G-011, Improved Character Display: the slot events are listened to only while the character window is open)
+check("G-011 slot overlays on, character window closed: their events are not registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
+CharacterFrame:Show()
+check("  ...slot overlays on, window open: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
+CharacterFrame:Hide()
+check("G-011 ...the character window closed: the slot events are let go", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = true
 CWA()
--- (SC-081, Bonus: the cooldown read only while the panel is shown) the panel part on but the panel closed: the stat events are listened
--- to (the panel is right when it opens, and combat starts are heard), the cooldown event is not: a cast costs the Stat Calculator nothing
-check("(as before) panel part on: UNIT_STATS and COMBAT_RATING_UPDATE are registered", registered("UNIT_STATS") and registered("COMBAT_RATING_UPDATE"))
+-- (SC-081, Bonus: the cooldown read only while the panel is shown; gate G-012 / G-014: the stat and unit events too) the panel part on
+-- but the panel closed: only combat starts and ends (and spec / level) are heard; a cast or a stat change costs the Stat Calculator nothing
+check("(G-014) panel part on, panel closed: UNIT_STATS and COMBAT_RATING_UPDATE are not registered; PLAYER_REGEN_DISABLED is", not registered("UNIT_STATS") and not registered("COMBAT_RATING_UPDATE") and registered("PLAYER_REGEN_DISABLED"))
 check("SC-081 panel part on, panel closed: SPELL_UPDATE_COOLDOWN is not registered", not registered("SPELL_UPDATE_COOLDOWN"))
 local before = gcdReads
 fire("SPELL_UPDATE_COOLDOWN")
@@ -69,10 +78,12 @@ before = gcdReads
 fire("SPELL_UPDATE_COOLDOWN")
 check("(as before) ...and while it is shown a cast reads the GCD", gcdReads == before + 1, gcdReads - before)
 ns.StatCalc_SetOpen(false)
-check("  ...the panel closed again: SPELL_UPDATE_COOLDOWN is let go", not registered("SPELL_UPDATE_COOLDOWN") and registered("UNIT_STATS"))
+check("  ...the panel closed again: SPELL_UPDATE_COOLDOWN and UNIT_STATS are let go", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))
 c.panel = false
 CWA()
+CharacterFrame:Show()   -- (G-011: the slot overlays' events are there only while the character window is open)
 check("  ...panel part off again: its events are let go at once", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_EQUIPMENT_CHANGED"))
+CharacterFrame:Hide()
 c.enabled = false
 CWA()
 check("(as before) Stat Calculator off: nothing of it is registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("PLAYER_SPECIALIZATION_CHANGED"))

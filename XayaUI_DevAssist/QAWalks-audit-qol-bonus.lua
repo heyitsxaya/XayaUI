@@ -141,11 +141,11 @@ QA.Register("audit-statcalc-events", { title = "Stat Calculator: panel off regis
         setup = function() local T = CT(); if T and ct.panel ~= nil then local c = T.Cfg(); c.panel = ct.panel; T.Apply() end; ct = { done = true } end,
         check = function() local T = CT(); if not T then return false, "XayaUI QoL is off" end
             local c = T.Cfg()
-            -- (SC-081) the panel part on: the stat events are back; the cooldown event only while the panel is shown
+            -- (SC-081; gate G-014) the panel part on: the stat events and the cooldown event only while the panel is shown
             local sc = SV("statCalc")
             local shown = (sc and sc.Shown and sc.Shown()) and true or false
             local cd = T.Registered("SPELL_UPDATE_COOLDOWN")
-            local ok = ct.done == true and ((c.panel and T.Registered("UNIT_STATS") and cd == shown) or (not c.panel and not T.Registered("UNIT_STATS") and not cd))
+            local ok = ct.done == true and ((c.panel and T.Registered("UNIT_STATS") == shown and cd == shown) or (not c.panel and not T.Registered("UNIT_STATS") and not cd))
             return ok and true or false, ("panel %s, %s; stat events %s; cooldown event %s"):format(c.panel and "on" or "off", shown and "shown" or "closed",
                 T.Registered("UNIT_STATS") and "registered" or "not registered", cd and "registered" or "not registered") end },
 } })

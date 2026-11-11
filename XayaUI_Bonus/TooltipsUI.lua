@@ -7,7 +7,9 @@ local TT = ns.TT
 local pageRead = false
 function ns.BuildTooltipsTab(Notify)
     -- (Bonus 0.6.39, V25 R4; Xaya A24 #6) the first time this page is built after a reload, the character stat lines' tie-ins (XayaUI
-    -- QoL's Improved Character Display and stat model) are read once more; never again after that (Tooltips.lua section 5)
+    -- QoL's Improved Character Display and stat model) are read once more; never again after that (Tooltips.lua section 5). This only
+    -- reads (the option's disabled state needs whether Improved Character Display is on); TT.CharStatsSync subscribes to Improved
+    -- Character Display's changes only while the option is wanted (G-018, V14)
     if not pageRead then pageRead = true; pcall(TT.CharStatsReadTieIns, true); pcall(TT.CharStatsSync) end
     local function get(path)
         return function() local t = TT.DB(); for _, k in ipairs(path) do t = t[k] end; return t end
@@ -75,7 +77,8 @@ function ns.BuildTooltipsTab(Notify)
                 enabled = toggle(1, "Color damage schools and dispel types", "Colors damage schools and dispel types on spell and aura tooltips in the game's colors. English game text only." .. OFF, { "typeColors", "enabled" }),
             } },
             -- (Bonus 0.6.39, V25 R4; Xaya A24 #5 / #6) the extra lines on the character window's own stat tooltips: off by default, and only
-            -- while XayaUI QoL's Improved Character Display is on (as read once at the login and once when this page was first built)
+            -- while XayaUI QoL's Improved Character Display is on (as told by its callback once the option was wanted; before that, read by
+            -- TT.CharStatsDisplayOn while this page is drawn, so a switch without a reload is seen: U3 round 2)
             charStats = { type = "group", name = "Character stats", order = 6, args = {
                 enabled = { type = "toggle", order = 1, width = "full", name = "Add XayaUI lines to the character window's stat tooltips",
                     desc = "Adds XayaUI's numbers for each stat (rating, rating per 1%, diminishing returns, what it feeds) under its tooltip in the character window. Needs Improved Character Display (QoL) on.",

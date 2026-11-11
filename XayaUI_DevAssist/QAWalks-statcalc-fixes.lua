@@ -12,6 +12,9 @@
 -- and is let go when it has read the result. What "Do it for me" changes (the panel's tab, open or closed, the typed number) is
 -- remembered in step 1 and put back in the last step. Listed in XayaUI_DevAssist.toc after the other QAWalks files (the integration step
 -- adds the line); does nothing without the framework. UNTESTED IN GAME.
+-- (gate unit U2, 2026-11-11) four more steps: the screenshot and movement keys with a Change box focused, out of combat and in combat
+-- (V29; SCREENSHOT_SUCCEEDED and PLAYER_STARTED_MOVING, events.md 1351 and 1217, listened to by a second plain frame of this file only
+-- while those steps wait, let go at the last step); the docked panel against Group Finder (G-003); combat during a resize (G-006).
 -------------------------------------------------------------------------------
 local QA = rawget(_G, "XayaUI_DevQA")
 if not QA then return end
@@ -87,9 +90,46 @@ local function Watch()
     watch:RegisterEvent("PLAYER_REGEN_DISABLED")
 end
 
+-- (gate U2) the keys steps: screenshots taken and moves started since the step's Do it for me, split by combat. One plain frame, its
+-- two events only while a keys step waits (Keys(true)); let go by Keys(false), at the last step, and on the first of them after the
+-- runner is closed or another walkthrough starts.
+local keyWatch, keyCount
+local function Keys(on)
+    if not on then if keyWatch then keyWatch:UnregisterAllEvents() end; return end
+    keyCount = { shots = 0, moves = 0, combatShots = 0, combatMoves = 0 }
+    if not keyWatch then
+        local CF = rawget(_G, "CreateFrame")
+        if type(CF) ~= "function" then return end
+        keyWatch = CF("Frame")
+        keyWatch:SetScript("OnEvent", function(_, event)
+            -- (gate U2 round 2, V28) a walk left midway lets go here: the runner closed, or another walkthrough started (QAWalk.lua has
+            -- no close hook; QA.State / QA.Window are its read-only readers)
+            local r, w = QA.State and QA.State(), QA.Window and QA.Window()
+            if not keyCount or not (r and r.id == "statcalc-fixes" and w and w:IsShown()) then
+                keyWatch:UnregisterAllEvents(); keyCount = nil; return
+            end
+            local fight = InCombat()
+            if event == "SCREENSHOT_SUCCEEDED" then
+                keyCount.shots = keyCount.shots + 1; if fight then keyCount.combatShots = keyCount.combatShots + 1 end
+            elseif event == "PLAYER_STARTED_MOVING" then
+                keyCount.moves = keyCount.moves + 1; if fight then keyCount.combatMoves = keyCount.combatMoves + 1 end
+            end
+        end)
+    end
+    keyWatch:UnregisterAllEvents()
+    keyWatch:RegisterEvent("SCREENSHOT_SUCCEEDED")
+    keyWatch:RegisterEvent("PLAYER_STARTED_MOVING")
+end
+local function LetGoHow()
+    local ns = NS()
+    local l = ns and ns.KeyFocusLastLetGo and ns.KeyFocusLastLetGo()
+    return l and l.how or "none yet"
+end
+local sizeAt   -- the resize step: the saved height the panel should come back to
+
 local inCombatBuilds   -- step 2: the build count before /xui stats and SetInput, and after
 QA.Register("statcalc-fixes", { title = "Stat Calculator: combat lets go of the keyboard and builds nothing; no cooldown work while closed; Influences column (SC-001, SC-002, SC-081, SC-102)",
-    area = "Bonus", qa = "E1z230", order = 525, prefill = true, steps = {
+    area = "Bonus", qa = "E1z230, E1z241", order = 525, prefill = true, steps = {
     { text = "Out of combat, with the character window open (C), press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Then click into a |cffffd100Change|r box (for example Critical Strike's) and type a digit, but do not press Enter. Now attack a training dummy. Once you are in combat, press |cffffd100Check|r.\n\n|cffffd100Expect:|r as combat starts the box lets go of the keyboard (your keys cast again), and the panel and the Stat Calc button hide, with no message.",
         setup = function()
             local sc, dbg, why = Ready(); if not sc then error(why) end
@@ -183,11 +223,84 @@ QA.Register("statcalc-fixes", { title = "Stat Calculator: combat lets go of the 
             return ok, ("%d column titles (Influences %s); %d of %d rows have their influences in that column; %d still start with \"Influences:\"; panel width %s"):format(
                 heads, head and "there" or "missing", onRow, rows, prefixed, w and tostring(w) or "default (450)")
         end },
+    { text = "Out of combat, press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Click into Critical Strike's |cffffd100Change|r box and press |cffffd100Esc|r. Click into it again and click on the game world. Click into it a third time, type a digit and press |cffffd100Enter|r. Then press |cffffd100Print Screen|r once and walk forward a step (W). Press |cffffd100Check|r.\n\n|cffffd100Expect:|r each time the box lets go of the keyboard; the screenshot is saved and you move.",
+        setup = function()
+            local sc, dbg, why = Ready(); if not sc then error(why) end
+            if InCombat() then error("you are in combat: wait for it to end") end
+            Remember(sc)
+            local ok, w2 = sc.Open("stats")
+            if not ok then error(w2 or "the panel did not open") end
+            Keys(true)
+        end,
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            if not keyCount then return nil, "press Do it for me first" end
+            local focused = dbg.BoxFocus and dbg.BoxFocus() or false
+            local note = ("screenshots: %d; moves: %d; a Change box has the keyboard: %s; the last box let go by: %s | %s"):format(keyCount.shots,
+                keyCount.moves, focused and "yes" or "no", LetGoHow(), Line(sc, dbg))
+            if keyCount.shots == 0 or keyCount.moves == 0 then return nil, "press Print Screen and walk forward after the box let go | " .. note end
+            return (not focused) and true or false, note
+        end },
+    { text = "Press |cffffd100Do it for me|r (out of combat, the character window open). Click into Critical Strike's |cffffd100Change|r box and type a digit, then attack a training dummy. In combat press |cffffd100Print Screen|r once and walk a step (W). Press |cffffd100Check|r (in combat or after).\n\n|cffffd100Expect:|r the panel hides as combat starts; in combat the screenshot is saved and you move.",
+        setup = function()
+            local sc, dbg, why = Ready(); if not sc then error(why) end
+            if InCombat() then error("you are in combat: wait for it to end") end
+            local ok, w2 = sc.Open("stats")
+            if not ok then error(w2 or "the panel did not open") end
+            Keys(true)
+        end,
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            if not keyCount then return nil, "press Do it for me first" end
+            local note = ("in combat: screenshots %d, moves %d | %s"):format(keyCount.combatShots, keyCount.combatMoves, Line(sc, dbg))
+            if keyCount.combatShots == 0 or keyCount.combatMoves == 0 then return nil, "in combat, press Print Screen and walk a step | " .. note end
+            return true, note
+        end },
+    { text = "Out of combat, open the character window (C) and press |cffffd100Do it for me|r: the Stat Calculator opens docked beside it. Now open Group Finder (I) and move it over the Stat Calculator panel if it does not overlap already. Press |cffffd100Check|r.\n\n|cffffd100Expect:|r Group Finder is drawn over the Stat Calculator panel, never under it, and its buttons can be clicked. The addon reads the panel's and the window's layers (strata) for the note; only you can see which window is on top.",
+        noVerdict = true,
+        setup = function()
+            local sc, dbg, why = Ready(); if not sc then error(why) end
+            if InCombat() then error("you are in combat: wait for it to end") end
+            Keys(false)
+            if not WindowShown() then error("open the character window (C) first") end
+            local ok, w2 = sc.Open("stats")
+            if not ok then error(w2 or "the panel did not open") end
+        end,
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            local ps, cs = nil, nil
+            if dbg.Strata then ps, cs = dbg.Strata() end
+            return nil, ("panel layer %s; character window layer %s (docked, the two match) | %s"):format(tostring(ps), tostring(cs), Line(sc, dbg))
+        end },
+    { text = "Out of combat, press |cffffd100Do it for me|r: the Stat Calculator opens. Hold the mouse button on its bottom-right corner (the resize grip) and drag; while still holding it, press an attack key on a training dummy so combat starts. Let go of the mouse, finish the fight, wait for combat to end and press |cffffd100Check|r.\n\n|cffffd100Expect:|r the panel hides in combat; after combat it is back at its saved size and does not follow the cursor.",
+        setup = function()
+            local sc, dbg, why = Ready(); if not sc then error(why) end
+            if InCombat() then error("you are in combat: wait for it to end") end
+            local ok, w2 = sc.Open("stats")
+            if not ok then error(w2 or "the panel did not open") end
+            local c = sc.Cfg()
+            sizeAt = { h = (c.sizeMode == "large") and c.heightLarge or c.heightSmall }
+        end,
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            if not sizeAt then return nil, "press Do it for me first" end
+            if InCombat() then return nil, "still in combat: wait for it to end | " .. Line(sc, dbg) end
+            if not dbg.Sizing then return nil, "XayaUI Bonus Features is older than this step (no resize reading)" end
+            local c = sc.Cfg()
+            local want = (c.sizeMode == "large") and c.heightLarge or c.heightSmall
+            local _, h = dbg.PanelSize()
+            local sizing = dbg.Sizing()
+            local note = ("resize still under way: %s; panel height %s, saved height %s | %s"):format(sizing and "yes" or "no", tostring(h and math.floor(h + 0.5)),
+                tostring(want), Line(sc, dbg))
+            if not sc.Shown() then return nil, "the panel is not shown: open it (/xui stats) | " .. note end
+            return (not sizing and h ~= nil and math.floor(h + 0.5) == want) and true or false, note
+        end },
     { text = "Did any XayaUI message appear in chat during the fight or when it ended? The addon cannot read chat, so it offers no verdict here: you decide. Press Pass if there was none; press Fail if there was one, and copy it into the note.", noVerdict = true },
     { done = true, text = "Last step: press |cffffd100Do it for me|r to put the Stat Calculator back as it was before this walkthrough (its tab, open or closed, Critical Strike's typed number). Then press |cffffd100Done|r.",
         setup = function()
             if watch then watch:UnregisterAllEvents() end
-            atCombat, inCombatBuilds = nil, nil
+            Keys(false)
+            atCombat, inCombatBuilds, keyCount, sizeAt = nil, nil, nil, nil
             PutBack()
         end },
 } })

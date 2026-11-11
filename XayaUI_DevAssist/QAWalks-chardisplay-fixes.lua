@@ -99,3 +99,74 @@ QA.Register("chardisplay-fixes", { title = "Improved Character Display: a slot m
             kept = nil
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- (U1, the V27 gate fixes of 2026-11-11: G-001, G-002, G-005, G-007) Improved Character Display's display over Blizzard's window is
+-- hover only (her reading of V27, "Hover only, clicks pass"): the enchant / gem rows beside the slots and the full stat list show their
+-- tooltips but every click and camera drag passes through; rows faded out under the model's camera buttons take no mouse at all; the
+-- stat list is not redrawn when nothing it shows changed, and not in combat (once when combat ends; DECISION to confirm with Xaya).
+-- The addon reads the mouse state of its own frames through "charDisplayDebug" (Mouse, ListCounts; read only) and offers a verdict
+-- where it can; what only the player can see (the model turning, a camera button working) is asked (noVerdict). Nothing here takes the
+-- keyboard, the mouse or a frame. UNVERIFIED IN GAME.
+-------------------------------------------------------------------------------
+local keptGate   -- step 1: { enchants, gems, statList } as they were
+local function Mouse()
+    local dbg = Svc("charDisplayDebug")
+    if not (dbg and dbg.Mouse) then return nil, "XayaUI QoL is off or too old (no charDisplayDebug.Mouse)" end
+    return dbg.Mouse()
+end
+QA.Register("chardisplay-gate", { title = "Improved Character Display: rows and the stat list are hover only (clicks and camera drags pass); stat list quiet in combat (V27 G-001, G-002, G-005, G-007)",
+    area = "QoL", qa = "E1z238", order = 528, prefill = true, steps = {
+    { text = "Tick |cffffd100QoL > Improved Character Display|r if it is not ticked, then press |cffffd100Do it for me|r: XayaUI remembers three of its settings, then ticks |cffffd100Enchants beside the slots|r, |cffffd100Gems and sockets beside the slots|r and the |cffffd100Full stat list|r. Open the character window (|cffffd100C|r) on the Character tab.\n\n|cffffd100Expect:|r enchant and gem rows beside the slots and XayaUI's stat list in the stats pane. The addon reads that none of them takes clicks.",
+        setup = function()
+            local dbg = Svc("charDisplayDebug")
+            local c = dbg and dbg.Cfg and dbg.Cfg()
+            if not c then error("XayaUI QoL is off") end
+            if not c.enabled then error("tick QoL > Improved Character Display first") end
+            if not keptGate then keptGate = { enchants = c.enchants, gems = c.gems, statList = c.statList } end
+            c.enchants, c.gems, c.statList = true, true, true
+            dbg.Apply()
+        end,
+        check = function()
+            local m, why = Mouse()
+            if not m then return nil, why end
+            if m.rows == 0 then return nil, "nothing drawn yet: open the character window (C) on the Character tab" end
+            return m.clicks == 0 and m.hover > 0, ("%d rows / list frames shown: %d take clicks (should be 0), %d take hover; waiting for combat to end: %s"):format(m.rows, m.clicks, m.hover, tostring(m.queued))
+        end },
+    { text = "Turn |cffffd100Blizzard Reskin > Character Reskin > Wider window|r off if it is on (at Blizzard's width the rows run over the sides of the model). Then |cffffd100left-drag|r on the model starting ON an enchant or gem row that lies over the model, and |cffffd100right-drag|r the same way.\n\n|cffffd100Expect:|r the left-drag turns your character and the right-drag pans it, as when you start beside the row. Hovering the row alone still shows its tooltip.",
+        noVerdict = true,
+        check = function()
+            local m, why = Mouse()
+            if not m then return nil, why end
+            return true, ("rows taking clicks: %d (0 lets the drag reach the model); rows taking hover: %d"):format(m.clicks, m.hover)
+        end },
+    { text = "Still at Blizzard's width: move the mouse over the model so its camera buttons (zoom, rotate) show at its top. The head and hands rows that meet them fade out. Click each camera button, and hover where a faded row was.\n\n|cffffd100Expect:|r every camera button works, and no tooltip pops up for a row you cannot see. Keep the mouse over the model while the addon checks (press |cffffd100Check|r again if needed).",
+        check = function()
+            local m, why = Mouse()
+            if not m then return nil, why end
+            if m.faded == 0 then return nil, "no row is faded right now: keep the mouse over the model with the window at Blizzard's width" end
+            return m.fadedHover == 0, ("%d faded row(s); %d of them still take the mouse (should be 0)"):format(m.faded, m.fadedHover)
+        end },
+    { text = "In the stats pane (XayaUI's full stat list): click a line, roll the mouse wheel over the list, and hover a line.\n\n|cffffd100Expect:|r the click does nothing (nothing of XayaUI's catches it), the wheel scrolls the list, and the hover shows the line's tooltip.",
+        noVerdict = true,
+        check = function()
+            local m, why = Mouse()
+            if not m then return nil, why end
+            return true, ("frames shown: %d; taking clicks: %d (should be 0)"):format(m.rows, m.clicks)
+        end },
+    { text = "With the character window open, start combat (attack a training dummy) and use something that changes a stat (a haste or crit buff, a trinket). Look at the stat list during combat, then let combat end.\n\n|cffffd100Expect (DECISION to confirm with Xaya):|r during combat the list keeps the numbers it had when combat started; within a moment of combat ending it shows the new numbers. Tell us in the note whether that is what you want, or a refresh every few seconds in combat.",
+        noVerdict = true,
+        check = function()
+            local dbg = Svc("charDisplayDebug")
+            if not (dbg and dbg.ListCounts) then return nil, "XayaUI QoL is off or too old (no charDisplayDebug.ListCounts)" end
+            local l = dbg.ListCounts()
+            return true, ("stat model builds: %d; layouts: %d; waiting for combat to end: %s"):format(l.builds, l.layouts, tostring(l.stale))
+        end },
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Enchants beside the slots, Gems and sockets beside the slots and the Full stat list back as they were before step 1, and turn the Wider window back on if you turned it off. Then press |cffffd100Done|r.",
+        setup = function()
+            local dbg = Svc("charDisplayDebug")
+            local c = dbg and dbg.Cfg and dbg.Cfg()
+            if c and keptGate then c.enchants, c.gems, c.statList = keptGate.enchants, keptGate.gems, keptGate.statList; dbg.Apply() end
+            keptGate = nil
+        end },
+} })

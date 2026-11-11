@@ -10,6 +10,9 @@
 -- look was laid out (ns.CharReskin_OnWindowSize), and answers the extra height's slot gap (ns.CharReskin_TallGap) and the look switch's
 -- saved value for Improved Character Display's one-time settings merge (ns.CharReskin_LookSavedOn). Map of the split: docs/plans/
 -- STAT-CALCULATOR-BOUNDARY-MAP-2026-11-10.md section 5.
+-- (V27 gate G-029) one read goes the other way, and it is diagnostic only: the "characterReskin" service's Drawn() (below, for XayaUI
+-- Dev Assist's QAWalks-character-split.lua) asks Improved Character Display's "charDisplay" service for its counts, read only, inside a
+-- pcall, zero when that addon part is not loaded. Nothing this file draws or decides depends on it.
 --
 -- Xaya, 2026-11-04: "also create a QoL Character Reskin option to toggle on or off"; "I want a reskin OF THE CHARACTER MENU AND NOTHING
 -- ELSE"; "GIVE ME A PRETTY VERSION OF THE CHARACTER SHEET"; "THIS window needs to look beautiful and CLEAN"; "prettify the character
@@ -380,7 +383,11 @@ end
 -- as "Spread the slots"; REQUEST-LOG #72-#73). With the wider window on and Extra height above 0, out of combat only (as the width): the
 -- window is that much taller (CharacterFrame:SetHeight, widgets.md SetHeight(height: uiUnit)); each slot of the two columns after the
 -- first hangs from the one above it (PaperDollFrame.xml: TOPLEFT of the slot above's BOTTOMLEFT, 0, -4), so each of the 7 gaps of a
--- column grows by px / 7 and the columns spread evenly over the added height; the model scene is px taller (its width stays: the game
+-- column grows by about px / 7 and the columns spread evenly over the added height. (V27 gate G-009, whole pixels) the added height is
+-- shared out in whole pixels: every gap gets math.floor(px / 7), and the first px % 7 gaps of each column (from the top) one pixel more,
+-- so the 7 gaps add up to px exactly and no slot is anchored at a fraction of a pixel. Each slot hangs from the one above it, so its own
+-- y offset is Blizzard's plus its own gap (the offsets add up down the column). The slider keeps its 0-300 range in 1 px steps; the
+-- model scene is px taller (its width stays: the game
 -- fits the character inside it, INFERENCE); the weapon row hangs from the bottom (BOTTOMLEFT 130, 16), so it moves down with the window.
 -- A slot anchored otherwise, or a protected frame (or a secret answer), is left alone and nothing of the height changes (fail safe).
 -- 0 gives Blizzard's layout exactly (every anchor and size put back).
@@ -388,7 +395,12 @@ local TALL_COLS = { { "HeadSlot", "NeckSlot", "ShoulderSlot", "BackSlot", "Chest
     { "HandsSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot", "Finger1Slot", "Trinket0Slot", "Trinket1Slot" } }
 local tall = { applied = false, gap = 0 }
 ns.CharReskinTall = tall   -- (for the tests)
+-- (G-009) tall.gap is the whole-pixel gap EVERY pair of slots has at least (math.floor(px / 7)); a gap given the extra pixel is one more.
+-- Improved Character Display halves it for its blocks' room above and below a slot and rounds that half itself.
 function ns.CharReskin_TallGap() return tall.applied and tall.gap or 0 end
+-- the extra room of gap i (1-7, from the top of a column): whole pixels that add up to px
+local function TallGapAt(px, i) local base, rem = math.floor(px / 7), px % 7; return (i <= rem) and (base + 1) or base end
+ns.CharReskin_TallGapAt = TallGapAt   -- (tests: read only)
 local function TallAnchors()
     if tall.pts then return tall.pts end
     local pts = {}
@@ -415,8 +427,12 @@ local function RestoreTall()
     tall.applied, tall.gap, tall.px = false, 0, 0
     SizeChanged()
 end
+-- the Extra height the setting asks for, as ApplyTall stores it in tall.px: the saved value, or 0 when it rounds to 0 px (off)
+local function TallWanted(c) local v = (c and c.tallPx) or 0; return (math.floor(v + 0.5) > 0) and v or 0 end
 local function ApplyTall(c, cf, m)
-    local px = (c and c.tallPx) or 0
+    local saved = (c and c.tallPx) or 0   -- (kept as tall.px: ApplyWide compares it with the setting to see whether anything changed)
+    -- (Cfg keeps it inside 0-300; a typed or saved fraction is laid out in whole pixels; rounded BEFORE the off test, so 0.3 is off)
+    local px = math.floor(saved + 0.5)
     if px <= 0 then RestoreTall(); diag.tall = "off (0)"; return end
     local pts = TallAnchors()
     if not (pts and NotProtected(cf) and NotProtected(m)) then diag.tall = "the slots are anchored differently or protected: Blizzard's height"; return end
@@ -425,16 +441,20 @@ local function ApplyTall(c, cf, m)
         if CM.IsSecret(h) or CM.IsSecret(mh) or not num(h) or not num(mh) then return end
         tall.baseH, tall.modelH = h, mh
     end
-    local gap = px / 7
-    for name, pt in pairs(pts) do
-        local b = _G["Character" .. name]
-        b:ClearAllPoints(); b:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5] - gap)
+    local gap, rem = math.floor(px / 7), px % 7
+    for _, col in ipairs(TALL_COLS) do
+        for i = 2, #col do
+            local pt, b = pts[col[i]], _G["Character" .. col[i]]
+            b:ClearAllPoints(); b:SetPoint(pt[1], pt[2], pt[3], pt[4], pt[5] - TallGapAt(px, i - 1))
+        end
     end
     cf:SetHeight(tall.baseH + px)
     m:SetHeight(tall.modelH + px)
-    if tall.px ~= px or not tall.applied then SizeChanged() end
-    tall.applied, tall.gap, tall.px = true, gap, px
-    diag.tall = ("on, %d px taller (%d -> %d); each gap between two slots %.1f px wider"):format(px, math.floor(tall.baseH + 0.5), math.floor(tall.baseH + px + 0.5), gap)
+    if tall.px ~= saved or not tall.applied then SizeChanged() end
+    tall.applied, tall.gap, tall.px = true, gap, saved
+    diag.tall = (rem > 0 and "on, %d px taller (%d -> %d); each gap between two slots %d px wider (the top %d of each column %d px)"
+        or "on, %d px taller (%d -> %d); each gap between two slots %d px wider"):format(px, math.floor(tall.baseH + 0.5),
+        math.floor(tall.baseH + px + 0.5), gap, rem, gap + 1)
 end
 
 local function RestoreWide()
@@ -475,7 +495,7 @@ local function ApplyWide(c)
             wide.applied = false
             WaitForCombatEnd(true)
             diag.wide = "waits for the end of combat"
-        elseif wide.px ~= c.widePx or (tall.applied and tall.px or 0) ~= (c.tallPx or 0) then
+        elseif wide.px ~= c.widePx or (tall.applied and tall.px or 0) ~= TallWanted(c) then
             WaitForCombatEnd(true)   -- (QoL 0.7.31) a width or height set in combat: applied when the fight ends
             diag.tall = "waits for the end of combat"
         end
@@ -631,6 +651,22 @@ local function OtherSkin()
 end
 ns.CharReskin_OtherSkin = function() return OtherSkin() or nil end
 LookActive = function() local c = Cfg(); return On(c) and not OtherSkin() and not diag.failed end
+-- (V27 gate G-021) the answer the two lasting redraw hooks below read: worked out once (ns.CharReskin_Apply, every settings page change
+-- and the Reskin tab's switch go through it; a Guard error and a new settings epoch forget it) and then one upvalue read, so a slot or
+-- stat redraw never runs Cfg()'s normalising loop. diag.lookReads counts the times it was worked out (Dev Assist's check). Settings not
+-- open yet: nothing is kept. INFERENCE: nothing else changes the answer within a settings epoch: the look's switch and the Reskin tab's
+-- take effect on /reload (ns.SwitchInEffect), and another skin addon is read once per session (OtherSkin; an ElvUI answer that cannot
+-- be read yet counts as "skinned", the same fail-safe answer, until the next Apply).
+local lookOn, lookOnC, lookOnEpoch = false, nil, nil
+local function LookCached()
+    if lookOnEpoch ~= nil and lookOnEpoch == ns.settingsEpoch then return lookOn, lookOnC end
+    local c = Cfg()
+    lookOn = (On(c) and not OtherSkin() and not diag.failed) and true or false
+    lookOnC, lookOnEpoch = c, (c and ns.settingsEpoch or nil)
+    diag.lookReads = (diag.lookReads or 0) + 1
+    return lookOn, lookOnC
+end
+local function ForgetLook() lookOnEpoch = nil end
 -- (V25 R2) the look is all this file draws: Active and LookActive are the same answer (both names stay for the tests and Dev Assist)
 function ns.CharReskin_Active() return LookActive() == true end
 function ns.CharReskin_LookActive() return LookActive() == true end
@@ -639,6 +675,7 @@ Guard = function(fn, ...)
     local ok, err = pcall(fn, ...)
     if ok then return true end
     diag.failed, diag.lastError = true, tostring(err)
+    ForgetLook()
     RestoreAll(); SetOwnShown(false)
     pcall(RestoreWide)
     Tell("applied")
@@ -695,16 +732,16 @@ local function Hook()
         -- returns at once (equipment changes redraw the slots then too); the window's OnShow above fades every slot when it opens.
         if type(_G.PaperDollItemSlotButton_Update) == "function" then
             hooksecurefunc("PaperDollItemSlotButton_Update", function(btn)
-                if not (LookActive() and WindowShown()) then return end
-                local c = Cfg()
-                if c and c.chrome then Guard(FadeSlot, btn) end
+                if not WindowShown() then return end   -- (G-021) the cheap test first: window closed, nothing else is read
+                local on, c = LookCached()
+                if on and c and c.chrome then Guard(FadeSlot, btn) end
             end)
         end
         if type(_G.PaperDollFrame_UpdateStats) == "function" then
             hooksecurefunc("PaperDollFrame_UpdateStats", function()
-                if not (LookActive() and WindowShown()) then return end
-                local c = Cfg()
-                if c and c.stats then Guard(StyleStats) end
+                if not WindowShown() then return end   -- (G-021) as above
+                local on, c = LookCached()
+                if on and c and c.stats then Guard(StyleStats) end
             end)
         end
         if type(_G.PanelTemplates_SetTab) == "function" then
@@ -718,8 +755,10 @@ local function Hook()
 end
 
 function ns.CharReskin_Apply()
+    ForgetLook()
     local c = Cfg()
     if not c then return end
+    LookCached()   -- (G-021) the redraw hooks' answer, worked out once here
     if LookActive() then Hook() end
     if hooked then Guard(ApplyNow) end
 end

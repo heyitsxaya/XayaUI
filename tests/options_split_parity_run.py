@@ -90,6 +90,11 @@ code differ in exactly 10 lines per variant (XayaUI QoL off: 0), only in: the fo
 show.ovIlvl / ovSockets / ovEnchants / ovSize`: desc now a function, the greyed reason; Text size gained a desc; Empty sockets lost its
 "Hidden while ..." sentence) and Blizzard Reskin > Character Reskin's `reskin.charreskin.stats` (name "Stat list" -> "Stat list colors", its
 desc). Made the same way (only XayaUI_Nameplates and XayaUI_Reskin from 6bc8165), so the same 14 spelling failures stay visible.
+Regenerated again on 2026-11-11 for the Stat Calculator V25 release gate fixes (QoL 0.7.58; gate finding G-015): `--dump` of 5695993 and
+of the new code differ in exactly 292 removed lines per variant (XayaUI QoL off: 0), all `qol.chardisplay.statListPage.g<N>s<M>.*`: the
+per-stat rows of Improved Character Display > Stat list are no longer built while the feature or its Stat list part is off (the fixed
+state has it off; before, they were drawn greyed); 0 other lines, every other tab unchanged. Made the same way (only XayaUI_Nameplates and
+XayaUI_Reskin from 6bc8165), so the same 14 spelling failures stay visible.
 `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

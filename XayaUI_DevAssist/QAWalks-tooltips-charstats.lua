@@ -9,6 +9,7 @@
 -- TT.charStatsState.builds, the read-only build counter; TT.charStatsState.drops, how many times kept models were dropped;
 -- TT.CharStatsKept; TT.CharStatLines). Listed in XayaUI_DevAssist.toc after the other QAWalks files; does nothing without the
 -- framework. UNTESTED IN GAME.
+-- This file also holds a second walkthrough, "tooltips-charstats-gate" (gate findings G-013 / G-018; see its own header below).
 -- Round 2 (review of unit E): step 2 allows one more build per drop seen while she hovers (a buff or stat tick makes Blizzard update
 -- the window, which rightly drops the models), so a correct build cannot fail; step 3 first keeps a model (Do it for me), then needs a
 -- build after the swap, so it cannot pass when nothing was rebuilt; the rating is read digits only (any thousands separator).
@@ -113,5 +114,100 @@ QA.Register("tooltips-charstats-cache", { title = "Character window stat tooltip
           return same, note
       end },
     { text = "Your look: did any hover show a number that did not match the game's own tooltip above it (after a buff, a gear swap, a talent change)? Pass if every number matched; Fail and say which stat and what you did just before.", noVerdict = true },
+    { done = true, text = "Leave Character stats ticked or unticked as you like, then press |cffffd100Done|r." },
+} })
+
+-------------------------------------------------------------------------------
+-- Second walkthrough in this file: the V27 / V14 gate fixes of Enhanced Tooltips > Character stats (gate findings G-013 and G-018,
+-- unit U3-tooltips-charstats; kept in this file so it needs no new toc line).
+--   G-018: with Character stats unticked, building the Enhanced Tooltips page only reads whether Improved Character Display is on; it
+--          gives Improved Character Display no change callback (TT.charStatsState.subscribed stays false). Ticking it gives one.
+--          (round 2) Until then the option's greyed state reads Improved Character Display's switch while the page is drawn, so a
+--          switch without a reload is seen; when the callback is given, the switch is read once more (lines only with both on).
+--   G-013: the character window's stat rows are walked only when their number changes (TT.charStatsState.rowWalks / rowCount), and
+--          the game's stat label strings are made plain once per session, not on every hover (TT.charStatsState.labelPlains).
+-- prefill = true (V22): the verdict is offered, recorded only on her click. UNTESTED IN GAME.
+-------------------------------------------------------------------------------
+local function GateState()
+    local TT = TTs()
+    local cs = TT and TT.charStatsState
+    if not (cs and cs.labelPlains ~= nil and cs.rowWalks ~= nil and TT.CharStatsDisplayOn) then
+        return nil, nil, "XayaUI Bonus Features is off or older than this change (no gate counters)"
+    end
+    return TT, cs
+end
+local function GateLine(TT, cs)
+    local db = TT.DB and TT.DB() or {}
+    local pane = rawget(_G, "CharacterStatsPane")
+    local okc, n = pcall(function() return pane and select("#", pane:GetChildren()) end)
+    return ("Character stats %s; Improved Character Display read as %s; callback given %s; lines %s; rows walked %d time(s) (rows %s, pane now %s); label strings made plain %d; character window %s"):format(
+        db.charStats == true and "ticked" or "unticked", TT.CharStatsDisplayOn() and "on" or "off", cs.subscribed and "yes" or "no",
+        TT.charStatsOn and "on" or "off", cs.rowWalks, tostring(cs.rowCount), okc and tostring(n) or "?", cs.labelPlains,
+        WindowShown() and "open" or "closed")
+end
+-- the steps before the callback is given need Character stats unticked and the page built since the reload
+local function Unticked(TT, cs)
+    if (TT.DB and TT.DB() or {}).charStats == true then return "untick Character stats, /reload, open the Enhanced Tooltips page, then check | " .. GateLine(TT, cs) end
+    if not cs.read then return "open /xui > Bonus Features > Enhanced Tooltips once (after the /reload), then check | " .. GateLine(TT, cs) end
+    if cs.subscribed then return nil end
+end
+
+local gateWalks, gatePlains   -- the counters when step 5's Do it for me ran
+
+QA.Register("tooltips-charstats-gate", { title = "Character window stat tooltips: no work while unticked; rows and labels read once (G-013, G-018)",
+    area = "Bonus", qa = "E1z239", order = 527, prefill = true, steps = {
+    { text = "Out of combat: in |cffffd100Bonus Features > Enhanced Tooltips|r untick |cffffd100Character stats|r (leave |cffffd100QoL > Improved Character Display|r ticked), type |cffffd100/reload|r, then open |cffffd100/xui|r > Bonus Features > Enhanced Tooltips once, come back here and press |cffffd100Check|r.\n\n|cffffd100Expect:|r Character stats is not greyed (Improved Character Display read as on) and no callback was given to Improved Character Display.",
+      check = function()
+          local TT, cs, why = GateState()
+          if not TT then return nil, why end
+          local wait = Unticked(TT, cs)
+          if wait then return nil, wait end
+          return cs.subscribed ~= true and TT.CharStatsDisplayOn() == true, GateLine(TT, cs)
+      end },
+    { text = "Without a reload: untick |cffffd100QoL > Improved Character Display|r, then go back to the |cffffd100Enhanced Tooltips|r page and press |cffffd100Check|r.\n\n|cffffd100Expect:|r Character stats is greyed now and the note under it asks for Improved Character Display (no reload needed); still no callback.",
+      check = function()
+          local TT, cs, why = GateState()
+          if not TT then return nil, why end
+          local wait = Unticked(TT, cs)
+          if wait then return nil, wait end
+          if TT.CharStatsDisplayOn() then return nil, "untick Improved Character Display (QoL), then check | " .. GateLine(TT, cs) end
+          return cs.subscribed ~= true and TT.charStatsOn ~= true, GateLine(TT, cs)
+      end },
+    { text = "Still without a reload: tick |cffffd100Improved Character Display|r again, go back to the |cffffd100Enhanced Tooltips|r page and press |cffffd100Check|r.\n\n|cffffd100Expect:|r Character stats is not greyed any more (you can tick it); still no callback.",
+      check = function()
+          local TT, cs, why = GateState()
+          if not TT then return nil, why end
+          local wait = Unticked(TT, cs)
+          if wait then return nil, wait end
+          if not TT.CharStatsDisplayOn() then return nil, "tick Improved Character Display (QoL) again, then check | " .. GateLine(TT, cs) end
+          return cs.subscribed ~= true, GateLine(TT, cs)
+      end },
+    { text = "Now tick |cffffd100Character stats|r on the same page (no reload) and press |cffffd100Check|r.\n\n|cffffd100Expect:|r the callback is given now, once, and the lines are on (the lines follow Improved Character Display from here on).",
+      check = function()
+          local TT, cs, why = GateState()
+          if not TT then return nil, why end
+          if (TT.DB and TT.DB() or {}).charStats ~= true then return nil, "tick Character stats, then check | " .. GateLine(TT, cs) end
+          return cs.subscribed == true and TT.charStatsOn == true, GateLine(TT, cs)
+      end },
+    { text = "Open the character window (C) and hover any stat once. Press |cffffd100Do it for me|r (it notes the counters). Then hover |cffffd100Critical Strike|r, |cffffd100Haste|r and |cffffd100Mastery|r a few times each, wait for a buff or a stat to tick (or swap a ring and back), and press |cffffd100Check|r.\n\n|cffffd100Expect:|r the label strings were not made plain again, and the rows were walked again only if their number changed (the check compares).",
+      setup = function()
+          local _, cs = GateState()
+          gateWalks = cs and cs.rowWalks or nil; gatePlains = cs and cs.labelPlains or nil
+      end,
+      check = function()
+          local TT, cs, why = GateState()
+          if not TT then return nil, why end
+          if gateWalks == nil then return nil, "press Do it for me first (it notes the counters) | " .. GateLine(TT, cs) end
+          if not WindowShown() then return nil, "open the character window (C), then check again | " .. GateLine(TT, cs) end
+          if cs.labelPlains == 0 then return nil, "no hover seen yet: hover a stat, then check | " .. GateLine(TT, cs) end
+          local pane = rawget(_G, "CharacterStatsPane")
+          local okc, n = pcall(function() return pane and select("#", pane:GetChildren()) end)
+          local note = ("since Do it for me: rows walked +%d, label strings made plain +%d | "):format(cs.rowWalks - gateWalks,
+              cs.labelPlains - gatePlains) .. GateLine(TT, cs)
+          if not okc then return nil, note end
+          -- pass: no label work after the first hover, and the last walk saw the pane's present row count
+          return cs.labelPlains == gatePlains and cs.rowCount == n, note
+      end },
+    { text = "Your look: did every stat row you hovered still show its XayaUI block (rating, rating per 1%, what it feeds)? Pass if yes; Fail and say which row did not.", noVerdict = true },
     { done = true, text = "Leave Character stats ticked or unticked as you like, then press |cffffd100Done|r." },
 } })
