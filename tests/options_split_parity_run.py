@@ -89,6 +89,13 @@ Regenerated on 2026-11-10 for bundle 1 (docs/plans/RULES-REVIEW-2026-11-10.md): 
 old golden's every hash) and of the new code differ in 1129 lines, same 7205 nodes and paths: 1127 nodes under `.cues.` (bar, tex, anim,
 bartext, txt_*, pos, color, snd_*) gain `disabled()=nil` (R6: the edit lock now covers a cue's options; not locked here) and
 `set.ui.rules.draftsMax` / `settings.rules.draftsMax` change their desc to "...dropped when the window closes." (R7); 0 other lines.
+Regenerated on 2026-11-10 for bundle 1 round 3 (SD-17, the group's border and background drawn on each display): `--dump` of 3eede60c
+(round 2; it reproduces the old golden's every hash) and of the new code differ only in the "cooldowns" tab, 6694 -> 6698 nodes, on the
+4 group / display pages the fixed state draws: the new `pageDisplay.border.body.groupNote` (one per display page: "These change each
+display's own border and background. The group's ... are drawn on each display as well."), and on each `pageGroup.container`:
+`boxH` renamed "Border and background on each display" with an xuiInfo note (the new boxNote text, "...one by one, not as one box
+around the whole group..."), `pad` renamed "Padding around each display", and a new desc on border, borderColor, bg, bgColor, bgTex
+and pad (each says "each display"); 0 other lines (the round-3 combat lock and sound changes draw no other line here).
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

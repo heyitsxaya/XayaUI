@@ -1775,7 +1775,8 @@ local ID_LISTS = { { "instanceIDs", "instanceID", "instance ID" }, { "difficulti
     { "sizes", "instSize", "instance size" }, { "encounterIDs", "encounterID", "encounter" } }
 -- Walks the ID-list checks of a load table (a rule's `load`, or a group's `loadIds`), calling sink(acc, key, ok) for each
 -- (ok = true / false / nil); stops and returns what sink returns as soon as that is not nil. Makes no tables.
-local function IdListWalk(load, ctx, sink, acc)
+-- noEnc: skip the encounter list (ns.CheckContext's static view, below).
+local function IdListWalk(load, ctx, sink, acc, noEnc)
     if type(load) ~= "table" then return nil end
     local r
     if ns.SetActive(load.mapIDs) then
@@ -1785,7 +1786,7 @@ local function IdListWalk(load, ctx, sink, acc)
     for i = 1, #ID_LISTS do
         local d = ID_LISTS[i]
         local set, v = load[d[1]], ctx[d[2]]
-        if ns.SetActive(set) then
+        if ns.SetActive(set) and not (noEnc and d[2] == "encounterID") then
             r = sink(acc, d[3], known(v, v ~= nil and IdsMatchOne(set, v)))
             if r ~= nil then return r end
         end
@@ -1798,12 +1799,12 @@ local function IdListWalk(load, ctx, sink, acc)
 end
 local function AppendCheck(checks, key, ok) checks[#checks + 1] = { key = key, ok = ok } end
 -- the ID-list checks of a rule's load table, appended to `checks` as { key, ok = true / false / nil } (they join its other checks)
-local function IdListChecks(load, ctx, checks) IdListWalk(load, ctx, AppendCheck, checks); return checks end
+local function IdListChecks(load, ctx, checks, noEnc) IdListWalk(load, ctx, AppendCheck, checks, noEnc); return checks end
 -- a group's lists: every one must match. Returns the first that does not (its name, and false or nil for unknown), or nil.
 local failOk
 local function FirstFail(_, key, ok) if ok ~= true then failOk = ok; return key end end
-local function IdListFirstFail(load, ctx)
-    local key = IdListWalk(load, ctx, FirstFail, nil)
+local function IdListFirstFail(load, ctx, noEnc)
+    local key = IdListWalk(load, ctx, FirstFail, nil, noEnc)
     if key then return key, failOk end
 end
 -- (shared, never written) the load table of a rule that has none, so a recheck makes no new {} for it
@@ -1811,10 +1812,13 @@ local NO_LOAD = {}
 
 local CheckContextRaw
 local ctxMemo = setmetatable({}, { __mode = "k" })
-function ns.CheckContext(rule, ctx)
+-- static (round 3, R2 concern: a group's Boss encounters list blocked the game-played sound; only AuraSound.lua's plan passes it):
+-- the view that holds for a whole fight, so the Boss encounters lists are skipped, the rule's own and every group's (their answer
+-- is only known during the pull). Never kept in the memo.
+function ns.CheckContext(rule, ctx, static)
     -- memo per rule: same context values (ctx.sig) and no settings edit since (ns.configVersion), re-checked at least once a second
     local sig = ctx and ctx.sig
-    if not sig then return CheckContextRaw(rule, ctx) end
+    if static or not sig then return CheckContextRaw(rule, ctx, static) end
     local now, ver = math.floor(GetTime()), ns.configVersion or 0
     local m = ctxMemo[rule]
     if m and m.sig == sig and m.ver == ver and m.sec == now then return m.ok, m.fail end
@@ -1836,7 +1840,7 @@ local function AlwaysKeeps(classes, classOn, specs, specOn, ctx)
     return true
 end
 ns._AlwaysKeeps = AlwaysKeeps
-function CheckContextRaw(rule, ctx)
+function CheckContextRaw(rule, ctx, static)
     local load = rule.load or NO_LOAD
     local ov, ovFolder = ns.FolderLoadOverride(rule)   -- a folder's Never / Always beats the rule's own load mode
     if ov == "never" then return false, "load: never (folder " .. tostring(ovFolder and ovFolder.name) .. ")" end
@@ -1870,7 +1874,7 @@ function CheckContextRaw(rule, ctx)
                 return false, "group " .. tostring(f.name) .. ": instance type" .. (ctx.instanceType == nil and " (unknown)" or "")
             end
             -- the group's own zone / instance / difficulty / size / encounter / item lists (core 0.6.33; every list must match)
-            local fk, fok = IdListFirstFail(f.loadIds, ctx)
+            local fk, fok = IdListFirstFail(f.loadIds, ctx, static)
             if fk then return false, "group " .. tostring(f.name) .. ": " .. fk .. (fok == nil and " (unknown)" or "") end
             fid, guard = f.parent, guard + 1
         end
@@ -1911,7 +1915,7 @@ function CheckContextRaw(rule, ctx)
         checks[#checks + 1] = { key = "hero talents", ok = known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))) }
     end
     -- ID lists (zone, instance, difficulty, size, encounter, equipped item); an empty or missing list restricts nothing
-    IdListChecks(load, ctx, checks)
+    IdListChecks(load, ctx, checks, static)
     if #checks == 0 then return true end
     if load.mode == "any" then
         local unknown

@@ -1016,7 +1016,7 @@ end
 -- (Re)build everything. Safe to call any time; waits for the end of combat when in combat lockdown.
 function D.Build()
     local db = DB()
-    if not db then return end
+    if not db or ns.RulesDisabled then return end   -- (V26: /xui disable; /xui enable builds again)
     if InCombatLockdown and InCombatLockdown() then pendingBuild = true; return end
     pendingBuild = nil
     serial = serial + 1
@@ -1189,6 +1189,7 @@ function ns.EngineSlotsEach(put)
 end
 
 function D.SyncLive()
+    if ns.RulesDisabled then return end   -- (V26: /xui disable leaves every container hidden until /xui enable)
     for _, store in ipairs(STORES) do
         for _, s in pairs(store) do
             if s.ok and s.frame then
@@ -1338,26 +1339,25 @@ local function FindFolder(q)
     return nil, (count == 0) and ("no group matches '" .. q .. "'") or (count .. " groups match '" .. q .. "'; use more of the name")
 end
 
--- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81, her answer "Yes, as recommended": players keep full and refresh; auto, on, off and
--- reset move to XayaUI Dev Assist). Those four are registered by Dev Assist (ns.RegisterSubcommand("xuiengine", ...),
--- XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB, D.FindFolder and D._guard; without Dev Assist they do not exist.
+-- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81): auto, on, off and reset moved to XayaUI Dev Assist. Those four are registered by
+-- Dev Assist (ns.RegisterSubcommand("xuiengine", ...), XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB, D.FindFolder
+-- and D._guard; without Dev Assist they do not exist.
+-- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and /xuiengine refresh: "Remove entirely"; "/xui shouldn't have anything that allows
+-- configuration of rules through the console") Players keep only /xuiengine with no word: the status, which reads and changes nothing.
+-- Lean mode (performance guard) now lasts until the next /reload; a rule edit still rebuilds the engine on its own (QueueBuild).
 D.DB, D.FindFolder = DB, FindFolder
 local function Slash(msg)
     local cmd, rest = tostring(msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
     cmd = cmd:lower()
     local db = DB()
     if not db then Say("saved data not loaded yet") return end
-    if cmd == "full" then   -- leave lean mode: every spec's displays again
-        guard.lean, guard.leanAt, guard.leanHanded = nil, nil, nil; guard.bad = 0; D.Build(); D.Status()
-    elseif cmd == "refresh" or cmd == "build" then
-        D.Build(); D.Status()
-    elseif cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
+    if cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
         -- (Dev Assist's: auto on / off, on / off / reset <group>)
     else
         D.Status()
         -- (no "|r" in chat text: WoW reads it as a colour code)
-        Say("/xuiengine full (leave lean mode);  /xuiengine refresh." .. (ns.SubcommandList and ns.SubcommandList("xuiengine", "/xuiengine ") or "")
-            .. "  Draws every aura display through Blizzard's secure aura container so time and stacks show in combat.")
+        Say("/xuiengine shows what the combat engine draws; it changes nothing." .. (ns.SubcommandList and ns.SubcommandList("xuiengine", "/xuiengine ") or "")
+            .. "  The engine draws aura displays through the game's own aura frames, so time and stacks show in combat.")
     end
 end
 SLASH_XUIENGINE1 = "/xuiengine"
@@ -1371,6 +1371,7 @@ local function Metric(name)
     return (ok and type(v) == "number") and v or nil
 end
 local function GuardCheck()
+    if ns.RulesDisabled then return end
     local db = DB()
     if not (db and db.auto ~= false and not guard.off) or guard.kept then guard.bad = 0; return end
     if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
@@ -1408,7 +1409,7 @@ local function GuardCheck()
     if step == "lean" then
         guard.lean, guard.leanAt = true, v
         if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame (limit %.1f)"):format(v, LIMIT_MS)) end
-        Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine now draws only the displays of the spec you are playing (lean mode, applied once combat ends, until /reload). /xuiengine full to undo.", v, LIMIT_MS))
+        Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine will draw only the displays of the spec you are playing (lean mode). In a fight this starts when the fight ends. It lasts until you reload your interface (/reload).", v, LIMIT_MS))
     else
         guard.off = true
         if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W004", ("still %.2f ms per frame in lean mode (limit %.1f)"):format(v, LIMIT_MS)) end
@@ -1437,20 +1438,25 @@ end
 D.QueueBuild = QueueBuild
 
 if hooksecurefunc then
-    if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() pcall(D.SyncLive) end) end
+    -- (V26) not in combat: there ToggleUnlock only says the mover opens after the fight (Visual.lua); the timer below keeps up
+    if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() if not (InCombatLockdown and InCombatLockdown()) then pcall(D.SyncLive) end end) end
     if ns.SetGroupUnlocked then hooksecurefunc(ns, "SetGroupUnlocked", function() pcall(D.SyncLive) end) end
     if ns.SetMoveUnlocked then hooksecurefunc(ns, "SetMoveUnlocked", function() pcall(D.SyncLive) end) end
     if ns.MarkDirty then hooksecurefunc(ns, "MarkDirty", QueueBuild) end
 end
-if C_Timer and C_Timer.NewTicker then
-    C_Timer.NewTicker(0.25, function() pcall(D.SyncLive) end)
-    C_Timer.NewTicker(5, function() pcall(GuardCheck) end)
+local syncTicker, guardTicker   -- (V26: cancelled while /xui disable holds, started again by /xui enable)
+local function StartTickers()
+    if not (C_Timer and C_Timer.NewTicker) then return end
+    syncTicker = syncTicker or C_Timer.NewTicker(0.25, function() pcall(D.SyncLive) end)
+    guardTicker = guardTicker or C_Timer.NewTicker(5, function() pcall(GuardCheck) end)
 end
+StartTickers()
 
 -- Blizzard's container does not follow a new target / focus on its own: Blizzard_AuraContainer.lua says UpdateAllAuras is
 -- "exposed to allow external events to trigger refreshes where needed (e.g. target changes)", and its own target frame calls it on
 -- PLAYER_TARGET_CHANGED. Without this a "Target Debuff (yours)" slot kept showing the previous target's debuff.
 local function RefreshUnit(unit)
+    if ns.RulesDisabled then return end
     for _, store in ipairs(STORES) do
         for _, s in pairs(store) do
             if s.ok and s.frame and s.unit == unit and s.frame.UpdateAllAuras then pcall(s.frame.UpdateAllAuras, s.frame) end
@@ -1469,10 +1475,55 @@ ev:RegisterEvent("PLAYER_FOCUS_CHANGED")
 ev:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_TARGET_CHANGED" then RefreshUnit("target"); return end
     if event == "PLAYER_FOCUS_CHANGED" then RefreshUnit("focus"); return end
+    if event == "PLAYER_REGEN_ENABLED" and D.HideWhenFree() then return end   -- (V26: /xui disable in a fight)
     if event == "PLAYER_REGEN_ENABLED" and not pendingBuild then return end
     if event == "PLAYER_SPECIALIZATION_CHANGED" and unit and unit ~= "player" then return end
     pcall(D.Build)
 end)
+
+-------------------------------------------------------------------------------
+-- (V26) /xui disable (Xaya 2026-11-10: "/xui disable: all rules off"; XayaUI_Rules/Engine.lua ns.SetRulesDisabled fires RULES_DISABLED,
+-- in or out of combat). The containers are the game's AuraContainer widgets. docs/reference/api documents no AuraContainer widget and
+-- nothing about hiding one in combat (only the C_AuraContainerUtil option helpers), so in combat no container method is called: each is
+-- made invisible with Frame:SetAlpha(0) (widgets.md, Frame: SetAlpha carries no IsProtectedFunction flag; INFERENCE: an AuraContainer
+-- has Frame's SetAlpha, unverified in game) and hidden with Hide when combat ends (PLAYER_REGEN_ENABLED, already listened to above).
+-- Out of combat they are hidden at once. The engine goes inert at once: the 4-a-second live sync and the 5-second guard timers are
+-- cancelled, and D.Build, D.SyncLive, the guard and the target / focus refresh do nothing while rules are off. /xui enable
+-- (RULES_ENABLED, never in combat) rebuilds: every container in use gets its place, look and opacity back (PlaceGroup / PlaceSingle).
+-------------------------------------------------------------------------------
+local hideWhenFree = false
+local function EachContainer(fn)
+    for _, store in ipairs(STORES) do for _, sl in pairs(store) do if sl.frame then fn(sl.frame) end end end
+    for _, g in pairs(groups) do if g.frame then fn(g.frame) end end
+end
+local function HideOne(c) pcall(c.Hide, c) end
+local function Fade(c) pcall(c.SetAlpha, c, 0) end
+function D.HideWhenFree()   -- combat ended: hide what /xui disable faded in the fight (true when it did)
+    if not hideWhenFree then return false end
+    hideWhenFree = false
+    if ns.RulesDisabled then EachContainer(HideOne); return true end
+    return false
+end
+local function RulesOff()
+    if syncTicker and syncTicker.Cancel then syncTicker:Cancel() end
+    if guardTicker and guardTicker.Cancel then guardTicker:Cancel() end
+    syncTicker, guardTicker = nil, nil
+    if InCombatLockdown and InCombatLockdown() then
+        EachContainer(Fade)
+        hideWhenFree = true
+    else
+        EachContainer(HideOne)
+    end
+end
+local function RulesOn()
+    hideWhenFree = false
+    StartTickers()
+    pcall(D.Build)
+end
+if ns.On then
+    ns.On("RULES_DISABLED", RulesOff)
+    ns.On("RULES_ENABLED", RulesOn)
+end
 
 -- for tests
 D._groups, D._singles, D._owned, D._extras, D._guard = groups, singles, owned, extras, guard

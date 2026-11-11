@@ -14,8 +14,8 @@ that runs in that time may run only its first line (and its closing "end"), and 
 the pooled-widget ownership check (TreePaint.lua TP.Ours: it only reads a field of the widget).
 Libs/ (Ace3) is not counted. Also: core's text-box guard (XayaUI/KeyCatch.lua) listens for mouse clicks (GLOBAL_MOUSE_DOWN) only
 while one of its boxes has the keyboard.
-The stand-in's SetFocus / ClearFocus run no focus scripts; this test makes them run OnEditFocusGained / OnEditFocusLost as the game
-does (warcraft.wiki.gg UIHANDLER OnEditFocusGained: "Fires when the frame gains keyboard focus"; INFERENCE: SetFocus counts).
+The stand-in's SetFocus / ClearFocus run OnEditFocusGained / OnEditFocusLost as the game does (tests/harness/world.lua; warcraft.wiki.gg
+UIHANDLER OnEditFocusGained: "Fires when the frame gains keyboard focus"; INFERENCE: SetFocus counts).
 Checks marked "(control)" or "(as before)" pass on the old code too; the others fail on the working tree before this change.
 Run: python3 tests/fix_r2_closed_window_quiet_run.py   (Lua 5.1 via lupa; opens the settings window with 300 rules: about a minute)."""
 import os, sys
@@ -31,27 +31,6 @@ local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local okAll, errAll = pcall(function()
 
--- the game's focus scripts (see the header): SetFocus / ClearFocus run OnEditFocusGained / OnEditFocusLost, one box has the keyboard
-do
-  local proto
-  local idx = getmetatable(CreateFrame("Frame")).__index
-  for i = 1, 20 do local n, v = debug.getupvalue(idx, i); if not n then break end; if n == "proto" then proto = v end end
-  local cur
-  function proto:SetFocus()
-    if cur == self then return end
-    local prev = cur
-    cur = self
-    if prev then prev._focus = false; local f = prev._scripts.OnEditFocusLost; if f then f(prev) end end
-    self._focus = true
-    local g = self._scripts.OnEditFocusGained; if g then g(self) end
-  end
-  function proto:ClearFocus()
-    if not self._focus then return end
-    self._focus = false
-    if cur == self then cur = nil end
-    local f = self._scripts.OnEditFocusLost; if f then f(self) end
-  end
-end
 do   -- AceGUI's tree rows are 18 px high (as in tests/sidebar_delete_run.py)
   local init = W.templateInit.OptionsListButtonTemplate
   W.templateInit.OptionsListButtonTemplate = function(f) init(f); f._h = 18 end

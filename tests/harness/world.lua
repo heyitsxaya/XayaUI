@@ -216,7 +216,7 @@ function proto:SetToplevel() end
 function proto:Raise() end
 function proto:Lower() end
 -- mouse and keyboard
-function proto:EnableMouse(v) self._mouse = v and true or false end
+function proto:EnableMouse(v) self._mouse = v and true or false; self._mouseSet = true end   -- (_mouseSet: W.click, an EditBox takes the mouse unless told not to)
 function proto:IsMouseEnabled() return self._mouse end
 function proto:EnableMouseWheel() end
 -- keyboard (REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM
@@ -236,7 +236,13 @@ end
 function proto:GetPropagateKeyboardInput() return self._propagate and true or false end
 function proto:RegisterForClicks() end
 function proto:RegisterForDrag() end
-function proto:IsMouseOver() return false end
+-- the mouse is over a frame only during W.click (over the clicked frame and every frame it sits in); a test may still give one frame
+-- its own IsMouseOver
+function proto:IsMouseOver()
+  local f = W.mouseOver
+  while f do if f == self then return true end; f = f._parent end
+  return false
+end
 function proto:IsMouseMotionFocus() return false end
 function proto:SetHitRectInsets() end
 function proto:SetMovable(v) self._movable = v end
@@ -312,8 +318,28 @@ function proto:GetLineHeight() return 12 end
 function proto:GetNumLines() return 1 end
 function proto:IsTruncated() return false end
 -- edit boxes
-function proto:SetFocus() self._focus = true end
-function proto:ClearFocus() self._focus = false end
+-- (round-2 review) the game's keyboard focus: one box has it at a time, and SetFocus / ClearFocus (and a click on a box, W.click) run
+-- the box's OnEditFocusLost / OnEditFocusGained (warcraft.wiki.gg UIHANDLER OnEditFocusGained / OnEditFocusLost: "Fires when the frame
+-- gains / loses keyboard focus"; INFERENCE: SetFocus, ClearFocus and a click count, as for Blizzard's own boxes). A box that already
+-- has the keyboard gets no second OnEditFocusGained. Scripts run as the game runs them (an error is reported, the caller carries on).
+local focused
+function proto:SetFocus()
+  if focused == self and self._focus then return end
+  local prev = focused
+  focused = self
+  if prev and prev ~= self and prev._focus then
+    prev._focus = false
+    if prev._scripts.OnEditFocusLost then safecall(prev._scripts.OnEditFocusLost, prev) end
+  end
+  self._focus = true
+  if self._scripts.OnEditFocusGained then safecall(self._scripts.OnEditFocusGained, self) end
+end
+function proto:ClearFocus()
+  if focused == self then focused = nil end
+  if not self._focus then return end
+  self._focus = false
+  if self._scripts.OnEditFocusLost then safecall(self._scripts.OnEditFocusLost, self) end
+end
 function proto:HasFocus() return self._focus and true or false end
 function proto:HighlightText() end
 function proto:SetCursorPosition(p) self._cursor = p end
@@ -1099,6 +1125,21 @@ function W.pressKey(key)
   do local ok, a = pcall(GetBindingFromClick, key); W.gameRan = ok and a or W.bindings[key] end
   if W.gameRan then W.gameRanLog[#W.gameRanLog + 1] = W.gameRan end
   return "game"
+end
+-- (round-2 review) a mouse click on a frame as the game runs it: GLOBAL_MOUSE_DOWN with the mouse over the frame, then a shown edit box
+-- that takes the mouse takes the keyboard (SetFocus above: its focus scripts run; INFERENCE: an EditBox takes the mouse unless
+-- EnableMouse(false)), then the frame's OnMouseDown, GLOBAL_MOUSE_UP, OnMouseUp and OnClick
+function W.click(f, button)
+  button = button or "LeftButton"
+  local was = W.mouseOver
+  W.mouseOver = f
+  W.fire("GLOBAL_MOUSE_DOWN", button)
+  if f._kind == "EditBox" and (f._mouse or not f._mouseSet) and f:IsVisible() then f:SetFocus() end
+  if f._scripts.OnMouseDown then safecall(f._scripts.OnMouseDown, f, button) end
+  W.fire("GLOBAL_MOUSE_UP", button)
+  if f._scripts.OnMouseUp then safecall(f._scripts.OnMouseUp, f, button, true) end
+  if f._scripts.OnClick then safecall(f._scripts.OnClick, f, button, false) end
+  W.mouseOver = was
 end
 -- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown
 -- begins after the PLAYER_REGEN_DISABLED event fires, and ends before the PLAYER_REGEN_ENABLED event fires")

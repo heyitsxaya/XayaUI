@@ -1229,6 +1229,7 @@ end
 -- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
 -- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
 local posPopup
+local LockWatchSync   -- (V26) below, with the mover's combat lock: the combat-start event only while the X / Y box, the picker or the mover is open
 local function GroupTargetScale(fo)
     local c = containers[fo.id]
     local ts = c and c.xuiTarget and c.xuiTarget.GetEffectiveScale and c.xuiTarget:GetEffectiveScale()
@@ -1286,6 +1287,8 @@ local function ScreenRect(f)
     return l * s, b * s, (l + w) * s, (b + h) * s
 end
 function ns.PickFrame(title, onPick, forGroup)
+    -- (V26) never in combat (a menu left open from before the fight could ask for it): picking moves a display or a group
+    if InCombatLockdown and InCombatLockdown() then ns.Print("picking a frame to snap to can't be done during combat."); return nil end
     local P = picker
     if not P then
         P = CreateFrame("Frame", "XayaUIFramePicker", UIParent, "BackdropTemplate")
@@ -1307,6 +1310,7 @@ function ns.PickFrame(title, onPick, forGroup)
         P.hi:Hide()
         P:SetScript("OnHide", function(self)
             self.hi:Hide(); self.onPick = nil
+            if LockWatchSync then LockWatchSync() end
             if self.forGroup then   -- B: the mover tags shown for the picker go back to what the mover view shows
                 self.forGroup, self.candGroup, GA.picking = nil, nil, nil
                 if ns.RefreshGroupTags then ns.RefreshGroupTags() end
@@ -1355,6 +1359,7 @@ function ns.PickFrame(title, onPick, forGroup)
     GA.picking = forGroup
     if forGroup and ns.RefreshGroupTags then ns.RefreshGroupTags() end
     P:Show()
+    if LockWatchSync then LockWatchSync() end   -- (V26) it closes when combat starts (a Shift in a fight would move a display)
     return P
 end
 function ns.FramePicker() return picker end   -- (tests)
@@ -1654,6 +1659,7 @@ local function ShowGroupPosPopup(fo)
         for _, b in ipairs(btns) do b:SetWidth(need) end
         p:SetWidth(math.max(260, need + 32))
         if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
+        p:SetScript("OnHide", function() if LockWatchSync then LockWatchSync() end end)
         posPopup = p
     end
     p.fid = fo.id
@@ -1662,6 +1668,7 @@ local function ShowGroupPosPopup(fo)
     local us = UIParent:GetEffectiveScale()
     p:ClearAllPoints(); p:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cx / us + 10, cy / us - 10)
     p:Show()
+    if LockWatchSync then LockWatchSync() end   -- (V26) it closes when combat starts
 end
 
 local function GroupHandle(f)
@@ -3517,6 +3524,7 @@ function ns.SetVisualShown(rule, shown)
     else
         want = (Unl(rule) or GroupUnl(rule) or pv or shown) and true or false
     end
+    if ns.RulesDisabled then want, comp = false, false end   -- (V26) /xui disable: nothing of a rule shows, samples and previews included
     local fr = frames[rule]
     if not fr then
         if not want and not comp then return end   -- a display that has never shown needs no frame yet
@@ -3562,7 +3570,10 @@ function ns.EndWindowState()
         local f = ns.FolderById and ns.FolderById(fid)
         if f then ns.SetGroupUnlocked(f, false) else ns.groupUnlocked[fid] = nil end
     end
-    if ns.unlocked and ns.unlockedByWindow then ns.ToggleUnlock() end
+    if ns.unlocked and ns.unlockedByWindow then
+        -- (V26) the window closing because combat starts: the mover view pauses with its moves (no Save / Cancel prompt in a fight)
+        if ns.MoverCombatStarting() then ns.MoverCombatClose("combat") else ns.ToggleUnlock() end
+    end
     ns.unlockedByWindow = nil
     if ns.MarkDirty then ns.MarkDirty() end
 end
@@ -3693,9 +3704,10 @@ local function EndSession(save)
     local d = CoreS.moverDraft
     if d and not save then Restore(d) end
     if ns.SettingsReady("core") then CoreS.moverDraft = nil end
-    wipe(mover.tempLock); mover.sel = nil
+    wipe(mover.tempLock); mover.sel = nil; mover.paused = nil
     if ns.MarkDirty then ns.MarkDirty() end
     ns.Fire("CONFIG_CHANGED")
+    if LockWatchSync then LockWatchSync() end
 end
 function ns.MoverTempLocked(rule)   -- the display sits in a group locked for now from the mover tag's lock icon
     if not (ns.unlocked and rule and rule.folder and next(mover.tempLock)) then return false end
@@ -3770,6 +3782,7 @@ local function PromptAndThen(which, text, onSave, onCancel)
     local dlg = StaticPopup_Show(which, text, nil, { save = onSave, cancel = onCancel })
     if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
     mover.prompt = which
+    if LockWatchSync then LockWatchSync() end   -- (V26) the login question about a left-over draft closes when combat starts
 end
 function ns.MoverPromptShown() return mover.prompt end
 local function Lock()
@@ -3781,6 +3794,7 @@ local function Lock()
     ns.RefreshGroupTags()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
     if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
+    LockWatchSync()   -- (V26) the combat-start event is let go with the view
 end
 -- leave the mover view: Save keeps the moves, Cancel puts every display and group back where it was when the view opened
 function ns.MoverExit(choice)
@@ -3801,7 +3815,21 @@ function ns.MoverCheckDraft()
 end
 if ns.AtLogin then ns.AtLogin(function() ns.MoverCheckDraft() end) end   -- (Modules.lua; absent where Visual.lua is loaded on its own)
 
+local MoverResume, LOCK_MOVER   -- (V26, below)
 function ns.ToggleUnlock()
+    if not ns.unlocked then
+        -- (V26) never opens while rules are off (/xui disable) or in combat; a view paused by either opens again with its moves
+        if ns.RulesDisabled then
+            ns.Print("rules are off (/xui disable), so the mover can't open. Type /xui enable first.")
+            return
+        end
+        if InCombatLockdown and InCombatLockdown() then
+            if ns.CombatLock then ns.CombatLock("unlock", function() if not ns.unlocked then ns.ToggleUnlock() end end, LOCK_MOVER)
+            else ns.Print(LOCK_MOVER) end
+            return
+        end
+        if mover.paused then MoverResume(); return end
+    end
     if ns.unlocked then
         -- P5: leaving the mover view with moves asks first
         local n = #ns.MoverChanges()
@@ -3825,6 +3853,130 @@ function ns.ToggleUnlock()
     ns.RefreshGroupTags()
     if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
     if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
+    LockWatchSync()
+end
+
+-------------------------------------------------------------------------------
+-- (V26) Combat lock for the mover view (Xaya 2026-11-10, docs/process/VERIFICATION.md V26; for an open mover view with unsaved moves
+-- her answer was "Keep, resume after"). In combat /xui unlock, the Lock Positions buttons and every other caller of ns.ToggleUnlock
+-- print one line, and the view opens when combat ends (core Modules.lua ns.CombatLock). Open when combat starts (PLAYER_REGEN_DISABLED,
+-- just before the lockdown): the view closes without Save or Cancel. Its moves stay where they are and in the draft
+-- (CueRulesDB.moverDraft), and it opens again with them when combat ends; Save / Cancel then work as usual. Its key frame hides at
+-- once, so it takes no key in the fight (core KeyCatch.lua lets go of the keyboard on hide, out of combat). A drag still running is
+-- dropped (that one display goes back to its last place). The group X / Y box and the frame picker (both change positions) close too.
+-- /xui disable (RULES_DISABLED) closes it the same way, and /xui enable (RULES_ENABLED) opens it again.
+-- The combat-start event is registered only while the view, the X / Y box or the picker is open (no event otherwise).
+-------------------------------------------------------------------------------
+LOCK_MOVER = "the mover (/xui unlock) can't open during combat. It will open when combat ends."
+local issecretV = ns.IsSecret or issecretvalue or function() return false end
+-- combat is starting now: PLAYER_REGEN_DISABLED comes before the lockdown, so the lockdown check alone is still false then.
+-- UnitAffectingCombat (globals.md: SecretArguments=AllowedWhenUntainted, no secret return) is true by then (INFERENCE, unverified in game)
+function ns.MoverCombatStarting()
+    if InCombatLockdown and InCombatLockdown() then return true end
+    if not UnitAffectingCombat then return false end
+    local ok, v = pcall(UnitAffectingCombat, "player")
+    return (ok and not issecretV(v) and v) and true or false
+end
+local lockWatch
+LockWatchSync = function()
+    local want = ns.unlocked or (posPopup and posPopup:IsShown()) or (picker and picker:IsShown()) or mover.prompt == "XAYAUI_MOVER_DRAFT"
+    if want and not lockWatch and CreateFrame then
+        lockWatch = CreateFrame("Frame")
+        lockWatch:SetScript("OnEvent", function() ns.MoverCombatClose("combat") end)
+    end
+    if not lockWatch then return end
+    if want then lockWatch:RegisterEvent("PLAYER_REGEN_DISABLED") else lockWatch:UnregisterEvent("PLAYER_REGEN_DISABLED") end
+end
+local function AfterMoverChange()
+    ns.RefreshAllVisuals()
+    ns.RefreshGroupTags()
+    if ns.QoL_RefreshAll then pcall(ns.QoL_RefreshAll) end
+    if ns.Bars_RefreshAll then pcall(ns.Bars_RefreshAll) end
+    -- the game's aura containers step aside for the samples and back (Combat/AuraDisplay.lua; its ToggleUnlock hook is not called here)
+    if ns.AuraDisplay and ns.AuraDisplay.SyncLive then pcall(ns.AuraDisplay.SyncLive) end
+end
+-- reason: "combat" (combat starts: it opens again when combat ends) or "off" (/xui disable: it opens again at /xui enable)
+function ns.MoverCombatClose(reason)
+    if picker and picker:IsShown() then picker:Hide() end
+    if posPopup and posPopup:IsShown() then posPopup:Hide() end
+    if reason == "combat" and mover.prompt == "XAYAUI_MOVER_DRAFT" then
+        -- the login question "Keep these moves?": either answer moves displays and groups, so it is asked again when combat ends
+        mover.prompt = nil
+        local up = StaticPopup_Visible and StaticPopup_Visible("XAYAUI_MOVER_DRAFT")
+        if StaticPopup_Hide then pcall(StaticPopup_Hide, "XAYAUI_MOVER_DRAFT") end
+        if up and ns.CombatLockQueue then
+            ns.Print("the question about moves left from your last session will come back when combat ends.")
+            ns.CombatLockQueue("moverDraft", function() ns.MoverCheckDraft() end)
+        end
+    end
+    if not ns.unlocked then LockWatchSync(); return false end
+    mover.paused = { byWindow = ns.unlockedByWindow and true or nil }
+    if mover.prompt == "XAYAUI_MOVER_EXIT" then   -- the Save / Cancel question: asked again when she leaves the view after the fight
+        mover.prompt = nil
+        if StaticPopup_Hide then pcall(StaticPopup_Hide, "XAYAUI_MOVER_EXIT") end
+    end
+    for _, fr in pairs(frames) do   -- a drag still running stops here (before the lockdown); RefreshAllVisuals puts it back
+        if fr.dragFrom then
+            pcall(fr.StopMovingOrSizing, fr)
+            fr.dragFrom, fr.wasDragged, fr.linkRides, fr.linkHidden, fr.linkStart, fr.pairRule, fr.pairFr = nil, false, nil, nil, nil, nil, nil
+        end
+    end
+    ns.unlocked = false
+    ns.unlockedByWindow = nil
+    for r in pairs(pairOf) do ns.ClearPair(r) end
+    if mover.keys then mover.keys:Hide() end   -- (no key is taken in the fight)
+    pcall(AfterMoverChange)
+    LockWatchSync()
+    local moved = #ns.MoverChanges() > 0
+    if reason == "off" then
+        ns.Print(moved and "the mover closed because rules are off. It will open again with your unsaved moves when you type /xui enable."
+            or "the mover closed because rules are off. It will open again when you type /xui enable.")
+    else
+        ns.Print(moved and "the mover closed because combat started. It will open again with your unsaved moves when combat ends."
+            or "the mover closed because combat started. It will open again when combat ends.")
+        if ns.CombatLockQueue then ns.CombatLockQueue("unlock", function() MoverResume() end) end
+    end
+    return true
+end
+MoverResume = function()
+    local p = mover.paused
+    if not p or ns.unlocked then return end
+    if ns.RulesDisabled then   -- (/xui disable in the fight: it waits for /xui enable)
+        ns.Print(#ns.MoverChanges() > 0 and "the mover will open again with your unsaved moves when you type /xui enable."
+            or "the mover will open again when you type /xui enable.")
+        return
+    end
+    if InCombatLockdown and InCombatLockdown() then
+        if ns.CombatLockQueue then ns.CombatLockQueue("unlock", function() MoverResume() end) end
+        return
+    end
+    mover.paused = nil
+    if ns.SettingsReady("core") and not CoreS.moverDraft then CoreS.moverDraft = TakeDraft() end   -- (the draft was gone: start a new one)
+    KeyFrame():Show()
+    ns.unlocked = true
+    ns.unlockedByWindow = p.byWindow
+    local n = #ns.MoverChanges()
+    ns.Print(n > 0 and ("the mover is open again with your %d unsaved move(s). Type /xui unlock to save or cancel them."):format(n)
+        or "the mover is open again.")
+    pcall(AfterMoverChange)
+    LockWatchSync()
+end
+function ns.MoverPaused() return mover.paused ~= nil end   -- (tests)
+if ns.On then
+    -- /xui disable: every XayaUI rule display hides at once (XayaUI's own frames: allowed in combat), the mover view, the X / Y box,
+    -- the picker and the sidebar's per-rule and per-group movement unlocks (sample displays) end; nothing shows until /xui enable
+    ns.On("RULES_DISABLED", function()
+        ns.MoverCombatClose("off")
+        local rules = {}
+        for r in pairs(ns.moveUnlocked) do rules[#rules + 1] = r end
+        if #rules > 0 then pcall(ns.SetMoveUnlocked, rules, false) end
+        for fid in pairs(ns.groupUnlocked) do
+            local f = ns.FolderById and ns.FolderById(fid)
+            if f then pcall(ns.SetGroupUnlocked, f, false) else ns.groupUnlocked[fid] = nil end
+        end
+        for r in pairs(frames) do pcall(ns.SetVisualShown, r, false) end
+    end)
+    ns.On("RULES_ENABLED", function() if mover.paused then MoverResume() end end)
 end
 
 function ns.DropVisual(rule)

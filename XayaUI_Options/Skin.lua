@@ -906,7 +906,7 @@ local function SkinTree(w)
                 local width = math.max(lo, math.min(hi, tf:GetWidth() or lo))
                 tf:SetWidth(width)   -- while OnSizeChanged is still off: the deferred pass below does the single refresh
                 tf:SetScript("OnSizeChanged", origSize)
-                if st then st.treewidth = width; st.xuiManualWidth = true end   -- (ns.EnsureNameRoom no longer widens it)
+                if st then st.treewidth = width; st.xuiManualWidth = true; st.xuiManualTW = width end   -- (ns.EnsureNameRoom no longer widens it past her width, and gives it back if a layout pass capped it)
                 pcall(w.Fire, w, "OnTreeResize", width)
                 C_Timer.After(0, function()
                     if w.treeframe ~= tf or not tf:IsVisible() then return end
@@ -1651,22 +1651,34 @@ ns.SIDEBAR_NAME_ROOM = NAME_ROOM
 -- default 175 px and then to the saved width: a row still measured at the old width looked too narrow, and the sidebar was widened
 -- again on every rebuild, up to the cap. Now the width a row needs comes from its own text insets (plus the scroll bar column),
 -- so the same rows always ask for the same width and a rebuild changes nothing. A sidebar the user dragged keeps their width.
+-- (round-2 review, goldens follow-up) AceGUI also caps the sidebar on every width pass and never gives the width back
+-- (AceGUIContainer-TreeGroup.lua OnWidthSet). A pooled tab group still sized from an earlier, narrower use runs one such pass at that
+-- stale width, so the Rules > Smart Categories sidebar came out 230 or 204 px depending on which pooled widget AceGUI reused. Run
+-- again from every decorate pass (TreePaint.lua DecorateTree, after the window is laid out), this gives the width back: the rows'
+-- need, or the width she dragged (status.xuiManualTW), up to the cap.
 function ns.EnsureNameRoom(tree)
     if not tree or tree.xuiRoomBusy or not tree.SetTreeWidth then return end
     local status = tree.status or tree.localstatus
-    if not status or status.xuiManualWidth then return end   -- dragged by hand: their width stands (full names show on mouse-over)
+    if not status then return end
     local cur = tonumber(status.treewidth) or 0
     local need
-    for _, b in ipairs(tree.buttons or {}) do
-        local txt = b.text and b.text.GetText and b.text:GetText()
-        if b:IsShown() and b.xuiTextL and type(txt) == "string" and txt ~= "" then
-            local n = b.xuiTextL + (b.xuiTextR or 4) + NAME_ROOM + ROW_INSET
-            if not need or n > need then need = n end
+    if status.xuiManualWidth then   -- dragged by hand: their width stands (full names show on mouse-over)
+        need = tonumber(status.xuiManualTW)
+    else
+        for _, b in ipairs(tree.buttons or {}) do
+            local txt = b.text and b.text.GetText and b.text:GetText()
+            if b:IsShown() and b.xuiTextL and type(txt) == "string" and txt ~= "" then
+                local n = b.xuiTextL + (b.xuiTextR or 4) + NAME_ROOM + ROW_INSET
+                if not need or n > need then need = n end
+            end
         end
     end
     if not need then return end
     local fw = (tree.frame and tree.frame.GetWidth and tree.frame:GetWidth()) or 0
     local cap = math.min(400, fw - 50)
+    -- (round-2 review) AceGUI caps against the width it was last given (status.fullwidth): asking for more would only be capped
+    -- again, a second sidebar resize (and row refresh) on every decorate pass
+    if tonumber(status.fullwidth) then cap = math.min(cap, status.fullwidth - 50) end
     local want = math.min(cap, math.ceil(need))
     if want <= cur + 1 then return end
     tree.xuiRoomBusy = true
@@ -2435,17 +2447,44 @@ local function Walk(w, depth)
             end
         end
         -- the open list was see-through (text over the page): give every dropdown list a solid dark panel
+        -- (round-2 review, A23 SD-12) the list frame is AceGUI's pooled pullout, shared with other addons: what this changes (strata,
+        -- backdrop and its color) is recorded and put back, and the panel and border hidden, when the widget is released, so another
+        -- addon's dropdown gets AceGUI's own look. The panel and border are made once per list frame and shown again when reused.
         local pf = (t == "Dropdown") and w.pullout and w.pullout.frame or w.frame
         if pf and not pf.xuiDD then
             pf.xuiDD = true
+            local was = pf.xuiDDWas or {}
+            pf.xuiDDWas = was
+            was.strata = pf:GetFrameStrata()
+            was.backdrop = pf.GetBackdrop and pf:GetBackdrop() or nil
+            if pf.GetBackdropColor then was.r, was.g, was.b, was.a = pf:GetBackdropColor() end
+            if pf.GetBackdropBorderColor then was.br, was.bg, was.bb, was.ba = pf:GetBackdropBorderColor() end
             pf:SetFrameStrata("TOOLTIP")
             if pf.SetBackdrop then pf:SetBackdrop(nil) end
-            local bg = pf:CreateTexture(nil, "BACKGROUND", nil, -8)
-            bg:SetAllPoints(); do local c = TC("xui-window", "bg", { 0.05, 0.05, 0.06, 1 }); bg:SetColorTexture(c[1], c[2], c[3], 1) end
-            local edge = CreateFrame("Frame", nil, pf, "BackdropTemplate")
-            edge:SetAllPoints(); edge:SetFrameLevel(pf:GetFrameLevel())
-            edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+            local bg, edge = pf.xuiDDBg, pf.xuiDDEdge
+            if not bg then
+                bg = pf:CreateTexture(nil, "BACKGROUND", nil, -8)
+                bg:SetAllPoints()
+                edge = CreateFrame("Frame", nil, pf, "BackdropTemplate")
+                edge:SetAllPoints()
+                edge:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+                pf.xuiDDBg, pf.xuiDDEdge = bg, edge
+            end
+            do local c = TC("xui-window", "bg", { 0.05, 0.05, 0.06, 1 }); bg:SetColorTexture(c[1], c[2], c[3], 1) end
+            edge:SetFrameLevel(pf:GetFrameLevel())
             do local c = TC("xui-pane", "border", { 0.4, 0.4, 0.45, 1 }); edge:SetBackdropBorderColor(c[1], c[2], c[3], 1) end
+            bg:Show(); edge:Show()
+            AddRest(w, "ddlook", function()
+                if not pf.xuiDD then return end
+                pf.xuiDD = nil
+                pf.xuiDDBg:Hide(); pf.xuiDDEdge:Hide()
+                if was.strata then pf:SetFrameStrata(was.strata) end
+                if pf.SetBackdrop and was.backdrop then
+                    pf:SetBackdrop(was.backdrop)
+                    if was.r and pf.SetBackdropColor then pf:SetBackdropColor(was.r, was.g, was.b, was.a) end
+                    if was.br and pf.SetBackdropBorderColor then pf:SetBackdropBorderColor(was.br, was.bg, was.bb, was.ba) end
+                end
+            end)
         end
     elseif t == "Heading" then
         -- a header with arg.xuiCollapse gets the open / close button at its LEFT, before the title (0.6.4: was a red + / - at the far right),

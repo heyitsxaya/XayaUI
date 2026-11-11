@@ -1,6 +1,6 @@
 """Review R2 follow-up (U4-aurasound blocker; docs/plans/RULES-REVIEW-2026-11-10.md). The game-played aura sound (AuraSound.lua,
 C_UnitAuras.AddAuraSound) leaves out only the Load tab choices whose answer cannot be known when it is set up out of combat (Combat,
-Boss encounter, the Boss encounters list, Mounted). Instance, Group, Raid group, Mythic+ and Resting area still count, and follow the
+Boss encounter, the Boss encounters list; round 3: Mounted is followed instead). Instance, Group, Raid group, Mythic+ and Resting area still count, and follow the
 player through the events that change them. A Match ANY rule with a left-out choice counts as possibly loaded. The pane says why in
 plain words. Outcomes only: what the game is asked to play, and what the settings pane says.
 Run: python3 tests/fix_r2_aurasound_static_load_run.py   (needs: pip install lupa)"""
@@ -135,10 +135,10 @@ check("Match ANY 'raid OR in combat' while solo: combat may be true, so the game
 check("Match ANY 'inside an instance OR Druid' on a Demon Hunter in the open world: not handed to the game", not H(6008), st("ANYINST"))
 check("  ...and the pane says none of its choices are met", "none of its Load tab choices" in st("ANYINST"), st("ANYINST"))
 
-# Mounted is left out (it flips on every mount / dismount); the pane names it
+# (round 3, SD-25: intended change) Mounted is no longer left out: the game's copy follows it (tests/fix_r3_sound_run.py)
 L.execute("MOUNTED = true; NS.AuraSound.Sync()")
-check("'Only when not mounted' while mounted: the game holds its sound", H(6009), st("NOTMOUNTED"))
-check("  ...and the pane names the left-out choice", '"Only when not mounted" does not apply' in st("NOTMOUNTED"), st("NOTMOUNTED"))
+check("'Only when not mounted' while mounted: the game does not hold its sound", not H(6009), st("NOTMOUNTED"))
+check("  ...and the pane says it plays again when you dismount", "as soon as you dismount" in st("NOTMOUNTED"), st("NOTMOUNTED"))
 
 # plain pane text
 check("a talent the rule needs is not known: plain reason, no talent IDs", "(Talent List)" in st("TALENT") and "12345" not in st("TALENT"),

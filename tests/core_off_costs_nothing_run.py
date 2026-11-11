@@ -260,7 +260,7 @@ if MODE == "off" then
   W.tick(0.2, 5)
   local n3, l3 = events(SND)
   check("(works) B15 ticked: the game is asked to play the rule's sound on its aura", #ADDED >= 1 and ADDED[1].spellID == 203819, #ADDED)
-  check("(works) B16 ...and its ten events are registered", n3 == 10, l3)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting)
+  check("(works) B16 ...and its eleven events are registered", n3 == 11, l3)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting; round 3: + Mythic+ reset. The two mount events only for a rule that follows the mount state)
   if tick then tick.set({}, false) else rule.gameSound.enabled = false; ns.MarkDirty() end
   W.tick(0.2, 5)
   check("(works) B17 unticked: the game's copy is taken back", #REMOVED >= 1, #REMOVED)
@@ -325,7 +325,7 @@ elseif MODE == "on" then
   check("D4 ...and no event of the console stays registered after the login", nc == 0, lc)
   check("(works) D5 a rule saved with the game-played sound: the game is asked to play it after the loading screen", #ADDED >= 1, #ADDED)
   local n5, l5 = events(SND)
-  check("(works) D6 ...and its ten events are registered", n5 == 10, l5)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting)
+  check("(works) D6 ...and its eleven events are registered", n5 == 11, l5)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting; round 3: + Mythic+ reset. The two mount events only for a rule that follows the mount state)
   local n6, l6, set6 = events(DBG)
   check("D7 Advanced Debugging saved on: only the two 'action blocked' events are registered", onlyBlocked(set6, n6), l6)
 end

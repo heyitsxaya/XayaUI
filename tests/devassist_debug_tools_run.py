@@ -13,7 +13,8 @@ qa-installer-branch. What is checked, with main's addons in the stand-in game (w
   A. every debug command that moved to Dev Assist and its help line is absent; perf (engine meter), status, auras, loader and talents
      stay; perf ui is gone; the moved code is not loaded (none of its functions exists, XayaUI_Rules/Combat/AuraIDProbe.lua not loaded).
   B. /xuitt does not exist; /xui chat wrap / indent / whispers only say XayaUI Chat is not installed; /xuiskin pad / alpha change
-     nothing, /xuiskin alone still switches the skin; /xuiengine auto / on / off / reset do nothing, full and refresh run for everyone.
+     nothing, /xuiskin alone still switches the skin; /xuiengine auto / on / off / reset do nothing; full and refresh are removed (V26,
+     SD-16: "Remove entirely"), so /xuiengine only shows the status.
   C. Advanced Debugging is on by default.
   D. Combat Tracking Setup is on Settings > UI Options > Rule Creation, not on Settings > Debugging; the Debugging page keeps no
      detailed-record switch and no probe switch, and its Dev Assist settings group is hidden and empty.
@@ -141,11 +142,17 @@ W.safecall(SlashCmdList.XUISKIN, "")
 local db = ns.Settings("core").engineDisplay
 local e1 = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("auto off") end))
 check("B /xuiengine auto off without Dev Assist: automatic mode stays on", db.auto ~= false, e1:sub(1, 200))
-check("B /xuiengine help offers full and refresh only", e1:find("/xuiengine full (leave lean mode);  /xuiengine refresh.", 1, true) ~= nil
+-- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and refresh: "Remove entirely") /xuiengine only shows the status
+check("B /xuiengine help offers no command: it says it changes nothing (V26: full and refresh removed)", e1:find("it changes nothing", 1, true) ~= nil
+  and not e1:find("/xuiengine full", 1, true) and not e1:find("/xuiengine refresh", 1, true)
   and not e1:find("/xuiengine auto", 1, true) and not e1:find("reset <group>", 1, true), e1)
+local g = ns.AuraDisplay._guard
+g.lean = true
 local ef = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("full") end))
 local er = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("refresh") end))
-check("B /xuiengine full and refresh still run for players", ef:find("automatic mode:", 1, true) ~= nil and er:find("automatic mode:", 1, true) ~= nil, ef:sub(1, 120))
+check("B /xuiengine full and refresh are gone (V26): lean mode stays, only the status is shown", g.lean == true and ef:find("automatic mode:", 1, true) ~= nil
+  and er:find("automatic mode:", 1, true) ~= nil, ef:sub(1, 120))
+g.lean = nil
 
 -- C ---------------------------------------------------------------------------------------------------------------------------
 -- (the Aura ID "via ..." tooltip text was XayaUI Bonus's tooltips, on qa-installer-branch; Advanced Debugging's default is core's)

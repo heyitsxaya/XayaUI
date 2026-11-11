@@ -549,6 +549,9 @@ local function DecorateTree(tree)
     end
     tree.xuiPainted = true
     painted[tree] = true
+    -- (round-2 review, goldens follow-up) the window is laid out now: give back sidebar width that AceGUI's cap took during a layout
+    -- pass at a pooled widget's stale width (Skin.lua ns.EnsureNameRoom), before the rows are painted for that width
+    if ns.EnsureNameRoom then pcall(ns.EnsureNameRoom, tree) end
     for _, b in ipairs(tree.buttons or {}) do
         if b:IsShown() then ns.SafeDecorate(b)
         else

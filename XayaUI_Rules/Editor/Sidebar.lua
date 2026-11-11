@@ -362,6 +362,7 @@ function drag.ClearMarks()
 end
 local function StartDrag(button)
     if drag.obj then return end   -- (already dragging: the press watcher below and the game's OnDragStart can both start one)
+    if not (drag.watch and drag.watch:GetScript("OnUpdate")) then drag.winAtPress = drag.OpenNow() end   -- (V26; the press set it otherwise)
     local last = LastKey(button.uniquevalue) or ""
     local kind, obj, label
     local n = last:match("^rule(%d+)$")
@@ -400,8 +401,18 @@ function drag.TargetName(anchor, target)
     local f = target and FolderById(target)
     return f and tostring(f.name or "") or "the top level"
 end
+-- (V26) the settings window closed since the press (combat starting closes it): a drag in progress ends with no drop, quietly, so
+-- nothing is moved in a fight (a hidden row still answers IsMouseOver); its per-frame work stops on the next frame
+function drag.OpenNow() return ns.WindowOpen ~= nil and ns.WindowOpen() end
+function drag.WindowGone() return drag.winAtPress == true and not drag.OpenNow() end
+function drag.Cancel()
+    drag.kind, drag.obj = nil, nil
+    if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
+    drag.ClearMarks()
+end
 -- the per-frame part of a drag; any error here ends the drag (see drag.fail) instead of repeating every frame
 drag.tick = function(self)
+    if drag.WindowGone() then drag.Cancel(); return end
     local x, y = GetCursorPosition()
     local sc = UIParent:GetEffectiveScale()
     self:ClearAllPoints()
@@ -453,6 +464,7 @@ local function StopDrag(button)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
+    if drag.WindowGone() then return end   -- (V26) no drop once the window is closed
     local tb = RowUnderCursor(button.obj)
     if not tb or tb == button then return end
     local isF = (LastKey(tb.uniquevalue) or ""):match("^f%d") ~= nil
@@ -471,6 +483,7 @@ end
 drag.DRAG_PX = 6
 function drag.Arm(button)
     if drag.obj or not GetCursorPosition then return end
+    drag.winAtPress = drag.OpenNow()   -- (V26)
     local x0, y0 = GetCursorPosition()
     local sc = (UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()) or 1
     drag.watch = drag.watch or CreateFrame("Frame")
@@ -478,6 +491,7 @@ function drag.Arm(button)
     w.btn, w.x0, w.y0, w.sc = button, x0, y0, sc
     w:SetScript("OnUpdate", function(self)
         local ok, err = pcall(function()
+            if drag.WindowGone() then self:SetScript("OnUpdate", nil); if drag.obj then drag.Cancel() end; return end   -- (V26)
             local held = IsMouseButtonDown and IsMouseButtonDown("LeftButton")
             if not held then
                 self:SetScript("OnUpdate", nil)
@@ -933,13 +947,41 @@ StaticPopupDialogs["XAYAUI_CONFIRM"] = {
     OnAccept = function(self, data) if data and data.cb then data.cb() end end,
 }
 local function PopupEditBox(self) return self.editBox or (self.GetEditBox and self:GetEditBox()) end
+-- (review R23; round-2 review: the Rename popup too) XayaUI's popups with a text box (Rename, Export) use the game's own popup box,
+-- shared by every popup. In combat it gets no keyboard (the game's popup box takes it by itself when shown: INFERENCE, its template
+-- sets no autoFocus and the game's default is on), and while one of these popups shows, the box is guarded (core KeyCatch.lua), so a
+-- fight starting lets go of it. On hide it is handed back as it was (its autofocus too), so other popups work as before. window = the
+-- box: no hook on the game's popup frame itself. popupBoxes: box -> { its own autofocus }, or false when it has none to put back.
+local popupBoxes, exportShown, rehighlight = {}, {}, {}
+local function GuardPopupBox(eb)
+    if not ns.KeyFocusGuard or popupBoxes[eb] ~= nil then return end
+    popupBoxes[eb] = eb.IsAutoFocus and { eb:IsAutoFocus() and true or false } or false
+    ns.KeyFocusGuard(eb, { window = eb })
+end
+local function ReleasePopupBox(self)
+    local eb = PopupEditBox(self)
+    if not eb then return end
+    exportShown[eb] = nil
+    local auto = popupBoxes[eb]
+    if auto == nil then return end
+    popupBoxes[eb] = nil
+    if ns.KeyFocusRelease then ns.KeyFocusRelease(eb) end
+    if auto and eb.SetAutoFocus then eb:SetAutoFocus(auto[1]) end
+end
+-- the keyboard only out of combat (a box with the keyboard in a fight would get her movement and keybinds)
+local function FocusPopupBox(eb) if InCombatLockdown and InCombatLockdown() then eb:ClearFocus() else eb:SetFocus() end end
 StaticPopupDialogs["XAYAUI_RENAME"] = {
     text = "%s", button1 = ACCEPT, button2 = CANCEL, hasEditBox = true, maxLetters = 64, timeout = 0, whileDead = true,
     hideOnEscape = true, preferredIndex = 3,
     OnShow = function(self, data)
         local eb = PopupEditBox(self)
-        if eb then eb:SetText((data and data.current) or ""); eb:HighlightText() end
+        if eb then
+            eb:SetText((data and data.current) or ""); eb:HighlightText()
+            GuardPopupBox(eb)
+            FocusPopupBox(eb)
+        end
     end,
+    OnHide = ReleasePopupBox,
     OnAccept = function(self, data)
         local eb = PopupEditBox(self)
         local t = eb and eb:GetText()
@@ -957,21 +999,19 @@ local function ShowPopup(which, text, data)
     local dlg = StaticPopup_Show(which, text, nil, data)
     if dlg then dlg:SetFrameStrata("TOOLTIP") end   -- the options window is FULLSCREEN_DIALOG; keep the popup above it
 end
-local function AskRename(current, cb) ShowPopup("XAYAUI_RENAME", "Rename", { current = current, cb = cb }) end
+-- (round-2 review) opened in combat the box has no keyboard: the popup says how to start typing
+local function AskRename(current, cb)
+    local fight = InCombatLockdown and InCombatLockdown()
+    ShowPopup("XAYAUI_RENAME", fight and "Rename\nClick the box to type." or "Rename", { current = current, cb = cb })
+end
 local function AskConfirm(text, cb) ShowPopup("XAYAUI_CONFIRM", text, { cb = cb }) end
 
 -- Export one rule (right-click > Export): shows the export text in a popup, selected, ready for Ctrl+C.
--- (review R23) The box is the game's own popup box, shared by every popup. In combat it gets no keyboard (the game's popup box takes
--- it by itself when shown: INFERENCE, its template sets no autoFocus and the game's default is on), and while this popup shows the
--- box is guarded (core KeyCatch.lua), so a fight starting lets go of it. On hide it is handed back as it was (its autofocus too), so
--- other popups work as before. window = the box: no hook on the game's popup frame itself.
-local exportBox, exportAuto
-local function ReleaseExportBox()
-    if not exportBox then return end
-    if ns.KeyFocusRelease then ns.KeyFocusRelease(exportBox) end
-    if exportAuto ~= nil and exportBox.SetAutoFocus then exportBox:SetAutoFocus(exportAuto) end
-    exportBox, exportAuto = nil, nil
-end
+-- (round-2 review) In combat, or once a fight starts, the box has no keyboard: the text says how to copy (click the box, Ctrl+A,
+-- Ctrl+C), and a click on the box selects the export text again (one hook on the game's box, made once; it does nothing while no
+-- export shows: exportShown).
+local COPY_HOW = "\nPress Ctrl+C to copy it. If the text is not highlighted (for example during a fight), click the box, then press Ctrl+A and Ctrl+C."
+local function ReHighlight(eb) if exportShown[eb] then eb:HighlightText() end end
 StaticPopupDialogs["XAYAUI_EXPORT"] = {
     text = "%s", button1 = CLOSE, hasEditBox = true, editBoxWidth = 360, maxLetters = 0, timeout = 0, whileDead = true,
     hideOnEscape = true, preferredIndex = 3,
@@ -980,16 +1020,13 @@ StaticPopupDialogs["XAYAUI_EXPORT"] = {
         if eb then
             if eb.SetMaxLetters then eb:SetMaxLetters(0) end
             eb:SetText((data and data.text) or ""); eb:HighlightText()
-            if ns.KeyFocusGuard and eb ~= exportBox then
-                ReleaseExportBox()
-                if eb.IsAutoFocus then exportAuto = eb:IsAutoFocus() and true or false end
-                exportBox = eb
-                ns.KeyFocusGuard(eb, { window = eb })
-            end
-            if InCombatLockdown and InCombatLockdown() then eb:ClearFocus() else eb:SetFocus() end
+            GuardPopupBox(eb)
+            exportShown[eb] = true
+            if not rehighlight[eb] and eb.HookScript then rehighlight[eb] = true; eb:HookScript("OnEditFocusGained", ReHighlight) end
+            FocusPopupBox(eb)
         end
     end,
-    OnHide = function() ReleaseExportBox() end,
+    OnHide = ReleasePopupBox,
     EditBoxOnTextChanged = function(eb)
         local data = eb:GetParent().data
         if data and data.text and eb:GetText() ~= data.text then eb:SetText(data.text); eb:HighlightText() end   -- read-only
@@ -1002,7 +1039,7 @@ ns.UI.ExportFolder = function(fold)
     local txt, err = ns.Share.Encode("rules", snap)
     if not txt then ns.Print("could not export '" .. tostring(fold.name) .. "': " .. tostring(err)); return end
     ShowPopup("XAYAUI_EXPORT", "Export of the group '" .. tostring(fold.name) .. "': " .. #snap.folders .. " group(s), " .. #snap.rules .. " rule(s) including their cues and conditions"
-        .. "\nCtrl+C to copy, then paste it into Import / Export > Import rules (or the Import button) on the other character or account.", { text = txt })
+        .. COPY_HOW .. "\nThen paste it into Import / Export > Import rules (or the Import button) on the other character or account.", { text = txt })
 end
 ns.UI.ExportRule = function(rule)
     local snap = ns.Share_SnapshotRule(rule, tostring(rule.name or "Rule"))
@@ -1010,7 +1047,7 @@ ns.UI.ExportRule = function(rule)
     if not txt then ns.Print("could not export '" .. tostring(rule.name) .. "': " .. tostring(err)); return end
     local n = #snap.rules - 1
     ShowPopup("XAYAUI_EXPORT", "Export of '" .. tostring(rule.name) .. "'" .. (n > 0 and (" (+" .. n .. " condition" .. (n > 1 and "s" or "") .. ")") or "")
-        .. "\nCtrl+C to copy, then paste it into Import / Export > Import rules on the other character or account.", { text = txt })
+        .. COPY_HOW .. "\nThen paste it into Import / Export > Import rules on the other character or account.", { text = txt })
 end
 
 -- Display <-> Sound: build equivalent rules in the other bucket from what each rule tracks (spell, aura, talents, states).

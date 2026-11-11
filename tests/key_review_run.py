@@ -8,8 +8,9 @@ What she sees:
      and when the window closes (with the window skin on or off); the Console's
      command line lets go after Enter runs the command;
   2. the screenshot key works by what it is bound to (her screenshot key may not be PRINTSCREEN): a XayaUI window never uses or keeps it;
-  3. in combat the settings window's Delete / Ctrl+Z / Ctrl+Y still work, but a key never does two things: a key the game has a
-     binding for is the game's alone in combat (the game does not let an addon keep a key back then).
+  3. in combat a key never does two things: a key the game has a binding for is the game's alone in combat (the game does not let an
+     addon keep a key back then). Since V26 (lock-core round 3) the settings window closes as combat starts, so in combat the editor's
+     Delete / Ctrl+Z / Ctrl+Y do nothing at all.
 
 The stand-in game routes keys as tests/harness/world.lua describes (W.pressKey; W.gameRan = the binding the game ran for the key).
 Each check fails on the code before this change (fb1fd95), except those marked "(regression)", which pass on both.
@@ -22,29 +23,8 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
--- (A23 SD-12) the game's focus scripts, for core KeyCatch.lua (it listens for clicks only while a guarded box has the keyboard):
--- SetFocus / ClearFocus run OnEditFocusGained / OnEditFocusLost and one box has the keyboard (the stand-in runs no script; INFERENCE as
--- in tests/fix_r2_closed_window_quiet_run.py)
-do
-  local P
-  local idx = getmetatable(CreateFrame("Frame")).__index
-  for i = 1, 50 do local n, v = debug.getupvalue(idx, i); if not n then break end; if n == "proto" then P = v end end
-  local cur
-  function P:SetFocus()
-    if cur == self then return end
-    local prev = cur
-    cur = self
-    if prev and prev._focus then prev._focus = false; local f = prev._scripts.OnEditFocusLost; if f then f(prev) end end
-    self._focus = true
-    local g = self._scripts.OnEditFocusGained; if g then g(self) end
-  end
-  function P:ClearFocus()
-    if not self._focus then return end
-    self._focus = false
-    if cur == self then cur = nil end
-    local f = self._scripts.OnEditFocusLost; if f then f(self) end
-  end
-end
+-- (A23 SD-12) core KeyCatch.lua listens for clicks only while a guarded box has the keyboard: the stand-in's SetFocus / ClearFocus run
+-- OnEditFocusGained / OnEditFocusLost and one box has the keyboard, as in the game (tests/harness/world.lua, round-2 review)
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local function who(x) if x == "game" then return "game" end if type(x) == "table" then return (x.GetName and x:GetName()) or tostring(x._kind) end return tostring(x) end
 L.startup()
@@ -111,7 +91,9 @@ do
   W.enterCombat()
   d0 = deletes
   g = W.pressKey("DELETE")
-  check("(regression) in combat, Delete (unbound) still deletes; the game gets the key and does nothing with it", g == "game" and deletes == d0 + 1 and W.gameRan == nil, who(g) .. " / " .. (deletes - d0))
+  -- (V26, lock-core round 3: the settings window closes as combat starts, so in combat the editor's keys do nothing at all)
+  check("(V26) combat starts: the settings window closes", not fr:IsShown())
+  check("(V26) in combat, Delete (unbound) goes to the game and the closed editor deletes nothing", g == "game" and deletes == d0 and W.gameRan == nil, who(g) .. " / " .. (deletes - d0))
   W.bindings.DELETE = "INTERACTTARGET"
   d0 = deletes
   g = W.pressKey("DELETE")
@@ -126,7 +108,7 @@ do
   W.bindings["CTRL-Z"] = nil
   u0 = undos
   W.pressKey("Y")
-  check("(regression) in combat, Ctrl+Y unbound: the editor redoes", undos == u0 + 1)
+  check("(V26) in combat, Ctrl+Y unbound: the closed editor redoes nothing", undos == u0)
   ctrl = false
   -- the binding cannot be read (unknown): in combat the editor does not act on the key
   local saved = GetBindingFromClick
@@ -141,6 +123,8 @@ do
   W.leaveCombat()
 end
 
+-- (V26: combat end opened the window again in AceConfigDialog's own frame: close that one the normal way too)
+W.tick(0.1, 5); if ACD.OpenFrames["CueRules"] and ACD.OpenFrames["CueRules"] ~= of then ACD:Close("CueRules"); W.tick(0.05, 2) end
 AceGUI:Release(of); ACD.OpenFrames["CueRules"] = nil
 
 -- 1. the settings window's AceGUI text boxes (a window holding the same widgets the options pages build)

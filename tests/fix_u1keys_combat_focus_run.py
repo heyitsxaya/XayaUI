@@ -23,29 +23,8 @@ import run as H  # noqa: E402
 LUA = r'''
 return function(W, L)
 local R = {}
--- (A23 SD-12) the game's focus scripts, for core KeyCatch.lua (it listens for clicks only while a guarded box has the keyboard):
--- SetFocus / ClearFocus run OnEditFocusGained / OnEditFocusLost and one box has the keyboard (the stand-in runs no script; INFERENCE as
--- in tests/fix_r2_closed_window_quiet_run.py)
-do
-  local P
-  local idx = getmetatable(CreateFrame("Frame")).__index
-  for i = 1, 50 do local n, v = debug.getupvalue(idx, i); if not n then break end; if n == "proto" then P = v end end
-  local cur
-  function P:SetFocus()
-    if cur == self then return end
-    local prev = cur
-    cur = self
-    if prev and prev._focus then prev._focus = false; local f = prev._scripts.OnEditFocusLost; if f then f(prev) end end
-    self._focus = true
-    local g = self._scripts.OnEditFocusGained; if g then g(self) end
-  end
-  function P:ClearFocus()
-    if not self._focus then return end
-    self._focus = false
-    if cur == self then cur = nil end
-    local f = self._scripts.OnEditFocusLost; if f then f(self) end
-  end
-end
+-- (A23 SD-12) core KeyCatch.lua listens for clicks only while a guarded box has the keyboard: the stand-in's SetFocus / ClearFocus run
+-- OnEditFocusGained / OnEditFocusLost and one box has the keyboard, as in the game (tests/harness/world.lua, round-2 review)
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local function who(x) if x == "game" then return "game" end if type(x) == "table" then return (x.GetName and x:GetName()) or tostring(x._kind) end return tostring(x) end
 
@@ -92,11 +71,14 @@ ns.rules = { r }
 ns.RefreshAllVisuals()
 W.enterCombat()
 ns.ToggleUnlock(); W.tick(0.05, 3)
+-- (V26, Xaya 2026-11-10: the mover view cannot open in combat; it opens when combat ends) asked for in the fight, it stays shut
 local keys = ns.MoverKeyFrame()
-check("(test set-up) the mover view opened in combat", keys ~= nil and keys:IsShown())
+check("(test set-up) the mover view asked for in combat stays shut (V26)", not ns.unlocked and not (keys and keys:IsShown()))
 do local g1, g2 = who(W.pressKey("W")), who(W.pressKey("PRINTSCREEN"))
-  check("R1 mover view first opened in combat: movement (W) and PRINTSCREEN reach the game", g1 == "game" and g2 == "game", g1 .. " / " .. g2) end
+  check("R1 mover view asked for in combat: movement (W) and PRINTSCREEN reach the game", g1 == "game" and g2 == "game", g1 .. " / " .. g2) end
 W.leaveCombat(); W.tick(0.05, 2)
+keys = ns.MoverKeyFrame()
+check("(regression) combat ends: the mover view asked for in the fight opens (V26)", ns.unlocked == true and keys ~= nil and keys:IsShown())
 ns.MoverSelect("display", r)
 local x0 = r.visual.x
 local k = W.pressKey("RIGHT")
