@@ -336,6 +336,7 @@ local HEADER = TITLE_H + GUT + NAME_H + GUT + 20 + GUT  -- title row, header, th
 local W = PANEL_W - 2 * PAD   -- content width (changes when the panel is resized: B10, #381)
 ns.STATCALC_LAYOUT = { width = PANEL_W, pad = PAD, header = HEADER, content = W, minW = MIN_W, maxW = MAX_W, minH = MIN_H, maxH = MAX_H }
 
+local PANEL_NAME = "XayaUIStatCalculator"
 local function Owner() return _G.PaperDollFrame or _G.CharacterFrame end
 local function Docked() local cf = _G.CharacterFrame; return cf and cf.IsShown and cf:IsShown() end
 
@@ -785,9 +786,19 @@ end
 
 local function Build()
     if panel then return end
-    panel = CreateFrame("Frame", "XayaUIStatCalculator", UIParent)
+    panel = CreateFrame("Frame", PANEL_NAME, UIParent)
     panel:SetSize(PANEL_W, 400)
-    panel:SetFrameStrata("HIGH")
+    panel:SetFrameStrata("MEDIUM")   -- (A24 #8) Place sets the character window's strata on every draw; MEDIUM until then
+    -- (A24 #8, Xaya 2026-11-11, her words: "Esc closes; normal layer (Recommended)") Esc closes the panel as it closes the game's own
+    -- windows: its own frame name in UISpecialFrames (the game's list that Esc's CloseSpecialWindows hides), added once, nothing else
+    -- added or taken out. Opened on its own, Esc closes it as its close button does (OnPanelHidden: the open state is saved as closed).
+    -- Docked, Esc closes the character window first, and the panel closes with it as before (its open state kept). A focused Change
+    -- box takes the Esc itself (core KeyFocusGuard: the box lets go, V29); the next Esc closes the panel.
+    if type(UISpecialFrames) == "table" then
+        local listed = false
+        for _, n in ipairs(UISpecialFrames) do if n == PANEL_NAME then listed = true end end
+        if not listed then table.insert(UISpecialFrames, PANEL_NAME) end
+    end
     panel:SetClampedToScreen(true)
     panel:EnableMouse(true)
     panel:SetMovable(true)
@@ -839,13 +850,16 @@ local function Build()
         d:SetPoint("BOTTOMRIGHT", grip, "BOTTOMRIGHT", -xy[1], xy[2])
         grip.lines[#grip.lines + 1] = d
     end
-    grip:SetScript("OnMouseDown", function() panel:StartSizing("BOTTOMRIGHT"); panel.sizing = true end)
+    grip:SetScript("OnMouseDown", function() panel.sizeFromW = panel:GetWidth(); panel:StartSizing("BOTTOMRIGHT"); panel.sizing = true end)
     grip:SetScript("OnMouseUp", function()
         panel:StopMovingOrSizing(); panel.sizing = nil
         local c = Cfg(); if not c then return end
         local w, h = panel:GetWidth(), panel:GetHeight()
-        -- the width is kept; the height becomes the current mode's (Min or Max) height (QoL 0.7.23)
-        if num(w) then c.size = { w = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) } end
+        local fromW = panel.sizeFromW; panel.sizeFromW = nil
+        -- the width is kept; the height becomes the current mode's (Min or Max) height (QoL 0.7.23). (A24 #9) the width is saved only
+        -- when the drag changed it: a press and release without a drag on a panel widened for the Stat Weights pane leaves the saved
+        -- width as it was (the widening is for that draw only, never saved).
+        if num(w) and not (num(fromW) and math.abs(w - fromW) < 0.5) then c.size = { w = math.floor(math.max(MIN_W, math.min(MAX_W, w)) + 0.5) } end
         if num(h) then
             local hh = math.floor(math.max(MIN_H, math.min(MAX_H, h)) + 0.5)
             if c.sizeMode == "large" then c.heightLarge = hh else c.heightSmall = hh end
@@ -888,11 +902,12 @@ local function Build()
     panel.sizeBtn = sb
 
     panel.tabs = {}
-    local tw = W / #CM.TABS
+    local ntab = #CM.TABS   -- (V27) whole pixels, as ApplyWidth places them on every draw
     for i, t in ipairs(CM.TABS) do
         local b = CreateFrame("Button", nil, panel)
-        b:SetSize(tw - 2, 20)
-        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT + NAME_H + GUT))
+        local x0, x1 = math.floor((i - 1) * W / ntab), math.floor(i * W / ntab)
+        b:SetSize(x1 - x0 - 2, 20)
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + x0, -(PAD + TITLE_H + GUT + NAME_H + GUT))
         b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
         b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER")
         b.key, b.label = t[1], t[2]
@@ -968,16 +983,16 @@ local function Place()
     local c = Cfg(); if not c or not panel then return end
     panel:ClearAllPoints()
     local cf = _G.CharacterFrame
+    -- (gate G-003) docked, the panel sits in the character window's own strata (MEDIUM when it cannot be read), so another of the
+    -- game's windows opened over the character window (Group Finder, the bags) is not covered by it. (A24 #8, "Esc closes; normal
+    -- layer") on its own it uses the same strata as the game's standard windows, read from the character window, one of them (MEDIUM
+    -- when it cannot be read), so it does not cover the bags, the map and the like. INFERENCE: in-game stacking UNVERIFIED IN GAME.
+    local st = cf and cf.GetFrameStrata and cf:GetFrameStrata()
+    SetStrata((type(st) == "string" and not isSecret(st) and st ~= "") and st or "MEDIUM")
     if Docked() then
-        -- (gate G-003) docked, the panel sits in the character window's own strata (MEDIUM when it cannot be read), so another of the
-        -- game's windows opened over the character window (Group Finder, the bags) is not covered by it. On its own it stays HIGH
-        -- (her call on the stand-alone panel is open). INFERENCE: in-game stacking UNVERIFIED IN GAME.
-        local st = cf.GetFrameStrata and cf:GetFrameStrata()
-        SetStrata((type(st) == "string" and not isSecret(st) and st ~= "") and st or "MEDIUM")
         if c.side == "left" then panel:SetPoint("TOPRIGHT", cf, "TOPLEFT", -GUT, 0)
         else panel:SetPoint("TOPLEFT", cf, "TOPRIGHT", GUT, 0) end
     else
-        SetStrata("HIGH")
         panel:SetPoint("CENTER", UIParent, "CENTER", c.free.x or 0, c.free.y or 0)
     end
 end
@@ -1031,13 +1046,17 @@ end
 -- font string of the panel in the panel's font. INFERENCE (not documented): a hidden font string measures like a shown one. A missing,
 -- secret or zero answer for a non-empty text falls back to the old estimate.
 local measureFS
-local function TextW(text, size)
-    text = tostring(text or "")
-    if text == "" then return 0 end
+local function MeasureFS()
     if not measureFS then
         measureFS = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         measureFS:Hide()
     end
+    return measureFS
+end
+local function TextW(text, size)
+    text = tostring(text or "")
+    if text == "" then return 0 end
+    MeasureFS()
     SetFont(measureFS, size, "")
     if measureFS.SetWordWrap then measureFS:SetWordWrap(false) end
     measureFS:SetText(text)
@@ -1459,7 +1478,9 @@ local function TwoLineW(text, size)
     return best
 end
 local WT_LEVELS = { "two", "line", "want" }
-local function WeightCols(items, size)
+-- the six columns' needs (min, two, line, want: FitCols) for the Stat Weights rows at a text size; shared by WeightCols and the panel's
+-- width (WeightsNeed, below)
+local function WeightSpec(items, size)
     size = size or 11
     local hs = size - 1
     local titles = WT_TITLES
@@ -1486,13 +1507,25 @@ local function WeightCols(items, size)
         end
     end
     spec[6].want = spec[6].min
+    return spec, titles
+end
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the content width the six columns need so that no word is cut: every
+-- column's widest word (title and cells, FitCols' "min") and the five gutters between them. Whole pixels (TextW is whole).
+local function WeightsContentNeed(items, size)
+    local spec = WeightSpec(items, size)
+    local need = 5 * GUT
+    for i = 1, 6 do need = need + (spec[i].min or 0) end
+    return need
+end
+local function WeightCols(items, size)
+    local spec, titles = WeightSpec(items, size)
     -- (A24 #7) always six columns. FitCols gives every column its widest word first (title and cells: nothing cut), then each title
     -- on at most two lines (her option 2's words), then each title on one line, then each column's widest cell, while there is room;
     -- Influences takes what is left. A title whose column stays narrower than it wraps at its spaces (RenderWeights bottom-aligns the
-    -- titles). KNOWN LIMITS, reported to Xaya with the full case list (tests/char_stat_round_run.py section L), what gives there is her
-    -- choice and none is built: (1) where the widest words alone do not fit, FitCols scales the columns down and a word can be cut
-    -- (with Influences always a column this reaches more widths and text sizes than before); (2) where the widest words fit but not
-    -- every title on two lines, a title can wrap onto three lines.
+    -- titles). (A24 #9, "Widen the panel") the panel is widened to the widest words' need before this runs (WeightsNeed /
+    -- ApplyWidth), so the mins always fit and no word is cut; FitCols' scale-down is reached only where the screen is narrower than
+    -- that need. Still open for her (reported, not built): where the widest words fit but not every title on two lines, a title can
+    -- wrap onto three lines (tests/char_stat_round_run.py THREE_LINES lists every such case; section L counts the lines).
     local g = { titles = titles }
     local w = FitCols(spec, W - 5 * GUT, 6, WT_LEVELS)
     g.w = w
@@ -2227,18 +2260,74 @@ local function HideSpellBar()
     if panel.filterMenu then panel.filterMenu:Hide() end
 end
 
--- the panel's width from the saved size (B10): the content width and the tab row follow
-local function ApplyWidth(c)
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel"; A24 #7: Influences is always a column) while this tab draws the Stat
+-- Weights pane (unfolded), the content width its six columns need so that no word is cut (WeightsContentNeed); 0 otherwise. Worked
+-- out once per change: what it measures (the font, the text size and every title and cell text of the pane) is kept as one signature string,
+-- and a draw with the same signature reuses the last answer without measuring anything. Draws come from events, inputs and the
+-- panel's own buttons, never from a frame loop (V27).
+local needSig, needContent = nil, 0
+local widthNeedComputes = 0
+local function WeightsNeed(c, m)
+    if not (m and type(m.sections) == "table") then return 0 end
+    for _, sec in ipairs(m.sections) do
+        if sec.weights and sec.tab == c.tab and #sec.items > 0 then
+            local folded = c.collapsed[sec.key]
+            if folded == nil then folded = sec.defaultFolded == true end
+            if folded then return 0 end
+            -- (the font: a theme change of XayaUI's font redraws the panel, OnTheme, and measures differently at the same size)
+            local parts, n = { tostring(c.fontSize), tostring(FontPath(MeasureFS()) or "") }, 2
+            local function add(v) n = n + 1; parts[n] = tostring(v or "") end
+            for _, it in ipairs(sec.items) do
+                if it.kind == "weighthead" then
+                    for i = 1, 6 do add(type(it.cols) == "table" and it.cols[i]) end
+                else
+                    add(it.label)
+                    local cs = it.cells or {}
+                    for j = 1, 4 do add(cs[j]) end
+                    add(it.pppDR); add(it.influences)
+                end
+            end
+            local sig = table.concat(parts, "\031")
+            if sig ~= needSig then
+                needSig = sig
+                needContent = WeightsContentNeed(sec.items, c.fontSize)
+                widthNeedComputes = widthNeedComputes + 1
+            end
+            return needContent
+        end
+    end
+    return 0
+end
+ns.StatCalc_WidthNeedComputes = function() return widthNeedComputes end   -- (tests: computed once per change)
+-- the widest the panel is widened to: the screen's width (UIParent, whole pixels); nil when the game does not give it
+local function ScreenW()
+    local sw = UIParent and UIParent.GetWidth and UIParent:GetWidth()
+    if sw == nil or isSecret(sw) or not num(sw) or sw <= 0 then return nil end
+    return math.floor(sw)
+end
+-- the panel's width from the saved size (B10): the content width and the tab row follow. (A24 #9) `need`: the content width the
+-- Stat Weights pane needs (WeightsNeed); a saved or default width narrower than that is widened to it for this draw, docked or on its
+-- own, never wider than the screen. The saved width (c.size, the corner grip's) is not changed.
+local function ApplyWidth(c, need)
     local pw = (type(c.size) == "table" and num(c.size.w)) and c.size.w or PANEL_W
+    if num(need) and need > 0 then
+        local want = need + 2 * PAD
+        local sw = ScreenW()
+        if sw and want > sw then want = sw end
+        if want > pw then pw = want end
+    end
     W = pw - 2 * PAD
     ns.STATCALC_LAYOUT.width, ns.STATCALC_LAYOUT.content = pw, W
     if not panel.sizing then panel:SetWidth(pw) end
     content:SetWidth(W)
-    local tw = W / #CM.TABS
+    -- (V27 whole pixels; A24 #9 widening makes any content width possible) each tab's left edge and width in whole pixels: tab i
+    -- starts at floor((i - 1) * W / n), so the tabs still share the row evenly (within one pixel) and the last ends at its right edge
+    local n = #CM.TABS
     for i, b in ipairs(panel.tabs or {}) do
-        b:SetSize(tw - 2, 20)
+        local x0, x1 = math.floor((i - 1) * W / n), math.floor(i * W / n)
+        b:SetSize(x1 - x0 - 2, 20)
         b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + (i - 1) * tw, -(PAD + TITLE_H + GUT + NAME_H + GUT))
+        b:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + x0, -(PAD + TITLE_H + GUT + NAME_H + GUT))
     end
 end
 
@@ -2274,8 +2363,6 @@ function ns.StatCalc_Render()
     -- an event, the theme, the character window's hooks, a walkthrough); the panel is hidden then and is drawn again after combat
     if InCombat() then return end
     local c = Cfg(); if not c or not panel then return end
-    ApplyWidth(c)
-    RenderHeader(c)
     local bgc = TC("xui-window", "bg", { 0.04, 0.04, 0.06, 1 })
     panel.bg:SetColorTexture(bgc[1], bgc[2], bgc[3], 1)
     panel.bg:SetAlpha(c.opacity)
@@ -2310,6 +2397,9 @@ function ns.StatCalc_Render()
     modelBuilds = modelBuilds + 1
     local m = CM.Build(c, c.tab)
     panel.model = m
+    -- (A24 #9) the width comes after the model: the Stat Weights pane's need is read from what this draw shows
+    ApplyWidth(c, WeightsNeed(c, m))
+    RenderHeader(c)
     local y
     if c.tab == "spells" then y = RenderSections(c, m, c.tab, RenderSpellBar(c, m))
     else HideSpellBar(); y = RenderSections(c, m, c.tab) end
@@ -2333,7 +2423,7 @@ function ns.StatCalc_Drawn()
     if not panel then return nil end
     return { model = panel.model, layout = panel.layoutRecs, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
         fonts = fsPool, icons = iconBtns, spellBtn = panel.spellBtn, filterIcon = panel.filterIcon, filterMenu = panel.filterMenu,
-        menuRecs = panel.menuRecs, textures = texPool }
+        menuRecs = panel.menuRecs, textures = texPool, width = ns.STATCALC_LAYOUT.width }   -- (A24 #9) width: the panel's drawn width
 end
 
 -- (QoL 0.7.40) the Stat Calculator through core's service list (Modules.lua ns.Provide), for XayaUI Dev Assist's QA walkthroughs
@@ -2391,6 +2481,25 @@ if ns.Provide then
         HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
         Page = function() return ns.BuildStatCalcPage and ns.BuildStatCalcPage(function() end) end,
         TextW = function(text, size) return panel and TextW(text, size) or nil end,
+        -- (A24 #8 / #9, for the walkthroughs) the panel as the player has it: shown, opened on its own, its strata and the character
+        -- window's, its drawn width, the saved width (the corner grip's), the tab row, and whether its own name is in the game's UISpecialFrames (the list Esc closes). Read only.
+        Window = function()
+            if not panel then return nil end
+            local cf, listed = _G.CharacterFrame, false
+            for _, n in ipairs(type(UISpecialFrames) == "table" and UISpecialFrames or {}) do if n == PANEL_NAME then listed = true end end
+            local st = cf and cf.GetFrameStrata and cf:GetFrameStrata() or nil
+            if type(st) ~= "string" or isSecret(st) then st = nil end
+            -- (A24 #9 / V27) the tab row as placed: each tab's x (from the panel's left) and width
+            local tabs = {}
+            for i, b in ipairs(panel.tabs or {}) do
+                local _, _, _, x = b:GetPoint(1)
+                tabs[i] = { x = x, w = b:GetWidth() }
+            end
+            return { shown = panel:IsShown(), standalone = panel.standalone == true, strata = panel:GetFrameStrata(),
+                windowStrata = st, width = ns.STATCALC_LAYOUT.width, content = ns.STATCALC_LAYOUT.content, pad = PAD,
+                savedWidth = (function() local c = Cfg(); return c and type(c.size) == "table" and c.size.w or nil end)(),
+                escListed = listed, tabs = tabs }
+        end,
     })
 end
 
@@ -2546,7 +2655,21 @@ OnPanelShown = function()
     CM.ReadGCD()
     RegisterPanelEvents(Cfg())
 end
-OnPanelHidden = function() RegisterPanelEvents(Cfg()) end
+OnPanelHidden = function()
+    -- (A24 #8) open on its own and hidden by someone other than this file (the game's Esc: CloseSpecialWindows hides every shown
+    -- frame named in UISpecialFrames): a close, as its close button. The open state is saved as closed and the Stat Calc button is
+    -- told. This file's own hides never reach this: its close (SetOpen) saves closed first, combat sets combatHidden first, switching
+    -- off clears enabled / panel first, and a docked panel (standalone false) keeps its open state as before. IsShown is false only for
+    -- a Hide on the panel itself, not when the whole interface is hidden (Alt+Z hides UIParent).
+    if panel and not panel:IsShown() and panel.standalone and not InCombat() then
+        local c = Cfg()
+        if c and c.enabled and c.panel and c.panelOpen then
+            c.panelOpen = false
+            TellState()
+        end
+    end
+    RegisterPanelEvents(Cfg())
+end
 
 -- (V26, "Hide silently") combat starts: the panel hides (its saved open state, c.panelOpen, is kept), the Stat Calc button is told
 -- (TellState: not available), and the events stop. No message. (SC-002 / SC-019) First every Change box lets go of the keyboard
@@ -2670,7 +2793,11 @@ local function RegisterLauncher()   -- (Bonus 0.6.37: called by RegisterAll, onl
     if type(ns.RegisterLauncher) == "function" then
         ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
             function() ns.StatCalc_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.42, her answer "No word at all"): no "on" / "off" for shown / hidden
-            available = function() local c = Cfg(); return (c and c.enabled and c.panel) and true or false end })
+            -- (A24 #8, Xaya 2026-11-11, her words: "Hide it in combat (Recommended)") no row in combat either: core reads available()
+            -- each time the list opens (XayaUI/MinimapButton.lua Visible), so a list opened in combat has no Stat Calculator row and
+            -- the next one opened after combat has it again. Nothing is polled. (A list already open when combat starts keeps the row
+            -- until it closes: core builds the rows only when it opens; a click on it then does nothing, V26 "Hide silently".)
+            available = function() return PanelAvailable() end })
     end
 end
 function ns.StatCalc_Apply()

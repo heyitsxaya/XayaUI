@@ -17,8 +17,9 @@ What the player sees, on the stand-in character window (tests/char_world.lua, te
        button) into QoL > Improved Character Display's one switch, at the login: what showed before shows after, nothing else.
        M5 / M6: a profile string made before the merge (QoL part format 1) imported after it is read the same way; a string made now
        (format 2) is imported as it is. (M5 / M6 fail before QoL 0.7.56: the old switch in the string was not read.)
-       (A24 #7) the slot marks are the Item level / Enchants options' style On the slot now (and the Empty sockets mark): the one-time
-       move after the merge keeps what showed (tests/slot_options_run.py has the full table); M1-M6 assert what the slots show.
+       (A24 #7) the slot marks are the Item level / Enchants options now (and the Empty sockets mark): the one-time move after the merge
+       keeps what showed (tests/slot_options_run.py has the full table); M1-M6 assert what the slots show. (A24 #9) the enchant check
+       E? / E is gone: the enchant shows against the slot's right edge ("No enchant" on the head).
 Negative control: XUI_ROOT=<checkout of f870d78> python3 tests/char_pane_split_run.py fails S1a, S1b, S1c, S1e.
 Every number, item and enchant below is a TEST STAND-IN.
 Run from the repo root: python3 tests/char_pane_split_run.py   Needs: pip install lupa."""
@@ -83,7 +84,7 @@ for _, s in ipairs(CM.SLOTS) do
   local b = mk("ItemButton"); b.id = s[1]; local nt = reg(); b.GetNormalTexture = function() return nt end; b.normal = nt
   _G["Character" .. s[4]] = b; _G["Character" .. s[4] .. "Frame"] = reg()
 end
-placePane()
+placePane(540)   -- (A24 #9) the Character tab with its stats pane open (CHARACTERFRAME_EXPANDED_WIDTH): the right-hand column's blocks need the room right of it
 QCOL = { [4] = { 0.6, 0.2, 0.9 } }
 C_Item.GetItemQualityColor = function(q) local c = QCOL[q]; if c then return c[1], c[2], c[3], "x" end end
 UPG = { Helm = { trackString = "Hero", currentLevel = 4, maxLevel = 6, maxItemLevel = 346 }, Ring = { trackString = "Veteran", currentLevel = 1, maxLevel = 8, maxItemLevel = 340 } }
@@ -230,11 +231,11 @@ XayaUIQoLDB = { storeVersion = 1, characterToolkit = { enabled = true, overlays 
   characterReskin = { features = false, ilvl = true, enchants = true, gems = true, statList = true } }
 ''', False, r'''
 openWindow()
-checkp("M1 merge: only the slot marks were on: Improved Character Display on, the item details off (nothing new shows); A24 #7: the marks' item level, enchant check and empty-socket count show on the slots as before", function()
+checkp("M1 merge: only the slot marks were on: Improved Character Display on, the item details off (nothing new shows); A24 #7 / #9: the marks' item level on the slot, their enchant check as the enchant at the slot's right edge (head: No enchant), the empty-socket count on the slot", function()
   local c = ns.CharDisplay_Cfg()
   local function plain(t) return (tostring(t or "")):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
   return c.enabled == true and c.gems == false and c.statList == false and XayaUIQoLDB.characterToolkit.tooltips == true
-    and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == nil and plain(ns.CharDisplay_SlotMarks("HeadSlot")) == "E?"
+    and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == "No enchant" and plain(ns.CharDisplay_SlotMarks("HeadSlot")) == ""
     and plain(ns.CharDisplay_SlotMarks("Finger0Slot")):find("1S", 1, true) ~= nil and not listShown(), plain(ns.CharDisplay_SlotMarks("HeadSlot")) end)
 '''))
 # M2 the old Character Pane switch on, the slot marks' page off: on, with the item details only (the marks off)
@@ -289,10 +290,10 @@ checkp("M5 setup: merged install, Improved Character Display off; the QoL profil
   return ns.CharDisplay_On() == false and part and part.version == 3 end)
 local okA = pcall(part.apply, { characterToolkit = { enabled = true, overlays = true } }, "merge", 1)
 openWindow()
-checkp("M5 an older string (QoL part format 1) with the slot marks on: after the import Improved Character Display is on and the marks show (A24 #7: the enchant check on the slot, the item level on the slot)", function()
+checkp("M5 an older string (QoL part format 1) with the slot marks on: after the import Improved Character Display is on and the marks show (A24 #7 / #9: the item level on the slot, the enchant at the slot's right edge)", function()
   local c = ns.CharDisplay_Cfg()
   local mk = (tostring(ns.CharDisplay_SlotMarks("HeadSlot") or "")):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-  return okA and ns.CharDisplay_On() == true and mk == "E?" and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == nil, mk end)
+  return okA and ns.CharDisplay_On() == true and mk == "" and ilvlShown("HeadSlot") == "336" and enchShown("HeadSlot") == "No enchant", mk end)
 checkp("  ...the item details that string says nothing about stay off (as the merge does)", function()
   local c = ns.CharDisplay_Cfg(); return c.gems == false and c.statList == false and not listShown() end)
 '''.replace("__PP__", PP)))

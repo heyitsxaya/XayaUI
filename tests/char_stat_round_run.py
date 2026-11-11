@@ -75,6 +75,9 @@ TABSEL = { 0.64 * 0.28, 0.19 * 0.28, 0.79 * 0.28, 0.9 }
 ns.Theme = { cur = { accent = ACCENT }, Col = function(class, prop, fb)
   if class == "xui-tab-selected" and prop == "bg" then return { TABSEL[1], TABSEL[2], TABSEL[3], TABSEL[4] } end
   return fb and { fb[1], fb[2], fb[3], fb[4] or 1 } or { 1, 1, 1, 1 } end }
+-- (A24 #9) each stand-in measure is a font of its own: the theme's font path names it, as switching XayaUI's font does in game (the
+-- panel works its width need out again when the font changes, not only the size or the text)
+ns.Theme.FontPath = function() return "Fonts\\STANDIN_" .. tostring(MEASURE) .. ".TTF" end
 -- (QoL 0.7.54 / Bonus 0.6.38) stand-ins for the game's colour objects (ColorMixin, :GetRGB()), with values of their own, so only a
 -- colour read from them at run time passes
 GREEN_FONT_COLOR = { GetRGB = function() return 0.12, 0.88, 0.14 end }
@@ -116,21 +119,10 @@ function layoutOK(dd)
   end end
   return true
 end
--- (A24 #7 round 2) THE KNOWN LIMITS of the Stat Weights pane with Influences always a column, every case in these stand-in fonts,
--- reported to Xaya in full (what gives there is her choice; none is built). Keys are "font:panel width:text size". The checks below
--- (sections A and L) hold the lists EXACT both ways: a listed case must still show the limit, an unlisted case must not, so a change
--- that cuts a word or adds a third title line anywhere new fails, and a stale entry fails too.
--- CUT_LIMIT: the widest words of the six columns alone do not fit, FitCols scales the columns down and words are cut (titles and
--- cells). On af1f2ba (influences under the row where six one-line titles did not fit) only est 340/16, scaled 340/14, 340/16, 380/16
--- and flat8 340 (every size) cut.
-CUT_LIMIT = {}
-for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:14", "est:380:16", "est:450:16",
-    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
-    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do CUT_LIMIT[k] = true end
-for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do CUT_LIMIT["flat8:" .. pw .. ":" .. fs] = true end end
--- LINES3_LIMIT: nothing is cut, but the widest words leave too little room for every title on two lines (her option 2: "titles wrap
--- onto two lines when needed"), so one wraps onto three ("Rating (P / %)" at 40 px). Where words are cut, lines are not counted.
-LINES3_LIMIT = { ["est:380:12"] = true }
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the known limits of A24 #7 round 2 (CUT_LIMIT: words cut where the six
+-- columns' widest words did not fit the panel; LINES3_LIMIT: one title on three lines) are gone as allowances: the panel widens to
+-- the width the six columns need, so at every panel width, text size and stand-in font NOTHING is cut (sections A, L, M). A title may
+-- still wrap (A24 #7): at most two lines, except the THREE_LINES cases below (open for Xaya, held exact).
 -- every cut word in the Stat Weights pane (titles and cells)
 function wCuts(d)
   local out = {}
@@ -148,22 +140,52 @@ function titleLines(r)
   end
   return n
 end
--- the exact known-limit check for one drawn case: (name suffix, check function)
-function limitCheck(d, key)
-  local cuts = wCuts(d)
-  if CUT_LIMIT[key] then
-    return "KNOWN LIMIT (reported to Xaya; her choice what gives): the widest words do not fit and words are cut, as listed", function()
-      return #cuts > 0, "listed in CUT_LIMIT but nothing is cut: take " .. key .. " off the list" end
-  end
+function mostLines(d)
   local most, which = 0, ""
   for _, h in ipairs(recs(d, "wcolhead")) do local n = titleLines(h); if n > most then most, which = n, h.text end end
-  if LINES3_LIMIT[key] then
-    return "no word cut; KNOWN LIMIT (reported to Xaya): a title wraps onto three lines, as listed", function()
+  return most, which
+end
+-- (A24 #7 option 2, her words "titles wrap onto two lines when needed"; A24 #9 "Widen the panel") OPEN FOR XAYA, NOT AN ALLOWANCE
+-- ON CUTS (nothing is cut in any case): the panel widens to the six columns' widest words (FitCols' "min"), not to every title on two
+-- lines; whether "the width the six columns need" includes two-line titles is her choice, not made, so not built. Where it widens,
+-- the drawn width is exactly the widest words' need, and "Rating (P / %)" then wraps onto THREE lines. THREE_LINES is every such case
+-- of this grid ("font:panel width:text size"; drawn width in the comment), held EXACT both ways (section L): a listed case must still
+-- show three lines, an unlisted case must keep every title on at most two lines (as on the base tree, where every case not on its
+-- CUT_LIMIT / LINES3_LIMIT lists was held to two lines).
+--   est    340/11 (354), 340/12 (381), 340/14 (433), 340/16 (487), 380/12 (381), 380/14 (433), 380/16 (487), 450/16 (487)
+--   scaled 340/10 (349), 340/11 (378), 340/12 (409), 340/14 (466), 340/16 (522), 380/12 (409), 380/14 (466), 380/16 (522),
+--          450/14 (466), 450/16 (522)
+--   flat8  340, 380 and 450 at every text size 8-16 (460)
+THREE_LINES = {}
+for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:12", "est:380:14", "est:380:16", "est:450:16",
+    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
+    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do THREE_LINES[k] = true end
+for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do THREE_LINES["flat8:" .. pw .. ":" .. fs] = true end end
+-- the base tree's (64d0943) allowance lists, CUT_LIMIT and LINES3_LIMIT together: the only cases it did not hold to two title lines.
+-- A guard below checks that every THREE_LINES case is one of them (no case that drew on two lines before draws on three now).
+BASE_NOT_TWO = { ["est:380:12"] = true }
+for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:14", "est:380:16", "est:450:16",
+    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
+    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do BASE_NOT_TWO[k] = true end
+for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do BASE_NOT_TWO["flat8:" .. pw .. ":" .. fs] = true end end
+-- the check for one drawn case: (name suffix, check function): no title or cell word cut, inside the width, no overlaps, and every
+-- title on at most two lines, except the THREE_LINES cases (exactly "Rating (P / %)" on three lines there)
+function limitCheck(d, key)
+  if THREE_LINES[key] then
+    return "no word cut, inside the width, no overlaps; OPEN FOR XAYA (THREE_LINES): \"Rating (P / %)\" on three lines at the widest words' width", function()
+      local cuts = wCuts(d)
       if #cuts > 0 then return false, table.concat(cuts, "; ") end
-      return most == 3, "listed in LINES3_LIMIT, longest title " .. which .. " on " .. most .. " lines" end
+      local ok, why = layoutOK(d)
+      if not ok then return false, why end
+      local most, which = mostLines(d)
+      return most == 3 and which == "Rating (P / %)", "listed in THREE_LINES, longest title " .. which .. " on " .. most .. " lines" end
   end
-  return "no title or cell word cut; every title on at most two lines (option 2)", function()
+  return "no title or cell word cut (A24 #9: the panel widens); inside the width, no overlaps; every title on at most two lines (A24 #7 option 2)", function()
+    local cuts = wCuts(d)
     if #cuts > 0 then return false, table.concat(cuts, "; ") end
+    local ok, why = layoutOK(d)
+    if not ok then return false, why end
+    local most, which = mostLines(d)
     return most <= 2, which .. " on " .. most .. " lines" end
 end
 function hoverOf(d, key)
@@ -231,43 +253,33 @@ end
 -- "Influences is always its own column, and titles wrap onto two lines when needed") her new answer replaces #60's one-line titles for
 -- the Stat Weights pane only: a title may wrap, never be cut. #60's one-line check stays for every other table (the Stats grid's heads
 -- and the Ability Scaling heads below). Section L checks the six columns and the alignment.
--- The default panel at the default text in all three stand-in fonts: six titles, none cut (a title may wrap) where the widest words
--- fit; "flat8" (8 px per character at any size, a much wider font) is a listed KNOWN LIMIT there (CUT_LIMIT, above): its widest
--- words of the six columns alone need more than the default panel has. (Until A24 #7 its default panel cut nothing.)
+-- The default panel at the default text in all three stand-in fonts: six titles, none cut (a title may wrap). (A24 #9) "flat8" (8 px
+-- per character at any size, a much wider font) was a known limit here until the panel widened to the six columns' need.
 for _, m in ipairs({ "est", "scaled", "flat8" }) do
   MEASURE = m
   c.size, c.fontSize = nil, 11
   local d = render()
-  local key = m .. ":450:11"
   local hs = recs(d, "wcolhead")
-  if CUT_LIMIT[key] then
-    checkp(("Stat Weights, default panel, text 11, font %s: six column titles; KNOWN LIMIT (listed, reported to Xaya): a word is cut"):format(m), function()
-      return #hs == 6 and #wCuts(d) > 0, #hs .. " titles, " .. #wCuts(d) .. " cut" end)
-  else
-    checkp(("Stat Weights, default panel, text 11, font %s: six column titles, none cut (\"Rating (P / %%)\", \"DR Threshold\" whole; a title may wrap, A24 #7)"):format(m), function()
-      if #hs ~= 6 then return false, #hs .. " titles" end
-      for _, r in ipairs(hs) do
-        if cutWord(r) then return false, "cut: " .. r.text .. " (" .. cutWord(r) .. ") w=" .. r.w end
-      end
-      return true end)
-  end
+  checkp(("Stat Weights, default panel, text 11, font %s: six column titles, none cut (\"Rating (P / %%)\", \"DR Threshold\" whole; a title may wrap, A24 #7)"):format(m), function()
+    if #hs ~= 6 then return false, #hs .. " titles" end
+    for _, r in ipairs(hs) do
+      if cutWord(r) then return false, "cut: " .. r.text .. " (" .. cutWord(r) .. ") w=" .. r.w end
+    end
+    return true end)
 end
 MEASURE = "scaled"
--- Every panel width at text 8, 11, 12, 14 and 16 (12 and 14 added in A24 #7 round 2): no title or cell word cut, except the cases
--- listed in CUT_LIMIT (above), each named in its check; in every case six columns inside the width, no overlaps.
+-- Every panel width at text 8, 11, 12, 14 and 16 (12 and 14 added in A24 #7 round 2): no title or cell word cut (A24 #9: the panel
+-- widens where the widest words need it); in every case six columns inside the width, no overlaps.
 for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
   for _, fs in ipairs({ 8, 11, 12, 14, 16 }) do
     MEASURE = (pw <= 380 and fs == 16) and "est" or "scaled"
     c.size, c.fontSize = { w = pw }, fs
     local d = render()
-    local key = MEASURE .. ":" .. pw .. ":" .. fs
-    local lim = CUT_LIMIT[key]
     checkp(((fs == 8 and "(guard: the old widths held at text 8) " or "") .. "Stat Weights, panel %d, text %d (" .. MEASURE .. "): "
-      .. (lim and "KNOWN LIMIT (listed, reported to Xaya): words are cut; six columns" or "no title cut, no cell word cut") .. ", inside the width, no overlaps"):format(pw, fs), function()
+      .. "no title cut, no cell word cut, inside the width, no overlaps"):format(pw, fs), function()
       if #recs(d, "wcolhead") ~= 6 then return false, #recs(d, "wcolhead") .. " titles" end
       local cuts = wCuts(d)
-      if lim and #cuts == 0 then return false, "listed in CUT_LIMIT but nothing is cut" end
-      if not lim and #cuts > 0 then return false, table.concat(cuts, "; ") end
+      if #cuts > 0 then return false, table.concat(cuts, "; ") end
       local ok, why = layoutOK(d)
       return ok, why end)
   end
@@ -864,9 +876,8 @@ for _, m in ipairs({ "est", "scaled" }) do
     end
   end
 end
--- (A24 #7 round 2) every width x text size x the three stand-in fonts: no word cut and every title on at most two lines (her option
--- 2: "titles wrap onto two lines when needed"), except the listed KNOWN LIMITS (CUT_LIMIT, LINES3_LIMIT, above), each named in its
--- check and held exact both ways
+-- (A24 #7 round 2; A24 #9) every width x text size x the three stand-in fonts: no word cut (the panel widens to the six columns'
+-- need), inside the width, no overlaps
 for _, m in ipairs({ "est", "scaled", "flat8" }) do
   MEASURE = m
   for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
@@ -878,6 +889,9 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
     end
   end
 end
+checkp("(guard) A24 #7 / #9 no regression in title lines: every THREE_LINES case was one the base tree did not hold to two lines (on its CUT_LIMIT or LINES3_LIMIT)", function()
+  for k in pairs(THREE_LINES) do if not BASE_NOT_TWO[k] then return false, k end end
+  return true end)
 checkp("A24 #7 (guard: the alignment checks above met a wrapped title moved down under the others, so bottom-alignment was exercised)", function()
   return wrapped and shiftedTitle end)
 -- the default panel at the default text in the wider stand-in font: "Rating (P / %)" wraps onto two lines and is not cut; the other
@@ -891,6 +905,127 @@ checkp("A24 #7 default panel, text 11 (scaled): \"Rating (P / %)\" wraps onto tw
     rp and st and ("Rating y " .. rp.y .. " h " .. rp.h .. "; Stat y " .. st.y .. " h " .. st.h) or "missing" end)
 MEASURE = "est"
 c.size, c.fontSize = nil, 11
+''')
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# M. A24 #9 (Xaya 2026-11-11, her words: "Widen the panel"; the question was what gives where the six columns' widest words do not fit).
+#    With the Stat Weights pane drawn, the panel is exactly as wide as the six columns' widest words and the five gutters need (the
+#    narrowest width with nothing cut) wherever the saved width is narrower, docked and on its own; a wider saved width is kept; the
+#    saved width (c.size) is not changed; never wider than the screen; whole pixels; worked out once per change of text size or
+#    content (a redraw with nothing new measures nothing for it). Negative control (V1): with sections A and L, 72 of 485 fail on
+#    64d0943 (the base of this change); the checks marked "(guard)" pass there. Round 2 (the corner grip, the tab row): those two
+#    checks also fail on the round-1 tree (2 of 485 there).
+# ---------------------------------------------------------------------------------------------------------------------------------
+run(STATWORLD, r'''
+local GUT, PAD = ns.UI_GUTTER, LAY.pad
+local COL = { wlabel = 1, wrating = 2, wppp = 3, wpppdr = 3, wdr = 4, wtl = 5, winfl = 6 }
+-- the width the drawn pane needs, measured here from what was drawn: each column's widest word (as the game measures a text: the
+-- panel's TextW is the measured width rounded up, plus 1), five gutters and the panel's two margins
+local function needFromDrawn(d)
+  local col = { 0, 0, 0, 0, 0, 0 }
+  local function word(i, r)
+    for w in tostring(r.text or ""):gmatch("%S+") do col[i] = math.max(col[i], math.ceil(textW(w, r.size)) + 1) end
+  end
+  for i, r in ipairs(recs(d, "wcolhead")) do word(i, r) end
+  for k, i in pairs(COL) do for _, r in ipairs(recs(d, k)) do word(i, r) end end
+  local n = 5 * GUT + 2 * PAD
+  for i = 1, 6 do n = n + col[i] end
+  return n
+end
+local function panelW() local p = rawget(_G, "XayaUIStatCalculator"); return p and p.w end
+UIParent.w = 1920
+for _, m in ipairs({ "est", "scaled", "flat8" }) do
+  MEASURE = m
+  for _, docked in ipairs({ true, false }) do
+    CharacterFrame.shown = docked
+    for _, fs in ipairs({ 8, 11, 14, 16 }) do
+      c.size, c.fontSize = { w = 340 }, fs
+      local d = render()
+      local need, pw = needFromDrawn(d), panelW()
+      checkp(("A24 #9 %s, saved width 340, text %d (%s): the panel is max(340, the six columns' need) wide, whole pixels, and nothing is cut"):format(docked and "docked" or "on its own", fs, m), function()
+        if #wCuts(d) > 0 then return false, table.concat(wCuts(d), "; ") end
+        local want = math.max(340, need)
+        return pw == want and pw == math.floor(pw) and LAY.width == pw, "panel " .. tostring(pw) .. ", want " .. want .. " (need " .. need .. ")" end)
+    end
+  end
+end
+CharacterFrame.shown = true
+MEASURE = "scaled"
+c.size, c.fontSize = { w = 340 }, 16
+local d = render()
+checkp("A24 #9 the widened case is real: at saved width 340, text 16 (scaled), the need is wider than 340 and the panel took it", function()
+  return needFromDrawn(d) > 340 and panelW() == needFromDrawn(d), tostring(panelW()) .. " / " .. needFromDrawn(d) end)
+checkp("(guard) A24 #9 the saved width is not changed by widening (c.size.w stays 340)", function() return c.size and c.size.w == 340, c.size and c.size.w end)
+c.size, c.fontSize = { w = 760 }, 11
+d = render()
+checkp("(guard) A24 #9 a saved width wider than the need is kept (760 at text 11)", function() return panelW() == 760 and needFromDrawn(d) < 760, tostring(panelW()) end)
+-- the screen: never wider than it
+UIParent.w = 400.6
+MEASURE = "flat8"
+c.size, c.fontSize = { w = 340 }, 16
+d = render()
+checkp("A24 #9 a screen narrower than the need (400.6 wide): the panel is the screen's whole-pixel width, 400, no wider", function()
+  return needFromDrawn(d) > 400 and panelW() == 400, tostring(panelW()) .. " need " .. needFromDrawn(d) end)
+UIParent.w = 1920
+-- folded Stat Weights: nothing of it is drawn, so the panel keeps its saved width
+local wkey
+for _, sec in ipairs(d.model.sections) do if sec.weights then wkey = sec.key end end
+c.collapsed[wkey] = true
+d = render()
+checkp("(guard) A24 #9 Stat Weights folded (nothing of it drawn): the saved width, 340", function() return panelW() == 340, tostring(panelW()) end)
+c.collapsed[wkey] = nil
+-- worked out once per change, never on a redraw with nothing new
+MEASURE = "scaled"
+c.size, c.fontSize = { w = 340 }, 14
+render()
+local n0 = ns.StatCalc_WidthNeedComputes and ns.StatCalc_WidthNeedComputes()
+render(); render()
+local n1 = ns.StatCalc_WidthNeedComputes and ns.StatCalc_WidthNeedComputes()
+checkp("A24 #9 two redraws with the same text size and content: the width need is not worked out again", function() return n0 ~= nil and n1 == n0, tostring(n0) .. " -> " .. tostring(n1) end)
+c.fontSize = 15
+render()
+local n2 = ns.StatCalc_WidthNeedComputes and ns.StatCalc_WidthNeedComputes()
+checkp("A24 #9 the text size changes: worked out once", function() return n1 ~= nil and n2 == n1 + 1, tostring(n1) .. " -> " .. tostring(n2) end)
+local oldCrit = ratings[9]
+ratings[9] = 1234567   -- the character's Critical Strike rating changes (CR_CRIT 9 in this world): the pane's Rating cell changes
+d = render()
+local n3 = ns.StatCalc_WidthNeedComputes and ns.StatCalc_WidthNeedComputes()
+checkp("A24 #9 the content changes (Critical Strike rating 528 -> 1,234,567): worked out once, and the panel fits the new need", function()
+  return n2 ~= nil and n3 == n2 + 1 and panelW() == math.max(340, needFromDrawn(d)) and #wCuts(d) == 0, tostring(n2) .. " -> " .. tostring(n3) .. "; panel " .. tostring(panelW()) end)
+ratings[9] = oldCrit
+render()
+-- the corner grip: a press and release without a drag on a widened panel leaves the saved width (340) as it was, and the next draw
+-- is widened again to the need (the widening is never saved)
+MEASURE, CharacterFrame.shown = "scaled", true
+c.size, c.fontSize = { w = 340 }, 16
+d = render()
+local P = rawget(_G, "XayaUIStatCalculator")
+local wideW = panelW()
+P.grip.scripts.OnMouseDown(P.grip); P.grip.scripts.OnMouseUp(P.grip)
+d = render()
+checkp("A24 #9 the corner grip pressed and released without a drag on a widened panel (saved 340, drawn " .. tostring(wideW) .. "): the saved width stays 340 and the panel is still drawn at the need", function()
+  return wideW == needFromDrawn(d) and wideW > 340 and c.size and c.size.w == 340 and panelW() == wideW, "saved " .. tostring(c.size and c.size.w) .. ", drawn " .. tostring(panelW()) end)
+-- V27 whole pixels: the three tabs at the widened widths (any content width now): whole x and width, sharing the row, the last
+-- ending at the content's right edge
+local tabBad
+for _, fs in ipairs({ 10, 11, 12, 14, 16 }) do
+  for _, m in ipairs({ "est", "scaled", "flat8" }) do
+    MEASURE = m; c.size, c.fontSize = { w = 340 }, fs
+    render()
+    local x = LAY.pad
+    for i, b in ipairs(P.tabs) do
+      local pt = b.pts[#b.pts]
+      local bx = pt and pt[4]
+      if not (bx == math.floor(bx) and b.w == math.floor(b.w) and bx >= x and bx <= x + 1) then tabBad = tabBad or (m .. " " .. fs .. " tab " .. i .. " x " .. tostring(bx) .. " w " .. tostring(b.w)) end
+      x = bx + b.w + 2
+    end
+    if not tabBad and math.abs(x - (LAY.pad + LAY.content)) > 0 then tabBad = m .. " " .. fs .. ": tabs end at " .. x .. ", content ends at " .. (LAY.pad + LAY.content) end
+  end
+end
+checkp("A24 #9 / V27 the tab row at every widened width (340 saved, text 10-16, three fonts): each tab at a whole x and whole width, side by side, the last ending at the content's right edge", function()
+  return tabBad == nil, tabBad end)
+c.size, c.fontSize = nil, 11
+MEASURE = "est"
 ''')
 
 n = sum(t[0] for t in totals); fails = sum(t[1] for t in totals)

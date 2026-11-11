@@ -128,6 +128,8 @@ SLOT_ID = {}
 for _, s in ipairs(CM.SLOTS) do SLOT_ID[s[4]] = s[1] end
 LEFTSET = {}
 for _, n in ipairs(PANE_SLOTS_LEFT) do LEFTSET[n] = true end
+RIGHTSET = {}
+for _, n in ipairs(PANE_SLOTS_RIGHT) do RIGHTSET[n] = true end
 GOOD, WARN = { 0.5, 1, 0.5 }, { 1, 0.56, 0.25 }
 function near(c, t) return c and math.abs(c[1] - t[1]) < 0.01 and math.abs(c[2] - t[2]) < 0.01 and math.abs(c[3] - t[3]) < 0.01 end
 -- the enchant's own name: what is left after "Enchant <slot> - " (the test's own rule, so it does not lean on the code under test)
@@ -162,6 +164,8 @@ end
 -- every row's rectangle against the window, the model, the camera buttons, the slots, the item levels, the weapon art and each other
 function layoutProblems(camShown, wideOn)
   local inset = RECT(CharacterFrame.Inset)
+  local w0 = RECT(CharacterFrame)
+  local winIn = { l = w0.l, r = w0.r - ns.UI_GUTTER, t = w0.t, b = w0.b }   -- (A24 #9) the window less its right gutter
   local head, hands = RECT(CharacterHeadSlot), RECT(CharacterHandsSlot)
   local mid, gut = (head.r + hands.l) / 2, ns.UI_GUTTER
   local model, cam = RECT(CharacterModelScene), RECT(CharacterModelScene.ControlFrame)
@@ -186,9 +190,13 @@ function layoutProblems(camShown, wideOn)
       elseif r.t > sr.t + 2.01 or r.b < sr.b - 2.01 then out[#out + 1] = id .. " outside its band " .. rstr(r) end
       if not wideOn then
         if LEFTSET[name] or name == "MainHandSlot" then if r.r > mid - gut / 2 + 0.01 then out[#out + 1] = id .. " past the middle " .. rstr(r) end
-        elseif r.l < mid + gut / 2 - 0.01 then out[#out + 1] = id .. " past the middle " .. rstr(r) end
+        elseif name == "SecondaryHandSlot" and r.l < mid + gut / 2 - 0.01 then out[#out + 1] = id .. " past the middle " .. rstr(r) end
       end
-      if not inside(r, inset) then out[#out + 1] = id .. " outside the window " .. rstr(r) end
+      -- (A24 #9) every block but the main hand's is against its slot's outside right edge: the left column's toward the model (left
+      -- column: inside the Inset), the right-hand column's from the slot's right edge to the window's right edge less the gutter (over
+      -- the stats pane, never off the window); the main hand's stays left of the weapons (a block right of it would cover the off hand)
+      if name ~= "MainHandSlot" and r.l < sr.r - 0.01 then out[#out + 1] = id .. " not right of its slot " .. rstr(r) end
+      if not (RIGHTSET[name] and inside(r, winIn) or inside(r, inset)) then out[#out + 1] = id .. " outside the window " .. rstr(r) end
       if overlaps(r, model) then overModel[#overModel + 1] = id .. " " .. rstr(r) end
       if camShown and overlaps(r, cam) then out[#out + 1] = id .. " over the camera buttons " .. rstr(r) end
       if f.text and f.text.shown then
@@ -570,8 +578,8 @@ check("E. the slots with no position yet when the window opens: the blocks are l
 local combos, badc = 0, {}
 -- (QoL 0.7.53, character pane split stage 1; V25 R2) icd: Improved Character Display's switch (the old QoL Character Pane and slot marks
 -- switches are one since V25 R2: the item level, enchant and gem parts and the slot marks need it), on its own from the reskin's (ron: the
--- look, the wider window); tov: (A24 #7) the two options' other style (Item level beside the slot, Enchants on the slot), the Empty
--- sockets mark ticked throughout
+-- look, the wider window); tov: (A24 #9) round 3's style keys saved as the old non-default styles (Item level beside the slot, Enchants
+-- on the slot): no longer read, so nothing changes; the Empty sockets mark ticked throughout
 rc.socketMark = true
 for _, ron in ipairs({ false, true }) do for _, ril in ipairs({ false, true }) do for _, ren in ipairs({ false, true }) do for _, rge in ipairs({ false, true }) do
 for _, icd in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) do for _, rwi in ipairs({ false, true }) do
@@ -596,7 +604,7 @@ for _, icd in ipairs({ false, true }) do for _, tov in ipairs({ false, true }) d
   end
   if ron and rwi then local _, ov = layoutProblems(false, true); for _, x in ipairs(ov) do badc[#badc + 1] = "over the model: " .. x end end
 end end end end end end end
-check(("F. every combination of the reskin's (with the wider window), Improved Character Display's switches and the two options' styles (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
+check(("F. every combination of the reskin's (with the wider window), Improved Character Display's switches and round 3's unused style keys (%d): one item level per slot (none on the shirt), at most one socket and one enchant mark, the width as switched, nothing over the model while wider"):format(combos),
   #badc == 0, list(badc, 2))
 rc.ilvlStyle, rc.enchantStyle = nil, nil
 rc.enabled, rc.wide = true, true; RSA()

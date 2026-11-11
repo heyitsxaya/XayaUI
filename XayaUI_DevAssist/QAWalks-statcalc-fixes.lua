@@ -300,3 +300,99 @@ QA.Register("statcalc-fixes", { title = "Stat Calculator: combat lets go of the 
             PutBack()
         end },
 } })
+
+-------------------------------------------------------------------------------
+-- (A24 #8, Xaya 2026-11-11, her words: stand-alone panel "Esc closes; normal layer (Recommended)"; minimap row "Hide it in combat
+-- (Recommended)") the stand-alone panel closes with Esc as the game's windows do and sits on their layer; a Change box still takes the
+-- first Esc (V29); the minimap list has no Stat Calculator row in combat. Reads through the "statCalc" service (Window: shown, opened on
+-- its own, its layer and the character window's, whether its name is on the game's Esc list) and core's launcher list (ns.Launchers:
+-- the row's own available(), the answer core reads each time the list opens). The person presses Esc and opens the list; nothing here
+-- presses a key, takes the keyboard or opens a Blizzard window. UNVERIFIED IN GAME.
+-------------------------------------------------------------------------------
+local escSaved
+local function Win(sc) return sc and sc.Window and sc.Window() or nil end
+local function WinLine(w)
+    if not w then return "the panel was never opened" end
+    return ("panel %s, %s; layer %s (the character window's: %s); on the game's Esc list: %s"):format(w.shown and "shown" or "hidden",
+        w.standalone and "opened on its own" or "docked", tostring(w.strata), tostring(w.windowStrata or "unknown, MEDIUM used"), w.escListed and "yes" or "no")
+end
+local function RowAvailable()
+    local ns = NS()
+    for _, e in ipairs(ns and ns.Launchers and ns.Launchers() or {}) do
+        if e[1] == "stats" then
+            if type(e.available) ~= "function" then return true end
+            local ok, v = pcall(e.available)
+            return ok and v ~= false and v ~= nil
+        end
+    end
+    return nil
+end
+QA.Register("statcalc-esc-layer", { title = "Stat Calculator on its own: Esc closes it, the game windows' layer; no minimap row in combat (A24 #8)",
+    area = "Bonus", qa = "E1z244", order = 533, prefill = true, steps = {
+    { text = "Out of combat, close the character window, then press |cffffd100Do it for me|r: the Stat Calculator opens on its own. Open your bags (B) and the world map (M), and move them over the panel if they do not overlap it. Then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the bags and the map are drawn over the panel or under it as the game's own windows are among themselves (the panel does not sit above everything); the check reads the panel's layer: the same as the character window's.",
+        setup = function()
+            local sc, dbg, why = Ready(); if not sc then error(why) end
+            if InCombat() then error("you are in combat: leave combat first") end
+            if WindowShown() then error("close the character window first (C), then press Do it for me again") end
+            local c = sc.Cfg()
+            if not escSaved then escSaved = { tab = c.tab, open = sc.Shown() } end
+            local ok, w2 = sc.Open("stats")
+            if not ok then error(w2 or "the panel did not open") end
+        end,
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            local w = Win(sc)
+            if not (w and w.shown and w.standalone) then return nil, "open the panel on its own (Do it for me, with the character window closed) | " .. WinLine(w) end
+            return (w.strata == (w.windowStrata or "MEDIUM")) and true or false, WinLine(w)
+        end },
+    { text = "Close the bags and the map. With the Stat Calculator still open on its own, press |cffffd100Esc|r once, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the Esc closes the Stat Calculator, as it closes the game's windows (no game menu opens while it was open); opening the character window now (C) does not bring it back beside it.",
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            local w = Win(sc)
+            if not w then return nil, "press Do it for me in step 1 first" end
+            if w.shown then return false, "still shown after Esc | " .. WinLine(w) end
+            local c = sc.Cfg()
+            return (w.escListed and c.panelOpen == false) and true or false, ("saved as closed: %s | %s"):format(c.panelOpen == false and "yes" or "no", WinLine(w))
+        end },
+    { text = "Out of combat, with the character window closed, open the Stat Calculator again (|cffffd100/xui stats|r). Click into a |cffffd100Change|r box (for example Critical Strike's), type a digit and press |cffffd100Esc|r once. Press |cffffd100Check|r.\n\n|cffffd100Expect:|r that first Esc only lets go of the box (your keys work again); the panel stays open.",
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            local w = Win(sc)
+            local focused = dbg.BoxFocus and dbg.BoxFocus()
+            local how = LetGoHow()
+            local note = ("a Change box has the keyboard: %s; the last let-go: %s | %s"):format(focused and "yes" or "no", tostring(how), WinLine(w))
+            if not (w and w.shown) then return false, "the panel closed: the first Esc should only let go of the box | " .. note end
+            if how ~= "escape" then return nil, "click into a Change box and press Esc once | " .. note end
+            return (not focused) and true or false, note
+        end },
+    { text = "Press |cffffd100Esc|r once more, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the second Esc closes the Stat Calculator.",
+        check = function()
+            local sc, dbg, why = Ready(); if not sc then return nil, why end
+            local w = Win(sc)
+            return (w and not w.shown) and true or false, WinLine(w)
+        end },
+    { text = "Attack a training dummy. In combat, open XayaUI's minimap list (left-click XayaUI's minimap button, or its button in the chat sidebar). Press |cffffd100Check|r while still in combat.\n\n|cffffd100Expect:|r no |cffffd100Stat Calculator|r row in the list; the other rows are there. (A list you opened before combat started keeps its rows until you close it.)",
+        check = function()
+            if not InCombat() then return nil, "not in combat: attack a training dummy, then open the list and press Check" end
+            local a = RowAvailable()
+            if a == nil then return nil, "the Stat Calculator row is not registered (XayaUI QoL off?)" end
+            return (a == false) and true or false, "in combat; the Stat Calculator row " .. (a and "would show" or "is left out of the list")
+        end },
+    { text = "Let combat end, close the list if it is open and open it again. Press |cffffd100Check|r.\n\n|cffffd100Expect:|r the |cffffd100Stat Calculator|r row is back.",
+        check = function()
+            if InCombat() then return nil, "still in combat: wait for it to end" end
+            local a = RowAvailable()
+            if a == nil then return nil, "the Stat Calculator row is not registered (XayaUI QoL off?)" end
+            return (a == true) and true or false, "out of combat; the Stat Calculator row " .. (a and "shows" or "is still left out")
+        end },
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put the Stat Calculator back as it was before this walkthrough (its tab, open or closed). Then press |cffffd100Done|r.",
+        setup = function()
+            local sc = Svc("statCalc")
+            local c = sc and sc.Cfg and sc.Cfg()
+            if not (c and escSaved) then escSaved = nil; return end
+            if InCombat() then error("you are in combat: press Do it for me again after combat") end
+            c.tab = escSaved.tab
+            if escSaved.open then sc.Open(escSaved.tab) elseif sc.Shown() then sc.Close() end
+            escSaved = nil
+        end },
+} })

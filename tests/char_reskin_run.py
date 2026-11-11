@@ -56,7 +56,7 @@ for _, s in ipairs(CM.SLOTS) do
   local b = mk("ItemButton"); b.id = s[1]; local nt = reg(); b.GetNormalTexture = function() return nt end; b.normal = nt
   _G["Character" .. s[4]] = b; _G["Character" .. s[4] .. "Frame"] = reg()
 end
-placePane()
+placePane(540)   -- (A24 #9) the Character tab with its stats pane open (CHARACTERFRAME_EXPANDED_WIDTH): the right-hand column's blocks need the room right of it
 -- items: Helm (336, Hero 4/6), Ring (330, Veteran 1/8, enchanted: "Radiant Mastery")
 QCOL = { [0] = { 0.6, 0.6, 0.6 }, [2] = { 0.1, 1.0, 0.0 }, [3] = { 0.0, 0.4, 1.0 }, [4] = { 0.6, 0.2, 0.9 }, [5] = { 1.0, 0.5, 0.0 } }
 C_Item.GetItemQualityColor = function(q) local c = QCOL[q]; if c then return c[1], c[2], c[3], "x" end end
@@ -104,11 +104,12 @@ check("  ...Head, Hero step 4 of 6: purple at 82% (55% + 45% x 3/5)", col(hi.col
 check("  ...Ring, Veteran step 1 of 8: green at its dimmest (55%)", col(ri.color, 0.1 * 0.55, 1.0 * 0.55, 0), ri.color and table.concat(ri.color, ","))
 check("  ...an empty slot shows none", SD_(CharacterNeckSlot).ilvl and SD_(CharacterNeckSlot).ilvl.text == "")
 check("  ...the track is kept for the hover (Hero 4/6)", SD_(CharacterHeadSlot).track and SD_(CharacterHeadSlot).track.track == "Hero" and SD_(CharacterHeadSlot).track.step == 4)
--- (A24 #7) one item level per slot: the marks on the slot have none (her screenshot had two; the Slot Overlays' item level is gone)
-cwc.enabled = true; CWA(); rc.enchantStyle = "slot"; RSA()
-check("the marks on the slot carry no second item level (Enchants on the slot: the head shows E? and one 336)",
-  ns.CharDisplay_SlotMarks("HeadSlot") ~= nil and not tostring(ns.CharDisplay_SlotMarks("HeadSlot")):find("336", 1, true) and SD_(CharacterHeadSlot).ilvl.text == "336", tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
-rc.enchantStyle = nil; RSA()
+-- (A24 #7) one item level per slot: the marks on the slot have none (her screenshot had two; the Slot Overlays' item level is gone);
+-- (A24 #9) the one mark left is the empty-socket count (gems off): the ring shows 1S and one 330
+cwc.enabled = true; CWA(); rc.gems, rc.socketMark = false, true; RSA()
+check("the marks on the slot carry no second item level (Empty sockets with the gems off: the ring shows 1S and one 330)",
+  ns.CharDisplay_SlotMarks("Finger0Slot") ~= nil and not tostring(ns.CharDisplay_SlotMarks("Finger0Slot")):find("330", 1, true) and SD_(CharacterFinger0Slot).ilvl.text == "330", tostring(ns.CharDisplay_SlotMarks("Finger0Slot")))
+rc.gems, rc.socketMark = true, nil; RSA()
 
 -- 4. Enchants beside the slots (A5) -------------------------------------------------------------------------------------------
 local re, he = SD_(CharacterFinger0Slot).enchant, SD_(CharacterHeadSlot).enchant
@@ -118,7 +119,7 @@ check("  ...the helm: 'No enchant' in orange (the head takes one this expansion)
 -- in tests/char_pane_overlays_run.py
 local hr, rr, hs, rs = RECT(he), RECT(re), RECT(CharacterHeadSlot), RECT(CharacterFinger0Slot)
 check("  ...left-column slots: to the right of the slot (6 px)", hr and math.abs(hr.l - (hs.r + 6)) < 0.01, rstr(hr))
-check("  ...right-column slots: to the left of the slot (6 px)", rr and math.abs(rr.r - (rs.l - 6)) < 0.01, rstr(rr))
+check("  ...right-column slots: (A24 #9) against the outside right edge too: to the right of the slot (6 px)", rr and math.abs(rr.l - (rs.r + 6)) < 0.01, rstr(rr))
 check("  ...no enchant mark on the slot too (Enchants beside the slot; one per slot)", not tostring(ns.CharDisplay_SlotMarks("HeadSlot") or ""):find("E%?"),
   tostring(ns.CharDisplay_SlotMarks("HeadSlot")))
 local savedLine = ENCHANTED_TOOLTIP_LINE; ENCHANTED_TOOLTIP_LINE = nil

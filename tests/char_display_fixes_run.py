@@ -1,11 +1,11 @@
 # Improved Character Display and Character Reskin: no option goes quiet, distinct names (V25 unit C; review findings SC-069, SC-103,
 # docs/plans/STAT-CALCULATOR-REVIEW-2026-11-10.md). What the player sees in the built settings pages and on the slots:
 #   1. (A24 #7) QoL > Improved Character Display: the Slot Overlays part and its greyed Item level / Enchant check marks are gone (one
-#      "Item level" and one "Enchants" option with a style; tests/slot_options_run.py). The Empty sockets mark is kept as it was: while
+#      "Item level" and one "Enchants" option, no style since A24 #9; tests/slot_options_run.py). The Empty sockets mark is kept as it was: while
 #      "Gems and sockets beside the slots" already shows the sockets, its tick box is greyed, shows unticked, and its hover names the option
 #      to turn off; with that option off the box is ticked and live again and the slot shows the mark. The box and the slot never disagree
-#      (gems, the mark, the Enchants style, and after an error stops the item details). The Text size slider is greyed exactly when no
-#      mark shows on the slots.
+#      (gems, the mark, round 3's unused Enchants style key, and after an error stops the item details). The Text size slider is greyed
+#      exactly when no mark shows on the slots (A24 #9: the empty-socket count is the only mark left).
 #   2. Blizzard Reskin > Character Reskin: the toggle that colors Blizzard's stat list is "Stat list colors", and no label on that page
 #      is the same as a label on the Improved Character Display page.
 # Run from the repo root: python3 tests/char_display_fixes_run.py [tree root]   (default: this repo). Needs: pip install lupa.
@@ -77,7 +77,7 @@ local function disabled(opt) return V(opt.disabled) == true end
 local function ticked(opt) return opt.get({}) == true end
 local function hover(opt) return tostring(V(opt.desc) or "") end
 local NONE = { get = function() return nil end }
--- (A24 #7) the page's options: Item level and Enchants with their Style, the Empty sockets mark and the marks' Text size
+-- (A24 #7, #9) the page's options: Item level and Enchants (no Style since A24 #9), the Empty sockets mark and the mark's Text size
 local function show()
   local pg = ns.BuildCharDisplayPage(function() RSA(); ns.CharDisplay_UpdateOverlays() end)
   local a = pg.args
@@ -98,7 +98,7 @@ local o, dpage = show()
 check("1a. (A24 #7) no Slot Overlays part, and no \"Item level on each slot\" / \"Enchants beside the slots\" / \"Enchant check\" control (the overlap is gone)",
   dpage.args.overlayPart == nil and V(o.ilvl.name) == "Item level" and V(o.enchants.name) == "Enchants", tostring(V(o.ilvl.name)) .. " / " .. tostring(V(o.enchants.name)))
 check("  ...Item level and Enchants are live and ticked with Improved Character Display on (nothing greyed)", not disabled(o.ilvl) and ticked(o.ilvl)
-  and not disabled(o.enchants) and ticked(o.enchants) and not disabled(o.ilvlStyle) and not disabled(o.enchantStyle))
+  and not disabled(o.enchants) and ticked(o.enchants))
 
 -- 1c. Empty sockets (kept as it was: A24 #7 did not decide the gems and sockets) -------------------------------------------------------
 check("1c. \"Gems and sockets beside the slots\" on: the \"Empty sockets\" box is greyed and unticked", disabled(o.sockets) and not ticked(o.sockets))
@@ -122,7 +122,7 @@ for _, combo in ipairs({ { true, true }, { true, false }, { false, true }, { fal
     end
   end
 end
-check("1d. the Empty sockets box is ticked and live exactly when its mark shows on the slot (gems, the mark, the Enchants style)", #bad == 0, table.concat(bad, " "))
+check("1d. the Empty sockets box is ticked and live exactly when its mark shows on the slot (gems, the mark, round 3's unused Enchants style key)", #bad == 0, table.concat(bad, " "))
 rc.gems, rc.socketMark, rc.enchantStyle = true, nil, nil; RSA()
 
 -- 1f. (review round 2) the Text size slider never looks live while no mark can show: greyed exactly when no mark draws on any slot
@@ -136,12 +136,14 @@ end
 for _, ench in ipairs({ true, false }) do for _, sty in ipairs({ "slot", false }) do for _, gems in ipairs({ true, false }) do for _, sock in ipairs({ true, false }) do
   sizeCase(("%s/%s/%s/%s"):format(tostring(ench), tostring(sty), tostring(gems), tostring(sock)), ench, sty or nil, gems, sock or nil)
 end end end end
-check("1f. Text size is greyed exactly when no mark shows on the slots (16 combinations of Enchants, its style, the gems and Empty sockets)", #badSz == 0, table.concat(badSz, "; "))
+check("1f. Text size is greyed exactly when no mark shows on the slots (16 combinations of Enchants, round 3's unused style key, the gems and Empty sockets)", #badSz == 0, table.concat(badSz, "; "))
 local sz = sizeCase("defaults", true, nil, true, nil)
 check("  ...with the defaults (enchants and gems beside the slots) it is greyed and its hover says why in one sentence",
   disabled(sz) and hover(sz):find("Greyed", 1, true) ~= nil and oneSentence(hover(sz)), hover(sz))
-sz = sizeCase("enchants on the slot", true, "slot", true, nil)
-check("  ...with Enchants on the slot it is live, with a plain hover", not disabled(sz) and hover(sz) ~= "" and hover(sz):find("Greyed", 1, true) == nil, hover(sz))
+sz = sizeCase("enchants, old style key 'slot'", true, "slot", true, nil)
+check("  ...(A24 #9) Enchants with round 3's style key \"slot\" saved: no enchant mark on the slots any more, so it stays greyed", disabled(sz) and marksOn("HeadSlot") == "", hover(sz))
+sz = sizeCase("empty sockets, gems off", true, nil, false, true)
+check("  ...with the empty-socket count showing (gems off, Empty sockets ticked) it is live, with a plain hover", not disabled(sz) and hover(sz) ~= "" and hover(sz):find("Greyed", 1, true) == nil, hover(sz))
 rc.ilvl, rc.enchants, rc.gems, rc.enchantStyle, rc.socketMark = true, true, true, nil, nil; RSA()
 
 -- 2. Blizzard Reskin > Character Reskin: "Stat list colors"; no label the same as one on Improved Character Display -------------------

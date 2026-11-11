@@ -6,6 +6,9 @@
 -- Built as: Influences is a column at every panel width and text size; a column title may wrap, onto at most two lines where the
 -- columns' widest words leave room; the six titles are bottom-aligned (her words allow middle or bottom: bottom was chosen); every
 -- cell of a row starts at the row's top. The checks also ask the game whether any title or cell is cut short (Fail if one is).
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the panel widens to the width the six columns' widest words need at the
+-- current text size, docked and on its own (never wider than the screen), so nothing is cut at any width the corner allows; step 2
+-- checks that at the narrowest panel and the largest text, and its note gives the width the panel was drawn at.
 -- Standing rule V22 (Xaya 2026-11-07, her words): "make sure every feature or significant change to the codebase / bug report fixes
 -- have an in game qa test walk through with pre-fill confirmation options or data capturing". prefill = true: where the addon can read
 -- the result (what the panel drew and where its font strings are anchored) its verdict is offered on one button and recorded only on a
@@ -67,6 +70,7 @@ local function Judge(sc)
     end
     local c = sc.Cfg()
     local where = ("panel width %s, text size %s"):format(c.size and c.size.w and tostring(c.size.w) or "default (450)", tostring(c.fontSize or 11))
+    if type(d.width) == "number" then where = where .. ("; drawn %d wide (A24 #9: widened to fit the six columns where needed)"):format(d.width) end
     if #labels == 0 then return nil, "no Stat Weights rows are drawn: open the Stats tab and unfold Stat Weights | " .. where end
     local bad = {}
     -- (round 2) nothing cut short: every title and cell of the pane, as the game reports it on the drawn font string
@@ -142,15 +146,49 @@ local function Check()
     local sc, why = Ready(); if not sc then return nil, why end
     return Judge(sc)
 end
+-- (A24 #9) step 2 remembers the width the corner left (the saved width) for step 4
+local step2Saved
+local function CheckNarrow()
+    local sc, why = Ready(); if not sc then return nil, why end
+    local c = sc.Cfg()
+    step2Saved = (c and type(c.size) == "table" and c.size.w) or false
+    return Judge(sc)
+end
+-- (A24 #9) step 4: the corner pressed without a drag keeps the saved width; off the Stats tab the panel is drawn at it; the tab row in
+-- whole pixels (V27), side by side, the last ending at the content's right edge
+local function CheckGrip()
+    local sc, why = Ready(); if not sc then return nil, why end
+    if step2Saved == nil then return nil, "do step 2 first (press its Check)" end
+    local c = sc.Cfg()
+    local w = sc.Window and sc.Window()
+    if not (w and w.shown) then return nil, "the panel is not shown: open it again (/xui stats) on the Gear tab" end
+    if c.tab ~= "gear" then return nil, "click the Gear tab, then press Check" end
+    local want = step2Saved or 450
+    local note = ("saved width %s (step 2: %s), drawn %s wide"):format(tostring(w.savedWidth or "default (450)"), tostring(step2Saved or "default (450)"), tostring(w.width))
+    local bad = {}
+    if (w.savedWidth or false) ~= step2Saved then bad[#bad + 1] = "the saved width changed" end
+    if w.width ~= want then bad[#bad + 1] = "the panel is not drawn at the saved width on the Gear tab" end
+    local x = w.pad
+    for i, t in ipairs(w.tabs or {}) do
+        if not (type(t.x) == "number" and type(t.w) == "number" and t.x == math.floor(t.x) and t.w == math.floor(t.w) and t.x >= x and t.x <= x + 1) then
+            bad[#bad + 1] = ("tab %d at x %s, %s wide (not whole pixels or not side by side)"):format(i, tostring(t.x), tostring(t.w))
+        else x = t.x + t.w + 2 end
+    end
+    if #bad == 0 and type(w.content) == "number" and x ~= w.pad + w.content then bad[#bad + 1] = ("the tabs end at %s, the content at %s"):format(tostring(x), tostring(w.pad + w.content)) end
+    if #bad > 0 then return false, table.concat(bad, "; ") .. " | " .. note end
+    return true, note
+end
 
 QA.Register("statcalc-influences", { title = "Stat Calculator: Stat Weights Influences column at every width, titles bottom-aligned (A24 #7)",
     area = "Bonus", qa = "E1z242", order = 526, prefill = true, steps = {
     { text = "Out of combat, press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Scroll down to |cffffd100Stat Weights|r (unfold it if it is folded), then press |cffffd100Check|r.\n\n|cffffd100Expect:|r six column titles, the last one |cffffd100Influences|r; each stat's influences on the stat's own row under that title, without \"Influences:\" in front. A title may wrap onto two lines; all titles end on the same bottom line. Every cell of a row starts at the row's top. Nothing is cut short.",
         setup = OpenStats, check = Check },
-    { text = "Drag the panel's bottom-right corner to make it as narrow as it goes, and set the Stat Calculator's text size to its largest (Bonus Features > Stat Calculator). Scroll to |cffffd100Stat Weights|r and press |cffffd100Check|r.\n\n|cffffd100Expect:|r still six columns with Influences last, its names on each row; titles that no longer fit wrap and stay bottom-aligned with the others. The addon asks the game whether any title or cell is cut short and gives Fail if one is. (Known limit, reported to Xaya, her choice what gives: at the narrowest panels with large text the widest words of the six columns may not all fit, and then words are cut, so Fail is the expected answer there; a title can also wrap onto three lines where the widest words leave too little room for two.) Note anything overlapping: the addon cannot see that.",
-        check = Check },
+    { text = "Drag the panel's bottom-right corner to make it as narrow as it goes, and set the Stat Calculator's text size to its largest (Bonus Features > Stat Calculator). Scroll to |cffffd100Stat Weights|r and press |cffffd100Check|r.\n\n|cffffd100Expect:|r still six columns with Influences last, its names on each row; titles that no longer fit wrap and stay bottom-aligned with the others. The addon asks the game whether any title or cell is cut short and gives Fail if one is. (A24 #9, \"Widen the panel\") where the six columns' widest words need more room than the narrow panel has, the panel widens to fit them at this text size, so nothing is cut short; the note gives the width it was drawn at. A title may still wrap: where the panel widened, \"Rating (P / %)\" can take three lines (the panel widens to the widest words, not to two-line titles: reported to Xaya, not built). If your screen is narrower than that width the panel stops at the screen's edge, and words can be cut there. Note anything overlapping: the addon cannot see that.",
+        check = CheckNarrow },
     { text = "Look at the Stat Weights pane as it is now. Do the six column titles read as one row sitting on a shared bottom line, and do the rows below line up the same way, each starting at the same height across its cells? Is any word cut short (\"...\")? The addon cannot judge how it looks: Pass if it reads well, Fail and describe it in the note if not.",
         noVerdict = true },
+    { text = "Click once on the panel's bottom-right corner without moving the mouse, then click the |cffffd100Gear|r tab. Press |cffffd100Check|r.\n\n|cffffd100Expect:|r on the Gear tab the panel is back at the width you dragged it to in step 2: the wider width was only for Stat Weights and the click did not save it. The three tabs sit side by side across the top. (A24 #9)",
+        check = CheckGrip },
     { done = true, text = "Last step: put the panel's width and text size back where you had them, then press |cffffd100Do it for me|r to put the Stat Calculator back as it was before this walkthrough (its tab, open or closed). Then press |cffffd100Done|r.",
         setup = function() PutBack() end },
 } })

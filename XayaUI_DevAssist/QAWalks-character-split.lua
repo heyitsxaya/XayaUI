@@ -177,18 +177,18 @@ local function ICD()
     local ns = NS()
     local q = ns and ns.Settings and ns.Settings("qol") or {}
     local p, t = type(q.characterReskin) == "table" and q.characterReskin or {}, type(q.characterToolkit) == "table" and q.characterToolkit or {}
-    -- (A24 #7) the Slot Overlays are gone: one Item level and one Enchants option, each with a style ("On the slot" / "Beside the slot")
-    local function Style(v, beside) if v == beside then return "beside the slot" end; return "on the slot" end
+    -- (A24 #7) the Slot Overlays are gone: one Item level and one Enchants option; (A24 #9) no style: the item level on the slot's icon,
+    -- the enchant at the icon's right edge
     d.on, d.merged, d.btnSwitch = p.features == true, p._merged == true, t.statCalcButton ~= false
-    d.ilvlOn, d.enchOnSlot = p.ilvl == true, p.enchants == true and t.enchantStyle == "slot"
-    d.parts = ("item level %s (%s), enchants %s (%s), gems %s, full stat list %s, empty sockets mark %s"):format(tostring(p.ilvl),
-        Style(t.ilvlStyle, "beside"), tostring(p.enchants), t.enchantStyle == "slot" and "on the slot" or "beside the slot", tostring(p.gems),
-        tostring(p.statList), tostring(t.socketMark == true))
+    d.ilvlOn, d.enchOn = p.ilvl == true, p.enchants == true
+    d.parts = ("item level %s, enchants %s, gems %s, full stat list %s, empty sockets mark %s"):format(tostring(p.ilvl),
+        tostring(p.enchants), tostring(p.gems), tostring(p.statList), tostring(t.socketMark == true))
     return d
 end
 local function ICDLine(d)
     return ("Improved Character Display %s (merge done: %s); parts: %s; Stat Calc button tick box %s, button %s; slot marks on %d slots; item levels on %d slots"):format(
         d.on and "on" or "off", d.merged and "yes" or "no", d.parts, d.btnSwitch and "ticked" or "unticked", d.button and "shown" or "hidden", d.marks or 0, d.ilvl or 0)
+        .. ("; enchants drawn on %d slots"):format(d.enchants or 0)
 end
 local function PanelReady()
     local sc = Svc("statCalc")
@@ -223,15 +223,15 @@ QA.Register("improved-character-display", { title = "Improved Character Display:
             if d.btnSwitch then return nil, "the Stat Calc button tick box is still ticked: untick it | " .. ICDLine(d) end
             return d.button == false, ICDLine(d)
         end },
-    { text = "On QoL > Improved Character Display, tick |cffffd100Item level|r and |cffffd100Enchants|r and set the Enchants |cffffd100Style|r to |cffffd100On the slot|r. Open the character window (C) with your gear on.\n\n|cffffd100Expect:|r an item level on each item slot and E? / E at the top of the enchant slots you ticked (Improved Character Display > Enchant Slots).",
+    { text = "On QoL > Improved Character Display, tick |cffffd100Item level|r and |cffffd100Enchants|r. Open the character window (C) with your gear on.\n\n|cffffd100Expect:|r an item level on each item slot's icon, and the enchant's name (or \"No enchant\" in orange on the enchant slots you ticked in Improved Character Display > Enchant Slots) at the right edge of the slot's icon.",
         check = function()
             local d, why = ICD()
             if not d then return nil, why end
             if not d.on then return nil, "Improved Character Display is off: tick it | " .. ICDLine(d) end
             if not d.ilvlOn then return nil, "Item level is unticked: tick it | " .. ICDLine(d) end
-            if not d.enchOnSlot then return nil, "Enchants is unticked or its Style is Beside the slot: tick it and pick On the slot | " .. ICDLine(d) end
+            if not d.enchOn then return nil, "Enchants is unticked: tick it | " .. ICDLine(d) end
             if not WindowShown() then return nil, "open the character window (C), then check again | " .. ICDLine(d) end
-            return (d.marks or 0) > 0 and (d.ilvl or 0) > 0, ICDLine(d)
+            return (d.enchants or 0) > 0 and (d.ilvl or 0) > 0, ICDLine(d)
         end },
     { done = true, text = "Leave the parts as you like them, then press |cffffd100Done|r." },
 } })

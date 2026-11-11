@@ -2,7 +2,7 @@
 """Stat Calculator gate fixes, unit U2 (XayaUI_Bonus/StatCalculator.lua, XayaUI_QoL/StatModel.lua; V27 / V28 / V14 / V30 gate findings).
 On the whole-addon harness (tests/harness: every addon loaded as the game loads them), the Stat Calculator on. What the player gets:
   G003  docked beside the character window the panel takes the window's strata (here MEDIUM), so another game window opened over the
-        character window is not covered by it; on its own (the window closed) it stays HIGH.
+        character window is not covered by it; on its own (the window closed) it takes the same strata (A24 #8; it stayed HIGH before).
   G006  a resize under way (the corner grip pressed: panel.sizing) when combat starts: the move / size is stopped (StopMovingOrSizing)
         and panel.sizing is cleared, so after combat the panel takes its saved height again; the same when the panel hides (its close).
   G012  (= G-014) the panel closed: GET_ITEM_INFO_RECEIVED, UNIT_STATS and COMBAT_RATING_UPDATE are not registered; the start of combat
@@ -123,7 +123,9 @@ check("G003 ...follows the window's strata (HIGH)", panel:GetFrameStrata() == "H
 CharacterFrame:SetFrameStrata("MEDIUM")
 sc.Close(); CharacterFrame:Hide(); W.tick(0.1, 1)
 sc.Open("stats"); W.tick(0.1, 3)
-check("G003 on its own (the window closed): HIGH, as before", panel:IsShown() and panel.standalone == true and panel:GetFrameStrata() == "HIGH", panel:GetFrameStrata())
+-- (A24 #8, Xaya 2026-11-11: "Esc closes; normal layer (Recommended)") on its own the panel uses the game's standard windows' strata
+-- (read from the character window: MEDIUM here), no longer HIGH; tests/char_statcalc_esc_run.py checks it with the window at another one
+check("G003 on its own (the window closed): the standard windows' strata, MEDIUM (A24 #8; HIGH until then)", panel:IsShown() and panel.standalone == true and panel:GetFrameStrata() == "MEDIUM", panel:GetFrameStrata())
 
 -- G006 -------------------------------------------------------------------------------------------------------------------------
 local stops, rawStop = 0, panel.StopMovingOrSizing

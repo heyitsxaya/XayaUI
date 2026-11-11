@@ -54,14 +54,14 @@ check("  ...no unit stat event (UNIT_STATS, UNIT_SPELL_HASTE) is registered", no
 check("  ...no stat event (COMBAT_RATING_UPDATE, MASTERY_UPDATE) is registered", not registered("COMBAT_RATING_UPDATE") and not registered("MASTERY_UPDATE"))
 fire("SPELL_UPDATE_COOLDOWN")
 check("  ...a cast does no GCD read for the hidden panel", gcdReads == 0, gcdReads)
--- (A24 #7) the slot marks are the Enchants option with its Style On the slot (the Slot Overlays switch is gone)
+-- (A24 #7, #9) the Slot Overlays switch is gone; Enchants (the enchant at the slot's right edge, no Style since A24 #9) reads the slots
 local q = ns.CharDisplay_Cfg()
-q.enchants, q.enchantStyle = true, "slot"
+q.enchants = true
 CWA()
 -- (gate G-011, Improved Character Display: the slot events are listened to only while the character window is open)
-check("G-011 slot marks on (Enchants on the slot), character window closed: their events are not registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
+check("G-011 Enchants on, character window closed: their events are not registered", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
 CharacterFrame:Show()
-check("  ...slot marks on, window open: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
+check("  ...Enchants on, window open: their events are registered (PLAYER_EQUIPMENT_CHANGED, SOCKET_INFO_UPDATE)", registered("PLAYER_EQUIPMENT_CHANGED") and registered("SOCKET_INFO_UPDATE"))
 CharacterFrame:Hide()
 check("G-011 ...the character window closed: the slot events are let go", not registered("PLAYER_EQUIPMENT_CHANGED") and not registered("SOCKET_INFO_UPDATE"))
 check("  ...and still no panel event", not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS"))

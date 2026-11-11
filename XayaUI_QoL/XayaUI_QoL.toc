@@ -2,7 +2,7 @@
 ## Title: XayaUI QoL
 ## Notes: XayaUI quality-of-life changes: cursor highlight, cursor trail, Improved Character Display (item level, enchants, gems, the full stat list, slot marks and the Stat Calc button on the character window), the Character Reskin and the Shopping List (friends and bags come later). Needs XayaUI.
 ## Author: Xaya
-## Version: 0.7.59
+## Version: 0.7.60
 ## X-Date: 2026-11-08
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUIQoLDB

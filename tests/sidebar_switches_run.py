@@ -66,7 +66,7 @@ for _, tab in ipairs({ "qol", "bonus", "chat", "reskin" }) do collect(node(T, ta
 -- Slot Overlays and Tooltip lines parts)
 -- (V25 R4: the Tooltip lines part is gone from it; the lines are Bonus Features > Enhanced Tooltips' option "Character stats", a tick box
 -- on its page, not a row: Xaya A24 #5 / #6)
--- (A24 #7: the Slot Overlays part and its switch are gone; its marks are the Item level / Enchants options' style On the slot, on the
+-- (A24 #7: the Slot Overlays part and its switch are gone; its marks are the Item level / Enchants options (no style since A24 #9), on the
 -- page; the Enchant Slots are a page under it with no switch of its own)
 local WANT = { "qol>chardisplay", "bonus>statcalc", "bonus>statcalc>panelPart", "bonus>statcalc>spells",
   "qol>cursor>highlight", "qol>cursor>trail", "qol>releaseguard", "bonus>datapanels", "bonus>tooltips", "bonus>utilities>notepad",
@@ -417,7 +417,7 @@ click("qol", "chardisplay", true)
 -- (QoL 0.7.53, character pane split stage 2; V25 R2: QoL > Improved Character Display has Slot Overlays and Tooltip lines (and its Stat
 -- list page); Panel and Spell Math are under Bonus Features > Stat Calculator, its own switch, checked below. Its switch is saved as
 -- characterReskin.features, an internal key kept from QoL 0.7.53)
--- (A24 #7) no Slot Overlays row: its marks are the Item level / Enchants options' style On the slot; Enchant Slots shows under it, a
+-- (A24 #7) no Slot Overlays row: its marks are the Item level / Enchants options (no style since A24 #9); Enchant Slots shows under it, a
 -- page with no box of its own
 check("A: Improved Character Display ticked: on; Enchant Slots now shows under it without a box; no Slot Overlays row (A24 #7; V25 R4: no Tooltip lines row)",
   ns.Settings("qol").characterReskin.features == true and row("qol", "chardisplay\001enchantSlotsPage") ~= nil and box("qol", "chardisplay\001enchantSlotsPage") == nil

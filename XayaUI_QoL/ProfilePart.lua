@@ -14,7 +14,10 @@ if not (ns and ns.RegisterProfilePart) then return end
 -- level and Enchants (each with a style). A part older than format 3 carries the old slot marks' keys: after the import they are read
 -- the way the one-time move reads saved settings (ns.CharDisplay_RemapOlder; it runs on the next frame, once the Blizzard Reskin part
 -- with the item details' keys is in too), so an older string still shows what it showed when it was made. Keys and values unchanged.
--- A format-3 part: a style (or the Empty sockets mark) it does not hold is set to its default, since none is saved at its default.
+-- A format-3 part: the Empty sockets mark it does not hold is set to its default (off), since it is not saved at its default.
+-- (A24 #9) The two styles (ilvlStyle / enchantStyle) are no longer read: the layout is fixed (the item level on the slot's icon, the
+-- enchant and the gems at its right edge). A string that holds them still imports (the keys are written as they are and ignored), so the
+-- format stays 3 and older strings import as before.
 local def = { key = "qol", label = "QoL", module = "XayaUI_QoL", order = 40, version = 3,
     db = { "cursorHighlight", "cursorTrail", "characterToolkit", "releaseGuard", "cursor" } }
 ns.RegisterProfilePart(def)
@@ -31,7 +34,7 @@ if type(base) == "function" then
             local ok, err = pcall(ns.CharDisplay_RemapOlder, part.characterToolkit)
             if not ok and geterrorhandler then geterrorhandler()(err) end
         elseif from >= 3 and type(part) == "table" and ns.CharDisplay_ImportStyles then
-            -- (format 3) a style the string does not hold is its default (it is not saved at its default)
+            -- (format 3) the Empty sockets mark the string does not hold is off (it is not saved at its default)
             local ok, err = pcall(ns.CharDisplay_ImportStyles, part.characterToolkit)
             if not ok and geterrorhandler then geterrorhandler()(err) end
         end

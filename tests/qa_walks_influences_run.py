@@ -22,6 +22,10 @@ StatCalculator.lua at panel 340 (five titles, influences under the row). Round 2
 walkthrough (it gave Pass on a layout with cut text, and Pass when the game did not answer).
 Integration: the older walkthrough "statcalc-fixes" (QAWalks-statcalc-fixes.lua) Stat Weights step no longer says every title stays
 on one line, and the removed five-title fallback is a Fail there (it gave no verdict); both checks fail with that file as it was at 45d0397.
+A24 #9 (Xaya 2026-11-11, "Widen the panel"): step 2 at panel 340 and text 16 gives Pass (the panel widened, nothing in the pane cut)
+and its note gives the drawn width; this check fails on 64d0943 (the pane was cut there, and the note had no drawn width).
+A24 #9 round 2: step 4 (a corner click without a drag, then the Gear tab: the saved width is kept and the tabs sit in whole pixels)
+gives Pass; it fails on 64d0943 and on the round-1 tree (no such step; the click saved the widened width there).
 Run: python3 tests/qa_walks_influences_run.py"""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -90,14 +94,24 @@ local function wordCut(f)
   for word in tostring(f:GetText() or ""):gmatch("%S+") do if #word * 6 > w + 0.01 then return true end end
   return false
 end
+-- (A24 #9) the Stat Weights pane's own font strings (titles and cells): the ones the step judges
+local PANE = { wcolhead = true, wlabel = true, wrating = true, wppp = true, wpppdr = true, wdr = true, wtl = true, winfl = true }
+local function inPane(f)
+  for _, r in ipairs(d.layout) do if PANE[r.kind] and r.text == f:GetText() then return true end end
+  return false
+end
 local anyCut = false
 for _, f in ipairs(d.fonts) do
   f.IsTruncated = function(self) return wordCut(self) end
-  if f:IsShown() and wordCut(f) then anyCut = true end
+  if f:IsShown() and inPane(f) and wordCut(f) then anyCut = true end
 end
 local ok2, n2 = def.steps[2].check()
-check("step 2 (panel 340, text 16): six columns with Influences last; Pass only when the game reports nothing cut short ("
+check("step 2 (panel 340, text 16): six columns with Influences last; Pass only when the game reports nothing in the pane cut short ("
   .. (anyCut and "cut here: Fail" or "nothing cut here: Pass") .. ")", n2:find("6 column titles", 1, true) ~= nil and ok2 == (not anyCut), n2)
+-- (A24 #9, Xaya 2026-11-11: "Widen the panel") at the narrowest panel and the largest text the panel widens, so nothing in the pane is
+-- cut and the step gives Pass; its note gives the width the panel was drawn at (wider than the 340 the corner left)
+check("step 2 (A24 #9): the panel widened past 340, nothing in the pane is cut short, Pass, and the note gives the drawn width",
+  not anyCut and ok2 == true and type(d.width) == "number" and d.width > 340 and n2:find(("drawn %d wide"):format(d.width or 0), 1, true) ~= nil, tostring(d.width) .. " " .. n2)
 -- negatives: what the player would see wrong
 local cutF
 for _, f in ipairs(d.fonts) do if f:IsShown() and f:GetText() ~= "" then for _, r in ipairs(d.layout) do if r.kind == "winfl" and r.text == f:GetText() then cutF = cutF or f end end end end
@@ -124,6 +138,28 @@ if cell then cell.y = cell.y + 20 end
 local okN2, nN2 = def.steps[2].check()
 check("negative: an influences cell moved under its row gives Fail", okN2 == false, nN2)
 if cell then cell.y = cy end
+-- (A24 #9 round 2) step 4: the person clicks the corner once without dragging, then the Gear tab. The saved width stays the 340 the
+-- corner left in step 2, the Gear tab is drawn at it, the tab row in whole pixels: Pass. (On the round-1 tree the click saved the
+-- widened width, and the walkthrough had no such step.)
+local P = rawget(_G, "XayaUIStatCalculator")
+local wideW = d.width
+local down, up = P and P.grip and P.grip:GetScript("OnMouseDown"), P and P.grip and P.grip:GetScript("OnMouseUp")
+if down and up then down(P.grip); up(P.grip) end
+local gearTab
+for _, b in ipairs(P and P.tabs or {}) do if b.key == "gear" then gearTab = b end end
+if gearTab then gearTab:GetScript("OnClick")(gearTab) end
+W.tick(0.1, 3)
+local s4 = def.steps[4]
+local ok4, n4
+if s4 and s4.check then ok4, n4 = s4.check() end
+local win = sc.Window and sc.Window()
+check("step 4 (A24 #9): after a corner click without a drag on the widened panel (" .. tostring(wideW) .. "), on the Gear tab: saved width 340, drawn 340, tabs whole: Pass",
+  type(wideW) == "number" and wideW > 340 and ok4 == true and c.size and c.size.w == 340 and win and win.width == 340, tostring(ok4) .. " " .. tostring(n4) .. " saved " .. tostring(c.size and c.size.w))
+-- negative: had the click saved the widened width (the round-1 behavior), step 4 gives Fail, naming it
+c.size = { w = wideW }; ns.StatCalc_Render()
+local okN4, nN4
+if s4 and s4.check then okN4, nN4 = s4.check() end
+check("negative: the widened width saved by the click gives Fail at step 4 (\"the saved width changed\")", okN4 == false and tostring(nN4):find("saved width changed", 1, true) ~= nil, tostring(okN4) .. " " .. tostring(nN4))
 c.size, c.fontSize = nil, 11
 def.steps[#def.steps].setup(); W.tick(0.1, 3)
 check("Done: the panel is put back (closed)", not sc.Shown(), tostring(sc.Shown()))

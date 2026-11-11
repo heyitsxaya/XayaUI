@@ -392,41 +392,50 @@ cb.text = "648"; cb.scripts.OnEnterPressed(cb)
 check("Enter in a map box sets that stat's amount (648 - 528 = +120)", c.whatIfStats.crit == 120, c.whatIfStats.crit)
 ns.StatCalc_SetInput("crit", "0")
 
--- 8. Slot marks (A24 #7: the Slot Overlays are gone; the enchant check E? / E is the Enchants option with its Style On the slot, the
---    empty-socket count is "Empty sockets"; the item level is the Item level option's, never a mark: tests/slot_options_run.py) -------
+-- 8. Slot marks (A24 #7: the Slot Overlays are gone; the empty-socket count is "Empty sockets"; the item level is the Item level option's,
+--    never a mark: tests/slot_options_run.py). (A24 #9) The enchant check E? / E on the slot is gone: the enchant shows at the slot's
+--    right edge ("No enchant" where a slot from Enchant Slots has none; this world has no window geometry, so the rows are not laid out
+--    here: the slots the Enchants option checks are read from the model the rows use, CM.EnchantSlots + CM.SlotInfo; the drawn rows are
+--    tests/slot_options_run.py's; the drawn row following Blizzard's slot redraw is its B10)
 local q = ns.CharDisplay_Cfg()
 local function marks(slotName) return ns.CharDisplay_SlotMarks(slotName) or "" end
+-- what the Enchants option shows for a slot: "No enchant" (a checked slot without one), "enchanted" (a checked slot with one) or ""
+local function enchState(slot)
+  local info = ns.StatModel.SlotInfo(slot)
+  if not (info and ns.StatModel.EnchantSlots(q)[slot]) then return "" end
+  if info.enchanted == false then return "No enchant" elseif info.enchanted == true then return "enchanted" end
+  return ""
+end
 ns.CharDisplay_UpdateOverlays()
 check("marks off by default: nothing on the head slot", ns.CharDisplay_SlotMarks("HeadSlot") == nil)
 q.enchants, q.enchantStyle, q.socketMark = true, "slot", true; CWA()
-check("Enchants on the slot: head shows E?, with no slots ticked (head takes an enchant this expansion: QoL 0.7.6 default), and no item level among the marks",
-  marks("HeadSlot"):find("E?", 1, true) ~= nil and marks("HeadSlot"):find("336", 1, true) == nil, marks("HeadSlot"))
+check("(A24 #9) Enchants on, even with round 3's style key \"slot\" saved: no E? / E on the head slot, and no item level among the marks",
+  marks("HeadSlot"):find("E", 1, true) == nil and marks("HeadSlot"):find("336", 1, true) == nil, marks("HeadSlot"))
+check("  ...the head (no enchant, takes one this expansion: QoL 0.7.6 default) is a \"No enchant\" slot", enchState(1) == "No enchant", enchState(1))
 check("Empty sockets: the ring shows its empty socket (1S)", marks("Finger0Slot"):find("1S", 1, true) ~= nil, marks("Finger0Slot"))
 check("marks: an empty slot shows nothing", marks("NeckSlot") == "")
 -- QoL 0.7.6: this expansion's enchantable slots are checked until the player ticks their own
 local ES = ns.StatModel.EnchantSlots
-check("enchant default: the enchanted ring shows E, not E?", marks("Finger0Slot"):find("E?", 1, true) == nil and marks("Finger0Slot"):find("E|r", 1, true) ~= nil)
+check("enchant default: the enchanted ring is checked and enchanted (not \"No enchant\")", enchState(11) == "enchanted", enchState(11))
 check("enchant default: neck, back, wrist, waist, hands, trinkets not checked; head, shoulders, chest, legs, feet, rings, main hand checked",
   not ES(c)[2] and not ES(c)[15] and not ES(c)[9] and not ES(c)[6] and not ES(c)[10] and not ES(c)[13] and not ES(c)[14]
   and ES(c)[1] and ES(c)[3] and ES(c)[5] and ES(c)[7] and ES(c)[8] and ES(c)[11] and ES(c)[12] and ES(c)[16] and select(2, ES(c)) == true)
-GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.CharDisplay_UpdateOverlays()
-check("enchant default: an off-hand frill is not checked", marks("SecondaryHandSlot"):find("E?", 1, true) == nil and not ES(c)[17])
-GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.CharDisplay_UpdateOverlays()
-check("enchant default: an off-hand weapon is checked (E?)", marks("SecondaryHandSlot"):find("E?", 1, true) ~= nil)
-GEAR[17] = nil; ns.CharDisplay_UpdateOverlays()
-c.enchantSlots = { [1] = true, [11] = true }; ns.CharDisplay_UpdateOverlays()
-check("marks: a ticked slot with no enchant shows E?", marks("HeadSlot"):find("E?", 1, true) ~= nil)
-check("marks: a ticked slot with an enchant shows E", marks("Finger0Slot"):find("|rE|r", 1, true) == nil
-  and marks("Finger0Slot"):find("E|r", 1, true) ~= nil and marks("Finger0Slot"):find("E?", 1, true) == nil)
+GEAR[17] = "|cffa335ee|Hitem:5::::::::90:::::|h[Frill]|h|r"; ns.StatModel.ClearCache()
+check("enchant default: an off-hand frill is not checked", enchState(17) == "" and not ES(c)[17])
+GEAR[17] = "|cffa335ee|Hitem:6::::::::90:::::|h[Glaive]|h|r"; ns.StatModel.ClearCache()
+check("enchant default: an off-hand weapon is checked (No enchant)", enchState(17) == "No enchant", enchState(17))
+GEAR[17] = nil; ns.StatModel.ClearCache(); ns.CharDisplay_UpdateOverlays()
+c.enchantSlots = { [1] = true, [11] = true }
+check("enchant slots: a ticked slot with no enchant shows No enchant", enchState(1) == "No enchant")
+check("enchant slots: a ticked slot with an enchant shows it (not No enchant)", enchState(11) == "enchanted")
 check("a list ticked before QoL 0.7.6 is kept: only its slots are checked", ns.StatModel.EnchantSlots(c)[3] == nil and select(2, ns.StatModel.EnchantSlots(c)) == false)
 q.enchantStyle = nil; ns.CharDisplay_UpdateOverlays()
-check("Enchants beside the slot: no E? / E on the slots (the enchant shows beside them); the ring's 1S stays", marks("HeadSlot"):find("E", 1, true) == nil
+check("no E? / E on the slots; the ring's 1S stays", marks("HeadSlot"):find("E", 1, true) == nil
   and marks("Finger0Slot"):find("1S", 1, true) ~= nil and marks("Finger0Slot"):find("E", 1, true) == nil, marks("HeadSlot") .. " / " .. marks("Finger0Slot"))
-q.enchantStyle = "slot"
-GEAR[1] = "|cffa335ee|Hitem:1:6000:::::::90:::::|h[Helm]|h|r"
+GEAR[1] = "|cffa335ee|Hitem:1:6000:::::::90:::::|h[Helm]|h|r"; ns.StatModel.ClearCache()
 PaperDollItemSlotButton_Update(CharacterHeadSlot)
-check("marks follow Blizzard's slot redraw (enchant added: no E?)", marks("HeadSlot"):find("E?", 1, true) == nil)
-GEAR[1] = "|cffa335ee|Hitem:1::::::::90:::::|h[Helm]|h|r"
+check("the enchant follows Blizzard's slot redraw (enchant added: no longer No enchant)", enchState(1) == "enchanted", enchState(1))
+GEAR[1] = "|cffa335ee|Hitem:1::::::::90:::::|h[Helm]|h|r"; ns.StatModel.ClearCache()
 q.enchants, q.enchantStyle, q.socketMark = false, nil, nil; CWA()
 check("Enchants and Empty sockets off: the marks are hidden again", ns.CharDisplay_SlotMarks("HeadSlot") == nil)
 c.enchantSlots = {}
@@ -559,21 +568,21 @@ check("settings: no Rating lines setting and no Reset line flips (B2)", lay.valu
 lay.detail.set(nil, "short"); d = render("stats")
 check("settings: Detail = Key lines hides the other pairs", not hasText(d, "pairLabel", "Lost to diminishing returns"))
 lay.detail.set(nil, "all")
-do   -- (A24 #7) the enchant check is Enchants with its Style On the slot; the Enchant Slots are a page of their own
+do   -- (A24 #9) Enchants has no Style (the enchant shows at the slot's right edge); the Enchant Slots are a page of their own
   local q = ns.CharDisplay_Cfg()
-  local function marks(slotName) return ns.CharDisplay_SlotMarks(slotName) or "" end
-  page.args.enchants.set(nil, true); page.args.enchantStyle.set(nil, "slot")
-  check("settings: Enchants with its Style On the slot draws the enchant check (head E?)", marks("HeadSlot"):find("E?", 1, true) ~= nil, marks("HeadSlot"))
+  local function headChecked() return ns.StatModel.EnchantSlots(q)[1] and true or false end
+  page.args.enchants.set(nil, true)
+  check("settings: Enchants has no Style dropdown (A24 #9) and is on", page.args.enchantStyle == nil and page.args.ilvlStyle == nil and q.enchants == true)
   local es = page.args.enchantSlotsPage.args
   local cc = ns.Settings("qol").characterToolkit   -- (P5: where XayaUI QoL keeps it, its own store)
   es.slot1.set(nil, false)
   check("settings: unticking Head is kept and the other default slots stay ticked", cc.enchantSlotsSet == true and not cc.enchantSlots[1] and cc.enchantSlots[11] == true
-    and es.slot3.get() == true and marks("HeadSlot"):find("E?", 1, true) == nil)
+    and es.slot3.get() == true and not headChecked())
   es.reset.func()
-  check("settings: the reset button goes back to this expansion's slots (Head E? again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
-    and marks("HeadSlot"):find("E?", 1, true) ~= nil)
-  page.args.enchants.set(nil, false); page.args.enchantStyle.set(nil, "beside")
-  check("settings: Enchants off: no marks", ns.CharDisplay_SlotMarks("HeadSlot") == nil and q.enchantStyle == nil)
+  check("settings: the reset button goes back to this expansion's slots (Head checked again)", cc.enchantSlotsSet == nil and next(cc.enchantSlots) == nil
+    and headChecked())
+  page.args.enchants.set(nil, false)
+  check("settings: Enchants off: no marks", ns.CharDisplay_SlotMarks("HeadSlot") == nil and q.enchants == false)
 end
 check("[0.7.23] settings: no All ratings + field (Panel > Your numbers)", page.args.panelPart.args.values.args.whatIf == nil)
 ns.StatCalc_SetInput("haste", "200")

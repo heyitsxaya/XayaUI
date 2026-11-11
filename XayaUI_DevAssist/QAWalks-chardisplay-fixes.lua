@@ -13,7 +13,7 @@
 -- desc functions) and reaches XayaUI QoL only through core's "charDisplayDebug" service (its settings and Apply). Building the QoL pages
 -- here runs Improved Character Display's page builder, which takes its once-per-reload "first options-window open" read of the Stat
 -- Calculator tie-in (Xaya A24 #6) at walkthrough time instead of at the settings window's first open; Dev Assist only, harmless. What "Do it for me"
--- changes (Enchants and its Style, Gems and sockets beside the slots, Empty sockets) is remembered and put back by the last step. Nothing here takes the keyboard, the
+-- changes (Enchants, Gems and sockets beside the slots, Empty sockets) is remembered and put back by the last step. Nothing here takes the keyboard, the
 -- mouse or a frame. Listed in XayaUI_DevAssist.toc after the other QAWalks files (the integration step adds the line); does nothing
 -- without the framework. UNTESTED IN GAME.
 -------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ local function Page(module, key)
     return p
 end
 -- a control on QoL > Improved Character Display (default: the "Empty sockets" tick box). (A24 #7) The Slot Overlays part and its greyed
--- Item level / Enchant check marks are gone (one Item level and one Enchants option, each with a style; QAWalks-slot-options.lua); the
+-- Item level / Enchant check marks are gone (one Item level and one Enchants option, no style since A24 #9; QAWalks-slot-options.lua); the
 -- Empty sockets mark and the marks' Text size are kept as they were and are what this walkthrough checks now.
 local function MarkBox(key)
     local p, why = Page("qol", "chardisplay")
@@ -45,16 +45,16 @@ local function MarkBox(key)
     return box
 end
 
-local kept   -- step 1: { enchants, enchantStyle, gems, socketMark } as they were
+local kept   -- step 1: { enchants, gems, socketMark } as they were
 QA.Register("chardisplay-fixes", { title = "Improved Character Display: a slot mark that cannot show is greyed with the reason; Character Reskin's \"Stat list colors\" (SC-069, SC-103)",
     area = "QoL", qa = "E1z235, E1z236", order = 527, prefill = true, steps = {
-    { text = "Tick |cffffd100QoL > Improved Character Display|r if it is not ticked. Then press |cffffd100Do it for me|r: XayaUI remembers four of its settings, then ticks |cffffd100Gems and sockets beside the slots|r and |cffffd100Empty sockets|r.\n\n|cffffd100Expect:|r on QoL > Improved Character Display, the |cffffd100Empty sockets|r tick box is greyed and unticked (the gems beside the slots already show the sockets, so the mark would add nothing).",
+    { text = "Tick |cffffd100QoL > Improved Character Display|r if it is not ticked. Then press |cffffd100Do it for me|r: XayaUI remembers three of its settings, then ticks |cffffd100Gems and sockets beside the slots|r and |cffffd100Empty sockets|r.\n\n|cffffd100Expect:|r on QoL > Improved Character Display, the |cffffd100Empty sockets|r tick box is greyed and unticked (the gems beside the slots already show the sockets, so the mark would add nothing).",
         setup = function()
             local dbg = Svc("charDisplayDebug")
             local c = dbg and dbg.Cfg and dbg.Cfg()
             if not c then error("XayaUI QoL is off") end
             if not c.enabled then error("tick QoL > Improved Character Display first") end
-            if not kept then kept = { enchants = c.enchants, enchantStyle = c.enchantStyle, gems = c.gems, socketMark = c.socketMark } end
+            if not kept then kept = { enchants = c.enchants, gems = c.gems, socketMark = c.socketMark } end
             c.gems, c.socketMark = true, true
             dbg.Apply()
         end,
@@ -72,12 +72,12 @@ QA.Register("chardisplay-fixes", { title = "Improved Character Display: a slot m
             if not box then return nil, why end
             return true, "hover text given: " .. Short(V(box.desc), 200)
         end },
-    { text = "Press |cffffd100Do it for me|r: XayaUI also ticks |cffffd100Enchants|r with its Style |cffffd100Beside the slot|r (the default), so no mark can show on the slots.\n\n|cffffd100Expect:|r |cffffd100Text size|r is greyed as well, and its hover says no mark shows on the slots.",
+    { text = "Press |cffffd100Do it for me|r: XayaUI also ticks |cffffd100Enchants|r (since A24 #9 the enchant shows at the slot's right edge, never as a mark), so no mark can show on the slots.\n\n|cffffd100Expect:|r |cffffd100Text size|r is greyed as well, and its hover says no mark shows on the slots.",
         setup = function()
             local dbg = Svc("charDisplayDebug")
             local c = dbg and dbg.Cfg and dbg.Cfg()
             if not c then error("XayaUI QoL is off") end
-            c.enchants, c.enchantStyle = true, nil
+            c.enchants = true
             dbg.Apply()
         end,
         check = function()
@@ -94,11 +94,11 @@ QA.Register("chardisplay-fixes", { title = "Improved Character Display: a slot m
             local name = t and V(t.name)
             return name == "Stat list colors", "the stat list toggle reads: " .. tostring(name)
         end },
-    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Enchants (and its Style), Gems and sockets beside the slots and Empty sockets back as they were before step 1. Then press |cffffd100Done|r.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Enchants, Gems and sockets beside the slots and Empty sockets back as they were before step 1. Then press |cffffd100Done|r.",
         setup = function()
             local dbg = Svc("charDisplayDebug")
             local c = dbg and dbg.Cfg and dbg.Cfg()
-            if c and kept then c.enchants, c.enchantStyle, c.gems, c.socketMark = kept.enchants, kept.enchantStyle, kept.gems, kept.socketMark; dbg.Apply() end
+            if c and kept then c.enchants, c.gems, c.socketMark = kept.enchants, kept.gems, kept.socketMark; dbg.Apply() end
             kept = nil
         end },
 } })
@@ -112,7 +112,7 @@ QA.Register("chardisplay-fixes", { title = "Improved Character Display: a slot m
 -- where it can; what only the player can see (the model turning, a camera button working) is asked (noVerdict). Nothing here takes the
 -- keyboard, the mouse or a frame. UNVERIFIED IN GAME.
 -------------------------------------------------------------------------------
-local keptGate   -- step 1: { enchants, enchantStyle, gems, statList } as they were
+local keptGate   -- step 1: { enchants, gems, statList } as they were
 local function Mouse()
     local dbg = Svc("charDisplayDebug")
     if not (dbg and dbg.Mouse) then return nil, "XayaUI QoL is off or too old (no charDisplayDebug.Mouse)" end
@@ -120,14 +120,14 @@ local function Mouse()
 end
 QA.Register("chardisplay-gate", { title = "Improved Character Display: rows and the stat list are hover only (clicks and camera drags pass); stat list quiet in combat (V27 G-001, G-002, G-005, G-007)",
     area = "QoL", qa = "E1z238", order = 528, prefill = true, steps = {
-    { text = "Tick |cffffd100QoL > Improved Character Display|r if it is not ticked, then press |cffffd100Do it for me|r: XayaUI remembers four of its settings, then ticks |cffffd100Enchants|r with its Style |cffffd100Beside the slot|r, |cffffd100Gems and sockets beside the slots|r and the |cffffd100Full stat list|r. Open the character window (|cffffd100C|r) on the Character tab.\n\n|cffffd100Expect:|r enchant and gem rows beside the slots and XayaUI's stat list in the stats pane. The addon reads that none of them takes clicks.",
+    { text = "Tick |cffffd100QoL > Improved Character Display|r if it is not ticked, then press |cffffd100Do it for me|r: XayaUI remembers three of its settings, then ticks |cffffd100Enchants|r, |cffffd100Gems and sockets beside the slots|r and the |cffffd100Full stat list|r. Open the character window (|cffffd100C|r) on the Character tab.\n\n|cffffd100Expect:|r enchant and gem rows at the slots' right edges and XayaUI's stat list in the stats pane. The addon reads that none of them takes clicks.",
         setup = function()
             local dbg = Svc("charDisplayDebug")
             local c = dbg and dbg.Cfg and dbg.Cfg()
             if not c then error("XayaUI QoL is off") end
             if not c.enabled then error("tick QoL > Improved Character Display first") end
-            if not keptGate then keptGate = { enchants = c.enchants, enchantStyle = c.enchantStyle, gems = c.gems, statList = c.statList } end
-            c.enchants, c.enchantStyle, c.gems, c.statList = true, nil, true, true
+            if not keptGate then keptGate = { enchants = c.enchants, gems = c.gems, statList = c.statList } end
+            c.enchants, c.gems, c.statList = true, true, true
             dbg.Apply()
         end,
         check = function()
@@ -165,11 +165,11 @@ QA.Register("chardisplay-gate", { title = "Improved Character Display: rows and 
             local l = dbg.ListCounts()
             return true, ("stat model builds: %d; layouts: %d; waiting for combat to end: %s"):format(l.builds, l.layouts, tostring(l.stale))
         end },
-    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Enchants (and its Style), Gems and sockets beside the slots and the Full stat list back as they were before step 1, and turn the Wider window back on if you turned it off. Then press |cffffd100Done|r.",
+    { done = true, text = "Last step: press |cffffd100Do it for me|r to put Enchants, Gems and sockets beside the slots and the Full stat list back as they were before step 1, and turn the Wider window back on if you turned it off. Then press |cffffd100Done|r.",
         setup = function()
             local dbg = Svc("charDisplayDebug")
             local c = dbg and dbg.Cfg and dbg.Cfg()
-            if c and keptGate then c.enchants, c.enchantStyle, c.gems, c.statList = keptGate.enchants, keptGate.enchantStyle, keptGate.gems, keptGate.statList; dbg.Apply() end
+            if c and keptGate then c.enchants, c.gems, c.statList = keptGate.enchants, keptGate.gems, keptGate.statList; dbg.Apply() end
             keptGate = nil
         end },
 } })

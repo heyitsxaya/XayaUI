@@ -197,14 +197,14 @@ ns.InfoPaneData = {
   },
   patches = {
     { date = "2026-11-11", title = "Stat Calculator Fixes", blocks = {
-      { "h3", "Bonus Features 0.6.42" },
+      { "h3", "Bonus Features 0.6.43" },
       { "grp", "Stat Calculator" },
-      { "b", 1, "In combat it hides silently until combat ends, does no work and lets go of the keyboard." },
-      { "b", 1, "Stat Weights always has an Influences column; titles wrap, bottom-aligned." },
-      { "h3", "Quality of Life 0.7.59" },
+      { "b", 1, "Hidden, idle in combat (minimap row too), keyboard freed. Alone: Esc closes it, normal layer." },
+      { "b", 1, "Stat Weights: an Influences column, titles wrap bottom-aligned, panel widens to fit." },
+      { "h3", "Quality of Life 0.7.60" },
       { "grp", "Character window" },
-      { "b", 1, "The Stat Calculator's Gear tab compares with the worn item, and Ability Scaling works with XayaUI Rules off." },
-      { "b", 1, "One Item level and one Enchants option, each on or beside the slot. Drags on gem and enchant lines turn the character." },
+      { "b", 1, "Stat Calculator: Gear compares to the worn item; Ability Scaling works with Rules off." },
+      { "b", 1, "Item level on the icon; enchant and gems at its right edge (main hand: left of weapons). Drags on them turn the character." },
     } },
     { date = "2026-11-08", title = "Gradient Borders", blocks = {
       { "h3", "XayaUI 0.6.81" },

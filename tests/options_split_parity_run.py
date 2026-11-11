@@ -103,6 +103,12 @@ gone; the Enchant Slots are the page `qol.chardisplay.enchantSlotsPage.*` (same 
 selects, `socketMark` (Empty sockets) and `markSize` (Text size); the page node's, intro's, `ilvl`'s and `enchants`' texts and widths;
 0 lines outside `qol.chardisplay`. Made the same way (only XayaUI_Nameplates and XayaUI_Reskin from 6bc8165), so the same 14 spelling
 failures stay visible.
+Regenerated again on 2026-11-11 for A24 #9 (Xaya: "Ilvl goes on item block; enchant and gems are both on the outside right border of the
+icon"; the Style select "sounds unnecessary"): only the "qol" tab's hashes were replaced (7 variants; XayaUI QoL off unchanged). `--dump`
+of 64d0943 and of the new code (both with XayaUI_Nameplates and XayaUI_Reskin from 6bc8165) differ in exactly 10 lines per variant with
+XayaUI QoL on, all `qol.chardisplay*`: the `ilvlStyle` and `enchantStyle` selects removed; the texts of `ilvl`, `enchants`, `intro` and
+`enchantSlotsPage.note` (no style, no E? / E); 0 lines outside `qol.chardisplay`. Made the same way, so the same spelling failures stay
+visible.
 `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
