@@ -25,3 +25,6 @@ See the tracker, section "Status".
 
 ## Core dependency
 Core on QA is older than main (main has the KeyCatch.lua fix bundle). Do not port core changes: flag any stat-tool problem that depends on core.
+
+## Standing reminder (her words, A24 #8)
+The full stat list freezes in combat "for now ... circle back to this later after we confirm performance is wholly optimized. ask repeatedly, since we might need to dynamically calculate character stats later". Ask her again after every performance confirmation.
