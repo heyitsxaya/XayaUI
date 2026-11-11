@@ -414,11 +414,20 @@ local VIS = 0           -- visible changes made so far (text, value, alpha, size
 local NONINT = {}       -- [file:line] = { n, method, example, phases }
 local ST = { ev = {}, ou = {}, tm = {}, loops = {}, wide = {}, cyc = {}, idlewin = {}, mem = {}, hooks = {}, timers = {}, created = CREATED }
 local function isWhole(v) return type(v) ~= "number" or v == math.floor(v) end
+-- the first addon file up the stack from a widget method (the caller itself, not a XayaUI file further up)
+local function directCaller(level)
+  for l = level + 1, level + 8 do
+    local info = getinfo(l, "Sl")
+    if not info then return nil end
+    local f = short(info.source)
+    if f then return f .. ":" .. tostring(info.currentline), isLib(f) end
+  end
+end
 local function noteNonInt(method, a, b, c, d)
   if not CLOSED and not CFG.nonintAlways then return end
   local m0 = gc("count")
-  local w = whereFrom(2)
-  if w and not isLib(w) then
+  local w, lib = directCaller(2)
+  if w and not lib then
     local s = NONINT[w]
     if not s then s = { n = 0, method = method, example = string.format("%s(%s, %s, %s, %s)", method, tostring(a), tostring(b), tostring(c), tostring(d)), phases = {} }; NONINT[w] = s end
     s.n = s.n + 1; s.phases[PHASE] = true
@@ -689,15 +698,20 @@ local function passesClicks(o)
   return false
 end
 local function checkpoint(label)
-  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, noArea = {}, wheel = {}, keyboard = {}, focus = {}, keys = {} }
+  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, noArea = {}, wheel = {}, keyboard = {}, focus = {}, keys = {}, shown = {} }
+  local nsx = rawget(_G, "XayaUI_NS")
+  local act = 0
+  if nsx and nsx.runtime then for _, rt in rawpairs(nsx.runtime) do if rt.active then act = act + 1 end end end
+  cp.activeRules = act
   for _, o in rawipairs(W.objects) do
     local where, viaParent = originOf(o)
+    if where and not viaParent and o:IsVisible() then bump(cp.shown, where) end
     if where and o:IsVisible() and not ALLOWED[o] and not (o._kind == "Texture" or o._kind == "FontString" or o._kind == "MaskTexture" or o._kind == "Line") then
       local click = o:IsMouseClickEnabled() and not passesClicks(o)
       local area, w, h, frac = hasArea(o)
       local nm = o._name or ("a " .. tostring(o._kind))
       if click then
-        local e = { name = nm, kind = o._kind, where = where, viaParent = viaParent, w = w, h = h, frac = frac or 0, strata = o:GetFrameStrata(),
+        local e = { name = nm, rule = type(rawget(o, "rule")) == "table" and tostring(o.rule.name) or nil, kind = o._kind, where = where, viaParent = viaParent, w = w, h = h, frac = frac or 0, strata = o:GetFrameStrata(),
           drag = o._scripts.OnDragStart ~= nil, scripts = (o._scripts.OnClick and "OnClick " or "") .. (o._scripts.OnMouseDown and "OnMouseDown " or "") .. (o._scripts.OnMouseUp and "OnMouseUp" or "") }
         if area then cp.mouse[#cp.mouse + 1] = e else cp.noArea[#cp.noArea + 1] = e end
       elseif o:IsMouseMotionEnabled() then cp.hover = cp.hover + 1 end
@@ -799,6 +813,7 @@ OUT.windowClosed = not (ACD and ACD.OpenFrames[APP])
 setPhase("closed")
 CLOSED = true
 T0 = W.now
+if PERF then debug.sethook(callhook, "c") end
 checkpoint("right after the settings window closed")
 
 -- the minimap button's list: opened, then a click on the game world
@@ -942,6 +957,7 @@ for w = 1, 3 do
   for k, n in rawpairs(WCALLS) do snap[k] = n end
   ST.idlewin[w] = snap
 end
+debug.sethook()
 if PERF then OUT.memEnd = memNow() end
 checkpoint("after 30 seconds idle out of combat")
 -- timers still waiting at the end, by who made them
