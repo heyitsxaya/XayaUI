@@ -703,6 +703,14 @@ local function checkpoint(label)
   local act = 0
   if nsx and nsx.runtime then for _, rt in rawpairs(nsx.runtime) do if rt.active then act = act + 1 end end end
   cp.activeRules = act
+  local ruleOf = {}
+  if nsx and nsx.DisplayFrame then
+    for i = 1, 60 do
+      local n, v = debug.getupvalue(nsx.DisplayFrame, i)
+      if not n then break end
+      if n == "frames" and type(v) == "table" then for r, f in rawpairs(v) do ruleOf[f] = r end end
+    end
+  end
   for _, o in rawipairs(W.objects) do
     local where, viaParent = originOf(o)
     if where and not viaParent and o:IsVisible() then bump(cp.shown, where) end
@@ -711,7 +719,7 @@ local function checkpoint(label)
       local area, w, h, frac = hasArea(o)
       local nm = o._name or ("a " .. tostring(o._kind))
       if click then
-        local e = { name = nm, rule = type(rawget(o, "rule")) == "table" and tostring(o.rule.name) or nil, kind = o._kind, where = where, viaParent = viaParent, w = w, h = h, frac = frac or 0, strata = o:GetFrameStrata(),
+        local e = { name = nm, rule = ruleOf[o] and tostring(ruleOf[o].name) or nil, kind = o._kind, where = where, viaParent = viaParent, w = w, h = h, frac = frac or 0, strata = o:GetFrameStrata(),
           drag = o._scripts.OnDragStart ~= nil, scripts = (o._scripts.OnClick and "OnClick " or "") .. (o._scripts.OnMouseDown and "OnMouseDown " or "") .. (o._scripts.OnMouseUp and "OnMouseUp" or "") }
         if area then cp.mouse[#cp.mouse + 1] = e else cp.noArea[#cp.noArea + 1] = e end
       elseif o:IsMouseMotionEnabled() then cp.hover = cp.hover + 1 end
