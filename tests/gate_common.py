@@ -64,9 +64,10 @@ CreateFrame = function(kind, name, parent, template, id)
   local f = realCreate(kind, name, parent, template, id)
   if template == "CustomAuraContainerTemplate" then
     rawset(f, "groups", {})
-    for _, m in ipairs({ "SetUnit", "UpdateAllAuras", "SetAuraProcessingPolicy", "SetAuraGroupCandidateFilters", "SetAuraGroupLayout",
-        "SetAuraGroupEnabled", "SetAuraGroupSortMethod", "SetFlowLayoutAxis", "SetFlowLayoutAnchorPoint", "SetFlowLayoutGrowthDirection",
+    for _, m in ipairs({ "SetUnit", "UpdateAllAuras", "SetAuraProcessingPolicy", "SetAuraGroupLayout", "SetAuraGroupSortMethod", "SetFlowLayoutAxis", "SetFlowLayoutAnchorPoint", "SetFlowLayoutGrowthDirection",
         "SetFlowLayoutMaximumLineSize", "RemoveAuraGroup", "ClearAuraGroups" }) do rawset(f, m, noop) end
+    rawset(f, "SetAuraGroupCandidateFilters", function(self, key, cf) local o = self.groups[key]; if o then o.candidateFilters = cf end end)
+    rawset(f, "SetAuraGroupEnabled", function(self, key, on) local o = self.groups[key]; if o then o.xuiOff = not on end end)
     rawset(f, "AddAuraGroup", function(self, key, filter, o)
       self.groups[key] = o
       if type(o) == "table" and type(o.initializeFrame) == "function" then
@@ -89,10 +90,10 @@ local function auraFor(id) return copy(G.auras[id]) end
 -- Blizzard's container: an aura button shows while an aura its group asks for is up (the game's secure code; not XayaUI's work)
 function G.syncContainers()
   for _, e in ipairs(G.buttons) do
-    local ids = e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
+    local ids = not e.opts.xuiOff and e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
     local up = false
     if type(ids) == "table" then for _, id in pairs(ids) do if G.auras[id] then up = true; break end end end
-    e.button:SetShown(up and e.container:IsShown())
+    e.button:SetShown(up and e.container:IsVisible() and #e.container._pts > 0)
   end
 end
 C_UnitAuras.GetUnitAuraBySpellID = function(unit, id) if unit == "player" then return auraFor(id) end return nil end
@@ -655,9 +656,11 @@ local function run(kind, name, owner, fn, ...)
   hookAlloc, standAlloc = 0, 0
   local vis0 = VIS
   cur = { kind = kind, name = name, src = src }   -- (made before the measurement starts)
+  gc("stop")
   local m0 = gc("count")
   local ok = quietRun(fn, ...)
   local m1 = gc("count")
+  gc("restart")
   local c = cur
   cur = nil
   local bytes = math.floor(((m1 - m0) - hookAlloc - standAlloc) * 1024 + 0.5)
@@ -697,7 +700,6 @@ W.tick = function(dt, steps)
       local f = o._scripts.OnUpdate
       if f and o:IsVisible() then run("onupdate", nil, o, f, o, dt) end
     end
-    if PERF and CLOSED and gc("count") > (OUT.heapCap or math.huge) then gc("collect"); gc("stop"); OUT.heapCap = gc("count") + 131072 end
   end
 end
 
@@ -934,7 +936,7 @@ local function storm(i)
     W.fire("UNIT_AURA", "target", { isFullUpdate = false, addedAuras = G.targetDebuffs })
   end
 end
-local function memNow() gc("collect"); local m = gc("count"); if PERF then gc("stop") end; return m end
+local function memNow() gc("collect"); return gc("count") end
 if PERF then OUT.memStart = memNow() end
 local cycleWin = {}
 for cyc = 1, 3 do
@@ -1016,10 +1018,7 @@ def run_scenario(perf=False):
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world, loader, game, sv = _world(L, saved)
     cfg = H.to_lua(L, {"perf": perf})
-    if perf:
-        L.execute("collectgarbage('stop')")
     res = L.eval("function(src, W, Ld, G, C) return loadstring(src)()(W, Ld, G, C) end")(SCENARIO_LUA, world, loader, game, cfg)
-    L.execute("collectgarbage('restart')")
     out = H.lua_to_py(res)
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
     return out, round(time.time() - t0, 1)
