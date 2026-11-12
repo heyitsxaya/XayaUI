@@ -46,6 +46,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-77 layout rule: every page puts its helper or summary text at the top, under the rule name (or under the progress bar where the name is part of the page).
 > RB-75 / RB-76, load step layout, top to bottom:
 > 1. The rule name.
 > 2. "How this will load" summary.

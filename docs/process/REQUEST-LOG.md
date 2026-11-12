@@ -814,7 +814,8 @@ copy; rows it adds later are copied here.
 | RB-73 | Her canvas comment on a load row (verbatim): "belongs in instance conditions" | DONE: load step regrouped: You (combat, mounted, resting) / Group / Instance conditions (instance, Mythic+, boss encounter, instance types) / Zones... OPEN (asked): give the editor's Load tab the same grouping | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-74 | Her canvas comment on the spec row (verbatim): "vertical align with icons next to the specialization" | DONE: specs stacked with 18 px icons (as the editor's spec list, Editor.lua ~260-288) | design canvas |
 | RB-75 | Her canvas comment on the load headings (verbatim): "each of these headings should have their own selection buttons like screen 1-A" | DONE: load step shows five selection buttons (Class/Spec/Role, You, Group, Instance conditions, Zones...) with "Set: ..." summaries; new board 3b shows one set opened (bar, Back, Done) | design canvas, RULE-BUILDER-DESIGN.md |
-| RB-76 | Her canvas comment on "How this will load" (verbatim): "this belongs at the top" | DONE on 3 and 3b. OPEN (asked): summaries at the top on All or any and Name and group too | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-76 | Her canvas comment on "How this will load" (verbatim): "this belongs at the top" | DONE on 3 and 3b; the rest done by RB-77 | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-77 | Her canvas comment on "What this rule will do" (verbatim): "all of these helper tips belong at the top for ease of readability" | DONE: helper and summary boxes at the top of every step (All or any, Name and group; Tracking, Load done earlier); layout rule in the design | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
