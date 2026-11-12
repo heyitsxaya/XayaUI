@@ -1,15 +1,15 @@
 {
  "class/display": {
   "lines": 391,
-  "sha": "8802da53c9923e04b635a3e3fe3ec3f116aa9ffaf75297ea8c2aa57c041a3306"
+  "sha": "892b341b54dedcc70a1562558176c09a5b8fce6adc8242e3b6a6f4884c85ffff"
  },
  "class/profiles": {
   "lines": 291,
   "sha": "4960acc086a0fe2f6c3a7eaa6446326a410f87cebc30c025c0968f611c28562f"
  },
  "class/rules": {
-  "lines": 347,
-  "sha": "524e444f7533dfed11941ae7fc7f87264195ac25fc4aaea3daf11cfe7d9afb7c"
+  "lines": 367,
+  "sha": "e7df305b626bf18125fbe40b38fe2762280c9fa8a893acb076ea6ae1c8a7641e"
  },
  "class/theme": {
   "lines": 675,
@@ -17,15 +17,15 @@
  },
  "colorblind/display": {
   "lines": 391,
-  "sha": "341b510e6b96dda640f779833d4aceebaf28d025be708364bf9e6282676d6347"
+  "sha": "caba8783c2532c75c556cbaa059d53cf3ec8cae5fb0e924273e20ae402ba3e1d"
  },
  "colorblind/profiles": {
   "lines": 291,
   "sha": "ae3e24acb97b1aaf698dce21d442f14587ef0809c3b5761778ea203665f15f13"
  },
  "colorblind/rules": {
-  "lines": 347,
-  "sha": "b5e69dce66d2f099eeae1cd8ca94e796632e5101812425d93230efd4cad2e0c0"
+  "lines": 367,
+  "sha": "92d899e8dde8090465cc95f2a6f7f02ca46308f524dbcf3de883451707faf64a"
  },
  "colorblind/theme": {
   "lines": 658,
@@ -33,31 +33,31 @@
  },
  "custom/display": {
   "lines": 391,
-  "sha": "06b516fa22ca8c5f2797d164c3a2dd64ec8bcdadf8b42a274af7361e0e0c4081"
+  "sha": "55b1d5ae14ba675bc972f1416a47fed1a267e953742da4a4c634112dd1941b29"
  },
  "custom/profiles": {
   "lines": 291,
   "sha": "c29244cf63855797d8ee85ebfb24ca97d302503f122dbc557f2f020ef97673ce"
  },
  "custom/rules": {
-  "lines": 347,
-  "sha": "884d4be2b63778ee1b56473d466695377b6bf081736f9f32d51818bbff2142c7"
+  "lines": 367,
+  "sha": "42abc4b4873544946578f02d8834fea26730047571da249f651327ad9db0feb4"
  },
  "custom/theme": {
   "lines": 715,
-  "sha": "bc9124c6dd9920f980eb04caf1f350bf63002eeb98c6e6dbe50ca6efc471eb7e"
+  "sha": "66df952defd2e1d06dba8d60af3f146654c823e73858e73b18d9f93aee034b2e"
  },
  "light/display": {
   "lines": 411,
-  "sha": "65b1868ede6f292675b5c8ab97bb043d5b52cf0a810aa562502d42d8c8244c31"
+  "sha": "eba476003543dcc78c126aee86dde64cd2162f40bba78531f39cf971c2b9a6f9"
  },
  "light/profiles": {
   "lines": 291,
   "sha": "46cdfc552f6aac0fe84f6d865bf565d18ffad3eb1fe227f0e1a51ced695c617d"
  },
  "light/rules": {
-  "lines": 347,
-  "sha": "f435360d9a015eaba0a32b9c38e9e1313669a8e357c0c3c9fd8ed89f381368be"
+  "lines": 367,
+  "sha": "0bb944cc13cd240832ff9ad5a743b4e2cfbf86a5cde3b6f8f0ac4bcd3da117c7"
  },
  "light/theme": {
   "lines": 688,

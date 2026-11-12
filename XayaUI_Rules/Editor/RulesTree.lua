@@ -1069,6 +1069,14 @@ end
 -- and Auto-Generate Rules, plus the shelved QoL Elements' Stat Tracking and Buff Bars groups (their files are not loaded: ns.QoLOn is
 -- nil). Moved unchanged out of Options.lua BuildOptions, which calls it first and draws the rest of the window.
 function ns.OptionsApi.RuleEditor.BuildRulesTab()
+    -- (round 6; Xaya, SD-53, her words: "first run ever open with settings; otherwise put a config button in the rules pane") The
+    -- Combat Tracking Setup window opens only from a button: this one, on the page the Rules tab opens on (Enabled > LOADED) and on
+    -- Smart Categories, and the same one on Settings > UI Options > Rule Creation (RuleSettings.lua). It closes with the window.
+    local function SetupButton(order)
+        return { type = "execute", order = order, width = "double", name = "Open Combat Tracking Setup",
+            desc = "Sets up buff durations for the class and spec you are playing: it scans your spells and talents, reads the game's spell text, and learns real durations from your own casts out of combat. It closes when you close this window.",
+            func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("Combat Tracking Setup is not loaded.") end end }
+    end
     ---------------------------------------------------------- Cooldown + Aura Tracking
     local all = {
         type = "group", name = "SMART CATEGORIES", order = 1, childGroups = "tree",
@@ -1096,6 +1104,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                 desc = "Freezes the sample countdown, the fades, and the flash in every preview and unlocked display while the images stay on screen. Untick to resume.",
                 get = function() return ns.previewPaused end,
                 set = function(_, v) ns.SetPreviewPaused(v); Notify() end },
+            auraSetup = SetupButton(5.4),
             -- "Add Default Categories" button removed for now (2026-10-31): folders are the grouping tool; Smart Categories do the by-type sorting.
         },
     }
@@ -1155,6 +1164,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
     end
     loadedArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Rules that are enabled and whose load conditions and talents match right now (cooldown / buff state is not part of this). Same rules as under Smart Categories; this list updates as your situation changes." }
+    loadedArgs.auraSetup = SetupButton(0.5)
     notArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
         name = "Enabled rules whose load conditions or talents do not match right now. Rules that are switched off (or set to never load) are under the Disabled tab." }
     disabledArgs.info = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -1174,7 +1184,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                 name = "|T" .. ((type(icon) == "number" or icon:find("\\", 1, true)) and icon or ("Interface\\Icons\\" .. icon)) .. ":28|t  |cffffd100" .. title .. "|r  -  " .. desc,
                 func = function() PickType(typ) end }
         end
-        for _, k in ipairs({ "intro", "newRule", "newFolder", "newSound", "newVisual", "askSounds", "unlock", "pausePv", "defaults", "seed" }) do
+        for _, k in ipairs({ "intro", "newRule", "newFolder", "newSound", "newVisual", "askSounds", "unlock", "pausePv", "auraSetup", "defaults", "seed" }) do
             local a = all.args[k]
             if a then
                 local orig = a.hidden

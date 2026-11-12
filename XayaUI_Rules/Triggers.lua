@@ -669,6 +669,7 @@ Add("resource", {
 -- duration engine), extra aura IDs that count as the same buff (ANY of them), an optional "seconds left" requirement, and stack /
 -- seconds-left numbers for conditions. Each row is its own trigger number; several rows can require several buffs at once (ALL).
 local rowAura = setmetatable({}, { __mode = "k" })   -- [row] = { tick, present, ref }: what the row read last (numbers for conditions)
+local TDList, TDScan, TDFound, TDAbsent, TDCdmState   -- (Target Debuff helpers, below)
 local function ReadRowAura(t)
     local id = tonumber(t.spellID) or 0
     if id == 0 then return nil, "not set: Buff spell ID" end
@@ -741,6 +742,71 @@ function ns.TriggerAuraNumbers(t)
     return stacks, rem
 end
 
+-- Target Debuff helpers (round 6: file-level, so a row check makes no closure; before, each check made four)
+-- your debuffs on `unit` ("HARMFUL|PLAYER"), read once per engine step and shared by every Target Debuff row (outside a step: read now).
+-- Returns the list, or nil and the error the game threw.
+local function TDRead(unit) return C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER") end
+local TD_ERR = {}   -- memo marker: the read threw (its message is kept in the second memo)
+function TDList(unit)
+    local memo = ns.StepMemo and ns.StepMemo("tgtDebuffs")
+    if memo then
+        local l = memo[unit]
+        if l ~= nil then
+            if l == TD_ERR then return nil, ns.StepMemo("tgtDebuffsErr")[unit] end
+            return l
+        end
+    end
+    local ok, l = pcall(TDRead, unit)
+    if memo then
+        if ok then memo[unit] = l else memo[unit] = TD_ERR; ns.StepMemo("tgtDebuffsErr")[unit] = l end
+    end
+    if not ok then return nil, l end
+    return l
+end
+-- found (true / false / nil), sawHidden, the aura. Never errors: each field is read under pcall (a secret list is "hidden").
+local function TDIndex(t, k) return t[k] end
+local function TDScanRaw(list, id)
+    if type(list) ~= "table" or issecret(list) then return nil, true end
+    local hidden = false
+    for i = 1, #list do
+        local a = list[i]
+        local sid = nil
+        if type(a) == "table" then   -- (as Field: a read that errors or is secret counts as hidden; no closure per entry)
+            local okI, v = pcall(TDIndex, a, "spellId")
+            if okI and not issecret(v) then sid = v end
+        end
+        if sid == nil then hidden = true
+        elseif sid == id then return true, hidden, a end
+    end
+    return false, hidden
+end
+-- found, sawHidden, aura, error text (the scan threw)
+function TDScan(list, id)
+    local ok, found, hidden, aura = pcall(TDScanRaw, list, id)
+    if not ok then return nil, nil, nil, found end
+    return found, hidden, aura
+end
+function TDFound(t, unit, foundAura, src)
+    -- the time left (and stacks) of the debuff, when readable: numbers for conditions and the "Seconds left" requirement
+    local ref
+    -- (built by the one reference maker, Conditions.lua MakeAuraRef: readable values only, and the unit the debuff is on)
+    if foundAura and ns.MakeAuraRef then ref = ns.MakeAuraRef(foundAura, nil, unit) end
+    rowAura[t] = { tick = ns.tickID, present = true, ref = ref }
+    local v = YesNo(t, true)
+    if v == true and TimeOn(t) and ns.TimeLeftCheck then
+        local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, ref)
+        if tv == nil then return nil, "seconds left hidden right now" end
+        return tv, src
+    end
+    return v, src
+end
+function TDAbsent(t, src) rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), src end
+function TDCdmState(i)
+    if not i or i == 0 or not ns.CDMFrameState then return nil end
+    local okp, pr = pcall(ns.CDMFrameState, i)   -- read-only: the target's debuff is not the player's buff (gap 1)
+    if not okp then return nil end
+    return pr
+end
 -- 13. Player State
 -- 3b. Target Debuff (yours)
 -- Reads C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER") and looks for the spell ID. FOUND is trusted. NOT found only counts
@@ -770,71 +836,40 @@ Add("targetDebuff", {
         local unit = (t.unit == "focus") and "focus" or "target"
         local ex = Bool(UnitExists, unit)
         if ex == nil then return nil, "unreadable" end
-        if ex == false then rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), "no " .. unit end
+        if ex == false then return TDAbsent(t, "no " .. unit) end
         if not (C_UnitAuras and C_UnitAuras.GetUnitAuras) then return nil, "aura API missing" end
-        local foundAura
-        local ok, found, sawHidden = pcall(function()
-            local list = C_UnitAuras.GetUnitAuras(unit, "HARMFUL|PLAYER")
-            if type(list) ~= "table" or issecret(list) then return nil, true end
-            local hidden = false
-            for i = 1, #list do
-                local sid = Field(list[i], "spellId")
-                if sid == nil then hidden = true
-                elseif sid == id then foundAura = list[i]; return true, hidden end
-            end
-            return false, hidden
-        end)
+        -- (round 6, SD-54) your debuffs on the unit are listed once per engine step and shared by every row (TDList); before, each row
+        -- asked the game for its own copy of the list (16 rows: 16 lists per step in a raid)
+        local list, listErr = TDList(unit)
+        local found, sawHidden, foundAura
+        if not listErr then found, sawHidden, foundAura, listErr = TDScan(list, id) end
         -- In combat the game can THROW here ("Auras cannot be accessed when secret while tainted"). That must not stop the
         -- Cooldown Manager check below, so remember the error text and carry on.
         local readErr
-        if not ok then
-            readErr = "aura read failed: " .. (tostring(found):gsub("^.-:%d+: ", ""))
-            found, sawHidden = nil, nil
-        end
-        local function Found(src)
-            -- the time left (and stacks) of the debuff, when readable: numbers for conditions and the "Seconds left" requirement
-            local ref
-            -- (built by the one reference maker, Conditions.lua MakeAuraRef: readable values only, and the unit the debuff is on)
-            if foundAura and ns.MakeAuraRef then ref = ns.MakeAuraRef(foundAura, nil, unit) end
-            rowAura[t] = { tick = ns.tickID, present = true, ref = ref }
-            local v = YesNo(t, true)
-            if v == true and TimeOn(t) and ns.TimeLeftCheck then
-                local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, ref)
-                if tv == nil then return nil, "seconds left hidden right now" end
-                return tv, src
-            end
-            return v, src
-        end
-        local function Absent(src) rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), src end
-        if found == true then return Found() end
+        if listErr then readErr = "aura read failed: " .. (tostring(listErr):gsub("^.-:%d+: ", "")); found, sawHidden = nil, nil end
+        if found == true then return TDFound(t, unit, foundAura) end
         -- Cooldown Manager fallback, POSITIVE answers only: Blizzard marks a Cooldown Manager icon as aura-driven with plain
         -- (non-secret) fields, which stay readable in combat. Unverified for target debuffs; see /xui debug probe <id>.
         -- true = icon active, false = an icon exists and is inactive, nil = no icon / unreadable. Only icons count.
-        local function CdmState(i)
-            if not i or i == 0 or not ns.CDMFrameState then return nil end
-            local okp, pr = pcall(ns.CDMFrameState, i)   -- read-only: the target's debuff is not the player's buff (gap 1)
-            if not okp then return nil end
-            return pr
-        end
         -- Only when the aura list could NOT be read cleanly (a complete readable list is trusted over the icon). The icon is the
         -- TARGET's debuff (Blizzard's buff viewer rebinds on target change; /xui debug probe shows unit=target), so focus never uses it.
         -- Seen in game 2026-10-30: debuff up -> iid=secret unit=target; debuff gone -> iid=nil unit=nil (one sample each).
         if (found ~= false or sawHidden) and unit == "target" then
-            local ca, cb = CdmState(id), CdmState(tonumber(t.cdmID))
+            local ca, cb = TDCdmState(id), TDCdmState(tonumber(t.cdmID))
             -- neither ID on an icon: a Tracked Buffs icon with the debuff's NAME (Blizzard often files it under the ability)
             if ca == nil and cb == nil and ns.TrackedBuffStateByName then
                 local okN, cn = pcall(ns.TrackedBuffStateByName, id)
                 if okN then ca = cn end
             end
-            if ca == true or cb == true then return Found("seen in the Cooldown Manager") end
+            if ca == true or cb == true then return TDFound(t, unit, nil, "seen in the Cooldown Manager") end
             if (ca == false or cb == false) and t.cdmAbsent ~= "no" then
-                return Absent("Cooldown Manager icon inactive (in combat)")
+                return TDAbsent(t, "Cooldown Manager icon inactive (in combat)")
             end
         end
         if readErr then return nil, readErr end
         if found == nil or sawHidden then return nil, "your debuffs on the " .. unit .. " are hidden right now" end
         if Bool(UnitAffectingCombat, "player") ~= false then return nil, "cannot confirm 'absent' in combat" end
-        return Absent()
+        return TDAbsent(t)
     end,
 })
 
@@ -1284,6 +1319,10 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
             end
         end
         if ns.NoteChargeCast and not issecret(spellID) then ns.NoteChargeCast(spellID, now) end
+        -- (round 6) your cast changes only your auras' time estimates, the cooldowns / charges and the "cast within" rows: the engine
+        -- checks those (Engine.lua ns.MarkStateDirty("cast")), not every rule
+        if ns.MarkStateDirty then ns.MarkStateDirty("cast") end
+        return
     end
     if ns.MarkStateDirty then ns.MarkStateDirty() end
 end)

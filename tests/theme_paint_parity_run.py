@@ -21,6 +21,10 @@ row: the QoL, Bonus Features and Blizzard Reskin tabs (pages of the retired addo
 that drawing is byte for byte the one of this commit on all 16 theme / page pairs, so neither the folder move nor any change to core,
 Options or Rules draws anything differently. XayaUI_Reskin is not on main, so the Display page leaves out the Esc menu hint row
 ("... is under the Blizzard Reskin tab", Options.lua gm_moved) in the golden too.
+Re-recorded on 2026-11-12 for round 6 (Xaya, SD-53: "put a config button in the rules pane"), with `--golden` on HEAD 89ea79a plus
+the round-6 guard-setup files only: `--dump` of HEAD and of that code differ, on every theme, in (1) the Rules page: the new "Open
+Combat Tracking Setup" button (20 added lines) and its page frame 15 -> 42 px high; (2) Display, and Custom's Theme page: the same
+18 px buttons with the same paint, named by a lower child index (AceGUI hands out a pooled frame created earlier); 0 other lines.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Offline test (rules review 2026-11-10, follow-ups to R3 and R18 in the rules engine).
-R3: a talent picked or dropped is seen at the next step through the game's talent events (round 5, V27: PLAYER_TALENT_UPDATE added; a rule
-that is not loaded is no longer re-checked on a timer, so a talent change with no event at all is no longer looked for), while in combat
-no talent is read again; the once-a-second re-read of a loaded rule's talents makes no garbage.
+R3: a talent picked or dropped with none of the spec / trait / spellbook events is still seen within about a second out of combat (the
+kept answer is re-read once a second there), while in combat no talent is read again; the once-a-second re-read makes no garbage.
 R18: with real frame-time wobble, cooldown / aura re-checks inside a burst still come every 2nd frame at 60 fps (every 4th at 120 fps),
 so a buff that appears in a raid fight reaches its cue within 2 frames at 60 fps, and the cap of about 30 re-checks a second holds.
 R18: a routed re-check no longer builds a table of every rule's outcomes (Outcomes.lua) or walks the whole rule and group lists
@@ -65,20 +64,15 @@ picked[5001] = false
 W.fire("TRAIT_CONFIG_UPDATED", 1); full(2)
 check("R3: talent not picked: the rule is not loaded", not active(T))
 local before = played("7001")
--- (round 5, V27 "No running loops": a rule that is not loaded is no longer re-checked on a timer; a talent change is seen through the
--- game's talent events. Before, a talent change with none of them was looked for once a second out of combat. Here only
--- PLAYER_TALENT_UPDATE comes, the one talent event the engine did not listen to before.)
-picked[5001] = true
-W.fire("PLAYER_TALENT_UPDATE")
+picked[5001] = true            -- picked with no trait / spellbook / spec event at all
 local seenAt
 for i = 1, 25 do full(1); if active(T) then seenAt = i * 0.06; break end end
-check("R3: a talent picked with only PLAYER_TALENT_UPDATE: the rule loads at the next step", seenAt ~= nil and seenAt <= 0.07, seenAt or "never")
+check("R3: a talent picked with none of the talent events: out of combat the rule loads within about a second", seenAt ~= nil and seenAt <= 1.1, seenAt or "never")
 check("R3: ... and its cue plays", played("7001") == before + 1, played("7001") - before)
 picked[5001] = false
-W.fire("PLAYER_TALENT_UPDATE")
 seenAt = nil
 for i = 1, 25 do full(1); if not active(T) then seenAt = i * 0.06; break end end
-check("R3: ... and dropped again with only PLAYER_TALENT_UPDATE: the rule unloads at the next step", seenAt ~= nil and seenAt <= 0.07, seenAt or "never")
+check("R3: ... and dropped again with no event: the rule unloads within about a second", seenAt ~= nil and seenAt <= 1.1, seenAt or "never")
 -- in combat: no talent is read again at all
 W.enterCombat(); full(2)
 talentReads = 0
@@ -88,8 +82,7 @@ W.leaveCombat(); full(2)
 -- out of combat: about one re-read a second, and it makes no garbage
 talentReads = 0
 full(40)
--- (round 5: the steps here re-check only the loaded rules, and no rule with a talent requirement is loaded now, so none is read)
-check("R3: out of combat, 2.4 s of steps re-read the 101 talent entries at most about once a second (not on every step)", talentReads <= 4 * 101, talentReads)
+check("R3: out of combat, 2.4 s of steps re-read the 101 talent entries about once a second (not on every step)", talentReads > 0 and talentReads <= 4 * 101, talentReads)
 local kbWith = garbage(function() full(1) end, 40)
 local saved = {}
 for _, r in ipairs(ns.rules) do if r.talentMode == "all" then saved[#saved + 1] = r; r.talentMode = "none" end end
@@ -125,14 +118,20 @@ check("R18: a buff appearing inside a 60 fps burst with real frame wobble plays 
 local w120 = jitterBurstLatency(120, 0.00075, 60)
 check("R18: ... and inside a 120 fps burst within 4 frames (about 33 ms)", w120 <= 4, "worst " .. w120)
 -- the cap: count routed re-checks of A in one second of a wobbly 120 fps burst (a routed re-check leaves out the not-loaded rules)
+-- (round 6, SD-54: an aura / cooldown event reads the rule's aura and cooldown checks once and re-checks the rule in full only when one
+-- answered differently; here nothing changes, so what is counted is the engine reading A's checks: ns.Evaluate of A, or a read of its
+-- buff or its cooldown, per engine step. The cap is the same: about 30 a second, not 120.)
 local evals = {}
-local E0 = ns.Evaluate
-ns.Evaluate = function(r, ...) local t = evals[ns.tickID or 0]; if not t then t = {}; evals[ns.tickID or 0] = t end; t[r] = true; return E0(r, ...) end
+local E0, B0, C0 = ns.Evaluate, ns.BuffPresent, ns.ReadCooldown
+local function mark(r) local t = evals[ns.tickID or 0]; if not t then t = {}; evals[ns.tickID or 0] = t end; t[r] = true end
+ns.Evaluate = function(r, ...) mark(r); return E0(r, ...) end
+ns.BuffPresent = function(id, ...) if id == 1001 and ns.InStep and ns.InStep() then mark(A) end; return B0(id, ...) end
+ns.ReadCooldown = function(r, ...) if r == A then mark(A) end; return C0(r, ...) end
 for _ = 1, 120 do W.fire("UNIT_AURA", "player"); W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(1 / 120 + (rnd() * 2 - 1) * 0.00075, 1) end
 local routedN, fullN = 0, 0
 for _, t in pairs(evals) do if t[A] then if t[P[1]] then fullN = fullN + 1 else routedN = routedN + 1 end end end
-ns.Evaluate = E0
-check("R18: in that 120 fps burst the cooldown + aura rule is re-checked at most about 30 times a second between full steps, not 120",
+ns.Evaluate, ns.BuffPresent, ns.ReadCooldown = E0, B0, C0
+check("R18: in that 120 fps burst the cooldown + aura rule is checked at most about 30 times a second between full steps, not 120",
   routedN >= 20 and routedN <= 31, ("%d routed, %d full"):format(routedN, fullN))
 
 ---------------------------------------------------------------- R18 follow-up: what a routed re-check costs
@@ -143,7 +142,14 @@ local function routedFrame() W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1); W
 local function quietFrame() W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1); W.tick(0.04, 1); W.tick(0.001, 1) end
 local kbRouted = garbage(routedFrame, 30)
 local kbQuiet = garbage(quietFrame, 30)
-local per = kbRouted - kbQuiet
+-- (round 6, V27 P1 / P4: the routed re-check now runs from a one-shot C_Timer.After made by the event instead of a frame script. The
+-- stand-in game's C_Timer.After builds two Lua tables and two closures per call (tests/harness/world.lua addTimer); the game's own is a
+-- C function (INFERENCE: no Lua garbage). That stand-in cost is measured here and taken out, so the bound below still holds XayaUI's own
+-- garbage to 2 KB, as before round 5.)
+local function noop() end
+local kbTimer = garbage(function() C_Timer.After(3600, noop) end, 30)
+W.timers = {}   -- (the 30 parked stand-in timers are dropped again)
+local per = kbRouted - kbQuiet - kbTimer
 -- the whole-list walk: one rule that reads neither cooldowns nor auras counts how often its "isCue" field is read (it has none, so
 -- every read goes through its metatable); a routed re-check that does not step it has no reason to read it
 local probe = P[200]
@@ -158,12 +164,8 @@ setmetatable(probe, nil)
 check("R18: 10 routed re-checks with no settings change do not walk the whole rule list (a rule they do not step is not read)",
   routedReads == 0, routedReads)
 -- what is left (about 1 KB) is reading that one rule's cooldown and buff; the outcome table of all 200 conditions was about 10 KB more
--- (round 5: the quiet frame it is compared with no longer runs the engine's 0.2 s tick work, so it makes about 0.4 KB less garbage than
--- before, and the difference grew by that much although the routed frame itself makes the same garbage as before: measured on these
--- frames, routed frame 21.0 KB before and 21.1 KB after, quiet frame 16.6 KB before and 16.2 KB after. The bound still holds the
--- re-check to a quarter of the outcome table it guards against.)
-check("R18: a routed re-check (1 cooldown rule with a display, 450 rules in all, 200 with a condition) makes under 2.5 KB of garbage, not a new outcome table",
-  per < 2.5, ("%.2f KB per routed re-check"):format(per))
+check("R18: a routed re-check (1 cooldown rule with a display, 450 rules in all, 200 with a condition) makes under 2 KB of garbage, not a new outcome table",
+  per < 2, ("%.2f KB per routed re-check (the stand-in's timer object, %.2f KB, taken out)"):format(per, kbTimer))
 
 -- a rule list changed without ns.MarkDirty (same length) is still seen within about a second: condition 1 moves to parent 2
 local cond1

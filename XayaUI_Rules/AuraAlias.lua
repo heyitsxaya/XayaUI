@@ -206,6 +206,8 @@ local function OnAura(updateInfo)
         end
     end
     if changed and ns.AuraDisplay and ns.AuraDisplay.QueueBuild then pcall(ns.AuraDisplay.QueueBuild) end   -- the container's include list
+    -- (round 6, SD-54) the engine's aura checks index the rules' aura IDs by spell ID: the alias joins that index, and the checks are read
+    if changed and ns.EngineAliasLearned then pcall(ns.EngineAliasLearned) end
 end
 ns._AuraAliasOnAura = OnAura   -- (tests)
 

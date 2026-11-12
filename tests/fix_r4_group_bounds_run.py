@@ -127,13 +127,15 @@ ns.SetPreview({ C }, "visual", false); C.visual.enabled = false; build()
 local el, eb, er, et = outline(Dy)
 check("G2 dynamic group, three engine-drawn 30 px buffs, spacing 4: the outline is 3 x 30 + 2 x 4 wide and 30 high (plus 4 px each side)",
   el and near(er - el, 98 + 8) and near(et - eb, 30 + 8), "outline " .. fmt(el, eb, er, et))
-D._guard.off = true   -- (XayaUI draws the three itself: the performance guard's session state; round 5, SD-47: no saved "auto off" any more)
+-- (XayaUI draws the three itself: round 6, SD-52, the speed guard's "off" step that did this is removed; the engine leaves a display
+-- that shows while its aura is MISSING to XayaUI, so the three are set that way for this comparison, and previewed to show)
+for _, m in ipairs({ m1, m2, m3 }) do m.buffState = "missing" end
 ns.SetPreview({ m1, m2, m3 }, "visual", true)   -- (all three up, drawn by XayaUI)
 build()
 local xl, xb, xr, xt = outline(Dy)
 check("G2 ...the same outline XayaUI's own layout gives when XayaUI draws the three icons", ns.DisplayFrame(m1):IsShown() and el and xl
   and near(el, xl) and near(eb, xb) and near(er, xr) and near(et, xt), "engine " .. fmt(el, eb, er, et) .. " / XayaUI " .. fmt(xl, xb, xr, xt))
-D._guard.off = nil
+for _, m in ipairs({ m1, m2, m3 }) do m.buffState = "present" end
 ns.SetPreview({ m1, m2, m3 }, "visual", false)
 build()
 

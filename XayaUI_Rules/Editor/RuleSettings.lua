@@ -85,7 +85,7 @@ function ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint)
         -- Combat Tracking Setup (Options 0.6.55; Xaya 2026-11-06, REQUEST-LOG #81: "Rule Creation"; it was on Settings > Debugging)
         auraSetup = { type = "group", inline = true, name = "Combat Tracking Setup", order = 40, args = {
             asText = { type = "description", order = 1, fontSize = "medium",
-                name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. Runs once per spec, and any time you change talents or gear." },
+                name = "Scans YOUR class, spec and talents, reads the game's own spell text, and learns real buff durations from your own casts out of combat. Works for every class. It never opens by itself over the game: open it here or with the same button on the Rules tab, once per spec and again after you change talents or gear." },
             asOpen = { type = "execute", name = "Open Combat Tracking Setup", order = 2, width = "double",
                 func = function() if ns.AuraSetup_Open then ns.AuraSetup_Open() else ns.Print("combat tracking setup is not loaded") end end },
             asPresence = { type = "toggle", name = "Estimate buffs the game hides in combat (from your own casts)", order = 3, width = "full",
@@ -108,7 +108,8 @@ do
         "CurrentSub", "PickerShown", "CdmWarnArg",   -- (0.6.79, debug W1) these three for Dev Assist's walkthrough "debug-w1"
         "GoHome", "RulesTreeStatus", "ScopePath",   -- (0.6.80, debug W2) these for the Bar cue clean-up and "debug-w2" (#461)
         "MultiHas", "GoHomeKeepScroll",   -- (0.6.82, request row 20) these for Dev Assist's walkthrough "sidebar-delete"
-        "MultiMerge" }) do   -- (0.6.82, request rows 19 / 23 / 27) for Dev Assist's walkthrough "merge-rules" (it checks the editor has it)
+        "MultiMerge",   -- (0.6.82, request rows 19 / 23 / 27) for Dev Assist's walkthrough "merge-rules" (it checks the editor has it)
+        "AuraSetup_WithSettings", "AuraSetup_SettingsClosed" }) do   -- (round 6, SD-53) Combat Tracking Setup opens / closes with the window
         RE[n] = ns[n]
     end
     RE.NewRule = ns.UI and ns.UI.NewRule   -- (0.6.79) + New Rule, for the same walkthrough

@@ -19,16 +19,16 @@
    "sha": "b7568dd79647edd76262f49bf31611aebeb6c8b304649aecaa7c7c058c017d03"
   },
   "rules-enabled": {
-   "lines": 45,
-   "sha": "73eb07cba0423ea955e70f53cd8dad33bc6e6375c414816830d207f25d29cdf0"
+   "lines": 46,
+   "sha": "ae3bd47b0fd59cbe366e65e5b76d263c65808cef7d9fcb7d5063e7a8d906ccff"
   },
   "rules-selected": {
    "lines": 59,
    "sha": "bb2db83662ca9ad798fc516efd6643e4232967e2207f73ffc575280dd099cdcb"
   },
   "rules-smart": {
-   "lines": 30,
-   "sha": "b11d8ea74df63883c86c0e5fcf6d62b7702480ac3a4a8658bde2703c628c3169"
+   "lines": 31,
+   "sha": "e84af02fb3a259d8e1c675f9967e3e0637a29332288f133dd33638b8ef51c375"
   },
   "set": {
    "lines": 13,

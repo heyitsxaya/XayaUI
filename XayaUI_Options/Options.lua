@@ -1186,6 +1186,9 @@ function ns.OptionsApi.Toggle()
         Tree.keep = nil
         Tree.DropPending()
         if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+        -- (round 6; Xaya, SD-53: "first run ever open with settings") the very first time ever, Combat Tracking Setup opens with the
+        -- window (XayaUI_Rules/Combat/AuraSetup.lua; afterwards this call only reads two saved values and returns)
+        if RE.AuraSetup_WithSettings then pcall(RE.AuraSetup_WithSettings) end
     end
 end
 -- Window strata: AceGUI opens its frame at FULLSCREEN_DIALOG, which covers Blizzard dialogs / alert boxes (StaticPopups are DIALOG).
@@ -1218,6 +1221,8 @@ do
                     if RE.DraftsOnClose then pcall(RE.DraftsOnClose) end
                     if RE.SearchOnClose then pcall(RE.SearchOnClose) end   -- free the search indexes, stop their scans (Options 0.6.37)
                     if Tree.Closed then pcall(Tree.Closed) end   -- stop the driver; clear previews, the kept tree, the strips (Options 0.6.41)
+                    -- (round 6, SD-53 / V27 SD-28) Combat Tracking Setup closes with the window: nothing of XayaUI stays up taking clicks
+                    if RE.AuraSetup_SettingsClosed then pcall(RE.AuraSetup_SettingsClosed) end
                 end)
             end
         end)
@@ -1835,6 +1840,9 @@ function Tree.CombatStart()
         if p and p.IsShown and p:IsShown() then pcall(p.Hide, p) end
     end
     if StaticPopup_Hide then for _, w in ipairs(Tree.POPUP_DIALOGS) do pcall(StaticPopup_Hide, w) end end
+    -- (round 6, SD-53) Combat Tracking Setup closes too and, like the window, opens again after the fight (before the window's OnHide
+    -- would close it for good)
+    if RE.AuraSetup_SettingsClosed then pcall(RE.AuraSetup_SettingsClosed, true) end
     -- hidden now, before the lockdown begins (AceConfigDialog:Close waits for the next frame); its OnClose lets the window go as usual
     if of.Hide then pcall(of.Hide, of) else pcall(of.frame.Hide, of.frame) end
     if AceConfigDialog.OpenFrames[APP] then pcall(AceConfigDialog.Close, AceConfigDialog, APP) end

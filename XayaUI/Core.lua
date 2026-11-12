@@ -247,11 +247,20 @@ function ns.Log(fmt, ...)
 end
 
 -- Deep-copy helper for defaults.
-local function Copy(t)
+local function CopyTree(t)
     if type(t) ~= "table" then return t end
     local o = {}
-    for k, v in pairs(t) do o[k] = Copy(v) end
+    for k, v in pairs(t) do o[k] = CopyTree(v) end
     return o
+end
+-- (round 6, SD-55 "Compact backups") a table that stands for data kept elsewhere says how to copy it: its metatable's __xuiCopy gives a
+-- fresh full copy. Only a rule backup does (XayaUI_Rules/RuleShare.lua: kept as one text, read when it is loaded, so pairs() over it
+-- sees nothing). Checked once per call, on the table passed in; the copy below it is the plain one.
+local function Copy(t)
+    if type(t) ~= "table" then return t end
+    local mt = getmetatable(t)
+    if mt and mt.__xuiCopy then return mt.__xuiCopy(t) end
+    return CopyTree(t)
 end
 ns.Copy = Copy
 

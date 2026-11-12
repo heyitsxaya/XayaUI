@@ -8,9 +8,13 @@
 --   Step 2  Learn     cast your self-buffs out of combat; each cast->aura link and its real duration is recorded
 --   Step 3  Review    every ability with its duration, where the number came from, and a box to override it
 --
--- Opens from /xui debug model setup, from Settings > Advanced, or once automatically the first time a class/spec has
--- no saved setup.  It never opens in combat (V26: asked in combat it says so in one line and opens when combat ends; open
--- when combat starts, it closes and reopens on the same step when combat ends).
+-- Opens only from the settings window (round 6; Xaya, SD-53, her words: "first run ever open with settings; otherwise put a config
+-- button in the rules pane"): the "Open Combat Tracking Setup" button on the Rules tab (XayaUI_Rules/Editor/RulesTree.lua) and on
+-- Settings > UI Options > Rule Creation (RuleSettings.lua); and once ever, the very first time the settings window opens while no
+-- spec has a saved (or skipped) setup, together with it (ns.AuraSetup_WithSettings). It never opens over the game by itself (before
+-- round 6 it opened 6 s after login and after a spec change), and it closes when the settings window closes (V27, SD-28: no XayaUI
+-- frame takes clicks once the settings window is closed). It never opens in combat (V26: asked in combat it says so in one line and
+-- opens when combat ends; open when combat starts, it closes and reopens on the same step when combat ends).
 -------------------------------------------------------------------------------
 local _, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
@@ -229,6 +233,15 @@ function ns.AuraSetup_Refresh()
     if step == 1 then RefreshScan() elseif step == 2 then RefreshLearn() else RefreshReview() end
 end
 
+-- combat started while the window shows: it closes with one line and opens again on the same step when combat ends
+local function CloseForCombat()
+    if not (frame and frame:IsShown()) then return end
+    local at = step
+    frame:Hide()
+    ns.Print("Combat Tracking Setup closed because combat started. It will open again when combat ends.")
+    if ns.CombatLockQueue then ns.CombatLockQueue("auraSetup", function() ns.AuraSetup_Open(at) end) end
+end
+
 local function Build()
     frame = CreateFrame("Frame", "XayaUIAuraSetupFrame", UIParent, "BackdropTemplate")
     frame:SetSize(W, H); frame:SetPoint("CENTER"); frame:SetFrameStrata("DIALOG")
@@ -289,13 +302,13 @@ local function Build()
         local p = M.Profile(true)
         if p then p.setupDone = (select(4, GetBuildInfo())) or true; p.skipped = nil end
         M.SetLearning(false); frame:Hide()
-        ns.Print("combat tracking setup saved for " .. tostring(M.ctx.key) .. ". Change it any time: Settings > UI Options > Rule Creation > Combat Tracking Setup.")
+        ns.Print("combat tracking setup saved for " .. tostring(M.ctx.key) .. ". Change it any time with the Open Combat Tracking Setup button on the Rules tab of the settings window.")
     end)
     frame.finish:SetPoint("BOTTOMRIGHT", -16, 14)
     local skip = Button(frame, "Skip for this spec", 140, function()
         local p = M.Profile(true); if p then p.skipped = true end
         M.SetLearning(false); frame:Hide()
-        ns.Print("skipped. Open it whenever you want: Settings > UI Options > Rule Creation > Combat Tracking Setup.")
+        ns.Print("Combat Tracking Setup skipped for this spec. Open it any time with the Open Combat Tracking Setup button on the Rules tab of the settings window.")
     end)
     skip:SetPoint("BOTTOM", 0, 14)
 
@@ -306,13 +319,7 @@ local function Build()
     -- closes the window (its own frame: allowed; learning stops through OnHide) and it reopens on the same step when combat ends. The
     -- event is listened for only while the window shows.
     local ev = CreateFrame("Frame")
-    ev:SetScript("OnEvent", function()
-        if not frame:IsShown() then return end
-        local at = step
-        frame:Hide()
-        ns.Print("Combat Tracking Setup closed because combat started. It will open again when combat ends.")
-        if ns.CombatLockQueue then ns.CombatLockQueue("auraSetup", function() ns.AuraSetup_Open(at) end) end
-    end)
+    ev:SetScript("OnEvent", CloseForCombat)
     frame.combatEv = ev   -- registered by ns.AuraSetup_Open (a new frame is already shown, so OnShow would miss the first opening)
     frame:HookScript("OnHide", function() ev:UnregisterEvent("PLAYER_REGEN_DISABLED") end)
 end
@@ -350,27 +357,31 @@ function ns.AuraSetup_Open(atStep)
 end
 
 -------------------------------------------------------------------------------
--- First run: once per class/spec that has neither a saved setup nor a skip.
+-- With the settings window (SD-53). Nothing here runs at login, on a spec change or on a timer: no event is registered for it.
 -------------------------------------------------------------------------------
-local asked = {}
-function ns.AuraSetup_FirstRunCheck()
-    if InCombat() then return end
-    if IsInInstance then local okI, inInst = pcall(IsInInstance); if okI and inInst then return end end
-    M.Refresh()
-    local key = M.ctx.key
-    if not key or asked[key] then return end
-    local p = M.Profile(false)
-    if p and (p.setupDone or p.skipped) then return end
-    if M.DB() and M.DB().settings.noPrompt then return end
-    asked[key] = true
-    ns.Print("combat tracking is not set up for " .. key .. " yet. Opening the short setup (Skip is on the window).")
+-- Called by the settings window each time it opens (XayaUI_Options/Options.lua Toggle, through ns.OptionsApi.RuleEditor). The very
+-- first time ever, it opens this window on top of it: no spec has a saved or skipped setup, it was never shown this way before
+-- (auraModel.settings.setupShown, saved), and the old "do not ask" setting (settings.noPrompt) is not set. Afterwards it does nothing.
+-- INFERENCE: a player who saw the old self-opening window but closed it without Finish or Skip has no record of it, so it opens once
+-- more, with the settings window.
+local function EverSetUp(d)
+    for _, p in pairs(d.specs or {}) do
+        if type(p) == "table" and (p.setupDone or p.skipped) then return true end
+    end
+    return false
+end
+function ns.AuraSetup_WithSettings()
+    if InCombat() then return end   -- (the settings window does not open in combat either)
+    local d = M.DB and M.DB()
+    if not d or d.settings.setupShown or d.settings.noPrompt or EverSetUp(d) then return end   -- (a few specs at most: one short loop)
+    d.settings.setupShown = true   -- (set first: a window that fails to build is not tried again at every opening)
     ns.AuraSetup_Open()
 end
 
-local boot = CreateFrame("Frame")
-boot:RegisterEvent("PLAYER_ENTERING_WORLD")
-boot:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-boot:SetScript("OnEvent", function(_, e, unit)
-    if e == "PLAYER_SPECIALIZATION_CHANGED" and unit ~= "player" then return end
-    if C_Timer then C_Timer.After(6, function() pcall(ns.AuraSetup_FirstRunCheck) end) end
-end)
+-- Called by the settings window when it closes (its OnHide; forCombat when combat closes it, Options.lua Tree.CombatStart): this window
+-- closes with it, so nothing of XayaUI stays on screen taking clicks once the settings window is closed (V27, SD-28). Closed for combat
+-- it opens again after the fight, as the settings window does (V26 "Close, reopen after").
+function ns.AuraSetup_SettingsClosed(forCombat)
+    if not (frame and frame:IsShown()) then return end
+    if forCombat then CloseForCombat() else frame:Hide() end
+end

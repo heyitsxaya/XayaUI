@@ -100,6 +100,11 @@ Updated on 2026-11-11 for round 4 (SD-32, her answer "0 px (Recommended)": a gro
 code before the change (round 3 plus the other round-4 units' edits at that moment) and of the new code differ in exactly 4 lines, all
 "cooldowns", each a `pageGroup.container.pad` node on the 4 group pages the fixed state draws, only in `get()=4` -> `get()=0`; same
 6698 nodes; 0 other lines. Only the all-on "cooldowns" hash changed (1877b5cde0ef9cca -> 0c8c6b423b53037c).
+Updated on 2026-11-12 for round 6 (SD-53, her words: "first run ever open with settings; otherwise put a config button in the rules
+pane"): `--dump` of HEAD 89ea79a and of the new code differ in exactly 4 lines: 2 added nodes in "cooldowns" (the new
+`enabledTab.loaded.auraSetup` and `smartTab.all.auraSetup`, the "Open Combat Tracking Setup" button; 6698 -> 6700 nodes) and the
+Rule Creation `auraSetup` group's xuiInfo text in "set" and "settings" (it no longer says the window "runs once per spec": it never
+opens by itself); same node counts there; 0 other lines.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

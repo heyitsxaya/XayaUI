@@ -43,6 +43,19 @@ end
 --   why    : short note for /xui debug status
 -------------------------------------------------------------------------------
 local ReadCooldownRaw, KnowsSpell
+-- SpellCooldownInfo's isActive, isOnGCD and isEnabled, each as CleanBool reads it (nil when missing, secret or unreadable)
+local function CdFlagsRaw(cd)
+    local a, g, e = cd.isActive, cd.isOnGCD, cd.isEnabled
+    if issecret(a) or a == nil then a = nil else a = a and true or false end
+    if issecret(g) or g == nil then g = nil else g = g and true or false end
+    if issecret(e) or e == nil then e = nil else e = e and true or false end
+    return a, g, e
+end
+local function CdFlags(cd)
+    local ok, a, g, e = pcall(CdFlagsRaw, cd)
+    if ok then return a, g, e end
+    return CleanBool(cd, "isActive"), CleanBool(cd, "isOnGCD"), CleanBool(cd, "isEnabled")   -- (a read that errors: each flag on its own, as before)
+end
 function ns.ReadCooldown(rule)
     -- the same spell is often watched by several rules: read it once per engine step (the result is only ever read)
     local memo = ns.StepMemo and ns.StepMemo("cooldown")
@@ -320,8 +333,8 @@ function ReadCooldownRaw(rule)
 
     local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
     if not ok or type(cd) ~= "table" then r.why = "cooldown unreadable"; return r end
-    local cdActive = CleanBool(cd, "isActive")
-    local onGCD = CleanBool(cd, "isOnGCD")
+    -- (round 6, V27 P3: one call reads the three flags; before, three calls per spell per read)
+    local cdActive, onGCD, cdEnabled = CdFlags(cd)
     -- the raw global-cooldown fact, for rules that count it (rule.countGCD, ns.CheckCooldownState). SpellCooldownInfo.isOnGCD: bool?
     -- · NeverSecret, Nilable (docs/reference/api/structures.md:6549): readable in combat; nil (not given) counts as "not on the GCD"
     r.onGCD = (onGCD == true)
@@ -371,7 +384,7 @@ function ReadCooldownRaw(rule)
     r.onCd = cdActive and not onGCD
     if cdActive and not onGCD and ns.Timing then ns.Timing.LearnCooldown(id, CleanNumber(cd, "duration"), onGCD) end
     -- an ability on hold (its cooldown starts only after something ends) cannot be used yet
-    if CleanBool(cd, "isEnabled") == false then r.onCd = true end
+    if cdEnabled == false then r.onCd = true end
     r.atMax = not r.onCd
     r.empty = r.onCd
     r.count = r.onCd and 0 or 1
@@ -475,6 +488,7 @@ local function ViewerLive(v)
     return vis == true
 end
 ns._ViewerLive = ViewerLive
+local CDMIndexDiffers
 local function BuildCDMIndex()
     local idx = {}
     for _, vname in ipairs(VIEWERS) do
@@ -491,6 +505,16 @@ local function BuildCDMIndex()
         end
     end
     return idx
+end
+-- (round 6, SD-54) true when two icon indexes differ: another spell ID, another icon for one, or another number of icons (no table made)
+function CDMIndexDiffers(a, b)
+    for id, l in pairs(b) do
+        local o = a[id]
+        if not o or #o ~= #l then return true end
+        for i = 1, #l do if o[i][1] ~= l[i][1] or o[i][2] ~= l[i][2] then return true end end
+    end
+    for id in pairs(a) do if not b[id] then return true end end
+    return false
 end
 local FindCDMFrame
 function ns.FindCDMFrame(id) return FindCDMFrame(id) end
@@ -512,7 +536,10 @@ function FindCDMFrame(id)
     local now = GetTime()
     -- rebuilt at most every 0.25 s: which spell a viewer frame stands for rarely changes, and whether it is ACTIVE is read live below
     if cdmAt < 0 or now - cdmAt >= 0.25 or now < cdmAt then
+        local old = cdmIndex
         cdmIndex, cdmTick, cdmAt = BuildCDMIndex(), ns.tickID, now
+        -- (round 6, SD-54) which icon stands for which spell changed: Engine.lua checks every rule's aura again on the next aura event
+        if CDMIndexDiffers(old, cdmIndex) then ns.cdmGen = (ns.cdmGen or 0) + 1 end
     end
     local list = cdmIndex[id]
     if not list then return nil end
@@ -1262,6 +1289,15 @@ function ns.AuraEstimateInto(owner, id, ref)
     own.expiration, own.duration, own.estimated, own.timeSource = exp, dur, true, label
     return own, label
 end
+-- (round 6, SD-54: Engine.lua's aura check compares this with what it read last) the estimated end and length ns.AuraEstimateInto would
+-- give aura `id` with reference `ref`, as two numbers: no table, nothing stored. nil when there is no estimate or the time is readable.
+function ns.AuraEstimateTimes(id, ref)
+    if type(ref) ~= "table" or ref.expiration or not ns.Timing then return nil end
+    id = tonumber(id)
+    if not id then return nil end
+    local exp, dur = ns.Timing.AuraEstimate(id, presentSince[id], ref.cdmFrame)
+    return exp, dur
+end
 function ns.ApplyBuffEstimate(rule, info)
     local ref = info.buffRef
     if rule.buffEstimate == false or info.present ~= true or type(ref) ~= "table" or ref.expiration then return end
@@ -1576,6 +1612,21 @@ function ns.CheckTalents(rule)
     m.ep, m.ver, m.mode, m.list, m.ok, m.detail, m.sec = ep, ver, mode, list, ok, detail, math.floor(GetTime())
     TalentCodes(rule, m, true)
     return ok, detail
+end
+-- (review R3 talent safety net, restored in round 6: V32, load conditions honored exactly) Engine.lua asks once a second out of combat,
+-- for the switched-on rules with a talent requirement, whether any entry now reads differently from the kept answer, so a talent
+-- change that came without the talent events still loads or unloads the rule within about a second. Only known / not known is read
+-- (no table, no string); a rule never checked yet has nothing to compare and says no.
+function ns.HasTalentRequirement(rule)
+    local mode = rule.talentMode
+    if mode == nil or mode == "" or mode == "none" or type(rule.talents) ~= "table" then return false end
+    for _, t in ipairs(rule.talents) do if type(t) == "table" and t.state ~= "none" then return true end end
+    return false
+end
+function ns.TalentCodesChanged(rule)
+    local m = talentMemo[rule]
+    if not m or m.list ~= rule.talents or m.mode ~= rule.talentMode then return false end
+    return not TalentCodes(rule, m, false)
 end
 function CheckTalentsRaw(rule, mode)
     -- #2 (core 0.6.56; Xaya: three-click toggle Known / Not known / not set): an entry set to "none" (not set) has no bearing (#18); a

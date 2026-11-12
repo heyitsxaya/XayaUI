@@ -363,23 +363,21 @@ section("X", function()
   local m = mark(); SlashCmdList.XUIENGINE(""); local st = since(m)
   check("(control) /xuiengine alone shows the status", has(st, "engine draws") or has(st, "xayaui keeps"), joined(st))
   check("X1 its help no longer offers /xuiengine full or /xuiengine refresh", not has(st, "/xuiengine full") and not has(st, "/xuiengine refresh"), joined(st))
-  local g = D._guard
-  g.lean = true
+  -- (round 6, SD-52: the speed guard is removed; X2 used its lean mode as the state that must survive, X3 checked its chat line)
   local builds = 0
   local realBuild = D.Build
   D.Build = function(...) builds = builds + 1; return realBuild(...) end
   m = mark(); SlashCmdList.XUIENGINE("full"); SlashCmdList.XUIENGINE("refresh"); local fr = since(m)
   D.Build = realBuild
-  check("X2 /xuiengine full and /xuiengine refresh change nothing (lean mode stays, no rebuild)", g.lean == true and builds == 0, builds)
-  g.lean = nil
-  -- the guard's lean-mode line
+  check("X2 /xuiengine full and /xuiengine refresh change nothing (no rebuild; they only show the status)", builds == 0 and has(fr, "changes nothing"), builds)
+  -- no speed guard: heavy readings of the game's meter at fight ends never print a guard line (it printed the lean-mode line before)
   local cap = C_AddOnProfiler
   C_AddOnProfiler = { GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 5 end return 0.1 end }
   Enum.AddOnProfilerMetric = Enum.AddOnProfilerMetric or { RecentAverageTime = 1 }
-  m = mark(); for _ = 1, 3 do D.GuardCheck() end; local gl = since(m)
+  m = mark(); for _ = 1, 3 do W.enterCombat(); W.tick(0.1, 2); W.leaveCombat(); W.tick(0.1, 2) end; local gl = since(m)
   C_AddOnProfiler = cap
-  check("X3 the lean-mode line says it lasts until a reload, and no longer names /xuiengine full", has(gl, "lean mode") and has(gl, "/reload") and not has(gl, "/xuiengine full"), joined(gl))
-  g.lean, g.leanAt, g.leanHanded, g.bad = nil, nil, nil, 0
+  check("X3 no speed guard (SD-52): three heavy fights print no guard or lean-mode line, and there is no guard to call", not has(gl, "lean mode") and not has(gl, "guard")
+    and D.GuardCheck == nil and D._guard == nil, joined(gl))
   pcall(D.Build)
 end)
 

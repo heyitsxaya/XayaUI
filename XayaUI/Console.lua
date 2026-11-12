@@ -161,9 +161,8 @@ function ns.BuildBugReport(description, includeAddons)
 end
 function ns.ShowBugReport()
     local u = Ui()
-    local txt = ns.BuildBugReport(u.bugText, u.bugAddons)
-    if CueRulesDB then CueRulesDB.lastBugReport = txt end
-    ns.ShowCopyBox("XayaUI bug report", txt)
+    -- (round 6, SD-55 "Dead logs") shown, not kept: nothing read the saved copy (CueRulesDB.lastBugReport, let go at login: DebugRecord.lua)
+    ns.ShowCopyBox("XayaUI bug report", ns.BuildBugReport(u.bugText, u.bugAddons))
 end
 
 -------------------------------------------------------------------------------

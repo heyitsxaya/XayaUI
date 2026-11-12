@@ -79,18 +79,29 @@ function ns.Share_SnapshotGroup(fold, name)
     return snap
 end
 
--- Plain-language description of a snapshot (for the import preview).
-function ns.Share_DescribeRules(snap)
+-- What a snapshot holds, counted: { rules, folders, bars, qol, files } (files: rules that play a sound from a local file).
+local function CountSnap(snap)
     local function n(t) return type(t) == "table" and #t or 0 end
     local files = 0
     for _, r in ipairs(type(snap.rules) == "table" and snap.rules or {}) do
         if type(r) == "table" and type(r.sound) == "table" and r.sound.source == "file" and r.sound.enabled then files = files + 1 end
     end
-    local s = ("%d rule(s), %d folder(s), %d buff bar(s), %d QoL box(es)"):format(n(snap.rules), n(snap.folders), n(snap.bars), n(snap.qol))
-    if files > 0 then
-        s = s .. ("\n|cffffaa00%d rule(s) use a sound from a local file. Your friend must have that same file, or pick another sound.|r"):format(files)
+    return { rules = n(snap.rules), folders = n(snap.folders), bars = n(snap.bars), qol = n(snap.qol), files = files }
+end
+local function DescribeCounts(c)
+    local function n(v) return tonumber(v) or 0 end
+    local s = ("%d rule(s), %d folder(s), %d buff bar(s), %d QoL box(es)"):format(n(c.rules), n(c.folders), n(c.bars), n(c.qol))
+    if n(c.files) > 0 then
+        s = s .. ("\n|cffffaa00%d rule(s) use a sound from a local file. Your friend must have that same file, or pick another sound.|r"):format(n(c.files))
     end
     return s
+end
+local BackupCounts   -- (below, Backups: a backup kept as text is described from the counts saved with it, without reading the text)
+
+-- Plain-language description of a snapshot (for the import preview, and each backup in Profiles > Backups).
+function ns.Share_DescribeRules(snap)
+    local c = BackupCounts and BackupCounts(snap)
+    return DescribeCounts(c or CountSnap(snap))
 end
 
 -------------------------------------------------------------------------------
@@ -284,10 +295,184 @@ end
 -------------------------------------------------------------------------------
 -- Backups: copies of your rules saved inside XayaUI (CueRulesDB.profiles, the key it always had: renaming the saved key would
 -- hide your backups from an older XayaUI if you went back to one). Load (add), Load (replace), show as text, delete.
+--
+-- (round 6; REQUEST-LOG A23 SD-55, Xaya's answer on the memory cuts: "Compact backups (7.8 -> ~2 MB)") each backup is kept as ONE text
+-- instead of a copy of every rule table (a table costs at least 64 bytes and 40 a key; the same rules as text cost about their length:
+-- docs/plans/MEMORY-REPORT-2026-11-11.md P-2). It is turned back into tables only when the backup is loaded or shown as export text.
+-- One backup as saved:
+--   name   its name, as before;
+--   text   "XUIB1:" and the snapshot as text. Read back exactly: strings, whole and decimal numbers (to the last bit), true / false,
+--          number and string keys, any nesting. (Not the share-string codec: that one leaves out number keys, rounds decimals to 10
+--          digits and changes "|H" in text, which is right for a pasted string but would change a backup.)
+--   info   the counts Profiles > Backups shows under the backup (rules, groups, buff bars, QoL boxes, local sound files), so drawing the
+--          page reads no text;
+--   data   an empty table. In this version it stands for the snapshot: reading a field of it reads the text, and ns.Copy (Core.lua)
+--          gives a fresh full copy, which is what Load and "Show export text" use. An older XayaUI reads "data" and finds an empty
+--          backup there: its page still opens and the backup shows "0 rule(s)", and loading it changes nothing. Older XayaUI versions
+--          cannot read the new backups.
+-- A backup is kept as text only when its text reads back exactly equal to its tables; otherwise it stays as tables, as before.
+-- A backup saved by an older XayaUI ({ name, data = <tables> }) is turned into text once, at the login (BackupsToText below).
 -------------------------------------------------------------------------------
+local BK_PREFIX, BK_DEPTH = "XUIB1:", 64
+local sbyte, ssub, sfind, sformat = string.byte, string.sub, string.find, string.format
+local B_S, B_N, B_T, B_F, B_X, B_INF, B_NINF, B_NAN, B_OPEN, B_MID, B_CLOSE = sbyte("sntfxIJN{;}", 1, -1)
+
+-- a string, number or boolean as text (nil for anything the game cannot save either: a function, a frame)
+local function BkAtom(v)
+    local t = type(v)
+    if t == "string" then return "s" .. #v .. ":" .. v end
+    if t == "number" then
+        if v ~= v then return "N" end
+        if v == math.huge then return "I" end
+        if v == -math.huge then return "J" end
+        local s = sformat("%.15g", v)
+        if tonumber(s) ~= v then s = sformat("%.17g", v) end   -- (17 digits give back every double exactly)
+        return "n" .. s .. ","
+    end
+    if t == "boolean" then return v and "t" or "f" end
+end
+-- a table: "{" its list part (1, 2, 3 ... up to the first gap) ";" its other keys, each as key then value "}"
+local function BkEnc(v, out, depth)
+    if type(v) ~= "table" then
+        local a = BkAtom(v)
+        if a then out[#out + 1] = a end
+        return a ~= nil
+    end
+    if depth > BK_DEPTH then error("nested too deeply", 0) end
+    out[#out + 1] = "{"
+    local n = 0
+    while rawget(v, n + 1) ~= nil do
+        n = n + 1
+        if not BkEnc(rawget(v, n), out, depth + 1) then out[#out + 1] = "x" end
+    end
+    out[#out + 1] = ";"
+    for k, x in next, v do
+        if not (type(k) == "number" and k >= 1 and k <= n and k % 1 == 0) then
+            local ka = BkAtom(k)
+            if ka then
+                local at = #out + 1
+                out[at] = ka
+                if not BkEnc(x, out, depth + 1) then out[at] = nil end
+            end
+        end
+    end
+    out[#out + 1] = "}"
+    return true
+end
+local function BkDec(s, pos, depth)
+    local c = sbyte(s, pos)
+    if c == B_S then
+        local colon = sfind(s, ":", pos + 1, true)
+        local len = colon and tonumber(ssub(s, pos + 1, colon - 1))
+        if not len or colon + len > #s then error("damaged", 0) end
+        return ssub(s, colon + 1, colon + len), colon + len + 1
+    elseif c == B_N then
+        local comma = sfind(s, ",", pos + 1, true)
+        local v = comma and tonumber(ssub(s, pos + 1, comma - 1))
+        if not v then error("damaged", 0) end
+        return v, comma + 1
+    elseif c == B_T then return true, pos + 1
+    elseif c == B_F then return false, pos + 1
+    elseif c == B_INF then return math.huge, pos + 1
+    elseif c == B_NINF then return -math.huge, pos + 1
+    elseif c == B_NAN then return 0 / 0, pos + 1
+    elseif c == B_OPEN then
+        if depth > BK_DEPTH then error("damaged", 0) end
+        local t, i = {}, 0
+        pos = pos + 1
+        c = sbyte(s, pos)
+        while c ~= B_MID do
+            if c == nil then error("damaged", 0) end
+            i = i + 1
+            if c == B_X then pos = pos + 1 else t[i], pos = BkDec(s, pos, depth + 1) end
+            c = sbyte(s, pos)
+        end
+        pos = pos + 1
+        c = sbyte(s, pos)
+        while c ~= B_CLOSE do
+            if c == nil then error("damaged", 0) end
+            local k
+            k, pos = BkDec(s, pos, depth + 1)
+            if type(k) == "table" or k ~= k then error("damaged", 0) end
+            t[k], pos = BkDec(s, pos, depth + 1)
+            c = sbyte(s, pos)
+        end
+        return t, pos + 1
+    end
+    error("damaged", 0)
+end
+local function BkWrite(snap)
+    local out = { BK_PREFIX }
+    if not pcall(BkEnc, snap, out, 0) then return nil end
+    return table.concat(out)
+end
+local function BkRead(text)
+    if type(text) ~= "string" or ssub(text, 1, #BK_PREFIX) ~= BK_PREFIX then return nil end
+    local ok, v, pos = pcall(BkDec, text, #BK_PREFIX + 1, 0)
+    if ok and type(v) == "table" and pos == #text + 1 then return v end
+end
+-- exactly equal: the same keys holding the same values, all the way down
+local function Same(a, b, depth)
+    if a == b then return true end
+    local t = type(a)
+    if t ~= type(b) then return false end
+    if t == "number" then return a ~= a and b ~= b end
+    if t ~= "table" or depth > BK_DEPTH then return false end
+    for k, v in next, a do if not Same(v, rawget(b, k), depth + 1) then return false end end
+    for k in next, b do if rawget(a, k) == nil then return false end end
+    return true
+end
+
+-- the "data" stand-in of a backup kept as text (see above)
+local STAND_IN = {}
+-- (both weak both ways: a backup is held by the saved list alone, so a deleted one and its text are let go at the next collection)
+local backupOf = setmetatable({}, { __mode = "kv" })   -- stand-in -> its backup
+local lastRead = setmetatable({}, { __mode = "kv" })   -- backup -> its snapshot as last read for a field (let go at the next collection once unused)
+local function ReadBackup(e, fresh)
+    local snap = not fresh and lastRead[e]
+    if snap then return snap end
+    snap = BkRead(rawget(e, "text"))
+    if not snap then
+        ns.Print(("the backup '%s' could not be read (its saved text is damaged). Nothing was changed."):format(tostring(rawget(e, "name"))))
+        snap = {}
+    end
+    if not fresh then lastRead[e] = snap end
+    return snap
+end
+STAND_IN.__index = function(d, k) local e = backupOf[d]; return e and ReadBackup(e)[k] end
+STAND_IN.__xuiCopy = function(d) local e = backupOf[d]; return e and ReadBackup(e, true) or {} end
+BackupCounts = function(snap)
+    local e = type(snap) == "table" and getmetatable(snap) == STAND_IN and backupOf[snap]
+    local info = e and rawget(e, "info")
+    return type(info) == "table" and info or nil
+end
+-- (every session) a backup kept as text gets its stand-in; one kept as tables is left as it is
+local function Wire(e)
+    if type(e) ~= "table" or type(rawget(e, "text")) ~= "string" then return end
+    local d = rawget(e, "data")
+    if type(d) == "table" and backupOf[d] == e then return end
+    if type(d) ~= "table" or (getmetatable(d) == nil and next(d) ~= nil) then return end   -- (tables in "data": kept as tables)
+    if getmetatable(d) == nil then setmetatable(d, STAND_IN) end
+    if getmetatable(d) == STAND_IN then backupOf[d] = e end
+end
+-- keep snap in backup e as one text when it reads back exactly; otherwise as tables (as before). Returns e.
+local function KeepAsText(e, snap)
+    local text = BkWrite(snap)
+    local back = text and BkRead(text)
+    if back and Same(snap, back, 0) then
+        e.text, e.info, e.data = text, CountSnap(snap), {}
+        Wire(e)
+    else
+        e.text, e.info, e.data = nil, nil, snap
+    end
+    return e
+end
+
 function ns.Backups()
     PlatS.profiles = PlatS.profiles or {}   -- (P4: through the Platform's settings view, the same key)
-    return PlatS.profiles
+    local list = PlatS.profiles
+    for i = 1, #list do Wire(list[i]) end   -- (a few backups; each already wired costs one lookup)
+    return list
 end
 
 function ns.Backup_Save(name, include)
@@ -296,13 +481,30 @@ function ns.Backup_Save(name, include)
     local snap = ns.Share_SnapshotAll(include, name)
     local list = ns.Backups()
     for i, p in ipairs(list) do
-        if p.name == name then list[i] = { name = name, data = snap }; return true, "updated" end
+        if p.name == name then list[i] = KeepAsText({ name = name }, snap); return true, "updated" end
     end
-    list[#list + 1] = { name = name, data = snap }
+    list[#list + 1] = KeepAsText({ name = name }, snap)
     return true, "saved"
 end
 
 function ns.Backup_Delete(idx) table.remove(ns.Backups(), idx) end
+
+-- Once, at the login: every backup an older XayaUI saved as tables is kept as text from now on (only when the text reads back exactly
+-- equal; otherwise it stays as it was). After the first login with this version there is nothing left to turn, and this is one pass over
+-- the list of backups.
+local function BackupsToText()
+    local list = PlatS.profiles
+    if type(list) ~= "table" then return end
+    for i = 1, #list do
+        local e = list[i]
+        local d = type(e) == "table" and rawget(e, "data")
+        if type(d) == "table" and getmetatable(d) == nil and next(d) ~= nil then KeepAsText(e, d) end
+        Wire(e)
+    end
+end
+if ns.AtLogin then ns.AtLogin(BackupsToText) end
+-- (tests) the codec and the check above
+ns.BackupText = { Write = BkWrite, Read = BkRead, Same = function(a, b) return Same(a, b, 0) end }
 
 -------------------------------------------------------------------------------
 -- (P5, docs/plans/PLATFORM-SPLIT-2026-11-07.md section 5 step 3, risk R1) the guards around the one-time copy of the rules' settings from
@@ -322,8 +524,8 @@ if ns.SettingsMigrationGuard then
             local snap = { v = 1, name = name, addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ns.name or addonName, "Version")) or "",
                 rules = ns.Copy(type(old.rules) == "table" and old.rules or {}), folders = ns.Copy(type(old.folders) == "table" and old.folders or {}) }
             local list = ns.Backups()
-            for i, p in ipairs(list) do if p.name == name then list[i] = { name = name, data = snap }; return end end
-            list[#list + 1] = { name = name, data = snap }
+            for i, p in ipairs(list) do if p.name == name then list[i] = KeepAsText({ name = name }, snap); return end end
+            list[#list + 1] = KeepAsText({ name = name }, snap)   -- (round 6, SD-55: kept as one text, like every backup)
         end,
         check = function(old, store)
             local diffs = {}

@@ -839,6 +839,78 @@ function GA.EdgeLayout(df, lines, dir, horiz, put)
         crossOff = crossOff + cross + sp
     end
 end
+-- (round 6, V27 P3) which rules can sit in each dynamic group: members[group] = the rules whose own group, or a group above it, is that
+-- dynamic group, in rule order; cursor = the converted at-cursor reminders (their group is asked at layout time). Built in one pass
+-- over the rules when the rule list, its length, the group list, its length or ns.configVersion (ns.MarkDirty) changed, and checked
+-- again on every full engine step (ns.BeginVisualStep(true)): a rule moved to another group, or a group moved or made dynamic,
+-- without a settings change announcing it, rebuilds it there. A layout then walks only its own members.
+local EMPTY_LIST = {}
+local dynIdx = { members = {}, posOf = {}, byUid = {}, cursor = {}, folderOf = {}, cursorFlag = {}, rulesSeen = {}, fParent = {}, fType = {}, fSeen = {} }
+local function DynIndexStale()
+    local rules, folders = ns.rules or EMPTY_LIST, ns.folders or EMPTY_LIST
+    return dynIdx.rules ~= rules or dynIdx.n ~= #rules or dynIdx.folders ~= folders or dynIdx.nf ~= #folders
+        or dynIdx.ver ~= (ns.configVersion or 0)
+end
+local function DynIndexBuild()
+    local rules, folders = ns.rules or EMPTY_LIST, ns.folders or EMPTY_LIST
+    local members, posOf, byUid, cursor = {}, {}, {}, {}
+    local folderOf, cursorFlag, rulesSeen = dynIdx.folderOf, dynIdx.cursorFlag, dynIdx.rulesSeen
+    local fParent, fType, fSeen = dynIdx.fParent, dynIdx.fType, dynIdx.fSeen
+    local n = #rules
+    for i = 1, n do
+        local r = rules[i]
+        posOf[r] = i
+        if type(r.uid) == "string" and not r.parentUid then byUid[r.uid] = r end
+        local df = r.folder and DynAncestor(r.folder)
+        if df then
+            local l = members[df]
+            if not l then l = {}; members[df] = l end
+            l[#l + 1] = r
+        end
+        if r.cursorConv then cursor[#cursor + 1] = r end
+        rulesSeen[i], folderOf[i], cursorFlag[i] = r, r.folder or false, r.cursorConv and true or false
+    end
+    for i = n + 1, #rulesSeen do rulesSeen[i], folderOf[i], cursorFlag[i] = nil, nil, nil end
+    local nf = #folders
+    for i = 1, nf do local f = folders[i]; fSeen[i], fParent[i], fType[i] = f, f.parent or false, f.cType or false end
+    for i = nf + 1, #fSeen do fSeen[i], fParent[i], fType[i] = nil, nil, nil end
+    dynIdx.members, dynIdx.posOf, dynIdx.byUid, dynIdx.cursor = members, posOf, byUid, cursor
+    dynIdx.rules, dynIdx.n, dynIdx.folders, dynIdx.nf, dynIdx.ver = rules, n, folders, nf, ns.configVersion or 0
+    dynIdx.built = true
+end
+-- a full engine step: any rule's group, or any group's parent / kind, that changed without a settings change rebuilds the index
+local function DynIndexCheck()
+    if not dynIdx.built or DynIndexStale() then DynIndexBuild(); return end
+    local rules, folders = dynIdx.rules, dynIdx.folders
+    local rs, fo, cf = dynIdx.rulesSeen, dynIdx.folderOf, dynIdx.cursorFlag
+    for i = 1, dynIdx.n do
+        local r = rules[i]
+        if rs[i] ~= r or fo[i] ~= (r.folder or false) or cf[i] ~= (r.cursorConv and true or false) then
+            DynIndexBuild(); return
+        end
+    end
+    local fs, fp, ft = dynIdx.fSeen, dynIdx.fParent, dynIdx.fType
+    for i = 1, dynIdx.nf do
+        local f = folders[i]
+        if fs[i] ~= f or fp[i] ~= (f.parent or false) or ft[i] ~= (f.cType or false) then DynIndexBuild(); return end
+    end
+end
+function GA.DynIndex()
+    if not dynIdx.built or DynIndexStale() then DynIndexBuild() end
+    return dynIdx
+end
+-- two lists already in rule order, merged in rule order (only when a group is also the at-cursor reminders' group)
+function GA.MergeByPos(a, b, posOf)
+    local out, i, j = {}, 1, 1
+    while a[i] ~= nil or b[j] ~= nil do
+        local x, y = a[i], b[j]
+        if x ~= nil and x == y then out[#out + 1] = x; i, j = i + 1, j + 1
+        elseif y == nil or (x ~= nil and (posOf[x] or 0) < (posOf[y] or 0)) then out[#out + 1] = x; i = i + 1
+        else out[#out + 1] = y; j = j + 1 end
+    end
+    return out
+end
+ns._DynIndexCheck = DynIndexCheck
 -- a dynamic group's items as XayaUI lays them out now: one per rule (its first shown display; the rule's other display cues ride on
 -- it), sorted (rule order, then the group's Sort). Each item: { fr, w, h, extra, owner }. Limit is not applied here.
 function GA.DynItems(df)
@@ -847,12 +919,16 @@ function GA.DynItems(df)
     -- they were made, so the old one-slot-per-cue layout ignored the sidebar order, and a rule's second display cue (a separate Text
     -- cue) took a slot of its own at the end of the group. The slot's size is the rule's first shown display; its other shown display
     -- cues sit centered on that slot.
-    local items, byOwner, posOf, byUid = {}, {}, {}, {}
-    for i, r in ipairs(ns.rules or {}) do
-        posOf[r] = i
-        if type(r.uid) == "string" and not r.parentUid then byUid[r.uid] = r end   -- one pass, so the layout stays linear in the rule count
-    end
-    for _, r in ipairs(ns.rules or {}) do
+    -- (round 6, V27 P3: "nothing loops over all rules on every game event") the group's own members come from GA.DynIndex, built once
+    -- whenever the rule list, the groups or a setting changed; a layout walks only them, in rule order, as the walk over every rule did
+    local idx = GA.DynIndex()
+    local posOf, byUid = idx.posOf, idx.byUid
+    local items, byOwner = {}, {}
+    local list = idx.members[df] or EMPTY_LIST
+    local cur = idx.cursor
+    if #cur > 0 and ns.CursorReminderFolder and ns.CursorReminderFolder() == df then list = GA.MergeByPos(list, cur, posOf) end
+    for li = 1, #list do
+        local r = list[li]
         local fr = frames[r]
         if fr and (fr:IsShown() or fr.xuiLimited) and ((r.folder and DynAncestor(r.folder) == df)
             or (r.cursorConv and ns.CursorReminderFolder and ns.CursorReminderFolder() == df)) then
@@ -3579,7 +3655,10 @@ local function QueueLayout(df)
     if not df then return end
     if inStep then layoutQueue[df] = true else LayoutDynamic(df) end
 end
-function ns.BeginVisualStep() inStep = true end
+function ns.BeginVisualStep(full)
+    inStep = true
+    if full and ns._DynIndexCheck then ns._DynIndexCheck() end   -- (round 6: a full engine step checks the dynamic-group member index)
+end
 function ns.FlushLayouts()
     inStep = false
     for df in pairs(layoutQueue) do layoutQueue[df] = nil; LayoutDynamic(df) end

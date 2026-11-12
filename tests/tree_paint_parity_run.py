@@ -29,6 +29,8 @@ entries were regenerated, from HEAD plus the R10 change alone.
 Bundle-1 review U5-rulestree: rules-smart changed from run to run (the 'all/rule5' row's xuiSub 153 or 127 px wide: the sidebar
 230 or 204) because AceGUI picks a pooled widget with next(), in memory-address order. The stand-in now hands out released AceGUI
 widgets last-released-first (fixPoolOrder); the golden is unchanged (it is the 230 px drawing), and every drawing is the same on every run.
+Round 6 (Xaya, SD-53: "put a config button in the rules pane"): rules-enabled and rules-smart regenerated; `--dump` of HEAD 89ea79a and
+of the new code differ in exactly one added line each ("button Open Combat Tracking Setup | CENTER"), 0 other lines in any drawing.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

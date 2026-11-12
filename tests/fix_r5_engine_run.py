@@ -6,10 +6,11 @@ Xaya, SD-47 (REQUEST-LOG A23), her words: "As long as there are any rules enable
 It can only be turned off by disabling the rules that run in combat or disabling the rules addon". So no saved engine-off state:
   - older versions saved engineDisplay.groups[id] = false (keep a group with XayaUI) and engineDisplay.auto = false (automatic drawing
     off), set by a console command before core 0.6.56 and by XayaUI Dev Assist since; 0.6.12 and older also saved lean mode. Those
-    values are ignored and cleared once, silently (no chat line), and no text sends the player to Dev Assist or a console command
-    (round-4 review blockers: KEPT_REASON, AUTO_OFF_REASON and the /xuiengine status line said "only Dev Assist can change it back");
-  - the performance guard's own steps (lean mode, then drawing off for the session) are NOT changed here (her decision); only their
-    text no longer offers a Dev Assist command.
+    values are ignored and cleared once, with one plain chat line (round 6, review: before, silently), and no text sends the player
+    to Dev Assist or a console command (round-4 review blockers: KEPT_REASON, AUTO_OFF_REASON and the /xuiengine status line said
+    "only Dev Assist can change it back");
+  - round 6 (SD-52, her answer "Remove it (Recommended)"): the performance guard (lean mode, then drawing off for the session) is
+    removed; section 4 checks it is gone (it checked the guard's text before).
 Round-4 review blocker, AuraSound.lua: the "Not played by the game" line promised "XayaUI plays the sound itself as before, when it can
 see the aura" for every reason, also when XayaUI plays nothing (a rule or its sound switched off, a rule not loaded here). Each line now
 says only what is true for its reason.
@@ -87,7 +88,8 @@ D.Build()
 local own, why = D.OwnerOf(r)
 check("[new] a group kept with XayaUI by an older version: the engine draws its rule anyway (SD-47)", own == true, tostring(own) .. " / " .. tostring(why))
 check("[new]   ...the saved choice is cleared", core.engineDisplay.groups == nil, tostring(core.engineDisplay.groups))
-check("  ...silently: no chat line", #said == 0, table.concat(said, " || "))
+-- (round 6: changed from "...silently: no chat line"; the review asked that saved data is not removed without a word)
+check("  ...said in one plain chat line that names no command or developer tool", #said == 1 and said[1]:find("old setting", 1, true) ~= nil and clean(said[1]), table.concat(said, " || "))
 
 -- 2. an older version's "automatic drawing off" (engineDisplay.auto = false)
 core.engineDisplay.auto = false
@@ -96,7 +98,7 @@ D.Build()
 own, why = D.OwnerOf(r)
 check("[new] automatic drawing switched off by an older version (or Dev Assist): the engine draws anyway (SD-47)", own == true, tostring(own) .. " / " .. tostring(why))
 check("[new]   ...the saved switch is cleared", core.engineDisplay.auto == nil, tostring(core.engineDisplay.auto))
-check("  ...silently: no chat line", #said == 0, table.concat(said, " || "))
+check("  ...said in one plain chat line that names no command or developer tool", #said == 1 and said[1]:find("old setting", 1, true) ~= nil and clean(said[1]), table.concat(said, " || "))
 local note = ns.HiddenAuraNote and ns.HiddenAuraNote(r, HIDDEN)
 check("[new]   ...the status screen's sentence for the rule names no developer tool and no command", note == nil or clean(note), note)
 
@@ -119,20 +121,27 @@ check("[new] /xui disable, then /xuiengine: says the engine is off because every
 ns.SetRulesDisabled(false); W.tick(0.6, 3); D.Build()
 check("(control) /xui enable: the engine draws the rule again", D.OwnerOf(r) == true)
 
--- 4. the performance guard's own session state (unchanged behavior, her decision): its text offers no Dev Assist command
-local g = D._guard
-g.off = true
-D.Build()
+-- 4. (round 6; Xaya, SD-52: "Remove it (Recommended)") no speed guard: three heavy fights (the game's meter reads 5 ms for Blizzard's
+-- aura containers at each fight's end) leave the engine drawing, with no guard line. Changed from "the performance guard's own session
+-- state (unchanged behavior, her decision)", which tested the guard she removed.
+Enum = Enum or {}
+Enum.AddOnProfilerMetric = Enum.AddOnProfilerMetric or { RecentAverageTime = 1 }
+local realProf = C_AddOnProfiler
+C_AddOnProfiler = { GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 5 end return 0.2 end, IsEnabled = function() return true end }
+said = {}
+for _ = 1, 6 do W.enterCombat(); W.tick(0.25, 2); W.leaveCombat(); W.tick(0.25, 2) end
 own, why = D.OwnerOf(r)
-check("(behavior unchanged, her decision) the guard's 'off' step: XayaUI draws the display itself this session", own == false, tostring(own))
-check("[new]   ...the reason a player reads says a /reload starts the engine again, and names no developer tool", clean(why) and why:find("/reload", 1, true) ~= nil, why)
+check("[new] six heavy fights in a row: the engine still draws the display (no speed guard, SD-52)", own == true, tostring(own) .. " / " .. tostring(why))
+local gl = {}
+for _, x in ipairs(said) do if x:find("guard", 1, true) or x:find("lean mode", 1, true) then gl[#gl + 1] = x end end
+check("[new]   ...and no guard line in chat", #gl == 0, table.concat(gl, " || "))
 said = {}
 D.Status()
 st = table.concat(said, "\n")
-check("  .../xuiengine in that state names no developer tool and says a /reload starts it again", clean(st) and st:find("/reload", 1, true) ~= nil, st)
-g.off = nil
-D.Build()
-check("(control) the guard cleared (a /reload): drawn again", D.OwnerOf(r) == true)
+check("[new]   .../xuiengine names no guard and no meter reading", st:find("combat engine: on", 1, true) ~= nil and not st:find("guard", 1, true)
+  and not st:find(" ms", 1, true) and clean(st), st)
+check("[new]   ...no guard left in the engine", D.GuardCheck == nil and D._guard == nil)
+C_AddOnProfiler = realProf
 
 -- 5. the game-played sound's pane line, one per reason (AuraSound.lua A.StatusLine)
 local A = ns.AuraSound

@@ -15,7 +15,8 @@ What the player sees / gets, checked here (each check marked [new] fails on the 
      Save / Cancel brings the engine's icons back at once, and a new aura button of a condition-listed cue is drawn with the condition's
      opacity from the start (before: up to a quarter second late, from the ticker);
   B  a loading screen does not rebuild the engine (no hitch); an edit's rebuild makes a bounded number of passes over the rule list;
-  G  the performance guard reads the game's meter at the end of each fight (its steps could only act then anyway);
+  G  (round 6, SD-52: the performance guard is removed; G checked that it read the meter at each fight's end) nothing reads the game's
+     meter at a fight's end, and heavy fights change nothing the engine draws;
   V  nothing of the two files is still armed after 30 seconds idle; neither makes a repeating timer.
 Run: python3 tests/fix_r5_gate3_run.py   (Lua 5.1 via lupa; reads tests/harness/api_index.json when XUI_API_INDEX points to it)."""
 import os, sys
@@ -216,27 +217,19 @@ check("[new] B2 one rebuild with " .. #list .. " rule entries: a few passes over
   passes <= 12, passes .. " passes")
 
 -------------------------------------------------------------------------------------------------------------------------------------
--- G. the performance guard reads the game's meter at the end of each fight
+-- G. (round 6; Xaya, SD-52: "Remove it (Recommended)") no speed guard: a fight's end reads no meter and changes nothing the engine draws.
+-- Changed from "the performance guard reads the game's meter at the end of each fight", which tested the guard she removed.
 -------------------------------------------------------------------------------------------------------------------------------------
-local BLIZZ = 5.0
 Enum = Enum or {}
 Enum.AddOnProfilerMetric = Enum.AddOnProfilerMetric or { RecentAverageTime = 1 }
-C_AddOnProfiler = { GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return BLIZZ end if name == "XayaUI" then return 0.2 end end }
-local g = D._guard
-g.lean, g.off, g.kept, g.bad, g.leanAt, g.leanHanded = nil, nil, nil, 0, nil, nil
+local reads = 0
+C_AddOnProfiler = { GetAddOnMetric = function(name) reads = reads + 1; if name == "Blizzard_AuraContainer" then return 5.0 end if name == "XayaUI" then return 0.2 end end }
 local function fights(k) for _ = 1, k do W.enterCombat(); W.tick(0.25, 2); W.leaveCombat(); W.tick(0.25, 2) end end
-BLIZZ = 0.3
 said = {}
-fights(3)
-local function guardLines() local t = {}; for _, x in ipairs(said) do if x:find("performance guard", 1, true) then t[#t + 1] = x end end; return t end
-check("(control) three light fights (0.3 ms per frame): no guard step", not g.lean and #guardLines() == 0, table.concat(guardLines(), " || "))
-BLIZZ = 5.0
-said = {}
-fights(3)   -- three short heavy fights, three seconds in all (the old 5-second reading never came three times)
-local line = table.concat(guardLines(), " || ")
-check("[new] G1 three heavy fights in a row (5 ms per frame at each fight's end): the guard's lean-mode line is said",
-  g.lean == true and line:find("lean mode", 1, true) ~= nil, line)
-g.lean, g.off, g.kept, g.bad, g.leanAt, g.leanHanded = nil, nil, nil, 0, nil, nil
+fights(6)
+local function guardLines() local t = {}; for _, x in ipairs(said) do if x:find("guard", 1, true) or x:find("lean mode", 1, true) then t[#t + 1] = x end end; return t end
+check("[new] G1 six heavy fights in a row (5 ms per frame at each fight's end): the meter is never read, no guard line, no guard left",
+  reads == 0 and #guardLines() == 0 and D.GuardCheck == nil and D._guard == nil, reads .. " reads; " .. table.concat(guardLines(), " || "))
 C_AddOnProfiler = nil
 D.Build()
 

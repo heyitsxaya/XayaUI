@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Offline test (core 0.6.56): D4 / #309 event routing. Xaya, 2026-11-06: 50 ms between a change in the game and its cue is not acceptable;
 "either way reduce the ms as much as possible. avoid at all costs compromising on performance of rules while minimizing cpu and ram costs".
-Checks what happens frame by frame in the stand-in game: a cooldown event re-checks the cooldown rules on the very next frame, and not the
-aura or other rules; a player aura event re-checks the aura rules on the next frame, not the cooldown rules; an aura change makes its sound
+Checks what happens frame by frame in the stand-in game: a cooldown event that changes a cooldown re-checks the cooldown rule on the very
+next frame, and not the aura or other rules; a player aura event that changes an aura re-checks the aura rule on the next frame, not the
+cooldown rules; (round 6, SD-54) an aura or cooldown event that changed nothing re-checks no rule; an aura change makes its sound
 on the next frame (the cue fires one frame after the event, not up to 50 ms later); (round 5, V27) with nothing changing no rule is
 re-checked at all (no 0.2 s tick); an event that is not routed (a target change) still steps every loaded rule; a cue
 of a routed rule is re-checked with it; no table is made per routed frame.
@@ -36,16 +37,37 @@ local E0 = ns.Evaluate
 ns.Evaluate = function(r, ...) n[r] = (n[r] or 0) + 1; return E0(r, ...) end
 local function reset() for k in pairs(n) do n[k] = nil end end
 local dt = 1 / 120
+-- (round 6, SD-54: an aura or cooldown event reads that aura's / cooldown's check once, and re-checks in full only the rules whose check
+-- answered differently. So each event below carries a real change: the cooldown starts, the aura appears. An event that changed nothing
+-- re-checks no rule at all.)
+local cdOn = false
+C_Spell.GetSpellCooldown = function() return { startTime = cdOn and 100 or 0, duration = cdOn and 3600 or 0, isEnabled = true, isActive = cdOn, isOnGCD = false, modRate = 1 } end
+local auraOn = {}
+local BP0 = ns.BuffPresent
+ns.BuffPresent = function(id) if id == 1001 then if auraOn[id] then return true, "test" end return false, "test" end return BP0(id) end
 W.tick(0.3, 1)   -- the announced list is stepped once: everything settles
 reset()
+cdOn = true
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("cooldown event: the cooldown rule is re-checked on the next frame; the aura and other rules are not", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
   tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
+W.tick(0.04, 1)
+reset()
+W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
+check("[round 6] a cooldown event that changed nothing re-checks no rule", not n[CD] and not n[AU] and not n[OT],
+  tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
 W.tick(0.04, 1)   -- (review R18: routed re-checks run at most once per 1/30 s; a change after a quiet spell is still next-frame)
 reset()
+auraOn[1001] = true
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("aura event: the aura rule and its cue are re-checked on the next frame; the cooldown and other rules are not", (n[AU] or 0) >= 1 and (n[cue] or 0) >= 1
   and not n[CD] and not n[OT], tostring(n[AU]) .. "/" .. tostring(n[cue]) .. "/" .. tostring(n[CD]))
+W.tick(0.04, 1)
+reset()
+W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
+check("[round 6] an aura event that changed nothing re-checks no rule", not n[AU] and not n[cue] and not n[CD] and not n[OT],
+  tostring(n[AU]) .. "/" .. tostring(n[cue]) .. "/" .. tostring(n[CD]))
+auraOn[1001] = nil; W.fire("UNIT_AURA", "player"); W.tick(0.04, 1)   -- (the aura gone again, for the sound check below)
 -- the sound: the aura appears, its cue plays one frame later
 local played = 0
 PlaySound = function() played = played + 1 end
@@ -59,6 +81,7 @@ reset()
 W.tick(0.1, 20)
 check("nothing changes for 2 s: no rule is re-checked (no polling)", not n[AU] and not n[CD] and not n[OT] and not n[cue],
   tostring(n[AU]) .. "/" .. tostring(n[CD]) .. "/" .. tostring(n[OT]))
+cdOn = false
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("after the quiet spell a cooldown event still re-checks the cooldown rule on the next frame", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
   tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))

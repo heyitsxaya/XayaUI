@@ -19,24 +19,21 @@
 -- layout rule (ns.DynamicFirstOffset), so parent groups, anchors, scale, opacity and moves are inherited, never recomputed.
 -- tests/layout_parity_run.py fails if the engine ever lands anywhere else.
 --
--- PERFORMANCE GUARD: at the end of every fight (PLAYER_REGEN_ENABLED) the game's per-addon CPU meter (C_AddOnProfiler, its recent
--- average) is read once for Blizzard's container code (Blizzard_AuraContainer), where the containers' work is counted. Round 5 (V27,
--- SD-28/SD-29 "No running loops"): before, a 5-second ticker read it all session long, in and out of combat; its steps could only take
--- effect when a fight ended anyway (D.Build waits for the end of combat), so the reading is taken there. Above LIMIT_MS at the end of
--- NEED fights in a row: first the displays of specs you are not playing are handed back ("lean" mode); if it is still high, the engine
--- stops drawing. Both last until the next
--- /reload or login only (0.6.13): the same container code also draws Blizzard's own target-frame auras (TargetFrame.xml uses the
--- AuraContainer widget), so the reading is not XayaUI's alone and must not switch XayaUI off for good. Each trip is announced and
--- logged (engineDisplay.guardTrips). Unverified in game: that the meter is on by default and that its unit is milliseconds.
--- (SD-47, Xaya 2026-11-11, her words: "As long as there are any rules enabled that operate in combat, the engine must always run. It
--- can only be turned off by disabling the rules that run in combat or disabling the rules addon".) The guard's two steps are this
--- session's state, unchanged here: whether they may stay is her decision (round 5 report). Nothing else turns the engine off.
+-- NO SPEED GUARD (round 6; Xaya, SD-52, her answer: "Remove it (Recommended)"). Until round 5 a "performance guard" read the game's
+-- addon CPU meter (C_AddOnProfiler, Blizzard_AuraContainer) at the end of each fight and, after a few high readings, first handed the
+-- displays of other specs back to XayaUI ("lean" mode) and then stopped the engine for the session. Both steps, the meter reading,
+-- its timers, its saved trip log (engineDisplay.guardTrips), its chat lines and its warnings (XUI-W003 / XUI-W004) are gone: nothing
+-- in this file reads the meter any more. (The meter also counts Blizzard's own buff frame, target frame and group headers, so a high
+-- reading was never proof that XayaUI was the cost.)
 --
--- ALWAYS ON (SD-47): no saved engine-off state. Older versions saved two, both set only by a console command (before core 0.6.56) or
--- XayaUI Dev Assist's: engineDisplay.groups[id] = false (keep a group with XayaUI) and engineDisplay.auto = false (automatic drawing
--- off); 0.6.12 and older also saved the guard's lean mode (engineDisplay.lean). None is read any more, and DB() clears them silently
--- the first time it runs (see there). The engine is off only while rules are off (/xui disable: RULES_DISABLED, below), while a rule
--- is switched off (it has no display: Classify), or with XayaUI Rules switched off in the AddOns list (no file of it runs).
+-- ALWAYS ON (SD-47, Xaya 2026-11-11, her words: "As long as there are any rules enabled that operate in combat, the engine must always
+-- run. It can only be turned off by disabling the rules that run in combat or disabling the rules addon"). No engine-off state, saved
+-- or for the session. Older versions saved some, set only by a console command (before core 0.6.56) or XayaUI Dev Assist:
+-- engineDisplay.groups[id] (keep a group with XayaUI), engineDisplay.auto = false (automatic drawing off), engineDisplay.lean (a guard
+-- trip saved by 0.6.12 and older), and the guard's notes guardV / guardUndone / guardTrips. None is read any more; DB() clears them
+-- the first time it runs and, when one of the three engine-off settings was there, says so in one chat line (see there). The engine
+-- is off only while rules are off (/xui disable: RULES_DISABLED, below), for a rule that is switched off (it has no display: Classify),
+-- or with XayaUI Rules switched off in the AddOns list (no file of it runs).
 --
 -- KNOWN LIMITS (all stated by /xuiengine): icon order inside a group follows the game's aura order; mixed icon sizes in one group
 -- are drawn at the first one's size; fades, flash, wipe, glow and condition-driven changes are XayaUI effects the container
@@ -70,12 +67,7 @@ local left = {}        -- displays the engine does not draw: { rule, reason }
 local watch = setmetatable({}, { __mode = "k" })
 local pendingBuild, lastError
 local serial = 0       -- build number: a slot built by the latest build carries it
-local LIMIT_MS, NEED = 1.0, 3   -- (NEED: fight ends in a row above the limit, GuardCheck)
 local ApplyMods   -- (defined with the live sync below; a new button of a single slot draws the current condition changes at once)
-local LEAN_REASON = "lean mode: not for the spec you are playing"
--- (V26, SD-16, SD-47) Reasons a player reads (Conditions.lua ns.HiddenAuraNote) name no command and no developer tool.
-local GUARD_OFF_REASON = "the combat engine stopped drawing for this session (performance guard); a /reload starts it again"
-local guard = { bad = 0 }   -- .lean / .off: this session's trips (never saved)
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
 -- vector from a frame point to the frame centre, as a multiple of (width, height)
@@ -89,13 +81,17 @@ local function DB()
     local db = CoreS
     db.engineDisplay = db.engineDisplay or {}
     local e = db.engineDisplay
-    -- (SD-47) Saved engine-off state from older versions is never read; it is cleared here once (the first call after the update finds
-    -- it, later calls find nothing: four field reads). Silently, with no chat line: the player has nothing to do or decide (her rule
-    -- leaves no switch to set back), the state could only have been set by a console command or a developer tool, and the engine then
-    -- simply draws as it does for everyone. The clear covers groups (per-group "keep with XayaUI", true / false), auto (automatic
-    -- drawing off), lean (a guard trip saved before 0.6.13), and the 0.6.13 note about an undone trip (guardV / guardUndone).
-    if e.groups ~= nil or e.auto ~= nil or e.lean ~= nil or e.guardV ~= nil or e.guardUndone ~= nil then
-        e.groups, e.auto, e.lean, e.guardV, e.guardUndone = nil, nil, nil, nil, nil
+    -- (SD-47, SD-52) Saved engine-off state from older versions is never read; it is cleared here once (the first call after the update
+    -- finds it, later calls find nothing: six field reads). The three engine-off settings are groups (per-group "keep with XayaUI"),
+    -- auto (automatic drawing off) and lean (a speed-guard trip saved before 0.6.13); when one of them was saved, one chat line says it
+    -- was removed (round 6: saved data is not removed without a word; there is nothing to do or decide, her rule leaves no switch to set
+    -- back). The speed guard's own notes (guardV / guardUndone, the trip log guardTrips) are not settings and go without a line.
+    if e.groups ~= nil or e.auto ~= nil or e.lean ~= nil or e.guardV ~= nil or e.guardUndone ~= nil or e.guardTrips ~= nil then
+        local wasOff = e.groups ~= nil or e.auto ~= nil or e.lean ~= nil
+        e.groups, e.auto, e.lean, e.guardV, e.guardUndone, e.guardTrips = nil, nil, nil, nil, nil, nil
+        if wasOff and ns.Print then
+            ns.Print("an old setting that kept some or all aura displays away from the combat engine was removed. The engine now always draws them while any rule is on; there is nothing you need to do.")
+        end
     end
     return e
 end
@@ -213,25 +209,6 @@ local function Classify(p)
         end
     end
     return nil, ""   -- cooldown / state / other displays: not aura displays
-end
-
--- Spec filter for "lean" mode (performance guard first stage): only rules that load for the spec being played.
-local function CurrentSpecID()
-    if not (GetSpecialization and GetSpecializationInfo) then return nil end
-    local ok, i = pcall(GetSpecialization)
-    if not ok or not i then return nil end
-    local ok2, id = pcall(GetSpecializationInfo, i)
-    return ok2 and id or nil
-end
-local function LoadsForSpec(p, spec)
-    local classes = p.load and p.load.classes
-    if type(classes) == "table" and next(classes) and p.load.classUse ~= false then
-        local okC, _, file = pcall(UnitClass, "player")
-        if okC and file and ns.SetActive and ns.SetActive(classes) and not ns.SetMatch(classes, file) then return false end
-    end
-    local specs = p.load and p.load.specs
-    if spec == nil or type(specs) ~= "table" or next(specs) == nil then return true end
-    return specs[tostring(spec)] and true or false
 end
 
 -- XayaUI's own answer to "may this display show now?" apart from the aura itself: load and talent settings, as the engine's
@@ -1069,29 +1046,25 @@ BuildNow = function()
     if ns.SyncCueFolders then pcall(ns.SyncCueFolders) end   -- group membership = the parent rule's group (Cues.lua)
     for k in pairs(owned) do owned[k] = nil end
     left = {}
-    local spec = guard.lean and CurrentSpecID() or nil
     local byGroup, wantSingle = {}, {}
-    if not guard.off then   -- (SD-47: no saved off switch; guard.off is the performance guard's, this session only)
-        for _, p in ipairs(ns.rules or {}) do
-            local s, why = Classify(p)
-            if not s then
-                if why ~= "" then left[#left + 1] = { p, why } end
-            elseif guard.lean and not LoadsForSpec(p, spec) then
-                left[#left + 1] = { p, LEAN_REASON }
-            else
-                local gid = DynGroupId(s.display.folder)   -- (XayaUI lays a display out by ITS OWN group)
-                local fo = FolderById(gid)
-                if fo then
-                    if s.kind ~= "buff" then
-                        left[#left + 1] = { p, "a target debuff inside a dynamic group (the group's container shows your buffs only)" }
-                    else
-                        local l = byGroup[gid]
-                        if not l then l = {}; byGroup[gid] = l end
-                        l[#l + 1] = { rule = p, spec = s }
-                    end
+    -- (SD-47, SD-52) every rule is offered to the engine: no engine-off state, no speed guard
+    for _, p in ipairs(ns.rules or {}) do
+        local s, why = Classify(p)
+        if not s then
+            if why ~= "" then left[#left + 1] = { p, why } end
+        else
+            local gid = DynGroupId(s.display.folder)   -- (XayaUI lays a display out by ITS OWN group)
+            local fo = FolderById(gid)
+            if fo then
+                if s.kind ~= "buff" then
+                    left[#left + 1] = { p, "a target debuff inside a dynamic group (the group's container shows your buffs only)" }
                 else
-                    wantSingle[p] = s
+                    local l = byGroup[gid]
+                    if not l then l = {}; byGroup[gid] = l end
+                    l[#l + 1] = { rule = p, spec = s }
                 end
+            else
+                wantSingle[p] = s
             end
         end
     end
@@ -1350,11 +1323,6 @@ function D.Status()
         Say("the combat engine is off because every rule is off (/xui disable). /xui enable, or a /reload, turns rules and the engine back on.")
         return
     end
-    if guard.off then
-        Say("the combat engine stopped drawing for this session (performance guard): XayaUI draws every display itself. A /reload starts the engine again.")
-        if lastError then Say("last engine error: " .. lastError) end
-        return
-    end
     local nG, nGRules, nS, nSOk = 0, 0, 0, 0
     for _, fo in ipairs(ns.folders or {}) do
         local g = groups[fo.id]
@@ -1422,10 +1390,7 @@ function D.Status()
     else
         Say("XayaUI keeps no aura displays: every one is drawn by the engine.")
     end
-    Say(string.format("combat engine: on (it runs while any rule is on)%s%s.  Performance guard: %s", guard.lean and " (lean for this session: this spec only)" or "",
-        guard.kept and " (kept on: the cost did not fall when lean mode handed displays back, so it is the game's own frames)" or "",
-        guard.last and string.format("Blizzard's aura containers %.2f ms recent average (limit %.1f; includes Blizzard's own target-frame auras)%s", guard.last, LIMIT_MS,
-            guard.own and string.format("; all of XayaUI %.2f ms", guard.own) or "") or "no reading yet (it is read at the end of each fight; the game's addon meter may be off)"))
+    Say("combat engine: on (it always runs while any rule is on).")
     if lastError then Say("last engine error: " .. lastError) end
 end
 
@@ -1445,13 +1410,13 @@ local function FindFolder(q)
 end
 
 -- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81): auto, on, off and reset moved to XayaUI Dev Assist. Those four are registered by
--- Dev Assist (ns.RegisterSubcommand("xuiengine", ...), XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB, D.FindFolder
--- and D._guard; without Dev Assist they do not exist. (SD-47) The engine no longer reads the saved values auto, on, off and reset wrote
--- (DB() clears them), so on this version those Dev Assist words change nothing in the engine; Dev Assist (qa-installer-branch) still
+-- Dev Assist (ns.RegisterSubcommand("xuiengine", ...), XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB and
+-- D.FindFolder (D._guard went with the speed guard, SD-52); without Dev Assist they do not exist. (SD-47) The engine no longer reads
+-- the saved values auto, on, off and reset wrote (DB() clears them), so on this version those Dev Assist words change nothing in the engine; Dev Assist (qa-installer-branch) still
 -- has to drop them. Only a word Dev Assist registers reaches RunSubcommand below.
 -- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and /xuiengine refresh: "Remove entirely"; "/xui shouldn't have anything that allows
 -- configuration of rules through the console") Players keep only /xuiengine with no word: the status, which reads and changes nothing.
--- Lean mode (performance guard) now lasts until the next /reload; a rule edit still rebuilds the engine on its own (QueueBuild).
+-- A rule edit rebuilds the engine on its own (QueueBuild).
 D.DB, D.FindFolder = DB, FindFolder
 local function Slash(msg)
     local cmd, rest = tostring(msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
@@ -1469,67 +1434,6 @@ local function Slash(msg)
 end
 SLASH_XUIENGINE1 = "/xuiengine"
 SlashCmdList["XUIENGINE"] = Slash
-
--------------------------------------------------------------------------------
--- Performance guard: Blizzard's container code, from the game's own meter (see the header)
--------------------------------------------------------------------------------
-local function Metric(name)
-    local ok, v = pcall(C_AddOnProfiler.GetAddOnMetric, name, Enum.AddOnProfilerMetric.RecentAverageTime)
-    return (ok and type(v) == "number") and v or nil
-end
-local function GuardCheck()
-    if ns.RulesDisabled then return end
-    local db = DB()
-    if not db or guard.off or guard.kept then guard.bad = 0; return end
-    if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
-    -- The containers' work is counted under Blizzard_AuraContainer. The engine's own Lua is counted under XayaUI together with
-    -- everything else XayaUI does (rules, sounds, the settings window), so that number is shown, never used to trip: handing
-    -- displays back would not lower it. (Before 0.6.13 the old XayaUI_CombatEngine name was read here; since 0.6.0 that addon
-    -- does not exist, so it always read nothing.)
-    local blizz = Metric("Blizzard_AuraContainer")
-    guard.own = Metric("XayaUI")
-    if not blizz then return end
-    local v = blizz
-    guard.last = v
-    if v > LIMIT_MS then guard.bad = guard.bad + 1 else guard.bad = 0 end
-    if guard.bad < NEED then return end
-    guard.bad = 0
-    db.guardTrips = db.guardTrips or {}
-    local step = guard.lean and "off" or "lean"
-    -- 0.6.69 (externals, Xaya 2026-11-07 "XUI isn't reliably performing"): the meter counts ALL of Blizzard_AuraContainer, which also
-    -- runs Blizzard's own buff frame, target frame and group headers (Blizzard's UI source: BuffFrame.lua, TargetFrame.xml,
-    -- SecureGroupHeaders.lua). Switching off hands every display back to XayaUI, which cannot show a hidden aura in combat (an
-    -- external defensive vanishes). So "off" needs evidence that XayaUI's containers are the cost: lean mode handed displays back AND
-    -- the reading then fell by at least a fifth. Otherwise drawing stays on for the session and the reason is recorded.
-    -- INFERENCE (unverified in game): that a fifth is a fair margin over the meter's own swing between readings.
-    if step == "off" and not ((guard.leanHanded or 0) > 0 and guard.leanAt and v <= guard.leanAt * 0.8) then
-        step = "kept"
-        guard.kept = true
-    end
-    db.guardTrips[#db.guardTrips + 1] = { at = date("%Y-%m-%d %H:%M:%S"), ms = v, limit = LIMIT_MS, step = step, session = true }
-    while #db.guardTrips > 10 do table.remove(db.guardTrips, 1) end
-    if step == "kept" then
-        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame; not lowered by lean mode, so not XayaUI's: drawing stays on"):format(v)) end
-        Say(string.format("performance guard: Blizzard's aura containers still cost %.2f ms per frame (limit %.1f), but handing back XayaUI's other-spec displays did not lower it, so the cost is the game's own frames. The engine keeps drawing your displays (auras hidden in combat stay visible).", v, LIMIT_MS))
-        return
-    end
-    if step == "lean" then
-        guard.lean, guard.leanAt = true, v
-        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame (limit %.1f)"):format(v, LIMIT_MS)) end
-        Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine will draw only the displays of the spec you are playing (lean mode). It lasts until you reload your interface (/reload).", v, LIMIT_MS))
-    else
-        guard.off = true
-        if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W004", ("still %.2f ms per frame in lean mode (limit %.1f)"):format(v, LIMIT_MS)) end
-        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so the combat engine stops drawing until /reload; XayaUI draws the displays itself once combat ends.", v))
-    end
-    D.Build()
-    if step == "lean" then   -- how many displays lean mode handed back (the evidence the "off" step needs)
-        local n = 0
-        for _, e in ipairs(left) do if e[2] == LEAN_REASON then n = n + 1 end end
-        guard.leanHanded = n
-    end
-end
-D.GuardCheck = GuardCheck
 
 -------------------------------------------------------------------------------
 -- Events and hooks
@@ -1584,7 +1488,6 @@ ev:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_TARGET_CHANGED" then RefreshUnit("target"); return end
     if event == "PLAYER_FOCUS_CHANGED" then RefreshUnit("focus"); return end
     if event == "PLAYER_REGEN_ENABLED" and D.HideWhenFree() then return end   -- (V26: /xui disable in a fight)
-    if event == "PLAYER_REGEN_ENABLED" then pcall(GuardCheck) end   -- the performance guard's reading for the fight that just ended
     if event == "PLAYER_REGEN_ENABLED" and not pendingBuild then return end
     -- a loading screen changes nothing the build reads (the rules, their groups, XayaUI's frames the containers hang from, which follow
     -- by themselves): the first one builds (login, /reload), a later one only a build that waits (combat lockdown at the time)
@@ -1600,7 +1503,7 @@ end)
 -- made invisible with Frame:SetAlpha(0) (widgets.md, Frame: SetAlpha carries no IsProtectedFunction flag; INFERENCE: an AuraContainer
 -- has Frame's SetAlpha, unverified in game) and hidden with Hide when combat ends (PLAYER_REGEN_ENABLED, already listened to above).
 -- Out of combat they are hidden at once. The engine goes inert at once: D.Build, D.SyncLive, the per-rule sync (the ns.SetVisualShown
--- hook), the guard and the target / focus refresh do nothing while rules are off (no timer of the engine exists since round 5). /xui enable
+-- hook) and the target / focus refresh do nothing while rules are off (no timer of the engine exists since round 5). /xui enable
 -- (RULES_ENABLED, never in combat) rebuilds: every container in use gets its place, look and opacity back (PlaceGroup / PlaceSingle).
 -------------------------------------------------------------------------------
 local hideWhenFree = false
@@ -1634,7 +1537,7 @@ if ns.On then
 end
 
 -- for tests
-D._groups, D._singles, D._owned, D._extras, D._guard = groups, singles, owned, extras, guard
+D._groups, D._singles, D._owned, D._extras = groups, singles, owned, extras
 function D._Left() return left end
 -- Does the game's aura container draw this rule's display? true + where, false + the reason it stays with XayaUI, nil = not an aura
 -- display. Status screens only (Conditions.lua ns.HiddenAuraNote): a linear look through the last build's lists.
@@ -1646,6 +1549,5 @@ function D.OwnerOf(rule)
         return true, slot.single and "its own slot on XayaUI's icon" or "its dynamic group's container"
     end
     for _, e in ipairs(left) do if e[1] == p then return false, e[2] end end
-    if guard.off then return false, GUARD_OFF_REASON end
     return nil
 end

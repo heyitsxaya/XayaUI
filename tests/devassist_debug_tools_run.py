@@ -20,8 +20,8 @@ qa-installer-branch. What is checked, with main's addons in the stand-in game (w
      detailed-record switch and no probe switch, and its Dev Assist settings group is hidden and empty.
   E. the debug record: a Lua error raised in a XayaUI file is recorded with its folder's code (XUI-E001 core; core's table still codes
      the qa-installer-branch folders: XUI-E003 Chat, XUI-E004 QoL), an error from another addon's file is not; the error handler that
-     was set before XayaUI is still called for every error; the engine's safety stops (W003, W004) and an action the game blocked
-     (W001, XayaUI only) are recorded as warnings; with Advanced Debugging off nothing is recorded; the list keeps the newest 50.
+     was set before XayaUI is still called for every error; an action the game blocked (W001, XayaUI only) is recorded as a
+     warning; (round 6, SD-52: the engine's speed guard is removed) heavy meter readings record no engine safety stop (W003, W004); with Advanced Debugging off nothing is recorded; the list keeps the newest 50.
   F. no error: a session with logins, combat start and end, 30 s of engine steps and rules firing records nothing, the record's frame
      holds only the two "action blocked" events, the detailed-record hand-in points do not exist, and NO function of DebugRecord.lua
      runs (counted with a call hook: the measured cost while nothing goes wrong).
@@ -146,13 +146,11 @@ check("B /xuiengine auto off without Dev Assist: the engine stays on (round 5, S
 check("B /xuiengine help offers no command: it says it changes nothing (V26: full and refresh removed)", e1:find("it changes nothing", 1, true) ~= nil
   and not e1:find("/xuiengine full", 1, true) and not e1:find("/xuiengine refresh", 1, true)
   and not e1:find("/xuiengine auto", 1, true) and not e1:find("reset <group>", 1, true), e1)
-local g = ns.AuraDisplay._guard
-g.lean = true
+-- (round 6, SD-52: the speed guard and its lean mode are removed; this check used lean mode as the state that must survive)
 local ef = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("full") end))
 local er = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("refresh") end))
-check("B /xuiengine full and refresh are gone (V26): lean mode stays, only the status is shown", g.lean == true and ef:find("combat engine: on", 1, true) ~= nil
-  and er:find("combat engine: on", 1, true) ~= nil, ef:sub(1, 120))
-g.lean = nil
+check("B /xuiengine full and refresh are gone (V26): only the status is shown", ef:find("combat engine: on", 1, true) ~= nil
+  and er:find("combat engine: on", 1, true) ~= nil and ef:find("it changes nothing", 1, true) ~= nil, ef:sub(1, 120))
 
 -- C ---------------------------------------------------------------------------------------------------------------------------
 -- (the Aura ID "via ..." tooltip text was XayaUI Bonus's tooltips, on qa-installer-branch; Advanced Debugging's default is core's)
@@ -218,24 +216,17 @@ check("E the handler set before XayaUI was called for every error (4 of 4)", #sp
 check("E ... with the same message", spyCalls[#spyCalls] ~= nil and spyCalls[#spyCalls]:find("boom elsewhere", 1, true) ~= nil, spyCalls[#spyCalls])
 raiseFrom("XayaUI_Rules/Engine.lua", "boom in core")
 check("E the same error again counts on the same entry", entry("XUI-E001").n == 2 and #CueRulesDB.errorLog == 3, (function() local t = {}; for _, e in ipairs(CueRulesDB.errorLog) do t[#t + 1] = e.code .. " x" .. e.n .. " " .. e.msg end; return table.concat(t, " || ") end)())
--- the engine's safety stops (the game's meter says Blizzard's aura containers cost 5 ms)
+-- (round 6; Xaya, SD-52: "Remove it (Recommended)") the engine's speed guard and its safety stops are gone: the game's meter saying
+-- Blizzard's aura containers cost 5 ms at three fight ends records nothing (before: XUI-W003 lean mode, then XUI-W004 or "kept")
 local realMetric = C_AddOnProfiler.GetAddOnMetric
 C_AddOnProfiler.GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 5 end return 0.1 end
 local D = ns.AuraDisplay
-for _ = 1, 3 do W.safecall(D.GuardCheck) end
-check("E engine safety stop, lean mode: warning XUI-W003", entry("XUI-W003") ~= nil and entry("XUI-W003").kind == "warning", #CueRulesDB.errorLog)
--- core 0.6.69 (externals): a cost that does not fall after lean mode is the game's own frames: drawing stays on ("kept"), no W004
-for _ = 1, 3 do W.safecall(D.GuardCheck) end
-check("E engine safety stop, cost not lowered by lean mode: drawing kept on, no XUI-W004", entry("XUI-W004") == nil and D._guard.kept == true and not D._guard.off)
--- lean mode handed displays back and the cost fell, but not below the limit: engine drawing off for the session, as before
-D._guard.kept, D._guard.leanHanded, D._guard.leanAt = nil, 1, 5
-C_AddOnProfiler.GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 3.5 end return 0.1 end
-for _ = 1, 3 do W.safecall(D.GuardCheck) end
-check("E engine safety stop, automatic drawing off: warning XUI-W004", entry("XUI-W004") ~= nil)
+for _ = 1, 3 do W.enterCombat(); W.tick(0.1, 2); W.leaveCombat(); W.tick(0.1, 2) end
+check("E no speed guard (SD-52): heavy readings at three fight ends record no XUI-W003 / XUI-W004, and the engine has no guard",
+  entry("XUI-W003") == nil and entry("XUI-W004") == nil and D.GuardCheck == nil and D._guard == nil, #CueRulesDB.errorLog)
 local guardMsg = joined(ns.CaptureOutput(D.Status))
-check("E without Dev Assist the guard's text does not offer /xuiengine auto on", not guardMsg:find("/xuiengine auto on", 1, true), guardMsg)
+check("E /xuiengine names no guard and offers no /xuiengine auto on", not guardMsg:find("/xuiengine auto on", 1, true) and not guardMsg:find("guard", 1, true), guardMsg)
 C_AddOnProfiler.GetAddOnMetric = realMetric
-D._guard.lean, D._guard.off = nil, nil
 W.fire("ADDON_ACTION_BLOCKED", "XayaUI_QoL", "UpdateUIPanelPositions()")
 W.fire("ADDON_ACTION_FORBIDDEN", "OtherAddon", "CastSpellByName()")
 local w1 = entry("XUI-W001")
@@ -249,7 +240,7 @@ local win = run("report") and ns.DebugReportWindow()
 check("G /xui report opens the debug report window", win ~= nil and win:IsShown())
 local text = win and win.text:GetText() or ""
 check("G the summary names each code with its meaning", text:find("XUI-E001  x2  Lua error in XayaUI (core", 1, true) ~= nil
-  and text:find("XUI-W003  x1  Engine safety stop", 1, true) ~= nil and text:find("XUI-W001", 1, true) ~= nil, text:sub(1, 400))
+  and text:find("XUI-W001  x1  The game blocked or forbade an action of XayaUI", 1, true) ~= nil, text:sub(1, 400))   -- (round 6: W003 is no longer recorded; W001 shows the warning's meaning)
 check("G the summary says what happened, when, the versions and the game build", text:find("boom in core", 1, true) ~= nil
   and text:find("first ", 1, true) ~= nil and text:find("XayaUI addons:", 1, true) ~= nil and text:find("Game 12.1.5", 1, true) ~= nil
   and text:find("errors,", 1, true) ~= nil, text:sub(1, 300))

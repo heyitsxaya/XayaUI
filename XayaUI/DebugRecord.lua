@@ -312,6 +312,20 @@ function ns.DebugSettingsChanged()
 end
 if ns.WhenReady then ns.WhenReady(function() DR.SyncEvents() end) end
 
+-- (round 6; REQUEST-LOG A23 SD-55, Xaya's answer on the memory cuts: "Dead logs (0.2 MB)") two saved texts that nothing on main reads
+-- are let go once, at the login, so they no longer sit in memory every session and in XayaUI.lua:
+--   * the detailed debug record an earlier XayaUI Dev Assist left in CueRulesDB.debugRecord. While Dev Assist is installed and on it is
+--     that addon's own record and stays: Dev Assist puts its hand-in points (ns.RecordSummary ...) in place when it loads, before the login;
+--   * the last bug report's text (CueRulesDB.lastBugReport). /xui bug builds the report fresh each time and no longer keeps it (Console.lua).
+-- One check at the login; nothing runs after it.
+if ns.AtLogin then
+    ns.AtLogin(function()
+        if type(CueRulesDB) ~= "table" then return end
+        if not ns.RecordSummary then CueRulesDB.debugRecord = nil end
+        CueRulesDB.lastBugReport = nil
+    end)
+end
+
 -------------------------------------------------------------------------------
 -- The debug report: the same entries as a readable summary (for a screenshot) and as one string (to paste to Xaya)
 -------------------------------------------------------------------------------

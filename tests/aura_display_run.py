@@ -379,33 +379,26 @@ check("status: what the engine draws", lua("for _, l in ipairs(printed) do if l:
 check("status: what XayaUI keeps, with reasons", lua("local a, b = false, false; for _, l in ipairs(printed) do if l:find('XayaUI keeps') then a = true end if l:find('MISSING') then b = true end end return a and b"))
 check("help text has no '|r' colour-code sequence", lua("for _, l in ipairs(printed) do if l:find('|r', 1, true) then return false end end return true"))
 
-# 8. guard: lean first, then off; both for this session only (0.6.13)
-G = "local g = NS.AuraDisplay._guard; local e = CueRulesDB.engineDisplay; "
-lua('profilerMs = 5.0; blizzMs = 0.1; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard: XayaUI's own total (rules, sounds, settings) is shown, never trips the engine", lua(G + "return not g.lean and not g.off and g.own == 5.0 and e.auto == nil"))
-lua('blizzMs = 1.2; NS.AuraDisplay.GuardCheck(); NS.AuraDisplay.GuardCheck(); blizzMs = 0.1; NS.AuraDisplay.GuardCheck()')
-check("guard: reads Blizzard's container cost (where the containers' work is counted), and a low reading resets it", lua(G + "return not g.lean and g.last == 0.1"))
-lua('profilerMs = 0.1; blizzMs = 1.2; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 1: lean mode (spec being played only)", lua(G + "return g.lean == true and e.auto == nil") and not own("SPEC") and own("U1"))
-check("guard stage 1 is not saved (a /reload starts clean)", lua(G + "return e.lean == nil"))
-check("guard stage 1 counts the displays lean mode handed back (the evidence stage 2 needs)", lua(G + "return g.leanAt == 1.2 and (g.leanHanded or 0) >= 1"))
-# 0.6.69 (externals): the meter also counts Blizzard's own buff / target frames and group headers. A reading that does not fall after
-# lean mode handed displays back is not XayaUI's, so drawing stays on (switching off would hide every aura the game hides in combat).
-lua('printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 2, cost not lowered by lean mode: drawing stays ON (kept), said in chat, still lean", lua(G + "return not g.off and g.kept == true and g.lean == true and #e.guardTrips == 2 and e.guardTrips[2].step == 'kept' and printed[1]:find('game.s own frames') ~= nil") and own("U1") and own("A1"))
-lua('printed = {}; blizzMs = 5.0; for i = 1, 6 do NS.AuraDisplay.GuardCheck() end')
-check("guard: once kept, it does not step again this session", lua(G + "return not g.off and #e.guardTrips == 2 and #printed == 0") and own("U1"))
-# the reading fell by at least a fifth after lean mode (XayaUI's containers are the cost) but is still high: off, as before
-lua('NS.AuraDisplay._guard.kept = nil; NS.AuraDisplay._guard.leanAt = 2.0; blizzMs = 1.5; printed = {}; for i = 1, 3 do NS.AuraDisplay.GuardCheck() end')
-check("guard stage 2: lean mode lowered the cost but not enough: engine drawing off for the session, all back to XayaUI, said in chat", lua(G + "return g.off == true and #e.guardTrips == 3 and e.guardTrips[3].step == 'off' and printed[1]:find('performance guard') ~= nil") and not own("U1") and not own("A1"))
-check("guard stage 2 is not saved (no saved switch at all, SD-47)", lua(G + "return e.auto == nil and e.guardTrips[3].session == true"))
-# a /reload is the way back (the guard's state is this session's only): a new session starts with a clean guard and the saved setting on
-lua('profilerMs = 0.1; blizzMs = 0; local g = NS.AuraDisplay._guard; for _, k in ipairs({ "lean", "off", "kept", "leanAt", "leanHanded", "last", "own" }) do g[k] = nil end; g.bad = 0; NS.AuraDisplay.Build()')
-check("after a /reload (clean guard): everything back, lean mode gone", lua(G + "return e.auto == nil and not g.lean and not g.off") and own("U1") and own("SPEC"))
-# a trip saved by an older version is cleared; (SD-47, round 5: changed from "a player's own auto off is kept") so is a saved
-# "auto off" with no guard trip behind it: the engine has no saved off switch
-lua('SAVED = CueRulesDB.engineDisplay; CueRulesDB.engineDisplay = { auto = false, lean = true, groups = {}, guardTrips = { { at = "t1", step = "lean" }, { at = "t2", step = "off" } } }; NS.AuraDisplay.Build()')
-check("old saved guard trip (lean + off) is cleared", lua("local e = CueRulesDB.engineDisplay; return e.auto == nil and e.lean == nil and #e.guardTrips == 2") and own("U1") and own("SPEC"))
+# 8. (round 6; Xaya, SD-52: "Remove it (Recommended)") no speed guard: the engine never reads the game's addon meter and never hands
+# displays back or stops because of a reading. Changed from the old section 8 (lean first, then off), which tested the guard she removed.
+lua('profilerMs = 5.0; blizzMs = 5.0; printed = {}; for i = 1, 6 do combat = true; combat = false; evHandler(nil, "PLAYER_REGEN_ENABLED") end; NS.AuraDisplay.Build()')
+check("no speed guard (SD-52): no guard function or state is left in the engine", lua("return NS.AuraDisplay.GuardCheck == nil and NS.AuraDisplay._guard == nil"))
+check("no speed guard (SD-52): six fight ends with the meter reading 5 ms: every display still drawn by the engine (other specs too), no guard line",
+      lua("for _, l in ipairs(printed) do if l:find('guard', 1, true) or l:find('lean', 1, true) then return false end end return true") and own("U1") and own("SPEC") and own("A1"))
+check("no speed guard (SD-52): nothing saved about it", lua("local e = CueRulesDB.engineDisplay; return e.guardTrips == nil and e.lean == nil and e.auto == nil"))
+lua('printed = {}; SlashCmdList["XUIENGINE"]("")')
+check("no speed guard (SD-52): /xuiengine says the engine is on and names no guard or meter reading",
+      lua("local on = false; for _, l in ipairs(printed) do if l:find('guard', 1, true) or l:find(' ms', 1, true) then return false end if l:find('combat engine: on', 1, true) then on = true end end return on"))
+# old saved engine-off settings are cleared, with one chat line (round 6: before, silently); (SD-47, round 5: "a player's own auto off is
+# kept" was already changed to "ignored and cleared") the speed guard's old trip log goes too, without a line
+lua('SAVED = CueRulesDB.engineDisplay; printed = {}; CueRulesDB.engineDisplay = { auto = false, lean = true, groups = {}, guardTrips = { { at = "t1", step = "lean" }, { at = "t2", step = "off" } } }; NS.AuraDisplay.Build()')
+check("old saved engine-off settings and guard trips are cleared", lua("local e = CueRulesDB.engineDisplay; return e.auto == nil and e.lean == nil and e.groups == nil and e.guardTrips == nil") and own("U1") and own("SPEC"))
+check("[round 6] ...and one plain chat line says an old setting was removed",
+      lua("local n = 0; for _, l in ipairs(printed) do if l:find('old setting', 1, true) and l:find('removed', 1, true) then n = n + 1 end end return n == 1"))
+lua('printed = {}; NS.AuraDisplay.Build(); NS.AuraDisplay.Build()')
+check("[round 6] ...said once: later builds say nothing", lua("for _, l in ipairs(printed) do if l:find('old setting', 1, true) then return false end end return true"))
+lua('printed = {}; CueRulesDB.engineDisplay = { guardTrips = { { at = "t1", step = "lean" } }, guardV = 1 }; NS.AuraDisplay.Build()')
+check("[round 6] only the guard's old notes (no engine-off setting): cleared without a line", lua("local e = CueRulesDB.engineDisplay; for _, l in ipairs(printed) do if l:find('old setting', 1, true) then return false end end return e.guardTrips == nil and e.guardV == nil"))
 lua('CueRulesDB.engineDisplay = { auto = false, groups = {}, guardTrips = { { at = "t1", step = "lean" } } }; NS.AuraDisplay.Build()')
 check("a player's own auto off from an older version is ignored and cleared (SD-47)", lua("local e = CueRulesDB.engineDisplay; return e.auto == nil and e.guardUndone == nil") and own("U1"))
 lua('CueRulesDB.engineDisplay = SAVED; NS.AuraDisplay.Build()')
@@ -626,10 +619,10 @@ check("externals: OwnerOf names the container that draws a display", lua("local 
 check("externals: OwnerOf a cue answers for its parent rule", lua("local o = NS.AuraDisplay.OwnerOf(EXTc); return o == true"))
 check("externals: OwnerOf gives the reason a display stays with XayaUI", lua("local o, w = NS.AuraDisplay.OwnerOf(EXTM); return o == false and w:find('MISSING') ~= nil"))
 check("externals: OwnerOf a cooldown-only display is nil (not an aura display)", lua("return NS.AuraDisplay.OwnerOf(CDONLY) == nil"))
-# (SD-47, round 5: the engine's drawing is off only by the performance guard, for the session; no saved switch)
-lua('NS.AuraDisplay._guard.off = true; NS.AuraDisplay.Build()')
-check("externals: engine drawing off (performance guard): OwnerOf says so", lua("local o, w = NS.AuraDisplay.OwnerOf(EXT); return o == false and w:find('stopped drawing') ~= nil"))
-lua('NS.AuraDisplay._guard.off = nil; NS.Settings("core").auraAlias = nil; NS.AuraDisplay.Build()')
+# (SD-47, SD-52, round 6: no engine-off state at all, the speed guard is removed; changed from "engine drawing off (performance guard):
+# OwnerOf says so") OwnerOf never names the guard
+check("externals: OwnerOf never says the engine stopped drawing (no speed guard, SD-52)", lua("local o, w = NS.AuraDisplay.OwnerOf(EXT); return o == true and not tostring(w):find('stopped drawing')"))
+lua('NS.Settings("core").auraAlias = nil; NS.AuraDisplay.Build()')
 check("externals: without a learned alias the include list is the rule's own ID only", lua("local ids = NS.AuraDisplay._singles[EXT].frame.groups.main.filters.includeSpellIDs; return ids[62618] and not ids[81782]"))
 
 # 10. loaded twice (XayaUI loads the engine files and the separate XayaUI_CombatEngine folder is installed too): one copy only
