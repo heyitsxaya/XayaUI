@@ -44,7 +44,8 @@ Each choice, briefly:
 | Item | State |
 |---|---|
 | Q1-Q5 | answered (RB-10 to RB-13) |
-| Q6 housing load condition, Q7 RB-13 inference | to ask |
+| Q6: answered by RB-14 (study of the EUI and ElvUI load conditions, then a proposal) | study running |
+| Q7 | answered (RB-15) |
 | Build-time checks (a) and (b) (design §4) | verify with tests once the build starts |
 | Build | blocked until bundle 1 is on main (message from the Rules session) |
 | Stage 2: cue steps | after stage 1 is settled (RB-6) |

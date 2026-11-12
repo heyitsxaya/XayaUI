@@ -27,7 +27,7 @@
 - **Load:** a yes/no question, then the Load tab 1:1 with a logic indicator (RB-12).
 - **Combat:** if combat starts, the answers are kept and the builder reopens after combat (RB-13).
 
-**Pending.** Q6 (a housing load condition?) and Q7 (the RB-13 inference) in the design §9, plus build-time checks (a) and (b) in §4. Draft PR #525.
+**Pending.** RB-14: a load-condition study of EUI and ElvUI (docs/plans/LOAD-CONDITIONS-STUDY.md), then a proposal to Xaya. Also build-time checks (a) and (b) in the design §4. Draft PR #525.
 
 **Key files.**
 - docs/plans/RULE-BUILDER-DESIGN.md and RULE-BUILDER-TRACKER.md.

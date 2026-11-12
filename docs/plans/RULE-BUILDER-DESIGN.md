@@ -62,7 +62,7 @@ Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until th
 - The settings window closes (V26).
 - The builder keeps its working answers in memory for this session only, not in saved variables.
 - When combat ends, it reopens at the same step, with every page and choice displayed as before.
-  - INFERENCE to confirm (Q7): this is what "all flow options should display as normal" means.
+  - She confirmed this is what "all flow options should display as normal" means (RB-15).
 - A /reload in between loses the answers, because no rule was made yet.
 
 ## 4. Hand-off to the existing save path (one format, one path)
@@ -128,5 +128,5 @@ The pages are drawn with the editor's existing AceConfig tables (select / multis
 
 Q1 to Q5 are answered by RB-10 to RB-13.
 
-- **Q6.** Her example load question names "housing", but the Load tab has no housing condition today (Conditions.lua:1684-1702). Should we add one to the Load tab so the builder shows it 1:1? That would be a Rules change, coordinated with the Rules session.
-- **Q7.** Confirm the RB-13 inference in §3.
+- **Q6** is answered by RB-14: "review all load conditions in EUI and ElvUI and add what we're missing as options". A behaviour-only study is under way, in docs/plans/LOAD-CONDITIONS-STUDY.md. What gets added is proposed to her for confirmation before anything is built. Adding a condition changes Rules (the Load tab and Conditions.lua), so that build is coordinated with the Rules session. The builder picks the new conditions up 1:1 with no extra builder code (§3 step 2).
+- **Q7** is answered by RB-15. After combat, the builder comes back exactly as she left it.
