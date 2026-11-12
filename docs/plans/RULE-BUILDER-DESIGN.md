@@ -176,5 +176,8 @@ Q1 to Q5 are answered by RB-10 to RB-13.
     - Durability: the UPDATE_INVENTORY_DURABILITY event exists; the read API is INFERENCE.
     - Tier piece in bags (carried but not worn): needs a bag read, with a per-condition cost check.
   - The landing page keeps only the IN COMBAT choices: Spell Cooldown / Charges, Item Cooldown, Buff on me, Debuff on my target, Class Resource, Procs.
+- **Bucket labels on the landing page (RB-46).** Her verbatim instruction: "remove bucket label for now, make a note that more options in the future might require reintroduction".
+  - The "IN COMBAT" heading is removed, so the six choices sit under no heading.
+  - If more choices are added later (for example the Player Info set above, or enemy casts), headings that group them may need to come back.
 - **Enemy casts (RB-40).** Study plus an in-game read-out first; the cast APIs are flagged SecretWhenUnitSpellCastRestricted.
 - **Health and primary power (RB-41).** Secret in Midnight, so not offered.
