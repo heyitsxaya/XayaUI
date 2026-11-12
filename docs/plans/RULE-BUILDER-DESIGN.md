@@ -34,6 +34,8 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 > 5. Step 4 of 5, Name and group: Create happens here.
 > 6. Step 5 of 5, Done.
 >
+> RB-36: the check kinds are "Spell Cooldown / Charges" (one kind, one cooldown row; its state dropdown is Is ready / Is on cooldown / Has a charge / Has no charges / Has at least / exactly / at most N), "Buff on me" and "Debuff on my target". The first check is picked from three large choices on the Checks page (RB-33).
+>
 > The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
