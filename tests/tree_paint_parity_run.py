@@ -23,6 +23,10 @@ differ only in (1) the top tabs QoL, Bonus Features and Blizzard Reskin, gone wi
 drawing; their own drawings are no longer made), and (2) the Profiles drawing's left-over tree rows, which belong to the tab visited
 just before it: before, the Blizzard Reskin tree; now the Rules > Disabled tree (the first 12 lines of that drawing). The Profiles
 tabs, heading and button lines, every Rules drawing (rules-selected is byte-identical) and Settings are otherwise unchanged.
+Regenerated on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code differ only in (1) one new line "tab bonus box false" (the Bonus Features top tab, no tick box)
+in every drawing, and (2) the Rules-off Profiles drawing's left-over tree row, which belongs to the tab shown just before it: now the
+Bonus Features tree's "Stat Calculator" row (one line). 0 other lines.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

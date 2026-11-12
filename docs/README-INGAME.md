@@ -14,7 +14,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 - **XayaUI Options** is the settings window. It loads the first time you open it, so it costs nothing until then.
 - **XayaUI Chat** holds the Chat Panel, the Chat Data Panel, message filters and sounds, history and the privacy cover.
 - **XayaUI QoL** holds the cursor highlight and trail, the Character Toolkit (Stat Calculator), the Character Reskin, the Shopping List and Release Guard.
-- **XayaUI Bonus Features** holds tooltip additions, the Notepad, the Calculator and custom data panels.
+- **XayaUI Bonus Features** holds the Stat Calculator (Bonus Features > Stat Calculator, or `/xui stats`).
 - **XayaUI Blizzard Reskin** puts XayaUI's look on Blizzard's frames without changing what they do (today: the Esc menu).
 - **XayaUI Media** is a support folder for your own pictures and sounds.
 

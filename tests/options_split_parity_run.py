@@ -85,6 +85,13 @@ added lines per variant, on the 4 group pages the fixed state draws: `pageGroup.
 says what the anchor point refers to), `pageGroup.container.rel` (only its sorting / values: "Another group" added last) and the new
 `pageGroup.container.relGroup` select ("Group", order 4.25, hidden while Relative to is not Another group), 0 other lines in every variant
 (debug-log 2026-11-08 group-anchors). `--dump DIR` writes the full dumps, one file per variant, to compare by hand (diff) when a check fails.
+Regenerated on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code (all-on) differ only in the new top tab `bonus` and its 118 `bonus.statcalc.*` lines (the
+Stat Calculator page as on qa-installer-branch, with the panel switch's and intro's texts for main), the minimap list's new "Stat
+Calculator" row (`set.minimap.entries.stats`, `settings.minimap.entries.stats`: hidden while the Stat Calculator is off) and the
+"XayaUI Settings" row after it one `order` down (1 -> 2), 0 other lines. The new variant off-XayaUI_Bonus has the hashes the all-on
+window had before (ad60a05's golden) for every tab but "cooldowns" (same node count), whose dump differs from ad60a05's all-on dump
+only in the random group and rule ids (the second window built in the process: see main() below), 0 other lines. C now expects the Bonus Features page "statcalc" and no other module page.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -92,8 +99,9 @@ sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"
 import run as H  # noqa: E402  (the whole-addon harness)
 
 GOLDEN_FILE = os.path.join(HERE, "options_split_parity_golden.json")
-# (REQUEST-LOG A23) this branch holds no feature addon to switch off in turn: the golden holds the all-on window only
-MODULES = []
+# (REQUEST-LOG A23) this branch held no feature addon to switch off in turn. (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main
+# with the Stat Calculator only: the golden holds the all-on window and the window with it switched off
+MODULES = ["XayaUI_Bonus"]
 
 
 LUA = r'''
@@ -326,8 +334,8 @@ def main():
         reg = dict(x.split("=", 1) for x in allon["registered"].split())
         check("the rule editor registers no settings page of its own (rules / core / cooldowns)",
               all(reg.get(m) == "" for m in ("rules", "core", "cooldowns")))
-        check("no module registers a settings page (this branch holds no feature addon with pages)",
-              all(v == "" for v in reg.values()) and len(reg) == 10, allon["registered"])
+        check("no module registers a settings page but XayaUI Bonus Features' Stat Calculator (bonus = statcalc; main holds no other feature addon with pages)",
+              all(v == "" for k, v in reg.items() if k != "bonus") and reg.get("bonus") == "statcalc" and len(reg) == 10, allon["registered"])
     for tag, e in errs_all:
         print("ERROR in the game stand-in [%s]: %s" % (tag, e[:600]))
     print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))

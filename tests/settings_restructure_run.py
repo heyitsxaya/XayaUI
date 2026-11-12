@@ -70,8 +70,10 @@ section("A: the top tabs", function()
   local names = {}
   for _, e in ipairs(l) do names[#names + 1] = e.n end
   local got = table.concat(names, " | ")
-  -- (with QoL and Bonus Features installed: the six tabs; main holds no feature addon, so no feature tab is built)
-  local want = XUI_HAS_QOL and "Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings" or "Rules | Profiles | Settings"
+  -- (with QoL and Bonus Features installed: the six tabs; main held no feature addon, so no feature tab was built. Bonus 0.6.45, A24
+  -- #10: main holds XayaUI Bonus Features with the Stat Calculator only, so its tab is built: Rules | Bonus Features | Profiles | Settings)
+  local want = XUI_HAS_QOL and "Rules | QoL | Bonus Features | Blizzard Reskin | Profiles | Settings"
+    or (XUI_HAS_BONUS_TAB and "Rules | Bonus Features | Profiles | Settings" or "Rules | Profiles | Settings")
   check("A: the top tabs read " .. want, got == want, got)
   check("A: no Recycle Bin top tab", built.args.recyclebin == nil)
   check("A: the Profiles tab is named Profiles (not Import / Export)", built.args.profiles and built.args.profiles.name == "Profiles", built.args.profiles and built.args.profiles.name)
@@ -96,7 +98,7 @@ section("A/B: the window", function()
       local _, rel, _, x = t:GetPoint(1)
       if math.abs(t:GetWidth() - each) > 0.5 or math.abs((x or -1) - (i - 1) * each) > 0.5 or rel ~= top.frame then bad[#bad + 1] = tostring(t.value) end
     end
-    local nTop = XUI_HAS_QOL and 6 or 3
+    local nTop = XUI_HAS_QOL and 6 or (XUI_HAS_BONUS_TAB and 4 or 3)
     check("A: the " .. nTop .. " top tabs share the row evenly, edge to edge", #shown == nTop and #bad == 0, #shown .. " " .. table.concat(bad, ","))
   end
   local fr = root().frame
@@ -254,8 +256,12 @@ def main():
         os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
     has = lambda a: str(a not in ABSENT).lower()
-    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s"
-              % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), has("XayaUI_Bonus")))
+    # (Bonus 0.6.45) XUI_HAS_BONUS: XayaUI Bonus Features with its profile part (dataPanels, tooltips, calculator: XayaUI_Bonus/
+    # ProfilePart.lua, qa-installer-branch). On main XayaUI_Bonus holds only the Stat Calculator and registers no profile part, so the
+    # profile checks run as without it; XUI_HAS_BONUS_TAB: the folder is here, so its top tab is built.
+    bonus_part = str(os.path.isfile(os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua"))).lower()
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s"
+              % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus")))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):

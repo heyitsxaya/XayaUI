@@ -15,9 +15,10 @@ FAILED_COUNT = re.compile(r"\b(\d+)\s+failed\b", re.I)    # "18 checks, 0 failed
 FAILS_COUNT = re.compile(r"\bFAILS:\s*(\d+)\b")             # "FAILS: 0", "FAILS:  0"
 NO_COUNT_PASS = re.compile(r"\bPASS(?:ED)?\b|\bpassed\b")  # "ALL CHECKS PASS", "all 12 passed" (no failure count printed)
 FAIL_WORD = re.compile(r"\bFAIL(?:S|ED|URES?)?\b", re.I)
-# the feature addons present in this checkout (main holds XayaUI, XayaUI_Options and XayaUI_Rules: REQUEST-LOG A23)
+# the feature addons present in this checkout (main holds XayaUI, XayaUI_Options and XayaUI_Rules: REQUEST-LOG A23; and XayaUI_Bonus
+# with only the Stat Calculator since Bonus 0.6.45: REQUEST-LOG A24 #10)
 ROOT = os.path.dirname(HERE)
-FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Options")
+FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Options")
             if os.path.isdir(os.path.join(ROOT, a))]
 
 

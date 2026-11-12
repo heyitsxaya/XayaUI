@@ -21,6 +21,9 @@ row: the QoL, Bonus Features and Blizzard Reskin tabs (pages of the retired addo
 that drawing is byte for byte the one of this commit on all 16 theme / page pairs, so neither the folder move nor any change to core,
 Options or Rules draws anything differently. XayaUI_Reskin is not on main, so the Display page leaves out the Esc menu hint row
 ("... is under the Blizzard Reskin tab", Options.lua gm_moved) in the golden too.
+Re-recorded on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code differ, on all 16 theme / page pairs, only in the window's top tab row (win.10.1.2.*): a fifth
+drawn tab, "Bonus Features" (20 lines), and the other tabs narrower to share the row (their widths and draw sizes); 0 other lines.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

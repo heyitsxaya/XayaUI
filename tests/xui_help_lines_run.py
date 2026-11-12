@@ -7,7 +7,8 @@ holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debu
 Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (the main slim-down; Rules 0.7.0): neither Options nor Rules registers a
 /xui command of its own, so the list is exactly core's eight (Core.lua CORE_HELP, all shown with XayaUI Rules on). The 11 more the
 list had before were all registered by the addons that left main (Bonus, Chat, QoL: data, notes, calc, chat, panel, privacy, cursor,
-reskin, shop, releaseguard, stats).
+reskin, shop, releaseguard, stats). Since Bonus 0.6.45 XayaUI Bonus Features is back on main with the Stat Calculator only, which
+registers /xui stats: nine lines.
 Run: python3 tests/xui_help_lines_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -25,10 +26,14 @@ local out = ns.CaptureOutput(function() SlashCmdList.XAYAUI("help") end)
 local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])
-check("core's eight commands, one per line", #out - 1 == 8 and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
+-- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its /xui stats follows core's eight
+local SC_ON = ns.StatCalc_Toggle ~= nil
+local nWant = SC_ON and 9 or 8
+check("core's eight commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or "") .. ", one per line", #out - 1 == nWant and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
 -- the commands, in core's order (the colored part of each line, pipes doubled)
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status",
   "/xui auras [target||focus||pet] [debuffs] or <spellID>", "/xui debug" }
+if SC_ON then WANT[#WANT + 1] = "/xui stats [on||off||options||status]" end
 local got = {}
 for i = 2, #out do got[#got + 1] = out[i]:match("^  |cff%x%x%x%x%x%x(.-)|r") or out[i] end
 check("the commands are core's, in its order (with XayaUI Rules on: unlock, status and auras included)",

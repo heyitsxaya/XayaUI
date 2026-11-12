@@ -23,7 +23,7 @@ This addon is for personal use only. Forks are welcome and the community is alwa
 
 XayaUI is a group of addons; every folder at the top of this repository is one of them and is installed as-is.
 
-Since 2026-11-09 `main` holds only the platform, its settings window and Rules (with the rule editor). Everything else (XayaUI Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
+Since 2026-11-09 `main` holds only the platform, its settings window and Rules (with the rule editor). Since 2026-11-12 it also holds XayaUI Bonus Features with only the Stat Calculator in it. Everything else (the rest of Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
 
 On `main`:
 
@@ -31,14 +31,15 @@ On `main`:
 |---|---|---|
 | `XayaUI` | XayaUI Platform | The platform every XayaUI addon runs on: saved settings, themes, sharing, Recycle Bin, profiles, sound and media lists, console, error report, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
 | `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
+| `XayaUI_Bonus` | XayaUI Bonus Features | The Stat Calculator only (`/xui stats`, Bonus Features > Stat Calculator): a stats panel beside the character window or on its own, with its stat model and arithmetic. Off until you turn it on. Its other features (tooltips, Notepad, Calculator, data panels) are not on `main`. |
 | `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups, and the rule editor (`Editor/`, the settings window's Rules tab; since 0.7.0, was the addon `XayaUI_Rules_Options`). Its editor is built only the first time the settings window opens. Switch it off if you make no rules. |
 
 Everything else in the repository (`tests/`, the documents) stays out of the game folder.
 
 ## Install
 
-1. Copy the three `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options` and `AddOns\XayaUI_Rules` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues).
-   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (the rule editor is now inside `XayaUI_Rules`), and switch off or delete `XayaUI_Bonus`, `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
+1. Copy the four `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Bonus`, `AddOns\XayaUI_Options` and `AddOns\XayaUI_Rules` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues, `XayaUI_Bonus` for the Stat Calculator).
+   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (the rule editor is now inside `XayaUI_Rules`), delete your old `AddOns\XayaUI_Bonus` folder before copying the new one (the new one holds only the Stat Calculator), and switch off or delete `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 

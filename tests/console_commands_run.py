@@ -10,8 +10,8 @@ What the player sees, checked here with the real addons in the stand-in game:
   2. /xui debug lists every diagnostic command as "/xui debug <name>"; each listed name runs; an unknown one says so and lists them;
      the loader check is /xui debug loader (was window: "Rename it" -> "/xui debug loader").
   3. The old forms (/xui chatprobe, /xui perf, /xui stats widthprobe ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug
-     ____", "7. Retire"): each prints /xui help instead (/xui stats is XayaUI QoL's command, not on this branch: core says that addon
-     is not installed). A developer debug command (XayaUI Dev Assist's, not on this branch) does not
+     ____", "7. Retire"): each prints /xui help instead (/xui stats was XayaUI QoL's command; since Bonus 0.6.45 it is the Stat
+     Calculator's, XayaUI Bonus Features, which runs no width probe: with the Stat Calculator off it says so). A developer debug command (XayaUI Dev Assist's, not on this branch) does not
      exist: /xui debug <name> says there is no such command.
   4. The console window has a command line inside it, under the log, clear of the resize grip. With XayaUI's messages set to the
      chat window (Xaya's case), a command typed there prints in the console window and not in chat; the typed line is echoed;
@@ -59,7 +59,10 @@ check("help: a header with the count, then that many lines", help[1] == ("comman
 -- core's own player commands, in the order /xui help prints them (Core.lua CORE_HELP; XayaUI Rules is on, so its three are listed).
 -- Feature addons add theirs through ns.RegisterCommand; none of them is on this branch, so this is the whole list.
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug" }
-check("help: " .. #WANT .. " lines (it was 29), core's own commands only", #help - 1 == #WANT, #help - 1)
+-- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its one command, /xui stats, comes after core's
+local SC_ON = ns.StatCalc_Toggle ~= nil
+if SC_ON then WANT[#WANT + 1] = "/xui stats" end
+check("help: " .. #WANT .. " lines (it was 29), core's own commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or " only"), #help - 1 == #WANT, #help - 1)
 check("help: exactly " .. table.concat(WANT, ", ") .. ", in that order", table.concat(cmds, ",") == table.concat(WANT, ","), table.concat(cmds, " "))
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
@@ -133,10 +136,19 @@ for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "
   local isHelp = out[1] == help[1] and #out == helpLines
   -- (/xui stats is XayaUI QoL's command, and XayaUI QoL is not on this branch: core names the addon it belongs to instead of printing
   -- /xui help, Modules.lua's list of feature commands; it runs nothing either way)
+  -- (Bonus 0.6.45) with XayaUI Bonus Features loaded, /xui stats is the Stat Calculator's: "widthprobe" is no word of it, so it runs no
+  -- width probe; the Stat Calculator is off by default here, so it says so (and opens nothing)
+  local scNote = "; /xui stats: says XayaUI QoL is not installed"
   if old == "stats widthprobe" then
-    isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors)."
+    if SC_ON then
+      isHelp = #out == 1 and out[1] == "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on)."
+        and rawget(_G, "XayaUIStatCalculator") == nil
+      scNote = "; /xui stats is the Stat Calculator's: no width probe, it says the Stat Calculator is off and opens nothing"
+    else
+      isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors)."
+    end
   end
-  check(("old form /xui %s no longer runs (prints /xui help%s)"):format(old, old == "stats widthprobe" and "; /xui stats: says XayaUI QoL is not installed" or ""), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
+  check(("old form /xui %s no longer runs (prints /xui help%s)"):format(old, old == "stats widthprobe" and scNote or ""), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])
 end
 check("/xui debug status still runs", (function() local o = run("debug status"); return o[1] ~= nil and o[1] ~= help[1] end)())
 -- (core 0.6.56, REQUEST-LOG #81) without XayaUI Dev Assist, /xui debug chatprobe does not exist: it says so and lists the commands

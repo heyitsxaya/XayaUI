@@ -102,11 +102,15 @@ local function collect(g, path)
   end
 end
 collect(T, {})   -- (every tab of the window: Rules, Profiles, Settings and any module tab)
--- (A23: main holds core, Options and Rules only) the tabs whose rows carry a sidebar tick box (QoL, Bonus Features, Chat, Blizzard
--- Reskin) belong to the modules on the other branch: on main none of them is built and no row has a switch
-check("A: main has no QoL / Bonus Features / Chat / Blizzard Reskin tab, and no row carries a sidebar tick box (group.xuiSwitch)",
-  node(T, "qol") == nil and node(T, "bonus") == nil and node(T, "chat") == nil and node(T, "reskin") == nil and foundN == 0,
-  foundN .. " " .. (function() local t = {} for k in pairs(found) do t[#t + 1] = k end return table.concat(t, ",") end)())
+-- (A23: main holds core, Options and Rules) the tabs whose rows carry a sidebar tick box (QoL, Chat, Blizzard Reskin) belong to the
+-- modules on the other branch: on main none of them is built. (Bonus 0.6.45, A24 #10) Bonus Features is on main with the Stat
+-- Calculator only: its page row and its two parts (Panel, Spell Math) carry the only tick boxes.
+local STATCALC = { "bonus>statcalc", "bonus>statcalc>panelPart", "bonus>statcalc>spells" }
+local scFound = 0
+for _, k in ipairs(STATCALC) do if found[k] then scFound = scFound + 1 end end
+check("A: main has no QoL / Chat / Blizzard Reskin tab; Bonus Features holds the Stat Calculator, whose row and parts carry the only sidebar tick boxes (group.xuiSwitch)",
+  node(T, "qol") == nil and node(T, "bonus") ~= nil and node(T, "chat") == nil and node(T, "reskin") == nil and foundN == #STATCALC and scFound == #STATCALC,
+  foundN .. " " .. (function() local t = {} for k in pairs(found) do t[#t + 1] = k end table.sort(t) return table.concat(t, ",") end)())
 
 -- reusing the drawn tree after a switch click is safe only if building it again would give the same tree: two builds in a row must
 -- be the same (everything but functions). (Before A23 the test also built it with each module switch off and on; main has no such switch.)
@@ -137,7 +141,7 @@ found, foundN = {}, 0
 collect(T2, {})
 local WANT = { "bonus>xtalpha", "bonus>xtbeta", "bonus>xtgroup>xttool", "bonus>xtkit", "bonus>xtkit>kitpart" }
 for _, k in ipairs(WANT) do check("A (stand-in): the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
-check("A (stand-in): no other row has one (Test Group, Kit Layout have no single on / off)", foundN == #WANT, foundN)
+check("A (stand-in): no other row has one (Test Group, Kit Layout have no single on / off; the Stat Calculator's three rows are main's own)", foundN == #WANT + #STATCALC, foundN)
 check("control (stand-in): two builds of the options tree in a row are the same", shape(ns.BuildOptionsTable(), {}) == shape(ns.BuildOptionsTable(), {}))
 local function flipBuild(key)
   local s = found[key]
@@ -285,11 +289,12 @@ if top then
     local _, rel, _, x = t:GetPoint(1)
     if math.abs(t:GetWidth() - each) > 0.5 or math.abs((x or -1) - (i - 1) * each) > 0.5 or rel ~= top.frame then bad[#bad + 1] = tostring(t.value) .. " w" .. tostring(t:GetWidth()) .. " x" .. tostring(x) end
   end
-  -- (A23: main's top row is Rules | Profiles | Settings; the QoL, Bonus Features and Blizzard Reskin tabs are the other branch's modules')
+  -- (A23: main's top row is Rules | Profiles | Settings; the QoL and Blizzard Reskin tabs are the other branch's modules'. Bonus 0.6.45,
+  -- A24 #10: Bonus Features is on main with the Stat Calculator, so its tab is in the row: Rules | Bonus Features | Profiles | Settings)
   local vals = {}
   for _, t in ipairs(shown) do vals[#vals + 1] = tostring(t.value) end
-  check(("G: the %d top tabs (Rules, Profiles, Settings) share the row evenly, edge to edge, no overlap"):format(#shown),
-    table.concat(vals, ",") == "cooldowns,profiles,set" and #bad == 0, table.concat(vals, ",") .. " " .. table.concat(bad, "; "))
+  check(("G: the %d top tabs (Rules, Bonus Features, Profiles, Settings) share the row evenly, edge to edge, no overlap"):format(#shown),
+    table.concat(vals, ",") == "cooldowns,bonus,profiles,set" and #bad == 0, table.concat(vals, ",") .. " " .. table.concat(bad, "; "))
   local hBad, fBad = {}, {}
   for _, t in ipairs(shown) do
     if math.abs(t:GetHeight() - 32) > 0.01 then hBad[#hBad + 1] = tostring(t.value) .. " " .. tostring(t:GetHeight()) end

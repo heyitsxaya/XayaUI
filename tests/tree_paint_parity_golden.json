@@ -1,38 +1,38 @@
 {
  "off": {
   "profiles": {
-   "lines": 7,
-   "sha": "0bb98908754097af4aa0c222af41fac2f713fcc20729c00819f7c8682c7db0b5"
+   "lines": 9,
+   "sha": "85387dc2974649d3b2663dfe7b178a11c8031493971d3425dc8027075593bb2b"
   },
   "set": {
-   "lines": 10,
-   "sha": "b6f920ae925b3288f9a42188fe9494fe9b3dbe7b209ab3df3e0959c053c9dbe2"
+   "lines": 11,
+   "sha": "145aab2f49e2e451eb5039bc2fef6879edbeb633e77e78dbf3f2726275033be1"
   }
  },
  "on": {
   "profiles": {
-   "lines": 20,
-   "sha": "a13add092ab1f7abf96d9fd39f4ff87fbf66a42970973a893ee53fc64768d380"
+   "lines": 21,
+   "sha": "c47722c05c3a0e476ccd431bc1f708661f341f9ddf68b84e859eaba70e6b718d"
   },
   "rules-disabled": {
-   "lines": 20,
-   "sha": "b7568dd79647edd76262f49bf31611aebeb6c8b304649aecaa7c7c058c017d03"
+   "lines": 21,
+   "sha": "a4f64d0560ffe8c749160052a290af7793b03a94cc5a29c973f943281461464c"
   },
   "rules-enabled": {
-   "lines": 45,
-   "sha": "73eb07cba0423ea955e70f53cd8dad33bc6e6375c414816830d207f25d29cdf0"
+   "lines": 46,
+   "sha": "f58e1d3fdce40bd7a0e2d1f2ec9fb062e7234b0608a2f89f1a095531fe162ec8"
   },
   "rules-selected": {
    "lines": 32,
    "sha": "f9d223de9347d2c39b359205c2f598b2fa51ab0f04d90d5c632917a05386a198"
   },
   "rules-smart": {
-   "lines": 51,
-   "sha": "c6d36d8e655bf93786e14c4dcb3c5a89bcac7019dcf6584d21a31ce20347ddb9"
+   "lines": 52,
+   "sha": "9ce218107a4a342648d61386b6a33ef94238ba471f38cb91de0127f7ab0dd2c9"
   },
   "set": {
-   "lines": 13,
-   "sha": "f635e02166c7e569796a8779ff973bfa2b8201bd9a6ea26b330f2d0ca0113110"
+   "lines": 14,
+   "sha": "797a9ecca59de65e9c5cad5ec537cf9b46b6d8cf7ec69a8e86c76231856e2829"
   }
  }
 }

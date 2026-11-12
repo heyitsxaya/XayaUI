@@ -594,8 +594,13 @@ def main():
         # (QA-branch modules: absent on main) and, for the golden profile string, the keys Reskin owns (settings_stores.py reads them from Modules.lua)
         lay = SST.layout(H.ROOT)
         has = lambda a: str(os.path.isdir(os.path.join(H.ROOT, a))).lower()
+        # (Bonus 0.6.45) XUI_HAS_BONUS: XayaUI Bonus Features with its profile part (XayaUI_Bonus/ProfilePart.lua, qa-installer-branch).
+        # On main XayaUI_Bonus holds only the Stat Calculator and registers no profile part, so the golden profile's "bonus" part (Data
+        # Panels, Enhanced Tooltips, Calculator settings) is read as missing, as before. Import's line then reads "needs XayaUI Bonus
+        # Features" although the addon is installed: reported to Xaya (a decision: a profile part for the Stat Calculator, or other wording).
+        bonus_part = str(os.path.isfile(os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua"))).lower()
         L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s"
-                  % (has("XayaUI_Chat"), has("XayaUI_Reskin"), has("XayaUI_QoL"), has("XayaUI_Bonus")))
+                  % (has("XayaUI_Chat"), has("XayaUI_Reskin"), has("XayaUI_QoL"), bonus_part))
         L.execute("XUI_RESKIN_UI = { %s }; XUI_RESKIN_SPLIT = { %s }" % (", ".join('"%s"' % k for k in lay["underUi"].get("reskin", [])),
                   ", ".join('"%s"' % k for k in lay["split"]["characterReskin"]["sub"] if lay["split"]["characterReskin"]["owner"] == "reskin")))
         res = L.eval("function(src, W, Ld, g, on) return loadstring(src)()(W, Ld, g, on) end")(TEST_LUA, world, loader, H.to_lua(L, GOLDEN), rules_on)

@@ -25,8 +25,9 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 CORE = "XayaUI"
 # (P4) XayaUI Rules (rules, aura tracking and, since Rules 0.7.0, the rule editor) is a module a player switches on and off like the
 # others: every combination is run with it on and with it off (the Platform and the settings window must load and work without it).
-# Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (REQUEST-LOG A23); the other addons live on qa-installer-branch.
-FEATURES = ["XayaUI_Rules", "XayaUI_Options"]
+# Main holds XayaUI, XayaUI_Options and XayaUI_Rules (REQUEST-LOG A23), and since Bonus 0.6.45 XayaUI_Bonus holding only the Stat
+# Calculator (REQUEST-LOG A24 #10); the other addons live on qa-installer-branch.
+FEATURES = ["XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Options"]
 # support folders switched on in every combination (none on main)
 ALWAYS = []
 # (Rules 0.7.0, A23 SD-6) files of an addon that run only after another addon has loaded, so they may use that addon's names:

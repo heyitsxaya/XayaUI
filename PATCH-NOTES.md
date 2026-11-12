@@ -22,6 +22,20 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-12 — Stat Calculator
+
+### Bonus Features 0.6.45
+
+**Install (read this first)**
+- XayaUI Bonus Features is back in this download and holds only the Stat Calculator. Delete your old XayaUI_Bonus folder before you copy the new one in: its tooltips, Notepad, Calculator and data panels are not part of this version.
+
+**Stat Calculator (new)**
+- Added the Stat Calculator: a panel beside the character window with every stat in one Character Stats section, where each number comes from, what the next point buys, the Stat Weights pane, a gear comparison and the Ability Scaling tab. Turn it on in Bonus Features > Stat Calculator. It is off until you do.
+- Opens with the character window when you left it open, from the Stat Calculator row in the XayaUI minimap button's list, or with /xui stats. Opened on its own, Esc closes it.
+- The panel and its minimap row are hidden in combat and come back after combat.
+- Stat Calculator settings saved by an earlier test version are kept.
+  *Developers' notes: Not yet tested in game (docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). There is no Stat Calc button on the character window: that button belongs to Improved Character Display, which is not part of this download.*
+
 ## 2026-11-09 — Rules Only
 
 ### Rules 0.7.0
