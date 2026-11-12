@@ -328,10 +328,16 @@ def canon(saved):
 def sessions(root_folders):
     folders = root_folders
     every = set(folders)
-    core_only = {n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media")}   # (P4) the old XayaUI folder
+    # (P4) the old XayaUI folder. (round 7, REQUEST-LOG A23 SD-58 / SD-61) its console window and bug / debug reports are XayaUI_Debug's
+    # now, read only while Advanced Debugging is on, which the old code had on by default and the new code has off for a new install. So
+    # "core only" includes XayaUI_Debug, and every play session starts with Advanced Debugging saved on, as every install before round 7
+    # has it. The old code (HEAD 2381c09d) gives the same GOLDEN_R6 hashes from this start as from an empty one (it saved the same "on"
+    # itself at the first load; checked with this file on a copy of 2381c09d: "B: core only: ... byte-identical" passes there).
+    core_only = {n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Media", "XayaUI_Debug")}
+    start = {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}
     out = {}
     for tag, en in (("all on", every), ("core only", core_only)):
-        s1, e1, u1 = play(folders, en, {}, False)
+        s1, e1, u1 = play(folders, en, start, False)
         s2, e2, u2 = play(folders, en, s1, True)
         out[tag + ": play session"] = (hashlib.sha256(canon(s1).encode()).hexdigest(), e1, u1, s1)
         out[tag + ": reload"] = (hashlib.sha256(canon(s2).encode()).hexdigest(), e2, u2, s2)
@@ -384,8 +390,10 @@ section("C1 first-run defaults", function()
   check("C1: ... and the QoL view reads the stats-text boxes set up at load (P5: by XayaUI QoL, in its store)",
     V.qol.qol ~= nil and rawequal(V.qol.qol.boxes, HOME("qol").qol.boxes) and rawequal(ns.qolBoxes, V.qol.qol.boxes))
   end
-  check("C1: ... and the platform view reads the defaults written into CueRulesDB.ui (console open, Advanced Debugging on)",
-    rawequal(V.platform.ui, CueRulesDB.ui) and V.platform.ui.advancedDebug == true and V.platform.ui.trayOpen == true)
+  -- (round 7, SD-61 "Off by default (Recommended)": the default write of Advanced Debugging "on" is gone, nil reads as off; was "...
+  -- (console open, Advanced Debugging on)" with advancedDebug == true)
+  check("C1: ... and the platform view reads the defaults written into CueRulesDB.ui (console open; Advanced Debugging off: nothing written)",
+    rawequal(V.platform.ui, CueRulesDB.ui) and V.platform.ui.advancedDebug == nil and V.platform.ui.trayOpen == true)
 end)
 
 section("C2 profile import", function()

@@ -132,7 +132,8 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        # (round 7, REQUEST-LOG A23 SD-58 / SD-61) the console window and the reports are XayaUI_Debug's, read only while Advanced Debugging is on (off for a new install): saved on here, as every install before round 7 has it
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

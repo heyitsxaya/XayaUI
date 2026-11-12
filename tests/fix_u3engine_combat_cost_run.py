@@ -4,6 +4,8 @@ R3: a talent requirement is read once and kept until talents change (spec / trai
 longer rebuilt for every rule on every step. A talent picked, a spec change of your own, or an edit is still seen at the next step.
 R18: cooldown / player-aura events in a burst re-check their rules at most about 30 times a second (not on every rendered frame); a change
 after a quiet spell still reacts on the very next frame, and a change inside a burst within 1/30 s; rules that are not loaded are left out
+(round 7, SD-61, her answer "10/s for all, like EUI (Recommended)": the burst pace is now at most 10 a second, so a quiet moment is a
+tenth of a second, and a change inside a burst reacts within a tenth of a second; the checks below follow that pace)
 of those re-checks, except a rule whose display shows "while the buff is active".
 Run: python3 tests/fix_u3engine_combat_cost_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -109,7 +111,8 @@ C_Spell.GetSpellCooldown = GSC0
 local u = 0; for i = 1, 100 do u = u + steps(U[i]) end
 check("R18: ... and leaves out the 100 rules that are not loaded", u == 0, u)
 -- a buff appears after a quiet spell: the cue plays on the next frame; the not-loaded buff display shows on the next frame
-W.tick(0.05, 1)
+-- (round 7, SD-61: the quiet spell is a tenth of a second, the routed pace; it was 0.05 s for the 1/30 s pace)
+W.tick(0.1, 1)
 local a0 = played("7002")
 buffs[1001], buffs[1002] = true, true
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
@@ -120,14 +123,15 @@ W.tick(0.21, 2)
 -- a raid-style burst: both events on every rendered frame for one second at 120 fps
 reset()
 for _ = 1, 120 do W.fire("UNIT_AURA", "player"); W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1) end
-check("R18: in a burst (events on every frame, 120 fps) a cooldown + aura rule is re-checked at most ~30 times a second plus the ticks, not 120",
-  steps(A) <= 45, steps(A))
+check("R18 (round 7, SD-61): in a burst (events on every frame, 120 fps) a cooldown + aura rule is re-checked at most 10 times a second plus the ticks, not 120",
+  steps(A) <= 15, steps(A))
 -- a buff appearing inside the burst still reaches its cue within 1/30 s
 local a1 = played("7002")
 buffs[1001] = true
 local frames = 0
-for i = 1, 12 do W.fire("UNIT_AURA", "player"); W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1); if played("7002") > a1 then frames = i; break end end
-check("R18: a buff appearing inside the burst plays its cue within 1/30 s (4 frames at 120 fps), no event lost", frames >= 1 and frames <= 4, frames)
+for i = 1, 30 do W.fire("UNIT_AURA", "player"); W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1); if played("7002") > a1 then frames = i; break end end
+check("R18 (round 7, SD-61): a buff appearing inside the burst plays its cue within a tenth of a second (12 frames at 120 fps), no event lost",
+  frames >= 1 and frames <= 12, frames)
 ns.Evaluate = E0
 return R
 end

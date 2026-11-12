@@ -227,6 +227,8 @@ check("E2 the buff gone hides its display on the next frame", not shown(BUFF))
 
 -- E4 a cooldown ends with no event
 played = 0
+W.tick(0.1, 1)   -- (round 7, SD-61 "10/s for all": a quiet tenth of a second since the last aura / cooldown re-check, so this event's is the
+                 -- very next frame; inside that tenth it would wait for the pace)
 CDS[2001] = { s = W.now, d = 5 }
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(1 / 60, 2)
 local rtCD = ns.runtime[CD]
@@ -294,6 +296,7 @@ DEB[1] = { spellId = 3001, auraInstanceID = 9001, duration = 10, expirationTime 
 W.fire("UNIT_AURA", "target", { addedAuras = DEB }); W.tick(1 / 60, 2)
 local rtT = ns.runtime[TGT]
 check("[new] E10 a target debuff rule follows UNIT_AURA on the target on the next frame (before: at the next 0.2 s tick)", rtT and rtT.active == true, rtT and tostring(rtT.active))
+W.tick(0.1, 1)   -- (round 7, SD-61: a quiet tenth of a second first, as above)
 DEB[1] = nil; W.fire("UNIT_AURA", "target", { removedAuraInstanceIDs = { 9001 } }); W.tick(1 / 60, 2)
 check("E10 ... and the debuff gone clears it", rtT and rtT.active == false)
 

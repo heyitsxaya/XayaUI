@@ -1,10 +1,11 @@
 -------------------------------------------------------------------------------
--- DebugRecord.lua : XayaUI's error record and the debug report (Settings > Debugging, "Advanced Debugging"; /xui report).
+-- DebugRecord.lua : XayaUI's error record, Settings > Debugging's "Advanced Debugging", and the loader of the debug tools (XayaUI_Debug).
 -- core 0.6.56 (REQUEST-LOG #82; Xaya 2026-11-06, her words: the debug record is "only there to catch errors and bugs that might be
 -- expected within a live, user-facing version of the addon. these should have error codes built out, auto detection, and auto
 -- documenting with a simple debug report that someone can directly send to me -- either via import/export string or screenshot").
--- Her answers (question box, 2026-11-06): default "On, errors only"; kinds "Errors + warnings only"; report "Both: string and
--- screenshot view".
+-- Her answers (question box, 2026-11-06): kinds "Errors + warnings only"; report "Both: string and screenshot view".
+-- Round 7 (REQUEST-LOG A23 SD-58: the debug tools load only while "Debugging" is on; SD-61: Advanced Debugging "Off by default
+-- (Recommended)"; SD-64: a saved "on" is kept, and every login or /reload while it is on prints one chat line; V34).
 --
 --  * The record: XayaUI's errors and warnings, each with a code (ns.ERROR_CODES below: XUI-E001 ...), found on their own:
 --      - Lua errors raised in a XayaUI file (Core.lua chains the game's error handler: the handler set before is always called too;
@@ -13,13 +14,16 @@
 --      - warnings: an action the game blocked (W001), the combat engine's own safety stops and failed aura containers (W002-W004), a
 --        Chat Panel part that could not be applied (W005).
 --    Kept in CueRulesDB.errorLog (saved between sessions; the same list the bug report reads), newest first, one entry per code and
---    message with a count, at most MAX_ENTRIES. On by default (Advanced Debugging); off records nothing.
+--    message with a count, at most MAX_ENTRIES, while Advanced Debugging is on; off records nothing. The record stays here in core,
+--    so it works whether or not the debug tools have loaded (turned on during a session, it records at once; the tools load at the
+--    next /reload and show what was recorded).
 --    Cost while nothing goes wrong: none. Nothing is created per frame or per event: the error handler runs only on an error, and the
 --    one event frame (made only while Advanced Debugging is on) listens to the two events the game raises when it blocks an action.
---  * The debug report (/xui report, and the button on Settings > Debugging): a window with a readable summary for a screenshot (codes,
---    what happened, addon versions, game build, when) and a "Select string" box with the same entries as one text (XUIREP1:...), which
---    XayaUI Dev Assist reads back (/xuidev report).
---  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the XayaUI console window, Console.lua) or "both".
+--  * The debug tools (XayaUI_Debug, load-on-demand): the console window, the bug report (/xui bug) and the debug report window
+--    (/xui report). Loaded once per login or /reload, at the login, only while Advanced Debugging is on; nothing else loads them.
+--    While they are not loaded, each of them, and every /xui debug word, prints one plain line saying what it needs (ns.DebugToolsNeeded).
+--  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the console window, XayaUI_Debug) or "both"; always chat while
+--    the console window's addon is not loaded.
 --  * What to send (ns.SendText / ns.SavedFilePath): the saved-data files to upload and where they are, as copyable text.
 -- The detailed record (the 11 kinds of line: rules firing, snapshots, auras, game state, performance ...) is XayaUI Dev Assist's since
 -- core 0.6.56 (her answer "Errors + warnings only"): XayaUI_DevAssist/DevRecord.lua puts ns.RecordLine and the other hand-in points in
@@ -29,7 +33,7 @@ local _, ns = ...
 local issecret = issecretvalue or function() return false end   -- (P4: was ns.IsSecret first, which is this same function, from XayaUI Rules)
 
 local MAX_ENTRIES = 50   -- (her design asked for "a capped list (e.g. last 50)"; the cap is one of the questions in the report)
-local DR = {}
+local DR = { MAX_ENTRIES = MAX_ENTRIES }
 ns.DebugRecordInfo = DR
 
 local function Ui()
@@ -49,8 +53,12 @@ end
 DR.Version = Version
 function ns.AdvancedDebugOn() return Ui().advancedDebug and true or false end
 
--- "chat" | "console" | "both"
+-- "chat" | "console" | "both". (round 7) Always "chat" while the debug tools are not loaded (Advanced Debugging off at login, the
+-- default): the console window is theirs, so a saved "console" or "both" would send messages nowhere. The saved choice is kept and
+-- counts again once they load.
+local toolsLoaded = false
 function ns.MessageDest()
+    if not toolsLoaded then return "chat" end
     local u = Ui()
     local d = u.msgDest
     if d == "chat" or d == "console" or d == "both" then return d end
@@ -213,23 +221,9 @@ function ns.SendText()
 end
 
 -------------------------------------------------------------------------------
--- Messages into the console window
+-- (round 7) Messages into the console window (ns.ConsoleMessage) are XayaUI_Debug/Console.lua's: core's ns.Print and error handler send
+-- a message there only while ns.MessageDest says so, which needs that addon loaded.
 -------------------------------------------------------------------------------
--- private (ns.PrintPrivate, e.g. a message naming another player): drawn in the open window and tray only, never put in ns.logBuf,
--- which the bug report, "Copy" and a reopened window read.
-local pendingOpen = false
-function ns.ConsoleMessage(text, isError, private)
-    local line = (isError and "|cffff5555[XayaUI error]|r " or "|cff33ccffXayaUI|r: ") .. tostring(text)
-    if not private then ns.LogAppend(line) end   -- (Core.lua: ns.logBuf, trimmed to its last 300 lines past 350)
-    if ns.Fire then ns.Fire("LOG", line) end
-    if ns.ConsoleSink then ns.ConsoleSink(line, private) end
-    if ns.MessageDest() == "console" and Ui().consoleAutoOpen ~= false and ns.ConsoleWindowOn and not ns.ConsoleWindowOn() then
-        if InCombatLockdown and InCombatLockdown() then
-            pendingOpen = true
-            if DR.SyncEvents then DR.SyncEvents() end   -- (the end of combat opens it: PLAYER_REGEN_ENABLED, registered for that only)
-        elseif ns.ConsoleWindow then pcall(ns.ConsoleWindow, true) end
-    end
-end
 
 -- What a function prints, collected instead of shown (Core.lua ns.Print reads ns._capture)
 function ns.CaptureOutput(fn, ...)
@@ -246,8 +240,8 @@ end
 -- Events (rule V14). One frame, made the first time something needs an event, holding only what is needed now:
 --   ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN  while Advanced Debugging is on (the game raises them only when it blocks an action
 --                                                 of an addon: nothing arrives while nothing goes wrong)
---   PLAYER_REGEN_ENABLED                          only while a console window waits for the end of combat (ns.ConsoleMessage above)
--- XayaUI Dev Assist adds its own detailed-record events through DR.extraEvents / DR.extraHandlers (XayaUI_DevAssist/DevRecord.lua).
+-- (round 7) The console window's wait for the end of combat is XayaUI_Debug's own (XayaUI_Debug/Console.lua); the hand-in for XayaUI
+-- Dev Assist's extra events (DR.extraEvents / DR.extraHandlers) served only that retired addon and was removed.
 -- Game API (docs/reference/api/events.md): ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN (isTainted: cstring, function: cstring);
 -- widgets.md, Frame: RegisterEvent(eventName) -> registered: bool; UnregisterEvent(eventName) -> registered: bool.
 -------------------------------------------------------------------------------
@@ -261,21 +255,13 @@ local function Blocked(event, tainted, func)
 end
 function handlers.ADDON_ACTION_BLOCKED(t, f) Blocked("ADDON_ACTION_BLOCKED", t, f) end
 function handlers.ADDON_ACTION_FORBIDDEN(t, f) Blocked("ADDON_ACTION_FORBIDDEN", t, f) end
-function handlers.PLAYER_REGEN_ENABLED()
-    if DR.extraHandlers and DR.extraHandlers.PLAYER_REGEN_ENABLED then pcall(DR.extraHandlers.PLAYER_REGEN_ENABLED) end
-    if pendingOpen then
-        pendingOpen = false
-        if ns.ConsoleWindow then pcall(ns.ConsoleWindow, true) end
-        DR.SyncEvents()
-    end
-end
 DR.handlers = handlers
 local RECORD_EVENTS = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
 DR.RECORD_EVENTS = RECORD_EVENTS
 local evFrame
 local evOn = {}   -- [event] = true while registered on evFrame
 local function OnEvent(_, event, ...)
-    local h = handlers[event] or (DR.extraHandlers and DR.extraHandlers[event])
+    local h = handlers[event]
     if h then
         local ok, err = pcall(h, ...)
         if not ok then pcall(ns.RecordError, "debug record: " .. tostring(err), nil, "XayaUI") end
@@ -284,8 +270,6 @@ end
 local function Wanted()
     local want = {}
     if ns.AdvancedDebugOn() then for _, e in ipairs(RECORD_EVENTS) do want[e] = true end end
-    if pendingOpen then want.PLAYER_REGEN_ENABLED = true end
-    if DR.extraEvents then for e in pairs(DR.extraEvents() or {}) do want[e] = true end end
     return want
 end
 function DR.SyncEvents()
@@ -305,10 +289,10 @@ end
 -- (tests) the events registered now, as a set
 function DR.EventsOn() local t = {}; for e in pairs(evOn) do t[e] = true end; return t end
 
--- Settings > Debugging calls this after a change (and XayaUI Dev Assist's settings after theirs)
+-- Settings > Debugging calls this after a change. (round 7) The record's two events follow the switch at once; the debug tools
+-- (XayaUI_Debug) load or go only at the next login or /reload (V34: on / off is detected once per reload; the game cannot unload code).
 function ns.DebugSettingsChanged()
     DR.SyncEvents()
-    if ns.DevRecordChanged then pcall(ns.DevRecordChanged) end   -- (XayaUI Dev Assist's detailed record and probe switch)
 end
 if ns.WhenReady then ns.WhenReady(function() DR.SyncEvents() end) end
 
@@ -327,162 +311,70 @@ if ns.AtLogin then
 end
 
 -------------------------------------------------------------------------------
--- The debug report: the same entries as a readable summary (for a screenshot) and as one string (to paste to Xaya)
+-- The debug tools: XayaUI_Debug (bundle 1 round 7). REQUEST-LOG A23 SD-58, her answer: "1 but nothing loads unless "Debugging" is
+-- enabled"; SD-61: Advanced Debugging "Off by default (Recommended)"; SD-64, her words: "any time a user has debugging on, logging in or
+-- reloading should print to the chat pane "advanced debugging is on. to turn this off ...""; V34: off means not read, detected once per
+-- reload. So: at the login (PLAYER_LOGIN, which the game raises at every login and every /reload), and only while Advanced Debugging is
+-- on, core loads XayaUI_Debug (C_AddOns.LoadAddOn) once, and prints her line in chat. Nothing else loads it: with Advanced Debugging off
+-- none of its files is read, and the console window, /xui bug, /xui report and /xui debug answer with one plain line instead
+-- (ns.DebugToolsNeeded). Turned on during a session, the tools load at the next /reload; turned off, they stay until then.
+-- Game API (docs/reference/api/namespaces.md, C_AddOns, 12.1.5; each has SecretArguments=AllowedWhenUntainted, and XayaUI passes only
+-- its own literal addon name):
+--   C_AddOns.LoadAddOn(name: uiAddon) -> loaded: bool?, value: string?                                       (namespaces.md:164)
+--   C_AddOns.GetAddOnInfo(name: uiAddon) -> name, title, notes, loadable: bool, reason: cstring, security     (namespaces.md:148)
+-- INFERENCE (not documented there): reason "MISSING" means the folder is not installed and "DISABLED" that it is switched off in the
+-- AddOns list (the same reading Modules.lua ns.ModuleState uses); and LoadAddOn may be called during combat lockdown (it is not marked
+-- protected): a /reload in a fight still loads the tools, whose windows are exempt from the combat lock (V26).
+-- V24 / V25 cost: one setting read at the login; with Advanced Debugging off nothing else, ever.
 -------------------------------------------------------------------------------
-local REPORT_PREFIX, REPORT_V = "XUIREP1", 1
-DR.REPORT_PREFIX = REPORT_PREFIX
-local function Clock(t) return (type(t) == "number" and date) and date("%m-%d %H:%M", t) or "?" end
--- The data both views are made from (also what the string carries).
-function ns.DebugReportData()
-    local d = { v = REPORT_V, made = date and date("%Y-%m-%d %H:%M:%S") or "?", on = ns.AdvancedDebugOn(), entries = {}, addons = {} }
-    local okB, ver, build = pcall(GetBuildInfo)
-    d.game, d.build = okB and tostring(ver) or "?", okB and tostring(build) or "?"
-    local okL, loc = pcall(function() return GetLocale and GetLocale() end)
-    d.locale = okL and tostring(loc) or "?"
-    d.client = DR.GameFolder() == "_retail_" and "live" or (DR.GameFolder() == "_beta_" and "beta" or "test realm")
-    if C_AddOns and C_AddOns.GetNumAddOns and C_AddOns.GetAddOnInfo then
-        local okN, total = pcall(C_AddOns.GetNumAddOns)
-        for i = 1, (okN and tonumber(total)) or 0 do
-            local okI, name = pcall(C_AddOns.GetAddOnInfo, i)
-            if okI and type(name) == "string" and name:find("^XayaUI") then
-                local okD, _, loaded = pcall(C_AddOns.IsAddOnLoaded, name)
-                d.addons[#d.addons + 1] = { name = name, ver = Version(name), loaded = (okD and loaded) and true or false }
-            end
-        end
-    end
-    for _, e in ipairs(ns.ErrorEntries()) do
-        d.entries[#d.entries + 1] = { code = e.code, kind = e.kind, msg = tostring(e.msg or ""):sub(1, 300),
-            stack = e.stack and tostring(e.stack):sub(1, 600) or nil, first = e.first, last = e.last, n = e.n or 1, ver = e.ver,
-            combat = e.combat and true or nil }
-    end
-    return d
+DR.TOOLS_ADDON = "XayaUI_Debug"
+-- her line (SD-64), with the ending she left open completed (INFERENCE, REQUEST-LOG SD-64)
+DR.ON_LINE = "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging."
+-- (XayaUI_Debug/Tools.lua, its first file) the debug tools are here: core's debug words run them from now on
+function ns.DebugToolsArrived() toolsLoaded = true end
+function ns.DebugToolsLoaded() return toolsLoaded end
+local toolsTried, toolsWhy = false, nil
+local function LoadTools()
+    if toolsLoaded or toolsTried then return end
+    toolsTried = true   -- (once per reload: a refused load is not retried until the next /reload)
+    local A = C_AddOns
+    if not (A and A.LoadAddOn) then return end
+    local ok, loaded, why = pcall(A.LoadAddOn, DR.TOOLS_ADDON)
+    if not (ok and loaded) then toolsWhy = tostring((ok and why) or loaded or "?") end
 end
--- The readable summary. expanded: also each error's stack (XayaUI Dev Assist shows an imported report this way).
-function ns.DebugReportText(d, expanded)
-    d = d or ns.DebugReportData()
-    local t = {}
-    local function add(s) t[#t + 1] = s end
-    add(("XayaUI debug report  -  made %s (local time)"):format(tostring(d.made)))
-    add(("Game %s (build %s), %s client, locale %s"):format(tostring(d.game), tostring(d.build), tostring(d.client), tostring(d.locale)))
-    local a = {}
-    for _, x in ipairs(type(d.addons) == "table" and d.addons or {}) do
-        a[#a + 1] = ("%s %s%s"):format(tostring(x.name):gsub("^XayaUI_", ""), tostring(x.ver), x.loaded and "" or " (off)")
+-- One plain line saying what a debug tool needs while XayaUI_Debug is not loaded. what: "The bug report (/xui bug)" ...
+function ns.DebugToolsNeeded(what)
+    what = tostring(what or "This debug command")
+    local reason
+    local A = C_AddOns
+    if A and A.GetAddOnInfo then
+        local ok, name, _, _, _, why = pcall(A.GetAddOnInfo, DR.TOOLS_ADDON)
+        if ok and (why == "MISSING" or not name) then reason = "missing"
+        elseif ok and why == "DISABLED" then reason = "disabled" end
     end
-    add("XayaUI addons: " .. (#a > 0 and table.concat(a, ", ") or "?"))
-    local entries = type(d.entries) == "table" and d.entries or {}
-    local ne, nw = 0, 0
-    for _, e in ipairs(entries) do if e.kind == "warning" then nw = nw + 1 else ne = ne + 1 end end
-    if d.on == false then add("Advanced Debugging is OFF: nothing new is recorded (Settings > Debugging).") end
-    add(("%d entr%s: %d error%s, %d warning%s (the newest %d are kept)"):format(#entries, #entries == 1 and "y" or "ies", ne,
-        ne == 1 and "" or "s", nw, nw == 1 and "" or "s", MAX_ENTRIES))
-    if #entries == 0 then add(""); add("No errors or warnings recorded.") end
-    for _, e in ipairs(entries) do
-        local info = CODE[e.code]
-        add("")
-        add(("%s  x%d  %s"):format(tostring(e.code), tonumber(e.n) or 1, info and info.text or "(unknown code)"))
-        add(("   first %s, last %s%s, version %s"):format(Clock(e.first), Clock(e.last), e.combat and ", in combat" or "", tostring(e.ver or "?")))
-        add("   " .. tostring(e.msg or ""):gsub("\n", " / "))
-        if expanded and e.stack and e.stack ~= "" then add("   stack: " .. tostring(e.stack):gsub("\n", " / ")) end
+    if reason == "missing" then
+        ns.Print(what .. " is one of the debug tools (XayaUI Debug), which is not installed: the XayaUI_Debug folder belongs next to XayaUI in Interface\\AddOns.")
+    elseif reason == "disabled" then
+        ns.Print(what .. " is one of the debug tools (XayaUI Debug), which is switched off in the game's AddOns list. Turn it on, then type /reload.")
+    elseif toolsTried then   -- (on at the login, and the game refused to load them: its reason, e.g. an out-of-date or broken folder)
+        ns.Print(what .. " is one of the debug tools (XayaUI Debug), which could not load (" .. tostring(toolsWhy) .. "). Type /reload to try again.")
+    elseif ns.AdvancedDebugOn() then
+        ns.Print(what .. " needs a /reload: the debug tools load at the next login or /reload while Advanced Debugging is on.")
+    else
+        ns.Print(what .. " needs Advanced Debugging: turn it on in /xui > Settings > Debugging, then type /reload.")
     end
-    return table.concat(t, "\n")
 end
--- The string: XUIREP1:<checksum>:<base64 of JSON> (Share.lua's codec; not importable as rules or a theme)
-function ns.DebugReportString(d)
-    if not (ns.Share and ns.Share.Pack) then return nil, "the share codec is not loaded" end
-    return ns.Share.Pack(REPORT_PREFIX, d or ns.DebugReportData())
+-- in chat, whatever "XayaUI's messages" says (her words: "print to the chat pane")
+local function ChatLine(text)
+    local prev = ns.chatRunning
+    ns.chatRunning = true
+    pcall(ns.Print, text)
+    ns.chatRunning = prev
 end
--- The string back to the data (XayaUI Dev Assist's import); nil, message when it cannot be read. Only plain fields are kept.
-function ns.DebugReportRead(str)
-    if not (ns.Share and ns.Share.Unpack) then return nil, "the share codec is not loaded" end
-    local d, err = ns.Share.Unpack(str, REPORT_PREFIX)
-    if not d then return nil, err end
-    if tonumber(d.v) ~= REPORT_V then return nil, ("Unsupported debug report format (version %s)."):format(tostring(d.v)) end
-    local function str_(v, n) return type(v) == "string" and v:sub(1, n or 1000) or (type(v) == "number" and tostring(v)) or nil end
-    local out = { v = REPORT_V, made = str_(d.made, 40), game = str_(d.game, 40), build = str_(d.build, 40), locale = str_(d.locale, 10),
-        client = str_(d.client, 20), on = d.on ~= false, addons = {}, entries = {} }
-    for _, x in ipairs(type(d.addons) == "table" and d.addons or {}) do
-        if type(x) == "table" then out.addons[#out.addons + 1] = { name = str_(x.name, 60) or "?", ver = str_(x.ver, 30) or "?", loaded = x.loaded == true } end
-    end
-    for _, e in ipairs(type(d.entries) == "table" and d.entries or {}) do
-        if type(e) == "table" then
-            out.entries[#out.entries + 1] = { code = str_(e.code, 12) or "?", kind = e.kind == "warning" and "warning" or "error",
-                msg = str_(e.msg, 300) or "", stack = str_(e.stack, 600), first = tonumber(e.first), last = tonumber(e.last),
-                n = tonumber(e.n) or 1, ver = str_(e.ver, 30), combat = e.combat == true or nil }
-        end
-    end
-    return out
+if ns.AtLogin then
+    ns.AtLogin(function()
+        if not ns.AdvancedDebugOn() then return end
+        LoadTools()
+        ChatLine(DR.ON_LINE)
+    end)
 end
-
--- The window (made the first time it opens). Top: the summary, framed for a screenshot. Bottom: the string, and "Select string".
--- UI-78 (O-128, core 0.6.69; her words: "copy string button doesn't copy"): an addon cannot put text on the clipboard (CopyToClipboard is
--- protected: secure code only), so the button is named for what it does: it selects the string, and the hint then says which keys copy it.
-local HINT = "Send Xaya a screenshot of this window, or press Select string, then Ctrl+C (Cmd+C on Mac), and paste the text to her."
-local HINT_SELECTED = "The string is selected: now press Ctrl+C (Cmd+C on Mac) to copy it, then paste it to Xaya."
-local win
-local function BuildWindow()
-    local f = CreateFrame("Frame", "XayaUIDebugReport", UIParent, "BackdropTemplate")
-    local M, G = ns.UI_MARGIN or 10, ns.UI_GUTTER or 10
-    f:SetSize(680, 460)
-    f:SetPoint("CENTER")
-    f:SetFrameStrata("DIALOG")
-    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    f:SetBackdropColor(0.06, 0.06, 0.07, 0.97)
-    f:SetBackdropBorderColor(0.4, 0.4, 0.45, 1)
-    f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
-    f:SetClampedToScreen(true)
-    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.title:SetPoint("TOPLEFT", M, -M)
-    f.title:SetText("XayaUI debug report")
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    f.hint:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
-    f.hint:SetPoint("RIGHT", f, "RIGHT", -(M + 24), 0)
-    f.hint:SetJustifyH("LEFT")
-    f.hint:SetText(HINT)
-    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", -2, -2)
-    -- the string row along the bottom: a one-line box with the string and the button
-    local copy = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    copy:SetSize(110, 24); copy:SetPoint("BOTTOMRIGHT", -M, M); copy:SetText("Select string")
-    if ns.FlatButton then ns.FlatButton(copy, true) end
-    local sbox = CreateFrame("EditBox", nil, f, "BackdropTemplate")
-    sbox:SetHeight(24)
-    sbox:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", M, M); sbox:SetPoint("RIGHT", copy, "LEFT", -G, 0)
-    sbox:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    sbox:SetBackdropColor(0, 0, 0, 0.5); sbox:SetBackdropBorderColor(0.3, 0.3, 0.35, 1)
-    sbox:SetFontObject(ChatFontNormal); sbox:SetTextInsets(6, 6, 0, 0)
-    sbox:SetAutoFocus(false); sbox:SetMaxLetters(0)
-    sbox:SetScript("OnEscapePressed", function() f:Hide() end)
-    sbox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    -- a click inside the box would drop the selection: select it all again, so Ctrl+C always copies the whole string
-    sbox:SetScript("OnMouseUp", function(self) self:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
-    copy:SetScript("OnClick", function() sbox:SetFocus(); sbox:HighlightText(); f.hint:SetText(HINT_SELECTED) end)
-    f.str, f.copy = sbox, copy
-    if ns.KeyFocusGuard then ns.KeyFocusGuard(sbox) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
-    -- the summary
-    local sf = CreateFrame("ScrollFrame", "XayaUIDebugReportScroll", f, "UIPanelScrollFrameTemplate")
-    sf:SetPoint("TOPLEFT", M, -50); sf:SetPoint("BOTTOMRIGHT", -(M + 22), M + 24 + G)
-    local eb = CreateFrame("EditBox", nil, sf)
-    eb:SetMultiLine(true); eb:SetAutoFocus(false); eb:SetFontObject(ChatFontNormal)
-    eb:SetWidth(680 - 2 * M - 30); eb:SetMaxLetters(0)
-    -- (review R22) the summary is for reading and screenshots: no mouse, so a click never gives it the keyboard (PRINTSCREEN, typing
-    -- into the report); the click reaches the window, which drags. The string box below stays the one to copy from.
-    eb:EnableMouse(false)
-    eb:SetScript("OnEscapePressed", function() f:Hide() end)
-    sf:SetScrollChild(eb)
-    f.text = eb
-    if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
-    if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIDebugReport") end
-    return f
-end
-function ns.ShowDebugReport()
-    if not CreateFrame then return end
-    win = win or BuildWindow()
-    local d = ns.DebugReportData()
-    win.text:SetText(ns.DebugReportText(d))
-    win.str:SetText(ns.DebugReportString(d) or "")
-    win.hint:SetText(HINT)
-    win:Show()
-    return win
-end
-function ns.DebugReportWindow() return win end   -- (tests)

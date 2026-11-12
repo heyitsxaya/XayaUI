@@ -13,7 +13,8 @@ The scenario (the same for the three gates; each gate reads the part it judges):
   session A  a fresh install logs in and a realistic profile of about 300 rules is made through XayaUI's own functions (buff rules
              with icon displays and duration text, cooldown rules, bar cues, sound cues, icon cues, game-played sounds that follow
              "Only when mounted" / "Only when not mounted", hover-tooltip displays, target-debuff rules, rules that load only in
-             combat / in a group; static groups, dynamic groups and a nested group); she logs out (saved variables written).
+             combat / in a group; rules with a talent requirement (round 7); static groups, dynamic groups and a nested group); she
+             logs out (saved variables written).
   session B  the next login on what session A saved (as the game does: the profile is there at ADDON_LOADED), then:
              the settings window opens and is used (rules selected with a click, Ctrl+click and hover; the rule search typed in;
              a group's slider dragged; a rule's right-click menu and a dropdown list opened), the mover (/xui unlock) opened and
@@ -23,6 +24,13 @@ The scenario (the same for the three gates; each gate reads the part it judges):
              _USABLE storms every frame, auras gained and lost, spells cast, a group joined and left, a mount and a dismount,
              a loading screen; then 30 seconds idle out of combat with nothing on screen changing.
 The window stays closed from the close onward: every frame the gates judge is "after the window is closed".
+V33 (round 7): every handler's Lua instructions are also summed per addon and per frame drawn, in segments "fight N" (from combat start,
+its first second included, to the fight's last frame), "out N" (the rest of cycle N) and "idle"; tests/gate_performance_run.py judges
+them against the work budget calibrated on her reading (the same scenario played on origin/main ad60a051: v33_baseline below).
+Not played yet (TODO, round 7, engine-b's game-driven timing; SD-60): what the game hides the moment of in combat (a cooldown whose end
+is secret, countdown seconds read from a secret duration, the range to a focus / mouseover / pet, a row type the engine does not know).
+The stand-in has no secret cooldowns, no duration object that counts down, no OnCooldownDone and no range events, so these need the
+stand-in to drive whatever route that unit builds; until then the 0.2 s re-check of such rules is not played and not measured here.
 
 Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings are UNVERIFIED IN GAME):
   * the game's mouse model is added here on top of tests/harness/world.lua: EnableMouse sets clicks and motion together;
@@ -123,6 +131,7 @@ C_SpellBook.IsSpellKnownOrInSpellBook = function(id, bank, ov) if G.known[id] th
 local IPS0 = IsPlayerSpell
 IsPlayerSpell = function(id) if G.known[id] then return true end if IPS0 then return IPS0(id) end return false end
 for i = 1, 60 do G.known[400000 + i] = true end
+for i = 1, 4 do G.known[450000 + i] = true end   -- the talents the profile's talent requirements name (PROFILE_LUA 6b)
 IsMounted = function() return G.mounted end
 IsInGroup = function() return G.group end
 IsInRaid = function() return G.raid end
@@ -179,7 +188,7 @@ local function display(r, w, h)
   v.enabled, v.kind, v.w, v.h = true, "spellicon", w or 40, h or 40
   v.text.enabled = true
 end
-local made = { buff = 0, cd = 0, bar = 0, soundCue = 0, iconCue = 0, game = 0, hover = 0, debuff = 0 }
+local made = { buff = 0, cd = 0, bar = 0, soundCue = 0, iconCue = 0, game = 0, hover = 0, debuff = 0, talent = 0 }
 -- 1. buff rules with an icon and its duration text: 36 in dynamic groups (the combat engine draws them), 30 in static groups
 for i = 1, 66 do
   rule("Buff " .. i, function(r)
@@ -239,6 +248,18 @@ for i = 1, 16 do
     r.folder = dyns[(i - 1) % #dyns + 1].id
   end)
   made.debuff = made.debuff + 1
+end
+-- 6b. (round 7) rules with a talent requirement: two whose talent is known (loaded) and two that need it not known (not loaded). Talents are
+--     read again only on the game's talent events (SD-60, her answer "1"); a re-read on a timer (review R3's once-a-second ticker out of
+--     combat while such a rule is switched on) is a repeating timer the gate must see, and before round 7 the profile had no such rule.
+for i = 1, 4 do
+  rule("Talent " .. i, function(r)
+    r.useBuff, r.buffID, r.buffState = true, 300000 + i, "present"
+    r.talentMode = "all"; r.talents = { { id = 450000 + i, state = (i % 2 == 1) and "known" or "notKnown" } }
+    display(r, 32, 32); r.visual.trigger = "buffActive"
+    r.folder = statics[(i - 1) % #statics + 1].id
+  end)
+  made.talent = made.talent + 1
 end
 -- 7. sound and icon cues on rules that have none, up to about 300 entries in the rule list
 local i = 0
@@ -651,6 +672,63 @@ local quietRun = function(fn, ...)
 end
 local WIN = 2   -- seconds: an OnUpdate or ticker is judged per 2-second window (a countdown in whole seconds changes once a second)
 local T0 = 0
+-- V33 work budget (round 7; REQUEST-LOG SD-50 / SD-51, her answer "Proxy gate + your check"): each addon's work per drawn frame, in Lua VM
+-- instructions of its own handlers (events, OnUpdate scripts, timer callbacks; an addon's handler is billed for everything it calls,
+-- INFERENCE about how the game's AddOn Usage bills), summed per segment: "fight N" (PLAYER_REGEN_DISABLED to the last fight frame of
+-- cycle N, the first second included), "out N" (the rest of cycle N) and "idle". The events fired between two frames belong to the next.
+local ADDON_OF = {}   -- [file:line] = "XayaUI_Rules" (the addon folder)
+local function addonOf(src) local a = ADDON_OF[src]; if a == nil then a = src:match("^(XayaUI[%w_]*)/") or "?"; ADDON_OF[src] = a end; return a end
+local BSEG = nil      -- the segment being played, or nil (before the window closed)
+local BFRAME = {}     -- [addon] = instructions in the frame being drawn
+local BUD = {}        -- [segment] = { frames, work = {[addon]}, peak = {[addon]}, sec = {[addon] = {per second of the segment}}, keys = {[addon] = {[key] = stats}} }
+local function budSeg(name)
+  local s = BUD[name]
+  if not s then s = { frames = 0, work = {}, peak = {}, sec = {}, keys = {} }; BUD[name] = s end
+  return s
+end
+-- her pace (SD-61, "10/s for all, like EUI"): a timer callback that runs more than PACE_N times within one second is faster than any
+-- re-check she chose, whether the game event or the callback itself armed it (round 6's PUMP_AFTER first second ran one-shot timers
+-- every frame, which P2 did not judge). Kept per callback function: the run times of its last PACE_RING runs and what each changed.
+local PACE_N, PACE_RING, PACE_EPS = 10, 32, 1 / 60
+local PACE = {}       -- [callback file:line] = { t = {}, v = {}, i = 0, over = {[phase]}, quiet = {[phase]}, most = runs in a second at most, first = example }
+local function paceNote(src, vis)
+  local p = PACE[src]
+  if not p then p = { t = {}, v = {}, i = 0, over = {}, quiet = {}, most = 0 }; PACE[src] = p end
+  p.i = p.i % PACE_RING + 1
+  p.t[p.i], p.v[p.i] = W.now, vis
+  local n, seen = 0, 0
+  for k = 1, PACE_RING do
+    local t = p.t[k]
+    if t and t > W.now - 1 + PACE_EPS then n = n + 1; seen = seen + (p.v[k] or 0) end
+  end
+  if n > p.most then p.most = n end
+  if n > PACE_N then
+    p.over[PHASE] = (p.over[PHASE] or 0) + 1
+    if seen == 0 then p.quiet[PHASE] = (p.quiet[PHASE] or 0) + 1; p.first = p.first or string.format("%s, %.2f s after the window closed, %d runs in the last second", PHASE, W.now - T0, n) end
+  end
+end
+local function budNote(kind, name, src, bytes, ins)
+  local a = addonOf(src)
+  BFRAME[a] = (BFRAME[a] or 0) + ins
+  local s = budSeg(BSEG)
+  local ks = s.keys[a]; if not ks then ks = {}; s.keys[a] = ks end
+  local key = (kind == "event") and name or (kind .. " " .. src)
+  local e = ks[key]; if not e then e = { n = 0, ins = 0, max = 0, bytes = 0, allocRuns = 0 }; ks[key] = e end
+  e.n = e.n + 1; e.ins = e.ins + ins; if ins > e.max then e.max = ins end
+  e.bytes = e.bytes + bytes; if bytes > 0 then e.allocRuns = e.allocRuns + 1 end
+end
+local function budFrame()
+  if not BSEG then for a in rawpairs(BFRAME) do BFRAME[a] = nil end; return end
+  local s = budSeg(BSEG)
+  local secIndex = math.floor(s.frames / 30) + 1   -- (30 frames a second: the scenario's FPS)
+  s.frames = s.frames + 1
+  for a, w in rawpairs(BFRAME) do
+    s.work[a] = (s.work[a] or 0) + w
+    if w > (s.peak[a] or 0) then s.peak[a] = w end
+    if secIndex then local q = s.sec[a]; if not q then q = {}; s.sec[a] = q end; q[secIndex] = (q[secIndex] or 0) + w end
+    BFRAME[a] = nil
+  end
+end
 local function finish(kind, name, src, bytes, vis, owner, ins)
   -- bookkeeping after the measurement (its own garbage is not counted)
   local byKind = (kind == "event") and ST.ev or ((kind == "onupdate") and ST.ou or ST.tm)
@@ -673,6 +751,8 @@ local function finish(kind, name, src, bytes, vis, owner, ins)
     hc.n = hc.n + 1; hc.bytes = hc.bytes + bytes; hc.ins = hc.ins + ins; if bytes > 0 then hc.allocRuns = hc.allocRuns + 1 end
     if ins > hc.insMax then hc.insMax = ins end
   end
+  if BSEG and src then budNote(kind, name, src, bytes, ins) end
+  if kind == "timer" and src and CLOSED then paceNote(src, vis) end
   if kind ~= "event" then
     local w = math.floor((W.now - T0) / WIN)
     local ww = s.wins[w]; if not ww then ww = { runs = 0, vis = 0, phase = PHASE }; s.wins[w] = ww end
@@ -751,6 +831,7 @@ W.tick = function(dt, steps)
       local f = o._scripts.OnUpdate
       if f and o:IsVisible() then run("onupdate", nil, o, f, o, dt) end
     end
+    budFrame()
   end
 end
 
@@ -869,6 +950,11 @@ local ns = rawget(_G, "XayaUI_NS")
 assert(ns and ns.rules, "XayaUI Rules did not load")
 OUT.rules = #ns.rules
 OUT.folders = #(ns.folders or {})
+do  -- (round 7) the rules with a talent requirement session A made (PROFILE_LUA 6b): the gate must play them
+  local n = 0
+  for _, r in rawipairs(ns.rules) do if type(r.talents) == "table" and #r.talents > 0 and r.talentMode and r.talentMode ~= "none" then n = n + 1 end end
+  OUT.talentRules = n
+end
 local N = #ns.rules
 LOOPMIN = math.floor(N * 0.8)
 BIG[ns.rules] = N
@@ -1056,6 +1142,7 @@ local function sfire(ev, ...) sample(true); W.fire(ev, ...); sample(false) end
 local function sfireSame(ev, ...) sample(true); fireSame(ev, ...); sample(false) end
 for cyc = 1, 3 do
   setPhase("busy " .. cyc)
+  BSEG = "out " .. cyc   -- (V33 budget segments, see budFrame: work done between two frames is billed to the next frame)
   for k in rawpairs(WCALLS) do WCALLS[k] = nil end
   -- every cycle plays the same thing from the same start (so a count that grows from cycle to cycle is the addon's, not the input's)
   G.clear(); active = {}; bi, ci = 0, 0; G.targetDebuffs = {}; G.syncContainers()
@@ -1071,6 +1158,7 @@ for cyc = 1, 3 do
   G.group = true; sfire("GROUP_ROSTER_UPDATE"); sfireSame("GROUP_ROSTER_UPDATE"); frames(0.25)
   G.target = true; sfire("PLAYER_TARGET_CHANGED"); frames(0.25)
   -- the fight: 15 seconds of storms
+  BSEG = "fight " .. cyc   -- (the fight's first second is judged like the rest of it)
   sample(true); fight(); sample(false)
   for _ = 1, 4 do gainOne(30) end
   frames(BUSY, function(i)
@@ -1079,6 +1167,7 @@ for cyc = 1, 3 do
     if i == 200 then sfireSame("GROUP_ROSTER_UPDATE") end   -- someone joins mid-fight (the player's group state does not change)
   end)
   sample(false)
+  BSEG = "out " .. cyc
   OUT.mouseCombat[cyc] = checkpoint("in the fight, cycle " .. cyc)
   sample(true); peace(); sample(false)
   frames(1)
@@ -1097,9 +1186,11 @@ for cyc = 1, 3 do
 end
 -- idle out of combat: every aura and cooldown gone, nothing on screen changing
 setPhase("idle settle")
+BSEG = "idle settle"
 G.clear(); active = {}; G.syncContainers()
 W.fire("UNIT_AURA", "player", { isFullUpdate = true }); W.fire("SPELL_UPDATE_COOLDOWN")
 frames(5)
+BSEG = "idle"
 for w = 1, 3 do
   setPhase("idle " .. w)
   for k in rawpairs(WCALLS) do WCALLS[k] = nil end
@@ -1110,6 +1201,12 @@ for w = 1, 3 do
   ST.idlewin[w] = snap
 end
 debug.sethook()
+BSEG = nil; for a in rawpairs(BFRAME) do BFRAME[a] = nil end
+OUT.budget = BUD
+local pace = {}
+for src, p in rawpairs(PACE) do pace[src] = { over = p.over, quiet = p.quiet, most = p.most, first = p.first } end
+OUT.pace = pace
+OUT.paceN = PACE_N
 if PERF then OUT.memEnd = memNow() end
 checkpoint("after 30 seconds idle out of combat")
 -- timers still waiting at the end, by who made them
@@ -1202,6 +1299,131 @@ def result():
     return data, secs, False
 
 
+def cache_path():
+    """Where result() keeps this checkout's scenario result (used by tree_result below, in its own process)."""
+    return os.path.join(tempfile.gettempdir(), "xui_gate_cache", _key() + ".json")
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# V33 (round 7): the same scenario played on an older build, for the work budget's calibration and for the proofs that the gate's
+# checks have teeth (tests/v33_budget_teeth_run.py). A build is the addon folders at a git commit, unpacked once into the temp folder
+# next to a copy of this checkout's gate files and harness (so it plays exactly this scenario in exactly this stand-in), and played
+# in its own Python process (the harness reads the addons from the folder it sits in).
+# ---------------------------------------------------------------------------------------------------------------------------------
+V33_BASE_COMMIT = "ad60a051"   # origin/main before bundle 1: her install when she read AddOn Usage (REQUEST-LOG SD-38)
+
+
+def scenario_stamp():
+    """A short hash of the scenario itself (the game stand-in, the profile and the play)."""
+    return hashlib.sha1((GAME_LUA + PROFILE_LUA + SCENARIO_LUA).encode()).hexdigest()[:12]
+
+
+def _harness_files():
+    """This checkout's harness files a tree copy takes (not its reports)."""
+    hd = os.path.join(HERE, "harness")
+    return [os.path.join(hd, f) for f in sorted(os.listdir(hd)) if f.endswith((".lua", ".py", ".json"))]
+
+
+def _gate_files():
+    """This checkout's gate files a tree copy takes, refreshed on every use (the scenario is in gate_common.py, so the copy's
+    folder is named by the scenario, not by these files: a change to how a gate reads the result does not play the old build again)."""
+    return [os.path.join(HERE, f) for f in sorted(os.listdir(HERE)) if f.startswith(("gate_", "v33_budget_")) and f.endswith(".py")]
+
+
+def _put(src, to):
+    """Copy one file into a tree copy unless it is already the same (written whole, then moved into place)."""
+    import shutil
+    with open(src, "rb") as fh:
+        new = fh.read()
+    if os.path.isfile(to):
+        with open(to, "rb") as fh:
+            if fh.read() == new:
+                return
+    os.makedirs(os.path.dirname(to), exist_ok=True)
+    tmp = to + ".%d.tmp" % os.getpid()
+    with open(tmp, "wb") as fh:
+        fh.write(new)
+    os.replace(tmp, to)
+
+
+def tree_copy(commit, repo=None):
+    """The addon folders at a git commit plus this checkout's harness and gate files, under the temp folder (unpacked once per commit,
+    scenario and harness, then reused). Returns the folder, or raises RuntimeError with the reason (no git, unknown commit)."""
+    import shutil, subprocess, tarfile, io
+    repo = repo or os.environ.get("XUI_V33_REPO") or ROOT
+    h = hashlib.sha1((commit + scenario_stamp()).encode())
+    for part in (inspect.getsource(_world), inspect.getsource(build_profile), inspect.getsource(run_scenario)):
+        h.update(part.encode())
+    for f in _harness_files():
+        h.update(os.path.relpath(f, HERE).encode())
+        with open(f, "rb") as fh:
+            h.update(fh.read())
+    dest = os.path.join(tempfile.gettempdir(), "xui_v33_trees", "%s-%s" % (commit, h.hexdigest()[:12]))
+    if not os.path.isfile(os.path.join(dest, ".complete")):
+        try:
+            r = subprocess.run(["git", "-C", repo, "archive", commit, "XayaUI", "XayaUI_Options", "XayaUI_Rules"], capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise RuntimeError("git could not be run: %s" % e)
+        if r.returncode != 0:
+            raise RuntimeError("git archive %s failed in %s: %s" % (commit, repo, r.stderr.decode(errors="replace").strip()[:200]))
+        tmp = dest + ".%d.tmp" % os.getpid()
+        os.makedirs(tmp, exist_ok=True)
+        with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tf:
+            for m in tf.getmembers():   # (our own repository's folders; nothing outside the copy)
+                if m.name.startswith("/") or ".." in m.name.split("/"):
+                    raise RuntimeError("unexpected path in git archive: %s" % m.name)
+            tf.extractall(tmp)
+        for f in _harness_files() + _gate_files():
+            _put(f, os.path.join(tmp, "tests", os.path.relpath(f, HERE)))
+        open(os.path.join(tmp, ".complete"), "w").close()
+        try:
+            os.replace(tmp, dest)
+        except OSError:                    # (another process made it first)
+            shutil.rmtree(tmp, ignore_errors=True)
+    for f in _gate_files():
+        _put(f, os.path.join(dest, "tests", os.path.relpath(f, HERE)))
+    return dest
+
+
+def tree_env(tree):
+    """The environment a tree copy is played in: its own API index, and the repository for its own baseline (git)."""
+    env = dict(os.environ)
+    env["XUI_API_INDEX"] = os.path.join(tree, "tests", "harness", "api_index.json")
+    env["XUI_V33_REPO"] = os.environ.get("XUI_V33_REPO") or ROOT
+    return env
+
+
+def tree_result(tree):
+    """The scenario's result for a tree copy (cached like result()). Returns (data, seconds); raises RuntimeError when it did not run."""
+    import subprocess
+    code = ("import sys; sys.path.insert(0, %r); import gate_common as GC; GC.result(); print(GC.cache_path())" % os.path.join(tree, "tests"))
+    t0 = time.time()
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=tree, env=tree_env(tree), timeout=1800)
+    if r.returncode != 0:
+        raise RuntimeError("the scenario did not run in %s: %s" % (tree, (r.stderr or r.stdout).strip()[-400:]))
+    path = (r.stdout.strip().splitlines() or [""])[-1]
+    with open(path) as fh:
+        return json.load(fh), round(time.time() - t0, 1)
+
+
+def v33_baseline():
+    """The V33 calibration run: the scenario on V33_BASE_COMMIT. Returns (data, text saying how it was got) or (None, the reason)."""
+    try:
+        tree = tree_copy(V33_BASE_COMMIT)
+        data, secs = tree_result(tree)
+    except (RuntimeError, OSError, ValueError) as e:
+        return None, str(e)
+    return data, "played now on %s in this scenario (%s; %.0f s, or the cached result)" % (V33_BASE_COMMIT, tree, secs)
+
+
+def seg_per_frame(data, segs, addon):
+    """An addon's work per frame (Lua instructions of its handlers) over the named budget segments, and the frames counted."""
+    B = data.get("budget") or {}
+    w = sum(((B.get(s) or {}).get("work") or {}).get(addon, 0) for s in segs)
+    n = sum((B.get(s) or {}).get("frames", 0) for s in segs)
+    return (w / float(n) if n else 0.0), n
+
+
 # ---------------------------------------------------------------------------------------------------------------------------------
 # reporting
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -1256,6 +1478,8 @@ def integrity(data, rep):
         (bool(used.get("menu")), "a rule's right-click menu was opened", ""),
         (bool(used.get("moverOpen")), "the mover (/xui unlock) opened", ""),
         (bool(data.get("windowClosed")), "the settings window closed", ""),
+        (int(data.get("talentRules") or 0) >= 4, "the profile has its rules with a talent requirement (round 7)",
+         "rules with a talent requirement: %s" % data.get("talentRules")),
         (len(data.get("checkpoints") or []) >= 9, "every checkpoint ran (closed, minimap, three fights, three after-fights, idle)",
          "checkpoints: %d" % len(data.get("checkpoints") or [])),
         (int(data.get("errors") or 0) == 0, "no Lua error during the scenario", "; ".join((data.get("errorText") or [])[:3])),

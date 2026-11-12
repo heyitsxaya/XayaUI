@@ -44,7 +44,10 @@ L.execute("RESET(); for i = 1, 100 do HANDLER(%r) end" % PLATER)
 check("another addon's located error, 100 times: no debugstack", E("STACKS") == 0)
 check("... the previous handler gets every one, unchanged", E("#PREV") == 100 and E("PREV[1]") == PLATER)
 check("... nothing recorded, nothing shown in chat", E("#RECORDED") == 0 and E("#CHAT") == 0)
-check("... counted as other addons' errors (100)", E("NS.otherErrors") == 100)
+# (round 7) the count of other addons' errors (ns.otherErrors) served only XayaUI Dev Assist's walkthrough J22 (retired to qa-installer-branch,
+# REQUEST-LOG A23 SD-2; V34 audit): it is gone, so XayaUI keeps nothing at all of another addon's error. (Was: "counted as other addons'
+# errors (100)".)
+check("... and XayaUI keeps nothing of them (no count either: round 7)", E("NS.otherErrors") == None)
 MINE = "Interface/AddOns/XayaUI_Chat/Core.lua:12: attempt to index a nil value"
 L.execute("RESET(); HANDLER(%r)" % MINE)
 check("XayaUI's own error: one debugstack, recorded with the stack and its folder", E("STACKS") == 1 and E("#RECORDED") == 1 and E("RECORDED[1].folder") == "XayaUI_Chat" and E("RECORDED[1].stack") == E("STACK_TEXT"))

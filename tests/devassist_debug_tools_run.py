@@ -15,7 +15,7 @@ qa-installer-branch. What is checked, with main's addons in the stand-in game (w
   B. /xuitt does not exist; /xui chat wrap / indent / whispers only say XayaUI Chat is not installed; /xuiskin pad / alpha change
      nothing, /xuiskin alone still switches the skin; /xuiengine auto / on / off / reset do nothing; full and refresh are removed (V26,
      SD-16: "Remove entirely"), so /xuiengine only shows the status.
-  C. Advanced Debugging is on by default.
+  C. A saved Advanced Debugging "on" is kept (round 7: off by default for a new install, SD-61; this session starts with it saved on).
   D. Combat Tracking Setup is on Settings > UI Options > Rule Creation, not on Settings > Debugging; the Debugging page keeps no
      detailed-record switch and no probe switch, and its Dev Assist settings group is hidden and empty.
   E. the debug record: a Lua error raised in a XayaUI file is recorded with its folder's code (XUI-E001 core; core's table still codes
@@ -26,7 +26,7 @@ qa-installer-branch. What is checked, with main's addons in the stand-in game (w
      holds only the two "action blocked" events, the detailed-record hand-in points do not exist, and NO function of DebugRecord.lua
      runs (counted with a call hook: the measured cost while nothing goes wrong).
   G. /xui report shows the window: the summary (codes with their meaning, versions, game build, when) and the string; the string read
-     back with core's reader gives the same entries.
+     back with core's share codec gives the same entries (round 7: the report is XayaUI_Debug's; its Dev Assist reader is gone).
 Negative control: on a073b40 (before this change) the checks of A to G fail (count in the debug log).
 Run: python3 tests/devassist_debug_tools_run.py"""
 import os, sys
@@ -154,7 +154,9 @@ check("B /xuiengine full and refresh are gone (V26): only the status is shown", 
 
 -- C ---------------------------------------------------------------------------------------------------------------------------
 -- (the Aura ID "via ..." tooltip text was XayaUI Bonus's tooltips, on qa-installer-branch; Advanced Debugging's default is core's)
-check("C Advanced Debugging is on (default)", ui.advancedDebug == true)
+-- (round 7, SD-61 "Off by default (Recommended)" and SD-64, a saved "on" is kept: was "C Advanced Debugging is on (default)"; the new
+-- default is checked in tests/fix_r7_debug_tools_run.py F1)
+check("C a saved Advanced Debugging 'on' is kept", ui.advancedDebug == true)
 
 -- D ---------------------------------------------------------------------------------------------------------------------------
 local opts = settingsTable()
@@ -246,7 +248,9 @@ check("G the summary says what happened, when, the versions and the game build",
   and text:find("errors,", 1, true) ~= nil, text:sub(1, 300))
 local str = win and win.str:GetText() or ""
 check("G the window holds the string (XUIREP1:...)", str:find("^XUIREP1:%x+:") ~= nil, str:sub(1, 40))
-local back = ns.DebugReportRead(str)
+-- (round 7) the report's reader for imported strings (ns.DebugReportRead) served only XayaUI Dev Assist and is gone: the string is read
+-- back here with core's own share codec (Share.lua, the codec the report is packed with), which proves the same thing
+local back = ns.Share.Unpack(str, "XUIREP1")
 local same = back and #back.entries == #CueRulesDB.errorLog
 if same then
   for i, e in ipairs(CueRulesDB.errorLog) do
@@ -285,7 +289,11 @@ def session(lua):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        # (round 7, REQUEST-LOG A23 SD-58 / SD-61) /xui debug and /xui report are XayaUI_Debug's, read only while Advanced Debugging is
+        # on, which is off for a new install now: this session starts with it saved on, as every install before round 7 has it (and as
+        # these checks ran when it was on by default). With it off: tests/fix_r7_debug_tools_run.py.
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled},
+                     "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     L.globals().W = world
     src = open(os.path.join(H.ROOT, "XayaUI", "DebugRecord.lua")).read().split("\n")
     L.globals().DR_UI_LINE_FROM_FILE = next(i + 1 for i, l in enumerate(src) if l.startswith("local function Ui()"))

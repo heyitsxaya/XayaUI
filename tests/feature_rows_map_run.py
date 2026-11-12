@@ -100,14 +100,15 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Options")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Options", "XayaUI_Debug")]   # (round 7: /xui debug is XayaUI_Debug's)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), w,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled},
-                     "saved": {"XayaUI": {"CueRulesDB": {"ui": {"consoleAutoOpen": False}}}}}))
+                     # (round 7, SD-58 / SD-61) /xui debug runs only while Advanced Debugging is on (off for a new install): saved on here
+                     "saved": {"XayaUI": {"CueRulesDB": {"ui": {"consoleAutoOpen": False, "advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, w, loader)
     total, bad = 0, 0
     for i in range(1, len(res) + 1):

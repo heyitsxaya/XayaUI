@@ -104,8 +104,9 @@ function ns.FlatButton(b, primary)
     flatButtons[b] = primary and true or false
     return b
 end
--- the settings window's rebuild timing switch: { show = bool } (XayaUI Dev Assist's /xui debug perf ui sets it; XayaUI_Options and
--- ns.NewFolder below read it). Core 0.6.56: declared here, as the command that made it moved to Dev Assist.
+-- the settings window's rebuild timing record: { n, build, skin, show } (XayaUI_Options writes it; it and XayaUI_Rules/RuleDefaults.lua read
+-- show). Declared here so every addon may read it (the harness boundary rule). Round 7: nothing on main sets show any more ("perf ui"
+-- was XayaUI Dev Assist's).
 ns.perf = nil
 
 -- "Not chosen / none" helpers. Dropdowns start blank (nil) so a choice is forced;
@@ -182,7 +183,6 @@ do
             local okF, f = pcall(ns.ErrorFolder, text, stack)
             folder = okF and f or nil
         end
-        if not folder then ns.otherErrors = (ns.otherErrors or 0) + 1 end   -- other addons' errors this session (Dev Assist walkthrough J22)
         if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; nothing while it is off)
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         local mine = ok and on and folder ~= nil
@@ -322,8 +322,9 @@ local function InitDB()
     CueRulesDB.version = CueRulesDB.version or 1
     CueRulesDB.ui = CueRulesDB.ui or {}
     if CueRulesDB.ui.trayOpen == nil then CueRulesDB.ui.trayOpen = true end
-    -- Advanced Debugging defaults ON (recommended): XayaUI's own Lua errors print to chat as a system message.
-    if CueRulesDB.ui.advancedDebug == nil then CueRulesDB.ui.advancedDebug = true end
+    -- Advanced Debugging (Settings > Debugging, ui.advancedDebug) is off by default (round 7; REQUEST-LOG A23 SD-61, her answer "Off by
+    -- default (Recommended)"): a new install saves nothing for it (nil reads as off). A saved "on" is kept (SD-64): every install before
+    -- round 7 saved true here, and those players keep it, with one chat line at every login saying so (DebugRecord.lua).
     -- (P4) the rules, groups and buff bars are set up by XayaUI Rules at its own load (XayaUI_Rules/RuleDefaults.lua InitRules). (P5) The
     -- shelved QoL "stats text" boxes are XayaUI QoL's (XayaUI_QoL/StatsText.lua, its own store): nothing of them is made while it is off.
 end
@@ -384,9 +385,6 @@ local CORE_DEBUG = {
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
     end, "loader (whether the settings window's code can load)" },
-    -- (REQUEST-LOG A23 SD-34) the right-click tracker (MouseTracker.lua): off after every /reload; read-only, so it runs in combat too
-    { "mouse", function(arg) if ns.MouseTrackerCommand then ns.MouseTrackerCommand(arg) end end,
-        "mouse on|off (while on, each right-click that lands on a frame instead of the game world names that frame; off after every /reload)" },
 }
 local coreDebug, rulesDebug = {}, {}
 for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2]; rulesDebug[d[1]] = d.rules end
@@ -515,8 +513,11 @@ SlashCmdList["XAYAUI"] = function(msg)
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     if cmd == "" or cmd == "config" or cmd == "options" then
         ns.ToggleUI()   -- loads XayaUI_Options on first use (Modules.lua section 7)
+    elseif (cmd == "debug" or SHORTCUTS[cmd]) and not ns.DebugToolsLoaded() then
+        -- (round 7; REQUEST-LOG A23 SD-58: the debug tools load only while Advanced Debugging is on, DebugRecord.lua) one plain line
+        ns.DebugToolsNeeded("/xui " .. cmd .. (arg ~= "" and (" " .. arg:gsub("|", "||")) or ""))
     elseif cmd == "debug" then
-        -- (Xaya 2026-11-06: "Debug cmds open console") opens the console window and prints there; Console.lua ns.RunInConsole
+        -- (Xaya 2026-11-06: "Debug cmds open console") opens the console window and prints there; XayaUI_Debug/Console.lua ns.RunInConsole
         if ns.RunInConsole then ns.RunInConsole(true, RunDebug, arg) else RunDebug(arg) end
     elseif SHORTCUTS[cmd] then
         RunInChat(RunShortcut, cmd, arg)
@@ -531,12 +532,14 @@ SlashCmdList["XAYAUI"] = function(msg)
         else R.ToggleUnlock() end
     elseif cmd == "disable" or cmd == "enable" then
         RulesSwitch(cmd)
+    -- (round 7) the console window, the bug report and the debug report are XayaUI_Debug's; while it is not loaded these are core's
+    -- one-line answers (Console.lua)
     elseif cmd == "console" then
-        if ns.ConsoleWindow then ns.ConsoleWindow() end
+        ns.ConsoleWindow()
     elseif cmd == "bug" then
-        if ns.ShowBugReport then ns.ShowBugReport() end
-    elseif cmd == "report" then   -- (core 0.6.56; REQUEST-LOG #82: the debug report window, DebugRecord.lua)
-        if ns.ShowDebugReport then ns.ShowDebugReport() end
+        ns.ShowBugReport()
+    elseif cmd == "report" then   -- (core 0.6.56; REQUEST-LOG #82: the debug report window)
+        ns.ShowDebugReport()
     elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand)
     elseif ns.ModuleMissingText(cmd) then   -- a feature's command whose addon is off or failed to load
         ns.Print(ns.ModuleMissingText(cmd))

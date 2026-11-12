@@ -38,7 +38,10 @@ GetBuildInfo = function() return "12.1.5", "70783" end
 ''')
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/DebugRecord.lua"):
+# (round 7, REQUEST-LOG A23 SD-58) messages into the console window (ns.ConsoleMessage) are XayaUI_Debug's, loaded while Advanced Debugging
+# is on; these checks play a session where it is loaded (its first file says so to core). Without it: tests/fix_r7_debug_tools_run.py.
+for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI/DebugRecord.lua", "XayaUI_Debug/Tools.lua",
+          "XayaUI_Debug/Console.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute("NS.SettingsOpenAllForTests()")   # (P5) every settings store opens, as the addons' ADDON_LOADED would
 L.execute(r'''

@@ -65,7 +65,8 @@ def saved():
 
 def run(dev_assist):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
+    # (round 7, REQUEST-LOG A23 SD-58) /xui bug is XayaUI_Debug's, loaded at the login while Advanced Debugging is on (saved on below)
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     sv = H.savedvars(L)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})

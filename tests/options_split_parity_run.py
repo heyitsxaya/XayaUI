@@ -241,7 +241,10 @@ def run_variant(off):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        # (round 7, REQUEST-LOG A23 SD-58 / SD-61) Advanced Debugging is off for a new install now (it was on by default, and the console
+        # and reports are XayaUI_Debug's, read only while it is on): saved on here, as every install before round 7 has it, so the
+        # comparison with the old build stays like for like (the old code saves the same "on" itself; the same checks pass on 2381c09d)
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
     if res[1] != "ok":

@@ -13,8 +13,10 @@ did not change are not checked again in full (before round 6 every aura or coold
   8. stacks and time left changing while readable: the count text follows on the next frame;
   9. a raid storm on the boss (other players' debuffs, readable or secret): your debuffs are listed once per pass, no target rule is
      checked again in full, and your debuff appearing shows its rule on the next frame;
- 10. load conditions are untouched (dismounting hides a "mounted only" display on the next frame), and a talent picked with none of
-     the talent events still loads its rule within about a second out of combat (review R3, restored);
+ 10. load conditions are untouched (dismounting hides a "mounted only" display on the next frame), and a talent picked loads its rule
+     on the talent event, on the next frame (round 7, SD-60, her answer "1": events only; an intended change of this check, which
+     before asked for a talent picked with none of the talent events to load its rule within about a second by a once-a-second read;
+     with no event nothing reads the talents now, tests/fix_r2_engine_followups_run.py);
  11. /xui disable: no check is read, no rule re-checked, no engine timer made, whatever events come (kept as before);
  plus the round-5 engine gaps: a cooldown event with a spell ID re-checks only that spell's rule, one without re-reads the cooldowns
  and re-checks only what changed; a cast re-checks no unrelated rule; a "seconds left" crossing re-checks only its rule and its cues;
@@ -190,15 +192,12 @@ IsMounted = function() return false end; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED");
 check("10. ... dismounted: it hides within 2 frames", not shown(MOUNT), shown(MOUNT))
 gain(8030, 600); frame(3)
 check("10. (setup) talent not picked: the talent rule is not shown", not shown(TAL), shown(TAL))
-picked[5001] = true   -- with none of the talent events
-local seenAt
-for i = 1, 90 do frame(1); if shown(TAL) then seenAt = i / 60; break end end
-check("10. a talent picked with none of the talent events loads its rule within about a second out of combat (review R3, restored)",
-  seenAt ~= nil and seenAt <= 1.1, seenAt or "never")
-picked[5001] = false
-seenAt = nil
-for i = 1, 90 do frame(1); if not shown(TAL) then seenAt = i / 60; break end end
-check("10. ... and dropped again, it unloads within about a second", seenAt ~= nil and seenAt <= 1.1, seenAt or "never")
+picked[5001] = true; W.fire("TRAIT_CONFIG_UPDATED", 1)   -- (round 7, SD-60: the talent saved; its event)
+frame(1)
+check("10. a talent picked loads its rule on the talent event, on the next frame (round 7, SD-60: events only)", shown(TAL), shown(TAL))
+picked[5001] = false; W.fire("TRAIT_CONFIG_UPDATED", 1)
+frame(1)
+check("10. ... and dropped again, it unloads on the event, on the next frame", not shown(TAL), shown(TAL))
 -- cooldowns
 quiet(); reset()
 G.cds[400003] = { start = W.now, dur = 30 }; W.fire("SPELL_UPDATE_COOLDOWN", 400003, 400003); frame(1)

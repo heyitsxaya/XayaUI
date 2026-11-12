@@ -6,7 +6,9 @@ next frame, and not the aura or other rules; a player aura event that changes an
 cooldown rules; (round 6, SD-54) an aura or cooldown event that changed nothing re-checks no rule; an aura change makes its sound
 on the next frame (the cue fires one frame after the event, not up to 50 ms later); (round 5, V27) with nothing changing no rule is
 re-checked at all (no 0.2 s tick); an event that is not routed (a target change) still steps every loaded rule; a cue
-of a routed rule is re-checked with it; no table is made per routed frame.
+of a routed rule is re-checked with it; no table is made per routed frame. (round 7, SD-61, her answer "10/s for all, like EUI"):
+routed re-checks run at most 10 a second, so a "quiet moment" here is a tenth of a second since the last routed re-check; the first
+change after it is still handled on the very next frame.
 Run: python3 tests/engine_routing_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -51,28 +53,30 @@ cdOn = true
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("cooldown event: the cooldown rule is re-checked on the next frame; the aura and other rules are not", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
   tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
-W.tick(0.04, 1)
+-- (round 7, SD-61: a quiet moment is now 0.1 s, the routed pace; before it was 0.04 s for the 1/30 s pace. With less, the next event's
+-- re-check would not have run yet one frame later, and the "re-checks no rule" checks below would pass without testing anything)
+W.tick(0.1, 1)
 reset()
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("[round 6] a cooldown event that changed nothing re-checks no rule", not n[CD] and not n[AU] and not n[OT],
   tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
-W.tick(0.04, 1)   -- (review R18: routed re-checks run at most once per 1/30 s; a change after a quiet spell is still next-frame)
+W.tick(0.1, 1)   -- (review R18, round 7 SD-61: routed re-checks run at most once per 0.1 s; a change after a quiet moment is still next-frame)
 reset()
 auraOn[1001] = true
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("aura event: the aura rule and its cue are re-checked on the next frame; the cooldown and other rules are not", (n[AU] or 0) >= 1 and (n[cue] or 0) >= 1
   and not n[CD] and not n[OT], tostring(n[AU]) .. "/" .. tostring(n[cue]) .. "/" .. tostring(n[CD]))
-W.tick(0.04, 1)
+W.tick(0.1, 1)
 reset()
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("[round 6] an aura event that changed nothing re-checks no rule", not n[AU] and not n[cue] and not n[CD] and not n[OT],
   tostring(n[AU]) .. "/" .. tostring(n[cue]) .. "/" .. tostring(n[CD]))
-auraOn[1001] = nil; W.fire("UNIT_AURA", "player"); W.tick(0.04, 1)   -- (the aura gone again, for the sound check below)
+auraOn[1001] = nil; W.fire("UNIT_AURA", "player"); W.tick(0.1, 1)   -- (the aura gone again, for the sound check below)
 -- the sound: the aura appears, its cue plays one frame later
 local played = 0
 PlaySound = function() played = played + 1 end
 ns.BuffPresent = function(id) if id == 1001 then return true, "test" end return false, "test" end
-W.tick(0.04, 1)   -- (review R18) a quiet spell first
+W.tick(0.1, 1)   -- (review R18) a quiet moment first (round 7, SD-61: a tenth of a second)
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("an aura appearing plays its sound on the next frame (not up to 50 ms later)", played == 1, played)
 -- (round 5, V27 "No running loops": the 0.2 s tick that stepped every rule is gone) nothing changes for two seconds: no rule is re-checked

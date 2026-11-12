@@ -1571,12 +1571,10 @@ end
 -- Talent requirements: rule.talents = { {id=, state="known"|"notKnown"}, ... } combined by rule.talentMode
 -- (none = ignore, all = every entry must match, any = at least one). Returns true/false/nil(unknown), detail text.
 local CheckTalentsRaw
--- (review R3) during an engine step the answer is kept per rule until talents or settings change: ns.talentEpoch (Engine.lua: spec,
--- trait, spellbook and entering-world events) or ns.configVersion (an edit). Talents cannot change in combat, so a step no longer
+-- (review R3) during an engine step the answer is kept per rule until talents or settings change: ns.talentEpoch (Engine.lua: the talent,
+-- spec, PvP, hero-talent, loadout, spellbook and entering-world events, TALENT_EVENTS) or ns.configVersion (an edit). A step no longer
 -- rebuilds tables and strings for every rule. Outside a step (editor, /xui debug status) it is computed fresh, as before.
--- (review R3 follow-up) out of combat the kept answer is also re-read once a second, so a talent change that came without those events
--- still shows within a second. That re-read only compares each entry's known / not known with the kept one (no tables, no strings) and
--- rebuilds the answer only when one differs. In combat nothing is re-read: talents cannot change there.
+-- (round 7, SD-60, her answer "1": events only) the kept answer is no longer re-read once a second: only an event re-reads it.
 local talentMemo = setmetatable({}, { __mode = "k" })
 -- each counted entry's result: 1 = matches, 2 = does not, 3 = unknown. fill: store them in m.codes; else: true when all are as stored.
 local function TalentCodes(rule, m, fill)
@@ -1601,22 +1599,17 @@ function ns.CheckTalents(rule)
     if not (ns.InStep and ns.InStep()) then return CheckTalentsRaw(rule, mode) end
     local ep, ver, list = ns.talentEpoch or 0, ns.configVersion or 0, rule.talents
     local m = talentMemo[rule]
-    if m and m.ep == ep and m.ver == ver and m.mode == mode and m.list == list then
-        if InCombatLockdown and InCombatLockdown() then return m.ok, m.detail end
-        local sec = math.floor(GetTime())
-        if m.sec == sec then return m.ok, m.detail end
-        if TalentCodes(rule, m, false) then m.sec = sec; return m.ok, m.detail end
-    end
+    if m and m.ep == ep and m.ver == ver and m.mode == mode and m.list == list then return m.ok, m.detail end
     local ok, detail = CheckTalentsRaw(rule, mode)
     if not m then m = { codes = {} }; talentMemo[rule] = m end
-    m.ep, m.ver, m.mode, m.list, m.ok, m.detail, m.sec = ep, ver, mode, list, ok, detail, math.floor(GetTime())
+    m.ep, m.ver, m.mode, m.list, m.ok, m.detail = ep, ver, mode, list, ok, detail
     TalentCodes(rule, m, true)
     return ok, detail
 end
--- (review R3 talent safety net, restored in round 6: V32, load conditions honored exactly) Engine.lua asks once a second out of combat,
--- for the switched-on rules with a talent requirement, whether any entry now reads differently from the kept answer, so a talent
--- change that came without the talent events still loads or unloads the rule within about a second. Only known / not known is read
--- (no table, no string); a rule never checked yet has nothing to compare and says no.
+-- (round 7, SD-60) Engine.lua asks, on a talent-tree event that may or may not have changed a talent (a node picked in the talent window,
+-- a loadout made or picked: TALENT_MAYBE), for the switched-on rules with a talent requirement, whether any entry now reads differently
+-- from the kept answer; only then are the rules checked again. Only known / not known is read (no table, no string); a rule never
+-- checked yet has nothing to compare and says no.
 function ns.HasTalentRequirement(rule)
     local mode = rule.talentMode
     if mode == nil or mode == "" or mode == "none" or type(rule.talents) ~= "table" then return false end

@@ -751,8 +751,8 @@ function ns.SubcommandHelp(slash) return subHelp[slash] or {} end
 -- 2d. The detailed debug record's hand-in points (core 0.6.56; REQUEST-LOG #82). Core's files call these on their paths (a rule fired,
 -- a sound played, a display shown, a log line) only after testing them for nil. They are nil unless XayaUI Dev Assist, which keeps the
 -- detailed record, puts its functions here when it loads; nothing else may. Without it each call site costs one nil test.
-local DEBUG_HOOKS = { RecordLine = true, RecordOn = true, RecTrigger = true, RecDisplay = true, RecSound = true, RecordSummary = true,
-    DevRecordChanged = true }
+-- (round 7) DevRecordChanged, the Dev Assist record's settings hook that DebugRecord.lua called, is gone with that call.
+local DEBUG_HOOKS = { RecordLine = true, RecordOn = true, RecTrigger = true, RecDisplay = true, RecSound = true, RecordSummary = true }
 function ns.SetDebugHooks(t)
     if type(t) ~= "table" then return end
     for k, fn in pairs(t) do
@@ -1180,7 +1180,6 @@ local COMBAT_LOCK_EXEMPT = {
     perf = "/xui debug perf: only times the engine; it changes no rule (V26: read-only)",
     talentsRead = "/xui debug talents status and /xui debug talents <name>: only read the last scan (V26: read-only)",
     help = "/xui help and /xui debug: only list the commands (V26: read-only)",
-    mouse = "/xui debug mouse on|off: the right-click tracker only reads which frame is under the cursor and prints its name; it never takes the mouse or keys (V26: read-only; REQUEST-LOG A23 SD-34)",
     disable = "/xui disable: every rule off at once; her words: \"The only thing that can be allowed in combat is with respect to the combat engine is /disable\"",
 }
 -- Not held back here: the feature addons' own /xui words (chat, notes, data, shop ...). They do not touch combat tracking (her example:
@@ -1370,13 +1369,8 @@ function ns.Service(name) return services[name] end
 -- Is XayaUI Dev Assist (the separate developer addon, folder XayaUI_DevAssist) loaded? It sets ns.devAssistLoaded when its first file
 -- runs (core 0.6.56; REQUEST-LOG #81: the developer tools are there, and the Aura ID "via ..." text shows only while it is on).
 function ns.DevAssistOn() return ns.devAssistLoaded == true end
--- /xui dev qa: the QA walkthroughs live in the developer add-on, which registers its own "dev" handler. While that add-on is off, this
--- says how to get them (core finds the add-on only through its service, "gameDataProbe": core 0.6.55)
-ns.RegisterCommand({ "dev", "qa", "qatest" }, function()   -- (/xui qa test and /xui qatest: Xaya's aliases, FUS-9)
-    if not services.gameDataProbe and ns.Print then
-        ns.Print("the QA walkthroughs are part of XayaUI Dev Assist: switch it on in the AddOns list (character select or Esc > AddOns), then /reload and type /xui dev qa again.")
-    end
-end)
+-- (round 7) The /xui dev qa answer ("the QA walkthroughs are part of XayaUI Dev Assist: switch it on ...") was removed: Dev Assist is
+-- retired to qa-installer-branch (REQUEST-LOG A23 SD-2), which keeps its own copy of core, so on main there is nothing to switch on.
 
 -------------------------------------------------------------------------------
 -- 8b. Tooltips: one helper draws XayaUI's own hover texts (core 0.6.73; REQUEST-LOG UI-51 / UI-52, BUILD-RULES.md B3: "one shared

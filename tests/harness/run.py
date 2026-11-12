@@ -32,6 +32,12 @@ ALWAYS = []
 # (Rules 0.7.0, A23 SD-6) files of an addon that run only after another addon has loaded, so they may use that addon's names:
 # the rule editor (XayaUI_Rules/Editor/) runs only when the settings window (XayaUI_Options) has loaded (Options.lua LoadRuleEditor)
 RUNS_AFTER = {("XayaUI_Rules", "Editor/"): "XayaUI_Options"}
+# (bundle 1 round 7, REQUEST-LOG A23 SD-58 / SD-61) XayaUI_Debug, the debug tools, is load-on-demand: core loads it at the login only
+# while Settings > Debugging > Advanced Debugging is on, which a fresh install has off. It is switched on in the AddOns list in the
+# everything-on runs like any other folder (so those runs prove it is NOT read with the default settings), and two more runs start
+# from saved data with Advanced Debugging on (everything on; and everything but XayaUI Rules), so its files are read and played too.
+DEBUG_TOOLS = "XayaUI_Debug"
+DEBUG_ON = {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}
 
 
 def find_addons():
@@ -364,6 +370,11 @@ def main():
             enabled = {CORE, *combo}
             label = "%s | %s" % (dname, " + ".join(["XayaUI"] + [c.replace("XayaUI_", "") for c in combo]))
             jobs.append((folders, enabled, saved, label))
+    if DEBUG_TOOLS in folders and args.only is None:
+        full = tuple(always) + tuple(features) + tuple(tools)
+        for combo in (full, tuple(c for c in full if c != "XayaUI_Rules")):
+            jobs.append((folders, {CORE, *combo}, DEBUG_ON,
+                         "Advanced Debugging on | " + " + ".join(["XayaUI"] + [c.replace("XayaUI_", "") for c in combo])))
     import multiprocessing
     with multiprocessing.Pool(args.jobs) as pool:
         results = pool.imap(run_combo_job, jobs)

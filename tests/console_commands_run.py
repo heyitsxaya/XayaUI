@@ -29,6 +29,8 @@ Negative control: on core 0.6.48 (no command line, /xui debug was a one-line loa
 1, 2, 3, 4 and 5 fail; on 8ae717b (old forms still ran) the checks in 3 fail; on 2e8b00a (chat messages copied into the open
 console, no /save) the checks in 6 fail; on 0fa76ef (before her answers of 2026-11-06 ~04:30 UTC) 16 checks of 1 (shortcuts,
 pipes), 2 (loader), 6 (/reload) and 7 fail.
+Round 7: the console window and the /xui debug commands are the load-on-demand addon XayaUI_Debug, read only while Advanced Debugging is
+on (REQUEST-LOG A23 SD-58 / SD-61); this test starts with it saved on, as every install before round 7 has it.
 Run: python3 tests/console_commands_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -95,14 +97,15 @@ check("debug: a header with the count", dbg[1] ~= nil and dbg[1]:match("^debug c
   and tonumber(dbg[1]:match("%((%d+)%)")) == #dbg - 1, dbg[1])
 check("debug: every line is '/xui debug <name> ...'", badLine == nil, badLine)
 -- (core 0.6.56, REQUEST-LOG #81: without XayaUI Dev Assist, which is not on this branch, only the player's diagnostics exist: status,
--- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's. Round 5 (REQUEST-LOG A23 SD-34, her answer
--- "Yes, in bundle 1 (Recommended)"): mouse, the right-click tracker, is a player's diagnostic in core (XayaUI/MouseTracker.lua))
+-- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's. Round 7 (REQUEST-LOG A23 SD-57, her answer
+-- "dev tools"): mouse, the right-click tracker, left core for Dev Assist's rebuild, so /xui debug no longer lists it ("extra" below fails
+-- if it comes back; docs/plans/DEVASSIST-PORT-NOTES.md))
 local missing, extra = {}, {}
-local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true, mouse = true }
+local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true }
 for d in pairs(PLAYER) do if not names[d] then missing[#missing + 1] = d end end
 for n in pairs(names) do if not PLAYER[n] then extra[#extra + 1] = n end end
 table.sort(extra)
-check("debug: lists the player's diagnostic commands (status, perf, talents, loader, auras, mouse)", #missing == 0, table.concat(missing, ", "))
+check("debug: lists the player's diagnostic commands (status, perf, talents, loader, auras)", #missing == 0, table.concat(missing, ", "))
 check("debug: no developer diagnostic without XayaUI Dev Assist", #extra == 0, table.concat(extra, ", "))
 check("debug: perf lists only the engine meter (perf ui is Dev Assist's)", not plain(table.concat(dbg, "\n")):find("perf ui", 1, true))
 local dpipe
@@ -337,7 +340,11 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        # (round 7, REQUEST-LOG A23 SD-58 / SD-61) the console window and /xui debug are XayaUI_Debug's, read only while Advanced Debugging
+        # is on, which is off for a new install: this test starts as every install before round 7 does, with it saved on (the same
+        # settings these checks ran with when it was on by default). With it off, see tests/fix_r7_debug_tools_run.py.
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled},
+                     "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

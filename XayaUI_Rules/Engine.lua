@@ -17,8 +17,10 @@ local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
 --   * a game event marks what it changed; on the next frame only the loaded rules that read it are re-checked (the "live" lists below,
 --     built once whenever the settings or the load facts change). (round 6) An aura or cooldown event marks the aura / cooldown CHECKS it
 --     can change; they are read once each and only the rules whose check answered differently are re-checked (the checks section below,
---     REQUEST-LOG A23 SD-54). The next-frame pass runs from a one-shot timer the event made, or, while events keep coming every frame
---     (a fight), from a pump that sets the next pass itself and stops at the first pass with nothing to do: no frame script;
+--     REQUEST-LOG A23 SD-54). (round 7, SD-61, her answer "10/s for all, like EUI") these routed passes run at most 10 times a second
+--     for every unit: the first change after a quiet moment is handled on the very next frame; in a burst the next pass waits until
+--     a tenth of a second after the last one. Each pass runs from a one-shot timer the first event after the last pass made, so a
+--     timer exists only while a change waits to be checked, and none is set once the changes stop: no frame script, no pump;
 --   * a load fact changing (combat, group, zone, mount, spec, talents ...) re-checks every rule once, on the next frame;
 --   * time-based changes are waited for with one one-shot timer set to the stored moment they happen: the next whole second of a
 --     countdown a display shows, the end of a cooldown, a "cast within N seconds" window, a repeat sound, a "seconds left" threshold
@@ -28,12 +30,13 @@ local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
 -- With nothing loaded waiting on time (idle out of combat, every aura and cooldown gone) nothing of the engine runs.
 local TICK = 0.2   -- the re-check pace for what the game hides the moment of (above); nothing else runs on it
 local MIN_GAP = 0.05   -- events (casts, movement, target changes) can come many a second: their re-checks run at most this often
--- (review R18) routed cd / aura re-checks: the first after a quiet spell still runs on the very next frame; in a burst (a raid fight) they
--- run at most once per ROUTED_GAP instead of on every rendered frame. A held re-check waits at most this long (no event is lost).
-local ROUTED_GAP = 1 / 30
--- (review R18 follow-up) frame times wobble by a millisecond or two: two 60 fps frames often add up to a hair under 1/30 s. Compared
--- against the gap less this slack, a burst re-checks every 2nd frame at 60 fps (every 4th at 120) instead of often waiting a 3rd (5th).
-local ROUTED_DUE = ROUTED_GAP - 0.004
+-- (review R18; round 7, SD-61, her answer "10/s for all, like EUI (Recommended)") routed re-checks (your auras, the target's and the
+-- focus's auras, cooldowns, resources, range, casts): the first after a quiet moment still runs on the very next frame; in a burst (a
+-- raid fight) they run at most once per ROUTED_GAP, 10 a second, for every unit. A held re-check waits at most this long (no event is
+-- lost). A pass is due once ROUTED_GAP has gone by since the last one, less half a millisecond for rounding in the stored moments (six
+-- 60 fps frames add up to a hair under 0.1 s).
+local ROUTED_GAP = 0.1
+local ROUTED_DUE = ROUTED_GAP - 0.0005
 local lastRoutedAt, lastStateAt = -1, -1   -- GetTime() of the last routed / state re-check (stored times, compared; nothing counted per frame)
 local inCombat = false   -- kept by the combat events (was asked of the game on every rendered frame)
 local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat (only while someone reads them: ns.LogWanted)
@@ -677,8 +680,13 @@ local function ProbeSame(pr)
     end
 end
 
+-- (round 7, SD-63) ver counts the answers a check has given: it goes up each time a read finds the answer changed. seen[i] is the answer
+-- (ver) its reader readers[i] was last checked against. A check is shared by a rule and its cues; before, the shared reading alone said
+-- whether "the answer changed", so when one reader (a rule woken by its countdown) read the new answer first, the next event's read
+-- found it "the same" and the other readers (its icon cue) were never checked again: the cue's icon stayed on screen after its aura was
+-- gone. Now a reader is checked again whenever the answer it last saw is not the check's current one, whoever read the change first.
 local function NewCheck(kind, root, unit)
-    return { kind = kind, root = root, unit = unit, readers = {}, fp = {}, valid = false, tick = -1, direct = false }
+    return { kind = kind, root = root, unit = unit, readers = {}, seen = {}, ver = 0, fp = {}, valid = false, tick = -1, direct = false }
 end
 local function IndexCheck(idx, id, pr)
     id = tonumber(id)
@@ -701,6 +709,7 @@ local function IndexAuraIDs(idx, pr, main, alts)
 end
 local function Wipe(t) for k in pairs(t) do t[k] = nil end end
 local function AddUnique(l, x) for i = 1, #l do if l[i] == x then return end end l[#l + 1] = x end
+local function SlotOf(l, x) for i = 1, #l do if l[i] == x then return i end end local n = #l + 1; l[n] = x; return n end
 
 -- built from the live lists (LiveChanged): every check, who reads it, and the indexes the events use
 BuildProbes = function()
@@ -781,9 +790,17 @@ BuildProbes = function()
         if not f then f = {}; fam[root] = f end
         AddUnique(f, rule)
         famOf[rule] = f
+        -- mine: pairs (a check, this rule's place among its readers), each check once
         local mine = probesOf[rule]
         if not mine or mine.serial ~= buildSerial then mine = { serial = buildSerial }; probesOf[rule] = mine end
-        for i = 1, #list do local pr = list[i]; AddUnique(pr.readers, rule); AddUnique(mine, pr) end
+        for i = 1, #list do
+            local pr = list[i]
+            local slot = SlotOf(pr.readers, rule)
+            if pr.seen[slot] == nil then pr.seen[slot] = -1 end
+            local have = false
+            for j = 1, #mine, 2 do if mine[j] == pr then have = true; break end end
+            if not have then mine[#mine + 1] = pr; mine[#mine + 1] = slot end
+        end
     end
     for _, rule in ipairs(live.aura) do
         local root = Root(rule)
@@ -829,27 +846,31 @@ local function CountLoose(U)
     return complete
 end
 
+-- read one check in this step: its answer count (ver) goes up when the answer is not the one read last (or could not be read)
+local function ReadCheck(pr, tick)
+    local ok, same = pcall(ProbeSame, pr)
+    if not (ok and same and pr.valid) then pr.ver = pr.ver + 1 end
+    pr.valid, pr.tick = ok, tick
+end
 -- after a full step (every rule was just checked): each check is read once, in the same step, so the next event compares with what
--- the rules saw, and the memory of the watched auras' instance IDs starts from these reads
+-- the rules saw (every reader has seen this answer), and the memory of the watched auras' instance IDs starts from these reads
+local function SeenAll(pr) local s, v = pr.seen, pr.ver; for i = 1, #pr.readers do s[i] = v end end
 local function PrimeProbes()
     local tick = ns.tickID
     for _, u in ipairs(PROBE_UNITS) do
         local U = probeUnits[u]
         Wipe(U.mem); Wipe(U.memP)
-        for i = 1, #U.probes do local pr = U.probes[i]; pr.valid = pcall(ProbeSame, pr); pr.tick = tick; NoteMem(U, pr) end
+        for i = 1, #U.probes do local pr = U.probes[i]; ReadCheck(pr, tick); SeenAll(pr); NoteMem(U, pr) end
         U.complete = CountLoose(U)
     end
-    for i = 1, #cdChecks.probes do local pr = cdChecks.probes[i]; pr.valid = pcall(ProbeSame, pr); pr.tick = tick end
+    for i = 1, #cdChecks.probes do local pr = cdChecks.probes[i]; ReadCheck(pr, tick); SeenAll(pr) end
 end
--- read the marked checks (inside the step), and list the rules whose check answered differently
+-- read the marked checks (inside the step), and list the rules that have not seen the check's current answer (it changed now, or it
+-- changed when another reader read it since)
 local function CheckOne(pr, n, tick)
-    local ok, same = pcall(ProbeSame, pr)
-    if not ok then same = false end
-    if not (same and pr.valid) then
-        local rd = pr.readers
-        for i = 1, #rd do n = n + 1; probeDue[n] = rd[i] end
-    end
-    pr.valid, pr.tick = true, tick
+    ReadCheck(pr, tick)
+    local rd, seen, v = pr.readers, pr.seen, pr.ver
+    for i = 1, #rd do if seen[i] ~= v then n = n + 1; probeDue[n] = rd[i] end end
     return n
 end
 local function AddLoose(l, n) for i = 1, #l do n = n + 1; probeDue[n] = l[i] end return n end
@@ -890,17 +911,16 @@ local function RunProbes()
     for i = n + 1, #probeDue do probeDue[i] = nil end
     return n
 end
--- a rule was checked in full for another reason: its checks that were not read in this same step are read now, in the same step (the
--- step's memos: the very values the rule just saw), so the next event compares with what the rule saw
+-- a rule was checked in full: its checks that were not read in this same step are read now, in the same step (the step's memos: the
+-- very values the rule just saw), and the rule is noted as having seen each check's current answer. When such a read finds the answer
+-- changed, the check's other readers have not seen it: the next read of the check (the event that changed it marks it) checks them.
 local function ProbesStale(rule, tick)
     local l = probesOf[rule]
-    if not l then return end
-    for i = 1, #l do
+    if not l or l.serial ~= buildSerial then return end
+    for i = 1, #l, 2 do
         local pr = l[i]
-        if pr.tick ~= tick then
-            local ok = pcall(ProbeSame, pr)
-            pr.valid, pr.tick = ok, tick
-        end
+        if pr.tick ~= tick then ReadCheck(pr, tick) end
+        pr.seen[l[i + 1]] = pr.ver
     end
 end
 local function AnyProbeWork()
@@ -909,7 +929,7 @@ local function AnyProbeWork()
     return false
 end
 
-local talentRules, talentN = {}, 0   -- the switched-on rules with a talent requirement (rebuilt by every full step)
+local talentRules, talentN = {}, 0   -- the switched-on rules with a talent requirement (rebuilt by every full step; TalentEventCheck)
 local stepProbe = false             -- set for one Step call: read the marked aura / cooldown checks first
 -- the live rules of one list, each once per step (a rule in two lists is stepped once)
 local function StepLive(l, ctx, now)
@@ -963,7 +983,7 @@ local function Step()
             local pv = (pvV and pvV[rule]) or (pvS and pvS[rule]) or false
             if not off or (rt0 and not rt0.offDone) or pv then StepTracked(rule, ctx, now, off) end
             if AddLive(rule, off, pv) then Plan(rule, RT(rule), now, pv) else Unplan(rule) end
-            -- (review R3 talent safety net) the rules with a talent requirement, for the once-a-second check out of combat
+            -- the rules with a talent requirement, compared on a talent-tree event (TalentEventCheck below)
             if not off and ns.HasTalentRequirement and ns.HasTalentRequirement(rule) then talentN = talentN + 1; talentRules[talentN] = rule end
         end
         for i = talentN + 1, #talentRules do talentRules[i] = nil end
@@ -1109,9 +1129,10 @@ end
 --              read them                                                                    check changed (ROUTED_GAP apart)
 --   wakes      the stored moments (Plan above) and the TICK re-check of what the game     -> one one-shot timer at the earliest moment
 --              hides the moment of
--- (round 6, V27 P1 / P4) the next-frame re-checks run from a one-shot timer made by the event that asked for them (one per burst, at
--- the moment the pace allows), no longer from a frame script set until they were done. A change marked while the engine itself is
--- running (an action a rule ran) is taken by a frame script for the next frame only, as before.
+-- (round 6, V27 P1 / P4; round 7, SD-61) the next-frame re-checks run from a one-shot timer made by the first event after the last
+-- pass, set for the moment the pace allows; later events of the burst find it set and only mark what they changed. The pass does not
+-- set the next one: once the events stop, no timer is left. A change marked while the engine itself is running (an action a rule ran)
+-- is taken by a frame script for the next frame only, as before.
 -------------------------------------------------------------------------------
 local pend = { full = false, ctx = false, all = false }
 local ROUTED = { "cd", "aura", "tgt", "power", "range", "cast" }
@@ -1160,8 +1181,10 @@ local function RunLists(lists, all, cd, probe)
     stepList, stepClearsDeadlines, cdFresh, stepProbe = nil, true, true, false
     ArmWake()
 end
--- every rule at once, now (V26: nothing steps while /xui disable holds); the stored moments it finds are waited for
-ns.Step = function() if ns.RulesDisabled then return end Step(); ArmWake(); if TalentWatch then TalentWatch() end end
+-- every rule at once, now (V26: nothing steps while /xui disable holds); the stored moments it finds are waited for. (No addon file calls
+-- it: the engine runs from its events and timers. It is the offline tests' way to run one full step in a stand-in game whose C_Timer
+-- does nothing: tests/engine_bench.py and the tests built on it.)
+ns.Step = function() if ns.RulesDisabled then return end Step(); ArmWake() end
 local listAll = { live.all }
 local runLists, due, dueLists = {}, {}, {}
 dueLists[1] = due
@@ -1195,7 +1218,6 @@ end
 
 -- every rule once, or a load-fact check (next frame, after every other addon file has seen the event that asked for it)
 local fullQueued = false
-local TalentWatch   -- (the talent safety net, below)
 local function Settle()
     fullQueued = false
     if ns.RulesDisabled then pend.full, pend.ctx = false, false; return end
@@ -1215,7 +1237,6 @@ local function Settle()
     presetCtx = ctx
     RunLists(nil, true)
     presetCtx = nil
-    if TalentWatch then TalentWatch() end
 end
 local function SettleTimer() inCallback = true; Settle(); inCallback = false end
 local fallbackOn = false
@@ -1261,13 +1282,7 @@ DriveFrame = function()
     inCallback = false
     if not (pend.all or AnyRouted() or fullQueued) then f:SetScript("OnUpdate", nil); fallbackOn = false end
 end
-local allArmed, routedArmed, pumpArmed = false, false, false
-local lastPassAt = -1   -- GetTime() of the last routed pass (a sustained stream: the next pass is due again within two frames)
-local streamSince = -1  -- when the current stream of passes (one every frame or two) began
--- A short burst (a mount, a loading screen, a few auras) is served by one-shot timers the events make. Only a stream that has gone on
--- for this long (a fight) is handed to the pump, which then sets each next pass itself until a pass finds nothing to do. (EllesmereUI's
--- glow ticker, per the study, stops itself after about a second with nothing to do; ours stops at the first such pass.)
-local PUMP_AFTER = 1
+local allArmed, routedArmed = false, false
 local function AllTimer()
     allArmed = false
     if ns.RulesDisabled or not pend.all or fallbackOn then return end
@@ -1276,48 +1291,17 @@ local function AllTimer()
     if now - lastStateAt >= MIN_GAP - 0.0005 then DoAll(now) else UseFrameScript() end   -- (a full step moved the pace on: wait for it)
     inCallback = false
 end
--- (round 6) a routed pass, from the burst's first timer or from the pump that follows a stream of events. Returns true when it ran.
-local PumpTimer
-local function RoutedPass()
-    local now = GetTime()
-    if not AnyRouted() then return false end   -- (every live rule, pend.all, is AllTimer's: it never runs from the pump)
-    -- (the timer was set for this moment; half a millisecond of rounding in the moment's sum is not a reason to wait a frame)
-    if now - lastRoutedAt < ROUTED_DUE - 0.0005 then UseFrameScript(); return false end
-    -- the events keep coming (a pass every frame or two) and have for PUMP_AFTER seconds: the pump takes the next ones (below)
-    if now - lastPassAt > 2 * ROUTED_GAP + 0.001 then streamSince = now end
-    local streaming = now - streamSince >= PUMP_AFTER
-    lastPassAt = now
-    DoRouted(now)
-    -- while events keep coming every frame or two (a fight), the next pass is set from here, at the pace's next moment, instead of by
-    -- the next event; the pump stops itself the first time it finds nothing to do (a self-stopping pump: no pass while nothing comes)
-    if streaming and not pumpArmed and not ns.RulesDisabled then
-        pumpArmed = true
-        local d = lastRoutedAt + ROUTED_DUE - GetTime()
-        C_Timer.After(d > 0 and d or 0, PumpTimer)
-    end
-    return true
-end
--- the burst's first pass: a one-shot timer the first event made
+-- (round 7, SD-61) a routed pass: the one-shot timer the first event after the last pass made, at the moment the pace allows (the next
+-- frame after a quiet moment, else a tenth of a second after the last pass). It runs every change marked since, and sets no timer
+-- itself: the next one is made by the next event, so with no event nothing is left running (EllesmereUI's 10-a-second engine ticker, per
+-- the study, stops itself after about a second with nothing to do; ours is never set while nothing waits)
 local function RoutedTimer()
     routedArmed = false
-    if ns.RulesDisabled or fallbackOn then return end
+    if ns.RulesDisabled or fallbackOn or not AnyRouted() then return end
+    local now = GetTime()
     inCallback = true
-    RoutedPass()
-    inCallback = false
-end
--- the pump: one pass at the pace's next moment while events keep coming; it takes itself off at the first pass with nothing to do
-PumpTimer = function()
-    pumpArmed = false
-    if ns.RulesDisabled or fallbackOn then return end
-    inCallback = true
-    if AnyRouted() then
-        local ran = RoutedPass()
-        if ran and not pumpArmed and not ns.RulesDisabled then
-            pumpArmed = true
-            local d = lastRoutedAt + ROUTED_DUE - GetTime()
-            C_Timer.After(d > 0 and d or 0, PumpTimer)
-        end
-    end
+    -- (the timer was set for this moment; a rounding error in the moment's sum is not a reason to wait a frame)
+    if now - lastRoutedAt < ROUTED_DUE - 0.0001 then UseFrameScript() else DoRouted(now) end
     inCallback = false
 end
 -- a rule list replaced or grown without ns.MarkDirty (an edit that did not announce itself): the next re-check is a full step
@@ -1332,7 +1316,7 @@ local function Kick()
         local d = lastStateAt + MIN_GAP - now
         C_Timer.After(d > 0 and d or 0, AllTimer)
     end
-    if AnyRouted() and not routedArmed and not pumpArmed then   -- (while the pump runs, it takes the routed work)
+    if AnyRouted() and not routedArmed then
         routedArmed = true
         local d = lastRoutedAt + ROUTED_DUE - now
         C_Timer.After(d > 0 and d or 0, RoutedTimer)
@@ -1378,24 +1362,18 @@ function ns.OnDBReady()
     pend.full = true; QueueSettle()
 end
 
--- (review R3 talent safety net, restored in round 6; V32 "load conditions honored exactly"): out of combat, while a switched-on rule has
--- a talent requirement, its talent entries are read once a second and compared with the kept answer (Conditions.lua
--- ns.TalentCodesChanged: known / not known only, no table, no string). A talent change that came without the game's talent events
--- then still loads or unloads the rule within about a second. In combat nothing is read (talents cannot change there), and with no such
--- rule (or /xui disable) no timer exists. It is a once-a-second poll of those reads only: V27 asks for none, V32 for the load to be
--- honored; the trade-off is hers to confirm (round 6 report).
-local talentTicker
-function TalentWatch()
-    local want = talentN > 0 and not inCombat and not ns.RulesDisabled and ns.TalentCodesChanged ~= nil
-    if want and not talentTicker then
-        talentTicker = C_Timer.NewTicker(1, function()
-            if inCombat or ns.RulesDisabled or talentN == 0 then if talentTicker then talentTicker:Cancel(); talentTicker = nil end return end
-            local changed = false
-            for i = 1, talentN do if ns.TalentCodesChanged(talentRules[i]) then changed = true end end
-            if changed then ns.talentEpoch = (ns.talentEpoch or 0) + 1; pend.ctx = true; QueueSettle() end
-        end)
-    elseif not want and talentTicker then
-        talentTicker:Cancel(); talentTicker = nil
+-- (round 7, SD-60, her answer "1": events only, no talent timer) talents are read again only when the game says they may have changed. The
+-- once-a-second talent re-read (review R3's safety net, a C_Timer.NewTicker out of combat) is gone. The events, all in
+-- docs/reference/api/events.md:
+--   * these say talents or the spec did change: the kept talent answers are dropped (ns.talentEpoch) and every rule is checked again on
+--     the next frame (TALENT_EVENTS below);
+--   * these fire while talents are picked in the talent window before they are saved, or for a single node: the switched-on rules with a
+--     talent requirement compare each entry's known / not known with their kept answer (Conditions.lua ns.TalentCodesChanged: no table,
+--     no string), and only a real difference re-checks the rules (TALENT_MAYBE below).
+local function TalentEventCheck()
+    if ns.RulesDisabled or not ns.TalentCodesChanged then return end
+    for i = 1, talentN do
+        if ns.TalentCodesChanged(talentRules[i]) then ns.talentEpoch = (ns.talentEpoch or 0) + 1; pend.ctx = true; QueueSettle(); return end
     end
 end
 
@@ -1406,22 +1384,43 @@ local function SnapTick() if inCombat and ns.LogStatusSnapshot and not ns.RulesD
 local function SnapStop() if snapTicker then snapTicker:Cancel(); snapTicker = nil end end
 
 -- events: always registered (the load facts, the action bars, the state events the engine has always stepped on)
+-- (round 7, SD-60) every way the reference names for talents or the spec to change (events.md): the spec (PLAYER_SPECIALIZATION_CHANGED
+-- :1215, ACTIVE_PLAYER_SPECIALIZATION_CHANGED :30, ACTIVE_TALENT_GROUP_CHANGED :31), talents and loadouts saved or switched
+-- (PLAYER_TALENT_UPDATE :1222, TRAIT_CONFIG_UPDATED :1536, TRAIT_CONFIG_LIST_UPDATED :1535, ACTIVE_COMBAT_CONFIG_CHANGED :27),
+-- hero talents (TRAIT_SUB_TREE_CHANGED :1540), PvP talents (PLAYER_PVP_TALENT_UPDATE :1204, and WAR_MODE_STATUS_UPDATE :1770), a reset
+-- by the game (TALENTS_INVOLUNTARILY_RESET :1466), the spellbook (SPELLS_CHANGED :1428, the spells the talent check reads with
+-- IsPlayerSpell) and entering the world. (INFERENCE, not in the reference: War Mode, and a loading screen into an arena or battleground,
+-- switch PvP talents on and off without a talent event of their own; both are listened to for that reason.)
+local TALENT_EVENTS = {
+    PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_TALENT_GROUP_CHANGED = true,
+    PLAYER_TALENT_UPDATE = true, TRAIT_CONFIG_UPDATED = true, TRAIT_CONFIG_LIST_UPDATED = true, ACTIVE_COMBAT_CONFIG_CHANGED = true,
+    TRAIT_SUB_TREE_CHANGED = true, PLAYER_PVP_TALENT_UPDATE = true, WAR_MODE_STATUS_UPDATE = true, TALENTS_INVOLUNTARILY_RESET = true,
+    SPELLS_CHANGED = true, PLAYER_ENTERING_WORLD = true,
+}
+-- picked in the talent window but not saved yet, or one node or tree changed (TRAIT_NODE_CHANGED :1537, TRAIT_NODE_CHANGED_PARTIAL :1538,
+-- TRAIT_NODE_ENTRY_UPDATED :1539, TRAIT_TREE_CHANGED :1543), a loadout made, deleted or picked in the list, or a save that failed
+-- (TRAIT_CONFIG_CREATED :1533, TRAIT_CONFIG_DELETED :1534, SELECTED_LOADOUT_CHANGED :1359, CONFIG_COMMIT_FAILED :446), or a spell
+-- learned (LEARNED_SPELL_IN_SKILL_LINE :897): compared, not re-checked (TalentEventCheck above)
+local TALENT_MAYBE = { TRAIT_NODE_CHANGED = true, TRAIT_NODE_CHANGED_PARTIAL = true, TRAIT_NODE_ENTRY_UPDATED = true, TRAIT_TREE_CHANGED = true,
+    TRAIT_CONFIG_CREATED = true, TRAIT_CONFIG_DELETED = true, SELECTED_LOADOUT_CHANGED = true, CONFIG_COMMIT_FAILED = true,
+    LEARNED_SPELL_IN_SKILL_LINE = true }
 local CTX_EVENTS = {
     PLAYER_ENTERING_WORLD = true, PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true, GROUP_ROSTER_UPDATE = true,
     ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true, PLAYER_DIFFICULTY_CHANGED = true,
-    PLAYER_SPECIALIZATION_CHANGED = true, TRAIT_CONFIG_UPDATED = true, SPELLS_CHANGED = true, PLAYER_TALENT_UPDATE = true,
     PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_EQUIPMENT_CHANGED = true,
     CHALLENGE_MODE_START = true, CHALLENGE_MODE_COMPLETED = true, CHALLENGE_MODE_RESET = true, ENCOUNTER_START = true, ENCOUNTER_END = true,
     UNIT_FLAGS = true,   -- (player: the combat flag; UnitAffectingCombat is a load fact)
 }
+for e in pairs(TALENT_EVENTS) do CTX_EVENTS[e] = true end
 -- load facts another file keeps from the event itself (Conditions.lua ns.LoadEvent: the encounter, the equipment count), that the engine
 -- itself changes here (talents), or that the game sets only after the event (PLAYER_REGEN_DISABLED comes just before combat lockdown,
 -- INFERENCE from Blizzard's secure code; the stand-in game sets combat after the event too): read on the next frame, once every handler ran
 local CTX_LATER = { ENCOUNTER_START = true, ENCOUNTER_END = true, PLAYER_EQUIPMENT_CHANGED = true, PLAYER_ENTERING_WORLD = true,
-    PLAYER_SPECIALIZATION_CHANGED = true, TRAIT_CONFIG_UPDATED = true, SPELLS_CHANGED = true, PLAYER_TALENT_UPDATE = true,
     PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true }
+for e in pairs(TALENT_EVENTS) do CTX_LATER[e] = true end
 local BAR_EVENTS = { ACTIONBAR_SLOT_CHANGED = true, UPDATE_BONUS_ACTIONBAR = true, ACTIONBAR_PAGE_CHANGED = true, UPDATE_SHAPESHIFT_FORM = true }
 for e in pairs(CTX_EVENTS) do if e ~= "UNIT_FLAGS" then f:RegisterEvent(e) end end
+for e in pairs(TALENT_MAYBE) do f:RegisterEvent(e) end
 f:RegisterUnitEvent("UNIT_FLAGS", "player")
 for e in pairs(BAR_EVENTS) do f:RegisterEvent(e) end
 f:RegisterEvent("PLAYER_TARGET_CHANGED"); f:RegisterEvent("PLAYER_FOCUS_CHANGED")   -- a new target / focus changes every target answer at once
@@ -1521,12 +1520,24 @@ local function RouteAura(unit, info)
     if pendN > 0 or U.nonDirect > 0 or #U.loose > 0 then U.touched = true; return true end
     return false
 end
--- a cooldown event: SPELL_UPDATE_COOLDOWN with a readable spell ID marks that spell's checks (and its base spell's, and the checks that
--- read the global cooldown or more than one spell); with no spell ID, a hidden one, or any other cooldown event: every cooldown check
-local function RouteCooldown(event, a1, a2)
+-- a cooldown event. SPELL_UPDATE_COOLDOWN carries (spellID, baseSpellID, category, startRecoveryCategory, itemID), all optional
+-- (events.md:1443). (round 7, review of round 6) Only a payload that names one spell and nothing else marks just that spell's checks (and
+-- its base spell's, and the checks that read the global cooldown or more than one spell): a readable spell ID, a readable or absent base
+-- spell ID, and a category, a start-recovery category and an item ID that are each absent or a readable 0. Any other payload says more
+-- cooldowns may have changed than the one spell it names, so every cooldown check is read, as is every check on any other cooldown event:
+--   * a category: the spells and items sharing that cooldown category changed too (which ones the event does not say);
+--   * a start-recovery category: the cast started a recovery shared by other spells (the global cooldown, category 133 in the game's spell
+--     data: INFERENCE, the reference documents the field, not its values);
+--   * an item ID: an item's cooldown (items of one kind share theirs);
+--   * a hidden (secret) or unreadable field, no spell ID at all.
+-- The event is a UniqueEvent (events.md:1443). INFERENCE, UNVERIFIED IN GAME: the game may send it once a frame when several cooldowns
+-- change in that frame, naming one of them; that case is reported to Xaya with this round (it is not decided here).
+local function NoMore(v) return v == nil or (type(v) == "number" and not issecret(v) and v == 0) end
+local function RouteCooldown(event, a1, a2, a3, a4, a5)
     local C = cdChecks
     if #C.probes == 0 and #C.loose == 0 then return #live.cd > 0 end
-    if event == "SPELL_UPDATE_COOLDOWN" and type(a1) == "number" and not issecret(a1) and not C.whole then
+    if event == "SPELL_UPDATE_COOLDOWN" and not C.whole and type(a1) == "number" and not issecret(a1)
+        and (a2 == nil or (type(a2) == "number" and not issecret(a2))) and NoMore(a3) and NoMore(a4) and NoMore(a5) then
         local l = C.idx[a1]
         if l then MarkList(l) end
         if type(a2) == "number" and not issecret(a2) and a2 ~= a1 then l = C.idx[a2]; if l then MarkList(l) end end
@@ -1536,7 +1547,7 @@ local function RouteCooldown(event, a1, a2)
     end
     return true
 end
-inputFrame:SetScript("OnEvent", function(_, event, unit, a2)
+inputFrame:SetScript("OnEvent", function(_, event, unit, a2, a3, a4, a5)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
     local k = KIND_OF[event]
     local u = UNIT_OF[event]
@@ -1547,7 +1558,7 @@ inputFrame:SetScript("OnEvent", function(_, event, unit, a2)
         return
     end
     if k == "cd" then
-        if RouteCooldown(event, unit, a2) then pend.cd = true; Kick() end
+        if RouteCooldown(event, unit, a2, a3, a4, a5) then pend.cd = true; Kick() end
         return
     end
     if event == "UNIT_SPELLCAST_SUCCEEDED" then NoteCast(GetTime()) end
@@ -1565,11 +1576,11 @@ f:SetScript("OnEvent", function(_, event, arg1)
         if ns.ClearSecrecyCache then ns.ClearSecrecyCache() end
         inCombat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false   -- a /reload can land mid-fight
     end
-    if event == "PLAYER_SPECIALIZATION_CHANGED" or event == "TRAIT_CONFIG_UPDATED" or event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED"
-        or event == "PLAYER_TALENT_UPDATE" then
+    if TALENT_MAYBE[event] then TalentEventCheck(); return end
+    if TALENT_EVENTS[event] then
         ns.talentList = nil; ns.spellList = nil
-        -- (review R3) talents may have changed: the kept talent answers (Conditions.lua CheckTalents) are read again; another unit's spec
-        -- change does not count
+        -- (review R3; round 7, SD-60) talents may have changed: the kept talent answers (Conditions.lua CheckTalents) are read again;
+        -- another unit's spec change does not count
         if event ~= "PLAYER_SPECIALIZATION_CHANGED" or arg1 == "player" then ns.talentEpoch = (ns.talentEpoch or 0) + 1 end
     end
     -- audit D54 (core 0.6.67): On Initialization runs again after a spec change (USER-GUIDE Actions tab; Actions.lua), for every rule
@@ -1579,14 +1590,12 @@ f:SetScript("OnEvent", function(_, event, arg1)
     -- (V26: not while every rule is off by /xui disable: a snapshot may check rules)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
-        TalentWatch()
         if ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat start") end
         SnapStop()
         if not ns.RulesDisabled and ns.LogWanted and ns.LogWanted("snapshot") then snapTicker = C_Timer.NewTicker(SNAP_EVERY, SnapTick) end
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
         SnapStop()
-        TalentWatch()
         if ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat end") end
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or BAR_EVENTS[event] then barsDirty = true end
@@ -1647,7 +1656,6 @@ function ns.SetRulesDisabled(on)
                 if rt.visualWanted then rt.visualWanted = false; if ns.SetVisualShown then pcall(ns.SetVisualShown, rule, false) end end
             end
         end
-        TalentWatch()
         ns.Fire("RULES_DISABLED")
     else
         barsDirty = true

@@ -50,8 +50,10 @@ for _, k in ipairs({ "After", "NewTimer", "NewTicker" }) do
   local raw = C_Timer[k]
   C_Timer[k] = function(...) timers[#timers + 1] = owner(); return raw(...) end
 end
-local GM, DBG, SND, MINI, CON = "XayaUI/GameMenuButton.lua", "XayaUI/DebugRecord.lua",
-  "XayaUI_Rules/AuraSound.lua", "XayaUI/MinimapButton.lua", "XayaUI/Console.lua"
+-- (round 7, REQUEST-LOG A23 SD-58) the console window is XayaUI_Debug's (XayaUI_Debug/Console.lua), read only while Advanced Debugging
+-- is on; core's Console.lua keeps the line feed and the copy box. CON is the window's file; CORECON core's.
+local GM, DBG, SND, MINI, CON, CORECON = "XayaUI/GameMenuButton.lua", "XayaUI/DebugRecord.lua",
+  "XayaUI_Rules/AuraSound.lua", "XayaUI/MinimapButton.lua", "XayaUI_Debug/Console.lua", "XayaUI/Console.lua"
 local function frames(file) local n = 0; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then n = n + 1 end end; return n end
 local function events(file)
   local set, list = {}, {}
@@ -172,7 +174,8 @@ if MODE == "off" then
   check("A4 no rule uses the game-played sound: AuraSound.lua made no frame, registered no event, placed no hook (on ns.MarkDirty before)",
     nothing(SND), cost(SND))
   check("A5 minimap button saved off: MinimapButton.lua made no frame and registered no event", nothing(MINI), cost(MINI))
-  check("A6 console window saved closed: Console.lua made no frame", nothing(CON), cost(CON))
+  check("A6 console window saved closed: Console.lua made no frame (core's, and XayaUI Debug's, which is not even loaded)",
+    nothing(CON) and nothing(CORECON), cost(CON) .. " | " .. cost(CORECON))
   local t0 = #timers
   W.fire("PLAYER_ENTERING_WORLD", false, false); W.tick(0.1, 10)
   check("A7 a loading screen starts no timer of the minimap button or the aura sound", ntimers(MINI, t0) == 0 and ntimers(SND, t0) == 0,
@@ -281,7 +284,49 @@ if MODE == "off" then
   local tm2 = #timers
   W.fire("PLAYER_ENTERING_WORLD", false, false); W.tick(0.1, 5)
   check("B23 ...a loading screen starts no timer of it", ntimers(MINI, tm2) == 0, ntimers(MINI, tm2))
-  -- B24-B27 the console window (Settings > Debugging)
+  -- (round 7, SD-58 / SD-61) Advanced Debugging was off at this login, so the console window's addon (XayaUI_Debug) is not loaded: its
+  -- switch in Settings > Debugging says what it needs (one line) and makes nothing. B24-B27 run in the "on" world below.
+  local p0 = #W.printed
+  check("(works) the Console window switch is in the settings", switch("consoleWin", true))
+  local said = {}; for i = p0 + 1, #W.printed do said[#said + 1] = tostring(W.printed[i]) end
+  check("B24a Advanced Debugging off at login: the Console window switch makes nothing and says, in one line, that it needs Advanced Debugging and a /reload",
+    #said == 1 and said[1]:find("needs Advanced Debugging", 1, true) ~= nil and _G.XayaUIConsoleWindow == nil and nothing(CON) and nothing(CORECON),
+    table.concat(said, " / "))
+elseif MODE == "defaults" then
+  ---------------------------------------------------------------------------------------------------------------------------------
+  -- C. a fresh install (the defaults): what is on by default works, what is off by default costs nothing
+  ---------------------------------------------------------------------------------------------------------------------------------
+  check("(works) C1 the Game Menu button is on by default: its hook is placed at login", nhooks(GM) >= 1, cost(GM))
+  openMenu()
+  check("(works) C2 ...the ESC menu shows it", _G.XayaUI_GameMenuButton ~= nil and _G.XayaUI_GameMenuButton:IsShown() and slotCount() == 1)
+  closeMenu()
+  local nd, ld, setd = events(DBG)
+  -- (round 7, REQUEST-LOG A23 SD-61, her answer "Off by default (Recommended)"; was "(works) C3 Advanced Debugging is on by default: the
+  -- record's events are registered (the two 'action blocked' events only)")
+  check("C3 Advanced Debugging is off by default: DebugRecord.lua registers no event and makes no frame", nothing(DBG) and nd == 0, ld)
+  check("C3b ...and no PLAYER_LOGIN stays registered after the login (it fires once)", not setd.PLAYER_LOGIN, ld)
+  local _, lm, setm = events(MINI)
+  check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil
+    and _G.XayaUIMinimapButton:IsShown() and setm.PLAYER_ENTERING_WORLD, lm)
+  check("C7 no rule uses the game-played sound: nothing of it exists", nothing(SND), cost(SND))
+  check("C8 the console window is closed by default: nothing of it exists", nothing(CON) and nothing(CORECON), cost(CON) .. " | " .. cost(CORECON))
+elseif MODE == "on" then
+  ---------------------------------------------------------------------------------------------------------------------------------
+  -- D. saved on at login: each works from the start
+  ---------------------------------------------------------------------------------------------------------------------------------
+  check("(works) D3 the console window saved open: open after login", _G.XayaUIConsoleWindow ~= nil and _G.XayaUIConsoleWindow:IsShown())
+  local nc, lc = events(CON)
+  check("D4 ...and no event of the console stays registered after the login", nc == 0, lc)
+  check("(works) D5 a rule saved with the game-played sound: the game is asked to play it after the loading screen", #ADDED >= 1, #ADDED)
+  local n5, l5 = events(SND)
+  check("(works) D6 ...and its eleven events are registered", n5 == 11, l5)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting; round 3: + Mythic+ reset. The two mount events only for a rule that follows the mount state)
+  local n6, l6, set6 = events(DBG)
+  check("D7 Advanced Debugging saved on: only the two 'action blocked' events are registered", onlyBlocked(set6, n6), l6)
+  -- B24-B27 the console window (Settings > Debugging), with Advanced Debugging on at the login (round 7: its addon is loaded only then).
+  -- XayaUI's messages set to the chat window, as these checks ran before round 7 (there Advanced Debugging was off, so messages went to
+  -- chat; with it on and nothing chosen they go to the console window, which would open it for the private line)
+  CueRulesDB.ui.msgDest = "chat"
+  switch("consoleWin", false)
   check("(works) the Console window switch is in the settings", switch("consoleWin", true))
   local win = _G.XayaUIConsoleWindow
   check("(works) B24 the console window switched on: it is shown", win ~= nil and win:IsShown())
@@ -299,35 +344,7 @@ if MODE == "off" then
     and at("closed line one") < at("closed line two") and (not at("a private line") or (at("closed line one") < at("a private line")
     and at("a private line") < at("closed line two"))), table.concat(drawn, " / "))
   switch("consoleWin", false)
-elseif MODE == "defaults" then
-  ---------------------------------------------------------------------------------------------------------------------------------
-  -- C. a fresh install (the defaults): what is on by default works, what is off by default costs nothing
-  ---------------------------------------------------------------------------------------------------------------------------------
-  check("(works) C1 the Game Menu button is on by default: its hook is placed at login", nhooks(GM) >= 1, cost(GM))
-  openMenu()
-  check("(works) C2 ...the ESC menu shows it", _G.XayaUI_GameMenuButton ~= nil and _G.XayaUI_GameMenuButton:IsShown() and slotCount() == 1)
-  closeMenu()
-  local nd, ld, setd = events(DBG)
-  check("(works) C3 Advanced Debugging is on by default: the record's events are registered (the two 'action blocked' events only)",
-    onlyBlocked(setd, nd), ld)
-  check("C3b ...and no PLAYER_LOGIN stays registered after the login (it fires once)", not setd.PLAYER_LOGIN, ld)
-  local _, lm, setm = events(MINI)
-  check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil
-    and _G.XayaUIMinimapButton:IsShown() and setm.PLAYER_ENTERING_WORLD, lm)
-  check("C7 no rule uses the game-played sound: nothing of it exists", nothing(SND), cost(SND))
-  check("C8 the console window is closed by default: nothing of it exists", nothing(CON), cost(CON))
-elseif MODE == "on" then
-  ---------------------------------------------------------------------------------------------------------------------------------
-  -- D. saved on at login: each works from the start
-  ---------------------------------------------------------------------------------------------------------------------------------
-  check("(works) D3 the console window saved open: open after login", _G.XayaUIConsoleWindow ~= nil and _G.XayaUIConsoleWindow:IsShown())
-  local nc, lc = events(CON)
-  check("D4 ...and no event of the console stays registered after the login", nc == 0, lc)
-  check("(works) D5 a rule saved with the game-played sound: the game is asked to play it after the loading screen", #ADDED >= 1, #ADDED)
-  local n5, l5 = events(SND)
-  check("(works) D6 ...and its eleven events are registered", n5 == 11, l5)   -- (review R2: + zone; R2 follow-up: + group, Mythic+ start / end, resting; round 3: + Mythic+ reset. The two mount events only for a rule that follows the mount state)
-  local n6, l6, set6 = events(DBG)
-  check("D7 Advanced Debugging saved on: only the two 'action blocked' events are registered", onlyBlocked(set6, n6), l6)
+  CueRulesDB.ui.msgDest = nil
 end
 return R
 end
@@ -352,7 +369,7 @@ def saved_for(mode):
 
 def world(mode):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug")]   # (round 7: XayaUI_Debug, loaded only with Advanced Debugging on)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     w = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
