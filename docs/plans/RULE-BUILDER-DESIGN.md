@@ -46,6 +46,8 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-53 wording rule: lists in builder text use the Oxford comma.
+>
 > The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).

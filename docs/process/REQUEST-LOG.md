@@ -791,6 +791,7 @@ copy; rows it adds later are copied here.
 | RB-50 | Her canvas comment on the TRACKING bar (verbatim): "put in smaller subtitle fonting \"(Trigger #)\"" | DONE: small grey "(Trigger N)" subtitle under each tracking panel title (B, C, E, F, 1 · Tracking); design: N = position in the stored trigger order (matches the editor's numbering) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-51 | Her canvas comment on "Preview" (verbatim): "what does \"preview\" mean here?" | ANSWERED in thread: the plain-language line of the item before adding; "preview" clashes with the editor's display preview; offered "This will track:" (recommended), "Reads as:", or no label. OPEN: her pick | design canvas |
 | RB-52 | Her canvas comment on the small type label above a tracked item (verbatim): "is this part necessary, or noise?" | ANSWERED in thread: mostly noise (the sentence already says it; label is stale after RB-36); options: show "Trigger N" (recommended), remove, or rename. OPEN: her pick | design canvas |
+| RB-53 | Her canvas comment on "PROCS, TIER SETS & GEAR" (verbatim): "oxford comma" | DONE: "Procs, Tier Sets, & Gear" on F, 1 · Tracking dropdown and canvas title; design wording rule: Oxford comma in builder text | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
