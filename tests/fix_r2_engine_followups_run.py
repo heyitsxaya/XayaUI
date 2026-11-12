@@ -73,10 +73,18 @@ local EVENTS = {
   { "PLAYER_TALENT_UPDATE" }, { "TRAIT_CONFIG_UPDATED", 1 }, { "TRAIT_CONFIG_LIST_UPDATED" }, { "ACTIVE_COMBAT_CONFIG_CHANGED", 1 },
   { "TRAIT_SUB_TREE_CHANGED", 31 }, { "PLAYER_PVP_TALENT_UPDATE" }, { "WAR_MODE_STATUS_UPDATE", true }, { "TALENTS_INVOLUNTARILY_RESET", false },
   { "SPELLS_CHANGED" }, { "PLAYER_ENTERING_WORLD", false, true },
+  -- (round 7 repair) the spec changed by the game (events.md:1426)
+  { "SPEC_INVOLUNTARILY_CHANGED", false },
   -- the talent window's own events (compared with the kept answer; only a real difference re-checks)
   { "TRAIT_NODE_CHANGED", 101 }, { "TRAIT_NODE_CHANGED_PARTIAL", 101, {} }, { "TRAIT_NODE_ENTRY_UPDATED", 201 }, { "TRAIT_TREE_CHANGED", 1 },
   { "TRAIT_CONFIG_CREATED", {} }, { "TRAIT_CONFIG_DELETED", 2 }, { "SELECTED_LOADOUT_CHANGED" }, { "CONFIG_COMMIT_FAILED", 1 },
   { "LEARNED_SPELL_IN_SKILL_LINE", 5001, 1, false },
+  -- (round 7 repair) the related events the review asked about, compared the same way: a level gained (talent points; :1193), a node's
+  -- condition (:1532), the old talent-point count (:271), and a pick, a PvP pick, a spec change or a starter build that failed (:1189,
+  -- :1188, :1425, :1447: the game may have shown the pick before it failed; INFERENCE)
+  { "PLAYER_LEVEL_UP", 80, 0, 0, 1 }, { "TRAIT_COND_INFO_CHANGED", 7 }, { "CHARACTER_POINTS_CHANGED", 1 },
+  { "PLAYER_LEARN_TALENT_FAILED" }, { "PLAYER_LEARN_PVP_TALENT_FAILED" }, { "SPECIALIZATION_CHANGE_CAST_FAILED" },
+  { "STARTER_BUILD_ACTIVATION_FAILED" },
 }
 local missed = {}
 local played0 = played("7001")

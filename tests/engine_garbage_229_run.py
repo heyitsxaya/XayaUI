@@ -39,11 +39,11 @@ local ns = NS
 ns.rules = CueRulesDB.rules; ns.folders = CueRulesDB.folders or {}
 if ns.NormalizeRule then for _, r in ipairs(ns.rules) do pcall(ns.NormalizeRule, r) end end
 ns.Print = function() end
-for i = 1, 5 do NOW = NOW + 0.2; ns.Step() end
+for i = 1, 5 do NOW = NOW + 0.2; ENGINE_STEP(ns) end
 collectgarbage(); collectgarbage(); collectgarbage("stop")
 local T = 200
 local m0 = collectgarbage("count")
-for i = 1, T do NOW = NOW + 0.2; ns.Step() end
+for i = 1, T do NOW = NOW + 0.2; ENGINE_STEP(ns) end
 local kb = (collectgarbage("count") - m0) / T
 collectgarbage("restart")
 local made = {}
@@ -55,7 +55,7 @@ debug.sethook(function(ev)
     end
   end
 end, "c")
-NOW = NOW + 0.2; ns.Step()
+NOW = NOW + 0.2; ENGINE_STEP(ns)
 debug.sethook()
 local n = 0; for _ in pairs(made) do n = n + 1 end
 local sig = {}

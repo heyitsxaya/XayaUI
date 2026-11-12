@@ -64,7 +64,9 @@ W.tick(0.3, 2)
 picked[5001] = false
 W.fire("TRAIT_CONFIG_UPDATED", 1); full(2)
 local before = played("7001")
--- (follow-up: out of combat the kept answer is re-read once a second, see tests/fix_r2_engine_followups_run.py; in combat never)
+-- (round 7, SD-60, her answer "1": events only; the kept answer is read again only on a talent or spec event, in or out of combat; see
+-- tests/fix_r2_engine_followups_run.py. Round 7 repair: the out-of-combat check below said "at most twice (once a second)", the
+-- round-6 ticker she removed; it now asks for none, a tighter check of the intended behaviour)
 W.enterCombat(); full(1)
 talentReads = 0
 full(20)
@@ -72,7 +74,7 @@ check("R3: in combat, 20 steps with no talent change read no talent again (101 r
 W.leaveCombat(); full(1)
 talentReads = 0
 full(20)
-check("R3: out of combat, 20 steps (1.2 s) read the 201 talent entries at most twice (once a second), not on every step", talentReads <= 2 * 201, talentReads)
+check("R3: out of combat, 20 steps (1.2 s) with no talent event read no talent again (events only, SD-60)", talentReads == 0, talentReads)
 check("R3: the talent not picked: the rule does not load, its cue is silent", played("7001") == before and not (ns.runtime[T] and ns.runtime[T].active))
 picked[5001] = true
 W.fire("TRAIT_CONFIG_UPDATED", 1); full(1)

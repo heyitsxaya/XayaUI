@@ -4146,13 +4146,3 @@ function ns.DropVisual(rule)
         frames[rule] = nil
     end
 end
-
--- /xui debug mods: what is really on a cue's frame right now (so a modifier that "does not apply" can be traced: data -> condition -> merged mods -> frame).
-function ns.VisualDebug(rule)
-    local fr = frames[rule]
-    if not fr then return nil end
-    local function try(f, ...) local ok, a, b, c, d = pcall(f, ...); if ok then return a, b, c, d end end
-    local r, g, b, a = try(fr.tex.GetVertexColor, fr.tex)
-    return { shown = fr:IsShown(), alpha = try(fr.GetAlpha, fr), strata = try(fr.GetFrameStrata, fr),
-             color = r and { r, g, b, a } or nil, desat = try(fr.tex.GetDesaturation, fr.tex), glow = fr.glow and fr.glow:IsShown() or false }
-end

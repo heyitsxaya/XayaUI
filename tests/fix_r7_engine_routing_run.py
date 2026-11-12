@@ -7,10 +7,16 @@ SD-63 (her answer "Keep, fix first"): the round-6 stuck icon. A rule with a coun
 Review of round 6 (cooldown routing, events.md:1443 SPELL_UPDATE_COOLDOWN(spellID, baseSpellID, category, startRecoveryCategory,
   itemID)): one cooldown event naming one spell while other cooldowns changed with it. Two spells sharing a category, a shared
   start-recovery lockout, an item whose use puts another item's spell on cooldown, a hidden (secret) category: the other spell's
-  "ready" display must hide. A payload naming one spell and nothing else still re-checks only that spell's rules.
+  "ready" display must hide. (Repair, V2 fail-safe) the event is a UniqueEvent and the reference documents nothing about what that
+  does to its payload, so a payload naming one spell and nothing else is no proof that only that spell changed: a second spell whose
+  cooldown started in the same frame must hide its "ready" too, as must the spell beside a hidden (secret) base spell ID, start-recovery
+  category or item ID. Every cooldown check is read once per pass; a rule whose answer did not change is still not checked in full.
 SD-61 (her answer "10/s for all, like EUI (Recommended)"): in a burst of aura events on every frame, a rule is re-checked at most 10
   times a second (never two within a tenth of a second); the first change after a quiet tenth of a second is drawn on the very next
   frame; once the events stop, nothing of the engine stays scheduled (no timer, no frame script).
+SD-60 (her answer "1", events only): with a talent-requirement rule switched on, the engine makes no repeating timer. (Repair) the
+  engine's test-only ns.Step, which no addon file called, is removed; a change marked while the engine itself runs is taken by its
+  frame script on the next frame only (it no longer stays on every frame until the pace allows the pass) (tests reach one full step through tests/engine_bench.py's helper).
 Run: python3 tests/fix_r7_engine_routing_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -84,12 +90,25 @@ local A, B = cd("A (shared category)", 100), cd("B (shares A's category)", 200)
 local C1, C2 = cd("C (cast)", 300), cd("D (shares C's recovery lockout)", 301)
 local IT = cd("E (another item's spell)", 9401)
 local X = cd("F (unrelated)", 500)
+-- (repair) two spells whose cooldowns start in the same frame, the event naming only the first: the game's UniqueEvent (events.md:1443)
+local U1, U2 = cd("G (named)", 600), cd("H (changed in the same frame, not named)", 601)
+-- (repair) a hidden (secret) base spell ID, start-recovery category or item ID beside a readable spell ID: each with a second spell
+local SB1, SB2 = cd("I (named, secret base spell)", 700), cd("J (changed with I)", 701)
+local SR1, SR2 = cd("K (named, secret recovery category)", 710), cd("L (changed with K)", 711)
+local SI1, SI2 = cd("M (named, secret item ID)", 720), cd("N (changed with M)", 721)
 -- Q: reads aura 1002, a display with no countdown and no cue (so nothing but routed passes checks it: no stored-moment wake)
 local Q = ns.NewRule(); Q.name = "pace"; Q.enabled = true
 Q.useBuff, Q.buffID, Q.buffState, Q.cdState = true, 1002, "present", "none"
 Q.visual.enabled, Q.visual.kind, Q.visual.w, Q.visual.h = true, "spellicon", 32, 32
 Q.visual.trigger = "buffActive"; Q.visual.text.enabled = false; Q.sound.enabled = false
 ns.NormalizeRule(Q); ns.rules[#ns.rules + 1] = Q
+-- (repair) a switched-on rule with a talent requirement, so the SD-60 check below is not empty: the round-6 engine set its
+-- once-a-second talent ticker for as long as such a rule existed, out of combat
+local TL = ns.NewRule(); TL.name = "talent"; TL.enabled = true
+TL.useBuff, TL.buffID, TL.buffState, TL.cdState = true, 1003, "present", "none"
+TL.talentMode, TL.talents = "all", { { id = 5001, state = "known" } }
+TL.visual.enabled, TL.sound.enabled = false, false
+ns.NormalizeRule(TL); ns.rules[#ns.rules + 1] = TL
 ns.MarkDirty()
 W.tick(1 / 60, 30)
 local framesOf = ns.VisualProbeState and ns.VisualProbeState()
@@ -140,7 +159,30 @@ G.cds[100] = { start = W.now, dur = 30 }; G.cds[200] = { start = W.now, dur = 30
 ev(100, 100, W.MarkSecret("secret-category"), 0, nil)
 check("a hidden (secret) category: B no longer shows 'ready' (a field the game hides is never trusted)", not shown(A) and not shown(B),
   tostring(shown(A)) .. "/" .. tostring(shown(B)))
--- a payload naming one spell and nothing else: only that spell's rules are checked again
+-- (repair, V2) the event names one spell and nothing else, but a second spell's cooldown started in the same frame. The reference marks
+-- SPELL_UPDATE_COOLDOWN a UniqueEvent and documents nothing about what that does to its payload: a clean payload is not proof that only
+-- the named spell changed, so every cooldown check is read on every cooldown event
+W.tick(0.2, 1)
+G.cds[600] = { start = W.now, dur = 30 }; G.cds[601] = { start = W.now, dur = 30 }
+ev(600, 600, 0, 0, nil)
+check("V2: one cooldown event names spell G only (category 0, no item), while H's cooldown started in the same frame: H no longer shows 'ready'",
+  not shown(U1) and not shown(U2), tostring(shown(U1)) .. "/" .. tostring(shown(U2)))
+W.tick(0.2, 1)
+G.cds[700] = { start = W.now, dur = 30 }; G.cds[701] = { start = W.now, dur = 30 }
+ev(700, W.MarkSecret("secret-base"), nil, nil, nil)
+check("a hidden (secret) base spell ID beside a readable spell ID: J, changed with I, no longer shows 'ready'", not shown(SB1) and not shown(SB2),
+  tostring(shown(SB1)) .. "/" .. tostring(shown(SB2)))
+W.tick(0.2, 1)
+G.cds[710] = { start = W.now, dur = 30 }; G.cds[711] = { start = W.now, dur = 30 }
+ev(710, 710, 0, W.MarkSecret("secret-recovery"), nil)
+check("a hidden (secret) start-recovery category: L, changed with K, no longer shows 'ready'", not shown(SR1) and not shown(SR2),
+  tostring(shown(SR1)) .. "/" .. tostring(shown(SR2)))
+W.tick(0.2, 1)
+G.cds[720] = { start = W.now, dur = 30 }; G.cds[721] = { start = W.now, dur = 30 }
+ev(720, 720, 0, 0, W.MarkSecret("secret-item"))
+check("a hidden (secret) item ID: N, changed with M, no longer shows 'ready'", not shown(SI1) and not shown(SI2),
+  tostring(shown(SI1)) .. "/" .. tostring(shown(SI2)))
+-- a payload naming one spell and nothing else: every cooldown check is read once, and only the rule whose answer changed is checked in full
 W.tick(0.2, 1)
 local evals = {}
 local E0 = ns.Evaluate
@@ -148,7 +190,7 @@ ns.Evaluate = function(r, ...) evals[r] = (evals[r] or 0) + 1; return E0(r, ...)
 G.cds[500] = { start = W.now, dur = 30 }
 ev(500, 500, 0, 0, nil)
 ns.Evaluate = E0
-check("a payload naming one spell and nothing else: its rule hides 'ready', and the other cooldown rules are not checked again",
+check("a payload naming one spell: its rule hides 'ready', and the cooldown rules whose answer did not change are not checked again in full",
   not shown(X) and (evals[X] or 0) >= 1 and not evals[A] and not evals[B] and not evals[C1] and not evals[IT],
   ("F %s, checked F %d, A %d, B %d"):format(tostring(shown(X)), evals[X] or 0, evals[A] or 0, evals[B] or 0))
 
@@ -178,8 +220,53 @@ W.tick(1 / 60, 15)
 for k = 1, #stepsAt do stepsAt[k] = nil end
 G.auras[1002].applications = 999; W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { G.auras[1002].auraInstanceID } }); W.tick(1 / 60, 1)
 check("SD-61: after a quiet tenth of a second the first change is checked on the very next frame", #stepsAt == 1, #stepsAt)
+-- (repair) a change marked while the engine itself runs (here: an aura event fired from inside a pass, as an action a rule runs can
+-- cause) is taken by the engine's frame script on the next frame only; the pass it asks for waits for the pace on a one-shot timer,
+-- with no frame script running every frame meanwhile (before: the script stayed on for every frame until the pace allowed the pass)
+local function engineScriptOn()
+  for _, o in ipairs(W.objects) do
+    local fn = o._scripts and o._scripts.OnUpdate
+    if fn then local i = debug.getinfo(fn, "S"); if i and i.source and i.source:find("Engine.lua", 1, true) then return true end end
+  end
+  return false
+end
+W.tick(1 / 60, 15)
+for k = 1, #stepsAt do stepsAt[k] = nil end
+local inner = true
+local E1 = ns.Evaluate
+ns.Evaluate = function(r, ...)
+  local a, b, c = E1(r, ...)
+  if inner and r == Q and ns.InStep and ns.InStep() then
+    inner = false
+    G.auras[1002].applications = 5; W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { G.auras[1002].auraInstanceID } })
+  end
+  return a, b, c
+end
+G.auras[1002].applications = 4; W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { G.auras[1002].auraInstanceID } })
+local scriptFrames = 0
+for _ = 1, 20 do W.tick(1 / 60, 1); if engineScriptOn() then scriptFrames = scriptFrames + 1 end end
 ns.Evaluate = E0
+check("(repair) a change marked inside a pass: the engine's frame script runs on the next frame only, not every frame until the pace allows",
+  scriptFrames <= 1, scriptFrames .. " frames")
+check("(repair) ... and the change is still checked, a tenth of a second after the pass that marked it (one frame of slack)",
+  #stepsAt == 2 and stepsAt[2] - stepsAt[1] >= 0.0995 - 1e-9 and stepsAt[2] - stepsAt[1] <= 0.1 + 1 / 60 + 1e-6,
+  #stepsAt == 2 and ("%.1f ms"):format((stepsAt[2] - stepsAt[1]) * 1000) or (#stepsAt .. " checks"))
 lose(1002); W.tick(1 / 60, 10)
+-- (repair) a state re-check (ns.MarkStateDirty: movement, a target change, a Cooldown Manager icon) waiting for its pace while a full
+-- step (a settings change) runs and moves the pace on, and a new state change marked right after it: the waiting one-shot timer comes
+-- too early for the new pace, and must wait for it on a new timer, not drop the change (before: a frame script did the waiting)
+W.tick(1 / 60, 20)
+ns.MarkStateDirty(); W.tick(1 / 60, 1)    -- a state pass runs now
+ns.MarkStateDirty()                         -- the next one waits for the pace (a twentieth of a second)
+ns.MarkDirty(); W.tick(1 / 60, 1)          -- a full step runs on the next frame
+local afterFull, evN = W.now, 0
+E0 = ns.Evaluate
+ns.Evaluate = function(r, ...) if r == CD0 and ns.InStep and ns.InStep() then evN = evN + 1 end; return E0(r, ...) end
+ns.MarkStateDirty()                         -- a state change right after the full step
+W.tick(1 / 60, 12)
+ns.Evaluate = E0
+check("(repair) a state change marked just after a full step, while an earlier state re-check still waited for its pace: it is checked within a tenth of a second",
+  evN >= 1, evN)
 -- once the events stop: no routed pass is scheduled (no C_Timer.After of the engine waits) and no engine frame script runs. (A
 -- C_Timer.NewTimer the engine set for a stored moment, a cooldown's end, may still wait: that is not a pass; see the round-7 report.)
 for k in pairs(G.cds) do G.cds[k] = nil end
@@ -198,7 +285,9 @@ local made = 0
 for _, t in ipairs(engineTimers) do if t.ticker then made = made + 1 end end
 check("SD-61: after the last event no routed pass is scheduled and no engine frame script runs (the pass is never set while nothing waits)",
   pending == 0 and scripts == 0, pending .. " timers, " .. scripts .. " scripts")
-check("SD-60: the engine made no repeating timer (C_Timer.NewTicker) in this whole run", made == 0, made)
+check("SD-60: the engine made no repeating timer (C_Timer.NewTicker) in this whole run, with a talent-requirement rule switched on",
+  made == 0 and TL.talents ~= nil, made)
+check("(repair) the engine exports no test-only entry point: ns.Step, which no addon file called, is gone", ns.Step == nil, type(ns.Step))
 return R
 end
 '''

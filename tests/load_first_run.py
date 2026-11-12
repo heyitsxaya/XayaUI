@@ -40,14 +40,14 @@ local ns = NS
 ns.rules = CueRulesDB.rules; ns.folders = CueRulesDB.folders or {}
 if ns.NormalizeRule then for _, r in ipairs(ns.rules) do pcall(ns.NormalizeRule, r) end end
 ns.Print = function() end
-for i = 1, 5 do NOW = NOW + 0.2; ns.Step() end
+for i = 1, 5 do NOW = NOW + 0.2; ENGINE_STEP(ns) end
 CD, BUFF, EXTRA = {}, {}, {}
 local rc, rb, rx = ns.ReadCooldown, ns.BuffPresentAny, ns.CheckExtraTriggers
 ns.ReadCooldown = function(r, ...) CD[r] = (CD[r] or 0) + 1; return rc(r, ...) end
 ns.BuffPresentAny = function(r, ...) BUFF[r] = (BUFF[r] or 0) + 1; return rb(r, ...) end
 if rx then ns.CheckExtraTriggers = function(r, ...) EXTRA[r] = (EXTRA[r] or 0) + 1; return rx(r, ...) end end
 function RESET() CD, BUFF, EXTRA = {}, {}, {} end
-function STEP() NOW = NOW + 0.2; ns.Step() end
+function STEP() NOW = NOW + 0.2; ENGINE_STEP(ns) end
 function COUNT(t, from, to) local n = 0; for i = from, to do n = n + (t[ns.rules[i]] or 0) end return n end
 ''')
 fails = []

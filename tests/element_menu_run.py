@@ -68,7 +68,7 @@ r.visual.enabled, r.sound.enabled = false, false
 ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
 local cue = ns.NewCueRule(r, "texture"); cue.visual.kind, cue.visual.tex = "file", "Interface\\Icons\\INV_Misc_QuestionMark"
 cue.visual.x, cue.visual.y = 40, -20
-ns.SetMoveUnlocked({ cue }, true); ns.Step(); W.tick(0.1, 3)
+ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 3)
 local dfr = ns.VisualFramesOf(cue)[1]
 -- a plain element with a settings page and an X / Y (what a data panel was before the modules moved to another branch): a frame and
 -- a child button, each with its own right-click script that opens the page (the "old thing" the menu must leave in place)
@@ -104,14 +104,14 @@ check("A closed: right-click on the plain element runs its own script (it opens 
 pcall(ns.ToggleUI); W.tick(0.1, 3)
 check("A closed again", not ns.ElementWindowIsShown())
 visualMenus = 0
-ns.SetMoveUnlocked({ cue }, true); ns.Step(); W.tick(0.1, 2)   -- (closing the window ended the unlock: unlock again, as a player would)
+ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 2)   -- (closing the window ended the unlock: unlock again, as a player would)
 ns.ElementRightClick(dfr, "OnMouseUp")
 check("A closed: right-click on an unlocked display opens its own menu (#61)", visualMenus == 1 and ns.ElementMenu() == nil, visualMenus)
 
 -- B: window shown
 pcall(ns.ToggleUI); W.tick(0.1, 4)
 check("B the window is shown", ns.ElementWindowIsShown())
-ns.SetMoveUnlocked({ cue }, true); ns.Step(); W.tick(0.1, 2)
+ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 2)
 check("B the frames carry the right-click while the window is shown (the element's frame and button, the strip, the display)", ns.ElementHandlersAttached() == 4 and panel:GetScript("OnMouseUp") ~= panelUp
   and slot1:GetScript("OnClick") ~= slotClick and strip:GetScript("OnMouseUp") ~= stripUp and dfr:GetScript("OnMouseUp") ~= dispUp, ns.ElementHandlersAttached())
 check("B the strip takes the mouse while the window is shown", strip:IsMouseEnabled())
@@ -239,6 +239,11 @@ check("H window closed: the Blizzard frame's hook does nothing (its own handler 
 return R
 end
 '''
+
+# (round 7 repair) the engine no longer exports ns.Step: one full engine step is reached through tests/engine_bench.py's helper
+_BENCH = open(os.path.join(HERE, "engine_bench.py"), encoding="utf-8").read()
+ENGINE_STEP_LUA = _BENCH[_BENCH.index("-- [engine-step helper]"):_BENCH.index("-- [/engine-step helper]")]
+LUA = LUA.replace("return function(W, L)\n", "return function(W, L)\n" + ENGINE_STEP_LUA, 1)
 
 OFF = r'''
 return function(W, L)

@@ -45,7 +45,7 @@ function CLEAR() for i = #ns.logBuf, 1, -1 do ns.logBuf[i] = nil end end
 function HAS(t) for _, l in ipairs(ns.logBuf) do if l:find(t, 1, true) then return true end end return false end
 function COMBAT_START() COMBAT = true; FIRE("PLAYER_REGEN_DISABLED") end
 function COMBAT_END() COMBAT = false; FIRE("PLAYER_REGEN_ENABLED") end
-function STEPS(n) for i = 1, n do NOW = (NOW or 0) + 0.2; ns.Step() end end
+function STEPS(n) for i = 1, n do NOW = (NOW or 0) + 0.2; ENGINE_STEP(ns) end end
 -- the rules' answer, set by the test: true = every rule fires, false = every rule clears (the engine logs the change)
 FLIP = false
 local realEval = ns.Evaluate

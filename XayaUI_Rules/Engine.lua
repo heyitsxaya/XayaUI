@@ -554,9 +554,9 @@ end
 --     reads), and each other cooldown row (Spell Usable, Global Cooldown, Item Usable: ns.CheckTrigger). Built once per settings or
 --     load-fact change (LiveChanged), never per event;
 --   * an event marks the checks it can change, read from its payload when the game shows it: the spell IDs of auras added, the aura
---     instances updated or removed (looked up in a small memory of the watched auras' instance IDs), a cooldown's spell ID. A payload
---     the game hides (combat), a full update, an instance the memory cannot vouch for, any other cooldown event: every check of that
---     unit. Nothing in a hidden payload is ever tested;
+--     instances updated or removed (looked up in a small memory of the watched auras' instance IDs). A payload the game hides (combat),
+--     a full update, an instance the memory cannot vouch for: every check of that unit. Nothing in a hidden payload is ever tested. A
+--     cooldown event marks every cooldown check (RouteCooldown below: its payload is no proof of what changed);
 --   * on the next frame (the same pace as before) the marked checks are read once each, inside the engine step (so every read is the
 --     step's own memo: the very reads the rules then use), and compared with what they read last. Only the rules whose check answered
 --     differently are checked again in full. A rule checked for any other reason since its check was last read is checked again too
@@ -571,7 +571,7 @@ local probeUnits = {}   -- unit -> { probes = {}, idx = { [spellID] = { check, .
                         --          memP = { [instanceID] = check or list (what a check read) }, complete,
                         --          whole, touched, loose = { rule, ... } (re-checked on every event of the unit), nonDirect }
 for _, u in ipairs({ "player", "target", "focus" }) do probeUnits[u] = { probes = {}, idx = {}, mem = {}, memP = {}, loose = {}, complete = false, nonDirect = 0 } end
-local cdChecks = { probes = {}, idx = {}, gcd = {}, loose = {}, whole = false, touched = false }
+local cdChecks = { probes = {}, loose = {}, whole = false }   -- (every cooldown check is read on every cooldown event: RouteCooldown)
 local probesOf = setmetatable({}, { __mode = "k" })   -- live rule -> its checks (every unit and cooldowns)
 local famOf = setmetatable({}, { __mode = "k" })      -- live rule -> the live rules that share its triggers (a rule and its cues)
 -- the checks an event marked, read on the next pass: a list and a flag on each check (no table keys added and dropped per event, which
@@ -663,17 +663,8 @@ local function ProbeSame(pr)
     elseif k == "cd" then
         local c = ns.ReadCooldown(pr.reader)
         if type(c) ~= "table" then return Same16(fp, nil, false) end
-        local same = Same16(fp, c.known, c.max, c.onCd, c.atMax, c.empty, c.count, c.onGCD, c.locked, c.readID, c.readyAt, c.estimated, c.why,
+        return Same16(fp, c.known, c.max, c.onCd, c.atMax, c.empty, c.count, c.onGCD, c.locked, c.readID, c.readyAt, c.estimated, c.why,
             nil, nil, nil, nil)
-        -- the spell actually read (a talent's replacement on the bar): its cooldown events count for this check from now on
-        local rid = c.readID
-        if type(rid) == "number" and pr.readID ~= rid then
-            pr.readID = rid
-            local l = cdChecks.idx[rid]
-            if not l then l = {}; cdChecks.idx[rid] = l end
-            l[#l + 1] = pr
-        end
-        return same
     else   -- "crow": Spell Usable / Global Cooldown / Item Usable
         local r, d = ns.CheckTrigger(pr.row)
         return Same16(fp, r, d)
@@ -718,8 +709,8 @@ BuildProbes = function()
         U.probes, U.idx, U.loose = {}, {}, {}
         Wipe(U.mem); Wipe(U.memP); U.complete, U.whole, U.touched, U.nonDirect = false, false, false, 0
     end
-    cdChecks.probes, cdChecks.idx, cdChecks.gcd, cdChecks.loose = {}, {}, {}, {}
-    cdChecks.whole, cdChecks.touched = false, false
+    cdChecks.probes, cdChecks.loose = {}, {}
+    cdChecks.whole = false
     ClearMarks()
     lastCdmGen = ns.cdmGen
     buildSerial = buildSerial + 1
@@ -765,12 +756,9 @@ BuildProbes = function()
                             local r = NewCheck("cd", root, "cd"); r.row = t
                             r.reader = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, exactSpell = t.exactSpell and true or nil }
                             c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-                            IndexCheck(cdChecks.idx, t.spellID, r)
-                            if t.countGCD then cdChecks.gcd[#cdChecks.gcd + 1] = r end
                         elseif t.type == "actionUsable" or t.type == "globalCooldown" or t.type == "itemUsable" then
                             local r = NewCheck("crow", root, "cd"); r.row = t
                             c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-                            cdChecks.gcd[#cdChecks.gcd + 1] = r   -- (read on every cooldown event: they read more than one spell)
                         end
                     end
                 end
@@ -779,8 +767,6 @@ BuildProbes = function()
             if d.cd then
                 local r = NewCheck("cd", root, "cd"); r.reader = root
                 c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-                IndexCheck(cdChecks.idx, root.spellID, r)
-                if root.countGCD then cdChecks.gcd[#cdChecks.gcd + 1] = r end
             end
         end
         return c
@@ -898,14 +884,10 @@ local function RunProbes()
         U.whole, U.touched = false, false
     end
     local C = cdChecks
-    if C.whole or C.touched then
-        for i = 1, #C.probes do
-            local pr = C.probes[i]
-            if C.whole or pr.pending or not pr.valid then n = CheckOne(pr, n, tick) end
-        end
-        if not C.whole then for i = 1, #C.gcd do local pr = C.gcd[i]; if pr.tick ~= tick then n = CheckOne(pr, n, tick) end end end
+    if C.whole then
+        for i = 1, #C.probes do n = CheckOne(C.probes[i], n, tick) end
         n = AddLoose(C.loose, n)
-        C.whole, C.touched = false, false
+        C.whole = false
     end
     ClearMarks()
     for i = n + 1, #probeDue do probeDue[i] = nil end
@@ -924,7 +906,7 @@ local function ProbesStale(rule, tick)
     end
 end
 local function AnyProbeWork()
-    if cdChecks.whole or cdChecks.touched then return true end
+    if cdChecks.whole then return true end
     for _, u in ipairs(PROBE_UNITS) do local U = probeUnits[u]; if U.whole or U.touched then return true end end
     return false
 end
@@ -995,21 +977,14 @@ local function Step()
         for i = 1, #lists do StepLive(lists[i], ctx, now) end
         if pn > 0 then StepLive(probeDue, ctx, now) end
     end
-    if lists then return end   -- the bars and the rest wait for the next full step
-    if ns.Bars_Update then
-        local pb = perf.on and debugprofilestop()
-        local okb, errb = pcall(ns.Bars_Update)
-        if pb then perf.barsMs = perf.barsMs + (debugprofilestop() - pb) end
-        if not okb and not ns.barErr then ns.barErr = true; ns.Print("bars error: " .. tostring(errb)) end
-    end
 end
 
 -- /xui debug perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
--- split into rule evaluation / visual updates / bars, with the most expensive rules named. Every report is also saved to
+-- split into rule evaluation / visual updates, with the most expensive rules named. Every report is also saved to
 -- XayaUI Dev Assist's XayaUIDevAssistDB.perfLog (P5, B11; CueRulesDB.perfLog before; only while Dev Assist is on) (last 6) so it survives /reload and can be read from the saved variables.
 local function PerfReset()
     perf.steps, perf.total, perf.max, perf.events, perf.t0 = 0, 0, 0, {}, GetTime()
-    perf.evalMs, perf.visMs, perf.barsMs, perf.fxMs, perf.fxN = 0, 0, 0, 0, 0
+    perf.evalMs, perf.visMs, perf.fxMs, perf.fxN = 0, 0, 0, 0
     perf.rule = {}
     perf.paths = {}
     perf.mem0 = collectgarbage("count")
@@ -1083,8 +1058,8 @@ function ns.PerfCommand(arg)
     local function L(fmt, ...) local t = fmt:format(...); lines[#lines + 1] = t; ns.Print(t) end
     L("perf over %.0fs: %d steps (%.1f/s), %.2f ms avg, %.2f ms worst, %.1f%% of one frame budget at 60 fps (%d rules, %d on)",
         secs, perf.steps, perf.steps / secs, perf.total / steps, perf.max, (perf.total / secs) / 10, rules, on)
-    L("perf: per second: rules %.2f ms, visuals %.2f ms, bars %.2f ms, per-frame effects %.2f ms (%d calls)",
-        perf.evalMs / secs, perf.visMs / secs, perf.barsMs / secs, perf.fxMs / secs, perf.fxN)
+    L("perf: per second: rules %.2f ms, visuals %.2f ms, per-frame effects %.2f ms (%d calls)",
+        perf.evalMs / secs, perf.visMs / secs, perf.fxMs / secs, perf.fxN)
     local top = {}
     for r, ms in pairs(perf.rule) do top[#top + 1] = { r, ms } end
     table.sort(top, function(a, b) return a[2] > b[2] end)
@@ -1132,7 +1107,8 @@ end
 -- (round 6, V27 P1 / P4; round 7, SD-61) the next-frame re-checks run from a one-shot timer made by the first event after the last
 -- pass, set for the moment the pace allows; later events of the burst find it set and only mark what they changed. The pass does not
 -- set the next one: once the events stop, no timer is left. A change marked while the engine itself is running (an action a rule ran)
--- is taken by a frame script for the next frame only, as before.
+-- is taken by a frame script on the next frame only: it runs what is due then, takes itself off, and hands what still waits for the
+-- pace to the one-shot timers (round 7 repair: before, it stayed on every frame until the pace allowed the pass, up to 6 frames).
 -------------------------------------------------------------------------------
 local pend = { full = false, ctx = false, all = false }
 local ROUTED = { "cd", "aura", "tgt", "power", "range", "cast" }
@@ -1181,10 +1157,6 @@ local function RunLists(lists, all, cd, probe)
     stepList, stepClearsDeadlines, cdFresh, stepProbe = nil, true, true, false
     ArmWake()
 end
--- every rule at once, now (V26: nothing steps while /xui disable holds); the stored moments it finds are waited for. (No addon file calls
--- it: the engine runs from its events and timers. It is the offline tests' way to run one full step in a stand-in game whose C_Timer
--- does nothing: tests/engine_bench.py and the tests built on it.)
-ns.Step = function() if ns.RulesDisabled then return end Step(); ArmWake() end
 local listAll = { live.all }
 local runLists, due, dueLists = {}, {}, {}
 dueLists[1] = due
@@ -1271,24 +1243,31 @@ local function DoRouted(now)
     lastRoutedAt = now
     if n > 0 or AnyProbeWork() then RunLists(runLists, false, cd, true) end
 end
--- a change marked while the engine itself ran: this frame script takes it on the next frame (and waits for the pace), then takes itself off
+local allArmed, routedArmed = false, false
+local Kick
+-- a change marked while the engine itself ran: this frame script takes it on the next frame, runs what is due, takes itself off, and
+-- hands what still waits for the pace to the one-shot timers (Kick). It never stays on to wait.
 DriveFrame = function()
-    if ns.RulesDisabled then f:SetScript("OnUpdate", nil); fallbackOn = false; return end
+    f:SetScript("OnUpdate", nil); fallbackOn = false
+    if ns.RulesDisabled then return end
     inCallback = true
     if fullQueued then Settle() end
     local now = GetTime()
     if pend.all and now - lastStateAt >= MIN_GAP then DoAll(now)
     elseif now - lastRoutedAt >= ROUTED_DUE and AnyRouted() then DoRouted(now) end
     inCallback = false
-    if not (pend.all or AnyRouted() or fullQueued) then f:SetScript("OnUpdate", nil); fallbackOn = false end
+    if fallbackOn then return end   -- (the pass just run marked a change: this script takes it on the next frame, as above)
+    if pend.all or AnyRouted() then Kick() end
 end
-local allArmed, routedArmed = false, false
 local function AllTimer()
     allArmed = false
     if ns.RulesDisabled or not pend.all or fallbackOn then return end
     local now = GetTime()
+    local d = lastStateAt + MIN_GAP - now
+    -- (a full step moved the pace on since this timer was set: wait for the moment it now allows, on a new one-shot timer)
+    if d > 0.0005 then allArmed = true; C_Timer.After(d, AllTimer); return end
     inCallback = true
-    if now - lastStateAt >= MIN_GAP - 0.0005 then DoAll(now) else UseFrameScript() end   -- (a full step moved the pace on: wait for it)
+    DoAll(now)
     inCallback = false
 end
 -- (round 7, SD-61) a routed pass: the one-shot timer the first event after the last pass made, at the moment the pace allows (the next
@@ -1299,14 +1278,17 @@ local function RoutedTimer()
     routedArmed = false
     if ns.RulesDisabled or fallbackOn or not AnyRouted() then return end
     local now = GetTime()
+    -- (the timer was set for this moment; a rounding error in the moment's sum is not a reason to wait a frame. A pass run since it was
+    -- set, by the frame script, moved the pace on: wait for the moment it now allows, on a new one-shot timer)
+    local d = lastRoutedAt + ROUTED_DUE - now
+    if d > 0.0001 then routedArmed = true; C_Timer.After(d, RoutedTimer); return end
     inCallback = true
-    -- (the timer was set for this moment; a rounding error in the moment's sum is not a reason to wait a frame)
-    if now - lastRoutedAt < ROUTED_DUE - 0.0001 then UseFrameScript() else DoRouted(now) end
+    DoRouted(now)
     inCallback = false
 end
 -- a rule list replaced or grown without ns.MarkDirty (an edit that did not announce itself): the next re-check is a full step
 local function ListChanged() return ns.rules ~= liveRules or (ns.rules and #ns.rules or 0) ~= liveRulesN end
-local function Kick()
+Kick = function()
     if ListChanged() then pend.full = true; QueueSettle() end
     if ns.RulesDisabled then return end
     if inCallback or fallbackOn then UseFrameScript(); return end
@@ -1358,7 +1340,6 @@ end
 
 function ns.OnDBReady()
     ns.RefreshAllVisuals()
-    if ns.Bars_OnDBReady then ns.Bars_OnDBReady() end
     pend.full = true; QueueSettle()
 end
 
@@ -1388,22 +1369,32 @@ local function SnapStop() if snapTicker then snapTicker:Cancel(); snapTicker = n
 -- :1215, ACTIVE_PLAYER_SPECIALIZATION_CHANGED :30, ACTIVE_TALENT_GROUP_CHANGED :31), talents and loadouts saved or switched
 -- (PLAYER_TALENT_UPDATE :1222, TRAIT_CONFIG_UPDATED :1536, TRAIT_CONFIG_LIST_UPDATED :1535, ACTIVE_COMBAT_CONFIG_CHANGED :27),
 -- hero talents (TRAIT_SUB_TREE_CHANGED :1540), PvP talents (PLAYER_PVP_TALENT_UPDATE :1204, and WAR_MODE_STATUS_UPDATE :1770), a reset
--- by the game (TALENTS_INVOLUNTARILY_RESET :1466), the spellbook (SPELLS_CHANGED :1428, the spells the talent check reads with
+-- or a spec change by the game (TALENTS_INVOLUNTARILY_RESET :1466, SPEC_INVOLUNTARILY_CHANGED :1426), the spellbook (SPELLS_CHANGED :1428, the spells the talent check reads with
 -- IsPlayerSpell) and entering the world. (INFERENCE, not in the reference: War Mode, and a loading screen into an arena or battleground,
 -- switch PvP talents on and off without a talent event of their own; both are listened to for that reason.)
 local TALENT_EVENTS = {
     PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_TALENT_GROUP_CHANGED = true,
     PLAYER_TALENT_UPDATE = true, TRAIT_CONFIG_UPDATED = true, TRAIT_CONFIG_LIST_UPDATED = true, ACTIVE_COMBAT_CONFIG_CHANGED = true,
     TRAIT_SUB_TREE_CHANGED = true, PLAYER_PVP_TALENT_UPDATE = true, WAR_MODE_STATUS_UPDATE = true, TALENTS_INVOLUNTARILY_RESET = true,
-    SPELLS_CHANGED = true, PLAYER_ENTERING_WORLD = true,
+    SPELLS_CHANGED = true, PLAYER_ENTERING_WORLD = true, SPEC_INVOLUNTARILY_CHANGED = true,
 }
 -- picked in the talent window but not saved yet, or one node or tree changed (TRAIT_NODE_CHANGED :1537, TRAIT_NODE_CHANGED_PARTIAL :1538,
 -- TRAIT_NODE_ENTRY_UPDATED :1539, TRAIT_TREE_CHANGED :1543), a loadout made, deleted or picked in the list, or a save that failed
 -- (TRAIT_CONFIG_CREATED :1533, TRAIT_CONFIG_DELETED :1534, SELECTED_LOADOUT_CHANGED :1359, CONFIG_COMMIT_FAILED :446), or a spell
--- learned (LEARNED_SPELL_IN_SKILL_LINE :897): compared, not re-checked (TalentEventCheck above)
+-- learned (LEARNED_SPELL_IN_SKILL_LINE :897); (round 7 repair) a level gained (PLAYER_LEVEL_UP :1193, it carries numNewTalents), a
+-- node's condition (TRAIT_COND_INFO_CHANGED :1532), the talent-point count (CHARACTER_POINTS_CHANGED :271), and a pick, a PvP pick, a
+-- spec change or a starter build that failed (PLAYER_LEARN_TALENT_FAILED :1189, PLAYER_LEARN_PVP_TALENT_FAILED :1188,
+-- SPECIALIZATION_CHANGE_CAST_FAILED :1425, STARTER_BUILD_ACTIVATION_FAILED :1447; INFERENCE: the talent window may show a pick before
+-- it fails): compared, not re-checked (TalentEventCheck above). Each is rare and costs one compare of the talent rules' entries.
+-- Considered and not listened to: glyphs (ACTIVATE_GLYPH :26, USE_GLYPH :1699, CANCEL_GLYPH_CAST :223: no talent entry reads a glyph;
+-- a spell a glyph teaches comes with SPELLS_CHANGED, INFERENCE), the pet's spec (PET_SPECIALIZATION_CHANGED :1143: no load check reads
+-- it), talent-tree currency and the trait NPC (TRAIT_TREE_CURRENCY_INFO_UPDATED :1544, TRAIT_SYSTEM_INTERACTION_STARTED :1541,
+-- TRAIT_SYSTEM_NPC_CLOSED :1542: points and windows, not picks), and PLAYER_LEVEL_CHANGED :1192 (PLAYER_LEVEL_UP is listened to).
 local TALENT_MAYBE = { TRAIT_NODE_CHANGED = true, TRAIT_NODE_CHANGED_PARTIAL = true, TRAIT_NODE_ENTRY_UPDATED = true, TRAIT_TREE_CHANGED = true,
     TRAIT_CONFIG_CREATED = true, TRAIT_CONFIG_DELETED = true, SELECTED_LOADOUT_CHANGED = true, CONFIG_COMMIT_FAILED = true,
-    LEARNED_SPELL_IN_SKILL_LINE = true }
+    LEARNED_SPELL_IN_SKILL_LINE = true, PLAYER_LEVEL_UP = true, TRAIT_COND_INFO_CHANGED = true, CHARACTER_POINTS_CHANGED = true,
+    PLAYER_LEARN_TALENT_FAILED = true, PLAYER_LEARN_PVP_TALENT_FAILED = true, SPECIALIZATION_CHANGE_CAST_FAILED = true,
+    STARTER_BUILD_ACTIVATION_FAILED = true }
 local CTX_EVENTS = {
     PLAYER_ENTERING_WORLD = true, PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true, GROUP_ROSTER_UPDATE = true,
     ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true, PLAYER_DIFFICULTY_CHANGED = true,
@@ -1520,31 +1511,19 @@ local function RouteAura(unit, info)
     if pendN > 0 or U.nonDirect > 0 or #U.loose > 0 then U.touched = true; return true end
     return false
 end
--- a cooldown event. SPELL_UPDATE_COOLDOWN carries (spellID, baseSpellID, category, startRecoveryCategory, itemID), all optional
--- (events.md:1443). (round 7, review of round 6) Only a payload that names one spell and nothing else marks just that spell's checks (and
--- its base spell's, and the checks that read the global cooldown or more than one spell): a readable spell ID, a readable or absent base
--- spell ID, and a category, a start-recovery category and an item ID that are each absent or a readable 0. Any other payload says more
--- cooldowns may have changed than the one spell it names, so every cooldown check is read, as is every check on any other cooldown event:
---   * a category: the spells and items sharing that cooldown category changed too (which ones the event does not say);
---   * a start-recovery category: the cast started a recovery shared by other spells (the global cooldown, category 133 in the game's spell
---     data: INFERENCE, the reference documents the field, not its values);
---   * an item ID: an item's cooldown (items of one kind share theirs);
---   * a hidden (secret) or unreadable field, no spell ID at all.
--- The event is a UniqueEvent (events.md:1443). INFERENCE, UNVERIFIED IN GAME: the game may send it once a frame when several cooldowns
--- change in that frame, naming one of them; that case is reported to Xaya with this round (it is not decided here).
-local function NoMore(v) return v == nil or (type(v) == "number" and not issecret(v) and v == 0) end
-local function RouteCooldown(event, a1, a2, a3, a4, a5)
+-- a cooldown event: every cooldown check is read on the next pass (and only the rules whose check answered differently are checked in
+-- full). (round 7 repair, V2 fail-safe) SPELL_UPDATE_COOLDOWN carries (spellID, baseSpellID, category, startRecoveryCategory, itemID),
+-- all optional, and is a UniqueEvent (events.md:1443). The reference documents what the fields are, not that one event names every
+-- cooldown that changed: a category or start-recovery category means the spells sharing it changed too (which ones the event does not
+-- say), an item ID means the items sharing its cooldown did, a field may be hidden (secret), and what UniqueEvent does to the payload
+-- is not documented at all (the game may send the event once for several cooldowns that changed in one frame, naming one of them:
+-- INFERENCE, UNVERIFIED IN GAME). So no payload is trusted to say what did NOT change: no field of it is read. The cost is one quick
+-- read of each cooldown check per pass, and passes run at most 10 a second (SD-61); before round 6 every cooldown rule was checked
+-- in full on every cooldown event.
+local function RouteCooldown()
     local C = cdChecks
     if #C.probes == 0 and #C.loose == 0 then return #live.cd > 0 end
-    if event == "SPELL_UPDATE_COOLDOWN" and not C.whole and type(a1) == "number" and not issecret(a1)
-        and (a2 == nil or (type(a2) == "number" and not issecret(a2))) and NoMore(a3) and NoMore(a4) and NoMore(a5) then
-        local l = C.idx[a1]
-        if l then MarkList(l) end
-        if type(a2) == "number" and not issecret(a2) and a2 ~= a1 then l = C.idx[a2]; if l then MarkList(l) end end
-        C.touched = true
-    else
-        C.whole = true
-    end
+    C.whole = true
     return true
 end
 inputFrame:SetScript("OnEvent", function(_, event, unit, a2, a3, a4, a5)
@@ -1558,7 +1537,7 @@ inputFrame:SetScript("OnEvent", function(_, event, unit, a2, a3, a4, a5)
         return
     end
     if k == "cd" then
-        if RouteCooldown(event, unit, a2, a3, a4, a5) then pend.cd = true; Kick() end
+        if RouteCooldown() then pend.cd = true; Kick() end
         return
     end
     if event == "UNIT_SPELLCAST_SUCCEEDED" then NoteCast(GetTime()) end

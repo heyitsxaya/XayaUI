@@ -69,7 +69,7 @@ A = CUE(P, "qa", "A.ogg")
 B = CUE(P, "qb", "B.ogg")
 ns.rules[1] = P; ns.rules[2] = A; ns.rules[3] = B
 for _, r in ipairs(ns.rules) do if ns.NormalizeRule then pcall(ns.NormalizeRule, r) end end
-function STEP(n) for i = 1, (n or 1) do NOW = NOW + 0.2; ns.Step() end end
+function STEP(n) for i = 1, (n or 1) do NOW = NOW + 0.2; ENGINE_STEP(ns) end end
 function COUNT(f) local n = 0 for _, x in ipairs(PLAYED) do if x == f then n = n + 1 end end return n end
 function RESET() PLAYED = {} end
 function AURA(on, stacks) AURAS[5001] = on and { spellId = 5001, auraInstanceID = 51, applications = stacks or 0, expirationTime = 0, duration = 0 } or nil end

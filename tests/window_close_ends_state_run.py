@@ -34,7 +34,7 @@ local B, cb = rule("L - Calcified Spikes", 1002)
 local C, cc = rule("T - Metamorphosis", 1003, "fH")
 local D, cd = rule("R - Soulmonger", 1004)
 local function shown(c) for _, f in ipairs(ns.VisualFramesOf(c)) do if f:IsShown() then return true end end return false end
-local function step() ns.Step(); W.tick(0.1, 3) end
+local function step() ENGINE_STEP(ns); W.tick(0.1, 3) end
 step()
 check("nothing is shown before (the auras are not up)", not shown(ca) and not shown(cb) and not shown(cc) and not shown(cd))
 -- /xui: open the window; unlock A for moving (sidebar lock), preview B (eye), unlock group HUD (C), pause previews
@@ -85,6 +85,11 @@ pcall(ns.ToggleUI); W.tick(0.1, 2)
 return R
 end
 '''
+
+# (round 7 repair) the engine no longer exports ns.Step: one full engine step is reached through tests/engine_bench.py's helper
+_BENCH = open(os.path.join(HERE, "engine_bench.py"), encoding="utf-8").read()
+ENGINE_STEP_LUA = _BENCH[_BENCH.index("-- [engine-step helper]"):_BENCH.index("-- [/engine-step helper]")]
+LUA = LUA.replace("return function(W, L)\n", "return function(W, L)\n" + ENGINE_STEP_LUA, 1)
 
 
 def main():

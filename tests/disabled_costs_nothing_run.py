@@ -41,7 +41,7 @@ ns.Evaluate = function(r, ...) evals[r] = (evals[r] or 0) + 1; return E0(r, ...)
 local function frames(r) return #ns.VisualFramesOf(r) end
 local function shown(r) for _, f in ipairs(ns.VisualFramesOf(r)) do if f:IsShown() then return true end end return false end
 pcall(ns.RefreshAllVisuals)
-for _ = 1, 20 do ns.Step() end
+for _ = 1, 20 do ENGINE_STEP(ns) end
 local okE, rE = pcall(E0, ON, ns.ReadContext())
 local okC, rC = pcall(E0, con, ns.ReadContext())
 check("the rule that is on works: its cue's display is shown", shown(con), tostring(rE) .. " " .. tostring(rC) .. " rt=" .. tostring(ns.runtime[con] and ns.runtime[con].visualWanted) .. " frames=" .. frames(con))
@@ -52,28 +52,28 @@ check("the rule that is on is evaluated each step", (evals[ON] or 0) >= 20 and (
 -- switch the on rule off while its display is up
 ON.enabled = false
 pcall(ns.RefreshVisual, con)
-ns.Step()
+ENGINE_STEP(ns)
 check("switched off: its display is gone and its frame freed", not shown(con) and frames(con) == 0)
 local n0 = evals[con] or 0
-for _ = 1, 20 do ns.Step() end
+for _ = 1, 20 do ENGINE_STEP(ns) end
 check("then never evaluated again (20 more steps)", (evals[con] or 0) == n0, (evals[con] or 0) - n0)
 pcall(ns.RefreshAllVisuals)
 check("a full display refresh builds no frame for it", frames(con) == 0 and frames(coff) == 0)
 -- unlock / mover view: switched-off rules are not drawn
-ns.ToggleUnlock(); pcall(ns.RefreshAllVisuals); ns.Step()
+ns.ToggleUnlock(); pcall(ns.RefreshAllVisuals); ENGINE_STEP(ns)
 check("unlock / mover view: no switched-off display drawn", frames(coff) == 0 and frames(con) == 0)
 ns.ToggleUnlock()
 -- preview still works, and ending it frees the frame again
-ns.SetPreview({ coff }, "visual", true); pcall(ns.RefreshVisual, coff); ns.Step()
+ns.SetPreview({ coff }, "visual", true); pcall(ns.RefreshVisual, coff); ENGINE_STEP(ns)
 check("previewing a switched-off rule's cue draws it", shown(coff))
-ns.SetPreview({ coff }, "visual", false); ns.Step(); ns.Step()
+ns.SetPreview({ coff }, "visual", false); ENGINE_STEP(ns); ENGINE_STEP(ns)
 check("ending the preview hides it and frees its frame", not shown(coff) and frames(coff) == 0)
 local n1 = evals[coff] or 0
-for _ = 1, 10 do ns.Step() end
+for _ = 1, 10 do ENGINE_STEP(ns) end
 check("... and it is skipped again afterwards", (evals[coff] or 0) == n1)
 -- back on
 ON.enabled = true; pcall(ns.RefreshAllVisuals)
-for _ = 1, 3 do ns.Step() end
+for _ = 1, 3 do ENGINE_STEP(ns) end
 check("switched back on: its display shows again", shown(con))
 -- the Disabled tab still lists it
 local okS, sc = pcall(ns.RuleScope, OFF, ns.ReadContext())
@@ -84,6 +84,11 @@ ns.Evaluate = E0
 return R
 end
 '''
+
+# (round 7 repair) the engine no longer exports ns.Step: one full engine step is reached through tests/engine_bench.py's helper
+_BENCH = open(os.path.join(HERE, "engine_bench.py"), encoding="utf-8").read()
+ENGINE_STEP_LUA = _BENCH[_BENCH.index("-- [engine-step helper]"):_BENCH.index("-- [/engine-step helper]")]
+LUA = LUA.replace("return function(W, L)\n", "return function(W, L)\n" + ENGINE_STEP_LUA, 1)
 
 
 def main():

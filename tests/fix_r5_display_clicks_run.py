@@ -86,7 +86,7 @@ local plain = cdRule("Cooldown 1", 400001, false)
 local hover = cdRule("Hover 1", 400041, true)
 CueRulesDB.rules = ns.rules
 if ns.MarkDirty then ns.MarkDirty() end
-if ns.Step then ns.Step() end
+ENGINE_STEP(ns)
 W.tick(0.1, 6)
 local pf, hf = ns.VisualFramesOf(plain)[1], ns.VisualFramesOf(hover)[1]
 check("(control) both displays are on screen (settings window and mover closed)", pf ~= nil and hf ~= nil and pf:IsVisible() and hf:IsVisible(),
@@ -97,7 +97,7 @@ check("(control) the settings window is closed and the mover is closed", not (ns
 -- A. no tooltip: a click / right-drag over it reaches the game; it does not see the mouse
 check("A1 a click or right-drag on a display without the hover tooltip goes to the game", clickGoesTo(pf) == "the game", clickGoesTo(pf))
 check("(control) A2 that display does not see the mouse at all (nothing over the world takes the cursor)", not sees(pf), tostring(pf:IsMouseMotionEnabled()))
-W.enterCombat(); W.tick(0.05, 4); if ns.Step then ns.Step() end; W.tick(0.05, 2)
+W.enterCombat(); W.tick(0.05, 4); ENGINE_STEP(ns); W.tick(0.05, 2)
 check("A3 in a fight: a click on that display still goes to the game", pf:IsVisible() and clickGoesTo(pf) == "the game", clickGoesTo(pf))
 W.leaveCombat(); W.tick(0.1, 4)
 check("A4 after the fight: still goes to the game", clickGoesTo(pf) == "the game", clickGoesTo(pf))
@@ -136,6 +136,11 @@ if not okAll then check("the test ran without a Lua error", false, errAll) end
 return R
 end
 '''
+
+# (round 7 repair) the engine no longer exports ns.Step: one full engine step is reached through tests/engine_bench.py's helper
+_BENCH = open(os.path.join(HERE, "engine_bench.py"), encoding="utf-8").read()
+ENGINE_STEP_LUA = _BENCH[_BENCH.index("-- [engine-step helper]"):_BENCH.index("-- [/engine-step helper]")]
+LUA = LUA.replace("return function(W, L)\n", "return function(W, L)\n" + ENGINE_STEP_LUA, 1)
 
 
 def main():

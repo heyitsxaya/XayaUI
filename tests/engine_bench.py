@@ -1,4 +1,4 @@
-"""Whole-engine benchmark: loads the addon's engine files with a stand-in game API and runs ns.Step() over a SavedVariables file.
+"""Whole-engine benchmark: loads the addon's engine files with a stand-in game API and runs one full engine step at a time over a SavedVariables file (ENGINE_STEP in the stand-in below; the engine has no ns.Step since round 7).
 Run: python3 tests/engine_bench.py <addon folder> <path to WTF/.../SavedVariables/XayaUI.lua> [ticks]
 Reads the saved file only (never writes it, never copies its data anywhere). Set SIGOUT=<file> to write each rule's
 active / wanted state per tick, so two builds can be compared for identical decisions (cmp the two files).
@@ -87,6 +87,43 @@ function CreateFrame(kind, name, parent, template) local f = NewFrame(kind or "F
 UIParent = NewFrame("Frame"); WorldFrame = NewFrame("Frame")
 SlashCmdList = {}
 C_Timer = { After = function() end, NewTicker = function() return { Cancel = function() end } end, NewTimer = function() return { Cancel = function() end } end }
+-- [engine-step helper] (round 7 repair: XayaUI_Rules/Engine.lua no longer exports ns.Step, which no addon file called) one full engine
+-- step of every rule, the step a login or a settings change runs, then the stored-moment timer set as the engine sets it after a step.
+-- Offline tests only: the engine's own local functions Step and ArmWake are found with the debug library, starting from
+-- ns.SetRulesDisabled and following only functions of Engine.lua. Like the old ns.Step it does nothing while /xui disable holds, and
+-- an error in the step is raised (not caught), so a test sees it. Tests on the whole-addon harness copy this block (between the markers).
+local ENGINE_STEP
+do
+  local function engineLocal(ns, want)
+    local seen, queue, qi = {}, { ns.SetRulesDisabled }, 1
+    while queue[qi] do
+      local fn = queue[qi]; qi = qi + 1
+      local i = 1
+      while true do
+        local name, v = debug.getupvalue(fn, i)
+        if not name then break end
+        if type(v) == "function" and not seen[v] then
+          local src = debug.getinfo(v, "S").source or ""
+          if src:find("Engine.lua", 1, true) then
+            if name == want then return v end
+            seen[v] = true; queue[#queue + 1] = v
+          end
+        end
+        i = i + 1
+      end
+    end
+    error("engine-step helper: Engine.lua's local function '" .. want .. "' was not found (renamed?)")
+  end
+  local found = setmetatable({}, { __mode = "k" })
+  ENGINE_STEP = function(ns)
+    local e = found[ns]
+    if not e then e = { step = engineLocal(ns, "Step"), arm = engineLocal(ns, "ArmWake") }; found[ns] = e end
+    if ns.RulesDisabled then return end
+    e.step(); e.arm()
+  end
+end
+-- [/engine-step helper]
+_G.ENGINE_STEP = ENGINE_STEP
 C_AddOns = { GetAddOnMetadata = function() return "bench" end, IsAddOnLoaded = function() return false end, GetNumAddOns = function() return 0 end, LoadAddOn = function() end }
 -- spells / auras: a stable pseudo-random world
 local function h(id) id = tonumber(id) or 0; return (id * 2654435761) % 100 end
@@ -171,11 +208,11 @@ n = L.eval("#NS.rules"); on = L.eval("(function() local n=0 for _,r in ipairs(NS
 print("rules:", n, "enabled:", on)
 res = L.execute(r'''
 local ns, T = NS, ...
-for i = 1, 5 do NOW = NOW + 0.2; ns.Step() end      -- warm-up (frames created)
+for i = 1, 5 do NOW = NOW + 0.2; ENGINE_STEP(ns) end      -- warm-up (frames created)
 collectgarbage(); collectgarbage()
 collectgarbage("stop")
 local m0, t0 = collectgarbage("count"), os.clock()
-for i = 1, T do NOW = NOW + 0.2; ns.Step() end
+for i = 1, T do NOW = NOW + 0.2; ENGINE_STEP(ns) end
 local m1, t1 = collectgarbage("count"), os.clock()
 collectgarbage("restart")
 -- per-frame effects: run every shown frame's OnUpdate for T*6 frames (30 fps between 5 ticks)
@@ -190,7 +227,7 @@ local out = {}
 for t = 1, 60 do
   NOW = NOW + 0.2
   COMBAT = (t % 20) < 12
-  ns.Step()
+  ENGINE_STEP(ns)
   local parts = {}
   for i, r in ipairs(ns.rules) do
     local rt = ns.runtime[r]

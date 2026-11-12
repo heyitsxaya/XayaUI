@@ -87,7 +87,7 @@ C_Timer.After = function(d, fn) addTimer(d, fn) end
 C_Timer.NewTimer = function(d, fn) local t; t = addTimer(d, function() fn(t) end); return t end
 function PLAY(seconds)   -- rendered frames
   local n = math.floor(seconds / FRAME + 0.5)
-  if NS.Step then NS.Step() end
+  ENGINE_STEP(NS)
   for i = 1, n do
     NOW = NOW + FRAME
     local due = {}
