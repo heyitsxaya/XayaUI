@@ -47,7 +47,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
 > RB-61, multiple IDs:
-> - Buff and proc-buff picks are a tick list. The first ticked ID is stored as `spellID`, the rest in `alt` (any one counts).
+> - Buff and proc-buff picks use one catch-all dropdown with one entry per buff (RB-63, which replaces the tick list). Each entry carries every known ID, stored as `spellID` plus `alt` (any one counts). The likely source of variant IDs is the Cooldown Manager catalogue's linked spell IDs (INFERENCE). The last entry, "Input custom spell ID(s)…", reveals a single comma-separated ID box. There is no search box.
 > - Debuff multi-ID needs an `alt` field on `targetDebuff`, a Rules change.
 > - "Buff source" (me / anyone / another player) and "self-only" lists both wait for a study and an in-game read-out of who applied a buff, in and out of combat.
 > RB-58: an item being added (item 2 or later) keeps its box full width. Its number badge sits inside the box, lined up with the tracked list's number badges, with the contents to the badge's right (RB-59, which replaces the 20 px box indent).
