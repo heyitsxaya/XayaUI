@@ -831,6 +831,7 @@ copy; rows it adds later are copied here.
 | RB-90 | Her canvas comment between boards 2 and 3 (verbatim): "cue options menu will go between current windows 2 and 3" | DONE: placeholder board "Cue options" inserted, later boards shifted. ASKED: renumber to 6 steps?; cues in stage 1 or stage 2 (stage 1 was triggers-only) | design canvas |
 | RB-91 | Her canvas comment on the Cue options placeholder (verbatim): "replicate tracking window and bucketize the cues we support in the addon:\n* visual cue\n* audio cue" | DONE: board rebuilt like A; VISUAL CUE: Icon, Progress Bar, Progress Texture, Texture, Text, Glow (Glow is an Action, Actions.lua); AUDIO CUE: Sound, Speech (Cues.lua CUE_KINDS). Left out: groups, Custom, chat messages. ASKED: chat messages as a third bucket? | design canvas |
 | RB-92 | Her canvas comment on the Cues box heading (verbatim): "Create a Cue \nAn alert you set up when one of your Tracking events is detected" | DONE: heading "Create a Cue" + that line as its subtitle. ASKED: rename the step title too? | design canvas |
+| RB-93 | Her canvas comment on the Cues "For" dropdown (verbatim): "put this at the bottom of the creation box" | DONE: "For" row moved to the bottom of the Create a Cue box, under the tiles | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement

@@ -68,7 +68,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-90: a Cue options step goes between "2 · All or any" and "3 · When it loads" (placeholder board). Open: renumbering to 6 steps; whether cues join stage 1 (which was triggers-only, §1) or form stage 2.
 >
-> RB-91: the Cues step copies the Tracking window (board A): "So far" box, a "For" dropdown (each combination, or whenever the rule fires), then tiles in two buckets. VISUAL CUE: Icon, Progress Bar, Progress Texture, Texture, Text (Editor/RulesTree.lua ~1198-1205) and Glow (an Action, Actions.lua GLOW_TYPES, saved as rule.actions, not a cue). AUDIO CUE: Sound and Speech (Cues.lua ns.CUE_KINDS). Not offered: Dynamic / Static Group, Custom, chat messages (open question). RB-92: the box is headed "Create a Cue", subtitle "An alert you set up when one of your Tracking events is detected".
+> RB-91: the Cues step copies the Tracking window (board A): "So far" box, a "For" dropdown (each combination, or whenever the rule fires), then tiles in two buckets. VISUAL CUE: Icon, Progress Bar, Progress Texture, Texture, Text (Editor/RulesTree.lua ~1198-1205) and Glow (an Action, Actions.lua GLOW_TYPES, saved as rule.actions, not a cue). AUDIO CUE: Sound and Speech (Cues.lua ns.CUE_KINDS). Not offered: Dynamic / Static Group, Custom, chat messages (open question). RB-92: the box is headed "Create a Cue", subtitle "An alert you set up when one of your Tracking events is detected". RB-93: the "For" dropdown sits at the bottom of that box, under the tiles.
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
