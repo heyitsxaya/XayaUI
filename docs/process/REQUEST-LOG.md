@@ -825,6 +825,7 @@ copy; rows it adds later are copied here.
 | RB-84 | Her canvas comment on the NOT line (verbatim): "sequence these in a cleaner way: it will not load when you are NOT: _____; it will also NOT load when you _____. Same for positive statement load conditions" | DONE: grouped lines (load only when you are: … / also only when you are NOT: … / NOT load when you are NOT: … / also NOT load when you are: …) on boards 3 and 3b; empty lines hidden; ANY wording proposed ("any of") | design canvas |
 | RB-85 | Her canvas comment on board A's Buff/Debuff tiles (verbatim): ""Buff/Debuff on Me"  and "Buff/Debuff on Target"" then "^" | DONE: tiles renamed on A, D2, E, Step 3, Step 4. OPEN CHECK: debuff-on-me and buff-on-target are new reads (today: HELPFUL on player, HARMFUL|PLAYER on target/focus); Midnight in-combat readability unverified | design canvas |
 | RB-86 | Her canvas comment on board E's "1 · Which buff?" (verbatim): "step 1 would be buff or debuff" | DONE: E step 1 = Buff or debuff?; later steps renumbered 2-4 | design canvas |
+| RB-87 | Her canvas comment on board E's preview line (verbatim): "this is still not clear. Instead, "Tracking when Hot Streak is on you"" | DONE: "Preview:" replaced by "Tracking when …" on E, and the same on C and F for consistency | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
