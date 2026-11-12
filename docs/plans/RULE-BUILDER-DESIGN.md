@@ -90,12 +90,18 @@ To avoid a second creation path, the build moves the shared part of `CreateRuleO
 
 Both get outcome tests. If (b) fails, the first buff check goes into the built-in Buff section instead (`useBuff`, `buffID`, `buffState`), which is the format AutoPicker uses (AutoPicker.lua:553-571).
 
-## 5. Where it opens (RB-4)
+## 5. Where it opens (RB-4, RB-21)
 
-- A row "Guided: Rule Builder" in the "+ New rule" type picker (RulesTree.lua:1196-1212).
-- A "Rule Builder" button in the Auto-Generate Rules tab (AutoPicker.lua).
+Her canvas edit (RB-21) lays the "+ New rule" page out in four sections, top to bottom:
 
-Both are inside the settings window, so the builder exists only while XayaUI_Options is loaded and its window is open.
+1. **Simplified Rule Building.** The "Rule Builder (guided)" entry with an **Open Rule Builder** button.
+2. **Auto-Generate Rules.** Bulk-creates rules for a class, spec or both: the existing filter tabs and tick table. This section's button also opens the builder (RB-4).
+3. **Make Your Own (Custom).** The existing "Choose what this rule shows" type list, without Import.
+4. **Import.** Its own section, with a button that opens the existing Import window.
+
+Sections 3 and 4 change only where the existing picker rows sit; their behaviour is unchanged.
+
+Everything above lives inside the settings window.
 
 ## 6. Form
 
