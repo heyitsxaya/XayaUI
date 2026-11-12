@@ -62,7 +62,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-85/86: tracking tiles "Buff/Debuff on Me" and "Buff/Debuff on Target"; their first step asks "Buff or debuff?". Code today reads player HELPFUL auras and your HARMFUL|PLAYER debuffs on target/focus only (Triggers.lua:746-812, Combat/AuraDisplay.lua:184-204); debuffs on you and buffs on target need new reads and a Midnight secret-value check before the build.
 >
-> RB-87: the live line under each tracking item's questions reads "Tracking when <item text>", not "Preview: …".
+> RB-87: the live line under each tracking item's questions reads "Tracking when <item text>", not "Preview: …". RB-88: aura items read "<aura> is found on you" / "<aura> is found on your target".
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
