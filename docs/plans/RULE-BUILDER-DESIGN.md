@@ -163,3 +163,14 @@ Q1 to Q5 are answered by RB-10 to RB-13.
 
 - **Q6** is answered by RB-14: "review all load conditions in EUI and ElvUI and add what we're missing as options". A behaviour-only study is under way, in docs/plans/LOAD-CONDITIONS-STUDY.md. What gets added is proposed to her for confirmation before anything is built. Adding a condition changes Rules (the Load tab and Conditions.lua), so that build is coordinated with the Rules session. The builder picks the new conditions up 1:1 with no extra builder code (§3 step 2).
 - **Q7** is answered by RB-15. After combat, the builder comes back exactly as she left it.
+
+## 10. Saved ideas (not in the current build)
+
+- **"Player Info" bucket (RB-42, RB-43).** Her verbatim instruction: "save this as a thought but perhaps remove for now -- unsure if this is valuable at present".
+  - The bucket would hold Tier Set (pieces worn), Gear & Items (item equipped, item count, weapon enchant) and Talent Picked. All three exist today as Rules checks, and stay available in the full editor.
+  - It would also hold two checks Rules does not have yet:
+    - Durability: the UPDATE_INVENTORY_DURABILITY event exists; the read API is INFERENCE.
+    - Tier piece in bags (carried but not worn): needs a bag read, with a per-condition cost check.
+  - The landing page keeps only the IN COMBAT choices: Spell Cooldown / Charges, Item Cooldown, Buff on me, Debuff on my target, Class Resource, Procs.
+- **Enemy casts (RB-40).** Study plus an in-game read-out first; the cast APIs are flagged SecretWhenUnitSpellCastRestricted.
+- **Health and primary power (RB-41).** Secret in Midnight, so not offered.
