@@ -787,6 +787,7 @@ copy; rows it adds later are copied here.
 | RB-46 | Her canvas comment on the IN COMBAT heading (verbatim): "remove bucket label for now, make a note that more options in the future might require reintroduction" | DONE: heading removed from board A; note added in RULE-BUILDER-DESIGN.md §10 | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-47 | Her canvas comment on board D (verbatim): "instead of \"Fires when\" say \"Your rule is tracking for when\"" | DONE on every board (D, All or any, Name and group); design: the explanation box text starts "Your rule is tracking for when ..." | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-48 | Her canvas comment on the check buttons (verbatim): "change \"check\" to \"Tracking\"" | DONE on every board (step label, list heading, empty state, buttons, All-or-any text, intro list, name hint) and canvas titles; closes RB-34 | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-49 | Her canvas comment on the tracking heading (verbatim): "Triggers in parentheses so users understand what they're called in the panes themselves" | DONE: "(Triggers)" after the Tracking heading, step label, All-or-any list heading and intro list; buttons unchanged (asked) | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
