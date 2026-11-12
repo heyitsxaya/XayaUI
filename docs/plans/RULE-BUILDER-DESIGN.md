@@ -42,6 +42,8 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-47: every explanation or summary sentence starts "Your rule is tracking for when …", never "Fires when".
 >
+> RB-48 vocabulary: player-facing text says "Tracking", never "check". The step is named "Tracking", the list "What you're tracking", and the buttons read "Add to tracking", "Cancel tracking" and "+ Track something else". Code and data still use their own names (`extra.list` rows).
+>
 > The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
