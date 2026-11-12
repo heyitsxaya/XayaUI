@@ -46,6 +46,14 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-75 / RB-76, load step layout, top to bottom:
+> 1. The rule name.
+> 2. "How this will load" summary.
+> 3. The Yes / Always Show / Never Show question.
+> 4. Match ALL / ANY.
+> 5. Five selection buttons, one per condition set, each showing what is set.
+>
+> Clicking a button opens only that set, with Back and "Done with this set" (board 3b).
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
