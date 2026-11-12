@@ -35,3 +35,11 @@
 - Editor (moving to XayaUI_Options): Editor/RulesTree.lua (`CreateRuleOfType`, the picker), Drafts.lua, AutoPicker.lua.
 
 **Tests.** `XUI_API_INDEX=tests/harness/api_index.json python3 tests/run_all.py`, plus the gate tests tests/gate_{mouse,keyboard,performance}_run.py.
+
+**Reminders for Xaya (raise these at the start of every reply until done).**
+- **RB-29:** next time you load the addon in game, stand in your garrison and check whether the game counts it as an instance. Tell us the instance ID it reports. We need it before the "Instance doesn't count your garrison" condition can come back.
+
+**Load-condition plan (RB-28).** After bundle 1 lands, built with the Rules session:
+1. The engine's usage gate (docs/plans/LOAD-CONDITIONS-PERF.md §1, items A-C).
+2. Then M2 (in a vehicle) and M20 (max level).
+3. The rest wait (LOAD-CONDITIONS-PERF.md §4). Future-only concepts are in RB-20.
