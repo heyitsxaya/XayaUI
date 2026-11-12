@@ -30,7 +30,7 @@ Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until th
 
 **On every page:** a name box at the top holds an automatic name built from the checks, for example "Fire Blast charge + Hot Streak". The player can edit it at any point (RB-10). Once she types in it, the automatic name stops overwriting it. The box goes through `ns.KeyFocusGuard` (V29).
 
-1. **Start.** Opened from either entry point (§5). One sentence says what the builder does.
+1. **Introduction (RB-23).** The overview page, shown first. It says what a rule is, what the builder sets up, and what will be asked, and has a "Don't show this introduction again" tick box. Proposal awaiting her answer: the setting is saved per account and re-enabled from Rule Settings. With it ticked, the builder opens at step 2.
 2. **Load question (RB-12).** "Do you want to assign specific cases when this rule should appear? (Combat, M+ only, etc.)", answered Yes or No.
    - **No:** the rule keeps the Load tab's defaults, unchanged (`ns.NewRule()`).
    - **Yes:** the Load tab's choices appear 1:1, with the same controls, labels, order and stored keys.
