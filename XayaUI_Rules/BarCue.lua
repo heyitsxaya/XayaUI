@@ -615,6 +615,8 @@ end
 -- XayaUI's own drawing (Visual.lua display frame)
 -------------------------------------------------------------------------------
 local SPARK_TEX = "Interface\\CastingBar\\UI-CastingBar-Spark"
+-- a size or offset in whole pixels (rounded half up); runs only in BarCueLayout, on a settings change, never per frame
+local function Px(n) return math.floor(n + 0.5) end
 local function TimerDir(reverse)
     local E = Enum and Enum.StatusBarTimerDirection
     if reverse then return E and E.ElapsedTime or 0 end
@@ -651,7 +653,9 @@ function ns.BarCueLayout(fr, rule, v)
     local b = ns.BarCueSettings(v)
     local bar = Parts(fr)
     fr.tex:Hide(); fr.tex2:Hide()
-    local w, h = math.max(8, v.w or 220), math.max(8, v.h or 22)
+    -- whole pixels (V27 "Whole-pixel / no float math"): the size, the icon square, the insets and the spark are rounded once here,
+    -- where they are made, so every SetSize / SetPoint below gets whole numbers (a saved size or spark width may carry decimals)
+    local w, h = Px(math.max(8, tonumber(v.w) or 220)), Px(math.max(8, tonumber(v.h) or 22))
     local iconS, l, r = ns.BarGeometry(b, w, h)
     local orient, rev = ns.BarOrient(b)
     bar:ClearAllPoints()
@@ -688,11 +692,12 @@ function ns.BarCueLayout(fr, rule, v)
     sp:ClearAllPoints()
     if b.spark and b.spark.enabled then
         local fill = bar:GetStatusBarTexture()
-        local sw = math.max(1, tonumber(b.spark.w) or 12)
+        local sw = math.max(1, Px(tonumber(b.spark.w) or 12))
         local bw, bh = math.max(1, w - iconS), h
         if orient == "VERTICAL" then bw, bh = w, math.max(1, h - iconS) end
-        if orient == "HORIZONTAL" then sp:SetSize(sw, bh * 2.2); pcall(sp.SetRotation, sp, 0)
-        else sp:SetSize(bw * 2.2, sw); pcall(sp.SetRotation, sp, math.rad(90)) end
+        -- the spark glow is 2.2 times the bar's thickness (the casting-bar spark art), rounded to whole pixels: 22 px -> 48
+        if orient == "HORIZONTAL" then sp:SetSize(sw, Px(bh * 2.2)); pcall(sp.SetRotation, sp, 0)
+        else sp:SetSize(Px(bw * 2.2), sw); pcall(sp.SetRotation, sp, math.rad(90)) end
         if fill then sp:SetPoint("CENTER", fill, ns.BarSparkPoint(b), 0, 0) end
         local c = b.spark.color or { 1, 1, 1, 0.9 }
         sp:SetVertexColor(c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1)

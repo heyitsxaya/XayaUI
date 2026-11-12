@@ -5,11 +5,11 @@ allowed to open in combat"; /xuiengine full and refresh: "Remove entirely"; the 
 auras, not the whole container"; padding with none saved: "0 px (Recommended)".
 
 What the player reads, checked on the real addons in the stand-in game (Dev Assist NOT loaded, as on main):
-- a rule whose group was kept with XayaUI (saved by Dev Assist's /xuiengine off <group>): the reason the engine gives, and the sentence
-  the status screen shows when the game hides the aura (Conditions.lua ns.HiddenAuraNote), name no console command and say where it was
-  set (old text: "(/xuiengine reset <group> to undo)", a command that does not exist without Dev Assist);
-- automatic engine drawing switched off (saved by Dev Assist's /xuiengine auto off): the same (old text: "(/xuiengine auto on)");
-- /xuiengine's status in that state names no console command (old text: "XayaUI Dev Assist's /xuiengine auto off");
+- a rule whose group was kept with XayaUI (saved by Dev Assist's /xuiengine off <group>) and automatic engine drawing switched off
+  (/xuiengine auto off): since round 5 (SD-47, the engine always runs while rules are on) both saved states are ignored, so the engine
+  draws the rule; the sentence the status screen shows when the game hides the aura (Conditions.lua ns.HiddenAuraNote) and
+  /xuiengine's status name no console command and no developer tool (old texts: "(/xuiengine reset <group> to undo)",
+  "(/xuiengine auto on)", then, round 4, "only Dev Assist can change it back");
 and in the player documents (docs/USER-GUIDE.md, WHATS-NEW.md, QA-CHECKLIST.md, HELP-FAQ.md, README-INGAME.md):
 - no line offers /xuiengine full or /xuiengine refresh unless it says they were removed;
 - USER-GUIDE and HELP-FAQ explain the combat lock (quoting the exact line the game prints, read from XayaUI/Modules.lua), what stays
@@ -63,33 +63,32 @@ ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
 ns.runtime[r] = { active = true, lastPlay = 0, visualWanted = true }
 -- what the status screen shows for this rule while the game hides its aura (Conditions.lua ns.HiddenAuraNote)
 local HIDDEN = { present = nil, buffSource = "hidden by the game right now (auras are secret, as in combat): aura 73001" }
+local core = ns.Settings("core")
 local function noCommand(s) return type(s) == "string" and not s:find("/xuiengine", 1, true) and not s:find("<group>", 1, true) end
 
--- 1. a group kept with XayaUI (the saved choice Dev Assist's /xuiengine off <group> makes)
-D.DB().groups[G.id] = false
+-- (SD-47, round 5: sections 1 and 2 changed. Before, the kept group's reason and the "drawing off" reason named the developer tool
+-- XayaUI Dev Assist as the only way back; now the engine has no saved off switch, so those states are ignored and no text names a
+-- command or Dev Assist; tests/fix_r5_engine_run.py covers the rest.)
+-- 1. a group kept with XayaUI (the saved choice Dev Assist's /xuiengine off <group> made)
+core.engineDisplay.groups = { [G.id] = false }
 D.Build()
 local why
 for _, e in ipairs(D._Left()) do if e[1] == r then why = e[2] end end
-check("a kept group: the engine gives a reason for the rule", type(why) == "string", why)
-check("  ...the reason names no console command (no /xuiengine reset <group>)", noCommand(why), why)
-check("  ...it says plainly where it was set: the developer tool XayaUI Dev Assist", why and why:find("developer tool XayaUI Dev Assist", 1, true), why)
+check("a kept group from an older version: the engine draws the rule, no reason is given (SD-47)", why == nil and D.OwnerOf(r) == true, why)
 local note = ns.HiddenAuraNote and ns.HiddenAuraNote(r, HIDDEN)
-check("  ...the status screen's sentence for the rule names no console command", noCommand(note) and note:find("Dev Assist", 1, true), note)
+check("  ...the status screen's sentence for the rule names no console command and no developer tool", note == nil or (noCommand(note) and not note:find("Dev Assist", 1, true)), note)
 
--- 2. automatic engine drawing off (the saved choice Dev Assist's /xuiengine auto off makes)
-D.DB().groups[G.id] = nil
-D.DB().auto = false
+-- 2. automatic engine drawing off (the saved choice Dev Assist's /xuiengine auto off made)
+core.engineDisplay.auto = false
 D.Build()
 local own, why2 = D.OwnerOf(r)
-check("engine drawing off: the reason for the rule names no console command (no /xuiengine auto on)", own == false and noCommand(why2), tostring(own) .. " / " .. tostring(why2))
-check("  ...it says where it was switched off", why2 and why2:find("developer tool XayaUI Dev Assist", 1, true), why2)
+check("engine drawing off from an older version: ignored, the engine draws the rule (SD-47)", own == true, tostring(own) .. " / " .. tostring(why2))
 note = ns.HiddenAuraNote and ns.HiddenAuraNote(r, HIDDEN)
-check("  ...the status screen's sentence names no console command", noCommand(note) and note:find("Dev Assist", 1, true), note)
+check("  ...the status screen's sentence names no console command and no developer tool", note == nil or (noCommand(note) and not note:find("Dev Assist", 1, true)), note)
 said = {}
 D.Status()
 local st = table.concat(said, "\n")
-check("  .../xuiengine's status (Dev Assist off) names no command to change it", st ~= "" and not st:find("/xuiengine auto", 1, true) and st:find("Dev Assist", 1, true), st)
-D.DB().auto = true
+check("  .../xuiengine's status (Dev Assist off) names no command and no developer tool", st ~= "" and not st:find("/xuiengine auto", 1, true) and not st:find("Dev Assist", 1, true), st)
 return R
 end
 '''

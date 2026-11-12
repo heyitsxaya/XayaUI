@@ -22,7 +22,7 @@ function M:RegisterUnitEvent(e) return M.RegisterEvent(self, e) end
 function M:UnregisterEvent(e) local l = EVENTS[e] or {}; for i = #l, 1, -1 do if l[i] == self then table.remove(l, i) end end end
 function M:UnregisterAllEvents() for _, l in pairs(EVENTS) do for i = #l, 1, -1 do if l[i] == self then table.remove(l, i) end end end end
 function FIRE(e, ...) for _, f in ipairs(EVENTS[e] or {}) do local s = f["_s_OnEvent"]; if s then s(f, e, ...) end end end
--- does AuraSound's own frame listen to e? (it is the only one that registers CHALLENGE_MODE_RESET; SNDF is kept after the first sync)
+-- does AuraSound's own frame listen to e? (SNDF: the CHALLENGE_MODE_RESET listener that is not the rules engine's frame; kept after the first sync)
 function LISTENS(e) for _, f in ipairs(EVENTS[e] or {}) do if f == SNDF then return true end end return false end
 TIMERS = {}
 C_Timer.After = function(d, fn) TIMERS[#TIMERS + 1] = fn end
@@ -90,7 +90,10 @@ def world(setup):
         check("every core file loads", False, bad)
     L.execute(RULES)
     L.execute(setup)
-    L.execute("NS.AuraSound.OnEdited(); RUN_TIMERS(); SNDF = (EVENTS['CHALLENGE_MODE_RESET'] or {})[1] or false")
+    # (round 5: the rules engine also listens to CHALLENGE_MODE_RESET now, for the Mythic+ load fact; AuraSound's frame is the one of
+    # its listeners that does not listen to PLAYER_TARGET_CHANGED, which the engine's frame does)
+    L.execute("NS.AuraSound.OnEdited(); RUN_TIMERS(); SNDF = false; for _, f in ipairs(EVENTS['CHALLENGE_MODE_RESET'] or {}) do local eng = false; "
+              "for _, g in ipairs(EVENTS['PLAYER_TARGET_CHANGED'] or {}) do if g == f then eng = true end end; if not eng then SNDF = f end end")
     if L.eval("SNDF") is False:   # (false, not nil: the stand-in game answers unknown globals with a table)
         check("the game-played sound's frame listens after a switch is ticked", False)
     return L

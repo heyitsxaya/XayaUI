@@ -19,12 +19,24 @@
 -- layout rule (ns.DynamicFirstOffset), so parent groups, anchors, scale, opacity and moves are inherited, never recomputed.
 -- tests/layout_parity_run.py fails if the engine ever lands anywhere else.
 --
--- PERFORMANCE GUARD: every 5 s the game's per-addon CPU meter (C_AddOnProfiler) is read for Blizzard's container code
--- (Blizzard_AuraContainer), where the containers' work is counted. Above LIMIT_MS for NEED checks in a row: first the displays of
--- specs you are not playing are handed back ("lean" mode); if it is still high, automatic mode goes off. Both last until the next
+-- PERFORMANCE GUARD: at the end of every fight (PLAYER_REGEN_ENABLED) the game's per-addon CPU meter (C_AddOnProfiler, its recent
+-- average) is read once for Blizzard's container code (Blizzard_AuraContainer), where the containers' work is counted. Round 5 (V27,
+-- SD-28/SD-29 "No running loops"): before, a 5-second ticker read it all session long, in and out of combat; its steps could only take
+-- effect when a fight ended anyway (D.Build waits for the end of combat), so the reading is taken there. Above LIMIT_MS at the end of
+-- NEED fights in a row: first the displays of specs you are not playing are handed back ("lean" mode); if it is still high, the engine
+-- stops drawing. Both last until the next
 -- /reload or login only (0.6.13): the same container code also draws Blizzard's own target-frame auras (TargetFrame.xml uses the
 -- AuraContainer widget), so the reading is not XayaUI's alone and must not switch XayaUI off for good. Each trip is announced and
 -- logged (engineDisplay.guardTrips). Unverified in game: that the meter is on by default and that its unit is milliseconds.
+-- (SD-47, Xaya 2026-11-11, her words: "As long as there are any rules enabled that operate in combat, the engine must always run. It
+-- can only be turned off by disabling the rules that run in combat or disabling the rules addon".) The guard's two steps are this
+-- session's state, unchanged here: whether they may stay is her decision (round 5 report). Nothing else turns the engine off.
+--
+-- ALWAYS ON (SD-47): no saved engine-off state. Older versions saved two, both set only by a console command (before core 0.6.56) or
+-- XayaUI Dev Assist's: engineDisplay.groups[id] = false (keep a group with XayaUI) and engineDisplay.auto = false (automatic drawing
+-- off); 0.6.12 and older also saved the guard's lean mode (engineDisplay.lean). None is read any more, and DB() clears them silently
+-- the first time it runs (see there). The engine is off only while rules are off (/xui disable: RULES_DISABLED, below), while a rule
+-- is switched off (it has no display: Classify), or with XayaUI Rules switched off in the AddOns list (no file of it runs).
 --
 -- KNOWN LIMITS (all stated by /xuiengine): icon order inside a group follows the game's aura order; mixed icon sizes in one group
 -- are drawn at the first one's size; fades, flash, wipe, glow and condition-driven changes are XayaUI effects the container
@@ -53,16 +65,16 @@ local singles = {}     -- [parentRule] = { frame, ok, err, host, kind, display, 
 local extras = {}      -- [displayCue] = the same, for a rule's OTHER display cues that show time / stacks (one slot each, #347)
 local owned = setmetatable({}, { __mode = "k" })   -- [rule] = slot record (a parent and its cues), rebuilt with every build
 local left = {}        -- displays the engine does not draw: { rule, reason }
+-- [rule] = the slots whose live answer reads that rule's engine result (a slot's parent rule and the display it draws; a group member
+-- record { rule, spec, g, i }). Rebuilt with every build; read when the rules engine re-checks a rule (ns.SetVisualShown hook, below).
+local watch = setmetatable({}, { __mode = "k" })
 local pendingBuild, lastError
 local serial = 0       -- build number: a slot built by the latest build carries it
-local LIMIT_MS, NEED = 1.0, 3
+local LIMIT_MS, NEED = 1.0, 3   -- (NEED: fight ends in a row above the limit, GuardCheck)
+local ApplyMods   -- (defined with the live sync below; a new button of a single slot draws the current condition changes at once)
 local LEAN_REASON = "lean mode: not for the spec you are playing"
--- (V26, SD-16: nothing configures the engine through the console) Reasons a player reads (Conditions.lua ns.HiddenAuraNote) name no
--- command. Both states below are saved only by XayaUI Dev Assist's /xuiengine off <group> and /xuiengine auto off (a developer tool,
--- not on main; the guard's own trips last until /reload and are undone at load, DB()): the settings window has no switch for them
--- and a /reload keeps them, so the text says where they were set and that only there can they be changed back.
-local KEPT_REASON = "its group is set to stay with XayaUI (set with the developer tool XayaUI Dev Assist; only Dev Assist can change it back)"
-local AUTO_OFF_REASON = "automatic engine drawing is off (switched off with the developer tool XayaUI Dev Assist; only Dev Assist can turn it back on)"
+-- (V26, SD-16, SD-47) Reasons a player reads (Conditions.lua ns.HiddenAuraNote) name no command and no developer tool.
+local GUARD_OFF_REASON = "the combat engine stopped drawing for this session (performance guard); a /reload starts it again"
 local guard = { bad = 0 }   -- .lean / .off: this session's trips (never saved)
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
@@ -77,27 +89,18 @@ local function DB()
     local db = CoreS
     db.engineDisplay = db.engineDisplay or {}
     local e = db.engineDisplay
-    e.groups = e.groups or {}   -- [folderId] = true (forced on) / false (kept with XayaUI)
-    if e.auto == nil then e.auto = true end
-    -- 0.6.13: guard trips no longer persist. Undo a saved one: "lean" was only ever set by the guard; "auto off" is undone only when
-    -- the last saved trip turned it off (a player's own /xuiengine auto off after that cannot be told apart, and is reported).
-    if e.guardV ~= 2 then
-        e.guardV = 2
-        local trips = type(e.guardTrips) == "table" and e.guardTrips or {}
-        local last = trips[#trips]
-        local undone = {}
-        if e.lean then e.lean = nil; undone[#undone + 1] = "lean mode" end
-        if e.auto == false and type(last) == "table" and last.step == "off" then e.auto = true; undone[#undone + 1] = "automatic drawing OFF" end
-        if #undone > 0 then
-            e.guardUndone = { at = date and date("%Y-%m-%d %H:%M:%S") or "?", what = table.concat(undone, " and "), trip = type(last) == "table" and last.at or nil }
-        end
+    -- (SD-47) Saved engine-off state from older versions is never read; it is cleared here once (the first call after the update finds
+    -- it, later calls find nothing: four field reads). Silently, with no chat line: the player has nothing to do or decide (her rule
+    -- leaves no switch to set back), the state could only have been set by a console command or a developer tool, and the engine then
+    -- simply draws as it does for everyone. The clear covers groups (per-group "keep with XayaUI", true / false), auto (automatic
+    -- drawing off), lean (a guard trip saved before 0.6.13), and the 0.6.13 note about an undone trip (guardV / guardUndone).
+    if e.groups ~= nil or e.auto ~= nil or e.lean ~= nil or e.guardV ~= nil or e.guardUndone ~= nil then
+        e.groups, e.auto, e.lean, e.guardV, e.guardUndone = nil, nil, nil, nil, nil
     end
     return e
 end
 
 local function Say(...) if ns.Print then ns.Print(...) end end
--- is XayaUI Dev Assist loaded (it has /xuiengine auto, on, off and reset since core 0.6.56)
-local function DevOn() return ns.DevAssistOn and ns.DevAssistOn() or false end
 
 -------------------------------------------------------------------------------
 -- Rules: which display does XayaUI draw for a rule, and can the engine draw it faithfully?
@@ -135,19 +138,6 @@ local function DynGroupId(folderId)
         id, n = f.parent, n + 1
     end
 end
--- Did the user keep this group (or a group around it) with XayaUI? (/xuiengine off <group>)
-local function KeptWithXayaUI(folderId)
-    local db = DB()
-    local id, n = folderId, 0
-    while db and id and n < 32 do
-        if db.groups[id] == false then return true end
-        local f = FolderById(id)
-        if not f then return false end
-        id, n = f.parent, n + 1
-    end
-    return false
-end
-
 local function ExtraRows(p)
     local l = type(p.extra) == "table" and type(p.extra.list) == "table" and p.extra.list or nil
     return l or {}
@@ -247,7 +237,7 @@ end
 -- XayaUI's own answer to "may this display show now?" apart from the aura itself: load and talent settings, as the engine's
 -- last step found them (a display that shows only "when the aura is up" ignores load in XayaUI too).
 -- "Only while on an action bar" is followed too (Engine.lua DisplayWanted hides such a display whatever its trigger).
-local function Allowed(p, display, trigger)
+local function Allowed(p, display, trigger, gated)   -- (gated: the slot's kept ns.CueGated answer, see GatedOf; nil = read it now)
     local v = display and display.visual
     if v and v.requireOnBar and ns.SpellOnActionBar then
         local id = tonumber(p.spellID) or 0
@@ -258,7 +248,8 @@ local function Allowed(p, display, trigger)
     -- lists shows only while XayaUI's own reading of that cue is true (one of its switched-on conditions is true; Cues.lua
     -- EvaluateCue). Before 0.6.19 the engine showed it whenever the aura was up. A condition XayaUI cannot read in combat (for example
     -- stacks, which the game hides) is not met there, so such a display stays hidden in combat: unknown never shows.
-    if display and display ~= p and display.isCue and ns.CueGated and ns.CueGated(p, display) then
+    if gated == nil then gated = display and display ~= p and display.isCue and ns.CueGated and ns.CueGated(p, display) end
+    if gated then
         local crt = ns.runtime and ns.runtime[display]
         local cinfo = crt and crt.info
         if not (cinfo and cinfo.result == true) then return false end
@@ -578,6 +569,7 @@ local function BarButtonInit(w, h, display, single, rec)
             Style(fs, btn, cn, "CENTER", font)
             btn:SetApplicationCount(fs, {})
         end
+        if single and rec and display.isCue and ApplyMods then pcall(ApplyMods, rec, display) end   -- (see LookInit)
     end
 end
 
@@ -643,6 +635,9 @@ local function LookInit(w, h, display, single, rec)
             Style(fs, btn, cn, "BOTTOMRIGHT", font)
             btn:SetApplicationCount(fs, {})
         end
+        -- a new button of a cue's single slot (the aura just came up): its condition's opacity, grey and tint are drawn on it now, from
+        -- XayaUI's last reading of the cue; before round 5 the 4-a-second sync drew them up to a quarter second later
+        if single and rec and display and display.isCue and ApplyMods then pcall(ApplyMods, rec, display) end
     end
 end
 
@@ -1019,8 +1014,53 @@ local function RefreshCore()
     if ns.RefreshAllVisuals then pcall(ns.RefreshAllVisuals) end
 end
 
+-- Which slots read a rule's engine result (see `watch`): built once per build, so a re-check of one rule touches only its own slots.
+local function Watch(rule, e)
+    if not rule then return end
+    local l = watch[rule]
+    if not l then l = {}; watch[rule] = l end
+    for i = 1, #l do if l[i] == e then return end end
+    l[#l + 1] = e
+end
+local function BuildWatch()
+    for k in pairs(watch) do watch[k] = nil end
+    for p, s in pairs(singles) do
+        if s.serial == serial and s.ok then Watch(p, s); Watch(s.spec and s.spec.display, s) end
+    end
+    for _, x in pairs(extras) do
+        if x.serial == serial and x.ok then Watch(x.parent, x); Watch(x.spec and x.spec.display, x) end
+    end
+    for _, g in pairs(groups) do
+        if g.serial == serial and g.ok and g.members then
+            for i, m in ipairs(g.members) do
+                m.g, m.i = g, i
+                Watch(m.rule, m); Watch(m.spec.display, m)
+            end
+        end
+    end
+end
+
 -- (Re)build everything. Safe to call any time; waits for the end of combat when in combat lockdown.
+local BuildNow
 function D.Build()
+    -- Round 5 (V27, SD-28/SD-29: "nothing loops over all rules on every game event"; the gate found about 1046 passes over all 300 rules
+    -- in one loading screen): the build runs with the rules engine's lookup index (RuleDefaults.lua ns.BeginStepIndex: a rule's cues,
+    -- conditions and parent, a group by id, each built once for the pass instead of a scan of every rule per lookup) and with XayaUI's
+    -- group layouts queued, so each dynamic group is laid out once at the end (Visual.lua ns.BeginVisualStep / ns.FlushLayouts), as the
+    -- engine's own step does. Inside a step that is already running, that step's index is used.
+    local own = ns.BeginStepIndex and ns.EndStepIndex and not (ns.InStep and ns.InStep())
+    if own then
+        ns.BeginStepIndex()
+        if ns.BeginVisualStep then ns.BeginVisualStep() end
+    end
+    local ok, err = pcall(BuildNow)
+    if own then
+        if ns.FlushLayouts then pcall(ns.FlushLayouts) end
+        ns.EndStepIndex()
+    end
+    if not ok then error(err, 0) end
+end
+BuildNow = function()
     local db = DB()
     if not db or ns.RulesDisabled then return end   -- (V26: /xui disable; /xui enable builds again)
     if InCombatLockdown and InCombatLockdown() then pendingBuild = true; return end
@@ -1031,13 +1071,11 @@ function D.Build()
     left = {}
     local spec = guard.lean and CurrentSpecID() or nil
     local byGroup, wantSingle = {}, {}
-    if db.auto ~= false and not guard.off then
+    if not guard.off then   -- (SD-47: no saved off switch; guard.off is the performance guard's, this session only)
         for _, p in ipairs(ns.rules or {}) do
             local s, why = Classify(p)
             if not s then
                 if why ~= "" then left[#left + 1] = { p, why } end
-            elseif KeptWithXayaUI(s.display.folder) then
-                left[#left + 1] = { p, KEPT_REASON }
             elseif guard.lean and not LoadsForSpec(p, spec) then
                 left[#left + 1] = { p, LEAN_REASON }
             else
@@ -1098,12 +1136,20 @@ function D.Build()
     for c, x in pairs(extras) do
         if not wantExtra[c] then x.ok = false; if x.frame then x.frame:Hide() end end
     end
+    BuildWatch()
     D.SyncLive()
     RefreshCore()
 end
 
 -------------------------------------------------------------------------------
--- Live sync (4 times a second): load / talent answers and unlock state. Cheap: no allocation unless something changed.
+-- Live sync: load / talent answers, a listed cue's condition, "only while on an action bar" and unlock state.
+-- Round 5 (V27, Xaya 2026-11-10, her answers "No running loops": nothing polls on a timer, nothing loops over all rules on every game
+-- event): before, a 4-a-second ticker ran D.SyncLive all session long, and each run scanned every rule once per condition-listed cue
+-- (the gate: 360 runs after the settings window closed, none changing anything, 37 passes over all 300 rules each). Every answer it reads
+-- is written by the rules engine when it re-checks a rule (Engine.lua StepEnabled: rt.info, then ns.SetVisualShown for that rule), so the
+-- sync now runs exactly then, for that rule's own slots only (the ns.SetVisualShown hook below, through `watch`): no timer, no loop over
+-- the rules. Unlock state is followed through the mover's own calls (hooks below; Visual.lua AfterMoverChange). A full pass over the
+-- engine's own slots (D.SyncLive) runs only after a build and on those unlock changes. No allocation unless something changed.
 -------------------------------------------------------------------------------
 local STORES = { singles, extras }
 -- #260: the changes a true condition makes to a cue (opacity, desaturate, tint; Cues.lua EvaluateCue info.mods), drawn on a single
@@ -1114,15 +1160,24 @@ local function ModsOf(display)
     local crt = ns.runtime and ns.runtime[display]
     return crt and crt.info and crt.info.mods
 end
-local function ApplyMods(s, display)
+-- The changes last drawn on the slot are kept in its own fields (s.modSig = true while they are known; a new button sets it to nil, so
+-- everything is drawn again): compared field by field, so a re-check that changes nothing makes no string or table.
+local function SameMods(s, mods)
+    if not s.modSig then return false end
+    if not mods then return s.modOn == false end
+    local t = type(mods.tint) == "table" and mods.tint or nil
+    return s.modOn == true and s.modDesat == mods.desat and s.modAlpha == mods.alpha and s.modTint == (t ~= nil)
+        and (not t or (s.modT1 == (t[1] or 1) and s.modT2 == (t[2] or 1) and s.modT3 == (t[3] or 1) and s.modT4 == (t[4] or 1)))
+end
+ApplyMods = function(s, display)
     local mods = ModsOf(display)
-    local sig = ""
+    if SameMods(s, mods) then return end
+    s.modSig, s.modOn = true, mods and true or false
     if mods then
-        local t = mods.tint
-        sig = tostring(mods.desat) .. "|" .. tostring(mods.alpha) .. "|" .. (type(t) == "table" and table.concat({ t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1 }, ",") or "-")
+        local t = type(mods.tint) == "table" and mods.tint or nil
+        s.modDesat, s.modAlpha, s.modTint = mods.desat, mods.alpha, t ~= nil
+        if t then s.modT1, s.modT2, s.modT3, s.modT4 = t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1 end
     end
-    if s.modSig == sig then return end
-    s.modSig = sig
     local v = (display and display.visual) or {}
     for _, art in ipairs(s.arts or {}) do
         if ns.PaintDisplayArt then pcall(ns.PaintDisplayArt, art, display) end   -- the display's own look first
@@ -1194,48 +1249,94 @@ function ns.EngineSlotsEach(put)
     end
 end
 
-function D.SyncLive()
-    if ns.RulesDisabled then return end   -- (V26: /xui disable leaves every container hidden until /xui enable)
+-- (the condition gate of a cue the slot draws: Cues.lua ns.CueGated reads the rule's conditions; kept on the spec by the full pass, so a
+-- re-check of one rule reads it without looking through the rule's conditions)
+local function GatedOf(spec, p)
+    local d = spec.display
+    spec.gated = (d and d ~= p and d.isCue and ns.CueGated and ns.CueGated(p, d)) and true or false
+end
+-- One single slot (a rule on its own, or one of its extra time / stack displays): shown while it may show, its condition changes drawn.
+local function SyncSingle(s)
+    if not (s.ok and s.frame and s.spec) then return end
+    local d = s.spec.display
+    local show = Allowed(s.parent, d, s.spec.trigger, s.spec.gated) and not RuleUnlocked(d)
+    if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
+    if show and d and d.isCue then pcall(ApplyMods, s, d) end
+end
+-- A dynamic group's filter holds the members that may show now; it is rewritten only when one of them changed (g.dirty).
+local function SyncGroupFilter(g)
+    if not g.dirty then return end
+    g.sizes = SlotSizes(g); slotsVer = slotsVer + 1   -- (R19: what the mover outline measures, Visual.lua GroupBounds)
+    if g.mode == "manual" then
+        -- one aura group per member: switch the member's own group on or off (an empty ID set would also show
+        -- nothing, Blizzard_AuraContainerUtil.lua: includeSpellIDs rejects every aura not in it)
+        local okAll = true
+        for i in ipairs(g.members) do
+            local key = g.memberKey and g.memberKey[i]
+            if key and not pcall(g.frame.SetAuraGroupEnabled, g.frame, key, g.allowed[i] and true or false) then okAll = false end
+        end
+        if okAll then g.dirty = false end
+    elseif g.mainKey then
+        local ids = {}
+        for i, m in ipairs(g.members) do
+            if g.allowed[i] then for id in pairs(m.spec.ids) do ids[id] = true end end
+        end
+        if pcall(g.frame.SetAuraGroupCandidateFilters, g.frame, g.mainKey, { includeSpellIDs = ids }) then g.dirty = false end
+    end
+end
+local function SyncMember(m)
+    local g = m.g
+    if not (g and g.ok and g.frame and g.members and g.members[m.i] == m) then return end
+    local a = Allowed(m.rule, m.spec.display, m.spec.trigger, m.spec.gated)
+    if g.allowed[m.i] ~= a then g.allowed[m.i] = a; g.dirty = true end
+    SyncGroupFilter(g)
+end
+-- The rules engine re-checked `rule` (its answers in ns.runtime are new): only the slots that read it are synced. Called from the
+-- ns.SetVisualShown hook for every rule the engine re-checks, so the common case (a rule the engine does not draw) is one table read.
+local function SyncRule(rule)
+    if ns.RulesDisabled then return end
+    local l = watch[rule]
+    if not l then return end
+    for i = 1, #l do
+        local e = l[i]
+        if e.single then
+            SyncSingle(e)   -- (the condition gate as the last full pass found it; a settings change rebuilds: ns.MarkDirty -> QueueBuild)
+        else
+            SyncMember(e)
+        end
+    end
+end
+D._SyncRule = SyncRule   -- (tests)
+
+-- Every slot once (after a build, and when the mover view, a group or a display is unlocked or locked). One bounded pass over the
+-- engine's own slots, with the rules engine's lookup index when no step is running (ns.CueGated reads a rule's conditions).
+local function SyncAll()
     for _, store in ipairs(STORES) do
         for _, s in pairs(store) do
-            if s.ok and s.frame then
-                local show = Allowed(s.parent, s.spec.display, s.spec.trigger) and not RuleUnlocked(s.spec.display)
-                if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
-                if show and s.spec.display and s.spec.display.isCue then pcall(ApplyMods, s, s.spec.display) end
-            end
+            if s.ok and s.frame and s.spec then GatedOf(s.spec, s.parent); SyncSingle(s) end
         end
     end
     for fid, g in pairs(groups) do
         if g.ok and g.frame then
-            -- the group's filter holds the members that may show now; it is rewritten only when one of them changes
-            local changed = g.dirty
             for i, m in ipairs(g.members) do
-                local a = Allowed(m.rule, m.spec.display, m.spec.trigger)
-                if g.allowed[i] ~= a then g.allowed[i] = a; changed = true end
+                GatedOf(m.spec, m.rule)
+                local a = Allowed(m.rule, m.spec.display, m.spec.trigger, m.spec.gated)
+                if g.allowed[i] ~= a then g.allowed[i] = a; g.dirty = true end
             end
-            if changed then
-                g.sizes = SlotSizes(g); slotsVer = slotsVer + 1   -- (R19: what the mover outline measures, Visual.lua GroupBounds)
-                if g.mode == "manual" then
-                    -- one aura group per member: switch the member's own group on or off (an empty ID set would also show
-                    -- nothing, Blizzard_AuraContainerUtil.lua: includeSpellIDs rejects every aura not in it)
-                    local okAll = true
-                    for i in ipairs(g.members) do
-                        local key = g.memberKey and g.memberKey[i]
-                        if key and not pcall(g.frame.SetAuraGroupEnabled, g.frame, key, g.allowed[i] and true or false) then okAll = false end
-                    end
-                    if okAll then g.dirty = false end
-                elseif g.mainKey then
-                    local ids = {}
-                    for i, m in ipairs(g.members) do
-                        if g.allowed[i] then for id in pairs(m.spec.ids) do ids[id] = true end end
-                    end
-                    if pcall(g.frame.SetAuraGroupCandidateFilters, g.frame, g.mainKey, { includeSpellIDs = ids }) then g.dirty = false end
-                end
-            end
+            SyncGroupFilter(g)
             local show = not FolderUnlocked(fid)
             if g.frame:IsShown() ~= show then pcall(g.frame.SetShown, g.frame, show) end
         end
     end
+end
+function D.SyncLive()
+    if ns.RulesDisabled then return end   -- (V26: /xui disable leaves every container hidden until /xui enable)
+    local own = ns.BeginStepIndex and ns.EndStepIndex and not (ns.InStep and ns.InStep())
+    if not own then return SyncAll() end
+    ns.BeginStepIndex()
+    local ok, err = pcall(SyncAll)
+    ns.EndStepIndex()
+    if not ok then error(err, 0) end
 end
 D.SyncShown = D.SyncLive   -- (older name, used by the unlock hooks)
 
@@ -1245,10 +1346,12 @@ D.SyncShown = D.SyncLive   -- (older name, used by the unlock hooks)
 function D.Status()
     local db = DB()
     if not db then return end
-    if db.auto == false or guard.off then
-        Say(guard.off and db.auto ~= false
-            and ("automatic engine drawing is OFF for this session (performance guard): XayaUI draws every display itself. " .. (DevOn() and "/xuiengine auto on, or a /reload, turns it back on." or "A /reload turns it back on."))
-            or ("automatic engine drawing is OFF: XayaUI draws every display itself." .. (DevOn() and " /xuiengine auto on to turn it on." or " It was switched off with the developer tool XayaUI Dev Assist, and only Dev Assist can turn it back on.")))
+    if ns.RulesDisabled then   -- (SD-47: the one way it is off besides switching XayaUI Rules off; the last build's lists are stale)
+        Say("the combat engine is off because every rule is off (/xui disable). /xui enable, or a /reload, turns rules and the engine back on.")
+        return
+    end
+    if guard.off then
+        Say("the combat engine stopped drawing for this session (performance guard): XayaUI draws every display itself. A /reload starts the engine again.")
         if lastError then Say("last engine error: " .. lastError) end
         return
     end
@@ -1319,14 +1422,10 @@ function D.Status()
     else
         Say("XayaUI keeps no aura displays: every one is drawn by the engine.")
     end
-    Say(string.format("automatic mode: %s%s%s.  Performance guard: %s", db.auto ~= false and "on" or "OFF", guard.lean and " (lean for this session: this spec only)" or "",
+    Say(string.format("combat engine: on (it runs while any rule is on)%s%s.  Performance guard: %s", guard.lean and " (lean for this session: this spec only)" or "",
         guard.kept and " (kept on: the cost did not fall when lean mode handed displays back, so it is the game's own frames)" or "",
         guard.last and string.format("Blizzard's aura containers %.2f ms recent average (limit %.1f; includes Blizzard's own target-frame auras)%s", guard.last, LIMIT_MS,
-            guard.own and string.format("; all of XayaUI %.2f ms", guard.own) or "") or "no reading yet (the game's addon meter may be off)"))
-    if db.guardUndone then
-        Say(string.format("note: %s, saved by an earlier performance-guard trip%s, was undone in 0.6.13 (trips now last one session).", db.guardUndone.what,
-            db.guardUndone.trip and (" (" .. db.guardUndone.trip .. ")") or ""))
-    end
+            guard.own and string.format("; all of XayaUI %.2f ms", guard.own) or "") or "no reading yet (it is read at the end of each fight; the game's addon meter may be off)"))
     if lastError then Say("last engine error: " .. lastError) end
 end
 
@@ -1347,7 +1446,9 @@ end
 
 -- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81): auto, on, off and reset moved to XayaUI Dev Assist. Those four are registered by
 -- Dev Assist (ns.RegisterSubcommand("xuiengine", ...), XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB, D.FindFolder
--- and D._guard; without Dev Assist they do not exist.
+-- and D._guard; without Dev Assist they do not exist. (SD-47) The engine no longer reads the saved values auto, on, off and reset wrote
+-- (DB() clears them), so on this version those Dev Assist words change nothing in the engine; Dev Assist (qa-installer-branch) still
+-- has to drop them. Only a word Dev Assist registers reaches RunSubcommand below.
 -- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and /xuiengine refresh: "Remove entirely"; "/xui shouldn't have anything that allows
 -- configuration of rules through the console") Players keep only /xuiengine with no word: the status, which reads and changes nothing.
 -- Lean mode (performance guard) now lasts until the next /reload; a rule edit still rebuilds the engine on its own (QueueBuild).
@@ -1358,7 +1459,7 @@ local function Slash(msg)
     local db = DB()
     if not db then Say("saved data not loaded yet") return end
     if cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
-        -- (Dev Assist's: auto on / off, on / off / reset <group>)
+        -- (a developer word Dev Assist registered; none changes the engine, SD-47)
     else
         D.Status()
         -- (no "|r" in chat text: WoW reads it as a colour code)
@@ -1379,7 +1480,7 @@ end
 local function GuardCheck()
     if ns.RulesDisabled then return end
     local db = DB()
-    if not (db and db.auto ~= false and not guard.off) or guard.kept then guard.bad = 0; return end
+    if not db or guard.off or guard.kept then guard.bad = 0; return end
     if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric) then return end
     -- The containers' work is counted under Blizzard_AuraContainer. The engine's own Lua is counted under XayaUI together with
     -- everything else XayaUI does (rules, sounds, the settings window), so that number is shown, never used to trip: handing
@@ -1415,11 +1516,11 @@ local function GuardCheck()
     if step == "lean" then
         guard.lean, guard.leanAt = true, v
         if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W003", ("Blizzard's aura containers %.2f ms per frame (limit %.1f)"):format(v, LIMIT_MS)) end
-        Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine will draw only the displays of the spec you are playing (lean mode). In a fight this starts when the fight ends. It lasts until you reload your interface (/reload).", v, LIMIT_MS))
+        Say(string.format("performance guard: Blizzard's aura containers cost %.2f ms per frame (limit %.1f; this includes Blizzard's own target-frame auras), so the engine will draw only the displays of the spec you are playing (lean mode). It lasts until you reload your interface (/reload).", v, LIMIT_MS))
     else
         guard.off = true
         if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W004", ("still %.2f ms per frame in lean mode (limit %.1f)"):format(v, LIMIT_MS)) end
-        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so automatic engine drawing is OFF until /reload; XayaUI draws the displays itself once combat ends." .. (DevOn() and " /xuiengine auto on to turn it back on now." or ""), v))
+        Say(string.format("performance guard: still %.2f ms per frame in lean mode, so the combat engine stops drawing until /reload; XayaUI draws the displays itself once combat ends.", v))
     end
     D.Build()
     if step == "lean" then   -- how many displays lean mode handed back (the evidence the "off" step needs)
@@ -1443,20 +1544,21 @@ local function QueueBuild()
 end
 D.QueueBuild = QueueBuild
 
+-- Placed once at load (hooks are never removed in WoW; each returns at once while rules are off). Round 5 (V27): these replace the
+-- 4-a-second sync ticker; nothing of the engine runs on a timer.
 if hooksecurefunc then
-    -- (V26) not in combat: there ToggleUnlock only says the mover opens after the fight (Visual.lua); the timer below keeps up
+    -- the rules engine re-checked a rule (Engine.lua StepEnabled calls ns.SetVisualShown after it stores the rule's answers): the
+    -- engine's slots that read that rule follow at once. One table read for every other rule.
+    if ns.SetVisualShown then hooksecurefunc(ns, "SetVisualShown", function(rule) if watch[rule] then pcall(SyncRule, rule) end end) end
+    -- unlock / lock: the mover view (opened, closed after its Save / Cancel question, closed in combat, reopened after it: Visual.lua's
+    -- AfterMoverChange calls D.SyncLive itself), a group's or a display's own unlock
+    -- (V26) ToggleUnlock in combat only says the mover opens after the fight, or closes it through ns.MoverExit (hooked here)
     if ns.ToggleUnlock then hooksecurefunc(ns, "ToggleUnlock", function() if not (InCombatLockdown and InCombatLockdown()) then pcall(D.SyncLive) end end) end
+    if ns.MoverExit then hooksecurefunc(ns, "MoverExit", function() pcall(D.SyncLive) end) end
     if ns.SetGroupUnlocked then hooksecurefunc(ns, "SetGroupUnlocked", function() pcall(D.SyncLive) end) end
     if ns.SetMoveUnlocked then hooksecurefunc(ns, "SetMoveUnlocked", function() pcall(D.SyncLive) end) end
     if ns.MarkDirty then hooksecurefunc(ns, "MarkDirty", QueueBuild) end
 end
-local syncTicker, guardTicker   -- (V26: cancelled while /xui disable holds, started again by /xui enable)
-local function StartTickers()
-    if not (C_Timer and C_Timer.NewTicker) then return end
-    syncTicker = syncTicker or C_Timer.NewTicker(0.25, function() pcall(D.SyncLive) end)
-    guardTicker = guardTicker or C_Timer.NewTicker(5, function() pcall(GuardCheck) end)
-end
-StartTickers()
 
 -- Blizzard's container does not follow a new target / focus on its own: Blizzard_AuraContainer.lua says UpdateAllAuras is
 -- "exposed to allow external events to trigger refreshes where needed (e.g. target changes)", and its own target frame calls it on
@@ -1482,7 +1584,11 @@ ev:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_TARGET_CHANGED" then RefreshUnit("target"); return end
     if event == "PLAYER_FOCUS_CHANGED" then RefreshUnit("focus"); return end
     if event == "PLAYER_REGEN_ENABLED" and D.HideWhenFree() then return end   -- (V26: /xui disable in a fight)
+    if event == "PLAYER_REGEN_ENABLED" then pcall(GuardCheck) end   -- the performance guard's reading for the fight that just ended
     if event == "PLAYER_REGEN_ENABLED" and not pendingBuild then return end
+    -- a loading screen changes nothing the build reads (the rules, their groups, XayaUI's frames the containers hang from, which follow
+    -- by themselves): the first one builds (login, /reload), a later one only a build that waits (combat lockdown at the time)
+    if event == "PLAYER_ENTERING_WORLD" and serial > 0 and not pendingBuild then return end
     if event == "PLAYER_SPECIALIZATION_CHANGED" and unit and unit ~= "player" then return end
     pcall(D.Build)
 end)
@@ -1493,8 +1599,8 @@ end)
 -- nothing about hiding one in combat (only the C_AuraContainerUtil option helpers), so in combat no container method is called: each is
 -- made invisible with Frame:SetAlpha(0) (widgets.md, Frame: SetAlpha carries no IsProtectedFunction flag; INFERENCE: an AuraContainer
 -- has Frame's SetAlpha, unverified in game) and hidden with Hide when combat ends (PLAYER_REGEN_ENABLED, already listened to above).
--- Out of combat they are hidden at once. The engine goes inert at once: the 4-a-second live sync and the 5-second guard timers are
--- cancelled, and D.Build, D.SyncLive, the guard and the target / focus refresh do nothing while rules are off. /xui enable
+-- Out of combat they are hidden at once. The engine goes inert at once: D.Build, D.SyncLive, the per-rule sync (the ns.SetVisualShown
+-- hook), the guard and the target / focus refresh do nothing while rules are off (no timer of the engine exists since round 5). /xui enable
 -- (RULES_ENABLED, never in combat) rebuilds: every container in use gets its place, look and opacity back (PlaceGroup / PlaceSingle).
 -------------------------------------------------------------------------------
 local hideWhenFree = false
@@ -1511,9 +1617,6 @@ function D.HideWhenFree()   -- combat ended: hide what /xui disable faded in the
     return false
 end
 local function RulesOff()
-    if syncTicker and syncTicker.Cancel then syncTicker:Cancel() end
-    if guardTicker and guardTicker.Cancel then guardTicker:Cancel() end
-    syncTicker, guardTicker = nil, nil
     if InCombatLockdown and InCombatLockdown() then
         EachContainer(Fade)
         hideWhenFree = true
@@ -1523,7 +1626,6 @@ local function RulesOff()
 end
 local function RulesOn()
     hideWhenFree = false
-    StartTickers()
     pcall(D.Build)
 end
 if ns.On then
@@ -1544,8 +1646,6 @@ function D.OwnerOf(rule)
         return true, slot.single and "its own slot on XayaUI's icon" or "its dynamic group's container"
     end
     for _, e in ipairs(left) do if e[1] == p then return false, e[2] end end
-    local db = DB()
-    if db and db.auto == false then return false, AUTO_OFF_REASON end
-    if guard.off then return false, "automatic engine drawing is off for this session (performance guard)" end
+    if guard.off then return false, GUARD_OFF_REASON end
     return nil
 end

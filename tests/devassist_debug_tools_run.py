@@ -141,7 +141,7 @@ check("B /xuiskin alone still switches the skin (players keep it)", ui.skinOff ~
 W.safecall(SlashCmdList.XUISKIN, "")
 local db = ns.Settings("core").engineDisplay
 local e1 = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("auto off") end))
-check("B /xuiengine auto off without Dev Assist: automatic mode stays on", db.auto ~= false, e1:sub(1, 200))
+check("B /xuiengine auto off without Dev Assist: the engine stays on (round 5, SD-47: no saved switch at all)", db.auto == nil and e1:find("combat engine: on", 1, true) ~= nil, e1:sub(1, 200))
 -- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and refresh: "Remove entirely") /xuiengine only shows the status
 check("B /xuiengine help offers no command: it says it changes nothing (V26: full and refresh removed)", e1:find("it changes nothing", 1, true) ~= nil
   and not e1:find("/xuiengine full", 1, true) and not e1:find("/xuiengine refresh", 1, true)
@@ -150,8 +150,8 @@ local g = ns.AuraDisplay._guard
 g.lean = true
 local ef = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("full") end))
 local er = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("refresh") end))
-check("B /xuiengine full and refresh are gone (V26): lean mode stays, only the status is shown", g.lean == true and ef:find("automatic mode:", 1, true) ~= nil
-  and er:find("automatic mode:", 1, true) ~= nil, ef:sub(1, 120))
+check("B /xuiengine full and refresh are gone (V26): lean mode stays, only the status is shown", g.lean == true and ef:find("combat engine: on", 1, true) ~= nil
+  and er:find("combat engine: on", 1, true) ~= nil, ef:sub(1, 120))
 g.lean = nil
 
 -- C ---------------------------------------------------------------------------------------------------------------------------
@@ -227,7 +227,7 @@ check("E engine safety stop, lean mode: warning XUI-W003", entry("XUI-W003") ~= 
 -- core 0.6.69 (externals): a cost that does not fall after lean mode is the game's own frames: drawing stays on ("kept"), no W004
 for _ = 1, 3 do W.safecall(D.GuardCheck) end
 check("E engine safety stop, cost not lowered by lean mode: drawing kept on, no XUI-W004", entry("XUI-W004") == nil and D._guard.kept == true and not D._guard.off)
--- lean mode handed displays back and the cost fell, but not below the limit: automatic drawing off, as before
+-- lean mode handed displays back and the cost fell, but not below the limit: engine drawing off for the session, as before
 D._guard.kept, D._guard.leanHanded, D._guard.leanAt = nil, 1, 5
 C_AddOnProfiler.GetAddOnMetric = function(name) if name == "Blizzard_AuraContainer" then return 3.5 end return 0.1 end
 for _ = 1, 3 do W.safecall(D.GuardCheck) end

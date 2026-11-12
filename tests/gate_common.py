@@ -34,10 +34,10 @@ Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings 
     C_Spell.GetSpellCooldown) answer from the scenario's own list of active auras and cooldowns; Blizzard's aura container (the combat
     engine's displays) is a minimal stand-in that accepts the documented calls and draws nothing.
   * allocations are measured with collectgarbage("count") around each XayaUI handler (event, OnUpdate, timer) with the collector
-    stopped; allocations made inside the stand-in's own widget methods (it stores points and colours in Lua tables; the game does not)
+    stopped; allocations made inside the stand-in's own widget methods (it stores points and colors in Lua tables; the game does not)
     and by the gate's own measuring are taken out.
 Run one gate: python3 tests/gate_<name>_run.py   (Lua 5.1 via lupa)."""
-import os, sys, time
+import hashlib, inspect, json, os, sys, tempfile, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -73,7 +73,7 @@ CreateFrame = function(kind, name, parent, template, id)
       if type(o) == "table" and type(o.initializeFrame) == "function" then
         -- Blizzard's container makes its aura buttons itself and shows one while a matching aura is up (G.syncContainers)
         local b = realCreate("Button", nil, self)
-        b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide()
+        b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide(); rawset(b, "_blizzard", true)
         for _, m in ipairs({ "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
             "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }) do rawset(b, m, noop) end
         pcall(o.initializeFrame, b)
@@ -92,7 +92,8 @@ function G.syncContainers()
   for _, e in ipairs(G.buttons) do
     local ids = not e.opts.xuiOff and e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
     local up = false
-    if type(ids) == "table" then for _, id in pairs(ids) do if G.auras[id] then up = true; break end end end
+    -- (the engine passes a set: [spellID] = true; Blizzard_AuraContainerUtil.lua also takes a list)
+    if type(ids) == "table" then for k, v in pairs(ids) do if G.auras[k] or (type(v) == "number" and G.auras[v]) then up = true; break end end end
     e.button:SetShown(up and e.container:IsVisible() and #e.container._pts > 0)
   end
 end
@@ -121,7 +122,7 @@ local KN0 = C_SpellBook.IsSpellKnownOrInSpellBook
 C_SpellBook.IsSpellKnownOrInSpellBook = function(id, bank, ov) if G.known[id] then return true end if KN0 then return KN0(id, bank, ov) end return false end
 local IPS0 = IsPlayerSpell
 IsPlayerSpell = function(id) if G.known[id] then return true end if IPS0 then return IPS0(id) end return false end
-for i = 1, 40 do G.known[400000 + i] = true end
+for i = 1, 60 do G.known[400000 + i] = true end
 IsMounted = function() return G.mounted end
 IsInGroup = function() return G.group end
 IsInRaid = function() return G.raid end
@@ -220,11 +221,12 @@ for i = 1, 20 do
   end)
   made.game = made.game + 1
 end
--- 5. hover-tooltip displays (V27: hover allowed, clicks pass)
+-- 5. hover-tooltip displays drawn by XayaUI itself (a cooldown-ready icon; V27: hover allowed, clicks pass). (A buff display is drawn
+--    by the combat engine's Blizzard container instead: ns.EngineOwns.)
 for i = 1, 20 do
   rule("Hover " .. i, function(r)
-    r.useBuff, r.buffID, r.buffState = true, 330000 + i, "present"
-    display(r, 32, 32); r.visual.trigger = "buffActive"; r.visual.hoverTip = true
+    r.useCooldown, r.spellID, r.cdState = true, 400040 + i, "ready"
+    display(r, 32, 32); r.visual.trigger = "condition"; r.visual.hoverTip = true
     r.folder = statics[(i - 1) % #statics + 1].id
   end)
   made.hover = made.hover + 1
@@ -292,7 +294,10 @@ local PERF = CFG.perf and true or false
 local gc, getinfo = collectgarbage, debug.getinfo
 local PHASE = "load"
 local CLOSED = false            -- the settings window has been closed (the gates judge everything from here on)
-local function setPhase(p) PHASE = p; OUT.phases[#OUT.phases + 1] = p end
+local function setPhase(p)
+  PHASE = p; OUT.phases[#OUT.phases + 1] = p
+  if CFG.verbose and io then io.stderr:write(string.format("[gate] %-12s %.1f s\n", p, os.clock())) end
+end
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- where a call comes from: the nearest XayaUI file up the stack (a bundled library under Libs/ only when no XayaUI file is found)
@@ -393,16 +398,26 @@ local function noteMouseCall(self, what)
     if w and not isLib(w) then local m0 = gc("count"); bump(MOUSECALLS, w .. " " .. what); hookAlloc = hookAlloc + (gc("count") - m0) end
   end
 end
-function proto:EnableMouse(v) noteMouseCall(self, "EnableMouse"); v = v and true or false; self._mouse, self._mclick, self._mmotion, self._mouseSet = v, v, v, true end
+-- the XayaUI line that last turned clicks / motion on (the line a fix changes), kept on the frame
+local function by(what)
+  local m0 = gc("count")
+  local w = whereFrom(3)
+  hookAlloc = hookAlloc + (gc("count") - m0)
+  return w and (w .. " " .. what) or nil
+end
+function proto:EnableMouse(v) noteMouseCall(self, "EnableMouse"); v = v and true or false; self._mouse, self._mclick, self._mmotion, self._mouseSet = v, v, v, true
+  if v then local b = by("EnableMouse(true)"); self._clickBy, self._motionBy = b, b end end
 function proto:SetMouseClickEnabled(v) noteMouseCall(self, "SetMouseClickEnabled"); v = v and true or false; self._mclick, self._mouse = v, v; self._mouseSet = true
-  if self._mmotion == nil then self._mmotion = CLICKS_BY_DEFAULT[self._kind] or false end end
+  if self._mmotion == nil then self._mmotion = CLICKS_BY_DEFAULT[self._kind] or false end
+  if v then self._clickBy = by("SetMouseClickEnabled(true)") end end
 function proto:SetMouseMotionEnabled(v) noteMouseCall(self, "SetMouseMotionEnabled"); self._mmotion = v and true or false
-  if not self._mouseSet then self._mclick = CLICKS_BY_DEFAULT[self._kind] or false; self._mouse = self._mclick; self._mouseSet = true end end
+  if not self._mouseSet then self._mclick = CLICKS_BY_DEFAULT[self._kind] or false; self._mouse = self._mclick; self._mouseSet = true end
+  if v then self._motionBy = by("SetMouseMotionEnabled(true)") end end
 proto.EnableMouseMotion = proto.SetMouseMotionEnabled
 function proto:IsMouseClickEnabled() if self._mouseSet then return self._mclick and true or false end return CLICKS_BY_DEFAULT[self._kind] or false end
 function proto:IsMouseMotionEnabled() if self._mouseSet then return self._mmotion and true or false end return CLICKS_BY_DEFAULT[self._kind] or false end
 function proto:IsMouseEnabled() return self:IsMouseClickEnabled() or self:IsMouseMotionEnabled() end
-function proto:EnableMouseWheel(v) noteMouseCall(self, "EnableMouseWheel"); self._wheel = v and true or false end
+function proto:EnableMouseWheel(v) noteMouseCall(self, "EnableMouseWheel"); self._wheel = v and true or false; if v then self._wheelBy = by("EnableMouseWheel(true)") end end
 function proto:IsMouseWheelEnabled() return self._wheel and true or false end
 function proto:SetPropagateMouseClicks(v) self._propClicks = v and true or false end
 function proto:CanPropagateMouseClicks() return self._propClicks and true or false end
@@ -419,7 +434,7 @@ local function noteKb(what)
 end
 do
   local EK, SP, SF = proto.EnableKeyboard, proto.SetPropagateKeyboardInput, proto.SetFocus
-  proto.EnableKeyboard = function(self, v) if v then noteKb("EnableKeyboard(true)") end; return EK(self, v) end
+  proto.EnableKeyboard = function(self, v) if v then noteKb("EnableKeyboard(true)"); self._kbBy = by("EnableKeyboard(true)") end; return EK(self, v) end
   proto.SetPropagateKeyboardInput = function(self, v) noteKb("SetPropagateKeyboardInput(" .. tostring(v) .. ")"); return SP(self, v) end
   proto.SetFocus = function(self) noteKb("SetFocus"); return SF(self) end
   for _, n in ipairs({ "SetOverrideBinding", "SetOverrideBindingClick", "SetOverrideBindingSpell", "SetOverrideBindingMacro", "SetOverrideBindingItem",
@@ -433,7 +448,11 @@ end
 -- performance instruments (PERF): dispatches, allocations, visible changes, timers, loops, whole pixels, call counts
 -------------------------------------------------------------------------------------------------------------------------------------
 local cur = nil         -- the XayaUI handler running now (a dispatch): { kind, name, src }
-local VIS = 0           -- visible changes made so far (text, value, alpha, size, position, colour, shown state of a shown widget)
+-- what the event being fired is: "storm" (the every-frame combat events: auras, cooldowns, charges, action bars, power, casts),
+-- "change" (something the rules read changed: a loading screen, mount, group, target, combat start / end) or "same" (an event the game
+-- sends although nothing the rules read changed: a roster update with the same group). Timers and OnUpdate scripts have their own kind.
+local CTX = "change"
+local VIS = 0           -- visible changes made so far (text, value, alpha, size, position, color, shown state of a shown widget)
 local NONINT = {}       -- [file:line] = { n, method, example, phases }
 local ST = { ev = {}, ou = {}, tm = {}, loops = {}, wide = {}, cyc = {}, idlewin = {}, mem = {}, hooks = {}, timers = {}, created = CREATED }
 local function isWhole(v) return type(v) ~= "number" or v == math.floor(v) end
@@ -457,7 +476,7 @@ local function noteNonInt(method, a, b, c, d)
   end
   hookAlloc = hookAlloc + (gc("count") - m0)
 end
--- the stand-in's widget methods: their own Lua garbage is not XayaUI's (the game stores points and colours in C)
+-- the stand-in's widget methods: their own Lua garbage is not XayaUI's (the game stores points and colors in C)
 local RUNS_SCRIPTS = { Show = true, Hide = true, SetShown = true, SetValue = true, Click = true, SetFocus = true, ClearFocus = true, Stop = true,
   SetScript = true, HookScript = true }
 local function exclEnd(m0, ...) standAlloc = standAlloc + (gc("count") - m0); return ... end
@@ -535,23 +554,27 @@ do
 end
 -- timers: who made each one, what kind, and whether it re-arms itself
 local TIMERS_SEEN = {}   -- [src] = { kind, every, n made, rearm }
+local TIMER_EDGES = {}   -- [src of a running timer] = { [src of a timer it made] = true } (a cycle = a chain that re-arms itself)
 local curTimer
-local function addTimer(delay, fn, iterations, kind)
+local function addTimer(delay, fn, iterations, kind, orig)
   local m0 = gc("count")
   local src = whereFrom(2) or "?"
   local seen = TIMERS_SEEN[src]
   if not seen then seen = { kind = kind, every = tonumber(delay) or 0, made = 0, rearm = false, phases = {} }; TIMERS_SEEN[src] = seen end
   seen.made = seen.made + 1; seen.phases[PHASE] = true
+  seen.byPhase = seen.byPhase or {}; seen.byPhase[PHASE] = (seen.byPhase[PHASE] or 0) + 1
   if curTimer and curTimer.src == src then seen.rearm = true end
+  if curTimer then local e = TIMER_EDGES[curTimer.src or "?"]; if not e then e = {}; TIMER_EDGES[curTimer.src or "?"] = e end; e[src] = true end
+  if CLOSED then seen.afterClose = (seen.afterClose or 0) + 1 end
   hookAlloc = hookAlloc + (gc("count") - m0)
-  local t = { at = W.now + (tonumber(delay) or 0), fn = fn, every = tonumber(delay) or 0, left = iterations, cancelled = false, src = src, kind = kind }
+  local t = { at = W.now + (tonumber(delay) or 0), fn = fn, orig = orig or fn, every = tonumber(delay) or 0, left = iterations, cancelled = false, src = src, kind = kind }
   t.handle = { Cancel = function() t.cancelled = true end, IsCancelled = function() return t.cancelled end }
   W.timers[#W.timers + 1] = t
   return t.handle
 end
 C_Timer.After = function(d, fn) addTimer(d, fn, 1, "After") end
-C_Timer.NewTimer = function(d, fn) local h; h = addTimer(d, function() fn(h) end, 1, "NewTimer"); return h end
-C_Timer.NewTicker = function(d, fn, n) local h; h = addTimer(d, function() fn(h) end, n or math.huge, (n and n <= 1) and "NewTicker(1)" or "NewTicker"); return h end
+C_Timer.NewTimer = function(d, fn) local h; h = addTimer(d, function() fn(h) end, 1, "NewTimer", fn); return h end
+C_Timer.NewTicker = function(d, fn, n) local h; h = addTimer(d, function() fn(h) end, n or math.huge, (n and n <= 1) and "NewTicker(1)" or "NewTicker", fn); return h end
 
 -- loops over the rule list: ipairs / pairs over a table as long as the rule list (or the rule list / the engine's per-rule state itself)
 local LOOPMIN = math.huge
@@ -563,8 +586,12 @@ local function noteLoop(n)
   if w and not isLib(w) then
     local d = sub(ST.loops, cur.kind .. " " .. cur.name)
     local s = d[w]
-    if not s then s = { times = 0, max = 0, src = cur.src }; d[w] = s end
+    if not s then s = { times = 0, max = 0, src = cur.src, ctx = {}, phases = {} }; d[w] = s end
     s.times = s.times + 1; if n > s.max then s.max = n end
+    local c = (cur.kind == "event") and CTX or cur.kind
+    local key = c .. "|" .. cur.src
+    s.ctx[key] = (s.ctx[key] or 0) + 1
+    s.phases[PHASE] = true
   end
   hookAlloc = hookAlloc + (gc("count") - m0)
 end
@@ -583,10 +610,14 @@ pairs = function(t)
   return rawpairs(t)
 end
 
--- call counts (debug hook, "call" events only): per dispatch and per window
+-- call counts (debug hook, "call" events) per dispatch and per window, and Lua VM instructions per dispatch (the "count" event every
+-- INS_STEP instructions: a measure of the work a handler does, whatever loop form it uses)
 local DCALLS, WCALLS = {}, {}
 local KEYS = {}
-local function callhook()
+local INS, INS_STEP = 0, 100
+local SAMPLING = false   -- call counting is on only in the sampled windows (it slows the stand-in about tenfold)
+local function callhook(ev)
+  if ev == "count" then INS = INS + 1; return end
   local m0 = gc("count")
   local info = getinfo(2, "S")
   if info then
@@ -620,17 +651,28 @@ local quietRun = function(fn, ...)
 end
 local WIN = 2   -- seconds: an OnUpdate or ticker is judged per 2-second window (a countdown in whole seconds changes once a second)
 local T0 = 0
-local function finish(kind, name, src, bytes, vis, owner)
+local function finish(kind, name, src, bytes, vis, owner, ins)
   -- bookkeeping after the measurement (its own garbage is not counted)
   local byKind = (kind == "event") and ST.ev or ((kind == "onupdate") and ST.ou or ST.tm)
   local s = byKind[name]
-  if not s then s = { n = 0, bytes = 0, max = 0, idle = 0, vis = 0, byPhase = {}, srcs = {}, wins = {}, winsIdle = {} }; byKind[name] = s end
+  if not s then s = { n = 0, bytes = 0, max = 0, idle = 0, vis = 0, ins = 0, insMax = 0, byPhase = {}, srcs = {}, wins = {}, winsIdle = {} }; byKind[name] = s end
   s.n = s.n + 1; s.bytes = s.bytes + bytes; if bytes > s.max then s.max = bytes end
+  s.ins = s.ins + ins; if ins > s.insMax then s.insMax = ins end
   s.vis = s.vis + vis
   if vis == 0 then s.idle = s.idle + 1 end
-  local p = s.byPhase[PHASE]; if not p then p = { n = 0, bytes = 0, idle = 0, vis = 0 }; s.byPhase[PHASE] = p end
-  p.n = p.n + 1; p.bytes = p.bytes + bytes; p.vis = p.vis + vis; if vis == 0 then p.idle = p.idle + 1 end
-  if src then local h = s.srcs[src]; if not h then h = { n = 0, bytes = 0 }; s.srcs[src] = h end; h.n = h.n + 1; h.bytes = h.bytes + bytes end
+  local p = s.byPhase[PHASE]; if not p then p = { n = 0, bytes = 0, idle = 0, vis = 0, ins = 0, allocRuns = 0 }; s.byPhase[PHASE] = p end
+  p.n = p.n + 1; p.bytes = p.bytes + bytes; p.vis = p.vis + vis; p.ins = p.ins + ins; if vis == 0 then p.idle = p.idle + 1 end
+  if bytes > 0 then p.allocRuns = p.allocRuns + 1 end
+  if src then
+    local h = s.srcs[src]; if not h then h = { n = 0, bytes = 0, ins = 0, insMax = 0, byPhase = {} }; s.srcs[src] = h end
+    h.n = h.n + 1; h.bytes = h.bytes + bytes; h.ins = h.ins + ins; if ins > h.insMax then h.insMax = ins end
+    local hp = h.byPhase[PHASE]; if not hp then hp = { n = 0, bytes = 0, ins = 0, allocRuns = 0, ctx = {} }; h.byPhase[PHASE] = hp end
+    hp.n = hp.n + 1; hp.bytes = hp.bytes + bytes; hp.ins = hp.ins + ins; if bytes > 0 then hp.allocRuns = hp.allocRuns + 1 end
+    local c = (kind == "event") and CTX or kind
+    local hc = hp.ctx[c]; if not hc then hc = { n = 0, bytes = 0, ins = 0, allocRuns = 0, insMax = 0 }; hp.ctx[c] = hc end
+    hc.n = hc.n + 1; hc.bytes = hc.bytes + bytes; hc.ins = hc.ins + ins; if bytes > 0 then hc.allocRuns = hc.allocRuns + 1 end
+    if ins > hc.insMax then hc.insMax = ins end
+  end
   if kind ~= "event" then
     local w = math.floor((W.now - T0) / WIN)
     local ww = s.wins[w]; if not ww then ww = { runs = 0, vis = 0, phase = PHASE }; s.wins[w] = ww end
@@ -640,32 +682,37 @@ local function finish(kind, name, src, bytes, vis, owner)
   for k, n in rawpairs(DCALLS) do
     if n >= LOOPMIN then
       local d = sub(ST.wide, kind .. " " .. name)
-      local e = d[k]; if not e then e = { times = 0, max = 0, src = src, phases = {} }; d[k] = e end
+      local e = d[k]; if not e then e = { times = 0, max = 0, src = src, phases = {}, ctx = {} }; d[k] = e end
       e.times = e.times + 1; if n > e.max then e.max = n end; e.phases[PHASE] = true
+      local c = (kind == "event") and CTX or kind
+      e.ctx[c] = (e.ctx[c] or 0) + 1
     end
     DCALLS[k] = nil
   end
 end
 local function run(kind, name, owner, fn, ...)
   if not (PERF and CLOSED) or cur then return quietRun(fn, ...) end
-  local src = srcOf(fn)
+  local src = srcOf(rawget(W, "_srcFn") or fn)
+  W._srcFn = nil
   if not src then return quietRun(fn, ...) end
-  if kind ~= "event" then name = src end
+  if kind == "onupdate" then name = src end   -- (a timer keeps the line that made it as its name; its function's line is src)
   local rec = owner   -- (unused; kept for the reader: the frame whose script runs)
   for k in rawpairs(DCALLS) do DCALLS[k] = nil end
   hookAlloc, standAlloc = 0, 0
   local vis0 = VIS
   cur = { kind = kind, name = name, src = src }   -- (made before the measurement starts)
   gc("stop")
+  local i0 = INS
   local m0 = gc("count")
   local ok = quietRun(fn, ...)
   local m1 = gc("count")
+  local ins = (INS - i0) * INS_STEP
   gc("restart")
   local c = cur
   cur = nil
   local bytes = math.floor(((m1 - m0) - hookAlloc - standAlloc) * 1024 + 0.5)
   if bytes < 0 then bytes = 0 end
-  finish(kind, c.name, src, bytes, VIS - vis0, owner)
+  finish(kind, c.name, src, bytes, VIS - vis0, owner, ins)
   return ok
 end
 -- W.fire / W.tick as the stand-in has them, through the dispatcher
@@ -678,9 +725,11 @@ W.fire = function(ev, ...)
   end
   return n
 end
+local FRAMES = {}   -- [phase] = frames drawn
 W.tick = function(dt, steps)
   for _ = 1, (steps or 1) do
     W.now = W.now + dt
+    FRAMES[PHASE] = (FRAMES[PHASE] or 0) + 1
     local due, keep = {}, {}
     for _, t in rawipairs(W.timers) do
       if t.cancelled then -- dropped
@@ -689,7 +738,9 @@ W.tick = function(dt, steps)
     W.timers = keep
     for _, t in rawipairs(due) do
       curTimer = t
+      W._srcFn = t.orig
       run("timer", t.src or "?", nil, t.fn)
+      W._srcFn = nil
       curTimer = nil
       if t.left and t.left ~= math.huge then t.left = t.left - 1 end
       if not t.cancelled and t.left and t.left > 0 then t.at = W.now + math.max(t.every, 0.01); W.timers[#W.timers + 1] = t end
@@ -721,8 +772,24 @@ local function passesClicks(o)
   if p then local l, r = false, false; for _, b in rawipairs(p) do if b == "LeftButton" then l = true elseif b == "RightButton" then r = true end end; if l and r then return true end end
   return false
 end
+-- the top-level frame an object sits in (the highest parent below UIParent / the minimap), with its name and the line that made it
+local function topOf(o)
+  local f, guard = o, 0
+  while f and guard < 40 do
+    local p = rawget(f, "_parent")
+    if not p or p == UIParent or p == rawget(_G, "Minimap") then break end
+    f = p; guard = guard + 1
+  end
+  return f
+end
+local function inMenu(o)
+  local menu = rawget(_G, "XayaUIMinimapMenu")
+  local f, guard = o, 0
+  while f and menu and guard < 40 do if f == menu then return true end; f = rawget(f, "_parent"); guard = guard + 1 end
+  return false
+end
 local function checkpoint(label)
-  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, noArea = {}, wheel = {}, keyboard = {}, focus = {}, keys = {}, shown = {} }
+  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, hoverList = {}, noArea = {}, wheel = {}, keyboard = {}, kbHidden = {}, engine = {}, focus = {}, keys = {}, shown = {}, big = {} }
   local nsx = rawget(_G, "XayaUI_NS")
   local act = 0
   if nsx and nsx.runtime then for _, rt in rawpairs(nsx.runtime) do if rt.active then act = act + 1 end end end
@@ -742,15 +809,33 @@ local function checkpoint(label)
       local click = o:IsMouseClickEnabled() and not passesClicks(o)
       local area, w, h, frac = hasArea(o)
       local nm = o._name or ("a " .. tostring(o._kind))
-      if click then
+      if click and o._blizzard then
+        -- an aura button Blizzard's container made for the combat engine: whether the game's button takes clicks is not documented
+        -- (the stand-in says yes, as for any Button); XayaUI's initializeFrame did not set it either way
+        cp.engine[#cp.engine + 1] = { name = nm, kind = o._kind, where = where, w = select(2, hasArea(o)), h = select(3, hasArea(o)) }
+      elseif click then
         local e = { name = nm, rule = ruleOf[o] and tostring(ruleOf[o].name) or nil, kind = o._kind, where = where, viaParent = viaParent, w = w, h = h, frac = frac or 0, strata = o:GetFrameStrata(),
+          by = o._clickBy or (o._mouseSet and "?" or ("never set: a " .. o._kind .. " takes clicks by default")),
+          top = topOf(o)._name or ("a " .. tostring(topOf(o)._kind)), topWhere = originOf(topOf(o)), inMenu = inMenu(o) or nil,
           drag = o._scripts.OnDragStart ~= nil, scripts = (o._scripts.OnClick and "OnClick " or "") .. (o._scripts.OnMouseDown and "OnMouseDown " or "") .. (o._scripts.OnMouseUp and "OnMouseUp" or "") }
         if area then cp.mouse[#cp.mouse + 1] = e else cp.noArea[#cp.noArea + 1] = e end
-      elseif o:IsMouseMotionEnabled() then cp.hover = cp.hover + 1 end
-      if o._wheel and area then cp.wheel[#cp.wheel + 1] = { name = nm, kind = o._kind, where = where, w = w, h = h } end
-      if o._keyboard then cp.keyboard[#cp.keyboard + 1] = { name = nm, kind = o._kind, where = where, propagate = o._propagate and true or false } end
+      elseif o:IsMouseMotionEnabled() then
+        cp.hover = cp.hover + 1
+        local area, w, h, frac = hasArea(o)
+        cp.hoverList[#cp.hoverList + 1] = { name = nm, rule = ruleOf[o] and tostring(ruleOf[o].name) or nil, kind = o._kind, where = where, by = o._motionBy or "?", w = w, h = h, frac = frac or 0, area = area,
+          top = topOf(o)._name or ("a " .. tostring(topOf(o)._kind)), topWhere = originOf(topOf(o)), inMenu = inMenu(o) or nil,
+          tip = o._scripts.OnEnter ~= nil }
+      end
+      if o:IsMouseEnabled() then
+        local area, w, h, frac = hasArea(o)
+        if area and (frac or 0) >= 0.5 then cp.big[#cp.big + 1] = { name = nm, kind = o._kind, where = where, by = o._clickBy or o._motionBy or (o._mouseSet and "?" or ("never set: a " .. o._kind .. " takes clicks by default")), w = w, h = h, frac = frac,
+          click = o:IsMouseClickEnabled() and not passesClicks(o) } end
+      end
+      if o._wheel and area then cp.wheel[#cp.wheel + 1] = { name = nm, kind = o._kind, where = where, by = o._wheelBy or "?", w = w, h = h } end
+      if o._keyboard then cp.keyboard[#cp.keyboard + 1] = { name = nm, kind = o._kind, where = where, by = o._kbBy or "?", propagate = o._propagate and true or false } end
     end
-    if o._kind == "EditBox" and o._focus then cp.focus[#cp.focus + 1] = { name = o._name or "an edit box", where = where or "not XayaUI's", visible = o:IsVisible() } end
+    if where and o._keyboard and not o:IsVisible() then cp.kbHidden[#cp.kbHidden + 1] = { name = o._name or ("a " .. tostring(o._kind)), kind = o._kind, where = where, by = o._kbBy or "?" } end
+    if o._kind == "EditBox" and o._focus then cp.focus[#cp.focus + 1] = { name = o._name or "an edit box", where = where or "not XayaUI's", xui = where ~= nil, visible = o:IsVisible() } end
   end
   for _, key in rawipairs({ "PRINTSCREEN", "W", "SPACE" }) do
     local got = W.pressKey(key)
@@ -769,6 +854,7 @@ UnitAffectingCombat = function() return (W.combat or regen) and true or false en
 local function fight() regen = true; W.enterCombat(); regen = false end
 local function peace() W.leaveCombat() end
 local FPS = 30
+local BUSY = tonumber(CFG.busy) or 15   -- seconds of fight per cycle (a shorter value only for profiling the gate itself)
 local DT = 1 / FPS
 local function frames(sec, each)
   local n = math.floor(sec * FPS + 0.5)
@@ -809,6 +895,28 @@ local used = {}
 pcall(ns.ToggleUI); settle()
 used.open = ACD and ACD.OpenFrames[APP] ~= nil
 if used.open then
+  -- first a group's page, right after the window opens (INFERENCE: after the rule clicks and the search, SelectGroup no longer
+  -- reaches the group's page in the stand-in): drag its X offset slider (as tests/fix_u5rulestree_slider_drag_run.py does), open a dropdown
+  local grp
+  for _, f in rawipairs(ns.folders) do if f.name == "Static 2" then grp = f; break end end   -- (a group with loaded rules: it is in the "loaded" tree)
+  used.group = grp and grp.name
+  if grp then pcall(ACD.SelectGroup, ACD, APP, "cooldowns", "enabledTab", "loaded", grp.id); settle() end
+  local function named(typ, nm)
+    return findW(ACD.OpenFrames[APP], function(w)
+      local o = w.GetUserData and w:GetUserData("option")
+      return w.type == typ and w.frame and w.frame:IsVisible() and (not nm or (o and o.name == nm))
+    end)
+  end
+  local slider = named("Slider", "X offset") or named("Slider")
+  if slider then for step = 1, 8 do slider:Fire("OnValueChanged", step * 2); W.tick(DT, 1) end; slider:Fire("OnMouseUp", 16); settle(); used.slider = true end
+  local dd = named("Dropdown", "Layer (strata)") or named("Dropdown")
+  if dd and dd.button then
+    W.click(dd.button); settle()                  -- opens the list as a click on the dropdown's button does
+    used.dropdown = dd.open and true or false
+    if dd.open then W.click(dd.button); settle() end
+  elseif dd and dd.pullout and dd.pullout.Open then
+    pcall(dd.pullout.Open, dd.pullout, "TOPLEFT", dd.frame, "BOTTOMLEFT", 0, 0); settle(); pcall(dd.pullout.Close, dd.pullout); used.dropdown = true
+  end
   pcall(ACD.SelectGroup, ACD, APP, "cooldowns", "enabledTab", "loaded"); settle()
   local xt = findW(ACD.OpenFrames[APP], function(w) return w.type == "TreeGroup" and ns.RulesTreeStatus and w.status == ns.RulesTreeStatus() end)
   local rows = 0
@@ -830,11 +938,6 @@ if used.open then
     used.search = ns.treeFilter
     local esc = sb:GetScript("OnEscapePressed"); if esc then pcall(esc, sb) end; W.tick(0.1, 4)
   end
-  pcall(ACD.SelectGroup, ACD, APP, "cooldowns", "enabledTab", "loaded", ns.folders[#ns.folders] and ns.folders[#ns.folders].id); settle()
-  local slider = findW(ACD.OpenFrames[APP], function(w) return w.type == "Slider" and w.frame and w.frame:IsVisible() end)
-  if slider then for step = 1, 8 do slider:Fire("OnValueChanged", step * 2); W.tick(DT, 1) end; slider:Fire("OnMouseUp", 16); settle(); used.slider = true end
-  local dd = findW(ACD.OpenFrames[APP], function(w) return w.type == "Dropdown" and w.frame and w.frame:IsVisible() end)
-  if dd and dd.pullout and dd.pullout.Open then pcall(dd.pullout.Open, dd.pullout, "TOPLEFT", dd.frame, "BOTTOMLEFT", 0, 0); settle(); pcall(dd.pullout.Close, dd.pullout); used.dropdown = true end
 end
 -- the mover (/xui unlock), opened and closed
 if ns.ToggleUnlock then pcall(ns.ToggleUnlock); frames(1); used.moverOpen = ns.IsUnlocked and ns.IsUnlocked() or true; pcall(ns.ToggleUnlock); frames(0.5) end
@@ -845,7 +948,14 @@ OUT.windowClosed = not (ACD and ACD.OpenFrames[APP])
 setPhase("closed")
 CLOSED = true
 T0 = W.now
-if PERF then debug.sethook(callhook, "c") end
+local function sample(on)
+  if not PERF then return end
+  SAMPLING = on and not CFG.nosample and true or false
+  if CFG.nohook then return end
+  debug.sethook(callhook, SAMPLING and "c" or "", INS_STEP)
+end
+local function fireSame(ev, ...) CTX = "same"; W.fire(ev, ...); CTX = "change" end
+sample(false)
 checkpoint("right after the settings window closed")
 
 -- the minimap button's list: opened, then a click on the game world
@@ -896,7 +1006,6 @@ local BUFFS = {}
 for i = 1, 66 do BUFFS[#BUFFS + 1] = 300000 + i end
 for i = 1, 24 do BUFFS[#BUFFS + 1] = 310000 + i end
 for i = 1, 20 do BUFFS[#BUFFS + 1] = 320000 + i end
-for i = 1, 20 do BUFFS[#BUFFS + 1] = 330000 + i end
 local active = {}   -- instance ids of the auras up now, oldest first
 local bi, ci = 0, 0
 local function gainOne(dur)
@@ -915,12 +1024,13 @@ local function loseOldest()
   if a and G.auras[a.spellId] == a then G.lose(a.spellId); G.syncContainers(); W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { a.auraInstanceID } }) end
 end
 local function storm(i)
+  CTX = "storm"
   local a = active[(i % math.max(#active, 1)) + 1]
   if a then a.expirationTime = W.now + a.duration; W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { a.auraInstanceID } })
   else W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { 1 } }) end
   W.fire("UNIT_AURA", "target", { updatedAuraInstanceIDs = { 2 } })
   W.fire("SPELL_UPDATE_COOLDOWN")
-  if i % 3 == 0 then W.fire("SPELL_UPDATE_CHARGES") end
+  W.fire("SPELL_UPDATE_CHARGES")
   W.fire("ACTIONBAR_UPDATE_COOLDOWN"); W.fire("ACTIONBAR_UPDATE_STATE"); W.fire("ACTIONBAR_UPDATE_USABLE")
   W.fire("UNIT_POWER_FREQUENT", "player", "FURY")
   if i % 15 == 0 then gainOne(12) end                      -- an aura gained every half second
@@ -935,37 +1045,45 @@ local function storm(i)
     G.targetDebuffs = { { spellId = 340000 + k, auraInstanceID = 9000 + k, duration = 10, expirationTime = W.now + 10, applications = 1, sourceUnit = "player" } }
     W.fire("UNIT_AURA", "target", { isFullUpdate = false, addedAuras = G.targetDebuffs })
   end
+  CTX = "change"
 end
 local function memNow() gc("collect"); return gc("count") end
 if PERF then OUT.memStart = memNow() end
 local cycleWin = {}
+-- call counting (slow in the stand-in) runs around every state-change event and for 15 frames of each fight, the same in every
+-- cycle, so the counts of the three cycles compare; the other instruments run all the time
+local function sfire(ev, ...) sample(true); W.fire(ev, ...); sample(false) end
+local function sfireSame(ev, ...) sample(true); fireSame(ev, ...); sample(false) end
 for cyc = 1, 3 do
   setPhase("busy " .. cyc)
   for k in rawpairs(WCALLS) do WCALLS[k] = nil end
+  -- every cycle plays the same thing from the same start (so a count that grows from cycle to cycle is the addon's, not the input's)
+  G.clear(); active = {}; bi, ci = 0, 0; G.targetDebuffs = {}; G.syncContainers()
+  sfire("UNIT_AURA", "player", { isFullUpdate = true })
   -- a loading screen into the zone
-  W.fire("LOADING_SCREEN_ENABLED"); W.fire("PLAYER_LEAVING_WORLD")
-  W.fire("PLAYER_ENTERING_WORLD", false, false); W.fire("ZONE_CHANGED_NEW_AREA"); W.fire("LOADING_SCREEN_DISABLED")
+  sfire("LOADING_SCREEN_ENABLED"); sfire("PLAYER_LEAVING_WORLD")
+  sfire("PLAYER_ENTERING_WORLD", false, false); sfire("ZONE_CHANGED_NEW_AREA"); sfire("LOADING_SCREEN_DISABLED")
   frames(1)
   -- mounted, then dismounted
-  G.mounted = true; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); W.fire("UNIT_AURA", "player", { isFullUpdate = true }); frames(1)
-  G.mounted = false; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); W.fire("UNIT_AURA", "player", { isFullUpdate = true }); frames(0.5)
-  -- a group joined, a target picked
-  G.group = true; W.fire("GROUP_ROSTER_UPDATE"); W.fire("GROUP_ROSTER_UPDATE"); frames(0.25)
-  G.target = true; W.fire("PLAYER_TARGET_CHANGED"); frames(0.25)
+  G.mounted = true; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(1)
+  G.mounted = false; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(0.5)
+  -- a group joined (the game sends the roster update twice), a target picked
+  G.group = true; sfire("GROUP_ROSTER_UPDATE"); sfireSame("GROUP_ROSTER_UPDATE"); frames(0.25)
+  G.target = true; sfire("PLAYER_TARGET_CHANGED"); frames(0.25)
   -- the fight: 15 seconds of storms
-  fight()
+  sample(true); fight(); sample(false)
   for _ = 1, 4 do gainOne(30) end
-  local mid
-  frames(15, function(i)
+  frames(BUSY, function(i)
+    if i == 31 then sample(true) elseif i == 46 then sample(false) end
     storm(i)
-    if i == 200 then W.fire("GROUP_ROSTER_UPDATE") end   -- someone joins mid-fight
-    if i == 225 and not mid then mid = true end
+    if i == 200 then sfireSame("GROUP_ROSTER_UPDATE") end   -- someone joins mid-fight (the player's group state does not change)
   end)
+  sample(false)
   OUT.mouseCombat[cyc] = checkpoint("in the fight, cycle " .. cyc)
-  peace()
+  sample(true); peace(); sample(false)
   frames(1)
   -- the group leaves, the target is dropped
-  G.group = false; W.fire("GROUP_ROSTER_UPDATE"); G.target = false; G.targetDebuffs = {}; W.fire("PLAYER_TARGET_CHANGED")
+  G.group = false; sfire("GROUP_ROSTER_UPDATE"); G.target = false; G.targetDebuffs = {}; sfire("PLAYER_TARGET_CHANGED")
   frames(0.5)
   checkpoint("out of combat after the fight, cycle " .. cyc)
   frames(0.5)
@@ -985,7 +1103,8 @@ frames(5)
 for w = 1, 3 do
   setPhase("idle " .. w)
   for k in rawpairs(WCALLS) do WCALLS[k] = nil end
-  frames(10)
+  sample(true); frames(2); sample(false)   -- call counting for the first 2 seconds of each window
+  frames(8)
   local snap = {}
   for k, n in rawpairs(WCALLS) do snap[k] = n end
   ST.idlewin[w] = snap
@@ -998,9 +1117,12 @@ local pend = {}
 for _, t in rawipairs(W.timers) do if not t.cancelled then local s = pend[t.src or "?"]; if not s then s = { n = 0, kind = t.kind, every = t.every, left = t.left }; pend[t.src or "?"] = s end; s.n = s.n + 1 end end
 OUT.timersPending = pend
 OUT.timersMade = TIMERS_SEEN
+OUT.timerEdges = TIMER_EDGES
 OUT.kbCalls = KBCALLS
 OUT.mouseCalls = MOUSECALLS
 OUT.nonint = NONINT
+OUT.frames = FRAMES
+OUT.fps = FPS
 OUT.stats = ST
 OUT.errors = #W.errors
 OUT.errorText = {}
@@ -1011,14 +1133,143 @@ end
 '''
 
 
-def run_scenario(perf=False):
+def run_scenario(perf=True, verbose=False):
     """Sessions A and B. Returns (result as Python data, seconds)."""
     t0 = time.time()
     saved, n, made, nf, errs_a = build_profile()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world, loader, game, sv = _world(L, saved)
-    cfg = H.to_lua(L, {"perf": perf})
+    cfg = H.to_lua(L, {"perf": perf, "verbose": verbose or bool(os.environ.get("XUI_GATE_VERBOSE")),
+                        "nosample": bool(os.environ.get("XUI_GATE_NOSAMPLE")), "nohook": bool(os.environ.get("XUI_GATE_NOHOOK")),
+                        "busy": float(os.environ.get("XUI_GATE_BUSY", "15"))})
     res = L.eval("function(src, W, Ld, G, C) return loadstring(src)()(W, Ld, G, C) end")(SCENARIO_LUA, world, loader, game, cfg)
     out = H.lua_to_py(res)
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
     return out, round(time.time() - t0, 1)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# one run for the three gates: the scenario takes about two minutes, so its result is kept on disk under a key made from every file
+# it reads (the addon folders, this file, the harness and the API index); any change to one of them runs it again.
+# XUI_GATE_NOCACHE=1 always runs it.
+# ---------------------------------------------------------------------------------------------------------------------------------
+def _key():
+    h = hashlib.sha1()
+    files = []
+    for name in sorted(os.listdir(ROOT)):
+        d = os.path.join(ROOT, name)
+        if name in ADDONS and os.path.isdir(d):
+            for base, dirs, fs in os.walk(d):
+                dirs.sort()
+                files += [os.path.join(base, f) for f in sorted(fs)]
+    hd = os.path.join(HERE, "harness")
+    files += [os.path.join(hd, f) for f in sorted(os.listdir(hd)) if f.endswith((".lua", ".py"))]
+    api = os.environ.get("XUI_API_INDEX")
+    if api and os.path.isfile(api):
+        files.append(os.path.abspath(api))
+    # this file's part that runs the game: the three Lua chunks and the functions that start them (the reporting code below is not
+    # part of the key, so a change to how a gate reads the result does not run the scenario again)
+    for part in (GAME_LUA, PROFILE_LUA, SCENARIO_LUA, inspect.getsource(_world), inspect.getsource(build_profile), inspect.getsource(run_scenario)):
+        h.update(part.encode())
+    h.update(ROOT.encode())
+    h.update((api or "").encode())
+    for f in files:
+        h.update(f.encode())
+        with open(f, "rb") as fh:
+            h.update(fh.read())
+    for k in ("XUI_GATE_BUSY", "XUI_GATE_NOSAMPLE", "XUI_GATE_NOHOOK"):
+        h.update((k + "=" + os.environ.get(k, "")).encode())
+    return h.hexdigest()
+
+
+def result():
+    """The scenario's result (cached; see above). Returns (data, seconds the scenario took, True when read from the cache)."""
+    d = os.path.join(tempfile.gettempdir(), "xui_gate_cache")
+    path = os.path.join(d, _key() + ".json")
+    if not os.environ.get("XUI_GATE_NOCACHE") and os.path.isfile(path):
+        with open(path) as fh:
+            data = json.load(fh)
+        return data, data.get("_secs", 0), True
+    data, secs = run_scenario(perf=True)
+    data["_secs"] = secs
+    os.makedirs(d, exist_ok=True)
+    tmp = path + ".%d.tmp" % os.getpid()
+    with open(tmp, "w") as fh:
+        json.dump(data, fh, default=str)
+    os.replace(tmp, path)
+    with open(path) as fh:            # (read back: the gates judge exactly what JSON keeps, cached or not)
+        data = json.load(fh)
+    return data, secs, False
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# reporting
+# ---------------------------------------------------------------------------------------------------------------------------------
+class Report:
+    """Collects violations (FAIL) and warnings for one gate and prints them; the last line is what tests/run_all.py reads."""
+
+    def __init__(self, gate):
+        self.gate, self.fails, self.warns, self.notes = gate, [], [], []
+
+    def fail(self, where, what, numbers, fix):
+        self.fails.append((where, what, numbers, fix))
+
+    def warn(self, where, what, numbers="", fix=""):
+        self.warns.append((where, what, numbers, fix))
+
+    def note(self, text):
+        self.notes.append(text)
+
+    def show(self, data, secs, cached):
+        print("%s (V27 release gate; XayaUI + XayaUI_Options + XayaUI_Rules, %s rules, %s groups; scenario %.0f s%s)" % (
+            self.gate, data.get("rules"), data.get("folders"), secs or 0, ", result from the cache" if cached else ""))
+        for t in self.notes:
+            print("  " + t)
+        for i, (where, what, numbers, fix) in enumerate(self.fails, 1):
+            print("FAIL %d [%s] %s" % (i, self.gate, where))
+            print("    what:    " + what)
+            if numbers:
+                print("    numbers: " + numbers)
+            if fix:
+                print("    fix:     " + fix)
+        for where, what, numbers, fix in self.warns:
+            print("WARNING [%s] %s" % (self.gate, where))
+            print("    what:    " + what)
+            if numbers:
+                print("    numbers: " + numbers)
+            if fix:
+                print("    note:    " + fix)
+        print("UNVERIFIED IN GAME: the stand-in game (tests/harness/world.lua) is a mock; a pass here is not proof of in-game behavior (V25).")
+        print("%s: %d violation(s), %d warning(s)  FAILS: %d" % (self.gate, len(self.fails), len(self.warns), len(self.fails)))
+        return 1 if self.fails else 0
+
+
+def integrity(data, rep):
+    """The scenario must have run as planned, or the gate proves nothing (each miss is a FAIL)."""
+    used = data.get("used") or {}
+    checks = [
+        (int(data.get("rules") or 0) >= 290, "the profile has about 300 rule entries", "rules: %s" % data.get("rules")),
+        (bool(data.get("optionsLoaded")), "the settings window's addon (XayaUI_Options) loaded", ""),
+        (bool(used.get("open")), "the settings window opened", ""),
+        (int(used.get("rows") or 0) >= 2, "rules were selected in the rule list", "rows clicked: %s" % used.get("rows")),
+        (bool(used.get("search")), "the rule search was typed in", ""),
+        (bool(used.get("menu")), "a rule's right-click menu was opened", ""),
+        (bool(used.get("moverOpen")), "the mover (/xui unlock) opened", ""),
+        (bool(data.get("windowClosed")), "the settings window closed", ""),
+        (len(data.get("checkpoints") or []) >= 9, "every checkpoint ran (closed, minimap, three fights, three after-fights, idle)",
+         "checkpoints: %d" % len(data.get("checkpoints") or [])),
+        (int(data.get("errors") or 0) == 0, "no Lua error during the scenario", "; ".join((data.get("errorText") or [])[:3])),
+    ]
+    for ok, what, numbers in checks:
+        if not ok:
+            rep.fail("tests/gate_common.py (the scenario)", "the scenario did not run as planned: " + what, numbers,
+                     "fix the addon error or the scenario before reading the gate")
+    if not used.get("slider"):
+        rep.warn("tests/gate_common.py (the scenario)", "no visible slider was found to drag in the selected group's pane")
+    if not used.get("dropdown"):
+        rep.warn("tests/gate_common.py (the scenario)", "no visible dropdown list was found to open")
+
+
+def short(where):
+    """'XayaUI_Rules/Visual.lua:3007 SetMouseClickEnabled(true)' -> 'XayaUI_Rules/Visual.lua:3007'."""
+    return (where or "?").split(" ")[0]

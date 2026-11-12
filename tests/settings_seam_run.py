@@ -17,6 +17,8 @@ that module's settings view; every read and write lands in the same CueRulesDB k
      asked for a key it does not own, and nothing of the rules saved.
      (Debug chat defaults, Chat 0.6.46) one more allowed difference, in canon: the privacy cover's and the Sidebar's defaults that now
      reach the saved settings at login (listed in CHAT_DEFAULTS_ADDED, found by diffing the dumps of 1b974fe and the new code).
+     (Round 5) two more, in canon, found by diffing the dumps of c5ad5d6 and the new code: the engine's saved off switches that are
+     gone (SD-47), and the "/xui debug mouse" help line in the bug report's console lines (SD-34; "core only" is compared to GOLDEN_R5).
   C  a view kept from load time still reads the new data after: the saved variables arriving (first-run defaults), a profile
      import (Profiles > Import, a registered part), Theme "Reset everything", a backup "Load (replace)", and CueRulesDB being
      replaced as a whole; the hot-path caches (ns.AuraAliasesOf, read on every aura read) follow a view write, a profile part
@@ -44,6 +46,14 @@ GOLDEN = {
     "all on: reload": "c40a90a6ecea2fe4643e3425aacf020d2040bd30321bedefde003f8635475845",
     "core only: play session": "719d8932a1e2c4cca3e4e45416945f5a5a5d5dd219c842154b7f126664b35db8",
     "core only: reload": "719d8932a1e2c4cca3e4e45416945f5a5a5d5dd219c842154b7f126664b35db8",
+}
+# (round 5) "core only" made again for canon's console-lines step (_console_block_back): the old code c5ad5d6, whose "core only"
+# sessions hash to GOLDEN above under the canon before that step (its own test passes: 50 checks, 0 failed), hashes to these under
+# the canon now, and so does the new code. "all on" stays GOLDEN: it is compared only where the QA-branch modules are present (never
+# on main), and must be made again there the same way.
+GOLDEN_R5 = {
+    "core only: play session": "abe752502461cb8b0aae11f700317db52ae732983cc740583be1b50cdaf66ba0",
+    "core only: reload": "abe752502461cb8b0aae11f700317db52ae732983cc740583be1b50cdaf66ba0",
 }
 # (P2, kept for the record) the hashes per addon folder, made in a checkout of main 2faeda5 (the code before the seam); 8ced2e3 matched them
 GOLDEN_P2 = {
@@ -249,6 +259,27 @@ def _stats_line_back(v):
     return v
 
 
+# (round 5, SD-34) the bug report's "Last console lines:" block (Console.lua: the newest 60 lines of ns.logBuf): the
+# "/xui debug mouse" help line is taken out, "debug commands (7)" reads "(6)" again, and only the newest CONSOLE_KEEP lines are kept,
+# for the old code's data and the new code's alike (each help listing the scenario prints adds one line, so the new window starts a
+# few lines later: in the scripted session 6 of the new code's 60 lines are that help line, so 54 are the same in both, and 40 leaves
+# room). The 20 oldest console lines of the window are the only text no longer compared; everything the player set is still compared
+# whole. The old code's data goes through this too, so its hash changes: GOLDEN_R5.
+CONSOLE_KEEP = 40
+MOUSE_HELP = "  XayaUI:   /xui debug mouse on||off  "
+
+
+def _console_block_back(report):
+    head, sep, rest = report.partition("\nLast console lines:\n")
+    if not sep:
+        return report
+    lines = rest.split("\n")
+    n = next((i for i, x in enumerate(lines) if not x.startswith("  ")), len(lines))   # the block ends at its first unindented line
+    block = [x.replace("XayaUI: debug commands (7), each typed", "XayaUI: debug commands (6), each typed")
+             for x in lines[:n] if not x.startswith(MOUSE_HELP)]
+    return head + sep + "\n".join(block[-CONSOLE_KEEP:] + lines[n:])
+
+
 def canon(saved):
     # (P4) the saved variables merged across addon folders ({variable: value}; every variable name is declared by one folder only)
     merged = {}
@@ -263,6 +294,19 @@ def canon(saved):
     if isinstance(merged.get("CueRulesDB"), dict):
         merged["CueRulesDB"].pop("groupAnchorVer", None)
         merged["CueRulesDB"].pop("groupAnchorMoved", None)
+    # (round 5, SD-47: the combat engine has no saved off switch) the old code saved engineDisplay = { auto = true, groups = {},
+    # guardV = 2 } at its first build; the new code saves none of the three (AuraDisplay.lua DB() clears them). Diffing the dumps of
+    # c5ad5d6 and the new code (core only, both sessions): those three keys, nothing else. Put back, so the rest stays compared.
+    ed = merged.get("CueRulesDB", {}).get("engineDisplay") if isinstance(merged.get("CueRulesDB"), dict) else None
+    if isinstance(ed, dict) and not any(k in ed for k in ("auto", "groups", "guardV")):
+        ed.update({"auto": True, "groups": {}, "guardV": 2})
+    # (round 5, SD-34: /xui debug mouse on|off, MouseTracker.lua) the debug command list has one more line, so each time the scenario
+    # prints it the console has one more line and "(6)" reads "(7)". The bug report (CueRulesDB.lastBugReport) quotes the newest 60
+    # console lines, so its window also starts later. Diffing the dumps of c5ad5d6 and the new code (core only, both sessions): the
+    # mouse lines, the count and that shift, nothing else (CONSOLE_KEEP below).
+    db = merged.get("CueRulesDB")
+    if isinstance(db, dict) and isinstance(db.get("lastBugReport"), str):
+        db["lastBugReport"] = _console_block_back(db["lastBugReport"])
     # (P5) the one allowed difference: the old Platform made CueRulesDB.qol = { boxes = {} } (the shelved QoL stats-text boxes) whatever
     # was on; XayaUI QoL makes it in its own store now, so with QoL off there is none (PS-52; nothing of a switched-off module is made)
     if isinstance(merged.get("CueRulesDB"), dict) and "qol" not in merged["CueRulesDB"]:
@@ -581,7 +625,7 @@ def main():
             # the data can differ only by them, and a hash cannot be filtered. "core only" (no such addon on) still compares.
             skip(", ".join(ABSENT.values()), "B: %s: saved variables byte-identical to the old code's" % tag)
         else:
-            check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN.get(tag), h)
+            check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN_R5.get(tag, GOLDEN.get(tag)), h)
         check("B: %s: no Lua error" % tag, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
         check("B: %s: no view was asked for a key its module does not own" % tag, unknown == "", unknown)
     # (P4) XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, and nothing of the rules is saved

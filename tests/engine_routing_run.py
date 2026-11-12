@@ -3,8 +3,8 @@
 "either way reduce the ms as much as possible. avoid at all costs compromising on performance of rules while minimizing cpu and ram costs".
 Checks what happens frame by frame in the stand-in game: a cooldown event re-checks the cooldown rules on the very next frame, and not the
 aura or other rules; a player aura event re-checks the aura rules on the next frame, not the cooldown rules; an aura change makes its sound
-on the next frame (the cue fires one frame after the event, not up to 50 ms later); a plain 0.2 s tick skips an aura-only rule an aura event
-re-checked within the tick but still steps every other rule; an event that is not routed (a target change) still steps every rule; a cue
+on the next frame (the cue fires one frame after the event, not up to 50 ms later); (round 5, V27) with nothing changing no rule is
+re-checked at all (no 0.2 s tick); an event that is not routed (a target change) still steps every loaded rule; a cue
 of a routed rule is re-checked with it; no table is made per routed frame.
 Run: python3 tests/engine_routing_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
@@ -26,6 +26,9 @@ local CD = mk("cd", function(r) r.useCooldown, r.spellID, r.cdState = true, 1878
 local AU = mk("aura", function(r) r.useBuff, r.buffID, r.buffState, r.cdState = true, 1001, "present", "none" end)
 local OT = mk("other", function(r) r.cdState, r.buffState = "none", "none"; r.extra = { list = { { type = "playerState", what = "moving", state = "yes" } } } end)
 local cue = ns.NewCueRule(AU, "sound"); cue.sound.source, cue.sound.value = "kit", "8959"
+-- (round 5, V27: the engine is event-driven; a new rule list is announced as the editor does, ns.MarkDirty, and is stepped once on the
+-- next frame; nothing re-checks the rules on a timer any more)
+ns.MarkDirty()
 check("each rule is tied to what it reads", ns.EngineDeps ~= nil and ns.EngineDeps(CD).cd and not ns.EngineDeps(CD).aura and ns.EngineDeps(AU).auraOnly and ns.EngineDeps(OT).other
   and ns.EngineDeps(cue).auraOnly)
 local n = {}
@@ -33,7 +36,7 @@ local E0 = ns.Evaluate
 ns.Evaluate = function(r, ...) n[r] = (n[r] or 0) + 1; return E0(r, ...) end
 local function reset() for k in pairs(n) do n[k] = nil end end
 local dt = 1 / 120
-W.tick(0.3, 1)   -- a full tick: everything settles
+W.tick(0.3, 1)   -- the announced list is stepped once: everything settles
 reset()
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
 check("cooldown event: the cooldown rule is re-checked on the next frame; the aura and other rules are not", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
@@ -50,30 +53,23 @@ ns.BuffPresent = function(id) if id == 1001 then return true, "test" end return 
 W.tick(0.04, 1)   -- (review R18) a quiet spell first
 W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
 check("an aura appearing plays its sound on the next frame (not up to 50 ms later)", played == 1, played)
--- a plain tick right after: the aura-only rule (fresh) is skipped, the others are stepped
-local marks = 0
-local M0, S0 = ns.MarkDirty, ns.MarkStateDirty
-ns.MarkDirty = function(...) marks = marks + 1; return M0(...) end
-ns.MarkStateDirty = function(...) marks = marks + 1; return S0(...) end
-W.tick(0.21, 1)   -- (a full tick: the sound play above may have marked a change)
-W.fire("UNIT_AURA", "player"); W.tick(dt, 1)
-reset(); marks = 0
-W.tick(0.21, 1)
-check("plain 0.2 s tick: skips the aura rule an aura event just re-checked, steps the cooldown and other rules", not n[AU] and (n[CD] or 0) >= 1 and (n[OT] or 0) >= 1,
-  tostring(n[AU]) .. "/" .. tostring(n[CD]) .. "/" .. tostring(n[OT]) .. " marks=" .. marks)
-ns.MarkDirty, ns.MarkStateDirty = M0, S0
+-- (round 5, V27 "No running loops": the 0.2 s tick that stepped every rule is gone) nothing changes for two seconds: no rule is re-checked
+W.tick(0.21, 1)   -- (the sound play above may have marked a change)
 reset()
-W.tick(0.21, 1)
-check("the next tick steps it again (it was not re-checked since)", (n[AU] or 0) >= 1)
+W.tick(0.1, 20)
+check("nothing changes for 2 s: no rule is re-checked (no polling)", not n[AU] and not n[CD] and not n[OT] and not n[cue],
+  tostring(n[AU]) .. "/" .. tostring(n[CD]) .. "/" .. tostring(n[OT]))
+W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
+check("after the quiet spell a cooldown event still re-checks the cooldown rule on the next frame", (n[CD] or 0) == 1 and not n[AU] and not n[OT],
+  tostring(n[CD]) .. "/" .. tostring(n[AU]) .. "/" .. tostring(n[OT]))
 -- an event that is not routed steps everything (after the minimum gap)
 reset()
 W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1)
 check("a target change (not routed) steps every rule", (n[AU] or 0) >= 1 and (n[CD] or 0) >= 1 and (n[OT] or 0) >= 1)
--- an aura event and a tick on the same frame: the aura rule is not skipped
+-- an aura event on the same frame as a target change: the aura rule is not lost
 reset()
-W.tick(0.15, 1)
-W.fire("UNIT_AURA", "player"); W.tick(0.06, 1)
-check("an aura event landing on a tick's frame is not lost (the aura rule is stepped)", (n[AU] or 0) >= 1)
+W.fire("PLAYER_TARGET_CHANGED"); W.fire("UNIT_AURA", "player"); W.tick(0.06, 1)
+check("an aura event landing on the frame of a target change is not lost (the aura rule is stepped)", (n[AU] or 0) >= 1)
 -- memory: a routed re-check makes less garbage than a full step (it reuses the context and its filter)
 ns.Evaluate = E0
 local function garbage(f, k) collectgarbage("collect"); collectgarbage("stop"); local m0 = collectgarbage("count"); for _ = 1, k do f() end; local g = collectgarbage("count") - m0; collectgarbage("restart"); return g / k end

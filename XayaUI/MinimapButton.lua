@@ -68,23 +68,26 @@ function ns.Minimap_ResolveIcon(text)
     return t, "texture path"
 end
 local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
-local button, popup, catcher
+local button, popup
 local function ApplyIcon()
     local db = DB(); if not (db and button and button.icon) then return end
     local tex = ns.Minimap_ResolveIcon(db.iconOverride)
     button.icon:SetTexture(tex); button.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 end
 
--- Size the whole button from db.size: every piece is laid out for BASE_SIZE and multiplied by k.
+-- Size the whole button from db.size: every piece is laid out for BASE_SIZE and multiplied by k, then rounded to whole pixels once
+-- here (V27, her answer "Whole-pixel / no float math"): a size such as 24 made 15.48-pixel pieces before.
+local function Px(v) return math.floor(v + 0.5) end
 local function ApplySize()
     local db = DB(); if not (db and button) then return end
     local sz = math.floor(math.max(MIN_SIZE, math.min(MAX_SIZE, tonumber(db.size) or BASE_SIZE)) + 0.5)
     local k = sz / BASE_SIZE
+    local s20, s18, s53, up = Px(20 * k), Px(18 * k), Px(53 * k), Px(k)
     button:SetSize(sz, sz)
-    button.bg:SetSize(20 * k, 20 * k);     button.bg:ClearAllPoints();   button.bg:SetPoint("CENTER", 0, k)
-    button.icon:SetSize(18 * k, 18 * k);   button.icon:ClearAllPoints(); button.icon:SetPoint("CENTER", 0, k)
-    button.mask:SetSize(20 * k, 20 * k);   button.mask:ClearAllPoints(); button.mask:SetPoint("CENTER", 0, k)
-    button.border:SetSize(53 * k, 53 * k)
+    button.bg:SetSize(s20, s20);     button.bg:ClearAllPoints();   button.bg:SetPoint("CENTER", 0, up)
+    button.icon:SetSize(s18, s18);   button.icon:ClearAllPoints(); button.icon:SetPoint("CENTER", 0, up)
+    button.mask:SetSize(s20, s20);   button.mask:ClearAllPoints(); button.mask:SetPoint("CENTER", 0, up)
+    button.border:SetSize(s53, s53)
 end
 ns.Minimap_ApplySize = ApplySize
 
@@ -101,11 +104,12 @@ local function Place()
         local k = math.max(math.abs(x) / rx, math.abs(y) / ry)
         if k > 0 then x, y = x / k, y / k end
     end
+    -- (V27 whole pixels) the angle math gives decimals (-61.43, -43.01): rounded once here, where the position is made
     button:ClearAllPoints()
-    button:SetPoint("CENTER", m or UIParent, "CENTER", x, y)
+    button:SetPoint("CENTER", m or UIParent, "CENTER", math.floor(x + 0.5), math.floor(y + 0.5))
 end
 
-local function ClosePopup() if popup then popup:Hide() end; if catcher then catcher:Hide() end end
+local function ClosePopup() if popup then popup:Hide() end end
 
 local function Visible()
     local db = DB(); local out = {}
@@ -114,17 +118,31 @@ local function Visible()
     return out
 end
 
+-- Closing the list (V27, Xaya 2026-11-10, her answer "Hover only, clicks pass": "the minimap menu closes on any click or Esc without
+-- catching that click"; REQUEST-LOG SD-35: the full-screen click catcher this replaces took every left and right click on the game
+-- world while the list was open). No frame covers the screen: a mouse press anywhere outside the list and outside the button that
+-- opened it closes the list, and the press goes on to the game as if the list were not there (GLOBAL_MOUSE_DOWN only reports it,
+-- events.md:674). The event is registered only while the list is shown (nothing listens while it is closed). A press on the list's
+-- own rows is left to the row; a press on the opening button is left to that button (its click toggles the list closed).
+-- Esc: the list is in UISpecialFrames, so the game's own Esc handling closes it (the key is not taken by any XayaUI frame).
+local function PopupOnEvent(self)   -- GLOBAL_MOUSE_DOWN, the one event it registers
+    if self:IsMouseOver() then return end
+    local a = self.anchor
+    if a and a.IsMouseOver and a:IsMouseOver() then return end
+    ClosePopup()
+end
 local function BuildPopup()
     if popup then return popup end
-    catcher = CreateFrame("Button", nil, UIParent)
-    catcher:SetAllPoints(UIParent); catcher:SetFrameStrata("FULLSCREEN"); catcher:Hide()
-    catcher:SetScript("OnClick", ClosePopup)
     popup = CreateFrame("Frame", "XayaUIMinimapMenu", UIParent, "BackdropTemplate")
     popup:SetFrameStrata("FULLSCREEN_DIALOG"); popup:SetClampedToScreen(true)
     popup:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     popup:SetBackdropColor(0.08, 0.08, 0.08, 0.97); popup:SetBackdropBorderColor(0.2, 0.7, 1, 1)
     popup.rows = {}
     popup:Hide()
+    popup:SetScript("OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
+    popup:SetScript("OnHide", function(self) self:UnregisterEvent("GLOBAL_MOUSE_DOWN"); self.anchor = nil end)
+    popup:SetScript("OnEvent", PopupOnEvent)
+    if type(UISpecialFrames) == "table" then tinsert(UISpecialFrames, "XayaUIMinimapMenu") end
     return popup
 end
 
@@ -176,7 +194,8 @@ local function TogglePopup(anchor)
     local _, cy = anchor:GetCenter()
     local below = (cy or 0) > ((UIParent:GetHeight() or 768) / 2)
     popup:SetPoint(below and "TOP" or "BOTTOM", anchor, below and "BOTTOM" or "TOP", (cx > half) and -MENU_W / 2 + 10 or MENU_W / 2 - 10, below and -4 or 4)
-    catcher:Show(); popup:Show()
+    popup.anchor = anchor
+    popup:Show()
 end
 -- (core 0.6.68; A16 CR-6 / CR-7) the same list from XayaUI's button in the chat sidebar
 function ns.Minimap_TogglePopupAt(anchor) if DB() and anchor then TogglePopup(anchor) end end
@@ -216,7 +235,7 @@ local function BuildButton()
             local px, py = GetCursorPosition()
             local sc = (m.GetEffectiveScale and m:GetEffectiveScale()) or 1
             px, py = px / sc, py / sc
-            DB().angle = math.deg(atan2(py - my, px - mx)) % 360
+            DB().angle = math.floor(math.deg(atan2(py - my, px - mx)) + 0.5) % 360   -- whole degrees, as the slider sets it
             Place()
         end)
     end)

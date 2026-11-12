@@ -87,17 +87,18 @@ local function NoteCast(spellID, t)
     if #l > 12 then table.remove(l, 1) end
 end
 ns.NoteChargeCast = NoteCast
-local function CastsAfter(t, a, b)
-    local n, last = 0, nil
-    for _, id in ipairs({ a, b }) do
-        local l = id and castTimes[id]
-        if l then
-            for i = 1, #l do
-                if l[i] > t then n = n + 1; if not last or l[i] > last then last = l[i] end end
-            end
+-- (no table per call: it runs from the charge watcher on every SPELL_UPDATE_CHARGES in combat; V27)
+local function CastsIn(l, t, n, last)
+    if l then
+        for i = 1, #l do
+            if l[i] > t then n = n + 1; if not last or l[i] > last then last = l[i] end end
         end
-        if b == a then break end
     end
+    return n, last
+end
+local function CastsAfter(t, a, b)
+    local n, last = CastsIn(a and castTimes[a], t, 0, nil)
+    if b ~= a then n, last = CastsIn(b and castTimes[b], t, n, last) end
     return n, last
 end
 local function GainsAfter(readID, baseID, t)
@@ -187,28 +188,89 @@ ns._ChargeState = ChargeState
 -- changes and when combat starts or ends, whether or not the rule is loaded. Out of combat that records the exact count, so a
 -- rule that only loads in combat starts from an exact count, and casts from an earlier pull never hold it back; in combat it
 -- sees a recharge finish even between engine steps.
-local function WatchCharges()
-    if not (ns.rules and C_Spell and C_Spell.GetSpellCharges) then return end
-    local done = {}
-    -- the rule's own spell, and every "Cooldown (any spell)" row (retrospective gap 22: rows were not watched, so after a /reload
-    -- in combat a used charge read "full")
-    -- each entry: the spell ID and whether it is read exactly (B4) or as the spell on the bar
-    local ids = {}
-    for _, r in ipairs(ns.rules) do
-        if r.enabled ~= false then
-            ids[#ids + 1] = { tonumber(r.spellID), r.exactSpell }
+-- V27 (Xaya, SD-28/29: "nothing loops over all rules on every game event"): SPELL_UPDATE_CHARGES has no payload (events.md: no
+-- spell ID), so the spells to read cannot be looked up from the event. Instead two lists are kept, built once and reused:
+--   watch*  every distinct spell a rule reads (the rule's own spell and every "Cooldown (any spell)" row, retrospective gap 22),
+--           with its exact-ID flag (B4); rebuilt only when the rule list changes (another list, another length, or a settings edit:
+--           ns.configVersion, bumped by ns.MarkDirty; the engine keys its own rule index the same way, Engine.lua);
+--   charge* the part of it that has charges (the game's maxCharges above 1, NeverSecret); sorted again only when the rule list
+--           changed or a spell / talent event came (PLAYER_ENTERING_WORLD, SPELLS_CHANGED, TRAIT_CONFIG_UPDATED,
+--           PLAYER_SPECIALIZATION_CHANGED). A spell the engine finds with charges later (a buff that adds a charge, INFERENCE) is
+--           added by ReadCooldownRaw, so it is watched from then on.
+-- Per SPELL_UPDATE_CHARGES only the charge spells are read (no table or string is made by XayaUI; the game's own reads hand back
+-- their tables). The spell on the bar is looked up again each time, as before (a talent override can change).
+local watchBase, watchExact, watchN = {}, {}, 0
+local chargeBase, chargeExact, chargeN = {}, {}, 0
+local chargeIn, chargeInX = {}, {}          -- [spellID] = true: already in the charge list (following the bar / exact ID)
+local wList, wLen, wVer = nil, -1, -1       -- the rule list, its length and ns.configVersion the watch list was built from
+local classDirty = true
+local doneAt, doneSerial = {}, 0            -- [readID] = the event it was read in (each spell read once per event, no table per event)
+
+local function GameMaxCharges(id)
+    local okc, ch = pcall(C_Spell.GetSpellCharges, id)
+    return okc and CleanNumber(ch, "maxCharges") or nil
+end
+local function AddCharge(id, exact)
+    local seen = exact and chargeInX or chargeIn
+    if seen[id] then return end
+    seen[id] = true
+    chargeN = chargeN + 1
+    chargeBase[chargeN], chargeExact[chargeN] = id, exact
+end
+local function BuildWatch(rules)
+    local plain, exactSeen = {}, {}
+    watchBase, watchExact, watchN = {}, {}, 0
+    local function add(id, exact)
+        id = tonumber(id)
+        if not id or id <= 0 then return end
+        exact = exact and true or false
+        local seen = exact and exactSeen or plain
+        if seen[id] then return end
+        seen[id] = true
+        watchN = watchN + 1
+        watchBase[watchN], watchExact[watchN] = id, exact
+    end
+    for _, r in ipairs(rules) do
+        if type(r) == "table" and r.enabled ~= false then
+            add(r.spellID, r.exactSpell)
             if type(r.extra) == "table" and type(r.extra.list) == "table" then
                 for _, row in ipairs(r.extra.list) do
-                    if type(row) == "table" and row.type == "cooldown" then ids[#ids + 1] = { tonumber(row.spellID), row.exactSpell } end
+                    if type(row) == "table" and row.type == "cooldown" then add(row.spellID, row.exactSpell) end
                 end
             end
         end
     end
-    for _, e in ipairs(ids) do
-        local id = e[1]
-        local readID = (id and id > 0) and ns.CooldownReadID({ exactSpell = e[2] }, id) or nil
-        if readID and not done[readID] then
-            done[readID] = true
+    wList, wLen, wVer = rules, #rules, ns.configVersion or 0
+    classDirty = true
+end
+local function Classify()
+    classDirty = false
+    chargeBase, chargeExact, chargeN, chargeIn, chargeInX = {}, {}, 0, {}, {}
+    for i = 1, watchN do
+        local id, exact = watchBase[i], watchExact[i]
+        local readID = exact and id or ns.SpellOnBar(id)
+        local m = GameMaxCharges(readID)
+        if not (m and m > 1) and readID ~= id then m = GameMaxCharges(id) end
+        if m and m > 1 then AddCharge(id, exact) end
+    end
+end
+-- (ReadCooldownRaw: the engine read this spell with charges; watch it from now on if it is not watched yet)
+local function NoteChargeSpell(id, exact)
+    if wList and not (exact and chargeInX or chargeIn)[id] then AddCharge(id, exact and true or false) end
+end
+
+local function WatchCharges()
+    local rules = ns.rules
+    if not (rules and C_Spell and C_Spell.GetSpellCharges) then return end
+    if rules ~= wList or #rules ~= wLen or (ns.configVersion or 0) ~= wVer then BuildWatch(rules) end
+    if classDirty then Classify() end
+    if chargeN == 0 then return end
+    doneSerial = doneSerial + 1
+    for i = 1, chargeN do
+        local id = chargeBase[i]
+        local readID = chargeExact[i] and id or ns.SpellOnBar(id)
+        if doneAt[readID] ~= doneSerial then
+            doneAt[readID] = doneSerial
             local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
             local maxC = okc and CleanNumber(ch, "maxCharges") or nil
             if maxC and maxC > 1 then
@@ -219,11 +281,16 @@ local function WatchCharges()
     end
 end
 ns._WatchCharges = WatchCharges
+local SPELL_EVENTS = { PLAYER_ENTERING_WORLD = true, SPELLS_CHANGED = true, TRAIT_CONFIG_UPDATED = true, PLAYER_SPECIALIZATION_CHANGED = true }
+local function OnWatchEvent(_, event)
+    if SPELL_EVENTS[event] then classDirty = true end
+    pcall(WatchCharges)
+end
 if CreateFrame then
     local wf = CreateFrame("Frame")
     for _, e in ipairs({ "SPELL_UPDATE_CHARGES", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
         "SPELLS_CHANGED", "TRAIT_CONFIG_UPDATED", "PLAYER_SPECIALIZATION_CHANGED" }) do pcall(wf.RegisterEvent, wf, e) end
-    if wf.SetScript then wf:SetScript("OnEvent", function() pcall(WatchCharges) end) end
+    if wf.SetScript then wf:SetScript("OnEvent", OnWatchEvent) end
 end
 
 -- C_SpellBook.IsSpellKnownOrInSpellBook(spellID, bank, includeOverrides): true / false, or nil when unreadable (secret, error)
@@ -269,6 +336,7 @@ function ReadCooldownRaw(rule)
     end
     local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
     local maxC = okc and CleanNumber(ch, "maxCharges") or nil
+    if maxC and maxC > 1 then NoteChargeSpell(id, rule.exactSpell) end   -- (the charge watcher reads it on SPELL_UPDATE_CHARGES)
     if (not maxC or maxC < 2) and (rule.maxCharges or 0) > 1 then
         -- manual override: only meaningful if the game did report a charge table
         if okc and type(ch) == "table" then maxC = rule.maxCharges end

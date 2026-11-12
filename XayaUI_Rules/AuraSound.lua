@@ -342,6 +342,29 @@ function A.Owns(rule)
     return not (g and g.alsoXayaUI)
 end
 
+-- (round 4 review blocker) What XayaUI itself does when the game does not play the sound, said only where it is true for the reason.
+-- XayaUI plays its own copy when the rule fires and it can see the aura (Engine.lua: A.Owns is false while the game holds no copy), so
+-- the line says so only when the rule itself is set to play: the game refused the copy, or the sound is one the game cannot take (a
+-- [Game] sound kit, speech). For a rule or sound switched off, or a rule that does not load here, XayaUI plays nothing either. Any
+-- other reason (no aura ID, no sound picked or found, something went wrong, a check that cannot be made now) gets no promise.
+local ALSO_XAYAUI = " XayaUI plays the sound itself instead, but only when it can see the aura, and many auras are hidden from addons in combat."
+local NOR_XAYAUI = " XayaUI does not play it either."
+local function NotPlayedLine(why)
+    why = tostring(why or "unknown")
+    local tail = ""
+    if why:find("^the game refused it") or why:find("sound kit cannot be handed", 1, true) or why:find("^speech cannot") then
+        tail = ALSO_XAYAUI
+    elseif why == "the rule is switched off" or why == "the rule it belongs to is switched off" or why == "the rule's sound is switched off"
+        or why:find("^it is not set to load here") or why:find("^it is not for this character") or why:find("Never load", 1, true)
+        or why:find("^none of its Load tab choices") or why == "its Load tab does not match this character here" then
+        tail = NOR_XAYAUI
+    elseif why == "the rule has no Buff / Aura trigger" then
+        tail = " The game can play a sound only on an aura named in a Buff / Aura trigger."
+    end
+    return "|cffffd100Not played by the game:|r " .. why .. "." .. tail
+end
+A._NotPlayedLine = NotPlayedLine   -- (tests)
+
 -- One line for the settings pane.
 function A.StatusLine(rule)
     local g = A.Settings(rule)
@@ -387,10 +410,10 @@ function A.StatusLine(rule)
             what, (p and #p.ids > 1) and "s" or "", p and table.concat(p.ids, ", ") or "?", p and p.channel or "?",
             r.partial and (" The game refused some of the aura IDs (" .. r.partial .. ").") or "", extra)
     end
-    if lastWhy[rule] then return "|cffffd100Not played by the game:|r " .. tostring(lastWhy[rule]) .. ". XayaUI plays the sound itself as before, when it can see the aura." end
+    if lastWhy[rule] then return NotPlayedLine(lastWhy[rule]) end
     local okP, p, why = pcall(A.Plan, rule)
     if okP and p then return "|cffffd100Not set up yet|r (it is set up a moment after you change a setting)." end
-    return "|cffffd100Not played by the game:|r " .. tostring(why or "unknown") .. ". XayaUI plays the sound itself as before, when it can see the aura."
+    return NotPlayedLine(why)
 end
 
 -- When to resync: login, end of combat, spec / talent / gear / zone / group / Mythic+ / resting changes, and every rule edit (debounced; out of combat only).

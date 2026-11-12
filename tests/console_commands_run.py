@@ -95,13 +95,14 @@ check("debug: a header with the count", dbg[1] ~= nil and dbg[1]:match("^debug c
   and tonumber(dbg[1]:match("%((%d+)%)")) == #dbg - 1, dbg[1])
 check("debug: every line is '/xui debug <name> ...'", badLine == nil, badLine)
 -- (core 0.6.56, REQUEST-LOG #81: without XayaUI Dev Assist, which is not on this branch, only the player's diagnostics exist: status,
--- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's)
+-- perf (the engine meter), talents, loader and auras; every developer one is Dev Assist's. Round 5 (REQUEST-LOG A23 SD-34, her answer
+-- "Yes, in bundle 1 (Recommended)"): mouse, the right-click tracker, is a player's diagnostic in core (XayaUI/MouseTracker.lua))
 local missing, extra = {}, {}
-local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true }
+local PLAYER = { status = true, perf = true, talents = true, loader = true, auras = true, mouse = true }
 for d in pairs(PLAYER) do if not names[d] then missing[#missing + 1] = d end end
 for n in pairs(names) do if not PLAYER[n] then extra[#extra + 1] = n end end
 table.sort(extra)
-check("debug: lists the player's diagnostic commands (status, perf, talents, loader, auras)", #missing == 0, table.concat(missing, ", "))
+check("debug: lists the player's diagnostic commands (status, perf, talents, loader, auras, mouse)", #missing == 0, table.concat(missing, ", "))
 check("debug: no developer diagnostic without XayaUI Dev Assist", #extra == 0, table.concat(extra, ", "))
 check("debug: perf lists only the engine meter (perf ui is Dev Assist's)", not plain(table.concat(dbg, "\n")):find("perf ui", 1, true))
 local dpipe

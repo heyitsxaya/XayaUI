@@ -19,14 +19,17 @@
 -- updateInfo.addedAuras, C_UnitAuras.GetAuraDataByIndex / GetUnitAuraBySpellID, C_Spell.GetSpellName).
 --
 -- COST: one event handler for the player's own UNIT_AURA. In combat it returns at once (the payload is secret there: events.md
--- UNIT_AURA SecretWhenAurasRestricted). With no rule listing an aura ID it returns at once too (V14).
+-- UNIT_AURA SecretWhenAurasRestricted). With no rule listing an aura ID it returns at once too (V14). The name index of the rules'
+-- aura IDs is built once when the rule list changes (another list, another length, or a settings edit: ns.configVersion, bumped by
+-- ns.MarkDirty), never on a timer: V27 (Xaya, SD-28/29) "nothing loops over all rules on every game event". Each UNIT_AURA then
+-- looks the added auras up by name in that index.
 local _, ns = ...
 ns = XayaUI_NS or ns
 
 local issecret = issecretvalue or function() return false end
 local pcall, type, pairs, ipairs, tonumber = pcall, type, pairs, ipairs, tonumber
 local MAX_ALIASES = 4
-local INDEX_TTL = 10   -- seconds: the rules' aura names are read again at most this often (rules change rarely)
+local RETRY_TTL = 10   -- seconds: an aura ID whose spell name the game did not give yet is asked again at most this often
 
 local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB.auraAlias as before)
 if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
@@ -50,7 +53,9 @@ function ns.AuraAliasesOf(id)
 end
 
 -- name -> { auraID, ... } for every aura ID a rule lists (built-in Buff / Aura, its extra IDs, "Buff / Aura (another)" rows)
-local nameIndex, indexAt, indexN = {}, -1, 0
+local nameIndex, indexN = {}, 0
+local iList, iLen, iVer = nil, -1, -1    -- the rule list, its length and ns.configVersion the index was built from
+local missing, missingN, retryAt = {}, 0, 0   -- aura IDs whose name was not readable at the build (asked again, only those)
 local function SpellName(id)
     if not (C_Spell and C_Spell.GetSpellName) then return nil end
     local ok, n = pcall(C_Spell.GetSpellName, id)
@@ -61,16 +66,16 @@ local function AddID(idx, seen, id)
     if not id or id <= 0 or seen[id] then return end
     seen[id] = true
     local n = SpellName(id)
-    if not n then return end
+    if not n then missingN = missingN + 1; missing[missingN] = id; return end
     local l = idx[n]
     if not l then l = {}; idx[n] = l end
     l[#l + 1] = id
     indexN = indexN + 1
 end
-local function BuildIndex()
+local function BuildIndex(rules)
     local idx, seen = {}, {}
-    indexN = 0
-    for _, r in ipairs(ns.rules or {}) do
+    indexN, missing, missingN = 0, {}, 0
+    for _, r in ipairs(rules) do
         if type(r) == "table" and r.enabled ~= false then
             if r.useBuff ~= false then
                 AddID(idx, seen, r.buffID)
@@ -89,12 +94,40 @@ local function BuildIndex()
     end
     return idx
 end
-local function Index()
+-- the IDs whose name was missing are asked again (only those, at most every RETRY_TTL seconds); a name found joins the index
+local function RetryMissing()
     local now = GetTime and GetTime() or 0
-    if indexAt < 0 or now - indexAt >= INDEX_TTL or now < indexAt then nameIndex, indexAt = BuildIndex(), now end
+    if now >= retryAt and now - retryAt < RETRY_TTL then return end
+    retryAt = now
+    local keep = 0
+    for i = 1, missingN do
+        local id = missing[i]
+        missing[i] = nil
+        local n = SpellName(id)
+        if n then
+            local l = nameIndex[n]
+            if not l then l = {}; nameIndex[n] = l end
+            l[#l + 1] = id
+            indexN = indexN + 1
+        else
+            keep = keep + 1; missing[keep] = id
+        end
+    end
+    missingN = keep
+end
+local function Index()
+    local rules = ns.rules
+    if type(rules) ~= "table" then nameIndex, indexN, missingN = {}, 0, 0; iList = nil; return nameIndex end
+    if rules ~= iList or #rules ~= iLen or (ns.configVersion or 0) ~= iVer then
+        nameIndex = BuildIndex(rules)
+        iList, iLen, iVer = rules, #rules, ns.configVersion or 0
+        retryAt = GetTime and GetTime() or 0
+    elseif missingN > 0 then
+        RetryMissing()
+    end
     return nameIndex
 end
-function ns.AuraAliasForget() indexAt = -1 end   -- (tests; a rule edit is picked up within INDEX_TTL anyway)
+function ns.AuraAliasForget() iList = nil end   -- (tests: build the index again on the next aura event)
 
 local function Field(t, k) return t[k] end
 local function Clean(a, k, want)

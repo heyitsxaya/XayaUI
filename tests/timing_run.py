@@ -78,10 +78,21 @@ ns.rules = { P, C, S, P2, C2, S2 }
 ns.folders = {}
 CueRulesDB.rules, CueRulesDB.folders = ns.rules, ns.folders
 FRAME = 1 / 60
+-- (round 5, V27 "No running loops") the engine no longer re-checks every rule on a 0.2 s tick: it steps when the game reports a change,
+-- and waits for a stored moment (a "seconds left" deadline) with a one-shot timer. This stand-in changes the game's answers without
+-- sending events, so each PLAY starts with the step that change's event brings, and C_Timer runs here (due timers each frame, as in the game).
+TIMERS = {}
+local function addTimer(d, fn) local t = { at = NOW + (d or 0), fn = fn }; t.Cancel = function() t.dead = true end; TIMERS[#TIMERS + 1] = t; return t end
+C_Timer.After = function(d, fn) addTimer(d, fn) end
+C_Timer.NewTimer = function(d, fn) local t; t = addTimer(d, function() fn(t) end); return t end
 function PLAY(seconds)   -- rendered frames
   local n = math.floor(seconds / FRAME + 0.5)
+  if NS.Step then NS.Step() end
   for i = 1, n do
     NOW = NOW + FRAME
+    local due = {}
+    for j = #TIMERS, 1, -1 do local t = TIMERS[j]; if t.dead or t.at <= NOW then table.remove(TIMERS, j); if not t.dead then due[#due + 1] = t end end end
+    for j = #due, 1, -1 do due[j].fn() end
     for _, f in ipairs(UPDATERS) do local fn = f._s_OnUpdate; if fn then fn(f, FRAME) end end
   end
 end

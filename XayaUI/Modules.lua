@@ -1180,6 +1180,7 @@ local COMBAT_LOCK_EXEMPT = {
     perf = "/xui debug perf: only times the engine; it changes no rule (V26: read-only)",
     talentsRead = "/xui debug talents status and /xui debug talents <name>: only read the last scan (V26: read-only)",
     help = "/xui help and /xui debug: only list the commands (V26: read-only)",
+    mouse = "/xui debug mouse on|off: the right-click tracker only reads which frame is under the cursor and prints its name; it never takes the mouse or keys (V26: read-only; REQUEST-LOG A23 SD-34)",
     disable = "/xui disable: every rule off at once; her words: \"The only thing that can be allowed in combat is with respect to the combat engine is /disable\"",
 }
 -- Not held back here: the feature addons' own /xui words (chat, notes, data, shop ...). They do not touch combat tracking (her example:

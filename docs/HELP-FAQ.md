@@ -43,6 +43,12 @@ Blizzard keeps that window closed to addons. When a rule needs it, the rule's Di
 ### Why is my group's border drawn around each icon, not around the whole group?
 A group's **Border** and **Background** (group page > Group tab > Border and background on each display) are drawn on each display in the group, one by one, in every group, including the icons the combat engine draws in combat. **Padding around each display** sets how far they reach past each display's edge; it starts at 0, right on the edge. Groups inside the group use them too, unless they turn on their own.
 
+### Can I switch the combat engine off?
+No. The combat engine (it draws your aura displays through the game's own aura frames, so time and stacks show in combat) runs whenever any rule is on, and it has no switch of its own. To stop it, turn every rule off with `/xui disable` (until `/xui enable` or a /reload), or switch XayaUI Rules off in the AddOns list. A rule you switch off has no display, so the engine draws nothing for it. An "engine off" setting saved by an older version is no longer used and is cleared once, without a message. `/xuiengine` shows what the engine draws; it changes nothing.
+
+### My "Only when not mounted" sound played while I was still mounted.
+That can happen in a fight, on purpose. With **Let the game play this sound on the aura itself** ticked, the game's copy of an **Only when not mounted** sound is set up as each fight starts, even while you are mounted, because the game does not let XayaUI set it up during the fight. That way, if you are knocked off your mount in the fight, the sound still plays. In that fight it may also play while you are still mounted. When the fight ends and you are mounted, the copy is taken back.
+
 ## What the game won't allow
 
 ### Why is there no trigger for health, mana, rage or the combat log?

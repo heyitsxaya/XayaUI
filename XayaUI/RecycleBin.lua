@@ -12,7 +12,9 @@
 -- While an item is in the bin it is in neither ns.rules nor ns.folders, so nothing loads, shows, fires or can be edited.
 --
 -- How long items stay (Xaya, 2026-11-04): 7 days by default; 36 hours, 3 days or 14 days in the Recycle Bin page. Older items are
--- removed for good at login and every 30 minutes. Empty Recycle Bin removes everything at once, after a confirmation.
+-- removed for good at login, at logout (before the game writes the saved data) and whenever the Recycle Bin page lists the items, so
+-- the page never shows or restores an item past its time. No timer runs for this (V27, SD-28/SD-29: nothing polls on a timer; before,
+-- a 30-minute ticker ran for the whole session). Empty Recycle Bin removes everything at once, after a confirmation.
 -- Saved in CueRulesDB.recycleBin (account-wide, like the rules).
 local _, ns = ...
 ns = XayaUI_NS or ns
@@ -104,6 +106,7 @@ end
 
 -- Puts an item back through its registered kind. Returns ok, note. An item whose kind is not registered stays where it is.
 function ns.RecycleRestore(id)
+    ns.RecyclePurge()   -- (an item that passed its time while the page was open is gone for good, not restored)
     local it, _, b = findItem(id)
     if not it then return false, "that item is no longer in the Recycle Bin" end
     local k = ns.BinKind and ns.BinKind(it.kind)
@@ -148,12 +151,14 @@ function ns.RecyclePurge(at)
     return n
 end
 
--- For the page: newest first, with what each holds and the hours left before it goes for good.
+-- For the page: newest first, with what each holds and the hours left before it goes for good. What is past its time goes for good
+-- first (one bounded pass over the bin's own items, only when the page reads the list), so the page never lists it.
 function ns.RecycleItems(at)
     local b = ns.RecycleDB()
     local out = {}
     if not b then return out end
     local t, keep = at or now(), ns.RecycleKeepHours() * 3600
+    ns.RecyclePurge(t)
     for _, it in ipairs(b.items) do
         local nr = 0
         for _, r in ipairs(it.rules or {}) do if not r.parentUid then nr = nr + 1 end end
@@ -164,12 +169,12 @@ function ns.RecycleItems(at)
     return out
 end
 
--- Purge at login and every 30 minutes (long sessions cross the keep time without a reload).
+-- Purge at login and at logout. A long session that crosses the keep time needs no timer: the page purges before it lists the items
+-- (ns.RecycleItems), and the logout purge runs before the game writes CueRulesDB (PLAYER_LOGOUT comes first, a /reload included), so an
+-- item past its time is never shown, restored or saved again.
 if CreateFrame then
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_LOGIN")
-    f:SetScript("OnEvent", function()
-        pcall(ns.RecyclePurge)
-        if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1800, function() pcall(ns.RecyclePurge) end) end
-    end)
+    f:RegisterEvent("PLAYER_LOGOUT")
+    f:SetScript("OnEvent", function() pcall(ns.RecyclePurge) end)
 end

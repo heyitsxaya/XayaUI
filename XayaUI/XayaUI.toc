@@ -25,3 +25,4 @@ GameMenuButton.lua
 MinimapButton.lua
 Console.lua
 DebugRecord.lua
+MouseTracker.lua

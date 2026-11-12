@@ -46,9 +46,10 @@ C_UnitAuras.GetPlayerAuraBySpellID = function(id) return AURAS[id] end
 C_UnitAuras.GetUnitAuraBySpellID = function(u, id) return AURAS[id] end
 local function Buff(on) AURAS[5001] = on and { spellId = 5001, auraInstanceID = 51, applications = 0, expirationTime = 0, duration = 0 } or nil end
 -- what plays when the buff is gained: the sounds the engine fires (W.sounds), counted per file
+-- (round 5, V27: the engine re-checks a rule when the game reports the change; a buff gained or lost comes with UNIT_AURA, as in the game)
 local function Plays()
-  Buff(false); W.tick(0.2, 4); W.sounds = {}
-  Buff(true); W.tick(0.2, 5)
+  Buff(false); W.fire("UNIT_AURA", "player", { isFullUpdate = true }); W.tick(0.2, 4); W.sounds = {}
+  Buff(true); W.fire("UNIT_AURA", "player", { isFullUpdate = true }); W.tick(0.2, 5)
   local n = {}
   for _, s in ipairs(W.sounds) do n[s] = (n[s] or 0) + 1 end
   return n

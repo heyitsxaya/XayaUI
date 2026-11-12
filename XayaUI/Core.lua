@@ -375,6 +375,9 @@ local CORE_DEBUG = {
             yn(LibStub and LibStub("AceConfigRegistry-3.0", true)), yn(LibStub and LibStub("AceGUI-3.0", true))))
         ns.Print("debug: settings window " .. (ns.Options and "loaded" or ("not loaded yet (" .. ns.ModuleState(ns.OPTIONS_ADDON) .. ")")))
     end, "loader (whether the settings window's code can load)" },
+    -- (REQUEST-LOG A23 SD-34) the right-click tracker (MouseTracker.lua): off after every /reload; read-only, so it runs in combat too
+    { "mouse", function(arg) if ns.MouseTrackerCommand then ns.MouseTrackerCommand(arg) end end,
+        "mouse on|off (while on, each right-click that lands on a frame instead of the game world names that frame; off after every /reload)" },
 }
 local coreDebug, rulesDebug = {}, {}
 for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2]; rulesDebug[d[1]] = d.rules end

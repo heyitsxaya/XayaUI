@@ -2996,16 +2996,17 @@ function ns.RefreshVisual(rule)
     -- a Bar cue (BarCue.lua): a status bar with icon, spark and name text instead of the art
     if v.kind == "bar" and ns.BarCueLayout then ns.BarCueLayout(fr, rule, v)
     elseif fr.barF and ns.BarCueHide then ns.BarCueHide(fr) end
-    -- "Show tooltip on hover" needs the frame to see the mouse; clicks still pass through to whatever is behind it unless unlocked for moving
+    -- Mouse (V27, Xaya SD-29 "Hover only, clicks pass"): a display takes clicks only while the mover has it unlocked for moving (click to
+    -- edit, right-click menu, drag); otherwise every click and camera drag passes through to the game. It sees the mouse moving only for
+    -- "Show tooltip on hover" or in the mover (its hover highlight). Both are set every time, so no earlier state is left behind (before,
+    -- a display without the tooltip turned clicks back on after EnableMouse(false) and caught clicks over the game world).
+    -- docs/reference/api/widgets.md:110, 283-284 (EnableMouse, SetMouseClickEnabled, SetMouseMotionEnabled: protected functions; this
+    -- frame is a plain unprotected Frame, so they work in combat). INFERENCE (not documented): EnableMouse sets clicks and motion together.
     local tip = v.hoverTip and true or false
     local movable = Unl(rule) and not (ns.MoverTempLocked and ns.MoverTempLocked(rule))   -- (a group locked for now from its mover tag: P5)
     fr:EnableMouse(movable or tip)
-    if tip then
-        pcall(fr.SetMouseClickEnabled, fr, movable and true or false)
-        pcall(fr.SetMouseMotionEnabled, fr, true)
-    elseif fr.SetMouseClickEnabled then
-        pcall(fr.SetMouseClickEnabled, fr, true)
-    end
+    if fr.SetMouseClickEnabled then pcall(fr.SetMouseClickEnabled, fr, movable) end
+    if fr.SetMouseMotionEnabled then pcall(fr.SetMouseMotionEnabled, fr, movable or tip) end
     if Unl(rule) then
         fr:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         PaintBorder(rule, fr)
