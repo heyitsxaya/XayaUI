@@ -26,30 +26,44 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 
 ## 3. Walkthrough: one step per page (RB-5)
 
-Every page has **Back**, **Next** and **Cancel**. Next is greyed out until the page's required choice is made. Cancel and closing the window both throw the answers away; no rule exists until Finish (RB-8).
+Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
 
-1. **Start.** Opened from either entry point (§5). The page explains in one sentence what the builder does.
-2. **Load: who.** A spec multi-select of the current class's specs, ticked on the current spec by default. Data comes from the editor's existing `SpecChoices`.
-3. **Load: when.** Three-way dropdowns (Yes / No / Either): In combat, In a group, In an instance, Mounted. Instance kinds is a multi-select (dungeon, raid, PvP, arena, scenario).
-   - Defaults are all "Either", which leaves the rule's normal behaviour unchanged.
-   - The exact list is open question Q3.
-4. **Checks.** A list of the checks added so far, with an **Add a check** button. Adding a check runs a short sub-sequence:
-   1. **Kind:** a dropdown with Cooldown, Charges, Buff on me, Debuff on target.
-   2. **Spell:** a dropdown filled from the existing lists. It is never free typing unless she approves it (Q2).
-      - Cooldown and Charges use `ns.CollectCooldownSpells`.
-      - Buff and Debuff use the spec aura data (`ns.CLASS_AURA_DATA`) and the Cooldown Manager catalogue (`ns.CdmAuraCatalogue`).
-   3. **State:** a dropdown whose wording depends on the kind, as in §2.
-      - For Charges, the page adds a dropdown for At least / Exactly / At most and a number dropdown from 1 to 6. That limit matches the editor's `maxCharges` range.
+**On every page:** a name box at the top holds an automatic name built from the checks, for example "Fire Blast charge + Hot Streak". The player can edit it at any point (RB-10). Once she types in it, the automatic name stops overwriting it. The box goes through `ns.KeyFocusGuard` (V29).
 
-   Each check in the list has **Remove**. At most 12 checks.
-5. **Combine** (only when there are 2 or more checks). A choice between "All of these must be true" and "Any one is enough".
-   - **Explanation box (RB-7).** It is plain text, rebuilt only when a choice changes. It states the exact logical result. For example: "This rule fires when Spell A is off cooldown AND Buff B is on you, only for Frost spec, only in combat."
-   - The box also states what happens when the game cannot read a check. The rule does not fire while a check it depends on is unknown (Triggers.lua note text, Conditions.lua:2166).
-6. **Summary.** The same explanation box for the whole rule, plus the rule's name (Q1).
-7. **Done page (RB-9).** Three buttons:
-   - **Open in editor:** saves and shows the new rule's normal editor page.
-   - **Build another rule:** saves and starts again at step 2.
-   - **Finish:** saves and closes the builder, back to the rule list (INFERENCE, to confirm: Q5).
+1. **Start.** Opened from either entry point (§5). One sentence says what the builder does.
+2. **Load question (RB-12).** "Do you want to assign specific cases when this rule should appear? (Combat, M+ only, etc.)", answered Yes or No.
+   - **No:** the rule keeps the Load tab's defaults, unchanged (`ns.NewRule()`).
+   - **Yes:** the Load tab's choices appear 1:1, with the same controls, labels, order and stored keys.
+   - **How 1:1 is guaranteed:** the builder draws them with the Load tab's own option builder, pointed at the builder's working copy of the `load` table. There is no second list of load controls (V11, V25 criterion 3). The exact function is confirmed at build, after the editor move.
+   - **Logic indicator:** a plain-text line, rebuilt on each change, that states when the rule will load. For example: "Loads for Frost or Fire spec, only in combat, only during a Mythic+".
+3. **Checks.** A list of the checks added so far, with an **Add a check** button. Each check is added in three choices:
+   1. **Kind:** a dropdown with Cooldown, Charges, Buff on me and Debuff on target.
+   2. **Spell:** a dropdown with a search box under it (RB-11). The search box is the editor's existing spell search (`SearchBox` / `AttachSearch`, kind `cd` or `aura`) and is guarded by `KeyFocusGuard`.
+      - Cooldown and Charges list `ns.CollectCooldownSpells`.
+      - Buff and Debuff list the spec aura data and the Cooldown Manager catalogue.
+   3. **State:** a dropdown worded per kind (§2). For Charges there is also an At least / Exactly / At most dropdown and a number dropdown from 1 to 6.
+
+   Each check has **Remove**, and a rule holds at most 12 checks.
+4. **Combine** (only with 2 or more checks). A choice between "All of these must be true" and "Any one is enough".
+   - **Explanation box (RB-7):** plain text, rebuilt only when a choice changes. It states the exact logical result, for example: "Fires when Spell A is off cooldown AND Buff B is on you; loads only for Frost spec, only in combat."
+   - It also says that a check the game cannot read counts as unknown, and that the rule does not fire on unknown.
+5. **Name and place (RB-10).** The final prompt before creation:
+   - the name box, to rename;
+   - a dropdown of the player's existing groups and folders, set by default to the one the walkthrough started from;
+   - the full explanation box, shown again as the summary.
+
+   **Create** makes the rule (§4).
+6. **Done page (RB-9).** Three buttons:
+   - **Open in editor:** shows the new rule's normal editor page.
+   - **Build another rule:** starts again at step 1.
+   - **Finish:** closes the builder and goes back to the rule list (RB-13).
+
+**If combat starts mid-walkthrough (RB-13):**
+- The settings window closes (V26).
+- The builder keeps its working answers in memory for this session only, not in saved variables.
+- When combat ends, it reopens at the same step, with every page and choice displayed as before.
+  - INFERENCE to confirm (Q7): this is what "all flow options should display as normal" means.
+- A /reload in between loses the answers, because no rule was made yet.
 
 ## 4. Hand-off to the existing save path (one format, one path)
 
@@ -92,10 +106,10 @@ The pages are drawn with the editor's existing AceConfig tables (select / multis
 | Rule | How |
 |---|---|
 | V25 | Runtime cost is zero when closed. While open, work runs only on a click or selection change: the explanation text is rebuilt per change, with no OnUpdate, ticker or event registration. Spell lists are built once per builder open from the existing lists and freed on close, the same as `ns.SearchOnClose`. It uses the shared helpers and has no copy of the creation logic (§4). Each review answers all six criteria with evidence. |
-| V26 | It lives inside the settings window and its entry points go through the existing combat lock (`ns.CombatLock`, Modules.lua:1219). When combat starts, the window closes (Options.lua:1766). The builder's unsaved answers are discarded, because no rule exists yet (RB-8). Whether to keep them for after combat is Q4. Status: LOCKED. |
+| V26 | It lives inside the settings window, and its entry points go through the existing combat lock (`ns.CombatLock`, Modules.lua:1219). The window closes when combat starts (Options.lua:1766). The builder keeps its answers in memory and reopens at the same step after combat (RB-13), as the mover does (SD-15). LOCKED. |
 | V27 | It has no frame outside the settings window, so closing the window leaves nothing that can catch the mouse or keyboard. Every number is a whole number (charge counts, step index). Gate tests: tests/gate_mouse_run.py, gate_keyboard_run.py and gate_performance_run.py get coverage for the builder pages, opened and then closed. |
 | V28 | All builder state hangs off the window. On close, its table is cleared and every handler returns at once unless the window is open, using the same guard as the editor (`Tree.openFrame` / `OptionsApi.IsOpen`). A test closes the window mid-walkthrough and checks that nothing runs. |
-| V29 | The pages are dropdowns and buttons only, with no text box. If Q1 or Q2 adds one, it goes through `ns.KeyFocusGuard` like every editor box (Skin.lua:2642), with the screenshot-key and movement-key tests. |
+| V29 | Two text boxes: the name box (RB-10) and the spell search (RB-11). Each goes through `ns.KeyFocusGuard` like every editor box (Skin.lua:2642), with tests that press the screenshot key and a movement key, in and out of combat, and check they reach the game. Neither box takes focus in combat. |
 | V30 | The builder is code inside XayaUI_Options, next to the editor. It only reads Rules' existing functions and adds nothing to Rules or core. |
 | V31 | Outcome tests fail on the old code: no builder entry exists, and a built rule must equal a hand-made rule of the same checks. The full suite with the API index, the gate tests and an independent reviewer against V25-V34 run before landing. In-game behaviour is reported UNVERIFIED IN GAME with steps. |
 | V32 | Load conditions are written into the same `load` table the engine already honours. The builder adds no second load check. |
@@ -112,8 +126,7 @@ The pages are drawn with the editor's existing AceConfig tables (select / multis
 
 ## 9. Open questions (asked through the question tool)
 
-- **Q1.** Rule name: automatic from the checks ("Spell A ready + Buff B"), typed by the player, or automatic and editable later in the editor?
-- **Q2.** Spell picking: dropdown only, or dropdown plus a search box for spells not in the list (a text box: V29 applies)?
-- **Q3.** Which "when" load options go on step 3?
-- **Q4.** If combat starts mid-walkthrough: discard the answers, or keep them and reopen at the same step after combat (as the mover does, SD-15)?
-- **Q5.** Confirm that the done page's "Finish" means save and close, back to the rule list.
+Q1 to Q5 are answered by RB-10 to RB-13.
+
+- **Q6.** Her example load question names "housing", but the Load tab has no housing condition today (Conditions.lua:1684-1702). Should we add one to the Load tab so the builder shows it 1:1? That would be a Rules change, coordinated with the Rules session.
+- **Q7.** Confirm the RB-13 inference in §3.

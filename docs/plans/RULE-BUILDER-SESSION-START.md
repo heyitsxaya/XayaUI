@@ -22,7 +22,12 @@
 - Entry points: a row in the "+ New rule" picker, and a button in the Auto-Generate Rules tab (RB-4).
 - One step per page (RB-5).
 
-**Pending.** Questions Q1-Q5 in docs/plans/RULE-BUILDER-DESIGN.md §9; build-time checks (a) and (b) in §4.
+- **Name:** an automatic name, editable at any time, with a final step for the name and the group (RB-10).
+- **Spell pick:** a dropdown plus a search box (RB-11).
+- **Load:** a yes/no question, then the Load tab 1:1 with a logic indicator (RB-12).
+- **Combat:** if combat starts, the answers are kept and the builder reopens after combat (RB-13).
+
+**Pending.** Q6 (a housing load condition?) and Q7 (the RB-13 inference) in the design §9, plus build-time checks (a) and (b) in §4. Draft PR #525.
 
 **Key files.**
 - docs/plans/RULE-BUILDER-DESIGN.md and RULE-BUILDER-TRACKER.md.

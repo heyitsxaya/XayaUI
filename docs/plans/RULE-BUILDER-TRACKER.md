@@ -11,6 +11,7 @@
 | 2026-11-12 | First question round: RB-2 (kinds), RB-3 (outputs; unclear), RB-4 (entry points), RB-5 (one step per page). |
 | 2026-11-12 | Second question round: RB-6 (triggers only first), RB-7 (All/Any plus an explanation box), RB-8 (rule made only on Finish), RB-9 (done page: build another, open in editor, Finish). |
 | 2026-11-12 | Design draft written: docs/plans/RULE-BUILDER-DESIGN.md. |
+| 2026-11-12 | Third question round: RB-10 (auto name plus a final name and group step), RB-11 (dropdown plus search), RB-12 (load question, then the Load tab 1:1 with a logic indicator), RB-13 (keep answers and reopen after combat). Draft PR #525 opened (base: bundle 1 branch). |
 
 ## Decision graph (process and analysis)
 ```mermaid
@@ -42,7 +43,8 @@ Each choice, briefly:
 ## Open
 | Item | State |
 |---|---|
-| Q1-Q5 (design §9) | to ask |
+| Q1-Q5 | answered (RB-10 to RB-13) |
+| Q6 housing load condition, Q7 RB-13 inference | to ask |
 | Build-time checks (a) and (b) (design §4) | verify with tests once the build starts |
 | Build | blocked until bundle 1 is on main (message from the Rules session) |
 | Stage 2: cue steps | after stage 1 is settled (RB-6) |
