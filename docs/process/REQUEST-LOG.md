@@ -808,8 +808,10 @@ copy; rows it adds later are copied here.
 | RB-67 | Her canvas comment on the load heading (verbatim): "\"When do you want this rule to load?\"" | DONE in the builder. OPEN (asked): same wording on the editor's Load tab (Editor.lua:1094) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-68 | Her canvas comment on the load step's choices (verbatim): "tick boxes, not radios" | DONE on When it loads: square one-choice tick boxes (the editor's AddSquareRadio, Editor.lua:731). OPEN (asked): same on All or any | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-69 | Her canvas comment on Instance Type (verbatim): "vertical options" | DONE: instance types stacked one per line (board 980 px tall). OPEN (asked): stack the spec row and the condition grid too | design canvas |
-| RB-70 | Her canvas comment on a load tick-box row (verbatim): "this is an instance type" | OPEN (asked in thread): which row (Instance / Mythic+ / Raid group; anchor was the repeated template), and whether the Load tab changes too (RB-12 1:1) | design canvas |
-| RB-71 | Her canvas comment on the same load row (verbatim): "this belongs below" | OPEN: move the row under Instance Type once she names the row (same ambiguity as RB-70; asked) | design canvas |
+| RB-70 | Her canvas comment on a load tick-box row (verbatim): "this is an instance type" | DONE by reading RB-70 to RB-73 together (INFERENCE, stated in threads): Instance, Mythic+, Boss encounter moved to Instance conditions | design canvas |
+| RB-71 | Her canvas comment on the same load row (verbatim): "this belongs below" | DONE with RB-70 (see RB-73) | design canvas |
+| RB-72 | Her canvas comment on a load row (verbatim): "group and raid group are their own condition set" | DONE: "Group" set (Group, Raid group) | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-73 | Her canvas comment on a load row (verbatim): "belongs in instance conditions" | DONE: load step regrouped: You (combat, mounted, resting) / Group / Instance conditions (instance, Mythic+, boss encounter, instance types) / Zones... OPEN (asked): give the editor's Load tab the same grouping | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement

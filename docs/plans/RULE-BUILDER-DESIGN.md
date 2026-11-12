@@ -46,6 +46,13 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-72 / RB-73: the load step's conditions are grouped:
+> - **You:** combat, mounted, resting.
+> - **Group:** group, raid group.
+> - **Instance conditions:** instance, Mythic+, boss encounter, then the instance-type list.
+> - **Zones, Instances, Bosses and Items.**
+>
+> Open: whether the editor's Load tab takes the same groups (RB-12).
 > RB-68: one-choice groups are drawn as square tick boxes, using the editor's `AddSquareRadio` (Editor.lua:731), never round radios.
 > RB-67: the load step's heading reads "When do you want this rule to load?"
 > RB-66: the load question answers are Yes (show the Load tab's conditions), Always Show (`load.mode = "always"`) and Never Show (`load.mode = "never"`).
