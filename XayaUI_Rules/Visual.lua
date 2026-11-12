@@ -375,6 +375,29 @@ function ns.TimeFormatter(decimals, below)
     timeFmtCache[key] = (ok and f) or false
     return (ok and f) or nil
 end
+-- (round 7, SD-60, her answer "all timers are supported by EUI ... solve for it") the whole seconds a display's own text shows from an
+-- aura time the game hides (("%d"):format of the remaining seconds, as the text has always shown them: UpdateVisualText path 2), as one
+-- of the game's number formatters, so the game counts that text down itself through a duration text binding. Checked like
+-- TimeFormatter before use; nil when the API is missing or an answer differs (the caller then hands the time to a cooldown widget).
+local wholeFmt
+local WHOLE_PROBES = { 3725.5, 61.9, 59.99, 12.2, 5, 4.96, 1.04, 0.44, 0 }
+local function BuildWholeFormatter()
+    local R = Enum and Enum.NumericRuleFormatRounding
+    if not (R and C_StringUtil and C_StringUtil.CreateNumericRuleFormatter) then return nil end
+    local f = C_StringUtil.CreateNumericRuleFormatter()
+    f:SetBreakpoints({ { threshold = 0, format = "%d", step = 1, rounding = R.Down } })
+    for _, s in ipairs(WHOLE_PROBES) do
+        if f:FormatNumber(s) ~= ("%d"):format(s) then return nil end
+    end
+    return f
+end
+function ns.WholeSecondsFormatter()
+    if wholeFmt == nil then
+        local ok, f = pcall(BuildWholeFormatter)
+        wholeFmt = (ok and f) or false
+    end
+    return wholeFmt or nil
+end
 
 -------------------------------------------------------------------------------
 -- Frame
@@ -3102,6 +3125,13 @@ end
 -- Preview / unlock sample: a timer that starts at 12.3 s and counts down to 0, then repeats, so the tenths-of-a-second
 -- switch (Tenths Only Below) can be watched. The wipe, fades and text all read the same clock.
 local SAMPLE_DURATION = 12.3
+-- (round 7, SD-60) seconds until the sample countdown's whole-second text changes next (the engine wakes a previewed or unlocked display
+-- then, instead of re-checking it every 0.2 s); nil while previews are paused (the sample does not move)
+function ns.SampleNextChange()
+    if ns.previewPaused then return nil end
+    local rem = SAMPLE_DURATION - (ns.SampleTime() % SAMPLE_DURATION)
+    return rem - math.floor(rem)
+end
 
 -- Dynamic, per-tick parts: desaturation, duration text, stacks/charges text.
 -- One cached curve per display and purpose; rebuilt only when its end values change. (File-level functions taking the frame:
@@ -3158,8 +3188,7 @@ local function SetFxRule(fr, rule)
     elseif not rule and had then fr:SetScript("OnUpdate", nil) end
 end
 
--- secret-safe text writers for pcall (no closure per call)
-local function SetWholeSeconds(fs, sec) fs:SetText(("%d"):format(sec)) end
+-- a secret-safe color writer for pcall (no closure per call)
 local function SetVertexRGBA(tex, color) tex:SetVertexColor(color:GetRGBA()) end
 
 -- Stack / charge count into a font string. Returns true when something is shown.
@@ -3269,7 +3298,9 @@ local function CooldownDuration(rule, cd)
     return ok and d or nil
 end
 ns.CooldownDurationOf = CooldownDuration   -- (BarCue.lua: a cooldown bar is driven by the same duration object)
-local function BindCooldownText(fr, t, dur)
+-- (round 7) one binding per display, for either text: the cooldown countdown (path 4: nothing shown at zero) or the whole seconds of a
+-- hidden aura time (path 2: "0" at its end, as the text showed before). endText is set only when it changes.
+local function BindDurationText(fr, fmt, dur, endText)
     if fr.cdBind == false then return false end
     if not fr.cdBind then
         if not (C_DurationUtil and C_DurationUtil.CreateDurationTextBinding) then fr.cdBind = false; return false end
@@ -3277,13 +3308,12 @@ local function BindCooldownText(fr, t, dur)
         if not (ok and b) then fr.cdBind = false; return false end
         pcall(b.SetToDefaults, b)
         if not pcall(b.SetFontString, b, fr.text) then fr.cdBind = false; return false end
-        pcall(b.SetZeroDurationText, b, ""); pcall(b.SetExpiredText, b, "")
-        fr.cdBind, fr.cdBindFmt = b, nil
+        fr.cdBind, fr.cdBindFmt, fr.cdBindEnd = b, nil, nil
     end
     local b = fr.cdBind
-    local fmt = ns.TimeFormatter(t.decimals, t.decimalBelow)
-    if not fmt and AuraContainerInbound and AuraContainerInbound.GetDefaultAuraDurationFormatter then
-        local okD, d = pcall(AuraContainerInbound.GetDefaultAuraDurationFormatter); fmt = okD and d or nil
+    if fr.cdBindEnd ~= endText then
+        pcall(b.SetZeroDurationText, b, endText); pcall(b.SetExpiredText, b, endText)
+        fr.cdBindEnd = endText
     end
     if fmt and fr.cdBindFmt ~= fmt then if pcall(b.SetFormatter, b, fmt) then fr.cdBindFmt = fmt end end
     if not pcall(b.SetDuration, b, dur) then return false end
@@ -3292,6 +3322,13 @@ local function BindCooldownText(fr, t, dur)
         fr.cdBindOn = true
     end
     return true
+end
+local function BindCooldownText(fr, t, dur)
+    local fmt = ns.TimeFormatter(t.decimals, t.decimalBelow)
+    if not fmt and AuraContainerInbound and AuraContainerInbound.GetDefaultAuraDurationFormatter then
+        local okD, d = pcall(AuraContainerInbound.GetDefaultAuraDurationFormatter); fmt = okD and d or nil
+    end
+    return BindDurationText(fr, fmt, dur, "")
 end
 
 -- The companion of a display the combat engine draws: the game's container cannot draw a shield amount or spell charges, so these
@@ -3584,28 +3621,26 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- (refs hold only readable instance ids since 0.6.3; in combat the game withholds aura access from addon code, so this path
     -- serves never-secret auras and readable ids from the tracker; the combat engine draws the rest exactly)
     if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration then
-        StopCdBind(fr)
         local ok, dur = pcall(C_UnitAuras.GetAuraDuration, ref.unit or "player", ref.instanceID)
         if not (ok and dur) then
+            StopCdBind(fr)
             if ns.perfOn then ns.PerfPath(rule, "dur:GetAuraDuration " .. (ok and "returned nothing" or "failed")) end
         else
-            -- path 2: our own text from the duration object's remaining time: whole seconds, full control of font / size / place,
-            -- and no dependence on Blizzard's cooldown-number setting
-            if dur.GetRemainingDuration then
-                local okr, remS = pcall(dur.GetRemainingDuration, dur)
-                if okr and remS then
-                    local oks = pcall(SetWholeSeconds, fr.text, remS)
-                    if oks then
-                        if fr.cd then fr.cd:Hide() end
-                        fr.text:Show()
-                        if ns.perfOn then ns.PerfPath(rule, "dur:own text (secret seconds)") end
-                        return
-                    end
-                    if ns.perfOn then ns.PerfPath(rule, "dur:format of secret seconds failed") end
-                else
-                    if ns.perfOn then ns.PerfPath(rule, "dur:GetRemainingDuration " .. (okr and "nil" or "failed")) end
-                end
+            -- path 2: our own text from the duration object: whole seconds, full control of font / size / place, and no dependence on
+            -- Blizzard's cooldown-number setting. (round 7, SD-60) The game counts it down itself: the duration object drives the font
+            -- string through a duration text binding with the same whole-seconds format (ns.WholeSecondsFormatter). Before, the text
+            -- was the remaining seconds read once and written, and the engine redrew it every 0.2 s while it showed. A refresh of the
+            -- aura comes with an aura event, which binds the new duration object (Engine.lua: the rule is checked on every aura event of
+            -- its unit while this text shows).
+            local wf = ns.WholeSecondsFormatter()
+            if wf and BindDurationText(fr, wf, dur, "0") then
+                if fr.cd then fr.cd:Hide() end
+                fr.text:Show()
+                if ns.perfOn then ns.PerfPath(rule, "dur:own text (bound, secret seconds)") end
+                return
             end
+            StopCdBind(fr)
+            if ns.perfOn then ns.PerfPath(rule, wf and "dur:binding of secret seconds failed" or "dur:no whole-seconds formatter") end
             -- path 3: hand Blizzard's cooldown widget the duration object (its own countdown digits; they follow the
             -- game's "Show Numbers for Cooldowns" setting, which is why this is the fallback)
             if fr.cd and fr.cd.SetCooldownFromDurationObject then

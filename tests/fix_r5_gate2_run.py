@@ -23,8 +23,9 @@ Rules engine (what the player gets, and what it costs):
   E2 a buff appearing shows its display on the next frame (kept)
   E3 a display's countdown keeps counting in whole seconds with no event at all (kept: a stored moment, not a tick)
   E4 a cooldown "ready" rule fires when the cooldown ends with no event at that moment (the stored end; before: up to 0.2 s later)
-  E5 in combat, where the game hides the cooldown's end, the rule still fires within one TICK of the end (kept: re-checked only while
-     it runs) and nothing is re-checked once it has fired
+  E5 in combat, where the game hides the cooldown's end, the rule still fires at the end (round 7, SD-60: within two frames, woken by
+     the engine's Cooldown widget the game counts it down in; before: re-checked every TICK while it ran, firing within 0.2 s) and nothing
+     is re-checked while it runs or once it has fired
   E6 "cast within 3 seconds": true after the cast, false 3 s later with no event (kept: the stored end of the window)
   E7 a repeat sound repeats with no event (kept)
   E8 "Only when mounted": mounting shows the display on the next frame (a load fact; before: up to 50 ms later)
@@ -63,6 +64,35 @@ C_Spell.GetSpellCooldown = function(id)
     return { startTime = c.s, duration = c.d, isEnabled = true, modRate = 1, isActive = true, isOnGCD = false }
   end
   return { startTime = 0, duration = 0, isEnabled = true, modRate = 1, isActive = false, isOnGCD = false }
+end
+-- (round 7, SD-60) the game's duration object of a running cooldown, and the Cooldown widget the engine feeds it to: the widget keeps the
+-- end and runs OnCooldownDone on the first frame at or after it (as the game's widget does: INFERENCE, UNVERIFIED IN GAME)
+C_Spell.GetSpellCooldownDuration = function(id)
+  local c = CDS[tonumber(id) or 0]
+  return { endAt = (c and W.now < c.s + c.d) and (c.s + c.d) or W.now }
+end
+local cdWidgets = {}
+do
+  local CF0 = CreateFrame
+  CreateFrame = function(kind, ...)
+    local f = CF0(kind, ...)
+    if kind == "Cooldown" then
+      cdWidgets[#cdWidgets + 1] = f
+      rawset(f, "SetCooldownFromDurationObject", function(self, d) self._endAt = d and d.endAt end)
+      rawset(f, "Clear", function(self) self._endAt = nil end)
+    end
+    return f
+  end
+  -- (the stand-in game's own per-frame step, made under its own chunk name: engineOnUpdate below looks for scripts from Engine.lua by
+  -- their source, and this test's source names Engine.lua)
+  local drv = CF0("Frame")
+  drv:SetScript("OnUpdate", assert(loadstring([[
+    local W, cdWidgets = ...
+    return function()
+      for _, w in ipairs(cdWidgets) do
+        if w._endAt and W.now >= w._endAt and w:IsVisible() then w._endAt = nil; local fn = w._scripts.OnCooldownDone; if fn then fn(w) end end
+      end
+    end]], "=stand-in Cooldown widgets"))(W, cdWidgets))
 end
 C_SpellBook = C_SpellBook or {}
 C_SpellBook.IsSpellKnownOrInSpellBook = function() return true end
@@ -248,9 +278,12 @@ reset()
 W.tick(0.1, 28)
 local whileRuns = n[CD] or 0
 local firedAt
-for _ = 1, 10 do if played == 0 then W.tick(0.05, 1); if played > 0 then firedAt = W.now end end end
-check("E5 in combat (the cooldown's end hidden) the rule fires within one TICK of the end", played == 1, played)
-check("E5 while the hidden cooldown runs, the rule is re-checked at most once per TICK (2.8 s: at most 15 times)", whileRuns >= 5 and whileRuns <= 15, whileRuns)
+for _ = 1, 30 do if played == 0 then W.tick(1 / 60, 1); if played > 0 then firedAt = W.now end end end
+-- (round 7, SD-60: the game counts the hidden cooldown down in the engine's Cooldown widget, whose OnCooldownDone wakes the rule; before,
+-- the rule was re-checked every TICK, 0.2 s, while the cooldown ran, and fired within a TICK of the end)
+check("E5 in combat (the cooldown's end hidden) the rule fires within two frames of the end (before: within one TICK, 0.2 s)",
+  played == 1 and firedAt and firedAt - (secretS + secretD) <= 2 / 60 + 1e-6, firedAt and ("%d, %.0f ms"):format(played, (firedAt - secretS - secretD) * 1000) or played)
+check("E5 while the hidden cooldown runs, the rule is not re-checked at all (2.8 s; before: once per TICK, 5 to 15 times)", whileRuns == 0, whileRuns)
 reset()
 W.tick(0.1, 20)
 check("[new] E5 once it has fired, nothing is re-checked any more (2 s, nothing changing)", (n[CD] or 0) == 0 and not engineOnUpdate(), tostring(n[CD]))

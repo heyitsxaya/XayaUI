@@ -89,8 +89,13 @@ C_Spell.GetSpellCharges = function(id)
 end
 DUROBJ = { name = "cooldown duration object" }; CHGOBJ = { name = "recharge duration object" }
 CDCALLS = {}
-C_Spell.GetSpellCooldownDuration = function(id, ignoreGCD) CDCALLS[#CDCALLS + 1] = { id, ignoreGCD }; return DUROBJ end
-C_Spell.GetSpellChargeDuration = function(id) CDCALLS[#CDCALLS + 1] = { id, "charge" }; return CHGOBJ end
+-- (round 7) each call notes the file that asked (level 4: this helper, the stub, pcall, the caller): the display's text (Visual.lua) and, since round 7,
+-- the engine's own cooldown widgets (Engine.lua) both ask
+local function asker() local i = debug.getinfo(4, "S"); local s = i and i.source or ""; return s:match("([%w_]+%.lua)") or s end
+C_Spell.GetSpellCooldownDuration = function(id, ignoreGCD) CDCALLS[#CDCALLS + 1] = { id, ignoreGCD, src = asker() }; return DUROBJ end
+C_Spell.GetSpellChargeDuration = function(id) CDCALLS[#CDCALLS + 1] = { id, "charge", src = asker() }; return CHGOBJ end
+-- the last call the display's text made (Visual.lua), and the calls of one file
+function LASTCALL(src) for i = #CDCALLS, 1, -1 do if CDCALLS[i].src == src then return CDCALLS[i] end end end
 -- the game's duration text binding (documented methods only)
 BINDINGS = {}
 C_DurationUtil = { CreateDurationTextBinding = function()
@@ -245,7 +250,11 @@ lua('AURA_UNTIL = nil; AMS.auraInstanceID = nil; PLAY(0.3)')
 # 3. a cooldown with no aura: the game counts it down (duration object + text binding), exact in combat
 lua('COMBAT = true; CD_UNTIL = NOW + 20; CDCALLS = {}; PLAY(0.3)')
 check("R2 shown while on cooldown", lua("return FR(R2):IsShown() == true"))
-check("cooldown duration asked of the game with the global cooldown ignored", lua("local c = CDCALLS[#CDCALLS]; return c and c[1] == 49998 and c[2] == true"))
+check("cooldown duration asked of the game with the global cooldown ignored", lua("local c = LASTCALL('Visual.lua'); return c and c[1] == 49998 and c[2] == true"))
+# (round 7, SD-60) the engine waits for the hidden end of the same cooldown in a widget of its own, fed the duration object the
+# game reports for GetSpellCooldown (the global cooldown counted, as the cooldown's own reading counts it)
+check("(round 7) the engine's cooldown widget asks for the same cooldown's duration with the global cooldown counted",
+      lua("local c = LASTCALL('Engine.lua'); return c and c[1] == 49998 and c[2] == false"))
 check("a duration text binding drives the display's own time text", lua("local b = FR(R2).cdBind; return b and b.fs == FR(R2).text and b.dur == DUROBJ and b.enabled == true and b.zero == '' and b.expired == ''"))
 check("the binding uses XayaUI's time format (game formatter checked against FmtRemaining)", lua("local b = FR(R2).cdBind; return b.fmt ~= nil and b.fmt == NS.TimeFormatter(true, 5)"))
 check("the time text is shown", lua("return FR(R2).text._shown == true"))
@@ -254,7 +263,7 @@ check("cooldown over: binding stopped (display hidden by its own rule)", lua("re
 
 # 4. a spell with charges: recharge time + charges count
 lua('CHG_CUR = 1; CDCALLS = {}; PLAY(0.3)')
-check("charge spell not full: the RECHARGE duration object drives the time", lua("local c = CDCALLS[#CDCALLS]; return c and c[1] == 50000 and c[2] == 'charge' and FR(R4).cdBind.dur == CHGOBJ and FR(R4).cdBind.enabled"))
+check("charge spell not full: the RECHARGE duration object drives the time", lua("local c = LASTCALL('Visual.lua'); return c and c[1] == 50000 and c[2] == 'charge' and FR(R4).cdBind.dur == CHGOBJ and FR(R4).cdBind.enabled"))
 check("charges count in combat: the secret number handed to SetText", txt("R4", "count") == "SECRET_NUM", txt("R4", "count"))
 lua('COMBAT = false; PLAY(0.3)')
 check("charges count out of combat: '1'", txt("R4", "count") == "1", txt("R4", "count"))

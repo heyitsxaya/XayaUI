@@ -56,17 +56,48 @@ local function CdFlags(cd)
     if ok then return a, g, e end
     return CleanBool(cd, "isActive"), CleanBool(cd, "isOnGCD"), CleanBool(cd, "isEnabled")   -- (a read that errors: each flag on its own, as before)
 end
+-- (round 7, V25(2) / V27: no per-pass table) every field a reading can hold. A reading is made in one reused scratch table and compared
+-- with the last reading handed out for the same spell: the same answer hands back that same table (readers only ever read it), and a new
+-- table is made only when an answer changed. Before, every read made a new table and grew it field by field (the engine's routed pass
+-- reads every cooldown check: about 40 KB of garbage per pass in the V27 gate's fight).
+-- CD_FIELDS: known, max, why, onGCD, locked, readID, count, atMax, empty, onCd, readyAt, estimated (ReadCooldownRaw sets no other)
+local cdScratch, cdLast = {}, {}   -- (cdLast: one reading per spell key the rules read: bounded by the rules' spells)
+-- (written out field by field, not looped over CD_FIELDS: this runs for every cooldown read of every routed pass)
+local function SameReading(a, b)
+    return a.known == b.known and a.max == b.max and a.why == b.why and a.onGCD == b.onGCD and a.locked == b.locked
+        and a.readID == b.readID and a.count == b.count and a.atMax == b.atMax and a.empty == b.empty and a.onCd == b.onCd
+        and a.readyAt == b.readyAt and a.estimated == b.estimated
+end
 function ns.ReadCooldown(rule)
     -- the same spell is often watched by several rules: read it once per engine step (the result is only ever read)
     local memo = ns.StepMemo and ns.StepMemo("cooldown")
     if not memo then return ReadCooldownRaw(rule) end
     local id, mc = rule.spellID or 0, rule.maxCharges or 0
     -- #309: one flat memo; the plain case (no charge override, following the bar) is keyed by the spell ID itself, so no table
-    -- or string is made per spell per step. B4: an exact-ID rule reads another spell than a following one.
+    -- or string is made per spell per step. B4: an exact-ID rule reads another spell than a following one. (round 7) A charge override or
+    -- an exact ID is keyed by a negative number made from the three (no string per read); an odd value keeps the old string key.
     local key = id
-    if mc ~= 0 or rule.exactSpell then key = tostring(id) .. "/" .. tostring(mc) .. (rule.exactSpell and "x" or "") end
+    if mc ~= 0 or rule.exactSpell then
+        if type(id) == "number" and type(mc) == "number" and id == math.floor(id) and mc == math.floor(mc) and mc >= 0 and mc < 512 and id >= 0 and id < 2 ^ 40 then
+            key = -(id * 1024 + mc * 2 + (rule.exactSpell and 1 or 0)) - 1
+        else
+            key = tostring(id) .. "/" .. tostring(mc) .. (rule.exactSpell and "x" or "")
+        end
+    end
     local r = memo[key]
-    if not r then r = ReadCooldownRaw(rule); memo[key] = r end
+    if not r then
+        local sc = cdScratch
+        sc.known, sc.max, sc.why, sc.onGCD, sc.locked, sc.readID, sc.count, sc.atMax, sc.empty, sc.onCd, sc.readyAt, sc.estimated =
+            nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil   -- (every field of CD_FIELDS)
+        ReadCooldownRaw(rule, sc)
+        r = cdLast[key]
+        if not (r and SameReading(r, sc)) then
+            r = { known = sc.known, max = sc.max, why = sc.why, onGCD = sc.onGCD, locked = sc.locked, readID = sc.readID, count = sc.count,
+                atMax = sc.atMax, empty = sc.empty, onCd = sc.onCd, readyAt = sc.readyAt, estimated = sc.estimated }
+            cdLast[key] = r
+        end
+        memo[key] = r
+    end
     return r
 end
 -------------------------------------------------------------------------------
@@ -311,9 +342,10 @@ function KnowsSpell(x, bank)
     local okK, v = pcall(C_SpellBook.IsSpellKnownOrInSpellBook, x, bank, true)
     if okK and not issecret(v) and type(v) == "boolean" then return v end
 end
-function ReadCooldownRaw(rule)
+function ReadCooldownRaw(rule, into)   -- (into: a table to fill, every field of CD_FIELDS already nil; else a new one)
     local id = rule.spellID
-    local r = { known = false, max = 1 }
+    local r = into or {}
+    r.known, r.max = false, 1
     if not id or id == 0 then r.why = "no spell"; return r end
     local readID = ns.CooldownReadID(rule, id)   -- a talent that replaces the spell: the one on your bar (unless exactSpell, B4)
     -- A spell you do not have now (talent or specialization swapped away) is "not known", never "ready" (retrospective gap 10;
@@ -1078,6 +1110,7 @@ local function AllSetBonusOff(mainID, alts)
     if n > 0 then return why end
     return nil
 end
+local function AuraIdAt(mainID, alts, i) if i == 1 then return tonumber(mainID) end return tonumber(alts[i - 1]) end
 function ns.AuraPresence(mainID, alts, spellID)
     -- 0. every listed aura comes only from a set bonus that is not active: missing, for sure (in combat too)
     do
@@ -1090,10 +1123,11 @@ function ns.AuraPresence(mainID, alts, spellID)
         local ok, fp, fs, fr = pcall(TrackedBuffOfSpell, spellID, mainID, alts)
         if ok and fp ~= nil then return fp, fs, fr, mainID end
     end
-    local ids = { tonumber(mainID) }
-    if type(alts) == "table" then for _, a in ipairs(alts) do ids[#ids + 1] = tonumber(a) end end
+    -- (round 7, V25(2)) the aura ID and its extra IDs, walked by index (AuraIdAt): no list table per read
+    local nIds = 1 + ((type(alts) == "table") and #alts or 0)
     local anyIcon, allUnlit = false, true
-    for _, id in ipairs(ids) do
+    for i = 1, nIds do
+        local id = AuraIdAt(mainID, alts, i)
         if id and id > 0 and ns.TrackedBuffStateByName then
             local ok, st = pcall(ns.TrackedBuffStateByName, id)
             if ok and st == true then
@@ -1109,7 +1143,8 @@ function ns.AuraPresence(mainID, alts, spellID)
     -- 4. a glowing button that only this aura lights, once the pairing has been seen to hold in game (ns.ProcGlowSaysPresent).
     --    Only ever "present": no glow leaves the answer unknown.
     if p == nil and ns.ProcGlowSaysPresent then
-        for _, id in ipairs(ids) do
+        for i = 1, nIds do
+            local id = AuraIdAt(mainID, alts, i)
             if id and id > 0 then
                 local ok, g, b = pcall(ns.ProcGlowSaysPresent, id)
                 if ok and g == true then
@@ -1845,6 +1880,7 @@ local function EquippedMatch(set)
     return (not hasOn) or hit
 end
 
+local sigParts = {}
 function ns.ReadContext()
     local ctx = {}
     for _, c in ipairs(ns.LOAD_TRI) do
@@ -1866,8 +1902,10 @@ function ns.ReadContext()
         if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
     end
     ReadPlace(ctx)
-    -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo)
-    local parts = {}
+    -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo). (round 7) The parts are
+    -- gathered in one reused list (the same count every time: no table per read)
+    local parts = sigParts
+    for i = #parts, 1, -1 do parts[i] = nil end
     for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
     parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
     parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
@@ -1909,9 +1947,12 @@ local function IdListWalk(load, ctx, sink, acc, noEnc)
     end
     return nil
 end
-local function AppendCheck(checks, key, ok) checks[#checks + 1] = { key = key, ok = ok } end
--- the ID-list checks of a rule's load table, appended to `checks` as { key, ok = true / false / nil } (they join its other checks)
-local function IdListChecks(load, ctx, checks, noEnc) IdListWalk(load, ctx, AppendCheck, checks, noEnc); return checks end
+-- (round 7, V25(2): no table per check) a rule's load checks, gathered in two reused lists: ckKey[i] the check's name, ckOk[i] its answer
+-- (true / false / nil = unknown), ckN how many. Before, every check of every rule made a { key, ok } table, and the list one more: a full
+-- step of 300 rules made about 10 KB of them. (CheckContextRaw is never re-entered while it gathers: nothing it calls checks a rule.)
+local ckKey, ckOk, ckN = {}, {}, 0
+local function AddCheck(key, ok) ckN = ckN + 1; ckKey[ckN] = key; ckOk[ckN] = ok end
+local function AppendCheck(_, key, ok) AddCheck(key, ok) end   -- (an IdListWalk sink: returns nothing, so the walk goes on)
 -- a group's lists: every one must match. Returns the first that does not (its name, and false or nil for unknown), or nil.
 local failOk
 local function FirstFail(_, key, ok) if ok ~= true then failOk = ok; return key end end
@@ -1998,47 +2039,49 @@ function CheckContextRaw(rule, ctx, static)
         if not ok then return false, "Always load, only this " .. why end
         return true
     end
-    local checks = {}
+    ckN = 0
     for _, c in ipairs(ns.LOAD_TRI) do
         local s = load[c.key]
         if not ns.Ignored(s) then
             local actual = ctx[c.key]
-            checks[#checks + 1] = { key = c.key, ok = known(actual, (s == "yes" and actual == true) or (s == "no" and actual == false)) }
+            AddCheck(c.key, known(actual, (s == "yes" and actual == true) or (s == "no" and actual == false)))
         end
     end
     if load.instanceTypes and next(load.instanceTypes) then
-        checks[#checks + 1] = { key = "instance type", ok = known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)) }
+        AddCheck("instance type", known(ctx.instanceType, ctx.instanceType ~= nil and ns.SetMatch(load.instanceTypes, ctx.instanceType)))
     end
     -- multi-select sets (empty / missing = any); the old single specID / role are still honored for saved rules
     if load.classUse ~= false and ns.SetActive(load.classes) then
-        checks[#checks + 1] = { key = "class", ok = known(ctx.class, ctx.class ~= nil and ns.SetMatch(load.classes, ctx.class)) }
+        AddCheck("class", known(ctx.class, ctx.class ~= nil and ns.SetMatch(load.classes, ctx.class)))
     end
     if load.specUse ~= false and ns.SetActive(load.specs) then
-        checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))) }
+        AddCheck("spec", known(ctx.specID, ctx.specID ~= nil and ns.SetMatch(load.specs, tostring(ctx.specID))))
     elseif load.specUse ~= false and (load.specID or 0) > 0 then
-        checks[#checks + 1] = { key = "spec", ok = known(ctx.specID, ctx.specID == load.specID) }
+        AddCheck("spec", known(ctx.specID, ctx.specID == load.specID))
     end
     if load.roleUse ~= false and ns.SetActive(load.roles) then
-        checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role ~= nil and ns.SetMatch(load.roles, ctx.role)) }
+        AddCheck("role", known(ctx.role, ctx.role ~= nil and ns.SetMatch(load.roles, ctx.role)))
     elseif load.roleUse ~= false and not ns.Ignored(load.role) then
-        checks[#checks + 1] = { key = "role", ok = known(ctx.role, ctx.role == load.role) }
+        AddCheck("role", known(ctx.role, ctx.role == load.role))
     end
     if load.heroUse ~= false and ns.SetActive(load.heroes) then
-        checks[#checks + 1] = { key = "hero talents", ok = known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))) }
+        AddCheck("hero talents", known(ctx.hero, ctx.hero ~= nil and ctx.hero > 0 and ns.SetMatch(load.heroes, tostring(ctx.hero))))
     end
     -- ID lists (zone, instance, difficulty, size, encounter, equipped item); an empty or missing list restricts nothing
-    IdListChecks(load, ctx, checks, static)
-    if #checks == 0 then return true end
+    IdListWalk(load, ctx, AppendCheck, nil, static)
+    if ckN == 0 then return true end
     if load.mode == "any" then
         local unknown
-        for _, c in ipairs(checks) do
-            if c.ok == true then return true end
-            if c.ok == nil then unknown = true end
+        for i = 1, ckN do
+            local ok = ckOk[i]
+            if ok == true then return true end
+            if ok == nil then unknown = true end
         end
         return false, "none of the conditions matched" .. (unknown and " (some unknown)" or "")
     end
-    for _, c in ipairs(checks) do
-        if c.ok ~= true then return false, c.key .. (c.ok == nil and " (unknown)" or "") end
+    for i = 1, ckN do
+        local ok = ckOk[i]
+        if ok ~= true then return false, ckKey[i] .. (ok == nil and " (unknown)" or "") end
     end
     return true
 end
@@ -2285,14 +2328,15 @@ local function Store()
     return t
 end
 local lastIid = {}   -- spellID -> auraInstanceID last counted (session only)
+local function FieldOfAura(t, k) return t[k] end
 -- Called by the aura reader with the spell ID it asked for and the aura table it got back (readable numbers only).
 function ns.LearnStacks(id, aura)
     local db = Store()
     id = tonumber(id)
     if not db or not id or id == 0 or type(aura) ~= "table" then return end
-    local oka, apps = pcall(function() return aura.applications end)
+    local oka, apps = pcall(FieldOfAura, aura, "applications")   -- (round 7: a file-level reader, no closure per call)
     if not oka or type(apps) ~= "number" or issecret(apps) then return end
-    local okI, iid = pcall(function() return aura.auraInstanceID end)
+    local okI, iid = pcall(FieldOfAura, aura, "auraInstanceID")
     if not okI or issecret(iid) then iid = nil end
     local e = db[id]
     if type(e) ~= "table" then e = { max = 0, seen = 0 }; db[id] = e end

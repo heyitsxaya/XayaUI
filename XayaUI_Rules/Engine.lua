@@ -25,10 +25,21 @@ local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
 --   * time-based changes are waited for with one one-shot timer set to the stored moment they happen: the next whole second of a
 --     countdown a display shows, the end of a cooldown, a "cast within N seconds" window, a repeat sound, a "seconds left" threshold
 --     (Timing.lua deadlines);
---   * only what the game hides the moment of (a cooldown's end in combat, seconds a display reads from a secret duration, the range to
---     a focus / mouseover / pet) is re-checked every TICK, and only for the loaded rules that wait on it, only while they wait.
+--   * (round 7, SD-60, her answer "all timers are supported by EUI, so this is not a real issue. solve for it, please") what the game
+--     hides the moment of is counted by the game itself: a cooldown's end in combat by a Cooldown widget fed the cooldown's duration
+--     object (its OnCooldownDone wakes the rules waiting for it: the cooldown widgets below), the seconds a display reads from a hidden
+--     aura time by a duration text binding (Visual.lua UpdateVisualText path 2, bound again on each aura event of its unit), a preview's
+--     sample countdown and sound loop by stored moments, and a row type nothing routes answers the same every time (Deps). Before, all
+--     of these were re-checked every 0.2 s while they lasted;
+--   * one case has no game-driven route (round 7 report, NEEDS_HER_DECISION): the range of a spell to a focus / mouseover / pet (the
+--     game's range events name no unit, events.md:1440 and :23, or carry a fixed group range, :1606). Until she decides, a loaded rule
+--     with such a row is re-checked every TICK while it is loaded, as before;
+--   * (round 7 repair, V2 fail safe) a hidden cooldown end no widget can time (the game gave no duration object, documented
+--     MayReturnNothing, or the cooldown still reads running just after its widget ran out) keeps that rule on the TICK re-check, as
+--     before, until the cooldown reads ended or a widget times it (Plan, rt.cdUntimed; NEEDS_HER_DECISION). Nothing else runs on TICK.
 -- With nothing loaded waiting on time (idle out of combat, every aura and cooldown gone) nothing of the engine runs.
-local TICK = 0.2   -- the re-check pace for what the game hides the moment of (above); nothing else runs on it
+local TICK = 0.2   -- the re-check pace of a Range Check row on a focus / mouseover / pet (above, her decision) and of a hidden cooldown end
+                   -- no widget can time (above, the fail safe); nothing else runs on it
 local MIN_GAP = 0.05   -- events (casts, movement, target changes) can come many a second: their re-checks run at most this often
 -- (review R18; round 7, SD-61, her answer "10/s for all, like EUI (Recommended)") routed re-checks (your auras, the target's and the
 -- focus's auras, cooldowns, resources, range, casts): the first after a quiet moment still runs on the very next frame; in a burst (a
@@ -64,16 +75,17 @@ local function Guarded(rule, rt, fn, ...)
     if not ok then ReportRuleError(rule, rt, err) end
 end
 local function RunActionsSafe(rule, rt, phase) if ns.RunActions then Guarded(rule, rt, ns.RunActions, rule, phase) end end
+local function PlayRuleSound(rule)
+    local how, res = ns.PlaySound(ns.EffectiveSound(rule))
+    if ns.RecSound then ns.RecSound(rule, how or "no sound picked", res) end   -- (DebugRecord.lua: nothing when its category is off)
+end
 local function PlaySoundSafe(rule, rt)
     -- the game already plays this rule's sound on the aura itself (AuraSound.lua, opt-in): no second copy
     if ns.AuraSound and ns.AuraSound.Owns(rule) then
         if ns.RecSound then ns.RecSound(rule, "left to the game (it plays this sound on the aura itself)") end
         return
     end
-    Guarded(rule, rt, function()
-        local how, res = ns.PlaySound(ns.EffectiveSound(rule))
-        if ns.RecSound then ns.RecSound(rule, how or "no sound picked", res) end   -- (DebugRecord.lua: nothing when its category is off)
-    end)
+    Guarded(rule, rt, PlayRuleSound, rule)   -- (round 7: a file-level function, no closure per sound played)
 end
 local function HasSound(rule) return ns.KindHas(rule, "sound") end
 local function SoundNote(rule)
@@ -179,6 +191,7 @@ end
 
 -- Preview (transient, set from the sidebar eye / headphone icons): force-show the visual and / or loop the sound without
 -- touching the rule's own switches or conditions.
+local function PreviewSoundEvery(rule) return ((rule.repeatSec or 0) > 0) and math.max(0.5, rule.repeatSec) or 2 end
 local function StepPreview(rule, rt, now)
     if ns.IsPreview(rule, "visual") and ns.KindHas(rule, "visual") then
         rt.visualWanted = true
@@ -186,7 +199,7 @@ local function StepPreview(rule, rt, now)
         ns.UpdateVisualText(rule, rt.info)
     end
     if ns.IsPreview(rule, "sound") and ns.KindHas(rule, "sound") then
-        local iv = ((rule.repeatSec or 0) > 0) and math.max(0.5, rule.repeatSec) or 2
+        local iv = PreviewSoundEvery(rule)
         if now - (rt.pvLast or 0) >= iv then
             rt.pvLast = now
             ns.PlaySoundPreview(ns.EffectiveSound(rule))
@@ -247,7 +260,11 @@ local function Deps(rule)
     for _, t in ipairs(list or {}) do
         if type(t) == "table" then
             local k = ROW_READS[t.type]
-            if k == nil then d.other, d.poll = true, true   -- a row type this file does not know: re-checked every TICK while loaded (fails safe)
+            -- (round 7, SD-60) a row type this table does not route. ns.CheckTrigger answers a type Triggers.lua does not know with the same
+            -- "unknown trigger type" every time, so nothing about it changes with time: it is re-checked with the state events, like the
+            -- other "other" rows (before: also every 0.2 s while loaded). Every type Triggers.lua knows has an entry here
+            -- (tests/fix_r7_engine_timers_run.py fails when one is missing).
+            if k == nil then d.other = true
             elseif k == "cd" then
                 d.cd = true
                 local id = tonumber(t.spellID) or 0
@@ -263,7 +280,10 @@ local function Deps(rule)
                     local id = tonumber(t.spellID) or 0
                     if id ~= 0 then d.rangeSpells = d.rangeSpells or {}; d.rangeSpells[#d.rangeSpells + 1] = id end
                 else
-                    d.poll = true   -- focus / mouseover / pet: the game sends no range event for them
+                    -- focus / mouseover / pet: the game sends no range event for them (SPELL_RANGE_CHECK_UPDATE and ACTION_RANGE_CHECK_UPDATE
+                    -- name no unit; UNIT_IN_RANGE_UPDATE carries the group range, not a spell's): re-checked every TICK while loaded, as
+                    -- before (round 7: NEEDS_HER_DECISION, see the top of this file)
+                    d.poll = true
                 end
             elseif k == "cast" then
                 d.cast = true
@@ -362,11 +382,108 @@ local function LiveChanged()
 end
 
 -- When does a rule next change without an event? Worked out after each re-check of a live rule, from the times the game gives:
---   at    the earliest stored moment (a countdown's next whole second, a cooldown's end, a repeat sound, an enchant threshold)
---   poll  true when it changes at a moment the game hides (re-checked every TICK while that lasts)
--- rule -> moment, and the rules re-checked every TICK, are kept in two small sets (only rules waiting on time are in them).
+--   at    the earliest stored moment (a countdown's next whole second, a cooldown's end, a repeat sound, an enchant threshold, a
+--         preview's sample second and sound loop)
+--   a cooldown end the game hides: the cooldown widget the game counts it down in (below) wakes the rule at its end
+--   a hidden aura time shown as text: the game counts it down (Visual.lua); the rule is checked on each aura event of that unit
+--   poll  true only for a Range Check row on a focus / mouseover / pet (re-checked every TICK while loaded: her decision, see the top),
+--         and while a hidden cooldown end has no widget to time it (the fail safe, rt.cdUntimed below)
+-- rule -> moment, the rules re-checked every TICK, and the rules whose text shows a hidden aura time are kept in three small sets (only
+-- rules waiting on time are in them).
 local wakeAt = setmetatable({}, { __mode = "k" })
 local polled = setmetatable({}, { __mode = "k" })
+local pvV, pvS   -- the previewed rules (visual / sound), as this step found them (Step)
+local auraTextOf = setmetatable({}, { __mode = "k" })   -- rule -> the unit whose hidden aura time its display's text shows
+local function AddUniqueRule(l, x) for i = 1, #l do if l[i] == x then return end end l[#l + 1] = x end
+
+-- (round 7, SD-60, her answer "all timers are supported by EUI, so this is not a real issue. solve for it, please") the end of a
+-- cooldown the game hides (in combat a cooldown's start and duration are secret, its isActive is not): a Cooldown widget of the
+-- engine's own is fed the cooldown's duration object (C_Spell.GetSpellCooldownDuration / GetSpellChargeDuration, namespaces.md:4401 /
+-- :4398; Cooldown:SetCooldownFromDurationObject, widgets.md:1013) and the game counts it down; its OnCooldownDone is the end and wakes
+-- the rules waiting for it (on the stored-moment timer, the next frame). Before, those rules were re-checked every 0.2 s while the
+-- cooldown ran. (EllesmereUI, behavior studied only, times a cooldown's end the same way; our design and code are our own.) One widget
+-- per spell for its cooldown and one for its recharge, made the first time that spell's end is hidden and reused after; the widgets
+-- sit on one 1x1 frame of their own, alpha 0, no parent (so hiding the game's UI does not stop them), that takes no mouse (V27) and
+-- draws nothing. Game facts used: SetCooldownFromDurationObject is IsProtectedFunction with SecretArguments=AllowedWhenUntainted: a
+-- duration object is not itself a secret value, and the frame is the engine's own and unprotected (INFERENCE, as the stand-in game
+-- models it: tests/harness/world.lua blocks protected calls only on protected frames). OnCooldownDone is a Cooldown script the public
+-- API reference does not list (it lists no script names); that it runs at alpha 0 and in combat is INFERENCE. UNVERIFIED IN GAME.
+-- An item's cooldown is never hidden (C_Container.GetItemCooldown carries no secret flag, namespaces.md:1300): its end is a stored
+-- moment; should it ever read hidden, the rule waits for the next cooldown event (INFERENCE: cannot happen).
+local cdHost
+local cdW, chW = {}, {}   -- spell ID -> its cooldown widget / its recharge widget
+local CD_MAPS = { cdW, chW }
+local OnCdDone            -- (the driver below: wakes the waiting rules)
+local function CdWidget(map, id)
+    local w = map[id]
+    if w then return w end
+    if not cdHost then
+        cdHost = CreateFrame("Frame")
+        cdHost:SetSize(1, 1); cdHost:SetPoint("BOTTOMLEFT"); cdHost:SetAlpha(0); cdHost:EnableMouse(false)
+    end
+    w = CreateFrame("Cooldown", nil, cdHost)
+    w:SetAllPoints(cdHost); w:EnableMouse(false)
+    w:SetDrawSwipe(false); w:SetDrawEdge(false); w:SetDrawBling(false); w:SetHideCountdownNumbers(true)
+    w.waiters, w.armed = {}, false
+    w:SetScript("OnCooldownDone", OnCdDone)
+    map[id] = w
+    return w
+end
+-- feed a widget the spell's running cooldown (or recharge): once per step per spell (SpellEnd's memo), only while its end is hidden.
+-- (round 7 repair, V2 fail safe) both duration calls are documented MayReturnNothing (namespaces.md:4398 / :4401): with no object (or a
+-- refused feed) the widget of that spell is marked not armed, so no rule trusts an older feed of it (CdWait below). There is no other
+-- game-driven route then: Cooldown:SetCooldown / SetCooldownFromExpirationTime take the start and duration as numbers, which are secret
+-- in combat, and their SecretArguments=AllowedWhenUntainted (widgets.md:1011 / :1014) refuses a secret number from an addon's (tainted)
+-- code (INFERENCE from the flag's name; the README does not define it).
+-- (round 7 repair) clearIfZero is passed false (widgets.md:1013; the default true clears the widget when the object it is fed has already
+-- ended, and a cleared widget never runs OnCooldownDone): a feed that lands on or just after a cooldown's end (a cooldown event in the
+-- same frame, or the cooldown still reading active for a moment) must not silently stop the widget that would have woken the rules.
+-- What the widget does with an ended object then (keep its earlier end, or end at once) is INFERENCE: either way it runs out.
+-- A widget fed this frame already (a cooldown event's feed, CdRefeed below) is not fed again by the same frame's re-check.
+local function ArmCd(map, id, readID, charge, now)
+    local o = map[id]
+    if o and o.fedAt == now and o.readID == readID then return end
+    local S = C_Spell
+    local fn = S and (charge and S.GetSpellChargeDuration or S.GetSpellCooldownDuration)
+    local ok, dur = false, nil
+    if fn then
+        if charge then ok, dur = pcall(fn, readID) else ok, dur = pcall(fn, readID, false) end   -- (false: as GetSpellCooldown, the GCD counts)
+    end
+    if not (ok and dur) then
+        if o then o.armed, o.fedAt, o.readID = false, now, readID end
+        return
+    end
+    local w = o or CdWidget(map, id)
+    w.armed = pcall(w.SetCooldownFromDurationObject, w, dur, false) and true or false
+    w.fedAt, w.readID = now, readID
+end
+-- (round 7 repair, V2 fail safe) a widget that ran out this long ago or less is not trusted to time a cooldown that still reads as running:
+-- the game may still report the cooldown active for a moment after its duration object has ended, and a duration object fed after its end
+-- clears the widget without OnCooldownDone (SetCooldownFromDurationObject's clearIfZero defaults to true, widgets.md:1013). Such a rule is
+-- re-checked at the TICK pace until the cooldown reads ended or this window passes (at most CD_END_GRACE / TICK re-checks per end; after
+-- the window a still-running cooldown is a new one, and its feed is trusted). INFERENCE: the skew itself is UNVERIFIED IN GAME.
+local CD_END_GRACE = 1
+-- a rule waits for the hidden end of spell id: it is woken when either widget of that spell runs out. Returns true when a widget the
+-- engine trusts times that end; false when none does (no duration object, or a widget that just ran out): the caller keeps the rule on
+-- the fail-safe re-check (Plan below)
+local function CdWait(id, rule, now)
+    local timed = false
+    local w = cdW[id]
+    if w and w.armed then
+        AddUniqueRule(w.waiters, rule)
+        if not (w.doneAt and now - w.doneAt < CD_END_GRACE) then timed = true end
+    end
+    w = chW[id]
+    if w and w.armed then
+        AddUniqueRule(w.waiters, rule)
+        if not (w.doneAt and now - w.doneAt < CD_END_GRACE) then timed = true end
+    end
+    return timed
+end
+local function CdWaitersClear()
+    for _, w in pairs(cdW) do local l = w.waiters; for i = #l, 1, -1 do l[i] = nil end end
+    for _, w in pairs(chW) do local l = w.waiters; for i = #l, 1, -1 do l[i] = nil end end
+end
 local cdMemo = {}      -- spell / item -> its next end this step (reused, emptied per step: no table per read)
 local cdMemoStep = -1
 local function Earlier(a, b) if a == nil then return b end if b == nil then return a end return (b < a) and b or a end
@@ -376,16 +493,16 @@ local function SpellEnd(id, now)
     local key = id
     local m = cdMemo[key]
     if m ~= nil then return m end
-    local res = false
+    local res, hidCd, hidCh = false, false, false
     local readID = (ns.SpellOnBar and ns.SpellOnBar(id)) or id
     local ok, cd = pcall(C_Spell.GetSpellCooldown, readID)
     if ok and type(cd) == "table" then
         local act, st, du = cd.isActive, cd.startTime, cd.duration
         if issecret(act) then act = nil end
         if act == true or (act == nil and Readable(du) and du > 0) then
-            if Readable(st) and Readable(du) and du > 0 then res = st + du else res = true end
+            if Readable(st) and Readable(du) and du > 0 then res = st + du else res, hidCd = true, true end
         elseif act == nil and not Readable(du) then
-            res = true   -- nothing readable about it: re-checked until it reads
+            res, hidCd = true, true   -- nothing readable about it: its widget runs out when it ends (no running cooldown: nothing to wait for)
         end
     end
     local okc, ch = pcall(C_Spell.GetSpellCharges, readID)
@@ -396,10 +513,14 @@ local function SpellEnd(id, now)
             if Readable(st) and Readable(du) and du > 0 then
                 local e = st + du
                 if res == false or (type(res) == "number" and e < res) then res = e end
-            elseif res == false then res = true end
+            elseif res == false then res, hidCh = true, true end
         end
     end
     if type(res) == "number" and res <= now then res = false end
+    if res == true then   -- (round 7, SD-60) the end is hidden: the game counts it down in a widget (above)
+        if hidCd then ArmCd(cdW, id, readID, false, now) end
+        if hidCh then ArmCd(chW, id, readID, true, now) end
+    end
     cdMemo[key] = res
     return res
 end
@@ -445,9 +566,21 @@ local deadlineOf = setmetatable({}, { __mode = "k" })   -- rule -> the "seconds 
 local function Plan(rule, rt, now, pv)
     local d = Deps(rule)
     local at, poll = nil, d.poll and true or false
-    if pv or ns.unlocked then poll = true end   -- a preview / the mover's samples move with time (the settings window is open)
+    local textUnit = nil
     -- a repeat sound
     if rt.active and (rule.repeatSec or 0) > 0 and rt.lastPlay then at = rt.lastPlay + rule.repeatSec end
+    -- (round 7, SD-60) a preview / the mover's samples (the settings window is open): the sample countdown's next whole second
+    -- (Visual.lua ns.SampleNextChange; none while previews are paused) and a previewed sound's next loop are stored moments. Before,
+    -- such a rule was re-checked every 0.2 s while previewed or unlocked.
+    if pv or ns.unlocked then
+        local v = rule.visual
+        local tx = type(v) == "table" and v.text
+        if type(tx) == "table" and tx.enabled and ns.SampleNextChange then
+            local sn = ns.SampleNextChange()
+            if sn then at = Earlier(at, now + sn + 0.001) end
+        end
+        if pvS and pvS[rule] and rt.pvLast then at = Earlier(at, rt.pvLast + PreviewSoundEvery(rule)) end
+    end
     -- the countdown a display of XayaUI's own shows (one the combat engine draws is counted down by the game)
     if rt.visualWanted then
         local v = rule.visual
@@ -460,7 +593,10 @@ local function Plan(rule, rt, now, pv)
                 local rem = exp - now
                 if rem > 0 then at = Earlier(at, now + (rem - math.floor(rem)) + 0.001) end   -- the next whole second it shows
             elseif type(ref) == "table" and ref.instanceID ~= nil then
-                poll = true   -- seconds read from the game's duration object (secret in combat): redrawn every TICK while shown
+                -- seconds from the game's duration object (hidden in combat): (round 7, SD-60) the game counts them down itself
+                -- (Visual.lua path 2); the rule is checked again on each aura event of the aura's unit, which binds a refreshed aura's
+                -- new time (before: redrawn every 0.2 s while shown)
+                textUnit = ref.unit or "player"
             end
         end
     end
@@ -468,7 +604,7 @@ local function Plan(rule, rt, now, pv)
     -- (cdFresh), and the game is asked only about a cooldown that runs (the rule's own one is known from this step's answer)
     if d.cd then
         if cdFresh then
-            local cAt, cPoll = nil, false
+            local cAt, cPoll, cUntimed = nil, false, false
             if cdMemoStep ~= ns.tickID then cdMemoStep = ns.tickID; for k in pairs(cdMemo) do cdMemo[k] = nil end end
             local cdi = rt.info and rt.info.cd
             -- (its own cooldown: this step's answer says whether it runs; isActive is NeverSecret, structures.md:6549, so in game that answer
@@ -479,19 +615,27 @@ local function Plan(rule, rt, now, pv)
                 local id = list[i]
                 if not (i == 1 and ownIdle and d.ownCd) then
                     local e = SpellEnd(id, now)
-                    if e == true then cPoll = true elseif e then cAt = Earlier(cAt, e + 0.001) end
+                    if e == true then
+                        cPoll = true
+                        if not CdWait(id, rule, now) then cUntimed = true end
+                    elseif e then cAt = Earlier(cAt, e + 0.001) end
                 end
             end
             list = d.cdItems or EMPTY
             for i = 1, #list do
                 local e = ItemEnd(list[i], now)
-                if e == true then cPoll = true elseif e then cAt = Earlier(cAt, e + 0.001) end
+                if e == true then cPoll, cUntimed = true, true elseif e then cAt = Earlier(cAt, e + 0.001) end
             end
             if type(cdi) == "table" and Readable(cdi.readyAt) and cdi.readyAt > now then cAt = Earlier(cAt, cdi.readyAt + 0.001) end
-            rt.cdAt, rt.cdPoll = cAt, cPoll or nil
+            rt.cdAt, rt.cdPoll, rt.cdUntimed = cAt, cPoll or nil, cUntimed or nil
         end
         if rt.cdAt and rt.cdAt > now then at = Earlier(at, rt.cdAt) end
-        if rt.cdPoll then poll = true end
+        -- (rt.cdPoll: a cooldown it reads runs with its end hidden; the widget of that cooldown wakes it: CdWait above.)
+        -- (round 7 repair, V2 fail safe) rt.cdUntimed: a hidden end no trusted widget times (the game gave no duration object, a widget
+        -- that just ran out, or an item cooldown read hidden): the rule is re-checked every TICK, as every hidden end was before round 7,
+        -- until the cooldown reads ended or a trusted widget times it; every re-check asks the game for the duration object again.
+        -- Bounded by the cooldown's own length. Not seen unless the game answers as above (NEEDS_HER_DECISION, round 7 repair report).
+        if rt.cdUntimed then poll = true end
     end
     -- "cast within N seconds": the moment each recent cast's window closes
     if d.castWin then
@@ -518,8 +662,13 @@ local function Plan(rule, rt, now, pv)
     wakeAt[rule] = at
     if at and at < minWake then minWake = at end
     polled[rule] = poll or nil
+    auraTextOf[rule] = textUnit
 end
-local function Unplan(rule) wakeAt[rule] = nil; polled[rule] = nil end
+local function Unplan(rule)
+    wakeAt[rule] = nil; polled[rule] = nil; auraTextOf[rule] = nil
+    local rt = ns.runtime[rule]
+    if rt then rt.cdPoll, rt.cdUntimed = nil, nil end
+end
 
 local lastCtx                     -- the last full step's context, reused by every other re-check (load facts change only in a full step)
 local lastCtxSig, lastTalentEp    -- what the last full step's load answers were made from
@@ -528,8 +677,8 @@ local presetCtx                   -- a context already read for this full step (
 local stepList                    -- set for one Step call: the live lists to walk (nil = every rule, a full step)
 local stepClearsDeadlines = true  -- false for a re-check of some rules only: the others' "seconds left" moments stay registered
 local stepSerial = 0
-local seen = setmetatable({}, { __mode = "k" })   -- rule -> stepSerial it was stepped in (a rule in two lists is stepped once)
-local pvV, pvS
+-- (a rule in two lists is stepped once: rt.stepSerial, the step it was last stepped in. Round 7: on its runtime record, which every
+-- stepped rule has; before, a weak-keyed table whose keys the collector dropped and the next step added again: garbage per pass)
 
 local function StepOne(rule, ctx, now, off)
     local ok, err = pcall(StepRule, rule, ctx, now, off)
@@ -573,6 +722,11 @@ local probeUnits = {}   -- unit -> { probes = {}, idx = { [spellID] = { check, .
 for _, u in ipairs({ "player", "target", "focus" }) do probeUnits[u] = { probes = {}, idx = {}, mem = {}, memP = {}, loose = {}, complete = false, nonDirect = 0 } end
 local cdChecks = { probes = {}, loose = {}, whole = false }   -- (every cooldown check is read on every cooldown event: RouteCooldown)
 local probesOf = setmetatable({}, { __mode = "k" })   -- live rule -> its checks (every unit and cooldowns)
+-- (round 7) rule -> the step that last saw it in the rule list (a full step marks every rule). In Lua 5.1 a weak key is not freed while its
+-- own value reaches it (a rule's check list holds the rule as a reader), so the holders keyed by rule are emptied of rules no longer in
+-- the list at each full step (BuildProbes): a deleted rule's checks do not stay for the session.
+local inList = setmetatable({}, { __mode = "k" })
+local listSerial = -1
 local famOf = setmetatable({}, { __mode = "k" })      -- live rule -> the live rules that share its triggers (a rule and its cues)
 -- the checks an event marked, read on the next pass: a list and a flag on each check (no table keys added and dropped per event, which
 -- made the table grow and shrink again: garbage on every aura event)
@@ -677,7 +831,8 @@ end
 -- found it "the same" and the other readers (its icon cue) were never checked again: the cue's icon stayed on screen after its aura was
 -- gone. Now a reader is checked again whenever the answer it last saw is not the check's current one, whoever read the change first.
 local function NewCheck(kind, root, unit)
-    return { kind = kind, root = root, unit = unit, readers = {}, seen = {}, ver = 0, fp = {}, valid = false, tick = -1, direct = false }
+    return { kind = kind, root = root, unit = unit, readers = {}, seen = {}, ver = 0, fp = {}, valid = false, tick = -1, direct = false,
+        bserial = -1, pending = false, present = nil, iid = nil, row = nil, reader = nil }
 end
 local function IndexCheck(idx, id, pr)
     id = tonumber(id)
@@ -686,101 +841,128 @@ local function IndexCheck(idx, id, pr)
     if not l then l = {}; idx[id] = l end
     if l[#l] ~= pr then l[#l + 1] = pr end
 end
+local function IndexOne(idx, pr, id, al)
+    id = tonumber(id)
+    if not id or id == 0 then return end
+    IndexCheck(idx, id, pr)
+    local a = al and al(id)
+    if a then for aid in pairs(a) do IndexCheck(idx, aid, pr) end end
+end
 local function IndexAuraIDs(idx, pr, main, alts)
     local al = ns.AuraAliasesOf
-    local function one(id)
-        id = tonumber(id)
-        if not id or id == 0 then return end
-        IndexCheck(idx, id, pr)
-        local a = al and al(id)
-        if a then for aid in pairs(a) do IndexCheck(idx, aid, pr) end end
-    end
-    one(main)
-    if type(alts) == "table" then for i = 1, #alts do one(alts[i]) end end
+    IndexOne(idx, pr, main, al)
+    if type(alts) == "table" then for i = 1, #alts do IndexOne(idx, pr, alts[i], al) end end
 end
 local function Wipe(t) for k in pairs(t) do t[k] = nil end end
+local function Clear(l) for i = #l, 1, -1 do l[i] = nil end end
 local function AddUnique(l, x) for i = 1, #l do if l[i] == x then return end end l[#l + 1] = x end
 local function SlotOf(l, x) for i = 1, #l do if l[i] == x then return i end end local n = #l + 1; l[n] = x; return n end
 
--- built from the live lists (LiveChanged): every check, who reads it, and the indexes the events use
-BuildProbes = function()
-    for _, u in ipairs(PROBE_UNITS) do
-        local U = probeUnits[u]
-        U.probes, U.idx, U.loose = {}, {}, {}
-        Wipe(U.mem); Wipe(U.memP); U.complete, U.whole, U.touched, U.nonDirect = false, false, false, 0
+-- (round 7, V25(2) / V27: the gate measured about 500 KB of new tables per full step, all of it here) the checks, their reader lists, the
+-- per-rule lists and the indexes are kept between builds and refilled in place: a check is made once for each thing a rule reads (its
+-- own Buff / Aura, its own cooldown, each aura or cooldown row, by the row's own table) and found again by the next build. A new table is
+-- made only for something read for the first time (a new rule or row, a new spell ID in an index). Each holder below is keyed by the
+-- rule (weak keys: a deleted rule's checks go with it) or by the row.
+do   -- (a block: its helpers are BuildProbes' own)
+-- root rule -> { serial = the build that last refreshed it, buff = check, owncd = check, [row table] = check }: every check a root reads,
+-- made the first time; a check belongs to this build when its bserial is this build's (a row removed or no longer read keeps its check
+-- until the rule goes, unread). Made the first time the root has something to read; a root with nothing to read shares NO_CHECKS.
+local checkCache = setmetatable({}, { __mode = "k" })
+local famLists = setmetatable({}, { __mode = "k" })     -- root rule -> { serial, the live rules sharing it }
+local NO_CHECKS = { serial = -1 }                       -- (shared, never written)
+local AURA_KIND = { buff = true, arow = true, trow = true }   -- (the other kinds, cd and crow, are cooldown checks)
+-- the cached check of one thing a root reads, made the first time; refreshed for this build (its reader list starts empty)
+local function CachedCheck(cc, root, key, kind, unit)
+    local pr = cc[key]
+    if not pr or pr.kind ~= kind or pr.unit ~= unit then pr = NewCheck(kind, root, unit); cc[key] = pr end
+    if pr.bserial ~= buildSerial then pr.bserial = buildSerial; Clear(pr.readers); Clear(pr.seen) end
+    return pr
+end
+local function Root(rule)
+    if rule.parentUid and ns.FindParentRule then return ns.FindParentRule(rule) or rule end
+    return rule
+end
+-- does a root have anything to read (its own aura, its own cooldown when loaded, an aura or cooldown row when loaded)?
+local CHECK_ROWS = { buffAura = true, targetDebuff = true, cooldown = true, actionUsable = true, globalCooldown = true, itemUsable = true }
+local function ReadsAnything(root, loaded)
+    if (tonumber(root.buffID) or 0) ~= 0 then return true end
+    if not loaded then return false end
+    if Deps(root).cd then return true end
+    local list = type(root.extra) == "table" and type(root.extra.list) == "table" and root.extra.list or nil
+    if list then for _, t in ipairs(list) do if type(t) == "table" and CHECK_ROWS[t.type] then return true end end end
+    return false
+end
+local function ChecksOf(root, loaded)
+    local c = checkCache[root]
+    if c and c.serial == buildSerial then return c end
+    if not c then
+        if not ReadsAnything(root, loaded) then return NO_CHECKS end
+        c = { serial = 0 }; checkCache[root] = c
     end
-    cdChecks.probes, cdChecks.loose = {}, {}
-    cdChecks.whole = false
-    ClearMarks()
-    lastCdmGen = ns.cdmGen
-    buildSerial = buildSerial + 1
-    if ns.RulesDisabled then return end
-    local rootChecks = {}   -- root -> { checks of its own aura / cooldown triggers }
-    local fam = {}          -- root -> live rules sharing it
-    local function Root(rule)
-        if rule.parentUid and ns.FindParentRule then return ns.FindParentRule(rule) or rule end
-        return rule
+    c.serial = buildSerial
+    local d = Deps(root)
+    -- its own Buff / Aura: read for every rule that reads auras (ns.Evaluate reads it for each loaded rule, and for a rule that is
+    -- not loaded only when its display follows the buff)
+    -- (with no aura ID the reading is the same "no buff" every time: nothing to read)
+    local U = probeUnits.player
+    if (tonumber(root.buffID) or 0) ~= 0 then
+        local pr = CachedCheck(c, root, "buff", "buff", "player")
+        U.probes[#U.probes + 1] = pr
+        IndexAuraIDs(U.idx, pr, root.buffID, root.buffAlt)
     end
-    local function ChecksOf(root, loaded)
-        local c = rootChecks[root]
-        if c then return c end
-        c = { aura = {}, cd = {} }
-        rootChecks[root] = c
-        local d = Deps(root)
-        -- its own Buff / Aura: read for every rule that reads auras (ns.Evaluate reads it for each loaded rule, and for a rule that is
-        -- not loaded only when its display follows the buff)
-        -- (with no aura ID the reading is the same "no buff" every time: nothing to read)
-        local U = probeUnits.player
-        if (tonumber(root.buffID) or 0) ~= 0 then
-            local pr = NewCheck("buff", root, "player")
-            c.aura[#c.aura + 1] = pr
-            U.probes[#U.probes + 1] = pr
-            IndexAuraIDs(U.idx, pr, root.buffID, root.buffAlt)
-        end
-        if loaded then
-            local list = type(root.extra) == "table" and type(root.extra.list) == "table" and root.extra.list or nil
-            if list then
-                for _, t in ipairs(list) do
-                    if type(t) == "table" then
-                        if t.type == "buffAura" then
-                            local r = NewCheck("arow", root, "player"); r.row = t
-                            c.aura[#c.aura + 1] = r; U.probes[#U.probes + 1] = r
-                            IndexAuraIDs(U.idx, r, t.spellID, t.alt)
-                        elseif t.type == "targetDebuff" then
-                            local unit = (t.unit == "focus") and "focus" or "target"
-                            local TU = probeUnits[unit]
-                            local r = NewCheck("trow", root, unit); r.row = t
-                            c.aura[#c.aura + 1] = r; TU.probes[#TU.probes + 1] = r
-                            IndexCheck(TU.idx, t.spellID, r)
-                        elseif t.type == "cooldown" then
-                            local r = NewCheck("cd", root, "cd"); r.row = t
-                            r.reader = { spellID = tonumber(t.spellID), maxCharges = tonumber(t.maxCharges) or 0, exactSpell = t.exactSpell and true or nil }
-                            c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-                        elseif t.type == "actionUsable" or t.type == "globalCooldown" or t.type == "itemUsable" then
-                            local r = NewCheck("crow", root, "cd"); r.row = t
-                            c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-                        end
+    if loaded then
+        local list = type(root.extra) == "table" and type(root.extra.list) == "table" and root.extra.list or nil
+        if list then
+            for _, t in ipairs(list) do
+                if type(t) == "table" then
+                    if t.type == "buffAura" then
+                        local r = CachedCheck(c, root, t, "arow", "player"); r.row = t
+                        U.probes[#U.probes + 1] = r
+                        IndexAuraIDs(U.idx, r, t.spellID, t.alt)
+                    elseif t.type == "targetDebuff" then
+                        local unit = (t.unit == "focus") and "focus" or "target"
+                        local TU = probeUnits[unit]
+                        local r = CachedCheck(c, root, t, "trow", unit); r.row = t
+                        TU.probes[#TU.probes + 1] = r
+                        IndexCheck(TU.idx, t.spellID, r)
+                    elseif t.type == "cooldown" then
+                        local r = CachedCheck(c, root, t, "cd", "cd"); r.row = t
+                        local rd = r.reader
+                        if not rd or rd == root then rd = {}; r.reader = rd end
+                        rd.spellID, rd.maxCharges, rd.exactSpell = tonumber(t.spellID), tonumber(t.maxCharges) or 0, t.exactSpell and true or nil
+                        cdChecks.probes[#cdChecks.probes + 1] = r
+                    elseif t.type == "actionUsable" or t.type == "globalCooldown" or t.type == "itemUsable" then
+                        local r = CachedCheck(c, root, t, "crow", "cd"); r.row = t
+                        cdChecks.probes[#cdChecks.probes + 1] = r
                     end
                 end
             end
-            -- its own cooldown (ns.Evaluate reads it for every loaded rule)
-            if d.cd then
-                local r = NewCheck("cd", root, "cd"); r.reader = root
-                c.cd[#c.cd + 1] = r; cdChecks.probes[#cdChecks.probes + 1] = r
-            end
         end
-        return c
+        -- its own cooldown (ns.Evaluate reads it for every loaded rule)
+        if d.cd then
+            local r = CachedCheck(c, root, "owncd", "cd", "cd"); r.reader = root
+            cdChecks.probes[#cdChecks.probes + 1] = r
+        end
     end
-    local function Reader(rule, root, list)
-        local f = fam[root]
-        if not f then f = {}; fam[root] = f end
-        AddUnique(f, rule)
-        famOf[rule] = f
-        -- mine: pairs (a check, this rule's place among its readers), each check once
-        local mine = probesOf[rule]
-        if not mine or mine.serial ~= buildSerial then mine = { serial = buildSerial }; probesOf[rule] = mine end
-        for i = 1, #list do
-            local pr = list[i]
+    return c
+end
+-- a live rule reads its root's checks of one class (aura or cooldown) built in this build. Returns how many, and whether one of them
+-- is an aura check of your own (the player unit).
+local function Reader(rule, root, c, aura)
+    local f = famLists[root]
+    if not f then f = { serial = 0 }; famLists[root] = f end
+    if f.serial ~= buildSerial then f.serial = buildSerial; Clear(f) end
+    AddUnique(f, rule)
+    famOf[rule] = f
+    -- mine: pairs (a check, this rule's place among its readers), each check once
+    local mine = probesOf[rule]
+    if not mine then mine = { serial = 0 }; probesOf[rule] = mine end
+    if mine.serial ~= buildSerial then mine.serial = buildSerial; Clear(mine) end
+    local n, own = 0, false
+    for _, pr in pairs(c) do
+        if type(pr) == "table" and pr.bserial == buildSerial and (AURA_KIND[pr.kind] or false) == aura then
+            n = n + 1
+            if pr.unit == "player" then own = true end
             local slot = SlotOf(pr.readers, rule)
             if pr.seen[slot] == nil then pr.seen[slot] = -1 end
             local have = false
@@ -788,21 +970,38 @@ BuildProbes = function()
             if not have then mine[#mine + 1] = pr; mine[#mine + 1] = slot end
         end
     end
+    return n, own
+end
+
+-- the holders keyed by rule, emptied of rules that are no longer in the rule list (after a full step marked every rule in it)
+local function DropGone(t) for rule in pairs(t) do if inList[rule] ~= listSerial then t[rule] = nil end end end
+-- built from the live lists (LiveChanged): every check, who reads it, and the indexes the events use
+BuildProbes = function()
+    if listSerial == stepSerial then DropGone(checkCache); DropGone(famLists); DropGone(probesOf); DropGone(famOf) end
+    for _, u in ipairs(PROBE_UNITS) do
+        local U = probeUnits[u]
+        Clear(U.probes); Clear(U.loose)
+        for _, l in pairs(U.idx) do Clear(l) end   -- (a spell ID's list is kept, emptied: no table per build)
+        Wipe(U.mem); Wipe(U.memP); U.complete, U.whole, U.touched, U.nonDirect = false, false, false, 0
+    end
+    Clear(cdChecks.probes); Clear(cdChecks.loose)
+    cdChecks.whole = false
+    ClearMarks()
+    lastCdmGen = ns.cdmGen
+    buildSerial = buildSerial + 1
+    if ns.RulesDisabled then return end
     for _, rule in ipairs(live.aura) do
         local root = Root(rule)
-        local c = ChecksOf(root, not NotLoaded(rule))
-        Reader(rule, root, c.aura)
-        local own = false
-        for i = 1, #c.aura do if c.aura[i].unit == "player" then own = true; break end end
+        local _, own = Reader(rule, root, ChecksOf(root, not NotLoaded(rule)), true)
         if Deps(root).auraText or not own then AddUnique(probeUnits.player.loose, rule) end
     end
-    for _, rule in ipairs(live.tgt) do local root = Root(rule); Reader(rule, root, ChecksOf(root, true).aura) end
+    for _, rule in ipairs(live.tgt) do local root = Root(rule); Reader(rule, root, ChecksOf(root, true), true) end
     for _, rule in ipairs(live.cd) do
         local root = Root(rule)
-        local c = ChecksOf(root, true)
-        Reader(rule, root, c.cd)
-        if #c.cd == 0 or Deps(root).cdText then AddUnique(cdChecks.loose, rule) end
+        local n = Reader(rule, root, ChecksOf(root, true), false)
+        if n == 0 or Deps(root).cdText then AddUnique(cdChecks.loose, rule) end
     end
+end
 end
 
 -- after a full step (every rule was just checked): each check is read once, in the same step, so the next event compares with what
@@ -860,6 +1059,13 @@ local function CheckOne(pr, n, tick)
     return n
 end
 local function AddLoose(l, n) for i = 1, #l do n = n + 1; probeDue[n] = l[i] end return n end
+-- (round 7, SD-60) the rules whose display's text shows a hidden aura time of unit u: checked on every aura event of u, so a refreshed
+-- aura's new time is bound (Plan, Visual.lua path 2)
+local function AddText(u, n)
+    for rule, tu in pairs(auraTextOf) do if tu == u then n = n + 1; probeDue[n] = rule end end
+    return n
+end
+local function TextWaits(u) for _, tu in pairs(auraTextOf) do if tu == u then return true end end return false end
 local function RunProbes()
     local n, tick = 0, ns.tickID
     if ns.cdmGen ~= lastCdmGen then   -- which icon stands for which spell changed: every aura check is read again
@@ -873,6 +1079,7 @@ local function RunProbes()
             for i = 1, #U.probes do local pr = U.probes[i]; n = CheckOne(pr, n, tick); NoteMem(U, pr) end
             U.complete = CountLoose(U)
             n = AddLoose(U.loose, n)
+            n = AddText(u, n)
         elseif U.touched then
             for i = 1, #U.probes do
                 local pr = U.probes[i]
@@ -880,6 +1087,7 @@ local function RunProbes()
             end
             if not CountLoose(U) then U.complete = false end
             n = AddLoose(U.loose, n)
+            n = AddText(u, n)
         end
         U.whole, U.touched = false, false
     end
@@ -918,12 +1126,13 @@ local function StepLive(l, ctx, now)
     local tick = ns.tickID
     for j = 1, #l do
         local rule = l[j]
-        if seen[rule] ~= stepSerial then
-            seen[rule] = stepSerial
+        local rt = RT(rule)
+        if rt.stepSerial ~= stepSerial then
+            rt.stepSerial = stepSerial
             local pv = (pvV and pvV[rule]) or (pvS and pvS[rule]) or false
             StepTracked(rule, ctx, now, pv and ns.RuleOff(rule) or false)   -- (only a previewed rule can be live while off)
             ProbesStale(rule, tick)
-            Plan(rule, RT(rule), now, pv)
+            Plan(rule, rt, now, pv)
         end
     end
 end
@@ -956,10 +1165,14 @@ local function Step()
         ClearLive()
         for k in pairs(wakeAt) do wakeAt[k] = nil end
         for k in pairs(polled) do polled[k] = nil end
+        for k in pairs(auraTextOf) do auraTextOf[k] = nil end
+        CdWaitersClear()   -- (every live rule is planned again below and waits again for what it still waits for)
         minWake = math.huge
         -- D7 (core 0.6.56): a switched-off rule (or a cue of one) is skipped once it has been cleaned up: no runtime record is made for a
         -- rule that was never on, and nothing of it runs per step, unless it is previewed
+        listSerial = stepSerial
         for _, rule in ipairs(ns.rules) do
+            inList[rule] = stepSerial
             local off = ns.RuleOff(rule)
             local rt0 = off and ns.runtime[rule]
             local pv = (pvV and pvV[rule]) or (pvS and pvS[rule]) or false
@@ -1188,6 +1401,57 @@ OnWake = function()
     inCallback = false
 end
 
+-- (round 7, SD-60) a cooldown widget ran out (the game counted a hidden cooldown down: see the cooldown widgets above): the rules waiting
+-- for that end are woken on the stored-moment timer (the next frame; several widgets running out together share one pass)
+OnCdDone = function(w)
+    w.armed = false
+    w.doneAt = GetTime()   -- (CdWait: a feed right after this end is not trusted for CD_END_GRACE)
+    local l = w.waiters
+    if ns.RulesDisabled then for i = #l, 1, -1 do l[i] = nil end return end
+    local now, any = GetTime(), false
+    for i = #l, 1, -1 do
+        local rule = l[i]; l[i] = nil
+        local rt = ns.runtime[rule]
+        if rt and rt.cdPoll then wakeAt[rule] = now; any = true end
+    end
+    if any then
+        if now < minWake then minWake = now end
+        ArmWake()
+    end
+end
+-- (round 7 repair) a cooldown event: every widget a rule waits on is fed its cooldown's duration object again, so a cooldown shortened
+-- (or lengthened) while it runs is timed to its new end. The rule itself is re-checked only if its reading changed (its cooldown still
+-- reads running, with its times secret, so it does not): without this, its widget ran out at the old end (a shortened cooldown's "ready"
+-- display came back late by the time cut). (EllesmereUI, behavior studied only, feeds its widgets again on SPELL_UPDATE_COOLDOWN; our
+-- design and code are our own.) A widget the game now gives no duration object for (documented MayReturnNothing) is not trusted: its
+-- waiting rules are re-checked on the next frame, which puts them on the fail safe (Plan, rt.cdUntimed). Cost: one duration call and one
+-- feed per spell a rule waits on, per routed cooldown pass (at most 10 a second, SD-61); nothing when no rule waits.
+local function CdRefeedMap(map, charge, now)
+    local any = false
+    for id, w in pairs(map) do
+        local l = w.waiters
+        if w.armed and l[1] ~= nil then
+            ArmCd(map, id, w.readID or id, charge, now)
+            if not w.armed then
+                for i = #l, 1, -1 do
+                    local rule = l[i]; l[i] = nil
+                    local rt = ns.runtime[rule]
+                    if rt and rt.cdPoll then wakeAt[rule] = now; any = true end
+                end
+            end
+        end
+    end
+    return any
+end
+local function CdRefeed(now)
+    local a = CdRefeedMap(cdW, false, now)
+    local b = CdRefeedMap(chW, true, now)
+    if a or b then
+        if now < minWake then minWake = now end
+        ArmWake()
+    end
+end
+
 -- every rule once, or a load-fact check (next frame, after every other addon file has seen the event that asked for it)
 local fullQueued = false
 local function Settle()
@@ -1241,6 +1505,7 @@ local function DoRouted(now)
     end
     for i = n + 1, #runLists do runLists[i] = nil end
     lastRoutedAt = now
+    if cd then CdRefeed(now) end   -- (round 7 repair: a running cooldown's new end, above)
     if n > 0 or AnyProbeWork() then RunLists(runLists, false, cd, true) end
 end
 local allArmed, routedArmed = false, false
@@ -1477,7 +1742,9 @@ local function MarkIDs(U, ids, forget)
 end
 local function RouteAura(unit, info)
     local U = probeUnits[unit]
-    if not U or (#U.probes == 0 and #U.loose == 0) then return false end
+    if not U then return false end
+    local text = TextWaits(unit)
+    if #U.probes == 0 and #U.loose == 0 and not text then return false end
     if U.whole then return true end
     local ok = type(info) == "table" and not issecret(info)
     if ok then
@@ -1508,7 +1775,7 @@ local function RouteAura(unit, info)
         for k in pairs(U.memP) do U.memP[k] = nil end
         return true
     end
-    if pendN > 0 or U.nonDirect > 0 or #U.loose > 0 then U.touched = true; return true end
+    if pendN > 0 or U.nonDirect > 0 or #U.loose > 0 or text then U.touched = true; return true end
     return false
 end
 -- a cooldown event: every cooldown check is read on the next pass (and only the rules whose check answered differently are checked in
@@ -1626,6 +1893,9 @@ function ns.SetRulesDisabled(on)
         ClearLive(); LiveChanged()   -- (no rule is live: the input events are let go, the range checks turned off)
         for k in pairs(wakeAt) do wakeAt[k] = nil end
         for k in pairs(polled) do polled[k] = nil end
+        for k in pairs(auraTextOf) do auraTextOf[k] = nil end
+        for _, map in ipairs(CD_MAPS) do for _, w in pairs(map) do pcall(w.Clear, w); w.armed, w.fedAt, w.doneAt = false, nil, nil end end
+        CdWaitersClear()
         minWake = math.huge
         if ns.AnyPreview and ns.AnyPreview() and ns.ClearPreview then pcall(ns.ClearPreview) end
         for _, rule in ipairs(ns.rules or {}) do

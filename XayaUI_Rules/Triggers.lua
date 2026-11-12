@@ -669,6 +669,13 @@ Add("resource", {
 -- duration engine), extra aura IDs that count as the same buff (ANY of them), an optional "seconds left" requirement, and stack /
 -- seconds-left numbers for conditions. Each row is its own trigger number; several rows can require several buffs at once (ALL).
 local rowAura = setmetatable({}, { __mode = "k" })   -- [row] = { tick, present, ref }: what the row read last (numbers for conditions)
+-- (round 7, V25(2)) each row keeps one record, refilled on every read (readers take its fields, never the record): before, every read
+-- of an aura or debuff row made a new one
+local function SetRowAura(t, present, ref)
+    local c = rowAura[t]
+    if not c then c = {}; rowAura[t] = c end
+    c.tick, c.present, c.ref = ns.tickID, present, ref
+end
 local TDList, TDScan, TDFound, TDAbsent, TDCdmState   -- (Target Debuff helpers, below)
 local function ReadRowAura(t)
     local id = tonumber(t.spellID) or 0
@@ -680,7 +687,7 @@ local function ReadRowAura(t)
         local own, label = ns.AuraEstimateInto(t, which or id, ref)
         if own then ref = own; src = tostring(src or ""):gsub(" | time: .*$", "") .. " | time: " .. tostring(label) end
     end
-    rowAura[t] = { tick = ns.tickID, present = present, ref = ref }
+    SetRowAura(t, present, ref)
     return present, src, ref
 end
 Add("buffAura", {
@@ -791,7 +798,7 @@ function TDFound(t, unit, foundAura, src)
     local ref
     -- (built by the one reference maker, Conditions.lua MakeAuraRef: readable values only, and the unit the debuff is on)
     if foundAura and ns.MakeAuraRef then ref = ns.MakeAuraRef(foundAura, nil, unit) end
-    rowAura[t] = { tick = ns.tickID, present = true, ref = ref }
+    SetRowAura(t, true, ref)
     local v = YesNo(t, true)
     if v == true and TimeOn(t) and ns.TimeLeftCheck then
         local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, ref)
@@ -800,7 +807,7 @@ function TDFound(t, unit, foundAura, src)
     end
     return v, src
 end
-function TDAbsent(t, src) rowAura[t] = { tick = ns.tickID, present = false }; return YesNo(t, false), src end
+function TDAbsent(t, src) SetRowAura(t, false, nil); return YesNo(t, false), src end
 function TDCdmState(i)
     if not i or i == 0 or not ns.CDMFrameState then return nil end
     local okp, pr = pcall(ns.CDMFrameState, i)   -- read-only: the target's debuff is not the player's buff (gap 1)
@@ -987,7 +994,7 @@ Add("lossOfControl", {
                 if x[2] and (best == nil or x[2] > best) then best = x[2] end
             end
         end
-        rowAura[t] = { tick = ns.tickID, present = on, ref = on and best and { expiration = GetTime() + best, duration = best } or nil }
+        SetRowAura(t, on, on and best and { expiration = GetTime() + best, duration = best } or nil)
         local v = YesNo(t, on)
         if v == true and on and TimeOn(t) and ns.TimeLeftCheck then
             local tv = ns.TimeLeftCheck(t.timeOp, t.timeSec, rowAura[t].ref)
@@ -1034,14 +1041,27 @@ end
 -- Three-valued like the talent check: ALL is false as soon as one row is definitely false; ANY is true as soon as
 -- one row is definitely true; otherwise unknown rows keep the answer unknown. No rows = no requirement (true).
 local NO_ROWS = {}   -- #309: shared, never written (readers only index it): a rule without additional triggers makes no table per step
+-- (round 7, V25(2)) during an engine step each rule refills its own two row lists (as its result table, Conditions.lua ns.InfoFor: whoever
+-- keeps them sees the rule's latest rows); outside a step (options, /xui debug status) they are new
+local rowLists = setmetatable({}, { __mode = "k" })
+local function RowLists(rule)
+    if not (ns.InStep and ns.InStep()) then return {}, {} end
+    local p = rowLists[rule]
+    if not p then p = { {}, {}, n = 0 }; rowLists[rule] = p end
+    local rows, whys = p[1], p[2]
+    for i = p.n, 1, -1 do rows[i] = nil; whys[i] = nil end
+    local list = rule.extra.list
+    p.n = #list
+    return rows, whys
+end
 function ns.CheckExtraTriggers(rule)
     local X = rule.extra
     local list = type(X) == "table" and X.list or nil
     if type(list) ~= "table" or #list == 0 then return true, "no additional triggers", NO_ROWS end
     local anyTrue, anyFalse, anyNil = false, false, false
     local firstWhy
-    local rows = {}   -- rows[i] = true / false / nil (unknown) for additional trigger i; outcomes read this
-    local whys = {}   -- whys[i] = the trigger's own explanation (shown by /xui debug status)
+    local rows, whys = RowLists(rule)   -- rows[i] = true / false / nil (unknown) for additional trigger i; outcomes read this
+                                        -- whys[i] = the trigger's own explanation (shown by /xui debug status)
     for i, t in ipairs(list) do
         local r, d = ns.CheckTrigger(t)
         rows[i] = r
