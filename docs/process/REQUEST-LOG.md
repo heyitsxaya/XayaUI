@@ -835,6 +835,7 @@ copy; rows it adds later are copied here.
 | RB-94 | Her canvas comment on the Cues "For" options (verbatim): "this should be expanded. it could be all, no combination, any, etc" | DONE: expanded "Play this cue when… (pick one)" list: ALL / ANY / NONE, one tracked thing alone (each), combinations from 2a. INFERENCE: "no combination" = one thing alone; NONE added (asked) | design canvas |
 | RB-95 | Her canvas comment on 2a's "happens / does NOT happen" (verbatim): "happens is the wrong verbiage" | DONE: "is detected / is NOT detected" on 2a; ALL / ANY / NONE "detected" on the Cues list. Outcome wording ("what should happen") kept; asked | design canvas |
 | RB-96 | Her canvas comment on the Cues heading (verbatim): "What alerts do you want to have set up for this rule? (Choosing how they will appear happens in the next page)" | DONE: heading + grey line set verbatim. ASKED: add a "Cue appearance" placeholder board after Cue options; step count | design canvas |
+| RB-97 | Her canvas comment on the "Play this cue when…" block (verbatim): "Cue Conditions >> this goes to next page" | DONE: new board "Cue Conditions" after Cue options (one card per alert, open card shows the pick-one list); later boards shifted. ASKED: does cue appearance come after Cue Conditions? | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
