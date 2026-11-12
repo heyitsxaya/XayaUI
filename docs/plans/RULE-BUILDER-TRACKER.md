@@ -12,6 +12,7 @@
 | 2026-11-12 | Second question round: RB-6 (triggers only first), RB-7 (All/Any plus an explanation box), RB-8 (rule made only on Finish), RB-9 (done page: build another, open in editor, Finish). |
 | 2026-11-12 | Design draft written: docs/plans/RULE-BUILDER-DESIGN.md. |
 | 2026-11-12 | Third question round: RB-10 (auto name plus a final name and group step), RB-11 (dropdown plus search), RB-12 (load question, then the Load tab 1:1 with a logic indicator), RB-13 (keep answers and reopen after combat). Draft PR #525 opened (base: bundle 1 branch). |
+| 2026-11-12 | RB-14 (study the EUI and ElvUI load conditions) opened; RB-15 confirmed. RB-16: design canvas mockups published, https://claude.ai/artifact/6jJdZbPfW67t1Xpj9eP426 |
 
 ## Decision graph (process and analysis)
 ```mermaid
