@@ -896,7 +896,10 @@ local function DynIndexCheck()
     end
 end
 function GA.DynIndex()
-    if not dynIdx.built or DynIndexStale() then DynIndexBuild() end
+    -- outside an engine step (the settings window, a redraw, the mover) every call checks the index against the rule and group lists,
+    -- so an edit that did not announce itself (a sidebar swap) is laid out at once, as before; inside a step the full-step check holds
+    if not (ns.InStep and ns.InStep()) then DynIndexCheck()
+    elseif not dynIdx.built or DynIndexStale() then DynIndexBuild() end
     return dynIdx
 end
 -- two lists already in rule order, merged in rule order (only when a group is also the at-cursor reminders' group)

@@ -100,8 +100,12 @@ check("R3: 100 talent requirements add under 2 KB of garbage to a step (before: 
 ---------------------------------------------------------------- R18
 W.tick(0.3, 1); W.tick(0.1, 1)
 reset()
+-- (round 6, SD-54: a cooldown event re-checks in full only the rules whose cooldown answered differently; so here the cooldown starts)
+local GSC0 = C_Spell.GetSpellCooldown
+C_Spell.GetSpellCooldown = function(id) if id == 187827 then return { startTime = W.now, duration = 3600, isEnabled = true, isActive = true, isOnGCD = false, modRate = 1 } end return GSC0(id) end
 W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(dt, 1)
-check("R18: after a quiet spell a cooldown event re-checks the loaded cooldown rule on the next frame", steps(A) == 1, steps(A))
+check("R18: after a quiet spell a cooldown event (the cooldown started) re-checks the loaded cooldown rule on the next frame", steps(A) == 1, steps(A))
+C_Spell.GetSpellCooldown = GSC0
 local u = 0; for i = 1, 100 do u = u + steps(U[i]) end
 check("R18: ... and leaves out the 100 rules that are not loaded", u == 0, u)
 -- a buff appears after a quiet spell: the cue plays on the next frame; the not-loaded buff display shows on the next frame
