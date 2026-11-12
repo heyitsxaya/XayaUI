@@ -46,6 +46,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-58: an item being added (item 2 or later) shows its number in a badge on the left, and its box is indented 20 px (the editor's `ns.Style.bodyIndent`).
 > RB-57: on the Tracking step, the "So far" summary sits at the top, under the rule name and above the tracked list.
 > RB-55: "+ Track something else" opens a chooser in its own "NEW TRACKING ITEM" box below the tracked list, never inside it (RB-56). It shows the same six tiles as the first landing, with a "(Trigger N)" subtitle and Cancel. Every tracked item starts from the tiles.
 > RB-54 wording rule: no "true / false when". Each question reads "Track when the [spell / item / buff / debuff / proc / resource]…" and each answer finishes the sentence ("is ready", "is on me", "is missing", "has at least…"). Combining reads "All of them at once" / "Any one of them". Internal values (yes/no, present/missing, ready/notReady) stay in code only.

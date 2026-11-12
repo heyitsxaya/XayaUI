@@ -796,6 +796,7 @@ copy; rows it adds later are copied here.
 | RB-55 | Her canvas comment on "+ Track something else" (verbatim): "show me the phase of this window in between clicking this button and the next tracking population" | DONE: new board D2 (chooser panel with the same six tiles, "(Trigger 2)", Cancel) between D and E; settles RB-33's follow-up (every item starts from the tiles) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-56 | Her canvas comment on D2's chooser (verbatim): "pop this out into its own box so it's clear we're adding a new tracking item rather than an embedded one into the first" | DONE: chooser moved out of the list into its own "NEW TRACKING ITEM" box below it | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-57 | Her canvas comment on D2's "So far" box (verbatim): "put this on the top" | DONE on D and D2: "So far" sits under the rule name, above the tracked list. OPEN (asked): same placement for the summaries on All or any and Name and group | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-58 | Her canvas comment on D2's new-item box (verbatim): "add a number to the side and apply indentation to show it's the n+ tracking item" | DONE on D2, E and 1 · Tracking: number badge (N) on the left, box indented 20 px (ns.Style.bodyIndent). OPEN (asked): badge on the first item too | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
