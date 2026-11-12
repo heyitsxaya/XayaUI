@@ -68,9 +68,10 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 ns.Provide("rules", { BuildSpellList = function(...) return ns.BuildSpellList(...) end, BuildTalentList = function(...) return ns.BuildTalentList(...) end, ForgetSpellLists = function() ns.spellList, ns.talentList = nil, nil end })   -- (P4) XayaUI Rules' "rules" service, as XayaUI_Rules/RuleDefaults.lua offers it
 assert(loadfile(__COMPAT__))("XayaUI", ns)
 function ns.BuildSpellList() local t = {}; for _, s in ipairs(SPELLS) do t[#t + 1] = { id = s.id, name = s.name } end; return t end
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 -- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
 XayaUI_NS = ns
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
@@ -483,7 +484,7 @@ c.advanced = false
 d = render()
 check("(guard) no Show: % button (#382; QoL 0.7.40, B2: not made at all, the settings' Rating lines gone too)", P.modeBtn == nil)
 '''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-   .replace("__SM__", P("XayaUI_Bonus/StatMath.lua")).replace("__CM__", P("XayaUI_Bonus/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+   .replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua")).replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
 n, fails = lua.eval("n"), lua.eval("fails")
 print("%d checks, %d failed" % (n, fails))
 sys.exit(1 if fails else 0)

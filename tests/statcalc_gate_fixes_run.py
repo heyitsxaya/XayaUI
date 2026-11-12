@@ -40,6 +40,9 @@ check("setup: the statCalc and statCalcDebug services are there", sc ~= nil and 
 if not (sc and dbg) then return R end
 local T = ns.Theme
 local function listenerSet() local s = {}; for _, f in ipairs(T and T.listeners or {}) do s[f] = true end; return s end
+-- (Bonus 0.6.46) the session starts with the Stat Calculator on (its load-on-demand addon is loaded only then): switched off first, so
+-- the listener it adds when switched on is the one counted
+do local c0 = sc.Cfg(); c0.enabled = false; ns.StatCalc_Apply() end
 local before = listenerSet()
 local c = sc.Cfg(); c.enabled, c.panel = true, true; ns.StatCalc_Apply()
 
@@ -183,13 +186,18 @@ end
 '''
 
 
+# (Bonus 0.6.46, A24 #12 / #13) the Stat Calculator is a load-on-demand addon (XayaUI_Bonus_StatCalculator) that XayaUI_Bonus's loader
+# loads at login only while its switch is saved on: the session starts with it on, as a player who turned it on and reloaded
+STATCALC_ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": {"enabled": True}}}}
+
+
 def main():
     folders = H.find_addons()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
-        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}}))
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": STATCALC_ON}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

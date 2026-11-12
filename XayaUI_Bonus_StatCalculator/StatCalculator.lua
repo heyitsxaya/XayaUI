@@ -15,6 +15,11 @@
 -- through it). Nothing of XayaUI QoL is needed: there is no Improved Character Display on main, so no Stat Calc button on the
 -- character window (the panel still opens and closes with the character window, from the minimap list's row and /xui stats), and no
 -- Enhanced Tooltips lines. Mentions of QoL, Improved Character Display and the Stat Calc button below are the history of the QA build.
+-- (Bonus 0.6.46, MAIN; Xaya A24 #12 / #13, her option text: "XayaUI_Bonus keeps only a tiny loader: the on/off switch, settings page
+-- entry, /xui stats and the minimap row. The calculator code moves to XayaUI_Bonus_StatCalculator, shown in the AddOns list under Bonus
+-- Features as 'load on demand'. Off means it is never read; on means it loads once per reload.") This file, StatModel.lua and
+-- StatMath.lua are the load-on-demand addon XayaUI_Bonus_StatCalculator, loaded by XayaUI_Bonus/StatCalculatorLoader.lua at login
+-- (after combat when the login is in combat) only while the Stat Calculator is on; off, none of them is read.
 -- Saved settings: XayaUIBonusDB.characterToolkit (the panel's keys and its own switch `enabled`), copied once from
 -- XayaUIQoLDB.characterToolkit (CueRulesDB.characterToolkit before P5) by core (Modules.lua section 0c, the key move; copy, never move).
 -- (V25 R3) the saved key keeps its old internal name: core's key move copies a key under one name only, so a rename needs core.
@@ -71,7 +76,8 @@
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
 local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.37: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
-if ns.SettingsDeclareStore then ns.SettingsDeclareStore("bonus", "XayaUI_Bonus", "XayaUIBonusDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
+-- (Bonus 0.6.46, A24 #12 / #13) the store is declared by XayaUI_Bonus's loader (XayaUI_Bonus/StatCalculatorLoader.lua), which owns the
+-- XayaUIBonusDB saved variable; this load-on-demand addon only reads and writes it once it is loaded.
 -- (Bonus 0.6.37, stage 3) the one model through the "statModel" service: every CM.x reads the service's model at the time. (Bonus 0.6.45,
 -- main) the service is this addon's own (StatModel.lua, loaded before this file); without it every CM.x is nil and Cfg() is nil.
 local function Model() local s = ns.Service and ns.Service("statModel"); return s and s.CM or nil end
@@ -189,6 +195,15 @@ local function Cfg()
     return c
 end
 ns.StatCalc_Cfg = Cfg
+-- (Bonus 0.6.46, A24 #12 / #13: her option text "Off means it is never read; on means it loads once per reload") the switch as it is
+-- in effect this session: the loader's switch saves a change and asks for a reload (core ns.SwitchSaveForReload, "bonus.statcalc"),
+-- so until the /reload the session keeps the value it had (core ns.SwitchInEffect). A value written any other way (a profile import,
+-- a test) is not held and is read as saved.
+local function On(c)
+    if not c then return false end
+    if ns.SwitchInEffect then return ns.SwitchInEffect("bonus.statcalc", c.enabled == true) end
+    return c.enabled == true
+end
 
 -- (QoL 0.7.40; REQUEST-LOG B2, reading taken) the value modes are gone: the "Show: % / rating" button in the title row, the click on a
 -- rating line that flipped it, and Settings > Panel > Layout "Rating lines" with Your numbers "Reset line flips". Every line shows its
@@ -2450,7 +2465,7 @@ local stateListeners = {}
 -- (V26) combatHidden and InCombat(): at the top of this file
 local function PanelAvailable()
     local c = Cfg()
-    return (c and c.enabled and c.panel and not InCombat()) and true or false
+    return (c and On(c) and c.panel and not InCombat()) and true or false
 end
 local function TellState()
     if #stateListeners == 0 then return end
@@ -2470,7 +2485,7 @@ if ns.Provide then
         Open = function(tab)
             local c = Cfg()
             if not c then return false, "no saved settings yet" end
-            if not c.enabled then return false, "Stat Calculator is off (Bonus Features > Stat Calculator)" end
+            if not On(c) then return false, "Stat Calculator is off (Bonus Features > Stat Calculator)" end
             if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Stat Calculator > Panel)" end
             if InCombat() then return false, "in combat (the Stat Calculator opens again after combat)" end
             if tab then c.tab = tab end
@@ -2492,7 +2507,9 @@ if ns.Provide then
             return panel.hEq:GetText(), panel.hMax:GetText(), CM.HeaderInfo()
         end,
         HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
-        Page = function() return ns.BuildStatCalcPage and ns.BuildStatCalcPage(function() end) end,
+        Page = function(Notify) return ns.BuildStatCalcPage and ns.BuildStatCalcPage(Notify or function() end) end,
+        -- (Bonus 0.6.46) /xui stats once this file is loaded (the loader owns the command and its on / off / options / help)
+        Command = function(arg) return ns.StatCalc_Command(arg) end,
         TextW = function(text, size) return panel and TextW(text, size) or nil end,
         -- (A24 #8 / #9, for the walkthroughs) the panel as the player has it: shown, opened on its own, its strata and the character
         -- window's, its drawn width, the saved width (the corner grip's), the tab row, and whether its own name is in the game's UISpecialFrames (the list Esc closes). Read only.
@@ -2610,7 +2627,7 @@ end
 local function ShowIfDocked()
     if InCombat() then return end   -- (V26) nothing is built, drawn or shown in combat; it comes back after combat (LeaveCombat)
     local c = Cfg()
-    if not (c and c.enabled and c.panel) then return end
+    if not (c and On(c) and c.panel) then return end
     if not c.panelOpen then
         if panel and panel:IsShown() then panel:Hide() end
         TellState()
@@ -2633,7 +2650,7 @@ end
 -- the key changes: at the panel's show and hide, a tab change, combat, and Apply (force).
 local evKey
 local function EventsKey(c)
-    if not (c and c.enabled and c.panel) then return nil end
+    if not (c and On(c) and c.panel) then return nil end
     if InCombat() then return "combat" end
     if not (panel and panel:IsShown()) then return "closed" end
     return "open:" .. tostring(c.tab)
@@ -2676,7 +2693,7 @@ OnPanelHidden = function()
     -- a Hide on the panel itself, not when the whole interface is hidden (Alt+Z hides UIParent).
     if panel and not panel:IsShown() and panel.standalone and not InCombat() then
         local c = Cfg()
-        if c and c.enabled and c.panel and c.panelOpen then
+        if c and On(c) and c.panel and c.panelOpen then
             c.panelOpen = false
             TellState()
         end
@@ -2718,7 +2735,7 @@ local function LeaveCombat()
     combatWas, combatAlone = false, false
     local c = Cfg()
     RegisterPanelEvents(c)
-    if c and c.enabled and c.panel and c.panelOpen and not InCombat() then
+    if c and On(c) and c.panel and c.panelOpen and not InCombat() then
         if was and alone then
             Build()
             panel.standalone = true
@@ -2793,29 +2810,13 @@ local function SetThemeListener(on)
 end
 
 -------------------------------------------------------------------------------
--- The Stat Calculator row in XayaUI's minimap button list (QoL 0.7.23; Xaya 2026-11-05, her words: "it should also have its own open
--- button on the minimap and should be openable as its own standalone window without opening the character sheet"). It exists only
--- while the Stat Calculator and its panel are on (V14): the row (ns.RegisterLauncher, core Modules.lua) is registered once and its
--- available() keeps it out of the list while either is off (core 0.6.48; the entry itself stays registered so the settings window's
--- options tree does not change with the switch: tests/sidebar_switches_run.py).
--- (V25 R2; Xaya A24 #3: "NOTHING that directly touches the character pane is part of the stat calculator") the Stat Calc button on the
--- character window is Improved Character Display's (XayaUI QoL, ImprovedCharacterDisplay.lua): it calls this file through the
--- "statCalc" service (Toggle, Available, Shown) and learns the panel's state from TellState (its OnState listener, above); no polling.
+-- (Bonus 0.6.46, A24 #12 / #13) The Stat Calculator row in XayaUI's minimap button list is registered by XayaUI_Bonus's loader
+-- (XayaUI_Bonus/StatCalculatorLoader.lua), which asks this file through the "statCalc" service (Available, Toggle) once it is loaded;
+-- the row's history and her words (QoL 0.7.23; A24 #8 "Hide it in combat (Recommended)") are in the loader.
 -------------------------------------------------------------------------------
-local function RegisterLauncher()   -- (called by RegisterAll, once Bonus's settings are open)
-    if type(ns.RegisterLauncher) == "function" then
-        ns.RegisterLauncher({ "stats", "Stat Calculator", "Show or hide the Stat Calculator on its own, without the character window (also /xui stats)",
-            function() ns.StatCalc_Toggle() end, nil, order = 12,   -- O-100 (QoL 0.7.42, her answer "No word at all"): no "on" / "off" for shown / hidden
-            -- (A24 #8, Xaya 2026-11-11, her words: "Hide it in combat (Recommended)") no row in combat either: core reads available()
-            -- each time the list opens (XayaUI/MinimapButton.lua Visible), so a list opened in combat has no Stat Calculator row and
-            -- the next one opened after combat has it again. Nothing is polled. (A list already open when combat starts keeps the row
-            -- until it closes: core builds the rows only when it opens; a click on it then does nothing, V26 "Hide silently".)
-            available = function() return PanelAvailable() end })
-    end
-end
 function ns.StatCalc_Apply()
     local c = Cfg(); if not c then return end
-    if not c.enabled then
+    if not On(c) then
         if ev then ev:UnregisterAllEvents() end
         evKey = nil
         SetThemeListener(false)
@@ -2850,7 +2851,7 @@ function ns.StatCalc_Apply()
             owner:HookScript("OnHide", function()
                 if not panel or not panel:IsShown() then return end
                 local cc = Cfg()
-                if panel.standalone and cc and cc.enabled and cc.panel then ns.StatCalc_Render() else panel:Hide() end
+                if panel.standalone and cc and On(cc) and cc.panel then ns.StatCalc_Render() else panel:Hide() end
             end)
         end
     end
@@ -2874,7 +2875,7 @@ end
 function ns.StatCalc_SetOpen(open)
     if InCombat() then return end   -- (V26 "Hide silently") in combat nothing opens or closes it, and nothing is said
     local c = Cfg(); if not c then return end
-    if not c.enabled then
+    if not On(c) then
         ns.Print("Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on).")
         return
     end
@@ -2906,10 +2907,9 @@ function ns.StatCalc_SizeMode(mode)
 end
 
 -- (Bonus 0.6.37) once both stores were open (Bonus's and XayaUI QoL's). (Bonus 0.6.45, main) once Bonus's own store is open: there is
--- no XayaUI QoL on main to wait for. The start-up is registered at the end of this file, after RegisterAll exists (a store that is
--- already open runs it at once). With XayaUI Bonus Features off it never runs: nothing is made.
-local registered = false
-local RegisterAll   -- (below: the page, the command and the minimap row)
+-- no XayaUI QoL on main to wait for. (Bonus 0.6.46) The start-up at the end of this file only applies the saved settings: the page,
+-- the command and the minimap row are the loader's (XayaUI_Bonus/StatCalculatorLoader.lua), and this file is read at all only while
+-- the Stat Calculator is on.
 -- (audit QA walkthrough, D17) which of the Stat Calculator's events are registered now; its settings, and Apply after changing them
 -- (QAWalks-statcalc-fixes.lua) Builds: how many stat models the panel has built since the reload (a number, read only: nothing can set it);
 -- InCombat: whether the panel counts the player as in combat (V26)
@@ -2962,7 +2962,7 @@ function ns.BuildStatCalcPage(Notify)
     end
     local function C() return Cfg() or CopyVal(ns.STATCALC_DEFAULTS) end
     local function Changed() ns.StatCalc_Apply(); if Notify then Notify() end end
-    local isOff = function() return not C().enabled end
+    local isOff = function() return not On(C()) end
     local addBuf = ""
     local function Toggle(key, order, name, desc, width, hidden, tip)
         return { type = "toggle", order = order, width = width, name = name, desc = desc, hidden = hidden, tip = tip,
@@ -3083,7 +3083,8 @@ function ns.BuildStatCalcPage(Notify)
         -- (Bonus 0.6.38, Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #37: "these are \"Stat Calculator\"") the Bonus
         -- Features node and its switch are titled Stat Calculator; the slot overlays and tooltip lines are on QoL's Improved Character Display page
         type = "group", name = "Stat Calculator", order = 3, childGroups = "tree",
-        xuiSwitch = Toggle("enabled", 1, "Stat Calculator", "Turns the Stat Calculator on. While it is off nothing is created, registered or read.", nil, nil, "Turns on the Stat Calculator."),
+        -- (Bonus 0.6.46) the switch on this row (xuiSwitch) is set by the loader (XayaUI_Bonus/StatCalculatorLoader.lua), the same
+        -- switch whether or not this file is loaded: it saves and asks for a reload
         args = {
             -- (Bonus 0.6.37) the parts' list names the two that came to Bonus Features (the slot overlays and tooltip lines stay QoL's)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
@@ -3095,40 +3096,28 @@ function ns.BuildStatCalcPage(Notify)
 end
 
 -------------------------------------------------------------------------------
--- Plugs into core through Modules.lua: core never calls this file by name. (Bonus 0.6.45, main) only once Bonus's settings are open
--- (RegisterAll, from the start-up above): with XayaUI Bonus Features off there is no page, no /xui stats and no minimap row.
+-- Plugs into core through Modules.lua: core never calls this file by name. (Bonus 0.6.46) the page entry, /xui stats and the minimap
+-- row are XayaUI_Bonus's loader's (XayaUI_Bonus/StatCalculatorLoader.lua); it reaches this file through the "statCalc" service.
 -------------------------------------------------------------------------------
-RegisterAll = function()
-RegisterLauncher()
-ns.RegisterSettingsPage("bonus", "statcalc", ns.BuildStatCalcPage)
-ns.RegisterCommand("stats", function(arg)
-    arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+-- (Bonus 0.6.46) /xui stats while this file is loaded; the loader (XayaUI_Bonus/StatCalculatorLoader.lua) owns the command and handles
+-- on, off, options and help itself (on / off save and ask for a reload, like the switch), and calls this for the rest
+function ns.StatCalc_Command(arg)
     local c = Cfg()
-    if arg == "options" or arg == "settings" then ns.OpenSettingsPage("bonus", "statcalc"); return end
-    if arg == "help" then
-        ns.Print("/xui stats: show or hide the Stat Calculator (on its own when the character window is closed). /xui stats on | off | options | status")
-        return
-    end
     if arg == "status" then
         if not c then ns.Print("Stat Calculator: settings not ready."); return end
         -- (V25 R2) the slot overlays and tooltip lines are Improved Character Display's (XayaUI QoL): /xui reskin status prints them
         ns.Print(("Stat Calculator: %s, panel %s, spell math %s (%d spells), converter %s."):format(
-            c.enabled and "on" or "off", c.panel and "on" or "off",
+            On(c) and "on" or "off", c.panel and "on" or "off",
             c.advanced and "on" or "off", #c.spells,
             type(GetCombatRatingBonusForCombatRatingValue) == "function" and "present" or "MISSING"))
         return
     end
     if not c then return end
-    if arg == "on" then c.enabled = true; ns.StatCalc_Apply(); ns.Print("Stat Calculator on."); return end
-    if arg == "off" then c.enabled = false; ns.StatCalc_Apply(); ns.Print("Stat Calculator off."); return end
     ns.StatCalc_Toggle()
-end, "/xui stats [on|off|options|status] (Stat Calculator panel)")
 end
--- (Bonus 0.6.45, main) the start-up, registered here, after RegisterAll is defined: core opens Bonus's store at this addon's
--- ADDON_LOADED (after every file of it ran), but a store that is already open (tests that keep the pre-P5 layout open it while the file
--- runs) calls this at once, and RegisterAll must exist then (on QA the wait for XayaUI QoL's store hid this order)
+-- (Bonus 0.6.46) the start-up: this load-on-demand addon is loaded by XayaUI_Bonus's loader only when the Stat Calculator is on (once
+-- per reload, never in combat lockdown); Bonus's store is open by then, so this runs at once and applies the saved settings.
 ns.WhenSettingsReady("bonus", function()
-    if not registered and RegisterAll then registered = true; RegisterAll() end
     if Cfg() then ns.StatCalc_Apply() end
 end)
 -- (/xui debug widthprobe and its file, CharacterWidthProbe.lua, are XayaUI Dev Assist's since QoL 0.7.33; REQUEST-LOG #81)

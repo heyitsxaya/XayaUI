@@ -27,7 +27,7 @@ local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])
 -- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its /xui stats follows core's eight
-local SC_ON = ns.StatCalc_Toggle ~= nil
+local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false   -- (Bonus 0.6.46: /xui stats is the loader's, registered whether or not the calculator is loaded)
 local nWant = SC_ON and 9 or 8
 check("core's eight commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or "") .. ", one per line", #out - 1 == nWant and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
 -- the commands, in core's order (the colored part of each line, pipes doubled)

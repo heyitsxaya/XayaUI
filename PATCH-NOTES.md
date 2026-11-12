@@ -24,6 +24,22 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-12 — Stat Calculator
 
+### Bonus Features 0.6.46
+
+**Install (read this first)**
+- XayaUI Bonus Features now comes in two folders. Copy both `XayaUI_Bonus` and `XayaUI_Bonus_StatCalculator` into Interface\AddOns.
+
+**Stat Calculator**
+- The Stat Calculator is now its own addon, XayaUI Bonus Features: Stat Calculator, listed in the game's AddOns list as load on demand. While the Stat Calculator is off, none of it is read. While it is on, it loads once at login (after combat if you log in during combat).
+- Turning the Stat Calculator on or off now takes effect after a reload. The game asks "Reload now?".
+- Added the Stat Calculator's settings to profiles, as Bonus Features under Profiles > Export and Import. Profiles made with an earlier test version bring them along too.
+  *Developers' notes: Not yet tested in game, including how the AddOns list shows the new folder (docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md, section A).*
+
+### Options 0.6.108
+
+**Patch Notes**
+- Patch Notes and What's New no longer list features that are not part of this download.
+
 ### Bonus Features 0.6.45
 
 **Install (read this first)**
@@ -69,11 +85,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Theme**
 - The Theme page carries the new switch and the gradient color list.
 
-### Dev Assist 0.7.67
-
-**In-game QA**
-- Added the walkthrough "debug-w9".
-
 ## 2026-11-08 — Debug Batch W7
 
 ### Options 0.6.100
@@ -82,11 +93,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Clicking an option in the rule editor now does about half the work it did: the width of dropdown text is measured once and cached (by font, size, flags and scale) instead of on every click. In the test stand-in, game calls per click went from 53,802 to 27,704.
   *Developers' notes: Measured in the test stand-in only, not in game; the real click time needs your re-run of the J31 walkthrough ("perf-settings-click") and the new "debug-w7" walkthrough (QA B293). Issue #467 stays open.*
 
-### Dev Assist 0.7.66
-
-**In-game QA**
-- Added the walkthrough "debug-w7", which reads the rule editor's click cost.
-
 ## 2026-11-08 — Debug Batch W5
 
 ### Rules 0.6.80
@@ -94,11 +100,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Recycle Bin**
 - Fixed an issue where the Recycle Bin listed a deleted cue under the wrong name: deleting "Sound 1" of three Sound cues showed "Sound 2". It now lists the cue under the name it had in the rule. The bin's storage format is unchanged.
   *Developers' notes: Not yet tested in game (QA B291, walkthrough "debug-w5"). Issue #485. The "cue in both places" and "restore not played" reports did not reproduce on the data side (105 checks, including real reloads); they most likely came from the old walkthrough's check, which Dev Assist 0.7.53 replaced. Issue #479 (the group Border tick) did not reproduce in 82 checks, so nothing was changed there; it stays open.*
-
-### Dev Assist 0.7.65
-
-**In-game QA**
-- Added the walkthrough "debug-w5", which checks delete and restore in the Recycle Bin and the group Border tick, and records any error text (QA B291, B292).
 
 ## 2026-11-08 — Debug Batch W3
 
@@ -118,11 +119,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Fixed an issue where clicking a rule option search result did not show the option. The click now folds the results, opens a closed section on the way and scrolls to the option.
   *Developers' notes: Not yet tested in game (QA B290). Issue #483.*
 
-### Dev Assist 0.7.64
-
-**In-game QA**
-- Added the walkthrough "debug-w3", and fixed clean-up steps of earlier walkthroughs.
-
 ## 2026-11-08 — Debug Batch W2
 
 ### Rules 0.6.79
@@ -130,21 +126,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Bar Cues**
 - Fixed an issue where a bar with no damage type and no dispel type stayed the same fixed blue in every color style. Neon, Pastel and Muted now change it too (Neon 0.00 0.49 1.00, Pastel 0.66 0.83 1.00, Muted 0.39 0.54 0.70). Blizzard default and Custom keep the plain blue.
   *Developers' notes: Not yet tested in game (QA B284, walkthrough "debug-w2"). Issue #461. Also changed along with it: Rules Options 0.6.80.*
-
-### Bonus Features 0.6.36
-
-**Enhanced Tooltips**
-- Added damage type colors on macro tooltips: "fire damage" on a macro's tooltip becomes "Fire Damage" in the game's Fire color, as on spell tooltips.
-- Added the macro's Spell ID line, and the spell's aura and formula lines, when the macro's spell can be read and its name matches the tooltip's first line. Nothing is guessed otherwise.
-  *Developers' notes: Not yet tested in game (QA B285). Issue #462. Inferred, not checked in game: that a macro tooltip's id is the macro's index and that GetMacroSpell returns the spell the macro shows. Not built: Chaos and Physical colors, and other schools with three or more types.*
-
-### Dev Assist 0.7.63
-
-**In-game QA**
-- Fixed an issue where the Bar cue walkthrough's clean-up could leave the rule editor open on your next rule after the test rule was removed. It now goes back to the list.
-- Fixed an issue where the Dev Assist Aura catalog counted no specs per class and so collected no item sets.
-- Added the walkthrough "debug-w2" (J34).
-  *Developers' notes: Not yet tested in game (QA B286, J34). Other walkthroughs that remove test rules directly can shift the editor the same way; they were not changed.*
 
 ## 2026-11-08 — Debug Batch W1
 
@@ -234,32 +215,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Import now skips a part whose addon is not loaded and shows "needs <addon>" for it, instead of dropping it silently.
   *Developers' notes: Not yet tested in game (QA H11; walkthroughs "platform-services" and "platform-services-reload" in /xui dev qa). The rest of this landing is groundwork with nothing visible: profile parts and Recycle Bin kinds that each addon registers itself, theme scopes, and aura and tooltip services for Bonus Features.*
 
-## 2026-11-07 — Trustworthy QA Walkthroughs
-
-### Dev Assist 0.7.53
-
-**In-game QA**
-- A walkthrough step that needs setup can no longer be passed, accepted or marked Done before "Do it for me" has run in this run. Fail and Skip always work.
-- A check that did not exercise the thing under test now says "Not tested yet" instead of passing. The bar cue walkthrough now fails when no style changed the bar.
-- Clean-up and put-back steps now have one Done button instead of Pass and Fail, and a run with no step passed or failed is shown as Skipped (grey) in both tables.
-- Added navigation at the end of a walkthrough: All walkthroughs, Review list and Next in this list (the next walkthrough in the order the list showed when you opened it). All walkthroughs has a Review list button.
-- The Reskin switch walkthroughs and the Chat Panel / Improved Chat split walkthroughs now reload before checking.
-- Titles wrap inside the window, and the QA windows have a solid background (95% opacity).
-- Added walkthrough J33.
-  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: the window opacity of 95% is provisional (C4), and Next follows the order the list showed when you opened the walkthrough.*
-
-## 2026-11-07 — Walkthrough Tables
-
-### Dev Assist 0.7.52
-
-**In-game QA**
-- The "Review: what's new to test" window and All walkthroughs (/xui dev qa) are now tables with the columns Codes, Title, Area, Status, New and Open, in larger windows (900 x 560).
-  - Click a column header to sort, and click again to reverse.
-  - Added a search box that matches titles, ids, QA codes, area names and step text.
-  - Added clickable tags that filter the list (Baseline, each Area, Not run, Passed, Failed, New or changed), with a match count and a Clear button.
-  - The 10 baseline walkthroughs carry a gold "Baseline" mark and plain-language titles.
-  *Developers' notes: Not yet tested in game (walkthrough J32). Known limits, issue #465: no button back from All walkthroughs to the review list, and search, tags and sort reset when a window opens.*
-
 ## 2026-11-07 — What Changed Overnight
 
 ### XayaUI 0.6.73
@@ -285,85 +240,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - The settings window now responds faster to clicks when there are many rules: only the rule on screen is built, and a click no longer rebuilds every rule's editor.
   *Developers' notes: Offline measurement only (313 rules, a click from 1,715 ms to about 100-200 ms of Lua). The window's narrowest width now follows only the dropdowns of rules you have opened (Q-PERF-8).*
 
-### Chat 0.6.39
-
-**Improved Chat (new)**
-- Added QoL > Improved Chat, with its own tick box. It holds what the addon adds to how chat behaves: the slow-scrolling bar, fade and hide, history and whisper tabs, timestamps and links, filters, sounds, privacy cover, Chat Data Panel and sidebar. It works with the Chat Panel off.
-- Added a chat sidebar, on by default: side left, right, top or bottom, shown always or on mouseover, with "Fade with the chat" and "Hide in combat". It holds the privacy eye, Blizzard's chat menu, channels and voice buttons, history, chat windows and newest message.
-  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Q-CR-1 to Q-CR-10.*
-
-**Chat Panel**
-- Blizzard Reskin > Chat Panel now holds only how chat looks.
-- Fixed an issue where the collapse arrow, the privacy eye and the sidebar did not fade with the chat. Hovering them now brings the chat back.
-- Added an Input line choice: Bottom, Top under the tabs, Top above the tabs, or Free move (with /xui chat move).
-- With the whisper tabs set to Both, a whisper you send now selects its window.
-  *Developers' notes: Chosen for you, change it in the Questions flow: this whisper switch is on by default (CHATREV-10).*
-- The game's own fade of old chat lines now comes back when Improved Chat is turned off, or when both it and the Chat Panel are off.
-- The addon's usage tooltip reads memory once per hover and says "Includes the cost of reading these numbers."
-
-### Quality of Life 0.7.45
-
-**Stat Calculator**
-- Each stat now has rows showing what feeds it ("from Agility +2,616"); every stat starts folded, and the Influences column is now Modifies.
-- Gear compare differences are shown in brackets after the value, "1,405 (-12)", and the picked item gets a clear accent frame.
-- The header shows "Equipped" and "Max (bags)" item levels. The "% / rating" switch is gone.
-- The stat list now reads "GCD", "Critical Strike Effectiveness" and "Movement Speed".
-- The GCD now follows a standard rule: 1.5 s reduced by haste to a floor of 0.75 s, or a fixed 1.0 s for rogues, some monks and cat-form druids, with the game's own reading shown beside it.
-  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: Movement Speed is title-cased on the same reading as the other two.*
-
-**Release Guard**
-- The box now sits above the death window. "Where" offers Raids only or Raids and dungeons; "Everywhere" is gone, and a saved "Everywhere" becomes Raids only. /xui releaseguard prints what happened.
-  *Developers' notes: Chosen for you, change it in the Questions flow: saved "Everywhere" becomes Raids only.*
-
-**Wording**
-- The function audit made wording and hover fixes, including US spelling, across the addons.
-  *Developers' notes: Not yet tested in game (QA D22, D23, D30).*
-
-**Cursor**
-- A still cursor now costs almost nothing: the highlight is placed only when the cursor moves, and the trail loops only while a dot is live.
-
-### Blizzard Reskin 0.6.19
-
-**Blizzard Windows (new)**
-- Added reskins of 33 Blizzard windows, the minimap (Square or Circle), tooltips and the objective tracker in XayaUI's look. Look only: nothing is moved, resized, added or removed. Every skin is off until you tick it, and inside a ticked page each window or section has its own box.
-  *Developers' notes: Not yet tested in game. Chosen for you, change it in the Questions flow: no combat frames (action bars, unit frames, nameplates) tonight, no game-wide font change, and one look that follows the XayaUI theme. Walkthroughs in /xui dev qa (QA G4 to G8).*
-
-**More Blizzard Reskins (new)**
-- Added reskin pages, each with its own switch and off until ticked. Four are Blizzard windows and messages: Toasts and Pop-ups (Battle.net toasts and Blizzard's pop-up dialogs), Loot rolls (the four group loot windows), Menus (the background of Blizzard's own menus), and Chat Bubbles (outside instances; in instances the game keeps bubbles to itself).
-- Added Status Bars: the experience and reputation bars lose Blizzard's frame art and get a theme background and a thin border; their fill colors are unchanged.
-- Added Minimap Buttons: the zone-name bar and the tracking button take the theme's colors; the calendar and mail icons are unchanged because they have no frame of their own.
-- Added Buttons: Blizzard's red panel buttons inside the listed Blizzard windows take XayaUI's flat button look. Text, hover and clicks stay Blizzard's. Close buttons, scroll bars, tabs and dropdown arrows are not restyled.
-  *Developers' notes: Not yet tested in game (QA G9 to G12; each page has a walkthrough in /xui dev qa under Reskin). Chosen for you, change it in the Questions flow: Buttons only inside the listed Blizzard windows, never other addons' windows; "pop-ups" means Blizzard's pop-up dialogs, menus change the background only with no border, and a bubble's tail takes the window color.*
-
-**Friend Colors (new)**
-- Added Blizzard Reskin > Friend Colors: online friends in the classic friends list show their name in their class color. The new Social friends list is not colored yet.
-
-### Nameplates 0.2.1
-
-**Nameplates (new)**
-- Added XayaUI Nameplates, disabled by default in the AddOns list. It works on Blizzard's own nameplates and shows nothing while Plater replaces them.
-- Your target's health bar turns teal (change it in QoL > Nameplates).
-- Added a "Match my Plater settings" button that sets 12 of Blizzard's nameplate options to what your Plater profile used, out of combat only, with "Put back" to restore your earlier options.
-  *Developers' notes: Not yet tested in game. Not yet built: Aura Reorder and spell- or NPC-keyed scripts (impossible in Mythic+). Questions NP-Q1 to NP-Q8 in the Questions flow.*
-
-### Dev Assist 0.7.51
-
-**QA Review (new)**
-- Added a "Review: what's new to test" window. It opens by itself a moment after you load in, on the first login or /reload after an update, and never in combat (it waits for the fight to end). It lists the QA walkthroughs that are new or changed since the build you last acknowledged, grouped by area, each with its last result and an Open button. The first time it lists all 148 walkthroughs. "Don't show again until the next update" acknowledges the build; /xui dev review reopens it.
-- Added a question flow, opened by /xui dev questions or the Questions button: one question per screen with your own words, "What we did without asking", Keep it and its choices, and a note, plus Back, Skip and Next. Answers are kept with the time and version and survive a /reload. Copy answers shows a text box you can copy. It holds 207 questions from 19 sessions.
-  *Developers' notes: Not yet tested in game: how the two windows look and where they sit, Escape closing them, the 2-second delay after the loading screen, copying from the box, and how long question texts wrap. Chosen for you, change it in the Questions flow: REVIEW-1 to REVIEW-4 (it comes back at every login until the box is ticked).*
-- Added performance walkthroughs J20 to J31 to /xui dev qa.
-
-## 2026-11-07 — Chat QA Walkthroughs
-
-### Dev Assist 0.7.10
-
-**In-game QA**
-- Added four Chat walkthroughs to /xui dev qa for the old chat issues: move, resize and hide the chat (#210); arrow, button strip, panel and bottom edge (#229); hiding keeps the panel's size with no outlines (#250); one arrow, and the panel follows the chat (#296).
-  - "Do it for me" does the setup, the addon reads the chat's real frames, and the last step puts your chat back as it was.
-- After the check, these walkthroughs offer an "Accept: Pass" or "Accept: Fail" button with the addon's verdict. Nothing is recorded until you click it, and Pass, Fail and Skip still work.
-  *Developers' notes: Not yet tested in game (QA D21). The last step of #296 is a decision for you and has no Accept.*
-
 ## 2026-11-07 — Bar Cues
 
 ### XayaUI 0.6.58
@@ -385,38 +261,11 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Reworked how closing the settings window ends the previews and unlocks it started (a structure fix to the earlier change).
 - Once you have played a spec, its Auto-populate list shows that spec's Cooldown Manager auras and debuffs.
 
-### Chat 0.6.27
-
-**Chat History**
-- Added whisper tab lists: "In-game whisper tabs" and "Battle.net whisper tabs" (As the game / Individual tabs / Consolidated tab / Both), and a box to combine Battle.net and in-game whispers in the consolidated tab. Consolidated tabs are named In-Game Whispers, BNet Whispers, or Whispers when combined.
-  *Developers' notes: Not yet tested in game. With the combine box ticked and only one kind consolidated, the Whispers tab takes the other kind too; this is picked to revisit after you see it in game (QA D20).*
-- The /xui panel help now says "Chat Data Panel settings".
-
-### Quality of Life 0.7.36
-
-**Stat Calculator**
-- On-use and proc effects now read "Equipped: <item name>" or "Compared: <item name>", then a line break and the effect line.
-- Added a set line under each item: "Set: <name> (with <other equipped items in it>)" under the equipped item, and "Also in <name>" or "Not in <name>: replacing the equipped item breaks the set" under each compared item.
-- The armor row now reads "From mastery: <spell name> passive".
-- The Ability Scaling table now reads Spell Name | Talent Modifiers | % PSV | Computed Value, with Computed Value left-aligned, a divider line between spells, and each spell foldable by clicking its name.
-  *Developers' notes: Not yet tested in game. The set lines assume the game gives every piece of one set the same set number (QA E1z91, E1z92).*
-
 ### Options 0.6.59
 
 **Bar Cues (new)**
 - Added a Bar Options box on each Bar cue, and "Every bar: color style" on a group's Display tab.
 - Smart Categories > Progress Bars now lists rules that have a Bar cue.
-
-### Bonus Features 0.6.20
-
-**Enhanced Tooltips**
-- Added a "Type colors" section, on by default. On spell and aura tooltips, a damage school such as "fire damage" is now written "Fire Damage" in the game's color for that school, and a dispel type such as "Magic" takes its dispel color.
-  *Developers' notes: Matches English game text only. Not yet tested in game.*
-
-### Dev Assist 0.7.6
-
-**In-game QA**
-- Added the Bar cue walkthroughs to /xui dev qa (QA B200-B210, F21).
 
 ## 2026-11-06 — Debug Report, Group Page and Auto-populate Buttons
 
@@ -464,23 +313,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - New Sound cues now start on the SFX channel.
   *Developers' notes: Not yet tested in game.*
 
-### Chat 0.6.25
-
-**Chat Panel**
-- The chat tab names now sit at one height: every docked tab's name is placed at the same spot, and a whisper tab keeps its left alignment at the same height.
-  *Developers' notes: Not yet tested in game. No cause was found for "General" sitting lower; if it persists, /xui debug chatprobe lists its anchors (QA D19).*
-- Fixed an issue where the Chat Bar sat at the top after the chat was collapsed: collapsed, the bar now drops to the bottom edge and its arrow points up.
-- Renamed the Chat Bar to "Chat Data Panel". Added Left of the chat and Right of the chat to "Place the panel", and a panel width slider (40 to 200, default 90) for those sides.
-- Added a "The mouse over the chat brings it back" tick box to Fade and hide (on by default, as the mouse always did before).
-- Added a choice of click for quick ignore: pick from the free Alt / Ctrl / Shift combinations (plus Cmd on a Mac), or record your own, with a warning when the game also binds the click.
-  *Developers' notes: Not yet tested in game (QA D15 to D18). Fn is not offered because no game call reads it.*
-
-### Quality of Life 0.7.34
-
-**Character Pane**
-- The character window's text is laid out again once after a size change, so text no longer breaks after widening the window and bringing it back down. /xui reskin status gained a "Size change" line.
-  *Developers' notes: Not yet tested in game. The cause is an inference about the game giving old positions right after a resize.*
-
 ### Options 0.6.57
 
 **Settings Window**
@@ -514,58 +346,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Esc closes the pane first, then the settings window.
   *Developers' notes: Not yet tested in game (QA B197). In combat the game does not let addons hold Esc back, so one Esc closes both windows there.*
 
-### Bonus Features 0.6.19
-
-**Data Panels**
-- Renamed Custom Data Panels and Bars to Data Panels.
-
-**Enhanced Tooltips**
-- The grey "via ..." source text at the end of an Aura ID line now shows only while Dev Assist is enabled.
-  *Developers' notes: Not yet tested in game.*
-
-### Dev Assist 0.7.5
-
-**In-game QA (new)**
-- Added /xui dev qa (also /xui qa test and /xui qatest): a window of walkthroughs, one step at a time, each with Do it for me and the addon's own check, which never decides for you. Answer Pass / Fail / Skip with a note.
-  - Results are saved. The end screen has Screenshot, an Export code and Import a code, and Run again.
-  - The list holds every open QA checklist item and every open unverified bug (34 walkthroughs, 330 items).
-- Added /xuidev report, which reads back a player's debug report string.
-  *Developers' notes: Not yet tested in game.*
-
 ## 2026-11-06 — Character Pane, Shopping List and All Reskins
-
-### Chat 0.6.19
-
-**Chat History**
-- Fixed an issue where the chat history window dropped the letter after a literal "|" (r, n, c, T, H, A, K).
-  *Developers' notes: Not yet tested in game (QA D12, D13).*
-
-### Quality of Life 0.7.32
-
-**Shopping List (new)**
-- A panel that lists what your gear is missing and what your tracked recipes need. Off by default: turn it on with the tick box on the Shopping List row of the Blizzard UI Reskin tab. `/xui shop` shows or hides it (`/xui shop options`, `/xui shop status`).
-  - Missing on your gear: each enchantable slot without an enchant and each empty socket, with one suggestion each. "+ Add" puts a suggestion in To buy.
-  - Your tracked recipes: each with its reagents and have / need, counted the way Blizzard's tracker counts them.
-  - Click a name while the Auction House is open to search for it there; Shift-click links the item.
-- Blizzard's Professions list in the objective tracker now takes your theme's colors (its own switch: "Restyle Blizzard's Professions list").
-  *Developers' notes: Which gems count as the one-per-character gem, and how enchant scrolls in your bags are counted, are not yet confirmed in game.*
-
-### Quality of Life 0.7.31
-
-**Character Pane**
-- Added an Extra height slider (0 to 300 px, default 0) beneath Extra width. The slots spread out evenly, the model gets taller, and the weapons move down with the bottom of the window.
-- Added a full stat list: the character window's stats pane can now show every line of the Stat Calculator's Character Stats, each name in its stat color. Arrange it under Character Pane > Stat list.
-
-**Release Guard (new)**
-- When you die, a box now covers the Release Spirit button so a misclick does not release you. Hold Shift (or Ctrl or Alt, in settings) to click through.
-  *Developers' notes: Release Guard never presses Release for you; it only covers the button. Not yet tested in game.*
-- Off by default. Turn it on under QoL > Release Guard. Works in raids only to start, or in raids and dungeons, or everywhere.
-
-### XayaUI 0.6.51
-
-**All Reskins**
-- Added an All reskins tick box on the Blizzard UI Reskin tab button. Untick it and every reskin is off at once, with Blizzard's own look back (with Options 0.6.50, Chat 0.6.18 and Blizzard Reskin 0.6.4).
-- Each reskin (Chat Panel, Character Pane, Esc Menu, Shopping List) now has its own tick box on its row, greyed while All reskins is off.
 
 ### Options 0.6.50
 
@@ -579,45 +360,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   *Developers' notes: Up / Down recall, and `/save` and `/reload` from the console, are not yet tested in game.*
 - All diagnostic commands now live under `/xui debug` (type `/xui debug` for the list) and print in the console. `/xui debug window` is renamed `/xui debug loader`.
 - `/xui help` is now shorter: only the commands a player uses.
-
-### Chat 0.6.17
-
-**Chat History**
-- Fixed an issue where a "|" in a chat line, and sometimes the letter after it, went missing in history.
-  *Developers' notes: Whether copying such a line pastes one "|" or two is not yet tested in game.*
-
-### Quality of Life 0.7.27
-
-**Character Pane**
-- Fixed an issue where players who used QoL 0.7.21-0.7.23 kept those versions' 240 px extra width. It now changes once to the new 42 px default; any other width you chose is kept.
-
-### Bonus Features 0.6.17
-
-**Utilities**
-- Added `/notes` and `/calc`, short forms of `/xui notes` and `/xui calc`. If another addon already owns either word, XayaUI leaves it alone.
-
-### Bonus Features 0.6.16
-
-**Calculator**
-- Added an on / off tick box for the Calculator (Bonus Features > Utilities > Calculator), on by default. Off, its window does not open; `/xui calc <sum>` still answers in chat.
-
-### Bonus Features 0.6.14
-
-**Enhanced Tooltips**
-- The Tooltips feature is now called Enhanced Tooltips and has one tick box that turns the whole feature on or off.
-
-**Notepad**
-- The Notepad's tick box now turns the whole Notepad off, sharing included. Your notes are kept.
-
-### Bonus Features 0.6.13
-
-**Tooltips**
-- On spell tooltips, an aura icon ID that is the same as the spell's own icon is no longer repeated.
-
-### Chat 0.6.16
-
-**Chat History**
-- Added whisper tabs: whisper conversations get their own tabs, following the game's New Whispers setting, or all in one Whispers tab (History > Whisper tabs).
 
 ### Options 0.6.43
 
@@ -639,11 +381,6 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
   *Developers' notes: Two different changes on main carry the label Options 0.6.41. They are listed as they are; history is not renumbered.*
 - Switched-off features now cost nothing: a feature you turn off no longer runs timers, listens to events or keeps frames (with Chat 0.6.14, XayaUI 0.6.47, Blizzard Reskin 0.6.2 and Bonus Features 0.6.12).
 
-### Chat 0.6.15
-
-**Chat History**
-- The history window now opens on the chat tab you are on, with All moved to the end.
-
 ### XayaUI 0.6.46
 
 **Themes**
@@ -662,8 +399,3 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Settings Window**
 - The version text at the bottom of the settings window now replaces the Addon Info button and uses your theme colors.
 - Console switches in settings no longer pause while the whole window rebuilds (with XayaUI 0.6.45).
-
-### Options 0.6.38
-
-**Blizzard UI Reskin (new)**
-- Every reskin now has one home: a Blizzard UI Reskin tab with Chat Panel, Character Pane and Esc Menu. The old Chat tab is gone; `/xui chat settings` and `/xui reskin options` still open the moved pages.

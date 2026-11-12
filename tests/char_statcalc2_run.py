@@ -23,9 +23,10 @@ ns.Theme = { Col = function(class, prop, fb) local c = THEME[class] and THEME[cl
   OnResolve = function(fn) themeListener = fn end, FontPath = function() return "Fonts\\THEME.TTF" end }
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)   -- core loads Compat.lua after Modules.lua (XayaUI.toc)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 -- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
 XayaUI_NS = ns
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
@@ -437,8 +438,8 @@ check("settings: Clear all sets every What If amount back to 0", c.whatIf == 0 a
 check("theme changes repaint the open panel", type(themeListener) == "function" and pcall(themeListener))
 
 print(("%d checks, %d failed"):format(n, fails))
-'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_Bonus/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua"))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+   .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua"))
    .replace("__COMPAT__", P("XayaUI/Compat.lua")))
 total_n, total_fails = lua.eval("n"), lua.eval("fails")
 
@@ -452,10 +453,11 @@ assert(loadfile(__WORLD__))()
 __PRELUDE__
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
 local ok, err = pcall(function()
-  assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+  assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+  assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
   ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
   local c = CWC()
   CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame")
@@ -470,8 +472,8 @@ local ib = ok and ns.StatCalc_Drawn().boxes.item
 LINK = "|cffa335ee|Hitem:3::::::::90:::::|h[Better Helm]|h|r"
 __BODY__
 '''.replace("__PRELUDE__", prelude).replace("__BODY__", body).replace("__WORLD__", P("tests/char_world.lua"))
-       .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-       .replace("__CM__", P("XayaUI_Bonus/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+       .replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+       .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
     return L.eval("n"), L.eval("fails")
 
 r = statcalc_world("ChatFrameUtil = {}; ChatEdit_InsertLink = function(link) return false end   -- an older client: only the old global",

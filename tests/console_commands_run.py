@@ -60,7 +60,9 @@ check("help: a header with the count, then that many lines", help[1] == ("comman
 -- Feature addons add theirs through ns.RegisterCommand; none of them is on this branch, so this is the whole list.
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug" }
 -- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its one command, /xui stats, comes after core's
-local SC_ON = ns.StatCalc_Toggle ~= nil
+-- (Bonus 0.6.46) /xui stats is registered by XayaUI Bonus Features' loader, whether or not the Stat Calculator itself (the load-on-demand
+-- XayaUI_Bonus_StatCalculator) is loaded
+local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false
 if SC_ON then WANT[#WANT + 1] = "/xui stats" end
 check("help: " .. #WANT .. " lines (it was 29), core's own commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or " only"), #help - 1 == #WANT, #help - 1)
 check("help: exactly " .. table.concat(WANT, ", ") .. ", in that order", table.concat(cmds, ",") == table.concat(WANT, ","), table.concat(cmds, " "))
@@ -141,7 +143,7 @@ for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "
   local scNote = "; /xui stats: says XayaUI QoL is not installed"
   if old == "stats widthprobe" then
     if SC_ON then
-      isHelp = #out == 1 and out[1] == "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on)."
+      isHelp = #out == 1 and out[1] == "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload."
         and rawget(_G, "XayaUIStatCalculator") == nil
       scNote = "; /xui stats is the Stat Calculator's: no width probe, it says the Stat Calculator is off and opens nothing"
     else

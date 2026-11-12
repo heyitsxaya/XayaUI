@@ -27,7 +27,12 @@ CORE = "XayaUI"
 # others: every combination is run with it on and with it off (the Platform and the settings window must load and work without it).
 # Main holds XayaUI, XayaUI_Options and XayaUI_Rules (REQUEST-LOG A23), and since Bonus 0.6.45 XayaUI_Bonus holding only the Stat
 # Calculator (REQUEST-LOG A24 #10); the other addons live on qa-installer-branch.
-FEATURES = ["XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Options"]
+# (Bonus 0.6.46, A24 #12 / #13) the Stat Calculator's code is its own load-on-demand addon, XayaUI_Bonus_StatCalculator, which
+# XayaUI_Bonus's loader loads at login only while the Stat Calculator is switched on: it is switched on and off in the AddOns list like
+# the others, and every combination runs on a fresh install (the Stat Calculator off: the off case, none of its files read) and on the
+# built-in data set "Stat Calculator on" (its switch saved on: loaded at login), the latter only where XayaUI_Bonus is on.
+FEATURES = ["XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator", "XayaUI_Options"]
+STATCALC_ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": {"enabled": True, "panel": True}}}}
 # support folders switched on in every combination (none on main)
 ALWAYS = []
 # (Rules 0.7.0, A23 SD-6) files of an addon that run only after another addon has loaded, so they may use that addon's names:
@@ -344,10 +349,13 @@ def main():
             combos.append(tuple(always) + tuple(f for f in features if f != "XayaUI_Rules") + tuple(tools))
         combos = list(dict.fromkeys(combos))   # with only two feature addons the extra runs repeat a subset: run each once
     datasets = [("fresh install", {})]
+    if "XayaUI_Bonus_StatCalculator" in folders:
+        datasets.append(("Stat Calculator on", STATCALC_ON))   # (Bonus 0.6.46) built in: kept with --fresh-only
+    builtin = len(datasets)
     if args.saved:
         datasets.append(("saved data " + os.path.basename(args.saved), read_saved_source(args.saved)))
     if args.fresh_only:
-        datasets = datasets[:1]
+        datasets = datasets[:builtin]
     api = load_api()
     print("addons found:", ", ".join(sorted(folders)), "| combinations:", len(combos), "| data sets:", len(datasets),
           "| API documentation:", ("%d functions, %d events, %d widget method lists" % (len(api.get("functions", {})), len(api.get("events", {})), len(api.get("widgets", {})))) if api else "NOT LOADED (methods and events unchecked)")
@@ -362,6 +370,8 @@ def main():
     jobs = []
     for dname, saved in datasets:
         for combo in combos:
+            if dname == "Stat Calculator on" and "XayaUI_Bonus" not in combo:
+                continue   # (without XayaUI_Bonus its saved switch is never read: the fresh-install run covers that combination)
             enabled = {CORE, *combo}
             label = "%s | %s" % (dname, " + ".join(["XayaUI"] + [c.replace("XayaUI_", "") for c in combo]))
             jobs.append((folders, enabled, saved, label))

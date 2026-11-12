@@ -156,13 +156,18 @@ end
 '''
 
 
+# (Bonus 0.6.46, A24 #12 / #13) the Stat Calculator is a load-on-demand addon (XayaUI_Bonus_StatCalculator) that XayaUI_Bonus's loader
+# loads at login only while its switch is saved on: the session starts with it on, as a player who turned it on and reloaded
+STATCALC_ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": {"enabled": True}}}}
+
+
 def main():
     folders = H.find_addons()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
-        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}}))
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": STATCALC_ON}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     for i in range(1, len(res) + 1):

@@ -65,9 +65,10 @@ CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()
 local CM = ns.StatModel
 -- (F5) a stand-in for the model's tie-in read (unit B adds the real one); installed before any page build
@@ -321,9 +322,9 @@ print(n .. " checks, " .. fails .. " failed")
 
 def main():
     src = (SRC.replace("__WORLD__", P("tests/char_world.lua", os.path.join(HERE, ".."))).replace("__MOD__", P("XayaUI/Modules.lua"))
-           .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-           .replace("__CM__", P("XayaUI_Bonus/StatModel.lua"))
-           .replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+           .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+           .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua"))
+           .replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
     lua = LuaRuntime()
     lua.execute(src)
     sys.exit(1 if lua.eval("fails") else 0)

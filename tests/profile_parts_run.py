@@ -202,6 +202,14 @@ section("A: byte-identical export", function()
   if rk then rk.chat2 = nil; rk.chat = nil; rk.characterReskin = nil end   -- XayaUI Chat's two stores, the character pane (QoL / Blizzard Reskin)
   local st = parts.settings
   if st and st.ui then st.ui.friendColors = nil; st.ui.rsk = nil; st.ui.gm = nil end   -- Blizzard Reskin's keys (Modules.lua LEGACY_UNDER_UI.reskin)
+  -- (Bonus 0.6.46, A24 #13 "Yes, include them") XayaUI Bonus Features is on main again with its own part: the Stat Calculator's settings
+  -- (format 2, XayaUI_Bonus/ProfilePart.lua), not the old build's data panels / tooltips / calculator. Its part is taken from this build
+  -- (tests/statcalc_lod_run.py checks what it holds); every other part is still compared byte for byte with the old build's
+  if P.BY_KEY.bonus then
+    local bs = P.Snapshot({ bonus = true }, "")
+    parts.bonus = bs.parts.bonus
+    gd.partInfo = bs.partInfo
+  end
   local want = ns.Share.Encode("profile", gd)
   local box = exportAll(ns)
   check("A: the old build's string decodes and still holds this branch's four parts", rk ~= nil and parts.rules ~= nil and parts.themes ~= nil and st ~= nil and rk.reskinTabOff == true)
@@ -215,8 +223,9 @@ section("A: byte-identical export", function()
     return true
   end
   check("A: ...and decoded, the two profiles are the same key by key (values included)", eq(ns.Share.Read(box, "profile"), gd))
+  if P.BY_KEY.bonus then PARTS.bonus = true end   -- (Bonus 0.6.46) the fifth part this branch registers
   local six = ns.Share.Encode("profile", P.Snapshot(PARTS, ""))
-  check("A: the four parts ticked by hand give the same string", six == box, tostring(six):sub(1, 60))
+  check("A: the parts this branch registers, ticked by hand, give the same string", six == box, tostring(six):sub(1, 60))
 end)
 section("C: a part whose module is not loaded", function()
   check("C: Nameplates is not offered while XayaUI Nameplates is not loaded", P.BY_KEY.nameplates == nil)

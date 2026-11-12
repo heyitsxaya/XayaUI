@@ -17,7 +17,7 @@ lua.execute(r'''
 fails, n = 0, 0
 function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra ~= nil and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
 ns = {}
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
 local SM = ns.StatMath
 
 -- stand-in converters ---------------------------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ check("WhatIf: a converter that gives nothing -> nil", SM.WhatIf(function() retu
 local d = SM.StatDelta({ A = 400, B = 100, C = "x" }, { A = 300, D = 200, B = 100 })
 check("StatDelta: new - old per key, keys only in old go negative, equal and non-numbers left out", d.A == 100 and d.D == -200 and d.B == nil and d.C == nil)
 -- (Bonus 0.6.45, main: SM.Coins, the repair cost's split, is left out of StatMath.lua: nothing reads it since QoL 0.7.23)
-''' .replace("__SM__", P("XayaUI_Bonus/StatMath.lua")))
+''' .replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua")))
 
 
 # --- The phase-1 checks of the model and panel, on the 0.7.0 model (StatModel.lua) --------------------------------------------
@@ -106,9 +106,10 @@ SM_n, SM_fails = n, fails
 assert(loadfile(__WORLD__))()
 n, fails = SM_n, SM_fails
 assert(loadfile(__MOD__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 -- (V25 R4) the extra lines on the character window's stat tooltips are XayaUI Bonus Features' Enhanced Tooltips' (Tooltips.lua section 5)
 XayaUI_NS = ns
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
@@ -192,11 +193,16 @@ check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#pr
 check("/xui stats while off says so", ns.RunCommand("stats", "") and printed[#printed]:find("is off", 1, true) ~= nil)
 CharacterFrame.shown = false
 ns.RunCommand("stats", "on")
-check("/xui stats on turns it on", c.enabled == true)
+-- (Bonus 0.6.46, A24 #12 / #13) on / off save the choice and take effect after a reload, as main's other on / off switch does
+check("/xui stats on saves it on and says it takes effect after a reload", c.enabled == true and printed[#printed]:find("takes effect after a reload", 1, true) ~= nil, printed[#printed])
+ns.RunCommand("stats", "")
+check("...until the reload the session keeps it off (/xui stats still says it is off)", not (rawget(_G, "XayaUIStatCalculator") and XayaUIStatCalculator:IsShown()) and printed[#printed]:find("is off", 1, true) ~= nil)
+if ns.SwitchApplyNow then ns.SwitchApplyNow("bonus.statcalc") end   -- (the /reload stand-in: core Modules.lua section 5c)
+ns.StatCalc_Apply()
 ns.RunCommand("stats", "")
 check("/xui stats shows the panel on its own", XayaUIStatCalculator:IsShown())
 check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return CWC().tab == "stats" end)())
 print(("%d checks, %d failed"):format(n, fails))
-'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-   .replace("__CM__", P("XayaUI_Bonus/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+'''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+   .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
 sys.exit(1 if lua.eval("fails") else 0)

@@ -1,13 +1,12 @@
 ## Interface: 120100
 ## Title: XayaUI Bonus Features
-## Notes: XayaUI extras. Holds the Stat Calculator: a stats panel beside the character window (or on its own from the XayaUI minimap button and /xui stats). Off until you turn it on in Bonus Features > Stat Calculator. Needs XayaUI.
+## Notes: XayaUI extras. Holds the switch for the Stat Calculator (Bonus Features > Stat Calculator, /xui stats, the XayaUI minimap button's list). The calculator itself is XayaUI Bonus Features: Stat Calculator, loaded only while it is on. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.45
+## Version: 0.6.46
 ## X-Date: 2026-11-12
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUIBonusDB
 ## Group: XayaUI
 
-StatMath.lua
-StatModel.lua
-StatCalculator.lua
+StatCalculatorLoader.lua
+ProfilePart.lua

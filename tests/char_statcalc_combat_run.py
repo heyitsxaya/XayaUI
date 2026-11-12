@@ -38,9 +38,10 @@ CharacterFrame = mk("Frame"); CharacterFrame.h = 600; PaperDollFrame = mk("Frame
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = {}
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__COMPAT__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()
 local CM = ns.StatModel
 local builds = 0
@@ -140,8 +141,10 @@ checkp("C7 setup: the Stat Calculator off: no panel", function() return not pane
 enterCombat()
 builds = 0
 local p1 = said()
-pcall(ns.RunCommand, "stats", "on")
-checkp("C7 switched on in combat (/xui stats on): nothing shows and nothing is built", function()
+-- (Bonus 0.6.46, A24 #12 / #13) /xui stats on only saves the choice for the next reload now; switched on while the calculator is loaded
+-- (a profile import, or a session that started with it on and was switched off and on) goes through Apply, played here
+ns.StatCalc_Cfg().enabled = true; ns.StatCalc_Apply()
+checkp("C7 switched on in combat: nothing shows and nothing is built", function()
   return not panelShown() and builds == 0, builds end)
 checkp("  ...it waits for the end of combat (PLAYER_REGEN_ENABLED only)", function() return ev.events.PLAYER_REGEN_ENABLED == true and evCount(ev) == 1, evCount(ev) end)
 leaveCombat()
@@ -152,9 +155,9 @@ print(n .. " checks, " .. fails .. " failed")
 
 def main():
     src = (SRC.replace("__WORLD__", P("tests/char_world.lua", os.path.join(HERE, ".."))).replace("__MOD__", P("XayaUI/Modules.lua"))
-           .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-           .replace("__CM__", P("XayaUI_Bonus/StatModel.lua"))
-           .replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+           .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+           .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua"))
+           .replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
     lua = LuaRuntime()
     lua.execute(src)
     sys.exit(1 if lua.eval("fails") else 0)

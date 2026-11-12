@@ -113,6 +113,12 @@ end
 -- (only when it names its addon, or is one of the format-1 parts) and is never applied; anything else is dropped
 function P.Check(data)
     if type(data.parts) ~= "table" then return nil, "This profile holds nothing XayaUI can read." end
+    -- (Options 0.6.108; REQUEST-LOG A24 #13) a registered part may take what an older string carries under another part's key before
+    -- the parts are cleaned: part.adopt(parts). First user: Bonus Features (XayaUI_Bonus/ProfilePart.lua) takes the Stat Calculator's
+    -- settings out of a qa-installer-branch QoL part while no XayaUI QoL is loaded.
+    for _, c in ipairs(P.COMPONENTS) do
+        if type(c.adopt) == "function" then local ok, err = pcall(c.adopt, data.parts); if not ok then Report(err) end end
+    end
     local clean, info = {}, {}
     for key, part in pairs(data.parts) do
         local c = P.BY_KEY[key]

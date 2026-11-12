@@ -105,7 +105,9 @@ collect(T, {})   -- (every tab of the window: Rules, Profiles, Settings and any 
 -- (A23: main holds core, Options and Rules) the tabs whose rows carry a sidebar tick box (QoL, Chat, Blizzard Reskin) belong to the
 -- modules on the other branch: on main none of them is built. (Bonus 0.6.45, A24 #10) Bonus Features is on main with the Stat
 -- Calculator only: its page row and its two parts (Panel, Spell Math) carry the only tick boxes.
-local STATCALC = { "bonus>statcalc", "bonus>statcalc>panelPart", "bonus>statcalc>spells" }
+-- (Bonus 0.6.46, A24 #12 / #13) with the Stat Calculator off at login (this test's fresh install) its load-on-demand addon is not read:
+-- the page is its row with the switch and one line, and the parts (Panel, Spell Math) come with the loaded calculator
+local STATCALC = ns.Service("statCalc") and { "bonus>statcalc", "bonus>statcalc>panelPart", "bonus>statcalc>spells" } or { "bonus>statcalc" }
 local scFound = 0
 for _, k in ipairs(STATCALC) do if found[k] then scFound = scFound + 1 end end
 check("A: main has no QoL / Chat / Blizzard Reskin tab; Bonus Features holds the Stat Calculator, whose row and parts carry the only sidebar tick boxes (group.xuiSwitch)",
@@ -141,7 +143,7 @@ found, foundN = {}, 0
 collect(T2, {})
 local WANT = { "bonus>xtalpha", "bonus>xtbeta", "bonus>xtgroup>xttool", "bonus>xtkit", "bonus>xtkit>kitpart" }
 for _, k in ipairs(WANT) do check("A (stand-in): the row " .. k .. " has an on / off for its tick box", found[k] ~= nil) end
-check("A (stand-in): no other row has one (Test Group, Kit Layout have no single on / off; the Stat Calculator's three rows are main's own)", foundN == #WANT + #STATCALC, foundN)
+check("A (stand-in): no other row has one (Test Group, Kit Layout have no single on / off; the Stat Calculator's rows are main's own)", foundN == #WANT + #STATCALC, foundN)
 check("control (stand-in): two builds of the options tree in a row are the same", shape(ns.BuildOptionsTable(), {}) == shape(ns.BuildOptionsTable(), {}))
 local function flipBuild(key)
   local s = found[key]

@@ -82,8 +82,18 @@ local nl = navLabels()
 check("Patch Notes lists What's New, then one entry per landing (newest first)", #nl == 1 + __N__ and nl[1] == "What's New" and nl[2] == "__FIRST__",
   table.concat(nl, ", "))
 local txt = contentText()
-check("What's New shows new features grouped by addon line (e.g. Quality of Life 0.7.x, Shopping List)",
-  txt:find("Quality of Life 0.7.x", 1, true) ~= nil and txt:find("Shopping List", 1, true) ~= nil, txt:sub(1, 200))
+check("What's New shows new features grouped by addon line (e.g. Bonus Features 0.6.x, Stat Calculator)",
+  txt:find("Bonus Features 0.6.x", 1, true) ~= nil and txt:find("Stat Calculator", 1, true) ~= nil, txt:sub(1, 200))
+-- A24 #12 (her words: "Trim old What's New text"): the notes of features retired from main are gone from the pane
+-- (Chat, Quality of Life, Blizzard Reskin, Nameplates, Dev Assist, Bonus Features' tooltips / Notepad / Calculator / Utilities /
+-- Data Panels). Matched on the addon lines and the feature headings ("Name  (version, date)"); a kept note may still name a retired
+-- element in passing (the Element Menu's list). Negative control: fails on c4ae19b (Quality of Life 0.7.x, Shopping List listed).
+local retiredHit = {}
+for _, w in ipairs({ "Quality of Life 0.7.x", "Chat 0.6.x", "Blizzard Reskin 0.6.x", "Nameplates 0.2.x", "Dev Assist 0.7.x",
+  "Shopping List  (", "Notepad  (", "Enhanced Tooltips  (", "Release Guard  (", "All Reskins  (", "Blizzard UI Reskin  (" }) do
+  if txt:find(w, 1, true) then retiredHit[#retiredHit + 1] = w end
+end
+check("A24 #12: What's New lists no feature retired from main", #retiredHit == 0, table.concat(retiredHit, "; "))
 check("What's New leaves out fixes (\"Fixed an issue ...\")", txt:find("Fixed an issue", 1, true) == nil)
 
 -- a dated entry: the full notes, blue-post style (Developers' notes kept)
@@ -92,13 +102,19 @@ local pickedLanding = "p1"
 for i = 1, __N__ do
   P.Select("patch", "p" .. i)
   local t = contentText()
-  if t:find("Fixed an issue", 1, true) and t:find("/xui shop", 1, true) then pickedLanding = "p" .. i; break end
+  if t:find("Fixed an issue", 1, true) then pickedLanding = "p" .. i; break end
 end
 P.Select("patch", pickedLanding)
 txt = contentText()
 check("a landing shows its full notes, fixes included", txt:find("Fixed an issue", 1, true) ~= nil and txt:find("Developers' notes", 1, true) ~= nil)
-check("**bold** and `commands` are coloured, not shown with their markers",
-  txt:find("**", 1, true) == nil and txt:find("`", 1, true) == nil and txt:find("/xui shop", 1, true) ~= nil)
+-- (A24 #12: no landing left on main has both a fix and a command, so the markers are checked on the landing that has `/xui console`)
+for i = 1, __N__ do
+  P.Select("patch", "p" .. i)
+  if contentText():find("/xui console", 1, true) then break end
+end
+txt = contentText()
+check("**bold** and `commands` are colored, not shown with their markers",
+  txt:find("**", 1, true) == nil and txt:find("`", 1, true) == nil and txt:find("/xui console", 1, true) ~= nil)
 
 -- Info tab
 for _, b in ipairs(f.tabs) do if b.key == "info" then b:Click() end end

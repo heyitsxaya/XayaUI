@@ -477,6 +477,12 @@ if rulesOn then
         end
         if P.reskin and type(P.reskin.characterReskin) == "table" and next(P.reskin.characterReskin) == nil then P.reskin.characterReskin = nil end
         if not XUI_HAS_BONUS then P.bonus = nil end
+        -- (Bonus 0.6.46, A24 #13) main's own Bonus Features part (the Stat Calculator's settings, format 2: tests/statcalc_lod_run.py)
+        -- is not the pre-split one (data panels, tooltips, calculator): it is left out of this comparison
+        if XUI_BONUS_MAIN and type(nd) == "table" then
+          if type(nd.parts) == "table" then nd.parts.bonus = nil end
+          if type(nd.partInfo) == "table" then nd.partInfo.bonus = nil; if next(nd.partInfo) == nil then nd.partInfo = nil end end
+        end
         ok = type(gd) == "table" and type(nd) == "table" and same(gd, nd)
       end
       check("B: " .. k .. ": the string made now is byte-for-byte the pre-split one" .. (k == "profile" and ", but for the Chat defaults now saved" or ""), ok, shown)
@@ -536,7 +542,9 @@ section("A: profile string", function()
   -- (QA-branch modules, absent on main) the golden profile holds a QoL part and a Bonus Features part: without those addons no module
   -- registers them, so Import lists them as "needs XayaUI QoL" / "needs XayaUI Bonus Features" (and skips them); every other part is offered
   local absent = {}
-  if not XUI_HAS_BONUS then absent[#absent + 1] = "bonus=XayaUI Bonus Features" end
+  -- (Bonus 0.6.46, A24 #13: "Yes, include them") main's XayaUI Bonus Features registers a Bonus Features part again, so its part is
+  -- offered and never listed as "needs XayaUI Bonus Features" while the addon is installed (before 0.6.46 it was, wrongly)
+  if not XUI_HAS_BONUS and not XUI_BONUS_MAIN then absent[#absent + 1] = "bonus=XayaUI Bonus Features" end
   if not XUI_HAS_QOL then absent[#absent + 1] = "qol=XayaUI QoL" end
   local function missList() local t = {}; for _, m in ipairs(miss) do t[#t + 1] = m.key .. "=" .. m.title end; return table.concat(t, ", ") end
   if rulesOn then
@@ -596,11 +604,16 @@ def main():
         has = lambda a: str(os.path.isdir(os.path.join(H.ROOT, a))).lower()
         # (Bonus 0.6.45) XUI_HAS_BONUS: XayaUI Bonus Features with its profile part (XayaUI_Bonus/ProfilePart.lua, qa-installer-branch).
         # On main XayaUI_Bonus holds only the Stat Calculator and registers no profile part, so the golden profile's "bonus" part (Data
-        # Panels, Enhanced Tooltips, Calculator settings) is read as missing, as before. Import's line then reads "needs XayaUI Bonus
-        # Features" although the addon is installed: reported to Xaya (a decision: a profile part for the Stat Calculator, or other wording).
-        bonus_part = str(os.path.isfile(os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua"))).lower()
-        L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s"
-                  % (has("XayaUI_Chat"), has("XayaUI_Reskin"), has("XayaUI_QoL"), bonus_part))
+        # Panels, Enhanced Tooltips, Calculator settings) was read as missing, and Import's line read "needs XayaUI Bonus Features"
+        # although the addon was installed. Her answer (A24 #13): "Yes, include them": fixed in Bonus 0.6.46 (XUI_BONUS_MAIN below).
+        # (Bonus 0.6.46, A24 #13) main's XayaUI_Bonus registers its own Bonus Features part (the Stat Calculator's settings):
+        # XUI_BONUS_MAIN. XUI_HAS_BONUS stays QA's part (data panels, tooltips, calculator).
+        pp = os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua")
+        pp_src = open(pp, encoding="utf-8").read() if os.path.isfile(pp) else ""
+        bonus_part = str('"dataPanels"' in pp_src).lower()
+        bonus_main = str(bool(pp_src) and '"dataPanels"' not in pp_src and "XayaUI_Bonus" not in skip).lower()
+        L.execute("XUI_HAS_CHAT = %s; XUI_HAS_RESKIN = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_BONUS_MAIN = %s"
+                  % (has("XayaUI_Chat"), has("XayaUI_Reskin"), has("XayaUI_QoL"), bonus_part, bonus_main))
         L.execute("XUI_RESKIN_UI = { %s }; XUI_RESKIN_SPLIT = { %s }" % (", ".join('"%s"' % k for k in lay["underUi"].get("reskin", [])),
                   ", ".join('"%s"' % k for k in lay["split"]["characterReskin"]["sub"] if lay["split"]["characterReskin"]["owner"] == "reskin")))
         res = L.eval("function(src, W, Ld, g, on) return loadstring(src)()(W, Ld, g, on) end")(TEST_LUA, world, loader, H.to_lua(L, GOLDEN), rules_on)

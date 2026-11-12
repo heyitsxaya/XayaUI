@@ -92,6 +92,12 @@ Calculator" row (`set.minimap.entries.stats`, `settings.minimap.entries.stats`: 
 "XayaUI Settings" row after it one `order` down (1 -> 2), 0 other lines. The new variant off-XayaUI_Bonus has the hashes the all-on
 window had before (ad60a05's golden) for every tab but "cooldowns" (same node count), whose dump differs from ad60a05's all-on dump
 only in the random group and rule ids (the second window built in the process: see main() below), 0 other lines. C now expects the Bonus Features page "statcalc" and no other module page.
+Regenerated on 2026-11-12 for Bonus 0.6.46 / Options 0.6.108 (REQUEST-LOG A24 #12 / #13: the Stat Calculator loads on demand; its
+settings travel in profiles): `--dump` of c4ae19b and of the new code (all-on, the Stat Calculator off as in a fresh install) differ
+only in (1) `bonus.statcalc`: its switch's desc (her option text "Off means it is never read; on means it loads once per reload."),
+the 118 `bonus.statcalc.*` lines of the detailed page gone (they come with the loaded calculator) and one `bonus.statcalc.note` line
+added; (2) Profiles: the new "Bonus Features" tick box under Export (`inc_bonus`, order 5) and Import (`imp_bonus`, order 8), with
+"Blizzard Reskin" one place down (5 -> 6, 8 -> 9); 0 other lines. off-XayaUI_Bonus: 0 lines differ.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

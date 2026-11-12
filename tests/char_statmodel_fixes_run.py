@@ -54,8 +54,8 @@ assert(loadfile(__MOD__))("XayaUI", ns)
 '''
 LOADCM = r'''
 assert(loadfile(__COMPAT__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
 CM = ns.StatModel
 CFG = { whatIfStats = {}, whatIfPrimary = 0, detail = "all", collapsed = {}, statOpen = {}, spells = {} }
 function B(tab) return CM.Build(CFG, tab) end
@@ -70,9 +70,9 @@ ns.Provide("rules", { BuildSpellList = function(...) return ns.BuildSpellList(..
 
 def sub(code):
     return (code.replace("__WORLD__", WORLD).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
-            .replace("__SM__", P("XayaUI_Bonus/StatMath.lua")).replace("__CM__", P("XayaUI_Bonus/StatModel.lua"))
+            .replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua")).replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua"))
             .replace("__COND__", P("XayaUI_Rules/Conditions.lua"))
-            .replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+            .replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
 
 totals = []
 def run(name, body, setup=SETUP + RULES + LOADCM):
@@ -431,9 +431,10 @@ check("  ...and the haste card no longer lists Infernal Leap", hasLeap == nil, h
 
 QAE2E = SETUP + BOOK + r"""
 assert(loadfile(__COMPAT__))("XayaUI", ns)
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()
 CM = ns.StatModel
 local c = CWC()

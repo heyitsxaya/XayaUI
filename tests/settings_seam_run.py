@@ -384,7 +384,12 @@ section("C2 profile import", function()
   check("C2: ... and the merged cursor highlight value", V.qol.cursorHighlight and V.qol.cursorHighlight.marker == 9)
   end
   local bonus = ns.ProfilePartsByKey().bonus
-  if bonus then
+  if bonus and type(bonus.db) == "table" and bonus.db[1] == "characterToolkit" then
+    -- (Bonus 0.6.46, A24 #13) main's Bonus Features part: the Stat Calculator's settings (XayaUIBonusDB.characterToolkit)
+    bonus.apply(bonus.check({ characterToolkit = { side = "left", enabled = true } }), "merge", 2)
+    check("C2: a Bonus part applied: the held Bonus view reads it (the Stat Calculator's settings)", V.bonus.characterToolkit
+      and V.bonus.characterToolkit.side == "left" and V.bonus.characterToolkit.enabled == true)
+  elseif bonus then
     bonus.apply(bonus.check({ calculator = { marker = "c" } }), "merge", 1)
     check("C2: a Bonus part applied: the held Bonus view reads it", V.bonus.calculator and V.bonus.calculator.marker == "c")
   end

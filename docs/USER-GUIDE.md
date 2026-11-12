@@ -14,7 +14,8 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 | **XayaUI Options** | The settings window. It loads the first time you open it, so it costs nothing until then | /xui and the buttons say the window is switched off; everything else keeps working with your saved settings |
 | **XayaUI Chat** | Chat Panel, Chat Data Panel, message filters and sounds, history, privacy cover | Blizzard's chat as the game draws it; /xui chat says Chat is off |
 | **XayaUI QoL** | Cursor highlight, cursor trail, Character Toolkit (friends and bags later) | No cursor changes, no Character Toolkit |
-| **XayaUI Bonus Features** | Tooltip additions, Notepad, custom data panels | Plain tooltips, no notepad, no panels |
+| **XayaUI Bonus Features** | On `main` (Bonus 0.6.46): the Stat Calculator's on / off (Bonus Features > Stat Calculator), `/xui stats`, its minimap row and its profile part. (On the QA build also: tooltip additions, Notepad, custom data panels) | No Bonus Features tab, no Stat Calculator |
+| **XayaUI Bonus Features: Stat Calculator** | The Stat Calculator itself. Listed as load on demand: XayaUI Bonus Features loads it once at login only while the Stat Calculator is on; off, none of it is read. Turning it on or off takes effect after a reload | No Stat Calculator, even with its switch on (a chat line at login says so) |
 | **XayaUI Blizzard Reskin** | XayaUI's look on Blizzard's frames without changing what they do (today: the Game Menu) | Blizzard's own look |
 | **XayaUI Media** | Your own pictures and sounds (a support folder, not a feature) | Your own files are not in the lists. The art picker (and the sound list) offer only the bundled pictures this computer actually has, checked once per session (pictures since 0.6.15, #333); your own XayaUI Media files are always listed |
 

@@ -10,8 +10,10 @@ addon folder, XayaUI_Bonus included) and for the Stat Calculator itself by tests
   S1  static, every Lua file of XayaUI_Bonus (git ls-files): no OnUpdate script set or hooked, no repeating timer (C_Timer.NewTicker /
       NewTimer), and the only C_Timer.After is the redraw throttle in StatCalculator.lua (one at a time, 0.25 s); no file switches the
       keyboard on or sets the key pass-on flag (only core's KeyCatch.lua may).
-  R1  (V14) the Stat Calculator off at login (a fresh install): XayaUI_Bonus made no frame, registered no event, placed no hook and
-      started no timer; nothing of it is shown.
+  R1  (V14) the Stat Calculator off at login (a fresh install): (Bonus 0.6.46, A24 #12 / #13) the load-on-demand addon
+      XayaUI_Bonus_StatCalculator is not loaded (none of its files read); XayaUI_Bonus made only its loader's login frame, which
+      listens to no event once the login is past; no hook, no timer; nothing is shown. (Before 0.6.46: no frame at all, but every
+      file of the calculator was read.) The meters count both folders.
   R2  on, panel closed, character window closed: during 10 s of idle frames no XayaUI_Bonus frame has an OnUpdate script, no timer is
       started, and its event frame listens only to the start and end of combat and to spec / level changes.
   R3  the panel open on its own: 10 s of idle frames start no timer and run no OnUpdate (nothing polls); the panel's size and its
@@ -46,7 +48,7 @@ local function fromBonus()
     local f = (info.source or ""):match("Interface/AddOns/(XayaUI[%w_]*)/")
     if f then
       seen = seen + 1
-      if f == "XayaUI_Bonus" then return true end
+      if f == "XayaUI_Bonus" or f == "XayaUI_Bonus_StatCalculator" then return true end
       if seen >= 2 or f ~= "XayaUI" then return false end
     end
   end
@@ -79,18 +81,22 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 ns.Print = function() end
 local sc = ns.Service("statCalc")
-check("(sanity) the Stat Calculator's service is there", sc ~= nil)
-if not sc then return R end
 
 if MODE == "fresh" then
-  -- R1 off at login
+  -- R1 off at login (Bonus 0.6.46, A24 #12 / #13: "Off means it is never read"): the load-on-demand addon is not loaded, so no file of
+  -- it ran; XayaUI_Bonus's loader made its one login frame, which listens to nothing once the login is past
+  local loaded = C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")
+  check("R1 off at login: XayaUI_Bonus_StatCalculator is not loaded (none of its files read: no service, no panel code)",
+    not loaded and sc == nil and ns.StatCalc_Apply == nil and ns.StatModel == nil and ns.StatMath == nil, tostring(loaded))
   local ev = events()
-  check("R1 off at login: XayaUI_Bonus made no frame, registered no event, placed no hook, started no timer",
-    #mine() == 0 and ev == "" and hooks == 0 and timers == 0, #mine() .. " frames, events " .. ev .. ", " .. hooks .. " hooks, " .. timers .. " timers")
+  check("R1 ...XayaUI_Bonus made only its loader's frame, which listens to no event after the login; no hook, no timer",
+    #mine() == 1 and ev == "" and hooks == 0 and timers == 0, #mine() .. " frames, events " .. ev .. ", " .. hooks .. " hooks, " .. timers .. " timers")
   W.tick(1 / 60, 600)
-  check("R1 ...and 10 s of frames later still nothing of it exists or runs", #mine() == 0 and timers == 0 and onupdates() == 0, #mine())
+  check("R1 ...and 10 s of frames later still nothing more exists or runs", #mine() == 1 and timers == 0 and onupdates() == 0 and shown() == 0, #mine())
   return R
 end
+check("(sanity) the Stat Calculator's service is there", sc ~= nil)
+if not sc then return R end
 
 -- on (as a player who turned it on), panel closed, character window closed
 local c = sc.Cfg(); c.enabled, c.panel = true, true; ns.StatCalc_Apply(); W.tick(0.1, 3)
@@ -153,9 +159,10 @@ end
 
 def static():
     out = []
-    files = subprocess.run(["git", "ls-files", "XayaUI_Bonus"], cwd=ROOT, capture_output=True, text=True).stdout.split()
+    files = subprocess.run(["git", "ls-files", "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"], cwd=ROOT, capture_output=True, text=True).stdout.split()
     lua = [f for f in files if f.endswith(".lua")]
-    out.append(("S1 XayaUI_Bonus's Lua files are tracked (%d)" % len(lua), len(lua) > 0))
+    out.append(("S1 the Lua files of XayaUI_Bonus and XayaUI_Bonus_StatCalculator are tracked (%d)" % len(lua),
+                any(f.startswith("XayaUI_Bonus/") for f in lua) and any(f.startswith("XayaUI_Bonus_StatCalculator/") for f in lua)))
     onupd, tick, after, keys = [], [], [], []
     for f in lua:
         for i, ln in enumerate(open(os.path.join(ROOT, f), encoding="utf-8").read().split("\n")):
@@ -168,10 +175,10 @@ def static():
                 after.append("%s:%d" % (f, i + 1))
             if re.search(r"SetPropagateKeyboardInput|EnableKeyboard\s*\(", code):
                 keys.append("%s:%d" % (f, i + 1))
-    out.append(("S1 no OnUpdate script set or hooked in XayaUI_Bonus" + ("" if not onupd else "  [" + ", ".join(onupd) + "]"), not onupd))
+    out.append(("S1 no OnUpdate script set or hooked in XayaUI_Bonus or XayaUI_Bonus_StatCalculator" + ("" if not onupd else "  [" + ", ".join(onupd) + "]"), not onupd))
     out.append(("S1 no repeating timer (C_Timer.NewTicker / NewTimer)" + ("" if not tick else "  [" + ", ".join(tick) + "]"), not tick))
     out.append(("S1 the only C_Timer.After is the redraw throttle in StatCalculator.lua" + ("" if len(after) == 1 else "  [" + ", ".join(after) + "]"),
-                len(after) == 1 and after[0].startswith("XayaUI_Bonus/StatCalculator.lua:")))
+                len(after) == 1 and after[0].startswith("XayaUI_Bonus_StatCalculator/StatCalculator.lua:")))
     out.append(("S1 no file switches the keyboard on or sets the key pass-on flag (only core's KeyCatch.lua may)" + ("" if not keys else "  [" + ", ".join(keys) + "]"), not keys))
     return out
 
@@ -182,12 +189,17 @@ def session(mode):
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
-        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": {}}))
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": STATCALC_ON if mode == "on" else {}}))
     res = L.eval("function(src, W, Ld, m) return loadstring(src)()(W, Ld, m) end")(LUA, world, loader, mode)
     out = [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
     out.append(("[%s] no Lua error in the stand-in game" % mode + ("" if not errs else "  [" + errs[0][:300] + "]"), not errs))
     return out
+
+
+# (Bonus 0.6.46, A24 #12 / #13) the Stat Calculator is a load-on-demand addon (XayaUI_Bonus_StatCalculator) that XayaUI_Bonus's loader
+# loads at login only while its switch is saved on: the session starts with it on, as a player who turned it on and reloaded
+STATCALC_ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": {"enabled": True}}}}
 
 
 def main():

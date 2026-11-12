@@ -10,10 +10,13 @@ game (tests/harness), with the saved variables carried over a /reload:
       still there with its value (nothing is moved, renamed or removed; no migration runs: ns.SettingsKeyMove says no copy this session);
       no Lua error.
   K2  a fresh install: Bonus Features > Stat Calculator is there (its switch off by default), /xui stats answers, the minimap list's
-      "Stat Calculator" row is registered and left out of the list while the Stat Calculator is off; no Lua error.
+      "Stat Calculator" row is registered and left out of the list while the Stat Calculator is off; (Bonus 0.6.46) the calculator's
+      stat model is not loaded; no Lua error.
   K3  XayaUI Bonus Features switched off: no Stat Calculator page, no /xui stats, no row, no statModel service, nothing saved in
       XayaUIBonusDB; the Platform and the settings window still load; no Lua error.
-  K4  self-contained (static): XayaUI_Bonus.toc depends on XayaUI only and loads exactly StatMath.lua, StatModel.lua, StatCalculator.lua;
+  K4  self-contained (static; Bonus 0.6.46, A24 #12 / #13): XayaUI_Bonus.toc depends on XayaUI only and loads only the loader and the
+      profile part; XayaUI_Bonus_StatCalculator.toc is load on demand, needs XayaUI and XayaUI_Bonus, shares Bonus's Group and loads
+      exactly StatMath.lua, StatModel.lua, StatCalculator.lua;
       the folder holds nothing of Bonus's retired features (Tooltips, Notepad, Calculator, Data Panels, Utilities, Libs); its code names
       no other XayaUI addon's functions or services (Improved Character Display, the Character Reskin, Enhanced Tooltips, Dev Assist's
       walkthroughs); the panel reads the model only through the statModel service, which this folder provides itself.
@@ -146,7 +149,8 @@ def main():
     check("  .../xui stats answers (off)", str(out3.get("statsCmd") or "").startswith("Stat Calculator: off"), out3.get("statsCmd"))
     check("  ...the minimap list's Stat Calculator row is registered and left out of the list while the Stat Calculator is off",
           out3.get("launcher") is True and out3.get("rowAvailable") is False, (out3.get("launcher"), out3.get("rowAvailable")))
-    check("  ...the statModel service is XayaUI Bonus Features' own; no Lua error", out3.get("statModel") is True and not errs3, errs3[:2])
+    # (Bonus 0.6.46, A24 #12 / #13) off at login: the calculator's load-on-demand addon is not read, so its stat model is not there
+    check("  ...the Stat Calculator off: its stat model is not loaded (no statModel service); no Lua error", out3.get("statModel") is False and not errs3, errs3[:2])
     # K3 Bonus off
     out4, s4, errs4 = session(lambda n: n != "XayaUI_Bonus", copy.deepcopy(qa))
     check("K3 XayaUI Bonus Features off: no Stat Calculator page, no /xui stats, no row, no statModel service",
@@ -156,18 +160,30 @@ def main():
     out5, s5, errs5 = session(lambda n: n != "XayaUI_Bonus", {})
     check("  ...fresh install with it off: nothing saved for it (no XayaUIBonusDB); no Lua error",
           not store(s5, "XayaUI_Bonus", "XayaUIBonusDB") and not errs5, (sorted(store(s5, "XayaUI_Bonus", "XayaUIBonusDB")), errs5[:2]))
-    # K4 self-contained (static)
-    bonus = os.path.join(ROOT, "XayaUI_Bonus")
-    toc = open(os.path.join(bonus, "XayaUI_Bonus.toc"), encoding="utf-8").read().splitlines()
-    files = [l.strip() for l in toc if l.strip() and not l.startswith("#")]
-    deps = [l.split(":", 1)[1].strip() for l in toc if l.startswith("## Dependencies:") or l.startswith("## RequiredDeps:")]
-    opt = [l for l in toc if l.startswith("## OptionalDeps:")]
-    check("K4 XayaUI_Bonus.toc depends on XayaUI only and loads exactly StatMath.lua, StatModel.lua, StatCalculator.lua",
-          deps == ["XayaUI"] and not opt and files == ["StatMath.lua", "StatModel.lua", "StatCalculator.lua"], (deps, opt, files))
-    shipped = sorted(os.path.relpath(os.path.join(d, f), bonus).replace("\\", "/") for d, _, fs in os.walk(bonus) for f in fs)
-    check("  ...the folder holds only those files and its .toc (none of the retired Tooltips, Notepad, Calculator, Data Panels, Utilities, Libs)",
-          shipped == sorted(["XayaUI_Bonus.toc", "StatMath.lua", "StatModel.lua", "StatCalculator.lua"]), shipped)
-    code = {f: code_of(os.path.join(bonus, f)) for f in ("StatMath.lua", "StatModel.lua", "StatCalculator.lua")}
+    # K4 self-contained (static). (Bonus 0.6.46, A24 #12 / #13, her option text: "XayaUI_Bonus keeps only a tiny loader ... The
+    # calculator code moves to XayaUI_Bonus_StatCalculator, shown in the AddOns list under Bonus Features as 'load on demand'.")
+    def toc_of(folder):
+        toc = open(os.path.join(ROOT, folder, folder + ".toc"), encoding="utf-8").read().splitlines()
+        meta = {l[2:].split(":", 1)[0].strip(): l.split(":", 1)[1].strip() for l in toc if l.startswith("##") and ":" in l}
+        return meta, [l.strip() for l in toc if l.strip() and not l.startswith("#")]
+    bm, bfiles = toc_of("XayaUI_Bonus")
+    check("K4 XayaUI_Bonus.toc depends on XayaUI only, is always loaded, keeps XayaUIBonusDB and loads exactly the loader and the profile part",
+          bm.get("Dependencies") == "XayaUI" and "OptionalDeps" not in bm and "LoadOnDemand" not in bm and bm.get("SavedVariables") == "XayaUIBonusDB"
+          and bfiles == ["StatCalculatorLoader.lua", "ProfilePart.lua"], (bm, bfiles))
+    sm, sfiles = toc_of("XayaUI_Bonus_StatCalculator")
+    check("  ...XayaUI_Bonus_StatCalculator.toc: load on demand, needs XayaUI and XayaUI Bonus Features, the same Group as Bonus (XayaUI), no saved "
+          "variables of its own, and loads exactly StatMath.lua, StatModel.lua, StatCalculator.lua",
+          sm.get("LoadOnDemand") == "1" and sm.get("Dependencies") == "XayaUI, XayaUI_Bonus" and sm.get("Group") == bm.get("Group") == "XayaUI"
+          and "SavedVariables" not in sm and sfiles == ["StatMath.lua", "StatModel.lua", "StatCalculator.lua"], (sm, sfiles))
+    shipped = {}
+    for folder in ("XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"):
+        d0 = os.path.join(ROOT, folder)
+        shipped[folder] = sorted(os.path.relpath(os.path.join(d, f), d0).replace("\\", "/") for d, _, fs in os.walk(d0) for f in fs)
+    check("  ...the two folders hold only those files and their .toc (none of the retired Tooltips, Notepad, Calculator, Data Panels, Utilities, Libs)",
+          shipped == {"XayaUI_Bonus": sorted(["XayaUI_Bonus.toc", "StatCalculatorLoader.lua", "ProfilePart.lua"]),
+                      "XayaUI_Bonus_StatCalculator": sorted(["XayaUI_Bonus_StatCalculator.toc", "StatMath.lua", "StatModel.lua", "StatCalculator.lua"])}, shipped)
+    code = {f: code_of(os.path.join(ROOT, "XayaUI_Bonus_StatCalculator", f)) for f in ("StatMath.lua", "StatModel.lua", "StatCalculator.lua")}
+    code.update({f: code_of(os.path.join(ROOT, "XayaUI_Bonus", f)) for f in ("StatCalculatorLoader.lua", "ProfilePart.lua")})
     foreign = re.compile(r"ns\.(CharDisplay_|CharReskin_|CharPane_|CharToolkit_|TT\b|ShoppingList|BuildCharDisplayPage)|XayaUI_DevQA|"
                          r"Service\(\"(statsText|tooltips|devassist)\"\)|XayaUI_(QoL|Chat|Reskin|DevAssist)\b")
     hits = ["%s: %s" % (f, m.group(0)) for f, c in code.items() for m in foreign.finditer(c)]

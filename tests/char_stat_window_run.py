@@ -73,9 +73,10 @@ CharacterFrame.CloseButton = mk("Button")   -- (Blizzard's ButtonFrameTemplate c
 local statRow = mk("Frame"); statRow.Label = mk("FS"); statRow.Label.text = "Agility:"
 CharacterStatsPane = mk("Frame"); CharacterStatsPane.children = { statRow }
 __DB__
-assert(loadfile(__SM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CM__))("XayaUI_Bonus", ns)
-assert(loadfile(__CT__))("XayaUI_Bonus", ns)
+assert(loadfile(__SM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__CM__))("XayaUI_Bonus_StatCalculator", ns)
+assert(loadfile(__LD__))("XayaUI_Bonus", ns)
+assert(loadfile(__CT__))("XayaUI_Bonus_StatCalculator", ns)
 ns.FireReady(); ns.SettingsOpenAllForTests()   -- (P5) the module addons load after XayaUI: their settings stores open (Modules.lua section 0c)
 CM = ns.StatModel
 -- every check runs inside pcall: a missing function or frame (older code) is a failed check, not a stopped run
@@ -102,8 +103,8 @@ function clickRow(key) local _, r = launcher(key); r.scripts.OnClick(r) end
 
 def world(db_lua=""):
     return (SETUP.replace("__DB__", db_lua).replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua"))
-            .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__MINI__", P("XayaUI/MinimapButton.lua")).replace("__SM__", P("XayaUI_Bonus/StatMath.lua"))
-            .replace("__CM__", P("XayaUI_Bonus/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")))
+            .replace("__COMPAT__", P("XayaUI/Compat.lua")).replace("__MINI__", P("XayaUI/MinimapButton.lua")).replace("__SM__", P("XayaUI_Bonus_StatCalculator/StatMath.lua"))
+            .replace("__CM__", P("XayaUI_Bonus_StatCalculator/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus_StatCalculator/StatCalculator.lua")).replace("__LD__", P("XayaUI_Bonus/StatCalculatorLoader.lua")))
 
 lua = LuaRuntime()
 lua.execute(world())

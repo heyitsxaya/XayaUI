@@ -154,7 +154,7 @@ section("D: Profiles", function()
   local tn = {}
   for _, t in ipairs(ticks) do tn[#tn + 1] = t.n end
   -- (Options 0.6.80: parts are registered by their modules; QoL, Bonus Features and Nameplates add their own where they are, plan 6.1)
-  local wantTicks = "Rules and groups, Themes, Settings" .. (XUI_HAS_QOL and ", QoL" or "") .. (XUI_HAS_BONUS and ", Bonus Features" or "")
+  local wantTicks = "Rules and groups, Themes, Settings" .. (XUI_HAS_QOL and ", QoL" or "") .. ((XUI_HAS_BONUS or XUI_BONUS_PART) and ", Bonus Features" or "")
     .. ", Blizzard Reskin" .. (XUI_HAS_NAMEPLATES and ", Nameplates" or "")
   check("D: Export: one tick box per component (" .. wantTicks .. ")", table.concat(tn, ", ") == wantTicks, table.concat(tn, ", "))
   check("D: the Recycle Bin page is there (its Empty button)", p.args.bin and p.args.bin.args and (p.args.bin.args.empty ~= nil or p.args.bin.args.summary ~= nil))
@@ -174,7 +174,7 @@ section("E: the profile codec", function()
   local P = ns.Profile
   -- (the Platform's Themes, Settings and Blizzard Reskin, and XayaUI Rules' Rules and groups: four; QoL's, Bonus Features' and Nameplates'
   -- own parts exist only where their addons are)
-  local nParts = 4 + (XUI_HAS_QOL and 1 or 0) + (XUI_HAS_BONUS and 1 or 0) + (XUI_HAS_NAMEPLATES and 1 or 0)
+  local nParts = 4 + (XUI_HAS_QOL and 1 or 0) + ((XUI_HAS_BONUS or XUI_BONUS_PART) and 1 or 0) + (XUI_HAS_NAMEPLATES and 1 or 0)
   check("E: the profile component list exists (" .. nParts .. " parts: one per registered part; Options 0.6.80)", P ~= nil and #P.COMPONENTS == nParts, P and #P.COMPONENTS)
   -- the third component ticked besides Settings and Blizzard Reskin: Bonus Features where XayaUI_Bonus is, else the Platform's Themes
   local THIRD = XUI_HAS_BONUS and "bonus" or "themes"
@@ -259,9 +259,15 @@ def main():
     # (Bonus 0.6.45) XUI_HAS_BONUS: XayaUI Bonus Features with its profile part (dataPanels, tooltips, calculator: XayaUI_Bonus/
     # ProfilePart.lua, qa-installer-branch). On main XayaUI_Bonus holds only the Stat Calculator and registers no profile part, so the
     # profile checks run as without it; XUI_HAS_BONUS_TAB: the folder is here, so its top tab is built.
-    bonus_part = str(os.path.isfile(os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua"))).lower()
-    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s"
-              % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus")))
+    # (Bonus 0.6.46, A24 #13) main's XayaUI_Bonus registers its own part again, Bonus Features = the Stat Calculator's settings
+    # (XayaUI_Bonus/ProfilePart.lua, db = { "characterToolkit" }): XUI_BONUS_PART says a Bonus Features tick box is under Export;
+    # XUI_HAS_BONUS stays the QA part with the data panels / calculator keys these checks write.
+    pp = os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua")
+    pp_src = open(pp, encoding="utf-8").read() if os.path.isfile(pp) else ""
+    bonus_part = str('"dataPanels"' in pp_src).lower()
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s; XUI_BONUS_PART = %s"
+              % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus"),
+                 str(bool(pp_src) and "XayaUI_Bonus" not in ABSENT).lower()))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):

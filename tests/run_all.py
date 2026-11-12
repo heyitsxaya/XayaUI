@@ -18,7 +18,9 @@ FAIL_WORD = re.compile(r"\bFAIL(?:S|ED|URES?)?\b", re.I)
 # the feature addons present in this checkout (main holds XayaUI, XayaUI_Options and XayaUI_Rules: REQUEST-LOG A23; and XayaUI_Bonus
 # with only the Stat Calculator since Bonus 0.6.45: REQUEST-LOG A24 #10)
 ROOT = os.path.dirname(HERE)
-FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Options")
+# (Bonus 0.6.46, A24 #12 / #13) and XayaUI_Bonus_StatCalculator, the Stat Calculator's load-on-demand addon (the harness also runs every
+# combination with the Stat Calculator switched on, its built-in data set "Stat Calculator on", beside the fresh install where it is off)
+FEATURES = [a for a in ("XayaUI_Rules", "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator", "XayaUI_Options")
             if os.path.isdir(os.path.join(ROOT, a))]
 
 
