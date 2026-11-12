@@ -9,7 +9,7 @@
 #        right side max ilvl (in bags)"
 #   B2 (reading taken): the "% / rating" toggle removed in all three places (title-row button, per-line click, Settings "Rating lines"
 #        and its reset button).
-# What it checks is what the player sees (V1, V11): drawn records (kind, x, y, width, text), font strings' justification and colour,
+# What it checks is what the player sees (V1, V11): drawn records (kind, x, y, width, text), font strings' justification and color,
 # hovers, the frame's textures, saved settings across a rebuild. Layout claims (the header's two halves, the bracketed differences on one
 # line, the columns) are checked with three text measures ("est" 0.55 x size per character, "scaled" 0.6 x size, "flat8" 8 px a
 # character), as tests/char_stat_round_run.py does, because the shared stand-ins measure 6 px a character or nothing.
@@ -116,10 +116,10 @@ checkp("  ...each number in the Current value column (the head's x and width)", 
   return ok end)
 checkp("  ...the other stats stay folded (Critical Strike: \"+\", no Diminishing returns row)", function()
   local m = mark(d, "Critical Strike"); return m and m.text == "+" and find(d, "pairLabel", "Diminishing returns") == nil end)
--- typed change: the new value with its sign under a row's number (existing behaviour on those rows too)
+-- typed change: the new value with its sign under a row's number (existing behavior on those rows too)
 ns.StatCalc_SetInput("sv:primary", "2737")
 d = render()
-checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 with the sign, in the game's green (QoL 0.7.54 / Bonus 0.6.38: better; was the accent colour)", function()
+checkp("typed Agility 2,737: under \"from Agility\" +2,637 its new value +2,737 with the sign, in the game's green (QoL 0.7.54 / Bonus 0.6.38: better; was the accent color)", function()
   local fa = find(d, "pairLabel", "from Agility")
   local v, ch
   for _, r in ipairs(recs(d, "pairValue")) do if fa and r.y == fa.y then v = r end end
@@ -184,7 +184,7 @@ ITEMS["New Ring"] = { ilvl = 345, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRI
 ITEMS["Big Crit Ring"] = { ilvl = 350, loc = "INVTYPE_FINGER", stats = { ITEM_MOD_CRIT_RATING_SHORT = 1000 } }
 GEAR[13] = "|cnIQ4:|Hitem:13::::::::90:::::|h[Idol]|h|r"
 GEAR[14] = "|cnIQ4:|Hitem:14::::::::90:::::|h[Idol]|h|r"
--- the bags' links in the form 12.x gives them: a NAMED quality colour, |cnIQ4: (XayaUI_Chat/History.lua strips the same form)
+-- the bags' links in the form 12.x gives them: a NAMED quality color, |cnIQ4: (XayaUI_Chat/History.lua strips the same form)
 TUMOR = "|cnIQ4:|Hitem:31::::::::90:::::|h[Tumor of the Swarm]|h|r"
 OTHERT = "|cnIQ3:|Hitem:32::::::::90:::::|h[Other Trinket]|h|r"
 NEWRING = "|cnIQ4:|Hitem:20::::::::90:::::|h[New Ring]|h|r"
@@ -213,7 +213,7 @@ function framed(b)
   if not b then return false, "no icon" end
   for _, e in ipairs(b.selEdges or {}) do
     if not e.shown then return false, "an edge hidden" end
-    if not sameCol(e.color, ACCENT) then return false, "not the accent colour" end
+    if not sameCol(e.color, ACCENT) then return false, "not the accent color" end
     if not (e.layer == "OVERLAY" and e.sublevel == 7) then return false, "layer " .. tostring(e.layer) .. " " .. tostring(e.sublevel) end
     if math.max(e.w or 0, e.h or 0) ~= 3 then return false, "thickness " .. tostring(e.w) .. "/" .. tostring(e.h) end
   end
@@ -243,7 +243,7 @@ checkp("(guard) a second click lets it go: no frame, no column", function()
 ns.StatCalc_SetInput("item", OTHERT)
 d = drawn()
 checkp("an item shift-clicked into the box (|cnIQ3: link) marks its icon in the list too", function() return framed(candIcon(d, OTHERT)) end)
-checkp("(guard) the model: CM.ResolveItemLink keeps a named-colour link whole; two links of one item match (CM.InList by item string)", function()
+checkp("(guard) the model: CM.ResolveItemLink keeps a named-color link whole; two links of one item match (CM.InList by item string)", function()
   return CM.ResolveItemLink("  " .. TUMOR .. " ") == TUMOR and CM.InList({ "|Hitem:31::::::::90:::::|h[Tumor of the Swarm]|h" }, TUMOR) == 1
     and CM.InList({ NEWRING }, TUMOR) == nil end)
 ns.StatCalc_SetInput("item", "")
@@ -287,7 +287,7 @@ local cr = rowOf(d, "Critical Strike")
 checkp("Critical Strike: Equipped 100 | New Ring 300 (+200) | Big Crit Ring 1,000 (+900): \"(+200)\" right of 300 on the same line, no line under it", function()
   return T(cr.cells[1]) == "100" and T(cr.cells[2]) == "300" and T(cr.diffs[1]) == "(+200)" and cr.diffs[1].y == cr.cells[2].y and cr.diffs[1].x > cr.cells[2].x
     and #cr.subs == 0, T(cr.cells[2]) .. " " .. T(cr.diffs[1]) end)
-checkp("  ...in the better / worse colour (green: more crit)", function() local f = fontAt(d, cr.diffs[1]); return f and f.color and f.color[2] > 0.9 and f.color[1] < 0.6 end)
+checkp("  ...in the better / worse color (green: more crit)", function() local f = fontAt(d, cr.diffs[1]); return f and f.color and f.color[2] > 0.9 and f.color[1] < 0.6 end)
 local ms = rowOf(d, "Mastery")
 checkp("Mastery: Equipped 400 | New Ring 388 (-12): the form of her example \"1,405 (-12)\", orange (less)", function()
   local f = ms.diffs[1] and fontAt(d, ms.diffs[1])
@@ -329,7 +329,7 @@ local function allPanelText()
 end
 checkp("header: left \"Equipped 334.2\" (GetAverageItemLevel's equipped 334.25), right \"Max (bags) 335.5\" (its overall 335.5)", function()
   return Pn.hEq and Pn.hEq.text == "Equipped 334.2" and Pn.hMax and Pn.hMax.text == "Max (bags) 335.5", allPanelText() end)
-checkp("  ...no name, class or spec anywhere in it (Xaya, Demon Hunter, Vengeance), no class colour", function()
+checkp("  ...no name, class or spec anywhere in it (Xaya, Demon Hunter, Vengeance), no class color", function()
   local t = allPanelText()
   return not t:find("Xaya", 1, true) and not t:find("Demon Hunter", 1, true) and not t:find("Vengeance", 1, true)
     and not (Pn.hEq.color and sameCol(Pn.hEq.color, { 0.64, 0.19, 0.79 })), t end)

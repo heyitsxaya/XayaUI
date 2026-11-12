@@ -15,7 +15,7 @@
 #     reduction (e.g. agility influences [ ... ]"; her answers "Names only, values on hover" and "Same Influences column".
 #   #68: "gear pane request for gear highlight dropped".
 # What it checks is what the player sees (V1, V11): drawn records (kind, x, y, width, text), the font strings' justification and
-# colour, the hover lines, the textures' colour, draw layer and thickness.
+# color, the hover lines, the textures' color, draw layer and thickness.
 # THE TEXT WIDTH: the shared stand-ins measure text as a fixed 6 px (tests/harness/world.lua) or not at all (tests/char_world.lua),
 # which is how titles cut in game ("DR Thres...", "Comput...") passed before. Here the font strings measure text in one of three ways:
 # "est" (0.55 x size per character, the old layout estimate), "scaled" (0.6 x size per character: a wider font) and "flat8" (8 px per
@@ -23,9 +23,9 @@
 # (the game wraps only at spaces, and truncates a longer word with "..."); "on one line" when the whole title fits its column.
 # Negative control (V1): every check fails on QoL 0.7.24's files (session branch head e05475a), except those marked "(guard)".
 # QoL 0.7.54 / Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15): the new value a typed number
-# gives is no longer in the accent colour: green better / red worse (the game's GREEN_FONT_COLOR / RED_FONT_COLOR, stand-ins below with
-# their own values so a copied number cannot pass), blue / orange with a XayaUI colour-blind base theme (read from XayaUI/Theme.lua's
-# colorblind palette), the text colour when the same; a stat's name in its colour in the hovers and the Ability Scaling rows. Section K;
+# gives is no longer in the accent color: green better / red worse (the game's GREEN_FONT_COLOR / RED_FONT_COLOR, stand-ins below with
+# their own values so a copied number cannot pass), blue / orange with a XayaUI color-blind base theme (read from XayaUI/Theme.lua's
+# colorblind palette), the text color when the same; a stat's name in its color in the hovers and the Ability Scaling rows. Section K;
 # its checks fail on 930a0c7 (QoL 0.7.53 / Bonus 0.6.37), except those marked "(guard)".
 # Run from the repo root: python3 tests/char_stat_round_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
 # Spell IDs 9101-9103 and every number are TEST STAND-INS.
@@ -69,7 +69,7 @@ function mk(kind)
   o.CreateMaskTexture = function() return mk("Mask") end
   return o
 end
--- the theme (stand-in): a class theme for a Demon Hunter. accent = the class colour; the selected tab's background = class x 0.28
+-- the theme (stand-in): a class theme for a Demon Hunter. accent = the class color; the selected tab's background = class x 0.28
 -- (XayaUI/Theme.lua ClassPalette)
 ACCENT = { 0.64, 0.19, 0.79, 1 }
 TABSEL = { 0.64 * 0.28, 0.19 * 0.28, 0.79 * 0.28, 0.9 }
@@ -79,8 +79,8 @@ ns.Theme = { cur = { accent = ACCENT }, Col = function(class, prop, fb)
 -- (A24 #9) each stand-in measure is a font of its own: the theme's font path names it, as switching XayaUI's font does in game (the
 -- panel works its width need out again when the font changes, not only the size or the text)
 ns.Theme.FontPath = function() return "Fonts\\STANDIN_" .. tostring(MEASURE) .. ".TTF" end
--- (QoL 0.7.54 / Bonus 0.6.38) stand-ins for the game's colour objects (ColorMixin, :GetRGB()), with values of their own, so only a
--- colour read from them at run time passes
+-- (QoL 0.7.54 / Bonus 0.6.38) stand-ins for the game's color objects (ColorMixin, :GetRGB()), with values of their own, so only a
+-- color read from them at run time passes
 GREEN_FONT_COLOR = { GetRGB = function() return 0.12, 0.88, 0.14 end }
 RED_FONT_COLOR = { GetRGB = function() return 0.93, 0.11, 0.09 end }
 GREEN, RED = { 0.12, 0.88, 0.14, 1 }, { 0.93, 0.11, 0.09, 1 }
@@ -213,7 +213,7 @@ def run(extra, body):
     totals.append((lua.eval("n"), lua.eval("fails")))
 
 # ---------------------------------------------------------------------------------------------------------------------------------
-# A. Stat Weights (#60 a-d) and the Stats grid's heads (#60 b, #66): titles never cut, on one line at the default width, centred over
+# A. Stat Weights (#60 a-d) and the Stats grid's heads (#60 b, #66): titles never cut, on one line at the default width, centered over
 #    their columns; numbers from the column's left edge; T/L in two lines
 # ---------------------------------------------------------------------------------------------------------------------------------
 run(STATWORLD, r'''
@@ -258,7 +258,7 @@ for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
 end
 c.size, c.fontSize = nil, 11
 local d = render()
-checkp("Stat Weights: every title is centred over its column (justify CENTER), at its column's x and width", function()
+checkp("Stat Weights: every title is centered over its column (justify CENTER), at its column's x and width", function()
   for _, r in ipairs(recs(d, "wcolhead")) do
     local f = fontAt(d, r)
     if not (f and f.jh == "CENTER") then return false, r.text .. " " .. tostring(f and f.jh) end
@@ -376,7 +376,7 @@ for _, pw in ipairs({ 340, 450, 760 }) do
   c.size = { w = pw }
   d = render()
   local W = LAY.content
-  checkp(("panel %d: Primary, General, Offensive, Defensive are bucket bars: a band across the pane's width in the accent colour, the name on it"):format(pw), function()
+  checkp(("panel %d: Primary, General, Offensive, Defensive are bucket bars: a band across the pane's width in the accent color, the name on it"):format(pw), function()
     for _, name in ipairs({ "Primary", "General", "Offensive", "Defensive" }) do
       local bar, txt = find(d, "bucketbar", name), find(d, "subhead", name)
       if not (bar and txt and bar.x == 0 and math.abs(bar.w - W) < 0.01 and txt.y >= bar.y and txt.y + txt.h <= bar.y + bar.h) then return false, name end
@@ -404,7 +404,7 @@ end
 c.size = nil
 ns.StatCalc_SetInput("sv:haste", "")
 d = render()
-checkp("the bucket bar's band is painted in the theme's accent colour (a shown texture of the panel, the bar's size)", function()
+checkp("the bucket bar's band is painted in the theme's accent color (a shown texture of the panel, the bar's size)", function()
   local bar = find(d, "bucketbar", "General")
   for _, t in ipairs(d.textures or {}) do
     if t.shown and sameCol(t.color, ACCENT) and bar and t.w == bar.w and t.h == bar.h then return true end
@@ -424,7 +424,7 @@ checkp("its style is a setting (Panel > Layout > Gear Summary style): Split bars
   for _, k in ipairs(sel.sorting) do names[#names + 1] = sel.values[k] end
   return sel.name == "Gear Summary style" and table.concat(names, "|") == "Split bars|Stat tiles|One stacked bar|Columns|Gear share|Table" and sel.get() == "bars",
     table.concat(names, "|") end)
-checkp("Split bars: Critical Strike's bar in its stat colour, as long as its rating (528) next to the longest; solid part = gear (400 / 528), lighter = elsewhere; \"528 (gear 400 +128)\" at its end", function()
+checkp("Split bars: Critical Strike's bar in its stat color, as long as its rating (528) next to the longest; solid part = gear (400 / 528), lighter = elsewhere; \"528 (gear 400 +128)\" at its end", function()
   local bars = {}
   for _, r in ipairs(recs(d, "gsbar")) do if r.text == "Critical Strike" then bars[#bars + 1] = r end end
   local num = find(d, "gsnum", "528 (gear 400 +128)")
@@ -571,8 +571,8 @@ local function edgeOK(b)
   local border = b.border
   for _, e in ipairs(b.selEdges) do
     local thick = math.min(e.w or 99, e.h or 99)
-    if not sameCol(e.color, ACCENT) then return false, "colour " .. table.concat(e.color or {}, ",") end
-    if sameCol(e.color, border.color) then return false, "same colour as the quality border" end
+    if not sameCol(e.color, ACCENT) then return false, "color " .. table.concat(e.color or {}, ",") end
+    if sameCol(e.color, border.color) then return false, "same color as the quality border" end
     if not (e.layer == "OVERLAY" and border.layer == "BACKGROUND" and b.tex.layer == "ARTWORK") then return false, "layer " .. tostring(e.layer) end
     if not (thick > 1) then return false, "thickness " .. thick end
   end
@@ -580,7 +580,7 @@ local function edgeOK(b)
 end
 checkp("(guard: shown / hidden worked before; it was not visible) the equipped ring picked for Compare: its box has the highlight frame, the helm's not", function()
   local ok, why = marked(icon(d, 11)); return ok and not icon(d, 1).selEdges[1].shown, why end)
-checkp("  ...the frame is in the theme's accent colour (not the selected tab's dark background), not the quality border's colour, on the top draw layer (OVERLAY over the ARTWORK icon and the BACKGROUND quality border), thicker than the 1 px quality border", function()
+checkp("  ...the frame is in the theme's accent color (not the selected tab's dark background), not the quality border's color, on the top draw layer (OVERLAY over the ARTWORK icon and the BACKGROUND quality border), thicker than the 1 px quality border", function()
   return edgeOK(icon(d, 11)) end)
 local nr = candIcon(d, NEWRING)
 nr.scripts.OnClick(nr)
@@ -588,7 +588,7 @@ d = drawn()
 local br = candIcon(d, BIGRING)
 br.scripts.OnClick(br)
 d = drawn()
-checkp("two bag items picked: both have the frame, in the accent colour, over the icon, thicker than the border", function()
+checkp("two bag items picked: both have the frame, in the accent color, over the icon, thicker than the border", function()
   local ok1, w1 = marked(candIcon(d, NEWRING)); local ok2, w2 = marked(candIcon(d, BIGRING))
   local e1, x1 = edgeOK(candIcon(d, NEWRING)); local e2, x2 = edgeOK(candIcon(d, BIGRING))
   return ok1 and ok2 and e1 and e2, w1 or w2 or x1 or x2 end)
@@ -601,8 +601,8 @@ checkp("(guard) an item not picked has no frame", function()
 # K. QoL 0.7.54 / Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15, her words: "xayaui theme is
 #    fine for everything except change numbers and stat colors"; "1 or adjust for color blind mode" (1 = "Green up, red down"); "XayaUI
 #    theme only"; stat names "Yes, everywhere (Recommended)"; tooltips "Hide notes unless Dev Assist"). Better / worse by meaning (lower
-#    is better for seconds and damage taken), the colour-blind pair read from XayaUI/Theme.lua's colorblind palette (by this test, at run
-#    time), the text colour when the same; stat names in their colour in the hovers and the Ability Scaling rows. Fail on 930a0c7
+#    is better for seconds and damage taken), the color-blind pair read from XayaUI/Theme.lua's colorblind palette (by this test, at run
+#    time), the text color when the same; stat names in their color in the hovers and the Ability Scaling rows. Fail on 930a0c7
 #    (QoL 0.7.53 / Bonus 0.6.37), except those marked "(guard)".
 # ---------------------------------------------------------------------------------------------------------------------------------
 import re as _re
@@ -611,7 +611,7 @@ _CBP = _re.search(r'colorblind = \{ name = .*?pal = \{.*?\} \} \},', _TH, _re.S)
 CB_ACC = "{ " + _re.search(r'accent = \{ ([\d., ]+) \}', _CBP).group(1) + " }"
 CB_DAN = "{ " + _re.search(r'danger = \{ ([\d., ]+) \}', _CBP).group(1) + " }"
 run(STATWORLD, (r'''
--- the hover with each line's colours
+-- the hover with each line's colors
 local function hoverCols(b)
   local out = {}
   GameTooltip.AddDoubleLine = function(self, a, bb, lr, lg, lb, rr, rg, rb) out[#out + 1] = { l = a, r = bb, lc = { lr, lg, lb }, rc = { rr, rg, rb } } end
@@ -656,11 +656,11 @@ gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
 checkp("typed less Haste: the GCD card's new value (longer, \"+1.xx s\") is drawn in the game's red", function()
   local f = gch and fontAt(d, gch)
   return gch and tostring(gch.text):find("^%+") ~= nil and f and sameCol(f.color, RED), T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
--- the same: a change too small to show at two decimals (3 rating): the text colour
+-- the same: a change too small to show at two decimals (3 rating): the text color
 ns.StatCalc_SetInput("sv:haste", "1203")
 d = render()
 gv = cardValue(d, "map_gcd"); gch = gv and changeUnder(d, gv)
-checkp("typed Haste 1,203 (+3 rating): the GCD's new value reads the same as now: drawn in the theme's text colour, not green or red", function()
+checkp("typed Haste 1,203 (+3 rating): the GCD's new value reads the same as now: drawn in the theme's text color, not green or red", function()
   local f = gch and fontAt(d, gch)
   local same = gch and gv and tostring(gch.text):gsub("^[%+%-]", "") == tostring(gv.text)
   return same and f and sameCol(f.color, TEXT), T(gv) .. " / " .. T(gch) .. " " .. (f and table.concat(f.color, ",") or "") end)
@@ -689,7 +689,7 @@ local ab = btn(d, function(it) return it.kind == "infl" and it.label == "» Area
 local al = ab and hoverCols(ab) or {}
 checkp("  ...its hover's new-value line is the game's green", function() return al[2] ~= nil and sameCol(al[2].rc, GREEN), al[2] and table.concat(al[2].rc, ",") end)
 ns.StatCalc_SetInput("sv:avoidance", "")
--- 4. a XayaUI colour-blind base theme: blue better, orange worse (the colorblind palette's accent and danger), never green / red
+-- 4. a XayaUI color-blind base theme: blue better, orange worse (the colorblind palette's accent and danger), never green / red
 CB_ACCENT, CB_DANGER = __CBACC__, __CBDAN__
 ns.Theme.BUILTIN = { colorblind = { pal = { accent = CB_ACCENT, danger = CB_DANGER } } }
 for _, base in ipairs({ "colorblind", "protan", "tritan" }) do
@@ -702,7 +702,7 @@ for _, base in ipairs({ "colorblind", "protan", "tritan" }) do
   d = render()
   local down
   for _, f in ipairs(d.fonts) do if f.shown and tostring(f.text):find("^%-19%.") then down = f end end
-  checkp(("base theme \"%s\": more crit drawn blue (the colorblind palette's accent), less crit orange (its danger colour)"):format(base), function()
+  checkp(("base theme \"%s\": more crit drawn blue (the colorblind palette's accent), less crit orange (its danger color)"):format(base), function()
     return up and down and sameCol(up.color, CB_ACCENT) and sameCol(down.color, CB_DANGER),
       (up and table.concat(up.color, ",") or "none") .. " / " .. (down and table.concat(down.color, ",") or "none") end)
 end
@@ -710,21 +710,21 @@ ns.Theme.EffBase = function() return "default" end
 ns.StatCalc_SetInput("sv:crit", "700")
 d = render()
 checkp("base theme \"default\": the game's green", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, GREEN) end)
--- a saved theme whose own base is the colour-blind one counts too (as Theme.lua T.IsLight reads a saved theme's base)
+-- a saved theme whose own base is the color-blind one counts too (as Theme.lua T.IsLight reads a saved theme's base)
 CueRulesDB = CueRulesDB or {}
 CueRulesDB.themes = { Mine = { base = "custom", under = "protan" } }
 ns.Theme.EffBase = function() return "Mine" end
 d = render()
-checkp("a saved theme started from a colour-blind theme: blue", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, CB_ACCENT) end)
+checkp("a saved theme started from a color-blind theme: blue", function() local f = font(d, "+26.22%"); return f and sameCol(f.color, CB_ACCENT) end)
 ns.Theme.EffBase = nil; CueRulesDB.themes = nil
 ns.StatCalc_SetInput("sv:crit", "")
--- 5. stat names in their colour in the hovers (title and lines); other labels keep the theme
+-- 5. stat names in their color in the hovers (title and lines); other labels keep the theme
 d = render()
 local cb = btn(d, function(it) return it.key == "map_crit" end)
 local cl = cb and hoverCols(cb) or {}
-checkp("the Critical Strike card's hover: its title \"Critical Strike\" in the stat's colour (CM.STAT_COLORS.crit), not the theme's label colour", function()
+checkp("the Critical Strike card's hover: its title \"Critical Strike\" in the stat's color (CM.STAT_COLORS.crit), not the theme's label color", function()
   return cl[1] ~= nil and cl[1].l == "Critical Strike" and sameCol(cl[1].lc, CM.STAT_COLORS.crit), cl[1] and (tostring(cl[1].l) .. " " .. table.concat(cl[1].lc, ",")) end)
-checkp("(guard)  ...a label that is not a stat (\"From rating\") keeps the theme's muted colour", function()
+checkp("(guard)  ...a label that is not a stat (\"From rating\") keeps the theme's muted color", function()
   for _, l in ipairs(cl) do if l.l == "From rating" then return sameCol(l.lc, { 0.6, 0.6, 0.65 }), table.concat(l.lc, ",") end end
   return false, "no From rating line" end)
 local found
@@ -733,15 +733,15 @@ for _, b in ipairs(d.buttons) do
     for _, p in ipairs(b.item.pairs) do if p.label == "From Critical Strike" or p.label == "From Agility" then found = found or { b = b, label = p.label } end end
   end
 end
-checkp("a hover line \"From Critical Strike\" / \"From Agility\" has its stat's colour on the left (the panel's hover did not read it before)", function()
+checkp("a hover line \"From Critical Strike\" / \"From Agility\" has its stat's color on the left (the panel's hover did not read it before)", function()
   if not found then return false, "no such line" end
   local key = found.label == "From Agility" and "primary" or "crit"
   for _, l in ipairs(hoverCols(found.b)) do if l.l == found.label then return sameCol(l.lc, CM.STAT_COLORS[key]), found.label .. " " .. table.concat(l.lc, ",") end end
   return false, "line not in the hover" end)
--- the Ability Scaling tab: Fracture's "Versatility: +2.61%": the name in Versatility's colour, the number after it as before; its hover too
+-- the Ability Scaling tab: Fracture's "Versatility: +2.61%": the name in Versatility's color, the number after it as before; its hover too
 c.advanced = true   -- (as section F: Spell Math on)
 d = render("spells")
-checkp("Ability Scaling: \"Versatility: +2.61%\" is drawn with \"Versatility\" in its stat colour (a colour code around the name), the text recorded as before", function()
+checkp("Ability Scaling: \"Versatility: +2.61%\" is drawn with \"Versatility\" in its stat color (a color code around the name), the text recorded as before", function()
   local r = find(d, "spellstat", "Versatility: +2.61%")
   local col = CM.STAT_COLORS.vers
   local code = ("|cff%02x%02x%02x"):format(math.floor(col[1] * 255 + 0.5), math.floor(col[2] * 255 + 0.5), math.floor(col[3] * 255 + 0.5))
@@ -751,7 +751,7 @@ checkp("Ability Scaling: \"Versatility: +2.61%\" is drawn with \"Versatility\" i
   return r ~= nil and f ~= nil, (r and T(r) or "no record") .. "; drawn: " .. table.concat(t, " ; ") end)
 local sb = btn(d, function(it) return it.key == "spell9101" end)
 local sl = sb and hoverCols(sb) or {}
-checkp("  ...Fracture's hover: the \"Versatility\" line's label in Versatility's colour", function()
+checkp("  ...Fracture's hover: the \"Versatility\" line's label in Versatility's color", function()
   for _, l in ipairs(sl) do if l.l == "Versatility" then return sameCol(l.lc, CM.STAT_COLORS.vers), table.concat(l.lc, ",") end end
   return false, "no Versatility line" end)
 -- 6. the notes (her answer "Hide notes unless Dev Assist"): the crit card's hover without and with XayaUI Dev Assist

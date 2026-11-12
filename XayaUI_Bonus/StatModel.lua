@@ -540,7 +540,7 @@ local function HasAttackableTarget() return R(UnitExists, "target") == true and 
 -- Offense
 -------------------------------------------------------------------------------
 local function HasteRatingFor(targetTotal)
-    -- haste rating needed to reach a total haste of targetTotal (%), assuming haste sources multiply (labelled as an estimate)
+    -- haste rating needed to reach a total haste of targetTotal (%), assuming haste sources multiply (labeled as an estimate)
     local total, rating, fromR = N(GetHaste), N(GetCombatRating, IDX.haste), N(GetCombatRatingBonus, IDX.haste)
     local f = Converter(IDX.haste)
     if not (num(total) and num(rating) and num(fromR) and f) then return nil end
@@ -663,10 +663,10 @@ function CM.NotesOn()
     local ok, on = pcall(function() return ns.DevAssistOn and ns.DevAssistOn() end)
     return ok and on == true
 end
--- The colour of a stat's name (CM.STAT_COLORS) for a label that is a stat name, nil for any other label. QoL 0.7.54 (Xaya 2026-11-08,
--- REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #6 / #15, her answer "Yes, everywhere (Recommended)"): a stat's name has its one colour
+-- The color of a stat's name (CM.STAT_COLORS) for a label that is a stat name, nil for any other label. QoL 0.7.54 (Xaya 2026-11-08,
+-- REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #6 / #15, her answer "Yes, everywhere (Recommended)"): a stat's name has its one color
 -- everywhere in the panel. Labels read: "Critical Strike", "From Critical Strike", "» Haste", "    Mastery" (the game's own names,
--- the English ones when the game gives none); the primary stats (Strength, Agility, Intellect) share the "primary" colour.
+-- the English ones when the game gives none); the primary stats (Strength, Agility, Intellect) share the "primary" color.
 local STAT_NAME_KEYS
 function CM.StatColorFor(label)
     if type(label) ~= "string" or label == "" then return nil end
@@ -691,12 +691,12 @@ end
 function CM.TooltipLines(it, mode)
     local out = {}
     local v, tone = CM.ValueFor(it, mode)
-    -- (QoL 0.7.54) a stat's name in its own colour (lc), on the title as on the lines
+    -- (QoL 0.7.54) a stat's name in its own color (lc), on the title as on the lines
     out[#out + 1] = { it.label or "", CM.PairText({ value = v or "", per = it.per, perPoint = it.perPoint, perText = it.perText }), tone, title = true,
         lc = it.labelColor or CM.StatColorFor(it.label) }
     -- (QoL 0.7.28) a typed number's new value, with its sign, on the line under the value it changes. QoL 0.7.54 (Xaya 2026-11-08, "xayaui
     -- theme is fine for everything except change numbers and stat colors"): its tone says whether the result is better, worse or the same
-    -- (it.newTone, CM.ChangeDir); the panel colours it (green / red, blue / orange with a XayaUI colour-blind theme; the text colour when the same)
+    -- (it.newTone, CM.ChangeDir); the panel colors it (green / red, blue / orange with a XayaUI color-blind theme; the text color when the same)
     if it.newValue then out[#out + 1] = { "", it.newValue, it.newTone or "same" } end
     for _, p in ipairs(it.pairs or {}) do
         if not CM.NoteOnly(p) then
@@ -881,10 +881,10 @@ end
 -- Enum.TooltipDataLineType.ItemEnchantmentPermanent = 15, enums.md:12639), without the "Enchanted: " the game puts before it
 -- (ENCHANTED_TOOLTIP_LINE, "Enchanted: %s", when the client has it). Returns the name, or nil; the yes / no comes from the link
 -- (CM.LinkEnchanted).
--- (QoL 0.7.19) The name comes back as plain text: the line's own colour codes, inline icons and link wrappers are taken out, so the
--- label is drawn in one colour. Xaya's screenshot of 2026-11-05 had one label in purple among the green ones: an item enhancement
+-- (QoL 0.7.19) The name comes back as plain text: the line's own color codes, inline icons and link wrappers are taken out, so the
+-- label is drawn in one color. Xaya's screenshot of 2026-11-05 had one label in purple among the green ones: an item enhancement
 -- ("Ancient Hash'ey Battle Art: ...", an epic Item Enhancement in the client data, docs/reference/content/items.json, subclass 14) whose
--- line carries the epic colour in its text (INFERENCE: an inline |c code beats the font string's colour; our code only sets green).
+-- line carries the epic color in its text (INFERENCE: an inline |c code beats the font string's color; our code only sets green).
 function CM.PlainText(text)
     if type(text) ~= "string" or IsSecret(text) then return nil end
     text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|H.-|h(.-)|h", "%1")
@@ -968,7 +968,7 @@ end
 
 -- The equipped items as small icons in slot order (QoL 0.7.9; Xaya 2026-11-04: "gear pane should show small icons of the gear
 -- equipped"). Shirt and tabard are left out (no stats). Texture and quality come from the calls Blizzard's own slot buttons make
--- (PaperDollItemSlotButton_Update: GetInventoryItemTexture, GetInventoryItemQuality; live 12.1.5 source), the border colour from
+-- (PaperDollItemSlotButton_Update: GetInventoryItemTexture, GetInventoryItemQuality; live 12.1.5 source), the border color from
 -- C_Item.GetItemQualityColor (namespaces.md:2789). The panel's hover shows the game's item tooltip (GameTooltip:SetInventoryItem, as
 -- ItemUtil.DisplayEquipSlotTooltip does).
 local NO_ICON = { [4] = true, [19] = true }
@@ -1090,11 +1090,11 @@ local WI_STATS = { "crit", "haste", "mastery", "vers", "avoidance", "leech", "sp
 CM.WI_STATS = WI_STATS
 
 -- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #89: "compare item selection should also have a clear highlight for selections"; her screenshot:
--- "Compare: Trinket slot #2", a row of trinket icons, none marked): the link's colour code may be a NAMED colour, "|cnIQ4:" (the item
+-- "Compare: Trinket slot #2", a row of trinket icons, none marked): the link's color code may be a NAMED color, "|cnIQ4:" (the item
 -- quality's name; the form 12.x item links use, as XayaUI Chat's History.lua strips it and tests/chat_run.py's sample link shows), not
 -- only "|cffRRGGBB". The old first pattern took only the hex form, so a bag item's link "|cnIQ4:|Hitem:...|h[Name]|h|r" was cut to its
 -- middle "|Hitem:...|h[Name]|h", which no longer equals the bag link the icon row compares with: the picked icon was never marked
--- selected (no frame), though its column showed. Now any colour code is kept (|c up to the next |), and the picked list compares items
+-- selected (no frame), though its column showed. Now any color code is kept (|c up to the next |), and the picked list compares items
 -- by their item string (CM.LinkKey), so a link written either way still finds its icon.
 local function ResolveItemLink(text)
     text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -1302,7 +1302,7 @@ CM.ChangeTone = Dir
 -- item in the box (CM.compareText) when it resolves to one not picked yet. CM.CompareState() reads it all once per build.
 CM.MAX_COMPARE = 3
 CM.compareLinks = {}
--- (QoL 0.7.40, #89) two links name the same item when their item strings match, whatever colour code or wrapping each carries
+-- (QoL 0.7.40, #89) two links name the same item when their item strings match, whatever color code or wrapping each carries
 local function LinkKey(l)
     if type(l) ~= "string" then return l end
     return l:match("|H(item:[^|]+)|h") or l:match("^(item:[%-%d:]+)$") or l
@@ -1345,7 +1345,7 @@ function CM.CompareState()
     end
     return st
 end
--- a link's colour (the quality colour the game puts in it: |cAARRGGBB)
+-- a link's color (the quality color the game puts in it: |cAARRGGBB)
 local function LinkColor(link)
     local r, g, b = tostring(link or ""):match("^|c%x%x(%x%x)(%x%x)(%x%x)")
     if r then return { tonumber(r, 16) / 255, tonumber(g, 16) / 255, tonumber(b, 16) / 255, 1 } end
@@ -2133,7 +2133,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
     -- stay for the hover. (#380: the ID was beside the name before.)
     local it = Item("spell" .. s.id, SpellName(s.id))
     it.value, it.spellID = "", s.id
-    it.bigPairs = true   -- #378 (Xaya: "way too tiny"): its number lines at the panel's text size, in the text colour
+    it.bigPairs = true   -- #378 (Xaya: "way too tiny"): its number lines at the panel's text size, in the text color
     it.row = { idText = "Spell ID: " .. s.id, entries = {}, mods = {}, statMods = {}, statModColors = {} }
     local ref = (s.base == "sp") and refs.sp or refs.ap
     local refName = (s.base == "sp") and "spell power" or "attack power"
@@ -2169,7 +2169,7 @@ local function SpellItem(s, desc, nums, kind, refs, primary)
         local vs = refs.vers
         if vs and DealsOrHeals(desc, kind) then
             it.row.statMods[#it.row.statMods + 1] = "Versatility: " .. SP(vs.now)
-            it.row.statModColors[#it.row.statMods] = CM.STAT_COLORS.vers   -- (QoL 0.7.54) the stat's name in its own colour
+            it.row.statModColors[#it.row.statMods] = CM.STAT_COLORS.vers   -- (QoL 0.7.54) the stat's name in its own color
             Pair(it, "Versatility", SP(vs.now) .. " damage and healing done")
             it.pairs[#it.pairs].labelColor = CM.STAT_COLORS.vers
             if num(vs.after) then up = up * (1 + vs.after / 100) / (1 + vs.now / 100) end
@@ -2334,7 +2334,7 @@ local function SpellSection(ctx, out)
         sec.items[2] = Note("spellsOff", "Spell Math is off", "Configure spell data above lists your spells")
         return
     end
-    -- (QoL 0.7.24) the button (Configure / Refresh spell data) is drawn as a button of its own above the sections, centred; it stays
+    -- (QoL 0.7.24) the button (Configure / Refresh spell data) is drawn as a button of its own above the sections, centered; it stays
     -- the section's first item so the panel finds it. The spells are drawn as a table: Spell Name | % PSV | Talent Modifiers |
     -- Computed Value (QoL 0.7.24: "Fourth column - computed Value").
     sec.spells = true
@@ -2443,12 +2443,12 @@ end
 -- One card per stat: its value; a box with the number itself (type another number and press Enter to see what it would do; empty or
 -- your own number = back to yours); then a "»" line for everything it feeds, each through the game's own conversion, "now -> with
 -- your numbers" side by side. The boxes are the What If amounts, so both tabs agree. Defense cards show what armor, dodge and parry
--- are made of. Every number is read from the game; the few estimates are labelled.
+-- are made of. Every number is read from the game; the few estimates are labeled.
 -------------------------------------------------------------------------------
 CM.svBase = {}   -- the number each box showed as "yours", by box key: the panel turns a typed number into a What If amount
 
--- One colour per stat, used for its name wherever it appears in the panel (#379: Xaya asked for every secondary stat in the
--- Stat Calculator to be colorized; her words are in the REQUEST-LOG). The colours are XayaUI's choice (she named none); she can change them.
+-- One color per stat, used for its name wherever it appears in the panel (#379: Xaya asked for every secondary stat in the
+-- Stat Calculator to be colorized; her words are in the REQUEST-LOG). The colors are XayaUI's choice (she named none); she can change them.
 -- (QoL 0.7.54, Xaya 2026-11-08 #46: "read mastery line -- does this read like real english to you?") the label under Armor names the
 -- mastery spell in her own wording (UI-37: "from mastery: fel blood passive"); the game names the spell "Mastery: Fel Blood", so its
 -- "Mastery: " prefix is dropped (it read "From mastery: Mastery: Fel Blood passive")
@@ -2475,7 +2475,7 @@ CM.STAT_COLORS = {
 -- ignore themeing colors"; "xayaui theme is fine for everything except change numbers and stat colors"; "1 or adjust for color blind
 -- mode" (option 1 = "Green up, red down"); "XayaUI theme only"): newTone says what the new value means, by meaning, not by sign:
 -- "better", "worse", or "same" when the new value reads the same as the current one (the panel: green / red, blue / orange with a XayaUI
--- colour-blind theme, the text colour when the same; was the theme's accent). Lower is better on a line marked lowerBetter (seconds:
+-- color-blind theme, the text color when the same; was the theme's accent). Lower is better on a line marked lowerBetter (seconds:
 -- the global cooldown, attack speed, recharges; damage taken), higher everywhere else (CM.ChangeDir).
 local wasParts = {}
 local function Signed(now, after, fmt)
@@ -2517,7 +2517,7 @@ end
 -- (QoL 0.7.54, fix plan f1-16) a line or card where a lower number is better, flagged where it is made (no label matching): returns it
 local function LowerBetter(t) if type(t) == "table" then t.lowerBetter = true end; return t end
 -- every value Was made in these items: the current value stays, the new one with its sign goes in newValue and its meaning in newTone;
--- the green / orange tone it had for the change leaves the current value (the colour is on the line under it now)
+-- the green / orange tone it had for the change leaves the current value (the color is on the line under it now)
 local function SplitChanges(items)
     local function One(t)
         local w = type(t.value) == "string" and wasParts[t.value]
@@ -2543,7 +2543,7 @@ local function MapNote(it, label, value, tone, colorKey, cols)
     Pair(it, label, value, tone, true)
     local p = it.pairs[#it.pairs]
     if colorKey then p.labelColor = CM.STAT_COLORS[colorKey]
-    else p.labelColor = CM.StatColorFor(label) end   -- (QoL 0.7.54: a label that is a stat's name has the stat's colour, "Yes, everywhere")
+    else p.labelColor = CM.StatColorFor(label) end   -- (QoL 0.7.54: a label that is a stat's name has the stat's color, "Yes, everywhere")
     if cols then
         if cols.per and cols.per ~= "" then p.per, p.perPoint, p.perText = cols.per, cols.perPoint == true or nil, cols.perText end
         if cols.note and cols.note ~= "" then p.note = cols.note end
@@ -3497,12 +3497,12 @@ CM.StatWeightsSection = StatWeightsSection
 -- The whole model
 -------------------------------------------------------------------------------
 -- The panel's header (B2; Xaya 2026-11-04, #383: "Name and spec go at the top as a decorative header above the tabs"; "item level is
--- fine up top"; role and movement left out): name, spec and class in the class colour, item level equipped and overall. UnitName,
+-- fine up top"; role and movement left out): name, spec and class in the class color, item level equipped and overall. UnitName,
 -- UnitClass (globals.md:668, 573), the spec from the same read as the rest of the model, GetAverageItemLevel (as PaperDollFrame.lua),
--- the colour from C_ClassColor.GetClassColor (namespaces.md:860), else RAID_CLASS_COLORS. Secret values are left out.
+-- the color from C_ClassColor.GetClassColor (namespaces.md:860), else RAID_CLASS_COLORS. Secret values are left out.
 -- QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #91, her words: "name, class, and spec not needed on stat calculator. Instead, set this section
 -- to display currently equipped ilvl and on the right side max ilvl (in bags)"): only the two item levels are read (no name, class, spec
--- or class colour any more). GetAverageItemLevel() -> overall, equipped (, pvp) is not in the 12.1.5 documentation this repo carries
+-- or class color any more). GetAverageItemLevel() -> overall, equipped (, pvp) is not in the 12.1.5 documentation this repo carries
 -- (docs/reference/api); it is read the way Blizzard's PaperDollFrame.lua reads it: the first return is the "overall" item level the
 -- game works out from the best items you own (equipped and in your bags), the second the equipped average. INFERENCE (reading taken,
 -- REQUEST-LOG #91): her "max ilvl (in bags)" is that overall number. A missing or secret value shows nothing.

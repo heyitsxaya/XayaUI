@@ -39,7 +39,7 @@
 --   toggle is gone since 0.7.40, REQUEST-LOG B2.)
 --   QoL 0.7.40 (Xaya 2026-11-06, REQUEST-LOG #87-#91): under each stat of the Stats tab, one row per contribution that feeds it with its
 --   number ("from Agility +2,616"); each stat folds (folded by default, remembered per stat), folded rows are in its hover; the
---   Influences column is "Modifies" (names only). The picked compare items' frames show again (#89: named-colour links). The Gear
+--   Influences column is "Modifies" (names only). The picked compare items' frames show again (#89: named-color links). The Gear
 --   "Changes" numbers are left-aligned with the difference in brackets beside them (#90). The header shows the equipped item level on
 --   the left and the max item level (in bags) on the right, no name, class or spec (#91).
 --   QoL 0.7.23 (Xaya 2026-11-05): the Stats tab is one "Character Stats" section (Core Stats > Primary / General / Offensive /
@@ -49,13 +49,13 @@
 --   /xui stats open it on its own (at its own place; docked beside the character window while that is open); a Max / Min button in
 --   its title row switches between two heights set on the settings page; the corner grip still resizes (and sets the current height).
 --   QoL 0.7.24 (Xaya 2026-11-05): the Spells tab's filters are a menu on a filter icon at the right of its top row (None / Offense /
---   Defense / Utility), its spell data button is a real button centred above the sections (at most 250 wide), and each spell is a row
+--   Defense / Utility), its spell data button is a real button centered above the sections (at most 250 wide), and each spell is a row
 --   of columns: Spell Name (Spell ID under it) | % PSV ("1 Agility = N" under it) | Talent Modifiers | Computed Value (her answer
 --   2026-11-06: "Fourth column - computed Value"); "Usable now" is gone.
 --   QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Spells tab is the Ability Scaling tab (her answer "Spells tab -> Ability
 --   Scaling"); no stray Refresh row in its lists; no column head is cut (widths from the heads as the game measures them); Stat Weights
---   titles centred, cells from their column's left edge, T/L in two lines; a typed number's new value, with its sign, under the value
---   (Bonus 0.6.38: green when better, red when worse, blue / orange with a XayaUI colour-blind theme; was the accent colour) (no
+--   titles centered, cells from their column's left edge, T/L in two lines; a typed number's new value, with its sign, under the value
+--   (Bonus 0.6.38: green when better, red when worse, blue / orange with a XayaUI color-blind theme; was the accent color) (no
 --   "now -> then" on the Stats tab); Primary / General / Offensive / Defensive are bucket bars and every Stats line
 --   is indented by its depth (one step); the Gear Summary is at the top of the Stats tab as a graphic in a chosen style.
 --   Gear: the selected equipped item's box is highlighted (a click on it again lets it go); the items you own for the slot are icons
@@ -233,9 +233,9 @@ local function TC(class, prop, fb)
     return fb
 end
 local TONES = { good = { 0.5, 1, 0.5, 1 }, warn = { 1, 0.56, 0.25, 1 } }
--- the theme's accent colour (core's resolved "accent" token, ns.Theme.cur.accent, as core's game menu and the cursor highlight read it;
+-- the theme's accent color (core's resolved "accent" token, ns.Theme.cur.accent, as core's game menu and the cursor highlight read it;
 -- XayaUI's default accent when the theme is missing). The bucket bars and the picked items' frame. (QoL 0.7.28 to 0.7.53 / Bonus 0.6.37:
--- also the new value a typed number gives; Bonus 0.6.38: those have their own colours, ChangeColor below.)
+-- also the new value a typed number gives; Bonus 0.6.38: those have their own colors, ChangeColor below.)
 local function Accent()
     local T = ns.Theme
     local c = T and T.cur and T.cur.accent
@@ -246,20 +246,20 @@ ns.StatCalc_Accent = Accent   -- (tests)
 
 -- Bonus 0.6.38 (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #5 / #6 / #15, her words: "stat calculator colors need to
 -- ignore themeing colors"; "xayaui theme is fine for everything except change numbers and stat colors"; change values by direction: "1 or
--- adjust for color blind mode" (option 1 = "Green up, red down"); the colour-blind switch: "XayaUI theme only"). The new value a typed
--- number gives is coloured by what it means (the model's newTone, StatModel.lua CM.ChangeDir / SplitChanges): better = the game's
--- green, worse = the game's red; when XayaUI's base theme is one of its three colour-blind themes (XayaUI/Theme.lua T.BUILTIN colorblind,
--- protan, tritan; the game's own colour-blind setting is not read), better = blue and worse = orange, the pair the colour-blind theme
--- already uses: its accent (sky blue, Okabe-Ito) and its danger colour (orange), read from T.BUILTIN.colorblind.pal (XayaUI/Theme.lua,
+-- adjust for color blind mode" (option 1 = "Green up, red down"); the color-blind switch: "XayaUI theme only"). The new value a typed
+-- number gives is colored by what it means (the model's newTone, StatModel.lua CM.ChangeDir / SplitChanges): better = the game's
+-- green, worse = the game's red; when XayaUI's base theme is one of its three color-blind themes (XayaUI/Theme.lua T.BUILTIN colorblind,
+-- protan, tritan; the game's own color-blind setting is not read), better = blue and worse = orange, the pair the color-blind theme
+-- already uses: its accent (sky blue, Okabe-Ito) and its danger color (orange), read from T.BUILTIN.colorblind.pal (XayaUI/Theme.lua,
 -- the "colorblind" entry of T.BUILTIN, line 174 accent = { 0.337, 0.706, 0.914 }, line 179 danger = { 1.00, 0.55, 0.10 }, at core
--- 0.6.83). The same = the theme's text colour.
+-- 0.6.83). The same = the theme's text color.
 -- The base theme is the global one (Settings > Theme, T.EffBase: a Custom theme looks through to the theme it starts from; a saved
 -- theme to its own base): the Stat Calculator registers no theme scope of its own (Theme.lua T.RegisterScope), so it paints with the
 -- global theme.
--- GREEN_FONT_COLOR / RED_FONT_COLOR: the game's own colour objects (Blizzard's shared UI code, ColorMixin, read with :GetRGB() as
--- XayaUI_Reskin/BlizzardSkins.lua reads the game's colours). They are not in the generated API documentation (INFERENCE: present in
+-- GREEN_FONT_COLOR / RED_FONT_COLOR: the game's own color objects (Blizzard's shared UI code, ColorMixin, read with :GetRGB() as
+-- XayaUI_Reskin/BlizzardSkins.lua reads the game's colors). They are not in the generated API documentation (INFERENCE: present in
 -- every client, as Blizzard's UI uses them); when one is missing or does not answer, the fallback is XayaUI's own "good" green and the
--- theme's danger colour (else a plain red).
+-- theme's danger color (else a plain red).
 local CB_BASES = { colorblind = true, protan = true, tritan = true }
 local function ColorBlindBase()
     local T = ns.Theme
@@ -301,7 +301,7 @@ local function ChangeColor(dir)
         if type(d) == "table" and num(d[1]) and num(d[2]) and num(d[3]) then return { d[1], d[2], d[3], 1 } end
         return { 1, 0.25, 0.25, 1 }
     end
-    return TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })   -- the same (or no direction known): the theme's text colour
+    return TC("xui-text", "text", { 0.96, 0.96, 0.98, 1 })   -- the same (or no direction known): the theme's text color
 end
 ns.StatCalc_ChangeColor = ChangeColor   -- (tests, the QA walkthrough)
 local function ToneColor(tone, fb)
@@ -391,8 +391,8 @@ local function ShowTooltip(owner, it)
     local label = TC("xui-label", "text", { 1, 0.82, 0, 1 })
     for _, l in ipairs(CM.TooltipLines(it, mode)) do   -- (Bonus 0.6.37: the model's, StatModel.lua)
         if l[2] ~= nil then
-            -- (Bonus 0.6.38, "Yes, everywhere") a label that is a stat's name in the stat's colour (the model's lc, CM.STAT_COLORS);
-            -- other labels keep the theme. The new value's colour: its tone (better / worse / same, ToneColor -> ChangeColor).
+            -- (Bonus 0.6.38, "Yes, everywhere") a label that is a stat's name in the stat's color (the model's lc, CM.STAT_COLORS);
+            -- other labels keep the theme. The new value's color: its tone (better / worse / same, ToneColor -> ChangeColor).
             local lc = l.lc or (l.title and label or muted)
             local rc = ToneColor(l[3], text)
             if GameTooltip.AddDoubleLine then
@@ -488,7 +488,7 @@ end
 -- no more than 250px wide"; "Filter tabs should be indicated by a filter icon on the right hand side with "none" by default (therefore
 -- showing all)". (Before: All / Offense / Defense buttons across the top, and the data button a dim bar inside the first section.)
 local SPELL_BTN_MAX, FILTER_ICON = 250, 20
--- the button: Blizzard's UIPanelButtonTemplate in XayaUI's flat look (core's ns.FlatButton: the theme's button colours and border, the
+-- the button: Blizzard's UIPanelButtonTemplate in XayaUI's flat look (core's ns.FlatButton: the theme's button colors and border, the
 -- text turning white on hover; Blizzard's own look and highlight when the settings addon's skin is off). Its label and action are the
 -- section's action item's (Configure spell data while Spell Math is off, else Refresh spell data), as before.
 local function SpellDataButton()
@@ -548,7 +548,7 @@ local function FilterMenu()
     return f
 end
 -- the icon: a funnel drawn from four flat bars (XayaUI's own drawing, no game art): muted while no filter is on, in the theme's accent
--- colour with a dot when one is; a click opens or closes the menu under it
+-- color with a dot when one is; a click opens or closes the menu under it
 local function FilterIcon()
     if panel.filterIcon then return panel.filterIcon end
     local b = CreateFrame("Button", nil, content)
@@ -593,10 +593,10 @@ local function IconBtn()
         if b.tex.SetTexCoord then b.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93) end
         local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.15)
         -- the selected box (QoL 0.7.24; Xaya: "should highlight the box to indicate its selection"). QoL 0.7.28 (Xaya 2026-11-06: "gear
-        -- pane request for gear highlight dropped"; REQUEST-LOG #68): the 0.7.24 frame was painted in the selected TAB's background colour
-        -- (theme class xui-tab-selected, token tabSelBg), which the class theme makes the class colour x 0.28 (Theme.lua: pal.tabSelBg),
+        -- pane request for gear highlight dropped"; REQUEST-LOG #68): the 0.7.24 frame was painted in the selected TAB's background color
+        -- (theme class xui-tab-selected, token tabSelBg), which the class theme makes the class color x 0.28 (Theme.lua: pal.tabSelBg),
         -- a near-black tint on the panel's dark window, 2 px wide outside the icon: there, but not visible. Now: SEL_EDGE px (thicker
-        -- than the 1 px quality border) in the theme's ACCENT colour (Accent(): the bright "accent" token), on the button's top draw
+        -- than the 1 px quality border) in the theme's ACCENT color (Accent(): the bright "accent" token), on the button's top draw
         -- layer (OVERLAY, sublevel 7) over the icon and its quality border, inside the button's edges (nothing under it moves).
         b.selEdges = {}
         local SEL_EDGE = 3
@@ -832,7 +832,7 @@ local function Build()
     panel.title:SetText("Stat Calculator")   -- Xaya 2026-11-04: the panel's title (the settings page has the same name: Bonus Features > Stat Calculator)
     -- the header (QoL 0.7.40; Xaya 2026-11-06, REQUEST-LOG #91, her words: "name, class, and spec not needed on stat calculator. Instead,
     -- set this section to display currently equipped ilvl and on the right side max ilvl (in bags)"): one line, "Equipped 332.9" on the
-    -- left, "Max (bags) 334.6" on the right; a thin rule under it. (Before: the name, the spec and class in the class colour, the item
+    -- left, "Max (bags) 334.6" on the right; a thin rule under it. (Before: the name, the spec and class in the class color, the item
     -- level with "item level (overall ...)" under it.)
     local hy = PAD + TITLE_H + GUT
     panel.hEq = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1037,7 +1037,7 @@ local function PlaceLines(x, y, w, size, text, col, justify, kind)
     end
     return h
 end
--- a filled rectangle at x, y (from the content's top left) in a colour; kept as a "fill" record for the tests
+-- a filled rectangle at x, y (from the content's top left) in a color; kept as a "fill" record for the tests
 local function PlaceTex(x, y, w, h, col, alpha, kind, text)
     local t = Tex()
     t:SetPoint("TOPLEFT", content, "TOPLEFT", x, -y)
@@ -1229,8 +1229,8 @@ local function GridLine(g, y, o)
     if hasV or o.newValue then
         local vh = hasV and PlaceFS(FS(), g.vx, y, g.val, o.size, o.value, o.valueCol, "RIGHT", true, K("value")) or o.size
         -- (QoL 0.7.28; Xaya: "input changes should show changed values underneath them in a color change with a +/- before"; her answer
-        -- "New value with sign") a typed number's new value, with its sign, under the current value. Bonus 0.6.38: coloured by what it
-        -- means (green better / red worse, blue / orange with a XayaUI colour-blind theme, the text colour when the same; ChangeColor)
+        -- "New value with sign") a typed number's new value, with its sign, under the current value. Bonus 0.6.38: colored by what it
+        -- means (green better / red worse, blue / orange with a XayaUI color-blind theme, the text color when the same; ChangeColor)
         if o.newValue then vh = vh + 1 + PlaceFS(FS(), g.vx, y + vh + 1, g.val, o.size, o.newValue, ChangeColor(o.newTone), "RIGHT", true, K("change")) end
         h = math.max(h, vh)
     end
@@ -1270,13 +1270,13 @@ end
 -- QoL 0.7.28 (Xaya 2026-11-06, her words: "General Stats is not appropriately flagged as Category-level Stat bucket, nor is Offensive nor
 -- Defensive"; her answer: "bucket bar, with the following note: currently indentations are all over the place. be sure to review all
 -- elements nested under each bucket and make sure indentations follow sub- and sub-sub- nesting rules"): Primary, General, Offensive and
--- Defensive are bucket bars (a thin band in the theme's accent colour across the pane with the bucket's name on it), and every line's
+-- Defensive are bucket bars (a thin band in the theme's accent color across the pane with the bucket's name on it), and every line's
 -- left edge is its nesting depth times ONE step (INDENT): depth 0 the headings (Core Stats, Secondaries, Tertiaries) and the bucket bars,
 -- depth 1 a stat (Agility, Health, Attack Power, Critical Strike) and the "Stat" column head over them, depth 2 its lines ("» Attack
 -- power", "From Agility", "Off hand"), depth 3 a line nested under one of those (an ability under "» Abilities (their text names Haste)").
 -- Before: the level-2 headings sat at 8, the stats at 0 (left of their heading), their lines at 12 and 24.
 INDENT = 12
-local BUCKET_ALPHA = 0.35   -- the bucket bar's band: the accent colour at this opacity, so its name (body text colour) reads on it
+local BUCKET_ALPHA = 0.35   -- the bucket bar's band: the accent color at this opacity, so its name (body text color) reads on it
 ns.STATCALC_INDENT = INDENT   -- (tests)
 local function RenderGrid(c, items, y, hasBox)
     local size = c.fontSize
@@ -1306,7 +1306,7 @@ local function RenderGrid(c, items, y, hasBox)
         elseif it.kind == "cmprow" then
             y = CmpRow(it, y, size, cText)
         elseif it.kind == "subhead" then
-            -- a heading of the tree: level 1 (Core Stats, Secondaries, Tertiaries, Gear Summary) in the label colour, level 2 (Primary,
+            -- a heading of the tree: level 1 (Core Stats, Secondaries, Tertiaries, Gear Summary) in the label color, level 2 (Primary,
             -- General, Offensive, Defensive) one indent in; a little room above each but the first
             local l1 = it.level == 1
             if it ~= items[1] then y = y + (l1 and 4 or 2) end
@@ -1453,7 +1453,7 @@ end
 -- left-aligned; T/L rating should be T: # [line break] L: "; her answer "Titles centred over columns"; in game "Rating (P / %)" wrapped
 -- and "DR Thres..." was cut at the default width): the widths come from the titles and cells as the game measures them (TextW), not
 -- from fixed numbers: every column is at least as wide as the widest word of its title and cells (nothing is cut), then wide enough
--- for its title on one line, then for its widest cell (FitCols); Influences takes the rest (SC-102). Titles are centred over their
+-- for its title on one line, then for its widest cell (FitCols); Influences takes the rest (SC-102). Titles are centered over their
 -- columns; every cell starts at its column's left edge; the T/L cell is two lines.
 -- (A24 #10, Xaya 2026-11-12, her answer verbatim: "1 + Rename to Rating") the second title reads "Rating" (was "Rating (P / %)"); its
 -- hover (StatModel.lua) still says the cell is the rating (points) and the percent.
@@ -1624,8 +1624,8 @@ end
 -- the values as the game measures them (TextW, FitCols): every head fits its column on one line where the width allows, and never
 -- loses a word; then the percents and the values fit on one line; Spell Name takes the rest (Talent Modifiers up to 22% of it). Under the
 -- percents, one line per other stat that changes the number (Versatility, Mastery: CM SpellItem, her answer "Only stats that change the
--- number"); under the first Computed Value, the new value a typed number gives, with its sign, coloured as on the Stats tab (Bonus
--- 0.6.38: better / worse, ChangeColor; was the accent colour).
+-- number"); under the first Computed Value, the new value a typed number gives, with its sign, colored as on the Stats tab (Bonus
+-- 0.6.38: better / worse, ChangeColor; was the accent color).
 -- (QoL 0.7.36; REQUEST-LOG UI-39, Xaya 2026-11-06: "put talent modifiers before % PSV for clarity / spell names should be collapsible
 -- and there should be divider lines between each ability to segmenrt more clearly / put the numbers to left-align to be closer to their
 -- %PSV calculations") Spell Name | Talent Modifiers | % PSV | Computed Value; a click on a spell's row folds it to its name ("- " open,
@@ -1711,8 +1711,8 @@ local function RenderSpells(c, items, y)
             for i, sm in ipairs(r.statMods or {}) do
                 local fs = FS()
                 local sh = PlaceFS(fs, g.px, y + hm, g.psv, hs, sm, cMuted, "LEFT", true, "spellstat")
-                -- (Bonus 0.6.38, "Yes, everywhere") the stat's name ("Versatility" of "Versatility: +2.61%") in the stat's colour, the
-                -- number after it as before: a colour code around the name only (the game draws no width for the code; the layout above
+                -- (Bonus 0.6.38, "Yes, everywhere") the stat's name ("Versatility" of "Versatility: +2.61%") in the stat's color, the
+                -- number after it as before: a color code around the name only (the game draws no width for the code; the layout above
                 -- measured the plain text)
                 local sc = r.statModColors and r.statModColors[i]
                 local name, rest = tostring(sm):match("^([^:]+)(:.*)$")
@@ -1842,7 +1842,7 @@ local function RenderMulti(c, items, y)
                 local txt = it.cells and it.cells[i]
                 if txt ~= nil then
                     -- (QoL 0.7.40, #90) the number from the column's left edge, as wide as it is (the whole column when it wraps), and its
-                    -- difference in brackets right after it on the same line, in the better / worse colour
+                    -- difference in brackets right after it on the same line, in the better / worse color
                     local t, cw = tostring(txt), CW(i)
                     local d = it.diffs and it.diffs[i]
                     local tw = math.min(cw, TextW(t, lsz))
@@ -1875,16 +1875,16 @@ end
 -- The Gear Summary (QoL 0.7.28; Xaya 2026-11-06, her words: "Gear Summary should be at the top of the pane in a prettified graphic of
 -- sorts"; her answer: "provide all three visual options this round for me to consider; volunteer more if possible"): the Stats tab's
 -- first section, drawn in the style chosen on the settings page (Panel > Layout > Gear Summary style; CM.GEAR_SUM_STYLES):
---   Split bars (the default; DECISION, the first design she was shown): one bar per stat in its colour, as long as the character's
+--   Split bars (the default; DECISION, the first design she was shown): one bar per stat in its color, as long as the character's
 --     rating (the longest bar fills the room), the part from gear solid, the part from elsewhere lighter; "544 (gear 489 +55)" at its end;
---   Stat tiles: a tile per stat, its name in its colour, the total large, "gear 489" and "+55" small under it; tiles wrap to more rows;
---   One stacked bar: one bar split by each stat's share of the ratings listed, in the stats' colours; a legend "Crit 544 (489 +55)";
+--   Stat tiles: a tile per stat, its name in its color, the total large, "gear 489" and "+55" small under it; tiles wrap to more rows;
+--   One stacked bar: one bar split by each stat's share of the ratings listed, in the stats' colors; a legend "Crit 544 (489 +55)";
 --   Columns (volunteered): one upright column per stat, gear solid at the bottom, elsewhere lighter on top, the total above, the name under;
 --   Gear share (volunteered): one full-width bar per stat, the gear part's share solid, the rest lighter, "90% gear (489 of 544)";
 --   Table: the table as before (Gear | Character | Elsewhere).
--- Only flat textures and font strings (no art files), the theme's colours and the stat colours (CM.STAT_COLORS). A stat the game hides
+-- Only flat textures and font strings (no art files), the theme's colors and the stat colors (CM.STAT_COLORS). A stat the game hides
 -- right now (in combat) and the empty sockets are a line under the graphic. Each stat hovers with its three numbers.
-local GS_LIGHT = 0.4   -- the lighter part (elsewhere): the stat colour at this opacity
+local GS_LIGHT = 0.4   -- the lighter part (elsewhere): the stat color at this opacity
 local function SBig(v) return ((v or 0) >= 0 and "+" or "") .. CM.Big(v or 0) end
 local function RenderGearSum(c, sec, y)
     local size = c.fontSize
@@ -2101,8 +2101,8 @@ local function RenderSections(c, m, tab, y0)
                             local bc = ic.color or cLine
                             b.border:SetColorTexture(bc[1], bc[2], bc[3], 1)
                             -- the selected box: the slot being compared, a picked bag item (QoL 0.7.24; QoL 0.7.28: a 3 px frame in the
-                            -- theme's accent colour over the icon's edges, see IconBtn). The quality border stays.
-                            local acc = Accent()   -- (QoL 0.7.28: was the selected tab's dark background colour)
+                            -- theme's accent color over the icon's edges, see IconBtn). The quality border stays.
+                            local acc = Accent()   -- (QoL 0.7.28: was the selected tab's dark background color)
                             for _, e in ipairs(b.selEdges or {}) do
                                 if ic.selected then e:SetColorTexture(acc[1], acc[2], acc[3], 1); e:Show() else e:Hide() end
                             end
@@ -2190,7 +2190,7 @@ local function RenderSections(c, m, tab, y0)
     return y
 end
 
--- the Spells tab's top row: the spell data button centred (at most 250 wide, and clear of the icon), the filter icon at the right, the
+-- the Spells tab's top row: the spell data button centered (at most 250 wide, and clear of the icon), the filter icon at the right, the
 -- menu under the icon while it is open; returns the height it took
 local function RenderSpellBar(c, m)
     local size = c.fontSize
@@ -2481,7 +2481,7 @@ if ns.Provide then
         Close = function() if panel and panel:IsShown() then ns.StatCalc_SetOpen(false) end end,
         Drawn = function() return ns.StatCalc_Drawn() end,
         -- (Bonus 0.6.38) type in a box as the player does ("crit" with "100": 100 more crit rating; "" clears it) and redraw; for the
-        -- change-colour walkthrough (QAWalks-stat-colors.lua)
+        -- change-color walkthrough (QAWalks-stat-colors.lua)
         SetInput = function(key, text) ns.StatCalc_SetInput(key, text) end,
         ToggleStat = function(key) ns.StatCalc_ToggleStat(key) end,
         SelectGearSlot = function(slot) ns.StatCalc_SelectGearSlot(slot) end,

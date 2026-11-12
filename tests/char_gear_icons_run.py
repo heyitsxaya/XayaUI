@@ -1,11 +1,11 @@
 # Stub test for the Stat Calculator (QoL until Bonus 0.6.37), Gear tab icons (XayaUI_QoL 0.7.9). Xaya 2026-11-04: "gear pane should show small icons of the
 # (Bonus 0.6.45, main: ported from qa-installer-branch to main's tree: the stat model and its arithmetic load from XayaUI_Bonus, and nothing of XayaUI QoL is loaded.)
 # gear equipped". Checks: an "Equipped" section first on the Gear tab; one icon per equipped item in slot order (shirt and tabard left
-# out); the game's texture, item level and quality colour; the game's item tooltip on hover (GameTooltip:SetInventoryItem, as
+# out); the game's texture, item level and quality color; the game's item tooltip on hover (GameTooltip:SetInventoryItem, as
 # Blizzard's ItemUtil.DisplayEquipSlotTooltip does), the item link as a fallback; the game's modified click; a missing texture shows
 # the question mark; nothing equipped; icons hidden on other tabs; layout (V11).
 # Run from the repo root: python3 tests/char_gear_icons_run.py   Needs: pip install lupa. Stand-in world: tests/char_world.lua.
-# Textures, item levels and quality colours below are TEST STAND-INS (made-up values), not game data.
+# Textures, item levels and quality colors below are TEST STAND-INS (made-up values), not game data.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime
@@ -56,7 +56,7 @@ local it = m.byKey.gearIcons
 local slots = {}
 for _, ic in ipairs(it and it.icons or {}) do slots[#slots + 1] = ic.slot end
 check("one icon per equipped item in slot order (Head, Finger 1, Main Hand); the shirt left out", table.concat(slots, ",") == "1,11,16", table.concat(slots, ","))
-check("  ...each with the game's texture, item level and quality colour", it.icons[1].tex == 1001 and it.icons[1].ilvl == 336 and it.icons[1].color[1] == 0.6
+check("  ...each with the game's texture, item level and quality color", it.icons[1].tex == 1001 and it.icons[1].ilvl == 336 and it.icons[1].color[1] == 0.6
   and it.icons[2].color[3] == 0.9, tostring(it.icons[1].tex))
 check("  ...a texture the game has not sent yet is left empty", it.icons[3].tex == nil)
 
@@ -75,7 +75,7 @@ local seen = {}
 for _, b in ipairs(ib) do seen[#seen + 1] = tostring(b.slot) end
 check("  ...in slot order", table.concat(seen, ",") == "1,11,16", table.concat(seen, ","))
 check("  ...item levels under them (336, 330, 340)", table.concat(texts(d, "iconText"), ",") == "336,330,340", table.concat(texts(d, "iconText"), ","))
-check("  ...the border in the item's quality colour", ib[1].border.color and ib[1].border.color[1] == 0.6 and ib[2].border.color[3] == 0.9)
+check("  ...the border in the item's quality color", ib[1].border.color and ib[1].border.color[1] == 0.6 and ib[2].border.color[3] == 0.9)
 -- hover: the game's item tooltip for that slot
 invSet = {}
 ib[2].scripts.OnEnter(ib[2])

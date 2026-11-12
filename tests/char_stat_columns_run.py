@@ -25,7 +25,7 @@
 # here follow those names; the tree itself is checked in tests/char_stat_window_run.py.
 # Negative controls (V1). Checks tagged [0.7.20] are new or rewritten for QoL 0.7.20: each fails on QoL 0.7.18's files (the session
 # branch head 20b805c, 2026-11-05), except those also marked "(guard)". Untagged checks are from QoL 0.7.15 and pass on 0.7.18 as well
-# (behaviour this change keeps); against QoL 0.7.14 they failed, except those marked "(guard)" (behaviour that did not change then),
+# (behavior this change keeps); against QoL 0.7.14 they failed, except those marked "(guard)" (behavior that did not change then),
 # "(guard, V11)" (the layout rules, which held before too) and "(setup)" (the starting state).
 # QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#67): a sixth column, Influences, between Pt value and Change: what a stat feeds ("»"
 # lines) and, marked "from", what feeds it are names there on the card's own row (her answers "Names only, values on hover", "Same

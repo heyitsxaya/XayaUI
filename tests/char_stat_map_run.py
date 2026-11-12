@@ -4,7 +4,7 @@
 # additional 1% parry chance? why do I not see how much armor mastery gives me?"; "give me this in a sheet with the option to change the
 # numbers so I can see what the other numbers will look like in relation to each other"; "the window to the right needs to surface all
 # interconnected data in a clean, digestible way"; #382 (rating, percent, per 1% side by side; the toggle did nothing), #379 (secondary
-# stats coloured), #387 (a changed stat shows what it changes). Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md B3-B7.
+# stats colored), #387 (a changed stat shows what it changes). Requirements: docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md B3-B7.
 # QoL 0.7.20 (Xaya 2026-11-05): the column heads end with Change, "» Ability Scaling" (was "Abilities with your number"), and every
 # ability list is one nested line per ability (sub() below); the panel's drawing of it: tests/char_stat_columns_run.py.
 # QoL 0.7.23 (Xaya 2026-11-05): one Character Stats section (its tree: tests/char_stat_window_run.py); the weapon card became Attack
@@ -127,7 +127,7 @@ check("  GCD 1.16 s by the standard rule (1.5 / 1.2925), its rule, from Haste 29
   and (select(2, line("map_gcd", "Rule")).note or "") == "1.5 s / (1 + haste), never below 0.75 s" and line("map_gcd", "From Haste") == "29.25%"
   and (line("map_gcd", "For -0.01 s") or ""):find("^[%d,]+ more haste rating$") ~= nil and line("map_gcd", "Live reading") ~= nil,   -- (V25 unit B, SC-099: the rating is the value now, was the note)
   tostring(card("map_gcd").value) .. " / " .. tostring(line("map_gcd", "Live reading")))
-check("  #379: the GCD's 'From Haste' uses haste's colour", select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
+check("  #379: the GCD's 'From Haste' uses haste's color", select(2, line("map_gcd", "From Haste")).labelColor == CM.STAT_COLORS.haste)
 check("  no ranged weapon, no regen (Fury 0/s): no cards for them", card("map_ranged") == nil and card("map_regen") == nil)
 -- (V25 unit B, SC-099) "Base, buffs and talents" showed the base only: now Base armor, From buffs and talents and Bonus armor, each with its number
 -- (round 2: Bonus armor only when there is some, as the detail list; this stand-in has none)
@@ -153,11 +153,11 @@ c.spellFilter = "offense"
 sm = CM.Build(c, "spells"); st = {}; for _, sec in ipairs(sm.sections) do st[#st + 1] = sec.title end
 check("Spells > Offense filter draws only the spells", table.concat(st, "|") == "Active offensive spells", table.concat(st, "|"))
 c.spellFilter = "all"
--- colours (#379)
+-- colors (#379)
 local critLabel
 for _, r in ipairs(d.fonts) do if r.shown and r.text == "Critical Strike" then critLabel = r end end
-check("#379: Critical Strike's name is drawn in its own colour", critLabel and critLabel.color and math.abs(critLabel.color[1] - CM.STAT_COLORS.crit[1]) < 0.01 and math.abs(critLabel.color[2] - CM.STAT_COLORS.crit[2]) < 0.01)
-check("#379: Defense's 'From Critical Strike' uses crit's colour", select(2, line("map_parry", "From Critical Strike")).labelColor == CM.STAT_COLORS.crit)
+check("#379: Critical Strike's name is drawn in its own color", critLabel and critLabel.color and math.abs(critLabel.color[1] - CM.STAT_COLORS.crit[1]) < 0.01 and math.abs(critLabel.color[2] - CM.STAT_COLORS.crit[2]) < 0.01)
+check("#379: Defense's 'From Critical Strike' uses crit's color", select(2, line("map_parry", "From Critical Strike")).labelColor == CM.STAT_COLORS.crit)
 
 -- 2. Change the numbers (#387, "the option to change the numbers") ----------------------------------------------------------
 ns.StatCalc_SetInput("sv:crit", "700")

@@ -15,7 +15,7 @@ loads them, with the REAL core XayaUI/KeyCatch.lua and XayaUI/MinimapButton.lua)
   E6  the minimap list (core's own popup, XayaUI/MinimapButton.lua, opened through ns.Minimap_TogglePopupAt): the "Stat Calculator" row
       is there out of combat, is not there in a list opened in combat, and is there again in a list opened after combat.
 Stand-ins: the game's Esc (ToggleGameMenu -> CloseAllWindows: the UIPanelWindows, here the character window, then CloseSpecialWindows)
-is modelled in this file after UIParent.lua; in-game Esc order, stacking against the bags / map, and the list's look are UNVERIFIED IN
+is modeled in this file after UIParent.lua; in-game Esc order, stacking against the bags / map, and the list's look are UNVERIFIED IN
 GAME. Negative control: on the base tree (64d0943) 11 of 24 run fail: E1 (2), E2 (3), E3's second Esc, E5 on its own (3), E6 in combat, Q (no walkthrough there, so its steps do not run);
 E4 and E5 docked are guards (unchanged behavior) and pass there.
 (Bonus 0.6.45, main: ported from qa-installer-branch; Q, the Dev Assist walkthrough check, is left out: no Dev Assist on main.)

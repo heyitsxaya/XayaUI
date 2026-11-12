@@ -18,7 +18,7 @@
 # Negative control (V1): every check here fails on QoL 0.7.22's files (the session branch at 0f05ad6), except those marked "(guard)".
 # QoL 0.7.28 (Xaya 2026-11-06, REQUEST-LOG #60-#64): the Gear Summary is the Stats tab's first section (drawn as Split bars by default;
 # the Table style keeps the table); Primary / General / Offensive / Defensive are bucket bars (a band at x 0, the name on it); the T/L
-# cell is two lines ("T: 1,200", then "L: 0.0"). The checks below follow that and say so; the new behaviour itself is checked, with its
+# cell is two lines ("T: 1,200", then "L: 0.0"). The checks below follow that and say so; the new behavior itself is checked, with its
 # negative controls, in tests/char_stat_round_run.py.
 # (Bonus 0.6.45, main: ported from qa-installer-branch. Main has no Improved Character Display, so no Stat Calc button on the character
 # window: the button's checks open and close the panel with /xui stats instead, as a player on main does, and section 9 (the button's
@@ -326,7 +326,7 @@ ForgetModel()   -- (the model keeps the crit reading by the worn item links; her
 d = render()
 checkp("Critical strike effectiveness: +4% (2% + 2% read from two rings' tooltip text); no note", function()
   local l = lineOf(d, "label", "Critical Strike Effectiveness"); return T(l.value) == "+4%" and l.note == nil, T(l.value) .. " / " .. T(l.note) end)
-checkp("  ...its hover lists each source: the slot, the line (colour codes taken out) and its +2%", function()
+checkp("  ...its hover lists each source: the slot, the line (color codes taken out) and its +2%", function()
   local it = CM.Build(c, "stats").byKey.map_critfx
   return tipHas(it, "Finger: Equip: +40 Critical Strike, increasing critical strike effectiveness by 2%. (+2%)")
     and tipHas(it, "Finger 2: Enchanted: Enchant Ring - Eyes of the Eagle, increasing critical strike effectiveness by 2% (+2%)")

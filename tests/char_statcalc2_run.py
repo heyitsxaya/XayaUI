@@ -263,7 +263,7 @@ CM.ClearCache()
 gm = CM.Build(c, "gear")
 -- (the line's label since the model's rename, StatModel.lua: "» Area damage taken"; was "» Area damage taken (less)")
 local avV, avT = effLine("map_avoidance", "» Area damage taken")
-check("compare: +300 Avoidance: \"» Area damage taken\" goes up and is coloured better (good), f1-16", avV ~= nil and avV:find(" -> ", 1, true) ~= nil and avT == "good",
+check("compare: +300 Avoidance: \"» Area damage taken\" goes up and is colored better (good), f1-16", avV ~= nil and avV:find(" -> ", 1, true) ~= nil and avT == "good",
   tostring(avV) .. " " .. tostring(avT))
 local gcV, gcT = effLine("map_haste", "» GCD")
 check("  ...(guard) less haste: the GCD gets longer and stays worse (warn): lower is better for seconds", gcV ~= nil and gcT == "warn", tostring(gcV) .. " " .. tostring(gcT))

@@ -166,7 +166,7 @@ checkp("  ...choosing Utility: the menu closes, the header says utility, only th
   for _, r in ipairs(recs(d, "spellname")) do names[#names + 1] = r.text end
   return not d.filterMenu.shown and find(d, "header", "- Active utility spells") ~= nil and table.concat(names, ",") == "- Banner", table.concat(names, ",")
 end)
-checkp("  ...the icon shows the filter is on (label colour and a dot) and the choice is kept (saved, and read back after a reload)", function()
+checkp("  ...the icon shows the filter is on (label color and a dot) and the choice is kept (saved, and read back after a reload)", function()
   local again = CWC()
   local col = d.filterIcon.parts[1].color
   return again.spellFilter == "utility" and d.filterIcon.dot.shown and d.filterIcon.active == true and col and col[1] == 1 and col[2] == 0.82
@@ -278,7 +278,7 @@ checkp("button: Refresh spell data is a real button (Blizzard's UIPanelButtonTem
   local b, r, h = d.spellBtn, recs(d, "spellbtn")[1], recs(d, "header")[1]
   return b and b.shown and b.template == "UIPanelButtonTemplate" and b.flat == true and b.text == "Refresh spell data" and r and h and r.y + r.h <= h.y, r and r.y
 end)
-checkp("  ...centred in the content, at most 250 wide, clear of the filter icon", function()
+checkp("  ...centered in the content, at most 250 wide, clear of the filter icon", function()
   local r, fi = recs(d, "spellbtn")[1], recs(d, "filtericon")[1]
   return r.w <= 250 and math.abs((r.x + r.w / 2) - W() / 2) <= 1 and r.x + r.w < fi.x, r.x .. "+" .. r.w
 end)
@@ -298,7 +298,7 @@ checkp("  ...Spell Math off: the same button reads Configure spell data, and a c
   d.spellBtn.scripts.OnClick(d.spellBtn)
   return lab == "Configure spell data" and c.advanced == true and drawn().model.byKey.spell263642 ~= nil, lab
 end)
-checkp("  ...narrowest panel (340) and text size 16: still centred, at most 250, clear of the icon; nothing outside or overlapping", function()
+checkp("  ...narrowest panel (340) and text size 16: still centered, at most 250, clear of the icon; nothing outside or overlapping", function()
   c.size = { w = 340 }; c.fontSize = 16
   d = render("spells")
   local r, fi = recs(d, "spellbtn")[1], recs(d, "filtericon")[1]
@@ -326,7 +326,7 @@ c.size = nil; c.fontSize = 11; c.spellFilter = "all"
 local function icon(dd, slot, cand) for _, b in ipairs(dd.icons) do if b.shown and b.slot == slot and (b.cand and true or false) == (cand or false) then return b end end end
 local function candIcon(dd, link) for _, b in ipairs(dd.icons) do if b.shown and b.cand and b.link == link then return b end end end
 d = render("gear")
-checkp("equipped: a click on Ring selects it: a highlight frame around its box (4 edges shown, accent colour), the others not", function()
+checkp("equipped: a click on Ring selects it: a highlight frame around its box (4 edges shown, accent color), the others not", function()
   local b = icon(d, 11)
   b.scripts.OnClick(b)
   d = drawn()
