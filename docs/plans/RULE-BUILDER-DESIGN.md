@@ -44,6 +44,8 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-48 vocabulary: player-facing text says "Tracking", never "check". The step is named "Tracking", the list "What you're tracking", and the buttons read "Add to tracking", "Cancel tracking" and "+ Track something else". RB-49: the heading and step label add a grey "(Triggers)" so players can match them to the editor. Code and data still use their own names (`extra.list` rows).
 >
+> RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
+>
 > The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
