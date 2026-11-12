@@ -63,6 +63,10 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 > RB-85/86: tracking tiles "Buff/Debuff on Me" and "Buff/Debuff on Target"; their first step asks "Buff or debuff?". Code today reads player HELPFUL auras and your HARMFUL|PLAYER debuffs on target/focus only (Triggers.lua:746-812, Combat/AuraDisplay.lua:184-204); debuffs on you and buffs on target need new reads and a Midnight secret-value check before the build.
 >
 > RB-87: the live line under each tracking item's questions reads "Tracking when <item text>", not "Preview: …". RB-88: aura items read "<aura> is found on you" / "<aura> is found on your target".
+>
+> RB-89: with 2+ tracked things, a step "2a · What happens when" comes before All or any: numbered combination cards, each ticking tracked things (happens / does NOT happen), joined with AND. Each card saves as one Outcome (Outcomes.lua: child rule with parentUid and its own `when` list). Open: whether All or any stays; OR inside a card; whether outcomes go through the same save path.
+>
+> RB-90: a Cue options step goes between "2 · All or any" and "3 · When it loads" (placeholder board). Open: renumbering to 6 steps; whether cues join stage 1 (which was triggers-only, §1) or form stage 2.
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.

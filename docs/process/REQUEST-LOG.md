@@ -827,6 +827,8 @@ copy; rows it adds later are copied here.
 | RB-86 | Her canvas comment on board E's "1 · Which buff?" (verbatim): "step 1 would be buff or debuff" | DONE: E step 1 = Buff or debuff?; later steps renumbered 2-4 | design canvas |
 | RB-87 | Her canvas comment on board E's preview line (verbatim): "this is still not clear. Instead, "Tracking when Hot Streak is on you"" | DONE: "Preview:" replaced by "Tracking when …" on E, and the same on C and F for consistency | design canvas |
 | RB-88 | Her follow-up in the same thread (verbatim): "found on you" | DONE: "is found on you" / "is found on your target" on E, F, Step 3, Step 4, Step 5; tile descriptions on A/D2 left as is (asked) | design canvas |
+| RB-89 | Her canvas comment on "2 · All or any" (verbatim): "before this, there should be an intermediate step for multi-trigger rules\n\nyou're tracking three things. what do you want to have happen when...\n\n[user selects combination of things]" | DONE: new board 2a (combination cards, tick + happens / does NOT happen); maps to Outcomes (Outcomes.lua). ASKED: keep All or any?; OR inside a combination? TO VERIFY: outcomes via NewRule/NormalizeRule/DraftNew | design canvas |
+| RB-90 | Her canvas comment between boards 2 and 3 (verbatim): "cue options menu will go between current windows 2 and 3" | DONE: placeholder board "Cue options" inserted, later boards shifted. ASKED: renumber to 6 steps?; cues in stage 1 or stage 2 (stage 1 was triggers-only) | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
