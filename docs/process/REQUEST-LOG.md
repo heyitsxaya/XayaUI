@@ -806,6 +806,7 @@ copy; rows it adds later are copied here.
 | RB-65 | Her canvas comment on "Any one of them" (verbatim): "this should explain \"this rule will fire when any of the following things are true: \"" | DONE with her wording (and the matching "all of the following" line) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-66 | Her canvas comment on the load question's "No" answer (verbatim): "\"Always Show\" \"Never Show\"" | DONE: answers Yes / Always Show (load mode always) / Never Show (mode never). OPEN (asked): group settings still apply to Always Show; drop the duplicate Never/Always radios below (small break from RB-12 1:1) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-67 | Her canvas comment on the load heading (verbatim): "\"When do you want this rule to load?\"" | DONE in the builder. OPEN (asked): same wording on the editor's Load tab (Editor.lua:1094) | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-68 | Her canvas comment on the load step's choices (verbatim): "tick boxes, not radios" | DONE on When it loads: square one-choice tick boxes (the editor's AddSquareRadio, Editor.lua:731). OPEN (asked): same on All or any | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
