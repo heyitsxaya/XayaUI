@@ -54,7 +54,9 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 > 4. Match ALL / ANY.
 > 5. Five selection buttons, one per condition set, each showing what is set.
 >
-> Clicking a button opens that set the way the Tracking step adds an item (RB-78). The sets already added are listed as "Your load conditions", numbered, each with Remove. The set being added sits in its own box with a number badge, a "LOAD: <set>" bar with "← Change set", and the buttons Remove / Add to load conditions.
+> Clicking a button opens that set the way the Tracking step adds an item (RB-78). The sets already added are listed as "Your load conditions", numbered, each with Remove. The set being added sits in its own box with a number badge, a "LOAD: <set>" bar (no Change set button, RB-80), and the buttons Remove / Add to load conditions.
+>
+> RB-80/81: the "Load Conditions" box always starts with a required item "Show this rule": Always / Never / Combination (maps to load.mode never / always / all-or-any); with Combination a second dropdown picks ALL or ANY of the sets. Added sets are listed under "Combination: sets you've added", not called load conditions. RB-82: in the Instance conditions set, Instance / In A Mythic+ / Boss encounter sit under the "Instance type" heading with the six instance types.
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
