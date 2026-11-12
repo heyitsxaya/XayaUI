@@ -27,6 +27,10 @@ addons only through C_AddOns.LoadAddOn), with the saved variables carried over e
       characterToolkit, where QA keeps the Stat Calculator's settings, plus Improved Character Display's keys): Bonus Features is
       offered and imports the Stat Calculator's settings; only the QoL part is listed as needing XayaUI QoL; Improved Character
       Display's keys are not written.
+  P4  the QoL part's `enabled` of such a string (on QA: Improved Character Display's switch) never turns the Stat Calculator on or off:
+      on stays on with a QA string whose switch is off; off stays off with one whose switch is on. The string is a real export made on
+      qa-installer-branch 049b1dd in the stand-in game (tests/statcalc_lod_qa_export.json).
+Negative control for P4: on b1bef6e's XayaUI_Bonus/ProfilePart.lua (it took the QoL part's `enabled`) both P4 checks fail.
 Negative control (run on an archive of c4ae19b, before this change, with this file copied in): 15 of 30 fail: there is no
 XayaUI_Bonus_StatCalculator folder; L1 (the calculator's service and functions exist with it off: its files were read; the page has
 no one-line form; /xui stats does not mention the reload), L2 (no reload question: the switch applied at once; not loaded at login
@@ -35,7 +39,7 @@ P2-P3 do not run there).
 In-game: the AddOns list's look, LoadAddOn's timing and the reload question are UNVERIFIED IN GAME
 (docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md).
 Run: python3 tests/statcalc_lod_run.py   (Lua 5.1 via lupa)"""
-import copy, os, sys
+import copy, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
@@ -208,8 +212,9 @@ end
 
 # P1-P3 profiles, the calculator off (not loaded)
 S_PROFILE = r'''
-return function(W, L, QA)
+return function(W, L, ARG)
 ''' + COMMON + LOGIN + r'''
+local QA, QA_ON = ARG.off, ARG.on
 check("P setup: the settings window loads, the calculator is not loaded", ns.LoadOptions and ns.LoadOptions() and not loaded())
 local P = ns.Profile
 local part = P and P.BY_KEY and P.BY_KEY.bonus
@@ -240,6 +245,7 @@ for _, x in ipairs(P.Held(data3)) do held[#held + 1] = x.key end
 for _, x in ipairs(P.Missing(data3)) do missing[#missing + 1] = x.title end
 check("P3 an older QA string: Bonus Features is offered; only the QoL part needs another addon (XayaUI QoL), never Bonus Features",
   table.concat(held, ",") == "bonus" and table.concat(missing, ",") == "XayaUI QoL", table.concat(held, ",") .. " / " .. table.concat(missing, ","))
+local before = XayaUIBonusDB.characterToolkit.enabled
 local res3 = P.Apply(data3)
 c = XayaUIBonusDB.characterToolkit
 check("P3 ...its Stat Calculator settings (from QA's QoL part) are imported: side left, text size 12, height 820, its spell",
@@ -247,17 +253,27 @@ check("P3 ...its Stat Calculator settings (from QA's QoL part) are imported: sid
 check("P3 ...Improved Character Display's keys are not written (overlays, ovIlvl)", c.overlays == nil and c.ovIlvl == nil)
 local skipped = table.concat(res3.skipped or {}, ",")
 check("P3 ...the import reports only XayaUI QoL as skipped", skipped == "XayaUI QoL", skipped)
+-- P4 QA's QoL part's `enabled` is Improved Character Display's switch, not the Stat Calculator's: the import leaves her switch alone
+check("P4 calculator on, a QA string whose QoL switch is off: the Stat Calculator stays on (not turned off by the import)",
+  before == true and c.enabled == true, tostring(before) .. " -> " .. tostring(c.enabled))
+XayaUIBonusDB.characterToolkit.enabled = false
+P.Apply(P.Check(QA_ON))
+check("P4 calculator off, a QA string whose QoL switch is on: the Stat Calculator stays off (not turned on by the import)",
+  XayaUIBonusDB.characterToolkit.enabled == false, tostring(XayaUIBonusDB.characterToolkit.enabled))
 return R
 end
 '''
 
 HER = {"enabled": False, "panel": True, "side": "left", "fontSize": 13, "spells": [{"id": 263642, "base": "ap"}], "heightLarge": 900}
-QA_STRING = {"v": 1, "name": "qa", "addonVersion": "0.6.83", "parts": {
-    "bonus": {"dataPanels": {"enabled": True}, "tooltips": {"enabled": True}, "calculator": {"enabled": True}},
-    "qol": {"cursorTrail": {"enabled": True}, "characterToolkit": {"enabled": True, "panel": True, "side": "left", "fontSize": 12,
-                                                                 "heightLarge": 820, "spells": [{"id": 100780, "base": "ap"}],
-                                                                 "overlays": True, "ovIlvl": True}}},
-    "partInfo": {"qol": {"v": 3, "module": "XayaUI_QoL", "title": "XayaUI QoL", "label": "QoL"}}}
+# a real profile string's data made on qa-installer-branch 049b1dd (code identical to /home/user/XayaUI 9e273fe), exported in the
+# stand-in game with Profiles > Export, parts QoL and Bonus Features, from saved QoL characterToolkit { enabled = false, side = "left",
+# fontSize = 12, heightLarge = 820, spells = { { id = 100780, base = "ap" } } } (everything else at QA's defaults): the QoL part is format
+# 3, the Bonus Features part is QA's format 1 (data panels, tooltips at their defaults). QA_ON is the same string with only the QoL
+# part's `enabled` set to true.
+with open(os.path.join(HERE, "statcalc_lod_qa_export.json"), encoding="utf-8") as _f:
+    QA_STRING = json.load(_f)
+QA_ON = copy.deepcopy(QA_STRING)
+QA_ON["parts"]["qol"]["characterToolkit"]["enabled"] = True
 
 
 def store_on(on, extra=None):
@@ -311,7 +327,7 @@ def main():
     report("login in combat", r, e)
     r, _, e = session(S_DISABLED, store_on(True), enabled=lambda k: k != PART)
     report("AddOns list", r, e)
-    r, _, e = session(S_PROFILE, store_on(False, copy.deepcopy({k: v for k, v in HER.items() if k != "enabled"})), arg=copy.deepcopy(QA_STRING))
+    r, _, e = session(S_PROFILE, store_on(False, copy.deepcopy({k: v for k, v in HER.items() if k != "enabled"})), arg={"off": copy.deepcopy(QA_STRING), "on": copy.deepcopy(QA_ON)})
     report("profiles", r, e)
     n += 1
     if errs:

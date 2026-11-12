@@ -88,7 +88,7 @@ e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 8306fb06222beb79cae136321f2ff302  XayaUI/Theme.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
 9abd44c90189a10676de4c6bf07dc093  XayaUI/XayaUI.toc
-b9344a9b5e338eb03899ace6c0c18be9  XayaUI_Bonus/ProfilePart.lua
+3431ac877f234d3cd3dc5b573efed325  XayaUI_Bonus/ProfilePart.lua
 7fe03d615ad358d9b8098da1db9d87dd  XayaUI_Bonus/StatCalculatorLoader.lua
 b329e286a5f702b10d27e9b95bb2c8e2  XayaUI_Bonus/XayaUI_Bonus.toc
 c5acd759a910cfcdc3ec8a58a3b03191  XayaUI_Bonus_StatCalculator/StatCalculator.lua
@@ -224,7 +224,7 @@ cfd02ac12f684b376eb4d592c6fc728c  docs/plans/PLATFORM-SPLIT-2026-11-07.md
 9a907df3961024106bb6ae03b230abf3  docs/plans/REFERENCE-SCREENS-AND-FEASIBILITY-2026-11-04.md
 2328fe701ed594b5e9be654823bb5979  docs/plans/RULES-REVIEW-2026-11-10.md
 c303a99e884d75226da5ecac171965bd  docs/plans/SHOPPING-LIST-REQUIREMENTS-2026-11-05.md
-7a4cbda09267db3ba95c6f6a94554493  docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md
+d80985e09b10d2fd97bbe206f3362fff  docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md
 0d9591958c2388041894092b0921d397  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
 08487822040dfba940699388dc7a08e8  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
 5cf08a28c3a6c0cf0331ad1b56e38f7b  docs/process/BRANCHES-2026-11-07.md
@@ -470,7 +470,8 @@ e7b057295f6543a84b584470a4c03b9d  tests/sidebar_switches_run.py
 1df1644baca732a5210c32772baaf413  tests/spell_search_scope_run.py
 e9354eb23eaca3494132ac7a705c1df6  tests/statcalc_gate_fixes_run.py
 ec3c489494a33b29f1eab24ea7be73fc  tests/statcalc_keys_run.py
-9a867953e0eb07735dc48ccb45c849ee  tests/statcalc_lod_run.py
+339ccb670c80c85cde62f559f7ae25c8  tests/statcalc_lod_qa_export.json
+33ff951a6988c151d1a6aa3ae7338c1c  tests/statcalc_lod_run.py
 7f114b99dc6f1320c5a30450cdd22d99  tests/statcalc_main_run.py
 2ff12ec79fae9f574052eb6be117ad04  tests/switch_reload_run.py
 34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py

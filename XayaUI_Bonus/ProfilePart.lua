@@ -17,8 +17,11 @@
 -- Older strings from qa-installer-branch: there the Stat Calculator's settings travel in the QoL part (XayaUI_QoL/ProfilePart.lua,
 -- db = { ..., "characterToolkit", ... }), not in the Bonus Features part. adopt() (called by XayaUI_Options/Profiles.lua before the
 -- parts are cleaned) takes that characterToolkit into this part while no XayaUI QoL is loaded, so such a string imports its Stat
--- Calculator settings; the rest of its QoL part still says it needs XayaUI QoL. INFERENCE: on QA the QoL part's `enabled` is QoL's copy
--- of the switch; QA's own import writes it to both halves (core LEGACY_SPLIT `both`), and so does main.
+-- Calculator settings; the rest of its QoL part still says it needs XayaUI QoL. The QoL part's `enabled` is NOT taken: on QA it is the
+-- switch of QoL's Improved Character Display (qa-installer-branch 049b1dd XayaUI_QoL/ImprovedCharacterDisplay.lua:146 and :2018, its
+-- page's tick box), not the Stat Calculator's own choice,
+-- so an older QA string never turns the calculator on or off here; the player's switch stays as it was (review of b1bef6e, issue 1;
+-- whether she wants it adopted instead is asked, not built).
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -56,6 +59,10 @@ def.adopt = function(parts)
     local b = parts.bonus
     if b ~= nil and type(b) ~= "table" then return end
     b = b or {}
-    if b.characterToolkit == nil then b.characterToolkit = Copy(q.characterToolkit, 1) end
+    if b.characterToolkit == nil then
+        local c = Copy(q.characterToolkit, 1)
+        c.enabled = nil   -- QoL's switch, not the Stat Calculator's (see above)
+        b.characterToolkit = c
+    end
     parts.bonus = b
 end
