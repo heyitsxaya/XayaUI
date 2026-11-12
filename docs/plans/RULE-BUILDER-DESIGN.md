@@ -46,6 +46,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-66: the load question answers are Yes (show the Load tab's conditions), Always Show (`load.mode = "always"`) and Never Show (`load.mode = "never"`).
 > RB-64 / RB-65: each All / Any choice spells out its logic from the items actually tracked: "This rule will fire when all (or any) of the following things are true:" followed by the item list. This is her exact wording, which takes precedence over RB-54 here. The text is rebuilt only when an item or the choice changes.
 > RB-61, multiple IDs:
 > - Buff and proc-buff picks use one catch-all dropdown with one entry per buff (RB-63, which replaces the tick list). Each entry carries every known ID, stored as `spellID` plus `alt` (any one counts). The likely source of variant IDs is the Cooldown Manager catalogue's linked spell IDs (INFERENCE). The last entry, "Input custom spell ID(s)…", reveals a single comma-separated ID box. There is no search box.
