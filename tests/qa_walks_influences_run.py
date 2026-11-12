@@ -96,8 +96,14 @@ local function wordCut(f)
 end
 -- (A24 #9) the Stat Weights pane's own font strings (titles and cells): the ones the step judges
 local PANE = { wcolhead = true, wlabel = true, wrating = true, wppp = true, wpppdr = true, wdr = true, wtl = true, winfl = true }
+-- (A24 #10) matched by text AND place, as the walkthrough's own DrawnAt does: since the title reads "Rating", the Stats grid's
+-- "Rating" head has the same text, and a text-only match counted it as part of this pane
 local function inPane(f)
-  for _, r in ipairs(d.layout) do if PANE[r.kind] and r.text == f:GetText() then return true end end
+  local ok, _, _, _, x, y = pcall(f.GetPoint, f, 1)
+  for _, r in ipairs(d.layout) do
+    if PANE[r.kind] and r.text == f:GetText() and ok and type(x) == "number" and type(y) == "number"
+      and math.abs(x - r.x) < 0.5 and math.abs(-y - r.y) < 0.5 then return true end
+  end
   return false
 end
 local anyCut = false
@@ -138,6 +144,17 @@ if cell then cell.y = cell.y + 20 end
 local okN2, nN2 = def.steps[2].check()
 check("negative: an influences cell moved under its row gives Fail", okN2 == false, nN2)
 if cell then cell.y = cy end
+-- (A24 #10, Xaya 2026-11-12, her answer "1 + Rename to Rating": every title on at most two lines) step 2 names a title drawn on three
+-- lines and gives Fail: here "DR Threshold"'s record is made three one-line heights tall, ending on the shared bottom line
+local tall, minH
+for _, r in ipairs(d.layout) do if r.kind == "wcolhead" then minH = math.min(minH or r.h, r.h); if r.text == "DR Threshold" then tall = r end end end
+local ty, th = tall and tall.y, tall and tall.h
+if tall then tall.y = tall.y + tall.h - 3 * minH; tall.h = 3 * minH end
+local okN3, nN3 = def.steps[2].check()
+check("negative (A24 #10): a title drawn on three lines gives Fail, naming it", tall ~= nil and okN3 == false and tostring(nN3):find("title DR Threshold takes 3 lines", 1, true) ~= nil, tostring(okN3) .. " " .. tostring(nN3))
+if tall then tall.y, tall.h = ty, th end
+local ok2b = def.steps[2].check()
+check("(guard) step 2 back to Pass once the title is back on its lines", ok2b == true, tostring(ok2b))
 -- (A24 #9 round 2) step 4: the person clicks the corner once without dragging, then the Gear tab. The saved width stays the 340 the
 -- corner left in step 2, the Gear tab is drawn at it, the tab row in whole pixels: Pass. (On the round-1 tree the click saved the
 -- widened width, and the walkthrough had no such step.)

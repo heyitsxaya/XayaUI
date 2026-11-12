@@ -1201,7 +1201,7 @@ end
 -- window's own stat tooltips read them): no new game call. Every group heading (Core Stats, Primary, General, Offensive, Defensive,
 -- Secondaries, Tertiaries) and every stat line of Character Stats, in her order and colours: a stat's name in its stat colour (the
 -- Stat Calculator's), headings in the label colour, unless she picked others. A rating stat shows its percent, its rating, or both
--- ("528 / 22.48%", the Stat Weights' "Rating (P / %)" form). Hover a line: the Stat Calculator's hover for it. Built only while the
+-- ("528 / 22.48%", the Stat Weights' Rating form). Hover a line: the Stat Calculator's hover for it. Built only while the
 -- reskin and this part are on (V14); redrawn after Blizzard's PaperDollFrame_UpdateStats (the hook the stat list already has), at
 -- most once per frame, and only when a number it shows changed (U1 G-007); in combat it keeps its numbers and is drawn once when combat
 -- ends (PLAYER_REGEN_ENABLED; DECISION to confirm with Xaya). Opening the window draws it, in or out of combat. Plain frames only (nothing

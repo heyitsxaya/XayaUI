@@ -121,8 +121,7 @@ function layoutOK(dd)
 end
 -- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the known limits of A24 #7 round 2 (CUT_LIMIT: words cut where the six
 -- columns' widest words did not fit the panel; LINES3_LIMIT: one title on three lines) are gone as allowances: the panel widens to
--- the width the six columns need, so at every panel width, text size and stand-in font NOTHING is cut (sections A, L, M). A title may
--- still wrap (A24 #7): at most two lines, except the THREE_LINES cases below (open for Xaya, held exact).
+-- the width the six columns need, so at every panel width, text size and stand-in font NOTHING is cut (sections A, L, M).
 -- every cut word in the Stat Weights pane (titles and cells)
 function wCuts(d)
   local out = {}
@@ -145,42 +144,14 @@ function mostLines(d)
   for _, h in ipairs(recs(d, "wcolhead")) do local n = titleLines(h); if n > most then most, which = n, h.text end end
   return most, which
 end
--- (A24 #7 option 2, her words "titles wrap onto two lines when needed"; A24 #9 "Widen the panel") OPEN FOR XAYA, NOT AN ALLOWANCE
--- ON CUTS (nothing is cut in any case): the panel widens to the six columns' widest words (FitCols' "min"), not to every title on two
--- lines; whether "the width the six columns need" includes two-line titles is her choice, not made, so not built. Where it widens,
--- the drawn width is exactly the widest words' need, and "Rating (P / %)" then wraps onto THREE lines. THREE_LINES is every such case
--- of this grid ("font:panel width:text size"; drawn width in the comment), held EXACT both ways (section L): a listed case must still
--- show three lines, an unlisted case must keep every title on at most two lines (as on the base tree, where every case not on its
--- CUT_LIMIT / LINES3_LIMIT lists was held to two lines).
---   est    340/11 (354), 340/12 (381), 340/14 (433), 340/16 (487), 380/12 (381), 380/14 (433), 380/16 (487), 450/16 (487)
---   scaled 340/10 (349), 340/11 (378), 340/12 (409), 340/14 (466), 340/16 (522), 380/12 (409), 380/14 (466), 380/16 (522),
---          450/14 (466), 450/16 (522)
---   flat8  340, 380 and 450 at every text size 8-16 (460)
+-- (A24 #10, Xaya 2026-11-12, her answer verbatim: "1 + Rename to Rating"; option 1: the panel widens so every Stat Weights title fits
+-- on at most two lines) THREE_LINES, the cases A24 #9 left open for her ("Rating (P / %)" on three lines at the widest words' width),
+-- is EMPTY: every case of the grid ("font:panel width:text size") keeps every title on at most two lines. Negative control (V1): on
+-- the pre-change tree (54e6c5d) the 36 cases that were listed here draw "Rating (P / %)" on three lines and fail.
 THREE_LINES = {}
-for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:12", "est:380:14", "est:380:16", "est:450:16",
-    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
-    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do THREE_LINES[k] = true end
-for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do THREE_LINES["flat8:" .. pw .. ":" .. fs] = true end end
--- the base tree's (64d0943) allowance lists, CUT_LIMIT and LINES3_LIMIT together: the only cases it did not hold to two title lines.
--- A guard below checks that every THREE_LINES case is one of them (no case that drew on two lines before draws on three now).
-BASE_NOT_TWO = { ["est:380:12"] = true }
-for _, k in ipairs({ "est:340:11", "est:340:12", "est:340:14", "est:340:16", "est:380:14", "est:380:16", "est:450:16",
-    "scaled:340:10", "scaled:340:11", "scaled:340:12", "scaled:340:14", "scaled:340:16", "scaled:380:12", "scaled:380:14",
-    "scaled:380:16", "scaled:450:14", "scaled:450:16" }) do BASE_NOT_TWO[k] = true end
-for _, pw in ipairs({ 340, 380, 450 }) do for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do BASE_NOT_TWO["flat8:" .. pw .. ":" .. fs] = true end end
--- the check for one drawn case: (name suffix, check function): no title or cell word cut, inside the width, no overlaps, and every
--- title on at most two lines, except the THREE_LINES cases (exactly "Rating (P / %)" on three lines there)
+-- the check for one drawn case: no title or cell word cut, inside the width, no overlaps, and every title on at most two lines
 function limitCheck(d, key)
-  if THREE_LINES[key] then
-    return "no word cut, inside the width, no overlaps; OPEN FOR XAYA (THREE_LINES): \"Rating (P / %)\" on three lines at the widest words' width", function()
-      local cuts = wCuts(d)
-      if #cuts > 0 then return false, table.concat(cuts, "; ") end
-      local ok, why = layoutOK(d)
-      if not ok then return false, why end
-      local most, which = mostLines(d)
-      return most == 3 and which == "Rating (P / %)", "listed in THREE_LINES, longest title " .. which .. " on " .. most .. " lines" end
-  end
-  return "no title or cell word cut (A24 #9: the panel widens); inside the width, no overlaps; every title on at most two lines (A24 #7 option 2)", function()
+  return "no title or cell word cut (A24 #9: the panel widens); inside the width, no overlaps; every title on at most two lines (A24 #10)", function()
     local cuts = wCuts(d)
     if #cuts > 0 then return false, table.concat(cuts, "; ") end
     local ok, why = layoutOK(d)
@@ -260,7 +231,7 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
   c.size, c.fontSize = nil, 11
   local d = render()
   local hs = recs(d, "wcolhead")
-  checkp(("Stat Weights, default panel, text 11, font %s: six column titles, none cut (\"Rating (P / %%)\", \"DR Threshold\" whole; a title may wrap, A24 #7)"):format(m), function()
+  checkp(("Stat Weights, default panel, text 11, font %s: six column titles, none cut (\"Rating\", \"DR Threshold\" whole; a title may wrap, A24 #7)"):format(m), function()
     if #hs ~= 6 then return false, #hs .. " titles" end
     for _, r in ipairs(hs) do
       if cutWord(r) then return false, "cut: " .. r.text .. " (" .. cutWord(r) .. ") w=" .. r.w end
@@ -889,20 +860,60 @@ for _, m in ipairs({ "est", "scaled", "flat8" }) do
     end
   end
 end
-checkp("(guard) A24 #7 / #9 no regression in title lines: every THREE_LINES case was one the base tree did not hold to two lines (on its CUT_LIMIT or LINES3_LIMIT)", function()
-  for k in pairs(THREE_LINES) do if not BASE_NOT_TWO[k] then return false, k end end
-  return true end)
+checkp("A24 #10 THREE_LINES is empty: no case is allowed a third title line", function()
+  local k = next(THREE_LINES)
+  return k == nil, tostring(k) end)
 checkp("A24 #7 (guard: the alignment checks above met a wrapped title moved down under the others, so bottom-alignment was exercised)", function()
   return wrapped and shiftedTitle end)
--- the default panel at the default text in the wider stand-in font: "Rating (P / %)" wraps onto two lines and is not cut; the other
--- titles sit one line lower, on its bottom line
+-- the default panel at text 14 in the wider stand-in font (drawn widened to the need): "DR Threshold" wraps onto two lines and is not
+-- cut; the one-line titles sit one line lower, on its bottom line
 MEASURE = "scaled"
-c.size, c.fontSize = nil, 11
+c.size, c.fontSize = nil, 14
 local d = render()
-local rp, st = find(d, "wcolhead", "Rating (P / %)"), find(d, "wcolhead", "Stat")
-checkp("A24 #7 default panel, text 11 (scaled): \"Rating (P / %)\" wraps onto two lines, uncut; \"Stat\" sits lower, on the same bottom line", function()
-  return rp and st and rp.h == 2 * rp.size and not cutWord(rp) and st.y == rp.y + rp.size and st.y + st.h == rp.y + rp.h,
-    rp and st and ("Rating y " .. rp.y .. " h " .. rp.h .. "; Stat y " .. st.y .. " h " .. st.h) or "missing" end)
+local dt, st = find(d, "wcolhead", "DR Threshold"), find(d, "wcolhead", "Stat")
+checkp("A24 #7 default panel, text 14 (scaled): \"DR Threshold\" wraps onto two lines, uncut; \"Stat\" sits lower, on the same bottom line", function()
+  return dt and st and dt.h == 2 * dt.size and titleLines(dt) == 2 and not cutWord(dt) and st.y == dt.y + dt.size and st.y + st.h == dt.y + dt.h,
+    dt and st and ("DR Threshold y " .. dt.y .. " h " .. dt.h .. "; Stat y " .. st.y .. " h " .. st.h) or "missing" end)
+checkp("A24 #10 the second Stat Weights title reads exactly \"Rating\"; its hover still explains points and percent", function()
+  local hs = recs(d, "wcolhead")
+  local tip
+  for _, sec in ipairs(d.model.sections) do if sec.weights then for _, it in ipairs(sec.items) do if it.kind == "weighthead" then tip = table.concat(it.tip or {}, " / ") end end end end
+  return hs[2] and hs[2].text == "Rating" and tip and tip:find("Rating: your rating (points) and the stat's percent now.", 1, true) ~= nil,
+    tostring(hs[2] and hs[2].text) .. " | " .. tostring(tip) end)
+-- (A24 #10, option 1: "every title fits on at most two lines") the width is worked out from whatever titles the pane draws, not from
+-- the six of today: with a four-word second title (the old "Rating (P / %)", put in the model here) every case of the grid still keeps
+-- every title on at most two lines with nothing cut. On the pre-change tree this fails where the old title took three lines.
+local baseBuild = CM.Build
+CM.Build = function(...)
+  local m = baseBuild(...)
+  for _, sec in ipairs(m and m.sections or {}) do
+    if sec.weights then for _, it in ipairs(sec.items) do
+      if it.kind == "weighthead" and type(it.cols) == "table" then
+        local cols = {}
+        for i, v in ipairs(it.cols) do cols[i] = v end
+        cols[2] = "Rating (P / %)"
+        it.cols = cols
+      end
+    end end
+  end
+  return m
+end
+local four
+for _, m in ipairs({ "est", "scaled", "flat8" }) do
+  MEASURE = m
+  for _, pw in ipairs({ 340, 380, 450, 584, 760 }) do
+    for _, fs in ipairs({ 8, 10, 11, 12, 14, 16 }) do
+      c.size, c.fontSize = { w = pw }, fs
+      local dd = render()
+      local most, which = mostLines(dd)
+      if find(dd, "wcolhead", "Rating (P / %)") == nil then four = four or (m .. ":" .. pw .. ":" .. fs .. " title not drawn") end
+      if most > 2 or #wCuts(dd) > 0 or not layoutOK(dd) then four = four or (m .. ":" .. pw .. ":" .. fs .. ": " .. which .. " on " .. most .. " lines, cuts " .. #wCuts(dd)) end
+    end
+  end
+end
+CM.Build = baseBuild
+checkp("A24 #10 a four-word title (\"Rating (P / %)\" in the model): every width x text size x font, every title on at most two lines, nothing cut, no overlaps", function()
+  return four == nil, four end)
 MEASURE = "est"
 c.size, c.fontSize = nil, 11
 ''')
@@ -920,13 +931,26 @@ run(STATWORLD, r'''
 local GUT, PAD = ns.UI_GUTTER, LAY.pad
 local COL = { wlabel = 1, wrating = 2, wppp = 3, wpppdr = 3, wdr = 4, wtl = 5, winfl = 6 }
 -- the width the drawn pane needs, measured here from what was drawn: each column's widest word (as the game measures a text: the
--- panel's TextW is the measured width rounded up, plus 1), five gutters and the panel's two margins
+-- panel's TextW is the measured width rounded up, plus 1) or (A24 #10) its title's two-line width, whichever is wider (the best
+-- space to break the title at: the wider of its two halves, the narrowest such), five gutters and the panel's two margins
+local function tw(t, size) return math.ceil(textW(t, size)) + 1 end
+local function twoLine(r)
+  local ws = {}
+  for w in tostring(r.text or ""):gmatch("%S+") do ws[#ws + 1] = w end
+  if #ws < 2 then return tw(r.text, r.size) end
+  local best
+  for k = 1, #ws - 1 do
+    local wk = math.max(tw(table.concat(ws, " ", 1, k), r.size), tw(table.concat(ws, " ", k + 1), r.size))
+    if not best or wk < best then best = wk end
+  end
+  return best
+end
 local function needFromDrawn(d)
   local col = { 0, 0, 0, 0, 0, 0 }
   local function word(i, r)
-    for w in tostring(r.text or ""):gmatch("%S+") do col[i] = math.max(col[i], math.ceil(textW(w, r.size)) + 1) end
+    for w in tostring(r.text or ""):gmatch("%S+") do col[i] = math.max(col[i], tw(w, r.size)) end
   end
-  for i, r in ipairs(recs(d, "wcolhead")) do word(i, r) end
+  for i, r in ipairs(recs(d, "wcolhead")) do word(i, r); col[i] = math.max(col[i], twoLine(r)) end
   for k, i in pairs(COL) do for _, r in ipairs(recs(d, k)) do word(i, r) end end
   local n = 5 * GUT + 2 * PAD
   for i = 1, 6 do n = n + col[i] end

@@ -1437,7 +1437,8 @@ local function RenderGrid(c, items, y, hasBox)
     return y
 end
 
--- The Stat Weights pane (QoL 0.7.23): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences. Influences is a column of
+-- The Stat Weights pane (QoL 0.7.23): Stat | Rating | PPP | DR Threshold | T/L Rating | Influences ("Rating" was "Rating (P / %)"
+-- until A24 #10). Influences is a column of
 -- its own at every width and text size (SC-102 and A24 #7, below). Every
 -- cell wraps inside its column. A row's hover is the whole row: "{stat} increases / decreases {other stat} by {amount}", one line per
 -- influence (CM: it.tip).
@@ -1447,7 +1448,9 @@ end
 -- from fixed numbers: every column is at least as wide as the widest word of its title and cells (nothing is cut), then wide enough
 -- for its title on one line, then for its widest cell (FitCols); Influences takes the rest (SC-102). Titles are centred over their
 -- columns; every cell starts at its column's left edge; the T/L cell is two lines.
-local WT_TITLES = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
+-- (A24 #10, Xaya 2026-11-12, her answer verbatim: "1 + Rename to Rating") the second title reads "Rating" (was "Rating (P / %)"); its
+-- hover (StatModel.lua) still says the cell is the rating (points) and the percent.
+local WT_TITLES = { "Stat", "Rating", "PPP", "DR Threshold", "T/L Rating", "Influences" }
 -- (SC-102; Xaya S1 #36, her exact columns "Stat | Rating (P / %) | PPP | | DR Threshold | T/L Rating | Influences") Influences is the sixth
 -- column. (A24 #7, Xaya 2026-11-11, her words: "2 but make sure all headings (top row) are vertically middle-aligned or bottom-aligned
 -- and all rows beneath are uniformly vertically aligned amongst themselves"; option 2 was "Influences is always its own column, and
@@ -1509,12 +1512,15 @@ local function WeightSpec(items, size)
     spec[6].want = spec[6].min
     return spec, titles
 end
--- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the content width the six columns need so that no word is cut: every
--- column's widest word (title and cells, FitCols' "min") and the five gutters between them. Whole pixels (TextW is whole).
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel"; A24 #10, 2026-11-12, her answer "1 + Rename to Rating", option 1: the width
+-- includes every title on at most two lines) the content width the six columns need so that no word is cut AND every title fits on at
+-- most two lines: per column the larger of its widest word (title and cells, FitCols' "min") and its title's two-line width (FitCols'
+-- "two", TwoLineW), plus the five gutters between them. FitCols gives the mins first and the "two" level next, so at this width both
+-- are met in full. Whole pixels (TextW is whole).
 local function WeightsContentNeed(items, size)
     local spec = WeightSpec(items, size)
     local need = 5 * GUT
-    for i = 1, 6 do need = need + (spec[i].min or 0) end
+    for i = 1, 6 do need = need + math.max(spec[i].min or 0, spec[i].two or 0) end
     return need
 end
 local function WeightCols(items, size)
@@ -1522,10 +1528,9 @@ local function WeightCols(items, size)
     -- (A24 #7) always six columns. FitCols gives every column its widest word first (title and cells: nothing cut), then each title
     -- on at most two lines (her option 2's words), then each title on one line, then each column's widest cell, while there is room;
     -- Influences takes what is left. A title whose column stays narrower than it wraps at its spaces (RenderWeights bottom-aligns the
-    -- titles). (A24 #9, "Widen the panel") the panel is widened to the widest words' need before this runs (WeightsNeed /
-    -- ApplyWidth), so the mins always fit and no word is cut; FitCols' scale-down is reached only where the screen is narrower than
-    -- that need. Still open for her (reported, not built): where the widest words fit but not every title on two lines, a title can
-    -- wrap onto three lines (tests/char_stat_round_run.py THREE_LINES lists every such case; section L counts the lines).
+    -- titles). (A24 #9 "Widen the panel", A24 #10 option 1) the panel is widened to the widest words' and two-line titles' need
+    -- before this runs (WeightsNeed / ApplyWidth), so no word is cut and no title takes more than two lines; FitCols' scale-down (and
+    -- a third title line) is reached only where the screen is narrower than that need.
     local g = { titles = titles }
     local w = FitCols(spec, W - 5 * GUT, 6, WT_LEVELS)
     g.w = w
@@ -2260,8 +2265,9 @@ local function HideSpellBar()
     if panel.filterMenu then panel.filterMenu:Hide() end
 end
 
--- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel"; A24 #7: Influences is always a column) while this tab draws the Stat
--- Weights pane (unfolded), the content width its six columns need so that no word is cut (WeightsContentNeed); 0 otherwise. Worked
+-- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel"; A24 #7: Influences is always a column; A24 #10: titles on at most two
+-- lines) while this tab draws the Stat Weights pane (unfolded), the content width its six columns need so that no word is cut and
+-- every title fits on at most two lines (WeightsContentNeed); 0 otherwise. Worked
 -- out once per change: what it measures (the font, the text size and every title and cell text of the pane) is kept as one signature string,
 -- and a draw with the same signature reuses the last answer without measuring anything. Draws come from events, inputs and the
 -- panel's own buttons, never from a frame loop (V27).

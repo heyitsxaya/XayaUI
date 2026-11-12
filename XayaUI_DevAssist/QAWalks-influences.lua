@@ -3,12 +3,13 @@
 -- (XayaUI Bonus Features, StatCalculator.lua WeightCols / RenderWeights; REQUEST-LOG A24 #7). Xaya's answer, her words (2026-11-11):
 -- "2 but make sure all headings (top row) are vertically middle-aligned or bottom-aligned and all rows beneath are uniformly vertically
 -- aligned amongst themselves"; option 2 was "Influences is always its own column, and titles wrap onto two lines when needed".
--- Built as: Influences is a column at every panel width and text size; a column title may wrap, onto at most two lines where the
--- columns' widest words leave room; the six titles are bottom-aligned (her words allow middle or bottom: bottom was chosen); every
+-- Built as: Influences is a column at every panel width and text size; a column title may wrap, onto at most two lines; the six titles are bottom-aligned (her words allow middle or bottom: bottom was chosen); every
 -- cell of a row starts at the row's top. The checks also ask the game whether any title or cell is cut short (Fail if one is).
 -- (A24 #9, Xaya 2026-11-11, her words: "Widen the panel") the panel widens to the width the six columns' widest words need at the
 -- current text size, docked and on its own (never wider than the screen), so nothing is cut at any width the corner allows; step 2
--- checks that at the narrowest panel and the largest text, and its note gives the width the panel was drawn at.
+-- checks that at the narrowest panel and the largest text, and its note gives the width the panel was drawn at. (A24 #10, Xaya
+-- 2026-11-12, her answer "1 + Rename to Rating") that width also fits every title on at most two lines, and the second title reads
+-- "Rating": steps 1 and 2 give Fail where a title takes three lines.
 -- Standing rule V22 (Xaya 2026-11-07, her words): "make sure every feature or significant change to the codebase / bug report fixes
 -- have an in game qa test walk through with pre-fill confirmation options or data capturing". prefill = true: where the addon can read
 -- the result (what the panel drew and where its font strings are anchored) its verdict is offered on one button and recorded only on a
@@ -102,6 +103,19 @@ local function Judge(sc)
         if not DrawnAt(d, h) then bad[#bad + 1] = ("title %s is not drawn at its place"):format(tostring(h.text)) end
         if (h.h or 0) > (h.size or 0) then wrapped = wrapped + 1 end
     end
+    -- (A24 #10, Xaya 2026-11-12, her answer "1 + Rename to Rating": the panel widens so every title fits on at most two lines) each
+    -- title's lines, as the game drew it: its height over one line's height, the lowest title's height (a one-word title such as
+    -- "Stat" or "PPP" never wraps: the game wraps only at spaces). INFERENCE (not documented): a font string's height grows by one
+    -- line's height per wrapped line. UNVERIFIED IN GAME.
+    local oneLine, most, mostT = nil, 0, ""
+    for _, h in ipairs(heads) do if type(h.h) == "number" and h.h > 0 and (not oneLine or h.h < oneLine) then oneLine = h.h end end
+    if oneLine then
+        for _, h in ipairs(heads) do
+            local n = math.floor((h.h or 0) / oneLine + 0.5)
+            if n > most then most, mostT = n, tostring(h.text) end
+        end
+        if most > 2 then bad[#bad + 1] = ("title %s takes %d lines (at most two)"):format(mostT, most) end
+    end
     -- every cell of a row starts at the row's top
     local misaligned = 0
     for i, l in ipairs(labels) do
@@ -113,8 +127,8 @@ local function Judge(sc)
         for _, y in pairs(first) do if y ~= l.y then misaligned = misaligned + 1 end end
     end
     if misaligned > 0 then bad[#bad + 1] = misaligned .. " cells do not start at their row's top" end
-    local note = ("%d column titles (%s), %d wrapped onto more lines; %d of %d rows with their influences in the column; %s"):format(#heads,
-        table.concat(names, " | "), wrapped, onRow, #labels, where)
+    local note = ("%d column titles (%s), %d wrapped onto more lines (most lines: %d); %d of %d rows with their influences in the column; %s"):format(#heads,
+        table.concat(names, " | "), wrapped, most, onRow, #labels, where)
     if #bad > 0 then return false, table.concat(bad, "; ") .. " | " .. note end
     if unread > 0 then return nil, unread .. " texts: the game did not say whether they are cut short, so no verdict: look for a word ending in \"...\" and answer by hand | " .. note end
     return true, note
@@ -181,9 +195,9 @@ end
 
 QA.Register("statcalc-influences", { title = "Stat Calculator: Stat Weights Influences column at every width, titles bottom-aligned (A24 #7)",
     area = "Bonus", qa = "E1z242", order = 526, prefill = true, steps = {
-    { text = "Out of combat, press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Scroll down to |cffffd100Stat Weights|r (unfold it if it is folded), then press |cffffd100Check|r.\n\n|cffffd100Expect:|r six column titles, the last one |cffffd100Influences|r; each stat's influences on the stat's own row under that title, without \"Influences:\" in front. A title may wrap onto two lines; all titles end on the same bottom line. Every cell of a row starts at the row's top. Nothing is cut short.",
+    { text = "Out of combat, press |cffffd100Do it for me|r: the Stat Calculator opens on its Stats tab. Scroll down to |cffffd100Stat Weights|r (unfold it if it is folded), then press |cffffd100Check|r.\n\n|cffffd100Expect:|r six column titles, the last one |cffffd100Influences|r; each stat's influences on the stat's own row under that title, without \"Influences:\" in front. The second title reads |cffffd100Rating|r. A title may wrap onto two lines, never three; all titles end on the same bottom line. Every cell of a row starts at the row's top. Nothing is cut short.",
         setup = OpenStats, check = Check },
-    { text = "Drag the panel's bottom-right corner to make it as narrow as it goes, and set the Stat Calculator's text size to its largest (Bonus Features > Stat Calculator). Scroll to |cffffd100Stat Weights|r and press |cffffd100Check|r.\n\n|cffffd100Expect:|r still six columns with Influences last, its names on each row; titles that no longer fit wrap and stay bottom-aligned with the others. The addon asks the game whether any title or cell is cut short and gives Fail if one is. (A24 #9, \"Widen the panel\") where the six columns' widest words need more room than the narrow panel has, the panel widens to fit them at this text size, so nothing is cut short; the note gives the width it was drawn at. A title may still wrap: where the panel widened, \"Rating (P / %)\" can take three lines (the panel widens to the widest words, not to two-line titles: reported to Xaya, not built). If your screen is narrower than that width the panel stops at the screen's edge, and words can be cut there. Note anything overlapping: the addon cannot see that.",
+    { text = "Drag the panel's bottom-right corner to make it as narrow as it goes, and set the Stat Calculator's text size to its largest (Bonus Features > Stat Calculator). Scroll to |cffffd100Stat Weights|r and press |cffffd100Check|r.\n\n|cffffd100Expect:|r still six columns with Influences last, its names on each row; titles that no longer fit wrap and stay bottom-aligned with the others. The addon asks the game whether any title or cell is cut short and gives Fail if one is. (A24 #9, \"Widen the panel\"; A24 #10) where the six columns' widest words or their titles on two lines need more room than the narrow panel has, the panel widens to fit them at this text size, so nothing is cut short and no title takes more than two lines (the addon gives Fail if one takes three); the note gives the width it was drawn at. The second title reads |cffffd100Rating|r. If your screen is narrower than that width the panel stops at the screen's edge, and words can be cut or a title take a third line there. Note anything overlapping: the addon cannot see that.",
         check = CheckNarrow },
     { text = "Look at the Stat Weights pane as it is now. Do the six column titles read as one row sitting on a shared bottom line, and do the rows below line up the same way, each starting at the same height across its cells? Is any word cut short (\"...\")? The addon cannot judge how it looks: Pass if it reads well, Fail and describe it in the note if not.",
         noVerdict = true },

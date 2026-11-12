@@ -3971,8 +3971,10 @@ local function StatWeightsSection(ctx, out)
     if not wt then return end
     local sec = { key = "map_weights", title = "Stat Weights", weights = true, items = {} }
     local head = Item("weights_cols", "Columns", "weighthead")
-    head.cols = { "Stat", "Rating (P / %)", "PPP", "DR Threshold", "T/L Rating", "Influences" }
-    Tip(head, "Rating (P / %): your rating (points) and the stat's percent now.")
+    -- (A24 #10, Xaya 2026-11-12, her answer verbatim: "1 + Rename to Rating") the second column's title is "Rating" (was "Rating
+    -- (P / %)"); its hover still explains the cell: points and percent
+    head.cols = { "Stat", "Rating", "PPP", "DR Threshold", "T/L Rating", "Influences" }
+    Tip(head, "Rating: your rating (points) and the stat's percent now.")
     Tip(head, "PPP: points per percent, the rating that makes 1% with no penalty. Past a diminishing-return threshold, the line under it is the rate the next point gets (DR).")
     Tip(head, "DR Threshold: the next rating where diminishing returns cut in (or the last one, passed).")
     Tip(head, "T/L Rating: T = the rating that still counts in full (rating minus what diminishing returns took), L = the rating lost to them.")

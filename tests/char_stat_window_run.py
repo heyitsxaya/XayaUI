@@ -369,9 +369,9 @@ checkp("Stat Weights sits below Character Stats (its header further down than ev
   for _, r in ipairs(recs(d, "label")) do last = math.max(last, r.y) end
   return wh and wh.y > last end)
 -- (SC-102, Bonus: Xaya S1 #36) Influences is the sixth column at the default width too (until then a line under each row below content 560)
-checkp("its column heads (default panel): Stat | Rating (P / %) | PPP | DR Threshold | T/L Rating | Influences, left to right", function()
+checkp("its column heads (default panel): Stat | Rating | PPP | DR Threshold | T/L Rating | Influences, left to right", function()
   local t = recs(d, "wcolhead")
-  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating|Influences" and t[1].x < t[2].x and t[2].x < t[3].x and t[3].x < t[4].x
+  return texts(d, "wcolhead") == "Stat|Rating|PPP|DR Threshold|T/L Rating|Influences" and t[1].x < t[2].x and t[2].x < t[3].x and t[3].x < t[4].x
     and t[4].x < t[5].x and t[5].x < t[6].x, texts(d, "wcolhead") end)
 checkp("its rows: Agility, Stamina, Critical Strike, Haste, Mastery, Versatility, Avoidance, Leech, Speed", function()
   return texts(d, "wlabel") == "Agility|Stamina|Critical Strike|Haste|Mastery|Versatility|Avoidance|Leech|Speed", texts(d, "wlabel") end)
@@ -449,7 +449,7 @@ c.size = { w = 340 }
 d = render()
 checkp("narrow panel (340, text 11): six column heads; each row's influences on the row itself in the Influences column, to the right edge (A24 #7)", function()
   local hi, r = find(d, "wcolhead", "Influences"), wrow(d, "Haste")
-  return texts(d, "wcolhead") == "Stat|Rating (P / %)|PPP|DR Threshold|T/L Rating|Influences" and hi ~= nil and r.winfl.x == hi.x
+  return texts(d, "wcolhead") == "Stat|Rating|PPP|DR Threshold|T/L Rating|Influences" and hi ~= nil and r.winfl.x == hi.x
     and r.winfl.y == r.label.y and r.winfl.x + r.winfl.w == LAY.content and T(r.winfl):find("^GCD") ~= nil,
     texts(d, "wcolhead") .. " x=" .. tostring(r.winfl.x) .. " " .. T(r.winfl) end)
 -- the comparison's copy of the map has no tree headings and no Gear Summary
