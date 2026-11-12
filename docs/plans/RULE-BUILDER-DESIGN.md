@@ -38,6 +38,8 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-44: the landing choices are laid out two per row, in this order: Spell Cooldown / Charges, Item Cooldown, Procs, Class Resource, Buff on me, Debuff on my target. The Player Info bucket was removed (RB-43, §10).
 >
+> RB-45: clicking a tile opens that type's questions under a "TRACKING: <type>" bar with "← Change type". There is no type dropdown. Each question stays greyed out until the one before it is answered, and "Add this check" is enabled only when all are answered.
+>
 > The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
