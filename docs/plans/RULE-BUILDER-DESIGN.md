@@ -46,6 +46,10 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-50: each tracking panel's title has a small grey subtitle "(Trigger N)". N is the item's position in the order the rule is stored (`extra.list`, and the editor's trigger numbering via `ns.TriggerSequence`), so it matches what the editor shows. To verify at build: a test checks that the builder's N equals the editor's number for the same rule.
 >
+> RB-61, multiple IDs:
+> - Buff and proc-buff picks are a tick list. The first ticked ID is stored as `spellID`, the rest in `alt` (any one counts).
+> - Debuff multi-ID needs an `alt` field on `targetDebuff`, a Rules change.
+> - "Buff source" (me / anyone / another player) and "self-only" lists both wait for a study and an in-game read-out of who applied a buff, in and out of combat.
 > RB-58: an item being added (item 2 or later) keeps its box full width. Its number badge sits inside the box, lined up with the tracked list's number badges, with the contents to the badge's right (RB-59, which replaces the 20 px box indent).
 > RB-57: on the Tracking step, the "So far" summary sits at the top, under the rule name and above the tracked list.
 > RB-55: "+ Track something else" opens a chooser in its own "NEW TRACKING ITEM" box below the tracked list, never inside it (RB-56). It shows the same six tiles as the first landing, with a "(Trigger N)" subtitle and Cancel. Every tracked item starts from the tiles.
