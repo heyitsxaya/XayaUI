@@ -38,7 +38,22 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
 
-**On every page:** a name box at the top holds an automatic name built from the checks, for example "Fire Blast charge + Hot Streak". The player can edit it at any point (RB-10). Once she types in it, the automatic name stops overwriting it. The box goes through `ns.KeyFocusGuard` (V29).
+**On every page:** a name box at the top holds an automatic name built from the checks, for example "Fire Blast charge + Hot Streak". The player can edit it at any point (RB-10). Once she types in it, the automatic name stops overwriting it.
+
+**Binding (RB-35):** each page shows a line under the name box: "Type your own name to replace the automatic one. After that, your name stays: choices you make later won't change it."
+
+How it works:
+- The builder keeps one flag, `nameEdited`, set by the player's own edit of the name box: on Enter, or on leaving the box with changed text.
+- While `nameEdited` is unset, adding, removing or changing a check rebuilds the automatic name.
+- Once it is set, nothing overwrites the name, including on Back/Next and after the combat reopen (RB-13 / RB-15).
+- Clearing the box to empty sets `nameEdited` back to unset, and the automatic name returns. This is a proposal, to confirm with her.
+- The final Name and group step shows whichever name is current.
+
+Required tests (fail on code without the flag, pass with it):
+1. Type a name, then add a check: the name is unchanged.
+2. With no typed name, adding a check updates the automatic name.
+3. A typed name survives Back/Next and a combat close and reopen.
+4. Clearing the box brings the automatic name back. The box goes through `ns.KeyFocusGuard` (V29).
 
 1. **Introduction (RB-23).** The overview page, shown first. It says what a rule is, what the builder sets up, and what will be asked, and has a "Don't show this introduction again" tick box. Proposal awaiting her answer: the setting is saved per account and re-enabled from Rule Settings. With it ticked, the builder opens at step 2.
 2. **Load question (RB-12).** "Do you want to assign specific cases when this rule should appear? (Combat, M+ only, etc.)", answered Yes or No.
