@@ -4,8 +4,8 @@
 > items (M1-M16) survived, each with corrections applied below; 7 new items were added (M17-M23); wording that echoed the
 > reference addons was replaced with our own. The second round reworded further phrases that still echoed reference labels or
 > tooltips, corrected citations (M8, M18, M23), marked M17 as partly covered by our instance-size list, and marked arena in M21 as
-> A third check (2026-11-12) found four remaining near-echoes and one off-by-one citation (M5, M10, M17, M19); all fixed.
 > our own addition.
+> A third check (2026-11-12) found four remaining near-echoes and one off-by-one citation (M5, M10, M17, M19); all fixed.
 
 Request (her words): "review all load conditions in EUI and ElvUI and add what we're missing as options".
 
