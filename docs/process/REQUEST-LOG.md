@@ -765,6 +765,7 @@ copy; rows it adds later are copied here.
 | RB-24 | Her canvas comment on the introduction (verbatim): "introduction pane doesn't have a progress bar" | DONE on the canvas: progress bar removed from the introduction; it sits outside the step count. OPEN (asked in thread): renumber the other boards to "Step 1-5 of 5" | design canvas |
 | RB-25 | Her canvas comment on "Which checks" (verbatim): "this is first in the sequence" | DONE in the introduction list: checks first | design canvas |
 | RB-26 | Her canvas comment on "When should it load" (verbatim): "this is last in the sequence" | DONE in the introduction list: order is checks, all/any, load, name and group (kept as the final prompt per RB-10; asked to confirm), done. OPEN: reorder and renumber the step boards to match (asked in thread) | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-27 | "reorder the step boards to match please" | DONE on the canvas: boards ordered Introduction, 1 Checks, 2 All or any, 3 When it loads, 4 Name and group, 5 Done; each says "Step N of 5" with a 5-part bar; the All-or-any summary no longer mentions load (it comes later); design doc §3 order updated | design canvas, RULE-BUILDER-DESIGN.md |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement

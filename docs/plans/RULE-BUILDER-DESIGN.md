@@ -26,6 +26,16 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 
 ## 3. Walkthrough: one step per page (RB-5)
 
+> **Binding step order (RB-25 to RB-27, from her canvas edits; this replaces the numbering in the list below):**
+> 1. Introduction: outside the count, no progress bar, can be turned off (RB-23, RB-24).
+> 2. Step 1 of 5, Checks.
+> 3. Step 2 of 5, All or any: shown only with 2 or more checks.
+> 4. Step 3 of 5, When it loads: the load question, then the Load tab 1:1.
+> 5. Step 4 of 5, Name and group: Create happens here.
+> 6. Step 5 of 5, Done.
+>
+> The list below keeps each step's detail but still uses the older numbering. The canvas is the visual reference.
+
 Every page has **Back**, **Next** and **Cancel**. Next stays greyed out until the page's required choice is made. Cancel throws the answers away. No rule exists until Finish (RB-8).
 
 **On every page:** a name box at the top holds an automatic name built from the checks, for example "Fire Blast charge + Hot Streak". The player can edit it at any point (RB-10). Once she types in it, the automatic name stops overwriting it. The box goes through `ns.KeyFocusGuard` (V29).
