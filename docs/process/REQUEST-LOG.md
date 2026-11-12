@@ -816,6 +816,8 @@ copy; rows it adds later are copied here.
 | RB-75 | Her canvas comment on the load headings (verbatim): "each of these headings should have their own selection buttons like screen 1-A" | DONE: load step shows five selection buttons (Class/Spec/Role, You, Group, Instance conditions, Zones...) with "Set: ..." summaries; new board 3b shows one set opened (bar, Back, Done) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-76 | Her canvas comment on "How this will load" (verbatim): "this belongs at the top" | DONE on 3 and 3b; the rest done by RB-77 | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-77 | Her canvas comment on "What this rule will do" (verbatim): "all of these helper tips belong at the top for ease of readability" | DONE: helper and summary boxes at the top of every step (All or any, Name and group; Tracking, Load done earlier); layout rule in the design | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-78 | Her canvas comment on 3b (verbatim): "show this screen like 2D and 2E" | DONE: 3b shows "Your load conditions" list (numbered, Remove) and the set being added in its own box (badge, LOAD bar, Change set, Remove / Add to load conditions) | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-79 | Her canvas comment on Name and group's summary (verbatim): "this box is too small" | FIXED: my RB-77 move had nested it inside the progress-bar grid; now full width under the bar | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement

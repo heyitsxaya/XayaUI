@@ -54,7 +54,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 > 4. Match ALL / ANY.
 > 5. Five selection buttons, one per condition set, each showing what is set.
 >
-> Clicking a button opens only that set, with Back and "Done with this set" (board 3b).
+> Clicking a button opens that set the way the Tracking step adds an item (RB-78). The sets already added are listed as "Your load conditions", numbered, each with Remove. The set being added sits in its own box with a number badge, a "LOAD: <set>" bar with "← Change set", and the buttons Remove / Add to load conditions.
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
