@@ -388,6 +388,18 @@ local CORE_DEBUG = {
 }
 local coreDebug, rulesDebug = {}, {}
 for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2]; rulesDebug[d[1]] = d.rules end
+-- (round 7 repair) the /xui debug words that run whether or not the debug tools (XayaUI_Debug) are loaded, so with Advanced Debugging
+-- off too. Her list for the debug folder (REQUEST-LOG A23 SD-58, her words: "perf report, /xui auras, /xuiengine, /xui status, console
+-- window, bug and debug report windows") names neither of these, and their code is read at the login either way:
+--   * loader is for when /xui will not open the settings window, and Advanced Debugging can be turned on only in that window;
+--   * talents goes to XayaUI Options with the talent scan (SD-58 "Move all four") and stays reachable here until it does.
+-- /xui debug alone (and /xui debug help) lists what runs now, and says in one line what the other debug commands need.
+-- Every other debug word, and the /xui status and /xui auras shortcuts, answer with one plain line while the tools are not loaded.
+local DEBUG_UNGATED = { loader = true, talents = true }
+local function DebugWordGated(arg)
+    local sub = tostring(arg or ""):match("^(%S*)")
+    return not (sub == "" or sub == "help" or DEBUG_UNGATED[sub])
+end
 
 -- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua)
 local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its messages, and a line to type these commands in)",
@@ -437,13 +449,15 @@ end
 function ns.PrintDebugHelp()
     local help = {}
     local rulesOn = RulesSvc() ~= nil
+    local tools = ns.DebugToolsLoaded()   -- (round 7 repair) without the debug tools, only the words that run now are listed
     for _, d in ipairs(CORE_DEBUG) do
-        if rulesOn or not d.rules then
+        if (rulesOn or not d.rules) and (tools or DEBUG_UNGATED[d[1]]) then
             for _, h in ipairs(type(d[3]) == "table" and d[3] or { d[3] }) do help[#help + 1] = h end
         end
     end
-    for _, h in ipairs(ns.DebugCommandHelp and ns.DebugCommandHelp() or {}) do help[#help + 1] = h end
+    if tools then for _, h in ipairs(ns.DebugCommandHelp and ns.DebugCommandHelp() or {}) do help[#help + 1] = h end end
     PrintCommandList("debug commands (%d), each typed as /xui debug <name>:", help, "/xui debug ")
+    if not tools then ns.DebugToolsNeeded("Every other debug command") end
 end
 -- /xui debug <name> [args]
 local function RunDebug(arg)
@@ -513,8 +527,9 @@ SlashCmdList["XAYAUI"] = function(msg)
     local cmd, arg = msg:match("^(%S*)%s*(.-)$")
     if cmd == "" or cmd == "config" or cmd == "options" then
         ns.ToggleUI()   -- loads XayaUI_Options on first use (Modules.lua section 7)
-    elseif (cmd == "debug" or SHORTCUTS[cmd]) and not ns.DebugToolsLoaded() then
-        -- (round 7; REQUEST-LOG A23 SD-58: the debug tools load only while Advanced Debugging is on, DebugRecord.lua) one plain line
+    elseif ((cmd == "debug" and DebugWordGated(arg)) or SHORTCUTS[cmd]) and not ns.DebugToolsLoaded() then
+        -- (round 7; REQUEST-LOG A23 SD-58: the debug tools load only while Advanced Debugging is on, DebugRecord.lua) one plain line;
+        -- /xui debug loader and talents, and the list, still run (DEBUG_UNGATED above)
         ns.DebugToolsNeeded("/xui " .. cmd .. (arg ~= "" and (" " .. arg:gsub("|", "||")) or ""))
     elseif cmd == "debug" then
         -- (Xaya 2026-11-06: "Debug cmds open console") opens the console window and prints there; XayaUI_Debug/Console.lua ns.RunInConsole

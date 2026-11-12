@@ -11,8 +11,10 @@ reload"; V26: the console window, the bug report and the debug report are exempt
 What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI_Options and XayaUI_Debug, all switched on in the AddOns
 list) in the stand-in game. [new] = fails on the pre-change files (proved on a copy of HEAD 2381c09d, where XayaUI_Debug does not exist):
   F  A fresh install: [new] Advanced Debugging is off; [new] no file of XayaUI_Debug is read (the game never loads it); [new] no "Advanced
-     debugging is on" line at the login; [new] /xui console, /xui bug, /xui report, /xui debug, /xui debug status, /xui status and
-     /xui auras each print ONE plain line saying they need Advanced Debugging and a /reload, and open no window; [new] the same buttons in
+     debugging is on" line at the login; [new] /xui console, /xui bug, /xui report, /xui debug status / perf / auras, /xui status and
+     /xui auras each print ONE plain line saying they need Advanced Debugging and a /reload, and open no window; [new] (round 7 repair)
+     /xui debug loader and /xui debug talents status, which are not on her list for the debug folder and stay in core, still run, in
+     combat too, and /xui debug lists them with one line saying what the other debug commands need; [new] the same buttons in
      Settings > Debugging (they call the same entry points) do the same; [new] XayaUI's messages go to chat even with a saved choice of
      the console window; [new] in combat the line comes at once (nothing waits for combat to end); turning Advanced Debugging on during
      the session loads nothing ([new] the line then says a /reload is needed); XayaUI's own errors still reach the game's error handler.
@@ -21,6 +23,7 @@ list) in the stand-in game. [new] = fails on the pre-change files (proved on a c
      the lines logged before it was built (they wait in core's buffer) and a private line that came while it was closed; /xui bug shows
      the bug report; /xui report shows the debug report window; /xui debug opens the console and lists the commands; in combat
      /xui console, /xui bug, /xui report and /xui debug loader work at once (V26).
+  N  [new] (round 7 repair) Options switched off on a fresh install: /xui debug loader still reports why the settings window is missing.
   R  [new] A /reload with it on prints the line again (once); turning it off and reloading: no line, [new] nothing of the debug tools read.
   M  [new] The right-click tracker left core (SD-57 "dev tools"): no XayaUI/MouseTracker.lua in XayaUI.toc, /xui debug mouse does not exist.
 Run: python3 tests/fix_r7_debug_tools_run.py   (Lua 5.1 via lupa; reads tests/harness/api_index.json when XUI_API_INDEX points to it)."""
@@ -65,11 +68,30 @@ if phase == "fresh" then
   one("console", "The console window (/xui console)")
   one("bug", "The bug report (/xui bug)")
   one("report", "The debug report (/xui report)")
-  one("debug", "/xui debug")
   one("debug status", "/xui debug status")
-  one("debug loader", "/xui debug loader")
+  one("debug perf", "/xui debug perf")
+  one("debug auras", "/xui debug auras")
   one("status", "/xui status")
   one("auras", "/xui auras")
+  -- (round 7 repair) loader and talents are not on her list for the debug folder (SD-58) and stay in core: they still run, in chat
+  local n0 = #W.printed
+  SlashCmdList.XAYAUI("debug loader")
+  local lo = since(n0)
+  check("[new] F5b /xui debug loader still runs with Advanced Debugging off: its report in chat, and no 'needs Advanced Debugging' line",
+    count(lo, "XayaUI: debug: ToggleUI=") == 1 and count(lo, "XayaUI: debug: settings window ") == 1 and count(lo, "Advanced Debugging") == 0,
+    table.concat(lo, " / "))
+  n0 = #W.printed
+  SlashCmdList.XAYAUI("debug talents status")
+  local ta = since(n0)
+  check("[new] F5c /xui debug talents status (read-only) still answers with Advanced Debugging off",
+    #ta >= 1 and count(ta, "talent scan") >= 1 and count(ta, "Advanced Debugging") == 0, table.concat(ta, " / "))
+  n0 = #W.printed
+  SlashCmdList.XAYAUI("debug")
+  local li = since(n0)
+  check("[new] F5d /xui debug lists what runs now (loader, talents), leaves out the debug folder's words, and says in one line what they need",
+    count(li, "debug commands (2)") == 1 and count(li, "/xui debug loader") == 1 and count(li, "/xui debug talents") == 1
+      and count(li, "/xui debug status") == 0 and count(li, "/xui debug perf") == 0 and count(li, "/xui debug auras") == 0
+      and li[#li] == "XayaUI: Every other debug command " .. NEEDS, table.concat(li, " / "))
   check("[new] F6 ... and no window opened: no console window, no copy box, no debug report window",
     rawget(_G, "XayaUIConsoleWindow") == nil and not shown("XayaUICopyBox") and rawget(_G, "XayaUIDebugReport") == nil)
   -- the Settings > Debugging buttons call these same entry points (XayaUI_Options/Options.lua: bugMake, repOpen, consoleWin)
@@ -92,9 +114,13 @@ if phase == "fresh" then
   got = since(n)
   check("F10 in combat: /xui console and /xui bug answer at once with the same line (no 'during combat' wait)",
     #got == 2 and count(got, NEEDS) == 2 and count(got, "combat") == 0, table.concat(got, " / "))
+  SlashCmdList.XAYAUI("debug loader")
+  got = since(n)
+  check("[new] F10b in combat with Advanced Debugging off: /xui debug loader answers at once (V26)",
+    #got == 4 and count(got, "XayaUI: debug: ToggleUI=") == 1 and count(got, "combat") == 0, table.concat(got, " / "))
   W.combat = false; W.fire("PLAYER_REGEN_ENABLED"); W.tick(0.1, 5)
   got = since(n)
-  check("F11 ... and nothing opens after combat", #got == 2 and rawget(_G, "XayaUIConsoleWindow") == nil, table.concat(got, " / "))
+  check("F11 ... and nothing opens after combat", #got == 4 and rawget(_G, "XayaUIConsoleWindow") == nil, table.concat(got, " / "))
   -- an error in a XayaUI file still reaches the game's error handler (Core.lua chains it; caught, never swallowed)
   local errs0 = #W.errors
   pcall(geterrorhandler(), "Interface/AddOns/XayaUI_Rules/Engine.lua:1: a test error while debugging is off")
@@ -170,6 +196,15 @@ elseif phase == "on" then
     table.concat(since(n), " / "))
   W.combat = false; W.fire("PLAYER_REGEN_ENABLED"); W.tick(0.1, 5)
   ns.ShowCopyBox = S0
+elseif phase == "noopt" then
+  -- (round 7 repair; the reviewer's case) a fresh install with XayaUI Options switched off in the AddOns list: /xui will not open the
+  -- settings window, where Advanced Debugging is turned on, so the loader report is the player's only way to see why. It must run.
+  local n = #W.printed
+  SlashCmdList.XAYAUI("debug loader")
+  local got = since(n)
+  check("[new] N1 Options switched off, Advanced Debugging off: /xui debug loader says the settings window is not loaded (disabled)",
+    ns.AdvancedDebugOn() == false and count(got, "XayaUI: debug: settings window not loaded yet (disabled)") == 1
+      and count(got, "Advanced Debugging") == 0, table.concat(got, " / "))
 elseif phase == "reload" then
   check("[new] R1 a /reload with Advanced Debugging on: the line again, once", onLines == 1, table.concat(atLogin, " / "))
   check("R2 ... and XayaUI Debug is read again, once", loadedTimes("XayaUI_Debug") == 1)
@@ -184,9 +219,9 @@ return R, out
 '''
 
 
-def session(saved, phase):
+def session(saved, phase, addons=("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug")):
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug")]
+    enabled = [n for n in folders if n in addons]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     sv = H.savedvars(L)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
@@ -207,6 +242,8 @@ def main():
     results.append(("[new] M2 the right-click tracker left core: XayaUI.toc lists no MouseTracker.lua, and the file is gone",
                     "MouseTracker.lua" not in toc and not os.path.exists(os.path.join(H.ROOT, "XayaUI", "MouseTracker.lua"))))
     r, e, _ = session({}, "fresh")
+    results += r; errors += e
+    r, e, _ = session({}, "noopt", ("XayaUI", "XayaUI_Rules", "XayaUI_Debug"))
     results += r; errors += e
     r, e, saved = session({"XayaUI": {"CueRulesDB": {"version": 1, "ui": {"advancedDebug": True, "msgDest": "console"}}}}, "on")
     results += r; errors += e

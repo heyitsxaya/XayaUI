@@ -21,7 +21,8 @@
 --    one event frame (made only while Advanced Debugging is on) listens to the two events the game raises when it blocks an action.
 --  * The debug tools (XayaUI_Debug, load-on-demand): the console window, the bug report (/xui bug) and the debug report window
 --    (/xui report). Loaded once per login or /reload, at the login, only while Advanced Debugging is on; nothing else loads them.
---    While they are not loaded, each of them, and every /xui debug word, prints one plain line saying what it needs (ns.DebugToolsNeeded).
+--    While they are not loaded, each of them, /xui status, /xui auras and the /xui debug words in the debug folder print one plain line
+--    saying what they need (ns.DebugToolsNeeded); /xui debug loader and talents, which stay in core, still run (Core.lua DEBUG_UNGATED).
 --  * Where XayaUI's messages go (ns.MessageDest): "chat", "console" (the console window, XayaUI_Debug) or "both"; always chat while
 --    the console window's addon is not loaded.
 --  * What to send (ns.SendText / ns.SavedFilePath): the saved-data files to upload and where they are, as copyable text.
@@ -316,8 +317,9 @@ end
 -- reloading should print to the chat pane "advanced debugging is on. to turn this off ...""; V34: off means not read, detected once per
 -- reload. So: at the login (PLAYER_LOGIN, which the game raises at every login and every /reload), and only while Advanced Debugging is
 -- on, core loads XayaUI_Debug (C_AddOns.LoadAddOn) once, and prints her line in chat. Nothing else loads it: with Advanced Debugging off
--- none of its files is read, and the console window, /xui bug, /xui report and /xui debug answer with one plain line instead
--- (ns.DebugToolsNeeded). Turned on during a session, the tools load at the next /reload; turned off, they stay until then.
+-- none of its files is read, and the console window, /xui bug, /xui report, /xui status, /xui auras and the debug folder's /xui debug
+-- words answer with one plain line instead (ns.DebugToolsNeeded; /xui debug loader and talents still run, Core.lua DEBUG_UNGATED).
+-- Turned on during a session, the tools load at the next /reload; turned off, they stay until then.
 -- Game API (docs/reference/api/namespaces.md, C_AddOns, 12.1.5; each has SecretArguments=AllowedWhenUntainted, and XayaUI passes only
 -- its own literal addon name):
 --   C_AddOns.LoadAddOn(name: uiAddon) -> loaded: bool?, value: string?                                       (namespaces.md:164)

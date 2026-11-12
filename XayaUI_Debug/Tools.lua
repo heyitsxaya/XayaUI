@@ -12,8 +12,8 @@
 -- (ns.logBuf) and the console's line feed with its private queue (ns.ConsoleSink, Console.lua), so the console window catches up on
 -- every line that came before it was built.
 -- How a debug piece plugs in: its file is appended to XayaUI_Debug.toc and registers its words through Modules.lua (ns.RegisterDebugCommand
--- for /xui debug <name>, ns.RegisterCommand for /xui <name>). While this addon is not loaded, core answers every debug word with one
--- plain line saying it needs Advanced Debugging and a /reload (ns.DebugToolsNeeded).
+-- for /xui debug <name>, ns.RegisterCommand for /xui <name>). While this addon is not loaded, core answers every debug word but its own
+-- loader and talents (Core.lua DEBUG_UNGATED) with one plain line saying it needs Advanced Debugging and a /reload (ns.DebugToolsNeeded).
 -- V26 (combat lock): every tool here is exempt (her words: "unless flagged for exemption (e.g. debugging)"; the error / bug report, the
 -- console window and read-only /xui debug commands): each works in combat.
 -------------------------------------------------------------------------------
