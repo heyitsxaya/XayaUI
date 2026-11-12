@@ -789,6 +789,7 @@ copy; rows it adds later are copied here.
 | RB-48 | Her canvas comment on the check buttons (verbatim): "change \"check\" to \"Tracking\"" | DONE on every board (step label, list heading, empty state, buttons, All-or-any text, intro list, name hint) and canvas titles; closes RB-34 | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-49 | Her canvas comment on the tracking heading (verbatim): "Triggers in parentheses so users understand what they're called in the panes themselves" | DONE: "(Triggers)" after the Tracking heading, step label, All-or-any list heading and intro list; buttons unchanged (asked) | design canvas, RULE-BUILDER-DESIGN.md |
 | RB-50 | Her canvas comment on the TRACKING bar (verbatim): "put in smaller subtitle fonting \"(Trigger #)\"" | DONE: small grey "(Trigger N)" subtitle under each tracking panel title (B, C, E, F, 1 · Tracking); design: N = position in the stored trigger order (matches the editor's numbering) | design canvas, RULE-BUILDER-DESIGN.md |
+| RB-51 | Her canvas comment on "Preview" (verbatim): "what does \"preview\" mean here?" | ANSWERED in thread: the plain-language line of the item before adding; "preview" clashes with the editor's display preview; offered "This will track:" (recommended), "Reads as:", or no label. OPEN: her pick | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
