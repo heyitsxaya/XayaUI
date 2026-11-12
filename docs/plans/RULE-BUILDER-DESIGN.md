@@ -58,7 +58,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-80/81: the "Load Conditions" box always starts with a required item "Show this rule": Always / Never / Combination (maps to load.mode never / always / all-or-any); with Combination a second dropdown picks ALL or ANY of the sets. Added sets are listed under "Combination: sets you've added", not called load conditions. RB-82: in the Instance conditions set, Instance / In A Mythic+ / Boss encounter sit under the "Instance type" heading with the six instance types.
 >
-> RB-83: "How this will load" also states the negative: "It will NOT load when you are NOT …", built from the same settings; under ALL the unmet conditions are joined with OR, under ANY with AND.
+> RB-83: "How this will load" also states the negative: "It will NOT load when you are NOT …", built from the same settings; under ALL the unmet conditions are joined with OR, under ANY with AND. RB-84 supersedes the joined sentence: conditions are grouped into lists, "It will load only when you are: …" / "It will also only load when you are NOT: …" and the mirrored "It will NOT load when you are NOT: …" / "It will also NOT load when you are: …"; a line with no entries is hidden. Under ANY the positive line reads "when you are any of: …" (proposed, awaiting her check).
 > RB-72 / RB-73: the load step's conditions are grouped:
 > - **You:** combat, mounted, resting.
 > - **Group:** group, raid group.
