@@ -22,6 +22,21 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-13 — Class themes
+
+### XayaUI 0.6.86
+
+**Class Colors Theme**
+- Added colors of its own for every class under the Class colors theme: accent, selected row text, labels, button text, selected tabs, primary buttons and borders. The theme follows the class you play, or the class you pick.
+- Added a glow gradient for every class: the highlight behind a selected rule's top parent group now runs through the class's own colors instead of fading from the class color to black.
+  *Developers' notes: Gradients can now say where each color sits along them (0 to 1), so a color can hold before it blends, as the class glows do. Theme strings without that are unchanged; an older XayaUI reading one with it draws the same colors evenly spaced. The Evoker colors are held until they have been seen in game. Not yet tested in game.*
+- The Theme page's "Reverse gradient direction" switch now shows under Class colors and turns the glow round.
+
+### Options 0.6.109
+
+**Rule List**
+- The parent group glow now draws a gradient theme color across the whole row, including a gradient of your own on "Parent group glow" (Advanced customization).
+
 ## 2026-11-12 — Stat Calculator
 
 ### Bonus Features 0.6.46

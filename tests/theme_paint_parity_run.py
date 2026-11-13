@@ -24,6 +24,11 @@ Options or Rules draws anything differently. XayaUI_Reskin is not on main, so th
 Re-recorded on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
 origin/main ad60a05 and of the new code differ, on all 16 theme / page pairs, only in the window's top tab row (win.10.1.2.*): a fifth
 drawn tab, "Bonus Features" (20 lines), and the other tabs narrower to share the row (their widths and draw sizes); 0 other lines.
+Re-recorded on 2026-11-13 for class themes v2 (XayaUI 0.6.86, Options 0.6.109): the stand-in's player is a Demon Hunter, which now has
+its own class colours (Theme.lua T.CLASS_THEMES). `--dump` of fda1e29 and of the new code: Light mode, Color blind and Custom are byte
+for byte the same on all 12 of their pages; on the 4 Class colors pages, with every digit masked, the only lines that differ are the
+Theme page's "Reverse gradient direction" switch, now shown because the class theme has a glow gradient (9 lines), and the colour codes in
+the Theme page's group headings (3 lines); every other changed line is a colour value. 0 other lines.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

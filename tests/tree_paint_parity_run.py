@@ -27,6 +27,9 @@ Regenerated on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under Xa
 origin/main ad60a05 and of the new code differ only in (1) one new line "tab bonus box false" (the Bonus Features top tab, no tick box)
 in every drawing, and (2) the Rules-off Profiles drawing's left-over tree row, which belongs to the tab shown just before it: now the
 Bonus Features tree's "Stat Calculator" row (one line). 0 other lines.
+Regenerated on 2026-11-13 for class themes v2 (XayaUI 0.6.86, Options 0.6.109): the stand-in's player is a Demon Hunter, which now has
+its own class colours. `--dump` of fda1e29 and of the new code differ in each of the 8 drawings by one line: the selected rule's text colour
+(accentText, now the Demon Hunter's #E7C7F4). With every digit masked the drawings are identical. 0 other lines.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

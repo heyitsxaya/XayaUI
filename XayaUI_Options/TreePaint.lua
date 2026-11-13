@@ -175,8 +175,12 @@ local function PaintBanner(button)
         local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
         if s3 and uvStr == (s1 .. "\001" .. s2) then nestTop = true end
     end
+    local TH = ns.Theme
     if not c and not nestTop then
-        if button.xuiBanner then button.xuiBanner:Hide(); button.xuiBannerBar:Hide() end
+        if button.xuiBanner then
+            if TH and TH.HideLineGrad then TH.HideLineGrad(button, button.xuiBanner) end
+            button.xuiBanner:Hide(); button.xuiBannerBar:Hide()
+        end
         return
     end
     if not button.xuiBanner then
@@ -186,6 +190,19 @@ local function PaintBanner(button)
         button.xuiBannerBar:SetPoint("TOPLEFT"); button.xuiBannerBar:SetPoint("BOTTOMLEFT"); button.xuiBannerBar:SetWidth(6)
     end
     local b, bar = button.xuiBanner, button.xuiBannerBar
+    -- (Options 0.6.109, class themes v2) a theme whose glow colour is a gradient (a class with its own glow in Theme.lua's
+    -- T.CLASS_THEMES, or a gradient of your own on "Parent group glow") draws that gradient across the row, left to right, at the
+    -- banner's 0.95; any other theme: the glow colour to black, as before.
+    local glow = nestTop and TH and TH.Grad and TH.PaintLine and TH.Grad("xui-list-parent", "bg", "settings")
+    if glow then
+        for _, st in ipairs(glow.stops) do st[4] = (st[4] or 1) * 0.95 end
+        glow.dir = "H"
+        bar:Hide()
+        b:Show()
+        TH.PaintLine(button, b, nil, glow, "H", "BACKGROUND", -2)
+        return
+    end
+    if TH and TH.HideLineGrad then TH.HideLineGrad(button, b) end
     if nestTop then
         local g = ns.TREE_GRAD
         b:SetColorTexture(g[1], g[2], g[3], 0.95)

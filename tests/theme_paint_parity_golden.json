@@ -1,19 +1,19 @@
 {
  "class/display": {
   "lines": 411,
-  "sha": "a36acd59cf3b74b4b81992e82868668664da18e6217a0d68400b3b629814bd1b"
+  "sha": "b797174cf7c9bebc49df6891ac9b31cc9452143754eba1c434a12587930d2893"
  },
  "class/profiles": {
   "lines": 311,
-  "sha": "29b390d484586549e07a31f0bdaa0db0020507e1875972ef5c8f705227231180"
+  "sha": "abc2487360eda2cdb73accea0cdbab30a4a3461af169b3cf48a84ac9197992c3"
  },
  "class/rules": {
   "lines": 367,
-  "sha": "44d0fdf3c077636435be25449d813fd58215fd6454e3ddb9fe4ac69aeb35494c"
+  "sha": "91074d45a637e533697a99c7fe71980536afa86ca185951c07f8bf4b26de0f92"
  },
  "class/theme": {
-  "lines": 695,
-  "sha": "a6f254e0b0edd6e353841fdf9d5bba0ce61cf203117b11520d5f22082a8a8657"
+  "lines": 704,
+  "sha": "ba81d784a87fade3bbb48ae07577a2f961052c8681685b7ec073dc928981fa8c"
  },
  "colorblind/display": {
   "lines": 411,

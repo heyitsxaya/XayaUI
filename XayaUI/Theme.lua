@@ -93,7 +93,22 @@ local function CleanCol(c) return { Clamp01(c[1]), Clamp01(c[2]), Clamp01(c[3]),
 --   th.tokens[k] = {r,g,b,a}   your solid colour (as before)        th.grads[k] = gradient | false   your gradient, or false = "solid here"
 --   T.BUILTIN[b].pal[k]        the theme's solid colour (as before)  T.BUILTIN[b].grads[k] = gradient   the theme's own gradient
 -- A theme without gradients stores and exports nothing new (no grads / gradRev keys), so its strings are byte-for-byte what they were.
+-- (class themes v2, core 0.6.86) optional pos = { p1 .. pn }: where each stop sits along the gradient, 0 to 1, one per stop, never
+-- going back (Xaya 2026-11-13: her class glows hold the class colour across the left edge, then blend; "Exact positions"). Before the
+-- first position the first colour holds, after the last one the last colour holds. Without pos (every gradient before this) the stops
+-- are evenly spaced, exactly as before; a pos that does not fit its stops is dropped (evenly spaced), so an older XayaUI reading a
+-- string with pos, which drops the key, draws the same colours evenly spaced.
 local GRAD_MAX = 8
+local function CleanPos(pos, n)
+    if type(pos) ~= "table" or #pos < n then return nil end
+    local out, last = {}, 0
+    for i = 1, n do
+        local p = pos[i]
+        if type(p) ~= "number" or p ~= p or p < last or p > 1 then return nil end
+        out[i] = p; last = p
+    end
+    return out
+end
 local function CleanGrad(g)
     if type(g) ~= "table" or type(g.stops) ~= "table" then return nil end
     local stops = {}
@@ -103,7 +118,7 @@ local function CleanGrad(g)
         stops[i] = CleanCol(c)
     end
     if #stops < 2 then return nil end
-    return { stops = stops, dir = (g.dir == "V") and "V" or nil }
+    return { stops = stops, dir = (g.dir == "V") and "V" or nil, pos = CleanPos(g.pos, #stops) }
 end
 T.CleanGrad = CleanGrad
 
@@ -139,7 +154,153 @@ function T.ClassColor(file)
     return { 0.75, 0.25, 1, 1 }
 end
 
--- The "class" base: the XUI structure with the class color driving every accent-like token.
+-- Class themes v2 (core 0.6.86; Xaya confirmed each on the design canvas "XayaUI Addon Mockups", boards "Class themes v2" and "Glow
+-- gradients", 2026-11-13; the full approved list for all thirteen classes came from that design session the same day). A class listed
+-- here gets its own colours under the "class" base; a class not listed keeps the colours worked out from its class colour
+-- (T.ClassPalette below). Adding or changing a class is data only: one entry here.
+--   pal       token -> hex "RRGGBB" (hex / 255; alpha 1, except tabSelBg 0.9 and primaryBg 0.95, as the derived palette has them).
+--             A token not listed keeps the derived colour (gradStart, buttonBorder, and every token the class base never sets).
+--   grads     token -> { { hex, position 0..1 }, ... } 2 to 8 stops, "Glow as designed" (Xaya chose exact positions, 2026-11-13).
+--   glowText  the rule-name and Ready colours on the glow; noToken  secondary / primaryText / surfaceTint. Kept as data only: no token
+--             or element takes them yet (Xaya 2026-11-13: "hold them for now"). Nothing reads either table.
+-- The hex values are the source of truth. Contrast was checked in the mockups over the dark window at the default Window opacity;
+-- a few glow texts read below 4.5:1 on the bright class band by her choice (Priest rule name, Paladin rule name ~3.6:1, Rogue Ready 4.45:1).
+T.CLASS_THEMES = {
+    PRIEST = {
+        pal = { accent = "C7C2C8", accentText = "D7D2D8", label = "D8D2B1", buttonText = "D8D2B1", tabSelBg = "2A242A", tabSelBorder = "A487A5",
+            primaryBg = "393339", primaryBorder = "B79AB4", border = "403B40" },
+        grads = { gradStart = { { "FFFFFF", 0 }, { "FBFAF7", 0.10 }, { "E5DFC7", 0.22 }, { "D0C498", 0.34 }, { "C7B19C", 0.48 }, { "BE9D9F", 0.62 },
+            { "B494A7", 0.78 }, { "A498B9", 1 } } },
+        glowText = { name = "9A5D95", ready = "3A2830" },
+        noToken = { secondary = "D09CCA", primaryText = "F2F0E7", surfaceTint = "8E778F" },
+    },
+    WARRIOR = {
+        pal = { accent = "C6A27B", accentText = "EFCEAA", label = "DDD1A5", buttonText = "DDD1A5", tabSelBg = "362107", tabSelBorder = "D67066",
+            primaryBg = "542620", primaryBorder = "EB8375", border = "3D3E39" },
+        grads = { gradStart = { { "C69B6D", 0 }, { "C69B6D", 0.06 }, { "744929", 0.22 }, { "573B2A", 0.40 }, { "4E4A47", 0.58 }, { "4C6B7C", 0.75 },
+            { "6C96AE", 0.88 }, { "6E99B2", 1 } } },
+        glowText = { name = "FFF0DB", ready = "10222B" },
+        noToken = { secondary = "5A95B1", primaryText = "FCECE5", surfaceTint = "B16D4A" },
+    },
+    EVOKER = {   -- frozen by Xaya until she sees it in game: exactly as given
+        pal = { accent = "5FA997", accentText = "A2E4D3", label = "8BA5E0", buttonText = "8BA5E0", tabSelBg = "062D26", tabSelBorder = "40A690",
+            primaryBg = "0D3E34", primaryBorder = "5DB7A9", border = "2F423C" },
+        grads = { gradStart = { { "33937F", 0 }, { "33937F", 0.06 }, { "06332A", 0.22 }, { "0E2A2B", 0.38 }, { "13222B", 0.54 }, { "201923", 0.70 },
+            { "2F0D15", 0.86 }, { "2F0D15", 1 } } },
+        glowText = { name = "D9FFF6", ready = "FBBFC8" },
+        noToken = { secondary = "E3496F", primaryText = "E0F6F0", surfaceTint = "45907F" },
+    },
+    DRUID = {   -- resmoothed 2026-11-13 (orange to lilac over 40-66%)
+        pal = { accent = "E6803A", accentText = "FBC8AB", label = "E7CDAA", buttonText = "E7CDAA", tabSelBg = "3B1D0B", tabSelBorder = "CF7940",
+            primaryBg = "522912", primaryBorder = "E18D5D", border = "473A30" },
+        grads = { gradStart = { { "FF7C0A", 0 }, { "FF7C0A", 0.06 }, { "E87E42", 0.24 }, { "E47F51", 0.40 }, { "CB8689", 0.53 }, { "B289B6", 0.66 },
+            { "6884D1", 0.83 }, { "537BE8", 1 } } },
+        glowText = { name = "590E00", ready = "040A4E" },
+        noToken = { secondary = "A9BCF2", primaryText = "FAEEDE", surfaceTint = "A3754D" },
+    },
+    DEMONHUNTER = {   -- the resmoothed glow (62% stop #245B67)
+        pal = { accent = "C27FDD", accentText = "E7C7F4", label = "DCC8ED", buttonText = "DCC8ED", tabSelBg = "311D38", tabSelBorder = "B178C7",
+            primaryBg = "43294D", primaryBorder = "C58ADB", border = "433948" },
+        grads = { gradStart = { { "A330C9", 0 }, { "A330C9", 0.06 }, { "70369A", 0.20 }, { "594085", 0.34 }, { "4C4C7A", 0.48 }, { "245B67", 0.62 },
+            { "608D66", 0.78 }, { "9CDC24", 1 } } },
+        glowText = { name = "FCE3FF", ready = "173800" },
+        noToken = { secondary = "9EFC52", primaryText = "F4EDF7", surfaceTint = "976DA9" },
+    },
+    DEATHKNIGHT = {
+        pal = { accent = "DF5F69", accentText = "FFC3C2", label = "E7CDAA", buttonText = "E7CDAA", tabSelBg = "351315", tabSelBorder = "D66F71",
+            primaryBg = "542526", primaryBorder = "EB8184", border = "4C3737" },
+        grads = { gradStart = { { "C41E3A", 0 }, { "C41E3A", 0.10 }, { "601A21", 0.24 }, { "352031", 0.40 }, { "292C5B", 0.56 }, { "305597", 0.72 },
+            { "A4E1FF", 0.86 }, { "A4E1FF", 1 } } },
+        glowText = { name = "FFC3C2", ready = "58081B" },
+        noToken = { secondary = "8CBDE8", primaryText = "FCEBEB", surfaceTint = "AF6A6A" },
+    },
+    SHAMAN = {   -- resmoothed 2026-11-13 (dusky violet at the blue to rust hand-off); the last colour holds from 92%
+        pal = { accent = "5899F3", accentText = "B8DBE6", label = "DAD3A6", buttonText = "DAD3A6", tabSelBg = "012A3D", tabSelBorder = "3BA0BC",
+            primaryBg = "492746", primaryBorder = "D686BC", border = "2D404A" },
+        grads = { gradStart = { { "0070DD", 0 }, { "0070DD", 0.10 }, { "2168BD", 0.24 }, { "415E9A", 0.37 }, { "65537B", 0.51 }, { "7E4D57", 0.65 },
+            { "94422F", 0.78 }, { "844C3E", 0.92 } } },
+        glowText = { name = "FFFFFF", ready = "FFCBBC" },
+        noToken = { secondary = "E1815B", primaryText = "E3F3FB", surfaceTint = "3E88B5" },
+    },
+    MONK = {   -- resmoothed 2026-11-13 (mint, jade, green, olive, gold)
+        pal = { accent = "66E19A", accentText = "A9E4CA", label = "D5D59B", buttonText = "D5D59B", tabSelBg = "022F1D", tabSelBorder = "39A979",
+            primaryBg = "114024", primaryBorder = "5ABC7E", border = "49392D" },
+        grads = { gradStart = { { "00FF98", 0 }, { "00FF98", 0.10 }, { "00ED9D", 0.25 }, { "00D4A1", 0.40 }, { "34B58D", 0.55 }, { "7AAB61", 0.70 },
+            { "B2A341", 0.85 }, { "D29B2F", 1 } } },
+        glowText = { name = "003F22", ready = "533600" },
+        noToken = { secondary = "E1A350", primaryText = "E1F7E8", surfaceTint = "41936C" },
+    },
+    PALADIN = {
+        pal = { accent = "DD8AAE", accentText = "FAC2D8", label = "D9D3A6", buttonText = "D9D3A6", tabSelBg = "3C1D0E", tabSelBorder = "D3764A",
+            primaryBg = "453200", primaryBorder = "CA9D33", border = "4C3734" },
+        grads = { gradStart = { { "F48CBA", 0 }, { "F48CBA", 0.14 }, { "CF7496", 0.30 }, { "CF7496", 0.44 }, { "D99682", 0.58 }, { "E3B564", 0.72 },
+            { "EBCE90", 0.86 }, { "F3E6BC", 1 } } },
+        glowText = { name = "6D2F00", ready = "7B3E59" },
+        noToken = { secondary = "FFC06D", primaryText = "F8EFDE", surfaceTint = "B46760" },
+    },
+    ROGUE = {   -- the glow starts on a dimmed class yellow (#CBC256), not the full #FFF468 (too bright, Xaya)
+        pal = { accent = "CDCA5A", accentText = "D8D7B1", label = "BFD8C8", buttonText = "BFD8C8", tabSelBg = "202731", tabSelBorder = "6497C7",
+            primaryBg = "55251B", primaryBorder = "B3A659", border = "344134" },
+        grads = { gradStart = { { "CBC256", 0 }, { "CBC256", 0.12 }, { "ACAA4D", 0.25 }, { "707C3B", 0.37 }, { "304B26", 0.50 }, { "0F341C", 0.64 },
+            { "24303D", 0.84 }, { "2F2543", 1 } } },
+        glowText = { name = "24303D", ready = "16A969" },
+        noToken = { secondary = "16A969", primaryText = "F3F1E2", surfaceTint = "479268" },
+    },
+    HUNTER = {   -- marked final by Xaya: exactly as given
+        pal = { accent = "A9CC7B", accentText = "C7DEAC", label = "DED1A9", buttonText = "DED1A9", tabSelBg = "212A14", tabSelBorder = "7F9F52",
+            primaryBg = "2D3B1B", primaryBorder = "92B16C", border = "394032" },
+        grads = { gradStart = { { "AAD372", 0 }, { "AAD372", 0.20 }, { "9AC067", 0.33 }, { "76934D", 0.46 }, { "516633", 0.58 }, { "313E1B", 0.71 },
+            { "252F12", 0.84 }, { "292807", 1 } } },
+        glowText = { name = "1E2A0A", ready = "6EA078" },
+        noToken = { secondary = "6EA078", primaryText = "EBF4E2", surfaceTint = "728955" },
+    },
+    MAGE = {   -- confirmed 2026-11-13; white glow text by her choice (about 2:1 on the light bar); the bar may be revised
+        pal = { accent = "5ED6F6", accentText = "A0E0F3", label = "BED4EB", buttonText = "BED4EB", tabSelBg = "06293E", tabSelBorder = "359BD9",
+            primaryBg = "003C4B", primaryBorder = "00B7DA", border = "3D3B4C" },
+        grads = { gradStart = { { "3FC7EB", 0 }, { "3FC7EB", 0.04 }, { "85BFEB", 0.25 }, { "D3AEED", 0.62 }, { "EA8F49", 0.90 }, { "EA8F49", 1 } } },
+        glowText = { name = "FFFFFF", ready = "FFFFFF" },
+        noToken = { secondary = "F28881", primaryText = "DFF5FB", surfaceTint = "238EA9" },
+    },
+    WARLOCK = {   -- confirmed 2026-11-13; the last colour holds from 90%; rule name about 2.8:1 on the lavender start, accepted
+        pal = { accent = "979AF1", accentText = "CCD0FF", label = "D4CAF5", buttonText = "D4CAF5", tabSelBg = "28213E", tabSelBorder = "8D8EBE",
+            primaryBg = "402A50", primaryBorder = "A695EF", border = "49383C" },
+        grads = { gradStart = { { "8788EE", 0 }, { "8788EE", 0.02 }, { "7879D4", 0.17 }, { "6262AC", 0.31 }, { "484780", 0.46 }, { "2C3252", 0.61 },
+            { "09302B", 0.75 }, { "05270D", 0.90 } } },
+        glowText = { name = "F0F3FF", ready = "6DA940" },
+        noToken = { secondary = "5E992F", primaryText = "F6ECF9", surfaceTint = "459173" },
+    },
+}
+local CLASS_ALPHA = { tabSelBg = 0.9, primaryBg = 0.95 }
+local function HexCol(s, a)
+    if type(s) ~= "string" or not s:match("^%x%x%x%x%x%x$") then return nil end
+    return { tonumber(s:sub(1, 2), 16) / 255, tonumber(s:sub(3, 4), 16) / 255, tonumber(s:sub(5, 6), 16) / 255, a or 1 }
+end
+T.HexCol = HexCol
+-- the class's own colours as { pal = token -> {r,g,b,a}, grads = token -> gradient }, fresh tables; nil for a class without an entry
+function T.ClassTheme(file)
+    local d = type(file) == "string" and T.CLASS_THEMES[file]
+    if type(d) ~= "table" then return nil end
+    local pal, grads = {}, {}
+    for k, hex in pairs(type(d.pal) == "table" and d.pal or {}) do
+        if T.TOKEN[k] then pal[k] = HexCol(hex, CLASS_ALPHA[k]) end
+    end
+    for k, list in pairs(type(d.grads) == "table" and d.grads or {}) do
+        if T.TOKEN[k] and type(list) == "table" then
+            local stops, pos = {}, {}
+            for i, s in ipairs(list) do stops[i] = HexCol(s[1]) or false; pos[i] = s[2] end
+            grads[k] = CleanGrad({ stops = stops, pos = pos })
+        end
+    end
+    return { pal = pal, grads = grads }
+end
+-- the gradients of the "class" base for this class (none for a class without an entry: today's look)
+function T.ClassGrads(file)
+    local ct = T.ClassTheme(file)
+    return ct and ct.grads or {}
+end
+
+-- The "class" base: the XUI structure with the class color driving every accent-like token (and, for a class in T.CLASS_THEMES,
+-- that class's own colours on top).
 function T.ClassPalette(file)
     local c = T.ClassColor(file)
     local light = Mix(c, { 1, 1, 1, 1 }, 0.35)
@@ -155,6 +316,8 @@ function T.ClassPalette(file)
     pal.primaryBorder = { c[1] * 0.85, c[2] * 0.85, c[3] * 0.85, 1 }
     pal.buttonBorder = Mix({ 0.25, 0.25, 0.25, 1 }, c, 0.25)
     pal.border = Mix({ 0.30, 0.30, 0.30, 1 }, c, 0.15)
+    local ct = T.ClassTheme(file)
+    if ct then for k, v in pairs(ct.pal) do pal[k] = v end end
     return pal
 end
 
@@ -372,14 +535,17 @@ function T.SavedGrads(saved)
     local sb = (type(saved) == "table" and saved.base == "custom") and CleanUnder(saved.under) or (type(saved) == "table" and saved.base)
     local b = T.BUILTIN[sb]
     if b and b.grads then for k, v in pairs(b.grads) do out[k] = v end end
+    if sb == "class" then for k, v in pairs(T.ClassGrads(saved.classPick or T.PlayerClass())) do out[k] = v end end
     for k in pairs(type(saved.tokens) == "table" and saved.tokens or NOGRADS) do if T.TOKEN[k] then out[k] = nil end end
     for k, v in pairs(type(saved.grads) == "table" and saved.grads or NOGRADS) do
         if T.TOKEN[k] then if v == false then out[k] = nil else out[k] = CleanGrad(v) or out[k] end end
     end
     return out
 end
-function T.BaseGrads(base)
+-- classPick: for the "class" base, the class picked by hand (nil = the logged-in character's), as T.BasePalette takes it
+function T.BaseGrads(base, classPick)
     if base == "custom" then base = T.Under() end
+    if base == "class" then return T.ClassGrads(classPick or T.PlayerClass()) end
     local b = T.BUILTIN[base]
     if b then return b.grads or NOGRADS end
     local saved = CueRulesDB and CueRulesDB.themes and CueRulesDB.themes[base]
@@ -427,7 +593,7 @@ function T.Resolve()
     T.cur = cur
     -- (#460) the gradients, worked out once here (T.Grad reads them; nothing is worked out per frame): your own gradient (false = you
     -- set it solid), else the theme's own one unless you picked a solid colour of your own for it. Parked tokens: as their colours.
-    local grads, base = {}, th and T.BaseGrads(th.base) or NOGRADS
+    local grads, base = {}, th and T.BaseGrads(th.base, th.classPick) or NOGRADS
     local own = th and type(th.grads) == "table" and th.grads or NOGRADS
     for _, t in ipairs(T.TOKENS) do
         local k = t[1]
@@ -590,7 +756,7 @@ function T.SetTokenGradient(key, on)
         for i, s in ipairs(T.TrailStops()) do stops[i] = { Clamp01(s[1]), Clamp01(s[2]), Clamp01(s[3]), 1 } end
         if #stops >= 2 then own[key] = { stops = stops } end
     else
-        if T.BaseGrads(th.base)[key] and not th.tokens[key] then own[key] = false else own[key] = nil end
+        if T.BaseGrads(th.base, th.classPick)[key] and not th.tokens[key] then own[key] = false else own[key] = nil end
     end
     th.grads = next(own) ~= nil and own or nil
     T.Changed()
@@ -931,7 +1097,9 @@ local function Oriented(g)
     if not g then return nil end
     local n, rev, stops = #g.stops, T.GradReversed(), {}
     for i = 1, n do stops[i] = Copy4(g.stops[rev and (n + 1 - i) or i]) end
-    return { stops = stops, dir = g.dir or "H" }
+    local pos
+    if g.pos then pos = {}; for i = 1, n do pos[i] = rev and (1 - g.pos[n + 1 - i]) or g.pos[i] end end
+    return { stops = stops, dir = g.dir or "H", pos = pos }
 end
 local function GlobalGrad(class, prop)
     local th = CueRulesDB and CueRulesDB.theme
@@ -1023,28 +1191,45 @@ local function SolidOn(tex, c)
     if tex.xuiGrad then tex:SetVertexColor(1, 1, 1, 1); tex.xuiGrad = nil end
     tex:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
 end
--- stops drawn along region R (axis "H": left to right, "V": top to bottom) by pieces made on host (layer / sublevel as the edge's)
-local function Strip(host, list, R, axis, stops, layer, sub)
-    local n = #stops - 1
+-- stops drawn along region R (axis "H": left to right, "V": top to bottom) by pieces made on host (layer / sublevel as the edge's).
+-- pos (optional, class themes v2): each stop's place, 0 to 1 (CleanPos); without it the n - 1 pieces are of equal length, as always.
+-- With it, a piece runs from one stop's place to the next (none where two stops share a place), and the first / last colour holds
+-- solid before the first place / after the last one.
+local PIECES = {}
+local function Strip(host, list, R, axis, stops, layer, sub, pos)
     local len
     if axis == "H" then len = R:GetWidth() else len = R:GetHeight() end
     len = tonumber(len) or 0
+    local pieces, n = PIECES, 0
+    if pos then
+        local last = #stops
+        if pos[1] > 0 then n = n + 1; pieces[n] = { 0, len * pos[1], stops[1], stops[1] } end
+        for i = 1, last - 1 do
+            if pos[i + 1] > pos[i] then n = n + 1; pieces[n] = { len * pos[i], len * pos[i + 1], stops[i], stops[i + 1] } end
+        end
+        if pos[last] < 1 then n = n + 1; pieces[n] = { len * pos[last], len, stops[last], stops[last] } end
+    else
+        local m = #stops - 1
+        for i = 1, m do n = n + 1; pieces[n] = { len * (i - 1) / m, len * i / m, stops[i], stops[i + 1] } end
+    end
     for i = 1, n do
         local s = list[i]
         if not s then s = host:CreateTexture(nil, layer or "BACKGROUND", nil, sub); s.xuiOwn = true; list[i] = s end
         s:ClearAllPoints()
-        local a0, a1 = len * (i - 1) / n, len * i / n
+        local pc = pieces[i]
+        local a0, a1 = pc[1], pc[2]
         if axis == "H" then
             s:SetPoint("TOPLEFT", R, "TOPLEFT", a0, 0)
             if i == n then s:SetPoint("BOTTOMRIGHT", R, "BOTTOMRIGHT", 0, 0) else s:SetPoint("BOTTOMRIGHT", R, "BOTTOMLEFT", a1, 0) end
-            GradOn(s, "HORIZONTAL", stops[i], stops[i + 1])
+            GradOn(s, "HORIZONTAL", pc[3], pc[4])
         else
             s:SetPoint("TOPLEFT", R, "TOPLEFT", 0, -a0)
             if i == n then s:SetPoint("BOTTOMRIGHT", R, "BOTTOMRIGHT", 0, 0) else s:SetPoint("BOTTOMRIGHT", R, "TOPRIGHT", 0, -a1) end
-            GradOn(s, "VERTICAL", stops[i + 1], stops[i])   -- (INFERENCE above: VERTICAL's minColor is the bottom)
+            GradOn(s, "VERTICAL", pc[4], pc[3])   -- (INFERENCE above: VERTICAL's minColor is the bottom)
         end
         s:Show()
     end
+    for i = 1, n do pieces[i] = nil end
     for i = n + 1, #list do list[i]:Hide() end
 end
 local function HideList(list) for _, s in ipairs(list or NOGRADS) do s:Hide() end end
@@ -1073,15 +1258,15 @@ function T.PaintEdges(f, edges, solid, grad, layer, sub)
     end
     if not st then st = { segs = { {}, {}, {}, {} } }; f.xuiGradE = st end
     st.on = true
-    local stops, axis = grad.stops, (grad.dir == "V") and "V" or "H"
+    local stops, axis, pos = grad.stops, (grad.dir == "V") and "V" or "H", grad.pos
     local first, last = stops[1], stops[#stops]
     local function lay()
         if not st.on then return end
         if axis == "H" then
-            Strip(f, st.segs[1], edges[1], "H", stops, layer, sub); Strip(f, st.segs[2], edges[2], "H", stops, layer, sub)
+            Strip(f, st.segs[1], edges[1], "H", stops, layer, sub, pos); Strip(f, st.segs[2], edges[2], "H", stops, layer, sub, pos)
             HideList(st.segs[3]); HideList(st.segs[4])
         else
-            Strip(f, st.segs[3], edges[3], "V", stops, layer, sub); Strip(f, st.segs[4], edges[4], "V", stops, layer, sub)
+            Strip(f, st.segs[3], edges[3], "V", stops, layer, sub, pos); Strip(f, st.segs[4], edges[4], "V", stops, layer, sub, pos)
             HideList(st.segs[1]); HideList(st.segs[2])
         end
     end
@@ -1092,7 +1277,7 @@ function T.PaintEdges(f, edges, solid, grad, layer, sub)
     end
     for _, e in ipairs(edges) do e:Show() end
     lay()
-    Relay(f, "box", (#stops > 2) and lay or nil)
+    Relay(f, "box", (#stops > 2 or pos) and lay or nil)
 end
 -- the pieces of a box outline hidden (the element was released or its box hidden)
 function T.HideGrad(f)
@@ -1127,10 +1312,10 @@ function T.PaintLine(host, tex, solid, grad, axis, layer, sub)
     if not st then st = { segs = {} }; tex.xuiGradL = st end
     st.on = true
     SolidOn(tex, CLEAR)
-    local stops = grad.stops
-    local function lay() if st.on and tex:IsShown() then Strip(host, st.segs, tex, axis, stops, layer, sub) else HideList(st.segs) end end
+    local stops, pos = grad.stops, grad.pos
+    local function lay() if st.on and tex:IsShown() then Strip(host, st.segs, tex, axis, stops, layer, sub, pos) else HideList(st.segs) end end
     lay()
-    Relay(host, tex, (#stops > 2) and lay or nil)
+    Relay(host, tex, (#stops > 2 or pos) and lay or nil)
 end
 function T.HideLineGrad(host, tex)
     local st = tex and tex.xuiGradL
