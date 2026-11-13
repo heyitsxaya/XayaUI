@@ -436,8 +436,8 @@ ef682140a9d7dfdff4b7c8fa93eccf5f  tests/modules_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-dc334265e8974771b5df5bcd0dbc765b  tests/options_split_parity_golden.json
-d67da664ce43a76ba4cfa89a47fbde6f  tests/options_split_parity_run.py
+202609e3e38d8996154d917ae839a9d8  tests/options_split_parity_golden.json
+8984a6eda4e12c71c498471c70b8f69d  tests/options_split_parity_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 9a8d7376d68697386ab6195fe3b3383d  tests/picker_rows_layout_run.py
 19bebeb5eddc3bf63974449e0fe8fb97  tests/player_state_dead_run.py

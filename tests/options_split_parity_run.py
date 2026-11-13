@@ -98,6 +98,11 @@ only in (1) `bonus.statcalc`: its switch's desc (her option text "Off means it i
 the 118 `bonus.statcalc.*` lines of the detailed page gone (they come with the loaded calculator) and one `bonus.statcalc.note` line
 added; (2) Profiles: the new "Bonus Features" tick box under Export (`inc_bonus`, order 5) and Import (`imp_bonus`, order 8), with
 "Blizzard Reskin" one place down (5 -> 6, 8 -> 9); 0 other lines. off-XayaUI_Bonus: 0 lines differ.
+Regenerated on 2026-11-13 for class themes v2 (XayaUI 0.6.86, Options 0.6.109): the stand-in's player is a Demon Hunter, which now has
+its own class colors and glow gradient. Only the "set" and "settings" tabs changed, same node counts; `--dump` of fda1e29 and of the new
+code differ in those tabs in 32 lines each per variant, all under `set.ui.theme.` / `settings.theme.`: the color values the page shows
+(the group headings' color codes, the swatches) and `gradRev`'s hidden() result (true -> false: the Reverse switch now shows under Class
+colors); 0 other lines in those tabs. The "cooldowns" tab still has the golden's hashes.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
