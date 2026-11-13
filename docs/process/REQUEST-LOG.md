@@ -840,6 +840,7 @@ copy; rows it adds later are copied here.
 | RB-99 | Her canvas comment on the "also NOT load" line (verbatim): "this separation reads clunky." | DONE: four lines + divider merged into two sentences (load ONLY when … and NOT …; NOT load when you are NOT … or when you are …) on boards 3 and 3b. OFFERED: two-column layout | design canvas |
 | RB-100 | Her canvas comment on "Show this rule (pick one)" (verbatim): "always shouldn't have a modifier" | DONE: Always / Never / Combination as square ticks; ALL/ANY modifier indented under Combination, shown only when Combination is ticked (boards 3, 3b) | design canvas |
 | RB-101 | Her canvas comment on board 3's "Show this rule (pick one)" (verbatim): "Show this rule when:\n* any of the trackers register as "TRUE"\n* all of the trackers register as "TRUE"\n* when the following combination of trackers are true (conditional logic)" | DONE ON BOARD 2 (INFERENCE: tracker logic = trigMode/Outcomes, not load.mode): board 2 = "Show this rule when:" ANY / ALL / combination (opens 2a). Board 3 unchanged. ASKED: confirm placement; keep "TRUE" wording | design canvas |
+| RB-102 | Her chat reply on RB-101 placement (verbatim): "no, you're correct, it belongs on conditions and not load" | CONFIRMED: any / all / combination stays on board 2; board 3 stays load only | session chat |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
