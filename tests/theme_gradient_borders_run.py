@@ -253,6 +253,9 @@ expectAll("B Fel, Reverse off again", PRESET.fel)
 -- C ------------------------------------------------------------------------------------------------------------------------------
 T.SetBase("class"); repaint()
 expectSolid("C Class colors after Fel")
+-- (XayaUI 0.6.86) every class now has a glow gradient (T.CLASS_THEMES; its borders stay solid, above), so its Theme page shows the
+-- Reverse switch (tests/class_themes_run.py): the theme without gradients here is XUI default
+T.SetBase("default"); repaint()
 check("C the Reverse switch is not shown for a theme without gradients",
   #find(of, function(w) return w.type == "CheckBox" and optName(w) == "Reverse gradient direction" end) == 0)
 
@@ -303,7 +306,7 @@ expectSolid("E an old string of Light mode")
 T.ResetAll(); T.SetBase("cursor_fire"); PlatS.ui.themeAdvanced = true; NEW("SetTokenGradient")("titleBar", true); NEW("SetGradReverse")(true)
 local s1 = T.Export()
 local g1 = NEW("Grad")("xui-titlebar", "bg")
-T.ResetAll(); check("(reset: no gradient)", not NEW("HasGradient")())
+T.ResetAll(); T.SetBase("default"); check("(reset: no gradient)", not NEW("HasGradient")())   -- (0.6.86) every class has a glow
 local ok1, e1 = T.Import(s1)
 check("E a gradient theme (Fire + Title bar as the gradient + Reverse) imports from its own string", ok1, e1)
 local g2 = NEW("Grad")("xui-titlebar", "bg")
