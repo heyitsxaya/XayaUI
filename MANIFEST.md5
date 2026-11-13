@@ -1,6 +1,6 @@
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-82fdb443d94f91e625fc7cceda274558  PATCH-NOTES.md
+db5a34e3745d5499696ad1e44bb3007c  PATCH-NOTES.md
 3beef9c8295e3bee70ae7a4d3a35722d  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
@@ -85,9 +85,9 @@ bf3224791608a2ae41c53d8c89066551  XayaUI/Modules.lua
 e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 0a5e0ae7a3920b1f999a9699de5ba8f6  XayaUI/Share.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
-8306fb06222beb79cae136321f2ff302  XayaUI/Theme.lua
+030d71b224fa1561cdad067fa5c1564a  XayaUI/Theme.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
-9abd44c90189a10676de4c6bf07dc093  XayaUI/XayaUI.toc
+bde76c5f37de15a7584ba31c4a93c676  XayaUI/XayaUI.toc
 3431ac877f234d3cd3dc5b573efed325  XayaUI_Bonus/ProfilePart.lua
 7fe03d615ad358d9b8098da1db9d87dd  XayaUI_Bonus/StatCalculatorLoader.lua
 b329e286a5f702b10d27e9b95bb2c8e2  XayaUI_Bonus/XayaUI_Bonus.toc
@@ -98,7 +98,7 @@ ffdc6c42075cece9a1edd3c29ffeaed2  XayaUI_Bonus_StatCalculator/StatModel.lua
 5dc6c3df414feb0c9dc85680d116eb44  XayaUI_Options/AddonInfo.lua
 3aee5df9a934a81e70ed1614790b182c  XayaUI_Options/ImportWindow.lua
 26e43dece63038feb8fd9636b44b80d7  XayaUI_Options/InfoPane.lua
-8b9b51f8cf55424620282dfc68a9530b  XayaUI_Options/InfoPaneData.lua
+a6aea5faa1b941cc5612c679a91e8549  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -139,8 +139,8 @@ ca514404679450333c4449f4109f2bb1  XayaUI_Options/Libs/LICENSE-Ace3.txt
 ade0b416c7f8d38110ca7bf05f079164  XayaUI_Options/ScopeEditor.lua
 8d996007701c79981f4e8a3c7c2446f0  XayaUI_Options/Skin.lua
 05b6c07da0d3e254dbe416b02ac12984  XayaUI_Options/ThemeEditor.lua
-862647367b2a685dc5c85bb5456479bb  XayaUI_Options/TreePaint.lua
-d059fe40a65ccc8c58fe027c5dea1c7c  XayaUI_Options/XayaUI_Options.toc
+aa9af3d45f9dd22a6c47111a3e9639cb  XayaUI_Options/TreePaint.lua
+9c9c83119f7dfdba595c1c3679a840d6  XayaUI_Options/XayaUI_Options.toc
 83c4db1f5488be3899eca66fe3b50f5c  XayaUI_Rules/Actions.lua
 5f3c6935001b28229cd65ec7113762e9  XayaUI_Rules/AuraAlias.lua
 bf5134b45b181fdc9d83ba8478cc65aa  XayaUI_Rules/AuraList.lua
@@ -476,6 +476,7 @@ ec3c489494a33b29f1eab24ea7be73fc  tests/statcalc_keys_run.py
 2ff12ec79fae9f574052eb6be117ad04  tests/switch_reload_run.py
 34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py
 9218d9a33ff044bf7354f5701fb7ddd1  tests/theme_audit_run.py
+824a34a4a566af5752bcc8254b8985d9  tests/theme_class_glow_run.py
 92f1976a10e8562f7c887adf05323793  tests/theme_gradient_borders_run.py
 eea7ff1c27667df109b4f332300bdd8e  tests/theme_paint_parity_golden.json
 5bbb908038e49555192ac652f5d1c274  tests/theme_paint_parity_run.py

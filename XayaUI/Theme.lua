@@ -158,6 +158,45 @@ function T.ClassPalette(file)
     return pal
 end
 
+-- (core 0.6.86) Class themes: per-class overrides for the "class" base, by class file. Her hex values are the source of truth (each
+-- channel hex / 255). "all newly passed themes get total override priority" (Xaya 2026-11-13): a class's entry wins over everything
+-- else that would colour the same thing (the colour worked out from the class colour, your own colours and gradients for it, the
+-- Reverse switch), but only while the class base is in effect for the window (T.ClassGlow).
+--   glow       the parent-group glow (the bar behind a selected rule's top parent group in the rule list, XayaUI_Options/TreePaint.lua),
+--              its colours left to right. The game draws a gradient of n colours as n - 1 evenly spaced pieces (Strip below), so
+--              a design with its own stop positions is stored as its even resample (positions 0, 1/7 ... 1 for 8 colours).
+--   glowRule   the text on the glow (the row's name).
+--   glowReady  "Ready" on the glow (kept with her design; nothing in the window draws a Ready label on the glow yet).
+-- Druid (class colour #FF7C0A), Xaya 2026-11-13, the resmoothed glow: every original colour kept, the orange -> lilac change spread
+-- over 40-66 % of the bar. Designed: #FF7C0A 0 %, #FF7C0A 6 %, #E87E42 24 %, #E47F51 40 %, #CB8689 53 %, #B289B6 66 %, #6884D1 83 %,
+-- #537BE8 100 %; even resample below (tests/theme_class_glow_run.py checks it against the design). The rule name #590E00 (was
+-- #621800) reads at 4.95:1 or better over the left 45 % of the bar, where the name sits; 3.61:1 at the far right end (#537BE8).
+local function Hex(h) return { tonumber(h:sub(1, 2), 16) / 255, tonumber(h:sub(3, 4), 16) / 255, tonumber(h:sub(5, 6), 16) / 255, 1 } end
+T.CLASS_THEMES = {
+    DRUID = {
+        glow = { Hex("FF7C0A"), Hex("F47D24"), Hex("E77E46"), Hex("DF815D"), Hex("C38797"), Hex("9A87BF"), Hex("6583D5"), Hex("537BE8") },
+        glowRule = Hex("590E00"),
+        glowReady = Hex("040A4E"),
+    },
+}
+-- The class theme in effect: the entry of the class the "class" base follows (its picked class, else the character's), or nil while
+-- another theme is in effect. scope (optional, e.g. "settings"): nil as well while that window has a theme or colours of its own.
+function T.ClassTheme(scope)
+    if T.EffBase() ~= "class" then return nil end
+    if type(scope) == "string" and T.ScopeComesFrom and T.ScopeComesFrom(scope) ~= "global" then return nil end
+    local th = CueRulesDB and CueRulesDB.theme
+    local file = (th and th.classPick) or T.PlayerClass()
+    return file and T.CLASS_THEMES[file] or nil
+end
+-- The class glow to draw (fresh { stops = {...}, dir = "H" }, never turned round) and its text colours, or nil.
+function T.ClassGlow(scope)
+    local ct = T.ClassTheme(scope)
+    if not (ct and type(ct.glow) == "table" and #ct.glow >= 2) then return nil end
+    local stops = {}
+    for i, c in ipairs(ct.glow) do stops[i] = Copy4(c) end
+    return { stops = stops, dir = "H" }, ct.glowRule and Copy4(ct.glowRule) or nil, ct.glowReady and Copy4(ct.glowReady) or nil
+end
+
 -- Built-in bases besides "default" and "class" (Xaya, 2026-11-01). Tokens not listed keep the XUI default.
 --  light:      dark text on white surfaces; same translucency as the dark theme (Xaya 2026-11-01). Untested in game; some hard-coded white text in the skin may still show.
 --  colorblind: Okabe-Ito colors (sky blue / yellow / orange); nothing relies on a red-vs-green difference.

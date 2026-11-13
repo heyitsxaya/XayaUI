@@ -22,6 +22,21 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-13 — Druid class theme
+
+### XayaUI 0.6.86
+
+**Class Themes (new)**
+- Added class themes: a class can now have its own look under the Class colors theme, ahead of anything else that would color the same part.
+- Added the Druid class theme. With Class colors on a Druid, the glow behind a selected rule's top group now runs from Druid orange through lilac to blue, with the orange-to-lilac change spread smoothly across the middle of the bar.
+  *Developers' notes: Not yet tested in game. Colors are the design's hex values (hex / 255) in XayaUI/Theme.lua T.CLASS_THEMES; the game draws the glow's 8 colors evenly spaced, so the table holds the even resample of the designed stops (tests/theme_class_glow_run.py checks it). The Druid's "Ready" color (#040A4E) is stored with the theme; nothing draws a Ready label on the glow yet.*
+
+### Options 0.6.109
+
+**Rule List**
+- With a class theme that has its own glow (Druid), the selected rule's top group shows that glow, and the group's name turns dark red so it stays readable on the bright bar.
+  *Developers' notes: The name (#590E00) reads at 4.95:1 or better over the left 45 % of the bar, where it sits, and 3.61:1 at the bar's far right (blue) end. A settings window with a theme of its own keeps its own glow.*
+
 ## 2026-11-12 — Stat Calculator
 
 ### Bonus Features 0.6.46

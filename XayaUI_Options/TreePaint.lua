@@ -84,6 +84,18 @@ local function RowTier(button)
     return { uv = uv, isRoot = isRoot, isCue = isCue, isSub = isSub, upper = upper, catSize = catSize, subSize = subSize, size = size, flags = flags }
 end
 
+-- the row that carries the parent-group gradient: when the selection is nested (root > group > ... > item), only the TOPMOST group
+-- of the chain (the row right under the root). Settings > Display Options turns it off.
+function ns.IsNestTop(button)
+    local selUV = ns.SelectedUV(button)
+    if not (selUV and ns.ParentGradientOn()) then return false end
+    local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
+    local uvStr = button.uniquevalue and tostring(button.uniquevalue) or ""
+    return (s3 ~= nil and uvStr == (s1 .. "\001" .. s2)) and true or false
+end
+-- (Options 0.6.109) the class theme's glow for that row (Theme.lua T.ClassGlow: e.g. the Druid glow), or nil = the gradStart banner
+local function ClassGlow() local TH = ns.Theme; if TH and TH.ClassGlow then return TH.ClassGlow("settings") end end
+
 function ns.PaintRowText(button)
     local fs = button.text
     if not (fs and fs.SetFont) then return end
@@ -95,6 +107,10 @@ function ns.PaintRowText(button)
     end
     local sel = ns.SelectedUV(button)
     local col = (sel ~= nil and sel == t.uv and ns.SelStyle() == "text") and TREE_SEL or TREE_TXT
+    if ns.IsNestTop(button) then
+        local glow, rule = ClassGlow()
+        if glow and rule then col = rule end   -- the name on the class glow, in its own colour (dark text on a bright bar)
+    end
     fs:SetTextColor(col[1], col[2], col[3], 1)
     fs:SetAlpha(1)
     if t.isRoot and t.upper then
@@ -168,15 +184,13 @@ local function PaintBanner(button)
     end
     -- parent-group gradient: when the selection is nested (root > group > ... > item), only the TOPMOST group of the chain
     -- (the row right under the root) gets a dark purple to black left-to-right gradient. Settings > Display Options turns it off.
-    local uvStr = button.uniquevalue and tostring(button.uniquevalue) or ""
-    local selUV = ns.SelectedUV(button)
-    local nestTop = false
-    if selUV and ns.ParentGradientOn() then
-        local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
-        if s3 and uvStr == (s1 .. "\001" .. s2) then nestTop = true end
-    end
+    local nestTop = ns.IsNestTop(button)
+    local TH = ns.Theme
     if not c and not nestTop then
-        if button.xuiBanner then button.xuiBanner:Hide(); button.xuiBannerBar:Hide() end
+        if button.xuiBanner then
+            if TH and TH.HideLineGrad then TH.HideLineGrad(button, button.xuiBanner) end   -- (Options 0.6.109) a class glow's pieces too
+            button.xuiBanner:Hide(); button.xuiBannerBar:Hide()
+        end
         return
     end
     if not button.xuiBanner then
@@ -186,7 +200,16 @@ local function PaintBanner(button)
         button.xuiBannerBar:SetPoint("TOPLEFT"); button.xuiBannerBar:SetPoint("BOTTOMLEFT"); button.xuiBannerBar:SetWidth(6)
     end
     local b, bar = button.xuiBanner, button.xuiBannerBar
-    if nestTop then
+    -- (Options 0.6.109) a class theme's glow (Theme.lua T.CLASS_THEMES, e.g. the Druid glow) replaces the gradStart banner on this row,
+    -- drawn by the theme's gradient pieces (T.PaintLine: n colours, n - 1 even pieces across the row); every other row as before
+    local glow = nestTop and TH and TH.ClassGlow and TH.ClassGlow("settings") or nil
+    if not glow and TH and TH.HideLineGrad then TH.HideLineGrad(button, b) end
+    if glow then
+        bar:Hide()
+        b:Show()
+        TH.PaintLine(button, b, nil, glow, "H", "BACKGROUND", -2)
+        return
+    elseif nestTop then
         local g = ns.TREE_GRAD
         b:SetColorTexture(g[1], g[2], g[3], 0.95)
         pcall(b.SetGradient, b, "HORIZONTAL", CreateColor(g[1], g[2], g[3], 0.95), CreateColor(0, 0, 0, 0.95))
