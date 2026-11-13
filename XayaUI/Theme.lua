@@ -177,8 +177,9 @@ T.CLASS_THEMES = {
     WARRIOR = {
         pal = { accent = "C6A27B", accentText = "EFCEAA", label = "DDD1A5", buttonText = "DDD1A5", tabSelBg = "362107", tabSelBorder = "D67066",
             primaryBg = "542620", primaryBorder = "EB8375", border = "3D3E39" },
-        grads = { gradStart = { { "C69B6D", 0 }, { "C69B6D", 0.06 }, { "744929", 0.22 }, { "573B2A", 0.40 }, { "4E4A47", 0.58 }, { "4C6B7C", 0.75 },
-            { "6C96AE", 0.88 }, { "6E99B2", 1 } } },
+        -- glow "round 4e", approved by Xaya 2026-11-13 (#61A1BD Practiced Strikes blade steel, #7FD5F8 Whirlwind blue)
+        grads = { gradStart = { { "C69B6D", 0 }, { "C69B6D", 0.06 }, { "A68565", 0.24 }, { "9A7D60", 0.32 }, { "767C77", 0.52 }, { "5F7F91", 0.58 },
+            { "61A1BD", 0.76 }, { "7FD5F8", 1 } } },
         glowText = { name = "FFF0DB", ready = "10222B" },
         noToken = { secondary = "5A95B1", primaryText = "FCECE5", surfaceTint = "B16D4A" },
     },
