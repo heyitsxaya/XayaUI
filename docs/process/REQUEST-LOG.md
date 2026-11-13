@@ -838,6 +838,7 @@ copy; rows it adds later are copied here.
 | RB-97 | Her canvas comment on the "Play this cue when…" block (verbatim): "Cue Conditions >> this goes to next page" | DONE: new board "Cue Conditions" after Cue options (one card per alert, open card shows the pick-one list); later boards shifted. ASKED: does cue appearance come after Cue Conditions? | design canvas |
 | RB-98 | Her canvas comment on "It will load only when you are:" (verbatim): "ONLY" | DONE: "ONLY" capitalised in both positive lines on boards 3 and 3b | design canvas |
 | RB-99 | Her canvas comment on the "also NOT load" line (verbatim): "this separation reads clunky." | DONE: four lines + divider merged into two sentences (load ONLY when … and NOT …; NOT load when you are NOT … or when you are …) on boards 3 and 3b. OFFERED: two-column layout | design canvas |
+| RB-100 | Her canvas comment on "Show this rule (pick one)" (verbatim): "always shouldn't have a modifier" | DONE: Always / Never / Combination as square ticks; ALL/ANY modifier indented under Combination, shown only when Combination is ticked (boards 3, 3b) | design canvas |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
