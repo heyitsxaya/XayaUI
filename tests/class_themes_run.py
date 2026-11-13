@@ -16,6 +16,8 @@ Loads the real addons in the stand-in game (Lua 5.1 via lupa); the player is a D
   D Share strings: the export of "Class colors" (played and picked Mage) is byte-for-byte the string made before gradients existed
     (the same strings tests/theme_gradient_borders_run.py checks); an own gradient with positions survives export and import; a pos
     that does not fit (wrong length, going back, above 1) is dropped and the gradient drawn evenly spaced.
+  F also: the name on a class glow is drawn in the class's glow text colour (design mockup, 2026-11-13); on any other glow it
+    keeps the normal row text colour.
   E Drawing: T.PaintLine with positions lays out the pieces at the stops' places, the first colour held before the first place and
     the last after the last one; without positions the pieces are of equal length, as before; Reverse leaves a class glow alone
     (Xaya 2026-11-13) but still turns a gradient of your own round.
@@ -239,6 +241,7 @@ if ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 5)
 ns = rawget(_G, "XayaUI_NS")
 local btn = CreateFrame("Button", nil, UIParent); btn:SetSize(240, 20); btn:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -40)
 btn.uniquevalue = "root\001grp"; btn.obj = { status = { selected = "root\001grp\001inner\001rule" } }
+btn.text = btn:CreateFontString(nil, "OVERLAY")
 check("F Options loaded: the row painter is there", type(ns.SafeDecorate) == "function")
 T.SetBase("class")   -- played Demon Hunter
 ns.lastTreeErr = nil
@@ -255,15 +258,27 @@ check("F Demon Hunter: first piece is the class colour hold, last ends on the li
 local x1
 if shown[2] then local _, _, _, x = shown[2]:GetPoint(1); x1 = x end
 check("F Demon Hunter: the hold is 6% of the row (14.4 of 240)", near(x1, 240 * 0.06), x1)
+local dhName = { 0xFC / 255, 0xE3 / 255, 0xFF / 255, 1 }
+check("F Demon Hunter: the name on the glow is drawn in its glow text colour #FCE3FF (design mockup)", btn.text and sameCol({ btn.text:GetTextColor() }, dhName), btn.text and fmt({ btn.text:GetTextColor() }))
+T.SetBase("class", "DRUID"); ns.SafeDecorate(btn)
+check("F Druid: name in #590E00", btn.text and sameCol({ btn.text:GetTextColor() }, { 0x59 / 255, 0x0E / 255, 0, 1 }), btn.text and fmt({ btn.text:GetTextColor() }))
+T.DB().gradRev = true; T.Resolve(); ns.SafeDecorate(btn)
+check("F Druid with a saved Reverse: the name colour stays", btn.text and sameCol({ btn.text:GetTextColor() }, { 0x59 / 255, 0x0E / 255, 0, 1 }))
+T.DB().gradRev = nil
+T.DB().grads = { gradStart = { stops = { { 1, 0, 0, 1 }, { 0, 0, 1, 1 } } } }; T.Resolve(); ns.SafeDecorate(btn)
+check("F a gradient of your own on Parent group glow: the name keeps the normal row text colour", btn.text and sameCol({ btn.text:GetTextColor() }, T.cur.text), btn.text and fmt({ btn.text:GetTextColor() }))
+T.DB().grads = nil; T.Resolve()
 T.SetBase("class", "NEWCLASS")
 ns.SafeDecorate(btn)
 local any = false; for _, sg2 in ipairs(segs) do if sg2:IsShown() then any = true end end
 local gs = T.cur.gradStart
+check("F a class without an entry: name in the normal row text colour", btn.text and sameCol({ btn.text:GetTextColor() }, T.cur.text), btn.text and fmt({ btn.text:GetTextColor() }))
 check("F a class without an entry: no pieces; one texture from the glow colour to black, as before", not any and bn._grad and bn._grad[1] == "HORIZONTAL"
   and sameCol(bn._grad[2], { gs[1], gs[2], gs[3], 0.95 }) and sameCol(bn._grad[3], { 0, 0, 0, 0.95 }), bn._grad and fmt(bn._grad[2]))
 btn.obj.status.selected = "root\001other"
 ns.SafeDecorate(btn)
 check("F row no longer the selection's top group: banner hidden", not bn:IsShown())
+check("F ... and its name back in the normal row text colour", sameCol({ btn.text:GetTextColor() }, T.cur.text), fmt({ btn.text:GetTextColor() }))
 check("F no decoration error", ns.lastTreeErr == nil, ns.lastTreeErr)
 T.ResetAll()
 return R

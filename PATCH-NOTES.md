@@ -36,6 +36,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 **Rule List**
 - The parent group glow now draws a gradient theme color across the whole row, including a gradient of your own on "Parent group glow" (Advanced customization).
+- On a class glow, the group's name is drawn in that class's own glow text color, so it stays readable on the light glows. On a glow color of your own, the name keeps the normal row color.
 
 ## 2026-11-12 — Stat Calculator
 

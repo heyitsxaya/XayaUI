@@ -30,6 +30,9 @@ Bonus Features tree's "Stat Calculator" row (one line). 0 other lines.
 Regenerated on 2026-11-13 for class themes v2 (XayaUI 0.6.86, Options 0.6.109): the stand-in's player is a Demon Hunter, which now has
 its own class colours. `--dump` of fda1e29 and of the new code differ in each of the 8 drawings by one line: the selected rule's text colour
 (accentText, now the Demon Hunter's #E7C7F4). With every digit masked the drawings are identical. 0 other lines.
+Regenerated again on 2026-11-13 (design mockup, ClassThemesV2 cards: the name on a class glow is drawn in the class's glow text
+colour): `--dump` of 992bb2e and of the new code differ in one line each of rules-selected and rules-smart, the glow row ("BY TYPE (3)")
+whose text colour is now the Demon Hunter's #FCE3FF (0.99 0.89 1.00) instead of the row text colour. 0 other lines.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

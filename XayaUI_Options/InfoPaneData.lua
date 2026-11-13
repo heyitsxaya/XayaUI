@@ -117,6 +117,7 @@ ns.InfoPaneData = {
       { "h3", "Options 0.6.109" },
       { "grp", "Rule List" },
       { "b", 1, "The parent group glow now draws a gradient theme color across the whole row, including a gradient of your own on \"Parent group glow\" (Advanced customization)." },
+      { "b", 1, "On a class glow, the group's name is drawn in that class's own glow text color, so it stays readable on the light glows. On a glow color of your own, the name keeps the normal row color." },
     } },
     { date = "2026-11-12", title = "Stat Calculator", blocks = {
       { "h3", "Bonus Features 0.6.46" },

@@ -296,6 +296,10 @@ function T.ClassTheme(file)
             if grads[k] then grads[k].fixed = true end
         end
     end
+    -- (design mockup, ClassThemesV2 cards, confirmed 2026-11-13: "glow text: DRAW IT") the glow carries the class's text colours for
+    -- the row drawn on it (TreePaint.lua): the name in glowText.name. Not a token: per-class data only, never saved or shared.
+    local gt = type(d.glowText) == "table" and d.glowText
+    if gt and grads.gradStart then grads.gradStart.text = { name = HexCol(gt.name), ready = HexCol(gt.ready) } end
     return { pal = pal, grads = grads }
 end
 -- the gradients of the "class" base for this class (none for a class without an entry: today's look)
@@ -607,7 +611,7 @@ function T.Resolve()
         if open and own[k] ~= nil then g = own[k] or nil
         elseif not (th and open and th.tokens[k]) then g = base[k] end
         grads[k] = CleanGrad(g)
-        if grads[k] and g.fixed then grads[k].fixed = true end   -- a class glow (T.ClassTheme): Reverse passes it by
+        if grads[k] and g.fixed then grads[k].fixed = true; grads[k].text = g.text end   -- a class glow (T.ClassTheme): Reverse passes it by
     end
     T.curGrad = grads
     for _, b in ipairs(T.binds) do
@@ -1106,7 +1110,9 @@ local function Oriented(g)
     for i = 1, n do stops[i] = Copy4(g.stops[rev and (n + 1 - i) or i]) end
     local pos
     if g.pos then pos = {}; for i = 1, n do pos[i] = rev and (1 - g.pos[n + 1 - i]) or g.pos[i] end end
-    return { stops = stops, dir = g.dir or "H", pos = pos }
+    local text
+    if g.text then text = { name = g.text.name and Copy4(g.text.name), ready = g.text.ready and Copy4(g.text.ready) } end
+    return { stops = stops, dir = g.dir or "H", pos = pos, fixed = g.fixed, text = text }
 end
 local function GlobalGrad(class, prop)
     local th = CueRulesDB and CueRulesDB.theme

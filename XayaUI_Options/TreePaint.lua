@@ -84,6 +84,25 @@ local function RowTier(button)
     return { uv = uv, isRoot = isRoot, isCue = isCue, isSub = isSub, upper = upper, catSize = catSize, subSize = subSize, size = size, flags = flags }
 end
 
+-- the row that carries the parent group glow: when the selection is nested (root > group > ... > item), the TOPMOST group of the
+-- chain (the row right under the root), while Settings > Display Options has the glow on
+local function IsNestTop(button)
+    local selUV = ns.SelectedUV(button)
+    if not (selUV and ns.ParentGradientOn()) then return false end
+    local uvStr = button.uniquevalue and tostring(button.uniquevalue) or ""
+    local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
+    return (s3 and uvStr == (s1 .. "\001" .. s2)) and true or false
+end
+ns.IsNestTop = IsNestTop
+-- (Options 0.6.109, class themes v2; design mockup ClassThemesV2 cards, confirmed 2026-11-13) the name on a class glow is drawn in
+-- that class's glow text colour; nil on any other glow (a colour or gradient of your own on "Parent group glow": normal text)
+local function GlowNameColor(button)
+    local TH = ns.Theme
+    if not (TH and TH.Grad and IsNestTop(button)) then return nil end
+    local g = TH.Grad("xui-list-parent", "bg", "settings")
+    return g and g.fixed and g.text and g.text.name or nil
+end
+
 function ns.PaintRowText(button)
     local fs = button.text
     if not (fs and fs.SetFont) then return end
@@ -94,7 +113,7 @@ function ns.PaintRowText(button)
         if fp and pcall(fs.SetFont, fs, fp, TH.Size(t.size), t.flags) then else fs:SetFont((GameFontNormal:GetFont()), TH and TH.Size(t.size) or t.size, t.flags) end
     end
     local sel = ns.SelectedUV(button)
-    local col = (sel ~= nil and sel == t.uv and ns.SelStyle() == "text") and TREE_SEL or TREE_TXT
+    local col = GlowNameColor(button) or ((sel ~= nil and sel == t.uv and ns.SelStyle() == "text") and TREE_SEL or TREE_TXT)
     fs:SetTextColor(col[1], col[2], col[3], 1)
     fs:SetAlpha(1)
     if t.isRoot and t.upper then
@@ -168,13 +187,7 @@ local function PaintBanner(button)
     end
     -- parent-group gradient: when the selection is nested (root > group > ... > item), only the TOPMOST group of the chain
     -- (the row right under the root) gets a dark purple to black left-to-right gradient. Settings > Display Options turns it off.
-    local uvStr = button.uniquevalue and tostring(button.uniquevalue) or ""
-    local selUV = ns.SelectedUV(button)
-    local nestTop = false
-    if selUV and ns.ParentGradientOn() then
-        local s1, s2, s3 = selUV:match("^([^\001]+)\001([^\001]+)\001([^\001]+)")
-        if s3 and uvStr == (s1 .. "\001" .. s2) then nestTop = true end
-    end
+    local nestTop = ns.IsNestTop(button)
     local TH = ns.Theme
     if not c and not nestTop then
         if button.xuiBanner then
