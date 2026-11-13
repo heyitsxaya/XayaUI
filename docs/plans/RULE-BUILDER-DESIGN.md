@@ -64,7 +64,7 @@ A rule holds at most 12 check rows (`MAX_ROWS`, Triggers.lua:22). The builder en
 >
 > RB-87: the live line under each tracking item's questions reads "Tracking when <item text>", not "Preview: …". RB-88: aura items read "<aura> is found on you" / "<aura> is found on your target".
 >
-> RB-89: with 2+ tracked things, a step "2a · What happens when" comes before All or any: numbered combination cards, each ticking tracked things (happens / does NOT happen), joined with AND. Each card saves as one Outcome (Outcomes.lua: child rule with parentUid and its own `when` list). Open: whether All or any stays; OR inside a card; whether outcomes go through the same save path.
+> RB-89: with 2+ tracked things, a step "2a · What happens when" comes before All or any: numbered combination cards, each ticking tracked things (happens / does NOT happen), joined with AND. Each card saves as one Outcome (Outcomes.lua: child rule with parentUid and its own `when` list). Open: whether All or any stays; OR inside a card; whether outcomes go through the same save path. RB-101 (supersedes the order): board 2 asks "Show this rule when:" ANY of the trackers register as "TRUE" / ALL of them / the following combination (conditional logic); the third opens 2a. Placed on board 2, not the load step, because it is the trigger setting (trigMode / Outcomes), not load.mode; awaiting her confirmation.
 >
 > RB-90: a Cue options step goes between "2 · All or any" and "3 · When it loads" (placeholder board). Open: renumbering to 6 steps; whether cues join stage 1 (which was triggers-only, §1) or form stage 2.
 >
