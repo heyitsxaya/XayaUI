@@ -29,6 +29,10 @@ its own class colours (Theme.lua T.CLASS_THEMES). `--dump` of fda1e29 and of the
 for byte the same on all 12 of their pages; on the 4 Class colors pages, with every digit masked, the only lines that differ are the
 Theme page's "Reverse gradient direction" switch, now shown because the class theme has a glow gradient (9 lines), and the colour codes in
 the Theme page's group headings (3 lines); every other changed line is a colour value. 0 other lines.
+Re-recorded again on 2026-11-13 (Xaya: "reverse themeing for class colors shouldn't be allowed"; a class glow is fixed and the
+Reverse switch passes it by): `--dump` of 9b238f7 and of the new code differ only on the class/theme page, and with every digit masked
+only in the 9 lines of the "Reverse gradient direction" switch, now hidden again under Class colors (the panel 27 px shorter, the rows
+after it renumbered); the other 15 pages are byte for byte the same.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

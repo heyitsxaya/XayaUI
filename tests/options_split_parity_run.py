@@ -103,6 +103,9 @@ its own class colors and glow gradient. Only the "set" and "settings" tabs chang
 code differ in those tabs in 32 lines each per variant, all under `set.ui.theme.` / `settings.theme.`: the color values the page shows
 (the group headings' color codes, the swatches) and `gradRev`'s hidden() result (true -> false: the Reverse switch now shows under Class
 colors); 0 other lines in those tabs. The "cooldowns" tab still has the golden's hashes.
+Regenerated again on 2026-11-13 (Xaya: "reverse themeing for class colors shouldn't be allowed"): only the "set" and "settings"
+tabs changed, same node counts; `--dump` of 9b238f7 and of the new code differ there in one line per tab per variant, the Reverse
+switch's hidden() (false -> true: Class colors alone no longer offers it). 0 other lines.
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

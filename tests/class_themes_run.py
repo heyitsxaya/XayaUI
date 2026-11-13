@@ -17,7 +17,8 @@ Loads the real addons in the stand-in game (Lua 5.1 via lupa); the player is a D
     (the same strings tests/theme_gradient_borders_run.py checks); an own gradient with positions survives export and import; a pos
     that does not fit (wrong length, going back, above 1) is dropped and the gradient drawn evenly spaced.
   E Drawing: T.PaintLine with positions lays out the pieces at the stops' places, the first colour held before the first place and
-    the last after the last one; without positions the pieces are of equal length, as before; Reverse turns positions round too.
+    the last after the last one; without positions the pieces are of equal length, as before; Reverse leaves a class glow alone
+    (Xaya 2026-11-13) but still turns a gradient of your own round.
   F The parent group glow (TreePaint): a Demon Hunter's glow is drawn across the row as its stops at the banner's 0.95; a Mage's is
     a class without an entry draws the glow colour to black on one texture, as before, and the earlier glow's pieces are hidden.
 Run: python3 tests/class_themes_run.py"""
@@ -215,8 +216,22 @@ local th2 = T.DB(); th2.gradRev = true
 local og = T.ClassGrads("PALADIN").gradStart
 th2.base = "class"; th2.classPick = "PALADIN"; T.Resolve()
 local rg = T.Grad("xui-list-parent", "bg")
-check("E Reverse turns the positions round (Paladin: 0,.14,.30.. -> 0,.14,.28..)", rg and near(rg.pos[1], 0) and near(rg.pos[2], 0.14) and near(rg.pos[3], 0.28) and near(rg.pos[8], 1)
-  and sameCol(rg.stops[1], og.stops[8]), rg and table.concat(rg.pos, ","))
+-- Xaya 2026-11-13: "reverse themeing for class colors shouldn't be allowed": a saved Reverse leaves the class glow as designed
+check("E Reverse leaves the class glow as designed (Paladin, saved gradRev from before)", rg and near(rg.pos[2], og.pos[2]) and near(rg.pos[3], og.pos[3])
+  and sameCol(rg.stops[1], og.stops[1]) and sameCol(rg.stops[8], og.stops[8]), rg and table.concat(rg.pos, ","))
+check("E Class colors alone does not offer the Reverse switch", not T.HasGradient())
+check("E the fixed mark never reaches saved data", T.DB().grads == nil and not (T.Export and T.Export():find("fixed")))
+T.MakeCustom(); T.Resolve()
+local cg = T.Grad("xui-list-parent", "bg")
+check("E Custom started from Class colors: the glow is still not reversed", cg and sameCol(cg.stops[1], og.stops[1]) and not T.HasGradient())
+-- a gradient of your own on top of the class base still turns round
+T.DB().grads = { border = { stops = { { 1, 0, 0, 1 }, { 0, 0, 1, 1 } } } }; T.Resolve()
+check("E your own gradient on Class colors offers the switch", T.HasGradient())
+local mine = T.curGrad.border
+local mg = T.Grad("xui-window", "border")
+check("E your own gradient still turns round", mine and mg and sameCol(mg.stops[1], mine.stops[#mine.stops]) and sameCol(mg.stops[#mg.stops], mine.stops[1]))
+local pg = T.Grad("xui-list-parent", "bg")
+check("E ... while the class glow beside it does not", pg and sameCol(pg.stops[1], og.stops[1]))
 T.ResetAll()
 
 -- F the parent group glow

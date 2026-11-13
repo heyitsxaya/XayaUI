@@ -1,6 +1,6 @@
 16c75aebb5d0a63612ac99c66b9f81a8  .gitignore
 d32239bcb673463ab874e80d47fae504  LICENSE
-611d95d4f08fea54701baa2e231ee039  PATCH-NOTES.md
+6acb2eff3e431e9e4d7bd9b77ef41124  PATCH-NOTES.md
 3beef9c8295e3bee70ae7a4d3a35722d  README.md
 7a0917acbe29d03eb2878e17fdb7a076  THIRD_PARTY.md
 90a7c4511e2a3988040393f1c413a9b3  XayaUI/Compat.lua
@@ -85,7 +85,7 @@ bf3224791608a2ae41c53d8c89066551  XayaUI/Modules.lua
 e50775f210bc59f6c3a710b96f193b58  XayaUI/RecycleBin.lua
 0a5e0ae7a3920b1f999a9699de5ba8f6  XayaUI/Share.lua
 9966ecc7520f3978efc33a1e1af4efe2  XayaUI/Sound.lua
-eaa8d234938fcd47cc3a0e2e4efdf10d  XayaUI/Theme.lua
+622c9245ebe398e8f92f8dd917aecb50  XayaUI/Theme.lua
 583adcd77845b2b2ad8f3df3874a99c0  XayaUI/UserMedia.lua
 f50806177547525b2e751a788e0d2059  XayaUI/XayaUI.toc
 3431ac877f234d3cd3dc5b573efed325  XayaUI_Bonus/ProfilePart.lua
@@ -98,7 +98,7 @@ ffdc6c42075cece9a1edd3c29ffeaed2  XayaUI_Bonus_StatCalculator/StatModel.lua
 5dc6c3df414feb0c9dc85680d116eb44  XayaUI_Options/AddonInfo.lua
 3aee5df9a934a81e70ed1614790b182c  XayaUI_Options/ImportWindow.lua
 26e43dece63038feb8fd9636b44b80d7  XayaUI_Options/InfoPane.lua
-f2b72e1f6cc8173c9755907668d41a3d  XayaUI_Options/InfoPaneData.lua
+b8ba9e805ef3bb21f5eed8fbdfacdf76  XayaUI_Options/InfoPaneData.lua
 5f8b46e28f1aed575cec1896b7b15682  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.lua
 a4a2d67f0604952ce505c211b2d893be  XayaUI_Options/Libs/AceConfig-3.0/AceConfig-3.0.xml
 6d69859bd0080855044f65962f77fe75  XayaUI_Options/Libs/AceConfig-3.0/AceConfigCmd-3.0/AceConfigCmd-3.0.lua
@@ -346,7 +346,7 @@ db3f5dc9c219f15156999233c0717445  tests/char_world.lua
 67990860868a2baf88e9193cacb1d309  tests/chat_sidebar_run.py
 f6286362b35a18f84f7cd16f4268e054  tests/class_learn_auras_run.py
 832acabcb40521a40488908927ee5a60  tests/class_learn_run.py
-fd7a6f47ed23fee39ffa6ddbee66460e  tests/class_themes_run.py
+ddb4b069a0f7148f6566228fd6e28482  tests/class_themes_run.py
 ad2d93e55c0721ac1a5cabfb51561d9f  tests/compact_button_width_run.py
 914b7f63005970c3cb4c3cc4b72e54bd  tests/conflicts_run.py
 fcfaf360c91b3b77d0dc122240074bf0  tests/console_commands_run.py
@@ -436,8 +436,8 @@ ef682140a9d7dfdff4b7c8fa93eccf5f  tests/modules_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-202609e3e38d8996154d917ae839a9d8  tests/options_split_parity_golden.json
-8984a6eda4e12c71c498471c70b8f69d  tests/options_split_parity_run.py
+5f9e37987c5ae67239a98f5b59f7b89e  tests/options_split_parity_golden.json
+d87411338e4cf3e00572eccd99d46d60  tests/options_split_parity_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 9a8d7376d68697386ab6195fe3b3383d  tests/picker_rows_layout_run.py
 19bebeb5eddc3bf63974449e0fe8fb97  tests/player_state_dead_run.py
@@ -478,8 +478,8 @@ ec3c489494a33b29f1eab24ea7be73fc  tests/statcalc_keys_run.py
 34a9c57cf4cb86b0899475206d3e605c  tests/talent_tri_toggle_run.py
 9218d9a33ff044bf7354f5701fb7ddd1  tests/theme_audit_run.py
 6668c701f3473349ecaf36cbc4b36e50  tests/theme_gradient_borders_run.py
-7b0219382afe364c4c5354275e64e70d  tests/theme_paint_parity_golden.json
-84d89526063aac2c0180ea7884e43ca0  tests/theme_paint_parity_run.py
+d9df3bb5418d0fdc9b31d224a6f309af  tests/theme_paint_parity_golden.json
+c55e1ad16594a24b21a35cfb4ff69ea3  tests/theme_paint_parity_run.py
 21e692ca321d29e3d70a14553d54cfbd  tests/theme_scopes_elements_run.py
 a46894b20c5ac2132164fb2172e6581d  tests/timing_run.py
 b47b22d116c919edc43027abf68a4454  tests/toc_files_run.py

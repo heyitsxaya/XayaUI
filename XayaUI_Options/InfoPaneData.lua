@@ -113,7 +113,7 @@ ns.InfoPaneData = {
       { "b", 1, "Added colors of its own for every class under the Class colors theme: accent, selected row text, labels, button text, selected tabs, primary buttons and borders. The theme follows the class you play, or the class you pick." },
       { "b", 1, "Added a glow gradient for every class: the highlight behind a selected rule's top parent group now runs through the class's own colors instead of fading from the class color to black." },
       { "dev", 2, "Developers' notes: Gradients can now say where each color sits along them (0 to 1), so a color can hold before it blends, as the class glows do. Theme strings without that are unchanged; an older XayaUI reading one with it draws the same colors evenly spaced. The Evoker colors are held until they have been seen in game. Not yet tested in game." },
-      { "b", 1, "The Theme page's \"Reverse gradient direction\" switch now shows under Class colors and turns the glow round." },
+      { "b", 1, "The class glows always run in their designed direction: the Theme page's \"Reverse gradient direction\" switch does not turn them round, and is not shown under Class colors unless you added a gradient of your own." },
       { "h3", "Options 0.6.109" },
       { "grp", "Rule List" },
       { "b", 1, "The parent group glow now draws a gradient theme color across the whole row, including a gradient of your own on \"Parent group glow\" (Advanced customization)." },

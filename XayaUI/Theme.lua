@@ -289,6 +289,10 @@ function T.ClassTheme(file)
             local stops, pos = {}, {}
             for i, s in ipairs(list) do stops[i] = HexCol(s[1]) or false; pos[i] = s[2] end
             grads[k] = CleanGrad({ stops = stops, pos = pos })
+            -- Xaya 2026-11-13: "reverse themeing for class colors shouldn't be allowed": a class glow always runs as designed, so
+            -- it is marked fixed and the Reverse switch passes it by (Oriented). The mark never reaches saved data or a share
+            -- string: CleanGrad drops it, and only T.Resolve carries it over into T.curGrad.
+            if grads[k] then grads[k].fixed = true end
         end
     end
     return { pal = pal, grads = grads }
@@ -602,6 +606,7 @@ function T.Resolve()
         if open and own[k] ~= nil then g = own[k] or nil
         elseif not (th and open and th.tokens[k]) then g = base[k] end
         grads[k] = CleanGrad(g)
+        if grads[k] and g.fixed then grads[k].fixed = true end   -- a class glow (T.ClassTheme): Reverse passes it by
     end
     T.curGrad = grads
     for _, b in ipairs(T.binds) do
@@ -769,8 +774,9 @@ function T.SetGradReverse(on)
     th.gradRev = on and true or nil
     T.Changed()
 end
--- does the resolved theme have any gradient (the Theme page shows the Reverse switch only then)
-function T.HasGradient() for _ in pairs(T.curGrad or {}) do return true end return false end
+-- does the resolved theme have any gradient the Reverse switch can turn (the Theme page shows the switch only then). A class glow
+-- is fixed (Xaya 2026-11-13: "reverse themeing for class colors shouldn't be allowed"), so Class colors alone does not show it.
+function T.HasGradient() for _, g in pairs(T.curGrad or {}) do if not g.fixed then return true end end return false end
 function T.SetClassColor(class, prop, c)
     local th = DB(); if not (th and T.CLASS[class] and T.CLASS[class][3][prop]) then return end
     ToCustom(th)
@@ -1095,7 +1101,7 @@ end
 -------------------------------------------------------------------------------
 local function Oriented(g)
     if not g then return nil end
-    local n, rev, stops = #g.stops, T.GradReversed(), {}
+    local n, rev, stops = #g.stops, T.GradReversed() and not g.fixed, {}
     for i = 1, n do stops[i] = Copy4(g.stops[rev and (n + 1 - i) or i]) end
     local pos
     if g.pos then pos = {}; for i = 1, n do pos[i] = rev and (1 - g.pos[n + 1 - i]) or g.pos[i] end end
