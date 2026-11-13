@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Round 6, Combat Tracking Setup never opens over the game by itself (XayaUI_Rules/Combat/AuraSetup.lua, the Rules tab's button in
-XayaUI_Rules/Editor/RulesTree.lua, the settings window's open / close in XayaUI_Options/Options.lua).
+"""Round 6, Combat Tracking Setup never opens over the game by itself (XayaUI_Options/AuraSetup.lua, the Rules tab's button in
+XayaUI_Options/RuleEditor/RulesTree.lua, the settings window's open / close in XayaUI_Options/Options.lua).
 
 Xaya, SD-53 (REQUEST-LOG A23), her answer on the window opening by itself 6 s after login: "first run ever open with settings;
 otherwise put a config button in the rules pane". With V27 (SD-28, her words: "nothing impacts mouse ability to interact with ...

@@ -23,15 +23,18 @@ import lupa.lua51 as lua51
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 CORE = "XayaUI"
-# (P4) XayaUI Rules (rules, aura tracking and, since Rules 0.7.0, the rule editor) is a module a player switches on and off like the
-# others: every combination is run with it on and with it off (the Platform and the settings window must load and work without it).
+# (P4) XayaUI Rules (rules and aura tracking) is a module a player switches on and off like the others: every combination is run with
+# it on and with it off (the Platform and the settings window must load and work without it). (Bundle 1 round 7, REQUEST-LOG A23
+# SD-57 / SD-58) the rule editor, the Combat Tracking Setup window, the talent scan and the editor's spell and texture lists are
+# XayaUI_Options' files now: the runs with XayaUI Rules off and XayaUI Options on load them and prove they build nothing then.
 # Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (REQUEST-LOG A23); the other addons live on qa-installer-branch.
 FEATURES = ["XayaUI_Rules", "XayaUI_Options"]
 # support folders switched on in every combination (none on main)
 ALWAYS = []
-# (Rules 0.7.0, A23 SD-6) files of an addon that run only after another addon has loaded, so they may use that addon's names:
-# the rule editor (XayaUI_Rules/Editor/) runs only when the settings window (XayaUI_Options) has loaded (Options.lua LoadRuleEditor)
-RUNS_AFTER = {("XayaUI_Rules", "Editor/"): "XayaUI_Options"}
+# files of an addon that run only after another addon has loaded, so they may use that addon's names: { (addon, folder/): other addon }.
+# (Rules 0.7.0, A23 SD-6, to bundle 1 round 7) the rule editor was XayaUI_Rules/Editor/, run only once XayaUI_Options had loaded. Since
+# round 7 (SD-57) it is XayaUI_Options/RuleEditor/, and XayaUI_Options names XayaUI Rules as an optional dependency, so no entry is needed.
+RUNS_AFTER = {}
 # (bundle 1 round 7, REQUEST-LOG A23 SD-58 / SD-61) XayaUI_Debug, the debug tools, is load-on-demand: core loads it at the login only
 # while Settings > Debugging > Advanced Debugging is on, which a fresh install has off. It is switched on in the AddOns list in the
 # everything-on runs like any other folder (so those runs prove it is NOT read with the default settings), and two more runs start

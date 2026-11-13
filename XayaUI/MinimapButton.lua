@@ -288,48 +288,8 @@ end
 
 -------------------------------------------------------------------------------
 -- options: Settings > Minimap Button
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58 / SD-62) The page is built by the settings window (XayaUI_Options/MinimapTab.lua
+-- ns.BuildMinimapTab), read only when the window's code loads; this button stays in core (her V34 exception, SD-62). While that page is
+-- built it sets ns.Minimap_Changed, which the button's drag calls (above) so the open page shows the new position; nil until then.
 -------------------------------------------------------------------------------
-function ns.BuildMinimapTab(Notify)
-    if not DB() then return nil end
-    ns.Minimap_Changed = function() if Notify then Notify() end end
-    local function g(k) return function() return DB()[k] end end
-    local function s(k) return function(_, v) DB()[k] = v; ns.Minimap_Refresh() end end
-    local args = {
-        n = { type = "description", order = 0, width = "full", fontSize = "medium",
-            name = "A button on the minimap. Left-click opens a small list of buttons for the features you pick below; right-click opens this window; drag it to move it around the minimap." },
-        show = { type = "toggle", order = 1, name = "Show the minimap button", width = "full", get = function() return not DB().hide end, set = function(_, v) DB().hide = not v; ns.Minimap_Refresh() end },
-        -- (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7, Xaya: "create the option in each feature to choose whether it's a sidebar or minimap
-        -- icon display; default to having sidebar on if minimap is turned off")
-        where = { type = "select", order = 1.5, name = "Show it in", values = { MINIMAP = "Minimap", SIDEBAR = "Chat sidebar", BOTH = "Both" }, sorting = { "MINIMAP", "SIDEBAR", "BOTH" },
-            desc = "The chat sidebar is part of QoL > Improved Chat. With nothing chosen, the sidebar holds the button while the minimap button is turned off.",
-            get = function() return ns.Minimap_Where() end, set = function(_, v) DB().where = v; if v ~= "SIDEBAR" then DB().hide = false end; ns.Minimap_Refresh() end },
-        lock = { type = "toggle", order = 2, name = "Lock the button's position", disabled = function() return DB().hide end, get = g("locked"), set = function(_, v) DB().locked = v end },
-        close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
-        angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },
-        size = { type = "range", order = 4.5, name = "Button size (pixels)", min = MIN_SIZE, max = MAX_SIZE, step = 1,
-            desc = "Sets the button size, from " .. MIN_SIZE .. " to " .. MAX_SIZE .. " pixels (default " .. BASE_SIZE .. ").",
-            disabled = function() return DB().hide end, get = function() return DB().size or BASE_SIZE end,
-            set = function(_, v) DB().size = math.max(MIN_SIZE, math.min(MAX_SIZE, tonumber(v) or BASE_SIZE)); ns.Minimap_Refresh() end },
-        iconH = { type = "header", order = 5, name = "Button icon" },
-        iconPreview = { type = "description", order = 5.1, width = "half", name = "",
-            image = function() return (ns.Minimap_ResolveIcon(DB().iconOverride)) end, imageWidth = 32, imageHeight = 32 },
-        icon = { type = "input", order = 5.2, width = "double", name = "Icon override (file ID, icon name, or spell:ID)",
-            desc = "Sets the button's icon: a file ID, an icon name, spell:ID or a texture path. Leave empty for the built-in icon.",
-            disabled = function() return DB().hide end,
-            get = function() return DB().iconOverride or "" end,
-            set = function(_, v) DB().iconOverride = tostring(v or ""):gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", ""); ns.Minimap_Refresh(); if Notify then Notify() end end },
-        iconReset = { type = "execute", order = 5.3, width = "half", name = "Reset",
-            desc = "Back to the built-in icon.", disabled = function() return DB().hide or (DB().iconOverride or "") == "" end,
-            func = function() DB().iconOverride = ""; ns.Minimap_Refresh(); if Notify then Notify() end end },
-        iconNote = { type = "description", order = 5.4, width = "full", fontSize = "small",
-            name = function() local _, note = ns.Minimap_ResolveIcon(DB().iconOverride); return "Using: " .. note .. ". A wrong ID or path can show a green square or an empty button; clear the box or press Reset." end },
-        entries = { type = "group", name = "Buttons in the list", order = 10, inline = true, disabled = function() return DB().hide end, args = {} },
-    }
-    for i, e in ipairs(ns.Launchers()) do
-        args.entries.args[e[1]] = { type = "toggle", order = i, name = e[2], desc = e[3],
-            hidden = function() return not Available(e) end,   -- (core 0.6.49: its feature is off)
-            get = function() return Shown(DB(), e[1]) end,
-            set = function(_, v) DB().entries[e[1]] = v and true or false; ns.Minimap_Refresh() end }
-    end
-    return { type = "group", name = "Minimap Button", order = 12, args = args }
-end
+ns.Minimap_Changed = nil

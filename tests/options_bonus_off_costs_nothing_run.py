@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """V14 "off costs nothing" for XayaUI_Options and the rule editor (Options 0.6.41; the rule editor's Drafts.lua, then in XayaUI_Rules_Options,
-part of XayaUI Rules since Rules 0.7.0: XayaUI_Rules/Editor/Drafts.lua). Xaya, 2026-11-05: "anything that is disabled in the addon through a
+part of XayaUI Rules from Rules 0.7.0, part of XayaUI Options since bundle 1 round 7: XayaUI_Options/RuleEditor/Drafts.lua). Xaya, 2026-11-05: "anything that is disabled in the addon through a
 tick box should NEVER LOAD or contribute to performance cost / demand in any way -- make this a standing rule for all current and future
 feature / element builds".
 Features: the settings window's driver and /xui debug perf frame counter (Options.lua), the debug console strip (Options.lua), "Use drafts"
@@ -37,7 +37,7 @@ local function owner()
 end
 local rawCreate = CreateFrame
 CreateFrame = function(...) local f = rawCreate(...); rawset(f, "_owner", owner()); return f end
-local OPT, DR = "XayaUI_Options/Options.lua", "XayaUI_Rules/Editor/Drafts.lua"
+local OPT, DR = "XayaUI_Options/Options.lua", "XayaUI_Options/RuleEditor/Drafts.lua"
 local function owned(file) local l = {}; for _, o in ipairs(W.objects) do if rawget(o, "_owner") == file then l[#l + 1] = o end end; return l end
 local function frames(file) return #owned(file) end
 local function events(file)
@@ -51,9 +51,9 @@ local function liveOnUpdates(prefix)   -- OnUpdate scripts that run now (set, on
   local n = 0
   for _, o in ipairs(W.objects) do
     local f = rawget(o, "_owner") or ""
-    -- (Rules 0.7.0) the settings window's rule editor is XayaUI_Rules/Editor/ (set up by the window, Options.lua LoadRuleEditor): it
-    -- counts as the window's
-    local mine = f:sub(1, #prefix) == prefix or (prefix == "XayaUI_Options/" and f:sub(1, 20) == "XayaUI_Rules/Editor/")
+    -- (bundle 1 round 7, SD-57) the settings window's rule editor is XayaUI_Options/RuleEditor/, under the window's own prefix (from Rules
+    -- 0.7.0 to round 7 it was XayaUI_Rules/Editor/ and was counted as the window's here by name)
+    local mine = f:sub(1, #prefix) == prefix
     if mine and o._scripts.OnUpdate and o:IsVisible() then n = n + 1 end
   end
   return n

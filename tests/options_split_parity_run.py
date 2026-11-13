@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Platform split P3 "Options split" (Options 0.6.83; docs/plans/PLATFORM-SPLIT-2026-11-07.md sections 7, 10 and risk R8): the rule
 editor and the rules tree moved out of XayaUI_Options/Options.lua (then to XayaUI_Options/RuleEditor/, later the addon
-XayaUI_Rules_Options, since Rules 0.7.0 XayaUI_Rules/Editor/). A pure code move: the player must get exactly the same settings window.
+XayaUI_Rules_Options, from Rules 0.7.0 XayaUI_Rules/Editor/, since bundle 1 round 7 XayaUI_Options/RuleEditor/ again). A pure code move: the player must get exactly the same settings window.
 Loads the real addons of this branch (XayaUI, XayaUI_Options, XayaUI_Rules with its rule editor) in the stand-in game, sets up one fixed
 state (rules with cues and an outcome, nested groups, a disabled rule, a buff bar, a Recycle Bin item, a fixed clock) and builds the whole
 options table (ns.BuildOptionsTable, every page of every module that is on). Every node is written out: its key path, type, order, width,
@@ -105,6 +105,13 @@ pane"): `--dump` of HEAD 89ea79a and of the new code differ in exactly 4 lines: 
 `enabledTab.loaded.auraSetup` and `smartTab.all.auraSetup`, the "Open Combat Tracking Setup" button; 6698 -> 6700 nodes) and the
 Rule Creation `auraSetup` group's xuiInfo text in "set" and "settings" (it no longer says the window "runs once per spec": it never
 opens by itself); same node counts there; 0 other lines.
+Updated on 2026-11-13 for bundle 1 round 7 (SD-57 / SD-58: the rule editor, Combat Tracking Setup, the talent scan, the editor's spell
+and texture lists, the displays' right-click menu and the Minimap Button page moved into XayaUI Options; the Recycle Bin's false "every
+30 minutes"): `--dump` of HEAD b4742900 (the tree before the move) and of the new code differ in exactly 1 line, "profiles" tab:
+`profiles.bin.keep` desc, "Checked at login and every 30 minutes" -> "Checked when you log in or out, and whenever this list is shown or
+an item is restored" (what XayaUI/RecycleBin.lua does: PLAYER_LOGIN, PLAYER_LOGOUT, ns.RecycleItems, ns.RecycleRestore); same 7211
+lines; 0 other lines, so the move itself changed nothing in the window. Only the all-on "profiles" hash changed (d79e2e33d8c99bba ->
+cb4b7d1248032574).
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

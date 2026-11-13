@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A window redraw with many groups costs about what it costs without groups (review R17; docs/plans/RULES-REVIEW-2026-11-10.md).
 Every redraw of the settings window (a click on any switch redraws at least once) builds the rule lists. The group helpers
-(XayaUI_Rules/Editor/TreeHelpers.lua FolderRules / IsInFolder) searched the group list once per step of every rule's group chain and made
+(XayaUI_Options/RuleEditor/TreeHelpers.lua FolderRules / IsInFolder) searched the group list once per step of every rule's group chain and made
 a table per rule, and the build asked them once or twice per group: with an auto-generated Class > Spec > type tree (64 groups) and
 300 rules with a cue each, the groups made a build take about 30 times as long as the same rules with no groups.
 Checked on the real addons in the stand-in game, with the window's own build (AceConfigRegistry's options table, as Tree.Get runs it):

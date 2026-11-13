@@ -16,7 +16,9 @@ ROOT = os.path.normpath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
-PATCH = open(os.path.join(ROOT, "PATCH-NOTES.md"), encoding="utf-8").read()
+# (round 7 docs) HTML comments are left out, as tools/build_info_pane_data.py leaves them out (strip_comments): a landing held in a
+# comment in PATCH-NOTES.md is not in the pane, so it is not counted here either
+PATCH = re.sub(r"<!--.*?-->", "", open(os.path.join(ROOT, "PATCH-NOTES.md"), encoding="utf-8").read(), flags=re.S)
 N_LANDINGS = len(re.findall(r"^## \d{4}-\d{2}-\d{2} — ", PATCH, re.M))
 FIRST_DATE = re.search(r"^## (\d{4}-\d{2}-\d{2}) — ", PATCH, re.M).group(1)
 CREDIT_NAMES = re.findall(r'\{ name = "([^"]+)"', open(os.path.join(ROOT, "XayaUI_Options", "AddonInfo.lua"), encoding="utf-8").read())

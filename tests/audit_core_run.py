@@ -62,6 +62,10 @@ do
 end
 -- D9 / D10: the talent scan
 do
+  -- (bundle 1 round 7, REQUEST-LOG A23 SD-58) the scan is XayaUI Options' (XayaUI_Options/TalentDump.lua), read when the settings
+  -- window's code loads (/xui debug talents loads it without opening the window, XayaUI_Rules/TalentDump.lua): load it the same way
+  check("D9 the talent scan is not read at login (XayaUI Options not loaded yet)", ns.ScanAllTalents == nil)
+  ns.LoadOptions(); W.tick(0.05, 2)
   local saveCT, saveTr, saveC = rawget(_G, "C_ClassTalents"), rawget(_G, "C_Traits"), rawget(_G, "Constants")
   C_ClassTalents = { InitializeViewLoadout = function() error("api changed") end, ViewLoadout = function() error("api changed") end }
   C_Traits = C_Traits or {}

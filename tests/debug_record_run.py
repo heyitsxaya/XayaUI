@@ -124,9 +124,9 @@ OPTENV = setmetatable({ ns = OPTNS }, { __index = function(_, k) local v = _G[k]
 ''')
 build = L.eval("function(src) local f, e = loadstring('local ns = ns; local CoreS, PlatS, QolS = ns.Settings(\"core\"), ns.Settings(\"platform\"), ns.Settings(\"qol\")\\n' .. src .. '\\nreturn BuildAddonSettings()', '@Options.lua(BuildAddonSettings)');"
                " if not f then error(e) end; setfenv(f, OPTENV); return f() end")
-# (P3 options split, Options 0.6.83) the page's rule rows come from the rule editor (Rules 0.7.0: XayaUI_Rules/Editor/RuleSettings.lua):
-# its function goes first (the file's body is one set-up function, EditorFileInit: only SettingsRows itself is taken)
-rs = open(os.path.join(ROOT, "XayaUI_Rules", "Editor", "RuleSettings.lua"), encoding="utf-8").read()
+# (P3 options split, Options 0.6.83) the page's rule rows come from the rule editor (bundle 1 round 7: XayaUI_Options/RuleEditor/RuleSettings.lua):
+# its function goes first (only SettingsRows itself is taken from the file)
+rs = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "RuleSettings.lua"), encoding="utf-8").read()
 rs_end = "\n    return display, rules\nend\n"
 rs = rs[rs.index("function ns.OptionsApi.RuleEditor.SettingsRows"):rs.index(rs_end) + len(rs_end)]
 L.execute("NS.OptionsApi = NS.OptionsApi or {}; NS.OptionsApi.RuleEditor = NS.OptionsApi.RuleEditor or {}")

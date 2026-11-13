@@ -23,3 +23,32 @@ Options.lua
 TreePaint.lua
 Skin.lua
 ScopeEditor.lua
+
+# (bundle 1 round 7, REQUEST-LOG A23 SD-58) moved from XayaUI core: the displays' right-click menu and the Minimap Button settings page
+ElementMenu.lua
+MinimapTab.lua
+# (bundle 1 round 7, SD-57 / SD-58; V34) moved from XayaUI Rules, in the order Rules listed them: the rule editor's texture list, the talent
+# scan, the editor's spell list, the Combat Tracking Setup window, then the rule editor (was XayaUI_Rules/Editor). Each stops at its first
+# lines and builds nothing while XayaUI Rules is switched off.
+RuleEditor\TextureList.lua
+TalentDump.lua
+RuleEditor\AuraSources.lua
+AuraSetup.lua
+RuleEditor\Drafts.lua
+RuleEditor\TriggersEditor.lua
+RuleEditor\OutcomesEditor.lua
+RuleEditor\DisplayTab.lua
+RuleEditor\RuleSearch.lua
+RuleEditor\AutoPicker.lua
+RuleEditor\TreeHelpers.lua
+RuleEditor\Editor.lua
+RuleEditor\ShelvedElements.lua
+RuleEditor\RulesTree.lua
+RuleEditor\Sidebar.lua
+RuleEditor\RuleMerge.lua
+RuleEditor\SpellSearch.lua
+RuleEditor\SaveBar.lua
+RuleEditor\RuleSettings.lua
+# (bundle 1 round 7, REQUEST-LOG A23 SD-58 / SD-64; V34, V28) moved from XayaUI Rules (Visual.lua): the mover (/xui unlock), which works
+# only while this window is open; it also keeps the window's open / closed state for the rule editor and the menus
+Mover.lua

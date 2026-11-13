@@ -8,7 +8,7 @@ if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", 
 
 ns.runtime = setmetatable({}, { __mode = "k" }) -- rule -> { active, lastPlay, visualWanted }
 
-local perf = { on = false }   -- /xui debug perf (see the bottom of this file)
+local perf = { on = false }   -- /xui debug perf timing points (ns.EnginePerfSet below; the report is XayaUI_Debug/RulesPerf.lua)
 -- Round 5 (V27, Xaya 2026-11-10, her answers "No running loops" and "Whole-pixel / no float math"; REQUEST-LOG A23 SD-28 / SD-29 / SD-49):
 -- the engine no longer runs every rendered frame. Before, an OnUpdate script ran on every frame for as long as the game was open and
 -- stepped every rule five times a second (the 0.2 s tick) whether or not anything had changed: in the V27 gate's busiest case that was
@@ -1192,9 +1192,13 @@ local function Step()
     end
 end
 
--- /xui debug perf: measures the engine on this machine. Off by default; while on, each Step is timed with debugprofilestop,
--- split into rule evaluation / visual updates, with the most expensive rules named. Every report is also saved to
--- XayaUI Dev Assist's XayaUIDevAssistDB.perfLog (P5, B11; CueRulesDB.perfLog before; only while Dev Assist is on) (last 6) so it survives /reload and can be read from the saved variables.
+-- /xui debug perf: the engine's own timing points (off by default). While on, each Step is timed with debugprofilestop, split into
+-- rule evaluation / visual updates, per rule, with the events counted. The report (the lines it prints and the game's own addon meter)
+-- is a debug tool in XayaUI_Debug (RulesPerf.lua; REQUEST-LOG A23 SD-58, her answer on the debug tools: "1 but nothing loads unless
+-- "Debugging" is enabled"), which switches these points on and off and reads them through ns.EnginePerfSet / ns.EnginePerfReadings
+-- below. With Advanced Debugging off that file is never read, so nothing switches them on: each point costs one false test. (Round 7:
+-- the copy of each report saved for XayaUI Dev Assist, XayaUIDevAssistDB.perfLog, is no longer written; Dev Assist is retired to
+-- qa-installer-branch, SD-2.)
 local function PerfReset()
     perf.steps, perf.total, perf.max, perf.events, perf.t0 = 0, 0, 0, {}, GetTime()
     perf.evalMs, perf.visMs, perf.fxMs, perf.fxN = 0, 0, 0, 0
@@ -1231,77 +1235,17 @@ Step = function()
     if d > perf.max then perf.max = d end
 end
 
--- the game's own per-addon CPU meter (C_AddOnProfiler); read-only, no cost to the addons measured
-local function AddonCPU()
-    local out = {}
-    if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and Enum and Enum.AddOnProfilerMetric and C_AddOns and C_AddOns.GetNumAddOns) then return nil end
-    local M = Enum.AddOnProfilerMetric
-    for i = 1, C_AddOns.GetNumAddOns() do
-        local name = C_AddOns.GetAddOnInfo(i)
-        if name and C_AddOns.IsAddOnLoaded(name) then
-            local ok, avg = pcall(C_AddOnProfiler.GetAddOnMetric, name, M.RecentAverageTime)
-            local ok2, peak = pcall(C_AddOnProfiler.GetAddOnMetric, name, M.PeakTime)
-            if ok and type(avg) == "number" then out[#out + 1] = { name = name, avg = avg, peak = (ok2 and type(peak) == "number") and peak or 0 } end
-        end
-    end
-    table.sort(out, function(x, y) return x.avg > y.avg end)
-    return out
+-- (round 7) the switch and a read-only copy of the readings, for XayaUI_Debug/RulesPerf.lua. on: true starts (or restarts) measuring
+-- from zero; false stops (the last readings are kept, as before, so the report can still be read).
+function ns.EnginePerfSet(on)
+    if on then perf.on = true; PerfReset() else perf.on = false; ns.perfOn = false end
 end
-
-function ns.PerfCommand(arg)
-    arg = tostring(arg or ""):lower():match("^%s*(%a*)") or ""
-    if arg == "on" or arg == "reset" then
-        perf.on = true; PerfReset()
-        ns.Print("perf: measuring. Play (ideally a fight), then /xui debug perf to read it, /xui debug perf off to stop.")
-        return
-    elseif arg == "off" then
-        perf.on = false; ns.perfOn = false
-        ns.Print("perf: stopped")
-        return
-    end
-    if not perf.t0 then ns.Print("perf: not measuring. /xui debug perf on, play a while, then /xui debug perf."); return end
-    local secs = math.max(0.001, GetTime() - perf.t0)
-    local steps = math.max(1, perf.steps)
-    local ev, parts = perf.events, {}
-    for k, n in pairs(ev) do parts[#parts + 1] = ("%s %.1f/s"):format(k, n / secs) end
-    table.sort(parts)
-    local rules, on = #(ns.rules or {}), 0
-    for _, r in ipairs(ns.rules or {}) do if r.enabled then on = on + 1 end end
-    local lines = {}
-    local function L(fmt, ...) local t = fmt:format(...); lines[#lines + 1] = t; ns.Print(t) end
-    L("perf over %.0fs: %d steps (%.1f/s), %.2f ms avg, %.2f ms worst, %.1f%% of one frame budget at 60 fps (%d rules, %d on)",
-        secs, perf.steps, perf.steps / secs, perf.total / steps, perf.max, (perf.total / secs) / 10, rules, on)
-    L("perf: per second: rules %.2f ms, visuals %.2f ms, per-frame effects %.2f ms (%d calls)",
-        perf.evalMs / secs, perf.visMs / secs, perf.fxMs / secs, perf.fxN)
-    local top = {}
-    for r, ms in pairs(perf.rule) do top[#top + 1] = { r, ms } end
-    table.sort(top, function(a, b) return a[2] > b[2] end)
-    for i = 1, math.min(5, #top) do
-        local r = top[i][1]
-        L("perf: #%d %.2f ms/s  %s%s", i, top[i][2] / secs, tostring(r.name), r.isCue and " (cue)" or "")
-    end
-    L("perf: Lua memory %.0f KB now, %+.0f KB/s since start (a high number means garbage)", collectgarbage("count"), (collectgarbage("count") - perf.mem0) / secs)
-    L("perf: events %s", #parts > 0 and table.concat(parts, ", ") or "none counted yet")
-    local pp = {}
-    for k, n in pairs(perf.paths) do pp[#pp + 1] = ("%s x%d"):format(k, n) end
-    table.sort(pp)
-    if #pp > 0 then L("perf: duration-text paths: %s", table.concat(pp, ", ")) end
-    local cpu = AddonCPU()
-    if cpu then
-        local bits = {}
-        for i = 1, math.min(8, #cpu) do bits[#bits + 1] = ("%s %.2f/%.1f"):format(cpu[i].name, cpu[i].avg, cpu[i].peak) end
-        L("perf: game's own addon meter, recent avg/peak ms per frame, top 8: %s", table.concat(bits, "; "))
-    else
-        L("perf: the game's addon meter (C_AddOnProfiler) is not available here")
-    end
-    -- (P5, B11) kept by XayaUI Dev Assist (its store): with Dev Assist off nothing is saved (and nothing made for it)
-    local DevS = ns.SettingsReady("devassist") and ns.Settings("devassist")
-    if DevS then
-        local log = DevS.perfLog
-        if type(log) ~= "table" then log = {}; DevS.perfLog = log end
-        log[#log + 1] = { at = date("%Y-%m-%d %H:%M:%S"), build = ns.version or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("XayaUI", "Version")), combat = (UnitAffectingCombat and UnitAffectingCombat("player")) and true or false, lines = lines }
-        while #log > 6 do table.remove(log, 1) end
-    end
+-- A copy, made only when the report asks (never per frame): nil until measuring has been started once this session.
+function ns.EnginePerfReadings()
+    if not perf.t0 then return nil end
+    local function Copy(t) local c = {}; for k, v in pairs(t or {}) do c[k] = v end; return c end
+    return { on = perf.on, t0 = perf.t0, steps = perf.steps, total = perf.total, max = perf.max, evalMs = perf.evalMs, visMs = perf.visMs,
+        fxMs = perf.fxMs, fxN = perf.fxN, mem0 = perf.mem0, events = Copy(perf.events), rule = Copy(perf.rule), paths = Copy(perf.paths) }
 end
 
 

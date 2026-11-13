@@ -26,11 +26,22 @@ CueRulesDB = {}
 ''')
 def load(f):
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
-load("XayaUI/Modules.lua"); load("XayaUI_Rules/AuraSources.lua")
+load("XayaUI/Modules.lua")
 fails = 0
 def check(n, c):
     global fails
     print(("PASS " if c else "FAIL ") + n); fails += 0 if c else 1
+# (bundle 1 round 7, REQUEST-LOG A23 SD-58) the file is XayaUI Options' (the rule editor's spell list) and builds nothing while XayaUI
+# Rules is off: with no "rules" service it stops at once. (The settings window's own code has loaded: ns.OptionsApi, Options.lua.)
+L.execute("XayaUI_NS.OptionsApi = XayaUI_NS.OptionsApi or {}")
+load("XayaUI_Options/RuleEditor/AuraSources.lua")
+check("XayaUI Rules off: the file builds nothing (no ns.AuraSources, no AuraSources service)",
+      L.eval("XayaUI_NS.AuraSources") is None and L.eval("XayaUI_NS.Service('AuraSources')") is None)
+# XayaUI Rules on, as at its login: its files declare its store (Rules' own files, e.g. Conditions.lua) and provide "rules" (RuleDefaults.lua)
+L.execute("XayaUI_NS.SettingsDeclareStore('core', 'XayaUI_Rules', 'XayaUIRulesDB'); XayaUI_NS.Provide('rules', {})")
+load("XayaUI_Options/RuleEditor/AuraSources.lua")
+check("XayaUI Rules on: the file builds ns.AuraSources and offers it as the AuraSources service",
+      L.eval("XayaUI_NS.AuraSources ~= nil and XayaUI_NS.Service('AuraSources') == XayaUI_NS.AuraSources") is True)
 nb = lambda i: "{type=19, tooltipType=1, tooltipID=%d}" % i
 L.execute("AS = XayaUI_NS.AuraSources")
 check("no source yet", L.eval("AS.Get(9101)") is None)

@@ -3,7 +3,7 @@
 -- selection look, banners, the open / close arrow, a feature's tick box on its row (Tree.RowSwitch), the name's insets, the
 -- left-aligned headings, and the decorate pass Skin.lua layers its look on.
 -- (Options 0.6.87, platform split P4b; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7 and Q1) Moved unchanged out of the rule
--- editor's Sidebar.lua and SpellSearch.lua when the rule editor was split off (it is now XayaUI_Rules/Editor/): these
+-- editor's Sidebar.lua and SpellSearch.lua when the rule editor was split off (it is now XayaUI_Options/RuleEditor/): these
 -- painted every tab's rows, the feature tabs' tick boxes included, so they belong to the window (Platform), not to XayaUI Rules.
 -- What only the rules tree has is the rule editor's, registered here as ns.OptionsApi.TreePaint.rules when it loads (nil while
 -- XayaUI Rules is off, and then none of its files is read):
@@ -77,7 +77,7 @@ local function RowTier(button)
     local uv = button.uniquevalue and tostring(button.uniquevalue) or ""
     local lastKey = uv:match("([^\001]+)$") or ""
     -- (P4b) which tier a row is (a root header, a group's sub-category, a top-level category) only the rules tree knows: its rows ask
-    -- the rule editor (TP.rules.RowKind / BannerTint, XayaUI_Rules/Editor/Sidebar.lua); every other row is a plain row
+    -- the rule editor (TP.rules.RowKind / BannerTint, XayaUI_Options/RuleEditor/Sidebar.lua); every other row is a plain row
     local R = TP.rules
     local isRoot, isSub, upper = false, false, false
     if R then isRoot, isSub, upper = R.RowKind(uv, lastKey) end
@@ -342,7 +342,7 @@ end
 -- One tree row, every pass. The parts every tree has (text tier and selection look, banner, open / close arrow, a feature's tick box,
 -- the name's insets) are painted here; what only the rules tree has (preview eye / headphone, multi-select wash, drag, reorder
 -- arrows, rename, the QoL rows' tick boxes, the Smart Categories note, the locks) comes from the rule editor through TP.rules, in
--- the same order as before the split (P4b; the rule editor is XayaUI_Rules/Editor/ and is set up only while XayaUI Rules is on).
+-- the same order as before the split (P4b; the rule editor is XayaUI_Options/RuleEditor/ and is set up only while XayaUI Rules is on).
 local function DecorateButton(button)
     local R = TP.rules
     button.xuiTextL, button.xuiTextR = nil, nil   -- #369: set again below for this row (a reused button never keeps another row's)
@@ -483,7 +483,7 @@ end
 
 -- (Options 0.6.106; request log row 20, Xaya 2026-11-08: "deleting auras shifts the rule sidebar up still") A delete in the Rules
 -- sidebar goes back to the list's top row and leaves the scroll position it had on the tree's status table (xuiKeepScroll;
--- XayaUI_Rules/Editor/TreeHelpers.lua ns.GoHomeKeepScroll). The window rebuild re-selects that row through AceGUI's TreeGroup:Select,
+-- XayaUI_Options/RuleEditor/TreeHelpers.lua ns.GoHomeKeepScroll). The window rebuild re-selects that row through AceGUI's TreeGroup:Select,
 -- which scrolls it into view (or leaves scrollToSelection on the status table for the tree's first drawn frame). Once the rebuild is
 -- done (the Open wrapper in Options.lua), the kept position goes back and the scroll-to-selection is dropped. AceGUI's RefreshTree
 -- clamps it, so a list now shorter than the view stays at its bottom. Only after a rebuild: a decorate pass before it would see the old

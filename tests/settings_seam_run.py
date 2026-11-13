@@ -58,6 +58,15 @@ GOLDEN_R6 = {
     "core only: play session": "f80deb93f09420fae85e16595397c847854c5ec1003d4158de1415d93bcc8933",
     "core only: reload": "f80deb93f09420fae85e16595397c847854c5ec1003d4158de1415d93bcc8933",
 }
+# (bundle 1 round 7, REQUEST-LOG A23 SD-58 "Move all four": the talent scan is XayaUI Options' now, XayaUI_Options/TalentDump.lua) "core
+# only" (XayaUI + XayaUI_Rules + XayaUI_Debug, XayaUI Options off) made again: the scenario types /xui debug talents, which scans only
+# with XayaUI Options; with Options off it says so and saves no scan. These are the hashes of the old code's "core only" saved data (HEAD
+# b4742900, the tree before the move, run with this file's sessions()) with its one variable XayaUITalentDB taken out; the two dumps
+# (old and new code) differ in exactly that variable and nothing else. GOLDEN_R6 stays for the record.
+GOLDEN_R7 = {
+    "core only: play session": "56d3b2a49d77ef33a4eed28234d4aac5cc90148e7abf870deec747b68c218b48",
+    "core only: reload": "56d3b2a49d77ef33a4eed28234d4aac5cc90148e7abf870deec747b68c218b48",
+}
 # (P2, kept for the record) the hashes per addon folder, made in a checkout of main 2faeda5 (the code before the seam); 8ced2e3 matched them
 GOLDEN_P2 = {
     "all on: play session": "92a578439513886e35eb3782bd23996ac273ae74d0390336da81ef4dadc4ea07",
@@ -614,7 +623,12 @@ def main():
             # the data can differ only by them, and a hash cannot be filtered. "core only" (no such addon on) still compares.
             skip(", ".join(ABSENT.values()), "B: %s: saved variables byte-identical to the old code's" % tag)
         else:
-            check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN_R6.get(tag, GOLDEN.get(tag)), h)
+            check("B: %s: saved variables byte-identical to the old code's" % tag, h == GOLDEN_R7.get(tag, GOLDEN_R6.get(tag, GOLDEN.get(tag))), h)
+        if tag.startswith("core only"):
+            # (round 7, SD-58) what changed, as the player sees it: with XayaUI Options off /xui debug talents scans nothing
+            check("B: %s: no talent scan saved (/xui debug talents needs XayaUI Options, which is off here)" % tag,
+                  not any(isinstance(v, dict) and "XayaUITalentDB" in v for v in saved.values()),
+                  [a for a, v in saved.items() if isinstance(v, dict) and "XayaUITalentDB" in v])
         check("B: %s: no Lua error" % tag, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
         check("B: %s: no view was asked for a key its module does not own" % tag, unknown == "", unknown)
     # (P4) XayaUI Rules off (the Platform alone, and every other addon on): no Lua error, and nothing of the rules is saved

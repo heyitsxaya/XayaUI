@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
-"""The rule editor's load contract (Rules 0.7.0, Options 0.6.107; REQUEST-LOG A23 SD-6; was P4b / V14 of
-docs/plans/PLATFORM-SPLIT-2026-11-07.md, when the editor was its own load-on-demand addon).
-The rule editor is part of XayaUI Rules: its 15 files are XayaUI_Rules/Editor/*.lua, listed in XayaUI_Rules.toc after the engine
-files. The game reads them at login with Rules; each only adds one set-up function to ns.RuleEditorFiles. XayaUI_Options
-(Options.lua ns.OptionsApi.LoadRuleEditor, called by core's ns.LoadOptions through ns.Options.AfterLoad and by Toggle) runs those
-functions once per session, in order, each with xpcall and the game's error handler, only while Rules is on, then drops the list.
+"""The rule editor's load contract (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34 "off
+means not read"). Before round 7 (Rules 0.7.0, SD-6) the editor was XayaUI_Rules/Editor/, read at login with Rules, each file queuing
+one set-up function that the settings window ran.
+The rule editor is part of XayaUI Options: its files are XayaUI_Options/RuleEditor/*.lua (the 15 editor files and the editor's texture
+and spell lists, TextureList.lua and AuraSources.lua), listed in XayaUI_Options.toc after the window's own files. The game reads them
+only when XayaUI Options loads (the settings window's first opening); each stops at its first lines while XayaUI Rules is off.
+Options.lua ns.OptionsApi.LoadRuleEditor only says, once per session, when Rules is on and the editor is not there.
 Runs the real addons in the stand-in game and records every Lua file the loader reads (by chunk name), every frame made from an
 editor file, the popups and the "EDITED" listeners.
-  A XayaUI Rules on, at login: each of the 15 editor files (the real list, read from XayaUI_Rules.toc) is read exactly once, from
-    XayaUI_Rules/Editor; ns.RuleEditorFiles holds 15 functions, one per file in .toc order; none of the editor's set-up has run: no
-    ns.OptionsApi.RuleEditor.BuildRulesTab, no popup XAYAUI_AP_SAY / XAYAUI_AP_ALERT / XAYAUI_CONFIRM / XAYAUI_RENAME / XAYAUI_EXPORT /
-    XAYAUI_GROUP_FIT, no frame made by an editor file, no "EDITED" listener from Drafts.lua.
-  B opening the settings window runs each set-up function exactly once: the Rules tab is built, the popups and Drafts' "EDITED"
-    listener exist, ns.RuleEditorFiles is nil; closing and opening again, opening a rule (ns.EditRule), a settings page, Drafts, the
-    Class/Spec Rule Creator, Settings > Rule Creation and another LoadRuleEditor call run none of it again and read no file again; no
+  A XayaUI Rules on, at login: no file of the rule editor is read at all (from any folder); no ns.RuleEditorFiles queue exists; none
+    of the editor's set-up has run: no ns.OptionsApi.RuleEditor.BuildRulesTab, no popup XAYAUI_AP_SAY / XAYAUI_AP_ALERT /
+    XAYAUI_CONFIRM / XAYAUI_RENAME / XAYAUI_EXPORT / XAYAUI_GROUP_FIT, no frame made by an editor file, no "EDITED" listener from
+    Drafts.lua.
+  B opening the settings window reads each editor file exactly once, from XayaUI_Options/RuleEditor: the Rules tab is built, the
+    popups and Drafts' "EDITED" listener exist; closing and opening again, opening a rule (ns.EditRule), a settings page, Drafts, the
+    Class/Spec Rule Creator, Settings > Rule Creation and another LoadRuleEditor call read no file again; no
     LoadAddOn("XayaUI_Rules_Options") is asked for (that addon is gone). Those navigations land on the Rules sub-tabs / Rule Creation.
-  C XayaUI Rules off: no editor file is read at all (login or window), ns.RuleEditorFiles is nil, the window opens and opens again
-    without a Rules tab, ns.OpenPage("drafts" / "creator"), ns.OpenDraftSettings, ns.UI.Creator and ns.UI.Drafts do nothing, no error.
-  D a set-up function that errors (one added in front of the 15): its error goes to the game's error handler, the 15 real ones still
-    run once each and the Rules tab is built.
-  E every set-up function errors: each error goes to the error handler, the window opens without the Rules tab, and one XayaUI message
-    says the rule editor could not be set up.
+  C XayaUI Rules off: at login no editor file is read. Opening the window reads the editor files once with the rest of XayaUI Options
+    (the game reads every file an addon lists; V34 residual, reported to Xaya), and each stops at once: no Rules tab, no BuildRulesTab,
+    no popup, no frame made by an editor file, no "EDITED" listener; ns.OpenPage("drafts" / "creator"), ns.OpenDraftSettings,
+    ns.UI.Creator and ns.UI.Drafts do nothing; the window opens again with no file read again; no error.
+  D one editor file whose code errors (RuleMerge.lua, made to fail by the test): its error goes to the game's error handler, the other
+    files still run once each and the Rules tab is built, with no "could not be set up" message.
+  E every editor file errors: each error goes to the error handler, the window opens without the Rules tab, and one XayaUI message
+    says the rule editor could not be set up; opening again reads and tries nothing again.
 Run: python3 tests/rule_editor_load_run.py   (Lua 5.1 via lupa)"""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,13 +32,13 @@ import run as H  # noqa: E402
 
 
 def editor_files():
-    """The rule editor's files, in load order, from XayaUI_Rules.toc (the Editor\\<name>.lua lines)."""
-    toc = open(os.path.join(H.ROOT, "XayaUI_Rules", "XayaUI_Rules.toc"), encoding="utf-8").read()
+    """The rule editor's files, in load order, from XayaUI_Options.toc (the RuleEditor\\<name>.lua lines)."""
+    toc = open(os.path.join(H.ROOT, "XayaUI_Options", "XayaUI_Options.toc"), encoding="utf-8").read()
     out = []
     for line in toc.splitlines():
         line = line.strip().replace("\\", "/")
-        if line and not line.startswith("#") and line.startswith("Editor/") and line.endswith(".lua"):
-            out.append(line[len("Editor/"):])
+        if line and not line.startswith("#") and line.startswith("RuleEditor/") and line.endswith(".lua"):
+            out.append(line[len("RuleEditor/"):])
     return out
 
 
@@ -43,9 +46,14 @@ EDITOR_FILES = editor_files()
 
 PRE = r'''
 return function()
-  READS, LOADS = {}, {}
+  READS, LOADS, FAILFILES = {}, {}, {}
   local ls = loadstring
-  rawset(_G, "loadstring", function(src, name) READS[#READS + 1] = tostring(name); return ls(src, name) end)
+  -- FAILFILES[chunk name] = true: that file's code errors before it does anything (modes onefails / allfail)
+  rawset(_G, "loadstring", function(src, name)
+    READS[#READS + 1] = tostring(name)
+    if FAILFILES[tostring(name)] then return function() error("XUI_TEST_EDITOR_SETUP_FAILS " .. tostring(name)) end end
+    return ls(src, name)
+  end)
 end
 '''
 
@@ -53,8 +61,12 @@ LUA = r'''
 return function(W, L, mode, FILES)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
-local EDITOR = "@Interface/AddOns/XayaUI_Rules/Editor/"
+local EDITOR = "@Interface/AddOns/XayaUI_Options/RuleEditor/"
 local NFILES = #FILES
+local MARK = "XUI_TEST_EDITOR_SETUP_FAILS"
+-- D / E: which editor files the stand-in makes fail (their chunk errors before it does anything)
+if mode == "onefails" then FAILFILES[EDITOR .. "RuleMerge.lua"] = true end
+if mode == "allfail" then for _, f in ipairs(FILES) do FAILFILES[EDITOR .. f] = true end end
 local la = C_AddOns.LoadAddOn
 C_AddOns.LoadAddOn = function(n, ...) LOADS[#LOADS + 1] = tostring(n); return la(n, ...) end
 LoadAddOn = C_AddOns.LoadAddOn
@@ -69,6 +81,7 @@ CreateFrame = function(...)
   end
   return cf(...)
 end
+-- reads of a file named like an editor file, from any folder (the old XayaUI_Rules/Editor/ included)
 local function editorReads()
   local n, from, per = 0, {}, {}
   for _, c in ipairs(READS) do
@@ -81,6 +94,12 @@ local function editorReads()
   for k in pairs(from) do fl[#fl + 1] = k end
   table.sort(fl)
   return n, table.concat(fl, ","), per
+end
+local function readsOnce()
+  local _, _, per = editorReads()
+  local bad = {}
+  for _, f in ipairs(FILES) do if per[f] ~= 1 then bad[#bad + 1] = f .. "=" .. tostring(per[f]) end end
+  return #bad == 0, table.concat(bad, ",")
 end
 local function editorLoads() local n = 0; for _, x in ipairs(LOADS) do if x == "XayaUI_Rules_Options" then n = n + 1 end end return n end
 local POPUPS = { "XAYAUI_AP_SAY", "XAYAUI_AP_ALERT", "XAYAUI_CONFIRM", "XAYAUI_RENAME", "XAYAUI_EXPORT", "XAYAUI_GROUP_FIT" }
@@ -112,50 +131,19 @@ local ns = rawget(_G, "XayaUI_NS")
 local said = {}
 local print0 = ns.Print
 ns.Print = function(...) said[#said + 1] = table.concat({ tostring((...)) }, " "); return print0(...) end   -- (messages may go to the console window)
-local n0, from0, per0 = editorReads()
-local runs, origin = {}, {}
+local n0, from0 = editorReads()
 local errsBefore = #W.errors
-local MARK = "XUI_TEST_EDITOR_SETUP_FAILS"
-if mode == "off" then
-  check("off: at login no file of the rule editor is read", n0 == 0, n0 .. " reads from " .. from0)
-  check("off: no ns.RuleEditorFiles", ns.RuleEditorFiles == nil, type(ns.RuleEditorFiles))
-else
-  local once = true
-  for _, f in ipairs(FILES) do if per0[f] ~= 1 then once = false end end
-  check(mode .. ": at login each of the " .. NFILES .. " rule editor files is read exactly once, from XayaUI_Rules/Editor",
-    NFILES == 15 and n0 == NFILES and once and from0 == "XayaUI_Rules/Editor", NFILES .. " files in the .toc, " .. n0 .. " reads from " .. from0)
-  local list = ns.RuleEditorFiles
-  local inOrder = type(list) == "table" and #list == NFILES
-  local got = {}
-  if type(list) == "table" then
-    for i = 1, #list do
-      local fn = list[i]
-      local src = type(fn) == "function" and debug.getinfo(fn, "S").source or type(fn)
-      got[#got + 1] = tostring(src):gsub("^" .. EDITOR:gsub("%p", "%%%0"), "")
-      if src ~= EDITOR .. FILES[i] then inOrder = false end
-    end
-  end
-  check(mode .. ": ns.RuleEditorFiles holds " .. NFILES .. " set-up functions, one per editor file in .toc order", inOrder, table.concat(got, ","))
-  check(mode .. ": at login none of the editor's set-up has run: no ns.OptionsApi.RuleEditor.BuildRulesTab",
-    not (ns.OptionsApi and ns.OptionsApi.RuleEditor and ns.OptionsApi.RuleEditor.BuildRulesTab))
-  local p = popupsThere()
-  check(mode .. ": at login none of the editor's popups is defined", #p == 0, table.concat(p, ","))
-  check(mode .. ": at login no frame was made by an editor file", editorFrames == 0, editorFrames)
-  local dl = draftsEditedListeners(ns)
-  check(mode .. ": at login Drafts.lua has added no \"EDITED\" listener", dl == 0, tostring(dl))
-  -- count each set-up function's runs (wrappers keep the order); D adds a failing one in front, E makes every one fail
-  if type(list) == "table" then
-    for i = 1, #list do
-      local fn, f = list[i], FILES[i]
-      runs[f] = 0
-      if mode == "allfail" then
-        list[i] = function() runs[f] = runs[f] + 1; error(MARK .. " " .. f) end
-      else
-        list[i] = function(...) runs[f] = runs[f] + 1; return fn(...) end
-      end
-    end
-    if mode == "onefails" then table.insert(list, 1, function() error(MARK .. " extra") end) end
-  end
+check(mode .. ": the toc lists the rule editor's " .. NFILES .. " files under XayaUI_Options/RuleEditor (15 editor files and its 2 lists)", NFILES == 17, NFILES)
+check(mode .. ": at login no file of the rule editor is read, from any folder", n0 == 0, n0 .. " reads from " .. from0)
+check(mode .. ": no ns.RuleEditorFiles queue", ns.RuleEditorFiles == nil, type(ns.RuleEditorFiles))
+check(mode .. ": at login none of the editor's set-up has run: no ns.OptionsApi.RuleEditor.BuildRulesTab",
+  not (ns.OptionsApi and ns.OptionsApi.RuleEditor and ns.OptionsApi.RuleEditor.BuildRulesTab))
+local p0 = popupsThere()
+check(mode .. ": at login none of the editor's popups is defined", #p0 == 0, table.concat(p0, ","))
+check(mode .. ": at login no frame was made by an editor file", editorFrames == 0, editorFrames)
+local dl0 = draftsEditedListeners(ns)
+check(mode .. ": at login Drafts.lua has added no \"EDITED\" listener", dl0 == 0, tostring(dl0))
+if mode ~= "off" then
   local r = ns.NewRule(); r.name = "Watch"; r.enabled = true; r.spellID = 47528; ns.NormalizeRule(r)
   ns.rules = { r }; CueRulesDB.rules = ns.rules
 end
@@ -168,25 +156,20 @@ local open = ACD.OpenFrames and ACD.OpenFrames.CueRules and true or false
 check(mode .. ": the settings window opens", open)
 local function tabNow() local st = ACD:GetStatusTable("CueRules"); return st and st.groups and st.groups.selected end
 local function subNow(...) local st = ACD:GetStatusTable("CueRules", { ... }); return st and st.groups and st.groups.selected end
-local function runsOnce()
-  local bad = {}
-  for _, f in ipairs(FILES) do if runs[f] ~= 1 then bad[#bad + 1] = f .. "=" .. tostring(runs[f]) end end
-  return #bad == 0, table.concat(bad, ",")
-end
 local function markedErrors()
   local k = 0
   for i = errsBefore + 1, #W.errors do if tostring(W.errors[i]):find(MARK, 1, true) then k = k + 1 end end
   return k
 end
+local okR, badR = readsOnce()
+check(mode .. ": the first opening reads each of the " .. NFILES .. " editor files exactly once, from XayaUI_Options/RuleEditor",
+  okR and n == NFILES and from == "XayaUI_Options/RuleEditor", badR .. " / " .. n .. " reads from " .. from)
+check(mode .. ": still no ns.RuleEditorFiles queue", ns.RuleEditorFiles == nil, type(ns.RuleEditorFiles))
 if mode == "on" or mode == "onefails" then
-  local ok1, bad1 = runsOnce()
-  check(mode .. ": the first opening runs each of the " .. NFILES .. " set-up functions exactly once", ok1, bad1)
-  check(mode .. ": then ns.RuleEditorFiles is nil", ns.RuleEditorFiles == nil, type(ns.RuleEditorFiles))
   check(mode .. ": the Rules tab is built (BuildRulesTab exists, the tree has it)",
     type(ns.OptionsApi.RuleEditor.BuildRulesTab) == "function" and type(ns.BuildOptionsTable().args.cooldowns) == "table")
-  check(mode .. ": opening read no file of the editor again", n == NFILES, n)
   if mode == "onefails" then
-    check("onefails: the failing set-up function's error went to the game's error handler, once", markedErrors() == 1, markedErrors())
+    check("onefails: the failing file's error went to the game's error handler, once", markedErrors() == 1, markedErrors())
     local m = 0
     for _, t in ipairs(said) do if t:find("rule editor could not be set up", 1, true) then m = m + 1 end end
     check("onefails: no 'could not be set up' message (the editor is there)", m == 0, m)
@@ -211,8 +194,8 @@ if mode == "on" then
   pcall(ns.OpenSettingsPage, "qol", PAGE); W.tick(0.1, 3)
   check("on: a settings page (ns.OpenSettingsPage(\"qol\", \"" .. PAGE .. "\")) opens that page on its tab",
     tabNow() == "qol" and subNow("qol") == PAGE, tostring(tabNow()) .. "/" .. tostring(subNow("qol")))
-  local okP, badP = runsOnce()
-  check("on: opening a settings page runs no set-up of the editor again", okP and editorReads() == NFILES, badP .. " / " .. editorReads() .. " reads")
+  local okP, badP = readsOnce()
+  check("on: opening a settings page reads no editor file again", okP and editorReads() == NFILES, badP .. " / " .. editorReads() .. " reads")
   pcall(ns.UI.RecycleBin); W.tick(0.1, 3)
   check("on: the Recycle Bin opens Profiles > Recycle Bin", tabNow() == "profiles" and subNow("profiles") == "bin", tostring(tabNow()) .. "/" .. tostring(subNow("profiles")))
   ns.OpenPage("drafts"); W.tick(0.1, 3)
@@ -224,36 +207,37 @@ if mode == "on" then
   check("on: Settings > Rule Creation opens", tabNow() == "set" and s1 == "ui" and s2 == "rules", tostring(tabNow()) .. "/" .. tostring(s1) .. "/" .. tostring(s2))
   local again = ns.OptionsApi.LoadRuleEditor()
   check("on: LoadRuleEditor called again says the editor is there", again == true, tostring(again))
-  local ok2, bad2 = runsOnce()
+  local ok2, bad2 = readsOnce()
   local n2 = editorReads()
-  check("on: closing, opening again and every way into the editor run no set-up again and read no file again", ok2 and n2 == NFILES, bad2 .. " / " .. n2 .. " reads")
+  check("on: closing, opening again and every way into the editor read no file again", ok2 and n2 == NFILES, bad2 .. " / " .. n2 .. " reads")
   local dl2 = draftsEditedListeners(ns)
   check("on: still one \"EDITED\" listener from Drafts.lua", dl2 == 1, tostring(dl2))
   check("on: still no LoadAddOn(\"XayaUI_Rules_Options\")", editorLoads() == 0, editorLoads())
 elseif mode == "off" then
-  check("off: opening the window reads no file of the rule editor", n == 0, n .. " reads from " .. from)
   check("off: no Rules tab", ns.BuildOptionsTable().args.cooldowns == nil)
   check("off: no BuildRulesTab", ns.OptionsApi.RuleEditor.BuildRulesTab == nil)
+  check("off: no popup of the editor defined", #popupsThere() == 0, table.concat(popupsThere(), ","))
+  check("off: no frame made by an editor file", editorFrames == 0, editorFrames)
+  local dl = draftsEditedListeners(ns)
+  check("off: Drafts.lua added no \"EDITED\" listener", dl == 0, tostring(dl))
   local before = tabNow()
   ns.OpenPage("drafts"); ns.OpenPage("creator"); ns.OpenDraftSettings(); ns.UI.Creator(); ns.UI.Drafts(); W.tick(0.1, 3)
   check("off: Drafts, the Rule Creator and Settings > Rule Creation do nothing (the tab stays " .. tostring(before) .. ")", tabNow() == before, tostring(tabNow()))
   pcall(ns.ToggleUI); W.tick(0.1, 3); pcall(ns.ToggleUI); W.tick(0.1, 3)
   check("off: the window opens again", ACD.OpenFrames and ACD.OpenFrames.CueRules and true or false)
-  check("off: after closing and opening again still no file of it read", editorReads() == 0)
-  check("off: no popup of the editor defined", #popupsThere() == 0, table.concat(popupsThere(), ","))
-  check("off: no frame made by an editor file", editorFrames == 0, editorFrames)
+  check("off: after closing and opening again no file of it is read again", editorReads() == NFILES, editorReads())
+  check("off: still no frame made by an editor file", editorFrames == 0, editorFrames)
 elseif mode == "allfail" then
-  local ok1, bad1 = runsOnce()
-  check("allfail: each set-up function ran once", ok1, bad1)
-  check("allfail: each one's error went to the game's error handler", markedErrors() == NFILES, markedErrors())
-  check("allfail: ns.RuleEditorFiles is nil", ns.RuleEditorFiles == nil, type(ns.RuleEditorFiles))
+  check("allfail: each editor file's error went to the game's error handler", markedErrors() == NFILES, markedErrors())
   check("allfail: no Rules tab", ns.BuildOptionsTable().args.cooldowns == nil)
   local m = 0
   for _, t in ipairs(said) do if t:find("the rule editor could not be set up: the Rules tab is left out", 1, true) then m = m + 1 end end
   check("allfail: one XayaUI message says the rule editor could not be set up", m == 1, m)
   pcall(ns.ToggleUI); W.tick(0.1, 3); pcall(ns.ToggleUI); W.tick(0.1, 3)
-  local ok2, bad2 = runsOnce()
-  check("allfail: closing and opening again tries no set-up again", ok2, bad2)
+  local ok2, bad2 = readsOnce()
+  local m2 = 0
+  for _, t in ipairs(said) do if t:find("the rule editor could not be set up", 1, true) then m2 = m2 + 1 end end
+  check("allfail: closing and opening again reads and tries nothing again (still one message)", ok2 and m2 == 1 and markedErrors() == NFILES, bad2 .. " / " .. m2)
 end
 pcall(ns.ToggleUI); W.tick(0.1, 3)
 -- errors other than the ones this test made on purpose

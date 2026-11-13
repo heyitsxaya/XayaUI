@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: XayaUI Debug
-## Notes: XayaUI's debug tools: the console window (/xui console), the bug report (/xui bug) and the debug report (/xui report). XayaUI loads them once per login or /reload, only while Settings > Debugging > Advanced Debugging is on (off by default), so they cost nothing otherwise.
+## Notes: XayaUI's debug tools: the console window (/xui console), the bug report (/xui bug), the debug report (/xui report), and XayaUI Rules' engine perf report (/xui debug perf), /xui status, /xui auras and /xuiengine. XayaUI loads them once per login or /reload, only while Settings > Debugging > Advanced Debugging is on (off by default), so they cost nothing otherwise.
 ## Author: Xaya
 ## Version: 0.7.0
 ## X-Date: 2026-11-12
@@ -16,3 +16,7 @@ DebugReport.lua
 # XayaUI Rules' debug pieces (the engine perf report, /xui auras, /xuiengine, /xui status) are appended below this line. Each registers
 # through Modules.lua (ns.RegisterDebugCommand, ns.RegisterCommand) and reads XayaUI Rules only through what it publishes; XayaUI Rules
 # loads first when it is on (## OptionalDeps above). Tools.lua says how core gates them.
+RulesPerf.lua
+RulesStatus.lua
+RulesAuras.lua
+RulesEngine.lua

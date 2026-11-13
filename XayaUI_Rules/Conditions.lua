@@ -2271,35 +2271,15 @@ function ns.LogStatusSnapshot(tag)
     end
 end
 
-local PrintStatusRaw
-function ns.PrintStatus()
-    ns.statusDetail = true   -- readable time-source labels while /xui debug status runs (Timing.lua)
-    local ok, err = pcall(PrintStatusRaw)
+-- /xui debug status and its /xui status shortcut (the rules' answers right now, and why) moved to the debug tools in bundle 1 round 7
+-- (XayaUI_Debug/RulesStatus.lua; REQUEST-LOG A23 SD-58, her answer on the debug tools: "1 but nothing loads unless "Debugging" is
+-- enabled"). It reads what stays here: ns.ReadContext, ns.Evaluate, ns.ExplainRule (Outcomes.lua), and runs its printing through
+-- ns.WithStatusDetail, which turns on the readable time-source labels (ns.statusDetail, above and in Timing.lua) only while fn runs.
+function ns.WithStatusDetail(fn, ...)
+    ns.statusDetail = true
+    local ok, err = pcall(fn, ...)
     ns.statusDetail = nil
-    if not ok then ns.Print("status failed: " .. tostring(err)) end
-end
-function PrintStatusRaw()
-    if not ns.rules or #ns.rules == 0 then ns.Print("no rules") return end
-    local ctx = ns.ReadContext()
-    ns.Print(("context: combat=%s group=%s raid=%s instance=%s(%s) mplus=%s encounter=%s mounted=%s spec=%s role=%s"):format(
-        tostring(ctx.combat), tostring(ctx.group), tostring(ctx.raid), tostring(ctx.instance),
-        tostring(ctx.instanceType), tostring(ctx.mythicPlus), tostring(ctx.encounter),
-        tostring(ctx.mounted), tostring(ctx.specID), tostring(ctx.role)))
-    ns.Print(("place: map=%s instanceID=%s difficulty=%s size=%s encounterID=%s"):format(tostring(ctx.mapID), tostring(ctx.instanceID),
-        tostring(ctx.difficultyID), tostring(ctx.instSize), tostring(ctx.encounterID)))
-    for i, r in ipairs(ns.rules) do
-        local res, info = ns.Evaluate(r, ctx)
-        ns.Print(("#%d %s [%s] result=%s | cd:%s(%s) buff:%s(%s via %s) ctx:%s talent:%s(known=%s)"):format(
-            i, r.name, r.enabled and "on" or "off", tostring(res),
-            tostring(r.cdState), tostring(info.cdOK), tostring(r.buffState), tostring(info.buffOK),
-            tostring(info.buffSource or "?"), tostring(info.ctxOK), tostring(info.talentOK),
-            tostring(info.talentDetail)))
-        ns.Print("    cooldown: " .. ((info.cd and info.cd.why) or "?"))
-        if ns.ExplainRule then
-            local okx, line = pcall(ns.ExplainRule, r, ctx)
-            ns.Print("    " .. (okx and line or ("explain failed: " .. tostring(line))))
-        end
-    end
+    return ok, err
 end
 
 

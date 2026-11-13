@@ -1,5 +1,7 @@
 # What's new in XayaUI
 
+**Updated 2026-11-13:** section 15 (at the end) covers rounds 6 and 7 of Rules fix bundle 1, which is not on `main` yet.
+
 **Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
 **2026-11-06.** The character pane round landed on `main` at d2ccacd (2026-11-06 07:16 UTC, QoL 0.7.31 and 0.7.32).
@@ -527,6 +529,39 @@ Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings windo
 - **Renamed:** the tab is "Blizzard Reskin" everywhere a player reads it, including the Overview switch "Enable Blizzard Reskin" and chat messages.
 - **Hover texts** are at most two sentences (UI-65).
 - Open choices made without you are in the QA question flow: UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui, UI-24-label-scope.
+
+## 15. Rules fix bundle 1, rounds 6 and 7 (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
+
+Not tested in game. QA B401 to B423 (section B-bundle1). Rounds 1 to 5 of the bundle are not in this list yet.
+
+- **Install:** replace `XayaUI`, `XayaUI_Options` and `XayaUI_Rules` as whole folders and add the new `XayaUI_Debug` folder next to
+  them. The rule editor moved from `XayaUI_Rules` to `XayaUI_Options`.
+- **Backups take much less memory:** each rule backup is kept as one compact block of text and read only when you load it or show its
+  text. Backups from earlier versions are converted once, at the first login, with nothing lost. **Older XayaUI versions cannot read
+  the new backups.**
+- **The debug tools are their own addon, XayaUI Debug:** the console window, `/xui bug`, `/xui report`, `/xui status`, `/xui auras`,
+  `/xuiengine`, and `/xui debug status`, `perf` and `auras`. The game reads it only while Settings > Debugging > **Advanced
+  Debugging** is on, once per login or /reload; with it off, each of those commands answers with one chat line saying what it needs.
+- **Advanced Debugging is off by default.** If it was on, it stays on, and every login and /reload prints one chat line: "Advanced
+  debugging is on. To turn this off, open /xui > Settings > Debugging."
+- **The rule editor is part of XayaUI Options,** so its code is read only when the settings window first opens. Combat Tracking
+  Setup, the talent scan, the editor's spell and texture lists and the displays' right-click menu moved with it and work as before.
+- **The mover works only while the settings window is open.** `/xui unlock` opens the window with the mover on; closing the window
+  closes the mover. Moves you have not saved are kept, and the mover opens again with them the next time you open the window.
+- **Combat Tracking Setup no longer opens over the game by itself.** The very first time you open the settings window, if no spec
+  has a setup yet, it opens with it; after that, use **Open Combat Tracking Setup** on the Rules tab. It closes with the settings
+  window, so its Learn step records your casts only while the settings window is open.
+- **No speed guard:** the combat engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the
+  game's CPU meter reads high. It runs whenever any rule is on.
+- **Fewer re-checks in combat:** an aura or cooldown change fully re-checks only the rules whose answer changed, at most 10 times a
+  second in a busy fight. Talents are read again only when the game reports a change (the once-a-second talent check is gone). A
+  hidden cooldown end and a hidden aura time on a display's text are counted by the game itself. Two cases are still re-checked
+  every 0.2 seconds until Xaya decides: a Range Check row on your focus, mouseover or pet, and a hidden cooldown end the game gives no
+  timer for.
+- **`/xui debug mouse` (the right-click tracker) is no longer in this download;** it is kept for when the developer tools are
+  rebuilt. Your `/run` tracker lines still work.
+- **Recycle Bin:** its page no longer says items are checked every 30 minutes; they are checked when you log in or out and when the
+  page lists them.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.

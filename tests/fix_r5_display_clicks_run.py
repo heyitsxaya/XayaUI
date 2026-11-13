@@ -113,6 +113,9 @@ ns.ShowCueTooltip = realShow
 check("(control) B3 hovering it shows its tooltip", shown)
 
 -- C. the mover: clicks on (click opens the editor), hover highlight; closed again: clicks pass
+-- (bundle 1 round 7, SD-58) the movement unlocks are XayaUI Options' and work only while the settings window is open: its code is loaded
+-- and the window counts as open, as the window's driver says when it shows (not drawn here)
+ns.LoadOptions(); ns.SetWindowOpen(true)
 ns.SetMoveUnlocked({ plain }, true); W.tick(0.1, 3)
 pf = ns.VisualFramesOf(plain)[1]
 check("(control) C1 unlocked for moving: the display takes clicks (click, right-click menu, drag)", pf:IsVisible() and clickGoesTo(pf) == "the display", clickGoesTo(pf))

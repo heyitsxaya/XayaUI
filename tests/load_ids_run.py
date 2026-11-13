@@ -17,7 +17,10 @@ L.execute(bench[a:b])
 L.execute("SECRET = {}; function issecretvalue(v) return v ~= nil and SECRET[v] == true end")   # Conditions.lua keeps this function from load time
 load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
 ns = L.eval("{}"); L.globals().NS = ns
-for f in ("XayaUI/Compat.lua", "XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua"):
+# (round 7, REQUEST-LOG A23 SD-58) /xui debug status is a debug tool now (XayaUI_Debug/RulesStatus.lua, read while Advanced Debugging is
+# on); it is loaded after Conditions.lua, as the game loads it. The status check below is unchanged.
+for f in ("XayaUI/Compat.lua", "XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua",
+          "XayaUI_Debug/RulesStatus.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 L.execute(r'''
 local ns = NS

@@ -128,7 +128,10 @@ got = since(m)
 check("C1 /xui unlock in combat: the mover does not open, one line says it opens when combat ends",
   not ns.unlocked and has(got, "mover") and has(got, "when combat ends"), joined(got))
 peace()
-check("C2 combat ends: only the last request runs (the mover opens, the settings window stays shut)", ns.unlocked == true and not windowOpen(),
+-- (bundle 1 round 7, SD-58 / SD-64 option 1: /xui unlock opens the settings window with the mover on; before round 7 the mover opened
+-- alone and the window stayed shut) the last request is the one that runs: the window opens AND the mover is on (the /xui request alone
+-- would open the window with the mover off)
+check("C2 combat ends: only the last request runs (SD-64: the settings window opens with the mover on)", ns.unlocked == true and windowOpen(),
   ("unlocked=%s window=%s"):format(tostring(ns.unlocked), tostring(windowOpen())))
 if ns.unlocked then ns.ToggleUnlock(); W.tick(0.1, 2) end
 

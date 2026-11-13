@@ -5,11 +5,11 @@
 -- Drafts page and the rule itself goes back to its saved version. A rule made in this window and never saved lives only in Drafts after closing.
 -- Not counted as changes (they follow what you do in the sidebar, not what the rule does): on / off, name, group, collapse state, sidebar icon, edit lock.
 local addonName, ns = ...
-ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Rules depends on it: ## Dependencies: XayaUI)
--- (Rules 0.7.0, REQUEST-LOG A23 SD-6) This file is part of XayaUI Rules (it was the load-on-demand addon XayaUI_Rules_Options). The game
--- reads it at login with Rules; everything below only runs when the settings window first opens with Rules on: it is one set-up
--- function, run once by XayaUI_Options (Options.lua ns.OptionsApi.LoadRuleEditor) in the .toc order. Nothing is built before then.
-local function EditorFileInit()
+ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Options depends on it: ## Dependencies: XayaUI)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34) This file is part of XayaUI Options
+-- (it was XayaUI_Rules/Editor/, read at login with Rules). The game reads it only when the settings window's code loads, after the
+-- window's own files (XayaUI_Options.toc). With XayaUI Rules switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (Options 0.6.82, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 
 local baseline = {}      -- [rootUid] = { sig = string, rules = { deep copies }, isNew = true when the rule was made in this window and never saved }
@@ -804,6 +804,3 @@ function ns.UndoFirstState()
     local group = GroupOf(uid)
     if #group > 0 then baseline[uid] = { rules = Copies(group) } end
 end
-end
-ns.RuleEditorFiles = ns.RuleEditorFiles or {}
-ns.RuleEditorFiles[#ns.RuleEditorFiles + 1] = EditorFileInit

@@ -6,6 +6,8 @@ Calculator, Shopping List and chat sidebar live on another branch). The kept ele
 a settings page and an X / Y (what a data panel was) is a stand-in frame this test registers, like the Blizzard and protected frames:
   A Window closed: no element handler is on any frame (each frame's own right-click script is in place), a right-click does what it
     did before (the plain element's own script opens its page; an unlocked display opens its own menu, #61), and no element menu frame exists.
+    Before the settings window's code first loads, the menu's code is not read at all (bundle 1 round 7, SD-58: it is XayaUI Options'
+    ElementMenu.lua; core keeps the registry): elements registered before that take the right-click once the window opens (B).
   B Window shown: a right-click on the plain element opens the menu at the cursor with exactly "Element options", X and Y (no title, no
     other row) and does not jump to the page; X / Y show the element's own getPos.
   C "Element options" opens that element's page (the plain element -> its registered page; display -> the rule editor on that display)
@@ -40,8 +42,14 @@ local rawOpen = ns.OpenSettingsPage
 ns.OpenSettingsPage = function(...) opened[#opened + 1] = table.concat({ ... }, "/"); return rawOpen(...) end
 local rawEdit = ns.EditRule
 ns.EditRule = function(r) edited[#edited + 1] = r; return rawEdit(r) end
-local rawVM = ns.ShowVisualMenu
-ns.ShowVisualMenu = function(...) visualMenus = visualMenus + 1; return rawVM(...) end
+-- (bundle 1 round 7, SD-58) the display menu is XayaUI Options' (Mover.lua): counted once the window's code has loaded
+local vmHooked, rawVM = false, nil
+local function HookVM()
+  if vmHooked or not ns.ShowVisualMenu then return end
+  vmHooked = true
+  rawVM = ns.ShowVisualMenu
+  ns.ShowVisualMenu = function(...) visualMenus = visualMenus + 1; return rawVM(...) end
+end
 -- the game's context menu, recorded (top-level entries only)
 local lastMenu
 MenuUtil.CreateContextMenu = function(owner, gen)
@@ -61,14 +69,15 @@ MenuUtil.CreateContextMenu = function(owner, gen)
   return root
 end
 
--- a rule with a display cue, unlocked for moving (it takes clicks only then, as before)
+-- a rule with a display cue, unlocked for moving (it takes clicks only then, as before). (bundle 1 round 7, SD-58) Unlocking is the
+-- mover's, which works only while the settings window is open: here the display is first drawn as a sample by a preview (window closed)
 ns.rules = ns.rules or {}
 local r = ns.NewRule(); r.name = "Demon Spikes"; r.enabled = true; r.useBuff, r.buffID, r.buffState = true, 1001, "present"
 r.visual.enabled, r.sound.enabled = false, false
 ns.NormalizeRule(r); ns.rules[#ns.rules + 1] = r
 local cue = ns.NewCueRule(r, "texture"); cue.visual.kind, cue.visual.tex = "file", "Interface\\Icons\\INV_Misc_QuestionMark"
 cue.visual.x, cue.visual.y = 40, -20
-ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 3)
+ns.SetPreview({ cue }, "visual", true); ns.RefreshVisual(cue); ENGINE_STEP(ns); W.tick(0.1, 3)
 local dfr = ns.VisualFramesOf(cue)[1]
 -- a plain element with a settings page and an X / Y (what a data panel was before the modules moved to another branch): a frame and
 -- a child button, each with its own right-click script that opens the page (the "old thing" the menu must leave in place)
@@ -93,20 +102,33 @@ check("the test's elements exist (display, plain element, mouse strip)", dfr and
 local defs, order = ns.ElementDefs()
 R.registered = table.concat(order, " ")
 local panelUp, slotClick, dispUp = panel:GetScript("OnMouseUp"), slot1:GetScript("OnClick"), dfr:GetScript("OnMouseUp")
--- A: window closed
-check("A closed: no element handler on any frame", ns.ElementHandlersAttached() == 0, ns.ElementHandlersAttached())
-check("A closed: no element menu frame exists", ns.ElementMenu() == nil and _G.XayaUIElementMenu == nil)
+-- A: window closed. (bundle 1 round 7, REQUEST-LOG A23 SD-58) The menu's code is XayaUI Options' (XayaUI_Options/ElementMenu.lua): until
+-- the settings window's code first loads, only core's registry exists (ns.RegisterElement / ns.ElementDefs above), and the test entry
+-- points ns.ElementHandlersAttached / ns.ElementMenu / ns.ElementRightClick are not there yet; a right-click is sent the way the game
+-- sends it (the frame's own script with "RightButton"), as ns.ElementRightClick does.
+local function RightClick(f, script) local fn = f:GetScript(script or "OnMouseUp"); if fn then fn(f, "RightButton") end end
+check("A before the window's code ever loaded: the menu's code is not read (no ns.ElementMenu, ns.ElementWindowShown)",
+  ns.ElementMenu == nil and ns.ElementWindowShown == nil and ns.ElementHandlersAttached == nil)
+check("A closed: no element handler on any frame (each keeps its own right-click script)", panel:GetScript("OnMouseUp") == ownRightClick
+  and slot1:GetScript("OnClick") == ownRightClick and strip:GetScript("OnMouseUp") == stripUp)
+check("A closed: no element menu frame exists", _G.XayaUIElementMenu == nil)
 check("A closed: the strip does not take the mouse", not strip:IsMouseEnabled())
 opened = {}
-ns.ElementRightClick(panel, "OnMouseUp")
+RightClick(panel, "OnMouseUp")
 check("A closed: right-click on the plain element runs its own script (it opens its page, as before)", opened[1] == "testmod/testpanel", table.concat(opened, ","))
 -- (that opened the window: close it again for the display check)
 pcall(ns.ToggleUI); W.tick(0.1, 3)
 check("A closed again", not ns.ElementWindowIsShown())
+HookVM()
 visualMenus = 0
-ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 2)   -- (closing the window ended the unlock: unlock again, as a player would)
+-- (bundle 1 round 7, SD-58, her words: "mover view only available when settings window is open") Before round 7 a display unlocked with
+-- the window closed opened its own menu here (#61). Now a display cannot be unlocked while the window is closed: it takes no click and
+-- a right-click on it opens no menu (it goes to the game).
+ns.SetMoveUnlocked({ cue }, true); ENGINE_STEP(ns); W.tick(0.1, 2)
 ns.ElementRightClick(dfr, "OnMouseUp")
-check("A closed: right-click on an unlocked display opens its own menu (#61)", visualMenus == 1 and ns.ElementMenu() == nil, visualMenus)
+check("A closed (SD-58): a display cannot be unlocked for moving while the window is closed: it takes no click, and a right-click opens no menu",
+  not ns.IsMoveUnlocked(cue) and not dfr:IsMouseEnabled() and visualMenus == 0 and ns.ElementMenu() == nil,
+  tostring(ns.IsMoveUnlocked(cue)) .. " " .. tostring(dfr:IsMouseEnabled()) .. " " .. visualMenus)
 
 -- B: window shown
 pcall(ns.ToggleUI); W.tick(0.1, 4)

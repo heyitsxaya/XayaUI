@@ -1,6 +1,10 @@
 -- Blizzard spell-alert texture FileDataIDs (public game assets, referenced by ID; nothing is bundled).
 -- Some IDs may render blank on a given build; use the manual ID box for anything else.
-local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
+local addonName, ns = ...; ns = XayaUI_NS or ns -- one namespace with XayaUI core (XayaUI Options depends on it)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "Move all four (Recommended)"; V34) Part of XayaUI Options since round 7 (it was
+-- XayaUI_Rules/TextureList.lua, read at login with Rules): the game reads it only when the settings window's code loads. With XayaUI Rules
+-- switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 ns.TextureList = {
     { 449486, "Arcane Missiles" },
     { 1027131, "Arcane Missiles 1" },

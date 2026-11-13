@@ -3,7 +3,7 @@
 Xaya (2026-11-07, walkthrough "3. Combat displays" step B23, group Personal Buff Tr... > Group tab > Border and background): "ticking border
 in the border and background preview seems to cause an error". The error text was not captured (open question D3), so this test tries
 to reproduce it on the real addons in the stand-in game, with the settings window open on the group's Group tab and the box ticked
-through the window's own option (XayaUI_Rules/Editor/RulesTree.lua g.args.border -> apply -> XayaUI_Rules/Visual.lua; since SD-17,
+through the window's own option (XayaUI_Options/RuleEditor/RulesTree.lua g.args.border -> apply -> XayaUI_Rules/Visual.lua; since SD-17,
 round 3, the border is drawn on each display: ns.PaintGroupDeco, ns.RefreshGroupDeco).
 After every step it counts: Lua errors in the stand-in (the game's error handler), XayaUI's own error record (CueRulesDB.errorLog, what
 /xui report shows) and an error from ns.RefreshGroupDeco called WITHOUT a pcall around it.

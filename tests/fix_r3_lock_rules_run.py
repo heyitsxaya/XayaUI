@@ -8,7 +8,10 @@ What is checked, as the player sees or gets it:
   M. the mover view (/xui unlock, ns.ToggleUnlock: the Lock Positions buttons): closes at combat start keeping the moves, takes no key
      in the fight, cannot be opened in combat (one line), opens again with the moves when combat ends; Cancel then puts everything back
      (the draft is the one taken when the view first opened). Opened from the settings window (Lock Positions): both close and both
-     come back. The group X / Y box, the frame picker and the login question about a left-over draft close too.
+     come back. The group X / Y box and the frame picker close too. (Bundle 1 round 7, SD-58 / SD-64: the mover works only while the
+     settings window is open and /xui unlock opens the window with it; the mover has no combat-start listener of its own, the window's
+     closes both; a mover closed with the window keeps its moves and waits for the window, through a fight; the login question about a
+     left-over draft is gone, tests/fix_r7_mover_run.py.)
   P. the settings window's sidebar: a row drag running when combat starts drops nothing.
   E. the combat engine's containers (the game's AuraContainer frames, modeled here): /xui disable in combat makes them invisible at once
      with SetAlpha only (no other container call in combat: docs/reference/api documents no AuraContainer method), nothing runs for them
@@ -150,8 +153,12 @@ section("M", function()
   local got = since(m)
   local kf = keys()
   check("M1 combat starts: the mover view closes (the sample is gone)", ns.unlocked == false and not sampleShown())
-  check("M2 combat starts: one plain line says it closed and comes back with the unsaved moves", #got == 1 and has(got, "closed because combat started")
-    and has(got, "unsaved moves") and has(got, "when combat ends"), joined(got))
+  -- (bundle 1 round 7, SD-58 / SD-64: /xui unlock opens the settings window with the mover on, so the window's own line comes too)
+  local moverLines = 0
+  for _, l in ipairs(got) do if l:lower():find("mover", 1, true) then moverLines = moverLines + 1 end end
+  check("M2 combat starts: one plain line says the mover closed and comes back with the unsaved moves (and the window's own line)",
+    moverLines == 1 and has(got, "mover closed because combat started") and has(got, "unsaved moves") and has(got, "when combat ends")
+    and has(got, "settings window closed"), joined(got))
   check("(control) M3 the move is kept (not saved, not cancelled), no Save / Cancel question in the fight", MV.visual.x == 107 and #ns.MoverChanges() == 1
     and popups.XAYAUI_MOVER_EXIT == nil, tostring(MV.visual.x))
   check("M4 its key frame is hidden with the keyboard off: no key is taken in the fight", kf ~= nil and not kf:IsShown() and not kf._keyboard,
@@ -185,22 +192,23 @@ section("M", function()
   fight(); m = mark(); slash("unlock"); got = since(m); peace()
   check("(control) /xui unlock in combat: one line, opens after", #got == 1 and ns.unlocked == true, joined(got))
   ns.ToggleUnlock(); W.tick(0.05, 2)
-  -- the combat-start event is listened for only while the view is open (no cost otherwise)
+  -- (bundle 1 round 7, SD-58) the mover is open only while the settings window is, and the window's own combat-start listener (registered
+  -- only while it is open) closes both: the mover adds no listener of its own (before round 7 it registered one while open)
   local function listeners() local n = 0; for _, o in ipairs(W.objects) do if o._events.PLAYER_REGEN_DISABLED then n = n + 1 end end; return n end
   local closedN = listeners()
   slash("unlock"); local openN = listeners(); ns.ToggleUnlock(); W.tick(0.05, 2)
-  check("M11 the combat-start event is listened for while the view is open and let go when it closes", openN == closedN + 1 and listeners() == closedN,
-    ("closed %d open %d after %d"):format(closedN, openN, listeners()))
+  check("M11 the mover adds no combat-start listener of its own (the settings window's closes it)", windowOpen() and openN == closedN and listeners() == closedN,
+    ("window open, mover off %d / on %d / off %d"):format(closedN, openN, listeners()))
 end)
 
 -------------------------------------------------------------------------------------------------------------------------------------
 -- M (window). Lock Positions in the settings window, a move, combat starts: both close; both come back; the move is kept
 -------------------------------------------------------------------------------------------------------------------------------------
 section("MW", function()
-  slash(""); W.tick(0.1, 4)
+  if not windowOpen() then slash(""); W.tick(0.1, 4) end   -- (round 7: /xui unlock above left it open)
   check("(control) the settings window is open", windowOpen())
   ns.ToggleUnlock()
-  check("(control) Lock Positions in the window opens the mover view (window-made)", ns.unlocked == true and ns.unlockedByWindow == true)
+  check("(control) Lock Positions in the window opens the mover view", ns.unlocked == true)
   ns.MoverSelect("display", MV); ns.MoverNudge(0, 5)
   local m = mark()
   fight()
@@ -216,7 +224,9 @@ section("MW", function()
   ns.ToggleUnlock(); exitMover("cancel"); W.tick(0.05, 2)
   check("(control) Cancel puts it back", MV.visual.y == 50 and ns.unlocked == false)
   -- the same with the window's combat-start handler running first (the order the game calls frames in is not documented): the mover's
-  -- own listener is moved behind every other frame, so the window's close (ns.EndWindowState) meets the open mover view first
+  -- own listener is moved behind every other frame, so the window's close (ns.EndWindowState) meets the open mover view first.
+  -- (bundle 1 round 7, SD-58) The mover has no listener of its own any more (the window's closes it), so the order cannot matter:
+  -- none is found to move, and both still close and come back
   local before = {}
   for _, o in ipairs(W.objects) do if o._events.PLAYER_REGEN_DISABLED then before[o] = true end end
   ns.ToggleUnlock()
@@ -229,8 +239,8 @@ section("MW", function()
   got = since(m)
   local shutB = not windowOpen() and ns.unlocked == false and MV.visual.y == 55 and popups.XAYAUI_MOVER_EXIT == nil
   peace()
-  check("MW4 window's handler first: both close (move kept, no question, one mover line) and both open again with the move",
-    mine ~= nil and shutB and #got >= 2 and has(got, "mover closed") and windowOpen() and ns.unlocked == true and MV.visual.y == 55, joined(got))
+  check("MW4 the mover has no combat-start listener of its own: the window's closes both (move kept, no question, one mover line) and both open again with the move",
+    mine == nil and shutB and #got >= 2 and has(got, "mover closed") and windowOpen() and ns.unlocked == true and MV.visual.y == 55, joined(got))
   ns.ToggleUnlock(); exitMover("cancel"); W.tick(0.05, 2)
   -- a sidebar row drag running when combat starts: no drop (P)
   local T = ns.DragForTest
@@ -270,7 +280,9 @@ section("MW", function()
 end)
 
 -------------------------------------------------------------------------------------------------------------------------------------
--- M (popups). the group X / Y box, the frame picker and the login question about a left-over draft close when combat starts
+-- M (popups). the group X / Y box and the frame picker close when combat starts. (bundle 1 round 7, SD-58 / SD-15) A mover closed with the
+-- settings window keeps its moves and waits for the window: combat in between opens nothing (the login question about a left-over draft
+-- is gone with the mover's code at login; tests/fix_r7_mover_run.py plays the /reload)
 -------------------------------------------------------------------------------------------------------------------------------------
 section("MP", function()
   slash("unlock")
@@ -289,25 +301,25 @@ section("MP", function()
   check("MP2b the frame picker cannot be opened in combat: one line", (P2 == nil or not P2:IsShown()) and #gotP == 1 and has(gotP, "during combat"), joined(gotP))
   peace()
   ns.ToggleUnlock(); W.tick(0.05, 2)
-  -- the login question: the mover view was left without Save last session
+  -- a mover closed with the settings window keeping a move (SD-15 "Keep, resume after"), then a fight
   CueRulesDB.moverDraft = nil
   if ns.Settings("core") then ns.Settings("core").moverDraft = nil end
   slash("unlock"); ns.MoverSelect("display", MV); ns.MoverNudge(3, 0)
-  local draft = ns.Settings("core").moverDraft
-  ns.unlocked = false   -- (as after a /reload: the draft is saved, the view is shut)
-  ns.MoverCheckDraft()
-  check("(control) the login question is up", popups.XAYAUI_MOVER_DRAFT ~= nil)
+  ns.Options.Toggle(); W.tick(0.1, 4)   -- she closes the settings window
+  check("(control) the window closed: the mover closed with it, the move kept in the draft, no question", not windowOpen() and not ns.unlocked
+    and MV.visual.x == 103 and ns.Settings("core").moverDraft ~= nil and popups.XAYAUI_MOVER_EXIT == nil)
   local m = mark()
   fight()
   local got = since(m)
-  check("MP3 combat starts: the login question closes, one line says it comes back", popups.XAYAUI_MOVER_DRAFT == nil and has(got, "come back when combat ends"), joined(got))
   peace()
-  check("(control) MP4 combat ends: the question is asked again", popups.XAYAUI_MOVER_DRAFT ~= nil)
-  local d = popups.XAYAUI_MOVER_DRAFT and popups.XAYAUI_MOVER_DRAFT.data
-  if d and d.cancel then d.cancel() end
-  W.tick(0.05, 2)
-  check("(control) Undo puts the display back", MV.visual.x == 100, tostring(MV.visual.x))
+  check("MP3 combat starts and ends with the window closed: nothing opens and nothing is said about the mover", not windowOpen() and not ns.unlocked
+    and not has(got, "mover") and MV.visual.x == 103, joined(got))
+  slash(""); W.tick(0.1, 4)
+  check("(control) MP4 the window opens: the mover opens again with the move", windowOpen() and ns.unlocked == true and MV.visual.x == 103)
+  ns.ToggleUnlock(); exitMover("cancel"); W.tick(0.05, 2)
+  check("(control) Cancel puts the display back", MV.visual.x == 100, tostring(MV.visual.x))
   if ns.unlocked then ns.ToggleUnlock(); exitMover("cancel") end
+  if windowOpen() then ns.Options.Toggle(); W.tick(0.1, 4) end
 end)
 
 -------------------------------------------------------------------------------------------------------------------------------------
@@ -387,7 +399,7 @@ end)
 section("F", function()
   pcall(D.Build); W.tick(0.6, 3)
   local drawing = cont:IsShown()
-  slash(""); W.tick(0.1, 4)
+  if not windowOpen() then slash(""); W.tick(0.1, 4) end
   slash("unlock"); ns.MoverSelect("display", MV); ns.MoverNudge(4, 0)
   check("(control) F0 engine drawing; then window open, mover open with a move (the engine steps aside for the samples), game sound held",
     drawing and windowOpen() and ns.unlocked and holds(3003))
@@ -425,13 +437,16 @@ end
 
 def main():
     folders = H.find_addons()
-    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
+    # (round 7, REQUEST-LOG A23 SD-58 / SD-61) /xuiengine's status is a debug tool now (XayaUI_Debug/RulesEngine.lua), read only while
+    # Advanced Debugging is on, which is off by default: this session has it on, as a player who uses /xuiengine would
+    enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug")]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world,
-        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled},
+                     "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad = 0
     n = len(res)

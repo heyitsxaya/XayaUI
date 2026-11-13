@@ -6,8 +6,8 @@
 -- the top tabs, the shared helpers (ns.OptionsApi), the feature tabs built from the pages each module registers, and the Platform
 -- pages (Settings, Profiles with the Recycle Bin, the minimap button, Debugging). The rule editor and the rules tree (the Rules tab)
 -- live in the rule editor (P3: XayaUI_Options/RuleEditor/); they reach this file only through ns.OptionsApi.Shared, and it reaches them through ns.OptionsApi.RuleEditor.
--- Since Options 0.6.107 (A23 SD-6) that code is part of XayaUI Rules (XayaUI_Rules/Editor/), set up by ns.OptionsApi.LoadRuleEditor (below)
--- loads it when the window opens while XayaUI Rules is on; the row painting every tab shares is TreePaint.lua.
+-- From Options 0.6.107 (A23 SD-6) to bundle 1 round 7 that code was part of XayaUI Rules (XayaUI_Rules/Editor/); since round 7 (SD-57)
+-- it is this addon's XayaUI_Options/RuleEditor/, read when this addon loads, while XayaUI Rules is on; the row painting every tab shares is TreePaint.lua.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (this addon depends on it: ## Dependencies: XayaUI)
@@ -24,9 +24,9 @@ end
 -- what XayaUI core may call (Modules.lua section 7); published as ns.Options at the end of this file once everything loaded.
 -- A table field, not locals: this chunk is near Lua's 200-locals limit.
 ns.OptionsApi = {}
--- (P3) what this window asks of the rule editor (XayaUI_Rules/Editor/ since Options 0.6.107; filled when it is set up, empty while XayaUI Rules is off):
+-- (P3) what this window asks of the rule editor (XayaUI_Options/RuleEditor/ since round 7; filled when it is set up, empty while XayaUI Rules is off):
 -- BuildRulesTab, SettingsRows, SelectedRule, StatusText, and the editor's hooks the window calls (published at the end of
--- XayaUI_Rules/Editor/RuleSettings.lua); every call checks the entry is there
+-- XayaUI_Options/RuleEditor/RuleSettings.lua); every call checks the entry is there
 ns.OptionsApi.RuleEditor = {}
 local RE = ns.OptionsApi.RuleEditor
 -- The feature tabs: module -> top tab key, name and position. Pages inside a tab sort alphabetically by their shown name (Xaya,
@@ -438,9 +438,9 @@ local function Sel(t, k, name, order, vals, ord, on, extra)
 end
 -- Shared option builders for other files (Triggers.lua builds its rows with these). A table, so no new top-level local.
 -- a rebuild that grows or shrinks the page needs a second pass a moment later, or the scroll area keeps its old height (content clips, no scrollbar)
-ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) the rule editor (XayaUI_Rules/Editor/Editor.lua) adds Changed, SpellName, SpellTex, SearchBox
+ns.UI = { NotifyTwice = function() Notify() end, Sel = Sel, Rng = Rng, Tog = Tog, Notify = Notify }   -- (P3) the rule editor (XayaUI_Options/RuleEditor/Editor.lua) adds Changed, SpellName, SpellTex, SearchBox
 -- (Options 0.6.83, P3 options split; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7) The rule editor and the rules tree live in
--- XayaUI_Rules/Editor/ (set up after this addon loaded). What they use of this window, their only way in:
+-- XayaUI_Options/RuleEditor/ (read after this addon's own files). What they use of this window, their only way in:
 ns.OptionsApi.Shared = { APP = APP, AceConfigRegistry = AceConfigRegistry, AceConfigDialog = AceConfigDialog, Tree = Tree, Notify = Notify,
     CoreS = CoreS, PlatS = PlatS, QolS = QolS, Col = Col, Rng = Rng, Tog = Tog, Sel = Sel }
 -- ...and what this file asks of them: ns.OptionsApi.RuleEditor (RE, made at the top of this file)
@@ -528,24 +528,19 @@ function ns.DebugConsoleOn() local u = PlatS.ui; return not (u and u.hideTray) e
 -- list rows and the Rule Creation tab of Settings, and the rule backups under Profiles > Export are left out (nothing of the rule editor
 -- is built); the rest of the window is the same.
 local function RulesOn() return (ns.Service and ns.Service("rules")) and true or false end
--- (Options 0.6.107, REQUEST-LOG A23 SD-6) The rule editor is part of XayaUI Rules (XayaUI_Rules/Editor/; it was the load-on-demand
--- addon XayaUI_Rules_Options). The game reads its files with Rules at login; each file only adds one set-up function to
--- ns.RuleEditorFiles, in .toc order. They run here, once per session, after this addon has finished loading: from core's
--- ns.LoadOptions (Modules.lua, through ns.Options.AfterLoad) and, for a caller that loaded this addon some other way, from Toggle; only
--- while XayaUI Rules is on. So no editor frame, popup, listener or hook exists before the window opens. A file whose set-up errors is
--- reported through the game's error handler and the others still run, as when the game loads a .toc. The list is then dropped, so the
--- set-up code itself can be freed (the functions it made stay).
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34) The rule editor is part of this addon:
+-- XayaUI_Options/RuleEditor/, listed in XayaUI_Options.toc after the window's own files, so the game reads and runs it only when this
+-- addon loads (the settings window's first opening, or /xui debug talents), never at login. Each of its files stops at its first lines
+-- while XayaUI Rules is off, so then no editor frame, popup, listener or hook is made. A file whose code errors is reported by the
+-- game's loader and the others still run. (Options 0.6.107 to round 7: the files were XayaUI_Rules/Editor/, read at login with Rules,
+-- each queuing one set-up function in ns.RuleEditorFiles that this function ran.) What is left here: once per session, while XayaUI
+-- Rules is on, one message when the editor is not there; called by core's ns.LoadOptions (Modules.lua, through ns.Options.AfterLoad)
+-- and by Toggle.
 -- EditorOn: the Rules tab and the rule rows of Settings are built only when the editor is there (XayaUI Rules on, editor set up).
 local function EditorOn() return RulesOn() and ns.OptionsApi.RuleEditor.BuildRulesTab ~= nil end
 function ns.OptionsApi.LoadRuleEditor()
     if ns.OptionsApi.ruleEditorTried or not RulesOn() then return EditorOn() end
     ns.OptionsApi.ruleEditorTried = true
-    local files = ns.RuleEditorFiles
-    ns.RuleEditorFiles = nil
-    if type(files) == "table" then
-        local handler = (geterrorhandler and geterrorhandler()) or function(e) ns.Print(tostring(e)) end
-        for i = 1, #files do xpcall(files[i], handler) end
-    end
     if not EditorOn() then
         ns.Print("the rule editor could not be set up: the Rules tab is left out. /xui bug shows errors.")
     end
@@ -556,7 +551,7 @@ local function BuildAddonSettings()
     local function Ui() PlatS.ui = PlatS.ui or {}; return PlatS.ui end
     local function Repaint() if ns.DecorateTrees then pcall(ns.DecorateTrees) end; Notify() end
     local dispRows, ruleRows = {}, nil
-    if EditorOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (XayaUI_Rules/Editor/RuleSettings.lua)
+    if EditorOn() then dispRows, ruleRows = ns.OptionsApi.RuleEditor.SettingsRows(Ui, Repaint) end   -- (P3) the rule list and Rule Creation rows (XayaUI_Options/RuleEditor/RuleSettings.lua)
     local page = { type = "group", name = "Settings", order = 7, childGroups = "tab", hidden = ns.PageHidden("settings"), args = {
         intro = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = function() return "XayaUI v" .. AddonVersion() .. ". Settings here affect the whole addon, not any one rule." end },
@@ -584,7 +579,7 @@ local function BuildAddonSettings()
                 get = function() return (PlatS.ui and PlatS.ui.gameMenuStyle) or "gradient" end,
                 set = function(_, v) Ui().gameMenuStyle = v; if ns.GameMenu_Repaint then ns.GameMenu_Repaint() end end },
         } },
-        rules = ruleRows,   -- (P3) the Rule Creation tab: XayaUI_Rules/Editor/RuleSettings.lua
+        rules = ruleRows,   -- (P3) the Rule Creation tab: XayaUI_Options/RuleEditor/RuleSettings.lua
         theme = { type = "group", name = "Theme", order = 1.5, args = ns.Theme and ns.Theme.BuildArgs(Repaint) or {} },
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
@@ -965,13 +960,13 @@ function ns.InfoPass(root)
     walk(root)
 end
 local function BuildOptions()
-    ---------------------------------------------------------- Rules (XayaUI_Rules/Editor/RulesTree.lua; P3)
+    ---------------------------------------------------------- Rules (XayaUI_Options/RuleEditor/RulesTree.lua; P3)
     local track, allQol, allBars
     if EditorOn() then track, allQol, allBars = ns.OptionsApi.RuleEditor.BuildRulesTab() end   -- (P4) none while XayaUI Rules is off (P4b: or its editor is missing)
     -- Recycle Bin (#88; XayaUI/RecycleBin.lua): deleted rules and groups wait here for the chosen time, then go for good.
     local binArgs = {
         keep = { type = "select", order = 1, width = "normal", name = "Keep deleted items for",
-            desc = "How long a deleted rule or group stays here before it is removed for good. Checked at login and every 30 minutes; a shorter time that would remove items now asks first.",
+            desc = "How long a deleted rule or group stays here before it is removed for good. Checked when you log in or out, and whenever this list is shown or an item is restored; a shorter time that would remove items now asks first.",
             values = function() local v = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do v[k[1]] = k[2] end; return v end,
             sorting = function() local o = {}; for _, k in ipairs(ns.RECYCLE_KEEP) do o[#o + 1] = k[1] end; return o end,
             get = function() return ns.RecycleKeepHours() end,
@@ -1368,7 +1363,7 @@ do
         return a, b, c
     end
 end
--- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (XayaUI_Rules/Editor/Sidebar.lua, Editor.lua)
+-- (P3) the rule selected in the Rules sidebar and its live status line come from the rule editor (XayaUI_Options/RuleEditor/Sidebar.lua, Editor.lua)
 -- (P4b) nil while the rule editor is not loaded (XayaUI Rules off): the strip then reads as with no rule selected
 local function SelectedRule() local f = ns.OptionsApi.RuleEditor.SelectedRule; return f and f() end
 local function StatusText(rule) return ns.OptionsApi.RuleEditor.StatusText(rule) end
@@ -1703,8 +1698,9 @@ function Tree.Closed()
     Tree.last, Tree.keep, Tree.loadSeen = nil, nil, nil   -- the kept tree (and the load answers seen) are let go
     if ns.SetWindowOpen then ns.SetWindowOpen(false) end
     if ns.ElementWindowShown then ns.ElementWindowShown(false) end   -- (Options 0.6.92; #495) right-click element menus end with the window
-    -- previews, the sidebar's movement unlocks, the preview pause and a window-made unlock end with the window (core ns.EndWindowState)
-    if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview() then ns.ClearPreview() end
+    -- previews, the preview pause, the sidebar's movement unlocks and (round 7, SD-58 / V28) the mover end with the window: the mover
+    -- with unsaved moves keeps them and opens again with the window (Mover.lua ns.EndWindowState)
+    if ns.EndWindowState then ns.EndWindowState() elseif ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
     if RE.SaveRulesSub then pcall(RE.SaveRulesSub) end   -- the open Rules sub-tab, remembered for the next opening
     if RE.SaveBarUpdate then RE.SaveBarUpdate(nil) end
     Tree.PlaceTray(nil, nil, nil)
@@ -1757,6 +1753,7 @@ function Tree.DriverStart()
     local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
     if not Tree.pickerHooked then Tree.WatchPicker() end   -- (V26) once per session
     if of and of.frame and of.frame:IsShown() then driver:RegisterEvent("PLAYER_REGEN_DISABLED") end   -- (V26) only while open
+    -- (round 7, SD-58) the window is open: a mover closed with unsaved moves, or paused by combat, opens again (Mover.lua)
     if of and of.frame and of.frame:IsShown() and ns.SetWindowOpen then ns.SetWindowOpen(true) end
     -- (Options 0.6.92; #495, PS-59) while the window is shown a right-click on a XayaUI element opens its menu (core Modules.lua section 11)
     if of and of.frame and of.frame:IsShown() and ns.ElementWindowShown then ns.ElementWindowShown(true) end

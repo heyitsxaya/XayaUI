@@ -6,8 +6,8 @@ still present. review the code and determine why both of these things are happen
 Cause found: the displays left on screen were the sidebar's per-rule movement unlock (sample displays with boxes and names); closing the
 window ended only the eye / headphone previews. Checks what is on screen after /xui (open), the sidebar unlock / preview / group unlock /
 Lock Positions, then /xui again (close): no display of those rules is shown, nothing is left unlocked or previewed, the window's driver is
-stopped; an unlock typed as /xui unlock while the window was closed is NOT ended by opening and closing the window; reopening shows every
-row locked and every preview off.
+stopped; reopening shows every row locked and every preview off. (Bundle 1 round 7, SD-58 / SD-64: /xui unlock with the window closed
+opens the window with the mover on, and closing the window closes the mover; before, such an unlock stayed through an open / close.)
 Run: python3 tests/window_close_ends_state_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +47,7 @@ step()
 check("while open: the unlocked, previewed and group-unlocked displays are shown", shown(ca) and shown(cb) and shown(cc), tostring(shown(ca)) .. tostring(shown(cb)) .. tostring(shown(cc)))
 -- the window's Lock Positions while open
 ns.ToggleUnlock()
-check("Lock Positions while open unlocks everything", ns.unlocked == true and ns.unlockedByWindow == true)
+check("Lock Positions while open unlocks everything", ns.unlocked == true)
 -- /xui again: close
 pcall(ns.ToggleUI); W.tick(0.1, 4)
 local ACD = LibStub("AceConfigDialog-3.0")
@@ -58,14 +58,17 @@ check("after closing: no display of those rules is left on screen", not shown(ca
   tostring(shown(ca)) .. tostring(shown(cb)) .. tostring(shown(cc)) .. tostring(shown(cd)))
 check("after closing: nothing previewed, no rule or group unlocked, not paused, not unlocked", not ns.AnyPreview() and next(ns.moveUnlocked) == nil
   and next(ns.groupUnlocked) == nil and not ns.previewPaused and not ns.unlocked and not ns.WindowOpen())
--- /xui unlock typed with the window closed stays through an open / close
-ns.ToggleUnlock()
-check("/xui unlock with the window closed unlocks", ns.unlocked == true and not ns.unlockedByWindow)
-pcall(ns.ToggleUI); W.tick(0.1, 4); pcall(ns.ToggleUI); W.tick(0.1, 4)
-check("... and opening / closing the window does not end it (it was not started there)", ns.unlocked == true)
-ns.ToggleUnlock()
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "mover view only available when settings window is open"; SD-64 option 1; V28)
+-- Before round 7 an unlock typed as /xui unlock with the window closed stayed through an open / close of the window. Now /xui unlock
+-- with the window closed opens the window with the mover on, and closing the window closes the mover.
+SlashCmdList.XAYAUI("unlock"); W.tick(0.1, 4)
+check("/xui unlock with the window closed opens the settings window with the mover on", ns.unlocked == true and ns.WindowOpen())
+pcall(ns.ToggleUI); W.tick(0.1, 4)
+check("... and closing the window closes the mover (nothing was moved: nothing is kept)", not ns.unlocked and not ns.WindowOpen()
+  and ns.Settings("core").moverDraft == nil)
 -- reopening shows a clean state: every row locked, every preview off
 pcall(ns.ToggleUI); W.tick(0.1, 4)
+check("reopened: the mover stays closed (it had no unsaved move)", not ns.unlocked and ns.WindowOpen())
 local rowsOK, seen = true, 0
 local function walk(f, d)
   if not f or d > 60 then return end

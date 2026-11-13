@@ -31,6 +31,9 @@ local selected, opened
 local realSelect, realOpen = ACD.SelectGroup, ACD.Open
 ACD.Open = function(self, app) opened = app end
 ACD.SelectGroup = function(self, app, ...) selected = table.concat({ ... }, "/") end
+-- (bundle 1 round 7, SD-58: the mover works only while the settings window is open) the window counts as open, as its driver says when
+-- it shows (XayaUI_Options/Mover.lua ns.SetWindowOpen); its drawing is faked above
+ns.SetWindowOpen(true)
 
 ns.folders = { { id = "fA", name = "Active Mitigation" }, { id = "fB", name = "Inner", parent = "fA" } }
 CueRulesDB.folders = ns.folders

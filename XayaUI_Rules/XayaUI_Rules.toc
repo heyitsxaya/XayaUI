@@ -1,6 +1,6 @@
 ## Interface: 120100
 ## Title: XayaUI Rules
-## Notes: XayaUI's rule-based sound cues and on-screen alerts (buff, cooldown, talent, load conditions), combat aura tracking, and the rule editor (the settings window's Rules tab). Switch it off if you make no rules: none of its files load then. Needs XayaUI.
+## Notes: XayaUI's rule-based sound cues and on-screen alerts (buff, cooldown, talent, load conditions) and combat aura tracking. The rule editor (the settings window's Rules tab) is part of XayaUI Options. Switch it off if you make no rules: none of its files load then. Needs XayaUI.
 ## Author: Xaya
 ## Version: 0.7.0
 ## X-Date: 2026-11-09
@@ -9,7 +9,6 @@
 ## Group: XayaUI
 
 RuleDefaults.lua
-TextureList.lua
 ProcGlows.lua
 SetBonusAuras.lua
 Conditions.lua
@@ -27,25 +26,7 @@ BarCue.lua
 RuleShare.lua
 Engine.lua
 AuraSound.lua
-AuraSources.lua
 AuraList.lua
 Combat\AuraModel.lua
 Combat\AuraTracker.lua
-Combat\AuraSetup.lua
 Combat\AuraDisplay.lua
-# The rule editor (was the addon XayaUI_Rules_Options): read at login, built only when the settings window first opens
-Editor\Drafts.lua
-Editor\TriggersEditor.lua
-Editor\OutcomesEditor.lua
-Editor\DisplayTab.lua
-Editor\RuleSearch.lua
-Editor\AutoPicker.lua
-Editor\TreeHelpers.lua
-Editor\Editor.lua
-Editor\ShelvedElements.lua
-Editor\RulesTree.lua
-Editor\Sidebar.lua
-Editor\RuleMerge.lua
-Editor\SpellSearch.lua
-Editor\SaveBar.lua
-Editor\RuleSettings.lua

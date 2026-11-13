@@ -47,9 +47,13 @@ function ns.Merge(t, d) for k, v in pairs(d) do if t[k] == nil then t[k] = v end
 CueRulesDB = {}
 assert(loadfile(__MOD__))("XayaUI", ns)   -- Modules.lua: the core contract (ns.Provide / ns.Service)
 assert(loadfile(__PATH__))("XayaUI", ns)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58) the Settings > Minimap Button page is XayaUI Options' (XayaUI_Options/MinimapTab.lua), read
+-- when the settings window's code loads: core alone has no page builder
+CORE_HAS_TAB = ns.BuildMinimapTab ~= nil
+assert(loadfile(__TAB__))("XayaUI_Options", ns)
 ns.Minimap_OnDBReady()
 function SHOWN() return _G.XayaUIMinimapButton ~= nil and _G.XayaUIMinimapButton:IsShown() end
-'''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
+'''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'").replace("__TAB__", "'" + os.path.join(ROOT, "XayaUI_Options/MinimapTab.lua").replace("\\", "/") + "'"))
 run = lambda src: lua.execute(src)
 
 # ===== no chat sidebar provided (XayaUI Chat not loaded): the button works as a plain minimap button ===============================

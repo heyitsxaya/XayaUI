@@ -2,8 +2,9 @@
 """Platform split P4b (Options 0.6.87; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1): the row painting every tab shares
 (DecorateButton / DecorateTree / the feature tick boxes / left-aligned headings / ns.DecorateTrees) moved out of the rule editor into
 XayaUI_Options/TreePaint.lua, with the rules tree's parts called back as hooks (ns.OptionsApi.TreePaint.rules). A pure move: what the
-player sees in the window must not change. (P4b also made the editor a load-on-demand addon; since Rules 0.7.0 the editor is part of
-XayaUI Rules instead: XayaUI_Rules/Editor/, set up by Options' ns.OptionsApi.LoadRuleEditor when the window loads while Rules is on.)
+player sees in the window must not change. (P4b also made the editor a load-on-demand addon; from Rules 0.7.0 the editor was part of
+XayaUI Rules instead, XayaUI_Rules/Editor/; since bundle 1 round 7 (SD-57) it is part of XayaUI Options, XayaUI_Options/RuleEditor/, read
+with the window's code and building nothing while Rules is off.)
 The options table is compared by tests/options_split_parity_run.py; this test compares what is DRAWN, which that one cannot see.
 Loads the real addons in the stand-in game, sets up one fixed state (rules in nested groups, a disabled rule, a sound-only rule),
 opens the window and visits every tab and Rules sub-tab (with a rule selected), runs the decorate pass and writes out every shown
@@ -12,9 +13,10 @@ each decoration on the row (open / close arrow, preview eye / headphone, locks, 
 banner, selection bar, divider, Smart Categories note, type icon) whether it is shown, its anchor points, size and tick state; and
 every heading / button label's anchors and justification, and every top tab's tick box. Frame references are named by role.
   A XayaUI Rules on: the drawing equals the golden, per tab (sha256 and line count).
-  B XayaUI Rules off: the same against the golden with XayaUI Rules off (the editor is not read; TreePaint paints the tabs alone).
-  C V14: with XayaUI Rules off no file of XayaUI_Rules (so none of its editor) was read and the rule editor's hooks are absent; with
-    it on the editor was set up with the window (ns.RuleEditorFiles run and cleared) and its hooks are registered.
+  B XayaUI Rules off: the same against the golden with XayaUI Rules off (the editor builds nothing; TreePaint paints the tabs alone).
+  C V14: with XayaUI Rules off no file of XayaUI_Rules was read and the rule editor's hooks are absent (its files, XayaUI Options' since
+    round 7, stop at once); with it on the editor was set up with the window and its hooks are registered (no ns.RuleEditorFiles queue
+    is left: there is none since round 7).
 The golden values were first produced by `python3 tests/tree_paint_parity_run.py --golden` on a checkout of 232552d (before P4b) and
 regenerated for later deliberate changes (Bonus 0.6.38, Options 0.6.104, QoL 0.7.53, Bonus 0.6.37); `--dump DIR` writes the drawings
 to compare by hand. Regenerated on 2026-11-09 for the main slim-down (main holds XayaUI, XayaUI_Options and XayaUI_Rules only; Rules
@@ -187,8 +189,8 @@ if ns.rules and pick then
 end
 for _, tab in ipairs({ "profiles", "set" }) do visit(tab, tab) end
 local hooks = ns.OptionsApi and ns.OptionsApi.TreePaint and ns.OptionsApi.TreePaint.rules
--- (Rules 0.7.0) the editor's files (XayaUI_Rules/Editor/) each add one set-up function to ns.RuleEditorFiles; LoadRuleEditor runs
--- them and clears the list, so a list still there means the editor was read but not set up
+-- (Rules 0.7.0 to round 7) the editor's files each added one set-up function to ns.RuleEditorFiles, run and cleared by LoadRuleEditor;
+-- since round 7 (XayaUI_Options/RuleEditor/) there is no such list, so one still there means old code queued set-up that never ran
 return out, (hooks ~= nil), (rawget(ns, "RuleEditorFiles") ~= nil)
 end
 '''
@@ -245,14 +247,14 @@ def main():
             check("[%s] %s: every row, decoration, heading and tab box drawn as before P4b (%d lines)" % (label, k, want[k]["lines"]),
                   g is not None and g["sha"] == want[k]["sha"], "now %s lines" % (g and g["lines"]))
         check("[%s] no Lua error" % label, not errs, "; ".join(str(e)[:300] for e in errs[:3]))
-    # (Rules 0.7.0) the rule editor is part of XayaUI Rules (XayaUI_Rules/Editor/), set up by Options' LoadRuleEditor when the window
+    # (bundle 1 round 7, SD-57) the rule editor is part of XayaUI Options (XayaUI_Options/RuleEditor/), set up when the window's code
     # loads; there is no XayaUI_Rules_Options addon any more
     tabs, hooks, loaded, errs, pending, _ = on
-    check("[XayaUI Rules on] V14: XayaUI_Rules (with its editor files) and XayaUI_Options loaded, the editor was set up with the window and its row hooks are registered",
+    check("[XayaUI Rules on] V14: XayaUI_Rules and XayaUI_Options (with the editor's files) loaded, the editor was set up with the window and its row hooks are registered",
           "XayaUI_Rules" in loaded and "XayaUI_Options" in loaded and "XayaUI_Rules_Options" not in loaded and not pending and hooks,
           "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))
     tabs, hooks, loaded, errs, pending, _ = off
-    check("[XayaUI Rules off] V14: no file of XayaUI_Rules (so none of its editor) was read and no rule hook is registered",
+    check("[XayaUI Rules off] V14: no file of XayaUI_Rules was read and no rule hook is registered (the editor's files built nothing)",
           "XayaUI_Rules" not in loaded and not pending and not hooks and "XayaUI_Options" in loaded,
           "loaded %s, editor files left unset %s, hooks %s" % (loaded, pending, hooks))
     bad = 0

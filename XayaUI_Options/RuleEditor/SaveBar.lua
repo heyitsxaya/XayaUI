@@ -1,16 +1,16 @@
 -------------------------------------------------------------------------------
--- XayaUI_Rules/Editor/SaveBar.lua : The unsaved-changes strip under the window (Use drafts: Save changes / Discard ...).
+-- XayaUI_Options/RuleEditor/SaveBar.lua : The unsaved-changes strip under the window (Use drafts: Save changes / Discard ...).
 -- Part of the rule editor, moved out of Options.lua unchanged in the platform split P3 (Options 0.6.83;
 -- docs/plans/PLATFORM-SPLIT-2026-11-07.md section 7, Q1: the rule module owns its editor). This folder talks to the rest of the
 -- settings window only through ns.OptionsApi: ns.OptionsApi.Shared (what Options.lua lends it) in, ns.OptionsApi.RuleEditor (what
 -- Options.lua asks of it) out; its files share their own parts through ns.OptionsApi.RuleEditorParts.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
-ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Rules depends on it: ## Dependencies: XayaUI)
--- (Rules 0.7.0, REQUEST-LOG A23 SD-6) This file is part of XayaUI Rules (it was the load-on-demand addon XayaUI_Rules_Options). The game
--- reads it at login with Rules; everything below only runs when the settings window first opens with Rules on: it is one set-up
--- function, run once by XayaUI_Options (Options.lua ns.OptionsApi.LoadRuleEditor) in the .toc order. Nothing is built before then.
-local function EditorFileInit()
+ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Options depends on it: ## Dependencies: XayaUI)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34) This file is part of XayaUI Options
+-- (it was XayaUI_Rules/Editor/, read at login with Rules). The game reads it only when the settings window's code loads, after the
+-- window's own files (XayaUI_Options.toc). With XayaUI Rules switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local P = ns.OptionsApi.RuleEditorParts
 local SelectedRule = P.SelectedRule
@@ -120,6 +120,3 @@ do
         return bar
     end
 end
-end
-ns.RuleEditorFiles = ns.RuleEditorFiles or {}
-ns.RuleEditorFiles[#ns.RuleEditorFiles + 1] = EditorFileInit

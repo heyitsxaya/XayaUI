@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- AuraSetup.lua  (XayaUI 0.5.23)
+-- XayaUI_Options/AuraSetup.lua  (XayaUI 0.5.23; XayaUI Options since bundle 1 round 7)
 -- Combat Tracking Setup: the install/initialization sequence for ns.AuraModel.  Works for every class and spec
 -- because nothing in it is class-specific: it scans THIS player's spellbook and talents, reads the live spell
 -- text, and (out of combat) watches what the player's own casts do to their own buffs.
@@ -9,22 +9,21 @@
 --   Step 3  Review    every ability with its duration, where the number came from, and a box to override it
 --
 -- Opens only from the settings window (round 6; Xaya, SD-53, her words: "first run ever open with settings; otherwise put a config
--- button in the rules pane"): the "Open Combat Tracking Setup" button on the Rules tab (XayaUI_Rules/Editor/RulesTree.lua) and on
+-- button in the rules pane"): the "Open Combat Tracking Setup" button on the Rules tab (XayaUI_Options/RuleEditor/RulesTree.lua) and on
 -- Settings > UI Options > Rule Creation (RuleSettings.lua); and once ever, the very first time the settings window opens while no
 -- spec has a saved (or skipped) setup, together with it (ns.AuraSetup_WithSettings). It never opens over the game by itself (before
 -- round 6 it opened 6 s after login and after a spec change), and it closes when the settings window closes (V27, SD-28: no XayaUI
 -- frame takes clicks once the settings window is closed). It never opens in combat (V26: asked in combat it says so in one line and
 -- opens when combat ends; open when combat starts, it closes and reopens on the same step when combat ends).
 -------------------------------------------------------------------------------
-local _, ns = ...; ns = XayaUI_NS or ns -- part of XayaUI core since 0.6.0 (Combat/); shares its namespace
-local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
-if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
-
--- Loaded once: XayaUI itself loads the engine files (XayaUI.toc), so pulling the repo is enough; an old separate
--- XayaUI_CombatEngine folder (installed before 0.6.0) finds this and steps aside (no double load).
-ns.engineFiles = ns.engineFiles or {}
-if ns.engineFiles.AuraSetup then return end
-ns.engineFiles.AuraSetup = true
+local _, ns = ...; ns = XayaUI_NS or ns -- one namespace with XayaUI core (XayaUI Options depends on it)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "Move all four (Recommended)"; V34) Part of XayaUI Options since round 7 (it was
+-- XayaUI_Rules/Combat/AuraSetup.lua, read at login with Rules): the game reads it only when the settings window's code loads, and the
+-- window is the only way in (SD-53). It works on XayaUI Rules' combat model (ns.AuraModel, XayaUI_Rules/Combat/AuraModel.lua): with
+-- XayaUI Rules switched off it stops at "if not M" below and builds nothing.
+-- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; the "core" store is XayaUI Rules' XayaUIRulesDB, declared by
+-- XayaUI Rules' own files at login)
+local CoreS = ns.Settings("core")
 local M = ns.AuraModel
 if not M then return end
 

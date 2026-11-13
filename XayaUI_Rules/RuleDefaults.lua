@@ -635,8 +635,11 @@ function ns.RulesReady() return rulesReady end
 if ns.Provide then
     ns.Provide("rules", {
         Rules = function() return ns.rules end,
-        PrintStatus = function(...) if ns.PrintStatus then return ns.PrintStatus(...) end end,
-        PerfCommand = function(...) if ns.PerfCommand then return ns.PerfCommand(...) end end,
+        -- (round 7, SD-58) /xui debug status (and /xui status) and /xui debug perf are debug tools: XayaUI_Debug's "rulesdebug" service
+        -- (RulesStatus.lua, RulesPerf.lua), there only while Advanced Debugging is on; core answers both words with its one plain line
+        -- before it asks here when the debug tools are not loaded (XayaUI/Core.lua), so these stay quiet otherwise
+        PrintStatus = function(...) local S = ns.Service("rulesdebug"); if S and S.PrintStatus then return S.PrintStatus(...) end end,
+        PerfCommand = function(...) local S = ns.Service("rulesdebug"); if S and S.PerfCommand then return S.PerfCommand(...) end end,
         TalentCommand = function(...) if ns.TalentCommand then return ns.TalentCommand(...) end end,
         ToggleUnlock = function(...) if ns.ToggleUnlock then return ns.ToggleUnlock(...) end end,
         -- (V26) /xui disable and /xui enable (Core.lua): every rule off or on again (Engine.lua ns.SetRulesDisabled; session only)

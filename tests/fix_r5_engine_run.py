@@ -241,6 +241,9 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     # an older version's saved engine-off state, as the game hands it back at login
     saved = {"XayaUI_Rules": {"XayaUIRulesDB": {"engineDisplay": {"auto": False, "groups": {"f-old": False}, "lean": True}}}}
+    # (round 7, REQUEST-LOG A23 SD-58 / SD-61) /xuiengine's status is a debug tool now (XayaUI_Debug/RulesEngine.lua), read only while
+    # Advanced Debugging is on, which is off by default: this session has it on, as a player who uses /xuiengine would
+    saved["XayaUI"] = {"CueRulesDB": {"ui": {"advancedDebug": True}}}
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)

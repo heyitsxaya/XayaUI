@@ -29,8 +29,11 @@ GetCursorPosition = function() return CX, CY end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
 local ns = rawget(_G, "XayaUI_NS")
+-- (bundle 1 round 7, SD-58) the mover (with the frame picker, the group tags and the movement unlocks) is XayaUI Options' and works only
+-- while the settings window is open: its code is loaded and the window counts as open, as the window's driver says when it shows
+if ns and ns.LoadOptions then ns.LoadOptions(); ns.SetWindowOpen(true) end
 ns.Print = function() end
-check("core loaded with the picker and the group anchor", ns and type(ns.PickFrame) == "function" and type(ns.AnchorGroupToGroup) == "function", ns and type(ns.AnchorGroupToGroup))
+check("core and the settings window's code loaded with the picker and the group anchor", ns and type(ns.PickFrame) == "function" and type(ns.AnchorGroupToGroup) == "function", ns and type(ns.AnchorGroupToGroup))
 if not (ns and ns.AnchorGroupToGroup) then return R end
 ns.folders = { { id = "fA", name = "Items + Consumables" }, { id = "fB", name = "Active Mitigation", cType = "dynamic", cGrowth = "DOWN", cX = 300, cY = 0 },
   { id = "fC", name = "Elsewhere", cX = -500, cY = 300 } }

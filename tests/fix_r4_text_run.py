@@ -14,7 +14,7 @@ and in the player documents (docs/USER-GUIDE.md, WHATS-NEW.md, QA-CHECKLIST.md, 
 - no line offers /xuiengine full or /xuiengine refresh unless it says they were removed;
 - USER-GUIDE and HELP-FAQ explain the combat lock (quoting the exact line the game prints, read from XayaUI/Modules.lua), what stays
   allowed, /xui disable and /xui enable (the enable line quoted from XayaUI/Core.lua), and that a group's border / background is drawn on
-  each display with "Padding around each display" (the slider's name, read from XayaUI_Rules/Editor/RulesTree.lua) starting at 0;
+  each display with "Padding around each display" (the slider's name, read from XayaUI_Options/RuleEditor/RulesTree.lua) starting at 0;
 - README-INGAME lists /xui disable and /xui enable.
 Old files: every check below fails on them (proved on a copy of the pre-change files).
 Run: python3 tests/fix_r4_text_run.py   (Lua 5.1 via lupa)."""
@@ -123,7 +123,7 @@ def doc_checks():
     modules, core = read("XayaUI/Modules.lua"), read("XayaUI/Core.lua")
     lock_settings = lua_string(modules, r'local LOCK_SETTINGS = "([^"]+)"')
     enable_wait = lua_string(core, r'ns\.CombatLock\("enable", RulesEnableNow, "([^"]+)"\)')
-    pad_name = lua_string(read("XayaUI_Rules/Editor/RulesTree.lua"), r'g\.args\.pad = \{ type = "range", name = "([^"]+)"')
+    pad_name = lua_string(read("XayaUI_Options/RuleEditor/RulesTree.lua"), r'g\.args\.pad = \{ type = "range", name = "([^"]+)"')
     check("the code's lines are found (settings lock line, enable-in-combat line, padding slider name)",
           lock_settings and enable_wait and pad_name, (lock_settings, enable_wait, pad_name))
     for rel in ("docs/USER-GUIDE.md", "docs/HELP-FAQ.md"):
@@ -151,8 +151,11 @@ def main():
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
+    # (round 7, REQUEST-LOG A23 SD-58 / SD-61) /xuiengine's status is a debug tool now (XayaUI_Debug/RulesEngine.lua), read only while
+    # Advanced Debugging is on, which is off by default: this session has it on, as a player who uses /xuiengine would
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
-        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled},
+                                                                 "saved": {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": True}}}}}))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     results = [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)] + doc_checks()
     bad = 0

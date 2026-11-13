@@ -3,17 +3,31 @@
 -- Rotation / mirror / flip, recolor, border, background, pulsing glow ring,
 -- shape-following OUTLINE glow (1-10 px, color, pulse), fade-to-gray as the
 -- buff runs out, desaturate on cooldown, buff-duration text, stacks/charges text.
--- Drag-to-position while unlocked (/xui unlock).
+-- Shown as a draggable sample while the mover (XayaUI Options, Mover.lua) unlocks it; its saved position and anchors are here.
 -------------------------------------------------------------------------------
 local addonName, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
 local CoreS, PlatS = ns.Settings("core"), ns.Settings("platform")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; Modules.lua section 0b)
 if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
 
 local frames = setmetatable({}, { __mode = "k" }) -- rule -> frame
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "mover view only available when settings window is open"; V34) The mover is
+-- XayaUI Options' Mover.lua, read only when the settings window's code loads. What stays here is what a display reads to show itself as
+-- a draggable sample: ns.unlocked (the whole mover is open), ns.moveUnlocked (one rule's own movement unlock, from its sidebar row) and
+-- ns.groupUnlocked (below). Only the mover writes them, and only while the settings window is open; session only, never saved.
 ns.unlocked = false
-ns.moveUnlocked = {}   -- per-rule "movement unlocked" (session only); set from the lock icon on the sidebar rows
+ns.moveUnlocked = {}
 local function Unl(rule) return (ns.unlocked or ns.moveUnlocked[rule]) and true or false end
 function ns.IsMoveUnlocked(rule) return Unl(rule) end
+-- The seam to the mover: XayaUI Options' Mover.lua sets ns.MoverDisplay to its handlers when the settings window's code loads (false
+-- until then): a display's mouse and look in the mover, the display menu's entries, and the mover's on / off. The four names below are
+-- this addon's: the settings window calls them (Lock Positions, the sidebar's lock icons), the "rules" service names ns.ToggleUnlock
+-- (RuleDefaults.lua), and the combat engine follows each of them (Combat/AuraDisplay.lua hooks them at load: its aura containers step
+-- aside for the mover's samples). Each only forwards to the mover, and does nothing while the mover is not loaded.
+ns.MoverDisplay = false
+function ns.ToggleUnlock(...) local M = ns.MoverDisplay; if M then return M.ToggleUnlock(...) end end
+function ns.MoverExit(...) local M = ns.MoverDisplay; if M then return M.MoverExit(...) end end
+function ns.SetMoveUnlocked(...) local M = ns.MoverDisplay; if M then return M.SetMoveUnlocked(...) end end
+function ns.SetGroupUnlocked(...) local M = ns.MoverDisplay; if M then return M.SetGroupUnlocked(...) end end
 -- D7 (core 0.6.56; Xaya 2026-11-06, her answer "Accept 1-3" + preview "Still works"): a rule that is switched off, or a cue of one, costs
 -- nothing: the engine skips it after a one-time clean-up (Engine.lua Step), it never gets a display frame and its frame is freed when it is
 -- switched off (here), and the Disabled tab still lists it. Only a preview (the sidebar eye) draws it, and only while previewed.
@@ -54,7 +68,6 @@ local function GroupUnl(rule)   -- the rule's display is shown (as a sample) bec
     return false
 end
 function ns.IsGroupUnlocked(f) return f and ns.groupUnlocked[f.id] and true or false end
-local pairOf, tempUnl = {}, {}   -- session-only paired-aura links (both directions) and the auras a pair unlocked for its partner
 
 -------------------------------------------------------------------------------
 -- Preview state (transient, never saved). Keyed by rule / bar object.
@@ -402,26 +415,6 @@ end
 -------------------------------------------------------------------------------
 -- Frame
 -------------------------------------------------------------------------------
--------------------------------------------------------------------------------
--- On-screen selection, snapping and the right-click menu (only while visuals are unlocked)
--------------------------------------------------------------------------------
-ns.selectedVisual = nil
-local SNAP_GRID, SNAP_NEAR = 10, 10
-local SNAP_LABELS = { free = "Free Move", grid = "Grid (10 px)", auras = "Other Auras' Edges & Centers", center = "Screen Center Lines" }
-
--- border color for an unlocked display: white while hovered (this is the box a click will hit), orange when
--- selected, cyan otherwise. A faint white wash on hover makes it readable over busy art.
-local function PaintBorder(r, f)
-    if not (Unl(r) and f.SetBackdropBorderColor) then return end
-    if f.hovered then f:SetBackdropBorderColor(1, 1, 1, 1)
-    elseif r == ns.selectedVisual then f:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-    else f:SetBackdropBorderColor(0.2, 0.8, 1, 1) end
-    if f.hoverTex then f.hoverTex:SetShown(f.hovered and true or false) end
-end
-local function PaintBorders()
-    for r, f in pairs(frames) do PaintBorder(r, f) end
-end
-function ns.SelectVisual(rule) ns.selectedVisual = rule; PaintBorders() end
 
 -------------------------------------------------------------------------------
 -- Folders are containers. A folder can define alpha, scale, strata / level and a screen position (relative to the
@@ -1186,8 +1179,6 @@ function ns.MigrateGroupAnchors()
     return #moved
 end
 
--- The draggable outline for an unlocked group: fitted around the group's shown displays, drags the GROUP (its X / Y), not the displays.
-local groupHandles = {}
 -- Group size (G5; Xaya 2026-11-06: "size = auto or set + clip / wrap tick boxes; auto fits the showing items, border follows").
 -- Auto: the container stays the 1 x 1 anchor it is with no size (cW / cH nil, exactly as "0 = no fixed size" was, so the combat
 -- engine and the layout read it unchanged); the set numbers wait in cSetW / cSetH. Set: cW / cH are the box.
@@ -1329,10 +1320,9 @@ function ns.RefreshGroupDeco(f)
     end
     if ns.EngineGroupDeco then pcall(ns.EngineGroupDeco) end
 end
--- Right-click on the outline: type the group's X / Y, or center it on the screen on one axis or both ("center" = the outline's middle on the
--- screen's middle). X / Y are the same numbers as the group's X / Y offset options.
-local posPopup
-local LockWatchSync   -- (V26) below, with the mover's combat lock: the combat-start event only while the X / Y box, the picker or the mover is open
+-- A group's X / Y in the units of what it is placed from, a changed X / Y applied, and centering a group on the screen on one axis or both
+-- ("center" = the middle of what it shows on the screen's middle). The mover's X / Y box (XayaUI Options, Mover.lua) uses these through
+-- ns.VisualPos.
 local function GroupTargetScale(fo)
     local c = containers[fo.id]
     local ts = c and c.xuiTarget and c.xuiTarget.GetEffectiveScale and c.xuiTarget:GetEffectiveScale()
@@ -1353,119 +1343,13 @@ local function CenterGroup(fo, onX, onY)
     if onY then fo.cY = math.floor((fo.cY or 0) + (sy - (b + t) / 2) * us / ts + 0.5) end
     GroupPosChanged(fo)
 end
--------------------------------------------------------------------------------
--- Anchor to any frame on screen (Xaya 2026-11-04, on the group X / Y popup: "allow anchoring/snapping to other frames in the UI").
--- Picking: a banner asks to point at a frame and press Shift (a click would also hit the frame: target a unit, cast a spell). The
--- frame under the cursor is read with GetMouseFoci() (docs/reference/api/globals.md:214, no flags) and walked up to its first NAMED
--- parent that the name finds again (_G[name] == frame): only a name survives a /reload. Forbidden frames, UIParent / WorldFrame and
--- XayaUI's own picker frames are skipped. The candidate is outlined with its name; Cancel (or 30 s) stops.
--------------------------------------------------------------------------------
-local picker
-local function NamedTarget(r)
-    local guard = 0
-    while r and guard < 40 do
-        guard = guard + 1
-        local okF, forb = pcall(function() return r.IsForbidden and r:IsForbidden() end)
-        if not okF or forb then return nil end
-        if r == UIParent or r == WorldFrame or r.xuiPickerOwn then return nil end
-        local okN, name = pcall(function() return r.GetName and r:GetName() end)
-        if okN and type(name) == "string" and name ~= "" and not ns.IsSecret(name) and _G[name] == r and r.GetRect then return r, name end
-        local okP, par = pcall(function() return r.GetParent and r:GetParent() end)
-        r = okP and par or nil
-    end
-end
-function ns.FrameUnderCursor()
-    if type(GetMouseFoci) ~= "function" then return nil end
-    local ok, foci = pcall(GetMouseFoci)
-    if not (ok and type(foci) == "table") then return nil end
-    for _, r in ipairs(foci) do
-        local f, name = NamedTarget(r)
-        if f then return f, name end
-    end
-end
+-- a frame's rectangle in screen pixels (nil when the game gives none)
 local function ScreenRect(f)
     local ok, l, b, w, h = pcall(f.GetRect, f)
     if not (ok and l and w) then return nil end
     local s = f:GetEffectiveScale()
     return l * s, b * s, (l + w) * s, (b + h) * s
 end
-function ns.PickFrame(title, onPick, forGroup)
-    -- (V26) never in combat (a menu left open from before the fight could ask for it): picking moves a display or a group
-    if InCombatLockdown and InCombatLockdown() then ns.Print("picking a frame to snap to can't be done during combat."); return nil end
-    local P = picker
-    if not P then
-        P = CreateFrame("Frame", "XayaUIFramePicker", UIParent, "BackdropTemplate")
-        P.xuiPickerOwn = true
-        P:SetSize(420, 58); P:SetPoint("TOP", UIParent, "TOP", 0, -60); P:SetFrameStrata("TOOLTIP"); P:EnableMouse(true)
-        P:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        P:SetBackdropColor(0.05, 0.05, 0.05, 0.95); P:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-        P.text = P:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); P.text:SetPoint("TOPLEFT", ns.UI_MARGIN, -ns.UI_MARGIN); P.text:SetPoint("RIGHT", -90, 0)
-        P.text:SetJustifyH("LEFT")
-        P.cancel = CreateFrame("Button", nil, P, "UIPanelButtonTemplate"); P.cancel:SetSize(70, 22); P.cancel:SetPoint("RIGHT", -10, 0)
-        P.cancel:SetText("Cancel"); P.cancel.xuiPickerOwn = true
-        P.cancel:SetScript("OnClick", function() P:Hide() end)
-        if ns.FlatButton then ns.FlatButton(P.cancel) end
-        P.hi = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-        P.hi.xuiPickerOwn = true
-        P.hi:SetFrameStrata("TOOLTIP"); P.hi:EnableMouse(false)
-        P.hi:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 }); P.hi:SetBackdropBorderColor(0.3, 1, 0.3, 1)
-        P.hi.label = P.hi:CreateFontString(nil, "OVERLAY", "GameFontNormal"); P.hi.label:SetPoint("BOTTOMLEFT", P.hi, "TOPLEFT", 0, 2)
-        P.hi:Hide()
-        P:SetScript("OnHide", function(self)
-            self.hi:Hide(); self.onPick = nil
-            if LockWatchSync then LockWatchSync() end
-            if self.forGroup then   -- B: the mover tags shown for the picker go back to what the mover view shows
-                self.forGroup, self.candGroup, GA.picking = nil, nil, nil
-                if ns.RefreshGroupTags then ns.RefreshGroupTags() end
-            end
-        end)
-        P:SetScript("OnUpdate", function(self)
-            if GetTime() - (self.startedAt or 0) > 30 then self:Hide(); return end
-            local f, name, l, b, r, t
-            -- B: picking for a group: another group's tag / outline / box comes first (one that may be followed: not the group
-            -- itself, nothing that makes a loop), labelled with its name
-            local g = self.forGroup and GA.GroupUnderCursor(self.forGroup)
-            if g then
-                l, b, r, t = g.l, g.b, g.r, g.t
-                name = tostring(g.fo.name)
-                self.cand, self.candName, self.candGroup = nil, name, g.fo
-            else
-                f, name = ns.FrameUnderCursor()
-                self.cand, self.candName, self.candGroup = f, name, nil
-            end
-            local us = UIParent:GetEffectiveScale()
-            if f then l, b, r, t = ScreenRect(f) end
-            if l then
-                self.hi:ClearAllPoints()
-                self.hi:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l / us, b / us)
-                self.hi:SetSize(math.max(4, (r - l) / us), math.max(4, (t - b) / us))
-                self.hi.label:SetText(name)
-                self.hi:Show()
-            else
-                self.hi:Hide()
-            end
-            local down = IsShiftKeyDown and IsShiftKeyDown() or false
-            if down and not self.shiftWas and (f or self.candGroup) then
-                local fn, grp = self.onPick, self.candGroup
-                self:Hide()
-                if fn then fn(f, name, grp) end   -- (a group: frame nil, its name, the group)
-                return
-            end
-            self.shiftWas = down
-        end)
-        picker = P
-    end
-    -- forGroup (B): the group being anchored; while the picker is open every group's mover tag shows and other groups can be picked
-    P.text:SetText((title or "Anchor to a frame") .. "\n|cffaaaaaa" .. (forGroup and "Point at a frame or a group and press Shift. Cancel stops." or "Point at a frame and press Shift. Cancel stops.") .. "|r")
-    P.onPick, P.startedAt, P.shiftWas = onPick, GetTime(), (IsShiftKeyDown and IsShiftKeyDown()) or false
-    P.forGroup, P.candGroup = forGroup, nil
-    GA.picking = forGroup
-    if forGroup and ns.RefreshGroupTags then ns.RefreshGroupTags() end
-    P:Show()
-    if LockWatchSync then LockWatchSync() end   -- (V26) it closes when combat starts (a Shift in a fight would move a display)
-    return P
-end
-function ns.FramePicker() return picker end   -- (tests)
 
 -- Which side of the target a box is on: h = "LEFT" / "RIGHT" / "" (overlapping), v = "TOP" / "BOTTOM" / "" (screen pixels)
 local function SideOf(gl, gb, gr, gt, tl, tb, tr, tt)
@@ -1538,34 +1422,6 @@ function GA.BoxRect(t)
     if not x then return nil end
     local us = UIParent:GetEffectiveScale()
     return x * us, y * us, x * us, y * us
-end
--- B: the group (that forFo may follow) whose mover tag or outline (what it shows, 4 px out) is under the cursor; the
--- smallest one when they overlap (a nested group inside its parent). Returns { fo, l, b, r, t } (the outline to draw, screen pixels).
-function GA.GroupUnderCursor(forFo)
-    local cx, cy = GetCursorPosition()
-    if not cx then return nil end
-    local us = UIParent:GetEffectiveScale()
-    local best, bestArea
-    local function inside(l, b, r, t) return l and cx >= l and cx <= r and cy >= b and cy <= t end
-    for _, g in ipairs(ns.folders or {}) do
-        if ns.GroupAnchorAllowed(forFo, g) then
-            local ol, ob, orr, ot = GroupScreenBounds(g)
-            if ol then local pad = 4 * us; ol, ob, orr, ot = ol - pad, ob - pad, orr + pad, ot + pad end
-            local hit = inside(ol, ob, orr, ot)
-            local hl, hb, hr, ht
-            local tag = ns.GroupTagFor and ns.GroupTagFor(g.id)
-            if not hit and tag and tag:IsShown() and (tag:GetAlpha() or 0) > 0 then
-                hl, hb, hr, ht = ScreenRect(tag); hit = inside(hl, hb, hr, ht)
-            end
-            if hit then
-                local l, b, r, t = ol, ob, orr, ot
-                if not l then l, b, r, t = hl, hb, hr, ht end
-                local area = (r - l) * (t - b)
-                if not bestArea or area < bestArea then best, bestArea = { fo = g, l = l, b = b, r = r, t = t }, area end
-            end
-        end
-    end
-    return best
 end
 -- B: anchor a group to another group without moving it (the same sides as a picked frame: the group's side facing the other group)
 function ns.AnchorGroupToGroup(fo, t)
@@ -1658,404 +1514,11 @@ function ns.UnanchorGroup(fo)
     if not fo then return end
     Reanchor(fo, function() fo.cRel, fo.cFrame, fo.cGroup, fo.cPoint, fo.cRelPoint = nil, nil, nil, nil, nil end)
 end
-local function AnchorText(fo)
-    if fo.cRel == "custom" and fo.cFrame then
-        local g = _G[fo.cFrame]
-        return "Anchored to |cffffd100" .. fo.cFrame .. "|r" .. ((g and g.GetRect) and "" or " |cffff6060(not found now: the screen)|r")
-    end
-    local tg = GA.Target(fo)
-    if tg then return "Anchored to group '|cffffd100" .. tostring(tg.name) .. "|r'" end
-    if fo.cRel and fo.cRel ~= "group" then return "Anchored to |cffffd100" .. tostring(fo.cRel) .. "|r" end
-    return "Anchored to the screen" .. (fo.parent and " (its parent group)" or "")
-end
-
-local function FillPosPopup(p)
-    local fo = ns.FolderById(p.fid)
-    if not fo then p:Hide() return end
-    p.title:SetText(tostring(fo.name))
-    if p.anchorText then p.anchorText:SetText(AnchorText(fo)) end
-    if p.flush then p.flush:SetEnabled((fo.cRel == "custom" and fo.cFrame ~= nil) or GA.Target(fo) ~= nil) end
-    p.x:SetText(tostring(fo.cX or 0)); p.y:SetText(tostring(fo.cY or 0))
-    p.x:SetCursorPosition(0); p.y:SetCursorPosition(0)
-end
-local function ShowGroupPosPopup(fo)
-    local p = posPopup
-    if not p then
-        p = CreateFrame("Frame", "XayaUIGroupPosPopup", UIParent, "BackdropTemplate")
-        -- rows from the top, G apart (#351 phase 2; they were 4-8 px apart and the last one 8 px from the bottom); the height is set
-        -- after the last row
-        local M, G = ns.UI_MARGIN, ns.UI_GUTTER
-        p:SetSize(260, 384); p:SetFrameStrata("FULLSCREEN_DIALOG"); p:SetClampedToScreen(true); p:EnableMouse(true)
-        -- (Xaya 2026-11-08, REQUEST-LOG session 014bN6tUDLJ6T742DewZDg1s #11-#12: "I need to be able to move the rule box around so that
-        -- I can actually see what I'm working on"): the box drags by any part that is not a button or a number box. It is never a
-        -- frame "Anchor to a frame on screen..." can pick (the group was anchored to this box: "Anchored to XayaUIGroupPosPo...").
-        p:SetMovable(true); p:RegisterForDrag("LeftButton")
-        p:SetScript("OnDragStart", function(self) self:StartMoving() end)
-        p:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
-        p.xuiPickerOwn = true
-        p:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        p:SetBackdropColor(0.05, 0.05, 0.05, 0.96); p:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-        p.title = p:CreateFontString(nil, "OVERLAY", "GameFontNormal"); p.title:SetPoint("TOP", 0, -M)
-        local y = M + 14 + G   -- the next row's top, from the popup's top (under the 14 px title)
-        local function Box(label, y)
-            local fsl = p:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); fsl:SetPoint("TOPLEFT", 16, y); fsl:SetText(label)
-            local eb = CreateFrame("EditBox", nil, p, "InputBoxTemplate")
-            eb:SetSize(100, 20); eb:SetPoint("TOPLEFT", 110, y + 4); eb:SetAutoFocus(false); eb:SetMaxLetters(8)
-            eb:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-            if ns.KeyFocusGuard then ns.KeyFocusGuard(eb) end   -- (row 56) lets go of the keyboard: Enter / Esc / a click outside / hiding (core KeyCatch.lua)
-            return eb
-        end
-        local function Apply()
-            local fo2 = ns.FolderById(p.fid)
-            if not fo2 then return end
-            local x, y = tonumber(p.x:GetText()), tonumber(p.y:GetText())
-            if x then fo2.cX = math.floor(x + 0.5) end
-            if y then fo2.cY = math.floor(y + 0.5) end
-            GroupPosChanged(fo2); FillPosPopup(p)
-        end
-        p.x = Box("X offset", -(y + 4)); y = y + 20 + G   -- Box puts the 20 px edit box 4 px above its label
-        p.y = Box("Y offset", -(y + 4)); y = y + 20 + G
-        p.x:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
-        p.y:SetScript("OnEnterPressed", function(self) self:ClearFocus(); Apply() end)
-        local btns = {}
-        local function Btn(text, fn)
-            local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
-            b:SetSize(228, 22); b:SetPoint("TOP", 0, -y); b:SetText(text)
-            y = y + 22 + G
-            -- a button press gives the keyboard back: a number box left with focus kept the arrow keys from the mover (#13)
-            b:SetScript("OnClick", function() p.x:ClearFocus(); p.y:ClearFocus(); fn() end)
-            if ns.FlatButton then ns.FlatButton(b) end
-            btns[#btns + 1] = b
-            return b
-        end
-        Btn("Apply X / Y", Apply)
-        Btn("Center on screen (X)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, false); FillPosPopup(p) end end)
-        Btn("Center on screen (Y)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, false, true); FillPosPopup(p) end end)
-        Btn("Center on screen (X, Y)", function() local f2 = ns.FolderById(p.fid); if f2 then CenterGroup(f2, true, true); FillPosPopup(p) end end)
-        p.anchorText = p:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        p.anchorText:SetPoint("TOPLEFT", 16, -y); p.anchorText:SetPoint("RIGHT", -16, 0); p.anchorText:SetJustifyH("LEFT")
-        p.anchorText:SetHeight(24); p.anchorText:SetJustifyV("TOP")   -- room for two lines (a long frame name)
-        y = y + 24 + G
-        Btn("Anchor to a frame on screen...", function()
-            local f2 = ns.FolderById(p.fid); if not f2 then return end
-            ns.PickFrame("Anchor the group '" .. tostring(f2.name) .. "' to a frame", function(target, name, group)
-                local f3 = ns.FolderById(p.fid); if not f3 then return end
-                if group then   -- B: another group
-                    if ns.AnchorGroupToGroup(f3, group) then ns.Print("group '" .. tostring(f3.name) .. "' anchored to group '" .. tostring(group.name) .. "' (it stays where it is; Snap flush closes the gap)") end
-                elseif ns.AnchorGroupToFrame(f3, target, name) then ns.Print("group '" .. tostring(f3.name) .. "' anchored to " .. name .. " (it stays where it is; Snap flush closes the gap)") end
-                if p:IsShown() then FillPosPopup(p) end
-            end, f2)
-        end)
-        p.flush = Btn("Snap flush to that frame", function() local f2 = ns.FolderById(p.fid); if f2 then ns.SnapGroupFlush(f2); FillPosPopup(p) end end)
-        Btn("Anchor to the screen (stays in place)", function() local f2 = ns.FolderById(p.fid); if f2 then ns.UnanchorGroup(f2); FillPosPopup(p) end end)
-        Btn("Close", function() p:Hide() end)
-        p:SetHeight(y - G + M)   -- 384: M under the Close button
-        -- every button as wide as the longest label needs (#11: "all buttons should not have text overflow"; "Anchor to the screen
-        -- (stays in place)" ran past both edges of its 228 px button): the label's own width (GetUnboundedStringWidth, as Skin.lua's
-        -- compact buttons measure it) plus 34 px (the template pins the label 15 px in from each side), the box 16 px wider each side
-        local need = 228
-        for _, b in ipairs(btns) do
-            local fs = b.GetFontString and b:GetFontString()
-            local ok, w = pcall(function() return fs and (fs.GetUnboundedStringWidth or fs.GetStringWidth)(fs) end)
-            if ok and type(w) == "number" then need = math.max(need, math.ceil(w + 34)) end
-        end
-        for _, b in ipairs(btns) do b:SetWidth(need) end
-        p:SetWidth(math.max(260, need + 32))
-        if UISpecialFrames then table.insert(UISpecialFrames, "XayaUIGroupPosPopup") end
-        p:SetScript("OnHide", function() if LockWatchSync then LockWatchSync() end end)
-        posPopup = p
-    end
-    p.fid = fo.id
-    FillPosPopup(p)
-    local cx, cy = GetCursorPosition()
-    local us = UIParent:GetEffectiveScale()
-    p:ClearAllPoints(); p:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", cx / us + 10, cy / us - 10)
-    p:Show()
-    if LockWatchSync then LockWatchSync() end   -- (V26) it closes when combat starts
-end
-
-local function GroupHandle(f)
-    local h = groupHandles[f.id]
-    if h then return h end
-    h = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    h:SetFrameStrata("HIGH"); h:SetFrameLevel(900)
-    h:EnableMouse(true)
-    h:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 })
-    h:SetBackdropColor(1, 0.6, 0.1, 0.08); h:SetBackdropBorderColor(1, 0.6, 0.1, 1)
-    h.label = h:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    h.label:SetPoint("BOTTOMLEFT", h, "TOPLEFT", 0, 2)
-    h.fid = f.id
-    local function Done(self)
-        if not self.drag then return end
-        self.drag = nil
-        ns.MarkDirty()
-        ns.Fire("CONFIG_CHANGED")
-    end
-    h:SetScript("OnMouseDown", function(self, btn)
-        if btn ~= "LeftButton" then return end
-        local fo = ns.FolderById(self.fid)
-        if not fo then return end
-        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
-        if ns.IsMoverTempLocked(fo) then return end   -- (locked for now: the tag still opens the settings, but does not drag)
-        local cx, cy = GetCursorPosition()
-        self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0 }
-    end)
-    h:SetScript("OnMouseUp", function(self, btn)
-        if btn == "RightButton" then
-            local fo = ns.FolderById(self.fid)
-            if fo then ShowGroupPosPopup(fo) end
-        else
-            Done(self)
-        end
-    end)
-    h:SetScript("OnUpdate", function(self)
-        local fo = ns.FolderById(self.fid)
-        if not fo or not ns.groupUnlocked[self.fid] then self:Hide() return end
-        if self.drag then
-            if not IsMouseButtonDown("LeftButton") then Done(self)
-            else
-                local c = containers[fo.id]
-                local ts = (c and c.xuiTarget and c.xuiTarget.GetEffectiveScale and c.xuiTarget:GetEffectiveScale()) or UIParent:GetEffectiveScale()
-                if not ts or ts <= 0 then ts = 1 end
-                local cx, cy = GetCursorPosition()
-                fo.cX = math.floor(self.drag.x + (cx - self.drag.cx) / ts + 0.5)
-                fo.cY = math.floor(self.drag.y + (cy - self.drag.cy) / ts + 0.5)
-                Container(fo)
-            end
-        end
-        local l, b, r, t = GroupBounds(fo)
-        self:ClearAllPoints()
-        if l then
-            local pad = 4
-            self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - pad, b - pad)
-            self:SetSize(math.max(24, r - l + 2 * pad), math.max(24, t - b + 2 * pad))
-        else   -- nothing visible inside: a small box at the group's own position (fix A: its anchor point, not the container's centre)
-            local cx, cy = GA.AnchorXY(fo)
-            if cx then self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", cx, cy) else self:SetPoint("CENTER") end
-            self:SetSize(80, 40)
-        end
-    end)
-    groupHandles[f.id] = h
-    return h
-end
-function ns.SetGroupUnlocked(f, on)
-    if not f then return end
-    ns.groupUnlocked[f.id] = on and true or nil
-    local h = GroupHandle(f)
-    if on then h.label:SetText(tostring(f.name) .. "  (drag to move the group; right-click for X / Y and centering)"); h:Show()
-    else h.drag = nil; h:Hide(); if posPopup and posPopup.fid == f.id then posPopup:Hide() end end
-    for _, r in ipairs(ns.rules or {}) do
-        if r.visual and InFolder(r.folder, f.id) then
-            ns.RefreshVisual(r)
-            ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
-        end
-    end
-    if ns.RefreshGroupTags then ns.RefreshGroupTags() end   -- an unlocked group shows its handle instead of its mover-view tag
-end
-
--------------------------------------------------------------------------------
--- Mover view (Xaya 2026-11-04: "when you open the anchors/mover view, enable hover-over groups or individual icons and enable the
--- ability to go to a specific element to modify its options"). While every display is unlocked (/xui unlock), each group with a
--- display on screen gets a faint outline (it takes no mouse, so the displays inside stay draggable) and a name tab above it. Hovering
--- the tab lights the outline and names the group; a click opens the group's settings, a right-click its X / Y popup, and dragging the
--- tab moves the whole group. Nested groups stack their tabs upward so they do not cover each other. Displays get a tooltip (GetFrame).
--------------------------------------------------------------------------------
-local groupTags = {}
-local TAG_H, TAG_PAD = 16, 4
-function ns.FolderPathText(fid)
-    local names, id, g = {}, fid, 0
-    while id and g < 32 do
-        local f = ns.FolderById(id)
-        if not f then break end
-        table.insert(names, 1, tostring(f.name)); id, g = f.parent, g + 1
-    end
-    return table.concat(names, " > ")
-end
-local function FolderDepth(f)
-    local d, id = 0, f.parent
-    while id and d < 32 do local p = ns.FolderById(id); if not p then break end; d, id = d + 1, p.parent end
-    return d
-end
-local function ShownIn(f)
-    local n = 0
-    for rule, fr in pairs(frames) do if fr:IsShown() and InFolder(rule.folder, f.id) then n = n + 1 end end
-    return n
-end
-local function TagWanted(f)
-    -- (B: also while the frame picker is open for a group: "every group's mover tag shows while the picker is open")
-    return (ns.unlocked or GA.picking ~= nil) and f and f.default ~= "cursor" and not ns.groupUnlocked[f.id]   -- (an unlocked group has its own handle)
-end
-local function TagTooltip(t)
-    local fo = ns.FolderById(t.fid)
-    if not (fo and GameTooltip) then return end
-    ns.Tip.Show(t, "ANCHOR_TOP", { "Group: " .. ns.FolderPathText(fo.id), 1, 0.82, 0, add = true }, {
-        { ShownIn(fo) .. " display(s) on screen", 1, 1, 1 },
-        { "Click: open this group's settings", 0.6, 0.85, 1 },
-        { "Right-click: X / Y, centering and anchoring", 0.6, 0.85, 1 },
-        { "Drag this tab: move the whole group", 0.6, 0.85, 1 } })
-end
-local function GroupTag(f)
-    local t = groupTags[f.id]
-    if t then return t end
-    t = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    t:SetFrameStrata("MEDIUM"); t:SetFrameLevel(50)   -- under the displays (HIGH) and the settings window
-    t:EnableMouse(true)
-    t:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    t:SetBackdropColor(0.05, 0.05, 0.05, 0.85); t:SetBackdropBorderColor(1, 0.6, 0.1, 0.9)
-    t.label = t:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    t.label:SetPoint("LEFT", 4, 0)
-    t.box = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    t.box:SetFrameStrata("MEDIUM"); t.box:SetFrameLevel(49)
-    t.box:EnableMouse(false)
-    t.box:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-    t.box:SetBackdropBorderColor(1, 0.6, 0.1, 0.35)
-    t.fid = f.id
-    -- P5: the lock icon locks this group for now (no save): its displays let the mouse through to what is under them
-    t.lock = CreateFrame("Button", nil, t)
-    t.lock:SetSize(TAG_H - 2, TAG_H - 2); t.lock:SetPoint("RIGHT", -2, 0)
-    t.lock.tex = t.lock:CreateTexture(nil, "OVERLAY"); t.lock.tex:SetAllPoints()
-    t.lock.tex:SetTexture("Interface\\PetBattles\\PetBattle-LockIcon")
-    t.lock:SetScript("OnClick", function()
-        local fo = ns.FolderById(t.fid)
-        if fo then ns.SetMoverTempLock(fo, not ns.IsMoverTempLocked(fo)) end
-    end)
-    t.lock:SetScript("OnEnter", function(self)
-        if not GameTooltip then return end
-        ns.Tip.Show(self, "ANCHOR_TOP", { ns.IsMoverTempLocked(ns.FolderById(t.fid)) and "Unlock this group" or "Lock this group for now", 1, 0.82, 0, add = true },
-            { { "While locked its displays cannot be dragged and the mouse reaches what is under them. Nothing is saved; it ends when you leave the mover view.", 1, 1, 1, true } })
-    end)
-    t.lock:SetScript("OnLeave", function() ns.Tip.Hide() end)
-    local function Lit(on) t.box:SetBackdropBorderColor(1, 0.6, 0.1, on and 1 or 0.35) end
-    t:SetScript("OnEnter", function(self) self.hovered = true; Lit(true); TagTooltip(self) end)
-    t:SetScript("OnLeave", function(self)
-        self.hovered = false; Lit(false)
-        if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
-    end)
-    t:SetScript("OnMouseDown", function(self, btn)
-        if btn ~= "LeftButton" then return end
-        local fo = ns.FolderById(self.fid)
-        if not fo then return end
-        -- audit D27 (core 0.6.67): like the sidebar handle: a click selects the group for arrow-key nudges (QA B178), and a group
-        -- locked for now does not drag ("its tag does not drag"); the click still opens its settings (OnMouseUp)
-        if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
-        if ns.IsMoverTempLocked(fo) then self.drag = { locked = true }; return end
-        local cx, cy = GetCursorPosition()
-        self.drag = { cx = cx, cy = cy, x = fo.cX or 0, y = fo.cY or 0, moved = false }
-    end)
-    t:SetScript("OnMouseUp", function(self, btn)
-        local fo = ns.FolderById(self.fid)
-        if not fo then self.drag = nil; return end
-        if btn == "RightButton" then
-            self.drag = nil
-            -- (#13, Xaya 2026-11-08: "in mover mode, I can't use arrow keys"): the group whose X / Y box is open is the one the arrow
-            -- keys nudge, as a left-click selects it
-            if ns.MoverSelect and not ns.IsMoverTempLocked(fo) then ns.MoverSelect("group", fo) end
-            ShowGroupPosPopup(fo); return
-        end
-        local d = self.drag
-        self.drag = nil
-        if d and d.moved then GroupPosChanged(fo)   -- a drag: the new X / Y is saved
-        elseif ns.EditFolder then ns.EditFolder(fo) end   -- a click: open the group's settings
-    end)
-    t:SetScript("OnUpdate", function(self)
-        local fo = ns.FolderById(self.fid)
-        if not TagWanted(fo) then self.drag = nil; self:Hide(); self.box:Hide(); return end
-        local d = self.drag
-        if d and d.locked then
-            if not IsMouseButtonDown("LeftButton") then self.drag = nil end
-        elseif d then
-            if not IsMouseButtonDown("LeftButton") then
-                self.drag = nil
-                if d.moved then GroupPosChanged(fo) end
-            else
-                local cx, cy = GetCursorPosition()
-                if d.moved or math.abs(cx - d.cx) + math.abs(cy - d.cy) > 3 then
-                    d.moved = true
-                    local ts = GroupTargetScale(fo)
-                    fo.cX = math.floor(d.x + (cx - d.cx) / ts + 0.5)
-                    fo.cY = math.floor(d.y + (cy - d.cy) / ts + 0.5)
-                    Container(fo)
-                end
-            end
-        end
-        local l, b, r, top = GroupBounds(fo)
-        if not l then   -- nothing of this group on screen: the tag stays, invisible and not clickable, until something shows
-            self:SetAlpha(0); self:EnableMouse(false); self.box:Hide()
-            return
-        end
-        self:SetAlpha(1); self:EnableMouse(true)
-        local locked = ns.IsMoverTempLocked(fo)
-        self.label:SetText(tostring(fo.name) .. (locked and " (locked)" or ""))
-        self.lock.tex:SetDesaturated(not locked); self.lock.tex:SetAlpha(locked and 1 or 0.6)
-        self:SetSize(math.max(40, (self.label:GetStringWidth() or 40) + 8 + TAG_H), TAG_H)
-        self:ClearAllPoints()
-        self:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, top + TAG_PAD + 1 + FolderDepth(fo) * (TAG_H + 1))
-        self.box:ClearAllPoints()
-        self.box:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l - TAG_PAD, b - TAG_PAD)
-        self.box:SetSize(r - l + 2 * TAG_PAD, top - b + 2 * TAG_PAD)
-        self.box:Show()
-    end)
-    t:Hide(); t.box:Hide()
-    groupTags[f.id] = t
-    return t
-end
--- shows a tag for every group while everything is unlocked (its OnUpdate keeps it in place and hides it once that ends)
-function ns.RefreshGroupTags()
-    if not (ns.unlocked or GA.picking ~= nil) then
-        for _, t in pairs(groupTags) do t.drag = nil; t:Hide(); t.box:Hide() end
-        return
-    end
-    for _, f in ipairs(ns.folders or {}) do
-        if TagWanted(f) then GroupTag(f):Show() elseif groupTags[f.id] then groupTags[f.id]:Hide(); groupTags[f.id].box:Hide() end
-    end
-end
-function ns.GroupTagFor(fid) return groupTags[fid] end   -- (tests)
 
 -- /xui debug groups moved to XayaUI Dev Assist (core 0.6.56; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua). It reads the frames
 -- through this (read-only; nothing runs until it is typed).
 function ns.VisualProbeState() return frames, containers, DynAncestor end
 
-local function SnapMode() return CoreS.snapMode or "free" end   -- (P5: XayaUI Rules' store; CueRulesDB.ui.snapMode before)
-
--- x, y are offsets of the frame center from the screen center (UI units). Returns the snapped offsets.
-function ns.SnapPosition(rule, fr, x, y)
-    local mode = SnapMode()
-    if mode == "grid" then
-        return math.floor(x / SNAP_GRID + 0.5) * SNAP_GRID, math.floor(y / SNAP_GRID + 0.5) * SNAP_GRID
-    elseif mode == "center" then
-        if math.abs(x) <= SNAP_NEAR then x = 0 end
-        if math.abs(y) <= SNAP_NEAR then y = 0 end
-        return x, y
-    elseif mode == "auras" then
-        local ux, uy = UIParent:GetCenter()
-        local w, h = fr:GetWidth() / 2, fr:GetHeight() / 2
-        local bestX, bestY, dX, dY = nil, nil, SNAP_NEAR + 1, SNAP_NEAR + 1
-        for r, o in pairs(frames) do
-            if r ~= rule and o:IsShown() and o:GetCenter() then
-                local s = o:GetEffectiveScale() / UIParent:GetEffectiveScale()
-                local ocx, ocy = o:GetCenter()
-                ocx, ocy = ocx * s - ux, ocy * s - uy
-                local ow, oh = o:GetWidth() * s / 2, o:GetHeight() * s / 2
-                -- my left / center / right against their left / center / right (and the same vertically)
-                for _, mine in ipairs({ -w, 0, w }) do
-                    for _, theirs in ipairs({ ocx - ow, ocx, ocx + ow }) do
-                        local d = math.abs((x + mine) - theirs)
-                        if d < dX then dX = d; bestX = theirs - mine end
-                    end
-                end
-                for _, mine in ipairs({ -h, 0, h }) do
-                    for _, theirs in ipairs({ ocy - oh, ocy, ocy + oh }) do
-                        local d = math.abs((y + mine) - theirs)
-                        if d < dY then dY = d; bestY = theirs - mine end
-                    end
-                end
-            end
-        end
-        if bestX and dX <= SNAP_NEAR then x = math.floor(bestX + 0.5) end
-        if bestY and dY <= SNAP_NEAR then y = math.floor(bestY + 0.5) end
-    end
-    return x, y
-end
 
 -------------------------------------------------------------------------------
 -- Snap targets: pin a display to the edge of a Blizzard frame. `pos` = side + alignment along that side.
@@ -2078,12 +1541,6 @@ local SNAP_TARGETS = {
     { key = "bar6",   label = "Action Bar 6", frames = { "MultiBar5" } },
     { key = "bar7",   label = "Action Bar 7", frames = { "MultiBar6" } },
     { key = "bar8",   label = "Action Bar 8", frames = { "MultiBar7" } },
-}
-local SNAP_POS = {
-    { "TOP_LEFT", "Top Left" }, { "TOP_CENTER", "Top Center" }, { "TOP_RIGHT", "Top Right" },
-    { "RIGHT_TOP", "Right Top" }, { "RIGHT_CENTER", "Right Center" }, { "RIGHT_BOTTOM", "Right Bottom" },
-    { "BOTTOM_RIGHT", "Bottom Right" }, { "BOTTOM_CENTER", "Bottom Center" }, { "BOTTOM_LEFT", "Bottom Left" },
-    { "LEFT_BOTTOM", "Left Bottom" }, { "LEFT_CENTER", "Left Center" }, { "LEFT_TOP", "Left Top" },
 }
 -- my point -> the target's point, so the display sits OUTSIDE the target on the chosen side
 local SNAP_ANCHOR = {
@@ -2320,8 +1777,9 @@ function Place(fr, rule, parent)   -- (the local declared above the arrangement)
         fr:SetPoint(f, parent, a, v.x or 0, v.y or 0)
     end
 end
--- read where the frame is now and store it as the display's own X / Y (dragging always leaves any snap target)
-local function CommitDrag(rule, fr, useSnap)
+-- read where the frame is now and store it as the display's own X / Y (dragging always leaves any snap target). snapFn: the mover's drag
+-- snapping (XayaUI Options, Mover.lua ns.SnapPosition), or nil to store the spot as it is
+local function CommitDrag(rule, fr, snapFn)
     local v = rule.visual
     v.snap = nil
     local parent, dyn = ParentFor(rule)
@@ -2330,12 +1788,21 @@ local function CommitDrag(rule, fr, useSnap)
     local ux, uy = parent:GetCenter()
     local s = fr:GetEffectiveScale() / parent:GetEffectiveScale()
     local cox, coy = cx * s - ux, cy * s - uy   -- center offsets; snapping works on these, then they are stored relative to the anchor
-    if useSnap then cox, coy = ns.SnapPosition(rule, fr, math.floor(cox + 0.5), math.floor(coy + 0.5)) end
+    if snapFn then cox, coy = snapFn(rule, fr, math.floor(cox + 0.5), math.floor(coy + 0.5)) end
     ns.SetVisualCenterOffset(rule, cox, coy)
     Place(fr, rule, parent)
     if dyn then LayoutDynamic(dyn) end
     ArrangeAfter(rule)   -- G7: "arrangement wins"
     ns.Fire("CONFIG_CHANGED")
+end
+-- place a display again from its saved X / Y (the mover's arrow-key nudge): its group's layout or arrangement follows
+local function PlaceDisplay(r)
+    local fr = frames[r]
+    if not fr then return false end
+    local parent, dyn = ParentFor(r)
+    Place(fr, r, parent)
+    if dyn then LayoutDynamic(dyn) else ArrangeAfter(r) end
+    return true
 end
 -- a display snapped to a frame picked on screen: the side and alignment nearest to where the display is now (SNAP_POS keys)
 local function SnapPosFor(dl, db, dr, dt, tl, tb, tr, tt)
@@ -2394,210 +1861,12 @@ function ns.CenterVisual(rule, axis)
     ns.RefreshVisual(rule)
     ns.Fire("CONFIG_CHANGED")
 end
--- Paired auras (session only): dragging one drags the other with it. Pairing unlocks the partner for movement, and
--- locking (or unpairing) puts that back.
-function ns.PairedWith(rule) return pairOf[rule] end
-function ns.ClearPair(rule)
-    local o = pairOf[rule]
-    if not o then return end
-    pairOf[rule], pairOf[o] = nil, nil
-    for _, r in ipairs({ rule, o }) do
-        if tempUnl[r] then tempUnl[r] = nil; ns.SetMoveUnlocked({ r }, false) end
-    end
-end
-function ns.SetPair(rule, other)
-    ns.ClearPair(rule)
-    if not other or other == rule then return end
-    ns.ClearPair(other)
-    pairOf[rule], pairOf[other] = other, rule
-    for _, r in ipairs({ rule, other }) do
-        if not Unl(r) then tempUnl[r] = true; ns.SetMoveUnlocked({ r }, true) end
-    end
-end
-
--- Linked auras (saved on the rule as rule.link = a shared id): dragging any member moves every other member by the same amount, so
--- their positions relative to each other are kept. Hold SHIFT when you start a drag to move just that one (its offset to the others
--- then changes, which is the new relative position). Members that are snapped to a game frame are left where they are.
-function ns.LinkMembers(rule)
-    local out = {}
-    local id = rule and rule.link
-    if not id then return out end
-    for _, o in ipairs(ns.rules or {}) do if o ~= rule and o.link == id and o.visual then out[#out + 1] = o end end
-    return out
-end
-function ns.LinkAura(rule, other)
-    if not (rule and other and rule ~= other) then return end
-    local id = other.link or rule.link or ("L" .. tostring(time()) .. tostring(math.random(1000, 9999)))
-    -- joining another group moves the whole of the old group's membership with the dragged rule's choice: keep it simple, only this rule joins
-    other.link, rule.link = id, id
-    if ns.MarkDirty then ns.MarkDirty() end
-end
-function ns.UnlinkAura(rule)
-    if not (rule and rule.link) then return end
-    local id = rule.link
-    rule.link = nil
-    local left, last = 0, nil
-    for _, o in ipairs(ns.rules or {}) do if o.link == id then left = left + 1; last = o end end
-    if left == 1 then last.link = nil end   -- a link of one is no link
-    if ns.MarkDirty then ns.MarkDirty() end
-end
-
-local DRAG_UP_WINDOW = 0.3   -- seconds after OnDragStop in which a left release still belongs to the drag (the mover view)
--- A drag that moved the display this little (px, each axis) was a click with a shaky hand, not a move (core 0.6.43): Xaya's saved
--- displays shifted by 2-4 px after clicks in the mover view (her XayaUI.lua, 2026-11-04, compared by the Dev Assist session).
-local CLICK_SLOP = 5
--------------------------------------------------------------------------------
--- (V26) The context menus XayaUI opens: the display menu below (its entries are also the rows of core's element menu, Modules.lua
--- section 11) and the settings window's sidebar menus (Editor/Sidebar.lua: a row's menu, the blank-space menu, Move Selected To).
--- The game's menu can stay on screen after the window or the mover view it came from has closed, and into a fight. Every choice in
--- these menus goes through MenuChoice: in combat it changes nothing and prints one line; once its window or mover view has closed it
--- changes nothing. Reading what is ticked (a radio's or check box's state) is not gated: it changes nothing.
--- The menus open on XayaUI's own owner frame (ns.ContextMenuOwner), which is hidden when combat starts (PLAYER_REGEN_DISABLED, an event
--- registered only while the owner is shown) and when its window or mover view closes (MenuOwnerCheck). UNVERIFIED IN GAME: whether
--- the game's menu closes with its owner; if it stays up, its choices still change nothing.
--------------------------------------------------------------------------------
-local MENU_COMBAT = "menus can't be used during combat, so nothing was changed."
-local function MenuChoice(isOpen, fn)
-    if type(fn) ~= "function" then return fn end
-    return function(...)
-        if InCombatLockdown and InCombatLockdown() then ns.Print(MENU_COMBAT); return end
-        if isOpen and not isOpen() then return end
-        return fn(...)
-    end
-end
-ns.MenuChoice = MenuChoice
--- A menu description whose choices all go through MenuChoice: CreateButton(text, choice, ...), CreateCheckbox / CreateRadio(text,
--- isSelected, choice, ...); a submenu made from it is guarded the same way; every other call goes straight to the description. Built
--- when a menu opens, never while it is shown.
-local function GuardMenu(desc, isOpen)
-    if type(desc) ~= "table" then return desc end
-    return setmetatable({}, { __index = function(_, k)
-        local v = desc[k]
-        if type(v) ~= "function" then return v end
-        if k == "CreateButton" then
-            return function(_, text, fn, ...) return GuardMenu(v(desc, text, MenuChoice(isOpen, fn), ...), isOpen) end
-        elseif k == "CreateCheckbox" or k == "CreateRadio" then
-            return function(_, text, isSel, fn, ...) return GuardMenu(v(desc, text, isSel, MenuChoice(isOpen, fn), ...), isOpen) end
-        end
-        return function(_, ...) return v(desc, ...) end
-    end })
-end
-ns.GuardMenu = GuardMenu
--- One owner frame for every context menu XayaUI opens (the game keeps one context menu open at a time), laid over the clicked region;
--- it draws nothing and takes no mouse. strata: "TOOLTIP" raises the game's menu above the settings window (Sidebar.lua).
-local menuOwner, menuOwnerOpen
-function ns.ContextMenuOwner(region, strata, isOpen)
-    if not menuOwner then
-        menuOwner = CreateFrame("Frame", nil, UIParent)
-        menuOwner:EnableMouse(false)
-        menuOwner:SetScript("OnEvent", function(self) self:Hide() end)   -- PLAYER_REGEN_DISABLED: combat starts
-        menuOwner:SetScript("OnHide", function(self) self:UnregisterEvent("PLAYER_REGEN_DISABLED"); menuOwnerOpen = nil end)
-    end
-    menuOwner:SetFrameStrata(strata or "HIGH")
-    menuOwner:ClearAllPoints()
-    menuOwner:SetPoint("TOPLEFT", region, "TOPLEFT")
-    menuOwner:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT")
-    menuOwnerOpen = isOpen
-    menuOwner:Show()
-    menuOwner:RegisterEvent("PLAYER_REGEN_DISABLED")
-    return menuOwner
-end
-function ns.ContextMenuOwnerShown() return menuOwner ~= nil and menuOwner:IsShown() end   -- (tests)
--- the window or mover view the open menu came from has closed: its owner goes too
-local function MenuOwnerCheck()
-    if menuOwner and menuOwner:IsShown() and not (menuOwnerOpen and menuOwnerOpen()) then menuOwner:Hide() end
-end
--- the display menu belongs to the mover view (or this display's own unlock) or to the settings window (core's element menu)
-local function VisualMenuOpen(rule) return Unl(rule) or (ns.WindowOpen and ns.WindowOpen()) or false end
-
--- (Rules 0.6.78; #495) the menu's entries as a list, so the settings window's element menu (core Modules.lua section 11) keeps the same
--- entries, built by the same code: { title = text } | { divider = true } | { text, func } | { text, sub = fn(menuDescription) } |
--- { radio = text, checked = fn, func }. ns.ShowVisualMenu builds the game's context menu from it exactly as before. (V26) Every func
--- and every choice a sub builds goes through MenuChoice (above), for both menus.
-local function VisualMenuParts(rule)
-    local v = rule.visual
-    local parts = {}
-    local function add(p) parts[#parts + 1] = p end
-    add({ title = rule.name or "Aura" })
-    add({ text = "Snap Target", sub = function(st)
-        st:CreateRadio("None (free position)", function() return not (v.snap and v.snap.target) end, function() ns.SnapToTarget(rule, nil) end)
-        st:CreateButton("Pick a frame on screen...", function()
-            ns.PickFrame("Snap '" .. tostring(rule.name) .. "' to a frame", function(target, name)
-                local ok, pos = ns.SnapToPicked(rule, target, name)
-                if ok then ns.Print("'" .. tostring(rule.name) .. "' snapped to " .. name .. " (" .. tostring(pos):lower():gsub("_", " ") .. ")") end
-            end)
-        end)
-        if v.snap and v.snap.target == "custom" and v.snap.frame then
-            st:CreateRadio("Picked: " .. tostring(v.snap.frame), function() return v.snap and v.snap.target == "custom" end, function() end)
-        end
-        for _, t in ipairs(SNAP_TARGETS) do
-            local sub = st:CreateButton(t.label)
-            for _, p in ipairs(SNAP_POS) do
-                sub:CreateRadio(p[2], function() return (v.snap and v.snap.target == t.key and v.snap.pos == p[1]) and true or false end,
-                    function() ns.SnapToTarget(rule, t.key, p[1]) end)
-            end
-        end
-    end })
-    add({ text = "Linked Auras (move together)", sub = function(lk)
-        if lk.SetScrollMode then lk:SetScrollMode(320) end
-        lk:CreateRadio("Not linked", function() return not rule.link end, function() ns.UnlinkAura(rule) end)
-        for _, o in ipairs(ns.rules or {}) do
-            if o ~= rule and o.visual then
-                lk:CreateRadio(o.name or "Aura", function() return rule.link ~= nil and o.link == rule.link end,
-                    function() if rule.link and o.link == rule.link then ns.UnlinkAura(rule) else ns.LinkAura(rule, o) end end)
-            end
-        end
-    end })
-    add({ text = "Center Vertically", func = function() ns.CenterVisual(rule, "v") end })
-    add({ text = "Center Horizontally", func = function() ns.CenterVisual(rule, "h") end })
-    add({ text = "Paired Aura", sub = function(pr)
-        if pr.SetScrollMode then pr:SetScrollMode(320) end
-        pr:CreateRadio("None", function() return pairOf[rule] == nil end, function() ns.ClearPair(rule) end)
-        for _, o in ipairs(ns.rules or {}) do
-            if o ~= rule and o.visual and frames[o] then
-                pr:CreateRadio(o.name or "Aura", function() return pairOf[rule] == o end, function() ns.SetPair(rule, o) end)
-            end
-        end
-    end })
-    add({ divider = true })
-    local function setMode(mode) CoreS.snapMode = mode; ns.Print("aura positioning: " .. SNAP_LABELS[mode]) end
-    add({ radio = SNAP_LABELS.free, checked = function() return SnapMode() == "free" end, func = function() setMode("free") end })
-    add({ text = "Drag Snapping", sub = function(snap)
-        for _, mode in ipairs({ "grid", "auras", "center" }) do
-            snap:CreateRadio(SNAP_LABELS[mode], function() return SnapMode() == mode end, function() setMode(mode) end)
-        end
-    end })
-    add({ divider = true })
-    add({ text = "Edit This Aura", func = function() if ns.EditRule then ns.EditRule(rule) end end })
-    local fo = rule.folder and ns.FolderById(rule.folder)
-    if fo then add({ text = "Edit Its Group (" .. tostring(fo.name) .. ")", func = function() if ns.EditFolder then ns.EditFolder(fo) end end }) end
-    local function isOpen() return VisualMenuOpen(rule) end
-    for _, p in ipairs(parts) do
-        if p.func then p.func = MenuChoice(isOpen, p.func) end
-        if p.sub then local build = p.sub; p.sub = function(d) return build(GuardMenu(d, isOpen)) end end
-    end
-    return parts
-end
-ns.VisualMenuParts = VisualMenuParts
-function ns.ShowVisualMenu(rule, anchor)
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
-    if InCombatLockdown and InCombatLockdown() then ns.Print("menus can't be opened during combat."); return end
-    local strata = anchor and anchor.GetFrameStrata and anchor:GetFrameStrata()
-    MenuUtil.CreateContextMenu(ns.ContextMenuOwner(anchor, strata, function() return VisualMenuOpen(rule) end), function(_, root)
-        for _, p in ipairs(VisualMenuParts(rule)) do
-            if p.title then root:CreateTitle(p.title)
-            elseif p.divider then root:CreateDivider()
-            elseif p.radio then root:CreateRadio(p.radio, p.checked, p.func)
-            elseif p.sub then p.sub(root:CreateButton(p.text))
-            else root:CreateButton(p.text, p.func) end
-        end
-    end)
-end
 
 -- (Rules 0.6.78; #495, REQUEST-LOG PS-59) while the settings window is shown, a right-click on a display (it takes clicks while it is
--- unlocked for moving, as before) opens the element menu (core Modules.lua section 11): "Element options" (this display's settings in
+-- unlocked for moving, as before) opens the element menu (XayaUI Options, ElementMenu.lua): "Element options" (this display's settings in
 -- the rule editor, as a left click and "Edit This Aura" do), X and Y (this display's own visual.x / visual.y: the editor's Position X /
--- Y), then the entries of the menu above. Registered with the first display frame made (no display, nothing registered: V14).
+-- Y), then the display menu's entries (XayaUI Options, Mover.lua: the settings window is open, so it is loaded).
+-- Registered with the first display frame made (no display, nothing registered: V14).
 local DISPLAY_ELEMENT = {
     key = "ruleDisplays", label = "Display",
     targets = function(add) for r, fr in pairs(frames) do add(fr, "OnMouseUp", r) end end,
@@ -2610,7 +1879,7 @@ local DISPLAY_ELEMENT = {
         ns.RefreshVisual(rule)
         if ns.MarkDirty then ns.MarkDirty() end
     end,
-    rows = function(rule) return VisualMenuParts(rule) end,
+    rows = function(rule) local M = ns.MoverDisplay; return M and M.MenuParts(rule) or {} end,
 }
 
 local function GetFrame(rule)
@@ -2619,8 +1888,6 @@ local function GetFrame(rule)
     fr = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
     fr:SetFrameStrata("HIGH")
     fr:SetClampedToScreen(true)
-    fr:SetMovable(true)
-    fr:RegisterForDrag("LeftButton")
 
     fr.bg = fr:CreateTexture(nil, "BACKGROUND", nil, -3)
     fr.bg:SetAllPoints()
@@ -2651,14 +1918,6 @@ local function GetFrame(rule)
         fr.border[i] = b
     end
 
-    fr.label = fr:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fr.label:SetPoint("BOTTOM", fr, "TOP", 0, 2)
-
-    -- hover highlight (unlocked only): faint white wash; the border itself turns white in PaintBorder
-    fr.hoverTex = fr:CreateTexture(nil, "OVERLAY", nil, 7)
-    fr.hoverTex:SetAllPoints()
-    fr.hoverTex:SetColorTexture(1, 1, 1, 0.18)
-    fr.hoverTex:Hide()
 
     -- pulsing glow ring (built-in Blizzard button border, additive)
     fr.glow = fr:CreateTexture(nil, "OVERLAY")
@@ -2680,7 +1939,6 @@ local function GetFrame(rule)
     fr.txtHolder:SetAllPoints()
     fr.txtHolder:SetFrameLevel(fr:GetFrameLevel() + 10)
     fr.txtHolder:EnableMouse(false)
-    fr.label:SetParent(fr.txtHolder)
     fr.text = fr.txtHolder:CreateFontString(nil, "OVERLAY", nil, 7)
     fr.text:SetFontObject(GameFontNormal)
     fr.text:Hide()
@@ -2707,135 +1965,26 @@ local function GetFrame(rule)
     fr.absorb:SetFontObject(GameFontNormal)
     fr.absorb:Hide()
 
+    -- (bundle 1 round 7, SD-58) The mouse on a display. "Show tooltip on hover" is the display's own. Everything the mover does with a
+    -- display (its hover look and tooltip, drag, click to edit, right-click menu, and making it movable at all) is XayaUI Options'
+    -- Mover.lua, reached through ns.MoverDisplay, which exists only once the settings window's code has loaded. A display takes clicks
+    -- only while the mover has it unlocked (RefreshVisual), so these forward nothing otherwise.
+    -- (round 7 repair, V28) Each forwards only while this display is unlocked, which is only while the settings window is open (the
+    -- window's closing locks every display first, Mover.lua WindowClosed): with the window closed, a "Show tooltip on hover" display's
+    -- mouse runs none of XayaUI Options' code, in or out of combat. A drag still running when its display locks is ended by the mover
+    -- itself (Mover.lua DropDrag), so no drag waits for a stop that is not forwarded. RefreshVisual clears the mover's hover look.
     fr:SetScript("OnEnter", function(self)
-        if not Unl(rule) then
-            if rule.visual and rule.visual.hoverTip then ns.ShowCueTooltip(rule, self) end
-            return
-        end
-        self.hovered = true
-        PaintBorder(rule, self)
-        -- mover view (Xaya 2026-11-04): name what this is and what a click does
-        if GameTooltip then
-            GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            local par = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule)
-            GameTooltip:AddLine(tostring(par and par.name or rule.name), 1, 0.82, 0)
-            if par then GameTooltip:AddLine("A cue of this rule", 1, 1, 1) end
-            if rule.folder then GameTooltip:AddLine("Group: " .. ns.FolderPathText(rule.folder), 1, 1, 1) end
-            GameTooltip:AddLine("Click: open its settings", 0.6, 0.85, 1)
-            GameTooltip:AddLine("Right-click: snap, link, center, edit its group", 0.6, 0.85, 1)
-            GameTooltip:AddLine(rule.link and "Drag: move it with its linked auras (Shift: alone)" or "Drag: move it", 0.6, 0.85, 1)
-            GameTooltip:Show()
-        end
+        local M = Unl(rule) and ns.MoverDisplay
+        if M then M.Enter(rule, self) elseif rule.visual and rule.visual.hoverTip then ns.ShowCueTooltip(rule, self) end
     end)
     fr:SetScript("OnLeave", function(self)
-        self.hovered = false
-        PaintBorder(rule, self)
+        local M = Unl(rule) and ns.MoverDisplay
+        if M then M.Leave(rule, self) end
         if GameTooltip and GameTooltip.GetOwner and GameTooltip:GetOwner() == self then GameTooltip:Hide() end
     end)
-    fr:SetScript("OnDragStart", function(self)
-        if not Unl(rule) or (ns.MoverTempLocked and ns.MoverTempLocked(rule)) then return end
-        if ns.MoverSelect then ns.MoverSelect("display", rule) end   -- (P4: the arrow keys nudge what was last dragged or clicked)
-        self.wasDragged, self.dragStoppedAt = true, nil
-        -- a paired aura rides along: anchor it to this one at its current offset for the length of the drag
-        local o = pairOf[rule]
-        local of = o and frames[o]
-        self.pairRule, self.pairFr = nil, nil
-        if of and of:IsShown() and Unl(o) then
-            local ax, ay = self:GetCenter()
-            local bx, by = of:GetCenter()
-            if ax and bx then
-                local sA, sB = self:GetEffectiveScale(), of:GetEffectiveScale()
-                of:ClearAllPoints()
-                of:SetPoint("CENTER", self, "CENTER", (bx * sB - ax * sA) / sB, (by * sB - ay * sA) / sB)
-                self.pairRule, self.pairFr = o, of
-            end
-        end
-        -- linked auras ride along unless SHIFT is held: shown ones are anchored to this frame at their current offset for the drag
-        self.linkRides, self.linkHidden, self.linkStart = nil, nil, nil
-        if rule.link and not IsShiftKeyDown() then
-            local sv = rule.visual
-            local pA = ParentFor(rule)
-            if not (sv.snap and sv.snap.target) then self.linkStart = { sv.x or 0, sv.y or 0, pA } end
-            local ax, ay = self:GetCenter()
-            for _, o in ipairs(ns.LinkMembers(rule)) do
-                local ov = o.visual
-                if not (ov.snap and ov.snap.target) then
-                    local of2 = frames[o]
-                    if of2 and of2:IsShown() and ax then
-                        local bx, by = of2:GetCenter()
-                        if bx then
-                            local sA, sB = self:GetEffectiveScale(), of2:GetEffectiveScale()
-                            of2:ClearAllPoints()
-                            of2:SetPoint("CENTER", self, "CENTER", (bx * sB - ax * sA) / sB, (by * sB - ay * sA) / sB)
-                            self.linkRides = self.linkRides or {}
-                            self.linkRides[#self.linkRides + 1] = { o, of2 }
-                        end
-                    elseif self.linkStart then
-                        self.linkHidden = self.linkHidden or {}
-                        self.linkHidden[#self.linkHidden + 1] = o   -- not on screen right now: shifted by the same amount in its saved X / Y
-                    end
-                end
-            end
-        end
-        self.dragFrom = { self:GetCenter() }   -- where it was, to tell a small slip from a move (CLICK_SLOP)
-        self:StartMoving()
-    end)
-    -- left click (without dragging) selects the aura and opens it in the editor; right click opens the move / snap / edit menu
-    -- (core 0.6.42; Xaya 2026-11-04: "right mouse click mover is unreliable") Drags are left-button only, so a right click is never
-    -- swallowed. A left release is ignored only when it ends a drag: while the drag runs (wasDragged) or within DRAG_UP_WINDOW after
-    -- OnDragStop. Before, OnMouseUp alone cleared wasDragged and swallowed whatever came next; a drag released off the display (the
-    -- game sends OnDragStop to the dragging frame but OnMouseUp only to the frame under the cursor) left it set, and the next right
-    -- click was lost.
-    fr:SetScript("OnMouseUp", function(self, button)
-        if not Unl(rule) then return end
-        if button == "LeftButton" and (self.wasDragged or (self.dragStoppedAt and (GetTime() - self.dragStoppedAt) <= DRAG_UP_WINDOW)) then
-            self.dragStoppedAt = nil
-            return
-        end
-        if button == "LeftButton" then
-            ns.SelectVisual(rule)
-            if ns.MoverSelect then ns.MoverSelect("display", rule) end
-            if ns.EditRule then ns.EditRule(rule) end
-        elseif button == "RightButton" then
-            ns.SelectVisual(rule)
-            ns.ShowVisualMenu(rule, self)
-        end
-    end)
-    fr:SetScript("OnDragStop", function(self)
-        self.wasDragged, self.dragStoppedAt = false, GetTime()
-        self:StopMovingOrSizing()
-        local from = self.dragFrom
-        self.dragFrom = nil
-        local cx, cy = self:GetCenter()
-        if from and from[1] and cx and math.abs(cx - from[1]) <= CLICK_SLOP and math.abs(cy - from[2]) <= CLICK_SLOP then
-            -- a click, not a move: everything goes back where it is saved (nothing is saved, no snap is cleared), then the click runs
-            -- (the left release that follows, or came first, is swallowed as part of the drag: one click action)
-            pcall(ns.RefreshVisual, rule)
-            for _, p in ipairs(self.linkRides or {}) do pcall(ns.RefreshVisual, p[1]) end
-            if self.pairRule then pcall(ns.RefreshVisual, self.pairRule) end
-            self.linkRides, self.linkHidden, self.linkStart, self.pairRule, self.pairFr = nil, nil, nil, nil, nil
-            ns.SelectVisual(rule)
-            if ns.EditRule then ns.EditRule(rule) end
-            return
-        end
-        CommitDrag(rule, self, true)
-        if self.linkRides then
-            for _, p in ipairs(self.linkRides) do CommitDrag(p[1], p[2], false) end
-        end
-        if self.linkHidden and self.linkStart then
-            local dx, dy = (rule.visual.x or 0) - self.linkStart[1], (rule.visual.y or 0) - self.linkStart[2]
-            for _, o in ipairs(self.linkHidden) do
-                local ov = o.visual
-                if ParentFor(o) == self.linkStart[3] then ov.x, ov.y = (ov.x or 0) + dx, (ov.y or 0) + dy; pcall(ns.RefreshVisual, o) end
-            end
-        end
-        self.linkRides, self.linkHidden, self.linkStart = nil, nil, nil
-        if self.pairFr then
-            local pr, pf = self.pairRule, self.pairFr
-            self.pairRule, self.pairFr = nil, nil
-            CommitDrag(pr, pf, false)   -- the partner keeps the offset it had; it is re-anchored to its own container
-        end
-    end)
+    fr:SetScript("OnDragStart", function(self) local M = Unl(rule) and ns.MoverDisplay; if M then M.DragStart(rule, self) end end)
+    fr:SetScript("OnDragStop", function(self) local M = Unl(rule) and ns.MoverDisplay; if M then M.DragStop(rule, self) end end)
+    fr:SetScript("OnMouseUp", function(self, button) local M = Unl(rule) and ns.MoverDisplay; if M then M.MouseUp(rule, self, button) end end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
     -- (the per-frame effects script is attached only while an effect is running: see FxOnUpdate / SetFxRule)
@@ -3094,7 +2243,6 @@ function ns.RefreshVisual(rule)
     end
     if v.count then StyleText(fr.count, fr, v.count, "BOTTOMRIGHT") end
     if v.absorb then StyleText(fr.absorb, fr, v.absorb, "TOP") end
-    fr.label:SetText(rule.name)
     -- a Bar cue (BarCue.lua): a status bar with icon, spark and name text instead of the art
     if v.kind == "bar" and ns.BarCueLayout then ns.BarCueLayout(fr, rule, v)
     elseif fr.barF and ns.BarCueHide then ns.BarCueHide(fr) end
@@ -3104,20 +2252,20 @@ function ns.RefreshVisual(rule)
     -- a display without the tooltip turned clicks back on after EnableMouse(false) and caught clicks over the game world).
     -- docs/reference/api/widgets.md:110, 283-284 (EnableMouse, SetMouseClickEnabled, SetMouseMotionEnabled: protected functions; this
     -- frame is a plain unprotected Frame, so they work in combat). INFERENCE (not documented): EnableMouse sets clicks and motion together.
+    -- (round 7, SD-58) The mover's look (border, name, hover wash) and its temporary group lock are XayaUI Options' (ns.MoverDisplay).
     local tip = v.hoverTip and true or false
-    local movable = Unl(rule) and not (ns.MoverTempLocked and ns.MoverTempLocked(rule))   -- (a group locked for now from its mover tag: P5)
+    local M = Unl(rule) and ns.MoverDisplay or nil
+    local movable = (M and not M.TempLocked(rule)) and true or false   -- (a group locked for now from its mover tag: P5)
     fr:EnableMouse(movable or tip)
     if fr.SetMouseClickEnabled then pcall(fr.SetMouseClickEnabled, fr, movable) end
     if fr.SetMouseMotionEnabled then pcall(fr.SetMouseMotionEnabled, fr, movable or tip) end
-    if Unl(rule) then
-        fr:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-        PaintBorder(rule, fr)
-        fr.label:Show()
-    else
-        fr.hovered = false
+    if M then
+        M.Paint(rule, fr)
+    elseif fr.xuiMoverLook then   -- (the mover's look goes; a display it never painted has none)
+        fr.xuiMoverLook, fr.hovered = nil, false
         if fr.hoverTex then fr.hoverTex:Hide() end
         fr:SetBackdrop(nil)
-        fr.label:Hide()
+        if fr.label then fr.label:Hide() end
     end
     ns.UpdateVisualText(rule, ns.runtime and ns.runtime[rule] and ns.runtime[rule].info)
 end
@@ -3731,44 +2879,6 @@ function ns.SetVisualShown(rule, shown)
     QueueLayout(rule.folder and DynAncestor(rule.folder))
 end
 
-function ns.SetMoveUnlocked(objs, on)
-    for _, r in ipairs(objs or {}) do
-        if not on and pairOf[r] then ns.ClearPair(r) end
-        ns.moveUnlocked[r] = on and true or nil
-        if r.visual then
-            ns.RefreshVisual(r)
-            ns.SetVisualShown(r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted)
-        end
-    end
-end
-
--- Closing the settings window ends everything it started on screen (core 0.6.56; Xaya, 2026-11-06: "typing /xui and closing the menu does
--- not turn off previews -- this is a high priority issue, as it indicates that the addon is still running its options pane indirectly in
--- some way. this should not happen"). Up to now only the eye / headphone previews ended; the sidebar's per-rule and per-group movement
--- unlocks (sample displays with their boxes and names), the preview pause and an unlock made with the window's Lock Positions button stayed.
-local windowOpen = false   -- the settings window is open (told by XayaUI_Options: ns.SetWindowOpen)
-function ns.SetWindowOpen(on) windowOpen = on and true or false end
-function ns.WindowOpen() return windowOpen end
-function ns.EndWindowState()
-    if ns.ClearPreview and ns.AnyPreview and ns.AnyPreview() then ns.ClearPreview() end
-    if ns.previewPaused and ns.SetPreviewPaused then ns.SetPreviewPaused(false) end
-    local rules = {}
-    for r in pairs(ns.moveUnlocked) do rules[#rules + 1] = r end
-    if #rules > 0 then ns.SetMoveUnlocked(rules, false) end
-    local fids = {}
-    for fid in pairs(ns.groupUnlocked) do fids[#fids + 1] = fid end
-    for _, fid in ipairs(fids) do
-        local f = ns.FolderById and ns.FolderById(fid)
-        if f then ns.SetGroupUnlocked(f, false) else ns.groupUnlocked[fid] = nil end
-    end
-    if ns.unlocked and ns.unlockedByWindow then
-        -- (V26) the window closing because combat starts: the mover view pauses with its moves (no Save / Cancel prompt in a fight)
-        if ns.MoverCombatStarting() then ns.MoverCombatClose("combat") else ns.ToggleUnlock() end
-    end
-    ns.unlockedByWindow = nil
-    MenuOwnerCheck()   -- (V26) a context menu opened from the window (or a window-made unlock) goes with it
-    if ns.MarkDirty then ns.MarkDirty() end
-end
 
 -- Each rule is refreshed on its own (one broken display cannot stop the rest). A rule whose display is switched off and that
 -- has no frame yet gets none: sound-only cues and conditions no longer each carry a full display frame in memory.
@@ -3797,380 +2907,23 @@ function GA.RefreshAllPass()
             end
         end
     end
-    if ns.unlocked then ns.RefreshGroupTags() end   -- a group made or changed while everything is unlocked gets its mover-view tag
+    if ns.unlocked and ns.MoverDisplay then pcall(ns.MoverDisplay.AfterRefresh) end   -- (the mover's group tags: XayaUI Options, Mover.lua)
     if ns.EngineGroupDeco then pcall(ns.EngineGroupDeco) end   -- (SD-17) groups' border / background on the engine's aura buttons (ours: RefreshVisual)
 end
 
--------------------------------------------------------------------------------
--- Mover session (P4 / P5; Xaya 2026-11-06, her words: "arrow-key nudges yes; moves held until Save"; "lock icon in mover tool allows for
--- a temporary lock to account for potentially multiple rule groups stacked on top of each other; does not force a save. exiting out of
--- mover mode first creates a prompt to cancel or commit move changes. create a temp layout in drafts in case of game crash or something
--- which auto-deletes after a user clicked save").
--- - Opening the mover view (/xui unlock) keeps every display's and group's position aside (the draft, CueRulesDB.moverDraft). Moves
---   show at once; leaving the mover view with any move asks "Save moves" (the draft is deleted) or "Cancel moves" (all go back).
--- - The game writes saved data only at logout, /reload, a disconnect or quitting (not at a crash). So the draft covers a /reload or a
---   logout without Save: at the next login a prompt offers to keep or undo those moves. After a crash nothing of the session was
---   written: the last saved layout is what loads (the moves are lost, the layout is not damaged).
--- - The lock icon on a group's mover tag locks that group for now: its displays let the mouse through (to reach what is under them)
---   and its tag does not drag. It saves nothing and ends with the mover view.
--- - Arrow keys nudge the display or group last clicked or dragged in the mover view by 1 pixel (Shift: 10). Not in combat.
--------------------------------------------------------------------------------
-local mover = { tempLock = {}, sel = nil }
-local R_KEYS = { "x", "y", "anchor", "point", "anchorPlace" }
-local F_KEYS = { "cX", "cY", "cRel", "cPoint", "cRelPoint", "cFrame", "cAnchorTo", "cGroup" }   -- (cGroup: B, so Cancel undoes a group anchor)
-local function Copy(t) if type(t) ~= "table" then return t end local o = {}; for k, v in pairs(t) do o[k] = Copy(v) end; return o end
-local function Same(a, b)
-    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
-    for k, v in pairs(a) do if not Same(v, b[k]) then return false end end
-    for k in pairs(b) do if a[k] == nil then return false end end
-    return true
-end
-local function TakeDraft()
-    local d = { at = time and time() or 0, rules = {}, folders = {} }
-    for i, r in ipairs(ns.rules or {}) do
-        local v = r.visual
-        if type(v) == "table" then
-            local e = { i = i, n = tostring(r.name), snap = Copy(v.snap) }
-            for _, k in ipairs(R_KEYS) do e[k] = v[k] end
-            d.rules[#d.rules + 1] = e
-        end
-    end
-    for _, f in ipairs(ns.folders or {}) do
-        if f.id then
-            local e = {}
-            for _, k in ipairs(F_KEYS) do e[k] = f[k] end
-            d.folders[tostring(f.id)] = e
-        end
-    end
-    return d
-end
-local function DraftRule(e)   -- the rule a draft entry is about (same place in the list and same name), or nil
-    local r = ns.rules and ns.rules[e.i]
-    if r and tostring(r.name) == e.n and type(r.visual) == "table" then return r end
-end
--- what moved since the draft was taken: a list of { kind = "display" / "group", obj, entry }
-function ns.MoverChanges(d)
-    d = d or (CoreS.moverDraft)
-    local out = {}
-    if type(d) ~= "table" then return out end
-    for _, e in ipairs(d.rules or {}) do
-        local r = DraftRule(e)
-        if r then
-            local v, moved = r.visual, not Same(r.visual.snap, e.snap)
-            for _, k in ipairs(R_KEYS) do if v[k] ~= e[k] then moved = true end end
-            if moved then out[#out + 1] = { kind = "display", obj = r, entry = e } end
-        end
-    end
-    for fid, e in pairs(d.folders or {}) do
-        local f = ns.FolderById(fid) or ns.FolderById(tonumber(fid))
-        if f then
-            for _, k in ipairs(F_KEYS) do if f[k] ~= e[k] then out[#out + 1] = { kind = "group", obj = f, entry = e }; break end end
-        end
-    end
-    return out
-end
-local function Restore(d)
-    for _, c in ipairs(ns.MoverChanges(d)) do
-        if c.kind == "display" then
-            local v = c.obj.visual
-            for _, k in ipairs(R_KEYS) do v[k] = c.entry[k] end
-            v.snap = Copy(c.entry.snap)
-        else
-            local f, e = c.obj, c.entry
-            if e.cRel == "group" and e.cGroup ~= nil and not ns.FolderById(e.cGroup) then
-                -- (review fix 3a) the group it followed when the mover view opened has been deleted since: its link is not brought back
-                -- (her answer for a deleted followed group: "Stays put, link cleared"); it keeps its place on screen
-                local ok = pcall(Reanchor, f, function()
-                    for _, k in ipairs(F_KEYS) do f[k] = e[k] end
-                    f.cRel, f.cGroup = nil, nil
-                end)
-                if not ok or f.cRel == "group" then f.cRel, f.cGroup = nil, nil end
-            else
-                for _, k in ipairs(F_KEYS) do f[k] = e[k] end
-                pcall(Container, f)
-            end
-        end
-    end
-end
-local function EndSession(save)
-    local d = CoreS.moverDraft
-    if d and not save then Restore(d) end
-    if ns.SettingsReady("core") then CoreS.moverDraft = nil end
-    wipe(mover.tempLock); mover.sel = nil; mover.paused = nil
-    if ns.MarkDirty then ns.MarkDirty() end
-    ns.Fire("CONFIG_CHANGED")
-    if LockWatchSync then LockWatchSync() end
-end
-function ns.MoverTempLocked(rule)   -- the display sits in a group locked for now from the mover tag's lock icon
-    if not (ns.unlocked and rule and rule.folder and next(mover.tempLock)) then return false end
-    for fid in pairs(mover.tempLock) do if InFolder(rule.folder, fid) then return true end end
-    return false
-end
-function ns.SetMoverTempLock(f, on)
-    if not f then return end
-    mover.tempLock[f.id] = on and true or nil
-    if mover.sel and mover.sel.kind == "group" and mover.sel.obj == f and on then mover.sel = nil end
-    for _, r in ipairs(ns.rules or {}) do
-        if r.visual and frames[r] and InFolder(r.folder, f.id) then pcall(ns.RefreshVisual, r) end
-    end
-end
-function ns.IsMoverTempLocked(f) return f and mover.tempLock[f.id] and true or false end
-function ns.MoverSelect(kind, obj) if ns.unlocked and obj then mover.sel = { kind = kind, obj = obj } end end
-function ns.MoverSelection() return mover.sel end
--- P4: move the selected display or group by dx / dy pixels (its own units)
-function ns.MoverNudge(dx, dy)
-    local s = mover.sel
-    if not (ns.unlocked and s) then return false end
-    if InCombatLockdown and InCombatLockdown() then return false end
-    if s.kind == "group" then
-        if mover.tempLock[s.obj.id] then return false end
-        s.obj.cX = (s.obj.cX or 0) + dx; s.obj.cY = (s.obj.cY or 0) + dy
-        GroupPosChanged(s.obj)
-        -- its X / Y box shows the new numbers (#13: its old ones stayed, and Apply would have moved the group back)
-        if posPopup and posPopup:IsShown() and posPopup.fid == s.obj.id then FillPosPopup(posPopup) end
-    else
-        local r = s.obj
-        if not (r.visual and frames[r]) or ns.MoverTempLocked(r) then return false end
-        r.visual.x = (r.visual.x or 0) + dx; r.visual.y = (r.visual.y or 0) + dy
-        local parent, dyn = ParentFor(r)
-        Place(frames[r], r, parent)
-        if dyn then LayoutDynamic(dyn) else ArrangeAfter(r) end
-        ns.Fire("CONFIG_CHANGED")
-    end
-    return true
-end
-local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
-local function KeyFrame()   -- made on the first opening of the mover view (V14); shown only while it is open
-    if mover.keys then return mover.keys end
-    local k = CreateFrame("Frame", "XayaUIMoverKeys", UIParent)
-    -- (#13, Xaya 2026-11-08: "in mover mode, I can't use arrow keys") a size, a place and a high strata: the frame had none, and
-    -- whether the game gives keys to a keyboard frame with no size, or ahead of other addons' keyboard frames below it, is not
-    -- documented (INFERENCE: both made safe here; the mouse still goes through it, EnableMouse stays off)
-    k:SetFrameStrata("FULLSCREEN_DIALOG"); k:SetSize(1, 1); k:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
-    -- (row 56, Xaya 2026-11-08: "WHY DOES THE ADDON KEEP PREVENTING ME FROM SCREENSHOTTING") the keys go through core's ns.KeyCatch
-    -- (XayaUI/KeyCatch.lua): only an arrow that nudged something is held, for that key only; every other key, PRINTSCREEN included,
-    -- reaches the game, also in combat (this frame set the flag by hand only out of combat, so after an arrow, or when no key had been
-    -- pressed yet, a fight with the mover view open kept every key: movement and the screenshot key)
-    local function OnKey(_, key, inCombat)
-        local n = NUDGE[key]
-        if not (n and not inCombat and mover.sel ~= nil) then return false end
-        local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
-        ns.MoverNudge(n[1] * step, n[2] * step)
-        return true
-    end
-    if ns.KeyCatch then ns.KeyCatch(k, OnKey) end
-    mover.keys = k
-    return k
-end
-function ns.MoverKeyFrame() return mover.keys end
-local function PromptAndThen(which, text, onSave, onCancel)
-    StaticPopupDialogs[which] = StaticPopupDialogs[which] or {
-        -- (no hide on Escape: an Escape must never throw moves away; the two buttons are her two choices)
-        text = "%s", button1 = "Save moves", button2 = "Cancel moves", timeout = 0, whileDead = true, hideOnEscape = false,
-        preferredIndex = 3,
-        OnAccept = function(self, data) if data and data.save then data.save() end end,
-        OnCancel = function(self, data, reason) if reason ~= "clicked" then return end if data and data.cancel then data.cancel() end end,
-    }
-    local dlg = StaticPopup_Show(which, text, nil, { save = onSave, cancel = onCancel })
-    if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end
-    mover.prompt = which
-    if LockWatchSync then LockWatchSync() end   -- (V26) the login question about a left-over draft closes when combat starts
-end
-function ns.MoverPromptShown() return mover.prompt end
-local function Lock()
-    ns.unlocked = false
-    for r in pairs(pairOf) do ns.ClearPair(r) end
-    if mover.keys then mover.keys:Hide() end
-    ns.Print("visuals locked.")
-    ns.RefreshAllVisuals()
-    ns.RefreshGroupTags()
-    if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
-    if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
-    LockWatchSync()   -- (V26) the combat-start event is let go with the view
-    MenuOwnerCheck()   -- (V26) a display's menu opened in the view goes with it
-end
--- leave the mover view: Save keeps the moves, Cancel puts every display and group back where it was when the view opened
-function ns.MoverExit(choice)
-    mover.prompt = nil
-    if choice == "save" or choice == "cancel" then EndSession(choice == "save") end
-    if ns.unlocked then Lock() end
-end
--- at login: a draft left by a /reload or logout without Save
-function ns.MoverCheckDraft()
-    local d = CoreS.moverDraft
-    if not d or ns.unlocked then return end
-    local n = #ns.MoverChanges(d)
-    if n == 0 then CoreS.moverDraft = nil; return end
-    local when = (date and d.at and d.at > 0) and date("%Y-%m-%d %H:%M", d.at) or "earlier"
-    PromptAndThen("XAYAUI_MOVER_DRAFT", ("XayaUI: the mover view was left without Save (%s): %d display(s) or group(s) were moved. Keep these moves?"):format(when, n),
-        function() mover.prompt = nil; EndSession(true) end,
-        function() mover.prompt = nil; EndSession(false); ns.RefreshAllVisuals() end)
-end
-if ns.AtLogin then ns.AtLogin(function() ns.MoverCheckDraft() end) end   -- (Modules.lua; absent where Visual.lua is loaded on its own)
-
-local MoverResume, LOCK_MOVER   -- (V26, below)
-function ns.ToggleUnlock()
-    if not ns.unlocked then
-        -- (V26) never opens while rules are off (/xui disable) or in combat; a view paused by either opens again with its moves
-        if ns.RulesDisabled then
-            ns.Print("rules are off (/xui disable), so the mover can't open. Type /xui enable first.")
-            return
-        end
-        if InCombatLockdown and InCombatLockdown() then
-            if ns.CombatLock then ns.CombatLock("unlock", function() if not ns.unlocked then ns.ToggleUnlock() end end, LOCK_MOVER)
-            else ns.Print(LOCK_MOVER) end
-            return
-        end
-        if mover.paused then MoverResume(); return end
-    end
-    if ns.unlocked then
-        -- P5: leaving the mover view with moves asks first
-        local n = #ns.MoverChanges()
-        if n > 0 then
-            PromptAndThen("XAYAUI_MOVER_EXIT", ("You moved %d display(s) or group(s) in the mover view. Save the moves, or cancel them (everything goes back to where it was)?"):format(n),
-                function() ns.MoverExit("save") end, function() ns.MoverExit("cancel") end)
-            return
-        end
-        ns.MoverExit("save")
-        return
-    end
-    if ns.SettingsReady("core") then CoreS.moverDraft = TakeDraft() end
-    wipe(mover.tempLock); mover.sel = nil
-    KeyFrame():Show()
-    ns.unlocked = true
-    -- remembered so closing the settings window ends an unlock made while it was open (its Lock Positions button), not one typed as
-    -- /xui unlock with the window closed (core-owned window flag, ns.WindowOpen / ns.EndWindowState); locking clears paired auras in Lock()
-    ns.unlockedByWindow = ns.WindowOpen() and true or nil
-    ns.Print("visuals UNLOCKED: drag them, then /xui unlock again to lock (you are asked to save or cancel the moves). Arrow keys nudge the display or group you last clicked (Shift: 10 pixels). Hover a display or a group's name tab to see what it is; click it to open its settings; the lock on a group's tab locks it for now.")
-    ns.RefreshAllVisuals()
-    ns.RefreshGroupTags()
-    if ns.QoL_RefreshAll then ns.QoL_RefreshAll() end
-    if ns.Bars_RefreshAll then ns.Bars_RefreshAll() end
-    LockWatchSync()
-end
-
--------------------------------------------------------------------------------
--- (V26) Combat lock for the mover view (Xaya 2026-11-10, docs/process/VERIFICATION.md V26; for an open mover view with unsaved moves
--- her answer was "Keep, resume after"). In combat /xui unlock, the Lock Positions buttons and every other caller of ns.ToggleUnlock
--- print one line, and the view opens when combat ends (core Modules.lua ns.CombatLock). Open when combat starts (PLAYER_REGEN_DISABLED,
--- just before the lockdown): the view closes without Save or Cancel. Its moves stay where they are and in the draft
--- (CueRulesDB.moverDraft), and it opens again with them when combat ends; Save / Cancel then work as usual. Its key frame hides at
--- once, so it takes no key in the fight (core KeyCatch.lua lets go of the keyboard on hide, out of combat). A drag still running is
--- dropped (that one display goes back to its last place). The group X / Y box and the frame picker (both change positions) close too.
--- /xui disable (RULES_DISABLED) closes it the same way, and /xui enable (RULES_ENABLED) opens it again.
--- The combat-start event is registered only while the view, the X / Y box or the picker is open (no event otherwise).
--------------------------------------------------------------------------------
-LOCK_MOVER = "the mover (/xui unlock) can't open during combat. It will open when combat ends."
-local issecretV = ns.IsSecret or issecretvalue or function() return false end
--- combat is starting now: PLAYER_REGEN_DISABLED comes before the lockdown, so the lockdown check alone is still false then.
--- UnitAffectingCombat (globals.md: SecretArguments=AllowedWhenUntainted, no secret return) is true by then (INFERENCE, unverified in game)
-function ns.MoverCombatStarting()
-    if InCombatLockdown and InCombatLockdown() then return true end
-    if not UnitAffectingCombat then return false end
-    local ok, v = pcall(UnitAffectingCombat, "player")
-    return (ok and not issecretV(v) and v) and true or false
-end
-local lockWatch
-LockWatchSync = function()
-    local want = ns.unlocked or (posPopup and posPopup:IsShown()) or (picker and picker:IsShown()) or mover.prompt == "XAYAUI_MOVER_DRAFT"
-    if want and not lockWatch and CreateFrame then
-        lockWatch = CreateFrame("Frame")
-        lockWatch:SetScript("OnEvent", function() ns.MoverCombatClose("combat") end)
-    end
-    if not lockWatch then return end
-    if want then lockWatch:RegisterEvent("PLAYER_REGEN_DISABLED") else lockWatch:UnregisterEvent("PLAYER_REGEN_DISABLED") end
-end
-local function AfterMoverChange()
-    ns.RefreshAllVisuals()
-    ns.RefreshGroupTags()
-    if ns.QoL_RefreshAll then pcall(ns.QoL_RefreshAll) end
-    if ns.Bars_RefreshAll then pcall(ns.Bars_RefreshAll) end
-    -- the game's aura containers step aside for the samples and back (Combat/AuraDisplay.lua; its ToggleUnlock hook is not called here)
-    if ns.AuraDisplay and ns.AuraDisplay.SyncLive then pcall(ns.AuraDisplay.SyncLive) end
-end
--- reason: "combat" (combat starts: it opens again when combat ends) or "off" (/xui disable: it opens again at /xui enable)
-function ns.MoverCombatClose(reason)
-    if picker and picker:IsShown() then picker:Hide() end
-    if posPopup and posPopup:IsShown() then posPopup:Hide() end
-    if reason == "combat" and mover.prompt == "XAYAUI_MOVER_DRAFT" then
-        -- the login question "Keep these moves?": either answer moves displays and groups, so it is asked again when combat ends
-        mover.prompt = nil
-        local up = StaticPopup_Visible and StaticPopup_Visible("XAYAUI_MOVER_DRAFT")
-        if StaticPopup_Hide then pcall(StaticPopup_Hide, "XAYAUI_MOVER_DRAFT") end
-        if up and ns.CombatLockQueue then
-            ns.Print("the question about moves left from your last session will come back when combat ends.")
-            ns.CombatLockQueue("moverDraft", function() ns.MoverCheckDraft() end)
-        end
-    end
-    if not ns.unlocked then LockWatchSync(); return false end
-    mover.paused = { byWindow = ns.unlockedByWindow and true or nil }
-    if mover.prompt == "XAYAUI_MOVER_EXIT" then   -- the Save / Cancel question: asked again when she leaves the view after the fight
-        mover.prompt = nil
-        if StaticPopup_Hide then pcall(StaticPopup_Hide, "XAYAUI_MOVER_EXIT") end
-    end
-    for _, fr in pairs(frames) do   -- a drag still running stops here (before the lockdown); RefreshAllVisuals puts it back
-        if fr.dragFrom then
-            pcall(fr.StopMovingOrSizing, fr)
-            fr.dragFrom, fr.wasDragged, fr.linkRides, fr.linkHidden, fr.linkStart, fr.pairRule, fr.pairFr = nil, false, nil, nil, nil, nil, nil
-        end
-    end
-    ns.unlocked = false
-    ns.unlockedByWindow = nil
-    for r in pairs(pairOf) do ns.ClearPair(r) end
-    if mover.keys then mover.keys:Hide() end   -- (no key is taken in the fight)
-    pcall(AfterMoverChange)
-    LockWatchSync()
-    MenuOwnerCheck()   -- (V26) a display's menu opened in the view goes with it (combat: the owner's own event hides it too)
-    local moved = #ns.MoverChanges() > 0
-    if reason == "off" then
-        ns.Print(moved and "the mover closed because rules are off. It will open again with your unsaved moves when you type /xui enable."
-            or "the mover closed because rules are off. It will open again when you type /xui enable.")
-    else
-        ns.Print(moved and "the mover closed because combat started. It will open again with your unsaved moves when combat ends."
-            or "the mover closed because combat started. It will open again when combat ends.")
-        if ns.CombatLockQueue then ns.CombatLockQueue("unlock", function() MoverResume() end) end
-    end
-    return true
-end
-MoverResume = function()
-    local p = mover.paused
-    if not p or ns.unlocked then return end
-    if ns.RulesDisabled then   -- (/xui disable in the fight: it waits for /xui enable)
-        ns.Print(#ns.MoverChanges() > 0 and "the mover will open again with your unsaved moves when you type /xui enable."
-            or "the mover will open again when you type /xui enable.")
-        return
-    end
-    if InCombatLockdown and InCombatLockdown() then
-        if ns.CombatLockQueue then ns.CombatLockQueue("unlock", function() MoverResume() end) end
-        return
-    end
-    mover.paused = nil
-    if ns.SettingsReady("core") and not CoreS.moverDraft then CoreS.moverDraft = TakeDraft() end   -- (the draft was gone: start a new one)
-    KeyFrame():Show()
-    ns.unlocked = true
-    ns.unlockedByWindow = p.byWindow
-    local n = #ns.MoverChanges()
-    ns.Print(n > 0 and ("the mover is open again with your %d unsaved move(s). Type /xui unlock to save or cancel them."):format(n)
-        or "the mover is open again.")
-    pcall(AfterMoverChange)
-    LockWatchSync()
-end
-function ns.MoverPaused() return mover.paused ~= nil end   -- (tests)
+-- (bundle 1 round 7, SD-58) What the mover (XayaUI Options, Mover.lua) uses of the layout above: the display frames, a group's measured
+-- bounds, and the position and anchor operations it needs (each stores positions exactly as the editor's own settings do).
+ns.VisualPos = {
+    frames = frames, InFolder = InFolder, GroupBounds = GroupBounds, GroupScreenBounds = GroupScreenBounds, ScreenRect = ScreenRect,
+    GroupTargetScale = GroupTargetScale, GroupPosChanged = GroupPosChanged, CenterGroup = CenterGroup, Reanchor = Reanchor,
+    CommitDrag = CommitDrag, PlaceDisplay = PlaceDisplay, ParentFor = ParentFor, SnapTargets = SNAP_TARGETS,
+}
 if ns.On then
-    -- /xui disable: every XayaUI rule display hides at once (XayaUI's own frames: allowed in combat), the mover view, the X / Y box,
-    -- the picker and the sidebar's per-rule and per-group movement unlocks (sample displays) end; nothing shows until /xui enable
+    -- (V26) /xui disable: every XayaUI rule display hides at once (XayaUI's own frames: allowed in combat); nothing shows until /xui
+    -- enable. The mover and the sidebar's movement unlocks close on the same event (XayaUI Options, Mover.lua, when it is loaded).
     ns.On("RULES_DISABLED", function()
-        ns.MoverCombatClose("off")
-        local rules = {}
-        for r in pairs(ns.moveUnlocked) do rules[#rules + 1] = r end
-        if #rules > 0 then pcall(ns.SetMoveUnlocked, rules, false) end
-        for fid in pairs(ns.groupUnlocked) do
-            local f = ns.FolderById and ns.FolderById(fid)
-            if f then pcall(ns.SetGroupUnlocked, f, false) else ns.groupUnlocked[fid] = nil end
-        end
         for r in pairs(frames) do pcall(ns.SetVisualShown, r, false) end
     end)
-    ns.On("RULES_ENABLED", function() if mover.paused then MoverResume() end end)
 end
 
 function ns.DropVisual(rule)

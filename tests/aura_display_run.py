@@ -187,6 +187,10 @@ assert(loadfile(MODULES_PATH))("XayaUI", ns)   -- (core 0.6.75) the settings sea
 local f = assert(loadfile(AURA_DISPLAY_PATH))
 f("XayaUI_CombatEngine", ns)
 '''.replace("AURA_DISPLAY_PATH", repr(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraDisplay.lua")).replace("'", '"')).replace("MODULES_PATH", repr(os.path.join(ROOT, "XayaUI", "Modules.lua")).replace("'", '"')).replace("CUE_GATED_SRC", CUE_GATED_LUA))
+# (round 7, REQUEST-LOG A23 SD-58: the debug tools load only while Advanced Debugging is on) /xuiengine's status text is in the debug
+# tools' addon now (XayaUI_Debug/RulesEngine.lua; the engine keeps its data, ns.AuraDisplay.StatusData, and the slash command): loaded
+# here after the engine, as the game loads it at the login while Advanced Debugging is on. Every /xuiengine check below is unchanged.
+L.execute(r'''assert(loadfile(PATH))("XayaUI_Debug", NS)'''.replace("PATH", repr(os.path.join(ROOT, "XayaUI_Debug", "RulesEngine.lua")).replace("'", '"')))
 
 
 fails = []

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- AuraSources.lua : which item or spell applies an aura (core module, 0.5.70).
+-- XayaUI_Options/RuleEditor/AuraSources.lua : which item or spell applies an aura (core module, 0.5.70; the rule editor's spell search).
 --
 -- The game has no call that maps an aura ID back to what applies it.  What it does have: an item or spell tooltip embeds the effect it
 -- applies as a NestedBlock line (Enum.TooltipDataLineType 19) whose tooltipType / tooltipID name the spell (see
@@ -11,14 +11,19 @@
 -- Nothing is shipped: the map is built on the user's own client from the game's own data.
 -- Midnight: every tooltip read is pcall'd and secret values are skipped; the pass pauses in combat.
 -------------------------------------------------------------------------------
-local _, ns = ...; ns = XayaUI_NS or ns -- (P4) XayaUI Rules shares the Platform's namespace (XayaUI/Core.lua)
-local CoreS = ns.Settings("core")   -- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before)
-if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", "XayaUIRulesDB") end   -- (P5) this addon's own saved variable (its .toc; Modules.lua section 0b)
-ns = _G.XayaUI_NS or ns
+local _, ns = ...; ns = XayaUI_NS or ns -- one namespace with XayaUI core (XayaUI Options depends on it)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "Move all four (Recommended)"; V34) Part of XayaUI Options since round 7 (it was
+-- XayaUI_Rules/AuraSources.lua, read at login with Rules): the game reads it only when the settings window's code loads. With XayaUI Rules
+-- switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
+-- (core 0.6.75, P2 settings seam: the same CueRulesDB keys as before; the "core" store is XayaUI Rules' XayaUIRulesDB, declared by
+-- XayaUI Rules' own files at login)
+local CoreS = ns.Settings("core")
 local AS = {}
 ns.AuraSources = AS
 -- (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.4) offered to other modules as a service: XayaUI Bonus reads it only
--- through ns.Service("AuraSources") and shows nothing extra without it. ns.AuraSources stays for the rule-tracking code itself.
+-- through ns.Service("AuraSources") and shows nothing extra without it. ns.AuraSources stays for the rule editor's spell search.
+-- (round 7) The service exists only once the settings window's code has loaded in the session (it was there from login before).
 if ns.Provide then ns.Provide("AuraSources", AS) end
 
 local isSecret = issecretvalue or function() return false end

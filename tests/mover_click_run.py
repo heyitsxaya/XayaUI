@@ -32,6 +32,9 @@ CueRulesDB.folders = ns.folders
 local r = ns.NewRule(); r.name = "Demon Spikes"; r.enabled = true
 ns.NormalizeRule(r); r.visual.enabled = true; r.visual.x, r.visual.y = 0, 0
 ns.rules = { r }
+-- (bundle 1 round 7, SD-58) the mover is XayaUI Options' and works only while the settings window is open: its code is loaded and the
+-- window counts as open, as the window's driver says when it shows (its drawing is not needed here)
+ns.LoadOptions(); ns.SetWindowOpen(true)
 ns.ToggleUnlock(); W.tick(0.05, 3)
 local fr = ns.DisplayFrame(r)
 check("the display has its mover handlers", fr and fr:GetScript("OnMouseUp") and fr:GetScript("OnDragStart") and fr:GetScript("OnDragStop"))

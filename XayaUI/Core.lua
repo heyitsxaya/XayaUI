@@ -537,14 +537,17 @@ SlashCmdList["XAYAUI"] = function(msg)
     elseif SHORTCUTS[cmd] then
         RunInChat(RunShortcut, cmd, arg)
     elseif cmd == "unlock" then
-        local R = RulesSvc()
-        if not (R and R.ToggleUnlock) then ns.Print(ns.ModuleMissingText("unlock"))
-        -- (V26) only OPENING the mover is locked in combat: one line, and it opens when combat ends (opens, never toggles shut: it may be
-        -- open by then). Closing is never held back: an open mover view closes at once, as out of combat (Visual.lua ns.ToggleUnlock).
-        elseif ns.InCombatLock and ns.InCombatLock() and not (R.Unlocked and R.Unlocked()) then
-            ns.CombatLock("unlock", function() if not (R.Unlocked and R.Unlocked()) then R.ToggleUnlock() end end,
-                "the mover (/xui unlock) can't open during combat. It will open when combat ends.")
-        else R.ToggleUnlock() end
+        -- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "mover view only available when settings window is open"; SD-64, her
+        -- answer "either 1 or remove entirely", option 1) The mover is XayaUI Options' (Mover.lua) and works only while the settings
+        -- window is open: out of combat /xui unlock opens the window with the mover on (with the window open it turns the mover on or
+        -- off, as the Lock Positions buttons do). (V26, SD-14 "Message + open after") In combat: one line, and when combat ends the
+        -- window opens with the mover on (it opens, never turns an open mover off). The window closes as combat starts, and the mover
+        -- with it; should the mover still be open in combat, closing it is never held back (it closes at once, as out of combat).
+        local function Open(openOnly) if ns.LoadOptions() and ns.Options.Unlock then ns.Options.Unlock(openOnly) end end
+        if not RulesSvc() then ns.Print(ns.ModuleMissingText("unlock"))
+        elseif ns.InCombatLock and ns.InCombatLock() and not (ns.Options and ns.Options.MoverOn and ns.Options.MoverOn()) then
+            ns.CombatLock("unlock", function() Open(true) end, "the mover (/xui unlock) can't open during combat. It will open when combat ends.")
+        else Open(false) end
     elseif cmd == "disable" or cmd == "enable" then
         RulesSwitch(cmd)
     -- (round 7) the console window, the bug report and the debug report are XayaUI_Debug's; while it is not loaded these are core's

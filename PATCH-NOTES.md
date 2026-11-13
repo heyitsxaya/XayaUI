@@ -22,6 +22,74 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+<!-- BUNDLE 1 ENTRY, HELD BACK (round 7 docs unit). When bundle 1 lands, delete the comment opener line HELD BACK and the comment closer line around the
+entry below, then run tools/build_info_pane_data.py. It is held in a comment because the in-game pane's text (XayaUI_Options/InfoPaneData.lua) cannot be
+regenerated today without passing the 200 KB memory cap in tests/info_pane_run.py: regenerating even the sources from before this
+entry measures about 205 KB, with this entry about 221 KB. Raising that cap or trimming the pane is Xaya's decision (round 7 docs report).
+Rounds 6 and 7 of bundle 1 (REQUEST-LOG A23 SD-52 to SD-64). The date is the day these notes were written: set it to the landing
+date, and the versions below to the ones the landing commit puts in the .toc files (proposed: XayaUI 0.6.86, Options 0.6.108,
+Rules 0.7.1; XayaUI Debug starts at 0.7.0 and has no heading of its own, its notes are under XayaUI, which loads it). Rounds 1 to 5
+of the bundle (combat lock, /xui disable, borders on each display, the release gate) still need their lines here before landing. -->
+<!-- HELD BACK
+## 2026-11-13 — Rules Fix Bundle 1
+
+### XayaUI 0.6.86
+
+**Install (read this first)**
+- Replace the XayaUI, XayaUI_Options and XayaUI_Rules folders as whole folders, and add the new XayaUI_Debug folder next to them. The rule editor moved from XayaUI_Rules to XayaUI_Options.
+
+**Debug tools (new)**
+- The debug tools are now their own addon, XayaUI Debug: the console window (/xui console), the bug report (/xui bug), the debug report (/xui report), /xui status, /xui auras, /xuiengine, and /xui debug status, perf and auras.
+- The game reads XayaUI Debug only while Settings > Debugging > Advanced Debugging is on, once per login or /reload. With it off, each of those commands answers with one chat line saying what it needs.
+  *Developers' notes: Not yet tested in game (QA B402).*
+
+**Advanced Debugging**
+- Advanced Debugging is now off by default. If it was on, it stays on.
+- While it is on, every login and /reload prints one chat line: "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging."
+
+**Saved data**
+- The last bug report is no longer kept in your saved settings; /xui bug builds it fresh each time. A detailed debug record left by an earlier XayaUI Dev Assist is cleared once at login.
+
+**Developer tools**
+- /xui debug mouse (the right-click tracker) is no longer part of this download. It is kept for when the developer tools are rebuilt.
+- Removed leftover code that served only addons that are not part of this download. Your saved settings for those addons are kept.
+  *Developers' notes: Not yet tested in game (QA B423).*
+
+### Options 0.6.108
+
+**Rule editor**
+- The rule editor is now part of XayaUI Options, so its code is read only when the settings window first opens. It works as before.
+- Combat Tracking Setup, the talent scan (/xui debug talents), the editor's spell and texture lists and the displays' right-click menu moved with it. They work as before.
+  *Developers' notes: Not yet tested in game (QA B403, B404).*
+
+**Mover**
+- The mover (dragging displays and groups on screen) now works only while the settings window is open. /xui unlock opens the settings window with the mover on, and closing the window closes the mover.
+- Moves you have not saved are kept when the window closes, and the mover opens again with them the next time you open the window.
+  *Developers' notes: Not yet tested in game (QA B405).*
+
+**Combat Tracking Setup**
+- Combat Tracking Setup no longer opens over the game by itself after login or a spec change. The very first time you open the settings window, if no spec has a setup yet, it opens with it; after that, use the Open Combat Tracking Setup button on the Rules tab.
+- It closes when the settings window closes, so its Learn step records your casts only while the settings window is open.
+  *Developers' notes: Not yet tested in game (QA B406).*
+
+**Recycle Bin**
+- Fixed an issue where the Recycle Bin page said deleted items are checked every 30 minutes. They are checked when you log in or out and when the page lists them.
+
+### Rules 0.7.1
+
+**Combat engine**
+- The engine's speed guard is removed: the engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the game's CPU meter reads high.
+- An aura or cooldown change now fully re-checks only the rules whose answer changed. In a busy fight these re-checks run at most 10 times a second.
+- Talents are read again only when the game reports a talent, loadout, spec, hero talent or PvP talent change. The once-a-second talent check is gone.
+- In combat, a hidden cooldown end and a hidden aura time on a display's text are now counted by the game itself instead of being re-checked five times a second.
+  *Developers' notes: Not yet tested in game (QA B407, B410 to B416). Two cases are still re-checked every 0.2 seconds until Xaya decides: a Range Check row on your focus, mouseover or pet, and a hidden cooldown end the game gives no timer for.*
+
+**Backups**
+- Each rule backup is now kept as one compact block of text and read only when you load it or show its text, so backups take much less memory. Backups from earlier versions are converted once, at the first login, with nothing lost.
+- Older XayaUI versions cannot read the new backups.
+  *Developers' notes: Not yet tested in game (QA B408).*
+-->
+
 ## 2026-11-09 — Rules Only
 
 ### Rules 0.7.0
@@ -416,7 +484,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 **Developer Tools**
 - The developer diagnostics now exist only while Dev Assist is installed and enabled: /xui debug probe, timing, model, tracker, mods, groups, icons, media, seed, map, gamemenu, chatprobe, widthprobe, perf ui, debuffs and loc, /xuitt probe, lines and aura, /xui chat wrap, indent and whispers, /xuiskin pad and alpha, and /xuiengine auto, on, off and reset.
-- Players keep /xui debug perf, /xui debug loader, /xui status, /xui auras, /xuiskin (turns the window skin off), and /xuiengine full and refresh.
+- Players keep /xui debug perf, /xui debug loader, /xui status, /xui auras, /xuiskin (turns the window skin off), and /xuiengine full and refresh (both removed later, in the 2026-11-10 rules rebuild: rules and the engine are set only in the settings window).
   *Developers' notes: Not yet tested in game.*
 
 **Group Page**

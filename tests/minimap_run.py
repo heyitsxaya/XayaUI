@@ -34,10 +34,15 @@ function ns.Merge(t, d) for k, v in pairs(d) do if t[k] == nil then t[k] = v end
 CueRulesDB = {}
 assert(loadfile(__MOD__))("XayaUI", ns)   -- Modules.lua: the core contract (0.5.108)
 local fn = assert(loadfile(__PATH__)); fn("XayaUI", ns)
-'''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'"))
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-58) the Settings > Minimap Button page is XayaUI Options' (XayaUI_Options/MinimapTab.lua), read
+-- when the settings window's code loads: core alone has no page builder
+CORE_HAS_TAB = ns.BuildMinimapTab ~= nil
+assert(loadfile(__TAB__))("XayaUI_Options", ns)
+'''.replace("__PATH__", "'" + os.path.join(ROOT, "XayaUI/MinimapButton.lua").replace("\\", "/") + "'").replace("__MOD__", "'" + os.path.join(ROOT, "XayaUI/Modules.lua").replace("\\", "/") + "'").replace("__TAB__", "'" + os.path.join(ROOT, "XayaUI_Options/MinimapTab.lua").replace("\\", "/") + "'"))
 fails = lua.execute(r'''
 local fails, n = 0, 0
 local function check(name, cond, extra) n = n + 1; if not cond then fails = fails + 1; print("FAIL: " .. name .. (extra and ("  -> " .. tostring(extra)) or "")) else print("ok:   " .. name) end end
+check("core alone has no Settings > Minimap Button page builder (the page is XayaUI Options', round 7 SD-58)", not CORE_HAS_TAB)
 ns.Minimap_OnDBReady()
 check("default size is 31", ns.minimapDB.size == 31)
 ns.Minimap_Refresh()

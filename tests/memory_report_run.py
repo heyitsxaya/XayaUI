@@ -26,6 +26,10 @@ Reported (no budget is enforced yet; SD-41: the budget is set from these numbers
   (c) every saved variable and its sub-tables, as loaded (exact, collectgarbage around loading each part from its saved text);
   (d) the 20 largest holders after login;
   plus per-addon totals and the cost of loading XayaUI Options and opening / closing the window once.
+FAIL (bundle 1 round 7, REQUEST-LOG A23 SD-57 / SD-58; V34): a part moved into XayaUI Options (the rule editor, Combat Tracking Setup,
+the talent scan, the editor's spell and texture lists, the displays' right-click menu, the Minimap Button page) is still read at login
+(XayaUI_Rules/Editor/, Combat/AuraSetup.lua, AuraSources.lua or TextureList.lua among the files XayaUI Rules has read), or a function
+only that code defines exists after login (XayaUI Options installed, not loaded).
 Run: python3 tests/memory_report_run.py [--json PATH]   (Lua 5.1 via lupa; about a minute)"""
 import json, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +42,42 @@ import gate_common as G    # noqa: E402  (the V27 gate's ~300-rule profile and s
 IN_GAME = [("XayaUI Platform 0.6.85", "11 MB"), ("XayaUI Rules 0.7.0", "12 MB"), ("XayaUI Options 0.6.107", "976 KB"),
            ("EllesmereUI Chat / Mythic+ Tools / DataBars", "954 / 967 / 862 KB"), ("OPie 8.10.2", "2 MB"),
            ("KiraUI-Plugin 1.28", "6 MB"), ("Xaya Plugin (EllesmereUI)", "197 KB")]
+
+# (bundle 1 round 7, REQUEST-LOG A23 SD-57 / SD-58; V34 "off means not read") what moved out of the files read at login into XayaUI
+# Options (load on demand): the rule editor (was XayaUI_Rules/Editor/), the Combat Tracking Setup window, the talent scan, the editor's
+# spell and texture lists, and from core the displays' right-click menu (Modules.lua section 11) and the Minimap Button page builder
+# (MinimapButton.lua ns.BuildMinimapTab). XayaUI_Rules/TalentDump.lua stays as the /xui debug talents entry point only.
+MOVED_FROM_RULES = ("Combat/AuraSetup.lua", "AuraSources.lua", "TextureList.lua")
+MOVED_TO_OPTIONS = ("RuleEditor/", "AuraSetup.lua", "TalentDump.lua", "ElementMenu.lua", "MinimapTab.lua")
+# functions that only the moved code defines: none may exist after login (Options not loaded)
+MOVED_NAMES = ("AuraSetup_Open", "AuraSetup_WithSettings", "ScanAllTalents", "TalentStatus", "TalentDB", "AuraSources", "TextureList",
+               "BuildMinimapTab", "ElementWindowShown", "ElementMenu", "ElementRightClick", "DraftsMax", "RuleEditorFiles")
+
+
+def moved_names_at_login():
+    """Log in with XayaUI and XayaUI Rules (XayaUI Options installed, not loaded) and list the MOVED_NAMES that exist in the namespace."""
+    folders = H.find_addons()
+    L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
+    api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
+    world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
+    loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}, "saved": {}}))
+    got = L.eval('''function(W, Ld, names)
+      Ld.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
+      local ns, out = rawget(_G, "XayaUI_NS"), {}
+      for i = 1, #names do if ns and rawget(ns, names[i]) ~= nil then out[#out + 1] = names[i] end end
+      return table.concat(out, ",")
+    end''')(world, loader, H.to_lua(L, list(MOVED_NAMES)))
+    return [x for x in str(got).split(",") if x]
+
+
+def moved_read_at_login(files):
+    """Files of XayaUI Rules (read at login) that round 7 moved into XayaUI Options. (XayaUI Options' own files are read only when the
+    measurement loads it after the login, as /xui does; the core parts that moved, which were never files of their own, are checked by
+    the functions only they define: MOVED_NAMES.)"""
+    return [f["addon"] + "/" + f["file"] for f in files if f.get("addon") == "XayaUI_Rules" and (
+        f["file"].startswith("Editor/") or f["file"] in MOVED_FROM_RULES)]
+
 
 # ---------------------------------------------------------------------------------------------------------------------------------
 # session A: the realistic profile. gate_common's PROFILE_LUA makes the ~300 rules and logs out; EXTRAS_LUA runs just before that
@@ -849,9 +889,15 @@ def report(res):
         f["alone"] = alone
         P("  %-46s source %9s  compiled %9s%s (alone %9s)  kept %9s  frames %d" % (f["addon"] + "/" + f["file"], kb(f["srcBytes"]),
             kb(f["compiled"]), "*" if f["compiled"] - alone > 64 * 1024 else " ", kb(alone), kb(f["kept"] - f["standin"]), f["frames"]))
-    ed = [f for f in m["files"] if f["addon"] == "XayaUI_Rules" and f["file"].startswith("Editor/")]
-    P("  XayaUI Rules' rule editor (Editor/, %d files, read at login): compiled %s, kept %s" % (len(ed), kb(sum(f["compiled"] for f in ed)),
-        kb(sum(f["kept"] - f["standin"] for f in ed))))
+    mv = moved_read_at_login(m["files"])
+    P("  moved into XayaUI Options in round 7 (SD-57 / SD-58: the rule editor, Combat Tracking Setup, the talent scan, the editor's spell and")
+    P("  texture lists, the displays' right-click menu, the Minimap Button page) and read at login: %d files%s" % (len(mv), (": " + ", ".join(mv)) if mv else ""))
+    td = [f for f in m["files"] if f["addon"] == "XayaUI_Rules" and f["file"] == "TalentDump.lua"]
+    for f in td:
+        P("  XayaUI_Rules/TalentDump.lua (only the /xui debug talents entry point now): source %s, compiled %s, kept %s" % (
+            kb(f["srcBytes"]), kb(f["compiled"]), kb(f["kept"] - f["standin"])))
+    gone = res.get("movedNamesAtLogin") or []
+    P("  functions of the moved code that exist after login: %d%s" % (len(gone), (" (" + ", ".join(gone) + ")") if gone else ""))
     P("")
     P("== (b) tables each file builds at load (realistic profile; estimated by walking them; 1 KB and up, then the rest per file)")
     for w in res["walk"]["walks"][:2]:
@@ -916,6 +962,9 @@ def report(res):
             kb(sum(f["compiled"] for f in of)), kb(sum(f["kept"] - f["standin"] for f in of))))
         for f in sorted(of, key=lambda f: -(f["kept"] - f["standin"]))[:12]:
             P("    %-58s compiled %9s  kept %9s" % (f["file"], kb(f["compiled"]), kb(f["kept"] - f["standin"])))
+        om = [f for f in of if any(f["file"] == x or (x.endswith("/") and f["file"].startswith(x)) for x in MOVED_TO_OPTIONS)]
+        P("  of which moved here in round 7 (read only when the settings window's code loads): %d files, compiled %s, kept %s" % (
+            len(om), kb(sum(f["compiled"] for f in om)), kb(sum(f["kept"] - f["standin"] for f in om))))
         P("  window open (rule editor built, %d frames): +%s; after closing it and a collection: +%s kept (stand-in frame records out; %.1f s of stand-in time)" % (
             rm["optionsOpenFrames"], kb(rm["optionsOpenBytes"] - rm["optionsOpenStandin"]), kb(rm["optionsClosedBytes"] - rm["optionsClosedStandin"]),
             rm["optionsSeconds"]))
@@ -939,6 +988,7 @@ def main():
         res[name] = {"both": both, "platform_only": plat, "split": platform_rules(both, plat), "errors": e1 + e2}
         if both["rules"] == 0 and name != "fresh":
             problems.append("%s: no rules loaded" % name)
+    res["movedNamesAtLogin"] = moved_names_at_login()
     res["walk"] = walk(real)
     res["walk_fresh"] = walk(fresh)
     for line in report(res):
@@ -948,6 +998,13 @@ def main():
         print("Lua error in the stand-in (the numbers after it may be incomplete):", str(e)[:400])
     if jpath:
         json.dump(res, open(jpath, "w"), indent=1, default=str)
+    # (bundle 1 round 7, SD-57 / SD-58; V34) the moved parts are no longer read at login
+    for name in ("fresh", "realistic"):
+        mv = moved_read_at_login(res[name]["both"]["files"])
+        if mv:
+            problems.append("%s: %d file(s) moved into XayaUI Options are still read at login: %s" % (name, len(mv), ", ".join(mv)))
+    if res["movedNamesAtLogin"]:
+        problems.append("functions of the parts moved into XayaUI Options exist after login: " + ", ".join(res["movedNamesAtLogin"]))
     if info["rules"] < 250:
         problems.append("the realistic profile has %d rules, expected about 300" % info["rules"])
     for p in problems:

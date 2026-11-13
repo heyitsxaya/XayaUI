@@ -8,10 +8,10 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
--- (Rules 0.7.0, REQUEST-LOG A23 SD-6) This file is part of XayaUI Rules (it was the load-on-demand addon XayaUI_Rules_Options). The game
--- reads it at login with Rules; everything below only runs when the settings window first opens with Rules on: it is one set-up
--- function, run once by XayaUI_Options (Options.lua ns.OptionsApi.LoadRuleEditor) in the .toc order. Nothing is built before then.
-local function EditorFileInit()
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34) This file is part of XayaUI Options
+-- (it was XayaUI_Rules/Editor/, read at login with Rules). The game reads it only when the settings window's code loads, after the
+-- window's own files (XayaUI_Options.toc). With XayaUI Rules switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 
 local ADD_KINDS = { { "icon", "Icon" }, { "texture", "Texture" }, { "text", "Text" } }
 
@@ -616,6 +616,3 @@ function ns.GroupDisplayArgs(f, folderRules, Notify)
     GuardAll(args, "")
     return args
 end
-end
-ns.RuleEditorFiles = ns.RuleEditorFiles or {}
-ns.RuleEditorFiles[#ns.RuleEditorFiles + 1] = EditorFileInit

@@ -1,5 +1,5 @@
 # tests/recycle_bin_run.py: the Recycle Bin (#88, XayaUI/RecycleBin.lua) and the delete paths in the settings window
-# (XayaUI_Options/Options.lua and the rule editor, XayaUI_Rules/Editor/*.lua).
+# (XayaUI_Options/Options.lua and the rule editor, XayaUI_Options/RuleEditor/*.lua).
 # Checks what ends up where: which rules and groups are live, which are in the bin, and what comes back on Restore.
 # Run from the repo root: python3 tests/recycle_bin_run.py   Needs: pip install lupa.
 import glob, os, re, sys
@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lua51 import runtime as LuaRuntime   # Lua 5.1, like the game (tests/lua51.py)
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
-def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (Rules 0.7.0: XayaUI_Rules/Editor/)
+def window_src():   # (P3 options split) the settings window's code: Options.lua and the rule editor's files (bundle 1 round 7: XayaUI_Options/RuleEditor/)
     d = os.path.join(ROOT, "XayaUI_Options")
-    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(ROOT, "XayaUI_Rules", "Editor", "*.lua"))))
+    return "\n".join(open(p, encoding="utf-8").read() for p in [os.path.join(d, "Options.lua")] + sorted(glob.glob(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "*.lua"))))
 
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute(r'''

@@ -23,23 +23,24 @@ This addon is for personal use only. Forks are welcome and the community is alwa
 
 XayaUI is a group of addons; every folder at the top of this repository is one of them and is installed as-is.
 
-Since 2026-11-09 `main` holds only the platform, its settings window and Rules (with the rule editor). Everything else (XayaUI Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
+Since 2026-11-09 `main` holds only the platform, its settings window (with the rule editor), Rules and the debug tools. Everything else (XayaUI Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
 
 On `main`:
 
 | Folder | In the AddOns list | What it holds |
 |---|---|---|
-| `XayaUI` | XayaUI Platform | The platform every XayaUI addon runs on: saved settings, themes, sharing, Recycle Bin, profiles, sound and media lists, console, error report, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
-| `XayaUI_Options` | XayaUI Options | The settings window, loaded the first time it opens. |
-| `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups, and the rule editor (`Editor/`, the settings window's Rules tab; since 0.7.0, was the addon `XayaUI_Rules_Options`). Its editor is built only the first time the settings window opens. Switch it off if you make no rules. |
+| `XayaUI` | XayaUI Platform | The platform every XayaUI addon runs on: saved settings, themes, sharing, Recycle Bin, profiles, sound and media lists, XayaUI's error record, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
+| `XayaUI_Options` | XayaUI Options | The settings window and everything that only works while it is open: the rule editor (`RuleEditor/`, the settings window's Rules tab), the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and the displays' right-click menu. Load-on-demand: the game reads it only when the window first opens (or `/xui unlock` or `/xui debug talents` needs it). |
+| `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups. Switch it off if you make no rules. |
+| `XayaUI_Debug` | XayaUI Debug | The debug tools: the console window, the bug report, the debug report, `/xui status`, `/xui auras`, `/xuiengine` and the engine perf report. Load-on-demand: the game reads it once per login or /reload, only while Settings > Debugging > Advanced Debugging is on (off by default). |
 
 Everything else in the repository (`tests/`, the documents) stays out of the game folder.
 
 ## Install
 
-1. Copy the three `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options` and `AddOns\XayaUI_Rules` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues).
-   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (the rule editor is now inside `XayaUI_Rules`), and switch off or delete `XayaUI_Bonus`, `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
-2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI now); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
+1. Copy the four `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Rules` and `AddOns\XayaUI_Debug` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues, and `XayaUI_Options` to change them). Replace each folder as a whole: the rule editor moved from `XayaUI_Rules\Editor` to `XayaUI_Options\RuleEditor`.
+   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (an old separate rule editor that is no longer used; the rule editor is now `XayaUI_Options\RuleEditor`), and switch off or delete `XayaUI_Bonus`, `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
+2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI Rules now, `XayaUI_Rules\Combat`); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 
 Using GitHub Desktop? Do not clone into `AddOns` (the game cannot load addons nested inside another folder). Clone anywhere else (a plain local folder, not a cloud-synced one), then copy the `XayaUI*` folders from the clone into `AddOns` as in step 1. After each "Pull origin", copy them again (replace the old ones) and `/reload`. The `qa-installer-branch` branch holds every other XayaUI addon as well; it is separate from `main` (it is not updated from `main`).

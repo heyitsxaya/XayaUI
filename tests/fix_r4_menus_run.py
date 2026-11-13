@@ -13,6 +13,8 @@ What is checked, as the player gets it:
   V. the display menu opened in the mover view, a choice made in the fight (Center Horizontally / Vertically, a Snap Target, Linked
      Auras): the display's saved position, snap and link do not change, one line each; after the mover view closed (out of combat):
      nothing changes; (control) in the mover view out of combat the choice works; core's element menu rows refuse the same way.
+     (Bundle 1 round 7, SD-58: the mover and its display menu are XayaUI Options' and live only while the settings window is open; "closed"
+     is the window closing, which closes the mover.)
   O. the menus open on XayaUI's own owner frame, which takes no mouse, is hidden when combat starts (PLAYER_REGEN_DISABLED, an event
      it listens to only while shown) and when its window / mover view closes. (UNVERIFIED IN GAME: whether the game's menu closes with
      its owner; the S / V checks hold either way.)
@@ -184,7 +186,10 @@ section("V", function()
   local fr = ns.DisplayFrame(DV)
   check("(control) /xui unlock: the mover view is open with the display shown", ns.unlocked == true and fr ~= nil and fr:IsShown())
   if not fr then return end
-  local function rightClick() return openMenu(function() fr:GetScript("OnMouseUp")(fr, "RightButton") end) end
+  -- (bundle 1 round 7, SD-58 / SD-64) the mover works only with the settings window open, and while the window is shown a right-click on
+  -- a display opens the element menu (XayaUI_Options/ElementMenu.lua, the same entries: tests/element_menu_run.py E). The display's own
+  -- menu is opened here the way its right-click did before (ns.ShowVisualMenu, the game's context menu), to check its choices.
+  local function rightClick() return openMenu(function() ns.ShowVisualMenu(DV, fr) end) end
   -- (control) a choice in the mover view out of combat works
   if not rawget(_G, "PlayerFrame") then   -- (the game's player frame, modeled: a snap target that exists)
     local pf = CreateFrame("Frame", "PlayerFrame", UIParent); pf:SetSize(200, 80); pf:SetPoint("CENTER", UIParent, "CENTER", -300, -200)
@@ -228,16 +233,19 @@ section("V", function()
   inFight("core's element menu row Center Vertically", cv, function() return DV.visual.y == 50 end)
   peace()
   check("(control) combat ends: the mover view opens again", ns.unlocked == true)
-  -- the mover view closed (out of combat): a menu left on screen changes nothing, quietly
+  -- the mover view closed (out of combat): a menu left on screen changes nothing, quietly. (bundle 1 round 7, SD-58) The display menu
+  -- belongs to the settings window, which the mover needs: closing the window closes the mover and ends the menu (as the window's
+  -- element menu always did; before round 7 a mover opened with the window closed ended it by itself)
   local late = rightClick()
   local lateOwner = OWNER
   ns.MoverExit("cancel"); W.tick(0.05, 3)
-  check("(control) the mover view is closed", ns.unlocked == false)
-  check("O6 the mover view closes: the display menu's owner frame is hidden", lateOwner ~= nil and lateOwner ~= fr and not lateOwner:IsShown())
+  if windowOpen() then ACD:Close(APP); W.tick(0.05, 4) end
+  check("(control) the mover view and the settings window are closed", ns.unlocked == false and not windowOpen())
+  check("O6 the mover view and the window close: the display menu's owner frame is hidden", lateOwner ~= nil and lateOwner ~= fr and not lateOwner:IsShown())
   local m = mark()
   if late["Center Horizontally"] then late["Center Horizontally"]() end
   if late["Center Vertically"] then late["Center Vertically"]() end
-  check("V Center Horizontally / Vertically picked after the mover view closed: the display does not move, nothing is printed",
+  check("V Center Horizontally / Vertically picked after the mover view and the window closed: the display does not move, nothing is printed",
     late["Center Horizontally"] ~= nil and DV.visual.x == 100 and DV.visual.y == 50 and #since(m) == 0, joined(since(m)) .. (" / x %s y %s"):format(tostring(DV.visual.x), tostring(DV.visual.y)))
   W.enterCombat()
   local m3 = mark()

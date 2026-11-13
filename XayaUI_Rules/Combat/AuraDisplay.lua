@@ -1314,22 +1314,24 @@ end
 D.SyncShown = D.SyncLive   -- (older name, used by the unlock hooks)
 
 -------------------------------------------------------------------------------
--- Status (/xuiengine): what the engine draws, what it does not and why, and every difference it cannot avoid
+-- Status data (/xuiengine): what the engine draws, what it does not and why, and every difference it cannot avoid. Round 7 (bundle 1;
+-- REQUEST-LOG A23 SD-58, her answer on the debug tools: "1 but nothing loads unless "Debugging" is enabled"): the /xuiengine command and
+-- its text moved to the debug tools (XayaUI_Debug/RulesEngine.lua), read only while Settings > Debugging > Advanced Debugging is on.
+-- What stays here is this read-only data hook: it reads the last build's lists and returns a new table of plain facts each time it is
+-- called (only when /xuiengine is typed); it changes nothing in the engine.
 -------------------------------------------------------------------------------
-function D.Status()
+local SORT_TEXT = { manual = "Manual: the group's own order (rule order), each member its own size and look; an aura that appears takes its place between the others",
+    default = "Default (the game's own sort)", expiration = "Expiration (the game's own sort)", name = "Name (the game's own sort)",
+    important = "Important first (the game's own sort)" }
+function D.StatusData()
     local db = DB()
-    if not db then return end
-    if ns.RulesDisabled then   -- (SD-47: the one way it is off besides switching XayaUI Rules off; the last build's lists are stale)
-        Say("the combat engine is off because every rule is off (/xui disable). /xui enable, or a /reload, turns rules and the engine back on.")
-        return
-    end
-    local nG, nGRules, nS, nSOk = 0, 0, 0, 0
+    if not db then return nil end
+    local out = { off = ns.RulesDisabled and true or false, lastError = lastError, groups = {}, singles = {}, extras = {}, left = {} }
+    if out.off then return out end   -- (SD-47: the one way it is off besides switching XayaUI Rules off; the last build's lists are stale)
     for _, fo in ipairs(ns.folders or {}) do
         local g = groups[fo.id]
         if g and g.members and g.serial == serial then
-            nG = nG + 1; nGRules = nGRules + #g.members
-            Say(string.format("%s: %s (%d buff rules)%s", fo.name or fo.id, g.ok and "ENGINE DRAWN" or "NOT drawn by engine (XayaUI draws it)",
-                #g.members, g.err and (" - " .. g.err) or ""))
+            local row = { name = fo.name or fo.id, ok = g.ok and true or false, n = #g.members, err = g.err, drops = {} }
             if g.ok then
                 local w0, h0, mixed = nil, nil, false
                 for _, m in ipairs(g.members) do
@@ -1337,65 +1339,39 @@ function D.Status()
                     if w0 and (w ~= w0 or h ~= h0) then mixed = true end
                     w0, h0 = w0 or w, h0 or h
                 end
-                if mixed and SortOf(fo) ~= "manual" then Say("   (icons in this group have different sizes; with a game sort the engine draws them all at the first one's size; Manual sort keeps each size)") end
-                if #g.members > 1 then
-                    local mode, rev = SortOf(fo)
-                    local SORT_TEXT = { manual = "Manual: the group's own order (rule order), each member its own size and look; an aura that appears takes its place between the others",
-                        default = "Default (the game's own sort)", expiration = "Expiration (the game's own sort)", name = "Name (the game's own sort)",
-                        important = "Important first (the game's own sort)" }
-                    Say("   (sort: " .. SORT_TEXT[mode] .. (rev and ", reversed" or "") .. ")")
-                end
+                local mode, rev = SortOf(fo)
+                row.mixed, row.manual = mixed, mode == "manual"
+                if #g.members > 1 then row.sort, row.reversed = SORT_TEXT[mode], rev and true or false end
                 for _, m in ipairs(g.members) do
                     local d = Drops(m.rule, m.spec.display, false, g)
-                    if #d > 0 then Say("   " .. tostring(m.rule.name) .. ": " .. table.concat(d, "; ")) end
+                    if #d > 0 then row.drops[#row.drops + 1] = { name = tostring(m.rule.name), text = table.concat(d, "; ") } end
                 end
             end
+            out.groups[#out.groups + 1] = row
         end
     end
-    for p, s in pairs(singles) do
-        if s.serial == serial then
-            nS = nS + 1
-            if s.ok then
-                nSOk = nSOk + 1
-                local d = Drops(p, s.spec.display, true, s)
-                if #d > 0 then Say("   " .. tostring(p.name) .. " (on its own): " .. table.concat(d, "; ")) end
-            end
+    for p, x in pairs(singles) do
+        if x.serial == serial and x.ok then
+            local d = Drops(p, x.spec.display, true, x)
+            out.singles[#out.singles + 1] = { name = tostring(p.name), text = #d > 0 and table.concat(d, "; ") or nil }
         end
     end
-    local nX = 0
     for c, x in pairs(extras) do
         if x.serial == serial and x.ok then
-            nX = nX + 1
             local d = Drops(x.parent, c, true, x)
-            if #d > 0 then Say("   " .. tostring(c.name) .. " (extra display of " .. tostring(x.parent and x.parent.name) .. "): " .. table.concat(d, "; ")) end
+            out.extras[#out.extras + 1] = { name = tostring(c.name), parent = tostring(x.parent and x.parent.name), text = #d > 0 and table.concat(d, "; ") or nil }
         end
     end
-    Say(string.format("Engine draws: %d group%s (%d rules) and %d rule%s on their own%s.", nG, nG == 1 and "" or "s", nGRules, nSOk, nSOk == 1 and "" or "s",
-        nX > 0 and string.format(", plus %d separate time / stack display%s of those rules", nX, nX == 1 and "" or "s") or ""))
-    if #left > 0 then
-        -- grouped by reason, so a long list stays readable; every display XayaUI keeps is counted
-        local byWhy, order = {}, {}
-        for _, e in ipairs(left) do
-            local l = byWhy[e[2]]
-            if not l then l = {}; byWhy[e[2]] = l; order[#order + 1] = e[2] end
-            l[#l + 1] = tostring(e[1].name)
-        end
-        Say(string.format("XayaUI keeps %d aura display%s:", #left, #left == 1 and "" or "s"))
-        for _, why in ipairs(order) do
-            local l = byWhy[why]
-            local shown = {}
-            for i = 1, math.min(6, #l) do shown[i] = l[i] end
-            Say(string.format("   %d - %s: %s%s", #l, why, table.concat(shown, ", "), #l > 6 and (", and " .. (#l - 6) .. " more") or ""))
-        end
-    else
-        Say("XayaUI keeps no aura displays: every one is drawn by the engine.")
-    end
-    Say("combat engine: on (it always runs while any rule is on).")
-    if lastError then Say("last engine error: " .. lastError) end
+    for _, e in ipairs(left) do out.left[#out.left + 1] = { name = tostring(e[1].name), why = e[2] } end
+    return out
 end
 
 -------------------------------------------------------------------------------
--- Slash command
+-- The /xuiengine slash command. Its status is a debug tool (above): while XayaUI_Debug is loaded it runs there (its "rulesdebug"
+-- service's EngineStatus, XayaUI_Debug/RulesEngine.lua, reached through Modules.lua ns.Service); otherwise it answers with core's one plain line (XayaUI/DebugRecord.lua ns.DebugToolsNeeded: Advanced
+-- Debugging and a /reload). V26: exempt from the combat lock (read-only). The Dev Assist words (XayaUI_DevAssist/CoreDebug.lua, retired to
+-- qa-installer-branch) reach the engine through D.DB and D.FindFolder; RulesEngine.lua still passes them on, and (SD-47) none changes
+-- the engine.
 -------------------------------------------------------------------------------
 local function FindFolder(q)
     q = tostring(q or ""):lower()
@@ -1408,29 +1384,11 @@ local function FindFolder(q)
     if count == 1 then return hit end
     return nil, (count == 0) and ("no group matches '" .. q .. "'") or (count .. " groups match '" .. q .. "'; use more of the name")
 end
-
--- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81): auto, on, off and reset moved to XayaUI Dev Assist. Those four are registered by
--- Dev Assist (ns.RegisterSubcommand("xuiengine", ...), XayaUI_DevAssist/CoreDebug.lua) and reach the engine through D.DB and
--- D.FindFolder (D._guard went with the speed guard, SD-52); without Dev Assist they do not exist. (SD-47) The engine no longer reads
--- the saved values auto, on, off and reset wrote (DB() clears them), so on this version those Dev Assist words change nothing in the engine; Dev Assist (qa-installer-branch) still
--- has to drop them. Only a word Dev Assist registers reaches RunSubcommand below.
--- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and /xuiengine refresh: "Remove entirely"; "/xui shouldn't have anything that allows
--- configuration of rules through the console") Players keep only /xuiengine with no word: the status, which reads and changes nothing.
--- A rule edit rebuilds the engine on its own (QueueBuild).
 D.DB, D.FindFolder = DB, FindFolder
 local function Slash(msg)
-    local cmd, rest = tostring(msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
-    cmd = cmd:lower()
-    local db = DB()
-    if not db then Say("saved data not loaded yet") return end
-    if cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
-        -- (a developer word Dev Assist registered; none changes the engine, SD-47)
-    else
-        D.Status()
-        -- (no "|r" in chat text: WoW reads it as a colour code)
-        Say("/xuiengine shows what the combat engine draws; it changes nothing." .. (ns.SubcommandList and ns.SubcommandList("xuiengine", "/xuiengine ") or "")
-            .. "  The engine draws aura displays through the game's own aura frames, so time and stacks show in combat.")
-    end
+    local S = ns.Service and ns.Service("rulesdebug")
+    if S and S.EngineStatus then return S.EngineStatus(msg) end
+    if ns.DebugToolsNeeded then ns.DebugToolsNeeded("/xuiengine") end
 end
 SLASH_XUIENGINE1 = "/xuiengine"
 SlashCmdList["XUIENGINE"] = Slash

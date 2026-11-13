@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """The closed settings window does no work (REQUEST-LOG A23 SD-12 / SD-13; Xaya: "Yes, in bundle 1").
 Hooks cannot be taken off in WoW until /reload, so every lasting hook or listener that the settings window (XayaUI_Options/*.lua) or
-the rule editor (XayaUI_Rules/Editor/*.lua) leaves behind must return at once while the window is closed (a hook on one of AceGUI's
+the rule editor (XayaUI_Options/RuleEditor/*.lua) leaves behind must return at once while the window is closed (a hook on one of AceGUI's
 shared, pooled widgets: unless that widget is in XayaUI's window right now).
 The player opens the window with 300 rules and uses the editor: selects rules (click, Ctrl+click, right-click), types in the rule
 search and in a spell search box, drags a group's slider, changes the theme. She closes the window. Then, with the window closed,
 the game runs a fight: UNIT_AURA and SPELL_UPDATE_COOLDOWN storms, mouse clicks, gear tooltips (the game's compare tooltips), another
 addon's AceConfig window built and used (rows clicked, right- and double-clicked, hovered, its list resized, a text box typed in, a
 slider, a dropdown), a theme change, edits from the on-screen mover (a moved display), debug log lines.
-Measured with debug.sethook ("call" and "line" events): every function defined in XayaUI_Options/*.lua or XayaUI_Rules/Editor/*.lua
+Measured with debug.sethook ("call" and "line" events): every function defined in XayaUI_Options/*.lua or XayaUI_Options/RuleEditor/*.lua
 that runs in that time may run only its first line (and its closing "end"), and that line must be its return check (it starts with
 "if" or "return"). A function of those files it calls is held to the same rule (a wrapper passing a call on to the next wrapper), except
 the pooled-widget ownership check (TreePaint.lua TP.Ours: it only reads a field of the widget).
@@ -174,13 +174,13 @@ if xf then
 end
 
 -------------------------------------------------------------------------------------------------------------------------------------
--- the meter: every call and every line run in XayaUI_Options/*.lua or XayaUI_Rules/Editor/*.lua (not Libs/)
+-- the meter: every call and every line run in XayaUI_Options/*.lua or XayaUI_Options/RuleEditor/*.lua (not Libs/)
 -------------------------------------------------------------------------------------------------------------------------------------
 local mineCache = {}
 local function mine(src)
   local v = mineCache[src]
   if v ~= nil then return v end
-  v = src:match("^@Interface/AddOns/(XayaUI_Options/[%w_]+%.lua)$") or src:match("^@Interface/AddOns/(XayaUI_Rules/Editor/[%w_]+%.lua)$") or false
+  v = src:match("^@Interface/AddOns/(XayaUI_Options/[%w_]+%.lua)$") or src:match("^@Interface/AddOns/(XayaUI_Options/RuleEditor/[%w_]+%.lua)$") or false
   mineCache[src] = v
   return v
 end
@@ -368,7 +368,7 @@ end
 
 def sources(L):
     out = {}
-    for sub in ("XayaUI_Options", os.path.join("XayaUI_Rules", "Editor")):
+    for sub in ("XayaUI_Options", os.path.join("XayaUI_Options", "RuleEditor")):
         d = os.path.join(ROOT, sub)
         for name in sorted(os.listdir(d)):
             if name.endswith(".lua"):

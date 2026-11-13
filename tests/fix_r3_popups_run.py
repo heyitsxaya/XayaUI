@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Round-2 review follow-ups for the rule editor's popups (XayaUI_Rules/Editor/Sidebar.lua) and the stand-in game's text boxes.
+"""Round-2 review follow-ups for the rule editor's popups (XayaUI_Options/RuleEditor/Sidebar.lua) and the stand-in game's text boxes.
 Loads the real addons in the stand-in game (tests/harness) and checks what the player gets.
 - Export popup (right-click > Export): opened in combat, or once a fight starts, the box has no keyboard, so the popup text says how to
   copy (click the box, then Ctrl+A and Ctrl+C); when she clicks the box the export text is selected again (a click puts the cursor in

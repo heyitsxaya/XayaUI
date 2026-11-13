@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- XayaUI_Rules/Editor/RuleMerge.lua : "Merge N Selected" in the Rules sidebar's right-click menu (XayaUI_Rules_Options 0.6.82).
+-- XayaUI_Options/RuleEditor/RuleMerge.lua : "Merge N Selected" in the Rules sidebar's right-click menu (XayaUI_Rules_Options 0.6.82).
 -- Her words (REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md row 19, 2026-11-08): "I want to be able to merge these into one rule that
 -- tracks all of these auras and fires based if any are found by right clicking on them when multi-selected and choose \"merge rules\"".
 -- Her answers (row 27): kept rule: "The one I right-click (Recommended)"; the others: "Bin, one item each"; rules that differ in more than
@@ -21,11 +21,11 @@
 -- IDs, more than 12 additional triggers. Edit-locked rules are left out, with the count (as Delete (N) does).
 -------------------------------------------------------------------------------
 local addonName, ns = ...
-ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Rules depends on it: ## Dependencies: XayaUI)
--- (Rules 0.7.0, REQUEST-LOG A23 SD-6) This file is part of XayaUI Rules (it was the load-on-demand addon XayaUI_Rules_Options). The game
--- reads it at login with Rules; everything below only runs when the settings window first opens with Rules on: it is one set-up
--- function, run once by XayaUI_Options (Options.lua ns.OptionsApi.LoadRuleEditor) in the .toc order. Nothing is built before then.
-local function EditorFileInit()
+ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (XayaUI Options depends on it: ## Dependencies: XayaUI)
+-- (bundle 1 round 7, REQUEST-LOG A23 SD-57, her words: "editor is an 'options' pane so 3"; V34) This file is part of XayaUI Options
+-- (it was XayaUI_Rules/Editor/, read at login with Rules). The game reads it only when the settings window's code loads, after the
+-- window's own files (XayaUI_Options.toc). With XayaUI Rules switched off it stops on the next line and builds nothing.
+if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 if not (ns.OptionsApi and ns.OptionsApi.Shared) then return end   -- Options.lua stopped early (its Ace3 libraries are missing)
 local Notify = ns.OptionsApi.Shared.Notify
 
@@ -238,6 +238,3 @@ function ns.MultiMerge(kept)
     end })
     if dlg and dlg.SetFrameStrata then dlg:SetFrameStrata("TOOLTIP") end   -- the options window is FULLSCREEN_DIALOG; keep the question above it
 end
-end
-ns.RuleEditorFiles = ns.RuleEditorFiles or {}
-ns.RuleEditorFiles[#ns.RuleEditorFiles + 1] = EditorFileInit

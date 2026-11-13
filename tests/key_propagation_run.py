@@ -179,7 +179,9 @@ def static_audit():
     files = subprocess.run(["git", "ls-files", "XayaUI*/*.lua", "XayaUI*/**/*.lua"], cwd=ROOT, capture_output=True, text=True).stdout.split()
     files = sorted(set(f for f in files if "/Libs/" not in f))
     # boxes that handle Enter / Escape / a click outside / hiding themselves (the reason is checked here too)
-    EXEMPT = {("XayaUI/Modules.lua", "eb"): "GLOBAL_MOUSE_DOWN"}   # the element menu's X / Y boxes: the menu closes on a click outside
+    # the element menu's X / Y boxes: the menu closes on a click outside (bundle 1 round 7, SD-58: the menu moved from core's Modules.lua
+    # section 11 into XayaUI_Options/ElementMenu.lua, unchanged)
+    EXEMPT = {("XayaUI_Options/ElementMenu.lua", "eb"): "GLOBAL_MOUSE_DOWN"}
     missing, flag = [], []
     for f in files:
         src = open(os.path.join(ROOT, f), encoding="utf-8").read()

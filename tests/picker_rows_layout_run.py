@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The rule type picker ("Choose what this rule shows", + New Rule) in the settings window (debug W1; Rules_Options 0.6.79, Options 0.6.94;
-the rule editor has been part of XayaUI Rules since Rules 0.7.0: XayaUI_Rules/Editor/).
+the rule editor was part of XayaUI Rules from Rules 0.7.0 and is part of XayaUI Options since bundle 1 round 7: XayaUI_Options/RuleEditor/).
 #484 (Xaya, 2026-11-07, H6-H9 step 4, her words): "import button has wrong alignment, otherwise good".
 #487 (Xaya, 2026-11-07, Rules > Drafts after the audit-opt-bin walkthrough): "????????????????????????" - the picker was drawn at the
 top of the Drafts list, its rows overlapping each other.

@@ -102,6 +102,8 @@ section("U", function()
   peace()
   check("(control) U5 combat ends: the view opens", ns.unlocked == true)
   if ns.unlocked then ns.ToggleUnlock(); W.tick(0.1, 2) end
+  -- (bundle 1 round 7, SD-64 option 1: /xui unlock opens the settings window with the mover on) the window is closed again for C
+  if windowOpen() then ns.Options.Toggle(); W.tick(0.1, 4) end
 end)
 
 -------------------------------------------------------------------------------------------------------------------------------------

@@ -11,7 +11,9 @@ Checks, on the real addons in the stand-in game:
   draft is deleted either way;
 - the lock on a group's mover tag: its displays let the mouse through and do not drag; the group does not nudge; it ends with the view;
 - arrow keys nudge the last clicked display or group by 1 (Shift 10), other keys reach the game, nothing in combat;
-- a draft left by a /reload without Save: a prompt at login; Cancel moves puts them back; a draft with no moves is dropped silently.
+- (bundle 1 round 7, SD-58 / SD-15 "Keep, resume after") the mover works only while the settings window is open; a draft with moves
+  waits for the window: the mover opens again with it when the window opens; a draft with no moves is dropped silently then. (The
+  login question about a left-over draft is gone with the mover's code at login; tests/fix_r7_mover_run.py plays the /reload itself.)
 Old code: no ns.MoverExit / ns.MoverNudge: those checks fail, and locking after a move never asks.
 Run: python3 tests/mover_session_run.py   (Lua 5.1 via lupa)."""
 import os, sys
@@ -26,7 +28,9 @@ local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  ["
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
-check("core has the mover session", ns and ns.MoverExit and ns.MoverNudge and ns.SetMoverTempLock and ns.MoverChanges)
+-- (round 7, SD-58) the mover is XayaUI Options' and works only while the settings window is open
+ns.ToggleUI(); W.tick(0.1, 4)
+check("the settings window's code has the mover session", ns and ns.MoverExit and ns.MoverNudge and ns.SetMoverTempLock and ns.MoverChanges)
 if not (ns and ns.MoverExit) then return R end
 local f = ns.NewFolder("Mover test")
 f.cX, f.cY = 100, 50
@@ -113,20 +117,22 @@ ns.ToggleUnlock(); W.tick(0.05, 2)
 check("  ...and the next mover view starts with nothing locked", fb:IsMouseEnabled() == true)
 ns.ToggleUnlock(); W.tick(0.05, 2)
 
--- a draft left by a /reload without Save
+-- (round 7) a draft with moves waits for the settings window (her answer for the mover, SD-15: "Keep, resume after")
 ns.ToggleUnlock(); W.tick(0.05, 2)
 ns.MoverSelect("display", A); ns.MoverNudge(0, 7)
-ns.unlocked = false   -- (as after a /reload: the view is closed, the moved data and the draft were saved)
 W.popup = nil
-ns.MoverCheckDraft()
-check("at login, a draft with moves asks to keep them", W.popup == "XAYAUI_MOVER_DRAFT" and ns.Settings("core").moverDraft ~= nil, W.popup)
-check("  ...with the same two buttons", StaticPopupDialogs.XAYAUI_MOVER_DRAFT and StaticPopupDialogs.XAYAUI_MOVER_DRAFT.button2 == "Cancel moves")
+ns.ToggleUI(); W.tick(0.1, 4)   -- the settings window closes, and the mover with it
+check("closing the settings window closes the mover; the move stays, in the draft, and nothing asks", not ns.unlocked and A.visual.y == 7
+  and ns.Settings("core").moverDraft ~= nil and W.popup == nil and not XayaUIMoverKeys:IsShown(), W.popup)
+ns.ToggleUI(); W.tick(0.1, 4)   -- the settings window opens again
+check("  ...opening the settings window opens the mover again with the move", ns.unlocked and A.visual.y == 7 and XayaUIMoverKeys:IsShown())
 ns.MoverExit("cancel")
 check("  ...Cancel moves puts them back and deletes the draft", A.visual.y == 0 and ns.Settings("core").moverDraft == nil, A.visual.y)
+ns.ToggleUI(); W.tick(0.1, 4)
 ns.Settings("core").moverDraft = { at = 0, rules = {}, folders = {} }
 W.popup = nil
-ns.MoverCheckDraft()
-check("a draft with no moves is dropped silently", ns.Settings("core").moverDraft == nil and W.popup == nil)
+ns.ToggleUI(); W.tick(0.1, 4)
+check("a draft with no moves is dropped silently when the window opens", ns.Settings("core").moverDraft == nil and W.popup == nil and not ns.unlocked)
 return R
 end
 '''

@@ -1,4 +1,4 @@
-# Test for /xui debug auras (XayaUI core 0.6.6, AuraList.lua; restores #335). Stand-in game calls only; the IDs and numbers below are
+# Test for /xui debug auras (XayaUI core 0.6.6, AuraList.lua; restores #335; round 7: the command is XayaUI_Debug/RulesAuras.lua). Stand-in game calls only; the IDs and numbers below are
 # made up for the test, except the Enum values, which match the live client (docs/reference/api/enums.md).
 # Run from the repo root: python3 tests/auras_cmd_run.py   Needs: pip install lupa.
 import os, sys
@@ -57,6 +57,9 @@ C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter) readCalls = readCalls
 UnitExists = function(u) return u == "target" end
 assert(loadfile(__MOD__))("XayaUI", ns)
 assert(loadfile(__AL__))("XayaUI", ns)
+-- (round 7, REQUEST-LOG A23 SD-58) the command is a debug tool now (XayaUI_Debug/RulesAuras.lua, read while Advanced Debugging is on); the
+-- catalogue it reads stays in AuraList.lua. Loaded after it, as the game does. Every check below is unchanged.
+assert(loadfile(__DBG__))("XayaUI_Debug", ns)
 
 -- (core 0.6.50: a diagnostic command, /xui debug auras only)
 check("registered as /xui debug auras, listed under /xui debug", ns.RunDebugCommand("auras", "") and ns.RunDebugCommand("auras", "") and (function() for _, h in ipairs(ns.DebugCommandHelp()) do if h:find("auras [target", 1, true) then return true end end end)())
@@ -134,5 +137,5 @@ check("refused read reported", any("the game refused the aura read"))
 local f = ns.AuraFacts(111)
 check("ns.AuraFacts: secrecy, offered, flags", f.secrecy == 2 and f.cdmOffered == true and f.flags[1] == "important")
 io.write(("%d checks, %d failed\n"):format(n, fails))
-'''.replace("__MOD__", P("XayaUI/Modules.lua")).replace("__AL__", P("XayaUI_Rules/AuraList.lua")))
+'''.replace("__MOD__", P("XayaUI/Modules.lua")).replace("__AL__", P("XayaUI_Rules/AuraList.lua")).replace("__DBG__", P("XayaUI_Debug/RulesAuras.lua")))
 sys.exit(1 if lua.eval("fails") else 0)
