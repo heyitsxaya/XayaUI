@@ -49,6 +49,7 @@ Each choice, briefly:
 | Q7 | answered (RB-15) |
 | Build-time checks (a) and (b) (design §4) | verify with tests once the build starts |
 | Build | blocked until bundle 1 is on main (message from the Rules session) |
+| RB-28 engine work | rebase on bundle 1 engine (SD-77 narrowed re-check: route events to reading rows; re-check only affected rules on load-fact change; measured 300,700-301,600 vs 740,400 instructions, cap 538,500). RB-30 in bundle 1 round 8: findings 1, 3, 4, 5 fixed, 2 left with reason; AuraSound.lua spec-change unit filter in round 9 |
 | Stage 2: cue steps | after stage 1 is settled (RB-6) |
 
 ## Limits stated

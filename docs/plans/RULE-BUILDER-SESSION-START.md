@@ -40,6 +40,6 @@
 - **RB-29:** next time you load the addon in game, stand in your garrison and check whether the game counts it as an instance. Tell us the instance ID it reports. We need it before the "Instance doesn't count your garrison" condition can come back.
 
 **Load-condition plan (RB-28).** After bundle 1 lands, built with the Rules session:
-1. The engine's usage gate (docs/plans/LOAD-CONDITIONS-PERF.md §1, items A-C).
+1. The engine's usage gate (docs/plans/LOAD-CONDITIONS-PERF.md §1, items A-C). Rebase this on bundle 1's engine: bundle 1 now includes SD-77 (2026-11-15), which sends movement / runes / totem / loss-of-control events only to the rows that read them, and on a load-fact change re-checks only the rules that fact affects. That goes further than item C as written here (full step when a used fact changes), so do NOT build the narrowing separately (Rules session message, 2026-11-15).
 2. Then M2 (in a vehicle) and M20 (max level).
 3. The rest wait (LOAD-CONDITIONS-PERF.md §4). Future-only concepts are in RB-20.
