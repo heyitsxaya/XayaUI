@@ -169,7 +169,8 @@ check("D Combat Tracking Setup is no longer on Settings > Debugging", dbg and db
 local left = {}
 for _, k in ipairs({ "recordOn", "recWhat", "debugProbe", "recordInfo", "recordView", "recordClear" }) do if dbg and dbg[k] then left[#left + 1] = k end end
 check("D Settings > Debugging keeps no detailed-record or probe switch", #left == 0, table.concat(left, ", "))
-check("D Settings > Debugging: Dev Assist settings are hidden without it", dbg and dbg.devPages and hidden(dbg.devPages) and next(dbg.devPages.args) == nil)
+-- (bundle 1 round 8, V34 audit; intended change) the Dev Assist groups were removed from Settings > Debugging, not only hidden
+check("D Settings > Debugging: no Dev Assist settings (removed with the retired addon)", dbg and dbg.devPages == nil and dbg.gameDump == nil)
 check("D Settings > Debugging: the Debug report group with its button", dbg and dbg.report and dbg.report.args.repOpen and dbg.report.args.repOpen.name == "Open the debug report")
 if ns.ToggleUI and ns.IsOptionsOpen and ns.IsOptionsOpen() then W.safecall(ns.ToggleUI) end
 

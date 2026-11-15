@@ -42,6 +42,12 @@ The streams use readable (non-secret) samples wherever the game gives them, so t
   timing edges: an aura lost about 10 ms before its parent's whole-second countdown wake just after a routed pass (the round-6 stuck
   icon), and regained (its sound cue plays again); an aura refreshed just after a wake; a "seconds left" threshold crossed with an aura
   event in the same frame; a cooldown ending on a routed pass.
+  (round 8, stream coverage) Cooldown Manager alerts (an icon's TriggerAlertEvent: applied, removed, a pandemic moment, a cooldown
+  started) with no aura event, out of and in combat (SD-69: an alert re-checks only what it can change); the 0.2 s re-checks of SD-68:
+  a cooldown hidden in combat that the game gives no duration object for, and a Range Check on the focus changing with no event; a
+  sound cue repeating every second (repeat sound wakes); a charge count shown while the game hides the charges (secret) in combat.
+  (round 8 repair 1, SD-69 "re-check its icon only") a charge back that only a cooldown icon reports (its ChargeGained alert, no charge
+  event), and the count readable again announced by the game's charge event (the stand-in flipped it silently before).
 Its power is proved in round 7 on deliberately broken engines (see the round-7 report): each must FAIL this test.
 Run: python3 tests/fix_r6_routing_replay_run.py   (Lua 5.1 via lupa; needs git, to read the pre-round-6 files; set XUI_REPLAY_GIT to a
 clone of the repository when the tree this test sits in is not one)."""
@@ -109,12 +115,31 @@ C_Spell.GetSpellCooldown = function(id)
   if G.onGCD[id] and running(G.gcd) then return { startTime = G.gcd.start, duration = G.gcd.dur, isEnabled = true, isActive = true, isOnGCD = true, modRate = 1 } end
   return { startTime = 0, duration = 0, isEnabled = true, isActive = false, isOnGCD = false, modRate = 1 }
 end
+-- (round 8) in combat the game may hide the charge count (SpellChargeInfo.currentCharges carries no NeverSecret flag, structures.md:6526):
+-- while G.secretCharges is set, each count is handed over as its own secret value, which a display can still draw
+local SECCH = { [0] = W.MarkSecret("secret-charges-0"), W.MarkSecret("secret-charges-1"), W.MarkSecret("secret-charges-2") }
 C_Spell.GetSpellCharges = function(id)
   local c = G.charges[id]
   if not c then return nil end
-  return { currentCharges = c.cur, maxCharges = c.max, isActive = c.cur < c.max, cooldownStartTime = c.cur < c.max and c.start or 0,
+  local cur = c.cur
+  if G.secretCharges and W.combat then cur = SECCH[c.cur] end
+  return { currentCharges = cur, maxCharges = c.max, isActive = c.cur < c.max, cooldownStartTime = c.cur < c.max and c.start or 0,
     cooldownDuration = c.cur < c.max and 20 or 0, chargeModRate = 1 }
 end
+-- (round 8) a cooldown the game hides in combat (start and duration secret) and gives no duration object for (MayReturnNothing,
+-- namespaces.md:4398 / :4401): the case SD-68 keeps on the 0.2 s re-check
+G.hidden = { [9500] = true }
+local GSC0 = C_Spell.GetSpellCooldown
+C_Spell.GetSpellCooldown = function(id)
+  local c = G.cds[id]
+  if G.hidden[id] and W.combat and running(c) then return { startTime = SEC(), duration = SEC(), isEnabled = true, isActive = true, isOnGCD = false, modRate = 1 } end
+  return GSC0(id)
+end
+C_Spell.GetSpellCooldownDuration = function() return nil end
+C_Spell.GetSpellChargeDuration = function() return nil end
+-- (round 8) the range of spell 9600 to the focus (no game event names it)
+G.inRange = true
+C_Spell.IsSpellInRange = function(id, unit) if unit == "focus" and G.focus.exists then return G.inRange end return nil end
 C_Spell.IsSpellUsable = function(id) local u = G.usable[id]; if u == nil then return true, false end; return u, not u end
 C_Item.GetItemCount = function(id) local it = G.items[tonumber(id)]; return it and it.count or 0 end
 C_Item.IsUsableItem = function(id) local it = G.items[tonumber(id)]; return (it and it.count > 0) and true or false, false end
@@ -126,12 +151,16 @@ C_Item.GetItemCooldown = itemCD
 local function icon(spellID)
   local fr = { wasSetFromAura = false, auraInstanceID = nil, cooldownInfo = { spellID = spellID } }
   fr.GetSpellID = function() return spellID end
+  fr.TriggerAlertEvent = function(self, ev) end   -- (round 8: Blizzard's icons report their moments through it; Timing.lua hooks it)
   fr.IsShown = function() return true end
   G.icons[spellID] = fr
   return fr
 end
 local viewerKids = { icon(9060), icon(9091), icon(9041) }
 BuffIconCooldownViewer = { IsVisible = function() return true end, GetChildren = function() return unpack(viewerKids) end }
+-- (round 8 repair 1) a cooldown viewer with the icon of the charges spell 9103 (its alerts: a charge gained, SD-69 stream below)
+local cdKids = { icon(9103) }
+EssentialCooldownViewer = { IsVisible = function() return true end, GetChildren = function() return unpack(cdKids) end }
 -- ---------------------------------------------------------------- payload helpers
 -- out of combat every payload is readable. In combat: secret auras come as a secret payload (pay), NeverSecret ones as a readable one
 -- (payN); mixed() builds a readable payload holding a NeverSecret entry and a hidden one
@@ -241,6 +270,11 @@ R.gcdc = cd("counts the GCD", 9304, function(r) r.countGCD = true end)
 R.gcdrow = row("GCD row", { type = "globalCooldown", state = "yes" })
 R.item = row("item row", { type = "itemUsable", itemID = 5556, state = "ready" })
 R.itemSpell = cd("item spell", 9401)
+-- (round 8) the 0.2 s re-checks (SD-68), a repeating sound cue, an alert on a cooldown icon's spell
+R.hiddenCd = cd("hidden cooldown", 9500)
+R.range = row("focus range", { type = "rangeCheck", spellID = 9600, unit = "focus", state = "yes" })
+R.rep = buff("repeat sound", 9700); do local c = cue(R.rep, "sound"); c.repeatSec = 1 end
+G.never[9700] = true   -- (readable in combat, so the repeat sound part below plays in a fight)
 G.charges[9103] = { cur = 2, max = 2, start = 0 }
 ns.MarkDirty()
 W.tick(1 / 60, 30)
@@ -308,6 +342,16 @@ G.absorb = 250; refresh(9080); F("shield hit", 8)
 G.absorb = 120; W.fire("UNIT_AURA", "player", pay({ updatedAuraInstanceIDs = { G.auras[9080].auraInstanceID } })); F("shield absorbs damage (same duration)", 8)
 G.icons[9091].wasSetFromAura = true; unrelatedAdd(8889); F("name-matched icon lit, readable payload about another aura", 8)
 G.icons[9091].wasSetFromAura = false; unrelatedAdd(8890); F("name-matched icon unlit", 8)
+-- (round 8) Cooldown Manager alerts with no aura event: the icon lit, a pandemic moment, unlit, a cooldown moment
+do
+  local A = Enum.CooldownViewerAlertEventType or { Available = 1, PandemicTime = 2, OnCooldown = 3, ChargeGained = 4, OnAuraApplied = 5, OnAuraRemoved = 6 }
+  local ic = G.icons[9060]
+  ic.wasSetFromAura = true; G.auras[9060] = { spellId = 9060, auraInstanceID = 504, name = name(9060), applications = 1, duration = 10, expirationTime = W.now + 10 }
+  ic:TriggerAlertEvent(A.OnAuraApplied); F("alert: icon lit (no aura event)", 8)
+  ic:TriggerAlertEvent(A.PandemicTime); F("alert: a pandemic moment", 8)
+  ic.wasSetFromAura = false; G.auras[9060] = nil; ic:TriggerAlertEvent(A.OnAuraRemoved); F("alert: icon unlit (no aura event)", 8)
+  ic:TriggerAlertEvent(A.OnCooldown); F("alert: a cooldown moment", 8)
+end
 W.fire("UNIT_AURA", "player", { isFullUpdate = true }); F("full update, nothing changed", 8)
 G.auras[9001] = nil; W.fire("UNIT_AURA", "player", { isFullUpdate = true }); F("full update, an aura gone", 8)
 gain(9001, 20); F("gain watched again", 8)
@@ -406,6 +450,38 @@ W.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "Cast-3-1-1-1-9105-0000", 9105); F(
 G.icons[9060].wasSetFromAura = false; G.auras[9060] = nil; unrelated(); F("icon unlit", 8)
 G.cds[9100] = { start = W.now, dur = 1 }; cdEvent(); F("cooldown in combat", 8)
 for _ = 1, 60 do F("cooldown in combat running out", 1) end
+-- (round 8) a cooldown hidden in combat with no duration object (SD-68 case B): its end is found by the 0.2 s re-check
+G.cds[9500] = { start = W.now, dur = 1.5 }; cdEvent(9500, 9500); F("hidden cooldown, no duration object", 8)
+for _ = 1, 110 do F("hidden cooldown running out (0.2 s re-check)", 1) end
+-- (round 8) the focus walks out of range and back with no event (SD-68 case A)
+G.inRange = false; for _ = 1, 30 do F("focus out of range (no event)", 1) end
+G.inRange = true; for _ = 1, 30 do F("focus back in range (no event)", 1) end
+-- (round 8) a sound cue repeating every second while its buff is up (repeat sound wakes)
+gain(9700, 3.5); for _ = 1, 200 do F("repeat sound", 1) end
+-- (round 8) charges hidden in combat: the count shown changes with the charge events only
+G.secretCharges = true
+G.charges[9103].cur = 1; G.charges[9103].start = W.now; W.fire("SPELL_UPDATE_CHARGES"); F("charge spent (count hidden)", 8)
+G.charges[9103].cur = 0; W.fire("SPELL_UPDATE_CHARGES"); F("no charge (count hidden)", 8)
+G.charges[9103].cur = 2; W.fire("SPELL_UPDATE_CHARGES"); F("charges back (count hidden)", 8)
+-- (round 8 repair 1) a charge back that only the icon of 9103 reports (its ChargeGained alert, no charge event): SD-69 re-checks the
+-- rules that read that icon, the charge display of 9103 among them (one re-checked outside the checks: its count is drawn by the game)
+do
+  local A = Enum.CooldownViewerAlertEventType or { Available = 1, PandemicTime = 2, OnCooldown = 3, ChargeGained = 4, OnAuraApplied = 5, OnAuraRemoved = 6 }
+  G.charges[9103].cur = 1; G.charges[9103].start = W.now; W.fire("SPELL_UPDATE_CHARGES"); F("charge spent again (count hidden)", 8)
+  G.charges[9103].cur = 2; G.icons[9103]:TriggerAlertEvent(A.ChargeGained); F("charge back, only the icon's alert (count hidden)", 8)
+end
+-- (round 8 repair 1) the count readable again comes with the game's charge event, as every charge change does: before this line the stand-in
+-- flipped it silently, and only an alert that re-checked every rule (round 8 before its repair: every charge-count display, whichever
+-- icon alerted) redrew the count; SD-69 ("re-check its icon only") re-checks no rule of another spell on the 9060 icon's alerts below
+G.secretCharges = false; W.fire("SPELL_UPDATE_CHARGES"); F("charges readable again (charge event)", 8)
+-- (round 8) Cooldown Manager alerts in combat, with no aura event
+do
+  local A = Enum.CooldownViewerAlertEventType or { Available = 1, PandemicTime = 2, OnCooldown = 3, ChargeGained = 4, OnAuraApplied = 5, OnAuraRemoved = 6 }
+  local ic = G.icons[9060]
+  ic.wasSetFromAura = true; G.auras[9060] = { spellId = 9060, auraInstanceID = 505, name = name(9060), applications = 1, duration = 10, expirationTime = W.now + 10 }
+  ic:TriggerAlertEvent(A.OnAuraApplied); F("alert in combat: icon lit", 8)
+  ic.wasSetFromAura = false; G.auras[9060] = nil; ic:TriggerAlertEvent(A.OnAuraRemoved); F("alert in combat: icon unlit", 8)
+end
 W.leaveCombat(); F("combat ends", 8)
 gain(9001, 20); F("after combat", 8)
 OUT.errors = {}

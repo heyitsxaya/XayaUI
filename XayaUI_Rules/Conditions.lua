@@ -12,6 +12,18 @@ if ns.SettingsDeclareStore then ns.SettingsDeclareStore("core", "XayaUI_Rules", 
 local issecret = issecretvalue or function() return false end
 ns.IsSecret = issecret
 
+-- (round 8, engine stats contract shared by Engine.lua, Visual.lua and XayaUI_Debug) how often each re-check path of the combat engine
+-- ran this session: whole numbers only, each raised in place by one where the path runs (no table, no call). Made here, the first file of
+-- XayaUI Rules that the engine's paths live in, so every later file finds it at load. Read only by XayaUI_Debug (Advanced Debugging on),
+-- which must not assume a field is there. The keys are set once, here, so the table never grows while it is counted.
+--   routed     routed aura / cooldown / resource / range / cast passes      all        every-live-rule passes
+--   settle     full settles (every rule)                                    wake       stored-moment wake timer runs
+--   pollRange  0.2 s range re-checks (focus / mouseover / pet)              pollCd     0.2 s re-checks of a hidden cooldown end with no
+--                                                                                       duration object
+--   alert      Cooldown Manager alert re-checks                             redrawText, redrawFill: tenths texts rewritten and bar
+--                                                                                       fills written (Visual.lua)
+ns.EngineStats = ns.EngineStats or { routed = 0, all = 0, settle = 0, pollRange = 0, pollCd = 0, wake = 0, alert = 0, redrawText = 0, redrawFill = 0 }
+
 -- One field read, run under pcall without building a closure per call.
 local function Field(t, key) return t[key] end
 ns.Field = Field
@@ -326,7 +338,10 @@ local function WatchCharges()
 end
 ns._WatchCharges = WatchCharges
 local SPELL_EVENTS = { PLAYER_ENTERING_WORLD = true, SPELLS_CHANGED = true, TRAIT_CONFIG_UPDATED = true, PLAYER_SPECIALIZATION_CHANGED = true }
-local function OnWatchEvent(_, event)
+local function OnWatchEvent(_, event, unit)
+    -- (round 8, RB-30 finding 4) PLAYER_SPECIALIZATION_CHANGED carries the unit (events.md:1215) and fires for group members too: only
+    -- your own spec change can change your spells and charges
+    if event == "PLAYER_SPECIALIZATION_CHANGED" and unit ~= "player" then return end
     if SPELL_EVENTS[event] then classDirty = true end
     pcall(WatchCharges)
 end
@@ -521,8 +536,12 @@ local function ViewerLive(v)
 end
 ns._ViewerLive = ViewerLive
 local CDMIndexDiffers
+-- (round 8 repair, SD-69) icon -> the spell IDs it is filed under in the index just built (the very list FrameIDs made for it: no table
+-- added); emptied at each build, so an icon no longer in a live viewer has none (ns.CDMIconMayAnswer below)
+local iconIDsOf = setmetatable({}, { __mode = "k" })
 local function BuildCDMIndex()
     local idx = {}
+    for k in pairs(iconIDsOf) do iconIDsOf[k] = nil end
     for _, vname in ipairs(VIEWERS) do
         local v = _G[vname]
         if v and v.GetChildren and ViewerLive(v) then
@@ -531,7 +550,9 @@ local function BuildCDMIndex()
                 local fr = kids[i]
                 if fr then
                     if ns.Timing then ns.Timing.HookFrame(fr) end   -- exact applied / removed / cooldown moments (Timing.lua)
-                    for _, x in ipairs(FrameIDs(fr)) do IndexID(idx, x, fr, vname) end
+                    local ids = FrameIDs(fr)
+                    for _, x in ipairs(ids) do IndexID(idx, x, fr, vname) end
+                    iconIDsOf[fr] = ids
                 end
             end
         end
@@ -562,17 +583,20 @@ function ns.CDMFrameState(id)
     if not ok then return nil end
     return act and true or false
 end
-function FindCDMFrame(id)
-    -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
-    -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
+-- rebuilt at most every 0.25 s: which spell a viewer frame stands for rarely changes, and whether it is ACTIVE is read live (FindCDMFrame)
+local function CDMFresh()
     local now = GetTime()
-    -- rebuilt at most every 0.25 s: which spell a viewer frame stands for rarely changes, and whether it is ACTIVE is read live below
     if cdmAt < 0 or now - cdmAt >= 0.25 or now < cdmAt then
         local old = cdmIndex
         cdmIndex, cdmTick, cdmAt = BuildCDMIndex(), ns.tickID, now
         -- (round 6, SD-54) which icon stands for which spell changed: Engine.lua checks every rule's aura again on the next aura event
         if CDMIndexDiffers(old, cdmIndex) then ns.cdmGen = (ns.cdmGen or 0) + 1 end
     end
+end
+function FindCDMFrame(id)
+    -- several viewers can hold a frame for the same spell (buff icon, buff bar, cooldown): an ACTIVE match wins,
+    -- otherwise the first match is returned (so an inactive placeholder cannot hide a live aura)
+    CDMFresh()
     local list = cdmIndex[id]
     if not list then return nil end
     local firstFr, firstName
@@ -881,6 +905,22 @@ end
 function ns.FindTrackedBuffFrameByName(id)
     local st, fr = ns.TrackedBuffStateByName(id)
     if st == true then return fr end
+end
+-- (round 8 repair, SD-69, her answer "Cooldown alert: re-check its icon only") could a reading of spell or aura `id` find icon `fr`?
+-- The moments an icon's alert writes (Timing.lua: applied, removed, cooldown started, ready, a charge gained) are read only through an
+-- icon found for a spell ID: by the ID it is filed under (FindCDMFrame), or by name (the rule's own spell tracked under its aura's name,
+-- the Target Debuff name match above). So true when fr is filed under id, or one of fr's spells has id's name. Engine.lua asks this for
+-- each check and rule an alert might concern, and reads only those. (The index is rebuilt first when it is stale, as FindCDMFrame does.)
+function ns.CDMIconMayAnswer(fr, id)
+    id = tonumber(id)
+    if not id or id == 0 or fr == nil then return false end
+    CDMFresh()   -- (the index rebuilt when stale, as FindCDMFrame does)
+    local ids = iconIDsOf[fr]
+    if not ids then return false end
+    for i = 1, #ids do if ids[i] == id then return true end end
+    local name = SpellNameOf(id)
+    if name then for i = 1, #ids do if SpellNameOf(ids[i]) == name then return true end end end
+    return false
 end
 
 -------------------------------------------------------------------------------
@@ -1780,6 +1820,32 @@ local function MapChain(id)
     return c
 end
 local encNow, encLast, equipGen = nil, nil, 0
+-- (round 8, RB-30 finding 3) does any rule or group load only with an item equipped ("item equipped" list)? Worked out once per settings
+-- change (ns.configVersion; a new or replaced rule list too). Only then is the equipment count part of the context (ReadContext), so a
+-- gear change re-checks every rule only when a load check reads gear. The "Item Equipped" and "Set Pieces" trigger rows are not load
+-- checks: they are re-checked by the gear event itself (ns.LoadEvent below, ns.MarkStateDirty), as before.
+local equipUsedVer, equipUsedList, equipUsedN, equipUsed = nil, nil, -1, false
+local function EquipUsed()
+    local ver, list = ns.configVersion or 0, ns.rules
+    local n = list and #list or 0
+    if ver == equipUsedVer and list == equipUsedList and n == equipUsedN then return equipUsed end
+    equipUsedVer, equipUsedList, equipUsedN = ver, list, n
+    local used = false
+    for i = 1, n do
+        local r = list[i]
+        local l = type(r) == "table" and r.load
+        if type(l) == "table" and ns.SetActive(l.equipped) then used = true; break end
+    end
+    if not used then
+        for _, f in ipairs(ns.folders or {}) do
+            local l = type(f) == "table" and f.loadIds
+            if type(l) == "table" and ns.SetActive(l.equipped) then used = true; break end
+        end
+    end
+    equipUsed = used
+    return used
+end
+ns._EquipUsed = EquipUsed   -- (tests)
 function ns.LastEncounter() return encLast end
 function ns.LoadEvent(event, a1, a2)
     if event == "ENCOUNTER_START" then
@@ -1794,7 +1860,9 @@ function ns.LoadEvent(event, a1, a2)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         equipGen = equipGen + 1
     end
-    if ns.MarkStateDirty then ns.MarkStateDirty() end
+    -- (round 8, RB-30 finding 5) "load": the engine compares the load facts on the next frame and re-checks every rule only when one
+    -- changed, or else every live rule once (the gear rows); before, every live rule was re-checked and then every rule again
+    if ns.MarkStateDirty then ns.MarkStateDirty("load") end
 end
 if CreateFrame then
     local lf = CreateFrame("Frame")
@@ -1910,7 +1978,8 @@ function ns.ReadContext()
     parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
     parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
     parts[#parts + 1] = tostring(ctx.mapID); parts[#parts + 1] = tostring(ctx.instanceID); parts[#parts + 1] = tostring(ctx.difficultyID)
-    parts[#parts + 1] = tostring(ctx.instSize); parts[#parts + 1] = tostring(ctx.encounterID); parts[#parts + 1] = tostring(equipGen)
+    parts[#parts + 1] = tostring(ctx.instSize); parts[#parts + 1] = tostring(ctx.encounterID)
+    parts[#parts + 1] = EquipUsed() and tostring(equipGen) or "-"
     ctx.sig = table.concat(parts, "|")
     return ctx
 end
@@ -1969,15 +2038,19 @@ local ctxMemo = setmetatable({}, { __mode = "k" })
 -- the view that holds for a whole fight, so the Boss encounters lists are skipped, the rule's own and every group's (their answer
 -- is only known during the pull). Never kept in the memo.
 function ns.CheckContext(rule, ctx, static)
-    -- memo per rule: same context values (ctx.sig) and no settings edit since (ns.configVersion), re-checked at least once a second
+    -- memo per rule: same context values (ctx.sig) and no settings edit since (ns.configVersion). (round 8, RB-30 finding 1) Before, it
+    -- was also re-checked once a second (keyed on the whole second of GetTime()): every live rule ran its load checks again each second
+    -- in combat. That second was the only way an equipped-item list followed a gear change when the context did not carry one; now the
+    -- gear count is part of ctx.sig whenever such a list exists (ReadContext, EquipUsed), and everything else a load check reads is in
+    -- ctx.sig or in the settings (ns.configVersion), so the answer can only change when one of the two does.
     local sig = ctx and ctx.sig
     if static or not sig then return CheckContextRaw(rule, ctx, static) end
-    local now, ver = math.floor(GetTime()), ns.configVersion or 0
+    local ver = ns.configVersion or 0
     local m = ctxMemo[rule]
-    if m and m.sig == sig and m.ver == ver and m.sec == now then return m.ok, m.fail end
+    if m and m.sig == sig and m.ver == ver then return m.ok, m.fail end
     local ok, fail = CheckContextRaw(rule, ctx)
     if not m then m = {}; ctxMemo[rule] = m end
-    m.sig, m.ver, m.sec, m.ok, m.fail = sig, ver, now, ok, fail
+    m.sig, m.ver, m.ok, m.fail = sig, ver, ok, fail
     return ok, fail
 end
 -- #319 (Xaya, 2026-11-04): "Always load" ignores every load condition, unless the Class or Specialization row has its own tick box

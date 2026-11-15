@@ -76,7 +76,7 @@ end
 function ns.SettingsTabOf(module) local t = ns.OptionsApi.TABS[module]; return t and t.key or "qol" end
 -- The Blizzard UI Reskin tab's own switch (Options 0.6.50, S1 #48; Xaya 2026-11-05: "double: both enable/disable of reskin at all; then
 -- individual toggles for individual reskins"; 2026-11-06, where it goes: "Tick box on the tab itself"). A tick box on the tab button
--- in the window's top tab row. Unticked, every reskin in the tab is off at once (core ns.SetReskinTab); each reskin keeps its own box on
+-- in the window's top tab row. Unticked, every reskin in the tab is off at once; each reskin keeps its own box on
 -- its row in the left pane, greyed while this is off.
 -- Painted by ns.OptionsApi.PaintTabSwitches on every decorate pass (each redraw, and the window's 0.25 s tick), so a re-layout of the
 -- tab row by AceGUI (a resize, a tab switch) is followed within a quarter second. The tab is made wider by the box, and its text moves
@@ -105,7 +105,7 @@ function ns.OptionsApi.ReskinOverview(args)
         enable = { type = "toggle", order = 1, width = "full", name = ns.OptionsApi.RESKIN_SWITCH,
             desc = "Turns every reskin in this tab on or off together, after a reload; each keeps its own tick box. The reskins are listed in this tab after the reload.",
             -- (Options 0.6.90; PS-57, #480) saves the choice and asks for a reload; the reskins keep what they had until then
-            -- (Modules.lua section 5c). Before: every reskin switched at once (ns.SetReskinTab) and then the prompt.
+            -- (Modules.lua section 5c). Before: every reskin switched at once and then the prompt.
             get = function() return ns.ReskinTabSaved() end,
             set = function(_, v) ns.SaveReskinTab(v and true or false) end },
         note = { type = "description", order = 2, width = "full", fontSize = "medium",
@@ -221,7 +221,7 @@ function ns.OptionsApi.ModuleTabs(Notify, qolExtra)
             return a.key < b.key
         end)
         for i, e in ipairs(list) do args[e.key].order = i; ns.OptionsApi.pageTab[e.key] = tab.key end
-        -- a feature node with parts under it (childGroups = "tree", Modules.lua ns.SectionTabs note) starts open: ns.FeatureTreesOpen
+        -- a feature node with parts under it (childGroups = "tree") starts open: ns.FeatureTreesOpen
         local parents = {}
         for key, ent in pairs(args) do
             if ent.childGroups == "tree" then
@@ -584,7 +584,7 @@ local function BuildAddonSettings()
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "Records XayaUI's own errors and warnings for the debug report (/xui report) and sends its messages to the console window. On by default; it does nothing while nothing goes wrong.",
+                desc = "Records XayaUI's own errors and warnings for the debug report (/xui report) and, from your next login or /reload, loads the debug tools: the console window, /xui bug, /xui report and /xui status. Off by default.",
                 get = function() return PlatS.ui and PlatS.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
@@ -618,14 +618,7 @@ local function BuildAddonSettings()
                 sendCore = { type = "input", name = "XayaUI.lua: your rules, settings, and saved errors and warnings  (click, Ctrl+A, Ctrl+C)", order = 2, width = "full",
                     get = function() return ns.SavedFilePath and ns.SavedFilePath("XayaUI.lua") or "" end,
                     set = function() end },
-                sendDev = { type = "input", order = 3, width = "full",
-                    name = function()
-                        local svc = ns.Service and ns.Service("gameDataProbe")
-                        return tostring(svc and svc.savedFile or "") .. ": " .. tostring(svc and svc.savedWhat or "the developer captures") .. "  (click, Ctrl+A, Ctrl+C)"
-                    end,
-                    hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.savedFile) == "string") end,
-                    get = function() local svc = ns.Service and ns.Service("gameDataProbe"); return (svc and ns.SavedFilePath) and ns.SavedFilePath(svc.savedFile) or "" end,
-                    set = function() end },
+                -- (round 8, V34 audit) the developer file's box (XayaUI Dev Assist's "gameDataProbe" service) is gone: Dev Assist is on qa-installer-branch
                 sendCopy = { type = "execute", name = "Copy all of this", order = 4,
                     desc = "Opens these steps and paths as one text, selected and ready for Ctrl+C.",
                     func = function() if ns.SendText and ns.ShowCopyBox then ns.ShowCopyBox("XayaUI: what to send", ns.SendText()) end end },
@@ -665,24 +658,8 @@ local function BuildAddonSettings()
                     confirmText = "Clear XayaUI's saved Lua errors?",
                     func = function() if ns.ClearErrorLog then ns.ClearErrorLog() end; Notify() end },
             } },
-            -- the separate developer addon (XayaUI Dev Assist), reached through its "gameDataProbe" service (Modules.lua contract)
-            gameDump = { type = "group", inline = true, name = "Dev Assist (separate tool)", order = 30,
-                hidden = function() local svc = ns.Service and ns.Service("gameDataProbe"); return not (svc and type(svc.Open) == "function") end, args = {
-                gdText = { type = "description", order = 1, fontSize = "medium",
-                    name = "Pulls every class, spec, talent, spell description, spellbook entry, piece of gear, and set-bonus line the game will give an addon, and records which auras each ability you press causes and for how long. It is a separate addon (XayaUI Dev Assist, folder XayaUI_DevAssist) with its own saved-data file, so nothing here touches your rules or profile. Also /xuidev." },
-                gdOpen = { type = "execute", name = "Open Dev Assist", order = 2, width = "double",
-                    func = function()
-                        local svc = ns.Service and ns.Service("gameDataProbe")
-                        if svc and type(svc.Open) == "function" then svc.Open()
-                        else ns.Print("XayaUI Dev Assist is not loaded. Enable it in the AddOns list, then /reload.") end
-                    end },
-            } },
-            -- (Options 0.6.55; REQUEST-LOG #81, #82) XayaUI Dev Assist's own settings: the game-data probe switch and the detailed debug
-            -- record. Its code registers them (ns.RegisterSettingsPage("debugging", ...), XayaUI_DevAssist/DevRecord.lua); without it,
-            -- nothing of them exists here.
-            devPages = { type = "group", inline = true, name = "Dev Assist settings", order = 31,
-                hidden = function() return not (ns.DevAssistOn and ns.DevAssistOn()) end,
-                args = ns.BuildSettingsPages and ns.BuildSettingsPages("debugging", Notify) or {} },
+            -- (round 8, V34 audit) the two XayaUI Dev Assist groups ("Dev Assist (separate tool)" and "Dev Assist settings"), shown only while
+            -- that retired addon was loaded, are gone: it is on qa-installer-branch with its own copy of this window.
         } },
     } }
     for k, v in pairs(dispRows) do page.args.ui.args[k] = v end
@@ -699,6 +676,18 @@ local function BuildProfiles(binTab)
             Notify()
         end)
         if not now then shareMsg = "Combat: this will happen as soon as combat ends."; Notify() end
+    end
+    -- (round 8, round 6 carry-over) a backup whose saved text is damaged reads as an empty copy, after XayaUI Rules has said in chat that it
+    -- could not be read and nothing was changed (XayaUI_Rules/RuleShare.lua ReadBackup). Every real backup holds at least its format
+    -- number (v), so an empty copy is never applied and never followed by "Loaded '<name>'." or "Added 0 rule(s) ...".
+    local function LoadBackup(p, mode, okText)
+        local snap = ns.Copy(p.data)
+        if type(snap) ~= "table" or next(snap) == nil then
+            shareMsg = ("|cffff5555The backup '%s' could not be read. Nothing was changed.|r"):format(tostring(p.name))
+            Notify()
+            return
+        end
+        ApplyRules(snap, mode, okText)
     end
     local PR = ns.Profile
     local function rulesInc() return { rules = profInc.rules, bars = profInc.rules, qol = profInc.rules } end
@@ -763,10 +752,10 @@ local function BuildProfiles(binTab)
             args = {
                 desc = { type = "description", order = 1, width = "full", name = ns.Share_DescribeRules(p.data) },
                 add = { type = "execute", name = "Load (add)", order = 2, width = "half",
-                    func = function() ApplyRules(ns.Copy(p.data), "add", function(c) return ("Added %d rule(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.bars, c.qol) end) end },
+                    func = function() LoadBackup(p, "add", function(c) return ("Added %d rule(s), %d bar(s), %d QoL box(es)."):format(c.rules, c.bars, c.qol) end) end },
                 replace = { type = "execute", name = "Load (replace)", order = 3, width = "half",
                     confirm = true, confirmText = "Replace the included parts of your current setup with this backup?",
-                    func = function() ApplyRules(ns.Copy(p.data), "replace", function() return ("Loaded '%s'."):format(p.name) end) end },
+                    func = function() LoadBackup(p, "replace", function() return ("Loaded '%s'."):format(p.name) end) end },
                 export = { type = "execute", name = "Show export text", order = 4, width = "half",
                     func = function() exportText = ns.Share.Encode("rules", p.data) or ""; Notify() end },
                 delete = { type = "execute", name = "Delete", order = 5, width = "half",

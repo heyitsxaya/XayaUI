@@ -168,19 +168,20 @@ L.execute("IsPublicTestClient = function() return true end")
 check("  ...a test client's own game folder", E("NS.SavedFilePath('XayaUI.lua'):find('\\\\_ptr_\\\\WTF', 1, true) ~= nil and NS.SendText():find('_xptr_', 1, true) ~= nil"))
 L.execute("IsPublicTestClient = function() return false end")
 check("the steps: /reload first, the folder, the files", E("NS.SendText():find('/reload', 1, true) and NS.SendText():find('XayaUI.lua', 1, true) and NS.SendText():find('<YOUR ACCOUNT FOLDER>', 1, true)") is not None and E("NS.SendText():find('/reload', 1, true) ~= nil"))
-check("  ...a developer addon's file is listed only when it says which file it is (through its service)",
-      E("NS.SendText():find('XayaUI_DevAssist.lua', 1, true) == nil"))
+check("  ...no developer addon's file is listed", E("NS.SendText():find('XayaUI_DevAssist.lua', 1, true) == nil"))
 L.execute("SEND = DBG.send.args")
-check("Settings: the developer file's box is hidden while no addon says its file", E("SEND.sendDev.hidden() == true"))
+# (bundle 1 round 8, V34 audit: core code that served only the retired XayaUI Dev Assist is removed; intended change) the developer file
+# that Dev Assist's "gameDataProbe" service named is no longer listed, even when something provides that service, and Settings has no box for it
+check("Settings: there is no developer file's box (XayaUI Dev Assist is retired to qa-installer-branch)", E("SEND.sendDev == nil"))
 L.execute("NS.Provide('gameDataProbe', { On = function() end, Off = function() end, Active = function() return false end, savedFile = 'XayaUI_DevTest.lua', savedWhat = 'test captures' })")
-check("  ...and then it is", E("NS.SendText():find('XayaUI_DevTest.lua  (test captures)', 1, true) ~= nil"))
+check("  ...and a 'gameDataProbe' service no longer adds a file to what to send", E("NS.SendText():find('XayaUI_DevTest.lua', 1, true) == nil"))
 
 # 8. the real Settings > Debugging "What to send" (Options.lua)
 L.execute("IsBetaBuild = function() return false end; IsPublicTestClient = function() return false end")
 check("Settings: 'What to send' shows XayaUI.lua's path in a box to copy, and typing in it changes nothing",
       E("SEND.sendCore.get():find('SavedVariables\\\\XayaUI.lua', 1, true) ~= nil") and (L.execute("SEND.sendCore.set(nil, 'typed over')") or True)
       and E("SEND.sendCore.get():find('<YOUR ACCOUNT FOLDER>', 1, true) ~= nil"))
-check("Settings: the developer file's box shows only when that addon says its file", E("SEND.sendDev.hidden() == false and SEND.sendDev.get():find('XayaUI_DevTest.lua', 1, true) ~= nil"))
+check("Settings: still no developer file's box with that service provided", E("SEND.sendDev == nil and DBG.gameDump == nil and DBG.devPages == nil"))
 check("Settings: 'What to send' is shown even with Advanced Debugging off (a bug report needs it too)", E("DBG.send.hidden == nil"))
 
 print("FAILS: %d" % len(fails))

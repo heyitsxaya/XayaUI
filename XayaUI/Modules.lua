@@ -14,7 +14,6 @@
 --   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
---   ns.RegisterReskin(key, apply)             a reskin of the Blizzard UI Reskin tab; apply() takes the tab's switch (core 0.6.51)
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
 -- Every registered function is called through pcall: one feature's error never stops the next one from starting.
 -- Own code. UNTESTED in game.
@@ -305,14 +304,6 @@ end
 ns.SettingsLegacyValue = LegacyValue   -- (tests: what the copy takes from a CueRulesDB)
 -- (the QA walkthrough) a copy of what a module's key still holds in CueRulesDB (the old place, kept untouched until P6), read only
 function ns.SettingsOldValue(module, k) return DeepCopy(LegacyValue(module, k, Backing())) end
--- the sub-keys of a split key that its owner keeps ({ [sub key] = true }, a copy), or nil (XayaUI_QoL/CharacterReskin.lua reads the look keys)
-function ns.SettingsSplitSub(key)
-    local split = LEGACY_SPLIT[key]
-    if not split then return nil end
-    local out = {}
-    for k in pairs(split.sub) do out[k] = true end
-    return out, split.owner, split.rest
-end
 
 local readyFor = {}          -- module -> functions waiting for its store (ns.WhenSettingsReady)
 local migrationGuards = {}   -- module -> { before = fn(old), check = fn(old, store) -> nil | difference text }
@@ -391,7 +382,6 @@ end
 -- CueRulesDB are only read. An owner store that already holds the key (copied from CueRulesDB with the rest of its settings at its first
 -- opening, this session) records where that copy came from instead. Runs before the waiting start-ups (ns.WhenSettingsReady) of the
 -- module just opened, so the owner's code never sees its settings before the copy.
-local keyMovedNow = {}   -- key -> true: copied in this session
 local function KeyMoves()
     for key, split in pairs(LEGACY_SPLIT) do
         local st = SETTINGS_STORES[split.owner]
@@ -422,7 +412,6 @@ local function KeyMoves()
                             local restSt = SETTINGS_STORES[split.rest]
                             rec = { migratedFrom = ((storeState[split.rest] == "own" and restSt) and restSt.var or "CueRulesDB") .. "." .. key,
                                 migratedAt = Stamp(), migratedBy = st.addon .. " " .. (Meta(st.addon, "Version") or "?"), migratedKeys = n }
-                            keyMovedNow[key] = true
                         end
                     end
                 end
@@ -434,14 +423,6 @@ local function KeyMoves()
             end
         end
     end
-end
--- (the QA walkthrough, tests) what the key move recorded for a split key in its owner's store, a copy; and whether it ran this session
-function ns.SettingsKeyMove(key)
-    local split = LEGACY_SPLIT[key]
-    local st = split and SETTINGS_STORES[split.owner]
-    local t = st and rawget(_G, st.var)
-    local rec = type(t) == "table" and type(t.keyMoves) == "table" and t.keyMoves[key] or nil
-    return DeepCopy(rec), keyMovedNow[key] == true
 end
 
 -- Opens a module's store (once; later calls return the state). The Platform calls it at the module addon's ADDON_LOADED (below); a
@@ -716,49 +697,10 @@ function ns.RunDebugCommand(cmd, arg)
 end
 function ns.DebugCommandHelp() return debugHelp end
 
--- 2c. Words added to a command another file owns (core 0.6.56; Xaya 2026-11-06, REQUEST-LOG #81: developer tools move to XayaUI Dev
--- Assist). slash = the owner's name for its command ("chat" for /xui chat, "xuiskin", "xuiengine"); names = one word or a list.
--- The owner asks ns.RunSubcommand before its own "unknown word" answer, so a word nobody registered does not exist. Dev Assist is the
--- only one that registers words today; without it these lists are empty and cost nothing.
-local subs, subHelp = {}, {}
-function ns.RegisterSubcommand(slash, names, fn, help)
-    if type(slash) ~= "string" or type(fn) ~= "function" then return end
-    if type(names) == "string" then names = { names } end
-    subs[slash] = subs[slash] or {}
-    for _, n in ipairs(names) do subs[slash][tostring(n):lower()] = fn end
-    if type(help) == "string" and help ~= "" then
-        subHelp[slash] = subHelp[slash] or {}
-        table.insert(subHelp[slash], help)
-    end
-end
--- true when a registered word took it
-function ns.RunSubcommand(slash, word, arg)
-    local fn = subs[slash] and subs[slash][tostring(word or ""):lower()]
-    if not fn then return false end
-    Call(fn, arg or "")
-    return true
-end
--- "" when nothing is registered; else " Also: " and each help line after cmd (e.g. "/xuiskin "), joined with "; ", and "."
-function ns.SubcommandList(slash, cmd)
-    local h = subHelp[slash]
-    if not h or #h == 0 then return "" end
-    local t = {}
-    for i, line in ipairs(h) do t[i] = (cmd or "") .. line end
-    return " Also: " .. table.concat(t, "; ") .. "."
-end
-function ns.SubcommandHelp(slash) return subHelp[slash] or {} end
-
--- 2d. The detailed debug record's hand-in points (core 0.6.56; REQUEST-LOG #82). Core's files call these on their paths (a rule fired,
--- a sound played, a display shown, a log line) only after testing them for nil. They are nil unless XayaUI Dev Assist, which keeps the
--- detailed record, puts its functions here when it loads; nothing else may. Without it each call site costs one nil test.
--- (round 7) DevRecordChanged, the Dev Assist record's settings hook that DebugRecord.lua called, is gone with that call.
-local DEBUG_HOOKS = { RecordLine = true, RecordOn = true, RecTrigger = true, RecDisplay = true, RecSound = true, RecordSummary = true }
-function ns.SetDebugHooks(t)
-    if type(t) ~= "table" then return end
-    for k, fn in pairs(t) do
-        if DEBUG_HOOKS[k] and type(fn) == "function" then ns[k] = fn end
-    end
-end
+-- (bundle 1 round 8; V34 audit, "Core code that serves only retired QA-branch addons") 2c, the words another addon added to a command
+-- core owns (ns.RegisterSubcommand, only XayaUI Dev Assist registered any), and 2d, the hand-in of the detailed debug record's hooks
+-- (ns.SetDebugHooks, only Dev Assist called it), are removed: Dev Assist is on qa-installer-branch with its own copy of core. The call
+-- sites of the record's hooks (ns.RecordLine, ns.RecordOn ...) still test them for nil first, so they cost one nil test.
 
 -------------------------------------------------------------------------------
 -- 3. Which addon owns what. Only used for messages and the Addon Info status list; nothing here is called.
@@ -863,19 +805,8 @@ function ns.SaveReskinTab(on)
         if type(CueRulesDB) == "table" then CueRulesDB.reskinTabOff = (not on) and true or nil end
     end, "Blizzard Reskin")
 end
--- Each reskin registers its own apply (it builds, or gives Blizzard's look back) with ns.RegisterReskin(key, fn), the way features
--- register everything else here; core only walks the list. A reskin whose addon is off is simply not in it.
-local reskins = {}
-function ns.RegisterReskin(key, apply) if type(key) == "string" and type(apply) == "function" then reskins[key] = apply end end
--- Set it and let every registered reskin take it at once (in key order, each through pcall).
-function ns.SetReskinTab(on)
-    if type(CueRulesDB) ~= "table" then return end
-    CueRulesDB.reskinTabOff = (not on) and true or nil
-    local keys = {}
-    for k in pairs(reskins) do keys[#keys + 1] = k end
-    table.sort(keys)
-    for _, k in ipairs(keys) do Call(reskins[k]) end
-end
+-- (round 8) ns.RegisterReskin and ns.SetReskinTab are removed: only the retired XayaUI Blizzard Reskin registered a reskin, and nothing
+-- called SetReskinTab since Options 0.6.90. The saved choice (CueRulesDB.reskinTabOff) is kept as it is.
 
 -------------------------------------------------------------------------------
 -- 5c. Switches that take effect on reload (XayaUI 0.6.79; PS-57, #480). Xaya, 2026-11-07: "none of these should be toggleable without
@@ -895,10 +826,6 @@ function ns.SwitchInEffect(id, saved)
     if h then return h.v end
     return saved and true or false
 end
-function ns.SwitchPending(id, saved)
-    local h = held[id]
-    return h ~= nil and h.v ~= (saved and true or false)
-end
 -- hold the value in effect without asking (a walkthrough that saves a switch and then asks for the /reload itself)
 function ns.SwitchHold(id, saved)
     if type(id) == "string" and held[id] == nil then held[id] = { v = saved and true or false } end
@@ -911,195 +838,14 @@ function ns.SwitchSaveForReload(id, saved, write, label)
     local api = ns.OptionsApi
     if type(api) == "table" and type(api.ReloadPrompt) == "function" then Call(api.ReloadPrompt, label) end
 end
--- a route that applies at once lets go of the hold (tests and the reload stand-ins use it; nothing in the addons does since 0.6.79)
-function ns.SwitchApplyNow(id) held[id] = nil end
--- (XayaUI 0.6.79, lead review of 5124884) a /xui command that switches a reskin or module on or off goes the same way as the settings
--- switch: it saves, asks (the window's question when the window is loaded) and keeps what is in effect until the /reload. Returns the
--- line the command prints: "<label>: saved ON. It takes effect after a reload: type /reload." or, when the saved choice is what is in
--- effect already, "<label>: ON (already in effect; no reload needed)."
-function ns.SwitchCommand(id, saved, write, label, on)
-    if (on and true or false) == ns.SwitchInEffect(id, saved) then
-        Call(write)   -- (the choice is what is in effect: saved, nothing to ask)
-        return ("%s: %s (already in effect; no reload needed)."):format(label, on and "ON" or "OFF")
-    end
-    ns.SwitchSaveForReload(id, saved, write, label)
-    return ("%s: saved %s. It takes effect after a reload: type /reload."):format(label, on and "ON" or "OFF")
-end
--- ids held this session, sorted (Dev Assist's walkthrough and the tests read it)
-function ns.SwitchesHeld()
-    local out = {}
-    for id in pairs(held) do out[#out + 1] = id end
-    table.sort(out)
-    return out
-end
+-- (round 8) ns.SwitchPending, ns.SwitchApplyNow, ns.SwitchCommand and ns.SwitchesHeld are removed: only XayaUI Dev Assist and the
+-- retired feature addons' /xui commands used them.
 
--------------------------------------------------------------------------------
--- 5d. Overlaps with other addons (XayaUI 0.6.79; PS-56, #469). Xaya, 2026-11-08: "Make sure all addons that have conflicts with each
--- other (EUI with the chat reskin, elvui with the chat reskin, etc) get appropriately flagged."
--- Each XayaUI part declares, from its own module, the other addons that change the same thing:
---   ns.RegisterConflict{ part = <settings page key>, label = <the part's name as shown>, addons = { <AddOn folder name>, ... },
---                        what = <what both change, after "both change">, on = <function: the part is in effect> (optional) }
--- At PLAYER_LOGIN (every addon that loads at login has loaded by then) the Platform asks C_AddOns.IsAddOnLoaded for each named addon
--- (docs/reference/api/namespaces.md:162: `C_AddOns.IsAddOnLoaded(name: uiAddon)` -> `loadedOrLoading: bool, loaded: bool`,
--- SecretArguments=AllowedWhenUntainted). A flag is shown on the part's settings page (one line at its top) and, for the parts that are
--- on, in one chat line at login. A flag changes nothing: XayaUI does not switch anything off or step aside for it (C6 is open).
--- Whether the other addon has its own module for that thing switched off is NOT read (it would mean reading its saved data or frames):
--- the flag says only that the addon is loaded. Off costs nothing (V14): a module that is off registers nothing, and with nothing
--- registered no login work is queued.
--------------------------------------------------------------------------------
-local conflicts, conflictsFound, conflictQueued = {}, nil, false
-local function AddonLoaded(name)
-    local A = C_AddOns
-    local fn = A and A.IsAddOnLoaded
-    if type(fn) ~= "function" then return false end
-    local ok, loadedOrLoading, loaded = pcall(fn, name)
-    if not ok then return false end
-    if loaded ~= nil then return loaded and true or false end
-    return loadedOrLoading and true or false
-end
-function ns.DetectConflicts()
-    local found = { byPart = {}, list = {} }
-    for _, c in ipairs(conflicts) do
-        for _, addon in ipairs(c.addons) do
-            if AddonLoaded(addon) then
-                local e = { part = c.part, label = c.label, addon = addon, what = c.what, on = c.on }
-                found.byPart[c.part] = found.byPart[c.part] or {}
-                table.insert(found.byPart[c.part], e)
-                found.list[#found.list + 1] = e
-            end
-        end
-    end
-    conflictsFound = found
-    return found
-end
--- the one line at login: the loaded addons, each with the XayaUI parts (that are on) it overlaps; nil when there is none
-function ns.ConflictLoginLine(found)
-    found = found or conflictsFound
-    if not found then return nil end
-    local order, parts = {}, {}
-    for _, e in ipairs(found.list) do
-        local on = true
-        if type(e.on) == "function" then local ok, v = pcall(e.on); on = ok and v and true or false end
-        if on then
-            if not parts[e.addon] then parts[e.addon] = {}; order[#order + 1] = e.addon end
-            local seen = false
-            for _, l in ipairs(parts[e.addon]) do if l == e.label then seen = true end end
-            if not seen then table.insert(parts[e.addon], e.label) end
-        end
-    end
-    if #order == 0 then return nil end
-    table.sort(order, function(a, b) return a:lower() < b:lower() end)   -- (addons and parts in name order: the same line on every login)
-    local bits = {}
-    for _, addon in ipairs(order) do
-        table.sort(parts[addon])
-        bits[#bits + 1] = addon .. " (" .. table.concat(parts[addon], ", ") .. ")"
-    end
-    return "overlaps with other loaded addons: " .. table.concat(bits, "; ") .. ". Each part's settings page says what both change."
-end
-local function ConflictsAtLogin()
-    local found = ns.DetectConflicts()
-    local line = ns.ConflictLoginLine(found)
-    if line and ns.Print then ns.Print(line) end
-end
-function ns.RegisterConflict(c)
-    if type(c) ~= "table" or type(c.part) ~= "string" or type(c.addons) ~= "table" or type(c.what) ~= "string" then return end
-    local addons = {}
-    for _, a in ipairs(c.addons) do if type(a) == "string" and a ~= "" then addons[#addons + 1] = a end end
-    if #addons == 0 then return end
-    conflicts[#conflicts + 1] = { part = c.part, label = type(c.label) == "string" and c.label or c.part, addons = addons, what = c.what,
-        on = type(c.on) == "function" and c.on or nil }
-    if not conflictQueued then conflictQueued = true; ns.AtLogin(ConflictsAtLogin) end
-end
-function ns.Conflicts() return conflicts end
-function ns.ConflictsFor(part) return conflictsFound and conflictsFound.byPart[part] or nil end
--- the page's line(s), one sentence per loaded addon (in the orange the settings window uses for a note that warns)
-function ns.ConflictPageText(part)
-    local list = ns.ConflictsFor(part)
-    if not list or #list == 0 then return nil end
-    local lines = {}
-    for _, e in ipairs(list) do lines[#lines + 1] = ("Overlaps with %s (loaded): both change %s."):format(e.addon, e.what) end
-    return " |cffff8a3d" .. table.concat(lines, "\n") .. "|r"   -- (the leading space sorts it first among the page's order-0 notes)
-end
+-- 5d. (round 8) The overlap flags (ns.RegisterConflict, the login line and the page line) are removed: only the retired feature
+-- addons registered an overlap, so on main nothing was ever flagged.
 
--- Page layout for every feature tab (Xaya, 2026-11-03; QoL and Chat first, the rule for new features):
---   * a feature is a node in the left pane; its parts are child nodes under it (the feature's group has childGroups = "tree"),
---     and the feature's own node shows its overview (on/off switches, a short note);
---   * inside one part, its sections are tabs.
--- ns.SectionTabs(group) gives a part that shape from a flat list: everything before the first header stays above the tabs, and
--- each header becomes a tab holding the entries up to the next header. The header's desc becomes the tab's first line and its
--- hidden carries over. The group is changed in place and returned; a group without headers is returned unchanged.
-function ns.SectionTabs(group)
-    local args = type(group) == "table" and group.args
-    if type(args) ~= "table" then return group end
-    local function ord(e)
-        local o = e.order
-        if type(o) == "function" then local ok, v = pcall(o); o = ok and v or nil end
-        return tonumber(o) or 100
-    end
-    local heads = {}
-    for k, e in pairs(args) do
-        if type(e) == "table" and e.type == "header" then heads[#heads + 1] = { key = k, e = e, o = ord(e) } end
-    end
-    if #heads == 0 then return group end
-    table.sort(heads, function(a, b) if a.o ~= b.o then return a.o < b.o end return tostring(a.key) < tostring(b.key) end)
-    local tabs = {}
-    for i, h in ipairs(heads) do
-        tabs[i] = { type = "group", name = h.e.name, order = h.o, hidden = h.e.hidden, args = {} }
-        if h.e.desc ~= nil and h.e.desc ~= "" then
-            tabs[i].args.sectionNote = { type = "description", order = h.o - 0.001, width = "full", fontSize = "medium", name = h.e.desc }
-        end
-    end
-    local moves = {}
-    for k, e in pairs(args) do
-        if type(e) == "table" and e.type ~= "header" then
-            local o, at = ord(e), nil
-            for i = #heads, 1, -1 do if heads[i].o <= o then at = i; break end end
-            if at then moves[#moves + 1] = { k = k, at = at } end
-        end
-    end
-    for _, m in ipairs(moves) do
-        local dest = tabs[m.at].args
-        local key = (m.k == "sectionNote") and "sectionNote2" or m.k
-        dest[key] = args[m.k]; args[m.k] = nil
-    end
-    for i, h in ipairs(heads) do
-        args[h.key] = nil
-        args["tab_" .. tostring(h.key)] = tabs[i]
-    end
-    group.childGroups = "tab"
-    return group
-end
-
--- A page's summary with an info icon that opens / closes the page's full description in a box (core 0.6.61; REQUEST-LOG UI-53, her
--- answer: "isolated to an info icon that opens/closes a description box -- try this out for one text-heavy segment and confirm POC
--- before proceeding for all"; first used on Bonus Features > Utilities > Calculator only, until she confirms).
--- ns.InfoBox(group, id, summary, keys): the page shows `summary` (up to two sentences, UI-53) with the icon beside it; the description
--- entries named in `keys` move into a box under it, shown while the icon is toggled open (closed at first; kept for the session).
-ns.infoBoxOpen = ns.infoBoxOpen or {}
-function ns.InfoBox(group, id, summary, keys)
-    local args = type(group) == "table" and group.args
-    if type(args) ~= "table" then return group end
-    local box = { type = "group", inline = true, name = "Description", order = 0.03, args = {},   -- (a titled inline group: AceConfigDialog draws an untitled one with no box)
-        hidden = function() return not ns.infoBoxOpen[id] end }
-    for i, k in ipairs(keys) do
-        local e = args[k]
-        if type(e) == "table" then
-            e.order = i
-            e.arg = type(e.arg) == "table" and e.arg or {}
-            e.arg.xuiKeep = true   -- (not folded into a heading's (i) by the settings window's info pass)
-            box.args[k] = e
-            args[k] = nil
-        end
-    end
-    args.xuiSummary = { type = "description", order = 0.01, width = "relative", relWidth = 0.88, fontSize = "medium", name = summary,
-        arg = { xuiKeep = true } }
-    args.xuiInfoToggle = { type = "execute", order = 0.02, width = "relative", relWidth = 0.1, name = "Description",
-        desc = function() return ns.infoBoxOpen[id] and "Hides this page's full description." or "Shows this page's full description." end,
-        image = "Interface\\common\\help-i", imageWidth = 22, imageHeight = 22, arg = { xuiInfoToggle = true },
-        func = function() ns.infoBoxOpen[id] = not ns.infoBoxOpen[id] or nil; if ns.Fire then ns.Fire("CONFIG_CHANGED") end end }
-    args.xuiInfoBox = box
-    return group
-end
+-- (round 8; REQUEST-LOG A23 SD-69, her tick "Remove dead SectionTabs") ns.SectionTabs is removed: nothing on main used it. (round 8,
+-- V34 audit) ns.InfoBox, the page info icon tried on the retired XayaUI Bonus Features' Calculator page, is removed: nothing on main used it.
 
 -- { [key] = group } for every page of one module (or of all modules when module is nil). A page whose builder errors is skipped.
 function ns.BuildSettingsPages(module, Notify)
@@ -1109,12 +855,6 @@ function ns.BuildSettingsPages(module, Notify)
             local ok, group = pcall(p.build, Notify)
             if ok and type(group) == "table" then
                 out[p.key] = group
-                -- (0.6.79, section 5d) a part with a loaded overlapping addon: one line at the top of its page. Added only then, so
-                -- the window is node for node the same as before when nothing overlaps.
-                local text = ns.ConflictPageText(p.key)
-                if text and type(group.args) == "table" then
-                    group.args.xuiConflict = { type = "description", order = 0, width = "full", fontSize = "medium", name = text }
-                end
             elseif not ok then Report(group) end
         end
     end
@@ -1165,8 +905,9 @@ end
 --             game's AddOns entry and the addon compartment all open through these) and XayaUI_Options/Options.lua (Toggle, OpenPage,
 --             closing at combat start)
 --   unlock    the mover (/xui unlock; Core.lua)
---   auraSetup the Combat Tracking Setup window (XayaUI_Rules/Combat/AuraSetup.lua): it changes combat tracking
---   talents   /xui debug talents (the scan; XayaUI_Rules/TalentDump.lua): it changes saved talent data
+--   auraSetup the Combat Tracking Setup window (XayaUI_Options/AuraSetup.lua since round 7): it changes combat tracking
+--   talents   /xui debug talents alone, the talent scan (held here by XayaUI_Rules/TalentDump.lua; the scan itself is
+--             XayaUI_Options/TalentDump.lua): it changes the game's talent view and the saved talent data
 --   enable    /xui enable (Core.lua): it changes combat tracking, so it runs when combat ends
 -- Exempt (her words: the error / bug report, the console window, read-only /xui commands, "Only things that read or maintain their
 -- exact state", and "The only thing that can be allowed in combat ... is /disable"). A key listed here is never held back.
@@ -1178,6 +919,8 @@ local COMBAT_LOCK_EXEMPT = {
     auras = "/xui auras and /xui debug auras: only list aura IDs (V26: read-only)",
     loader = "/xui debug loader: only says whether the settings window can load (V26: read-only)",
     perf = "/xui debug perf: only times the engine; it changes no rule (V26: read-only)",
+    -- (round 8, SD-67 "Read-only answers anytime") XayaUI_Rules/TalentDump.lua runs these through ns.CombatLock("talentsRead", ...): at
+    -- once, in or out of combat, from the reader kept with the saved scan, without loading XayaUI Options
     talentsRead = "/xui debug talents status and /xui debug talents <name>: only read the last scan (V26: read-only)",
     help = "/xui help and /xui debug: only list the commands (V26: read-only)",
     disable = "/xui disable: every rule off at once; her words: \"The only thing that can be allowed in combat is with respect to the combat engine is /disable\"",
@@ -1324,7 +1067,6 @@ local function RegisterBlizzardPanel()
     btn:SetText("Open XayaUI")
     btn:SetScript("OnClick", function()
         if SettingsPanel and SettingsPanel:IsShown() then
-            if ns.MapTrace then ns.MapTrace("core: HideUIPanel(SettingsPanel)") end
             if HideUIPanel then HideUIPanel(SettingsPanel) else SettingsPanel:Hide() end
         end
         if not ns.IsOptionsOpen() then ns.ToggleUI() end
@@ -1339,18 +1081,15 @@ Call(RegisterBlizzardPanel)
 function XayaUI_OnCompartmentClick() ns.ToggleUI() end
 
 -- /xuiskin: the settings window's flat look on or off (read by XayaUI_Options when the window opens). core 0.6.56 (Xaya 2026-11-06,
--- REQUEST-LOG #81: "move pad and alpha to dev"): "/xuiskin pad N" and "/xuiskin alpha X" are XayaUI Dev Assist's (registered with
--- ns.RegisterSubcommand("xuiskin", ...), XayaUI_DevAssist/CoreDebug.lua); without it they do not exist and the command says what it does.
+-- REQUEST-LOG #81: "move pad and alpha to dev"): "/xuiskin pad N" and "/xuiskin alpha X" were XayaUI Dev Assist's; any word after it
+-- only says what the command does.
 SLASH_XUISKIN1 = "/xuiskin"
 if type(SlashCmdList) == "table" then SlashCmdList["XUISKIN"] = function(msg)
     if not CueRulesDB then return end
     CueRulesDB.ui = CueRulesDB.ui or {}
-    local word, rest = tostring(msg or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
+    local word = tostring(msg or ""):lower():match("^%s*(%S*)")
     if word ~= "" then
-        if not ns.RunSubcommand("xuiskin", word, rest) then
-            print("|cffffd100XayaUI|r /xuiskin switches the settings window's skin on or off (type it without anything after it)."
-                .. ns.SubcommandList("xuiskin", "/xuiskin "))
-        end
+        print("|cffffd100XayaUI|r /xuiskin switches the settings window's skin on or off (type it without anything after it).")
         return
     end
     CueRulesDB.ui.skinOff = (not CueRulesDB.ui.skinOff) or nil
@@ -1360,15 +1099,14 @@ end
 
 -------------------------------------------------------------------------------
 -- 8. Services: a feature that answers questions for others registers an object under a name; the asker gets nil when that feature
--- is switched off. Today: "gameMenuSkin" (XayaUI_Reskin) answers Active() and MatchReal() for the ESC-menu button (GameMenuButton.lua);
--- (UI-77, core 0.6.68: the "buttonSkin" service is gone; the flat button look is core's own, Core.lua ns.PaintFlatButton.)
+-- is switched off. (round 8) The retired addons' services that core read ("gameMenuSkin" for the ESC-menu button, "chatSidebar" for the
+-- minimap button, "gameDataProbe" for the files to send) are no longer read.
 -------------------------------------------------------------------------------
 local services = {}
 function ns.Provide(name, obj) if type(name) == "string" and type(obj) == "table" then services[name] = obj end end
 function ns.Service(name) return services[name] end
--- Is XayaUI Dev Assist (the separate developer addon, folder XayaUI_DevAssist) loaded? It sets ns.devAssistLoaded when its first file
--- runs (core 0.6.56; REQUEST-LOG #81: the developer tools are there, and the Aura ID "via ..." text shows only while it is on).
-function ns.DevAssistOn() return ns.devAssistLoaded == true end
+-- (round 8, V34 audit) ns.DevAssistOn (was XayaUI Dev Assist loaded?) is removed with its one reader, Settings > Debugging's Dev Assist
+-- groups (XayaUI_Options/Options.lua).
 -- (round 7) The /xui dev qa answer ("the QA walkthroughs are part of XayaUI Dev Assist: switch it on ...") was removed: Dev Assist is
 -- retired to qa-installer-branch (REQUEST-LOG A23 SD-2), which keeps its own copy of core, so on main there is nothing to switch on.
 
@@ -1405,34 +1143,8 @@ function ns.Tip.Show(owner, anchor, title, lines)
 end
 function ns.Tip.Hide() if GameTooltip then GameTooltip:Hide() end end
 
--------------------------------------------------------------------------------
--- 9. The world map report: /xui debug map (core 0.6.49; REQUEST-LOG #30, Xaya 2026-11-05: "map eclipses full screen" [the Silvermoon
--- world map full screen], 2026-11-06: it happens "only with XayaUI on"). NOT a fix: the cause was not found offline (debug log of QoL
--- 0.7.24). What decides it in Blizzard's code (12.1.5 source, read 2026-11-06): the map opens maximized (full screen, black around it)
--- when QuestLogOwnerMixin:ShouldBeMinimized() is false: `C_GameRules.IsGameRuleActive(Enum.GameRule.MaximizeWorldMapDisabled) or
--- GetCVarBool("miniWorldMap")` (Blizzard_WorldMap/QuestLogOwnerMixin.lua:194-198); its OnShow maximizes or minimizes to match the CVar
--- (Blizzard_WorldMap.lua:365-372); maximizing calls MaximizeUIPanel and sizes the map from its parent's size (Blizzard_WorldMap.lua:
--- 18-23, 438-455). No XayaUI file sets that CVar or calls a world map function (git grep: SetCVar only for the four volume CVars in
--- Sound.lua). XayaUI's only calls into Blizzard's panel manager are counted here (ns.MapTrace) so the report says which ran since login.
--- API (docs/reference/api): C_CVar.GetCVar(name: cstring) -> value: string? · SecretArguments=NotAllowed (namespaces.md:584);
--- C_GameRules.IsGameRuleActive(gameRule: GameRule) -> isActive: bool · SecretArguments=AllowedWhenUntainted (namespaces.md:1926);
--- Enum.GameRule.MaximizeWorldMapDisabled = 67 (enums.md:5681); GetSize(ignoreRect: bool = false) -> width, height · ConstSecretAccessor,
--- SecretWhenAnchoringSecret; GetEffectiveScale() -> effectiveScale · SecretReturnsForAspect=[Scale]; GetScale(); IsShown() (widgets.md).
--- INFERENCE (Blizzard's Lua, not API documentation): WorldMapFrame:IsMaximized() (Blizzard_WorldMap.lua:117) and GetUIPanel(key)
--- (UIParentPanelManager.lua:918). Every read is pcall'd; a secret or missing answer prints "?". Nothing here runs until typed; the
--- counter is one table write per call it counts.
--------------------------------------------------------------------------------
-local mapTrace, mapOrder = {}, {}
-function ns.MapTrace(name)
-    local t = mapTrace[name]
-    if not t then t = { n = 0 }; mapTrace[name] = t; mapOrder[#mapOrder + 1] = name end
-    t.n = t.n + 1
-    t.last = GetTime and GetTime() or 0
-end
-function ns.MapTraceCounts() return mapTrace end   -- (tests)
-function ns.MapTraceOrder() return mapOrder end
--- (core 0.6.56; REQUEST-LOG #81, Xaya 2026-11-06 "Move all of them": the report itself, /xui debug map, is in XayaUI Dev Assist,
--- XayaUI_DevAssist/CoreDebug.lua; the counter above stays, as XayaUI's own calls are counted whether or not Dev Assist is there)
+-- (round 8, V34 audit) section 9's counter of XayaUI's calls into Blizzard's panel manager (ns.MapTrace) is removed: only XayaUI Dev
+-- Assist's /xui debug map read it.
 
 -------------------------------------------------------------------------------
 -- 9. Profile parts (core 0.6.74; docs/plans/PLATFORM-SPLIT-2026-11-07.md section 6.1, PS-6, Xaya 2026-11-07: "Does sharer / import /

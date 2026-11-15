@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 -- GameMenuButton.lua (was GameMenu.lua; renamed in the platform split, PS-2) : adds a "XayaUI" button to the Game Menu (the ESC menu) that opens the XayaUI settings window.
 -- Written against Blizzard's own GameMenuFrame only (no other addon's code). Settings > UI Options > Display >
--- "Menu button (ESC menu)": show toggle and style. /xui debug gamemenu prints diagnostics.
+-- "Menu button (ESC menu)": show toggle and style.
 --
 -- How it works (rewritten 0.5.41 after "Return to Game" showed Blizzard's red art):
 --   * Blizzard rebuilds the menu from a pool of recycled buttons on every open (GameMenuFrame:InitButtons), and other skins
@@ -12,13 +12,14 @@
 --   * Our own permanent button (a plain Button we create once) is drawn over the slot, sized like the Macros button. All the look is ours.
 --   * If AddButton does not exist, an empty frame with a layoutIndex is the slot instead.
 -- Style (Settings): "gradient" = class-colored gradient fill, solid text; "standard" = the theme's flat button fill, class-colored gradient text.
--- Untested in game as of this build; the diagnostics line says what ran.
+-- Untested in game as of this build.
 -------------------------------------------------------------------------------
 local addonName, ns = ...
 
 local LABEL = "XayaUI"
-local diag = { path = "none", hooked = false, anchor = "none", opens = 0, paints = 0, lastError = nil, sizes = "n/a" }
-ns.GameMenuDiag = diag
+-- (round 8, V34 audit) the diagnostics record XayaUI Dev Assist's /xui debug gamemenu read (ns.GameMenuDiag, ns.GameMenu_DiagState:
+-- the path taken, sizes and counts, rebuilt as text on every menu open) is removed; only whether the hook is placed is kept
+local hooked = false
 
 local function Enabled()
     local ui = CueRulesDB and CueRulesDB.ui
@@ -31,14 +32,12 @@ local function Style()
 end
 
 local function OpenXayaUI()
-    diag.opens = diag.opens + 1
     pcall(PlaySound, SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION or 852)
     -- close the menu first, like Blizzard's own entries; never let a blocked hide stop the window from opening
     if GameMenuFrame and GameMenuFrame:IsShown() then
         if InCombatLockdown() then
             pcall(GameMenuFrame.Hide, GameMenuFrame)
         else
-            if ns.MapTrace then ns.MapTrace("core: HideUIPanel(GameMenuFrame)") end
             pcall(HideUIPanel, GameMenuFrame)
         end
     end
@@ -116,7 +115,6 @@ local function Paint()
         btn.fs:SetTextColor(tx[1], tx[2], tx[3], tx[4] or 1)
         btn.fs:SetText(LABEL)
     end
-    diag.paints = diag.paints + 1
 end
 
 local function CreateButton(menu)
@@ -210,7 +208,6 @@ local function FitHeight(menu, pad)
         local okH, h = pcall(menu.GetHeight, menu)
         if okH and type(h) == "number" then pcall(menu.SetHeight, menu, math.max(1, h + (pad - gap))) end
     end
-    diag.fit = ("bottom gap %.0f, wanted %.0f"):format(gap, pad)
 end
 -- The menu's own bottom padding, measured once: the first time the menu is built with the XayaUI row, before this file adds or fits
 -- anything. A reading above PAD_MAX is not padding (INFERENCE: a menu already stretched by something else) and the fallback is used.
@@ -244,31 +241,25 @@ local function Place(slot, anchor)
     end
     btn:ClearAllPoints(); btn:SetPoint("CENTER", slot, "CENTER", 0, 0)
     btn:SetFrameLevel((slot:GetFrameLevel() or 1) + 5)
-    diag.sizes = ("macros %.0fx%.0f, slot %.0fx%.0f, ours %.0fx%.0f"):format(w or 0, h or 0, slot:GetWidth() or 0, slot:GetHeight() or 0, btn:GetWidth() or 0, btn:GetHeight() or 0)
 end
 
 local function Install(menu)
     -- the pool recycles buttons: a slot we made invisible last time may now be a real menu entry, so put its alpha back
     ResetSlots(menu)
-    -- the skin (GameMenuSkin.lua) in OWN LAYOUT mode draws its own XayaUI row; in MATCH mode it needs the real slot below (it draws on it)
-    local skin = ns.Service("gameMenuSkin")   -- XayaUI_Reskin, when it is on (Modules.lua section 8)
-    local skinOn = skin and skin.Active()
-    local match = skinOn and skin.MatchReal()
-    if (skinOn and not match) or not Enabled() then if btn then btn:Hide() end; if fallbackSlot then fallbackSlot:Hide() end; return end
+    -- (round 8, V34 audit) the retired XayaUI Blizzard Reskin's Esc Menu skin ("gameMenuSkin" service: its own row, or drawing on our
+    -- slot) is no longer asked: this button always draws itself
+    if not Enabled() then if btn then btn:Hide() end; if fallbackSlot then fallbackSlot:Hide() end; return end
     CreateButton(menu)   -- (core 0.6.47: only when the button is drawn; it was made on every open, also with the switch off)
 
     if not naturalPad then
         local g = BottomGap(menu)   -- the bottom padding as the menu was drawn before this file added anything, the first time
         naturalPad = (g and g > 0 and g <= PAD_MAX) and g or PAD_FALLBACK
-        diag.pad = ("natural bottom padding %.0f (read %s)"):format(naturalPad, g and ("%.0f"):format(g) or "nothing")
     end
     local padBefore = naturalPad
-    local anchor, anchorText = FindAnchor(menu)
-    diag.anchor = anchorText or "none (appended)"
+    local anchor = FindAnchor(menu)
     sibling = anchor
     local slot
     if type(menu.AddButton) == "function" then
-        diag.path = "A (AddButton slot)"
         local before = ActiveSet(menu)
         menu:AddButton(LABEL, OpenXayaUI)
         if menu.buttonPool and menu.buttonPool.EnumerateActive then
@@ -282,15 +273,14 @@ local function Install(menu)
             slot:SetAlpha(0)   -- frame alpha only; undone above on the next build
         end
     else
-        diag.path = "B (empty slot frame)"
         fallbackSlot = fallbackSlot or CreateFrame("Frame", nil, menu)
         slot = fallbackSlot
         if anchor then slot.layoutIndex = (anchor.layoutIndex or 0) + 0.5 end
         slot:Show()
     end
-    if not slot then btn:Hide(); diag.lastError = "no slot created"; return end
+    if not slot then btn:Hide(); return end
     if anchor then Place(slot, anchor) else btn:SetPoint("CENTER", slot, "CENTER") end
-    if match then btn:Hide() else btn:Show(); Paint() end   -- in match mode the skin draws the row on the slot
+    btn:Show(); Paint()
     if menu.Layout then menu:Layout() end
     FitHeight(menu, padBefore)
     -- other skins may resize the menu buttons after us: check once more next frame
@@ -303,20 +293,20 @@ local function Install(menu)
 end
 
 local function Hook()
-    if diag.hooked or not GameMenuFrame then return end
+    if hooked or not GameMenuFrame then return end
     local function run(menu)
         -- switched off after it was on: the hook stays (the game cannot take a hook back) and returns at once, after tidying up, once,
         -- what the last build left when the switch went off with the menu open
         if not live then if leftover then pcall(TidyUp, menu) end; return end
         local ok, err = pcall(Install, menu)
-        if not ok then diag.lastError = tostring(err); if ns.CaptureError then ns.CaptureError(err, nil, "XUI-E014") end end
+        if not ok and ns.CaptureError then ns.CaptureError(err, nil, "XUI-E014") end
     end
     if type(GameMenuFrame.InitButtons) == "function" then
         hooksecurefunc(GameMenuFrame, "InitButtons", run)
     else
         GameMenuFrame:HookScript("OnShow", run)   -- very old layout: no InitButtons
     end
-    diag.hooked = true
+    hooked = true
 end
 -- repaint when the theme / class colors change: a listener only while the button is on (Theme.lua OnResolve / OffResolve)
 local function OnTheme() if live and btn and btn:IsShown() then Paint() end end
@@ -333,7 +323,7 @@ end
 local function Enable()
     live = true
     ThemeListen(true)
-    if diag.hooked then return end
+    if hooked then return end
     ns.AtLogin(function() if live then Hook() end end)   -- (Modules.lua: at PLAYER_LOGIN, or at once after it)
 end
 local function Disable()
@@ -345,8 +335,6 @@ local function Disable()
 end
 ns.WhenReady(function() if Enabled() then Enable() end end)
 function ns.GameMenu_Live() return live end   -- (tests)
--- /xui debug gamemenu moved to XayaUI Dev Assist (core 0.6.56; REQUEST-LOG #81, XayaUI_DevAssist/CoreDebug.lua): it reads this
-function ns.GameMenu_DiagState() return diag, Enabled(), Style() end
 
 function ns.GameMenu_Repaint() if btn and btn:IsShown() then Paint() end end
 

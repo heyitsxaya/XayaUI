@@ -17,9 +17,9 @@ local DEFAULTS = {
     closeOnClick = true,     -- the list closes after a choice
     entries = {},            -- [key] = false hides that row; a row with no entry here is shown (features add rows: ns.RegisterLauncher)
     iconOverride = "",       -- "" = the built-in icon. Otherwise a file ID (1390944), an icon name (INV_Misc_Note_01), a texture path, or spell:ID
-    -- where = nil | "MINIMAP" | "SIDEBAR" | "BOTH" (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7): the chat sidebar (XayaUI Chat, Improved
-    -- Chat) can hold this button. Nothing chosen: the sidebar holds it while the minimap button is turned off (her words: "default to
-    -- having sidebar on if minimap is turned off"). Not in DEFAULTS, so nothing is saved until it is chosen.
+    -- (round 8, V34 audit) the "Show it in: Minimap / Chat sidebar / Both" choice (saved as `where`) is gone with the retired XayaUI
+    -- Chat sidebar: on main a saved "SIDEBAR" hid the button with nowhere else to show it. A saved `where` is kept as it is and no
+    -- longer read: the button is on the minimap whenever "Show the minimap button" is on.
 }
 ns.MINIMAP_DEFAULTS = DEFAULTS
 local BASE_SIZE, MIN_SIZE, MAX_SIZE = 31, 16, 48   -- BASE_SIZE is the size the ring art was laid out for
@@ -197,14 +197,6 @@ local function TogglePopup(anchor)
     popup.anchor = anchor
     popup:Show()
 end
--- (core 0.6.68; A16 CR-6 / CR-7) the same list from XayaUI's button in the chat sidebar
-function ns.Minimap_TogglePopupAt(anchor) if DB() and anchor then TogglePopup(anchor) end end
-function ns.Minimap_Where()
-    local db = DB(); if not db then return "MINIMAP" end
-    local w = db.where
-    if w == "MINIMAP" or w == "SIDEBAR" or w == "BOTH" then return w end
-    return db.hide and "SIDEBAR" or "MINIMAP"
-end
 
 local function BuildButton()
     if button then return button end
@@ -259,16 +251,10 @@ end
 
 function ns.Minimap_Refresh()
     local db = DB(); if not db then return end
-    if db.hide or db.where == "SIDEBAR" then if button then button:Hide() end; ClosePopup(); Watch(false); ns.Minimap_SidebarChanged() return end
+    if db.hide then if button then button:Hide() end; ClosePopup(); Watch(false) return end
     BuildButton(); ApplySize(); Place(); ApplyIcon(); button:Show()
     if popup and popup:IsShown() then Rebuild() end
     Watch(true)
-    ns.Minimap_SidebarChanged()
-end
--- the chat sidebar shows or drops XayaUI's button at once (XayaUI Chat provides "chatSidebar" through Modules.lua; nothing without it)
-function ns.Minimap_SidebarChanged()
-    local sv = ns.Service and ns.Service("chatSidebar")
-    if sv and type(sv.Refresh) == "function" then pcall(sv.Refresh) end
 end
 
 -- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to

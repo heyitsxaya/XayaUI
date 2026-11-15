@@ -19,7 +19,8 @@ Two saved-data profiles, each with XayaUI (Platform) and XayaUI Rules loaded and
     TalentDump.lua's layout) and learned aura and cooldown data. What her own files hold is not known here (INFERENCE): each part is
     reported on its own, so her real file can be compared part by part.
 
-Reported (no budget is enforced yet; SD-41: the budget is set from these numbers with her):
+Reported here (round 8: the memory budget itself is enforced in tests/gate_performance_run.py, SD-66, her answer "Today +15%, tighten
+later (Recommended)": Lua memory after a full collection at the end of each gate cycle at most 34,747.6 KB x 1.15 = 39,959.7 KB):
   (a) per file: compiled code (collectgarbage before / after loadstring) and what the file keeps after it ran;
   (b) per file: every table it builds at load (named holders: ns keys, file locals, globals) with its size (estimated by walking the
       tables: 64 B a table, 16 B an array slot, 40 B a hash slot, 37 B + length a string, 40 B + 8 B an upvalue a closure);
@@ -50,7 +51,8 @@ IN_GAME = [("XayaUI Platform 0.6.85", "11 MB"), ("XayaUI Rules 0.7.0", "12 MB"),
 MOVED_FROM_RULES = ("Combat/AuraSetup.lua", "AuraSources.lua", "TextureList.lua")
 MOVED_TO_OPTIONS = ("RuleEditor/", "AuraSetup.lua", "TalentDump.lua", "ElementMenu.lua", "MinimapTab.lua")
 # functions that only the moved code defines: none may exist after login (Options not loaded)
-MOVED_NAMES = ("AuraSetup_Open", "AuraSetup_WithSettings", "ScanAllTalents", "TalentStatus", "TalentDB", "AuraSources", "TextureList",
+# (round 8, SD-67 "Read-only answers anytime": ns.TalentStatus / ns.TalentDB, the saved scan's reader, are XayaUI Rules' again; intended change)
+MOVED_NAMES = ("AuraSetup_Open", "AuraSetup_WithSettings", "ScanAllTalents", "AuraSources", "TextureList",
                "BuildMinimapTab", "ElementWindowShown", "ElementMenu", "ElementRightClick", "DraftsMax", "RuleEditorFiles")
 
 
@@ -1009,7 +1011,8 @@ def main():
         problems.append("the realistic profile has %d rules, expected about 300" % info["rules"])
     for p in problems:
         print("FAIL", p)
-    print("%.0f s. Report only: no memory budget is enforced yet (REQUEST-LOG A23 SD-41: measure first, then set)." % (time.time() - t0))
+    print("%.0f s. Report only here: the memory budget (SD-66: 34,747.6 KB x 1.15 = 39,959.7 KB after a full collection at the end of each "
+          "gate cycle) is enforced by tests/gate_performance_run.py." % (time.time() - t0))
     print("FAILS: %d" % len(problems))
     sys.exit(1 if problems else 0)
 

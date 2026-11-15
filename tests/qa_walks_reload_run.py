@@ -144,8 +144,10 @@ end
 PLAIN = r'''
 return function(W, L)
 ''' + COMMON + r'''
-if ns.OpenSettingsPage and ns.SetReskinTab then ns.OpenSettingsPage("reskin", "reskinOverview") end; W.tick(0.1, 3)
-if ns.SetReskinTab then ns.SetReskinTab(false); ns.SetReskinTab(true) end; W.tick(0.1, 3)
+-- (round 8: core's ns.SetReskinTab, which nothing in the addons called since Options 0.6.90, is removed; the switch is flipped the way
+-- the Overview's tick box does it, ns.SaveReskinTab)
+if ns.OpenSettingsPage and ns.SaveReskinTab then ns.OpenSettingsPage("reskin", "reskinOverview") end; W.tick(0.1, 3)
+if ns.SaveReskinTab then ns.SaveReskinTab(false); ns.SaveReskinTab(true) end; W.tick(0.1, 3)
 if CharacterFrame then CharacterFrame:Show(); W.tick(0.1, 2); CharacterFrame:Hide() end
 if GameMenuFrame then GameMenuFrame:Show(); W.tick(0.1, 2); GameMenuFrame:Hide() end
 return R

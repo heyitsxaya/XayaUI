@@ -14,9 +14,8 @@ What the player gets, on the real addons in the stand-in game (tests/harness):
   L2 /xui debug talents status, the window never opened: it prints her saved scan's summary, the settings window stays closed, and
      XayaUI Rules writes the scan back unchanged at logout (nothing lost).
   L3 /xui debug talents in combat, the window's code never loaded: one line, nothing else (the window's code does not load in combat,
-     V26). /xui debug talents status in combat then: one line, and the summary is printed when combat ends. (Before the move the status
-     answered at once in combat: the one difference the move makes, only until the window's code first loads in a session.) Once the
-     window's code is loaded, status in combat answers at once and the scan has its own combat lock, as before the move.
+     V26). (round 8, SD-67 "Read-only answers anytime") /xui debug talents status and <name> in combat then answer at once from XayaUI
+     Rules' reader of the saved scan, loading nothing; the scan keeps its combat lock and runs when combat ends.
   L4 Combat Tracking Setup (SD-53): not there at login; the very first opening of the settings window opens it on top; closing the
      settings window closes it; the next opening does not open it again.
   L5 Settings > Minimap Button: the page is there in the window with its switches ("Show the minimap button" hides and shows the
@@ -39,8 +38,11 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
 # the functions only the moved code defines (in its new home, XayaUI Options)
+# (bundle 1 round 8, REQUEST-LOG A23 SD-67, her answer "Read-only answers anytime (Recommended)"; intended change) ns.TalentStatus and
+# ns.TalentDB, the reader of the saved scan, are XayaUI Rules' again (XayaUI_Rules/TalentDump.lua, with the saved data), so they are no
+# longer in this list; the scan itself (ScanAllTalents, OptionsApi.TalentScan) stays XayaUI Options'.
 MOVED_NAMES = ["AuraSetup_Open", "AuraSetup_WithSettings", "AuraSetup_SettingsClosed", "AuraSetup_Refresh", "ScanAllTalents",
-               "TalentStatus", "TalentDB", "AuraSources", "TextureList", "BuildMinimapTab", "ElementWindowShown", "ElementsRefresh",
+               "AuraSources", "TextureList", "BuildMinimapTab", "ElementWindowShown", "ElementsRefresh",
                "ElementWindowIsShown", "ElementHandlersAttached", "ElementMenu", "ElementMenuApply", "ElementRightClick",
                "RuleEditorFiles", "DraftsMax", "BuildDraftsPage"]
 MOVED_RULES_FILES = ("Combat/AuraSetup.lua", "AuraSources.lua", "TextureList.lua")
@@ -102,18 +104,20 @@ if mode == "on" then
   check("L2 /xui debug talents status, the window never opened: it prints her saved scan's summary",
     saidAny("Last talent scan 2026-11-06 21:20 (build 120105): 1 classes, 1 nodes."), joined())
   check("L2 ... and the settings window stays closed", not windowOpen())
+  check("[r8] L2 ... and XayaUI Options was not loaded to print it (SD-67: the reader is XayaUI Rules')", not optionsLoaded())
   said = {}
   SlashCmdList.XAYAUI("debug talents battle"); W.tick(0.1, 3)
   check("L2 /xui debug talents <name> finds the talent in her saved scan", saidAny("Warrior [class]: Battle Shout (spell 6673)"), joined())
   check("L2 the saved scan is unchanged", type(XayaUITalentDB) == "table" and XayaUITalentDB.built == "2026-11-06 21:20")
-  -- L3 (the window's code is loaded now, by L2): status in combat answers at once, as before the move
+  check("[r8] L2 ... the name search did not load XayaUI Options either", not optionsLoaded())
+  -- L3 (round 8: the window's code is still not loaded; SD-67) status in combat answers at once
   W.enterCombat(); W.tick(0.05, 2)
   said = {}
   SlashCmdList.XAYAUI("debug talents status"); W.tick(0.05, 2)
-  check("L3 with the window's code loaded, /xui debug talents status in combat answers at once (as before)", saidAny("Last talent scan 2026-11-06"), joined())
+  check("L3 /xui debug talents status in combat answers at once (SD-67)", saidAny("Last talent scan 2026-11-06"), joined())
   said = {}
   SlashCmdList.XAYAUI("debug talents"); W.tick(0.05, 2)
-  check("L3 /xui debug talents (scan) in combat: one line, the scan's own combat lock (as before)",
+  check("L3 /xui debug talents (scan) in combat: one line, the scan's combat lock (V26)",
     #said == 1 and said[1]:find("the talent scan can't run during combat. It will run when combat ends.", 1, true), joined())
   W.leaveCombat(); W.tick(0.1, 30)
   check("L3 ... and when combat ends the scan command runs and says what it did", #said >= 2, joined())
@@ -159,14 +163,17 @@ elseif mode == "combatfirst" then
   check("L3 /xui debug talents in combat, the window's code never loaded: one line",
     #said == 1 and said[1]:find("the talent scan can't run during combat. It will run when combat ends.", 1, true), joined())
   check("L3 ... XayaUI Options is not loaded in combat and the window does not open", not optionsLoaded() and not windowOpen())
+  -- (bundle 1 round 8, SD-67 "Read-only answers anytime"; intended change) status and the name search answer at once in combat, from the
+  -- reader kept with the saved scan, and load nothing. Before: one line, and the status was printed when combat ended. The scan asked
+  -- for above stays queued: the session ends in combat (the logout below), so it never runs and her saved scan must come back unchanged.
   said = {}
   SlashCmdList.XAYAUI("debug talents status"); W.tick(0.05, 2)
-  check("L3 /xui debug talents status in combat, the window's code never loaded: one line",
-    #said == 1 and said[1]:find("the last talent scan can't be read during combat. It will be shown when combat ends.", 1, true), joined())
+  check("[r8] L3 /xui debug talents status in combat, the window's code never loaded: her saved scan's summary at once, one line",
+    #said == 1 and said[1] == "Last talent scan 2026-11-06 21:20 (build 120105): 1 classes, 1 nodes.", joined())
   said = {}
-  W.leaveCombat(); W.tick(0.1, 30)
-  check("L3 when combat ends the status is printed (the last command asked)", saidAny("Last talent scan 2026-11-06 21:20 (build 120105)"), joined())
-  check("L3 ... and the settings window stays closed", not windowOpen())
+  SlashCmdList.XAYAUI("debug talents battle"); W.tick(0.05, 2)
+  check("[r8] L3 /xui debug talents <name> in combat: the talent at once", saidAny("Warrior [class]: Battle Shout (spell 6673)"), joined())
+  check("[r8] L3 ... XayaUI Options is still not loaded and the window does not open", not optionsLoaded() and not windowOpen())
 elseif mode == "rulesoff" then
   -- L7
   pcall(ns.ToggleUI); W.tick(0.1, 6)

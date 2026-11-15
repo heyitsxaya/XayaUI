@@ -22,7 +22,10 @@ function M:UnregisterAllEvents() for _, l in pairs(EVENTS) do for i = #l, 1, -1 
 function FIRE(e, ...) for _, f in ipairs(EVENTS[e] or {}) do local s = f["_s_OnEvent"]; if s then s(f, e, ...) end end end
 TIMERS = {}
 C_Timer.After = function(d, fn) TIMERS[#TIMERS + 1] = fn end
-function RUN_TIMERS() local t = TIMERS; TIMERS = {}; for _, fn in ipairs(t) do fn() end end
+-- (round 8, engine-core repair 1) game time passes before timers run: since round 8 (SD-66) the engine's full settle keeps a pace of
+-- 10 a second, and with a frozen clock its timer found the pace never allowed it and set itself again, a timer left over that the
+-- roster check below counted as a re-plan
+function RUN_TIMERS() NOW = NOW + 0.25; local t = TIMERS; TIMERS = {}; for _, fn in ipairs(t) do fn() end end
 hooksecurefunc = function(t, k, fn) if type(t) == "string" then return end; local old = t[k]; t[k] = function(...) local r = { old(...) }; fn(...); return unpack(r) end end
 COMBAT, INST, ITYPE, GROUPED, RAID, KEY, RESTING, MOUNTED = false, false, "none", false, false, false, false, false
 InCombatLockdown = function() return COMBAT end

@@ -308,6 +308,7 @@ AUR[1002] = nil; W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { 0 } 
 -- E8 only when mounted
 mounted = true; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); W.tick(1 / 60, 2)
 check("[new] E8 'Only when mounted': mounting shows the display on the next frame (before: up to 50 ms later)", shown(MOUNT))
+W.tick(0.1, 1)   -- (round 8, SD-66 "Yes, everything max 10/s": a quiet tenth of a second after the last load-fact change first)
 mounted = false; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); W.tick(1 / 60, 2)
 check("E8 dismounting hides it on the next frame", not shown(MOUNT))
 

@@ -109,8 +109,14 @@ check("list 222 (not worn): does NOT load ('item equipped')",
       lua("local ok, why = loads(R({ mode = 'all', equipped = { ['222'] = true } })); return ok == false and why == 'item equipped'"))
 check("list 111 or 222: one worn is enough", lua("return (loads(R({ mode = 'all', equipped = { ['111'] = true, ['222'] = true } })))"))
 check("111 marked 'not' while worn: does NOT load", lua("return (loads(R({ mode = 'all', equipped = { ['111'] = 'not' } }))) == false"))
-check("an equipment change re-checks the memoized answer (PLAYER_EQUIPMENT_CHANGED changes the context)",
-      lua("local s1 = ctxNow().sig; fire('PLAYER_EQUIPMENT_CHANGED', 13, false); return ctxNow().sig ~= s1"))
+# (round 8, RB-30 finding 3: the gear count is part of the load facts only while a rule or group loads with an "item equipped" list;
+# updated by engine-core repair 1: before, this check fired the gear event with no such rule in the list)
+check("an equipment change re-checks the memoized answer when a rule loads only with an item equipped (PLAYER_EQUIPMENT_CHANGED changes the context)",
+      lua("local keep = NS.rules; NS.rules = { R({ mode = 'all', equipped = { ['111'] = true } }) }; "
+          "local s1 = ctxNow().sig; fire('PLAYER_EQUIPMENT_CHANGED', 13, false); local ok = ctxNow().sig ~= s1; NS.rules = keep; return ok"))
+check("... and with no rule that loads by gear, a gear change leaves the load facts as they were (no every-rule re-check)",
+      lua("local keep = NS.rules; NS.rules = { R({ mode = 'all' }) }; "
+          "local s1 = ctxNow().sig; fire('PLAYER_EQUIPMENT_CHANGED', 13, false); local ok = ctxNow().sig == s1; NS.rules = keep; return ok"))
 check("the game cannot say (IsEquippedItem errors): unknown, does not load",
       lua("local f = C_Item.IsEquippedItem; C_Item.IsEquippedItem = function() error('no') end; local ok, why = loads(R({ mode = 'all', equipped = { ['111'] = true } })); C_Item.IsEquippedItem = f; return ok == false and why == 'item equipped (unknown)'"))
 

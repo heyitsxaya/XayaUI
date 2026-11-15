@@ -4,8 +4,8 @@
 Xaya's answers (REQUEST-LOG A23), her words: SD-58, debug tools: "1 but nothing loads unless "Debugging" is enabled" (one load-on-demand
 debug folder: the console window, the bug and debug report windows, and later the Rules debug pieces); SD-61, the Debugging default: "Off
 by default (Recommended)"; SD-64, a saved "on": "any time a user has debugging on, logging in or reloading should print to the chat pane
-"advanced debugging is on. to turn this off ..."" (completed: "Advanced debugging is on. To turn this off, open /xui > Settings >
-Debugging."); V34: "if the addon or element within an addon is off it should not be read at all ... and should be detected once per
+"advanced debugging is on. to turn this off ..."" (round 8, SD-70 "Short with path (Recommended)": exactly "XayaUI: Advanced Debugging
+is on. Turn it off in /xui > Settings > Debugging."); V34: "if the addon or element within an addon is off it should not be read at all ... and should be detected once per
 reload"; V26: the console window, the bug report and the debug report are exempt from the combat lock.
 
 What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI_Options and XayaUI_Debug, all switched on in the AddOns
@@ -32,7 +32,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
 
-ON_LINE = "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging."
+# (bundle 1 round 8, REQUEST-LOG A23 SD-70, her answer "Short with path (Recommended)"; intended change) the line is exactly this now,
+# after core's "XayaUI: "; it replaces the round 7 INFERENCE "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging."
+ON_LINE = "Advanced Debugging is on. Turn it off in /xui > Settings > Debugging."
 NEEDS = "needs Advanced Debugging: turn it on in /xui > Settings > Debugging, then type /reload."
 
 LUA = r'''
@@ -57,7 +59,7 @@ if phase == "fresh" then
   check("F2 ... no file of XayaUI Debug is read (the game never loads it; F3 is the check that fails on the pre-change files, where this code was core's)", loadedTimes("XayaUI_Debug") == 0 and L.loaded.XayaUI_Debug == nil)
   check("[new] F3 ... none of its code exists (console window, bug report, debug report, typed-command runner)",
     ns.BuildBugReport == nil and ns.DebugReportData == nil and ns.ConsoleRun == nil and ns.DebugReportText == nil)
-  check("F4 no 'Advanced debugging is on' line at the login", count(atLogin, "Advanced debugging is on") == 0, table.concat(atLogin, " / "))
+  check("F4 no 'Advanced Debugging is on' line at the login (either wording)", count(atLogin, "Advanced Debugging is on") + count(atLogin, "Advanced debugging is on") == 0, table.concat(atLogin, " / "))
   local function one(cmd, label)
     local n = #W.printed
     SlashCmdList.XAYAUI(cmd)
@@ -210,7 +212,7 @@ elseif phase == "reload" then
   check("R2 ... and XayaUI Debug is read again, once", loadedTimes("XayaUI_Debug") == 1)
   CueRulesDB.ui.advancedDebug = false; ns.DebugSettingsChanged()
 elseif phase == "off" then
-  check("R3 turned off, then /reload: no line", count(atLogin, "Advanced debugging is on") == 0, table.concat(atLogin, " / "))
+  check("R3 turned off, then /reload: no line (either wording)", count(atLogin, "Advanced Debugging is on") + count(atLogin, "Advanced debugging is on") == 0, table.concat(atLogin, " / "))
   check("[new] R4 ... and nothing of the debug tools is read (XayaUI Debug not loaded; no console window or report code exists)",
     loadedTimes("XayaUI_Debug") == 0 and ns.BuildBugReport == nil and ns.ConsoleRun == nil and ns.DebugReportData == nil)
 end

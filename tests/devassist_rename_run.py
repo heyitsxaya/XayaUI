@@ -2,8 +2,8 @@
 (Xaya, 2026-11-04: "Is it possible to rename the 'game dump' module into 'dev assist'?").
 
 XayaUI Dev Assist itself is not on this branch (it lives on another branch). What is checked here is the kept code's side of the rename:
-  - XayaUI finds the addon only through its service ("gameDataProbe"), never by its global: Settings opens it through the service,
-    and core names neither the old nor the new folder in its code;
+  - XayaUI never finds the addon by its global; (round 8) Settings no longer opens it (its "gameDataProbe" groups are removed), and
+    core names neither the old nor the new folder in its code;
   - the old XayaUI_GameDump folder is gone;
   - docs/reference/build_reference.py reads a capture saved under either name (XayaUIDevAssistDB, or XayaUIGameDumpDB from before the rename);
   - no other file still points at the old folder, except the places that must (the reference builder's fallback, this test).
@@ -17,7 +17,10 @@ def check(name, ok, extra=""):
 
 # 1. XayaUI finds Dev Assist (on another branch) only through its service: Settings uses it, core never names the addon
 opts = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
-check("Settings opens it through the service, not through the old global", "_G.XayaUIGameDump" not in opts and "svc.Open()" in opts and 'name = "Open Dev Assist"' in opts)
+# (bundle 1 round 8, V34 audit; intended change) Settings > Debugging's "Dev Assist (separate tool)" group, which opened it through the
+# service, is removed with the other code that served only the retired addon: Settings names it neither way now
+check("Settings no longer opens Dev Assist at all, and never through the old global", "_G.XayaUIGameDump" not in opts
+      and 'name = "Open Dev Assist"' not in opts and 'ns.Service("gameDataProbe")' not in opts)
 core = "".join(open(os.path.join(ROOT, "XayaUI", f), encoding="utf-8").read() for f in os.listdir(os.path.join(ROOT, "XayaUI")) if f.endswith(".lua"))
 # (core 0.6.56: comments may say where a moved command went, XayaUI_DevAssist/CoreDebug.lua, and the error-code table maps an error
 # raised in that folder to XUI-E007; neither calls the addon. Comments and that one data line are left out of this check.)

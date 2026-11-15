@@ -18,7 +18,8 @@
 -- (namespaces.md:135); Enum.AddOnProfilerMetric.RecentAverageTime = 1 (enums.md:464); PLAYER_REGEN_ENABLED (events.md:1207,
 -- SynchronousEvent). INFERENCE (not documented, carried from the removed guard, UNVERIFIED IN GAME): the containers' work is counted under
 -- the name "Blizzard_AuraContainer" (Blizzard's target-frame auras use the same code, so the figure is not XayaUI's alone), the unit is
--- milliseconds per frame, and "recent" covers the last moments of the fight. A missing or failed read is said as such, never guessed.
+-- milliseconds per frame, and "recent" covers the last moments of the fight. A missing or failed read is said as such, never guessed
+-- (round 8: a missing XayaUI Rules figure says "XayaUI Rules unavailable"; before, it was silently left out of the line).
 -- The clock time in the line comes from date (the Lua library's, which the game keeps as a global; not a game API, so not in the
 -- reference; guarded: "?" without it).
 -- No threshold: the line gives the figures only and never calls a reading slow or fine (round 7 repair: the removed guard's 1.0 ms limit
@@ -56,11 +57,13 @@ local function EngineLine()
     if not reading then
         return "combat engine reading (read only, nothing acts on it): none yet. It is read at the end of each fight."
     end
+    -- (round 8: a missing XayaUI Rules figure is said as "unavailable", never left out; the same in both lines below)
+    local rules = reading.rules and (", XayaUI Rules %.2f ms"):format(reading.rules) or ", XayaUI Rules unavailable"
     if not reading.blizz then
-        return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s) the game's meter gave no figure for Blizzard's aura containers."):format(reading.at)
+        return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s) the game's meter gave no figure for Blizzard's aura containers (unavailable)%s."):format(reading.at, rules)
     end
     return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s), Blizzard's aura containers %.2f ms per frame, recent average (this includes Blizzard's own target-frame auras)%s."):format(
-        reading.at, reading.blizz, reading.rules and (", XayaUI Rules %.2f ms"):format(reading.rules) or "")
+        reading.at, reading.blizz, rules)
 end
 ns.DebugEngineLine = EngineLine   -- (tests)
 

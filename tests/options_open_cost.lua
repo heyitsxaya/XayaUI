@@ -117,9 +117,15 @@ check("combat start with the window open: it closes (V26) and nothing is built d
 W.combat = false; W.fire("PLAYER_REGEN_ENABLED"); frames(180)
 check("combat end: the window opens again with ONE build (V26; Options 0.6.65 built once more with the window left open): " .. builds, builds == 1 and shown())
 -- a lasting change out of combat still moves a rule
+-- (round 8, engine-core repair 1) moved by a load fact the game reports (mounting), as in play. Before, the rule's load was rewritten
+-- in place with no announcement and found by the engine's once-a-second re-run of every load check, which round 8 removed (RB-30
+-- finding 1: load checks are re-run when a load fact or a setting changes); every settings edit announces itself (ns.MarkDirty)
+local mountedNow = false
+IsMounted = function() return mountedNow end
+ns.rules[2].load = { mode = "all", mounted = "no" }; ns.MarkDirty(); frames(120)
 builds = 0
-ns.rules[2].load = { mode = "never" }; if ns.MarkStateDirty then ns.MarkStateDirty() end; frames(120)
-check("a rule that stops loading out of combat: the lists are redrawn (one build)", builds >= 1)
+mountedNow = true; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); frames(120)
+check("a rule that stops loading out of combat (you mount; it loads only when not mounted): the lists are redrawn (one build)", builds >= 1)
 ns.ToggleUI(); frames(5)
 check("closed", not shown())
 local after = live()

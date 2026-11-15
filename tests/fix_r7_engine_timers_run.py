@@ -17,8 +17,8 @@ changed at a moment the game hides. Each case now follows what the game drives i
   4. A row type the engine does not route: it answers the same every time, so it is not re-checked on a timer (before: five times a
      second for as long as the rule was loaded). Every row type Triggers.lua knows has a route in the engine.
   5. Once the events stop, no engine timer is armed while a hidden cooldown runs and a hidden aura time is shown; the only rules the
-     engine still re-checks on a timer are those with a Range Check row on a focus / mouseover / pet (no game event exists for those:
-     round 7 report, NEEDS_HER_DECISION).
+     engine still re-checks on a timer are those with a Range Check row on a focus / mouseover / pet (no game event exists for those),
+     and (round 8, SD-68 "option two with gating") only while that unit exists.
 Stand-in game: the whole-addon harness (tests/harness), with the Cooldown widget, duration objects, the duration text binding and the
 number formatter stubbed here by their documented contracts (docs/reference/api: widgets.md:1013, namespaces.md:1640 / 4401 / 4546).
 That OnCooldownDone runs at alpha 0 in combat, and the binding's in-game drawing, are UNVERIFIED IN GAME.
@@ -330,10 +330,18 @@ RF.extra = { mode = "all", list = { { type = "rangeCheck", spellID = 6001, unit 
 display(RF, false); RF.visual.trigger = "condition"
 ns.NormalizeRule(RF); ns.rules[#ns.rules + 1] = RF
 ns.MarkDirty(); W.tick(1 / 60, 4)
+-- (round 8, SD-68, her answer "option two with gating": the focus range re-check runs only while a focus exists)
 local r0, others0 = evN(RF), evN(CDR) + evN(TX) + evN(UK)
 W.tick(1 / 60, 60)
-check("5. the only rule still re-checked on a timer is the Range Check on a focus (no game event for its range: her decision)",
+check("5. (round 8, SD-68) with no focus, the Range Check on a focus is not re-checked on a timer either", evN(RF) - r0 == 0, evN(RF) - r0)
+local UE5 = UnitExists
+UnitExists = function(u) if u == "focus" then return true end return UE5(u) end
+W.fire("PLAYER_FOCUS_CHANGED"); W.tick(1 / 60, 4)
+r0, others0 = evN(RF), evN(CDR) + evN(TX) + evN(UK)
+W.tick(1 / 60, 60)
+check("5. the only rule still re-checked on a timer is the Range Check on a focus, while a focus exists (no game event for its range: her decision)",
   evN(RF) - r0 >= 4 and evN(CDR) + evN(TX) + evN(UK) - others0 == 0, (evN(RF) - r0) .. " / " .. (evN(CDR) + evN(TX) + evN(UK) - others0))
+UnitExists = UE5
 ns.SetRulesDisabled(true); W.tick(1 / 60, 3)
 local cleared = true
 for _, w in ipairs(engineWidgets) do if w._endAt then cleared = false end end

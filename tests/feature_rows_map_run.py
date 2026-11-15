@@ -7,11 +7,9 @@ own part of it (XayaUI/Core.lua, CORE_DEBUG):
   - plain /xui debug lists the diagnostic commands and runs none of them; core's loader report is among them, and the map report is
     not (its help line is XayaUI Dev Assist's: "without it they and their help lines do not exist");
   - /xui debug loader is core's loader report, without the map report;
-  - core's panel-layout counter (XayaUI/Modules.lua section 9, ns.MapTrace / ns.MapTraceCounts, kept on this branch: "XayaUI's own
-    calls are counted whether or not Dev Assist is there") counts core's own two calls into Blizzard's panel manager, through their real
-    call sites: the "Open XayaUI" button on the game's Options > AddOns page (Modules.lua, HideUIPanel(SettingsPanel)) and the XayaUI
-    button in the Game Menu (GameMenuButton.lua, HideUIPanel(GameMenuFrame)); each only when it really calls it, and nothing else.
-    (This replaces the old check through the Character Reskin's calls, which is not on this branch.)
+  - (round 8) core's panel-layout counter (ns.MapTrace) served only Dev Assist's map report and is removed; its two call sites, the
+    "Open XayaUI" button on the game's Options > AddOns page and the XayaUI button in the Game Menu, still close the game's window and
+    open the settings window (in combat the settings window waits, V26).
 It loads the real addons XayaUI and XayaUI_Options in the whole-addon stand-in (tests/harness).
 Run: python3 tests/feature_rows_map_run.py   (Lua 5.1 via lupa)."""
 import os, sys
@@ -46,16 +44,17 @@ do
   local t = run("debug loader")
   check("#30 ...core's own loader report is /xui debug loader, without the map report", t:find("debug: ToggleUI=", 1, true) ~= nil and not t:find("map:", 1, true), t)
 end
--- #30 the counter of XayaUI's calls into Blizzard's panel layout (Modules.lua section 9), through core's own two call sites
+-- #30 (bundle 1 round 8, V34 audit; intended change) the counter of XayaUI's calls into Blizzard's panel layout (Modules.lua section 9,
+-- ns.MapTrace) served only XayaUI Dev Assist's /xui debug map and is removed. Core's two call sites still do what they did: they close
+-- the game's own window first and open XayaUI's settings window.
 do
-  local SP, GM = "core: HideUIPanel(SettingsPanel)", "core: HideUIPanel(GameMenuFrame)"
-  local function counts() return ns.MapTraceCounts and ns.MapTraceCounts() or {} end
-  local function n(key) local c = counts()[key]; return c and c.n or 0 end
-  local function keys() local l = {}; for k, v in pairs(counts()) do l[#l + 1] = k .. " x" .. tostring(v.n) end; table.sort(l); return table.concat(l, "; ") end
-  check("#30 the counter is core's (ns.MapTrace, ns.MapTraceCounts, ns.MapTraceOrder) and counted nothing through login and the /xui debug commands above",
-    type(ns.MapTrace) == "function" and type(ns.MapTraceCounts) == "function" and type(ns.MapTraceOrder) == "function"
-    and next(counts()) == nil and #ns.MapTraceOrder() == 0, keys())
-  -- the "Open XayaUI" button on core's Options > AddOns page
+  check("#30 the counter is gone from core (ns.MapTrace, ns.MapTraceCounts, ns.MapTraceOrder)",
+    ns.MapTrace == nil and ns.MapTraceCounts == nil and ns.MapTraceOrder == nil)
+  -- the game's panel manager, watched here (the stand-in's HideUIPanel does nothing of its own)
+  local hid = {}
+  local rawHide = HideUIPanel
+  HideUIPanel = function(f) hid[#hid + 1] = (f == SettingsPanel and "SettingsPanel") or (f == GameMenuFrame and "GameMenuFrame") or tostring(f); return rawHide(f) end
+  local function hidList() return table.concat(hid, ",") end
   local open
   for _, o in ipairs(W.objects) do
     if addonsPanel and o:GetParent() == addonsPanel and o.GetText and o:GetText() == "Open XayaUI" then open = o end
@@ -65,33 +64,30 @@ do
   if open then
     SettingsPanel:Hide(); closeWindow()
     open:Click(); W.tick(0.05, 2)
-    check("#30 \"Open XayaUI\" with the game's settings window closed: no HideUIPanel call, nothing counted (the window opens)",
-      next(counts()) == nil and ns.IsOptionsOpen(), keys())
+    check("#30 \"Open XayaUI\" with the game's settings window closed: no HideUIPanel call, the settings window opens", #hid == 0 and ns.IsOptionsOpen(), hidList())
     SettingsPanel:Show(); closeWindow()
     open:Click(); W.tick(0.05, 2)
-    check("#30 \"Open XayaUI\" with the game's settings window shown: core's HideUIPanel(SettingsPanel) is counted once, and only it",
-      n(SP) == 1 and keys() == SP .. " x1" and counts()[SP].last ~= nil, keys())
+    check("#30 \"Open XayaUI\" with the game's settings window shown: HideUIPanel(SettingsPanel) once, and XayaUI's window opens",
+      hidList() == "SettingsPanel" and ns.IsOptionsOpen(), hidList())
     SettingsPanel:Hide()
   end
-  -- the XayaUI button in the Game Menu (switched on by default; the menu's build makes it)
   GameMenuFrame:Show(); GameMenuFrame:InitButtons(); W.tick(0.05, 2)
   local gmb = rawget(_G, "XayaUI_GameMenuButton")
   check("(sanity) the Game Menu's XayaUI button exists", gmb ~= nil)
   if gmb then
     GameMenuFrame:Hide(); closeWindow()
     gmb:Click(); W.tick(0.05, 2)
-    check("#30 the Game Menu's XayaUI button with the menu closed: nothing more counted", n(GM) == 0 and keys() == SP .. " x1", keys())
+    check("#30 the Game Menu's XayaUI button with the menu closed: no HideUIPanel call", hidList() == "SettingsPanel", hidList())
     closeWindow(); GameMenuFrame:Show(); W.enterCombat()
     gmb:Click(); W.tick(0.05, 2)
-    check("#30 ...in combat (the menu is hidden with :Hide, not HideUIPanel): nothing more counted", n(GM) == 0 and keys() == SP .. " x1", keys())
-    W.leaveCombat(); closeWindow(); GameMenuFrame:Show()
+    check("#30 the Game Menu's XayaUI button in combat: the menu closes with :Hide (no HideUIPanel) and the settings window waits (V26)",
+      not GameMenuFrame:IsShown() and hidList() == "SettingsPanel" and not ns.IsOptionsOpen(), hidList())
+    W.leaveCombat(); W.tick(0.05, 2); closeWindow(); GameMenuFrame:Show()
     gmb:Click(); W.tick(0.05, 2)
-    check("#30 ...out of combat with the menu shown: core's HideUIPanel(GameMenuFrame) is counted once",
-      n(GM) == 1 and counts()[GM].last ~= nil, keys())
+    check("#30 ...out of combat with the menu shown: HideUIPanel(GameMenuFrame) once, and the settings window opens",
+      hidList() == "SettingsPanel,GameMenuFrame" and ns.IsOptionsOpen(), hidList())
   end
-  local order = ns.MapTraceOrder and ns.MapTraceOrder() or {}
-  check("#30 ...and the counter holds exactly core's two calls, once each, in the order they ran (nothing else counted)",
-    keys() == GM .. " x1; " .. SP .. " x1" and #order == 2 and order[1] == SP and order[2] == GM, keys() .. " | " .. table.concat(order, ", "))
+  HideUIPanel = rawHide
 end
 return R
 end

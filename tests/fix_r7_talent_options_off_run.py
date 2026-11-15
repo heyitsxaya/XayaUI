@@ -7,12 +7,14 @@ XayaUI_Rules/TalentDump.lua only loads it. With XayaUI Options switched off, the
 Options at all is Xaya's decision (relocate repair report, NEEDS_HER_DECISION); this test covers only that it is never silent and says
 what it needs.
 What the player gets, on the real addons in the stand-in game (tests/harness), her saved talent scan present:
-  T1 XayaUI Options switched off: "/xui debug talents status" twice, "/xui debug talents battle" and "/xui debug talents": each prints
-     exactly one line, and it names the command and says XayaUI Options is switched off and how to turn it on.
-  T2 ... in combat: "/xui debug talents status" prints that same line at once (not "will be shown when combat ends", which could never
-     happen while XayaUI Options is off), and nothing more when combat ends.
+  T1 XayaUI Options switched off: (round 8, SD-67 "Read-only answers anytime") "/xui debug talents status" twice and "/xui debug talents
+     battle" answer from her saved scan; "/xui debug talents" (the scan) prints exactly one line, naming the command and saying XayaUI
+     Options is switched off and how to turn it on.
+  T2 ... in combat: status answers at once from her saved scan; the scan prints the switched-off line at once (not "will run when combat
+     ends", which could never happen while XayaUI Options is off), and nothing more when combat ends.
   T3 ... her saved scan (XayaUITalentDB) is unchanged, no Lua error, the settings window's code did not load.
-  T4 XayaUI Options not installed: one line naming the command and saying where the XayaUI_Options folder belongs, on every use.
+  T4 XayaUI Options not installed: status answers from her saved scan; the scan prints one line naming the command and saying where the
+     XayaUI_Options folder belongs, on every use.
   C  control, XayaUI Options on: "/xui debug talents status" prints her saved scan's summary (the path is unchanged).
 Fails on the files before this repair (proved on a copy of the working tree before the repair, r7copy-relocate-repair: the second status,
 the search and the scan print nothing, and the first prints core's line, which does not name the command). UNVERIFIED IN GAME.
@@ -47,24 +49,37 @@ if mode == "on" then
   local got = run("debug talents status")
   check("C control, XayaUI Options on: status prints her saved scan's summary", got:find("Last talent scan 2026-11-06 21:20 (build 120105): 1 classes, 1 nodes.", 1, true) ~= nil, got)
 elseif mode == "optoff" then
-  local cmds = { "debug talents status", "debug talents status", "debug talents battle", "debug talents" }
-  for i, c in ipairs(cmds) do
-    local got = run(c)
-    check(("T1 Options off, use %d '/xui %s': exactly one line, naming the command and saying XayaUI Options is switched off"):format(i, c), one(OFF), got)
+  -- (bundle 1 round 8, REQUEST-LOG A23 SD-67, her answer "Read-only answers anytime (Recommended)"; intended change) status and the name
+  -- search read the saved scan in XayaUI Rules, so they answer with XayaUI Options switched off too; only the scan needs XayaUI Options
+  local SUMMARY = "Last talent scan 2026-11-06 21:20 (build 120105): 1 classes, 1 nodes."
+  for i = 1, 2 do
+    local got = run("debug talents status")
+    check(("[r8] T1 Options off, use %d '/xui debug talents status': her saved scan's summary, one line"):format(i), one(SUMMARY), got)
   end
+  local got = run("debug talents battle")
+  check("[r8] T1 Options off, '/xui debug talents battle': the talent from her saved scan", #said == 1 and said[1]:find("Warrior [class]: Battle Shout (spell 6673)", 1, true) == 1, got)
+  got = run("debug talents")
+  check("T1 Options off, '/xui debug talents' (the scan): exactly one line, naming the command and saying XayaUI Options is switched off", one(OFF), got)
   W.tick(0.1, 30)
   check("T1 ... and nothing more is printed afterwards", #said == 1, table.concat(said, " / "))
   W.enterCombat(); W.tick(0.05, 2)
-  local got = run("debug talents status")
-  check("T2 in combat, Options off: status prints that same line at once", one(OFF), got)
+  got = run("debug talents status")
+  check("[r8] T2 in combat, Options off: status prints her saved scan's summary at once", one(SUMMARY), got)
+  got = run("debug talents")
+  check("T2 in combat, Options off: the scan prints the switched-off line at once (it could never run after combat)", one(OFF), got)
   W.leaveCombat(); W.tick(0.1, 20)
   check("T2 ... and nothing more when combat ends", #said == 1, table.concat(said, " / "))
   check("T3 her saved scan is unchanged", type(XayaUITalentDB) == "table" and XayaUITalentDB.built == "2026-11-06 21:20" and XayaUITalentDB.classes[1].name == "Warrior")
   check("T3 the settings window's code did not load", not C_AddOns.IsAddOnLoaded("XayaUI_Options"))
 elseif mode == "optmissing" then
-  for i, c in ipairs({ "debug talents status", "debug talents status", "debug talents" }) do
-    local got = run(c)
-    check(("T4 Options not installed, use %d '/xui %s': exactly one line, saying where the XayaUI_Options folder belongs"):format(i, c), one(MISSING), got)
+  for i = 1, 2 do
+    local got = run("debug talents status")
+    check(("[r8] T4 Options not installed, use %d '/xui debug talents status': her saved scan's summary (SD-67)"):format(i),
+      one("Last talent scan 2026-11-06 21:20 (build 120105): 1 classes, 1 nodes."), got)
+  end
+  for i = 1, 2 do
+    local got = run("debug talents")
+    check(("T4 Options not installed, use %d '/xui debug talents' (the scan): exactly one line, saying where the XayaUI_Options folder belongs"):format(i), one(MISSING), got)
   end
 end
 check("no Lua error (" .. mode .. ")", #W.errors == 0, W.errors[1])

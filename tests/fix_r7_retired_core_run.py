@@ -60,7 +60,8 @@ check("O ... and XayaUI records none of them", #(CueRulesDB.errorLog or {}) == 0
 -- E
 local DR = ns.DebugRecordInfo
 local devHook = 0
-ns.SetDebugHooks({ DevRecordChanged = function() devHook = devHook + 1 end })
+-- (round 8: core's hand-in ns.SetDebugHooks is removed too; a hook is put straight on the namespace, as Dev Assist's copy would)
+ns.DevRecordChanged = function() devHook = devHook + 1 end
 DR.extraEvents = function() return { UNIT_AURA = true, PLAYER_TARGET_CHANGED = true } end
 DR.extraHandlers = { UNIT_AURA = function() end }
 CueRulesDB.ui.advancedDebug = true; ns.DebugSettingsChanged()
@@ -69,7 +70,8 @@ for e in pairs(ev) do list[#list + 1] = e end
 table.sort(list)
 check("[new] E Advanced Debugging on: the record listens to the two 'action blocked' events only, nothing a retired addon hands in",
   #list == 2 and ev.ADDON_ACTION_BLOCKED and ev.ADDON_ACTION_FORBIDDEN, table.concat(list, ","))
-check("[new] E ... and Settings > Debugging's change calls no Dev Assist hook", devHook == 0 and ns.DevRecordChanged == nil, devHook)
+check("[new] E ... and Settings > Debugging's change calls no Dev Assist hook", devHook == 0, devHook)
+ns.DevRecordChanged = nil
 CueRulesDB.ui.advancedDebug = nil; ns.DebugSettingsChanged()
 DR.extraEvents, DR.extraHandlers = nil, nil
 

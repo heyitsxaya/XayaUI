@@ -194,14 +194,10 @@ end
 function ns.SavedFilePath(fileName)
     return ("World of Warcraft\\%s\\WTF\\Account\\<YOUR ACCOUNT FOLDER>\\SavedVariables\\%s"):format(DR.GameFolder(), tostring(fileName))
 end
--- Every file to send: XayaUI's own, plus the developer addon's when it is installed (it says its file name through its service).
+-- Every file to send. (round 8, V34 audit) Only XayaUI's own: the developer addon's file (its "gameDataProbe" service) was XayaUI Dev
+-- Assist's, which is on qa-installer-branch.
 function DR.Files()
-    local files = { { file = "XayaUI.lua", what = "your rules and settings, and XayaUI's saved errors and warnings" } }
-    local svc = ns.Service and ns.Service("gameDataProbe")
-    if svc and type(svc.savedFile) == "string" and svc.savedFile ~= "" then
-        files[#files + 1] = { file = svc.savedFile, what = svc.savedWhat or "the developer captures (probe, data pulls)" }
-    end
-    return files
+    return { { file = "XayaUI.lua", what = "your rules and settings, and XayaUI's saved errors and warnings" } }
 end
 function ns.SendText()
     local t = {}
@@ -330,8 +326,9 @@ end
 -- V24 / V25 cost: one setting read at the login; with Advanced Debugging off nothing else, ever.
 -------------------------------------------------------------------------------
 DR.TOOLS_ADDON = "XayaUI_Debug"
--- her line (SD-64), with the ending she left open completed (INFERENCE, REQUEST-LOG SD-64)
-DR.ON_LINE = "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging."
+-- her line, exactly (REQUEST-LOG A23 SD-70, her answer "Short with path (Recommended)"); ns.Print puts "XayaUI: " before it, so the chat
+-- shows "XayaUI: Advanced Debugging is on. Turn it off in /xui > Settings > Debugging."
+DR.ON_LINE = "Advanced Debugging is on. Turn it off in /xui > Settings > Debugging."
 -- (XayaUI_Debug/Tools.lua, its first file) the debug tools are here: core's debug words run them from now on
 function ns.DebugToolsArrived() toolsLoaded = true end
 function ns.DebugToolsLoaded() return toolsLoaded end

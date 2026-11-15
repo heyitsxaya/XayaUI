@@ -10,13 +10,16 @@ local _, ns = ...; ns = XayaUI_NS or ns -- one namespace with XayaUI core (XayaU
 -- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "Move all four (Recommended)"; V34) Part of XayaUI Options since round 7 (it was
 -- XayaUI_Rules/TalentDump.lua, read at login with Rules): the game reads it only when the settings window's code loads. The scan it
 -- saves stays XayaUI Rules' saved variable XayaUITalentDB (## SavedVariables in XayaUI_Rules.toc, unchanged), so no saved scan is lost.
--- /xui debug talents still starts in XayaUI Rules (XayaUI_Rules/TalentDump.lua ns.TalentCommand): it loads this addon without opening
--- the window and runs ns.OptionsApi.TalentCommand below. With XayaUI Rules switched off it stops on the next line and builds nothing.
+-- /xui debug talents still starts in XayaUI Rules (XayaUI_Rules/TalentDump.lua ns.TalentCommand): for the scan it loads this addon
+-- without opening the window and runs ns.OptionsApi.TalentScan below. (bundle 1 round 8, REQUEST-LOG A23 SD-67, her answer "Read-only
+-- answers anytime (Recommended)") The reader of the saved scan ("/xui debug talents status" and "<name>", ns.TalentDB, ns.TalentStatus)
+-- is XayaUI Rules' again, kept with the saved data: they answer at once, in or out of combat, and never load this addon. Only the scan is
+-- here, and only the scan is locked in combat (V26). With XayaUI Rules switched off this file stops on the next line and builds nothing.
 if not (ns.OptionsApi and ns.Service and ns.Service("rules")) then return end   -- (and nothing while the window's code could not load: Options.lua)
 local MAX_LEVEL = 100          -- the library notes too-low values break the view; too-high is fine
 local scanning
 
-function ns.TalentDB() return XayaUITalentDB end
+-- (round 8) ns.TalentDB is XayaUI Rules' (XayaUI_Rules/TalentDump.lua), with the saved scan
 
 local function ScanClass(classID, configID)
     local className, classFile = GetClassInfo(classID)
@@ -134,39 +137,11 @@ function ns.ScanAllTalents(done)
     return true, "Scanning all classes (about a second)..."
 end
 
-function ns.TalentStatus()
-    local db = XayaUITalentDB
-    if not (db and db.classes) then return "No talent scan saved yet." end
-    local nC, nN = 0, 0
-    for _, c in pairs(db.classes) do nC = nC + 1; for _ in pairs(c.nodes) do nN = nN + 1 end end
-    return ("Last talent scan %s (build %s): %d classes, %d nodes."):format(db.built or "?", tostring(db.build), nC, nN)
-end
+-- (round 8) ns.TalentStatus and the name search are XayaUI Rules' (XayaUI_Rules/TalentDump.lua): read-only, they answer anytime (SD-67).
 
--- /xui debug talents            scan everything, /xui debug talents status   last scan, /xui debug talents <text>   find talents by name in the last scan
-function ns.OptionsApi.TalentCommand(arg)
-    arg = (arg or ""):match("^%s*(.-)%s*$")
-    if arg == "" then
-        -- (V26: "Lock it") the scan changes state: in combat one line, and it runs when combat ends (Modules.lua ns.CombatLock).
-        -- status and <name> only read the last scan: exempt
-        local function Scan() local _, msg = ns.ScanAllTalents(); ns.Print(msg) end
-        if ns.CombatLock then ns.CombatLock("talents", Scan, "the talent scan can't run during combat. It will run when combat ends.") else Scan() end
-    elseif arg == "status" then ns.Print(ns.TalentStatus())
-    else
-        local db, hits = XayaUITalentDB, 0
-        if not (db and db.classes) then ns.Print("No talent scan saved yet - run /xui debug talents first."); return end
-        for _, c in pairs(db.classes) do
-            for _, n in pairs(c.nodes) do
-                for _, e in ipairs(n.e) do
-                    if e.name and e.name:lower():find(arg, 1, true) and hits < 25 then
-                        hits = hits + 1
-                        local sp = {}
-                        for sid in pairs(n.specs) do sp[#sp + 1] = c.specs[sid] or sid end
-                        table.sort(sp)
-                        ns.Print(("%s [%s]: %s (spell %s)%s%s - %s"):format(c.name, n.scope or "?", e.name, tostring(e.spell), e.passive and " passive" or "", e.cd and (" cd " .. e.cd .. "s") or "", table.concat(sp, "/")))
-                    end
-                end
-            end
-        end
-        if hits == 0 then ns.Print("no talent matching '" .. arg .. "' in the last scan.") end
-    end
+-- "/xui debug talents" alone: scan everything (XayaUI_Rules/TalentDump.lua calls this out of combat; it holds the request in combat with
+-- the "talents" combat lock, V26: "Lock it": the scan changes the game's talent view and the saved scan)
+function ns.OptionsApi.TalentScan()
+    local _, msg = ns.ScanAllTalents()
+    ns.Print(msg)
 end

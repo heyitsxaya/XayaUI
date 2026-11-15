@@ -112,6 +112,13 @@ and texture lists, the displays' right-click menu and the Minimap Button page mo
 an item is restored" (what XayaUI/RecycleBin.lua does: PLAYER_LOGIN, PLAYER_LOGOUT, ns.RecycleItems, ns.RecycleRestore); same 7211
 lines; 0 other lines, so the move itself changed nothing in the window. Only the all-on "profiles" hash changed (d79e2e33d8c99bba ->
 cb4b7d1248032574).
+Updated on 2026-11-13 for bundle 1 round 8 (V34 audit "Core code that serves only retired QA-branch addons"; REQUEST-LOG A23 SD-61 /
+SD-70): `--dump` of a snapshot of the tree with this unit's files as before (it passes the old golden: 15 checks, 0 failed) and of the new
+code differ in exactly 12 lines, 6 in "set" and the same 6 in "settings": the Advanced Debugging desc (it no longer says "On by default;
+it does nothing while nothing goes wrong", SD-61 made it off by default) and 5 removed nodes, minimap.where ("Show it in: Minimap / Chat
+sidebar / Both"; the chat sidebar was the retired XayaUI Chat's) and Dev Assist's debug.devPages, debug.gameDump, debug.gameDump.gdOpen
+and debug.send.sendDev (all hidden on main: XayaUI Dev Assist is retired). 7211 -> 7201 lines; 0 other lines. Only the all-on "set"
+(19a2ae037fb40860, 238 -> 14ad1ae55fa6be62, 233) and "settings" (c8ef2369c49549df, 237 -> b53fed29e302ddee, 232) hashes changed.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys

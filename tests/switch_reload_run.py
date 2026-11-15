@@ -4,7 +4,8 @@ reload -- this is the standing convention for all UI overhaul addons"; 2026-11-0
 require a reload to take effect to account for memory/cpu changes as well".
 Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (the reskins, Chat, QoL and Nameplates, whose part switches and /xui chat|reskin|shop
 commands this test used to click, live on another branch). What stays on main is the machinery those switches use: core's reload
-holds (Modules.lua section 5c: ns.SwitchSaveForReload, ns.SwitchInEffect, ns.SwitchesHeld), the Blizzard Reskin tab switch
+holds (Modules.lua section 5c: ns.SwitchSaveForReload, ns.SwitchInEffect; round 8 removed ns.SwitchesHeld, a list nothing in the
+addons read, so a hold is read through ns.SwitchInEffect: a held switch answers its held value whatever the saved value), the Blizzard Reskin tab switch
 (ns.ReskinTabOn / ns.ReskinTabSaved / ns.SaveReskinTab) and the settings window's Overview page with "Enable Blizzard Reskin" and its
 "Reload now?" question (XayaUI_Options/Options.lua ReskinOverview / ReloadPrompt). The settings window draws the Blizzard Reskin tab
 only when a module registers a page in it, and no module on main does, so the test registers one stand-in page there (through
@@ -12,7 +13,7 @@ ns.RegisterSettingsPage, the way a reskin module does) and clicks "Enable Blizza
 addons in the stand-in game. Checked:
   - the reload question is asked once, naming the part, and reads "<part>: this change takes effect after a reload. Reload now?"
     with Reload / Later;
-  - the tick box shows the new choice and the choice is saved; the switch is held as it was in effect (ns.SwitchesHeld);
+  - the tick box shows the new choice and the choice is saved; the switch is held as it was in effect (ns.SwitchInEffect);
   - nothing changes in this session before the reload, also after the loading screen and other events (ns.ReskinTabOn stays on);
   - the Overview says the choice changed and needs the reload;
   - after a /reload (the stand-in game logs out, writes the saved files, and a new session loads from them) the change is in effect
@@ -54,8 +55,10 @@ local ov = root.args.reskin and root.args.reskin.args.reskinOverview
 local sw = ov and ov.args.enable
 check("Enable Blizzard Reskin is on the Overview", sw ~= nil)
 if not sw then return R end
+-- (nothing held: ns.SwitchInEffect gives back the saved value it is handed, for either value)
+local function held() return ns.SwitchInEffect("reskin.tab", false) == ns.SwitchInEffect("reskin.tab", true) end
 check("(start) Blizzard Reskin on: the tab switch is in effect and saved on, nothing held", ns.ReskinTabOn() == true and ns.ReskinTabSaved() == true
-  and #ns.SwitchesHeld() == 0, tostring(ns.ReskinTabOn()) .. " " .. table.concat(ns.SwitchesHeld(), ","))
+  and not held(), tostring(ns.ReskinTabOn()) .. " " .. tostring(held()))
 sw.set({}, false)
 W.tick(0.1, 2)
 local q = asked[#asked]
@@ -64,7 +67,7 @@ local dlg = StaticPopupDialogs.XAYAUI_RESKIN_RELOAD
 check("the question reads \"<part>: this change takes effect after a reload. Reload now?\" with Reload / Later", dlg and dlg.text == "%s: this change takes effect after a reload. Reload now?"
   and dlg.button1 == "Reload" and dlg.button2 == "Later", dlg and dlg.text)
 check("the tick box shows the new choice (off) and the choice is saved", sw.get({}) == false and ns.ReskinTabSaved() == false and CueRulesDB.reskinTabOff == true)
-check("the switch is held as it was in effect (Modules.lua 5c)", table.concat(ns.SwitchesHeld(), ",") == "reskin.tab", table.concat(ns.SwitchesHeld(), ","))
+check("the switch is held as it was in effect (Modules.lua 5c)", held() and ns.SwitchInEffect("reskin.tab", false) == true, tostring(held()))
 settle()
 check("nothing changes before the reload: Blizzard Reskin still in effect (after the loading screen, chat and target events)", ns.ReskinTabOn() == true, tostring(ns.ReskinTabOn()))
 check("the Overview says it changed and needs the reload", tostring(ov.args.note.name()):find("Changed: /reload", 1, true) ~= nil, ov.args.note.name())
@@ -76,7 +79,7 @@ TAB2 = r'''
 return function(W, L)
 ''' + COMMON + r'''
 check("after the /reload Blizzard Reskin is off (in effect and saved)", ns.ReskinTabOn() == false and ns.ReskinTabSaved() == false, tostring(ns.ReskinTabOn()))
-check("nothing is held after the reload", ns.SwitchesHeld and #ns.SwitchesHeld() == 0)
+check("nothing is held after the reload", ns.SwitchInEffect("reskin.tab", false) == false and ns.SwitchInEffect("reskin.tab", true) == true)
 return R
 end
 '''

@@ -22,7 +22,11 @@ The scenario (the same for the three gates; each gate reads the part it judges):
              then the busiest case for 60 simulated seconds in three equal 20-second cycles (30 frames a second): a fight with
              UNIT_AURA (player and target), SPELL_UPDATE_COOLDOWN, SPELL_UPDATE_CHARGES and ACTIONBAR_UPDATE_COOLDOWN / _STATE /
              _USABLE storms every frame, auras gained and lost, spells cast, a group joined and left, a mount and a dismount,
-             a loading screen; then 30 seconds idle out of combat with nothing on screen changing.
+             a loading screen; (round 8) movement started and stopped every half second, a rune change three times a second, a totem
+             every 3 s and a stun (loss of control added, then updated) every 5 s in the fight; then 30 seconds idle out of combat
+             with nothing on screen changing.
+Two variants (round 8): "default" (Settings > Debugging > Advanced Debugging off; XayaUI_Debug switched on in the AddOns list and not
+loaded, V34) and "debug" (Advanced Debugging saved on, as every install from before round 7 has it: XayaUI_Debug loaded and measured).
 The window stays closed from the close onward: every frame the gates judge is "after the window is closed".
 V33 (round 7): every handler's Lua instructions are also summed per addon and per frame drawn, in segments "fight N" (from combat start,
 its first second included, to the fight's last frame), "out N" (the rest of cycle N) and "idle"; tests/gate_performance_run.py judges
@@ -42,8 +46,11 @@ Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings 
     C_Spell.GetSpellCooldown) answer from the scenario's own list of active auras and cooldowns; Blizzard's aura container (the combat
     engine's displays) is a minimal stand-in that accepts the documented calls and draws nothing.
   * allocations are measured with collectgarbage("count") around each XayaUI handler (event, OnUpdate, timer) with the collector
-    stopped; allocations made inside the stand-in's own widget methods (it stores points and colors in Lua tables; the game does not)
-    and by the gate's own measuring are taken out.
+    stopped; allocations made inside the stand-in's own widget methods (it stores points and colors in Lua tables; the game does not),
+    by the stand-in's C_Timer (its timer record, handle and wrapper closures; round 8, SD-68) and by the gate's own measuring are taken
+    out, each exactly once (round 8: nested measuring steps were taken out two or three times before). A timer call that hands C_Timer
+    a new closure each time is the addon's own garbage and is reported by the guard (tests/gate_performance_run.py P4, SD-68).
+    Instructions (V33) still include the stand-in's and the gate's own Lua (a few hundred per timer call or loop note; conservative).
 Run one gate: python3 tests/gate_<name>_run.py   (Lua 5.1 via lupa)."""
 import hashlib, inspect, json, os, sys, tempfile, time
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,6 +59,13 @@ import run as H  # noqa: E402  (the whole-addon harness)
 
 ROOT = os.path.dirname(HERE)
 ADDONS = ("XayaUI", "XayaUI_Rules", "XayaUI_Options")
+# (round 8; round 7 review: the gate never loaded XayaUI_Debug) the debug tools' load-on-demand addon, switched on in the game's AddOns
+# list as on every install; core loads it at login only while Settings > Debugging > Advanced Debugging (CueRulesDB.ui.advancedDebug)
+# is on (XayaUI/DebugRecord.lua, V34). The gate plays two variants of the same scenario:
+#   "default"  Advanced Debugging off (a new install): XayaUI_Debug must not be loaded (V34: off means not read);
+#   "debug"    Advanced Debugging on (every install from before round 7 saved it on, hers included; SD-64): XayaUI_Debug loaded and measured.
+DEBUG_ADDON = "XayaUI_Debug"
+VARIANTS = ("default", "debug")
 
 # ---------------------------------------------------------------------------------------------------------------------------------
 # the game's aura container (Blizzard_AuraContainer) and the aura / cooldown reads: installed in both sessions before the addons load
@@ -284,15 +298,21 @@ end
 '''
 
 
-def _world(L, saved_source=None):
-    """A stand-in game (tests/harness/world.lua + loader.lua) with XayaUI, XayaUI_Rules and XayaUI_Options switched on."""
+def _world(L, saved_source=None, debug=None):
+    """A stand-in game (tests/harness/world.lua + loader.lua) with XayaUI, XayaUI_Rules and XayaUI_Options switched on.
+    debug (round 8): None = XayaUI_Debug not in the list (as before); "off" = switched on in the AddOns list, Advanced Debugging as
+    saved (off on a new install); "on" = switched on in the list and Advanced Debugging saved on (core loads it at login)."""
     folders = H.find_addons()
     sv = H.savedvars(L)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     game = L.eval("function(src, W) return loadstring(src)()(W) end")(GAME_LUA, world)
-    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders if k in ADDONS}})
+    on = set(ADDONS) | ({DEBUG_ADDON} if debug in ("off", "on") else set())
+    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders if k in on}})
     opts["saved"] = sv.Load(saved_source) if saved_source else L.table()
+    if debug == "on":
+        L.eval("function(s) s.XayaUI = s.XayaUI or {}; local c = s.XayaUI.CueRulesDB or {}; s.XayaUI.CueRulesDB = c; "
+               "c.ui = c.ui or {}; c.ui.advancedDebug = true end")(opts["saved"])
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world, opts)
     return world, loader, game, sv
 
@@ -323,7 +343,13 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------
 -- where a call comes from: the nearest XayaUI file up the stack (a bundled library under Libs/ only when no XayaUI file is found)
 -------------------------------------------------------------------------------------------------------------------------------------
-local hookAlloc, standAlloc = 0, 0     -- KB the gate's own measuring and the stand-in's widget methods allocated (taken out)
+-- KB the gate's own measuring and the stand-in's own work (its widget methods, its C_Timer) allocated: taken out of the handler's bytes.
+-- (round 8) One total, and every place that takes its own allocation out sets it to "the total when it started + everything allocated
+-- since": a measuring step nested inside another (whereFrom inside the stand-in's C_Timer or a widget method) is then taken out once,
+-- not twice (before round 8 a nested step was taken out two or three times, which billed the addon less than it allocated).
+local EXCL = 0
+local function exStart() return gc("count"), EXCL end
+local function exEnd(m0, e0) EXCL = e0 + (gc("count") - m0) end
 local SHORT = {}                        -- [chunk source] = "XayaUI_Rules/Engine.lua" | false
 local function short(src)
   local v = SHORT[src]
@@ -335,18 +361,18 @@ local function short(src)
 end
 local function isLib(f) return f and f:find("/Libs/", 1, true) ~= nil end
 local function whereFrom(level)
-  local m0 = gc("count")
+  local m0, e0 = exStart()
   local lib
   for l = level + 1, level + 16 do
     local info = getinfo(l, "Sl")
     if not info then break end
     local f = short(info.source)
     if f then
-      if not isLib(f) then hookAlloc = hookAlloc + (gc("count") - m0); return f .. ":" .. tostring(info.currentline), lib end
+      if not isLib(f) then local w = f .. ":" .. tostring(info.currentline); exEnd(m0, e0); return w, lib end
       lib = lib or (f .. ":" .. tostring(info.currentline))
     end
   end
-  hookAlloc = hookAlloc + (gc("count") - m0)
+  exEnd(m0, e0)
   return lib, lib
 end
 
@@ -394,11 +420,13 @@ local function sub(t, k) local s = t[k]; if not s then s = {}; t[k] = s end; ret
 local prevCreate = CreateFrame
 CreateFrame = function(kind, name, parent, template, id)
   local f = prevCreate(kind, name, parent, template, id)
+  local m0, e0 = exStart()
   local where = whereFrom(2)
   if where then
     ORIGIN[f] = where
-    local m0 = gc("count"); bump(sub(CREATED, PHASE), where); hookAlloc = hookAlloc + (gc("count") - m0)
+    bump(sub(CREATED, PHASE), where)
   end
+  exEnd(m0, e0)
   return f
 end
 -- the frame that made this object: its own CreateFrame call, or the nearest parent XayaUI made (a template's parts)
@@ -415,16 +443,19 @@ local CLICKS_BY_DEFAULT = { Button = true, CheckButton = true, EditBox = true, S
 local MOUSECALLS = {}   -- calls made by XayaUI code in combat, after the window closed: [file:line .. method] = n
 local function noteMouseCall(self, what)
   if CLOSED and W.combat then
+    local m0, e0 = exStart()
     local w = whereFrom(2)
-    if w and not isLib(w) then local m0 = gc("count"); bump(MOUSECALLS, w .. " " .. what); hookAlloc = hookAlloc + (gc("count") - m0) end
+    if w and not isLib(w) then bump(MOUSECALLS, w .. " " .. what) end
+    exEnd(m0, e0)
   end
 end
 -- the XayaUI line that last turned clicks / motion on (the line a fix changes), kept on the frame
 local function by(what)
-  local m0 = gc("count")
+  local m0, e0 = exStart()
   local w = whereFrom(3)
-  hookAlloc = hookAlloc + (gc("count") - m0)
-  return w and (w .. " " .. what) or nil
+  w = w and (w .. " " .. what) or nil
+  exEnd(m0, e0)
+  return w
 end
 function proto:EnableMouse(v) noteMouseCall(self, "EnableMouse"); v = v and true or false; self._mouse, self._mclick, self._mmotion, self._mouseSet = v, v, v, true
   if v then local b = by("EnableMouse(true)"); self._clickBy, self._motionBy = b, b end end
@@ -450,8 +481,10 @@ function proto:IsKeyboardEnabled() return self._keyboard and true or false end
 local KBCALLS = {}
 local function noteKb(what)
   if not CLOSED then return end
+  local m0, e0 = exStart()
   local w = whereFrom(2)
-  if w then local m0 = gc("count"); bump(KBCALLS, w .. " " .. what .. (W.combat and " (in combat)" or "")); hookAlloc = hookAlloc + (gc("count") - m0) end
+  if w then bump(KBCALLS, w .. " " .. what .. (W.combat and " (in combat)" or "")) end
+  exEnd(m0, e0)
 end
 do
   local EK, SP, SF = proto.EnableKeyboard, proto.SetPropagateKeyboardInput, proto.SetFocus
@@ -469,6 +502,7 @@ end
 -- performance instruments (PERF): dispatches, allocations, visible changes, timers, loops, whole pixels, call counts
 -------------------------------------------------------------------------------------------------------------------------------------
 local cur = nil         -- the XayaUI handler running now (a dispatch): { kind, name, src }
+local T0 = 0            -- the moment the settings window closed
 -- what the event being fired is: "storm" (the every-frame combat events: auras, cooldowns, charges, action bars, power, casts),
 -- "change" (something the rules read changed: a loading screen, mount, group, target, combat start / end) or "same" (an event the game
 -- sends although nothing the rules read changed: a roster update with the same group). Timers and OnUpdate scripts have their own kind.
@@ -488,26 +522,26 @@ local function directCaller(level)
 end
 local function noteNonInt(method, a, b, c, d)
   if not CLOSED and not CFG.nonintAlways then return end
-  local m0 = gc("count")
+  local m0, e0 = exStart()
   local w, lib = directCaller(2)
   if w and not lib then
     local s = NONINT[w]
     if not s then s = { n = 0, method = method, example = string.format("%s(%s, %s, %s, %s)", method, tostring(a), tostring(b), tostring(c), tostring(d)), phases = {} }; NONINT[w] = s end
     s.n = s.n + 1; s.phases[PHASE] = true
   end
-  hookAlloc = hookAlloc + (gc("count") - m0)
+  exEnd(m0, e0)
 end
 -- the stand-in's widget methods: their own Lua garbage is not XayaUI's (the game stores points and colors in C)
 local RUNS_SCRIPTS = { Show = true, Hide = true, SetShown = true, SetValue = true, Click = true, SetFocus = true, ClearFocus = true, Stop = true,
   SetScript = true, HookScript = true }
-local function exclEnd(m0, ...) standAlloc = standAlloc + (gc("count") - m0); return ... end
+local function exclEnd(m0, e0, ...) exEnd(m0, e0); return ... end
 local function changed() if cur then VIS = VIS + 1 end end
 for name, orig in pairs(proto) do
   if type(orig) == "function" and not RUNS_SCRIPTS[name] then
     local o = orig
     if name == "SetPoint" then
       proto.SetPoint = function(self, p, rel, rp, x, y)
-        local m0 = gc("count")
+        local m0, e0 = exStart()
         local nx, ny = x, y
         if type(rel) == "number" then nx, ny = rel, rp elseif type(rp) == "number" then nx, ny = rp, x end
         if not (isWhole(nx) and isWhole(ny)) then noteNonInt("SetPoint", p, nx, ny) end
@@ -516,47 +550,47 @@ for name, orig in pairs(proto) do
         local bx, by, brel = before and before[4], before and before[5], before and before[2]
         o(self, p, rel, rp, x, y)
         if (not before or bx ~= (nx or 0) or by ~= (ny or 0)) and self:IsVisible() then changed() end
-        standAlloc = standAlloc + (gc("count") - m0)
+        exEnd(m0, e0)
       end
     elseif name == "SetSize" or name == "SetWidth" or name == "SetHeight" then
       proto[name] = function(self, a, b)
-        local m0 = gc("count")
+        local m0, e0 = exStart()
         if not (isWhole(a) and isWhole(b)) then noteNonInt(name, a, b) end
         local w0, h0 = self._w, self._h
         o(self, a, b)
         if (w0 ~= self._w or h0 ~= self._h) and self:IsVisible() then changed() end
-        standAlloc = standAlloc + (gc("count") - m0)
+        exEnd(m0, e0)
       end
     elseif name == "SetText" or name == "SetFormattedText" then
       proto[name] = function(self, ...)
-        local m0 = gc("count")
+        local m0, e0 = exStart()
         local t0 = self._text
         o(self, ...)
         if t0 ~= self._text and self:IsVisible() then changed() end
-        standAlloc = standAlloc + (gc("count") - m0)
+        exEnd(m0, e0)
       end
     elseif name == "SetAlpha" or name == "SetTexture" or name == "SetAtlas" or name == "SetDesaturated" or name == "SetDesaturation" or name == "SetRotation" or name == "SetScale" then
       local field = ({ SetAlpha = "_alpha", SetTexture = "_tex", SetAtlas = "_atlas", SetDesaturated = "_desat", SetDesaturation = "_desat", SetRotation = "_rot", SetScale = "_scale" })[name]
       proto[name] = function(self, ...)
-        local m0 = gc("count")
+        local m0, e0 = exStart()
         local v0 = rawget(self, field)
         local r1, r2 = o(self, ...)
         if v0 ~= rawget(self, field) and self:IsVisible() then changed() end
-        standAlloc = standAlloc + (gc("count") - m0)
+        exEnd(m0, e0)
         return r1, r2
       end
     elseif name == "SetVertexColor" or name == "SetColorTexture" or name == "SetTextColor" or name == "SetCooldown" or name == "SetStatusBarColor" or name == "SetBackdropColor" or name == "SetBackdropBorderColor" then
       local field = ({ SetVertexColor = "_vc", SetColorTexture = "_color", SetTextColor = "_tc", SetCooldown = "_cd", SetBackdropColor = "_bdcolor", SetBackdropBorderColor = "_bdborder" })[name]
       proto[name] = function(self, a, b, c, d)
-        local m0 = gc("count")
+        local m0, e0 = exStart()
         local t0 = field and rawget(self, field)
         local same = t0 and t0[1] == a and t0[2] == b and t0[3] == c and t0[4] == d
         o(self, a, b, c, d)
         if not same and self:IsVisible() then changed() end
-        standAlloc = standAlloc + (gc("count") - m0)
+        exEnd(m0, e0)
       end
     else
-      proto[name] = function(self, ...) local m0 = gc("count"); return exclEnd(m0, o(self, ...)) end
+      proto[name] = function(self, ...) local m0, e0 = exStart(); return exclEnd(m0, e0, o(self, ...)) end
     end
   end
 end
@@ -570,39 +604,79 @@ end
 -- hooks placed after the window closed (they can never be taken off: V28)
 do
   local hsf, HS = hooksecurefunc, proto.HookScript
-  hooksecurefunc = function(...) if CLOSED then local w = whereFrom(2); if w then local m0 = gc("count"); bump(sub(ST.hooks, PHASE), w .. " hooksecurefunc"); hookAlloc = hookAlloc + (gc("count") - m0) end end; return hsf(...) end
-  proto.HookScript = function(self, n, f) if CLOSED then local w = whereFrom(2); if w then local m0 = gc("count"); bump(sub(ST.hooks, PHASE), w .. " HookScript(" .. tostring(n) .. ")"); hookAlloc = hookAlloc + (gc("count") - m0) end end; return HS(self, n, f) end
+  hooksecurefunc = function(...) if CLOSED then local m0, e0 = exStart(); local w = whereFrom(2); if w then bump(sub(ST.hooks, PHASE), w .. " hooksecurefunc") end; exEnd(m0, e0) end; return hsf(...) end
+  proto.HookScript = function(self, n, f) if CLOSED then local m0, e0 = exStart(); local w = whereFrom(2); if w then bump(sub(ST.hooks, PHASE), w .. " HookScript(" .. tostring(n) .. ")") end; exEnd(m0, e0) end; return HS(self, n, f) end
 end
 -- timers: who made each one, what kind, and whether it re-arms itself
 local TIMERS_SEEN = {}   -- [src] = { kind, every, n made, rearm }
 local TIMER_EDGES = {}   -- [src of a running timer] = { [src of a timer it made] = true } (a cycle = a chain that re-arms itself)
 local curTimer
-local function addTimer(delay, fn, iterations, kind, orig)
-  local m0 = gc("count")
-  local src = whereFrom(2) or "?"
+-- (round 8, REQUEST-LOG SD-66 / SD-68, her answer "Fix gate + guard + /run test") the guard: a timer call site that hands C_Timer a NEW
+-- function object on a later call, made from the same function definition (a closure made per call: C_Timer.After(d, function() X() end)
+-- in an event handler), instead of one function made once (a file-level function, as EUI's hot paths and the engine's Kick do). Kept per
+-- call site: [site] = { protos = {[definition] = the first function seen}, fresh = {hot, other}, calls = {hot, other}, example }.
+-- "hot" = made after the window closed by a handler that runs every frame of a fight (a storm event) or by a timer callback / frame script.
+local FRESH = {}
+local DEFKEY = setmetatable({}, { __mode = "k" })   -- [function] = "source:linedefined" (its definition)
+local function defOf(fn)
+  local k = DEFKEY[fn]
+  if k == nil then
+    local info = type(fn) == "function" and getinfo(fn, "S")
+    k = info and (tostring(info.source) .. ":" .. tostring(info.linedefined)) or false
+    DEFKEY[fn] = k
+  end
+  return k
+end
+-- (round 8, SD-66 / SD-68) everything the stand-in does for a C_Timer call is the stand-in's, not the addon's: its bookkeeping, the
+-- timer record, the handle with its two methods and NewTimer / NewTicker's wrapper closure. Each C_Timer function below starts the
+-- measure when it is entered (m0, e0) and addTimer ends it after the last of those is made. Before round 8 the measure ended before
+-- the record, the handle and the closures were made, so every timer an addon armed was billed to the addon (round 7: the engine's
+-- routed timer, armed from UNIT_AURA, made 294 of 1950 UNIT_AURA runs "allocate"). INFERENCE: the game's C_Timer is C code; whether
+-- it makes Lua garbage is not in the reference, so it is checked in game (her /run test, a landing step).
+local function addTimer(m0, e0, delay, fn, iterations, kind, orig)
+  local src = whereFrom(3) or "?"
   local seen = TIMERS_SEEN[src]
   if not seen then seen = { kind = kind, every = tonumber(delay) or 0, made = 0, rearm = false, phases = {} }; TIMERS_SEEN[src] = seen end
   seen.made = seen.made + 1; seen.phases[PHASE] = true
   seen.byPhase = seen.byPhase or {}; seen.byPhase[PHASE] = (seen.byPhase[PHASE] or 0) + 1
   if curTimer and curTimer.src == src then seen.rearm = true end
   if curTimer then local e = TIMER_EDGES[curTimer.src or "?"]; if not e then e = {}; TIMER_EDGES[curTimer.src or "?"] = e end; e[src] = true end
-  if CLOSED then seen.afterClose = (seen.afterClose or 0) + 1 end
-  hookAlloc = hookAlloc + (gc("count") - m0)
+  if CLOSED then
+    seen.afterClose = (seen.afterClose or 0) + 1
+    -- the guard (above): a new function from the same definition as one this site passed before
+    local f = orig or fn
+    local def = defOf(f)
+    local hot = (cur ~= nil and (cur.kind ~= "event" or CTX == "storm")) and "hot" or "other"
+    local g = FRESH[src]
+    if not g then g = { protos = {}, fresh = { hot = 0, other = 0 }, calls = { hot = 0, other = 0 } }; FRESH[src] = g end
+    g.calls[hot] = g.calls[hot] + 1
+    if def then
+      local first = g.protos[def]
+      if first == nil then g.protos[def] = f
+      elseif first ~= f then
+        g.fresh[hot] = g.fresh[hot] + 1
+        if not g.example then g.example = string.format("%s, %.2f s after the window closed, in %s %s; the function is defined at %s",
+            PHASE, W.now - T0, cur and cur.kind or "?", cur and (cur.kind == "event" and (cur.name .. " (" .. CTX .. ")") or cur.src) or "?",
+            (tostring(def):gsub("^@Interface/AddOns/", ""))) end
+      end
+    end
+  end
   local t = { at = W.now + (tonumber(delay) or 0), fn = fn, orig = orig or fn, every = tonumber(delay) or 0, left = iterations, cancelled = false, src = src, kind = kind }
   t.handle = { Cancel = function() t.cancelled = true end, IsCancelled = function() return t.cancelled end }
   W.timers[#W.timers + 1] = t
+  exEnd(m0, e0)   -- (the record, the handle and its methods, the wrapper, the list slot and the guard's records: the stand-in's)
   return t.handle
 end
-C_Timer.After = function(d, fn) addTimer(d, fn, 1, "After") end
-C_Timer.NewTimer = function(d, fn) local h; h = addTimer(d, function() fn(h) end, 1, "NewTimer", fn); return h end
-C_Timer.NewTicker = function(d, fn, n) local h; h = addTimer(d, function() fn(h) end, n or math.huge, (n and n <= 1) and "NewTicker(1)" or "NewTicker", fn); return h end
+C_Timer.After = function(d, fn) local m0, e0 = exStart(); addTimer(m0, e0, d, fn, 1, "After") end
+C_Timer.NewTimer = function(d, fn) local m0, e0 = exStart(); local h; h = addTimer(m0, e0, d, function() fn(h) end, 1, "NewTimer", fn); return h end
+C_Timer.NewTicker = function(d, fn, n) local m0, e0 = exStart(); local h; h = addTimer(m0, e0, d, function() fn(h) end, n or math.huge, (n and n <= 1) and "NewTicker(1)" or "NewTicker", fn); return h end
 
 -- loops over the rule list: ipairs / pairs over a table as long as the rule list (or the rule list / the engine's per-rule state itself)
 local LOOPMIN = math.huge
 local BIG = setmetatable({}, { __mode = "k" })
 local rawipairs, rawpairs = ipairs, pairs
 local function noteLoop(n)
-  local m0 = gc("count")
+  local m0, e0 = exStart()
   local w = whereFrom(2)
   if w and not isLib(w) then
     local d = sub(ST.loops, cur.kind .. " " .. cur.name)
@@ -614,7 +688,7 @@ local function noteLoop(n)
     s.ctx[key] = (s.ctx[key] or 0) + 1
     s.phases[PHASE] = true
   end
-  hookAlloc = hookAlloc + (gc("count") - m0)
+  exEnd(m0, e0)
 end
 ipairs = function(t)
   if cur and type(t) == "table" then
@@ -639,7 +713,7 @@ local INS, INS_STEP = 0, 100
 local SAMPLING = false   -- call counting is on only in the sampled windows (it slows the stand-in about tenfold)
 local function callhook(ev)
   if ev == "count" then INS = INS + 1; return end
-  local m0 = gc("count")
+  local m0, e0 = exStart()
   local info = getinfo(2, "S")
   if info then
     local f = short(info.source)
@@ -650,7 +724,7 @@ local function callhook(ev)
       WCALLS[k] = (WCALLS[k] or 0) + 1
     end
   end
-  hookAlloc = hookAlloc + (gc("count") - m0)
+  exEnd(m0, e0)
 end
 
 -- the dispatcher: every event handler, OnUpdate script and timer callback of a frame XayaUI made goes through here
@@ -671,7 +745,6 @@ local quietRun = function(fn, ...)
   return ok
 end
 local WIN = 2   -- seconds: an OnUpdate or ticker is judged per 2-second window (a countdown in whole seconds changes once a second)
-local T0 = 0
 -- V33 work budget (round 7; REQUEST-LOG SD-50 / SD-51, her answer "Proxy gate + your check"): each addon's work per drawn frame, in Lua VM
 -- instructions of its own handlers (events, OnUpdate scripts, timer callbacks; an addon's handler is billed for everything it calls,
 -- INFERENCE about how the game's AddOn Usage bills), summed per segment: "fight N" (PLAYER_REGEN_DISABLED to the last fight frame of
@@ -686,26 +759,72 @@ local function budSeg(name)
   if not s then s = { frames = 0, work = {}, peak = {}, sec = {}, keys = {} }; BUD[name] = s end
   return s
 end
--- her pace (SD-61, "10/s for all, like EUI"): a timer callback that runs more than PACE_N times within one second is faster than any
--- re-check she chose, whether the game event or the callback itself armed it (round 6's PUMP_AFTER first second ran one-shot timers
--- every frame, which P2 did not judge). Kept per callback function: the run times of its last PACE_RING runs and what each changed.
+-- her pace (SD-61, "10/s for all, like EUI"; round 8, SD-66, her answer "1": every re-check path at most 10 a second): every timer callback
+-- (one-shot or repeating, armed by an event or by itself: routed passes, every-live-rule passes, wakes, polls) and every frame script
+-- (OnUpdate) of XayaUI, after the window closed, in ANY sliding one-second window (the first second of a fight included). A window holds
+-- the runs in (now - 1 s, now]: at exactly ten a second (0.1 s apart) it holds 10. (PACE_EPS absorbs the float error of adding 1/30 s frames.)
+-- (round 8 repair) Kept per FUNCTION a timer callback or frame script runs, not only per callback: the gate notes every XayaUI function
+-- entered during such a run (its call tree, once per run), so a re-check pass is counted however many callbacks drive it (one pass run by
+-- two timers at 0.12 s each runs 15 a second although each timer runs 7.5). The callback or script itself is one of those functions.
 local PACE_N, PACE_RING, PACE_EPS = 10, 32, 1 / 60
-local PACE = {}       -- [callback file:line] = { t = {}, v = {}, i = 0, over = {[phase]}, quiet = {[phase]}, most = runs in a second at most, first = example }
-local function paceNote(src, vis)
+local PACE = {}       -- [function file:line] = { kind, kinds = {[kind]}, drivers = {[driver file:line] = runs}, t = {}, v = {}, i = 0, over = {[phase]}, quiet = {[phase]}, firstSec = {[phase]}, most, first }
+local FILEPACE = {}   -- [file] = { t = {}, i = 0, most = 0 }: every callback of one file together (report only: her rule is per path)
+local FIGHT_AT = nil  -- when the fight being played started (PLAYER_REGEN_DISABLED), for "the first second of a fight"
+local function paceNote(src, vis, kind, driver)
   local p = PACE[src]
-  if not p then p = { t = {}, v = {}, i = 0, over = {}, quiet = {}, most = 0 }; PACE[src] = p end
+  if not p then p = { kind = kind, kinds = {}, drivers = {}, t = {}, v = {}, i = 0, over = {}, quiet = {}, allVis = {}, firstSec = {}, most = 0 }; PACE[src] = p end
+  if not p.kinds[kind] then p.kinds[kind] = true; if p.kind ~= kind then p.kind = "mixed" end end
+  p.drivers[driver] = (p.drivers[driver] or 0) + 1
   p.i = p.i % PACE_RING + 1
   p.t[p.i], p.v[p.i] = W.now, vis
-  local n, seen = 0, 0
+  local n, seen, quietRuns = 0, 0, 0
   for k = 1, PACE_RING do
     local t = p.t[k]
-    if t and t > W.now - 1 + PACE_EPS then n = n + 1; seen = seen + (p.v[k] or 0) end
+    if t and t > W.now - 1 + PACE_EPS then n = n + 1; seen = seen + (p.v[k] or 0); if (p.v[k] or 0) == 0 then quietRuns = quietRuns + 1 end end
   end
   if n > p.most then p.most = n end
   if n > PACE_N then
     p.over[PHASE] = (p.over[PHASE] or 0) + 1
-    if seen == 0 then p.quiet[PHASE] = (p.quiet[PHASE] or 0) + 1; p.first = p.first or string.format("%s, %.2f s after the window closed, %d runs in the last second", PHASE, W.now - T0, n) end
+    if seen == 0 then p.quiet[PHASE] = (p.quiet[PHASE] or 0) + 1 end
+    if quietRuns == 0 then p.allVis[PHASE] = (p.allVis[PHASE] or 0) + 1 end   -- every run in that second changed something on screen (report only)
+    local inFirst = FIGHT_AT and W.combat and (W.now - FIGHT_AT) <= 1 + PACE_EPS
+    if inFirst then p.firstSec[PHASE] = (p.firstSec[PHASE] or 0) + 1 end
+    p.first = p.first or string.format("%s, %.2f s after the window closed%s, %d runs in the last second, %d of them changing nothing on screen",
+      PHASE, W.now - T0, inFirst and string.format(" (%.2f s into the fight)", W.now - FIGHT_AT) or "", n, quietRuns)
   end
+end
+local function filePaceNote(src)
+  local file = src:match("^(.-):%d+$") or src
+  local fp = FILEPACE[file]
+  if not fp then fp = { t = {}, i = 0, most = 0 }; FILEPACE[file] = fp end
+  fp.i = fp.i % 64 + 1; fp.t[fp.i] = W.now
+  local m = 0
+  for k = 1, 64 do local t = fp.t[k]; if t and t > W.now - 1 + PACE_EPS then m = m + 1 end end
+  if m > fp.most then fp.most = m end
+end
+-- the functions a timer callback or frame script run enters (its call tree, each once). Taken only in a second play of the scenario
+-- (CFG.tree, result() below), never in the play the gates measure: a Lua "call" hook runs Lua code on every call, and those instructions
+-- use up the instruction counter's steps (Lua 5.1 counts VM instructions inside a hook too and drops the count events that fall there),
+-- and switching the hook on and off around each run restarts the counter; either changes every instruction reading (round 8 repair,
+-- tried on ad60a051: 389,042 per fight frame with the hook switched per run, 397,329 with it always on, against 408,425 without it).
+-- In the tree play the "call" hook is on from the close to the end and does nothing outside a timer callback or frame script run.
+local RUNDEF, RUNLIST, RUNN = {}, {}, 0
+local TREE = false
+local function treehook(ev)
+  if ev == "count" then INS = INS + 1; return end
+  if SAMPLING then callhook(ev) end
+  if not TREE then return end
+  local m0, e0 = exStart()
+  local info = getinfo(2, "S")
+  if info then
+    local f = short(info.source)
+    if f and not isLib(f) then
+      local ks = KEYS[f]; if not ks then ks = {}; KEYS[f] = ks end
+      local k = ks[info.linedefined]; if not k then k = f .. ":" .. info.linedefined; ks[info.linedefined] = k end
+      if not RUNDEF[k] then RUNDEF[k] = true; RUNN = RUNN + 1; RUNLIST[RUNN] = k end
+    end
+  end
+  exEnd(m0, e0)
 end
 local function budNote(kind, name, src, bytes, ins)
   local a = addonOf(src)
@@ -752,7 +871,12 @@ local function finish(kind, name, src, bytes, vis, owner, ins)
     if ins > hc.insMax then hc.insMax = ins end
   end
   if BSEG and src then budNote(kind, name, src, bytes, ins) end
-  if kind == "timer" and src and CLOSED then paceNote(src, vis) end
+  if (kind == "timer" or kind == "onupdate") and src and CLOSED then
+    filePaceNote(src)
+    if RUNN == 0 then paceNote(src, vis, kind, src) end   -- (no call tree taken: XUI_GATE_NOHOOK)
+    for i = 1, RUNN do local k = RUNLIST[i]; paceNote(k, vis, kind, src); RUNDEF[k] = nil; RUNLIST[i] = nil end
+    RUNN = 0
+  end
   if kind ~= "event" then
     local w = math.floor((W.now - T0) / WIN)
     local ww = s.wins[w]; if not ww then ww = { runs = 0, vis = 0, phase = PHASE }; s.wins[w] = ww end
@@ -778,19 +902,21 @@ local function run(kind, name, owner, fn, ...)
   if kind == "onupdate" then name = src end   -- (a timer keeps the line that made it as its name; its function's line is src)
   local rec = owner   -- (unused; kept for the reader: the frame whose script runs)
   for k in rawpairs(DCALLS) do DCALLS[k] = nil end
-  hookAlloc, standAlloc = 0, 0
+  EXCL = 0
   local vis0 = VIS
   cur = { kind = kind, name = name, src = src }   -- (made before the measurement starts)
+  if CFG.tree then TREE = (kind == "timer" or kind == "onupdate") end
   gc("stop")
   local i0 = INS
   local m0 = gc("count")
   local ok = quietRun(fn, ...)
   local m1 = gc("count")
   local ins = (INS - i0) * INS_STEP
+  if CFG.tree then TREE = false end   -- (after the reading: the measured play runs no extra instruction inside it)
   gc("restart")
   local c = cur
   cur = nil
-  local bytes = math.floor(((m1 - m0) - hookAlloc - standAlloc) * 1024 + 0.5)
+  local bytes = math.floor(((m1 - m0) - EXCL) * 1024 + 0.5)
   if bytes < 0 then bytes = 0 end
   finish(kind, c.name, src, bytes, VIS - vis0, owner, ins)
   return ok
@@ -932,7 +1058,7 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------
 local regen = false   -- (as in the game, UnitAffectingCombat("player") is already true when PLAYER_REGEN_DISABLED fires; INFERENCE)
 UnitAffectingCombat = function() return (W.combat or regen) and true or false end
-local function fight() regen = true; W.enterCombat(); regen = false end
+local function fight() FIGHT_AT = W.now; regen = true; W.enterCombat(); regen = false end
 local function peace() W.leaveCombat() end
 local FPS = 30
 local BUSY = tonumber(CFG.busy) or 15   -- seconds of fight per cycle (a shorter value only for profiling the gate itself)
@@ -948,6 +1074,8 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.fire("SP
 frames(5)
 local ns = rawget(_G, "XayaUI_NS")
 assert(ns and ns.rules, "XayaUI Rules did not load")
+OUT.debugLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("XayaUI_Debug")) and true or false
+OUT.variant = CFG.variant or "default"
 OUT.rules = #ns.rules
 OUT.folders = #(ns.folders or {})
 do  -- (round 7) the rules with a talent requirement session A made (PROFILE_LUA 6b): the gate must play them
@@ -1038,6 +1166,7 @@ local function sample(on)
   if not PERF then return end
   SAMPLING = on and not CFG.nosample and true or false
   if CFG.nohook then return end
+  if CFG.tree then debug.sethook(treehook, "c", INS_STEP); return end   -- (round 8 repair: the tree play, see treehook)
   debug.sethook(callhook, SAMPLING and "c" or "", INS_STEP)
 end
 local function fireSame(ev, ...) CTX = "same"; W.fire(ev, ...); CTX = "change" end
@@ -1109,6 +1238,8 @@ local function loseOldest()
   local a = table.remove(active, 1)
   if a and G.auras[a.spellId] == a then G.lose(a.spellId); G.syncContainers(); W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { a.auraInstanceID } }) end
 end
+OUT.fired = {}   -- (round 8) how often the scenario fired each of the fight's change events (an integrity check reads it)
+local function cfire(ev, ...) OUT.fired[ev] = (OUT.fired[ev] or 0) + 1; W.fire(ev, ...) end
 local function storm(i)
   CTX = "storm"
   local a = active[(i % math.max(#active, 1)) + 1]
@@ -1131,7 +1262,19 @@ local function storm(i)
     G.targetDebuffs = { { spellId = 340000 + k, auraInstanceID = 9000 + k, duration = 10, expirationTime = W.now + 10, applications = 1, sourceUnit = "player" } }
     W.fire("UNIT_AURA", "target", { isFullUpdate = false, addedAuras = G.targetDebuffs })
   end
+  -- (round 8; round 7 review: the gate never played these, and each one re-checks every live rule) a fight with movement, a Death
+  -- Knight's runes, a totem and a stun. Each is a real change of something a rule reads, so it is fired as a change event, not a storm.
+  -- Payloads as docs/reference/api/events.md has them: PLAYER_STARTED_MOVING / PLAYER_STOPPED_MOVING (:1217, :1220; none),
+  -- RUNE_POWER_UPDATE (:1334; runeIndex, added?; SecretPayloads: the stand-in hands plain numbers, INFERENCE that a handler that copes
+  -- with a secret copes with a plain number), PLAYER_TOTEM_UPDATE (:1225; totemSlot), LOSS_OF_CONTROL_ADDED (:973; unitTarget,
+  -- effectIndex), LOSS_OF_CONTROL_UPDATE (:976; unitTarget). How often (INFERENCE, a busy Mythic+ pull): she starts or stops moving every
+  -- half second (4 events a second), a rune changes 3 times a second, a totem every 3 seconds, a stun every 5 seconds (added, then two updates).
   CTX = "change"
+  if i % 15 == 3 then cfire("PLAYER_STARTED_MOVING") elseif i % 15 == 10 then cfire("PLAYER_STOPPED_MOVING") end
+  if i % 10 == 6 then cfire("RUNE_POWER_UPDATE", math.floor(i / 10) % 6 + 1, nil) end
+  if i % 90 == 45 then cfire("PLAYER_TOTEM_UPDATE", 1) end
+  if i % 150 == 75 then cfire("LOSS_OF_CONTROL_ADDED", "player", 1)
+  elseif i % 150 == 76 or i % 150 == 120 then cfire("LOSS_OF_CONTROL_UPDATE", "player") end
 end
 local function memNow() gc("collect"); return gc("count") end
 if PERF then OUT.memStart = memNow() end
@@ -1204,9 +1347,15 @@ debug.sethook()
 BSEG = nil; for a in rawpairs(BFRAME) do BFRAME[a] = nil end
 OUT.budget = BUD
 local pace = {}
-for src, p in rawpairs(PACE) do pace[src] = { over = p.over, quiet = p.quiet, most = p.most, first = p.first } end
+for src, p in rawpairs(PACE) do pace[src] = { kind = p.kind, kinds = p.kinds, drivers = p.drivers, over = p.over, quiet = p.quiet, allVis = p.allVis, firstSec = p.firstSec, most = p.most, first = p.first } end
 OUT.pace = pace
 OUT.paceN = PACE_N
+local fpace = {}
+for f, p in rawpairs(FILEPACE) do fpace[f] = p.most end
+OUT.filePace = fpace
+local fresh = {}
+for site, g in rawpairs(FRESH) do fresh[site] = { fresh = g.fresh, calls = g.calls, example = g.example } end
+OUT.timerFresh = fresh
 if PERF then OUT.memEnd = memNow() end
 checkpoint("after 30 seconds idle out of combat")
 -- timers still waiting at the end, by who made them
@@ -1230,15 +1379,17 @@ end
 '''
 
 
-def run_scenario(perf=True, verbose=False):
-    """Sessions A and B. Returns (result as Python data, seconds)."""
+def run_scenario(perf=True, verbose=False, variant="default", tree=False):
+    """Sessions A and B. Returns (result as Python data, seconds). variant: "default" (Advanced Debugging off) or "debug" (on).
+    tree (round 8 repair): the play that takes the call trees of timer callbacks and frame scripts (P2 pace per re-check pass); its
+    instruction and call readings are not used (its hook changes them)."""
     t0 = time.time()
     saved, n, made, nf, errs_a = build_profile()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
-    world, loader, game, sv = _world(L, saved)
-    cfg = H.to_lua(L, {"perf": perf, "verbose": verbose or bool(os.environ.get("XUI_GATE_VERBOSE")),
+    world, loader, game, sv = _world(L, saved, debug=("on" if variant == "debug" else "off"))
+    cfg = H.to_lua(L, {"perf": perf, "verbose": verbose or bool(os.environ.get("XUI_GATE_VERBOSE")), "variant": variant,
                         "nosample": bool(os.environ.get("XUI_GATE_NOSAMPLE")), "nohook": bool(os.environ.get("XUI_GATE_NOHOOK")),
-                        "busy": float(os.environ.get("XUI_GATE_BUSY", "15"))})
+                        "busy": float(os.environ.get("XUI_GATE_BUSY", "15")), "tree": bool(tree)})
     res = L.eval("function(src, W, Ld, G, C) return loadstring(src)()(W, Ld, G, C) end")(SCENARIO_LUA, world, loader, game, cfg)
     out = H.lua_to_py(res)
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
@@ -1250,12 +1401,13 @@ def run_scenario(perf=True, verbose=False):
 # it reads (the addon folders, this file, the harness and the API index); any change to one of them runs it again.
 # XUI_GATE_NOCACHE=1 always runs it.
 # ---------------------------------------------------------------------------------------------------------------------------------
-def _key():
+def _key(variant="default"):
     h = hashlib.sha1()
+    h.update(("variant=" + variant).encode())
     files = []
     for name in sorted(os.listdir(ROOT)):
         d = os.path.join(ROOT, name)
-        if name in ADDONS and os.path.isdir(d):
+        if (name in ADDONS or name == DEBUG_ADDON) and os.path.isdir(d):
             for base, dirs, fs in os.walk(d):
                 dirs.sort()
                 files += [os.path.join(base, f) for f in sorted(fs)]
@@ -1274,20 +1426,28 @@ def _key():
         h.update(f.encode())
         with open(f, "rb") as fh:
             h.update(fh.read())
-    for k in ("XUI_GATE_BUSY", "XUI_GATE_NOSAMPLE", "XUI_GATE_NOHOOK"):
+    for k in ("XUI_GATE_BUSY", "XUI_GATE_NOSAMPLE", "XUI_GATE_NOHOOK", "XUI_GATE_NOTREE"):
         h.update((k + "=" + os.environ.get(k, "")).encode())
     return h.hexdigest()
 
 
-def result():
-    """The scenario's result (cached; see above). Returns (data, seconds the scenario took, True when read from the cache)."""
+def result(variant="default"):
+    """The scenario's result (cached; see above). Returns (data, seconds the scenario took, True when read from the cache).
+    variant (round 8): "default" (Advanced Debugging off) or "debug" (on: XayaUI_Debug loaded)."""
     d = os.path.join(tempfile.gettempdir(), "xui_gate_cache")
-    path = os.path.join(d, _key() + ".json")
+    path = os.path.join(d, _key(variant) + ".json")
     if not os.environ.get("XUI_GATE_NOCACHE") and os.path.isfile(path):
         with open(path) as fh:
             data = json.load(fh)
         return data, data.get("_secs", 0), True
-    data, secs = run_scenario(perf=True)
+    data, secs = run_scenario(perf=True, variant=variant)
+    # (round 8 repair) the pace per re-check pass comes from a second play with the call trees taken (run_scenario tree=True); every
+    # other reading stays this play's. XUI_GATE_NOTREE=1 (an old build played for the V33 calibration or the teeth proofs, tree_env)
+    # keeps this play's pace per callback only.
+    if not os.environ.get("XUI_GATE_NOTREE") and not os.environ.get("XUI_GATE_NOHOOK"):
+        tdata, tsecs = run_scenario(perf=True, variant=variant, tree=True)
+        data["pace"], data["paceTree"] = tdata.get("pace"), True
+        secs = round(secs + tsecs, 1)
     data["_secs"] = secs
     os.makedirs(d, exist_ok=True)
     tmp = path + ".%d.tmp" % os.getpid()
@@ -1299,9 +1459,9 @@ def result():
     return data, secs, False
 
 
-def cache_path():
+def cache_path(variant="default"):
     """Where result() keeps this checkout's scenario result (used by tree_result below, in its own process)."""
-    return os.path.join(tempfile.gettempdir(), "xui_gate_cache", _key() + ".json")
+    return os.path.join(tempfile.gettempdir(), "xui_gate_cache", _key(variant) + ".json")
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -1361,7 +1521,11 @@ def tree_copy(commit, repo=None):
     dest = os.path.join(tempfile.gettempdir(), "xui_v33_trees", "%s-%s" % (commit, h.hexdigest()[:12]))
     if not os.path.isfile(os.path.join(dest, ".complete")):
         try:
-            r = subprocess.run(["git", "-C", repo, "archive", commit, "XayaUI", "XayaUI_Options", "XayaUI_Rules"], capture_output=True, timeout=120)
+            ls = subprocess.run(["git", "-C", repo, "ls-tree", "--name-only", commit], capture_output=True, timeout=60)
+            have = set(ls.stdout.decode(errors="replace").split()) if ls.returncode == 0 else set(ADDONS)
+            # (round 8) the addon folders the commit has (ad60a051 has no XayaUI_Debug; git archive refuses a path it does not have)
+            parts = [a for a in ADDONS + (DEBUG_ADDON,) if a in have] or list(ADDONS)
+            r = subprocess.run(["git", "-C", repo, "archive", commit] + parts, capture_output=True, timeout=120)
         except (OSError, subprocess.SubprocessError) as e:
             raise RuntimeError("git could not be run: %s" % e)
         if r.returncode != 0:
@@ -1388,8 +1552,11 @@ def tree_copy(commit, repo=None):
 def tree_env(tree):
     """The environment a tree copy is played in: its own API index, and the repository for its own baseline (git)."""
     env = dict(os.environ)
-    env["XUI_API_INDEX"] = os.path.join(tree, "tests", "harness", "api_index.json")
+    own = os.path.join(tree, "tests", "harness", "api_index.json")
+    # (round 8) a checkout without the generated index (a fresh clone) plays the copy with the index this run was given
+    env["XUI_API_INDEX"] = own if os.path.isfile(own) else os.environ.get("XUI_API_INDEX", own)
     env["XUI_V33_REPO"] = os.environ.get("XUI_V33_REPO") or ROOT
+    env["XUI_GATE_NOTREE"] = "1"   # (round 8 repair) an old build's pace is not judged: no second play for its call trees
     return env
 
 
@@ -1443,8 +1610,9 @@ class Report:
         self.notes.append(text)
 
     def show(self, data, secs, cached):
-        print("%s (V27 release gate; XayaUI + XayaUI_Options + XayaUI_Rules, %s rules, %s groups; scenario %.0f s%s)" % (
-            self.gate, data.get("rules"), data.get("folders"), secs or 0, ", result from the cache" if cached else ""))
+        print("%s (V27 release gate; XayaUI + XayaUI_Options + XayaUI_Rules%s, %s rules, %s groups; scenario %.0f s%s)" % (
+            self.gate, " + XayaUI_Debug (Advanced Debugging on: variant \"debug\")" if data.get("variant") == "debug" else "",
+            data.get("rules"), data.get("folders"), secs or 0, ", result from the cache" if cached else ""))
         for t in self.notes:
             print("  " + t)
         for i, (where, what, numbers, fix) in enumerate(self.fails, 1):
@@ -1466,6 +1634,10 @@ class Report:
         return 1 if self.fails else 0
 
 
+FIGHT_EVENTS = ("PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "RUNE_POWER_UPDATE", "PLAYER_TOTEM_UPDATE", "LOSS_OF_CONTROL_ADDED",
+                "LOSS_OF_CONTROL_UPDATE")
+
+
 def integrity(data, rep):
     """The scenario must have run as planned, or the gate proves nothing (each miss is a FAIL)."""
     used = data.get("used") or {}
@@ -1482,6 +1654,14 @@ def integrity(data, rep):
          "rules with a talent requirement: %s" % data.get("talentRules")),
         (len(data.get("checkpoints") or []) >= 9, "every checkpoint ran (closed, minimap, three fights, three after-fights, idle)",
          "checkpoints: %d" % len(data.get("checkpoints") or [])),
+        # (round 8) the fight's movement, rune, totem and loss-of-control events were played (round 7 review: the gate never fired them)
+        (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in FIGHT_EVENTS),
+         "the fight played movement, runes, a totem and a loss of control (%s)" % ", ".join(FIGHT_EVENTS),
+         "fired: %s" % (data.get("fired") or {})),
+        # (round 8, V34) XayaUI_Debug is read only while Advanced Debugging is on: not loaded in the default variant, loaded in "debug"
+        ((bool(data.get("debugLoaded")) == (data.get("variant") == "debug")),
+         "XayaUI_Debug is loaded exactly when Advanced Debugging is on (variant %s)" % data.get("variant", "default"),
+         "XayaUI_Debug loaded: %s" % data.get("debugLoaded")),
         (int(data.get("errors") or 0) == 0, "no Lua error during the scenario", "; ".join((data.get("errorText") or [])[:3])),
     ]
     for ok, what, numbers in checks:

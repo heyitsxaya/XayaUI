@@ -199,8 +199,9 @@ if MODE == "off" then
   -- (ns.SetDebugHooks): a RecordOn that says the record does not keep "Proc glows", and a RecordLine that counts the lines it is given)
   local rawOn, rawLine = ns.RecordOn, ns.RecordLine
   local recOn, glowAsks, glowLines = false, 0, {}
-  ns.SetDebugHooks({ RecordOn = function(kind) if kind == "glow" then glowAsks = glowAsks + 1 end; return recOn end,
-    RecordLine = function(kind, text) if kind == "glow" then glowLines[#glowLines + 1] = tostring(text) end end })
+  -- (round 8: core's hand-in ns.SetDebugHooks is removed; the stand-ins are put straight on the namespace)
+  ns.RecordOn = function(kind) if kind == "glow" then glowAsks = glowAsks + 1 end; return recOn end
+  ns.RecordLine = function(kind, text) if kind == "glow" then glowLines[#glowLines + 1] = tostring(text) end end
   ns.ObserveGlowPairing(6572)   -- Revenge's button glowed (ProcGlows.lua pairs it with Revenge!, 5302)
   check("A13 a proc-glow sighting with Advanced Debugging off builds no record line (the text was built before the check)",
     #glowLines == 0 and glowAsks == 1, ("%d lines, record asked %d times"):format(#glowLines, glowAsks))
@@ -235,11 +236,13 @@ if MODE == "off" then
   check("B3 switched off (menu closed): the button is hidden and the slot given back at once", xb and not xb:IsShown() and hiddenEntries() == 0,
     ("shown %s, entries at alpha 0: %d"):format(tostring(xb and xb:IsShown()), hiddenEntries()))
   check("B3b ...and its theme listener is taken out", themeListeners(GM) == 0, themeListeners(GM))
-  local asks = 0   -- the button's menu build asks core whether the look is on (ns.Service "gameMenuSkin") before anything else
-  local rawService = ns.Service
-  ns.Service = function(name) if name == "gameMenuSkin" and owner() == GM then asks = asks + 1 end; return rawService(name) end
+  -- the button's menu build first reads the menu's button pool (ResetSlots); round 8 removed the earlier first step (asking the retired
+  -- Reskin's "gameMenuSkin" service), so the probe counts the pool reads made from the button's file instead (intended change)
+  local asks = 0
+  local rawEnum = pool.EnumerateActive
+  pool.EnumerateActive = function(...) if owner() == GM then asks = asks + 1 end; return rawEnum(...) end
   openMenu()
-  ns.Service = rawService
+  pool.EnumerateActive = rawEnum
   check("B4 ...the menu opened again: no slot, button hidden, and its hook did no work (it returns at once)", slotCount() == 0
     and not xb:IsShown() and asks == 0 and nhooks(GM) >= 1, ("slots %d, shown %s, menu builds run %d"):format(slotCount(),
     tostring(xb:IsShown()), asks))

@@ -85,6 +85,9 @@ local EVENTS = {
   { "PLAYER_LEVEL_UP", 80, 0, 0, 1 }, { "TRAIT_COND_INFO_CHANGED", 7 }, { "CHARACTER_POINTS_CHANGED", 1 },
   { "PLAYER_LEARN_TALENT_FAILED" }, { "PLAYER_LEARN_PVP_TALENT_FAILED" }, { "SPECIALIZATION_CHANGE_CAST_FAILED" },
   { "STARTER_BUILD_ACTIVATION_FAILED" },
+  -- (round 8, the round 7 review's question: every talent-related event in events.md considered) a PvP match starting, ending or being
+  -- joined (:1243, :1245, :1187) may switch PvP talents on or off with no talent event of its own (INFERENCE), compared the same way
+  { "PVP_MATCH_ACTIVE" }, { "PVP_MATCH_INACTIVE" }, { "PLAYER_JOINED_PVP_MATCH" },
 }
 local missed = {}
 local played0 = played("7001")

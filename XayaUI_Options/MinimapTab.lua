@@ -28,11 +28,8 @@ function ns.BuildMinimapTab(Notify)
         n = { type = "description", order = 0, width = "full", fontSize = "medium",
             name = "A button on the minimap. Left-click opens a small list of buttons for the features you pick below; right-click opens this window; drag it to move it around the minimap." },
         show = { type = "toggle", order = 1, name = "Show the minimap button", width = "full", get = function() return not DB().hide end, set = function(_, v) DB().hide = not v; ns.Minimap_Refresh() end },
-        -- (core 0.6.68; REQUEST-LOG A16 CR-6 / CR-7, Xaya: "create the option in each feature to choose whether it's a sidebar or minimap
-        -- icon display; default to having sidebar on if minimap is turned off")
-        where = { type = "select", order = 1.5, name = "Show it in", values = { MINIMAP = "Minimap", SIDEBAR = "Chat sidebar", BOTH = "Both" }, sorting = { "MINIMAP", "SIDEBAR", "BOTH" },
-            desc = "The chat sidebar is part of QoL > Improved Chat. With nothing chosen, the sidebar holds the button while the minimap button is turned off.",
-            get = function() return ns.Minimap_Where() end, set = function(_, v) DB().where = v; if v ~= "SIDEBAR" then DB().hide = false end; ns.Minimap_Refresh() end },
+        -- (round 8, V34 audit) "Show it in: Minimap / Chat sidebar / Both" is gone: the chat sidebar was the retired XayaUI Chat's, and
+        -- on main "Chat sidebar" made the button vanish. A saved choice is kept and no longer read (XayaUI/MinimapButton.lua).
         lock = { type = "toggle", order = 2, name = "Lock the button's position", disabled = function() return DB().hide end, get = g("locked"), set = function(_, v) DB().locked = v end },
         close = { type = "toggle", order = 3, name = "Close the list after a choice", disabled = function() return DB().hide end, get = g("closeOnClick"), set = function(_, v) DB().closeOnClick = v end },
         angle = { type = "range", order = 4, name = "Position (degrees around the minimap)", min = 0, max = 359, step = 1, disabled = function() return DB().hide end, get = g("angle"), set = s("angle") },

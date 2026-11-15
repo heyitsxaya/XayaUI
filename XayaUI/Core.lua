@@ -148,7 +148,7 @@ end
 -- message, every time. Only an error raised in a XayaUI file (the file named at the start of the message, else the first file the stack
 -- names: Interface/AddOns/XayaUI*/...) is recorded, with its code (DebugRecord.lua ns.RecordError: XUI-E001 for core, E002 the settings
 -- window, ...). Nothing here runs unless an error happens: no event, no timer, no per-frame work.
--- With Advanced Debugging on (Settings > Debugging, on by default) the error is also shown where XayaUI's messages go.
+-- With Advanced Debugging on (Settings > Debugging, off by default) the error is also shown where XayaUI's messages go.
 -------------------------------------------------------------------------------
 -- The XayaUI folder an error came from, or nil: the message's own location ("Interface/AddOns/XayaUI_Chat/Core.lua:12: ...") decides;
 -- a message without one (error(msg, 0)) is decided by the first addon file in the stack.
@@ -258,8 +258,10 @@ end
 -- sees nothing). Checked once per call, on the table passed in; the copy below it is the plain one.
 local function Copy(t)
     if type(t) ~= "table" then return t end
+    -- (round 8) a metatable can be anything a protected __metatable field gives back (a string, false ...): only a table whose
+    -- __xuiCopy is a function is asked; anything else is copied the plain way
     local mt = getmetatable(t)
-    if mt and mt.__xuiCopy then return mt.__xuiCopy(t) end
+    if type(mt) == "table" and type(rawget(mt, "__xuiCopy")) == "function" then return mt.__xuiCopy(t) end
     return CopyTree(t)
 end
 ns.Copy = Copy
@@ -392,7 +394,8 @@ for _, d in ipairs(CORE_DEBUG) do coreDebug[d[1]] = d[2]; rulesDebug[d[1]] = d.r
 -- off too. Her list for the debug folder (REQUEST-LOG A23 SD-58, her words: "perf report, /xui auras, /xuiengine, /xui status, console
 -- window, bug and debug report windows") names neither of these, and their code is read at the login either way:
 --   * loader is for when /xui will not open the settings window, and Advanced Debugging can be turned on only in that window;
---   * talents goes to XayaUI Options with the talent scan (SD-58 "Move all four") and stays reachable here until it does.
+--   * talents: its read-only answers (status, a name search) are XayaUI Rules' reader of the saved scan and answer anytime (round 8,
+--     SD-67 "Read-only answers anytime"); the scan itself is XayaUI Options' and is locked in combat (XayaUI_Rules/TalentDump.lua).
 -- /xui debug alone (and /xui debug help) lists what runs now, and says in one line what the other debug commands need.
 -- Every other debug word, and the /xui status and /xui auras shortcuts, answer with one plain line while the tools are not loaded.
 local DEBUG_UNGATED = { loader = true, talents = true }

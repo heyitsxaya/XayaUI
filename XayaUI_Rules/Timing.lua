@@ -61,7 +61,9 @@ local function OnAlertEvent(self, event)
         l[#l + 1] = now
         if #l > 12 then table.remove(l, 1) end
     end
-    if ns.MarkStateDirty then ns.MarkStateDirty() end
+    -- (round 8, SD-69, her answer "Cooldown alert: re-check its icon only") the engine reads again only the checks and rules that can read
+    -- this icon (Engine.lua ns.MarkStateDirty "alert", given the icon); before, every live rule was re-checked on every alert
+    if ns.MarkStateDirty then ns.MarkStateDirty("alert", self) end
 end
 local function OnAuraUpdated(self) self.xuiUpdatedAt = GetTime() end
 local function OnReassigned(self)   -- a pooled icon now stands for another spell: its old moments are not this spell's

@@ -95,7 +95,9 @@ W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 1)
 check("a target change (not routed) steps every rule", (n[AU] or 0) >= 1 and (n[CD] or 0) >= 1 and (n[OT] or 0) >= 1)
 -- an aura event on the same frame as a target change: the aura rule is not lost
 reset()
-W.fire("PLAYER_TARGET_CHANGED"); W.fire("UNIT_AURA", "player"); W.tick(0.06, 1)
+-- (round 8, SD-66 "Yes, everything max 10/s": the every-live-rule re-check runs at most 10 times a second, so this one, 0.06 s after the
+-- last, runs a tenth of a second after it)
+W.fire("PLAYER_TARGET_CHANGED"); W.fire("UNIT_AURA", "player"); W.tick(0.06, 2)
 check("an aura event landing on the frame of a target change is not lost (the aura rule is stepped)", (n[AU] or 0) >= 1)
 -- memory: a routed re-check makes less garbage than a full step (it reuses the context and its filter)
 ns.Evaluate = E0

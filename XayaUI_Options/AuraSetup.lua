@@ -247,7 +247,7 @@ local function Build()
     frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     frame:SetBackdropColor(unpack(BG)); frame:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 1)
     frame:EnableMouse(true); frame:SetMovable(true); frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving); frame:SetScript("OnDragStop", frame.StopMovingAndSettling or frame.StopMovingOrSizing)
+    frame:SetScript("OnDragStart", frame.StartMoving); frame:SetScript("OnDragStop", frame.StopMovingOrSizing)   -- (round 8, V2) the documented call only (widgets.md, Frame)
     frame:SetClampedToScreen(true)
     tinsert(UISpecialFrames, "XayaUIAuraSetupFrame")
 

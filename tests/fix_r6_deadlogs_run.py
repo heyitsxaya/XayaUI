@@ -24,7 +24,8 @@ local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  ["
 L.startup()
 local ns = rawget(_G, "XayaUI_NS")
 -- XayaUI Dev Assist (qa-installer-branch) puts its hand-in points in place when it loads, before the login (DevRecord.lua)
-if devAssist then ns.SetDebugHooks({ RecordSummary = function() return #CueRulesDB.debugRecord.lines, 0, "2026-11-08 20:14:02" end }) end
+-- (round 8: core's hand-in ns.SetDebugHooks is removed; the hook is put straight on the namespace, as Dev Assist's own copy of core does)
+if devAssist then ns.RecordSummary = function() return #CueRulesDB.debugRecord.lines, 0, "2026-11-08 20:14:02" end end
 local errBefore = #(CueRulesDB.errorLog or {})
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local shown = {}
