@@ -12,17 +12,18 @@ pollRange, pollCd, wake, alert, redrawText, redrawFill). The tracker only reads 
 What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI_Options and XayaUI_Debug) in the stand-in game. The
 ticks are driven by hand (ns.DebugPerfTick, the same function the ticker runs) with the counters raised by the test, so every number is
 known. [new] = fails on the pre-change files (proved on a private copy with XayaUI_Debug as it was before round 8):
-  P1  [new] /xui debug perf on starts ONE ticker (every 0.25 s, at most 2400 ticks = 10 minutes) and nothing else.
+  P1  [new] /xui debug perf on starts ONE ticker (every 0.23 s, at most 2609 ticks = 10 minutes) and nothing else. (Round 8 repair:
+      0.25 s and 2400 before; 0.23 s keeps 4 ticks within 1 s on frames, see XayaUI_Debug/RulesPerf.lua STEP.)
   P2  [new] the report gives, per counted path, the count and the most in any 1 s window; her limit of 10 a second is shown next to the
       seven re-check paths and "over" when it was passed; the two redraw counts have no limit; a missing counter says "unavailable".
-  P3  [new] the 1 s windows move in quarter-second steps: a burst of 6 + 6 across a whole-second boundary counts 12 in 1 s (whole
+  P3  [new] the 1 s windows move one read at a time: a burst of 6 + 6 across a whole-second boundary counts 12 in 1 s (whole
       seconds counted from the start would say 6).
   P4  [new] each XayaUI addon: the game's CPU meter (recent, the most read while measuring, peak) in ms and % of a frame, and its Lua
       memory now / at the stop and since the start.
   P5  [new] a tick allocates nothing (Lua memory unchanged over 100 ticks with the collector stopped); P5b it never refreshes addon
       memory (true before too: there was no tracker).
   P6  [new] /xui debug perf off stops the ticker and the report then gives the stopped figures; nothing runs after.
-  P7  [new] a forgotten measurement stops itself after 2400 ticks (10 minutes) with one plain line, and the engine's timing points stop.
+  P7  [new] a forgotten measurement stops itself after 2609 ticks (10 minutes) with one plain line, and the engine's timing points stop.
   P8  [new] /xui debug perf on while measuring restarts with one ticker (the old one is cancelled).
   P9  [new] without ns.EngineStats (an older XayaUI Rules): one line "engine passes: unavailable", no Lua error.
   P10 [new] the CPU meter switched off: "CPU unavailable (the game's addon meter is off)" per addon, never a guess.
@@ -89,8 +90,8 @@ elseif phase == "on" then
   got = {}
   for _, l in ipairs(cw and cw.log and cw.log._lines or {}) do got[#got + 1] = plain(type(l) == "table" and l[1] or l) end
   if ns.ConsoleWindow then ns.ConsoleWindow(false) end
-  check("[new] P1 /xui debug perf on starts ONE ticker, every 0.25 s, at most 2400 ticks (2400 x 0.25 s = 600 s)",
-    #tickers == t0 + 1 and tickers[#tickers].d == 0.25 and tickers[#tickers].n == 2400 and measuring() == true
+  check("[new] P1 /xui debug perf on starts ONE ticker, every 0.23 s, at most 2609 ticks (2609 x 0.23 s = 600.07 s)",
+    #tickers == t0 + 1 and tickers[#tickers].d == 0.23 and tickers[#tickers].n == 2609 and measuring() == true
       and count(got, "perf: measuring.") == 1, (#tickers - t0) .. " " .. tostring(tickers[#tickers] and tickers[#tickers].d) .. " " .. tostring(tickers[#tickers] and tickers[#tickers].n) .. " " .. table.concat(got, " / "))
   -- 8 hand-driven ticks (2 s): routed +3 each (24, 12 in 1 s), pollRange +1 each (8, 4 in 1 s), redrawText +50 each (400, 200 in 1 s),
   -- all: +6 at ticks 4 and 5 only (a burst across the 1 s mark: 12 in 1 s)
@@ -127,7 +128,7 @@ elseif phase == "on" then
       + count(rep, "XayaUI: perf: pollCd (") + count(rep, "XayaUI: perf: wake (") + count(rep, "XayaUI: perf: alert (") + count(rep, "XayaUI: perf: redrawText (")
       + count(rep, "XayaUI: perf: redrawFill (") == 9 and count(rep, "(limit 10/s") == 6 and count(rep, "XayaUI: perf: redrawFill (bar fills written): 0, most in 1 s 0") == 1,
     count(rep, "(limit 10/s"))
-  check("[new] P3 a burst of 6 + 6 across the 1 s mark counts 12 in 1 s (windows move in quarter-second steps)",
+  check("[new] P3 a burst of 6 + 6 across the 1 s mark counts 12 in 1 s (windows move one read at a time)",
     has(rep, "XayaUI: perf: all (every-live-rule re-checks): 12, most in 1 s 12 (limit 10/s: over)"), first(rep, "perf: all ("))
   check("[new] P4 XayaUI Rules: CPU recent 0.20 ms (1.0% of a 20 ms frame), most read 0.50 ms (2.5%), peak 1.00 ms (5.0%); Lua memory 3070 KB, +70 KB",
     has(rep, "XayaUI: perf: XayaUI_Rules: CPU recent 0.20 ms (1.0% of a frame), most read while measuring 0.50 ms (2.5% of a frame), peak 1.00 ms (5.0% of a frame); Lua memory 3070 KB at the stop, +70 KB since the start")
@@ -155,7 +156,7 @@ elseif phase == "on" then
   check("[new] P8 /xui debug perf on while measuring: still ONE live ticker (the old one cancelled)", before == 1 and live() == 1, before .. " -> " .. live())
   -- P7: the cap, through the real ticker
   n = #W.printed
-  W.tick(0.25, 2500)
+  W.tick(0.25, 2700)   -- (the stand-in fires the ticker once a step: 2609 fires stop it; 2700 x 0.25 s = 675 s of game time)
   local capped = since(n)
   check("[new] P7 a forgotten measurement stops itself after 10 minutes with one line; the ticker and the engine's timing points stop",
     count(capped, "XayaUI: perf: stopped after 10 minutes, the longest one measurement runs. /xui debug perf shows the report.") == 1

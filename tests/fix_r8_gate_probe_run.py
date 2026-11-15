@@ -6,10 +6,11 @@ tighten later (Recommended)", the per-event limit "No worse than ad60a51 (Recomm
 "1" (SD-66).
 
 How: the gate's own scenario (tests/gate_common.py SCENARIO_LUA, as it stands in this checkout) is played on a fresh install with a probe
-addon file added right after the settings window closes, with the call trees of timer callbacks and frame scripts taken (CFG.tree: the
-gate's second play, which its pace per re-check pass reads). The probe is compiled as Interface/AddOns/XayaUI_Rules/GateProbe.lua, so the
-gate measures it exactly as it measures XayaUI Rules. The probe's handlers each do one known thing on an event the gate fires as a storm
-event (one that fires every frame of a fight) for 2 seconds. Then this checkout's tests/gate_performance_run.py judges the result (its
+addon file added right after the settings window closes, played twice as the gate plays it: the measured play, then the play with the
+call trees of timer callbacks, frame scripts and event handlers taken (CFG.tree: the gate's second play, which its pace reads). The
+probe is compiled as Interface/AddOns/XayaUI_Rules/GateProbe.lua, so the gate measures it exactly as it measures XayaUI Rules. The
+probe's handlers each do one known thing on an event the gate fires as a storm event (one that fires every frame of a fight) for 2
+seconds. Then this checkout's tests/gate_performance_run.py judges the result (its
 main(), with the scenario's result handed in), and the printed findings are read.
 
 What the gate must report (what the player gets: a gate that bills the addon for exactly what the addon does, so a build that makes Lua
@@ -24,13 +25,15 @@ garbage per event fails and one that does not passes):
            pace FAIL whether it changes nothing or redraws on every run (round 8 repair: no redraw exemption is built, NEEDS_HER_DECISION);
            one re-check pass driven by two timers (7.5 a second each) runs 15 a second and is a FAIL at the pass (round 8 repair: a pass
            named to the gate, as the engine's are in REPASSES, is counted whatever drives it), while neither timer is a finding of its own;
-           two different passes (7.5 a second each) sharing one body are not findings, and the body's 15 a second is reported (her rule
-           is per path); a timer chain every 3 frames (the stand-in runs
+           (round 8 repair 2) a pass an event handler runs itself on every event of a storm (30 a second) is a FAIL at the pass, one run
+           on every 4th event (7.5 a second) is not, and the handlers themselves are not pace findings;
+           two different passes (7.5 a second each) sharing one body are not P2 FAILs, and the body's 15 a second is a WARNING
+           (her rule is per path; whether 10/s bounds shared work is NEEDS_HER_DECISION); a timer chain every 3 frames (the stand-in runs
            C_Timer.After(0.09) at the next frame at or after 0.09 s: 0.1 s, 10 a second) is not a pace finding;
   memory   a reading above 34,747.6 KB x 1.15 = 39,959.7 KB at the end of a cycle is a FAIL; 39,959.7 KB itself is not;
   per event  an addon whose costliest fight frame is one instruction above its stored ad60a051 cap is a FAIL; at the cap it is not.
 Run: python3 tests/fix_r8_gate_probe_run.py   (Lua 5.1 via lupa; about a minute and a half)"""
-import contextlib, io, json, os, re, sys
+import contextlib, inspect, io, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "harness"))
@@ -54,6 +57,12 @@ local fs2 = parent:CreateFontString(nil, "OVERLAY"); fs2:SetPoint("BOTTOM", pare
 local fs3 = parent:CreateFontString(nil, "OVERLAY"); fs3:SetPoint("LEFT", parent, "LEFT", 0, 0)
 local mf = CreateFrame("Frame", nil, parent); mf:SetSize(10, 10); mf:SetPoint("CENTER", parent, "CENTER", 0, 0)
 local evs = {}
+-- (round 8 repair 2) a re-check pass an event handler runs itself, on every event of the storm (30 a second), and one an event handler
+-- runs on every 4th event only (7.5 a second); both are named to the gate as passes (PROBE_PASSES)
+local fs7 = parent:CreateFontString(nil, "OVERLAY"); fs7:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", 0, 0)
+local n7, n8, kSlow = 0, 0, 0
+local function EvPass() n7 = n7 + 1; fs7:SetText("ev " .. n7) end --@P14
+local function SlowEvPass() n8 = n8 + 1; fs7:SetText("slow ev " .. n8) end --@P15
 local function on(handler) local f = CreateFrame("Frame"); f:RegisterEvent("PLAYER_STARTED_TURNING"); f:SetScript("OnEvent", handler); evs[#evs + 1] = f end
 function P.setup()
 on(function() C_Timer.After(0.05, Noop) end) --@A
@@ -64,6 +73,8 @@ on(function() keep = { 1, 2, 3, 4 }; C_Timer.After(0.05, Noop) end) --@E
 on(function() keep = { 1, 2, 3, 4 }; for _ in ipairs(SMALL) do end end) --@F
 on(function() keep = { 1, 2, 3, 4 }; mf:EnableMouse(true) end) --@G
 on(function() keep = { 1, 2, 3, 4 }; mf:SetPoint("CENTER", parent, "CENTER", 0.5, 0) end) --@H
+on(function() EvPass() end) --@I
+on(function() kSlow = kSlow + 1; if kSlow % 4 == 0 then SlowEvPass() end end) --@J
 end
 -- pace paths, started once (outside any handler) and re-armed by themselves
 local fastOn, slowOn, n1, n2, n4 = true, true, 0, 0, 0
@@ -142,20 +153,33 @@ def lines_of(src):
     return out
 
 
-def play():
+def play_once(tree):
     scen = GC.SCENARIO_LUA
     if scen.count(MARKER) != 1:
         raise SystemExit("the marker %r is not in tests/gate_common.py once; this test needs updating" % MARKER)
     scen = scen.replace(MARKER, MARKER + "\n" + INSERT, 1)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world, loader, game, sv = GC._world(L)
-    cfg = H.to_lua(L, {"perf": True, "verbose": False, "busy": 1.0, "probeSrc": PROBE_SRC, "tree": True})   # (the gate's tree play)
+    cfg = H.to_lua(L, {"perf": True, "verbose": False, "busy": 1.0, "probeSrc": PROBE_SRC, "tree": bool(tree)})
     res = L.eval("function(src, W, Ld, G, C) return loadstring(src)()(W, Ld, G, C) end")(scen, world, loader, game, cfg)
     return json.loads(json.dumps(H.lua_to_py(res), default=str))   # (as the gates read it: through JSON)
 
 
+def play():
+    """The two plays the gate makes (gate_common.result): the measured play, then (round 8 repair 2) the tree play, whose call trees
+    give the pace per function; its pace records replace the measured play's, as in the gate. A gate without a tree play (the
+    pre-repair gate) keeps the measured play's pace."""
+    data = play_once(False)
+    if "tree" in inspect.getsource(GC.run_scenario):
+        t = play_once(True)
+        data["pace"], data["paceAny"], data["paceTree"] = t.get("pace"), t.get("paceAny"), True
+    return data
+
+
 # (round 8 repair) the probe's re-check passes, named to the gate as the engine's are (gate_performance_run.py REPASSES)
-PROBE_PASSES = (("Pass", "the probe's pass driven by two timers"), ("PassX", "the probe's pass X"), ("PassY", "the probe's pass Y"))
+PROBE_PASSES = (("Pass", "the probe's pass driven by two timers"), ("PassX", "the probe's pass X"), ("PassY", "the probe's pass Y"),
+                ("EvPass", "the probe's pass an event handler runs every event"),
+                ("SlowEvPass", "the probe's pass an event handler runs every 4th event"))
 
 
 def gate_text(data):
@@ -280,13 +304,26 @@ def main():
     for k in ("P9", "P10", "P11", "P12", "P13"):
         check(not any(f[1].split(" ")[0] == src[k] and re.search(r"P2 ", f[2]) for f in fs),
               "pace: %s (two passes sharing one body, each 7.5 a second) is not a pace finding (her rule is per path)" % src[k])
-    check(re.search(r"work shared by several paths \(report only[^\n]*%s 15 \(from 2 callbacks\)" % re.escape(src["P9"]), text) is not None,
-          "pace: the shared body is reported with its 15 a second and its 2 callbacks")
+    check(any(f[0] == "WARNING" and re.search(r"P2 work shared by several paths", f[2]) and
+              re.search(r"%s 15 \(from 2 callbacks\)" % re.escape(src["P9"]), f[2]) for f in fs),
+          "pace: the shared body is reported (a WARNING, NEEDS_HER_DECISION) with its 15 a second and its 2 callbacks")
     for k in ("P7", "P8"):
         pk = (data.get("pace") or {}).get(src[k]) or {}
         check(int(pk.get("most") or 0) <= 8 and not any(f[1].split(" ")[0] == src[k] and re.search(r"P2 ", f[2]) for f in fs),
               "pace: each driver alone (%s) runs at most 8 times in a second and is not a finding of its own" % src[k],
               "most %s" % pk.get("most"))
+    # (round 8 repair 2) a pass an event handler runs itself is counted too: 30 a second on a storm event is a FAIL at the pass; 7.5 a
+    # second is not; the handlers themselves (event handlers run as often as their event fires) are not pace findings
+    check(has("FAIL", src["P14"], r"P2 the probe's pass an event handler runs every event \(EvPass\) ran more than 10 times within one second"),
+          "pace: a re-check pass an event handler runs on every event of a storm (30 a second) is a FAIL at the pass, %s" % src["P14"])
+    p14 = (data.get("paceAny") or {}).get(src["P14"]) or {}
+    check(int(p14.get("most") or 0) == 30, "pace: that pass's most runs within one second is 30 (one per frame, 30 frames a second)",
+          "most %s" % p14.get("most"))
+    p15 = (data.get("paceAny") or {}).get(src["P15"]) or {}
+    check(int(p15.get("most") or 0) in (7, 8) and not any(f[1].split(" ")[0] == src["P15"] and re.search(r"P2 ", f[2]) for f in fs),
+          "pace: a pass an event handler runs on every 4th event (7.5 a second) is not a pace finding", "most %s" % p15.get("most"))
+    check(not any(f[1].split(" ")[0] in (src["I"], src["J"]) and re.search(r"P2 ", f[2]) for f in fs),
+          "pace: the event handlers themselves (30 a second, as often as the event fires) are not pace findings")
     p1 = (data.get("pace") or {}).get(src["P1"]) or {}
     check(int(p1.get("most") or 0) == 15, "pace: the 0.05 s chain's most runs within one second is 15 (30 frames / 2)", "most %s" % p1.get("most"))
     p2 = (data.get("pace") or {}).get(src["P2"]) or {}

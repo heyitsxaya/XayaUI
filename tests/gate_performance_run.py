@@ -18,8 +18,8 @@ through a measuring dispatcher; judged per source file and line, everything afte
            polls) and every frame script (OnUpdate), that runs more than 10 times in any sliding one-second window, the first second of a
            fight included (her pace, SD-61 "10/s for all, like EUI"; SD-66 "1": every re-check path at most 10 a second), whatever it
            changed on screen; (round 8 repair) each re-check pass named in REPASSES (routed, every-live-rule, settle, wake and poll) is
-           counted over every callback that runs it, so a pass driven by several callbacks is one path; work several passes share is
-           reported, not judged (her rule is per path);
+           counted over everything that runs it (timer callbacks, frame scripts and event handlers), so a pass driven by several
+           callbacks is one path; work several passes share is a WARNING, not judged (her rule is per path; NEEDS_HER_DECISION);
   P3 FAIL  work per event that loops over all rules: a loop (ipairs / pairs) over a table as long as the rule list, or a function called
            at least that many times in one dispatch, in a combat storm event, an event that changed nothing, an OnUpdate or a repeating
            timer; in a one-off change event (loading screen, mount, combat start / end, a real group change) one pass is reported as a
@@ -138,7 +138,13 @@ FIGHT = ("fight 2", "fight 3")
 # XayaUI Rules (183,842,100 + 183,876,500) / 900 = 408,576.2 per fight frame (second play (183,840,100 + 183,775,600) / 900 = 408,461.9),
 # core 1.2, Options 0.0: within 0.04% of the 408,425.0 above ((408,576.2 - 408,425.0) / 408,425.0 = 0.037%), the same reading. So
 # 4% = 408,576.2 and 1% = 408,576.2 / 4 = 102,144.05 per frame.
-V33_RECORDED = {"stamp": "cdcaf3b76a92", "rules": 408576.2, "core": 1.2, "options": 0.0}   # (2026-11-13, round 8 repair, 900 fight frames)
+# (round 8 repair 2, 2026-11-15) the scenario's text changed again (stamp cdcaf3b76a92 -> 9a9fb14ec503: the tree play also takes the call
+# trees of event handlers, for a pass an event handler runs itself; the measured play is unchanged), so ad60a051 was played twice more
+# with this gate (tests/gate_common.py v33_baseline, XUI_GATE_NOCACHE=1, the repository's own git for ad60a051):
+# XayaUI Rules 367,547,500 / 900 = 408,386.1 per fight frame (second play 367,582,400 / 900 = 408,424.9), core 800 / 900 = 0.9,
+# Options 0.0: within 0.05% of the 408,576.2 above ((408,386.1 - 408,576.2) / 408,576.2 = -0.047%), the same reading. So
+# 4% = 408,386.1 and 1% = 408,386.1 / 4 = 102,096.5 per frame.
+V33_RECORDED = {"stamp": "9a9fb14ec503", "rules": 408386.1, "core": 0.9, "options": 0.0}   # (2026-11-15, round 8 repair 2, 900 fight frames)
 FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
 # V33 per event (round 8; REQUEST-LOG A23 SD-66, her answer "No worse than ad60a51 (Recommended)"): for each addon, the costliest single
 # frame of the fight (its handlers' Lua instructions billed to one drawn frame) must not exceed that addon's own costliest fight frame
@@ -163,10 +169,18 @@ FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
 #   XayaUI Options  0 in every fight                                                             -> cap 0
 # Rules' steady cap is the same 538,600; the every-fight caps are the higher reading of the two plays, as above (the 100-instruction steps
 # of the hook: Rules +200 = 0.04%, core +200 in fight 1, two PLAYER_REGEN_DISABLED runs of 300-400 each).
-V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "cdcaf3b76a92",
-                  "how": "measured 2026-11-13, round 8 repair, two plays of ad60a051 in this scenario, the higher reading",
-                  "caps": {"every": {"XayaUI_Rules": 538800, "XayaUI": 800, "XayaUI_Options": 0},
-                           "steady": {"XayaUI_Rules": 538600, "XayaUI": 600, "XayaUI_Options": 0}}}
+# (round 8 repair 2, 2026-11-15) stamp cdcaf3b76a92 -> 9a9fb14ec503 (event handlers' call trees in the tree play; the measured play is
+# unchanged); ad60a051 played twice more with this gate, costliest single fight frame, fights 1 / 2 / 3:
+#   XayaUI Rules    run 1: 538,500 / 538,400 / 538,300   run 2: 538,400 / 538,400 / 538,500   -> every fight 538,500, steady 538,500
+#   XayaUI (core)   run 1: 300 / 200 / 600                run 2: 300 / 200 / 600                -> every fight 600, steady 600
+#   XayaUI Options  0 in every fight                                                             -> cap 0
+# The rule is unchanged (the higher reading of two plays of this scenario), so the caps follow this scenario's readings: Rules 538,500
+# (300 below the cdcaf3b76a92 cap 538,800: three steps of the 100-instruction hook, 0.06%), core 600 (fight 1's 800 above was two
+# PLAYER_REGEN_DISABLED runs; here fight 1 reads 300).
+V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "9a9fb14ec503",
+                  "how": "measured 2026-11-15, round 8 repair 2, two plays of ad60a051 in this scenario, the higher reading",
+                  "caps": {"every": {"XayaUI_Rules": 538500, "XayaUI": 600, "XayaUI_Options": 0},
+                           "steady": {"XayaUI_Rules": 538500, "XayaUI": 600, "XayaUI_Options": 0}}}
 V33_EVENT_CAPS_TOL = 0.01   # a replay of ad60a051 within 1% of the stored caps is the same reading (the 300-instruction spread above)
 NAMES = {"XayaUI": "XayaUI (Platform, core)", "XayaUI_Rules": "XayaUI Rules", "XayaUI_Options": "XayaUI Options"}
 
@@ -556,13 +570,14 @@ def judge(data, rep):
 # 11-in-a-second overshoot is a bug). Judged, in any sliding one-second window (the first second of a fight included), whatever it
 # changed on screen; more than 10 runs is a violation:
 #   - every timer callback and every frame script (OnUpdate) of XayaUI, counted over all its runs (also when another callback runs it);
-#   - (round 8 repair) every re-check pass, counted whatever drives it: the gate notes every function a timer callback or frame script
-#     enters (gate_common.py, in a second play of the scenario so the measured play's instruction readings are untouched), and
+#   - (round 8 repair) every re-check pass, counted whatever drives it: the gate notes every function a timer callback, frame script or
+#     event handler enters (gate_common.py, in a second play of the scenario so the measured play's readings are untouched), and
 #     REPASSES names the passes. In the engine one pass has several drivers (the routed pass runs from its
 #     timer, from the next-frame script and from a settle; the every-live-rule pass and the settle likewise), so a pass driven by two
 #     callbacks at 7.5 a second each runs 15 a second and fails here although neither callback is over 10.
 # The work several different passes share (RunLists, the rule checks, the drawing) runs once per pass of each of them; her rule is per
-# path, so it is reported, not judged (her decision SD-66 "1": each path at most 10 a second, not all paths together).
+# path, so it is not judged (her decision SD-66 "1": each path at most 10 a second); (round 8 repair 2) it is a WARNING marked
+# NEEDS_HER_DECISION, since on the round 8 tree one rule's check runs 21 times a second over the passes together.
 # (The round 8 first pass turned a frame script whose every run changed the screen into a WARNING; that was a choice she has not made
 # and could hide a re-check that also redraws, so it is not built: such a run is a FAIL like any other, with "every run changed the
 # screen" in its numbers. NEEDS_HER_DECISION, round 8 gate repair report.)
@@ -605,16 +620,41 @@ def pace(data, rep):
     pace_n = data.get("paceN") or 10
     passes = pass_lines(rep)
     shared = []
+    # (round 8 repair 2) each named pass on every one of its runs, whatever ran it: a timer callback, a frame script or an event handler
+    # (data["paceAny"], the tree play's record of every function entered in any measured run); a result without it (no tree play) is
+    # judged on the timer and frame-script runs only
+    anyp = data.get("paceAny")
+    seen = []
+    for src in sorted(passes):
+        p = (anyp if anyp is not None else (data.get("pace") or {})).get(src) or {}
+        seen.append("%s %d" % (passes[src][0], int(p.get("most") or 0)))
+        over = sum(n for ph, n in (p.get("over") or {}).items() if AFTER(ph))
+        if not over:
+            continue
+        drivers = p.get("drivers") or {}
+        first_sec = sum(n for ph, n in (p.get("firstSec") or {}).items() if AFTER(ph))
+        numbers = ("%d run(s) found more than %d runs of this pass in the second up to them (%d of them in the first second of a fight); most "
+                   "runs within one second: %d; first: %s; run by: %s" % (
+                       over, pace_n, first_sec, int(p.get("most") or 0), p.get("first"),
+                       ", ".join("%s (%d runs)" % (d, n) for d, n in sorted(drivers.items(), key=lambda kv: (-kv[1], kv[0])))))
+        rep.fail(src, "P2 %s (%s) ran more than %d times within one second: faster than her pace for every re-check path (SD-61 \"10/s for "
+                 "all\"; SD-66 \"1\": every re-check path at most 10 a second, the first second of a fight included), counted over every "
+                 "callback, frame script and event handler that runs it" % (passes[src][1], passes[src][0], pace_n), numbers,
+                 "hold the next run of this pass until a tenth of a second after its last run, counted from when it ran (not from when "
+                 "it was armed) and over everything that runs it, and run it only when something it reads changed")
+    if passes:
+        rep.note("pace per re-check pass, most runs within one second over everything that runs it%s: %s" % (
+            "" if anyp is not None else " (timer callbacks and frame scripts only: this result has no event call trees)", ", ".join(seen)))
     for src, p in sorted((data.get("pace") or {}).items()):
+        if src in passes:
+            continue   # (judged above, on every run)
         over = sum(n for ph, n in (p.get("over") or {}).items() if AFTER(ph))
         if not over:
             continue
         kind = p.get("kind") or "timer"
         drivers = p.get("drivers") or {}
         is_cb = (not drivers) or (src in drivers)
-        if src in passes:
-            label = "%s (%s)" % (passes[src][1], passes[src][0])
-        elif is_cb:
+        if is_cb:
             label = "a frame script (OnUpdate)" if kind == "onupdate" else ("a timer callback" if kind == "timer" else "a callback")
         else:
             shared.append((p.get("most", 0), src, len(drivers)))
@@ -632,10 +672,15 @@ def pace(data, rep):
                  "hold the next run of this path until a tenth of a second after its last run, counted from when it ran (not from when "
                  "it was armed) and over every callback that drives it, and run it only when something it reads changed")
     if shared:
+        # (round 8 repair 2) a WARNING, not a note: the rule checks the passes share run more often than any one pass (on the round 8
+        # tree, 21 a second: routed + every-live-rule + wake + settle); whether her 10/s bounds that total is hers to say
         shared.sort(key=lambda x: (-x[0], x[1]))
-        rep.note("pace, work shared by several paths (report only: her rule is per path, SD-66): %d function(s) ran more than %d times "
-                 "in one second as part of different passes or callbacks; most: %s" % (len(shared), pace_n, ", ".join(
-                     "%s %d (from %d callbacks)" % (s, m, d) for m, s, d in shared[:6])))
+        rep.warn("tests/gate_performance_run.py (P2 shared work)", "P2 work shared by several paths ran more than %d times within one "
+                 "second (report only: each path is held to %d, and her rule is per path, SD-66 \"1\")" % (pace_n, pace_n),
+                 "%d function(s) ran more than %d times in one second as part of different passes or callbacks; most: %s" % (
+                     len(shared), pace_n, ", ".join("%s %d (from %d callbacks)" % (s, m, d) for m, s, d in shared[:6])),
+                 "NEEDS_HER_DECISION: whether 10 a second also bounds how often the work several paths share (one rule's check) runs "
+                 "over all of them together")
     fp = data.get("filePace") or {}
     if fp:
         rep.note("pace, every callback of one file together (report only: her rule is per path, SD-66): " + ", ".join(

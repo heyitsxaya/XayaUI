@@ -793,6 +793,28 @@ local function paceNote(src, vis, kind, driver)
       PHASE, W.now - T0, inFirst and string.format(" (%.2f s into the fight)", W.now - FIGHT_AT) or "", n, quietRuns)
   end
 end
+-- (round 8 repair 2) every run of a function, whatever runs it: an event handler too, not only a timer callback or frame script. The
+-- gate judges the re-check passes it is told of (gate_performance_run.py REPASSES) on this record, so a pass an event handler runs
+-- itself (on every UNIT_AURA, say) counts like one a timer runs. Report only for every other function (an event handler runs as often
+-- as its event fires).
+local PACEX = {}      -- [function file:line] = { t = {}, i = 0, most, over = {[phase]}, firstSec = {[phase]}, first, drivers = {[driver] = runs} }
+local function paceAnyNote(src, driver)
+  local p = PACEX[src]
+  if not p then p = { t = {}, i = 0, most = 0, over = {}, firstSec = {}, drivers = {} }; PACEX[src] = p end
+  p.drivers[driver] = (p.drivers[driver] or 0) + 1
+  p.i = p.i % PACE_RING + 1
+  p.t[p.i] = W.now
+  local n = 0
+  for k = 1, PACE_RING do local t = p.t[k]; if t and t > W.now - 1 + PACE_EPS then n = n + 1 end end
+  if n > p.most then p.most = n end
+  if n > PACE_N then
+    p.over[PHASE] = (p.over[PHASE] or 0) + 1
+    local inFirst = FIGHT_AT and W.combat and (W.now - FIGHT_AT) <= 1 + PACE_EPS
+    if inFirst then p.firstSec[PHASE] = (p.firstSec[PHASE] or 0) + 1 end
+    p.first = p.first or string.format("%s, %.2f s after the window closed%s, %d runs in the last second", PHASE, W.now - T0,
+      inFirst and string.format(" (%.2f s into the fight)", W.now - FIGHT_AT) or "", n)
+  end
+end
 local function filePaceNote(src)
   local file = src:match("^(.-):%d+$") or src
   local fp = FILEPACE[file]
@@ -802,12 +824,12 @@ local function filePaceNote(src)
   for k = 1, 64 do local t = fp.t[k]; if t and t > W.now - 1 + PACE_EPS then m = m + 1 end end
   if m > fp.most then fp.most = m end
 end
--- the functions a timer callback or frame script run enters (its call tree, each once). Taken only in a second play of the scenario
+-- the functions a timer callback, frame script or (round 8 repair 2) event handler run enters (its call tree, each once). Taken only in a second play of the scenario
 -- (CFG.tree, result() below), never in the play the gates measure: a Lua "call" hook runs Lua code on every call, and those instructions
 -- use up the instruction counter's steps (Lua 5.1 counts VM instructions inside a hook too and drops the count events that fall there),
 -- and switching the hook on and off around each run restarts the counter; either changes every instruction reading (round 8 repair,
 -- tried on ad60a051: 389,042 per fight frame with the hook switched per run, 397,329 with it always on, against 408,425 without it).
--- In the tree play the "call" hook is on from the close to the end and does nothing outside a timer callback or frame script run.
+-- In the tree play the "call" hook is on from the close to the end and does nothing outside a measured run.
 local RUNDEF, RUNLIST, RUNN = {}, {}, 0
 local TREE = false
 local function treehook(ev)
@@ -874,7 +896,11 @@ local function finish(kind, name, src, bytes, vis, owner, ins)
   if (kind == "timer" or kind == "onupdate") and src and CLOSED then
     filePaceNote(src)
     if RUNN == 0 then paceNote(src, vis, kind, src) end   -- (no call tree taken: XUI_GATE_NOHOOK)
-    for i = 1, RUNN do local k = RUNLIST[i]; paceNote(k, vis, kind, src); RUNDEF[k] = nil; RUNLIST[i] = nil end
+    for i = 1, RUNN do local k = RUNLIST[i]; paceNote(k, vis, kind, src); paceAnyNote(k, src); RUNDEF[k] = nil; RUNLIST[i] = nil end
+    RUNN = 0
+  elseif RUNN > 0 then   -- (round 8 repair 2) an event handler's call tree (tree play only)
+    local driver = "event " .. tostring(name) .. " " .. tostring(src)
+    for i = 1, RUNN do local k = RUNLIST[i]; if CLOSED then paceAnyNote(k, driver) end; RUNDEF[k] = nil; RUNLIST[i] = nil end
     RUNN = 0
   end
   if kind ~= "event" then
@@ -905,7 +931,7 @@ local function run(kind, name, owner, fn, ...)
   EXCL = 0
   local vis0 = VIS
   cur = { kind = kind, name = name, src = src }   -- (made before the measurement starts)
-  if CFG.tree then TREE = (kind == "timer" or kind == "onupdate") end
+  if CFG.tree then TREE = true end   -- (round 8 repair 2: event handlers too, for the passes an event handler runs itself)
   gc("stop")
   local i0 = INS
   local m0 = gc("count")
@@ -1349,6 +1375,9 @@ OUT.budget = BUD
 local pace = {}
 for src, p in rawpairs(PACE) do pace[src] = { kind = p.kind, kinds = p.kinds, drivers = p.drivers, over = p.over, quiet = p.quiet, allVis = p.allVis, firstSec = p.firstSec, most = p.most, first = p.first } end
 OUT.pace = pace
+local paceAny = {}
+for src, p in rawpairs(PACEX) do paceAny[src] = { over = p.over, firstSec = p.firstSec, most = p.most, first = p.first, drivers = p.drivers } end
+OUT.paceAny = paceAny
 OUT.paceN = PACE_N
 local fpace = {}
 for f, p in rawpairs(FILEPACE) do fpace[f] = p.most end
@@ -1446,7 +1475,7 @@ def result(variant="default"):
     # keeps this play's pace per callback only.
     if not os.environ.get("XUI_GATE_NOTREE") and not os.environ.get("XUI_GATE_NOHOOK"):
         tdata, tsecs = run_scenario(perf=True, variant=variant, tree=True)
-        data["pace"], data["paceTree"] = tdata.get("pace"), True
+        data["pace"], data["paceAny"], data["paceTree"] = tdata.get("pace"), tdata.get("paceAny"), True
         secs = round(secs + tsecs, 1)
     data["_secs"] = secs
     os.makedirs(d, exist_ok=True)

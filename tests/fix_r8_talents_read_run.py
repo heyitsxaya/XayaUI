@@ -17,7 +17,8 @@ What the player gets, on the real addons in the stand-in game, her saved talent 
      the same out of combat.
   F  [new, repair 1] a damaged saved scan (fields of the wrong type: built and scope are tables, cd is a table, the class's spec-name
      list is a number, the class name and spell are missing): status and the name search still answer one line each, with "?" for what
-     cannot be read and no cooldown text, and no Lua error. (Round 8 review: '/xui debug talents battle' stopped with
+     cannot be read and no cooldown text, and no Lua error; a talent in the same damaged scan whose fields are of the right type still
+     prints its spell and cooldown ("cd 120s"). (Round 8 review: '/xui debug talents battle' stopped with
      "TalentDump.lua:47: attempt to concatenate field 'cd' (a table value)" on a saved scan with cd = {y=2}.)
 UNVERIFIED IN GAME.
 Run: python3 tests/fix_r8_talents_read_run.py   (Lua 5.1 via lupa)"""
@@ -36,15 +37,17 @@ LOCK = "the talent scan can't run during combat. It will run when combat ends."
 DAMAGED = {"built": {"y": 1}, "build": {"x": 1}, "errors": {},
            "classes": {1: {"token": "WARRIOR", "specs": 7,
                            "nodes": {9001: {"t": 0, "max": 1, "scope": {"z": 1}, "specs": {71: True},
-                                            "e": [{"entry": 1, "name": "Battle Shout", "cd": {"y": 2}, "passive": True}]}}},
+                                            "e": [{"entry": 1, "name": "Battle Shout", "cd": {"y": 2}, "passive": True},
+                                                  {"entry": 2, "name": "Shield Wall", "spell": 871, "cd": 120}]}}},
                        2: "not a class", 3: {"name": "Mage", "nodes": "not nodes"}}}
 DAMAGED_SUMMARY = "Last talent scan ? (build ?): 3 classes, 1 nodes."
 DAMAGED_HIT = "? [?]: Battle Shout (spell ?) passive - 71"
+DAMAGED_GOOD = "? [?]: Shield Wall (spell 871) cd 120s - 71"   # fields of the right type in the same damaged scan still print
 OFF = ("/xui debug talents is part of the settings window (XayaUI Options), which is switched off. "
        "Turn it on in the game's AddOns list, then /reload.")
 
 LUA = r'''
-return function(W, L, mode, SUMMARY, HIT, LOCK, OFF)
+return function(W, L, mode, SUMMARY, HIT, LOCK, OFF, GOOD)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local okAll, errAll = pcall(function()
@@ -101,6 +104,8 @@ elseif mode == "damaged" then
   got = run("debug talents battle")
   check("[new] F ... the same in combat", one(HIT), got)
   W.leaveCombat(); W.tick(0.1, 5)
+  got = run("debug talents shield wall")
+  check("[new] F fields of the right type still print (spell number, cooldown)", one(GOOD), got)
 elseif mode == "noscan" then
   W.enterCombat(); W.tick(0.05, 2)
   local got = run("debug talents status")
@@ -129,7 +134,7 @@ def go(mode):
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world,
         H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved}))
     summary, hit = (DAMAGED_SUMMARY, DAMAGED_HIT) if mode == "damaged" else (SUMMARY, HIT)
-    res = L.eval("function(src, W, Ld, ...) return loadstring(src)()(W, Ld, ...) end")(LUA, world, loader, mode, summary, hit, LOCK, OFF)
+    res = L.eval("function(src, W, Ld, ...) return loadstring(src)()(W, Ld, ...) end")(LUA, world, loader, mode, summary, hit, LOCK, OFF, DAMAGED_GOOD)
     return [(res[i][1], bool(res[i][2])) for i in range(1, len(res) + 1)]
 
 

@@ -27,24 +27,26 @@
 -- on / off / report words as before; one line per counted path with its count and the most in 1 s (below), her limit of 10 a second
 -- (SD-66: "every re-check path at most 10 a second") next to the seven re-check paths (routed, all, settle, pollRange, pollCd, wake,
 -- alert; the two redraw counts are writes, not re-checks); one line per XayaUI addon. A missing figure says "unavailable".
--- Its own cost (V27 / V33): ONE ticker per measurement (C_Timer.NewTicker with a file-level function, namespaces.md:4672), every 0.25 s,
--- that stops itself after 2400 ticks (2400 x 0.25 s = 600 s = 10 minutes; INFERENCE: the cap, so a forgotten measurement cannot run on)
--- or at /xui debug perf off. Each tick reads GetTime() once and the 9 counters into tables made at file load (no allocation); once a
--- second (every 4th tick) it reads one CPU figure per XayaUI addon. Measured in the stand-in (round 8 repair): 938 Lua instructions a
--- tick on average (407 before the time ring), so at most 4 x 938 = 3,752 a second, only while a measurement runs. Nothing runs while no measurement runs, and nothing at all with Advanced Debugging off.
+-- Its own cost (V27 / V33): ONE ticker per measurement (C_Timer.NewTicker with a file-level function, namespaces.md:4672), every 0.23 s
+-- (STEP below says why not 0.25), that stops itself after 2609 ticks (2609 x 0.23 s = 600.07 s = 10 minutes; INFERENCE: the cap, so a
+-- forgotten measurement cannot run on) or at /xui debug perf off. Each tick reads GetTime() once and the 9 counters into tables made at
+-- file load (no allocation); about once a second (every 4th tick: 4 x 0.23 s = 0.92 s) it reads one CPU figure per XayaUI addon.
+-- Measured in the stand-in (round 8 repair, a count hook over 1200 ticks, 300 of them reading the CPU meter): 938 Lua instructions a
+-- tick (407 before the time ring); 1 / 0.23 = 4.35 ticks a second, so 938 x 4.35 = 4,080 a second, only while a measurement runs.
+-- Nothing runs while no measurement runs, and nothing at all with Advanced Debugging off.
 -- "Most in 1 s" (round 8 repair: before, the sum of the last 4 ticks was called "the highest count in any 1 s window", but the game
 -- runs a ticker on frames, so 4 ticks can last longer than 1 s and turn a pace of exactly 10 a second into a false "over"): each tick
 -- notes GetTime() in a ring made at file load; "most in 1 s" is the most counted in any run of 1 to 4 ticks that lasted 1.00 s or less,
 -- so it never counts high. "over" means more than 10 in such a run. When 4 ticks ran past 1 s and counted more than that, the report
 -- adds that count and how long the 4 ticks took, and "possibly over" when that count passed 10. A burst split between ticks can still
--- read low (any 1 s window touches at most 5 ticks of 0.25 s or more, and a run of 4 can miss part of one).
+-- read low (a 1 s window can touch 5 ticks, and a run of 4 ticks at 0.23 s lasts a little under 1 s, 0.935 s at 60 fps).
 -- Game API (docs/reference/api/, 12.1.5): C_Timer.NewTicker(seconds, callback, iterations?) -> cbObject (namespaces.md:4672);
 -- Enum.AddOnProfilerMetric.PeakTime = 4 (enums.md:470); C_AddOnProfiler.IsEnabled() -> enabled (namespaces.md:135); GetFramerate() ->
 -- framerate (globals.md:181: "% of a frame" = ms / (1000 / framerate), at the frame rate when the report is typed);
 -- UpdateAddOnMemoryUsage() (globals.md:732) then GetAddOnMemoryUsage(name: uiAddon) -> result (globals.md:118,
 -- SecretArguments=AllowedWhenUntainted; the names come from the game's own list), read at the start, at the stop and when the report is
 -- typed, never per tick. INFERENCE (not documented): the memory figure is in KB; "recent average" covers the last moments, so the
--- tracker also keeps the most it read once a second while measuring. GetTime() -> time (globals.md:287), once per tick.
+-- tracker also keeps the most it read about once a second while measuring. GetTime() -> time (globals.md:287), once per tick.
 -- Round 8 repair, what the report now also says plainly: "% of a frame" is not the CPU percent on the game's AddOn Usage screen, which
 -- V33's limits are read on (C_AddOnProfiler.GetApplicationMetric and GetOverallMetric, namespaces.md:131-132, are documented, but the
 -- public reference has no notes on what they cover, so the tracker does not build a percent from them: that would be a guess);
@@ -101,9 +103,15 @@ local WHAT = { routed = "aura and cooldown re-checks", all = "every-live-rule re
     alert = "Cooldown Manager alert re-checks", redrawText = "tenths texts rewritten", redrawFill = "bar fills written" }
 local RECHECK = { routed = true, all = true, settle = true, pollRange = true, pollCd = true, wake = true, alert = true }
 local LIMIT = 10            -- her limit for every re-check path, a second (SD-66)
-local STEP = 0.25           -- seconds between ticks (the game runs them on frames, so a tick can come a little later)
+-- seconds between ticks. INFERENCE (UNVERIFIED IN GAME): the game runs a ticker on frames, so a tick comes on the first frame at or
+-- after STEP: at most STEP + one frame. With 0.25 s at about 60 fps (frames of 16.6 to 16.8 ms) a tick took 15 frames (15 x 16.7 ms
+-- = 0.2505 s), so 4 ticks took 1.002 s: never "in 1 s"; the sure window was 3 ticks (0.75 s) and a real "over" read only "possibly
+-- over". With 0.23 s: 14 frames (14 x 16.7 = 233.8 ms; 13 frames = 217.1 ms is short of 0.23 s), 4 ticks = 0.935 s. A tick is at most
+-- 0.23 s + one frame, so 4 ticks stay within 1 s at 50 fps or more (0.23 + 0.02 = 0.25 s) and at many lower rates (30 fps: 7 x 33.3
+-- ms = 0.233 s, 4 = 0.933 s); at others (22 fps: 6 x 45.5 ms = 0.273 s, 4 = 1.09 s) the 4-tick count is shown with its real length.
+local STEP = 0.23
 local WINDOW = 1.000001     -- a run of ticks counts as "in 1 s" when it lasted 1.00 s or less (the millionth: rounding in the sums)
-local MAX_TICKS = 2400      -- 2400 x 0.25 s = 600 s: the measurement stops itself after 10 minutes
+local MAX_TICKS = 2609      -- 2609 x 0.23 s = 600.07 s: the measurement stops itself after 10 minutes
 local MAIN = { "XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug" }   -- (only if the game's list cannot be read)
 -- every table the ticks use is made here, once (a tick allocates nothing). high = most in a run of 1.00 s or less; high4 / span4 = the
 -- most in 4 ticks and how long those 4 ticks took; tstart = when each ring slot began; span = how long the last 1 to 4 ticks took.
@@ -163,7 +171,7 @@ local function Sample()   -- the counters since the last tick, into this tick's 
         end
     end
 end
-local function SampleCPU()   -- once a second: the most each XayaUI addon's recent average reached while measuring
+local function SampleCPU()   -- about once a second: the most each XayaUI addon's recent average reached while measuring
     local E = Enum and Enum.AddOnProfilerMetric
     local metric = E and E.RecentAverageTime
     for i = 1, #m.names do
@@ -175,7 +183,7 @@ end
 local Tick
 local function StopMeasuring(why)
     if not m.on then return end
-    Sample()   -- (the part of a quarter second since the last tick)
+    Sample()   -- (the passes since the last tick)
     m.on, m.t1 = false, GetTime()
     m.gc1 = collectgarbage("count")
     if m.ticker then m.ticker:Cancel(); m.ticker = nil end
@@ -226,7 +234,7 @@ ns.DebugPerfTick = function() return Tick() end   -- (tests: the same tick the t
 local function TrackerReport(L)
     if not m.t0 then return end
     local secs = math.max(0.001, (m.t1 or GetTime()) - m.t0)
-    L("perf: engine passes over %.0fs%s (counted by XayaUI Rules; read every quarter second or a little later, timed with GetTime):",
+    L("perf: engine passes over %.0fs%s (counted by XayaUI Rules; read every 0.23 s or a little later, timed with GetTime):",
         secs, m.on and " so far" or "")
     local ES = ns.EngineStats
     if not m.hadStats then
@@ -240,7 +248,7 @@ local function TrackerReport(L)
             if m.base[k] and type(now) == "number" then
                 local sure, four = m.high[k], m.high4[k]
                 local most = ("most in 1 s %d"):format(sure)
-                if four > sure then most = most .. ("; %d in 4 reads over %.2f s"):format(four, m.span4[k]) end
+                if four > sure then most = most .. ("; %d in 4 reads over %.3f s"):format(four, m.span4[k]) end
                 local limit = ""
                 if RECHECK[k] then
                     if sure > LIMIT then limit = (" (limit %d/s: over)"):format(LIMIT)
