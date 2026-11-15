@@ -710,7 +710,10 @@ ns.MODULES = {
     { addon = "XayaUI_Chat",    title = "XayaUI Chat",            commands = { "chat", "panel", "privacy" } },
     -- (core 0.6.67, audit D8) every word these addons register, so "/xui shop" with QoL off says to turn QoL on (USER-GUIDE section 0)
     { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
-    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "notes", "notepad", "note", "data", "calc", "calculator" } },
+    -- (bundle 1 round 9, merge of main fda1e293) main's XayaUI_Bonus registers only /xui stats (StatCalculatorLoader.lua); the old
+    -- qa-installer-branch Bonus words notes, notepad, note and data are gone from this row, so with main's Bonus loaded they print
+    -- /xui help instead of a false "never registered" line. calc and calculator stay until Xaya decides (tests/audit_core_run.py D8).
+    { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },
     -- (P4) rule and aura tracking: the commands Core.lua keeps for it (unlock, status, perf, talents) and AuraList.lua's auras

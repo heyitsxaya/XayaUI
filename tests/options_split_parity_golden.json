@@ -1,5 +1,34 @@
 {
  "all-on": {
+  "registered": "chat= qol= bonus=statcalc reskin= debugging= nameplates= media= rules= core= cooldowns=",
+  "tabs": {
+   "<root>": [
+    "1d9b85139063968d",
+    1
+   ],
+   "bonus": [
+    "5babd5b6029457d0",
+    3
+   ],
+   "cooldowns": [
+    "0b5c193a92951b7c",
+    6700
+   ],
+   "profiles": [
+    "e175188f01197949",
+    37
+   ],
+   "set": [
+    "5506788f272a74ab",
+    234
+   ],
+   "settings": [
+    "504240cced864385",
+    233
+   ]
+  }
+ },
+ "off-XayaUI_Bonus": {
   "registered": "chat= qol= bonus= reskin= debugging= nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
@@ -7,7 +36,7 @@
     1
    ],
    "cooldowns": [
-    "0b5c193a92951b7c",
+    "27a61cac8a959437",
     6700
    ],
    "profiles": [

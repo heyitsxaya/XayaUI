@@ -1,0 +1,13 @@
+## Interface: 120100
+## Title: XayaUI Bonus Features: Stat Calculator
+## Notes: The Stat Calculator of XayaUI Bonus Features: a stats panel beside the character window or on its own. Loaded by XayaUI Bonus Features once per reload, only while the Stat Calculator is on (Bonus Features > Stat Calculator); off, none of it is read. Needs XayaUI and XayaUI Bonus Features.
+## Author: Xaya
+## Version: 0.6.46
+## X-Date: 2026-11-12
+## Dependencies: XayaUI, XayaUI_Bonus
+## LoadOnDemand: 1
+## Group: XayaUI
+
+StatMath.lua
+StatModel.lua
+StatCalculator.lua

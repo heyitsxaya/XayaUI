@@ -23,7 +23,7 @@ This addon is for personal use only. Forks are welcome and the community is alwa
 
 XayaUI is a group of addons; every folder at the top of this repository is one of them and is installed as-is.
 
-Since 2026-11-09 `main` holds only the platform, its settings window (with the rule editor), Rules and the debug tools. Everything else (XayaUI Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
+Since 2026-11-09 `main` holds only the platform, its settings window (with the rule editor), Rules and the debug tools. Since 2026-11-12 it also holds XayaUI Bonus Features with only the Stat Calculator in it (two folders since Bonus 0.6.46: `XayaUI_Bonus`, the switch and loader, and `XayaUI_Bonus_StatCalculator`, the calculator, loaded on demand). Everything else (the rest of Bonus Features, Chat, QoL, Dev Assist, Media, Blizzard Reskin, Nameplates and the parked code in `shelved/` and `roadmap-features/`) is on the `qa-installer-branch` branch while Rules is being reviewed and debugged. That branch is separate from `main`: nothing copies one into the other.
 
 On `main`:
 
@@ -31,6 +31,8 @@ On `main`:
 |---|---|---|
 | `XayaUI` | XayaUI Platform | The platform every XayaUI addon runs on: saved settings, themes, sharing, Recycle Bin, profiles, sound and media lists, XayaUI's error record, minimap and ESC-menu buttons. Every other XayaUI addon needs it. |
 | `XayaUI_Options` | XayaUI Options | The settings window and everything that only works while it is open: the rule editor (`RuleEditor/`, the settings window's Rules tab), the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and the displays' right-click menu. Load-on-demand: the game reads it only when the window first opens (or `/xui unlock` or `/xui debug talents` needs it). |
+| `XayaUI_Bonus` | XayaUI Bonus Features | The Stat Calculator's switch and loader only (since 0.6.46): its on / off (Bonus Features > Stat Calculator), `/xui stats`, its minimap row and its profile part (Bonus Features). Its other features (tooltips, Notepad, Calculator, data panels) are not on `main`. |
+| `XayaUI_Bonus_StatCalculator` | XayaUI Bonus Features: Stat Calculator (load on demand) | The Stat Calculator itself: a stats panel beside the character window or on its own, with its stat model and arithmetic. `XayaUI_Bonus` loads it once at login only while the Stat Calculator is on (off until you turn it on); while it is off none of it is read. Needs `XayaUI_Bonus`. |
 | `XayaUI_Rules` | XayaUI Rules | Rules, cues, conditions, actions, combat aura tracking (`Combat/`), rule sharing and backups. Switch it off if you make no rules. |
 | `XayaUI_Debug` | XayaUI Debug | The debug tools: the console window, the bug report, the debug report, `/xui status`, `/xui auras`, `/xuiengine` and the engine perf report. Load-on-demand: the game reads it once per login or /reload, only while Settings > Debugging > Advanced Debugging is on (off by default). |
 
@@ -38,8 +40,8 @@ Everything else in the repository (`tests/`, the documents) stays out of the gam
 
 ## Install
 
-1. Copy the four `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Rules` and `AddOns\XayaUI_Debug` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues, and `XayaUI_Options` to change them). Replace each folder as a whole: the rule editor moved from `XayaUI_Rules\Editor` to `XayaUI_Options\RuleEditor`.
-   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (an old separate rule editor that is no longer used; the rule editor is now `XayaUI_Options\RuleEditor`), and switch off or delete `XayaUI_Bonus`, `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
+1. Copy the six `XayaUI*` folders above into `World of Warcraft\_retail_\Interface\AddOns\`, so that you have `AddOns\XayaUI`, `AddOns\XayaUI_Bonus`, `AddOns\XayaUI_Bonus_StatCalculator`, `AddOns\XayaUI_Options`, `AddOns\XayaUI_Rules` and `AddOns\XayaUI_Debug` side by side. Only `XayaUI` is required (with `XayaUI_Rules` for rules and cues, `XayaUI_Options` to change them, and `XayaUI_Bonus` and `XayaUI_Bonus_StatCalculator` for the Stat Calculator). Replace each folder as a whole: the rule editor moved from `XayaUI_Rules\Editor` to `XayaUI_Options\RuleEditor`.
+   Coming from an earlier version: delete `AddOns\XayaUI_Rules_Options` (an old separate rule editor that is no longer used; the rule editor is now `XayaUI_Options\RuleEditor`), delete your old `AddOns\XayaUI_Bonus` folder before copying the new one (the new one holds only the Stat Calculator), and switch off or delete `XayaUI_Chat`, `XayaUI_DevAssist` and `XayaUI_QoL` (an old copy left on would run against the new XayaUI). Keep `XayaUI_Media` if you put your own pictures or sounds in it.
 2. Coming from 0.5.x: an old `AddOns\XayaUI_CombatEngine` folder is no longer used (the combat tracking is inside XayaUI Rules now, `XayaUI_Rules\Combat`); switch it off or delete it. Old files left inside `AddOns\XayaUI` from the one-folder layout (`Chat\`, `Notepad.lua`, `Options.lua` ...) are ignored by the game, but replacing the whole `XayaUI` folder is cleaner.
 3. In the game, type `/reload` (the game can stay open while you copy). Your settings carry over unchanged.
 

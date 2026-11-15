@@ -119,6 +119,29 @@ it does nothing while nothing goes wrong", SD-61 made it off by default) and 5 r
 sidebar / Both"; the chat sidebar was the retired XayaUI Chat's) and Dev Assist's debug.devPages, debug.gameDump, debug.gameDump.gdOpen
 and debug.send.sendDev (all hidden on main: XayaUI Dev Assist is retired). 7211 -> 7201 lines; 0 other lines. Only the all-on "set"
 (19a2ae037fb40860, 238 -> 14ad1ae55fa6be62, 233) and "settings" (c8ef2369c49549df, 237 -> b53fed29e302ddee, 232) hashes changed.
+Regenerated on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code (all-on) differ only in the new top tab `bonus` and its 118 `bonus.statcalc.*` lines (the
+Stat Calculator page as on qa-installer-branch, with the panel switch's and intro's texts for main), the minimap list's new "Stat
+Calculator" row (`set.minimap.entries.stats`, `settings.minimap.entries.stats`: hidden while the Stat Calculator is off) and the
+"XayaUI Settings" row after it one `order` down (1 -> 2), 0 other lines. The new variant off-XayaUI_Bonus has the hashes the all-on
+window had before (ad60a05's golden) for every tab but "cooldowns" (same node count), whose dump differs from ad60a05's all-on dump
+only in the random group and rule ids (the second window built in the process: see main() below), 0 other lines. C now expects the Bonus Features page "statcalc" and no other module page.
+Regenerated on 2026-11-12 for Bonus 0.6.46 / Options 0.6.108 (REQUEST-LOG A24 #12 / #13: the Stat Calculator loads on demand; its
+settings travel in profiles): `--dump` of c4ae19b and of the new code (all-on, the Stat Calculator off as in a fresh install) differ
+only in (1) `bonus.statcalc`: its switch's desc (her option text "Off means it is never read; on means it loads once per reload."),
+the 118 `bonus.statcalc.*` lines of the detailed page gone (they come with the loaded calculator) and one `bonus.statcalc.note` line
+added; (2) Profiles: the new "Bonus Features" tick box under Export (`inc_bonus`, order 5) and Import (`imp_bonus`, order 8), with
+"Blizzard Reskin" one place down (5 -> 6, 8 -> 9); 0 other lines. off-XayaUI_Bonus: 0 lines differ.
+Regenerated on 2026-11-15 for the merge of main fda1e293 (Bonus 0.6.46, Options 0.6.108) into bundle 1 (branch ae2f396e), with
+`--golden` on the merged code; the JSON was not merged by hand. `--dump` of the branch (ae2f396e), of main (fda1e293), of their merge
+base ad60a05 and of the merged code: a three-way text merge (git merge-file) of the two sides' dumps over ad60a05's reproduces the merged
+dump exactly in both variants (0 lines differ; off-XayaUI_Bonus compared with ad60a05's and the branch's all-on dumps after the random
+group / rule ids are masked, as main's note above explains), so every changed line comes from one side. All-on, merged against the
+branch: 15 diff lines, 7201 -> 7208, all from main (the `bonus` tab, `bonus.statcalc` and `bonus.statcalc.note`; `inc_bonus` and
+`imp_bonus` with Blizzard Reskin 5 -> 6 and 8 -> 9; `minimap.entries.stats` with "XayaUI Settings" 1 -> 2 in "set" and "settings"):
+3 + 2 + 2 = 7 added lines and 4 changed lines (7 + 4 x 2 = 15). Merged against main: 2340 diff lines, all from bundle 1 (the notes
+from 2026-11-10 to 2026-11-13 above). off-XayaUI_Bonus: the branch's all-on window (same hashes for "profiles", "set" and "settings":
+cb4b7d1248032574, 14ad1ae55fa6be62, b53fed29e302ddee; "cooldowns" differs only in the random ids).
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
@@ -127,8 +150,9 @@ sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"
 import run as H  # noqa: E402  (the whole-addon harness)
 
 GOLDEN_FILE = os.path.join(HERE, "options_split_parity_golden.json")
-# (REQUEST-LOG A23) this branch holds no feature addon to switch off in turn: the golden holds the all-on window only
-MODULES = []
+# (REQUEST-LOG A23) this branch held no feature addon to switch off in turn. (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main
+# with the Stat Calculator only: the golden holds the all-on window and the window with it switched off
+MODULES = ["XayaUI_Bonus"]
 
 
 LUA = r'''
@@ -364,8 +388,8 @@ def main():
         reg = dict(x.split("=", 1) for x in allon["registered"].split())
         check("the rule editor registers no settings page of its own (rules / core / cooldowns)",
               all(reg.get(m) == "" for m in ("rules", "core", "cooldowns")))
-        check("no module registers a settings page (this branch holds no feature addon with pages)",
-              all(v == "" for v in reg.values()) and len(reg) == 10, allon["registered"])
+        check("no module registers a settings page but XayaUI Bonus Features' Stat Calculator (bonus = statcalc; main holds no other feature addon with pages)",
+              all(v == "" for k, v in reg.items() if k != "bonus") and reg.get("bonus") == "statcalc" and len(reg) == 10, allon["registered"])
     for tag, e in errs_all:
         print("ERROR in the game stand-in [%s]: %s" % (tag, e[:600]))
     print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))

@@ -33,6 +33,16 @@ Bundle-1 review U5-rulestree: rules-smart changed from run to run (the 'all/rule
 widgets last-released-first (fixPoolOrder); the golden is unchanged (it is the 230 px drawing), and every drawing is the same on every run.
 Round 6 (Xaya, SD-53: "put a config button in the rules pane"): rules-enabled and rules-smart regenerated; `--dump` of HEAD 89ea79a and
 of the new code differ in exactly one added line each ("button Open Combat Tracking Setup | CENTER"), 0 other lines in any drawing.
+Regenerated on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code differ only in (1) one new line "tab bonus box false" (the Bonus Features top tab, no tick box)
+in every drawing, and (2) the Rules-off Profiles drawing's left-over tree row, which belongs to the tab shown just before it: now the
+Bonus Features tree's "Stat Calculator" row (one line). 0 other lines.
+Regenerated on 2026-11-15 for the merge of main fda1e293 (Bonus 0.6.46) into bundle 1 (branch ae2f396e), with `--golden` on the
+merged code; the JSON was not merged by hand. A three-way text merge (git merge-file) of the branch's and main's `--dump` over their
+merge base ad60a05's reproduces every merged drawing exactly (0 lines differ). Against the branch: main's "tab bonus box false" line in
+every drawing that lists the top tabs (on-rules-selected lists none: 0 lines), and in the Rules-off Profiles drawing also main's
+left-over "Stat Calculator" tree row. Against main: rules-enabled +1 (round 6's Open Combat Tracking Setup button), rules-selected and
+rules-smart (review R10, above): all bundle 1's.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

@@ -25,6 +25,15 @@ Re-recorded on 2026-11-12 for round 6 (Xaya, SD-53: "put a config button in the 
 the round-6 guard-setup files only: `--dump` of HEAD and of that code differ, on every theme, in (1) the Rules page: the new "Open
 Combat Tracking Setup" button (20 added lines) and its page frame 15 -> 42 px high; (2) Display, and Custom's Theme page: the same
 18 px buttons with the same paint, named by a lower child index (AceGUI hands out a pooled frame created earlier); 0 other lines.
+Re-recorded on 2026-11-12 for Bonus 0.6.45 (the Stat Calculator on main under XayaUI Bonus Features, REQUEST-LOG A24 #10): `--dump` of
+origin/main ad60a05 and of the new code differ, on all 16 theme / page pairs, only in the window's top tab row (win.10.1.2.*): a fifth
+drawn tab, "Bonus Features" (20 lines), and the other tabs narrower to share the row (their widths and draw sizes); 0 other lines.
+Re-recorded on 2026-11-15 for the merge of main fda1e293 (Bonus 0.6.46) into bundle 1 (branch ae2f396e), with `--golden` on the
+merged code; the JSON was not merged by hand. A three-way text merge (git merge-file) of the branch's and main's `--dump` over their
+merge base ad60a05's reproduces the merged drawings exactly on all 16 theme / page pairs (0 lines differ). Against the branch every
+pair gains main's 20-line "Bonus Features" tab with the other tabs narrower (e.g. win.10.1.2.2 248.667 -> 186.500 px); against main
+the Display pages differ in 24 lines, the Rules pages in 22 (+20: round 6's Open Combat Tracking Setup button, see above), Custom's
+Theme page in 12, the others in 0: all bundle 1's.
 Run: python3 tests/theme_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
