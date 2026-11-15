@@ -759,6 +759,7 @@ copy; rows it adds later are copied here.
 | SD-82 | (Xaya, 2026-11-15) round 8 question box, new function per timer call off the hot path, her answer verbatim: "FAIL everywhere (Recommended)" | OPEN, round 9: gate FAILs everywhere; fix ClassLearn.lua:122 and AuraSound.lua:426 |
 | SD-83 | (Xaya, 2026-11-15) round 8 question box, ns.CaptureOutput and "/xui debug perf ui", her answer verbatim: "Remove both (Recommended)" | OPEN, round 9: remove both; rewrite the 4 tests to read the stand-in's printed lines; check what Debug's perf command answers to "ui" |
 | SD-84 | (Xaya, 2026-11-15) round 8 question box, tracker exact figure at the 10/s limit, her answer verbatim: "Keep the range (Recommended)" | OPEN: keep the "10 to 14 (possibly over)" range; no change |
+| SD-85 | (Xaya, 2026-11-15) round 8 question box, deleting tests/conflicts_run.py, tests/info_box_run.py, tests/chat_sidebar_run.py (their features were removed under V34; absence checked in fix_r8_retired_core), her answer verbatim: "OK to delete (Recommended)" | DONE in round 8 (core-options unit) |
 
 ## B. Other sessions' chats (cross-chat review, her #44)
 Her rule (2026-11-05): "review every instance where I gave you a precise data display structure and do not fail to capture and implement
