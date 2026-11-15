@@ -33,6 +33,9 @@ this repair); the others are controls that were already true and must stay true.
       timing points perf on switches on.
   W12 [new] the header says how "most in 1 s" is counted (reads 1.00 s apart or less; "possibly over"; a burst can count low).
   W13 (control) a read still allocates nothing with the new time ring (100 reads at uneven spacing, collector stopped).
+  Round 8 repair 2 (reviewer blocker: the low figure alone hid a real burst of 11 inside 0.95 s): "most in 1 s" is now a range, low to
+  high, that always holds the true figure; W1, W2b, W3, W3b, W4, W12 and W14 now expect that range (W3 and W14a: a steady 10 a second
+  reads "possibly over", changed on purpose; the burst and the range's guarantee are in tests/fix_r8_debug_range_run.py).
   W14 [new vs the first repair attempt, which kept reads 0.25 s apart] at about 60 fps (frames of 16.6, 16.7, 16.8 ms), driven frame by
       frame through the stand-in's real ticker: the engine at exactly 10 a second gives "most in 1 s 10" and nothing more; one extra
       pass gives 11, "over"; 12 a second gives 12, "over". With 0.25 s, 4 reads took 1.002 s at 60 fps, so these read "most in 1 s 8"
@@ -89,8 +92,10 @@ local truth, a = 0, 1   -- the true most in any 1 s window [x, x + 1), worked ou
 for b = 1, #passes do while passes[b] - passes[a] >= 1 - 1e-9 do a = a + 1 end; if b - a + 1 > truth then truth = b - a + 1 end end
 local rep = report()
 local line = first(rep, "perf: routed (") or "(no routed line)"
-check("[new] W1 engine at exactly 10/s (true most in any 1 s: " .. truth .. "), reads 0.26 s apart: no 'over', 'most in 1 s' 8 never counts high, the 4-read 11 is given with its 1.04 s and 'possibly over'",
-  truth == 10 and has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): " .. #passes .. ", most in 1 s 8; 11 in 4 reads over 1.040 s (limit 10/s: possibly over)"), line)
+-- (repair 2: a range. Low: 3 reads last 3 x 0.26 = 0.78 s (4 reads, 1.04 s, are past 1 s): 8. High: 3 inner reads (0.78 s) and one on
+-- each side, 5 reads over 5 x 0.26 = 1.30 s: 13. The true 10 lies in 8 to 13.)
+check("[new] W1 engine at exactly 10/s (true most in any 1 s: " .. truth .. "), reads 0.26 s apart: no 'over'; the range 8 to 13 holds the true 10, 'possibly over'",
+  truth == 10 and has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): " .. #passes .. ", most in 1 s 8 to 13 (limit 10/s: possibly over)"), line)
 
 -- W2: 11 passes in 0.75 s, reads 0.25 s apart, in a measurement started 5 s after the last one (the time ring starts afresh)
 W.now = W.now + 5
@@ -111,23 +116,27 @@ for k = 1, 8 do
   W.now = T0 + 0.4 * k; tick()
 end
 ns.PerfCommand("off"); rep = report()
-check("[new] W2b reads 0.4 s apart: most in 1 s 8 (2 reads, 0.8 s); the 11 is given over the 1.20 s it really took since the start",
-  has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 11, most in 1 s 8; 11 in 4 reads over 1.200 s (limit 10/s: possibly over)"),
+-- (repair 2: low 4 + 4 = 8 from 2 reads over 0.8 s; high: 2 inner reads (0.8 s) and one on each side, 4 reads: 4 + 4 + 3 + 0 = 11)
+check("[new] W2b reads 0.4 s apart: most in 1 s 8 to 11 (low: 2 reads, 0.8 s; high: the 4 reads a 1 s window can touch), 'possibly over'",
+  has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 11, most in 1 s 8 to 11 (limit 10/s: possibly over)"),
   first(rep, "perf: routed ("))
 
 -- W3: exactly 10 in 1 s
 ns.PerfCommand("on"); T0 = W.now
 for k = 1, 8 do ES.pollRange = ES.pollRange + ((k % 2 == 1) and 3 or 2); W.now = T0 + 0.25 * k; tick() end   -- 3 + 2 + 3 + 2 = 10 a second
 ns.PerfCommand("off"); rep = report()
-check("W3 (control) exactly 10 in 1 s: within her limit, not 'over'",
-  has(rep, "XayaUI: perf: pollRange (0.2 s range re-checks): 20, most in 1 s 10 (limit 10/s)"), first(rep, "perf: pollRange ("))
+-- (repair 2, changed on purpose: low 3 + 2 + 3 + 2 = 10 over 4 reads, 1.00 s; high: 4 inner reads (1.00 s) and one on each side,
+-- 6 reads: 3 + 2 + 3 + 2 + 3 + 2 = 15. Reads 0.25 s apart cannot rule out 11 here, so 'possibly over', never 'over'.)
+check("W3 (control, changed in repair 2) steady 10 a second: not 'over'; the range 10 to 15 says 'possibly over'",
+  has(rep, "XayaUI: perf: pollRange (0.2 s range re-checks): 20, most in 1 s 10 to 15 (limit 10/s: possibly over)"), first(rep, "perf: pollRange ("))
 
 -- W3b: 10 in 4 reads that took 1.04 s
 ns.PerfCommand("on"); T0 = W.now
 for k = 1, 8 do if k <= 4 then ES.pollCd = ES.pollCd + (k == 1 and 4 or 2) end; W.now = T0 + 0.26 * k; tick() end   -- 4 + 2 + 2 + 2 = 10 over 1.04 s
 ns.PerfCommand("off"); rep = report()
-check("[new] W3b 10 in 4 reads over 1.04 s: within her limit, not 'possibly over'",
-  has(rep, "XayaUI: perf: pollCd (0.2 s hidden cooldown-end re-checks): 10, most in 1 s 8; 10 in 4 reads over 1.040 s (limit 10/s)"), first(rep, "perf: pollCd ("))
+-- (repair 2: low 4 + 2 + 2 = 8 over 3 reads, 0.78 s; high 4 + 2 + 2 + 2 + 0 = 10 over the 5 reads a 1 s window can touch)
+check("[new] W3b 10 in 4 reads over 1.04 s: most in 1 s 8 to 10, within her limit, not 'possibly over'",
+  has(rep, "XayaUI: perf: pollCd (0.2 s hidden cooldown-end re-checks): 10, most in 1 s 8 to 10 (limit 10/s)"), first(rep, "perf: pollCd ("))
 
 -- W4: a second 'on' starts from zero (first: 12 in 1 s; then 2 a second)
 ns.PerfCommand("on"); T0 = W.now
@@ -135,8 +144,8 @@ for k = 1, 4 do ES.wake = ES.wake + 3; W.now = T0 + 0.25 * k; tick() end
 ns.PerfCommand("on"); T0 = W.now
 for k = 1, 8 do if k % 2 == 0 then ES.wake = ES.wake + 1 end; W.now = T0 + 0.25 * k; tick() end
 ns.PerfCommand("off"); rep = report()
-check("W4 (control) a second /xui debug perf on starts from zero: the earlier 12 in 1 s ('over') is not carried over",
-  has(rep, "XayaUI: perf: wake (wake timer fires): 4, most in 1 s 2 (limit 10/s)"), first(rep, "perf: wake ("))
+check("W4 (control) a second /xui debug perf on starts from zero: the earlier 12 in 1 s ('over') is not carried over (low 2, high 3 of 6 reads)",
+  has(rep, "XayaUI: perf: wake (wake timer fires): 4, most in 1 s 2 to 3 (limit 10/s)"), first(rep, "perf: wake ("))
 
 -- W5 / W6: while measuring ("so far") the live counters and memory; a restart clears the CPU "most read"
 recent.XayaUI_Rules = 0.9
@@ -218,8 +227,8 @@ check("[new] W11 the report says '% of a frame' is not the AddOn Usage screen's 
   has(rep, "XayaUI: perf: note: '% of a frame' is not the CPU % on the game's AddOn Usage screen; read that screen for your CPU limits.")
     and has(rep, "XayaUI: perf: note: perf on also turns on XayaUI Rules' timing points, so its CPU and memory here include them."),
   first(rep, "perf: note"))
-check("[new] W12 the header says how 'most in 1 s' is counted",
-  has(rep, "XayaUI: perf: 'most in 1 s' counts only reads 1.00 s apart or less. 'over': more than 10 there. 'possibly over': more than 10 only in 4 reads that took longer than 1 s. A burst split between reads can count low.")
+check("[new] W12 the header says how 'most in 1 s' is counted (repair 2: as a range)",
+  has(rep, "XayaUI: perf: 'most in 1 s' is a range when reads 0.23 s apart cannot pin it down: low counts only reads within 1 s, high every read a 1 s window could touch. 'over': low is more than 10. 'possibly over': only high is. A path running steadily at 10/s can read 'possibly over'.")
     and count(rep, "(counted by XayaUI Rules; read every 0.23 s or a little later, timed with GetTime):") == 1,
   first(rep, "'most in 1 s'"))
 
@@ -252,15 +261,18 @@ local function frames(pace, extraAt, path)
   local r = report()
   return truth, #passes, first(r, "perf: " .. path .. " (") or "(no line)"
 end
+-- (repair 2, changed on purpose: a read takes 14 frames, 233.8 ms; a 1 s window can touch 6 reads, 6 x 233.8 = 1,403 ms, so the high
+-- figure is about 14.03 x the pace: 14 at 10 a second, 15 with the extra pass, 17 at 12 a second (12 x 1.403 = 16.8). The low figure,
+-- 4 reads over 935 ms, is unchanged: 10, 11, 12.)
 local tr, np, ln = frames(0.0995, nil, "settle")
-check("[new vs first repair] W14a at about 60 fps through the real ticker, the engine at exactly 10 a second (true most in 1 s: " .. tr .. "): 'most in 1 s 10', within her limit, no 'possibly over'",
-  tr == 10 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 10 (limit 10/s)", ln)
+check("[new vs first repair, changed in repair 2] W14a at about 60 fps through the real ticker, the engine at exactly 10 a second (true most in 1 s: " .. tr .. "): low 10, never 'over'; high 14, 'possibly over'",
+  tr == 10 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 10 to 14 (limit 10/s: possibly over)", ln)
 tr, np, ln = frames(0.0995, 1800, "settle")
-check("[new vs first repair] W14b the same with one extra pass (true most in 1 s: " .. tr .. "): 'most in 1 s 11', 'over'",
-  tr == 11 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 11 (limit 10/s: over)", ln)
+check("[new vs first repair] W14b the same with one extra pass (true most in 1 s: " .. tr .. "): 'most in 1 s 11 to 15', 'over'",
+  tr == 11 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 11 to 15 (limit 10/s: over)", ln)
 tr, np, ln = frames(0.08, nil, "settle")
-check("[new vs first repair] W14c the engine at 12 a second (true most in 1 s: " .. tr .. "): 'most in 1 s 12', 'over' (sure, not 'possibly')",
-  tr == 12 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 12 (limit 10/s: over)", ln)
+check("[new vs first repair] W14c the engine at 12 a second (true most in 1 s: " .. tr .. "): 'most in 1 s 12 to 17', 'over' (sure, not 'possibly')",
+  tr == 12 and ln == "XayaUI: perf: settle (full settles): " .. np .. ", most in 1 s 12 to 17 (limit 10/s: over)", ln)
 L.logout()
 return R
 '''

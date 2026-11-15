@@ -11,7 +11,8 @@ What is checked, as the player sees or gets it:
      come back. The group X / Y box and the frame picker close too. (Bundle 1 round 7, SD-58 / SD-64: the mover works only while the
      settings window is open and /xui unlock opens the window with it; the mover has no combat-start listener of its own, the window's
      closes both; a mover closed with the window keeps its moves and waits for the window, through a fight; the login question about a
-     left-over draft is gone, tests/fix_r7_mover_run.py.)
+     left-over draft is gone, tests/fix_r7_mover_run.py. Round 8, SD-68: the window's next opening asks once, Save / Discard / Keep
+     editing, tests/fix_r8_mover_ask_run.py.)
   P. the settings window's sidebar: a row drag running when combat starts drops nothing.
   E. the combat engine's containers (the game's AuraContainer frames, modeled here): /xui disable in combat makes them invisible at once
      with SetAlpha only (no other container call in combat: docs/reference/api documents no AuraContainer method), nothing runs for them
@@ -315,7 +316,12 @@ section("MP", function()
   check("MP3 combat starts and ends with the window closed: nothing opens and nothing is said about the mover", not windowOpen() and not ns.unlocked
     and not has(got, "mover") and MV.visual.x == 103, joined(got))
   slash(""); W.tick(0.1, 4)
-  check("(control) MP4 the window opens: the mover opens again with the move", windowOpen() and ns.unlocked == true and MV.visual.x == 103)
+  -- (round 8, SD-68 "Ask on next settings open") the window's opening asks once; Keep editing opens the mover with the move
+  local ask = rawget(_G, "XayaUIThemeAsk")
+  check("MP4 the window opens: one question about the move (Save / Discard / Keep editing); the mover is not forced open", windowOpen()
+    and ns.unlocked ~= true and ask ~= nil and ask:IsShown() and MV.visual.x == 103)
+  if ask and ask:IsShown() then ask.btns[3]:Click(); W.tick(0.05, 2) end
+  check("(control) MP4 Keep editing: the mover opens again with the move", windowOpen() and ns.unlocked == true and MV.visual.x == 103)
   ns.ToggleUnlock(); exitMover("cancel"); W.tick(0.05, 2)
   check("(control) Cancel puts the display back", MV.visual.x == 100, tostring(MV.visual.x))
   if ns.unlocked then ns.ToggleUnlock(); exitMover("cancel") end

@@ -5,8 +5,9 @@
 -- (bundle 1 round 7, REQUEST-LOG A23 SD-58, her words: "mover view only available when settings window is open"; V34) Moved out of
 -- XayaUI_Rules/Visual.lua into XayaUI Options, the load-on-demand settings addon: the game reads it only when the settings window's
 -- code loads, never at login. The mover works only while the settings window is open, and closing the window closes it (V28). Its
--- unsaved moves follow her answer for the mover (SD-15, "Keep, resume after"): they stay on screen and in the draft, and the mover
--- opens again with them the next time the settings window opens (after combat: when the window reopens by itself). (SD-64, option 1)
+-- unsaved moves stay on screen and in the draft. After combat (SD-15, "Keep, resume after") the mover opens again with them when the
+-- window reopens by itself; otherwise (SD-68, "Ask on next settings open") the next opening of the window asks once: Save / Discard /
+-- Keep editing (never at login). (SD-64, option 1)
 -- /xui unlock opens the settings window with the mover on (XayaUI/Core.lua; in combat: one line, and it opens when combat ends).
 -- What stays in XayaUI Rules is layout: the saved positions and anchors, the displays themselves, and the state the displays read
 -- (ns.unlocked, ns.moveUnlocked, ns.groupUnlocked: which displays show as draggable samples). This file writes that state; Rules
@@ -1014,17 +1015,20 @@ M.MenuParts = VisualMenuParts   -- (the element menu's rows for a display: Visua
 --   CueRulesDB.moverDraft). Moves show at once; leaving the mover with any move asks "Save moves" (the draft is deleted) or "Cancel
 --   moves" (all go back).
 -- - (SD-58, V28) It works only while the settings window is open. Closing the window closes it: with no move it simply ends; with
---   moves (her answer for the mover, SD-15: "Keep, resume after") the moves stay on screen and in the draft, and it opens again with
---   them the next time the window opens, where Save / Cancel work as usual. INFERENCE: "resume after" for a window closed by hand means
---   the window's next opening (for combat it is the window's own reopening after the fight).
+--   moves the moves stay on screen and in the draft. Combat (her answer, SD-15: "Keep, resume after"): the mover opens again with
+--   them when the window reopens by itself after the fight. Any other close (by hand, Escape, /xui disable then a close):
+--   (her answer, SD-68: "Ask on next settings open") the next time the window opens with unsaved moves it asks once: "Save" keeps
+--   them, "Discard" puts every display and group back, "Keep editing" opens the mover with them. The question never forces the mover
+--   open; Escape, closing the window or combat close the question and decide nothing (it is asked again at the next opening).
 -- - The game writes saved data only at logout, /reload, a disconnect or quitting (not at a crash). A draft left by a /reload or a
---   logout without Save waits in the saved data (the displays keep the moved positions, which are saved); the mover opens with it the
---   next time the settings window opens. (Round 7: the login question about it is gone with the mover's code at login.) After a crash
---   nothing of the session was written: the last saved layout is what loads (the moves are lost, the layout is not damaged).
+--   logout without Save waits in the saved data (the displays keep the moved positions, which are saved); the next opening of the
+--   settings window asks about it (above). Nothing asks at login: none of this file is read then. After a crash nothing of the
+--   session was written: the last saved layout is what loads (the moves are lost, the layout is not damaged).
 -- - The lock icon on a group's mover tag locks that group for now: its displays let the mouse through (to reach what is under them)
 --   and its tag does not drag. It saves nothing and ends with the mover.
 -- - Arrow keys nudge the display or group last clicked or dragged in the mover by 1 pixel (Shift: 10). Not in combat.
 -------------------------------------------------------------------------------
+local AskShown, HideAsk   -- (SD-68; below, with the mover's exit)
 local R_KEYS = { "x", "y", "anchor", "point", "anchorPlace" }
 local F_KEYS = { "cX", "cY", "cRel", "cPoint", "cRelPoint", "cFrame", "cAnchorTo", "cGroup" }   -- (cGroup: B, so Cancel undoes a group anchor)
 local function Copy(t) if type(t) ~= "table" then return t end local o = {}; for k, v in pairs(t) do o[k] = Copy(v) end; return o end
@@ -1205,6 +1209,18 @@ function M.MoverExit(choice)
 end
 local LOCK_MOVER = "the mover (/xui unlock) can't open during combat. It will open when combat ends."
 local function HasMoves() return CoreS.moverDraft ~= nil and #ns.MoverChanges() > 0 end
+-- (SD-68) the question about unsaved moves at the settings window's opening. It uses the settings window's one small ask dialog
+-- (ThemeEditor.lua T.Ask: up to three buttons, Escape closes it doing nothing). mover.ask is this question's Save choice, so the
+-- dialog is known to show this question (another ask in the window replaces it, and then it is not ours to hide).
+local function AskFrame() return rawget(_G, "XayaUIThemeAsk") end
+AskShown = function()
+    local f = AskFrame()
+    return mover.ask ~= nil and f ~= nil and f:IsShown() and f.btns ~= nil and f.btns[1].fn == mover.ask
+end
+HideAsk = function()
+    if AskShown() then AskFrame():Hide() end
+    mover.ask = nil
+end
 -- (re)open the mover with the moves kept in the draft (or a new draft when there is none)
 local function MoverResume()
     if ns.unlocked then return end
@@ -1215,6 +1231,7 @@ local function MoverResume()
     end
     if InCombat() or not windowOpen then return end   -- (it opens with the settings window: after combat the window reopens by itself)
     mover.paused = nil
+    HideAsk()   -- (SD-68) the mover opened (Keep editing, or the Lock Positions buttons): the question about its moves is moot
     if ns.SettingsReady("core") and not CoreS.moverDraft then CoreS.moverDraft = TakeDraft() end   -- (the draft was gone: start a new one)
     wipe(mover.tempLock); mover.sel = nil
     KeyFrame():Show()
@@ -1238,10 +1255,11 @@ local function ToggleUnlock()
             return
         end
         -- (SD-58; SD-64, option 1) the mover works only while the settings window is open: it opens the window first. The window's
-        -- opening already brings back a mover with kept moves (WindowOpened below).
+        -- opening brings back a mover paused by combat, or asks about kept moves (WindowOpened below).
         if not windowOpen then
             if ns.OptionsApi.IsOpen and not ns.OptionsApi.IsOpen() and ns.OptionsApi.Toggle then ns.OptionsApi.Toggle() end
-            if ns.unlocked or not windowOpen then return end
+            -- (SD-68) the opening asked about unsaved moves: her answer to it decides (Keep editing opens the mover)
+            if ns.unlocked or not windowOpen or AskShown() then return end
         end
         if mover.paused or HasMoves() then MoverResume(); return end
     end
@@ -1256,6 +1274,7 @@ local function ToggleUnlock()
         ns.MoverExit("save")
         return
     end
+    HideAsk()
     if ns.SettingsReady("core") then CoreS.moverDraft = TakeDraft() end
     wipe(mover.tempLock); mover.sel = nil
     KeyFrame():Show()
@@ -1275,18 +1294,24 @@ function ns.OptionsApi.MoverOn() return ns.unlocked and true or false end
 
 -------------------------------------------------------------------------------
 -- (V26, V28) The mover closes: combat starts (the settings window closes then, Options.lua Tree.CombatStart, and the mover with it), the
--- window is closed by hand, or /xui disable. reason "combat" / "window" / "off". With "combat" and "off" it opens again by itself (with
--- its moves, if any) when the window is next open and rules are on: after combat the window reopens where she was. With "window" it
--- opens again only when it has unsaved moves (SD-15 "Keep, resume after"); with no move it simply ends. A drag still running is dropped
--- (that one display goes back to its last place); the group X / Y box and the frame picker close; its key frame hides at once, so it
--- takes no key in a fight (core KeyCatch.lua lets go of the keyboard on hide). The Save / Cancel question goes too: it is asked again
--- when she next leaves the mover.
+-- window is closed by hand, or /xui disable. reason "combat" / "window" / "off". With "combat" (SD-15 "Keep, resume after") and "off"
+-- it is paused (mover.paused = the reason) and opens again by itself (with its moves, if any) when the window is next open and rules
+-- are on: after combat the window reopens where she was. With "window" it is not paused: with no move it simply ends; with moves they
+-- stay on screen and in the draft, and the window's next opening asks about them (SD-68, WindowOpened below). A drag still running is
+-- dropped (that one display goes back to its last place); the group X / Y box and the frame picker close; its key frame hides at once,
+-- so it takes no key in a fight (core KeyCatch.lua lets go of the keyboard on hide). The Save / Cancel question goes too: it is asked
+-- again when she next leaves the mover.
 -------------------------------------------------------------------------------
 -- combat is starting now: PLAYER_REGEN_DISABLED comes before the lockdown, so the lockdown check alone is still false then.
--- UnitAffectingCombat (globals.md: SecretArguments=AllowedWhenUntainted, no secret return) is true by then (INFERENCE, unverified in game)
+-- (round 8, SD-68) Since a close by hand now asks at the next opening while a combat close resumes (SD-15), this answer decides
+-- behaviour, not only a chat line. The exact signal is the window's own combat-start close telling the mover first
+-- (ns.MoverWindowClosingForCombat, called from XayaUI_Options/Options.lua Tree.CombatStart just before it hides the window); until
+-- that call is there, UnitAffectingCombat (globals.md: SecretArguments=AllowedWhenUntainted, no secret return) is read, which is true
+-- by then (INFERENCE, unverified in game).
 local issecretV = ns.IsSecret or issecretvalue or function() return false end
+function ns.MoverWindowClosingForCombat() mover.combatClosing = true end   -- (read and cleared by WindowClosed, below)
 function ns.MoverCombatStarting()
-    if InCombat() then return true end
+    if InCombat() or mover.combatClosing then return true end
     if not UnitAffectingCombat then return false end
     local ok, v = pcall(UnitAffectingCombat, "player")
     return (ok and not issecretV(v) and v) and true or false
@@ -1306,7 +1331,7 @@ function ns.MoverCombatClose(reason)
         Lock()
         return true
     end
-    mover.paused = true
+    mover.paused = (reason ~= "window") and reason or nil   -- (SD-68: a window closed by hand asks at its next opening instead)
     ns.unlocked = false
     for r in pairs(pairOf) do ns.ClearPair(r) end
     if mover.keys then mover.keys:Hide() end   -- (no key is taken in the fight)
@@ -1316,7 +1341,7 @@ function ns.MoverCombatClose(reason)
         ns.Print(n > 0 and "the mover closed because rules are off. It will open again with your unsaved moves when you type /xui enable."
             or "the mover closed because rules are off. It will open again when you type /xui enable.")
     elseif reason == "window" then
-        ns.Print(("the mover closed with the settings window. Your %d unsaved move(s) are kept, and the mover opens again with them the next time you open the settings window."):format(n))
+        ns.Print(("the mover closed with the settings window. Your %d unsaved move(s) are kept. You'll be asked to save or discard them the next time you open the settings window."):format(n))
     else
         ns.Print(n > 0 and "the mover closed because combat started. It will open again with your unsaved moves when combat ends."
             or "the mover closed because combat started. It will open again when combat ends.")
@@ -1324,14 +1349,47 @@ function ns.MoverCombatClose(reason)
     return true
 end
 function ns.MoverPaused() return mover.paused ~= nil end   -- (tests)
--- the settings window opened: a mover paused by combat or /xui disable, or with moves kept in the draft (from a closed window, a
--- /reload or a logout without Save), opens again with them
+-- (SD-68, her answer "Ask on next settings open") the question about moves kept in the draft (from a window closed by hand or by
+-- Escape, a /reload or a logout without Save). Asked once per opening of the settings window, never at login. Its three choices do
+-- nothing once the window has closed or combat has begun (V28, V26): the dialog is hidden then (WindowClosed below; Options.lua
+-- Tree.CombatStart hides it too), and a click that still reaches a choice changes nothing; the question comes back at the next opening.
+local ASK_TEXT = "You have %d unsaved move(s) from the mover. Save them, discard them (everything goes back), or keep editing?"
+local function AskChoice(fn)
+    return function()
+        mover.ask = nil
+        if not windowOpen or InCombat() or ns.unlocked or ns.RulesDisabled or not HasMoves() then return end
+        fn()
+    end
+end
+local function AskSave()
+    local n = #ns.MoverChanges()
+    EndSession(true)
+    ns.Print(("your %d move(s) are saved."):format(n))
+end
+local function AskDiscard()
+    EndSession(false)
+    pcall(AfterMoverChange)   -- (the displays and group tags go back on screen now)
+    ns.Print("your unsaved moves were discarded. Everything is back where it was.")
+end
+local function AskPending()
+    mover.askedOpen = true
+    local T = ns.ThemeShared and ns.ThemeShared.T
+    if not (T and T.Ask) then return end
+    local save = AskChoice(AskSave)
+    local f = T.Ask(ASK_TEXT:format(#ns.MoverChanges()),
+        { { "Save", save }, { "Discard", AskChoice(AskDiscard) }, { "Keep editing", AskChoice(MoverResume) } })
+    if f then mover.ask = save end
+end
+-- the settings window opened: a mover paused by combat (SD-15) or /xui disable opens again with its moves; moves kept in the draft
+-- otherwise are asked about once (SD-68); a draft with no moves is dropped silently
 WindowOpened = function()
+    mover.askedOpen = nil
     if ns.unlocked then return end
     if mover.paused then MoverResume(); return end
     if CoreS.moverDraft then
-        if #ns.MoverChanges() > 0 then MoverResume()
-        elseif ns.SettingsReady("core") then CoreS.moverDraft = nil end   -- (a draft with no moves is dropped silently)
+        if #ns.MoverChanges() > 0 then
+            if not ns.RulesDisabled then AskPending() end   -- (rules off: no displays to show; asked when /xui enable comes, below)
+        elseif ns.SettingsReady("core") then CoreS.moverDraft = nil end
     end
 end
 -- the settings window closed (ns.EndWindowState, above): the sidebar's per-rule and per-group movement unlocks end, then the mover
@@ -1345,13 +1403,25 @@ WindowClosed = function()
         local f = ns.FolderById and ns.FolderById(fid)
         if f then ns.SetGroupUnlocked(f, false) else ns.groupUnlocked[fid] = nil end
     end
-    ns.MoverCombatClose(ns.MoverCombatStarting() and "combat" or "window")   -- (also the picker and the X / Y box)
+    local combat = ns.MoverCombatStarting()
+    mover.combatClosing = nil
+    ns.MoverCombatClose(combat and "combat" or "window")   -- (also the picker and the X / Y box)
+    -- (SD-68) a mover paused by /xui disable whose window she then closed: like any close by hand, its moves are asked about at the
+    -- next opening (with no move it ends)
+    if not combat and mover.paused == "off" then
+        mover.paused = nil
+        if not HasMoves() then EndSession(true) end
+    end
+    HideAsk()   -- (V28) the question closes with the window and decides nothing
+    mover.askedOpen = nil
     MenuOwnerCheck()   -- (V26) a context menu opened from the window goes with it
 end
 -- /xui disable: the mover, the X / Y box, the picker and the sidebar's per-rule and per-group movement unlocks (sample displays) end;
 -- nothing shows until /xui enable (XayaUI_Rules/Visual.lua hides every display on the same event). Placed once (the game has no way to
 -- remove a listener); each returns at once while none of this is open.
 ns.On("RULES_DISABLED", function()
+    -- (SD-68) the question about unsaved moves waits for /xui enable (the displays are hidden while rules are off)
+    if AskShown() then HideAsk(); mover.askedOpen = nil end
     if not (ns.unlocked or next(ns.moveUnlocked) or next(ns.groupUnlocked) or (picker and picker:IsShown()) or (posPopup and posPopup:IsShown())) then return end
     ns.MoverCombatClose("off")
     local rules = {}
@@ -1362,5 +1432,9 @@ ns.On("RULES_DISABLED", function()
         if f then pcall(ns.SetGroupUnlocked, f, false) else ns.groupUnlocked[fid] = nil end
     end
 end)
-ns.On("RULES_ENABLED", function() if mover.paused and windowOpen then MoverResume() end end)
+ns.On("RULES_ENABLED", function()
+    if not windowOpen or ns.unlocked then return end
+    if mover.paused then MoverResume()
+    elseif not mover.askedOpen and HasMoves() then AskPending() end   -- (SD-68: the window opened while rules were off)
+end)
 ns.MoverDisplay = M   -- (XayaUI Rules' seam, Visual.lua: false until now)

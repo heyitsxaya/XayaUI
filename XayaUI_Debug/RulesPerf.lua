@@ -31,15 +31,21 @@
 -- (STEP below says why not 0.25), that stops itself after 2609 ticks (2609 x 0.23 s = 600.07 s = 10 minutes; INFERENCE: the cap, so a
 -- forgotten measurement cannot run on) or at /xui debug perf off. Each tick reads GetTime() once and the 9 counters into tables made at
 -- file load (no allocation); about once a second (every 4th tick: 4 x 0.23 s = 0.92 s) it reads one CPU figure per XayaUI addon.
--- Measured in the stand-in (round 8 repair, a count hook over 1200 ticks, 300 of them reading the CPU meter): 938 Lua instructions a
--- tick (407 before the time ring); 1 / 0.23 = 4.35 ticks a second, so 938 x 4.35 = 4,080 a second, only while a measurement runs.
+-- Measured in the stand-in (round 8 repair 2, tests/fix_r8_debug_range_run.py R6: a count hook over 1200 ticks 233.8 ms apart, 300 of
+-- them reading the CPU meter): 1,130,138 / 1200 = 942 Lua instructions a tick (repair 1's 4-read ring, the same way: 983); 1 / 0.23 =
+-- 4.35 ticks a second, so 942 / 0.23 = 4,096 a second, only while a measurement runs.
 -- Nothing runs while no measurement runs, and nothing at all with Advanced Debugging off.
--- "Most in 1 s" (round 8 repair: before, the sum of the last 4 ticks was called "the highest count in any 1 s window", but the game
--- runs a ticker on frames, so 4 ticks can last longer than 1 s and turn a pace of exactly 10 a second into a false "over"): each tick
--- notes GetTime() in a ring made at file load; "most in 1 s" is the most counted in any run of 1 to 4 ticks that lasted 1.00 s or less,
--- so it never counts high. "over" means more than 10 in such a run. When 4 ticks ran past 1 s and counted more than that, the report
--- adds that count and how long the 4 ticks took, and "possibly over" when that count passed 10. A burst split between ticks can still
--- read low (a 1 s window can touch 5 ticks, and a run of 4 ticks at 0.23 s lasts a little under 1 s, 0.935 s at 60 fps).
+-- "Most in 1 s" (round 8 repairs 1 and 2). Reads come every 0.23 s or a little later, so they cannot say where inside a read a pass
+-- fell; the report gives the true most in any 1 s window as a range, low to high, that always holds it. Each tick notes GetTime() in a
+-- ring of the last 8 reads (made at file load). Low: the most counted in any run of reads that lasted 1.00 s or less in all (all those
+-- passes fell within 1 s, so the true figure is at least this). High: the most counted in any run of reads a 1 s window could touch,
+-- that is every run whose inner reads (all but its first and last) lasted 1.00 s or less (the true figure is at most this). "over":
+-- the low figure is past her limit; "possibly over": only the high one is; a plain "(limit 10/s)" only when the high one is 10 or less.
+-- Repair 1 kept only the low figure (and 4 reads past 1 s), so a real burst of 11 inside 0.95 s read "9" or "10" with no warning.
+-- A 1 s window can touch 6 reads, not 5: at 60 fps a read takes 14 frames (14 x 16.7 ms = 233.8 ms), 4 inner reads take 4 x 233.8 =
+-- 935 ms, which leaves 1000 - 935 = 65 ms for the window to reach into one read before and one after. The cost of the range is that a
+-- path running steadily at exactly 10 a second reads "possibly over" (about 10 to 14 at 60 fps: 6 reads x 2.338 passes = 14.0):
+-- reads 0.23 s apart cannot rule out 11 there. INFERENCE (debug tool design, flagged, not asked).
 -- Game API (docs/reference/api/, 12.1.5): C_Timer.NewTicker(seconds, callback, iterations?) -> cbObject (namespaces.md:4672);
 -- Enum.AddOnProfilerMetric.PeakTime = 4 (enums.md:470); C_AddOnProfiler.IsEnabled() -> enabled (namespaces.md:135); GetFramerate() ->
 -- framerate (globals.md:181: "% of a frame" = ms / (1000 / framerate), at the frame rate when the report is typed);
@@ -113,11 +119,15 @@ local STEP = 0.23
 local WINDOW = 1.000001     -- a run of ticks counts as "in 1 s" when it lasted 1.00 s or less (the millionth: rounding in the sums)
 local MAX_TICKS = 2609      -- 2609 x 0.23 s = 600.07 s: the measurement stops itself after 10 minutes
 local MAIN = { "XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Debug" }   -- (only if the game's list cannot be read)
--- every table the ticks use is made here, once (a tick allocates nothing). high = most in a run of 1.00 s or less; high4 / span4 = the
--- most in 4 ticks and how long those 4 ticks took; tstart = when each ring slot began; span = how long the last 1 to 4 ticks took.
-local m = { on = false, ticks = 0, base = {}, last = {}, final = {}, high = {}, high4 = {}, span4 = {}, ring = {}, names = {}, cpuHigh = {},
-    mem0 = {}, mem1 = {}, loaded0 = {}, loaded1 = {}, tstart = { 0, 0, 0, 0 }, span = { 0, 0, 0, 0 }, tlast = 0 }
-for i = 1, #PATHS do m.ring[PATHS[i]] = { 0, 0, 0, 0 } end
+local RING = 8              -- reads kept: a 1 s window touches at most 6 reads 0.23 s long (see the top); 8 leaves room for early ones
+local BEFORE = 1000         -- (seconds) a ring slot not yet read "began" this long before the start, so no run reaches into it
+-- every table the ticks use is made here, once (a tick allocates nothing). high = the low figure (most in reads that lasted 1.00 s or
+-- less); top = the high figure (most in reads a 1 s window could touch); tstart = when each ring slot began; span[j] = how long the
+-- last j reads took; short = the ring was too small for one window (reads came faster than expected), so a high figure may be low.
+local m = { on = false, ticks = 0, base = {}, last = {}, final = {}, high = {}, top = {}, ring = {}, names = {}, cpuHigh = {},
+    mem0 = {}, mem1 = {}, loaded0 = {}, loaded1 = {}, tstart = {}, span = {}, tlast = 0, short = false }
+for j = 1, RING do m.tstart[j], m.span[j] = 0, 0 end
+for i = 1, #PATHS do local r = {}; for j = 1, RING do r[j] = 0 end; m.ring[PATHS[i]] = r end
 
 local function Metric(name, metric)   -- one figure from the game's addon meter, or nil (never guessed)
     local P = C_AddOnProfiler
@@ -150,11 +160,17 @@ end
 
 local function Sample()   -- the counters since the last tick, into this tick's ring slot, with the time it ended
     local now = GetTime()
-    local slot = m.ticks % 4 + 1
+    local slot = m.ticks % RING + 1
     local tstart, span = m.tstart, m.span
     tstart[slot] = m.tlast; m.tlast = now
-    local s = slot   -- span[j]: how long the last j ticks took (back to the start of the slot j - 1 places before this one)
-    for j = 1, 4 do span[j] = now - tstart[s]; s = s - 1; if s == 0 then s = 4 end end
+    local s = slot   -- span[j]: how long the last j reads took (back to the start of the slot j - 1 places before this one)
+    for j = 1, RING do span[j] = now - tstart[s]; s = s - 1; if s == 0 then s = RING end end
+    -- low: the last nLow reads lasted 1.00 s or less in all; high: a 1 s window can touch the last nHigh reads (their inner reads,
+    -- 2 to nHigh - 1 counted back, lasted 1.00 s or less: span[j - 1] - span[1]); spans only grow with j, so the first miss ends each
+    local nLow, nHigh = 0, 2
+    while nLow < RING and span[nLow + 1] <= WINDOW do nLow = nLow + 1 end
+    while nHigh < RING and span[nHigh] - span[1] <= WINDOW do nHigh = nHigh + 1 end
+    if span[RING] - span[1] <= WINDOW then m.short = true end   -- (a window could reach past the ring: never at 0.23 s reads)
     local ES = ns.EngineStats
     for i = 1, #PATHS do
         local k = PATHS[i]
@@ -163,11 +179,11 @@ local function Sample()   -- the counters since the last tick, into this tick's 
             local r = m.ring[k]
             r[slot] = v - m.last[k]; m.last[k] = v
             local n, at = 0, slot
-            for j = 1, 4 do
-                n = n + r[at]; at = at - 1; if at == 0 then at = 4 end
-                if span[j] <= WINDOW and n > m.high[k] then m.high[k] = n end
+            for j = 1, nHigh do
+                n = n + r[at]; at = at - 1; if at == 0 then at = RING end
+                if j == nLow and n > m.high[k] then m.high[k] = n end
             end
-            if n > m.high4[k] or (n == m.high4[k] and span[4] < m.span4[k]) then m.high4[k], m.span4[k] = n, span[4] end
+            if n > m.top[k] then m.top[k] = n end
         end
     end
 end
@@ -215,18 +231,18 @@ local function StartMeasuring()
         local k = PATHS[i]
         local v = ES and ES[k]
         local r = m.ring[k]
-        r[1], r[2], r[3], r[4] = 0, 0, 0, 0
+        for j = 1, RING do r[j] = 0 end
         if type(v) == "number" then m.base[k], m.last[k] = v, v else m.base[k], m.last[k] = false, 0 end
-        m.high[k], m.high4[k], m.span4[k] = 0, 0, 0
+        m.high[k], m.top[k] = 0, 0
         m.final[k] = false
     end
     for i = 1, #m.names do m.cpuHigh[i] = false; m.mem1[i] = false; m.loaded1[i] = false end
     for i = #m.names + 1, #m.cpuHigh do m.cpuHigh[i] = nil end
     ReadMemory(m.mem0, m.loaded0)
     m.on, m.t0, m.t1, m.ticks, m.gc1 = true, GetTime(), nil, 0, nil
-    m.tlast = m.t0
+    m.tlast, m.short = m.t0, false
     local tstart = m.tstart
-    tstart[1], tstart[2], tstart[3], tstart[4] = m.t0, m.t0, m.t0, m.t0
+    for j = 1, RING do tstart[j] = m.t0 - BEFORE end
     if C_Timer and C_Timer.NewTicker then m.ticker = C_Timer.NewTicker(STEP, Tick, MAX_TICKS) end
 end
 ns.DebugPerfTick = function() return Tick() end   -- (tests: the same tick the ticker runs)
@@ -240,19 +256,19 @@ local function TrackerReport(L)
     if not m.hadStats then
         L("perf: engine passes: unavailable (this XayaUI Rules does not count them)")
     else
-        L("perf: 'most in 1 s' counts only reads 1.00 s apart or less. 'over': more than %d there. 'possibly over': more than %d only in 4 reads that took longer than 1 s. A burst split between reads can count low.", LIMIT, LIMIT)
+        L("perf: 'most in 1 s' is a range when reads 0.23 s apart cannot pin it down: low counts only reads within 1 s, high every read a 1 s window could touch. 'over': low is more than %d. 'possibly over': only high is. A path running steadily at %d/s can read 'possibly over'.", LIMIT, LIMIT)
+        if m.short then L("perf: note: reads came faster than expected, so a high figure may be too low.") end
         for i = 1, #PATHS do
             local k = PATHS[i]
             local now
             if m.on then now = ES and ES[k] else now = m.final[k] end
             if m.base[k] and type(now) == "number" then
-                local sure, four = m.high[k], m.high4[k]
-                local most = ("most in 1 s %d"):format(sure)
-                if four > sure then most = most .. ("; %d in 4 reads over %.3f s"):format(four, m.span4[k]) end
+                local low, high = m.high[k], m.top[k]
+                local most = high > low and ("most in 1 s %d to %d"):format(low, high) or ("most in 1 s %d"):format(low)
                 local limit = ""
                 if RECHECK[k] then
-                    if sure > LIMIT then limit = (" (limit %d/s: over)"):format(LIMIT)
-                    elseif four > LIMIT then limit = (" (limit %d/s: possibly over)"):format(LIMIT)
+                    if low > LIMIT then limit = (" (limit %d/s: over)"):format(LIMIT)
+                    elseif high > LIMIT then limit = (" (limit %d/s: possibly over)"):format(LIMIT)
                     else limit = (" (limit %d/s)"):format(LIMIT) end
                 end
                 L("perf: %s (%s): %d, %s%s", k, WHAT[k], now - m.base[k], most, limit)

@@ -14,7 +14,8 @@ ticks are driven by hand (ns.DebugPerfTick, the same function the ticker runs) w
 known. [new] = fails on the pre-change files (proved on a private copy with XayaUI_Debug as it was before round 8):
   P1  [new] /xui debug perf on starts ONE ticker (every 0.23 s, at most 2609 ticks = 10 minutes) and nothing else. (Round 8 repair:
       0.25 s and 2400 before; 0.23 s keeps 4 ticks within 1 s on frames, see XayaUI_Debug/RulesPerf.lua STEP.)
-  P2  [new] the report gives, per counted path, the count and the most in any 1 s window; her limit of 10 a second is shown next to the
+  P2  [new] the report gives, per counted path, the count and the most in any 1 s window (round 8 repair 2: as a range, low to high,
+      when reads 0.23 s apart cannot pin it down; see tests/fix_r8_debug_range_run.py); her limit of 10 a second is shown next to the
       seven re-check paths and "over" when it was passed; the two redraw counts have no limit; a missing counter says "unavailable".
   P3  [new] the 1 s windows move one read at a time: a burst of 6 + 6 across a whole-second boundary counts 12 in 1 s (whole
       seconds counted from the start would say 6).
@@ -115,12 +116,15 @@ elseif phase == "on" then
   check("[new] P6 /xui debug perf off stops the ticker; the report then gives the stopped figures",
     live() == 0 and measuring() == false and count(rep, "perf: engine passes over 2s (counted by XayaUI Rules;") == 1,
     first(rep, "engine passes") or table.concat(rep, " / "):sub(1, 300))
-  check("[new] P2a routed: count 24, most in 1 s 12 (4 x 3), past her limit: 'over'",
-    has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 24, most in 1 s 12 (limit 10/s: over)"), first(rep, "perf: routed"))
-  check("[new] P2b pollRange: count 8, most in 1 s 4, within her limit",
-    has(rep, "XayaUI: perf: pollRange (0.2 s range re-checks): 8, most in 1 s 4 (limit 10/s)"), first(rep, "perf: pollRange"))
-  check("[new] P2c redrawText: count 400, most in 1 s 200, no limit shown (a write, not a re-check)",
-    has(rep, "XayaUI: perf: redrawText (tenths texts rewritten): 400, most in 1 s 200"), first(rep, "perf: redrawText"))
+  -- (round 8 repair 2: "most in 1 s" is now a range, low to high. Low: 4 reads 0.25 s apart last 4 x 0.25 = 1.00 s, so 4 x 3 = 12.
+  -- High: a 1 s window can touch 4 inner reads (1.00 s) and one read on each side, 6 reads: 6 x 3 = 18 for routed, 6 x 1 = 6 for
+  -- pollRange, 6 x 50 = 300 for redrawText. Changed on purpose: before, only the low figure was printed.)
+  check("[new] P2a routed: count 24, most in 1 s 12 to 18 (low 4 x 3, high 6 x 3), past her limit: 'over'",
+    has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 24, most in 1 s 12 to 18 (limit 10/s: over)"), first(rep, "perf: routed"))
+  check("[new] P2b pollRange: count 8, most in 1 s 4 to 6, within her limit",
+    has(rep, "XayaUI: perf: pollRange (0.2 s range re-checks): 8, most in 1 s 4 to 6 (limit 10/s)"), first(rep, "perf: pollRange"))
+  check("[new] P2c redrawText: count 400, most in 1 s 200 to 300, no limit shown (a write, not a re-check)",
+    has(rep, "XayaUI: perf: redrawText (tenths texts rewritten): 400, most in 1 s 200 to 300"), first(rep, "perf: redrawText"))
   check("[new] P2d a counter XayaUI Rules does not have: 'unavailable'",
     has(rep, "XayaUI: perf: alert (Cooldown Manager alert re-checks): unavailable"), first(rep, "perf: alert"))
   check("[new] P2e every path has its line (9), with her limit on the seven re-check paths only",
@@ -138,7 +142,7 @@ elseif phase == "on" then
   local t1 = W.now
   W.tick(0.25, 20)
   n = #W.printed; ns.PerfCommand(""); rep = since(n)
-  check("[new] P6b nothing runs after the stop: the same figures 5 s later", has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 24, most in 1 s 12 (limit 10/s: over)")
+  check("[new] P6b nothing runs after the stop: the same figures 5 s later", has(rep, "XayaUI: perf: routed (aura and cooldown re-checks): 24, most in 1 s 12 to 18 (limit 10/s: over)")
     and count(rep, "perf: engine passes over 2s") == 1, first(rep, "engine passes"))
   ES.alert = savedAlert or 0
   -- P5: a tick allocates nothing

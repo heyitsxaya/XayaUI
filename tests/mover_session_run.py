@@ -11,9 +11,10 @@ Checks, on the real addons in the stand-in game:
   draft is deleted either way;
 - the lock on a group's mover tag: its displays let the mouse through and do not drag; the group does not nudge; it ends with the view;
 - arrow keys nudge the last clicked display or group by 1 (Shift 10), other keys reach the game, nothing in combat;
-- (bundle 1 round 7, SD-58 / SD-15 "Keep, resume after") the mover works only while the settings window is open; a draft with moves
-  waits for the window: the mover opens again with it when the window opens; a draft with no moves is dropped silently then. (The
-  login question about a left-over draft is gone with the mover's code at login; tests/fix_r7_mover_run.py plays the /reload itself.)
+- (bundle 1 round 7, SD-58) the mover works only while the settings window is open; a draft with moves waits for the window;
+  (round 8, SD-68 "Ask on next settings open") the window's next opening asks once and Keep editing opens the mover with the moves;
+  a draft with no moves is dropped silently then. (Nothing asks at login: the mover's code is not read then; tests/fix_r7_mover_run.py
+  plays the /reload, tests/fix_r8_mover_ask_run.py every answer to the question.)
 Old code: no ns.MoverExit / ns.MoverNudge: those checks fail, and locking after a move never asks.
 Run: python3 tests/mover_session_run.py   (Lua 5.1 via lupa)."""
 import os, sys
@@ -117,7 +118,7 @@ ns.ToggleUnlock(); W.tick(0.05, 2)
 check("  ...and the next mover view starts with nothing locked", fb:IsMouseEnabled() == true)
 ns.ToggleUnlock(); W.tick(0.05, 2)
 
--- (round 7) a draft with moves waits for the settings window (her answer for the mover, SD-15: "Keep, resume after")
+-- (round 7) a draft with moves waits for the settings window; (round 8, SD-68) its next opening asks
 ns.ToggleUnlock(); W.tick(0.05, 2)
 ns.MoverSelect("display", A); ns.MoverNudge(0, 7)
 W.popup = nil
@@ -125,7 +126,10 @@ ns.ToggleUI(); W.tick(0.1, 4)   -- the settings window closes, and the mover wit
 check("closing the settings window closes the mover; the move stays, in the draft, and nothing asks", not ns.unlocked and A.visual.y == 7
   and ns.Settings("core").moverDraft ~= nil and W.popup == nil and not XayaUIMoverKeys:IsShown(), W.popup)
 ns.ToggleUI(); W.tick(0.1, 4)   -- the settings window opens again
-check("  ...opening the settings window opens the mover again with the move", ns.unlocked and A.visual.y == 7 and XayaUIMoverKeys:IsShown())
+local ask = rawget(_G, "XayaUIThemeAsk")
+check("  ...opening the settings window asks once and does not open the mover by itself", not ns.unlocked and ask ~= nil and ask:IsShown())
+if ask and ask:IsShown() then ask.btns[3]:Click() end
+check("  ...Keep editing opens the mover again with the move", ns.unlocked and A.visual.y == 7 and XayaUIMoverKeys:IsShown())
 ns.MoverExit("cancel")
 check("  ...Cancel moves puts them back and deletes the draft", A.visual.y == 0 and ns.Settings("core").moverDraft == nil, A.visual.y)
 ns.ToggleUI(); W.tick(0.1, 4)

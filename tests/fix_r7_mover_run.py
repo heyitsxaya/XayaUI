@@ -11,12 +11,14 @@ What the player sees or gets, on the real addons in the stand-in game (tests/har
      draggable samples).
   R3 closing the settings window closes the mover (V28): nothing moved, so nothing is kept; the displays let the mouse through again;
      the mover's arrow-key frame and group tags are hidden.
-  R4 a move, then the window closed: the move is kept (the display's position) and in the draft, one line says so; opening the window again opens the
-     mover with the move; Cancel moves puts the display back.
+  R4 a move, then the window closed: the move is kept (the display's position) and in the draft, one line says so; (round 8, SD-68
+     "Ask on next settings open") opening the window again asks once (Save / Discard / Keep editing) and does not force the mover
+     open; Keep editing opens the mover with the move; Cancel moves puts the display back.
   R5 /xui unlock in combat: one line (the combat lock) and nothing opens; when combat ends the settings window opens with the mover on.
   R6 the Lock Positions name (ns.ToggleUnlock) with the window closed does what /xui unlock does: the window opens with the mover on.
   R7 a /reload with an unsaved move (the second session loads what the first saved): at login nothing asks and nothing of the mover is
-     read; the display is where it was moved; opening the settings window opens the mover with that move; Cancel puts it back.
+     read; the display is where it was moved; opening the settings window asks once (SD-68) and Keep editing opens the mover with
+     that move; Cancel puts it back. (tests/fix_r8_mover_ask_run.py covers every answer to the question.)
   S  the code itself: XayaUI_Rules/Visual.lua keeps positions and anchors only (none of the mover's functions, frames, popups, events or
      key handling; the four names Rules' own files call are one-line forwarders to the mover); no file of XayaUI core or XayaUI Rules
      defines a mover function; XayaUI_Options/Mover.lua defines them and XayaUI_Options.toc lists it.
@@ -80,10 +82,15 @@ if mode == "reload" then
   check("(control) R7 the display keeps the moved position (saved), and the draft is kept", A.visual.x == -55 and type(draft()) == "table",
     tostring(A.visual.x))
   section("R7", function()
-    local m = mark()
     ns.ToggleUI(); W.tick(0.1, 4)
+    local ask = rawget(_G, "XayaUIThemeAsk")
+    check("R7 opening the settings window asks about the move (SD-68) and does not open the mover by itself", windowOpen()
+      and ns.unlocked ~= true and ask ~= nil and ask:IsShown() and (ask.text:GetText() or ""):find("1 unsaved move", 1, true) ~= nil,
+      ask and ask.text:GetText())
+    local m = mark()
+    if ask and ask:IsShown() then W.click(ask.btns[3]); W.tick(0.1, 2) end
     local got = since(m)
-    check("R7 opening the settings window opens the mover with the move (one line says so)", windowOpen() and ns.unlocked == true
+    check("R7 Keep editing opens the mover with the move (one line says so)", windowOpen() and ns.unlocked == true
       and #ns.MoverChanges() == 1 and has(got, "1 unsaved move"), joined(got))
     ns.MoverExit("cancel"); W.tick(0.1, 2)
     check("(control) R7 Cancel moves puts the display back and deletes the draft", A.visual.x == -60 and draft() == nil and not ns.unlocked, tostring(A.visual.x))
@@ -141,12 +148,16 @@ section("R4", function()
   check("R4 a move, then the window closed: the mover closes, the move is kept (the display's position) and in the draft, nothing asks",
     not windowOpen() and not ns.unlocked and A.visual.x == x0 + 9 and type(draft()) == "table" and #ns.MoverChanges() == 1 and W.popup == nil,
     ("window=%s mover=%s x=%s popup=%s"):format(tostring(windowOpen()), tostring(ns.unlocked), tostring(A.visual.x), tostring(W.popup)))
-  check("R4 one line says the move is kept and the mover opens again with the window", #got == 1 and has(got, "unsaved move")
-    and has(got, "settings window"), joined(got))
-  m = mark()
+  check("R4 one line says the move is kept and she is asked about it when the window opens", #got == 1 and has(got, "unsaved move")
+    and has(got, "settings window") and has(got, "asked"), joined(got))
   ns.ToggleUI(); W.tick(0.1, 4)
+  local ask = rawget(_G, "XayaUIThemeAsk")
+  check("R4 opening the settings window asks once (SD-68); the mover stays closed", windowOpen() and ns.unlocked ~= true
+    and ask ~= nil and ask:IsShown(), ("mover=%s ask=%s"):format(tostring(ns.unlocked), tostring(ask and ask:IsShown())))
+  m = mark()
+  if ask and ask:IsShown() then W.click(ask.btns[3]); W.tick(0.1, 2) end
   got = since(m)
-  check("R4 opening the settings window opens the mover again with the move", windowOpen() and ns.unlocked == true and A.visual.x == x0 + 9
+  check("R4 Keep editing opens the mover again with the move", windowOpen() and ns.unlocked == true and A.visual.x == x0 + 9
     and takesMouse(A) and has(got, "open again"), joined(got))
   ns.MoverExit("cancel"); W.tick(0.1, 2)
   check("(control) R4 Cancel moves puts the display back", A.visual.x == x0 and draft() == nil and not ns.unlocked, tostring(A.visual.x))
