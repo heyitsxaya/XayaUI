@@ -10,13 +10,17 @@ no Stat Calc button: its checks are left out, and M0 checks that this build make
   C2  in combat: /xui stats, the statCalc service's Toggle / Open and the minimap row's call open nothing and say
       nothing; closing and opening the character window builds no model and draws nothing; a stat event does nothing; the character
       window itself still opens and closes.
-  C3  combat ends with the character window open: the panel comes back docked and drawn, the events are back.
-  C4  the character window closed during combat: after combat the panel stays hidden (its trigger is gone), its open state is kept,
-      and it docks again the next time the window opens.
-  C5  the panel open on its own (the window closed): hidden in combat, back on its own after combat.
+  C3  (bundle 1 round 10; REQUEST-LOG SD-100 "stat calculator isn't allowed to be open during combat", SD-102 "Don't reappear";
+      intended change: was "the panel comes back docked and drawn, the events are back") combat ends with the character window open:
+      the panel stays hidden, no model is built, the frame listens to nothing; the next opening of the window docks it again.
+  C4  the character window closed during combat: after combat the panel stays hidden, its open state is kept, and it docks again the
+      next time the window opens.
+  C5  the panel open on its own (the window closed): hidden in combat; (round 10, SD-102, intended change: was "back on its own after
+      combat") after combat it stays closed until she opens it again (/xui stats, the minimap row).
   C6  the panel left closed before combat: still closed after combat.
-  C7  the Stat Calculator switched on in combat (/xui stats on): nothing shows, nothing is built; after combat it docks beside the
-      open window.
+  C7  the Stat Calculator switched on in combat (a profile import or the tick box while it is loaded): nothing shows, nothing is
+      built; it waits for the end of combat only to clear its combat mark; (round 10, SD-102, intended change: was "after combat it
+      docks beside the open window") after combat nothing opens by itself; reopening the window docks it.
 Negative control: with the Stat Calculator file before this step (no combat lock; XUI_ROOT=<copy>), C1-C5 and C7 fail (12 of 28 on qa-installer-branch, with the button checks: the
   panel stays up, draws and listens in combat).
 Every number is a TEST STAND-IN. In-game behavior is UNVERIFIED IN GAME.
@@ -102,12 +106,15 @@ fire("UNIT_STATS", "player"); fire("COMBAT_RATING_UPDATE")
 checkp("  ...closing and opening the window, and a stat event, build no model and draw nothing", function()
   return builds == 0 and not panelShown(), builds end)
 
--- C3 combat ends with the window open
+-- C3 combat ends with the window open (round 10, SD-102: nothing reappears)
 leaveCombat()
-checkp("C3 combat ends, the window open: the panel comes back docked and drawn", function()
-  return panelShown() and panel().standalone == false and builds > 0, builds end)
-checkp("  ...the stat events are back", function() return ev.events.COMBAT_RATING_UPDATE == true and ev.events.UNIT_STATS == true and ev.events.PLAYER_REGEN_DISABLED == true end)
+checkp("C3 combat ends, the window open: the panel stays hidden and no model is built (SD-102 \"Don't reappear\")", function()
+  return not panelShown() and builds == 0, builds end)
+checkp("  ...the frame listens to nothing (the panel is closed)", function() return evCount(ev) == 0, evCount(ev) end)
 checkp("  ...still no message", function() return said() == p0, printed[#printed] end)
+closeWindow(); openWindow()
+checkp("  ...the next opening of the window docks it, drawn, its events back", function()
+  return panelShown() and panel().standalone == false and builds > 0 and ev.events.COMBAT_RATING_UPDATE == true and ev.events.PLAYER_REGEN_DISABLED == true, builds end)
 
 -- C4 the window closed during combat
 enterCombat()
@@ -125,7 +132,9 @@ checkp("C5 setup: the panel open on its own (the window closed)", function() ret
 enterCombat()
 checkp("C5 in combat it hides", function() return not panelShown() end)
 leaveCombat()
-checkp("  ...after combat it is back on its own", function() return panelShown() and panel().standalone == true end)
+checkp("  ...after combat it stays closed (SD-102)", function() return not panelShown() and c.panelOpen == true end)
+ns.StatCalc_SetOpen(true)
+checkp("  ...she opens it again on its own", function() return panelShown() and panel().standalone == true end)
 ns.StatCalc_SetOpen(false)
 
 -- C6 left closed before combat
@@ -141,14 +150,16 @@ checkp("C7 setup: the Stat Calculator off: no panel", function() return not pane
 enterCombat()
 builds = 0
 local p1 = said()
--- (Bonus 0.6.46, A24 #12 / #13) /xui stats on only saves the choice for the next reload now; switched on while the calculator is loaded
--- (a profile import, or a session that started with it on and was switched off and on) goes through Apply, played here
+-- (round 10, SD-118) "/xui stats on" no longer exists; switched on while the calculator is loaded (the tick box or a profile import,
+-- through the loader's switch logic) goes through Apply, played here
 ns.StatCalc_Cfg().enabled = true; ns.StatCalc_Apply()
 checkp("C7 switched on in combat: nothing shows and nothing is built", function()
   return not panelShown() and builds == 0, builds end)
 checkp("  ...it waits for the end of combat (PLAYER_REGEN_ENABLED only)", function() return ev.events.PLAYER_REGEN_ENABLED == true and evCount(ev) == 1, evCount(ev) end)
 leaveCombat()
-checkp("  ...after combat it docks beside the open window", function() return panelShown() end)
+checkp("  ...after combat nothing opens by itself and nothing is built (SD-102)", function() return not panelShown() and builds == 0 and evCount(ev) == 0, builds end)
+closeWindow(); openWindow()
+checkp("  ...reopening the window docks it", function() return panelShown() end)
 print(n .. " checks, " .. fails .. " failed")
 '''
 

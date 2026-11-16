@@ -12,7 +12,8 @@ ns.KeyFocusGuard), the Stat Calculator on, the character window open and the pan
       (GLOBAL_MOUSE_DOWN: "click").
   K3  combat starts (PLAYER_REGEN_DISABLED) with the box focused: the box has let go BEFORE the panel hides (the module's own
       EnterCombat loop, whatever core's hide hook does); both keys reach the game in combat; after combat (PLAYER_REGEN_ENABLED) the
-      panel reopens docked and the keys still reach the game.
+      panel stays closed (round 10, SD-102 "Don't reappear"; was: it reopened docked) and the keys reach the game; reopening the
+      character window docks it again and the keys still reach the game.
   K4  the box focused, then the panel closed (its close): the box lets go; the box focused, then the character window closed: the
       docked panel hides with it and the box lets go; both keys reach the game after each.
   K5  K2-K4 again for the Gear tab's item box.
@@ -41,6 +42,10 @@ local ns = rawget(_G, "XayaUI_NS")
 ns.Print = function() end
 if not rawget(_G, "CharacterFrame") then rawset(_G, "CharacterFrame", CreateFrame("Frame", "CharacterFrame", UIParent)) end
 CharacterFrame:Hide()
+-- (bundle 1 round 10, REQUEST-LOG SD-105 "Load at first open (Recommended)") the calculator loads at its panel's first open, not at
+-- login: /xui stats opens it (loading it) once and closes it again; the open state is then put back as a player who left it open has it
+ns.RunCommand("stats", ""); W.tick(0.1, 3); ns.RunCommand("stats", ""); W.tick(0.1, 1)
+if ns.StatCalc_Cfg and ns.StatCalc_Cfg() then ns.StatCalc_Cfg().panelOpen = true end
 local sc = ns.Service("statCalc")
 check("K0 core's ns.KeyFocusGuard is there (the boxes' keyboard guard; V29)", type(ns.KeyFocusGuard) == "function" and type(ns.KeyFocusLastLetGo) == "function")
 check("setup: the statCalc service is there", sc ~= nil)
@@ -101,7 +106,11 @@ local function walkBox(tag, tab, key)
   check(tag .. "   ...the panel is hidden in combat (V26 hide silently)", not panel:IsShown())
   keys(tag .. " in combat")
   W.leaveCombat(); W.tick(0.1, 3)
-  check(tag .. " combat ends: the panel reopens docked", panel:IsShown())
+  -- (round 10, REQUEST-LOG SD-102 "Don't reappear", intended change: was "combat ends: the panel reopens docked") she reopens it
+  check(tag .. " combat ends: the panel stays closed (SD-102)", not panel:IsShown())
+  keys(tag .. " after combat, the panel closed")
+  CharacterFrame:Hide(); CharacterFrame:Show(); W.tick(0.1, 3)
+  check(tag .. " ...reopening the character window docks it again", panel:IsShown() and panel.standalone == false)
   keys(tag .. " after combat, the panel back")
   -- the panel closed with the box focused
   box = sc.Drawn().boxes[key]

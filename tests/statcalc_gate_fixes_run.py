@@ -5,9 +5,11 @@ On the whole-addon harness (tests/harness: every addon loaded as the game loads 
   G003  docked beside the character window the panel takes the window's strata (here MEDIUM), so another game window opened over the
         character window is not covered by it; on its own (the window closed) it takes the same strata (A24 #8; it stayed HIGH before).
   G006  a resize under way (the corner grip pressed: panel.sizing) when combat starts: the move / size is stopped (StopMovingOrSizing)
-        and panel.sizing is cleared, so after combat the panel takes its saved height again; the same when the panel hides (its close).
-  G012  (= G-014) the panel closed: GET_ITEM_INFO_RECEIVED, UNIT_STATS and COMBAT_RATING_UPDATE are not registered; the start of combat
-        is (V26: the Stat Calc button is told: statCalc.Available() false in combat); open: the stat and unit events are registered.
+        and panel.sizing is cleared, so when it is opened after combat (round 10, SD-102: it does not reopen by itself) it takes its
+        saved height again; the same when the panel hides (its close).
+  G012  (= G-014) the panel closed: GET_ITEM_INFO_RECEIVED, UNIT_STATS and COMBAT_RATING_UPDATE are not registered; (round 10,
+        SD-102 / SD-105) nor anything else (was: the start of combat); statCalc.Available() is false in combat (V26); open: the stat
+        and unit events are registered.
   G019  switched off (Stat Calculator off, or its panel off): its theme listener is taken out of core's list (Theme.OffResolve); on
         again: put back once.
   G020  the chat link hook with the panel closed returns before any work on the link (no string search for "|Hitem:").
@@ -35,8 +37,12 @@ local ns = rawget(_G, "XayaUI_NS")
 ns.Print = function() end
 if not rawget(_G, "CharacterFrame") then rawset(_G, "CharacterFrame", CreateFrame("Frame", "CharacterFrame", UIParent)) end
 CharacterFrame:Hide(); CharacterFrame:SetFrameStrata("MEDIUM")
+-- (bundle 1 round 10, REQUEST-LOG SD-105 "Load at first open (Recommended)") the calculator is loaded at its panel's first open, not at
+-- login: /xui stats opens it (and loads it) once, then it is closed
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
 local sc, dbg = ns.Service("statCalc"), ns.Service("statCalcDebug")
 check("setup: the statCalc and statCalcDebug services are there", sc ~= nil and dbg ~= nil)
+if sc and sc.Shown() then sc.Close(); W.tick(0.1, 1) end
 if not (sc and dbg) then return R end
 local T = ns.Theme
 local function listenerSet() local s = {}; for _, f in ipairs(T and T.listeners or {}) do s[f] = true end; return s end
@@ -70,13 +76,16 @@ check("G012 setup: the panel was built and is closed", panel ~= nil and not pane
 check("G012 the panel closed: GET_ITEM_INFO_RECEIVED, UNIT_STATS and COMBAT_RATING_UPDATE are not registered",
   not dbg.Registered("GET_ITEM_INFO_RECEIVED") and not dbg.Registered("UNIT_STATS") and not dbg.Registered("COMBAT_RATING_UPDATE"),
   tostring(dbg.Registered("GET_ITEM_INFO_RECEIVED")) .. " " .. tostring(dbg.Registered("UNIT_STATS")))
-check("G012 ...the start of combat, the spec and the level change are", dbg.Registered("PLAYER_REGEN_DISABLED") and dbg.Registered("PLAYER_SPECIALIZATION_CHANGED") and dbg.Registered("PLAYER_LEVEL_UP"))
-local avail = {}
-sc.OnState(function(open, available) avail[#avail + 1] = available end)
+-- (round 10, SD-102 "Don't reappear" / SD-105, intended change: was "the start of combat, the spec and the level change are"
+-- registered, and the state listeners were told at combat start) a closed panel listens to nothing: nothing reopens it after combat and
+-- its model and caches were let go at the close. Whether it can open is read when asked (statCalc.Available, the minimap list).
+check("G012 ...nor the start or end of combat, the spec or the level change (round 10: a closed panel listens to nothing)",
+  not dbg.Registered("PLAYER_REGEN_DISABLED") and not dbg.Registered("PLAYER_REGEN_ENABLED") and not dbg.Registered("PLAYER_SPECIALIZATION_CHANGED")
+  and not dbg.Registered("PLAYER_LEVEL_UP"))
 W.enterCombat()
-check("G012 combat with the panel closed: the statCalc service's state listeners are told the panel is not available (V26; on QA the Stat Calc button listened)", avail[#avail] == false and sc.Available() == false, tostring(avail[#avail]))
+check("G012 combat with the panel closed: the statCalc service says the panel is not available (V26)", sc.Available() == false)
 W.leaveCombat(); W.tick(0.1, 2)
-check("G012 ...and available again after combat", sc.Available() == true and avail[#avail] == true)
+check("G012 ...and available again after combat", sc.Available() == true)
 sc.Open("stats"); W.tick(0.1, 3)
 check("G012 the panel open: the stat and unit events are registered (UNIT_STATS, GET_ITEM_INFO_RECEIVED, COMBAT_RATING_UPDATE)",
   dbg.Registered("UNIT_STATS") and dbg.Registered("GET_ITEM_INFO_RECEIVED") and dbg.Registered("COMBAT_RATING_UPDATE"))
@@ -142,7 +151,11 @@ stops = 0
 W.enterCombat()
 check("G006 combat starts during the resize: it is stopped (StopMovingOrSizing) and panel.sizing is cleared", stops >= 1 and panel.sizing == nil, stops .. " " .. tostring(panel.sizing))
 W.leaveCombat(); W.tick(0.1, 3)
-check("G006 after combat the panel takes its saved height again (480)", panel:IsShown() and math.floor(panel:GetHeight() + 0.5) == 480, panel:GetHeight())
+-- (round 10, SD-102, intended change: was "after combat the panel takes its saved height again", with the panel back by itself) she
+-- opens it again after combat
+check("G006 after combat it stays closed (SD-102)", not panel:IsShown())
+sc.Open("stats"); W.tick(0.1, 3)
+check("G006 ...opened again after combat, the panel takes its saved height again (480)", panel:IsShown() and math.floor(panel:GetHeight() + 0.5) == 480, panel:GetHeight())
 panel.grip:GetScript("OnMouseDown")(panel.grip)
 stops = 0
 sc.Close(); W.tick(0.1, 1)

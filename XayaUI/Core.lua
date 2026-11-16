@@ -398,7 +398,8 @@ local function DebugWordGated(arg)
 end
 
 -- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua), and (SD-118) a part's lines
--- are listed only while that part is switched on (ns.CommandHelp leaves the others out)
+-- are listed only while that part is switched on (ns.CommandHelp leaves the others out; core's own lines for XayaUI Rules and for
+-- Advanced Debugging are left out here, RULES_HELP and DEBUG_HELP below)
 local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its messages, and a line to type these commands in)",
     "/xui bug (bug report)", "/xui report (debug report: XayaUI's errors and warnings with their codes, to send to Xaya)",
     "/xui unlock (drag displays and groups; again to lock)",
@@ -410,6 +411,19 @@ local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its me
     "/xui enable (turn rules back on; in combat it waits until combat ends)" }
 -- (P4) the lines above that are XayaUI Rules' commands: left out of /xui help while it is switched off
 local RULES_HELP = { [CORE_HELP[5]] = true, [CORE_HELP[6]] = true, [CORE_HELP[7]] = true, [CORE_HELP[9]] = true, [CORE_HELP[10]] = true }
+-- (bundle 1 round 10, repair 1; REQUEST-LOG SD-118, a STANDING RULE, her answer "All parts, say how (Recommended)") the lines above that
+-- are Advanced Debugging's words (the debug tools, XayaUI_Debug, SD-58): /xui console, bug, report, and the shortcuts status and auras.
+-- They are left out of /xui help while the tools are not loaded this session (ns.DebugToolsLoaded, DebugRecord.lua). That is exactly when
+-- each of these words answers with its one line instead of running (ns.DebugToolsNeeded: "... needs Advanced Debugging: turn it on in
+-- /xui > Settings > Debugging, then type /reload."). The part counts as on when its tools were loaded at this login or /reload, because
+-- an off part is detected once per reload (SD-56, her words: "should be detected once per reload"; V34): turned on in the settings, its
+-- words and their help lines arrive at the next /reload; turned off, they stay until then. /xui debug stays listed: its list, loader and
+-- talents run without the tools (DEBUG_UNGATED below).
+local function HelpLineOf(word)
+    for _, h in ipairs(CORE_HELP) do if h:match("^/xui (%S+)") == word then return h end end
+end
+local DEBUG_HELP = {}
+for _, w in ipairs({ "console", "bug", "report", "status", "auras" }) do local h = HelpLineOf(w); if h then DEBUG_HELP[h] = true end end
 
 -- one command per line (core 0.6.46; Xaya 2026-11-05: "console print is difficult to read"): the command in the theme's accent text
 -- color, what it does after it. An entry that holds two commands (" | /xui ...") is split. Pipes in the text (option lists such as
@@ -439,7 +453,10 @@ end
 function ns.PrintHelp()
     local help = {}
     local rulesOn = RulesSvc() ~= nil
-    for _, h in ipairs(CORE_HELP) do if rulesOn or not RULES_HELP[h] then help[#help + 1] = h end end
+    local tools = ns.DebugToolsLoaded()   -- (SD-118) Advanced Debugging's words are listed only while its tools are loaded
+    for _, h in ipairs(CORE_HELP) do
+        if (rulesOn or not RULES_HELP[h]) and (tools or not DEBUG_HELP[h]) then help[#help + 1] = h end
+    end
     for _, h in ipairs(ns.CommandHelp()) do help[#help + 1] = h end
     PrintCommandList("commands (%d):", help)
 end

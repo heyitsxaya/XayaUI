@@ -394,7 +394,12 @@ C_Spell.GetSpellCooldown = function() return { startTime = 0, duration = 0, isAc
 fire("SPELL_UPDATE_COOLDOWN")
 check("after combat the GCD's live reading still says hidden until the game says combat ended (CM.gcdHidden)", CM.gcdHidden == true, tostring(CM.gcdHidden))
 local okE, errE = pcall(fire, "PLAYER_REGEN_ENABLED")
-check("after combat (PLAYER_REGEN_ENABLED) the live reading is no longer hidden (CM.gcdHidden false)", okE and CM.gcdHidden == false, errE or tostring(CM.gcdHidden))
+-- (bundle 1 round 10, REQUEST-LOG SD-102 "Don't reappear" / SD-105, intended change: was "after combat (PLAYER_REGEN_ENABLED) the live
+-- reading is no longer hidden") the panel was closed in combat (the character window closed), and a closed panel listens to nothing:
+-- the mark is cleared when the panel opens again (out of combat the GCD is readable), so it never shows a stale "hidden in combat"
+CharacterFrame:Hide(); PaperDollFrame:Hide(); CharacterFrame:Show(); PaperDollFrame:Show()
+check("after combat the panel's next open shows the live reading again (CM.gcdHidden false)", okE and CM.gcdHidden == false
+  and XayaUIStatCalculator:IsShown(), errE or tostring(CM.gcdHidden))
 c.whatIf = 0; c.whatIfStats = {}
 C_Spell.GetSpellCooldown = function() return { startTime = 1, duration = 1.16, isActive = true } end
 combat = false

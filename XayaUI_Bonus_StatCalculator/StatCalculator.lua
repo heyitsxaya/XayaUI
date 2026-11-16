@@ -18,8 +18,11 @@
 -- (Bonus 0.6.46, MAIN; Xaya A24 #12 / #13, her option text: "XayaUI_Bonus keeps only a tiny loader: the on/off switch, settings page
 -- entry, /xui stats and the minimap row. The calculator code moves to XayaUI_Bonus_StatCalculator, shown in the AddOns list under Bonus
 -- Features as 'load on demand'. Off means it is never read; on means it loads once per reload.") This file, StatModel.lua and
--- StatMath.lua are the load-on-demand addon XayaUI_Bonus_StatCalculator, loaded by XayaUI_Bonus/StatCalculatorLoader.lua at login
--- (after combat when the login is in combat) only while the Stat Calculator is on; off, none of them is read.
+-- StatMath.lua are the load-on-demand addon XayaUI_Bonus_StatCalculator, loaded by XayaUI_Bonus/StatCalculatorLoader.lua only while the
+-- Stat Calculator is on; off, none of them is read. (Bonus 0.6.47; REQUEST-LOG SD-94, her words "if window is not open, it shouldn't
+-- use memory", and SD-105, her answer "Load at first open (Recommended)") it is loaded at the panel's first open, not at login; switched
+-- off it is inert at once and its memory is freed at the next /reload; a close lets go of the stat model, the layout records and the
+-- model's caches (LetGoOfModel).
 -- Saved settings: XayaUIBonusDB.characterToolkit (the panel's keys and its own switch `enabled`), copied once from
 -- XayaUIQoLDB.characterToolkit (CueRulesDB.characterToolkit before P5) by core (Modules.lua section 0c, the key move; copy, never move).
 -- (V25 R3) the saved key keeps its old internal name: core's key move copies a key under one name only, so a rename needs core.
@@ -71,7 +74,8 @@
 --   (The slot overlays, the Stat Calc button and the other changes to the character window itself are Improved Character Display's,
 --   XayaUI QoL's ImprovedCharacterDisplay.lua, since V25 R2; Xaya A24 #3: the Stat Calculator is only the side window.)
 --   Combat (V26, Xaya A24 #3 "Hide silently"): in combat the panel and the Stat Calc button are hidden with no message, nothing opens
---   the panel, and no model is built, nothing is drawn and no stat event is handled; after combat both come back as they would be.
+--   the panel, and no model is built, nothing is drawn and no stat event is handled. (Bonus 0.6.47; SD-100 "stat calculator isn't
+--   allowed to be open during combat", SD-102 "Don't reappear") after combat nothing comes back by itself: she opens it again.
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
@@ -88,8 +92,8 @@ local function num(v) return type(v) == "number" and v == v and v ~= math.huge a
 local function isSecret(v) return CM.IsSecret(v) end
 
 -- (V26, Xaya A24 #3 "Hide silently") in combat the panel and the Stat Calc button are hidden with no message, and nothing opens it:
--- `combatHidden` is set at PLAYER_REGEN_DISABLED (the game fires it just before its combat lockdown begins) and cleared at
--- PLAYER_REGEN_ENABLED; InCombatLockdown() covers the time this file was not listening (switched on, or the login, in combat).
+-- `combatHidden` is set at PLAYER_REGEN_DISABLED (the game fires it just before its combat lockdown begins; heard only while the panel
+-- is open) and cleared at PLAYER_REGEN_ENABLED; InCombatLockdown() covers the time this file was not listening (the panel closed).
 -- Plain frames only (nothing protected), so hiding them in combat is allowed; the character window itself is never touched.
 -- (SC-001 / SC-045) Every way in (the draw, ns.StatCalc_Render, and every input: a typed number, a picked item, a fold, a tab, a
 -- filter, the Min / Max button, the statCalc service's wrappers) checks this first: in combat nothing here builds the stat model,
@@ -195,14 +199,11 @@ local function Cfg()
     return c
 end
 ns.StatCalc_Cfg = Cfg
--- (Bonus 0.6.46, A24 #12 / #13: her option text "Off means it is never read; on means it loads once per reload") the switch as it is
--- in effect this session: the loader's switch saves a change and asks for a reload (core ns.SwitchSaveForReload, "bonus.statcalc"),
--- so until the /reload the session keeps the value it had (core ns.SwitchInEffect). A value written any other way (a profile import,
--- a test) is not held and is read as saved.
+-- (Bonus 0.6.47; REQUEST-LOG SD-94 / SD-105, her answers "if window is not open, it shouldn't use memory" and "Load at first open
+-- (Recommended)") the switch is the saved one, at once: on means usable now (this file is loaded at the panel's first open), off means
+-- inert now (no event, no drawing, the panel hidden; its memory is freed at the next /reload). No reload question, nothing held.
 local function On(c)
-    if not c then return false end
-    if ns.SwitchInEffect then return ns.SwitchInEffect("bonus.statcalc", c.enabled == true) end
-    return c.enabled == true
+    return c ~= nil and c.enabled == true
 end
 
 -- (QoL 0.7.40; REQUEST-LOG B2, reading taken) the value modes are gone: the "Show: % / rating" button in the title row, the click on a
@@ -668,6 +669,11 @@ local function IconBtn()
     return b
 end
 
+-- (Bonus 0.6.47, SD-112: at most 600 instructions per event) the Change box that has the keyboard now, kept by the boxes' own focus
+-- scripts (one function each for the file), so combat start lets go of that one box instead of asking every box (LetGoOfKeys)
+local focusBox
+local function BoxFocusGained(self) focusBox = self end
+local function BoxFocusLost(self) if focusBox == self then focusBox = nil end end
 local function Box(key)
     local b = boxes[key]
     if not b then
@@ -706,6 +712,8 @@ local function Box(key)
             if eb.GetScript and eb:GetScript("OnMouseUp") and eb.HookScript then eb:HookScript("OnMouseUp", TakeCursorItem)
             else eb:SetScript("OnMouseUp", TakeCursorItem) end
         end
+        eb:HookScript("OnEditFocusGained", BoxFocusGained)
+        eb:HookScript("OnEditFocusLost", BoxFocusLost)
         boxes[key] = eb
         b = eb
     end
@@ -899,7 +907,9 @@ local function Build()
     panel.grip = grip
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetSize(24, 24)   -- the template's own size (UIPanelCloseButtonNoScripts, SharedUIPanelTemplates.xml:135, live 12.1.5)
-    close:SetPoint("TOPRIGHT", 2, 2)
+    -- (Bonus 0.6.47; REQUEST-LOG SD-99, her words: "XUI windows that are actively opened and have the mouse over them should accept
+    -- clicks") inside the panel's own rectangle: it hung 2 px over the top-right corner, where it took clicks outside the window (gate_mouse)
+    close:SetPoint("TOPRIGHT", 0, 0)
     close:SetScript("OnClick", function() ns.StatCalc_SetOpen(false) end)
     -- (QoL 0.7.40, REQUEST-LOG B2: the "Show: % / rating" value mode button, hidden since 0.7.14, is no longer made)
     -- the Min / Max button (QoL 0.7.23; Xaya 2026-11-05: "a min/max window toggle that toggles between two configured sizes -- one
@@ -1019,9 +1029,17 @@ local function Place()
     end
 end
 
--- one placed element, kept for the layout checks in the tests (x, y from the content's top left, y grows downwards)
-local layout
-local function Rec(kind, x, y, w, h, text, size) layout[#layout + 1] = { kind = kind, x = x, y = y, w = w, h = h, text = text, size = size } end
+-- one placed element, kept for the layout checks in the tests (x, y from the content's top left, y grows downwards). (Bonus 0.6.47;
+-- REQUEST-LOG SD-105: "test-only layout records not built in normal play") Only the tests and the QA walkthroughs read these records
+-- (ns.StatCalc_Drawn, the statCalc service's Drawn): they are built only after one of them asked (recordLayout, set by that reader), so
+-- in normal play a draw makes no record table at all (layout stays nil). Rec returns the record, or nil while nothing records.
+local layout, recordLayout = nil, false
+local function Rec(kind, x, y, w, h, text, size)
+    if not layout then return nil end
+    local r = { kind = kind, x = x, y = y, w = w, h = h, text = text, size = size }
+    layout[#layout + 1] = r
+    return r
+end
 
 local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     SetFont(f, size, "")
@@ -1037,10 +1055,12 @@ local function PlaceFS(f, x, y, w, size, text, col, justify, wrap, kind)
     -- (gate G-010, V27 whole pixels) the game's measured height can be fractional; every next y stays whole. Rounded up (round 2), so
     -- the next row never starts inside a wrapped line's real height (13.4 -> 14)
     h = math.ceil(h)
-    Rec(kind or "text", x, y, w, h, text, size)
-    layout[#layout].justify = justify or "LEFT"   -- (QoL 0.7.36: the tests read a column's alignment)
-    layout[#layout].wrap = wrap and true or false   -- (gate U2 round 2: the tests read which heights were measured)
-    return h
+    local r = Rec(kind or "text", x, y, w, h, text, size)
+    if r then
+        r.justify = justify or "LEFT"   -- (QoL 0.7.36: the tests read a column's alignment)
+        r.wrap = wrap and true or false   -- (gate U2 round 2: the tests read which heights were measured)
+    end
+    return h   -- (one value: callers pass it to math.max)
 end
 -- (QoL 0.7.28) a text with line breaks ("T: 1,430\nL: 12.2"): each line its own font string, one under the other; returns the height
 local function PlaceLines(x, y, w, size, text, col, justify, kind)
@@ -1584,7 +1604,7 @@ local function RenderWeights(c, items, y)
             for i = 1, 6 do
                 local f = FS()
                 local fh = PlaceFS(f, g.xs[i], y, g.w[i], hs, cs[i] or "", cMuted, "CENTER", true, "wcolhead")
-                placed[i] = { f = f, h = fh, rec = layout[#layout] }
+                placed[i] = { f = f, h = fh, rec = layout and layout[#layout] }
                 h = math.max(h, fh)
             end
             for i = 1, 6 do
@@ -1593,7 +1613,7 @@ local function RenderWeights(c, items, y)
                 if dy > 0 then
                     p.f:ClearAllPoints()
                     p.f:SetPoint("TOPLEFT", content, "TOPLEFT", g.xs[i], -(y + dy))
-                    p.rec.y = y + dy
+                    if p.rec then p.rec.y = y + dy end
                 end
             end
             local hb = Btn()
@@ -2398,7 +2418,7 @@ function ns.StatCalc_Render()
     for _, e in ipairs(panel.edges) do e:SetColorTexture(bc[1], bc[2], bc[3], bc[4] or 1) end
     SetFont(panel.title, c.fontSize + 2, "")
     Paint(panel.title, TC("xui-titlebar", "text", { 1, 0.82, 0, 1 }))
-    layout = {}
+    layout = recordLayout and {} or nil   -- (SD-105) records only once a test / walkthrough reader asked for them (Rec, above)
     local mbg, mbb = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }), TC("xui-button", "text", { 1, 0.82, 0, 1 })
     local sb = panel.sizeBtn
     sb.bg:SetColorTexture(mbg[1], mbg[2], mbg[3], mbg[4] or 1)
@@ -2446,9 +2466,15 @@ function ns.StatCalc_Render()
     if SyncPanelEvents then SyncPanelEvents(c) end       -- (SC-020) a new tab listens to its own events (Gear: bags; Ability Scaling: talents)
 end
 
--- what the panel drew last: { model, layout records, mode button text }; for the tests
+-- what the panel drew last: { model, layout records, mode button text }; for the tests. (Bonus 0.6.47, SD-105) The first call turns the
+-- layout records on for the rest of the session (a test or QA walkthrough is reading; nothing in normal play calls this) and, when the
+-- last draw made none, draws once more so the records are there now (never in combat: ns.StatCalc_Render does nothing then).
 function ns.StatCalc_Drawn()
     if not panel then return nil end
+    if not recordLayout then
+        recordLayout = true
+        if panel.layoutRecs == nil and panel.model ~= nil then ns.StatCalc_Render() end
+    end
     return { model = panel.model, layout = panel.layoutRecs, sizeText = panel.sizeText, buttons = btnPool, headers = hdrPool, boxes = boxes,
         fonts = fsPool, icons = iconBtns, spellBtn = panel.spellBtn, filterIcon = panel.filterIcon, filterMenu = panel.filterMenu,
         menuRecs = panel.menuRecs, textures = texPool, width = ns.STATCALC_LAYOUT.width }   -- (A24 #9) width: the panel's drawn width
@@ -2480,6 +2506,10 @@ if ns.Provide then
         -- (V26) false in combat too: the button hides with the panel
         Available = function() return PanelAvailable() end,
         Toggle = function() ns.StatCalc_Toggle() end,
+        -- (Bonus 0.6.47, SD-94 / SD-105, for XayaUI_Bonus's loader) apply the saved settings now (the switch turned on or off, a profile
+        -- import), and dock beside the open character window when it was left open (the first open came from that window)
+        Apply = function() ns.StatCalc_Apply() end,
+        ShowIfDocked = function() if ns.StatCalc_ShowIfDocked then ns.StatCalc_ShowIfDocked() end end,
         OnState = function(fn) if type(fn) == "function" then stateListeners[#stateListeners + 1] = fn end end,
         -- open the panel on a tab ("stats" | "gear" | "spells"); false and why when the Stat Calculator or its panel is off
         Open = function(tab)
@@ -2487,7 +2517,7 @@ if ns.Provide then
             if not c then return false, "no saved settings yet" end
             if not On(c) then return false, "Stat Calculator is off (Bonus Features > Stat Calculator)" end
             if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Stat Calculator > Panel)" end
-            if InCombat() then return false, "in combat (the Stat Calculator opens again after combat)" end
+            if InCombat() then return false, "in combat (the Stat Calculator does not open in combat)" end
             if tab then c.tab = tab end
             ns.StatCalc_SetOpen(true)
             return panel ~= nil and panel:IsShown()
@@ -2508,7 +2538,7 @@ if ns.Provide then
         end,
         HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
         Page = function(Notify) return ns.BuildStatCalcPage and ns.BuildStatCalcPage(Notify or function() end) end,
-        -- (Bonus 0.6.46) /xui stats once this file is loaded (the loader owns the command and its on / off / options / help)
+        -- (Bonus 0.6.46) /xui stats once this file is loaded (the loader owns the command and its options / off / help)
         Command = function(arg) return ns.StatCalc_Command(arg) end,
         TextW = function(text, size) return panel and TextW(text, size) or nil end,
         -- (A24 #8 / #9, for the walkthroughs) the panel as the player has it: shown, opened on its own, its strata and the character
@@ -2554,10 +2584,9 @@ local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGEDDAMAGE", "U
 -- (gate G-023) ADDON_RESTRICTION_STATE_CHANGED (type: AddOnRestrictionType, state: AddOnRestrictionState) · SynchronousEvent ·
 -- RestrictedActions (events.md:37); Enum.AddOnRestrictionState Inactive = 0, Activating = 1, Active = 2 (enums.md:485)
 local SHOWN_EVENTS = { "SPELL_UPDATE_COOLDOWN", "ADDON_RESTRICTION_STATE_CHANGED" }
--- (gate G-012 / G-014) the panel closed: only what does work then (see RegisterPanelEvents). PLAYER_REGEN_ENABLED stays too (once per
--- combat end): it clears the model's "GCD hidden in combat" mark (CM.gcdHidden), which Enhanced Tooltips' lines also read, when the
--- lockdown was seen without this frame hearing PLAYER_REGEN_DISABLED (tests/char_statcalc2_run.py plays that case)
-local CLOSED_EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_SPECIALIZATION_CHANGED", "PLAYER_LEVEL_UP" }
+-- (gate G-012 / G-014; Bonus 0.6.47, REQUEST-LOG SD-102 "Don't reappear" and SD-105 "model and caches let go on close") the panel
+-- closed listens to nothing: nothing reopens it after combat, so the start and end of combat need no answer, and its stat model and
+-- caches are let go at the close (LetGoOfModel), so a spec or level change has nothing kept to drop. The next open builds afresh.
 local TAB_EVENTS = { gear = { "BAG_UPDATE_DELAYED" }, spells = { "TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE" } }
 
 -- one redraw at most every 0.25 s, only while the panel is up and out of combat (SC-020: one function for the whole file, not a new
@@ -2623,9 +2652,15 @@ local function ReadsTarget(c)
 end
 
 -- the character window opened: the panel docks beside it when it was left open (c.panelOpen, kept between sessions; QoL 0.7.23, Xaya
--- 2026-11-05: "remember the last-left state on next open")
+-- 2026-11-05: "remember the last-left state on next open"). (Bonus 0.6.47, SD-94 / SD-105) The hook stays until /reload (hooks cannot
+-- be taken out), so its first read is the raw saved switch: a Stat Calculator switched off after it loaded does no other work on a
+-- character-window open (no settings pass, no build). (SD-100 / SD-102) In combat nothing is built, drawn or shown, and nothing waits
+-- for the end of combat: she opens it again herself.
 local function ShowIfDocked()
-    if InCombat() then return end   -- (V26) nothing is built, drawn or shown in combat; it comes back after combat (LeaveCombat)
+    if not ns.SettingsReady("bonus") then return end
+    local raw = BonusS.characterToolkit
+    if not (type(raw) == "table" and raw.enabled == true) then return end
+    if InCombat() then return end
     local c = Cfg()
     if not (c and On(c) and c.panel) then return end
     if not c.panelOpen then
@@ -2639,26 +2674,24 @@ local function ShowIfDocked()
     ns.StatCalc_Render()
     TellState()
 end
+ns.StatCalc_ShowIfDocked = ShowIfDocked
 
--- the panel's events (D17, V14: only while the Stat Calculator and its "Show the panel" part are on). (V26) In combat the frame listens
--- to PLAYER_REGEN_ENABLED only: no stat, unit or cooldown event reaches this file until combat ends. (SC-081 / SC-020) What it listens
--- to follows one key: off (nothing), combat, closed, or open on a tab. (gate G-012 / G-014, V27 / V28) Closed: only the start and end of
--- combat (V26: the Stat Calc button is told) and the spec / level change (the model's kept spec data is dropped); no stat or unit event, since
--- every open draws a fresh model (CM.Build in ns.StatCalc_Render) and bags / talents are read again through bagsStale / talentsStale.
--- Open on a tab: the stat and unit events, the cooldown read, that tab's own events, and the addon restriction change (V29: a Change
--- box lets go of the keyboard when a Mythic+ / encounter / PvP restriction starts, gate G-023). The frame's events change only when
--- the key changes: at the panel's show and hide, a tab change, combat, and Apply (force).
+-- the panel's events (D17, V14: only while the Stat Calculator and its "Show the panel" part are on). (SC-081 / SC-020) What it
+-- listens to follows one key: none, combat, or open on a tab. (Bonus 0.6.47, SD-102 / SD-105) Closed: none. Open on a tab: the stat
+-- and unit events, the start of combat, the cooldown read, that tab's own events, and the addon restriction change (V29: a Change box
+-- lets go of the keyboard when a Mythic+ / encounter / PvP restriction starts, gate G-023). Combat (the panel was open as combat
+-- started, or the switch was applied in combat lockdown): PLAYER_REGEN_ENABLED only, to clear the combat mark (combatHidden) once; it
+-- reopens nothing and draws nothing (SD-102). The frame's events change only when the key changes: at the panel's show and hide, a tab
+-- change, combat, and Apply (force).
 local evKey
 local function EventsKey(c)
     if not (c and On(c) and c.panel) then return nil end
-    if InCombat() then return "combat" end
-    if not (panel and panel:IsShown()) then return "closed" end
+    if combatHidden then return "combat" end
+    if not (panel and panel:IsShown()) then return nil end
     return "open:" .. tostring(c.tab)
 end
-local function RegisterPanelEvents(c, force)
-    if not ev then return end
-    local key = EventsKey(c)
-    if key == evKey and not force then return end
+local function SetEventsKey(key, c)
+    if not ev or key == evKey then return end
     evKey = key
     -- (round 2) a tab whose own events stop being heard here may miss a change: its next first draw reads again (bagsStale / talentsStale)
     if key ~= "open:gear" then bagsStale = true end
@@ -2666,10 +2699,6 @@ local function RegisterPanelEvents(c, force)
     ev:UnregisterAllEvents()
     if key == nil then return end
     if key == "combat" then pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED"); return end
-    if key == "closed" then
-        for _, e in ipairs(CLOSED_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
-        return
-    end
     for _, e in ipairs(STAT_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     for _, e in ipairs(UNIT_EVENTS) do
         if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, e, "player") else pcall(ev.RegisterEvent, ev, e) end
@@ -2677,37 +2706,59 @@ local function RegisterPanelEvents(c, force)
     for _, e in ipairs(SHOWN_EVENTS) do pcall(ev.RegisterEvent, ev, e) end
     for _, e in ipairs(TAB_EVENTS[c.tab] or {}) do pcall(ev.RegisterEvent, ev, e) end
 end
+local function RegisterPanelEvents(c, force)
+    if force then evKey = false end   -- (never a key: the next set always applies)
+    SetEventsKey(EventsKey(c), c)
+end
 SyncPanelEvents = function(c) RegisterPanelEvents(c) end
 -- (SC-081) the panel shows (never in combat: nothing shows it then): one GCD read, so the last readable GCD is there without listening
--- to every cast while the panel is closed; then its shown-only events
+-- to every cast while the panel is closed; then its shown-only events. (Bonus 0.6.47) Out of combat the GCD is readable: the "hidden in
+-- combat" mark is cleared first (the closed panel no longer hears the end of combat, SD-102)
 OnPanelShown = function()
     if InCombat() then return end
+    CM.gcdHidden = false
     CM.ReadGCD()
     RegisterPanelEvents(Cfg())
 end
+-- (Bonus 0.6.47; REQUEST-LOG SD-105, her answer "Load at first open (Recommended)": "leftovers let go on close") a close lets go of what
+-- the panel built for its draws: the stat model, the layout records, the items it watched and the model's caches (CM.ClearCache). The
+-- panel's frames and this file's code stay until /reload (the game cannot unload them); no forced memory clear (SD-101). The next open
+-- builds a fresh model, as every open did before.
+local function LetGoOfModel()
+    if panel then panel.model, panel.layoutRecs = nil, nil end
+    layout = nil
+    wantItems = {}
+    if CM.ClearCache then CM.ClearCache() end
+end
 OnPanelHidden = function()
+    -- (combat start: EnterCombat sets the events itself, and the model is let go at the end of combat, LeaveCombat; SD-112: the combat
+    -- start stays one Hide and the event change)
+    if combatHidden then return end
+    LetGoOfModel()
     -- (A24 #8) open on its own and hidden by someone other than this file (the game's Esc: CloseSpecialWindows hides every shown
     -- frame named in UISpecialFrames): a close, as its close button. The open state is saved as closed and the Stat Calc button is
     -- told. This file's own hides never reach this: its close (SetOpen) saves closed first, combat sets combatHidden first, switching
     -- off clears enabled / panel first, and a docked panel (standalone false) keeps its open state as before. IsShown is false only for
     -- a Hide on the panel itself, not when the whole interface is hidden (Alt+Z hides UIParent).
+    local c = Cfg()
     if panel and not panel:IsShown() and panel.standalone and not InCombat() then
-        local c = Cfg()
         if c and On(c) and c.panel and c.panelOpen then
             c.panelOpen = false
             TellState()
         end
     end
-    RegisterPanelEvents(Cfg())
+    RegisterPanelEvents(c)
 end
 
--- (V26, "Hide silently") combat starts: the panel hides (its saved open state, c.panelOpen, is kept), the Stat Calc button is told
--- (TellState: not available), and the events stop. No message. (SC-002 / SC-019) First every Change box lets go of the keyboard
--- (EditBox:ClearFocus), so a box never keeps the keys when combat starts, whatever core's KeyFocusGuard version does on hide.
-local combatWas, combatAlone = false, false
+-- (V26, "Hide silently") combat starts: the panel hides (its saved open state, c.panelOpen, is kept, so reopening the character window
+-- docks it again), the Stat Calc button is told (TellState: not available), and the events stop but the end of combat. No message.
+-- (SC-002 / SC-019) First every Change box lets go of the keyboard (EditBox:ClearFocus), so a box never keeps the keys when combat
+-- starts, whatever core's KeyFocusGuard version does on hide. (Bonus 0.6.47, SD-112: at most 600 instructions per event) no settings
+-- pass here: the events are set to "combat" directly, and the hide's own hook ends a drag or resize (gate G-006) and lets go of the model.
 -- every Change box lets go of the keyboard (combat starts, or an addon restriction becomes active: V29)
 local function LetGoOfKeys()
-    for _, eb in pairs(boxes) do if eb.ClearFocus then eb:ClearFocus() end end
+    local eb = focusBox
+    if eb then focusBox = nil; eb:ClearFocus() end
 end
 -- (gate G-023) a restriction (combat, encounter, Mythic+, PvP: Enum.AddOnRestrictionType) is activating or active: the boxes let go.
 -- A state that is not a plain number (missing, or secret) counts as active (fail safe). The type is not read: every kind lets go.
@@ -2720,31 +2771,19 @@ local function EnterCombat()
     if combatHidden then return end
     combatHidden = true
     LetGoOfKeys()
-    combatWas = panel ~= nil and panel:IsShown() or false
-    combatAlone = combatWas and panel.standalone == true
-    if panel then panel:StopMovingOrSizing(); panel.sizing = nil end   -- (gate G-006) a drag or resize in progress ends now
-    if combatWas then panel:Hide() end
-    RegisterPanelEvents(Cfg())
+    SetEventsKey("combat")
+    if panel and panel:IsShown() then panel:Hide() end
     TellState()
 end
--- combat ended: everything comes back in the state it would otherwise have: the panel reopens when it is still wanted (c.panelOpen)
--- and its trigger still holds: on its own when it was open on its own, docked when the character window is open now
+-- (Bonus 0.6.47; REQUEST-LOG SD-100 "stat calculator isn't allowed to be open during combat", SD-102 "Don't reappear") combat ended:
+-- nothing reopens, nothing is built or drawn. The combat mark is cleared and the frame listens to nothing (the panel is closed); she
+-- opens it again herself (the minimap row, /xui stats, or the character window, which docks it when she left it open).
 local function LeaveCombat()
     combatHidden = false
-    local was, alone = combatWas, combatAlone
-    combatWas, combatAlone = false, false
-    local c = Cfg()
-    RegisterPanelEvents(c)
-    if c and On(c) and c.panel and c.panelOpen and not InCombat() then
-        if was and alone then
-            Build()
-            panel.standalone = true
-            panel:Show()
-            ns.StatCalc_Render()
-        elseif Docked() then
-            ShowIfDocked()
-        end
-    end
+    if not (panel and panel:IsShown()) then LetGoOfModel() end   -- (hidden as combat started: its model is let go now, SD-105)
+    -- (the usual case: the panel was hidden as combat started, so it listens to nothing now; a panel still shown means this frame never
+    -- heard the start of combat: it keeps its open events)
+    if panel and panel:IsShown() then RegisterPanelEvents(Cfg()) else SetEventsKey(nil) end
     TellState()
 end
 
@@ -2752,8 +2791,8 @@ local function OnEvent(_, event, unit, arg2)
     if event == "PLAYER_REGEN_DISABLED" then EnterCombat(); return end
     if event == "ADDON_RESTRICTION_STATE_CHANGED" then OnRestriction(arg2); return end   -- (type, state): the state is the second
     if event == "PLAYER_REGEN_ENABLED" then
-        -- out of combat the last readable GCD shows again. (SC-081, round 2) No read here: the panel reads it when it shows again
-        -- (OnPanelShown, from LeaveCombat when it reopens); a closed panel reads it at its next open.
+        -- out of combat the last readable GCD shows again. (SC-081, round 2) No read here: the panel reads it at its next open
+        -- (OnPanelShown); nothing reopens it now (SD-102).
         CM.gcdHidden = false
         LeaveCombat()
         return
@@ -2837,8 +2876,9 @@ function ns.StatCalc_Apply()
     end
     -- (D17, V14) the panel's stat / unit events and the GCD read only while its "Show the panel" part is on; with it off, nothing
     -- (Bonus 0.6.37: the slot overlays' events and the cache reset for the overlays are XayaUI QoL's, ImprovedCharacterDisplay.lua).
-    -- (V26) switched on in combat: it listens for the end of combat only, and shows nothing until then.
-    -- The flag is read again from the game here: it may be stale when the events were off while combat ended.
+    -- (V26) switched on in combat: it listens for the end of combat only (to clear the combat mark), and shows nothing; after combat
+    -- nothing opens by itself (SD-102). The flag is read again from the game here: it may be stale when the events were off while
+    -- combat ended.
     combatHidden = (type(InCombatLockdown) == "function" and InCombatLockdown()) and true or false
     RegisterPanelEvents(c, true)
     if not ownerHooked then
@@ -2858,8 +2898,8 @@ function ns.StatCalc_Apply()
     if panel then
         if not c.panel then panel:Hide()
         elseif InCombat() then
-            -- (V26) applied in combat: hidden now, back after combat as it was
-            if panel:IsShown() then combatWas, combatAlone = true, panel.standalone == true; panel:Hide() end
+            -- (V26) applied in combat: hidden now; it does not come back by itself (SD-102)
+            if panel:IsShown() then panel:Hide() end
         elseif panel:IsShown() then ns.StatCalc_Render()
         elseif Docked() and c.panelOpen then ShowIfDocked() end
     elseif c.panel and Docked() then
@@ -2876,11 +2916,13 @@ function ns.StatCalc_SetOpen(open)
     if InCombat() then return end   -- (V26 "Hide silently") in combat nothing opens or closes it, and nothing is said
     local c = Cfg(); if not c then return end
     if not On(c) then
-        ns.Print("Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on).")
+        -- (Bonus 0.6.47, SD-118) the same one line core prints for a switched-off part's word (ns.PartOffText, the loader's part)
+        local part = ns.StatCalcLoader and ns.StatCalcLoader.Part
+        ns.Print((part and ns.PartOffText) and ns.PartOffText(part) or "The Stat Calculator is off. Turn it on in /xui > Bonus Features.")
         return
     end
     if not c.panel then
-        ns.Print("The Stat Calculator panel is off. Turn it on in Bonus Features > Stat Calculator > Panel.")
+        ns.Print("The Stat Calculator panel is off. Turn it on in /xui > Bonus Features > Stat Calculator > Panel.")
         return
     end
     c.panelOpen = open and true or false
@@ -3029,7 +3071,7 @@ function ns.BuildStatCalcPage(Notify)
 
     local panelPart = {
         type = "group", name = "Panel", order = 10, childGroups = "tab", hidden = isOff,
-        xuiSwitch = Toggle("panel", 1, "Show the panel", "The Stat Calculator: the panel opens beside the character window when you open the window, if you left it open last time (it opens the same way next time). The XayaUI minimap button's Stat Calculator row and /xui stats open or close it (on its own while the character window is closed). Hidden in combat; it comes back after combat. Off: no panel and no minimap row.", nil, nil, "Shows the Stat Calculator beside the character window."),
+        xuiSwitch = Toggle("panel", 1, "Show the panel", "The Stat Calculator: the panel opens beside the character window when you open the window, if you left it open last time (it opens the same way next time). The XayaUI minimap button's Stat Calculator row and /xui stats open or close it (on its own while the character window is closed). Hidden in combat; open it again after combat. Off: no panel and no minimap row.", nil, nil, "Shows the Stat Calculator beside the character window."),
         args = {
             layout = { type = "group", name = "Layout", order = 1, args = {
                 side = { type = "select", order = 2, name = "Side", values = { right = "Right", left = "Left" },
@@ -3084,11 +3126,11 @@ function ns.BuildStatCalcPage(Notify)
         -- Features node and its switch are titled Stat Calculator; the slot overlays and tooltip lines are on QoL's Improved Character Display page
         type = "group", name = "Stat Calculator", order = 3, childGroups = "tree",
         -- (Bonus 0.6.46) the switch on this row (xuiSwitch) is set by the loader (XayaUI_Bonus/StatCalculatorLoader.lua), the same
-        -- switch whether or not this file is loaded: it saves and asks for a reload
+        -- switch whether or not this file is loaded. (Bonus 0.6.47, SD-94 / SD-105) it takes effect at once, with no reload question
         args = {
             -- (Bonus 0.6.37) the parts' list names the two that came to Bonus Features (the slot overlays and tooltip lines stay QoL's)
             intro = { type = "description", order = 0, width = "full", fontSize = "medium",
-                name = "The Stat Calculator: a panel beside the character window (it opens with the window when you left it open) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Hidden in combat; it comes back after combat. Turn it on with the tick box on its row on the left; its parts (Panel, Spell Math) then show under it, each with its own tick box. Off by default." },
+                name = "The Stat Calculator: a panel beside the character window (it opens with the window when you left it open) or on its own (the XayaUI minimap button, /xui stats): every stat the game gives in one Character Stats section, where each number comes from, what the next point buys, what each stat feeds (type your own numbers to see the change), the Stat Weights pane, and a gear comparison. What the game does not give is marked, never guessed. Hidden in combat; open it again after combat. Turn it on with the tick box on its row on the left; its parts (Panel, Spell Math) then show under it, each with its own tick box. Off by default." },
             panelPart = panelPart,
             spells = spells,
         },
@@ -3100,7 +3142,8 @@ end
 -- row are XayaUI_Bonus's loader's (XayaUI_Bonus/StatCalculatorLoader.lua); it reaches this file through the "statCalc" service.
 -------------------------------------------------------------------------------
 -- (Bonus 0.6.46) /xui stats while this file is loaded; the loader (XayaUI_Bonus/StatCalculatorLoader.lua) owns the command and handles
--- on, off, options and help itself (on / off save and ask for a reload, like the switch), and calls this for the rest
+-- options, off and help itself (Bonus 0.6.47, SD-118: core answers every word while the Stat Calculator is off; "/xui stats on" is
+-- gone), and calls this for status and for opening or closing the panel
 function ns.StatCalc_Command(arg)
     local c = Cfg()
     if arg == "status" then
@@ -3115,8 +3158,10 @@ function ns.StatCalc_Command(arg)
     if not c then return end
     ns.StatCalc_Toggle()
 end
--- (Bonus 0.6.46) the start-up: this load-on-demand addon is loaded by XayaUI_Bonus's loader only when the Stat Calculator is on (once
--- per reload, never in combat lockdown); Bonus's store is open by then, so this runs at once and applies the saved settings.
+-- (Bonus 0.6.46) the start-up: this load-on-demand addon is loaded by XayaUI_Bonus's loader only while the Stat Calculator is on.
+-- (Bonus 0.6.47, SD-105 "Load at first open") it is loaded at the panel's first open (the minimap row, /xui stats, or the character
+-- window opening while the panel was left open), never in combat lockdown; Bonus's store is open by then, so this runs at once and
+-- applies the saved settings (Apply docks it beside the open character window when it was left open).
 ns.WhenSettingsReady("bonus", function()
     if Cfg() then ns.StatCalc_Apply() end
 end)

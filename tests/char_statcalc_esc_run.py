@@ -64,6 +64,10 @@ local function keys(label)
     tostring(a) .. " " .. tostring(b))
 end
 
+-- (bundle 1 round 10, REQUEST-LOG SD-105 "Load at first open (Recommended)") the calculator loads at its panel's first open, not at
+-- login. E1 counts what its first open adds to UISpecialFrames, so here it is loaded the way that first open loads it (the game's
+-- C_AddOns.LoadAddOn) without opening the panel; E1's sc.Open below is the panel's first open
+C_AddOns.LoadAddOn("XayaUI_Bonus_StatCalculator")
 local sc = ns.Service("statCalc")
 check("setup: the statCalc service is there", sc ~= nil)
 if not sc then return R end

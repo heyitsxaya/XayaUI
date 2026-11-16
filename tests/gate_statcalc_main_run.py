@@ -11,17 +11,22 @@ addon folder, XayaUI_Bonus included) and for the Stat Calculator itself by tests
       NewTimer), and the only C_Timer.After is the redraw throttle in StatCalculator.lua (one at a time, 0.25 s); no file switches the
       keyboard on or sets the key pass-on flag (only core's KeyCatch.lua may).
   R1  (V14) the Stat Calculator off at login (a fresh install): (Bonus 0.6.46, A24 #12 / #13) the load-on-demand addon
-      XayaUI_Bonus_StatCalculator is not loaded (none of its files read); XayaUI_Bonus made only its loader's login frame, which
-      listens to no event once the login is past; no hook, no timer; nothing is shown. (Before 0.6.46: no frame at all, but every
-      file of the calculator was read.) The meters count both folders.
+      XayaUI_Bonus_StatCalculator is not loaded (none of its files read); (bundle 1 round 10, Bonus 0.6.47, intended change) XayaUI_Bonus
+      made no frame at all (before 0.6.47: its loader's login frame), no hook on the character window, no timer; nothing is shown.
+      The meters count both folders.
+  R0  (round 10, SD-94 / SD-105 "Load at first open", the new common state) on but never opened this session: the calculator is not
+      loaded; XayaUI_Bonus has only its loader's one hook on the character window: no frame, no event, no timer, nothing shown, and
+      10 s of idle frames run nothing. The first /xui stats then loads it (once).
   R2  on, panel closed, character window closed: during 10 s of idle frames no XayaUI_Bonus frame has an OnUpdate script, no timer is
-      started, and its event frame listens only to the start and end of combat and to spec / level changes.
+      started, and (round 10, SD-102 / SD-105, intended change: was "listens only to the start and end of combat and to spec / level
+      changes") its event frame listens to nothing.
   R3  the panel open on its own: 10 s of idle frames start no timer and run no OnUpdate (nothing polls); the panel's size and its
       position offsets are whole pixels, and so is the saved place after a drag.
   R4  in combat (V26): the panel is hidden, so it takes no click; the event frame listens to PLAYER_REGEN_ENABLED only; 10 s of combat
-      frames start no timer. After combat it comes back.
+      frames start no timer. (round 10, SD-102 "Don't reappear", intended change: was "After combat it comes back") after combat it
+      stays closed, nothing is built, and the frame listens to nothing.
   R5  closed (its close button, or the Stat Calculator switched off): the panel is hidden, so it takes no click (mouse passes to the
-      game) and no event but combat start / end and spec / level remains (none at all when switched off).
+      game) and (round 10, intended change: was "no event but combat start / end and spec / level remains") no event remains.
 Negative control (2026-11-12): with an OnUpdate script and a C_Timer.NewTicker added to the panel's build in StatCalculator.lua, 5 of
 23 fail (S1 twice, R3, R4, R5: the OnUpdate is seen in each idle window).
 The harness is a stand-in for the game (tests/harness): in-game cost, taint and mouse behavior are UNVERIFIED IN GAME
@@ -75,7 +80,11 @@ local function onupdates() local n = 0; for _, o in ipairs(mine()) do if o._scri
 local function shown() local n = 0; for _, o in ipairs(mine()) do if o:IsVisible() and rawget(o, "_mouse") then n = n + 1 end end; return n end
 local function whole(v) return type(v) == "number" and v == math.floor(v) end
 
-rawset(_G, "CharacterFrame", CreateFrame("Frame", "CharacterFrame", UIParent)); CharacterFrame:Hide()
+rawset(_G, "CharacterFrame", rawCreate("Frame", "CharacterFrame", UIParent)); CharacterFrame:Hide()
+-- (round 10) hooks a XayaUI_Bonus file puts on the character window (HookScript, a post-hook)
+local cfHooks = 0
+local rawHookScript = CharacterFrame.HookScript
+CharacterFrame.HookScript = function(self, script, fn, ...) if fromBonus() then cfHooks = cfHooks + 1 end; return rawHookScript(self, script, fn, ...) end
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
 local ns = rawget(_G, "XayaUI_NS")
@@ -84,20 +93,31 @@ local sc = ns.Service("statCalc")
 
 if MODE == "fresh" then
   -- R1 off at login (Bonus 0.6.46, A24 #12 / #13: "Off means it is never read"): the load-on-demand addon is not loaded, so no file of
-  -- it ran; XayaUI_Bonus's loader made its one login frame, which listens to nothing once the login is past
+  -- it ran; (round 10, intended change) XayaUI_Bonus's loader made no frame (it no longer listens for the login)
   local loaded = C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")
   check("R1 off at login: XayaUI_Bonus_StatCalculator is not loaded (none of its files read: no service, no panel code)",
     not loaded and sc == nil and ns.StatCalc_Apply == nil and ns.StatModel == nil and ns.StatMath == nil, tostring(loaded))
   local ev = events()
-  check("R1 ...XayaUI_Bonus made only its loader's frame, which listens to no event after the login; no hook, no timer",
-    #mine() == 1 and ev == "" and hooks == 0 and timers == 0, #mine() .. " frames, events " .. ev .. ", " .. hooks .. " hooks, " .. timers .. " timers")
+  check("R1 ...XayaUI_Bonus made no frame, no hook on the character window or elsewhere, no timer (round 10: no login frame)",
+    #mine() == 0 and ev == "" and hooks == 0 and cfHooks == 0 and timers == 0, #mine() .. " frames, events " .. ev .. ", " .. hooks .. "+" .. cfHooks .. " hooks, " .. timers .. " timers")
   W.tick(1 / 60, 600)
-  check("R1 ...and 10 s of frames later still nothing more exists or runs", #mine() == 1 and timers == 0 and onupdates() == 0 and shown() == 0, #mine())
+  check("R1 ...and 10 s of frames later still nothing more exists or runs", #mine() == 0 and timers == 0 and onupdates() == 0 and shown() == 0, #mine())
   return R
 end
-check("(sanity) the Stat Calculator's service is there", sc ~= nil)
-if not sc then return R end
-
+-- R0 (round 10, SD-94 / SD-105) on, never opened: not loaded; only the loader's one hook on the character window
+do
+  local loaded = C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")
+  check("R0 on, never opened: XayaUI_Bonus_StatCalculator is not loaded (SD-105: it loads at its first open)", not loaded and sc == nil, tostring(loaded))
+  local t0 = timers
+  W.tick(1 / 60, 600)
+  local ev0 = events()
+  check("R0 ...only the loader's one hook on the character window: no frame, no event, no timer, nothing shown, through 10 s of idle frames",
+    cfHooks == 1 and hooks == 0 and #mine() == 0 and ev0 == "" and timers == t0 and timers == 0 and onupdates() == 0 and shown() == 0,
+    cfHooks .. " hooks, " .. #mine() .. " frames, events " .. ev0 .. ", " .. timers .. " timers")
+  ns.RunCommand("stats", ""); W.tick(0.1, 3)
+  sc = ns.Service("statCalc")
+  check("R0 ...the first /xui stats loads it (its service is there) and opens the panel", sc ~= nil and sc.Shown and sc.Shown())
+end
 -- on (as a player who turned it on), panel closed, character window closed
 local c = sc.Cfg(); c.enabled, c.panel = true, true; ns.StatCalc_Apply(); W.tick(0.1, 3)
 if sc.Shown() then sc.Close() end
@@ -106,7 +126,7 @@ local t0 = timers
 W.tick(1 / 60, 600)
 local ev, set = events()
 check("R2 on, panel closed: 10 s of idle frames start no timer and no XayaUI_Bonus frame has an OnUpdate", timers == t0 and onupdates() == 0, (timers - t0) .. " timers, " .. onupdates() .. " OnUpdate")
-check("R2 ...its events are only combat start / end and spec / level changes", ev == "PLAYER_LEVEL_UP,PLAYER_REGEN_DISABLED,PLAYER_REGEN_ENABLED,PLAYER_SPECIALIZATION_CHANGED", ev)
+check("R2 ...its event frame listens to nothing (round 10, SD-102 / SD-105)", ev == "", ev)
 check("R2 ...nothing of it is shown (the mouse reaches the game)", shown() == 0, shown())
 
 -- R3 open on its own
@@ -139,14 +159,19 @@ check("R4 in combat: the panel is hidden (it takes no click) and only PLAYER_REG
 t0 = timers
 W.tick(1 / 60, 600)
 check("R4 ...10 s of combat frames start no timer and run no OnUpdate", timers == t0 and onupdates() == 0, timers - t0)
+local b4 = ns.Service("statCalcDebug") and ns.Service("statCalcDebug").Builds() or 0
 W.leaveCombat(); W.tick(0.1, 5)
-check("R4 after combat it comes back on its own", panel:IsShown())
+local b5 = ns.Service("statCalcDebug") and ns.Service("statCalcDebug").Builds() or 0
+ev = events()
+check("R4 after combat it stays closed, nothing is built, and the frame listens to nothing (round 10, SD-102 \"Don't reappear\")",
+  not panel:IsShown() and b5 == b4 and ev == "", ev .. " " .. (b5 - b4) .. " builds")
+sc.Open("stats"); W.tick(0.1, 3)
 
 -- R5 closed and switched off
 sc.Close(); W.tick(0.1, 2)
 ev = events()
-check("R5 closed: hidden (the mouse reaches the game) and only combat start / end, spec and level are listened to", not panel:IsShown() and shown() == 0
-  and ev == "PLAYER_LEVEL_UP,PLAYER_REGEN_DISABLED,PLAYER_REGEN_ENABLED,PLAYER_SPECIALIZATION_CHANGED", ev)
+check("R5 closed: hidden (the mouse reaches the game) and nothing is listened to (round 10)", not panel:IsShown() and shown() == 0
+  and ev == "", ev)
 c.enabled = false; ns.StatCalc_Apply(); W.tick(0.1, 2)
 ev = events()
 t0 = timers
@@ -198,7 +223,7 @@ def session(mode):
 
 
 # (Bonus 0.6.46, A24 #12 / #13) the Stat Calculator is a load-on-demand addon (XayaUI_Bonus_StatCalculator) that XayaUI_Bonus's loader
-# loads at login only while its switch is saved on: the session starts with it on, as a player who turned it on and reloaded
+# loads only while its switch is saved on; (round 10, SD-105) at its first open: the session starts with it on and never opened (R0)
 STATCALC_ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": {"enabled": True}}}}
 
 

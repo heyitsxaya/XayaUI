@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- ProfilePart.lua (XayaUI Bonus Features 0.6.46): Bonus Features' part of a profile (Profiles > Import / Export), registered with the
+-- ProfilePart.lua (XayaUI Bonus Features 0.6.47): Bonus Features' part of a profile (Profiles > Import / Export), registered with the
 -- Platform (core Modules.lua section 9, ns.RegisterProfilePart), as XayaUI Rules registers its own (XayaUI_Rules/RuleShare.lua).
 -- Xaya, REQUEST-LOG A24 #13 (her answer): profiles: "Yes, include them (Recommended)": the Stat Calculator's saved settings
 -- (XayaUIBonusDB.characterToolkit) travel in profiles.
@@ -11,7 +11,10 @@
 -- (core DbPart): characterToolkit is a split key (core LEGACY_SPLIT: XayaUI Bonus Features keeps the Stat Calculator's keys, XayaUI QoL
 -- every other one), so an import writes only the Stat Calculator's keys (and the switch `enabled`, a key both halves keep) into
 -- XayaUIBonusDB.characterToolkit; keys of Improved Character Display (QoL, not on main) are left out. A reload puts them to work (the
--- part asks for one, like every settings part): the switch decides at login whether the calculator is read at all.
+-- part asks for one, like every settings part). (0.6.47, bundle 1 round 10; REQUEST-LOG SD-94 / SD-105) the switch itself takes effect
+-- at once: after the import the loader's switch logic runs (ns.StatCalcLoader.SwitchChanged, XayaUI_Bonus/StatCalculatorLoader.lua), as
+-- after a tick on its row: imported on, it is usable now (it loads at its first open); imported off, a loaded calculator is inert now
+-- and its memory is freed at the next /reload; a loaded one takes the imported settings at once.
 -- Format 1 was qa-installer-branch's Bonus Features part (data panels, tooltips, calculator); none of it is on main, so a format-1
 -- part imports nothing here.
 -- Older strings from qa-installer-branch: there the Stat Calculator's settings travel in the QoL part (XayaUI_QoL/ProfilePart.lua,
@@ -42,6 +45,16 @@ if type(base) == "function" then
             part.characterToolkit.enabled = c.enabled == true
         end
         return part
+    end
+end
+local baseApply = def.apply   -- (the Platform's, built from `db`)
+if type(baseApply) == "function" then
+    def.apply = function(part, ...)
+        local L = ns.StatCalcLoader
+        local was = L and L.Saved and L.Saved() or false
+        local res = baseApply(part, ...)
+        if L and L.SwitchChanged then L.SwitchChanged(was) end
+        return res
     end
 end
 local function Copy(v, depth)

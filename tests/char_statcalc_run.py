@@ -189,16 +189,22 @@ check("settings page builds: feature node Stat Calculator with Panel and Spell M
   and page.args.overlayPart == nil and page.args.ilvl == nil and page.args.enchants == nil)
 page.args.spells.args.add.set(nil, "Fracture")
 check("add spell via settings (duplicate ignored)", #c.spells == 1)
-check("/xui stats status runs", ns.RunCommand("stats", "status") and printed[#printed]:find("Stat Calculator:", 1, true) ~= nil)
-check("/xui stats while off says so", ns.RunCommand("stats", "") and printed[#printed]:find("is off", 1, true) ~= nil)
+-- (bundle 1 round 10, REQUEST-LOG SD-118, intended change) while the Stat Calculator is off, core answers every /xui stats word with its one
+-- line and never runs the Stat Calculator's command; "/xui stats on" no longer exists (it is turned on in Bonus Features). Before: status
+-- ran while off, and on / off saved the switch for after a reload (SD-86 / SD-94: the switch now acts at once, with no reload).
+local nP = #printed
+check("/xui stats status while off: core's one off line (SD-118)", ns.RunCommand("stats", "status") and #printed == nP + 1
+  and printed[#printed]:find("The Stat Calculator is off. Turn it on in /xui > Bonus Features.", 1, true) ~= nil, printed[#printed])
+check("/xui stats while off says so (core's one line)", ns.RunCommand("stats", "") and printed[#printed]:find("is off", 1, true) ~= nil)
 CharacterFrame.shown = false
 ns.RunCommand("stats", "on")
--- (Bonus 0.6.46, A24 #12 / #13) on / off save the choice and take effect after a reload, as main's other on / off switch does
-check("/xui stats on saves it on and says it takes effect after a reload", c.enabled == true and printed[#printed]:find("takes effect after a reload", 1, true) ~= nil, printed[#printed])
-ns.RunCommand("stats", "")
-check("...until the reload the session keeps it off (/xui stats still says it is off)", not (rawget(_G, "XayaUIStatCalculator") and XayaUIStatCalculator:IsShown()) and printed[#printed]:find("is off", 1, true) ~= nil)
-if ns.SwitchApplyNow then ns.SwitchApplyNow("bonus.statcalc") end   -- (the /reload stand-in: core Modules.lua section 5c)
-ns.StatCalc_Apply()
+check("/xui stats on no longer exists: it leaves the switch off and prints core's off line (SD-118)", c.enabled == false
+  and printed[#printed]:find("The Stat Calculator is off. Turn it on in /xui > Bonus Features.", 1, true) ~= nil, printed[#printed])
+-- (SD-86 / SD-94 / SD-105) the switch on the Stat Calculator's row: on at once, no reload question
+local page2 = ns.BuildSettingsPages("bonus").statcalc   -- (the page as the settings window gets it: the loader adds the switch)
+page2.xuiSwitch.set(nil, true)
+check("the switch on its row turns it on at once (no reload)", c.enabled == true and page2.xuiSwitch.get() == true)
+check("/xui stats status runs while on", ns.RunCommand("stats", "status") and printed[#printed]:find("Stat Calculator: on", 1, true) ~= nil, printed[#printed])
 ns.RunCommand("stats", "")
 check("/xui stats shows the panel on its own", XayaUIStatCalculator:IsShown())
 check("an old saved tab name (0.6.2 'ratings') maps to Stats", (function() c.tab = "ratings"; return CWC().tab == "stats" end)())

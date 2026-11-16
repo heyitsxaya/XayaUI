@@ -5,13 +5,14 @@ Replaces qa-installer-branch's tests/char_statcalc_split_run.py on main: that te
 QoL's store into Bonus's (core's key move), which cannot happen on main (no XayaUI QoL). On the real addons of this tree in the stand-in
 game (tests/harness), with the saved variables carried over a /reload:
   K1  a player coming from qa-installer-branch (XayaUIBonusDB.characterToolkit holds her panel settings, the key move's record, and the
-      retired features' keys; XayaUIQoLDB from QA is still in her SavedVariables but XayaUI QoL is not installed): the Stat Calculator
-      reads her settings as they are (side left, text size 13, her spell, her heights); after the session every key of XayaUIBonusDB is
+      retired features' keys; XayaUIQoLDB from QA is still in her SavedVariables but XayaUI QoL is not installed): (round 10, SD-105)
+      not loaded at login; opened and closed once (/xui stats), the Stat Calculator reads her settings as they are (side left, text size 13, her spell, her heights); after the session every key of XayaUIBonusDB is
       still there with its value (nothing is moved, renamed or removed; no migration runs: ns.SettingsKeyMove says no copy this session;
       since bundle 1 round 8 removed that reader (V34 audit; tests/fix_r8_retired_core_run.py), the saved data says it instead: the key
       move's record and XayaUIBonusDB.migratedFrom are exactly hers, and no key of XayaUIQoLDB.characterToolkit was copied into the
       Stat Calculator's settings); no Lua error.
-  K2  a fresh install: Bonus Features > Stat Calculator is there (its switch off by default), /xui stats answers, the minimap list's
+  K2  a fresh install: Bonus Features > Stat Calculator is there (its switch off by default), /xui stats answers (round 10, SD-118:
+      core's one off line), the minimap list's
       "Stat Calculator" row is registered and left out of the list while the Stat Calculator is off; (Bonus 0.6.46) the calculator's
       stat model is not loaded; no Lua error.
   K3  XayaUI Bonus Features switched off: no Stat Calculator page, no /xui stats, no row, no statModel service, nothing saved in
@@ -58,6 +59,14 @@ local ns = rawget(_G, "XayaUI_NS")
 if ns.LoadOptions then pcall(ns.LoadOptions) end; W.tick(0.1, 3)
 ns = rawget(_G, "XayaUI_NS")
 local out = { }
+-- (bundle 1 round 10, REQUEST-LOG SD-105 "Load at first open (Recommended)") the calculator is loaded at its panel's first open, not at
+-- login: with it on, /xui stats opens it (loading it) and /xui stats closes it again (her saved open state, closed, is the same after)
+out.loadedAtLogin = C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator") and true or false
+if MODE == "open" then
+  local rawP = ns.Print; ns.Print = function() end
+  pcall(ns.RunCommand, "stats", ""); W.tick(0.1, 3); pcall(ns.RunCommand, "stats", ""); W.tick(0.1, 2)
+  ns.Print = rawP
+end
 local sc = ns.StatCalc_Cfg and ns.StatCalc_Cfg()
 out.enabled = sc and sc.enabled
 out.panelSide = sc and sc.side
@@ -76,7 +85,7 @@ local rawPrint = ns.Print
 ns.Print = function(m) said[#said + 1] = tostring(m) end
 pcall(ns.RunCommand, "stats", "status")
 ns.Print = rawPrint
-for _, l in ipairs(said) do if l:find("Stat Calculator:", 1, true) then out.statsCmd = l end end
+for _, l in ipairs(said) do if l:find("Stat Calculator", 1, true) then out.statsCmd = l end end
 out.launcher, out.rowAvailable = false, false
 for _, e in ipairs(ns.Launchers and ns.Launchers() or {}) do
   if e[1] == "stats" then out.launcher = true; out.rowAvailable = (type(e.available) ~= "function") or (e.available() and true or false) end
@@ -87,7 +96,7 @@ end
 '''
 
 
-def session(enabled_filter, saved):
+def session(enabled_filter, saved, mode=""):
     folders = H.find_addons()
     enabled = [n for n in folders if enabled_filter(n)]
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
@@ -95,7 +104,7 @@ def session(enabled_filter, saved):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved}))
-    res = L.eval("function(src, W, Ld, m) return loadstring(src)()(W, Ld, m) end")(LUA, world, loader, "")
+    res = L.eval("function(src, W, Ld, m) return loadstring(src)()(W, Ld, m) end")(LUA, world, loader, mode)
     out = H.lua_to_py(res)
     saved2, _ = loader.logout()
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
@@ -129,9 +138,10 @@ def main():
     # K1 a player coming from qa-installer-branch
     qa = {"XayaUI": {"CueRulesDB": {}}, "XayaUI_Bonus": {"XayaUIBonusDB": copy.deepcopy(QA_BONUS)},
           "XayaUI_QoL": {"XayaUIQoLDB": copy.deepcopy(QA_QOL)}}
-    out, s1, errs = session(ALL, copy.deepcopy(qa))
-    check("K1 coming from QA: the Stat Calculator reads her saved settings as they are (on, side left, text size 13, height 900, her spell)",
-          out.get("enabled") is True and out.get("panelSide") == "left" and out.get("panelFont") == 13 and out.get("heightLarge") == 900
+    out, s1, errs = session(ALL, copy.deepcopy(qa), "open")
+    check("K1 coming from QA: (round 10, SD-105) not loaded at login; at its first open the Stat Calculator reads her saved settings as they "
+          "are (on, side left, text size 13, height 900, her spell)",
+          out.get("loadedAtLogin") is False and out.get("enabled") is True and out.get("panelSide") == "left" and out.get("panelFont") == 13 and out.get("heightLarge") == 900
           and out.get("spell") == 263642, out)
     b = store(s1, "XayaUI_Bonus", "XayaUIBonusDB")
     check("  ...after the session every key of XayaUIBonusDB is still there with its value (the panel's, the record, the retired features')",
@@ -151,14 +161,16 @@ def main():
           and str(out.get("statsCmd") or "").startswith("Stat Calculator: on, panel on"), (out.get("bonusPage"), out.get("statsCmd")))
     check("  ...no Lua error", not errs, errs[:2])
     # the next load keeps them too
-    out2, s2, errs2 = session(ALL, s1)
+    out2, s2, errs2 = session(ALL, s1, "open")
     check("  ...and after a /reload: still side left, text size 13; no Lua error", out2.get("panelSide") == "left" and out2.get("panelFont") == 13
           and not errs2, (out2.get("panelSide"), errs2[:2]))
     # K2 fresh install
     out3, s3, errs3 = session(ALL, {})
     check("K2 fresh install: Bonus Features > Stat Calculator is there, its switch off by default", out3.get("bonusPage") == "Stat Calculator"
           and out3.get("switchOn") is False, (out3.get("bonusPage"), out3.get("switchOn")))
-    check("  .../xui stats answers (off)", str(out3.get("statsCmd") or "").startswith("Stat Calculator: off"), out3.get("statsCmd"))
+    # (round 10, REQUEST-LOG SD-118, intended change: was "Stat Calculator: off (not loaded).") while off, core answers every /xui stats word
+    check("  .../xui stats answers with core's one off line (SD-118)", out3.get("statsCmd") == "The Stat Calculator is off. Turn it on in /xui > Bonus Features.",
+          out3.get("statsCmd"))
     check("  ...the minimap list's Stat Calculator row is registered and left out of the list while the Stat Calculator is off",
           out3.get("launcher") is True and out3.get("rowAvailable") is False, (out3.get("launcher"), out3.get("rowAvailable")))
     # (Bonus 0.6.46, A24 #12 / #13) off at login: the calculator's load-on-demand addon is not read, so its stat model is not there

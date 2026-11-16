@@ -5,20 +5,29 @@ all addon  elements and should be detected once per reload"; A24 #13, the option
 on/off switch, settings page entry, /xui stats and the minimap row. The calculator code moves to XayaUI_Bonus_StatCalculator, shown in
 the AddOns list under Bonus Features as 'load on demand'. Off means it is never read; on means it loads once per reload."; profiles:
 "Yes, include them (Recommended)".
+(bundle 1 round 10, Bonus 0.6.47; INTENDED CHANGES, her later answers, REQUEST-LOG verbatim) SD-94 "if window is not open, it shouldn't
+use memory"; SD-105 "Load at first open (Recommended)": the calculator is not loaded at login but at the first open of its panel;
+SD-86 "Only require a reload for an individual item that might require a reload": the switch acts at once, no "Reload now?" question;
+SD-118 "All parts, say how (Recommended)": while off, every /xui stats word prints core's one line and "/xui stats on" no longer exists;
+SD-100 / SD-102 "Don't reappear": never loaded or opened in combat, nothing waits for combat to end. The checks below changed with them
+(each says which SD); the profile checks P1-P4 are unchanged.
 On the real addons of this tree in the stand-in game (tests/harness: every folder loaded as the game's loader does, load-on-demand
 addons only through C_AddOns.LoadAddOn), with the saved variables carried over each /reload. What the player gets:
   L1  off at login (a fresh install): no file of XayaUI_Bonus_StatCalculator is read (the game's loader never runs one of its chunks);
       no statCalc / statModel service; Bonus Features > Stat Calculator is there with its switch and one line, no detailed options;
-      /xui stats says it is off and how to turn it on; the minimap list leaves the row out; no LoadAddOn call was made.
-  L2  turned on in the settings (the tick box on its row): the choice is saved, the game's "Reload now?" question names the Stat
-      Calculator, the line says a /reload loads it, and nothing of it is read in this session; after the /reload it is loaded once at
-      PLAYER_LOGIN, its detailed options are on the page, /xui stats opens the panel, the minimap row is in the list; the loader's frame
-      then listens to no event.
-  L3  login in combat (combat lockdown): it is NOT loaded while the lockdown lasts (no LoadAddOn call in combat); combat ends: loaded,
-      once; then the loader listens to nothing.
-  L4  turned off while loaded (/xui stats off): saved off, the line says it takes effect after a reload, and the calculator keeps
-      working until the /reload (the row stays, the panel opens); after the /reload none of its files is read again.
-  L5  on, but XayaUI_Bonus_StatCalculator switched off in the game's AddOns list: one line says so; no Lua error.
+      /xui stats prints core's one off line (SD-118); the minimap list leaves the row out; no LoadAddOn call was made; XayaUI_Bonus
+      made no frame (was: a login frame).
+  L2  turned on in the settings (the tick box on its row): the choice is saved, NO reload question (SD-86 / SD-94; was: "Reload now?"),
+      the line says its options appear after the first open, and nothing of it is read yet (SD-105); the first /xui stats loads it
+      once, out of combat, and opens the panel; its detailed options are then on the page and the minimap row is in the list; XayaUI_Bonus
+      still has no frame or event (was: loaded at the next PLAYER_LOGIN).
+  L3  (SD-100 / SD-102; was: a login in combat loaded it once combat ended) on, its first open asked in combat (/xui stats, the minimap
+      row, the character window): it is NOT loaded and nothing is said; combat ends: still not loaded, nothing opens (nothing waits);
+      opened after combat: loaded once, out of combat.
+  L4  turned off while loaded (/xui stats off): saved off, one line says its memory is freed at the next /reload, and it is inert at once:
+      the panel closes, the row leaves the list, /xui stats prints core's off line (SD-86 / SD-94 / SD-118; was: kept working until the
+      /reload); after the /reload none of its files is read again.
+  L5  on, but XayaUI_Bonus_StatCalculator switched off in the game's AddOns list: its first open prints one line saying so; no Lua error.
   P1  profiles, the calculator off and not loaded: Export offers Bonus Features; its part holds the Stat Calculator's settings (with the
       switch); Import of a profile with that part says nothing is missing (never "needs XayaUI Bonus Features" while it is installed).
   P2  importing it writes the Stat Calculator's settings (side, text size, spells, the switch) into XayaUIBonusDB.characterToolkit and
@@ -77,11 +86,13 @@ local function bonusFrameEvents()
   end
   return n
 end
+local function bonusFrames() local n = 0; for _, o in ipairs(W.objects) do if rawget(o, "_bonusLoader") then n = n + 1 end end; return n end
 local rawCreate = CreateFrame
 CreateFrame = function(...)
   local f = rawCreate(...)
   local info = debug.getinfo(2, "S")
-  if info and (info.source or ""):find("XayaUI_Bonus/StatCalculatorLoader.lua", 1, true) then rawset(f, "_bonusLoader", true) end
+  -- (round 10) by the chunk name the game's loader gives the file ("@Interface/AddOns/XayaUI_Bonus/..."), never this test's own source text
+  if info and (info.source or ""):sub(1, 1) == "@" and (info.source or ""):find("/XayaUI_Bonus/StatCalculatorLoader.lua", 1, true) then rawset(f, "_bonusLoader", true) end
   return f
 end
 local function rowListed()
@@ -103,7 +114,7 @@ local ns = rawget(_G, "XayaUI_NS")
 hear()
 '''
 
-# L1 + L2 (first session: fresh, off; turned on in the settings)
+# L1 + L2 (first session: fresh, off; turned on in the settings; first opened)
 S_OFF = r'''
 return function(W, L)
 ''' + COMMON + LOGIN + r'''
@@ -111,54 +122,68 @@ check("L1 off at login: no file of XayaUI_Bonus_StatCalculator is read, it is no
   #chunks == 0 and not loaded() and #loadCalls == 0, table.concat(chunks, ", "))
 check("L1 ...no statCalc / statModel service and none of its functions exist", ns.Service("statCalc") == nil and ns.Service("statModel") == nil
   and ns.StatCalc_Apply == nil and ns.StatModel == nil)
-check("L1 ...the loader's frame listens to no event once the login is past", bonusFrameEvents() == 0, bonusFrameEvents())
+check("L1 ...XayaUI_Bonus made no frame and listens to no event (0.6.47: no login frame)", bonusFrames() == 0 and bonusFrameEvents() == 0, bonusFrames())
 local p = page()
 local noteText = p and p.args and p.args.note and (type(p.args.note.name) == "function" and p.args.note.name() or p.args.note.name)
 check("L1 Bonus Features > Stat Calculator is there with its switch (off) and one line, no detailed options",
   p ~= nil and p.name == "Stat Calculator" and p.xuiSwitch and p.xuiSwitch.get() == false and p.args.panelPart == nil and p.args.spells == nil
   and type(noteText) == "string" and noteText:find("\n", 1, true) == nil, noteText)
 ns.RunCommand("stats", "")
-check("L1 /xui stats says it is off and how to turn it on", last():find("Stat Calculator is off", 1, true) ~= nil and last():find("/reload", 1, true) ~= nil, last())
+-- (SD-118, intended change: was "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload.")
+check("L1 /xui stats prints core's one off line (SD-118)", last() == "The Stat Calculator is off. Turn it on in /xui > Bonus Features.", last())
 local avail, reg = rowListed()
 check("L1 the minimap list's Stat Calculator row is registered and left out of the list", reg and not avail)
 -- L2 turned on with the tick box on its row
-check("L2 setup: the settings window loads", ns.LoadOptions and ns.LoadOptions())
+check("L2 setup: the settings window loads (it does not load the calculator: SD-103 parked)", ns.LoadOptions and ns.LoadOptions() and not loaded())
 p = page()
 p.xuiSwitch.set({}, true)
 W.tick(0.1, 3)
 check("L2 turned on: the choice is saved (the tick box shows it on)", p.xuiSwitch.get() == true and XayaUIBonusDB.characterToolkit.enabled == true)
-check("L2 ...the game's \"Reload now?\" question is asked once, naming the Stat Calculator", #asked == 1 and asked[1][1] == "XAYAUI_RESKIN_RELOAD"
-  and asked[1][2] == "Stat Calculator", #asked)
+-- (SD-86 / SD-94, intended change: was 'the game's "Reload now?" question is asked once, naming the Stat Calculator')
+check("L2 ...no \"Reload now?\" question (the switch acts at once)", #asked == 0, #asked)
 p = page()
 noteText = p and p.args.note and p.args.note.name()
-check("L2 ...the page's line says a /reload loads it", type(noteText) == "string" and noteText:find("/reload", 1, true) ~= nil and p.args.panelPart == nil, noteText)
+-- (SD-105 / SD-103 interim, intended change: was "the page's line says a /reload loads it")
+check("L2 ...the page's line says its options appear after the first open", noteText == "Its options appear here after you first open the Stat Calculator."
+  and p.args.panelPart == nil, noteText)
 W.fire("PLAYER_ENTERING_WORLD", false, true); W.tick(0.2, 10)
-check("L2 ...and nothing of it is read in this session", #chunks == 0 and not loaded() and #loadCalls == 0, #chunks)
+check("L2 ...and nothing of it is read before its first open (SD-105)", #chunks == 0 and not loaded() and #loadCalls == 0, #chunks)
+check("L2 ...the minimap row is in the list (a click on it is the first open)", (rowListed()))
+-- (SD-105, intended change: was "after the /reload: loaded once, at PLAYER_LOGIN")
+ns.RunCommand("stats", "")
+W.tick(0.1, 3)
+local panel = rawget(_G, "XayaUIStatCalculator")
+check("L2 the first /xui stats: loaded once, out of combat (its three files read once), and the panel opens", loaded() and #loadCalls == 1
+  and loadCalls[1].combat == false and #chunks == 3 and panel ~= nil and panel:IsShown(), #loadCalls .. " calls, " .. #chunks .. " chunks")
+check("L2 ...XayaUI_Bonus still has no frame and no event", bonusFrames() == 0 and bonusFrameEvents() == 0, bonusFrames())
+check("L2 ...the page has its detailed options (Panel, Spell Math) and the same switch", (function()
+  local p2 = page(); return p2 and p2.args.panelPart ~= nil and p2.args.spells ~= nil and p2.xuiSwitch and p2.xuiSwitch.get() == true end)())
+check("L2 ...the minimap row is in the list", (rowListed()))
 return R
 end
 '''
 
-# L2 after the reload + L4 (turned off while loaded)
+# L4 (turned off while loaded): the session starts on, opened once
 S_ON = r'''
 return function(W, L)
 ''' + COMMON + LOGIN + r'''
-check("L2 after the /reload: loaded once, at PLAYER_LOGIN, out of combat (its three files read once)", loaded() and #loadCalls == 1
-  and loadCalls[1].n == "XayaUI_Bonus_StatCalculator" and loadCalls[1].combat == false and #chunks == 3, #loadCalls .. " calls, " .. #chunks .. " chunks")
-check("L2 ...the loader's frame then listens to no event", bonusFrameEvents() == 0, bonusFrameEvents())
-check("L2 ...the page has its detailed options (Panel, Spell Math) and the same switch", (function()
-  local p = page(); return p and p.args.panelPart ~= nil and p.args.spells ~= nil and p.xuiSwitch and p.xuiSwitch.get() == true end)())
+check("L4 setup: on after the /reload, not loaded until opened (SD-105)", not loaded() and #loadCalls == 0)
 ns.RunCommand("stats", "")
 W.tick(0.1, 3)
 local panel = rawget(_G, "XayaUIStatCalculator")
-check("L2 .../xui stats opens the panel and the minimap row is in the list", panel ~= nil and panel:IsShown() and (rowListed()))
--- L4 turned off while loaded
+check("L4 setup: /xui stats loads it and opens the panel; the row is in the list", loaded() and panel ~= nil and panel:IsShown() and (rowListed()))
+local n = #said
 ns.RunCommand("stats", "off")
-check("L4 /xui stats off: saved off; it says it takes effect after a reload", XayaUIBonusDB.characterToolkit.enabled == false
-  and last():find("takes effect after a reload", 1, true) ~= nil, last())
+-- (SD-86 / SD-94 / SD-105, intended change: was "saved off; it says it takes effect after a reload")
+check("L4 /xui stats off: saved off; one line says its memory is freed at the next /reload; no reload question",
+  XayaUIBonusDB.characterToolkit.enabled == false and #said == n + 1 and last() == "The Stat Calculator is off. Its memory is freed at your next /reload."
+  and #asked == 0, last())
 W.tick(0.1, 3)
-check("L4 ...the calculator keeps working until the /reload (the panel stays open, the row stays)", panel:IsShown() and (rowListed()))
-ns.RunCommand("stats", ""); W.tick(0.1, 2); ns.RunCommand("stats", ""); W.tick(0.1, 2)
-check("L4 ...and still opens and closes with /xui stats", panel:IsShown())
+-- (intended change: was "the calculator keeps working until the /reload (the panel stays open, the row stays)")
+check("L4 ...inert at once: the panel closes and the row leaves the list", not panel:IsShown() and not (rowListed()))
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+-- (SD-118, intended change: was "...and still opens and closes with /xui stats")
+check("L4 .../xui stats prints core's off line and opens nothing", not panel:IsShown() and last() == "The Stat Calculator is off. Turn it on in /xui > Bonus Features.", last())
 return R
 end
 '''
@@ -174,21 +199,26 @@ return R
 end
 '''
 
-# L3 login in combat
+# L3 (SD-100 / SD-102) the first open asked in combat
 S_COMBAT = r'''
 return function(W, L)
-''' + COMMON + r'''
-L.startup()
+''' + COMMON + LOGIN + r'''
+check("L3 setup: on, not loaded at login", not loaded() and #loadCalls == 0)
 W.enterCombat()
-W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.2, 10)
-local ns = rawget(_G, "XayaUI_NS")
-hear()
-check("L3 login in combat lockdown: not loaded, no LoadAddOn call, none of its files read", not loaded() and #loadCalls == 0 and #chunks == 0, #loadCalls)
-check("L3 ...the loader listens to the end of combat only", bonusFrameEvents() == 1, bonusFrameEvents())
+local n = #said
+ns.RunCommand("stats", "")
+for _, e in ipairs(ns.Launchers and ns.Launchers() or {}) do if e[1] == "stats" and type(e[4]) == "function" then e[4]() end end
+CharacterFrame:Show(); W.tick(0.1, 3); CharacterFrame:Hide()
+check("L3 its first open asked in combat (/xui stats, the minimap row, the character window): NOT loaded, no LoadAddOn call, nothing said",
+  not loaded() and #loadCalls == 0 and #chunks == 0 and #said == n, #loadCalls)
+check("L3 ...the row is left out of the list in combat", not (rowListed()))
+check("L3 ...XayaUI_Bonus listens to nothing (nothing waits for the end of combat)", bonusFrameEvents() == 0, bonusFrameEvents())
 W.tick(1, 5)
 W.leaveCombat(); W.tick(0.2, 5)
-check("L3 combat ends: loaded once, out of combat", loaded() and #loadCalls == 1 and loadCalls[1].combat == false and #chunks == 3, #loadCalls)
-check("L3 ...then the loader listens to nothing", bonusFrameEvents() == 0, bonusFrameEvents())
+-- (SD-102, intended change: was "combat ends: loaded once, out of combat")
+check("L3 combat ends: still not loaded, nothing opens (SD-102)", not loaded() and #loadCalls == 0 and not (rawget(_G, "XayaUIStatCalculator") and XayaUIStatCalculator:IsShown()))
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+check("L3 ...opened after combat: loaded once, out of combat", loaded() and #loadCalls == 1 and loadCalls[1].combat == false and #chunks == 3, #loadCalls)
 W.enterCombat(); W.leaveCombat(); W.tick(0.2, 3)
 check("L3 ...a later combat loads nothing again", #loadCalls == 1 and #chunks == 3, #loadCalls)
 return R
@@ -203,9 +233,11 @@ L.startup()
 local ns = rawget(_G, "XayaUI_NS")
 hear()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.2, 10)
+-- (SD-105, intended change: the line comes at the first open, not at login)
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
 local found = false
 for _, l in ipairs(said) do if l:find("switched off in the game's AddOns list", 1, true) and l:find("XayaUI Bonus Features: Stat Calculator", 1, true) then found = true end end
-check("L5 on, but XayaUI Bonus Features: Stat Calculator switched off in the AddOns list: one line says so", found and not loaded() and #chunks == 0, table.concat(said, " | "))
+check("L5 on, but XayaUI Bonus Features: Stat Calculator switched off in the AddOns list: its first open prints one line saying so", found and not loaded() and #chunks == 0, table.concat(said, " | "))
 return R
 end
 '''

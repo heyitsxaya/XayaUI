@@ -8,10 +8,10 @@ checks used it.) What the player sees or gets:
   F2  SC-001 / SC-045 (V26 "Hide silently"): in combat ns.StatCalc_Render, every input (SetInput, PickItem, SelectGearSlot,
       SetCompareSlot, Action, SizeMode, ToggleStat, ToggleSpell, SetSpellFilter) and the statCalc service's wrappers build no stat model,
       draw nothing, change no saved number and say nothing; the build count Dev Assist reads (statCalcDebug.Builds) stays the same; the
-      character window still opens. After combat a typed number works again.
+      character window still opens. After combat (round 10, SD-102: she reopens it) a typed number works again.
   F3  SC-081: with the panel closed SPELL_UPDATE_COOLDOWN is not registered and a cast reads no GCD; the panel shown: registered, and
-      opening read the GCD once; in combat: not registered; at the end of combat exactly one GCD read when the panel comes back (its
-      own show reads it; round 2: no second read at PLAYER_REGEN_ENABLED), none when the panel stays closed.
+      opening read the GCD once; in combat: not registered; (round 10, SD-102) the end of combat reads no GCD and reopens nothing; her
+      next open reads it exactly once (its own show); a closed panel listens to no event at all (round 10: not even combat start).
   F4  SC-020 (with SC-085 / SC-049, event side): on the Gear tab an item looted into the bags shows after BAG_UPDATE_DELAYED (the model's
       CM.ForgetOwned is called when it has one); GET_ITEM_INFO_RECEIVED for an item the panel does not show causes no redraw, for an
       equipped item it does; PLAYER_TARGET_CHANGED on the Ability Scaling tab (its model reads no target) causes no redraw, on Stats it
@@ -107,7 +107,12 @@ c.tab = "stats"; ns.StatCalc_Render()
 local box = drawn().boxes["sv:crit"]
 checkp("F1 setup: the Critical Strike Change box is drawn and the player clicks into it (it has the keyboard)", function()
   if not box then return false, "no box" end
-  box:SetFocus(); return box:HasFocus() end)
+  box:SetFocus()
+  -- (round 10) the game runs a box's OnEditFocusGained scripts when it takes the keyboard; this stand-in's SetFocus does not, so they are
+  -- run here as the game would (the Stat Calculator now keeps the focused box from them, SD-112; tests/statcalc_keys_run.py plays the
+  -- same on the whole-addon harness, whose edit boxes run them)
+  for _, h in ipairs(box.hooks and box.hooks.OnEditFocusGained or {}) do h(box) end
+  return box:HasFocus() end)
 local p0 = #printed
 enterCombat()
 checkp("F1 combat starts with a Change box focused: the box lets go of the keyboard (HasFocus false)", function() return box and not box:HasFocus() end)
@@ -155,8 +160,13 @@ checkp("F2 the character window still opens in combat; the panel stays hidden an
 checkp("F3 in combat: SPELL_UPDATE_COOLDOWN is not registered", function() return not registered("SPELL_UPDATE_COOLDOWN") end)
 local g0 = gcdReads
 leaveCombat()
-checkp("F2 after combat the panel is back and drawn (a model is built again)", function() return panelShown() and builds > b0, builds - b0 end)
-checkp("F3 the end of combat with the panel coming back reads the GCD exactly once (the panel's own show; no second read)", function() return gcdReads == g0 + 1, gcdReads - g0 end)
+-- (bundle 1 round 10, REQUEST-LOG SD-100 / SD-102 "Don't reappear", intended change: was "after combat the panel is back and drawn" and
+-- "the end of combat with the panel coming back reads the GCD exactly once") nothing comes back by itself; she reopens it
+checkp("F2 after combat the panel stays hidden and nothing is built or read (SD-102)", function() return not panelShown() and builds == b0 and gcdReads == g0,
+  (builds - b0) .. " " .. (gcdReads - g0) end)
+closeWindow(); openWindow()
+checkp("F2 ...reopened (the character window again): back and drawn (a model is built again)", function() return panelShown() and builds > b0, builds - b0 end)
+checkp("F3 ...that reopen reads the GCD exactly once (the panel's own show)", function() return gcdReads == g0 + 1, gcdReads - g0 end)
 ns.StatCalc_SetInput("sv:crit", "600")
 checkp("F2 after combat a typed number works again (Critical Strike's box: 600 - 528 = +72)", function() return c.whatIfStats.crit == 72, c.whatIfStats.crit end)
 ns.StatCalc_SetInput("sv:crit", "")
@@ -164,8 +174,9 @@ ns.StatCalc_SetInput("sv:crit", "")
 -- F3 (SC-081) ----------------------------------------------------------------------------------------------------------------------
 checkp("F3 the panel shown: SPELL_UPDATE_COOLDOWN is registered", function() return registered("SPELL_UPDATE_COOLDOWN") end)
 ns.StatCalc_SetOpen(false)
-checkp("F3 the panel closed (its part still on): SPELL_UPDATE_COOLDOWN is not registered; nor the stat events (gate G-014); the start of combat is", function()
-  return not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and registered("PLAYER_REGEN_DISABLED") end)
+-- (round 10, SD-102 / SD-105, intended change: was "...the start of combat is") a closed panel listens to nothing
+checkp("F3 the panel closed (its part still on): SPELL_UPDATE_COOLDOWN is not registered; nor the stat events (gate G-014); nor the start of combat (round 10)", function()
+  return not registered("SPELL_UPDATE_COOLDOWN") and not registered("UNIT_STATS") and not registered("PLAYER_REGEN_DISABLED") end)
 g0 = gcdReads
 local bb = builds
 fire("SPELL_UPDATE_COOLDOWN"); fire("SPELL_UPDATE_COOLDOWN"); fire("SPELL_UPDATE_COOLDOWN")
@@ -303,7 +314,9 @@ checkp("F7 the bags changed while the panel was closed: reopened on Gear, the li
   return bagIcons() == "Loot Ring,New Ring,Third Ring", bagIcons() end)
 BAG[3] = nil
 enterCombat(); fire("BAG_UPDATE_DELAYED"); leaveCombat()
-checkp("F7 the bags changed in combat (panel hidden): after combat Gear lists the new bags (New Ring, Third Ring)", function()
+-- (round 10, SD-102, intended change: was "after combat Gear lists the new bags", with the panel back by itself) she reopens it
+ns.StatCalc_SetOpen(true)
+checkp("F7 the bags changed in combat (panel hidden): reopened after combat, Gear lists the new bags (New Ring, Third Ring)", function()
   return panelShown() and bagIcons() == "New Ring,Third Ring", bagIcons() end)
 local fz = forgets
 ns.StatCalc_Render(); ns.StatCalc_Render()
