@@ -45,7 +45,27 @@ L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
 local function plain(l) return (tostring(l):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-local function run(s) return ns.CaptureOutput(function() SlashCmdList.XAYAUI(s) end) end
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": ns.CaptureOutput is gone) what a command shows the
+-- player, read from the stand-in game: the lines printed in chat (W.printed) and the lines drawn in the console window, each without the
+-- "XayaUI: " name in front, in that order (one command prints in one of the two). With the debug tools loaded the console window is opened
+-- first, so each line is drawn as it comes (a window opening in the middle of a command first draws the older lines it missed). A Lua
+-- error in the command ends the list as "(error: ...)".
+local SHOWN_NAME = "|cff33ccffXayaUI|r: "
+local function unname(l) l = tostring(l); if l:sub(1, #SHOWN_NAME) == SHOWN_NAME then return l:sub(#SHOWN_NAME + 1) end; return l end
+local function consoleLines() local cw = rawget(_G, "XayaUIConsoleWindow"); return cw and cw.log and cw.log._lines end
+local function shown(fn, ...)
+  if ns.DebugToolsLoaded and ns.DebugToolsLoaded() and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+  local c0, log0 = #W.printed, consoleLines()
+  local n0 = log0 and #log0 or 0
+  local ok, err = pcall(fn, ...)
+  local out = {}
+  for i = c0 + 1, #W.printed do out[#out + 1] = unname(W.printed[i]) end
+  local log = consoleLines()
+  if log then for i = (log == log0 and n0 or 0) + 1, #log do out[#out + 1] = unname(log[i]) end end
+  if not ok then out[#out + 1] = "(error: " .. tostring(err) .. ")" end
+  return out
+end
+local function run(s) return shown(SlashCmdList.XAYAUI, s) end
 
 -- 1. /xui help --------------------------------------------------------------------------------------------------------------------
 local help = run("help")
@@ -117,6 +137,10 @@ local dpipe
 for i = 1, #dbg do if plain(dbg[i]):gsub("||", ""):find("|", 1, true) then dpipe = dbg[i] end end
 check("debug: every '|' doubled, none left single", dpipe == nil, dpipe)
 check("debug: option lists read [on|off] again", plain(table.concat(dbg, "\n")):find("perf [on||off]", 1, true) ~= nil)
+-- (bundle 1 round 9, intended change: was "perf [on|off] (engine timing)") the perf line says plainly what the report measures
+check("debug: perf says what it measures: '/xui debug perf [on||off]  measure the combat engine: pass counts, CPU and memory'",
+  plain(table.concat(dbg, "\n")):find("\n  /xui debug perf [on||off]  measure the combat engine: pass counts, CPU and memory\n", 1, true) ~= nil,
+  plain(table.concat(dbg, " / ")))
 -- each listed name runs (the stand-in game answers what it can; no Lua error, never "no debug command")
 local errs0 = #W.errors
 local notRun = {}

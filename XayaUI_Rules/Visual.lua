@@ -150,15 +150,25 @@ local function UVAt(uv, a, b)
     local llx, lly = uv[3], uv[4]
     return llx + a * (uv[7] - llx) + b * (uv[1] - llx), lly + a * (uv[8] - lly) + b * (uv[2] - lly)
 end
+-- the box the wipe runs over: the art box when the art is smaller than the frame (Icon width / height), else the frame
+local function WipeBox(tex, fr)
+    local bx = tex.xuiBox
+    if bx then return bx[1], bx[2], bx[3], bx[4] end
+    return 0, 0, fr:GetWidth(), fr:GetHeight()
+end
+local function Whole(n) return math.floor(n + 0.5) end
 local function CropTex(tex, fr, x0, x1, y0, y1)
     local uv = tex.xuiUV
     if not uv then return end
-    local W, H, ix, iy = fr:GetWidth(), fr:GetHeight(), 0, 0
-    local bx = tex.xuiBox   -- the art may be smaller than the frame (Icon width / height): the wipe runs over the art
-    if bx then ix, iy, W, H = bx[1], bx[2], bx[3], bx[4] end
+    local ix, iy, W, H = WipeBox(tex, fr)
+    if W <= 0 or H <= 0 then return end
+    -- (round 9, V27 "Whole-pixel / no float math") the four edges are set in whole pixels, and the picture is cut to exactly those edges
+    local l, t = Whole(ix + x0 * W), Whole(iy + (1 - y1) * H)
+    local r, b = Whole(ix + (1 - x1) * W), Whole(iy + y0 * H)
+    x0, x1, y1, y0 = (l - ix) / W, 1 - (r - ix) / W, 1 - (t - iy) / H, (b - iy) / H
     tex:ClearAllPoints()
-    tex:SetPoint("TOPLEFT", fr, "TOPLEFT", ix + x0 * W, -(iy + (1 - y1) * H))
-    tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -(ix + (1 - x1) * W), iy + y0 * H)
+    tex:SetPoint("TOPLEFT", fr, "TOPLEFT", l, -t)
+    tex:SetPoint("BOTTOMRIGHT", fr, "BOTTOMRIGHT", -r, b)
     local ulx, uly = UVAt(uv, x0, y1)
     local llx, lly = UVAt(uv, x0, y0)
     local urx, ury = UVAt(uv, x1, y1)
@@ -1987,7 +1997,7 @@ local function GetFrame(rule)
     fr:SetScript("OnMouseUp", function(self, button) local M = Unl(rule) and ns.MoverDisplay; if M then M.MouseUp(rule, self, button) end end)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
-    -- (the per-frame effects script is attached only while an effect is running: see FxOnUpdate / SetFxRule)
+    -- (the per-frame effects script is attached only while an effect changes on every run: see FxPlan)
     frames[rule] = fr
     if ns.RegisterElement then ns.RegisterElement(DISPLAY_ELEMENT) end   -- (#495) the new frame takes the right-click while the window is shown
     return fr
@@ -2267,6 +2277,9 @@ function ns.RefreshVisual(rule)
         fr:SetBackdrop(nil)
         if fr.label then fr.label:Hide() end
     end
+    -- (round 9) the opacity, color, gray and glow above were set directly, and the art placed again (uncut): what the effects writers
+    -- remember is cleared, so the drawing below sets them all (see FxForget)
+    fr.wA, fr.wD, fr.wR, fr.wG, fr.wB, fr.wCA, fr.wGW, fr.wGH, fr.wipeKey, fr.wipeDir = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
     ns.UpdateVisualText(rule, ns.runtime and ns.runtime[rule] and ns.runtime[rule].info)
 end
 
@@ -2311,29 +2324,141 @@ local function ColorCurve(fr, key, r0, g0, b0, a0, r1, g1, b1, a1)   -- remainin
     fr.curves[key] = e
     return e.cv or nil
 end
--- Smooth effects between engine ticks (wipe, fades, flash, tenths of a second), at most ~30 times a second. The script is
--- attached to a display only while one of those effects is running, so idle displays cost nothing per rendered frame.
-local function FxOnUpdate(self, elapsed)
-    local r = self.fxRule
-    if not r then self:SetScript("OnUpdate", nil); return end
-    local acc = (self.fxAcc or 0) + (elapsed or 0)
-    if acc < 0.033 then self.fxAcc = acc; return end
-    self.fxAcc = 0
+-- Smooth effects between engine ticks (wipe, fades, flash, tenths of a second, a Bar cue's fill).
+-- (round 9, SD-79, her answer "<=30/s, stop if idle (Recommended)") Each display decides after every drawing what its time-driven parts
+-- need next (FxPlan):
+--   * a part that changes on every run (a fade, the flash pulse, a Bar cue's fill): the effects loop, at most 30 runs a second
+--     (FX_GAP), on that display only;
+--   * parts that change only at known moments (the next tenth of a second, the flash threshold, the wipe's next whole pixel): no loop;
+--     one C_Timer.After at the earliest such moment over all displays (FxArm / FxWake) draws the display on the first frame of that
+--     moment, so nothing runs in between and the change is not late;
+--   * nothing left to change (the aura ran out, previews paused): neither; the next re-check (an event) plans again.
+-- A run that changes nothing on screen (exact-value compare of every write: the Fx* writers below) stops the loop at once.
+-- No new function or table per run or per timer (file-level functions only; the moments live in fxWakeAt).
+local FX_GAP = 0.033   -- the loop's spacing: at most ~30 runs a second per display (SD-79)
+local FX_EPS = 1e-6    -- a moment is armed this much after the exact crossing, so the run lands where the value has already changed
+local fxChanged = 0    -- what the drawing in progress changed on screen (counted by the Fx* writers)
+local fxWakeAt = setmetatable({}, { __mode = "k" })   -- [display frame] = the GetTime() moment its parts change next (no loop meanwhile)
+local fxPend, fxDue = {}, {}   -- the moments of the C_Timer.After calls still to come (ascending, a handful); frames due now (reused)
+local issecretV = ns.IsSecret or rawget(_G, "issecretvalue") or function() return false end
+local function FxRun(fr)   -- one drawing of the time-driven parts; a failing effect stops itself instead of erroring every frame
+    local r = fr.fxRule
+    if not r then return end
     local t = ns.perfOn and debugprofilestop()
-    local ok, err = pcall(ns.UpdateVisualText, r, self.fxInfo, true)
+    local ok, err = pcall(ns.UpdateVisualText, r, fr.fxInfo, true)
     if t then ns.PerfAdd("fx", debugprofilestop() - t) end
-    if not ok then   -- a failing effect stops itself instead of erroring every frame
-        self.fxRule = nil
-        self:SetScript("OnUpdate", nil)
+    if not ok then
+        fr.fxRule, fr.fxLoop, fxWakeAt[fr] = nil, false, nil
+        fr:SetScript("OnUpdate", nil)
         if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display effect: " .. tostring(err), nil, "XUI-E012") end
     end
 end
-local function SetFxRule(fr, rule)
-    if fr.fxRule == rule then return end
-    local had = fr.fxRule ~= nil
-    fr.fxRule = rule
-    if rule and not had then fr.fxAcc = 0; fr:SetScript("OnUpdate", FxOnUpdate)
-    elseif not rule and had then fr:SetScript("OnUpdate", nil) end
+local function FxOnUpdate(self, elapsed)
+    if not self.fxRule then self.fxLoop = false; self:SetScript("OnUpdate", nil); return end
+    local acc = (self.fxAcc or 0) + (elapsed or 0)
+    if acc < FX_GAP then self.fxAcc = acc; return end
+    self.fxAcc = 0
+    FxRun(self)
+end
+local FxWake
+local function FxArm(at)
+    if fxPend[1] and fxPend[1] <= at + 1e-9 then return end   -- a call already comes at or before that moment
+    table.insert(fxPend, 1, at)
+    local d = at - GetTime()
+    C_Timer.After(d > 0 and d or 0, FxWake)
+end
+FxWake = function()
+    table.remove(fxPend, 1)
+    local now, n, nxt = GetTime(), 0, nil
+    for fr, at in pairs(fxWakeAt) do
+        if at <= now + 1e-9 then n = n + 1; fxDue[n] = fr
+        elseif not nxt or at < nxt then nxt = at end
+    end
+    for i = 1, n do
+        local fr = fxDue[i]; fxDue[i] = nil
+        fxWakeAt[fr] = nil
+        if fr.fxRule and fr:IsShown() then FxRun(fr) else fr.fxRule = nil end
+        local at = fxWakeAt[fr]
+        if at and (not nxt or at < nxt) then nxt = at end
+    end
+    if nxt then FxArm(nxt) end
+end
+-- after a drawing: loop, wait for a moment, or nothing (see above). cont = a part changes on every run; at = the moment (GetTime) the
+-- next part changes; run = this drawing was the effects' own run (a run that changed nothing stops the loop)
+local function FxPlan(fr, rule, cont, at, run)
+    if run and fxChanged == 0 then cont = false end
+    if cont then
+        fxWakeAt[fr] = nil
+        if not fr.fxLoop then fr.fxLoop = true; fr.fxAcc = 0; fr:SetScript("OnUpdate", FxOnUpdate) end
+    else
+        if fr.fxLoop then fr.fxLoop = false; fr:SetScript("OnUpdate", nil) end
+        fxWakeAt[fr] = at
+        if at then FxArm(at) end
+    end
+    fr.fxRule = (cont or at) and rule or nil
+end
+local function FxStop(fr)   -- the display hides or goes: no loop, no moment; its next drawing reads the clock afresh
+    fr.fxRule, fr.fxT = nil, nil
+    fxWakeAt[fr] = nil
+    if fr.fxLoop then fr.fxLoop = false; fr:SetScript("OnUpdate", nil) end
+end
+-- (tests, XayaUI_Debug) whether a display's effects loop runs, and the moment it waits for
+function ns.VisualFxState(rule)
+    local fr = frames[rule]
+    if not fr then return nil end
+    return fr.fxLoop and true or false, fxWakeAt[fr]
+end
+-- The writers: each sets only a value that differs from the one it last set (exact compare), and counts it in fxChanged. A value the game
+-- hides (a curve result from a duration object, secret) cannot be compared: it is written and counted as a change. RefreshVisual, which
+-- sets these directly, clears what they remember.
+local function FxAlpha(fr, a)
+    if issecretV(a) then fr.wA = nil; fr:SetAlpha(a); fxChanged = fxChanged + 1; return end
+    if fr.wA ~= a then fr.wA = a; fr:SetAlpha(a); fxChanged = fxChanged + 1 end
+end
+local function FxDesat(fr, d)
+    if issecretV(d) then fr.wD = nil; pcall(fr.tex.SetDesaturation, fr.tex, d); fxChanged = fxChanged + 1; return end
+    if fr.wD ~= d then fr.wD = d; pcall(fr.tex.SetDesaturation, fr.tex, d); fxChanged = fxChanged + 1 end
+end
+local function FxColor(fr, r, g, b, a)
+    if fr.wR ~= r or fr.wG ~= g or fr.wB ~= b or fr.wCA ~= a then
+        fr.wR, fr.wG, fr.wB, fr.wCA = r, g, b, a
+        fr.tex:SetVertexColor(r, g, b, a)
+        fxChanged = fxChanged + 1
+    end
+end
+-- (round 9, SD-68 "one rounding and one key") the tenths of a second a display shows: one key, floor(seconds left x 10), and the text is
+-- made from that key only, so every drawing (the effects' own runs and every re-check) writes the same tenth for the same key: the tenth
+-- the countdown has not yet gone below (4.25 s and 4.21 s left both show 4.3, as the effects loop always showed between two tenths).
+-- Before, a re-check wrote the rounded seconds (4.2 at 4.24 s) and the loop the next key's text, so the tenth a player saw at a moment
+-- depended on whether a re-check had just run. The texts are made once and kept (no new string per change).
+-- a Bar cue's source, worked out on each re-check and reused by the effects' own runs (ns.BarCueSource finds a cue's parent by walking
+-- every rule when no re-check is running: not per run)
+local function BarSrc(fr, rule, fxOnly)
+    if fxOnly and fr.barSrc then return fr.barSrc end
+    local src = ns.BarCueSource and ns.BarCueSource(rule) or nil
+    fr.barSrc = src
+    return src
+end
+local tenthsText = {}
+local function TenthsOf(k)
+    local s = tenthsText[k]
+    if not s then s = ("%.1f"):format((k + 1) / 10); tenthsText[k] = s end
+    return s
+end
+local function FxTenths(fr, rem)
+    local k = math.floor(rem * 10)
+    if fr.tenthKey ~= k then
+        fr.tenthKey = k
+        local s = TenthsOf(k)
+        if fr.wT ~= s then
+            fr.wT = s
+            fr.text:SetText(s)
+            fxChanged = fxChanged + 1
+            local es = ns.EngineStats
+            if es then es.redrawText = es.redrawText + 1 end   -- (XayaUI_Debug: "tenths texts rewritten")
+        end
+    end
+    return k
 end
 
 -- a secret-safe color writer for pcall (no closure per call)
@@ -2531,30 +2656,46 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- drawn by the combat engine: only the companion texts are XayaUI's (shield amount, spell charges)
     local comp = fr.comp
     if comp and comp:IsShown() then
+        FxStop(fr)   -- (nothing of this display is animated by XayaUI while the combat engine draws it)
         if fxOnly then return end
         local ct, ab = v.count, v.absorb
         if ct and ct.enabled then DrawCount(comp.count, rule, ct, ref, false, true) else comp.count:Hide() end
         if ab and ab.enabled then DrawAbsorb(comp.absorb, ab, ref, false) else comp.absorb:Hide() end
         return
     end
+    fxChanged = 0
 
-    -- remaining fraction of the buff (readable numbers only; secret numbers cannot be divided)
-    local frac
-    if ref and ref.expiration and ref.duration and ref.duration > 0 then
-        frac = clamp((ref.expiration - GetTime()) / ref.duration, 0, 1)
-    end
+    -- (round 9, SD-68 / SD-79) the clock the time-driven parts read. A real aura: GetTime(); the preview / unlock sample: its own clock.
+    -- While this display's effects loop runs for the same time source, a re-check draws them at the loop's last run (fr.fxT) instead of
+    -- now, so what is drawn never depends on how often the rules happen to be re-checked; the loop moves them on its next run (at most
+    -- 1/30 s later). The duration TEXT in whole seconds always reads now (the engine wakes the rule on each whole second).
+    local now = GetTime()
+    local exp, dur
+    if ref and ref.expiration and ref.duration and ref.duration > 0 then exp, dur = ref.expiration, ref.duration end
+    local srcK = exp and 1 or (sample and 2 or 0)
+    local tc = (srcK == 2) and ns.SampleTime() or now
+    local t = tc
+    if not fxOnly and fr.fxLoop and fr.fxT and fr.fxSrcK == srcK and fr.fxSrcE == exp and fr.fxSrcD == dur then t = fr.fxT end
+    fr.fxT, fr.fxSrcK, fr.fxSrcE, fr.fxSrcD = t, srcK, exp, dur
+    local stale = tc - t   -- (>= 0: how far behind now this drawing's clock is)
+    local paused = srcK == 2 and ns.previewPaused   -- (the sample does not move while previews are paused)
 
-    -- remaining seconds (real when readable, sample cycle while unlocked / previewing)
-    local rem
-    if ref and ref.expiration and ref.duration and ref.duration > 0 then
-        rem = ref.expiration - GetTime()
+    -- remaining fraction of the buff (readable numbers only; secret numbers cannot be divided) and remaining seconds (real when readable,
+    -- sample cycle while unlocked / previewing)
+    local frac, rem, remNow
+    if exp then
+        rem, remNow = exp - t, exp - now
+        frac = clamp(rem / dur, 0, 1)
     end
     local sfrac
     if frac == nil and sample then
-        rem = SAMPLE_DURATION - (ns.SampleTime() % SAMPLE_DURATION)
+        rem = SAMPLE_DURATION - (t % SAMPLE_DURATION)
+        remNow = SAMPLE_DURATION - (tc % SAMPLE_DURATION)
         sfrac = rem / SAMPLE_DURATION
     end
     local f = frac or sfrac
+    local moving = f ~= nil and f > 0 and not paused   -- the fraction still changes with time
+    local cont, nxt = false, nil   -- (FxPlan) a part changes on every run; the soonest moment (seconds after t) a part changes next
 
     -- No readable numbers but we hold an aura instance (e.g. found through the Cooldown Manager while auras are
     -- secret): use Blizzard's duration object + curves. The curve result goes straight into the widget setters,
@@ -2566,6 +2707,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         if okd and d and d.EvaluateRemainingPercent then dobj = d end
     end
     fr.curves = fr.curves or {}
+    local dobjAt = fxChanged   -- (a curve from the game's duration object: the loop runs while what it draws changes; see below)
 
     -- fade: desaturate (gray) or blend vertex color toward a chosen color as the buff runs out; gray while on cooldown
     local d = fr.baseDesat or 0
@@ -2576,12 +2718,14 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         local wantGlow = v.glow and true or false
         if mods and mods.glow ~= nil then wantGlow = mods.glow end
         if wantGlow then
-            fr.glow:SetSize(math.max(8, v.w or 128) * 1.9, math.max(8, v.h or 128) * 1.9)
-            fr.glow:Show()
+            local gw, gh = math.max(8, v.w or 128) * 1.9, math.max(8, v.h or 128) * 1.9
+            if fr.wGW ~= gw or fr.wGH ~= gh then fr.wGW, fr.wGH = gw, gh; fr.glow:SetSize(gw, gh) end
+            if not fr.glow:IsShown() then fr.glow:Show(); fxChanged = fxChanged + 1 end
             if not fr.glowAnim:IsPlaying() then fr.glowAnim:Play() end
         elseif fr.glow:IsShown() then
             fr.glowAnim:Stop()
             fr.glow:Hide()
+            fxChanged = fxChanged + 1
         end
     end
     local bt = fr.baseTint or { 1, 1, 1, 1 }
@@ -2606,7 +2750,9 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 cg = cg + ((fc[2] or 1) - cg) * k
                 cb = cb + ((fc[3] or 1) - cb) * k
                 ca = ca + ((fc[4] or 1) - ca) * k
+                if moving then cont = true end
             else
+                if moving and d < 1 then cont = true end
                 d = math.max(d, 1 - f)
             end
         elseif dobj then
@@ -2617,13 +2763,21 @@ function ns.UpdateVisualText(rule, info, fxOnly)
                 local cv = ColorCurve(fr, "c", fc[1] or 1, fc[2] or 1, fc[3] or 1, fc[4] or 1, cr, cg, cb, ca)
                 if cv then
                     local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                    if okr and res then colorDone = pcall(SetVertexRGBA, fr.tex, res) end
+                    if okr and res then
+                        local okc, r1, g1, b1, a1 = pcall(res.GetRGBA, res)
+                        if okc and not (issecretV(r1) or issecretV(g1) or issecretV(b1) or issecretV(a1)) then
+                            FxColor(fr, r1, g1, b1, a1); colorDone = true
+                        else
+                            colorDone = pcall(SetVertexRGBA, fr.tex, res)
+                            if colorDone then fr.wR = nil; fxChanged = fxChanged + 1 end
+                        end
+                    end
                 end
             else
                 local cv = NumCurve(fr, "g", 1, d)
                 if cv then
                     local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                    if okr and res then greyDone = pcall(fr.tex.SetDesaturation, fr.tex, res) end
+                    if okr and res then FxDesat(fr, res); greyDone = true end
                 end
             end
         end
@@ -2633,8 +2787,8 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         cr, cg, cb, ca = mods.tint[1] or 1, mods.tint[2] or 1, mods.tint[3] or 1, mods.tint[4] or 1
         colorDone = false
     end
-    if not greyDone then pcall(fr.tex.SetDesaturation, fr.tex, d) end
-    if not colorDone then fr.tex:SetVertexColor(cr, cg, cb, ca) end
+    if not greyDone then FxDesat(fr, d) end
+    if not colorDone then FxColor(fr, cr, cg, cb, ca) end
 
     -- opacity: out-of-combat multiplier, fade opacity as the buff runs out, then the "about to expire" flash
     local alpha = fr.baseAlpha or 1
@@ -2646,12 +2800,13 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     local alphaDone = false
     if v.fadeGrey and fr.fadeToClear then
         if f ~= nil then
+            if moving and alpha > 0 then cont = true end
             alpha = alpha * f
         elseif dobj then
             local cv = NumCurve(fr, "t", 0, alpha)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
+                if okr and res then FxAlpha(fr, res); alphaDone = true end
             end
         end
     end
@@ -2659,21 +2814,32 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         local mn = clamp(v.fadeAlphaMin or 0.15, 0, 1)
         local mx = clamp(v.fadeAlphaMax or 1, 0, 1)
         if f ~= nil then
+            if moving and mn ~= mx and alpha > 0 then cont = true end
             alpha = alpha * (mn + (mx - mn) * f)
         elseif dobj then
             local cv = NumCurve(fr, "a", alpha * mn, alpha * mx)
             if cv then
                 local okr, res = pcall(dobj.EvaluateRemainingPercent, dobj, cv)
-                if okr and res then alphaDone = pcall(fr.SetAlpha, fr, res) end
+                if okr and res then FxAlpha(fr, res); alphaDone = true end
             end
         end
     end
     local fl = v.flash
-    if fl and fl.enabled and rem and rem > 0 and rem <= (fl.threshold or 3) then
-        local wave = 0.5 + 0.5 * math.sin((sample and ns.SampleTime() or GetTime()) * (fl.speed or 3) * 2 * math.pi)
-        alpha = alpha * (0.2 + 0.8 * wave)
+    if fl and fl.enabled and rem and rem > 0 then
+        local th = fl.threshold or 3
+        if rem <= th then
+            local wave = 0.5 + 0.5 * math.sin((sample and ns.SampleTime() - stale or t) * (fl.speed or 3) * 2 * math.pi)
+            alpha = alpha * (0.2 + 0.8 * wave)
+            if not paused and (fl.speed or 3) ~= 0 then cont = true end
+        elseif not paused then
+            local w = rem - th   -- (round 9) the pulse starts at its threshold: that moment is waited for, not polled
+            if not nxt or w < nxt then nxt = w end
+        end
     end
-    if not alphaDone then fr:SetAlpha(alpha) end
+    if not alphaDone then FxAlpha(fr, alpha) end
+    -- a duration object's curve moves while the aura runs: it keeps the loop going while its value changes (a value the game hides cannot
+    -- be compared and counts as a change; a readable one that stays the same, as on a buff that never runs out, stops it)
+    if dobj and (greyDone or colorDone or alphaDone) and fxChanged > dobjAt and not paused then cont = true end
     -- frame strata from a true condition; when no condition asks for one any more, back to the folder's strata
     if mods and mods.strata then
         if fr:GetFrameStrata() ~= mods.strata then pcall(fr.SetFrameStrata, fr, mods.strata) end
@@ -2683,54 +2849,79 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         ApplyStrata(fr, rule.folder)
     end
 
-    -- a Bar cue's value (BarCue.lua): readable / sample fraction, else a duration object the game drives
-    local barMoving = false
-    if v.kind == "bar" and fr.barF and ns.BarCueUpdate then barMoving = ns.BarCueUpdate(fr, rule, v, info, ref, f, sample, fxOnly) and true or false end
+    -- a Bar cue's value (BarCue.lua): readable / sample fraction, else a duration object the game drives (cont: its fill moves on our clock)
+    if v.kind == "bar" and fr.barF and ns.BarCueUpdate then
+        local barMoving, wrote = ns.BarCueUpdate(fr, rule, v, info, ref, f, sample, fxOnly)
+        if wrote then fxChanged = fxChanged + 1 end
+        if barMoving and moving then cont = true end
+    end
 
-    -- progress-bar wipe (readable / sample fraction only; secret durations cannot be measured in Lua)
+    -- progress-bar wipe (readable / sample fraction only; secret durations cannot be measured in Lua), in whole pixels (round 9, V27): it
+    -- changes when the shown edge reaches the next pixel, a moment worked out here and waited for
     local fl2 = v.fill
     if fl2 and fl2.enabled and f ~= nil then
         local mn, mx = clamp(fl2.min or 0, 0, 1), clamp(fl2.max or 1, 0, 1)
         local p = mn + (mx - mn) * (fl2.reverse and (1 - f) or f)
         p = clamp(p, 0, 1)
-        local key = math.floor(p * 2000) .. (ns.Val(fl2.dir) or "bottom")
-        if fr.wipeKey ~= key then
-            fr.wipeKey = key
-            local dir = ns.Val(fl2.dir) or "bottom"
-            local pp = math.max(p, 0.002)
+        local dir = ns.Val(fl2.dir) or "bottom"
+        local _, _, bw, bh = WipeBox(fr.tex, fr)
+        local len = (dir == "bottom" or dir == "top") and bh or bw
+        if len < 1 then len = 1 end
+        local n = Whole(p * len)
+        if fr.wipeKey ~= n or fr.wipeDir ~= dir then
+            fr.wipeKey, fr.wipeDir = n, dir
+            local pp = n / len
             local x0, x1, y0, y1 = 0, 1, 0, 1
             if dir == "bottom" then y1 = pp elseif dir == "top" then y0 = 1 - pp
             elseif dir == "left" then x1 = pp else x0 = 1 - pp end
             CropTex(fr.tex, fr, x0, x1, y0, y1)
             if fr.tex2On then CropTex(fr.tex2, fr, x0, x1, y0, y1) end
-            fr.tex:SetShown(p > 0.002)
-            if fr.tex2On then fr.tex2:SetShown(p > 0.002) end
+            fr.tex:SetShown(n > 0)
+            if fr.tex2On then fr.tex2:SetShown(n > 0) end
+            fxChanged = fxChanged + 1
+            local es = ns.EngineStats
+            if es then es.redrawFill = es.redrawFill + 1 end   -- (XayaUI_Debug: "bar fills written"; the icon's wipe is a fill too)
+        end
+        -- the next pixel: p moves at (mx - mn) / duration per second, down while the aura runs out (up when reversed)
+        local span = srcK == 2 and SAMPLE_DURATION or dur
+        if moving and span and mx ~= mn then
+            local rate = (mx - mn) / span
+            local edge = fl2.reverse and (n + 0.5) / len or (n - 0.5) / len
+            local w = (fl2.reverse and (edge - p) or (p - edge)) / rate
+            if fl2.reverse and edge > mx then w = nil elseif not fl2.reverse and edge < mn then w = nil end
+            if w and w < 0 then w = 0 end
+            if w and w < FX_GAP then cont = true elseif w and (not nxt or w < nxt) then nxt = w end
         end
     else
         if fr.wipeKey then
-            fr.wipeKey = nil
+            fr.wipeKey, fr.wipeDir = nil, nil
             UncropTex(fr.tex, fr); UncropTex(fr.tex2, fr)
             fr.tex:Show()
             if fr.tex2On then fr.tex2:Show() end
+            fxChanged = fxChanged + 1
         end
     end
 
-    -- keep the effects above animating every frame between engine ticks (only while a time source exists)
-    local wantsFx = (fl2 and fl2.enabled) or v.fadeAlpha or v.fadeGrey or (v.flash and v.flash.enabled) or barMoving
-    -- tenths of a second must move every frame (the engine tick is only 5x per second), so while the duration text is in its
-    -- decimal range it is redrawn from here too
+    -- tenths of a second: one key, one text (FxTenths); the next tenth is a moment waited for (the engine tick is only for whole seconds)
     local tx = v.text
     local wantsTenths = tx and tx.enabled and tx.decimals and rem ~= nil and rem > 0 and rem < (tx.decimalBelow or 5)
-        and not (v.kind == "bar" and ns.BarCueSource and ns.BarCueSource(rule) == "cooldown")   -- (its text is the cooldown's)
-    SetFxRule(fr, ((wantsFx or wantsTenths) and (f ~= nil or dobj ~= nil)) and rule or nil)
-    fr.fxInfo = info
+        and not (v.kind == "bar" and BarSrc(fr, rule, fxOnly) == "cooldown")   -- (its text is the cooldown's)
     if wantsTenths then
-        local tk = math.floor(rem * 10)   -- tenths change 10 times a second: only then is the text rebuilt
-        if fr.tenthKey ~= tk then fr.tenthKey = tk; fr.text:SetText(FmtRemaining(rem, tx.decimals, tx.decimalBelow)) end
+        local k = FxTenths(fr, rem)
         fr.text:Show()
+        if k >= 1 and not paused then   -- (below 0.1 s the text stays until the aura's end is drawn by its re-check)
+            local w = rem - k / 10
+            if not nxt or w < nxt then nxt = w end
+        end
     else
-        fr.tenthKey = nil
+        fr.tenthKey, fr.wT = nil, nil
     end
+    -- the sample wraps from 0 back to its full length: every part jumps then
+    if srcK == 2 and not paused and (cont or nxt) and rem then
+        if not nxt or rem < nxt then nxt = rem end
+    end
+    fr.fxInfo = info
+    FxPlan(fr, rule, (cont and not paused) and true or false, nxt and (now - stale + nxt + FX_EPS) or nil, fxOnly)
     if fxOnly then return end
 
     -- stacks / charges text
@@ -2756,8 +2947,12 @@ function ns.UpdateVisualText(rule, info, fxOnly)
         if fr.cd then fr.cd:Hide() end
         if ref.duration > 0 then
             -- #121: reuse the remaining time worked out at the top (same ref, same condition) instead of a second, shadowing `rem`
-            if rem and rem > 0 then
-                fr.text:SetText(FmtRemaining(rem, t.decimals, t.decimalBelow))
+            if remNow and remNow > 0 then
+                -- (round 9) tenths: the one key and text of FxTenths (already drawn above from the effects clock, or drawn now); whole
+                -- seconds: from now
+                if wantsTenths then -- (drawn above)
+                elseif t.decimals and remNow < (t.decimalBelow or 5) then FxTenths(fr, remNow)
+                else fr.text:SetText(FmtRemaining(remNow, t.decimals, t.decimalBelow)); fr.tenthKey, fr.wT = nil, nil end
                 fr.text:Show()
                 return
             end
@@ -2818,7 +3013,11 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     StopCdBind(fr)
     if fr.cd then fr.cd:Hide() end
     if sample then
-        fr.text:SetText(FmtRemaining(rem or SAMPLE_DURATION, t.decimals, t.decimalBelow)); fr.text:Show()
+        local sr = remNow or SAMPLE_DURATION
+        if wantsTenths then -- (drawn above, FxTenths)
+        elseif t.decimals and sr > 0 and sr < (t.decimalBelow or 5) then FxTenths(fr, sr)
+        else fr.text:SetText(FmtRemaining(sr, t.decimals, t.decimalBelow)); fr.tenthKey, fr.wT = nil, nil end
+        fr.text:Show()
     else
         fr.text:Hide()
     end
@@ -2871,7 +3070,8 @@ function ns.SetVisualShown(rule, shown)
         fr = frames[rule]
     end
     if comp or fr.comp then SetCompanionShown(fr, rule, comp) end
-    if not want then StopCdBind(fr) end   -- a hidden display's cooldown countdown stops updating
+    if not want then StopCdBind(fr); FxStop(fr) end   -- a hidden display's cooldown countdown and effects stop updating
+    if want and not fr:IsShown() then fr.fxT = nil end   -- (round 9: shown again: its next drawing reads the clock afresh)
     if not want then fr.xuiLimited = nil end   -- (G10 Limit: no longer waiting for room)
     if want and fr.xuiLimited then return end   -- (still waiting: the group's layout shows it when there is room)
     if fr:IsShown() == want then return end
@@ -2929,7 +3129,7 @@ end
 function ns.DropVisual(rule)
     local fr = frames[rule]
     if fr then
-        fr:Hide(); StopCdBind(fr)
+        fr:Hide(); StopCdBind(fr); FxStop(fr)
         if fr.comp then fr.comp:Hide() end   -- (the companion hangs from the display's parent, not from the display)
         frames[rule] = nil
     end

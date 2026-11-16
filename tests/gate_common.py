@@ -25,6 +25,14 @@ The scenario (the same for the three gates; each gate reads the part it judges):
              a loading screen; (round 8) movement started and stopped every half second, a rune change three times a second, a totem
              every 3 s and a stun (loss of control added, then updated) every 5 s in the fight; then 30 seconds idle out of combat
              with nothing on screen changing.
+(round 9) Also: every fight runs from the trash into a boss (ENCOUNTER_START 8 s in, ENCOUNTER_END 14 s in) and its combat end and the
+second after it are a measured segment of their own ("end N", SD-77); the profile has target debuffs that must be absent, displays with
+an out-of-combat opacity of 0.5 and boss rules (SD-77 conditions 2 and 3), and six effect displays and a bar cue that XayaUI draws (SD-79);
+before the close the effect displays are previewed and the mover is opened, at 144 frames a second; after the three cycles, an effects
+part at 144 frames a second plays the effect displays out of combat until their buffs run out.
+Four plays per variant (round 9): the measured play (instructions, allocation, budget; it counts no call: SD-80), the tree play (call
+trees for the pace per re-check pass, and the call counts), the draw play (what is drawn after each load-fact change against a full
+re-check, SD-77) and the memory play (Lua memory with nothing of the gate's kept: the growth per cycle is the addons' own).
 Two variants (round 8): "default" (Settings > Debugging > Advanced Debugging off; XayaUI_Debug switched on in the AddOns list and not
 loaded, V34) and "debug" (Advanced Debugging saved on, as every install from before round 7 has it: XayaUI_Debug loaded and measured).
 The window stays closed from the close onward: every frame the gates judge is "after the window is closed".
@@ -52,7 +60,7 @@ Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings 
     a new closure each time is the addon's own garbage and is reported by the guard (tests/gate_performance_run.py P4, SD-68).
     Instructions (V33) still include the stand-in's and the gate's own Lua (a few hundred per timer call or loop note; conservative).
 Run one gate: python3 tests/gate_<name>_run.py   (Lua 5.1 via lupa)."""
-import hashlib, inspect, json, os, sys, tempfile, time
+import hashlib, inspect, json, os, re, sys, tempfile, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -144,9 +152,14 @@ local KN0 = C_SpellBook.IsSpellKnownOrInSpellBook
 C_SpellBook.IsSpellKnownOrInSpellBook = function(id, bank, ov) if G.known[id] then return true end if KN0 then return KN0(id, bank, ov) end return false end
 local IPS0 = IsPlayerSpell
 IsPlayerSpell = function(id) if G.known[id] then return true end if IPS0 then return IPS0(id) end return false end
-for i = 1, 60 do G.known[400000 + i] = true end
+for i = 1, 81 do G.known[400000 + i] = true end   -- (round 9: 61-81 are the out-of-combat opacity, boss and effect rules' spells, never cast)
 for i = 1, 4 do G.known[450000 + i] = true end   -- the talents the profile's talent requirements name (PROFILE_LUA 6b)
 IsMounted = function() return G.mounted end
+-- (round 9, SD-77 condition 3) a boss encounter: C_InstanceEncounter.IsEncounterInProgress (docs/reference/api/namespaces.md:2667, no
+-- secrecy flag) answers from the scenario's G.encounter, set with ENCOUNTER_START / ENCOUNTER_END (events.md:560, :562)
+G.encounter = false
+C_InstanceEncounter = C_InstanceEncounter or {}
+C_InstanceEncounter.IsEncounterInProgress = function() return G.encounter end
 IsInGroup = function() return G.group end
 IsInRaid = function() return G.raid end
 GetNumGroupMembers = function() return G.group and (G.raid and 20 or 5) or 0 end
@@ -202,7 +215,7 @@ local function display(r, w, h)
   v.enabled, v.kind, v.w, v.h = true, "spellicon", w or 40, h or 40
   v.text.enabled = true
 end
-local made = { buff = 0, cd = 0, bar = 0, soundCue = 0, iconCue = 0, game = 0, hover = 0, debuff = 0, talent = 0 }
+local made = { buff = 0, cd = 0, bar = 0, soundCue = 0, iconCue = 0, game = 0, hover = 0, debuff = 0, talent = 0, absent = 0, ooc = 0, boss = 0, fx = 0 }
 -- 1. buff rules with an icon and its duration text: 36 in dynamic groups (the combat engine draws them), 30 in static groups
 for i = 1, 66 do
   rule("Buff " .. i, function(r)
@@ -275,6 +288,69 @@ for i = 1, 4 do
   end)
   made.talent = made.talent + 1
 end
+-- 6c. (round 9, SD-77 "Route + narrow", conditions 2 and 3 of docs/plans/R8-ANSWERS-SD73-76-2026-11-15.md) what a re-check narrowed to
+--     the changed load fact must not miss, each drawn by XayaUI itself (static groups):
+--     target debuffs that must be ABSENT (Triggers.lua: "absent" is unknown in combat, so combat start and end change their answer
+--     although no load condition of theirs reads combat); displays with an out-of-combat opacity below 1 (Visual.lua v.oocAlpha: combat
+--     changes how they are drawn); rules loaded only during one boss encounter (a Boss encounters list, encounterID) or during any boss
+--     encounter (the "Boss encounter" load fact). The spells 400061-400074 are known and never cast, so these icons are "ready".
+for i = 1, 6 do
+  rule("Absent " .. i, function(r)
+    r.extra = { list = { { type = "targetDebuff", spellID = 341000 + i, unit = "target", state = "no" } } }
+    display(r, 30, 30); r.visual.trigger = "condition"
+    r.folder = statics[(i - 1) % #statics + 1].id
+  end)
+  made.absent = made.absent + 1
+end
+for i = 1, 6 do
+  rule("Ooc " .. i, function(r)
+    r.useCooldown, r.spellID, r.cdState = true, 400060 + i, "ready"
+    display(r, 34, 34); r.visual.trigger = "condition"; r.visual.oocAlpha = 0.5
+    r.folder = statics[(i - 1) % #statics + 1].id
+  end)
+  made.ooc = made.ooc + 1
+end
+for i = 1, 4 do
+  rule("Boss " .. i, function(r)
+    r.useCooldown, r.spellID, r.cdState = true, 400070 + i, "ready"
+    display(r, 34, 34); r.visual.trigger = "condition"
+    if i <= 2 then r.load.encounterIDs = { [2001] = true } else r.load.encounter = "yes" end
+    r.folder = statics[(i - 1) % #statics + 1].id
+  end)
+  made.boss = made.boss + 1
+end
+-- 6d. (round 9, SD-79 "<=30/s, stop if idle") the display effects (Visual.lua FxOnUpdate): fade to gray, fade of the opacity, a flash
+--     with its 3 s threshold, a progress wipe, a fade to a color, tenths of a second (every display's duration text shows tenths below
+--     5 s, the default) and a bar cue; buffs 330001-330006 and 330010, gained with a short duration and left to run out (SCENARIO_LUA,
+--     the effects part). Each also needs its spell ready (400075-400081: known, never cast), so the combat engine's Blizzard container,
+--     which draws a buff display that only follows its aura and cannot draw these effects (Combat/AuraDisplay.lua Classify / Drops),
+--     leaves it to XayaUI (a rule shown only when its cooldown state also matches), whose effects loop (Visual.lua) draws them
+local FXSET = {
+  { "fade gray", function(v) v.fadeGrey = true end },
+  { "fade opacity", function(v) v.fadeAlpha = true end },
+  { "flash", function(v) v.flash = { enabled = true, threshold = 3, speed = 3 } end },
+  { "wipe", function(v) v.fill = { enabled = true, reverse = false, min = 0, max = 1 } end },
+  { "fade color", function(v) v.fadeGrey = true; v.fadeMode = "color" end },
+  { "tenths", function(v) v.text.decimals = true; v.text.decimalBelow = 5 end },
+}
+for i, fx in ipairs(FXSET) do
+  rule("Fx " .. fx[1], function(r)
+    r.useBuff, r.buffID, r.buffState = true, 330000 + i, "present"
+    r.useCooldown, r.spellID, r.cdState = true, 400074 + i, "ready"
+    display(r, 40, 40); r.visual.trigger = "condition"
+    fx[2](r.visual)
+    r.folder = statics[(i - 1) % #statics + 1].id
+  end)
+  made.fx = made.fx + 1
+end
+do
+  local p = rule("Fx bar parent", function(r)
+    r.useBuff, r.buffID, r.buffState = true, 330010, "present"
+    r.useCooldown, r.spellID, r.cdState = true, 400081, "ready"
+    r.folder = statics[1].id
+  end)
+  if ns.NewCueRule(p, "bar") then made.fx = made.fx + 1; made.bar = made.bar + 1 end
+end
 -- 7. sound and icon cues on rules that have none, up to about 300 entries in the rule list
 local i = 0
 while #ns.rules < 300 do
@@ -336,7 +412,7 @@ local gc, getinfo = collectgarbage, debug.getinfo
 local PHASE = "load"
 local CLOSED = false            -- the settings window has been closed (the gates judge everything from here on)
 local function setPhase(p)
-  PHASE = p; OUT.phases[#OUT.phases + 1] = p
+  PHASE = p; if not CFG.memplay then OUT.phases[#OUT.phases + 1] = p end
   if CFG.verbose and io then io.stderr:write(string.format("[gate] %-12s %.1f s\n", p, os.clock())) end
 end
 
@@ -420,6 +496,7 @@ local function sub(t, k) local s = t[k]; if not s then s = {}; t[k] = s end; ret
 local prevCreate = CreateFrame
 CreateFrame = function(kind, name, parent, template, id)
   local f = prevCreate(kind, name, parent, template, id)
+  if CFG.memplay then return f end   -- (round 9: the memory play keeps no record per frame)
   local m0, e0 = exStart()
   local where = whereFrom(2)
   if where then
@@ -535,7 +612,16 @@ end
 local RUNS_SCRIPTS = { Show = true, Hide = true, SetShown = true, SetValue = true, Click = true, SetFocus = true, ClearFocus = true, Stop = true,
   SetScript = true, HookScript = true }
 local function exclEnd(m0, e0, ...) exEnd(m0, e0); return ... end
-local function changed() if cur then VIS = VIS + 1 end end
+-- (round 9 repair 1, SD-79) which widget a visible change landed on, for a display redraw a timer makes (REDRAWS, gate_common.py): kept
+-- only in the tree play, whose instruction readings are not used. The measured play's changed() is the same as before (no extra Lua
+-- instruction in a measured run).
+local LASTW, TCHG = nil, nil   -- (tree play) the widget whose method runs now; during a listed redraw timer's run, [widget] = true
+local changed
+if CFG.tree then
+  changed = function() if cur then VIS = VIS + 1; if TCHG and LASTW then TCHG[LASTW] = true end end end
+else
+  changed = function() if cur then VIS = VIS + 1 end end
+end
 for name, orig in pairs(proto) do
   if type(orig) == "function" and not RUNS_SCRIPTS[name] then
     local o = orig
@@ -589,6 +675,18 @@ for name, orig in pairs(proto) do
         if not same and self:IsVisible() then changed() end
         exEnd(m0, e0)
       end
+    elseif name == "SetTexCoord" then
+      -- (round 9, SD-79) a progress wipe crops the art with SetTexCoord: a new crop of a shown texture is a visible change
+      -- (exact-value compare of the 4 or 8 numbers)
+      proto.SetTexCoord = function(self, ...)
+        local m0, e0 = exStart()
+        local t0, n = rawget(self, "_tc8"), select("#", ...)
+        local same = t0 ~= nil and #t0 == n
+        if same then for k = 1, n do if t0[k] ~= (select(k, ...)) then same = false; break end end end
+        o(self, ...)
+        if not same and self:IsVisible() then changed() end
+        exEnd(m0, e0)
+      end
     else
       proto[name] = function(self, ...) local m0, e0 = exStart(); return exclEnd(m0, e0, o(self, ...)) end
     end
@@ -600,6 +698,24 @@ do  -- shown state: a change of a shown widget (Show of a hidden one, Hide of a 
   proto.Hide = function(self) if self._shown and self:IsVisible() then changed() end; return H0(self) end
   proto.SetShown = function(self, v) if v then return proto.Show(self) end; return proto.Hide(self) end
   proto.SetValue = function(self, v) if self._value ~= v and self:IsVisible() then changed() end; return SV0(self, v) end
+end
+if CFG.tree then   -- (round 9 repair 1) the tree play: each method that can change the screen names its widget (LASTW) while it runs
+  local function back(p, ...) LASTW = p; return ... end
+  for _, name in ipairs({ "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetText", "SetFormattedText", "SetAlpha", "SetTexture", "SetAtlas",
+      "SetDesaturated", "SetDesaturation", "SetRotation", "SetScale", "SetVertexColor", "SetColorTexture", "SetTextColor", "SetCooldown",
+      "SetStatusBarColor", "SetBackdropColor", "SetBackdropBorderColor", "SetTexCoord", "Show", "Hide", "SetValue" }) do
+    local inner = proto[name]
+    if type(inner) == "function" then proto[name] = function(self, ...) local p = LASTW; LASTW = self; return back(p, inner(self, ...)) end end
+  end
+end
+-- (round 9, SD-79) a frame script set on a frame that had none: the effects loop starting (again) on that display (see ownNote below)
+local ATT = setmetatable({}, { __mode = "k" })   -- [frame] = how many times an OnUpdate script was set on it with none set before
+do
+  local SS = proto.SetScript
+  proto.SetScript = function(self, n, f)
+    if n == "OnUpdate" and f ~= nil and self._scripts.OnUpdate == nil then ATT[self] = (ATT[self] or 0) + 1 end
+    return SS(self, n, f)
+  end
 end
 -- hooks placed after the window closed (they can never be taken off: V28)
 do
@@ -634,6 +750,13 @@ end
 -- routed timer, armed from UNIT_AURA, made 294 of 1950 UNIT_AURA runs "allocate"). INFERENCE: the game's C_Timer is C code; whether
 -- it makes Lua garbage is not in the reference, so it is checked in game (her /run test, a landing step).
 local function addTimer(m0, e0, delay, fn, iterations, kind, orig)
+  if CFG.memplay then   -- (round 9: the memory play keeps no record per timer; the stand-in's own timer record only)
+    local t = { at = W.now + (tonumber(delay) or 0), fn = fn, orig = orig or fn, every = tonumber(delay) or 0, left = iterations, cancelled = false, kind = kind }
+    t.handle = { Cancel = function() t.cancelled = true end, IsCancelled = function() return t.cancelled end }
+    W.timers[#W.timers + 1] = t
+    exEnd(m0, e0)
+    return t.handle
+  end
   local src = whereFrom(3) or "?"
   local seen = TIMERS_SEEN[src]
   if not seen then seen = { kind = kind, every = tonumber(delay) or 0, made = 0, rearm = false, phases = {} }; TIMERS_SEEN[src] = seen end
@@ -707,14 +830,20 @@ end
 
 -- call counts (debug hook, "call" events) per dispatch and per window, and Lua VM instructions per dispatch (the "count" event every
 -- INS_STEP instructions: a measure of the work a handler does, whatever loop form it uses)
+-- (round 9, SD-80, her answer "Fix it (Recommended)": "measure cost with call counting off; count calls in a separate play") the call
+-- counts are taken only in the tree play (CFG.tree, below), never in the play whose instructions the gates read: a Lua "call" hook runs
+-- Lua code on every call, and Lua 5.1 counts those instructions too, so before round 9 the call-counting windows (every state-change
+-- event and fight frames 31-45) read the every-live-rule pass about 15% heavier (572,050 instructions with counting, 495,792 without,
+-- the same frames; docs/plans/R8-ANSWERS-SD73-76-2026-11-15.md). The measured play's hook only counts instructions, from the close to
+-- the end, never switched (switching it restarts its counter).
 local DCALLS, WCALLS = {}, {}
 local KEYS = {}
 local INS, INS_STEP = 0, 100
-local SAMPLING = false   -- call counting is on only in the sampled windows (it slows the stand-in about tenfold)
-local function callhook(ev)
-  if ev == "count" then INS = INS + 1; return end
+local SAMPLING = false   -- call counting is on only in the sampled windows of the tree play (it slows the stand-in about tenfold)
+-- one call into an addon function: level = the level of the function called, seen from the hook that calls countCall
+local function countCall(level)
   local m0, e0 = exStart()
-  local info = getinfo(2, "S")
+  local info = getinfo(level + 1, "S")
   if info then
     local f = short(info.source)
     if f and not isLib(f) then
@@ -725,6 +854,9 @@ local function callhook(ev)
     end
   end
   exEnd(m0, e0)
+end
+local function callhook(ev)   -- (the measured play: "count" events only)
+  if ev == "count" then INS = INS + 1; return end
 end
 
 -- the dispatcher: every event handler, OnUpdate script and timer callback of a frame XayaUI made goes through here
@@ -834,7 +966,9 @@ local RUNDEF, RUNLIST, RUNN = {}, {}, 0
 local TREE = false
 local function treehook(ev)
   if ev == "count" then INS = INS + 1; return end
-  if SAMPLING then callhook(ev) end
+  -- (round 9, SD-80: the call counts, here only; before, this called the measured play's hook, which read the caller one level too
+  -- high (treehook's own chunk, not an addon's), so the tree play counted no call)
+  if SAMPLING then countCall(2) end
   if not TREE then return end
   local m0, e0 = exStart()
   local info = getinfo(2, "S")
@@ -848,6 +982,102 @@ local function treehook(ev)
   end
   exEnd(m0, e0)
 end
+-- (round 9, SD-79, her answer "<=30/s, stop if idle (Recommended)": "effects loop at most 30/s per display while a run changes something;
+-- the loop stops when a run changes nothing (exact-value compare); the gate gets an effects scenario and counts per display") every
+-- frame script's runs are kept per FRAME it runs on, not summed over every frame that runs the same function (before round 9 the display
+-- effects loop, Visual.lua FxOnUpdate, was one record for every display together). A frame that is a rule's display (Visual.lua's
+-- rule -> frame table, ns.DisplayFrame) is a display; its effects loop is judged per display (gate_performance_run.py): at most FX_N real
+-- runs in any sliding second, and no run that changes nothing on screen beyond the single run that finds there is nothing left to
+-- animate (a run's visible changes are counted with an exact-value compare of what each widget write sets, as everywhere in the gate).
+-- A real run is one that changes something on screen or does at least FX_SKIP Lua instructions: the throttle's early return on the
+-- frames between two runs (the game calls a frame script every frame it draws) changes nothing, is a few instructions and is counted
+-- apart, as a skip. (round 9 repair 1) A run that changes the screen is always a run, however cheap (before, a cheap loop that changed
+-- the screen on every frame was all skips and was never judged); and a script that stays set while it only skips is idle and has not
+-- stopped: once the frames it skipped since its last run (or since it was set) add up to more than one second (the window her 30 a
+-- second is counted in), every further skip is a violation (FX_WAIT). A frame that is not a display (the engine's next-frame script)
+-- counts every invocation, as before.
+local FX_N, FX_RING, FX_SKIP = 30, 160, 300   -- (FX_RING: more runs than a second can hold at 144 frames a second)
+local FX_EPS = 1e-6   -- (the float error of adding 1/144 s frames; PACE_EPS, 1/60 s, would leave out two frames of a second at 144)
+local FX_WAIT = 1     -- seconds of frames a display's script may only skip before it counts as idle and not stopped (repair 1)
+local TICKDT = 0      -- the time of the frame being drawn (W.tick): what a skip adds to its display's wait
+local FXPRE = false   -- the previews and the mover before the close (see runPre below)
+local OWN = setmetatable({}, { __mode = "k" })   -- [frame] = its record
+local OWNLIST = {}                               -- the records, in the order made
+local DFRAMES = false
+local function dframes()   -- Visual.lua's rule -> display frame table (ns.DisplayFrame's upvalue "frames"), or false
+  if not DFRAMES then
+    local nsx = rawget(_G, "XayaUI_NS")
+    if nsx and nsx.DisplayFrame then
+      for i = 1, 60 do
+        local n, v = debug.getupvalue(nsx.DisplayFrame, i)
+        if not n then break end
+        if n == "frames" and type(v) == "table" then DFRAMES = v; break end
+      end
+    end
+  end
+  return DFRAMES
+end
+local function displayOf(o)
+  if not dframes() then return nil end
+  for r, f in rawpairs(DFRAMES) do if f == o then return r end end
+end
+local function ownNote(o, src, vis, ins)
+  local rec = OWN[o]
+  if rec == nil or (not rec.display and (ATT[o] or 0) ~= rec.att) then   -- (a frame that was no display yet when last seen: look again)
+    local r = displayOf(o)
+    if rec == nil then
+      rec = { n = #OWNLIST + 1, where = ORIGIN[o], att = -1, runs = 0, skips = 0, changed = 0, idle = 0, streak = 0, t = {}, i = 0, most = 0,
+        over = {}, idleOver = {}, runsBy = {}, wins = {}, wait = 0, waits = 0, waitOver = {}, times = {}, tn = 0 }
+      OWN[o] = rec; OWNLIST[#OWNLIST + 1] = rec
+    end
+    rec.display = r ~= nil
+    rec.rule = r and tostring(r.name) or rec.rule
+  end
+  rec.src = rec.src or src
+  local a = ATT[o] or 0
+  if rec.att ~= a then rec.att = a; rec.streak = 0; rec.wait = 0 end   -- (the loop was set again: its first run may find nothing to do)
+  if rec.display and ins < FX_SKIP and vis == 0 then
+    rec.skips = rec.skips + 1
+    rec.wait = rec.wait + TICKDT
+    if rec.wait > FX_WAIT + FX_EPS then   -- (repair 1) set, skipping, nothing run for more than a second: idle and not stopped
+      rec.waits = rec.waits + 1
+      rec.waitOver[PHASE] = (rec.waitOver[PHASE] or 0) + 1
+      rec.firstWait = rec.firstWait or string.format("%s, at %.3f s (%.2f s after the window closed): %.2f s of frames skipped since its "
+        .. "last run or since it was set", PHASE, W.now, W.now - T0, rec.wait)
+    end
+    return
+  end
+  rec.wait = 0
+  rec.runs = rec.runs + 1
+  if rec.display and (CLOSED or FXPRE) then rec.tn = rec.tn + 1; rec.times[rec.tn] = W.now end   -- (repair 1: merged with its timer redraws)
+  rec.runsBy[PHASE] = (rec.runsBy[PHASE] or 0) + 1
+  local viol = false
+  if vis > 0 then rec.changed = rec.changed + 1; rec.streak = 0
+  else
+    rec.idle = rec.idle + 1; rec.streak = rec.streak + 1
+    if rec.streak >= 2 then
+      viol = true
+      rec.idleOver[PHASE] = (rec.idleOver[PHASE] or 0) + 1
+      rec.firstIdle = rec.firstIdle or string.format("%s, at %.3f s (%.2f s after the window closed), run %d in a row that changed nothing on "
+        .. "screen", PHASE, W.now, W.now - T0, rec.streak)
+    end
+  end
+  rec.i = rec.i % FX_RING + 1; rec.t[rec.i] = W.now
+  local n, k = 0, rec.i   -- (newest first: the ring is in time order, so the count stops at the first run outside the second)
+  repeat
+    local t = rec.t[k]
+    if not (t and t > W.now - 1 + FX_EPS) then break end
+    n = n + 1; k = (k - 2) % FX_RING + 1
+  until k == rec.i
+  if n > rec.most then rec.most = n end
+  if n > FX_N then
+    rec.over[PHASE] = (rec.over[PHASE] or 0) + 1
+    rec.first = rec.first or string.format("%s, at %.3f s, %d runs in the second up to it", PHASE, W.now, n)
+  end
+  local w = math.floor((W.now - T0) / WIN)
+  local ww = rec.wins[w]; if not ww then ww = { runs = 0, vis = 0, viol = 0, phase = PHASE }; rec.wins[w] = ww end
+  ww.runs = ww.runs + 1; ww.vis = ww.vis + vis; if viol then ww.viol = ww.viol + 1 end
+end
 local function budNote(kind, name, src, bytes, ins)
   local a = addonOf(src)
   BFRAME[a] = (BFRAME[a] or 0) + ins
@@ -858,14 +1088,27 @@ local function budNote(kind, name, src, bytes, ins)
   e.n = e.n + 1; e.ins = e.ins + ins; if ins > e.max then e.max = ins end
   e.bytes = e.bytes + bytes; if bytes > 0 then e.allocRuns = e.allocRuns + 1 end
 end
+-- (round 9, SD-77) the frames right after a moment that changes load facts (combat start, a boss pull, a boss kill, combat end): each
+-- addon's costliest of them, kept per segment under the moment's name (MOMENT_FRAMES frames: the event's own frame, the next-frame
+-- settle and any pass held to the 10-a-second pace, 0.1 s = 3 frames, all fall inside)
+local MOMENT, MOMENT_LEFT, MOMENT_FRAMES = nil, 0, 15
+local function moment(name) MOMENT, MOMENT_LEFT = name, MOMENT_FRAMES end
 local function budFrame()
-  if not BSEG then for a in rawpairs(BFRAME) do BFRAME[a] = nil end; return end
+  if not BSEG then for a in rawpairs(BFRAME) do BFRAME[a] = nil end; MOMENT = nil; return end
   local s = budSeg(BSEG)
   local secIndex = math.floor(s.frames / 30) + 1   -- (30 frames a second: the scenario's FPS)
   s.frames = s.frames + 1
+  local mo
+  if MOMENT then
+    s.moments = s.moments or {}
+    mo = s.moments[MOMENT]; if not mo then mo = {}; s.moments[MOMENT] = mo end
+    MOMENT_LEFT = MOMENT_LEFT - 1
+    if MOMENT_LEFT <= 0 then MOMENT = nil end
+  end
   for a, w in rawpairs(BFRAME) do
     s.work[a] = (s.work[a] or 0) + w
     if w > (s.peak[a] or 0) then s.peak[a] = w end
+    if mo and w > (mo[a] or 0) then mo[a] = w end
     if secIndex then local q = s.sec[a]; if not q then q = {}; s.sec[a] = q end; q[secIndex] = (q[secIndex] or 0) + w end
     BFRAME[a] = nil
   end
@@ -893,10 +1136,15 @@ local function finish(kind, name, src, bytes, vis, owner, ins)
     if ins > hc.insMax then hc.insMax = ins end
   end
   if BSEG and src then budNote(kind, name, src, bytes, ins) end
+  -- (round 9, SD-79) a frame script's run, per frame it runs on; a display's effects loop is judged per display at her 30 a second
+  -- (gate_performance_run.py), not at the 10 a second of a re-check path: its call tree is not counted per callback or function here,
+  -- but a re-check pass it runs still counts for that pass (paceAnyNote, REPASSES)
+  local disp = false
+  if kind == "onupdate" and owner and src then ownNote(owner, src, vis, ins); disp = OWN[owner] and OWN[owner].display or false end
   if (kind == "timer" or kind == "onupdate") and src and CLOSED then
-    filePaceNote(src)
-    if RUNN == 0 then paceNote(src, vis, kind, src) end   -- (no call tree taken: XUI_GATE_NOHOOK)
-    for i = 1, RUNN do local k = RUNLIST[i]; paceNote(k, vis, kind, src); paceAnyNote(k, src); RUNDEF[k] = nil; RUNLIST[i] = nil end
+    if not disp then filePaceNote(src) end
+    if RUNN == 0 and not disp then paceNote(src, vis, kind, src) end   -- (no call tree taken: XUI_GATE_NOHOOK)
+    for i = 1, RUNN do local k = RUNLIST[i]; if not disp then paceNote(k, vis, kind, src) end; paceAnyNote(k, src); RUNDEF[k] = nil; RUNLIST[i] = nil end
     RUNN = 0
   elseif RUNN > 0 then   -- (round 8 repair 2) an event handler's call tree (tree play only)
     local driver = "event " .. tostring(name) .. " " .. tostring(src)
@@ -920,11 +1168,89 @@ local function finish(kind, name, src, bytes, vis, owner, ins)
     DCALLS[k] = nil
   end
 end
+-- (round 9 repair 1; SD-76 asked "whether 10/s covers screen redraws", her answer SD-79 "<=30/s, stop if idle (Recommended)": redraws at
+-- most 30 a second PER DISPLAY, the gate counting per display) a display's time-driven parts can also be drawn by a timer instead of a
+-- frame script (Visual.lua's wake at the next moment a part changes: the next tenth, the flash threshold, the wipe's next pixel). The
+-- timer callbacks that only redraw displays are named in REDRAWS (gate_common.py; CFG.redraws, "file:line" of the callback). In the
+-- tree play (the only play that knows which widget a change landed on) every run of such a callback is kept: each display it changed
+-- (the display frame its changed widgets sit in, ns.DisplayFrame's table) gets a redraw at that moment, judged per display together with
+-- that display's frame-script runs (gate_performance_run.py: at most 30 in any second); a run that changes nothing on any display is an
+-- idle run (two in a row: the wake did not stop when nothing was left to draw); a change outside every display is kept (the callback is
+-- then not a pure redraw and stays under P2's 10 a second).
+local REDRAW = {}
+if CFG.tree and CFG.redraws then for k in rawpairs(CFG.redraws) do REDRAW[k] = true end end
+local TRED = {}         -- [callback src] = its record
+local TCHGBUF = {}
+local function redrawNote(src, vis)
+  local t = TRED[src]
+  if not t then t = { runs = 0, idle = 0, streak = 0, idleOver = {}, outside = 0, disp = {}, byPhase = {} }; TRED[src] = t end
+  t.runs = t.runs + 1
+  t.byPhase[PHASE] = (t.byPhase[PHASE] or 0) + 1
+  local rev, seen, nd = {}, {}, 0
+  if dframes() then for r, f in rawpairs(DFRAMES) do rev[f] = r end end
+  for w in rawpairs(TCHGBUF) do
+    local f, g, r = w, 0, nil
+    while f and g < 40 do r = rev[f]; if r then break end; f = rawget(f, "_parent"); g = g + 1 end
+    if r then
+      if not seen[r] then seen[r] = true; nd = nd + 1 end
+    else
+      t.outside = t.outside + 1
+      t.firstOutside = t.firstOutside or string.format("%s, at %.3f s: a %s (%s)", PHASE, W.now, tostring(rawget(w, "_kind")), tostring(ORIGIN[w] or rawget(w, "_name")))
+    end
+    TCHGBUF[w] = nil
+  end
+  if nd == 0 and vis == 0 then
+    t.idle = t.idle + 1; t.streak = t.streak + 1
+    if t.streak >= 2 then
+      t.idleOver[PHASE] = (t.idleOver[PHASE] or 0) + 1
+      t.firstIdle = t.firstIdle or string.format("%s, at %.3f s (%.2f s after the window closed), run %d in a row that changed nothing on screen",
+        PHASE, W.now, W.now - T0, t.streak)
+    end
+  else
+    t.streak = 0
+  end
+  for r in rawpairs(seen) do
+    local key = tostring(r.name)
+    local d = t.disp[key]; if not d then d = { n = 0, times = {}, byPhase = {} }; t.disp[key] = d end
+    d.n = d.n + 1; d.times[d.n] = W.now; d.byPhase[PHASE] = (d.byPhase[PHASE] or 0) + 1
+  end
+end
+local function runRedraw(src, fn, ...)   -- (tree play) a listed redraw timer's run before the close (the previews, the mover)
+  local vis0 = VIS
+  cur = { kind = "timer", name = src, src = src }
+  TCHG = TCHGBUF
+  local ok = quietRun(fn, ...)
+  TCHG = nil
+  cur = nil
+  redrawNote(src, VIS - vis0)
+  return ok
+end
+-- (round 9, SD-79) the previews and the mover before the window closes (CFG phases "preview" and "unlock"): a frame script's runs are
+-- counted per frame (ownNote) and nothing else is measured
+local function runPre(owner, fn, ...)
+  local src = srcOf(fn)
+  if not src then return quietRun(fn, ...) end
+  local vis0, i0 = VIS, INS
+  cur = { kind = "onupdate", name = src, src = src }
+  local ok = quietRun(fn, ...)
+  cur = nil
+  ownNote(owner, src, VIS - vis0, (INS - i0) * INS_STEP)
+  return ok
+end
 local function run(kind, name, owner, fn, ...)
-  if not (PERF and CLOSED) or cur then return quietRun(fn, ...) end
+  if not (PERF and CLOSED) or cur then
+    if FXPRE and PERF and kind == "onupdate" and not cur and owner then return runPre(owner, fn, ...) end
+    if FXPRE and kind == "timer" and not cur and CFG.tree then   -- (repair 1) a listed redraw timer in the previews and the mover
+      local s0 = srcOf(rawget(W, "_srcFn") or fn)
+      if s0 and REDRAW[s0] then W._srcFn = nil; return runRedraw(s0, fn, ...) end
+    end
+    return quietRun(fn, ...)
+  end
   local src = srcOf(rawget(W, "_srcFn") or fn)
   W._srcFn = nil
   if not src then return quietRun(fn, ...) end
+  local red = kind == "timer" and REDRAW[src]   -- (repair 1, tree play only: REDRAW is empty in the measured play)
+  if red then TCHG = TCHGBUF end
   if kind == "onupdate" then name = src end   -- (a timer keeps the line that made it as its name; its function's line is src)
   local rec = owner   -- (unused; kept for the reader: the frame whose script runs)
   for k in rawpairs(DCALLS) do DCALLS[k] = nil end
@@ -942,6 +1268,7 @@ local function run(kind, name, owner, fn, ...)
   gc("restart")
   local c = cur
   cur = nil
+  if red then TCHG = nil; redrawNote(src, VIS - vis0) end
   local bytes = math.floor(((m1 - m0) - EXCL) * 1024 + 0.5)
   if bytes < 0 then bytes = 0 end
   finish(kind, c.name, src, bytes, VIS - vis0, owner, ins)
@@ -961,6 +1288,7 @@ local FRAMES = {}   -- [phase] = frames drawn
 W.tick = function(dt, steps)
   for _ = 1, (steps or 1) do
     W.now = W.now + dt
+    TICKDT = dt
     FRAMES[PHASE] = (FRAMES[PHASE] or 0) + 1
     local due, keep = {}, {}
     for _, t in rawipairs(W.timers) do
@@ -1075,7 +1403,7 @@ local function checkpoint(label)
     cp.keys[#cp.keys + 1] = { key = key, reached = (got == "game"), ran = W.gameRan, by = (got ~= "game") and (rawget(got, "_name") or tostring(got and got._kind)) or nil,
       byWhere = (got ~= "game") and originOf(got) or nil }
   end
-  OUT.checkpoints[#OUT.checkpoints + 1] = cp
+  if not CFG.memplay then OUT.checkpoints[#OUT.checkpoints + 1] = cp end   -- (round 9: the memory play keeps no record per cycle)
   return cp
 end
 
@@ -1093,6 +1421,16 @@ local function frames(sec, each)
   local n = math.floor(sec * FPS + 0.5)
   for i = 1, n do if each then each(i) end; W.tick(DT, 1) end
 end
+-- (round 9, SD-79) the display effects at 144 frames a second (a high-refresh monitor; INFERENCE: her monitor's rate is not known): at
+-- 30 frames a second a frame script cannot run more than 30 times a second, so her 30-a-second limit is played where it can be broken
+local FPS_FX = 144
+local function framesFx(sec, each)
+  local n = math.floor(sec * FPS_FX + 0.5)
+  for i = 1, n do if each then each(i) end; W.tick(1 / FPS_FX, 1) end
+end
+-- (round 9, SD-80) the measured play's hook counts instructions only, set once here and never switched (switching restarts its counter);
+-- set before login so the previews and the mover before the close (SD-79) are counted too. The tree play's hook is set at the close.
+if PERF and not CFG.nohook and not CFG.tree then debug.sethook(callhook, "", INS_STEP) end
 
 setPhase("login")
 L.startup()
@@ -1179,8 +1517,26 @@ if used.open then
     local esc = sb:GetScript("OnEscapePressed"); if esc then pcall(esc, sb) end; W.tick(0.1, 4)
   end
 end
--- the mover (/xui unlock), opened and closed
-if ns.ToggleUnlock then pcall(ns.ToggleUnlock); frames(1); used.moverOpen = ns.IsUnlocked and ns.IsUnlocked() or true; pcall(ns.ToggleUnlock); frames(0.5) end
+-- (round 9, SD-79) a preview of the effect displays (the rule editor's preview button, RuleEditor/Sidebar.lua ns.SetPreview), one second
+-- at 144 frames a second; their effects run on the sample countdown (Visual.lua SAMPLE_DURATION). Each frame script's runs are counted
+-- per display (FXPRE; nothing else is measured before the close).
+do
+  local objs = {}
+  for _, r in rawipairs(ns.rules) do if type(r.name) == "string" and r.name:find("^Fx ") then objs[#objs + 1] = r end end
+  used.previewRules = #objs
+  if ns.SetPreview and #objs > 0 then
+    setPhase("preview"); FXPRE = PERF
+    pcall(ns.SetPreview, objs, "visual", true); framesFx(1)
+    pcall(ns.SetPreview, objs, "visual", false); frames(0.2)
+    FXPRE = false; setPhase("window")
+  end
+end
+-- the mover (/xui unlock), opened and closed; (round 9, SD-79) its second open at 144 frames a second, frame scripts counted per display
+if ns.ToggleUnlock then
+  setPhase("unlock"); FXPRE = PERF
+  pcall(ns.ToggleUnlock); framesFx(1); used.moverOpen = ns.IsUnlocked and ns.IsUnlocked() or true; pcall(ns.ToggleUnlock); frames(0.5)
+  FXPRE = false; setPhase("window")
+end
 OUT.used = used
 -- she closes the window
 pcall(ns.ToggleUI); W.tick(0.1, 40)
@@ -1188,14 +1544,14 @@ OUT.windowClosed = not (ACD and ACD.OpenFrames[APP])
 setPhase("closed")
 CLOSED = true
 T0 = W.now
+-- (round 9, SD-80) the call-counting windows: in the tree play they switch call counting (SAMPLING) on and off; in the measured play
+-- they do nothing (its hook, set once below, counts instructions only)
 local function sample(on)
   if not PERF then return end
-  SAMPLING = on and not CFG.nosample and true or false
-  if CFG.nohook then return end
-  if CFG.tree then debug.sethook(treehook, "c", INS_STEP); return end   -- (round 8 repair: the tree play, see treehook)
-  debug.sethook(callhook, SAMPLING and "c" or "", INS_STEP)
+  SAMPLING = on and CFG.tree and not CFG.nosample and true or false
 end
 local function fireSame(ev, ...) CTX = "same"; W.fire(ev, ...); CTX = "change" end
+if PERF and not CFG.nohook and CFG.tree then debug.sethook(treehook, "c", INS_STEP) end   -- (round 8 repair: the tree play, see treehook)
 sample(false)
 checkpoint("right after the settings window closed")
 
@@ -1303,12 +1659,74 @@ local function storm(i)
   elseif i % 150 == 76 or i % 150 == 120 then cfire("LOSS_OF_CONTROL_UPDATE", "player") end
 end
 local function memNow() gc("collect"); return gc("count") end
-if PERF then OUT.memStart = memNow() end
+-- (round 9, item 7 of the round 9 gate task; SD-66) the memory play (CFG.memplay: no instruments, nothing the gate keeps per cycle):
+-- the stand-in's list of sounds played (world.lua W.sounds: the game keeps no such list in Lua) is emptied before each reading, so the
+-- growth from cycle to cycle is the addons' own (with the stand-in's widget records of the frames they made)
+local function memRead()
+  if CFG.memplay then W.sounds = {} end
+  return memNow()
+end
+if PERF or CFG.memplay then OUT.memStart = memRead() end
 local cycleWin = {}
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") the draw check, played only in the draw play (CFG.drawcheck; nothing is
+-- measured there): after a moment that changes load facts, and 6 frames (0.2 s) with no event so every pass held to the pace has run,
+-- what every display shows is read; then the engine re-checks EVERY rule (ns.MarkDirty: a settings change, which Engine.lua re-checks in
+-- full) in frames of 0 s (nothing that runs on time moves), and what every display shows is read again. A re-check narrowed to the
+-- changed fact that missed a rule whose answer or drawing reads that fact (a target debuff that must be absent, an out-of-combat opacity,
+-- a boss rule) leaves its display different from the full re-check. Read per display: shown or not; while shown, its opacity, text, gray
+-- and color; per aura group of Blizzard's container: whether the engine has it on.
+OUT.drawCheck = {}
+local DC_GROUPS = { "Absent", "Ooc", "Boss" }
+local function drawSnap()
+  dframes()
+  local snap, groups, n = {}, {}, 0
+  for _, g in rawipairs(DC_GROUPS) do groups[g] = { rules = 0, shown = 0, alpha = {} } end
+  for idx, r in rawipairs(ns.rules) do
+    local f = DFRAMES and DFRAMES[r]
+    if f then
+      local shown = f:IsVisible()
+      local st
+      if shown then
+        local vc = f.tex and rawget(f.tex, "_vc")
+        st = string.format("shown, opacity %s, text %s, gray %s, color %s", tostring(rawget(f, "_alpha")), tostring(f.text and rawget(f.text, "_text")),
+          tostring(f.tex and rawget(f.tex, "_desat")), vc and table.concat({ tostring(vc[1]), tostring(vc[2]), tostring(vc[3]), tostring(vc[4]) }, "/") or "-")
+      else st = "hidden" end
+      snap[idx .. " " .. tostring(r.name)] = st; n = n + 1
+      local g = type(r.name) == "string" and groups[r.name:match("^(%a+) %d+$") or ""]
+      if g then g.rules = g.rules + 1; if shown then g.shown = g.shown + 1; g.alpha[#g.alpha + 1] = tostring(rawget(f, "_alpha")) end end
+    end
+  end
+  for i, e in rawipairs(G.buttons) do snap["aura group " .. i] = e.opts.xuiOff and "off" or "on"; n = n + 1 end
+  for _, g in rawipairs(DC_GROUPS) do groups[g].alpha = table.concat(groups[g].alpha, ",") end
+  return snap, groups, n
+end
+local function drawCheck(label)
+  if not CFG.drawcheck then return end
+  W.tick(DT, 6)
+  local a, ga, n = drawSnap()
+  local ES = ns.EngineStats
+  local s0 = ES and ES.settle or 0
+  pcall(ns.MarkDirty)
+  W.tick(0, 3)
+  local ran = (ES and ES.settle or 0) > s0
+  local b = drawSnap()
+  local diffs = {}
+  for k, v in rawpairs(a) do if b[k] ~= v then diffs[#diffs + 1] = k .. ": " .. v .. " -> after the full re-check: " .. tostring(b[k]) end end
+  for k, v in rawpairs(b) do if a[k] == nil then diffs[#diffs + 1] = k .. ": none -> after the full re-check: " .. v end end
+  table.sort(diffs)
+  local keep = {}
+  for i = 1, math.min(#diffs, 12) do keep[i] = diffs[i] end
+  OUT.drawCheck[#OUT.drawCheck + 1] = { label = label, phase = PHASE, combat = W.combat and true or false, ran = ran, n = n, ndiff = #diffs,
+    diffs = keep, groups = ga }
+end
 -- call counting (slow in the stand-in) runs around every state-change event and for 15 frames of each fight, the same in every
--- cycle, so the counts of the three cycles compare; the other instruments run all the time
+-- cycle, so the counts of the three cycles compare; the other instruments run all the time (round 9, SD-80: the counting in the tree
+-- play only)
 local function sfire(ev, ...) sample(true); W.fire(ev, ...); sample(false) end
 local function sfireSame(ev, ...) sample(true); fireSame(ev, ...); sample(false) end
+-- (round 9, SD-77 condition 3) a boss pull in every fight: a Mythic+ pull that runs from the trash into the boss (INFERENCE about her
+-- play): ENCOUNTER_START 8 s into the fight, ENCOUNTER_END 14 s in (the boss down), combat ending after the fight
+local BOSS_AT, BOSS_END, BOSS_ID = 240, 420, 2001
 for cyc = 1, 3 do
   setPhase("busy " .. cyc)
   BSEG = "out " .. cyc   -- (V33 budget segments, see budFrame: work done between two frames is billed to the next frame)
@@ -1322,36 +1740,90 @@ for cyc = 1, 3 do
   frames(1)
   -- mounted, then dismounted
   G.mounted = true; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(1)
+  drawCheck("mounted")
   G.mounted = false; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(0.5)
+  drawCheck("dismounted")
   -- a group joined (the game sends the roster update twice), a target picked
   G.group = true; sfire("GROUP_ROSTER_UPDATE"); sfireSame("GROUP_ROSTER_UPDATE"); frames(0.25)
+  drawCheck("group joined")
   G.target = true; sfire("PLAYER_TARGET_CHANGED"); frames(0.25)
+  drawCheck("target picked")
   -- the fight: 15 seconds of storms
   BSEG = "fight " .. cyc   -- (the fight's first second is judged like the rest of it)
+  moment("combat start")
   sample(true); fight(); sample(false)
   for _ = 1, 4 do gainOne(30) end
   frames(BUSY, function(i)
+    -- (the draw play only: right after the moment, before the next storm event, so a target's aura event cannot re-check a missed rule
+    -- first; the check itself lets 6 quiet frames pass before it reads)
+    if i == 1 then drawCheck("combat start") end
+    if i == BOSS_AT + 1 then drawCheck("boss pull") end
+    if i == BOSS_END + 1 then drawCheck("boss down") end
     if i == 31 then sample(true) elseif i == 46 then sample(false) end
     storm(i)
     if i == 200 then sfireSame("GROUP_ROSTER_UPDATE") end   -- someone joins mid-fight (the player's group state does not change)
+    if i == BOSS_AT then
+      G.encounter = true; moment("boss pull")
+      sample(true); cfire("ENCOUNTER_START", BOSS_ID, "Gate Boss", 16, 20); sample(false)
+    elseif i == BOSS_END then
+      G.encounter = false; moment("boss down")
+      sample(true); cfire("ENCOUNTER_END", BOSS_ID, "Gate Boss", 16, 20, 1, {}); sample(false)
+    end
   end)
   sample(false)
-  BSEG = "out " .. cyc
-  OUT.mouseCombat[cyc] = checkpoint("in the fight, cycle " .. cyc)
+  local cpFight = checkpoint("in the fight, cycle " .. cyc)
+  if not CFG.memplay then OUT.mouseCombat[cyc] = cpFight end
+  -- (round 9, SD-77) combat ending, and the second after it, are a measured segment of their own ("end N"), judged by the per-event cap
+  BSEG = "end " .. cyc
+  moment("combat end")
   sample(true); peace(); sample(false)
-  frames(1)
+  frames(0.5)
+  drawCheck("combat end")
+  frames(0.5)
+  BSEG = "out " .. cyc
   -- the group leaves, the target is dropped
   G.group = false; sfire("GROUP_ROSTER_UPDATE"); G.target = false; G.targetDebuffs = {}; sfire("PLAYER_TARGET_CHANGED")
   frames(0.5)
+  drawCheck("group left, target dropped")
   checkpoint("out of combat after the fight, cycle " .. cyc)
   frames(0.5)
   if PERF then
     local snap = {}
     for k, n in rawpairs(WCALLS) do snap[k] = n end
     ST.cyc[cyc] = snap
-    OUT.mem = OUT.mem or {}
-    OUT.mem[cyc] = memNow()
   end
+  if PERF or CFG.memplay then
+    OUT.mem = OUT.mem or {}
+    OUT.mem[cyc] = memRead()
+  end
+end
+-- (round 9, SD-79, her answer "<=30/s, stop if idle (Recommended)") the display effects, out of combat, at 144 frames a second: the six
+-- effect displays and the bar cue (PROFILE_LUA 6d) gain their buff for 6 s and are left to run out (fade, the flash from its 3 s
+-- threshold, the wipe, tenths below 5 s, the bar), the buffs' removal comes as they expire, then a second with nothing to animate
+setPhase("effects")
+BSEG = "effects"
+G.clear(); active = {}; G.targetDebuffs = {}; G.syncContainers()
+W.fire("UNIT_AURA", "player", { isFullUpdate = true })
+frames(0.5)
+do
+  local fxA = {}
+  for _, id in rawipairs({ 330001, 330002, 330003, 330004, 330005, 330006, 330010 }) do fxA[#fxA + 1] = G.gain(id, 6) end
+  G.syncContainers()
+  W.fire("UNIT_AURA", "player", { addedAuras = fxA })
+  framesFx(0.1)
+  local shown = 0
+  dframes()
+  for _, r in rawipairs(ns.rules) do
+    local f = DFRAMES and DFRAMES[r]
+    if f and type(r.name) == "string" and r.name:find("^Fx ") and f:IsVisible() then shown = shown + 1 end
+  end
+  OUT.fxGained, OUT.fxShown = #fxA, shown
+  framesFx(5.9)
+  local rem = {}
+  for _, a in rawipairs(fxA) do G.lose(a.spellId); rem[#rem + 1] = a.auraInstanceID end
+  G.syncContainers()
+  W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = rem })
+  framesFx(1)
 end
 -- idle out of combat: every aura and cooldown gone, nothing on screen changing
 setPhase("idle settle")
@@ -1378,6 +1850,18 @@ OUT.pace = pace
 local paceAny = {}
 for src, p in rawpairs(PACEX) do paceAny[src] = { over = p.over, firstSec = p.firstSec, most = p.most, first = p.first, drivers = p.drivers } end
 OUT.paceAny = paceAny
+-- (round 9, SD-79) every frame script, per frame it ran on (ownNote)
+local owners = {}
+for i, rec in rawipairs(OWNLIST) do
+  local wins = {}
+  for _, ww in rawpairs(rec.wins) do wins[#wins + 1] = ww end
+  owners[i] = { display = rec.display, rule = rec.rule, where = rec.where, src = rec.src, runs = rec.runs, skips = rec.skips, changed = rec.changed,
+    idle = rec.idle, most = rec.most, over = rec.over, first = rec.first, idleOver = rec.idleOver, firstIdle = rec.firstIdle, runsBy = rec.runsBy,
+    attaches = rec.att, wins = wins, waits = rec.waits, waitOver = rec.waitOver, firstWait = rec.firstWait, times = rec.display and rec.times or nil }
+end
+OUT.owners = owners
+OUT.fxRedraw = TRED   -- (repair 1, tree play) the listed redraw timers' runs, per callback and per display
+OUT.fxN, OUT.fxSkip, OUT.fpsFx, OUT.fxWait = FX_N, FX_SKIP, FPS_FX, FX_WAIT
 OUT.paceN = PACE_N
 local fpace = {}
 for f, p in rawpairs(FILEPACE) do fpace[f] = p.most end
@@ -1385,7 +1869,7 @@ OUT.filePace = fpace
 local fresh = {}
 for site, g in rawpairs(FRESH) do fresh[site] = { fresh = g.fresh, calls = g.calls, example = g.example } end
 OUT.timerFresh = fresh
-if PERF then OUT.memEnd = memNow() end
+if PERF or CFG.memplay then OUT.memEnd = memRead() end
 checkpoint("after 30 seconds idle out of combat")
 -- timers still waiting at the end, by who made them
 local pend = {}
@@ -1408,20 +1892,55 @@ end
 '''
 
 
-def run_scenario(perf=True, verbose=False, variant="default", tree=False):
+# (round 9 repair 1; SD-76 asked "whether 10/s covers screen redraws"; her answer SD-79 "<=30/s, stop if idle (Recommended)": redraws at
+# most 30 a second per display, counted per display) the timer callbacks that only redraw displays, judged per display (at most 30 in any
+# second, together with the display's frame-script runs) and for idle runs, instead of P2's 10 a second per callback. A callback here is
+# still judged under P2 if a run changes anything outside the displays or runs a re-check pass (gate_performance_run.py REPASSES; a pass
+# is judged at 10 a second whatever drives it, SD-78). [addon file] = ((function name as written in the file, what it is), ...)
+REDRAWS = {
+    "XayaUI_Rules/Visual.lua": (("FxWake", "the display effects' wake (draws each display whose time-driven part changes at that moment)"),),
+}
+
+
+def redraw_lines(root=None):
+    """({"file:line": (name, what)}, [names not found]) for REDRAWS, the line being where the function is defined (as the gate keys
+    functions)."""
+    out, missing = {}, []
+    for f, names in sorted(REDRAWS.items()):
+        path = os.path.join(root or ROOT, f)
+        lines = []
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                lines = fh.read().split("\n")
+        for name, what in names:
+            pat = re.compile(r"^\s*(?:local\s+)?(?:function\s+%s\s*\(|%s\s*=\s*function\s*\()" % (re.escape(name), re.escape(name)))
+            hit = next((i + 1 for i, ln in enumerate(lines) if pat.search(ln)), None)
+            if hit is None:
+                missing.append("%s %s" % (f, name))
+            else:
+                out["%s:%d" % (f, hit)] = (name, what)
+    return out, missing
+
+
+def run_scenario(perf=True, verbose=False, variant="default", tree=False, drawcheck=False, memplay=False):
     """Sessions A and B. Returns (result as Python data, seconds). variant: "default" (Advanced Debugging off) or "debug" (on).
-    tree (round 8 repair): the play that takes the call trees of timer callbacks and frame scripts (P2 pace per re-check pass); its
-    instruction and call readings are not used (its hook changes them)."""
+    tree (round 8 repair): the play that takes the call trees of timer callbacks and frame scripts (P2 pace per re-check pass) and
+    (round 9, SD-80) the call counts; its instruction readings are not used (its hook changes them).
+    drawcheck (round 9, SD-77): the draw play (perf off): after each moment that changes load facts, what is drawn is compared with what a
+    full re-check draws. memplay (round 9): the memory play (perf off): Lua memory at the end of each cycle with nothing of the gate's kept."""
     t0 = time.time()
     saved, n, made, nf, errs_a = build_profile()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     world, loader, game, sv = _world(L, saved, debug=("on" if variant == "debug" else "off"))
     cfg = H.to_lua(L, {"perf": perf, "verbose": verbose or bool(os.environ.get("XUI_GATE_VERBOSE")), "variant": variant,
                         "nosample": bool(os.environ.get("XUI_GATE_NOSAMPLE")), "nohook": bool(os.environ.get("XUI_GATE_NOHOOK")),
-                        "busy": float(os.environ.get("XUI_GATE_BUSY", "15")), "tree": bool(tree)})
+                        "busy": float(os.environ.get("XUI_GATE_BUSY", "15")), "tree": bool(tree), "drawcheck": bool(drawcheck),
+                        "memplay": bool(memplay), "redraws": {k: True for k in redraw_lines()[0]}})
+    rl = redraw_lines()[0]
     res = L.eval("function(src, W, Ld, G, C) return loadstring(src)()(W, Ld, G, C) end")(SCENARIO_LUA, world, loader, game, cfg)
     out = H.lua_to_py(res)
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
+    out["redrawLines"] = {k: list(v) for k, v in rl.items()}
     return out, round(time.time() - t0, 1)
 
 
@@ -1451,6 +1970,7 @@ def _key(variant="default"):
         h.update(part.encode())
     h.update(ROOT.encode())
     h.update((api or "").encode())
+    h.update(repr(sorted(REDRAWS.items())).encode())   # (repair 1: the redraw callbacks the tree play keeps per display)
     for f in files:
         h.update(f.encode())
         with open(f, "rb") as fh:
@@ -1473,10 +1993,25 @@ def result(variant="default"):
     # (round 8 repair) the pace per re-check pass comes from a second play with the call trees taken (run_scenario tree=True); every
     # other reading stays this play's. XUI_GATE_NOTREE=1 (an old build played for the V33 calibration or the teeth proofs, tree_env)
     # keeps this play's pace per callback only.
+    # (round 9, SD-80, her answer "Fix it (Recommended)") the call counts (a function called once per rule in one dispatch, P3; call
+    # counts growing from cycle to cycle, P6) come from that second play too: the measured play counts no call, so its instructions are
+    # what a play without call counting reads. (round 9, SD-77) a third play checks what is drawn after each load-fact change against a
+    # full re-check, and (round 9) a fourth reads Lua memory with nothing of the gate's kept (the growth per cycle is the addons' own).
+    # XUI_GATE_NOTREE=1 plays none of the three: no call counts, no draw check, no memory play (only an old build's numbers are read).
     if not os.environ.get("XUI_GATE_NOTREE") and not os.environ.get("XUI_GATE_NOHOOK"):
         tdata, tsecs = run_scenario(perf=True, variant=variant, tree=True)
         data["pace"], data["paceAny"], data["paceTree"] = tdata.get("pace"), tdata.get("paceAny"), True
-        secs = round(secs + tsecs, 1)
+        data["fxRedraw"] = tdata.get("fxRedraw") or {}   # (repair 1) the listed redraw timers, per display (tree play only)
+        st, tst = data.setdefault("stats", {}), tdata.get("stats") or {}
+        for k in ("wide", "cyc", "idlewin"):
+            st[k] = tst.get(k)
+        data["callsFrom"] = "tree play"
+        ddata, dsecs = run_scenario(perf=False, variant=variant, drawcheck=True)
+        data["drawCheck"], data["drawErrors"], data["drawErrorText"] = ddata.get("drawCheck"), ddata.get("errors"), ddata.get("errorText")
+        mdata, msecs = run_scenario(perf=False, variant=variant, memplay=True)
+        data["memAddons"] = {"mem": mdata.get("mem"), "memEnd": mdata.get("memEnd"), "memStart": mdata.get("memStart"),
+                             "errors": mdata.get("errors")}
+        secs = round(secs + tsecs + dsecs + msecs, 1)
     data["_secs"] = secs
     os.makedirs(d, exist_ok=True)
     tmp = path + ".%d.tmp" % os.getpid()
@@ -1663,6 +2198,43 @@ class Report:
         return 1 if self.fails else 0
 
 
+class Tagged(object):
+    """(round 9) A Report seen through a variant's name: every finding of the "debug" variant says which variant it came from."""
+
+    def __init__(self, rep, tag):
+        self.rep, self.tag = rep, tag
+
+    def fail(self, where, what, numbers, fix):
+        self.rep.fail(self.tag + where, what, numbers, fix)
+
+    def warn(self, where, what, numbers="", fix=""):
+        self.rep.warn(self.tag + where, what, numbers, fix)
+
+    def note(self, text):
+        self.rep.note(self.tag + text)
+
+
+DEBUG_TAG = "[Advanced Debugging on] "
+
+
+def both_variants(gate, judge):
+    """(round 9; REQUEST-LOG A23 SD-64: she keeps Advanced Debugging on; round 8 review: gate_mouse and gate_keyboard judged only the
+    default variant) a gate's judge on the default variant and, when this checkout has XayaUI_Debug, on the "debug" variant (Advanced
+    Debugging on, XayaUI_Debug loaded), its findings tagged. Returns the exit code of Report.show."""
+    rep = Report(gate)
+    data, secs, cached = result()
+    rep.note("variant \"default\" (Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded: V34)")
+    judge(data, rep)
+    if not os.path.isdir(os.path.join(ROOT, DEBUG_ADDON)):
+        rep.note(DEBUG_TAG + "variant \"debug\" not played: this checkout has no %s folder" % DEBUG_ADDON)
+        return rep.show(data, secs, cached)
+    ddata, dsecs, dcached = result("debug")
+    rep.note(DEBUG_TAG + "variant \"debug\": the same scenario with Settings > Debugging > Advanced Debugging saved on; XayaUI_Debug loaded: %s" %
+             ddata.get("debugLoaded"))
+    judge(ddata, Tagged(rep, DEBUG_TAG))
+    return rep.show(data, (secs or 0) + (dsecs or 0), cached and dcached)
+
+
 FIGHT_EVENTS = ("PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "RUNE_POWER_UPDATE", "PLAYER_TOTEM_UPDATE", "LOSS_OF_CONTROL_ADDED",
                 "LOSS_OF_CONTROL_UPDATE")
 
@@ -1692,6 +2264,15 @@ def integrity(data, rep):
          "XayaUI_Debug is loaded exactly when Advanced Debugging is on (variant %s)" % data.get("variant", "default"),
          "XayaUI_Debug loaded: %s" % data.get("debugLoaded")),
         (int(data.get("errors") or 0) == 0, "no Lua error during the scenario", "; ".join((data.get("errorText") or [])[:3])),
+        # (round 9, SD-77) every fight has a boss pull and the boss down; the profile has the rules that test the narrowed re-check
+        (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in ("ENCOUNTER_START", "ENCOUNTER_END")),
+         "the fights played a boss pull and the boss down (ENCOUNTER_START, ENCOUNTER_END)", "fired: %s" % (data.get("fired") or {})),
+        (all(int(((data.get("profile") or {}).get("made") or {}).get(k) or 0) > 0 for k in ("absent", "ooc", "boss", "fx")),
+         "the profile has target debuffs that must be absent, out-of-combat opacity displays, boss rules and effect displays (round 9)",
+         "made: %s" % ((data.get("profile") or {}).get("made"))),
+        # (round 9, SD-79) the effects part: the effect displays were shown, and the preview had rules to show
+        (int(data.get("fxShown") or 0) >= 6, "the effects part showed the effect displays", "shown %s of %s" % (data.get("fxShown"), data.get("fxGained"))),
+        (int(used.get("previewRules") or 0) >= 6, "the preview before the close had the effect displays to preview", "rules %s" % used.get("previewRules")),
     ]
     for ok, what, numbers in checks:
         if not ok:

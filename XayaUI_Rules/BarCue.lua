@@ -728,53 +728,68 @@ local function Paint(fr, rule, ref)
 end
 
 -- (file-level helpers: no closure is made per step or per rendered frame)
+-- (round 9, SD-79) the fill is written only when it differs from the value last written (exact compare), so a drawing that changes
+-- nothing writes nothing and the effects loop (Visual.lua FxPlan) can stop; each fill written is counted for XayaUI_Debug ("bar fills
+-- written", ns.EngineStats.redrawFill). Returns true when it wrote.
+local function Counted()
+    local es = ns.EngineStats
+    if es then es.redrawFill = es.redrawFill + 1 end
+end
 local function SetValue(fr, b, x, applyReverse)
     x = clamp(x, 0, 1)
     if applyReverse and b.reverse then x = 1 - x end
+    local spark = (b.spark and b.spark.enabled and x > 0.002 and x < 0.998) and true or false
+    if fr.barV == x and not fr.barTimed and fr.barSparkOn == spark then return false end
     local bar = fr.barF
-    bar:SetMinMaxValues(0, 1)
+    if fr.barTimed or fr.barV == nil then bar:SetMinMaxValues(0, 1) end
     bar:SetValue(x)
-    fr.barSpark:SetShown((b.spark and b.spark.enabled and x > 0.002 and x < 0.998) and true or false)
-    fr.barTimed = nil
+    fr.barSpark:SetShown(spark)
+    fr.barV, fr.barSparkOn, fr.barTimed = x, spark, nil
+    Counted()
+    return true
 end
 local function SetTimer(fr, b, dur)
     if not dur then return false end
     local bar = fr.barF
     local ok = pcall(bar.SetTimerDuration, bar, dur, Immediate(), TimerDir(b.reverse))
     if ok then
-        fr.barTimed = true
-        fr.barSpark:SetShown((b.spark and b.spark.enabled) and true or false)
+        fr.barTimed, fr.barV = true, nil
+        fr.barSparkOn = (b.spark and b.spark.enabled) and true or false
+        fr.barSpark:SetShown(fr.barSparkOn)
+        Counted()
     end
     return ok
 end
 
 -- Per step (Visual.lua UpdateVisualText): the value. f = the readable remaining fraction of the aura (or the preview's sample),
 -- nil when the game hides it. fxOnly = a smooth-animation frame between steps (only the value moves; the colour is kept).
--- Returns true while the bar moves on XayaUI's clock (the effects loop keeps it smooth); a bar the game drives returns false.
+-- Returns (moving, wrote): moving = true while the bar moves on XayaUI's clock (the effects loop keeps it smooth; a bar the game drives
+-- returns false); wrote = this call wrote a new fill (SetValue / SetTimer above).
+-- (round 9) The source is worked out on each re-check and kept on the display for the effects' own runs: ns.BarCueSource finds a cue's
+-- parent by walking every rule when no re-check is running, which the loop must not do on every run.
 function ns.BarCueUpdate(fr, rule, v, info, ref, f, sample, fxOnly)
-    if not fr.barF then return false end
+    if not fr.barF then return false, false end
     local b = ns.BarCueSettings(v)
     if not fxOnly then Paint(fr, rule, ref) end
-    local src = ns.BarCueSource(rule)
+    local src = fxOnly and fr.barSrc or ns.BarCueSource(rule)
+    fr.barSrc = src
     if src == "aura" then
-        if f ~= nil then SetValue(fr, b, f, true); return true end
-        if fxOnly then return false end
+        if f ~= nil then return true, SetValue(fr, b, f, true) end
+        if fxOnly then return false, false end
         if ref and ref.instanceID and C_UnitAuras and C_UnitAuras.GetAuraDuration then
             local ok, d = pcall(C_UnitAuras.GetAuraDuration, ref.unit or "player", ref.instanceID)
-            if ok and d and SetTimer(fr, b, d) then return false end
+            if ok and d and SetTimer(fr, b, d) then return false, true end
         end
-        SetValue(fr, b, 0, true)   -- the time cannot be read: an empty bar, never a guessed one
-        return false
+        return false, SetValue(fr, b, 0, true)   -- the time cannot be read: an empty bar, never a guessed one
     elseif src == "cooldown" then
-        if sample and f ~= nil and not (info and info.cd and info.cd.onCd) then SetValue(fr, b, f, true); return true end   -- preview sample
-        if fxOnly then return false end
+        if sample and f ~= nil and not (info and info.cd and info.cd.onCd) then return true, SetValue(fr, b, f, true) end   -- preview sample
+        if fxOnly then return false, false end
         local dur = ns.CooldownDurationOf and ns.CooldownDurationOf(rule, info and info.cd)
-        if dur and SetTimer(fr, b, dur) then return false end
+        if dur and SetTimer(fr, b, dur) then return false, true end
         -- ready, or the cooldown cannot be read: no time remaining (the timer's own end state: empty, or full when reversed)
-        SetValue(fr, b, 0, true)
-        return false
+        return false, SetValue(fr, b, 0, true)
     end
-    if fxOnly then return false end
+    if fxOnly then return false, false end
     -- stacks / charges: a value out of the bar's full value (reverse does not apply to a count: 3 of 5 fills three fifths)
     local cd = info and info.cd
     local mx = ns.BarCueMax(rule, cd)
@@ -787,6 +802,6 @@ function ns.BarCueUpdate(fr, rule, v, info, ref, f, sample, fxOnly)
         if type(n) == "number" and not issecret(n) then cur = n end
     end
     if sample and cur == nil then cur, mx = 3, mx or 5 end   -- preview sample (like the count text's sample "3")
-    if cur and mx and mx > 0 then SetValue(fr, b, cur / mx, false) else SetValue(fr, b, 0, false) end
-    return false
+    if cur and mx and mx > 0 then return false, SetValue(fr, b, cur / mx, false) end
+    return false, SetValue(fr, b, 0, false)
 end

@@ -115,11 +115,14 @@ function CL.Bind()
     ns.CLASS_AURA_DATA = d and d.specs or {}
 end
 
+-- debounce: talent changes fire several events, so at most one timer is armed (pending) and it runs one function made once (SD-82:
+-- no new function per timer call)
 local pending
+local function LearnNow() pending = false; pcall(CL.Learn) end
 local function Later()
     if pending then return end
     pending = true
-    C_Timer.After(3, function() pending = false; pcall(CL.Learn) end)   -- debounce: talent changes fire several events
+    C_Timer.After(3, LearnNow)
 end
 
 local f = CreateFrame("Frame")

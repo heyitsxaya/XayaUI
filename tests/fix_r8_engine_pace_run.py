@@ -79,6 +79,10 @@ local function mk(nm, f)
 end
 local AU = mk("aura", function(r) r.useBuff, r.buffID, r.buffState, r.cdState = true, 1001, "present", "none" end)
 local MT = mk("mounted only", function(r) r.useBuff, r.buffID, r.buffState, r.cdState = true, 1001, "present", "none"; r.load.mounted = "yes" end)
+-- (round 9) a rule whose load reads the zone: the zone storm below gives the settle a new value every frame (part 3)
+local mapN = 2339
+C_Map.GetBestMapForUnit = function() return mapN end
+local MP = mk("one zone only", function(r) r.useBuff, r.buffID, r.buffState, r.cdState = true, 1001, "present", "none"; r.load.mapIDs = { ["1"] = true } end)
 -- (early mode only) shows while you have a target: re-checked by the every-live-rule pass (a target change), nothing routed
 local TG = EARLY and mk("has a target", function(r) r.cdState, r.buffState = "none", "none"; r.extra = { list = { { type = "playerState", what = "target", state = "yes" } } } end)
 aura[1001].expirationTime = W.now + 30
@@ -163,8 +167,18 @@ if MODE == "main" then
   quiet()
   local t3 = mountStorm(3, 1 / 60)
   P.settle = most(at[MT], t3)
-  check("3. settle: mounted switching every frame at 60 frames a second for 3 s: at most 10 full re-checks in any one second (round 7: 60)", P.settle <= 10 and P.settle >= 6, P.settle)
+  -- (round 9, SD-77 "Route + narrow") a settle re-checks the rules whose load reads what changed since the last pass; mounted switched
+  -- an even number of times between two passes is no change, so this storm may re-check the mounted rule fewer times than before.
+  -- Its upper bound stays; the lower one (the settle still runs at its pace) moved to the zone storm below, where every pass sees a change.
+  check("3. settle: mounted switching every frame at 60 frames a second for 3 s: at most 10 re-checks in any one second (round 7: 60)", P.settle <= 10, P.settle)
   P.runs3 = mostRuns(t3)
+  quiet()
+  local t3b = W.now
+  for _ = 1, 180 do mapN = mapN + 1; W.fire("ZONE_CHANGED"); W.tick(1 / 60, 1) end
+  P.zone = most(at[MP], t3b)
+  check("3. settle: a new zone every frame at 60 frames a second for 3 s: the rule whose load reads the zone is re-checked at most 10 and at least 6 times in any one second",
+    P.zone <= 10 and P.zone >= 6, P.zone)
+  P.runs3 = math.max(P.runs3, mostRuns(t3b))
   mounted = true; W.fire("PLAYER_MOUNT_DISPLAY_CHANGED"); W.tick(1 / 60, 10)
   check("3. ... the last change is not lost: mounted at the end, the 'mounted only' display shows within a tenth of a second", shown(MT))
   check("4. every engine timer callback ran at most 10 times in any one second during parts 1 to 3", math.max(P.runs1, P.runs2, P.runs3) <= 10,

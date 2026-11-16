@@ -114,7 +114,9 @@ W.tick(0.5, 1); reset()
 W.fire("ENCOUNTER_START", 2001, "Boss", 16, 20); W.tick(FRAME, 4)
 local most = 0
 for i = 1, #LIVE do if (ev[LIVE[i]] or 0) > most then most = ev[LIVE[i]] end end
-check("5. a boss encounter starting (a load event): each live rule is checked once, not twice (every live rule, then every rule)", most == 1, most)
+-- (round 9, SD-77 "Route + narrow": the narrowed re-check re-checks only the rules whose load reads the encounter or a row outside the
+-- aura / cooldown checks, and the readers of a check whose answer changed: none of these live rules; round 8: each once, before it twice)
+check("5. a boss encounter starting (a load event): no live rule here is re-checked (none reads the encounter; round 8: each once, before: twice)", most == 0, most)
 W.fire("ENCOUNTER_END", 2001, "Boss", 16, 20, 1); W.tick(FRAME, 4)
 
 -- 6 (round 8, item 4: the full re-check's cost) a load-fact change that loads or unloads no rule (resting: no live rule's load reads it,

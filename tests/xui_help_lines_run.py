@@ -22,7 +22,27 @@ local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  ["
 L.startup()
 W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
 local ns = rawget(_G, "XayaUI_NS")
-local out = ns.CaptureOutput(function() SlashCmdList.XAYAUI("help") end)
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": ns.CaptureOutput is gone) what a command shows the
+-- player, read from the stand-in game: the lines printed in chat (W.printed) and the lines drawn in the console window, each without the
+-- "XayaUI: " name in front, in that order (one command prints in one of the two). With the debug tools loaded the console window is opened
+-- first, so each line is drawn as it comes (a window opening in the middle of a command first draws the older lines it missed). A Lua
+-- error in the command ends the list as "(error: ...)".
+local SHOWN_NAME = "|cff33ccffXayaUI|r: "
+local function unname(l) l = tostring(l); if l:sub(1, #SHOWN_NAME) == SHOWN_NAME then return l:sub(#SHOWN_NAME + 1) end; return l end
+local function consoleLines() local cw = rawget(_G, "XayaUIConsoleWindow"); return cw and cw.log and cw.log._lines end
+local function shown(fn, ...)
+  if ns.DebugToolsLoaded and ns.DebugToolsLoaded() and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+  local c0, log0 = #W.printed, consoleLines()
+  local n0 = log0 and #log0 or 0
+  local ok, err = pcall(fn, ...)
+  local out = {}
+  for i = c0 + 1, #W.printed do out[#out + 1] = unname(W.printed[i]) end
+  local log = consoleLines()
+  if log then for i = (log == log0 and n0 or 0) + 1, #log do out[#out + 1] = unname(log[i]) end end
+  if not ok then out[#out + 1] = "(error: " .. tostring(err) .. ")" end
+  return out
+end
+local out = shown(SlashCmdList.XAYAUI, "help")
 local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])

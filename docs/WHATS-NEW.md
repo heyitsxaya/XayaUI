@@ -1,6 +1,6 @@
 # What's new in XayaUI
 
-**Updated 2026-11-13:** section 15 (at the end) covers rounds 6 and 7 of Rules fix bundle 1, which is not on `main` yet.
+**Updated 2026-11-16:** section 15 (at the end) covers rounds 1 to 9 of Rules fix bundle 1, which is not on `main` yet.
 
 **Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
 
@@ -530,34 +530,65 @@ Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings windo
 - **Hover texts** are at most two sentences (UI-65).
 - Open choices made without you are in the QA question flow: UI-25-newrule, UI-27-components, UI-27-personal, UI-27-merge, UI-27-backups, UI-27-eui, UI-24-label-scope.
 
-## 15. Rules fix bundle 1, rounds 6 and 7 (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
+## 15. Rules fix bundle 1, rounds 1 to 9 (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
 
-Not tested in game. QA B401 to B423 (section B-bundle1). Rounds 1 to 5 of the bundle are not in this list yet.
+Not tested in game. QA B399 and B401 to B434 (section B-bundle1). Versions in this build: XayaUI 0.6.86, Options 0.6.109,
+Rules 0.7.1, and the new XayaUI Debug 0.7.0. Bonus Features (0.6.46) is unchanged. Landing commit: not landed yet.
 
 - **Install:** replace `XayaUI`, `XayaUI_Options` and `XayaUI_Rules` as whole folders and add the new `XayaUI_Debug` folder next to
-  them. The rule editor moved from `XayaUI_Rules` to `XayaUI_Options`.
+  them. The rule editor moved from `XayaUI_Rules` to `XayaUI_Options`. `XayaUI_Bonus` and `XayaUI_Bonus_StatCalculator` are unchanged.
+- **Combat lock:** the settings window, the rule editor, the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and
+  `/xui enable` do not open in combat. One chat line says so, for example "the settings window can't open during combat. It will
+  open when combat ends.", and it opens by itself when combat ends. An open settings window closes as combat starts and opens again
+  where you were afterwards. `/xuiengine full` and `refresh` are removed.
+- **`/xui disable`:** turns every rule off at once, in combat too, until `/xui enable` (out of combat) or `/reload`.
+- **Keyboard and mouse:** a XayaUI window first opened in combat no longer holds every key until combat ends; text boxes let go of
+  the keyboard when combat starts; the rule search box no longer takes the keyboard back after Esc; the debug report's text no longer
+  takes the keyboard when clicked. The minimap button's list closes on Esc or any click, and that click still reaches the game. With
+  the settings window closed, none of its code runs.
 - **Backups take much less memory:** each rule backup is kept as one compact block of text and read only when you load it or show its
   text. Backups from earlier versions are converted once, at the first login, with nothing lost. **Older XayaUI versions cannot read
   the new backups.**
 - **The debug tools are their own addon, XayaUI Debug:** the console window, `/xui bug`, `/xui report`, `/xui status`, `/xui auras`,
   `/xuiengine`, and `/xui debug status`, `perf` and `auras`. The game reads it only while Settings > Debugging > **Advanced
   Debugging** is on, once per login or /reload; with it off, each of those commands answers with one chat line saying what it needs.
-- **Advanced Debugging is off by default.** If it was on, it stays on, and every login and /reload prints one chat line: "Advanced
-  debugging is on. To turn this off, open /xui > Settings > Debugging."
+- **Advanced Debugging is off by default.** If it was on, it stays on, and every login and /reload prints one chat line:
+  "XayaUI: Advanced Debugging is on. Turn it off in /xui > Settings > Debugging."
+- **Performance tracker (XayaUI Debug):** `/xui debug perf on` starts it, `/xui debug perf` shows the report, `/xui debug perf off`
+  stops it (it stops by itself after 10 minutes). It counts the combat engine's re-checks for each kind, shows the game's CPU meter
+  and the memory of each XayaUI addon, and gives the most re-checks in one second as a range when it cannot pin it down, for example
+  "most in 1 s 10 to 14 (limit 10/s: possibly over)". A re-check running steadily at exactly 10 a second can read "possibly over".
+  `/xui debug perf ui` is removed.
 - **The rule editor is part of XayaUI Options,** so its code is read only when the settings window first opens. Combat Tracking
   Setup, the talent scan, the editor's spell and texture lists and the displays' right-click menu moved with it and work as before.
+- **Talent status at once:** `/xui debug talents status` and `/xui debug talents <name>` answer at once, in combat too, with the
+  settings window closed. Only the scan waits until combat ends.
 - **The mover works only while the settings window is open.** `/xui unlock` opens the window with the mover on; closing the window
-  closes the mover. Moves you have not saved are kept, and the mover opens again with them the next time you open the window.
+  closes the mover. Moves you have not saved are kept. The next time you open the settings window, one question asks: **Save**,
+  **Discard** (everything goes back) or **Keep editing**. Nothing is asked at login. If combat closed the window, the mover opens again
+  by itself with your moves when combat ends.
 - **Combat Tracking Setup no longer opens over the game by itself.** The very first time you open the settings window, if no spec
   has a setup yet, it opens with it; after that, use **Open Combat Tracking Setup** on the Rules tab. It closes with the settings
   window, so its Learn step records your casts only while the settings window is open.
 - **No speed guard:** the combat engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the
   game's CPU meter reads high. It runs whenever any rule is on.
 - **Fewer re-checks in combat:** an aura or cooldown change fully re-checks only the rules whose answer changed, at most 10 times a
-  second in a busy fight. Talents are read again only when the game reports a change (the once-a-second talent check is gone). A
-  hidden cooldown end and a hidden aura time on a display's text are counted by the game itself. Two cases are still re-checked
-  every 0.2 seconds until Xaya decides: a Range Check row on your focus, mouseover or pet, and a hidden cooldown end the game gives no
-  timer for.
+  second for each kind of re-check. Moving, runes, totems and loss of control re-check only the rules that read them. Entering or
+  leaving combat, a boss pull or its end, mounting and joining or leaving a group re-check only the rules that change with it; in the
+  test stand-in the frame at combat start or a boss pull does a third to almost half less work than on main. Talents are read again only when the game reports a change. A hidden cooldown end and a hidden
+  aura time on a display's text are counted by the game itself. A Cooldown Manager alert re-checks only the rules that read that icon.
+- **The two 0.2-second cases run only while needed:** a Range Check row on your focus or pet only while you have that focus or pet,
+  on your mouseover only while you hover a unit, and a hidden cooldown end the game gives no timer for only while it runs.
+- **Displays redraw only while something changes:** fades, flashes, the cooldown sweep, bar fills and the tenths countdown redraw at
+  most 30 times a second on each display, and stop when nothing on it changes. The tenths countdown always shows the tenth not yet
+  gone below.
+- **Borders on each display:** a group's border and background are drawn on each display, every group, also on displays the combat
+  engine draws (0 px padding when none was saved). A deleted group's border no longer stays on screen until a /reload.
+- **Game-played sound follows the load conditions:** including Mythic+, a change of group, and "Only when mounted" / "Only when not
+  mounted" (a dismount straight into a pull too). Rules that load only in combat or only in a boss encounter now get the game's copy
+  too (before: none). The game can't be told about combat or an encounter ahead of time, so their sound can also play outside combat
+  or outside the encounter.
+- **Commands:** `/xui notes`, `notepad`, `note` and `data` show the command list instead of a false "did not respond" line.
 - **`/xui debug mouse` (the right-click tracker) is no longer in this download;** it is kept for when the developer tools are
   rebuilt. Your `/run` tracker lines still work.
 - **Recycle Bin:** its page no longer says items are checked every 30 minutes; they are checked when you log in or out and when the

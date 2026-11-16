@@ -39,7 +39,27 @@ R = {}   -- (global: a run that stops on a Lua error still reports the checks ma
 local function check(name, ok, extra) R[#R + 1] = { name .. (ok and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
 local ns = rawget(_G, "XayaUI_NS")
 local function plain(l) return (tostring(l):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
-local function run(s) return ns.CaptureOutput(function() SlashCmdList.XAYAUI(s) end) end
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": ns.CaptureOutput is gone) what a command shows the
+-- player, read from the stand-in game: the lines printed in chat (W.printed) and the lines drawn in the console window, each without the
+-- "XayaUI: " name in front, in that order (one command prints in one of the two). With the debug tools loaded the console window is opened
+-- first, so each line is drawn as it comes (a window opening in the middle of a command first draws the older lines it missed). A Lua
+-- error in the command ends the list as "(error: ...)".
+local SHOWN_NAME = "|cff33ccffXayaUI|r: "
+local function unname(l) l = tostring(l); if l:sub(1, #SHOWN_NAME) == SHOWN_NAME then return l:sub(#SHOWN_NAME + 1) end; return l end
+local function consoleLines() local cw = rawget(_G, "XayaUIConsoleWindow"); return cw and cw.log and cw.log._lines end
+local function shown(fn, ...)
+  if ns.DebugToolsLoaded and ns.DebugToolsLoaded() and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+  local c0, log0 = #W.printed, consoleLines()
+  local n0 = log0 and #log0 or 0
+  local ok, err = pcall(fn, ...)
+  local out = {}
+  for i = c0 + 1, #W.printed do out[#out + 1] = unname(W.printed[i]) end
+  local log = consoleLines()
+  if log then for i = (log == log0 and n0 or 0) + 1, #log do out[#out + 1] = unname(log[i]) end end
+  if not ok then out[#out + 1] = "(error: " .. tostring(err) .. ")" end
+  return out
+end
+local function run(s) return shown(SlashCmdList.XAYAUI, s) end
 local function joined(t) local o = {}; for i, l in ipairs(t) do o[i] = plain(l) end; return table.concat(o, "\n") end
 -- what plain print() (not ns.Print) put out while fn ran
 local function printed(fn) local n = #W.printed; W.safecall(fn); local o = {}; for i = n + 1, #W.printed do o[#o + 1] = plain(W.printed[i]) end; return table.concat(o, "\n") end
@@ -102,8 +122,18 @@ for _, n in ipairs(MOVED) do
 end
 for _, n in ipairs(KEPT) do check("A kept for players: /xui debug " .. n .. " is listed", names[n] ~= nil, names[n]) end
 check("A without Dev Assist: perf ui is not listed", not joined(run("debug")):find("perf ui", 1, true))
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)"; intended change, was "A without Dev Assist: /xui
+-- debug perf ui does not exist": 'there is no debug command "perf ui".') core no longer hands "perf ui" to XayaUI Dev Assist: the word
+-- reaches the engine meter (XayaUI_Debug/RulesPerf.lua), whose own answer is shown, and core asks no other addon's command for it
+local askedDevAssist = false
+local rawRunDebug = ns.RunDebugCommand
+ns.RunDebugCommand = function(name, ...) if name == "perf" then askedDevAssist = true end; return rawRunDebug(name, ...) end
 local pui = run("debug perf ui")
-check("A without Dev Assist: /xui debug perf ui does not exist", pui[1] == 'there is no debug command "perf ui".', pui[1])
+ns.RunDebugCommand = rawRunDebug
+-- (the meter's line itself is RulesPerf.lua's: today "perf: not measuring. /xui debug perf on, play a while, then /xui debug perf.")
+check("A /xui debug perf ui: one line from the engine meter (perf: ...), no 'no debug command', no other addon asked (SD-83)",
+  #pui == 1 and pui[1]:sub(1, 6) == "perf: " and not askedDevAssist,
+  tostring(pui[1]) .. " / asked Dev Assist: " .. tostring(askedDevAssist))
 check("A /xui debug perf (engine meter) still runs", (function() local o = run("debug perf"); return o[1] ~= nil and not o[1]:find("no debug command", 1, true) end)())
 check("A /xui status and /xui auras shortcuts still run", run("status")[1] ~= nil and run("auras")[1] ~= nil)
 local gone = { "Probe", "IDProbe", "ProbeDebuffs", "ProbeLossOfControl", "TargetAuraByName", "ModelCommand", "TrackerCommand", "ProbeMods",
@@ -140,15 +170,15 @@ local s1 = printed(function() SlashCmdList.XUISKIN("") end)
 check("B /xuiskin alone still switches the skin (players keep it)", ui.skinOff ~= off0 and s1:find("window skin", 1, true) ~= nil, s1)
 W.safecall(SlashCmdList.XUISKIN, "")
 local db = ns.Settings("core").engineDisplay
-local e1 = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("auto off") end))
+local e1 = joined(shown(SlashCmdList.XUIENGINE, "auto off"))
 check("B /xuiengine auto off without Dev Assist: the engine stays on (round 5, SD-47: no saved switch at all)", db.auto == nil and e1:find("combat engine: on", 1, true) ~= nil, e1:sub(1, 200))
 -- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and refresh: "Remove entirely") /xuiengine only shows the status
 check("B /xuiengine help offers no command: it says it changes nothing (V26: full and refresh removed)", e1:find("it changes nothing", 1, true) ~= nil
   and not e1:find("/xuiengine full", 1, true) and not e1:find("/xuiengine refresh", 1, true)
   and not e1:find("/xuiengine auto", 1, true) and not e1:find("reset <group>", 1, true), e1)
 -- (round 6, SD-52: the speed guard and its lean mode are removed; this check used lean mode as the state that must survive)
-local ef = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("full") end))
-local er = joined(ns.CaptureOutput(function() SlashCmdList.XUIENGINE("refresh") end))
+local ef = joined(shown(SlashCmdList.XUIENGINE, "full"))
+local er = joined(shown(SlashCmdList.XUIENGINE, "refresh"))
 check("B /xuiengine full and refresh are gone (V26): only the status is shown", ef:find("combat engine: on", 1, true) ~= nil
   and er:find("combat engine: on", 1, true) ~= nil and ef:find("it changes nothing", 1, true) ~= nil, ef:sub(1, 120))
 
@@ -227,7 +257,7 @@ local D = ns.AuraDisplay
 for _ = 1, 3 do W.enterCombat(); W.tick(0.1, 2); W.leaveCombat(); W.tick(0.1, 2) end
 check("E no speed guard (SD-52): heavy readings at three fight ends record no XUI-W003 / XUI-W004, and the engine has no guard",
   entry("XUI-W003") == nil and entry("XUI-W004") == nil and D.GuardCheck == nil and D._guard == nil, #CueRulesDB.errorLog)
-local guardMsg = joined(ns.CaptureOutput(D.Status))
+local guardMsg = joined(shown(D.Status))
 check("E /xuiengine names no guard and offers no /xuiengine auto on", not guardMsg:find("/xuiengine auto on", 1, true) and not guardMsg:find("guard", 1, true), guardMsg)
 C_AddOnProfiler.GetAddOnMetric = realMetric
 W.fire("ADDON_ACTION_BLOCKED", "XayaUI_QoL", "UpdateUIPanelPositions()")

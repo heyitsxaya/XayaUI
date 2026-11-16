@@ -276,8 +276,9 @@ section("Q10b", function()
   ns.MoverSelect("display", A); ns.MoverNudge(7, 0); W.tick(0.05, 2)
   W.enterCombat(); W.tick(0.05, 2)
   W.leaveCombat(); W.tick(0.1, 6)
-  R[#R + 1] = { "Q10b SD-15 with the combat flag set only after the event: the mover reopens with the move after combat, nothing asks"
-    .. "  [" .. state() .. "]", windowOpen() and ns.unlocked == true and A.visual.x == -53 and not asking(), "hook" }
+  -- (round 9: the Options.lua hook is in, so this counts like every other check; it was shown as SKIP until then)
+  check("Q10b SD-15 with the combat flag set only after the event: the mover reopens with the move after combat, nothing asks",
+    windowOpen() and ns.unlocked == true and A.visual.x == -53 and not asking(), state())
   cleanUp()
 end)
 
@@ -359,31 +360,17 @@ def session(mode, saved_src):
     return out, src
 
 
-def options_hook_present():
-    # the window's combat-start close tells the mover (XayaUI_Options/Options.lua Tree.CombatStart): needs_other of round 8's mover unit
-    src = open(os.path.join(os.path.dirname(HERE), "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
-    body = src.split("function Tree.CombatStart()", 1)[1].split("\nend", 1)[0] if "function Tree.CombatStart()" in src else ""
-    return "MoverWindowClosingForCombat" in body
-
-
 def main():
     results, src = session("play", None)
     if src:
         again, _ = session("reload", src)
         results += again
-    hook = options_hook_present()
-    bad, skipped, counted = 0, 0, 0
-    for name, good, tag in results:
-        if tag == "hook" and not hook:
-            # shown, not counted: it needs the Options.lua line this unit may not add (reported as needs_other)
-            print("SKIP " + name + "  (result now: %s; counts once Options.lua Tree.CombatStart calls ns.MoverWindowClosingForCombat)"
-                  % ("pass" if good else "fail"))
-            skipped += 1
-            continue
+    bad, counted = 0, 0
+    for name, good, _tag in results:
         counted += 1
         print(("PASS " if good else "FAIL ") + name)
         bad += 0 if good else 1
-    print("%d checks, %d failed%s" % (counted, bad, (", %d skipped (needs the Options.lua hook)" % skipped) if skipped else ""))
+    print("%d checks, %d failed" % (counted, bad))
     sys.exit(1 if bad else 0)
 
 

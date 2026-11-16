@@ -13,6 +13,8 @@ combat, in each of three fights, after each fight, after 30 seconds idle) the ga
         changed a key binding (SetBinding* / SetOverrideBinding*);
   NOTE  SetPropagateKeyboardInput(true) after the close (it hands keys back to the game) is listed, not failed.
 Each violation: the line that turned the keyboard on (or made the frame), which checkpoints, in or out of combat.
+(round 9; SD-64: she keeps Advanced Debugging on; round 8 review) every check runs on both variants of the scenario, Advanced
+Debugging off and on (XayaUI_Debug loaded); findings of the second are marked "[Advanced Debugging on]".
 Run: python3 tests/gate_keyboard_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,9 +23,8 @@ import gate_common as GC  # noqa: E402
 GATE = "gate_keyboard"
 
 
-def main():
-    data, secs, cached = GC.result()
-    rep = GC.Report(GATE)
+def judge(data, rep):
+    """Every check of this gate on one variant's result (round 9: both variants, see main)."""
     GC.integrity(data, rep)
     cps = data.get("checkpoints") or []
     n_in = sum(1 for cp in cps if cp.get("combat"))
@@ -88,7 +89,11 @@ def main():
         rep.fail(line, "after the settings window closed, XayaUI code called " + call[len(line) + 1:],
                  "%d call(s)" % n,
                  "no keyboard work once the window is closed (V27, V28); in combat SetPropagateKeyboardInput is blocked (widgets.md 295, HasRestrictions)")
-    return rep.show(data, secs, cached)
+
+
+def main():
+    # (round 9; SD-64 she keeps Advanced Debugging on; round 8 review: only the default variant was judged) both variants
+    return GC.both_variants(GATE, judge)
 
 
 if __name__ == "__main__":

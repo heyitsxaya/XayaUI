@@ -85,7 +85,7 @@ Older rules that point at things now on qa-installer-branch: V10's `tools/preche
   or write is a failure, not a warning. A commit that deletes a large block lists what it removed in the commit message.
 - **V10 `python3 tools/precheck.py`** passes. It checks:
   - debug-log names and "Logged" times are not in the future;
-  - `MANIFEST.md5` matches the files git tracks (rebuild it AFTER `git add`);
+  - `MANIFEST.md5` matches the files git tracks (rebuild it AFTER `git add`). This check applies on qa-installer-branch only: main has no `MANIFEST.md5` and no `tools/precheck.py` (SD-72, her answer "Remove from main, keep on QA (Recommended)"; SD-8);
   - no untracked files in addon folders or at the repo root;
   - an addon whose code changed has a new `## Version` in its `.toc`;
   - QA-CHECKLIST step IDs are unique;

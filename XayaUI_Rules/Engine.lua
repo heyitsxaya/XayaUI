@@ -27,7 +27,9 @@ local perf = { on = false }   -- /xui debug perf timing points (ns.EnginePerfSet
 --     resource, range or cast re-check, a re-check of every live rule (movement, a target change, a glow) and a load-fact change can
 --     each be up to a tenth of a second late. The stored-moment wakes are not held to it (NEEDS_HER_DECISION, round 8 report; the
 --     driver below); the TICK re-checks of SD-68 run within them, at most 5 a second;
---   * a load fact changing (combat, group, zone, mount, spec, talents ...) re-checks every rule once, on the next frame;
+--   * a load fact changing (combat, group, zone, mount, spec, talents ...) re-checks, on the next frame, only the rules it concerns
+--     (round 9, SD-77, her answer "Route + narrow (Recommended)": the narrowed re-check, NW below; before, every rule); a settings
+--     change, a new rule list and a loading screen still re-check every rule once;
 --   * time-based changes are waited for with one one-shot timer set to the stored moment they happen: the next whole second of a
 --     countdown a display shows, the end of a cooldown, a "cast within N seconds" window, a repeat sound, a "seconds left" threshold
 --     (Timing.lua deadlines);
@@ -61,8 +63,6 @@ local lastRoutedAt, lastStateAt = -1, -1   -- GetTime() of the last routed / eve
 local lastSettleAt = -1    -- (round 8) the same for the full settle
 local ES = ns.EngineStats or { routed = 0, all = 0, settle = 0, pollRange = 0, pollCd = 0, wake = 0, alert = 0, redrawText = 0, redrawFill = 0 }
 ns.EngineStats = ES   -- (round 8, the engine stats contract: made by Conditions.lua, counted here; whole numbers raised in place)
-local inCombat = false   -- kept by the combat events (was asked of the game on every rendered frame)
-local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat (only while someone reads them: ns.LogWanted)
 local barsDirty = true   -- action bar spell set is rebuilt only when a bar event fires or rules change
 local issecret = issecretvalue or function() return false end
 
@@ -243,18 +243,26 @@ end
 --   power  class resources, runes (UNIT_POWER_UPDATE, UNIT_MAXPOWER, UNIT_DISPLAYPOWER, RUNE_POWER_UPDATE)
 --   range  spell range to the target (SPELL_RANGE_CHECK_UPDATE, with C_Spell.EnableSpellRangeCheck for its spell)
 --   cast   "cast within N seconds" (UNIT_SPELLCAST_SUCCEEDED; the window's end is a stored time)
---   other  anything else: the events other files report through ns.MarkStateDirty (casts, movement, target, glows, equipment ...),
---          which re-check every loaded rule, as every event did before
--- A rule that reads only load facts is re-checked when a load fact changes.
+--   (round 9, SD-77, her answer "Route + narrow (Recommended)": these three each re-checked every live rule before)
+--   move   "Player State: Moving" (PLAYER_STARTED_MOVING / PLAYER_STOPPED_MOVING, Triggers.lua; the Range Check rows too)
+--   totem  Totem / Guardian Slot (PLAYER_TOTEM_UPDATE)     loc    "Loss of control on you", the loss-of-control Player State checks
+--          (LOSS_OF_CONTROL_ADDED / _UPDATE; the cooldown checks too, for a lockout)
+--          (RUNE_POWER_UPDATE goes to "power", which holds the rune rows)
+--   other  anything else: the events other files report through ns.MarkStateDirty (target, glows, equipment, death, a pet ...),
+--          which re-check every loaded rule, as every event did before. A row type this table does not know is re-checked by every
+--          routed event as well (unproven: the fallback, ns.MarkStateDirty)
+-- A rule that reads only load facts is re-checked when a load fact it reads changes (round 9: the narrowed re-check, NW below).
+local Deps   -- (round 9: its tables live in a block of their own, so they do not count against the file's 200 local names)
+do
 local depCache, depVer, depList = setmetatable({}, { __mode = "k" }), nil, nil
 local ROW_READS = {
     cooldown = "cd", actionUsable = "cd", globalCooldown = "cd", itemUsable = "cd",
     buffAura = "aura", targetDebuff = "tgt", resource = "power", dkRunes = "power", rangeCheck = "range", castSucceeded = "cast",
     spellKnown = "other", talentKnown = "other", spellGlow = "other", itemCount = "other", itemEquipped = "other", setPieces = "other",
-    stanceForm = "other", totem = "other", playerState = "other", lossOfControl = "other", weaponEnchant = "other",
+    stanceForm = "other", totem = "totem", playerState = "other", lossOfControl = "loc", weaponEnchant = "other",
 }
 local GCD_SPELL = 61304   -- the global cooldown (Triggers.lua "Global Cooldown" reads the same spell)
-local function Deps(rule)
+Deps = function(rule)
     if depVer ~= ns.configVersion or depList ~= ns.rules then
         depVer, depList = ns.configVersion, ns.rules
         for k in pairs(depCache) do depCache[k] = nil end
@@ -272,11 +280,14 @@ local function Deps(rule)
     for _, t in ipairs(list or {}) do
         if type(t) == "table" then
             local k = ROW_READS[t.type]
+            -- (round 9) a Player State row by its Check: Moving and the loss-of-control checks are routed (Triggers.lua ns.STATE_ROUTE)
+            if t.type == "playerState" then k = (ns.STATE_ROUTE and ns.STATE_ROUTE[t.what]) or "other" end
             -- (round 7, SD-60) a row type this table does not route. ns.CheckTrigger answers a type Triggers.lua does not know with the same
             -- "unknown trigger type" every time, so nothing about it changes with time: it is re-checked with the state events, like the
             -- other "other" rows (before: also every 0.2 s while loaded). Every type Triggers.lua knows has an entry here
-            -- (tests/fix_r7_engine_timers_run.py fails when one is missing).
-            if k == nil then d.other = true
+            -- (tests/fix_r7_engine_timers_run.py fails when one is missing). (round 9) It is also re-checked by every routed event of
+            -- the movement / totem / rune / loss-of-control kinds (unproven: nothing proves it does not read them)
+            if k == nil then d.other, d.unproven = true, true
             elseif k == "cd" then
                 d.cd = true
                 local id = tonumber(t.spellID) or 0
@@ -329,10 +340,14 @@ local function Deps(rule)
         if type(v.count) == "table" and v.count.enabled and ns.Val(v.count.source) == "charges" then d.cdText = true end
         if type(v.absorb) == "table" and v.absorb.enabled then d.auraText = true end
     end
-    d.loadOnly = not (d.cd or d.aura or d.tgt or d.power or d.range or d.cast or d.other) or nil   -- reads load facts only
-    d.auraOnly = d.aura and not (d.cd or d.tgt or d.power or d.range or d.cast or d.other) or nil
+    -- (round 9) a Range Check row's answer moves with you: it is re-checked on the movement events too
+    if d.range then d.move = true end
+    local rows = d.power or d.range or d.cast or d.other or d.move or d.totem or d.loc
+    d.loadOnly = not (d.cd or d.aura or d.tgt or rows) or nil   -- reads load facts only
+    d.auraOnly = d.aura and not (d.cd or d.tgt or rows) or nil
     depCache[rule] = d
     return d
+end
 end
 ns.EngineDeps = Deps   -- (tests)
 
@@ -340,7 +355,9 @@ ns.EngineDeps = Deps   -- (tests)
 -- change, a load fact changing); between those passes nothing about which rules are loaded can change, so an event touches only these.
 -- A rule is live when it is switched on and loaded (load conditions and talents hold), or previewed; a rule that is not loaded but whose
 -- display follows the buff anyway (ns.NeedsPresence) is live for aura events only. Nothing is live while /xui disable holds.
-local KINDS = { "all", "cd", "aura", "tgt", "power", "range", "cast" }
+-- (round 9) move / totem / loc: the routed state events (above); other: the live rules with a row only the state events re-check;
+-- unproven: the live rules with a row type the routing does not know (every routed event re-checks every live rule while one is live)
+local KINDS = { "all", "cd", "aura", "tgt", "power", "range", "cast", "move", "totem", "loc", "other", "unproven" }
 local live = {}
 for _, k in ipairs(KINDS) do live[k] = {} end
 local liveCount = {}
@@ -360,16 +377,26 @@ local function NotLoaded(rule)
     local info = rt and rt.info
     return info and info.skipped == true or false
 end
-local function AddLive(rule, off, pv)
-    if ns.RulesDisabled then return false end
-    if off and not pv then return false end
-    local d = Deps(rule)
+-- (round 9) how a rule is live: 0 not, 1 for aura events only (not loaded, its display follows the buff), 2 live. Kept on its runtime
+-- record (rt.liveKey) by AddLive, so a narrowed re-check (NW below) can tell whether a rule it re-checked changed how it is live.
+local function LiveKey(rule, off, pv)
+    if ns.RulesDisabled or (off and not pv) then return 0 end
     if not pv and NotLoaded(rule) then
         -- (review R18) not loaded: false again until a load fact changes; kept for aura events only when its display follows the buff
         local p = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule) or rule
-        if ns.NeedsPresence and ns.NeedsPresence(p) then Push("aura", rule) end
+        return (ns.NeedsPresence and ns.NeedsPresence(p)) and 1 or 0
+    end
+    return 2
+end
+local function AddLive(rule, off, pv)
+    local key = LiveKey(rule, off, pv)
+    local rt = ns.runtime[rule]
+    if rt then rt.liveKey = key end
+    if key < 2 then
+        if key == 1 then Push("aura", rule) end
         return false
     end
+    local d = Deps(rule)
     Push("all", rule)
     if d.cd then Push("cd", rule) end
     if d.aura then Push("aura", rule) end
@@ -377,6 +404,11 @@ local function AddLive(rule, off, pv)
     if d.power then Push("power", rule) end
     if d.range then Push("range", rule) end
     if d.cast then Push("cast", rule) end
+    if d.move then Push("move", rule) end
+    if d.totem then Push("totem", rule) end
+    if d.loc then Push("loc", rule) end
+    if d.other then Push("other", rule) end
+    if d.unproven then Push("unproven", rule) end
     if d.bar then liveBars = true end
     return true
 end
@@ -877,7 +909,7 @@ end
 -- gone. Now a reader is checked again whenever the answer it last saw is not the check's current one, whoever read the change first.
 local function NewCheck(kind, root, unit)
     return { kind = kind, root = root, unit = unit, readers = {}, seen = {}, ver = 0, fp = {}, valid = false, tick = -1, direct = false,
-        bserial = -1, pending = false, present = nil, iid = nil, row = nil, reader = nil }
+        bserial = -1, pending = false, present = nil, iid = nil, row = nil, reader = nil, prevR = {}, prevS = {} }
 end
 local function IndexCheck(idx, id, pr)
     id = tonumber(id)
@@ -920,8 +952,21 @@ local AURA_KIND = { buff = true, arow = true, trow = true }   -- (the other kind
 local function CachedCheck(cc, root, key, kind, unit)
     local pr = cc[key]
     if not pr or pr.kind ~= kind or pr.unit ~= unit then pr = NewCheck(kind, root, unit); cc[key] = pr end
-    if pr.bserial ~= buildSerial then pr.bserial = buildSerial; Clear(pr.readers); Clear(pr.seen) end
+    if pr.bserial ~= buildSerial then
+        -- (round 9) the readers and the answer each last saw are kept aside (the two lists swap, no table made): a reader found again by
+        -- this build keeps what it saw (Reader), so a narrowed re-check (NW below), which re-checks only some rules, leaves every other
+        -- reader on the answer it really last saw
+        pr.bserial = buildSerial
+        pr.readers, pr.prevR = pr.prevR, pr.readers
+        pr.seen, pr.prevS = pr.prevS, pr.seen
+        Clear(pr.readers); Clear(pr.seen)
+    end
     return pr
+end
+local function PrevSeen(pr, rule)
+    local l = pr.prevR
+    for i = 1, #l do if l[i] == rule then return pr.prevS[i] or -1 end end
+    return -1
 end
 local function Root(rule)
     if rule.parentUid and ns.FindParentRule then return ns.FindParentRule(rule) or rule end
@@ -1009,7 +1054,7 @@ local function Reader(rule, root, c, aura)
             n = n + 1
             if pr.unit == "player" then own = true end
             local slot = SlotOf(pr.readers, rule)
-            if pr.seen[slot] == nil then pr.seen[slot] = -1 end
+            if pr.seen[slot] == nil then pr.seen[slot] = PrevSeen(pr, rule) end
             local have = false
             for j = 1, #mine, 2 do if mine[j] == pr then have = true; break end end
             if not have then mine[#mine + 1] = pr; mine[#mine + 1] = slot end
@@ -1290,6 +1335,107 @@ local function StepLive(l, ctx, now)
         end
     end
 end
+-------------------------------------------------------------------------------
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") the narrowed re-check. Before, any load fact changing (combat starting or
+-- ending, a boss pull, mounting, joining a group ...) re-checked every rule: at every pull one full re-check of about 300 rules was the
+-- costliest frame of a fight (the V27 gate: 740,400 instructions against its cap of 538,500). Now a load fact changing re-checks, in one
+-- pass and in the rule list's order (the order of the full re-check, so sounds play in the same order), only:
+--   * the rules whose load can read a value that changed (Conditions.lua ns.LoadReads: their own Load tab, a cue's or condition's
+--     parent's, every group they sit in; "talents" for a talent requirement): NW.by, indexed by value at each full step;
+--   * (restrictions) combat, a boss encounter, a Mythic+ run, and the instance also change what the game lets addons read (its
+--     restrictions: Enum.AddOnRestrictionType Combat, Encounter, ChallengeMode, Map, enums.md:497; INFERENCE that an instance change is a
+--     Map one): every aura and cooldown check is read once, and only the rules whose check answers differently are re-checked (a
+--     Target Debuff row's "absent" is unknown in combat, Triggers.lua; an aura or cooldown the game hides now answers otherwise), with
+--     every live rule that reads something outside the checks (resources, range, movement, totems, loss of control, the state rows);
+--   * combat also changes what is drawn: a display with an out-of-combat opacity below 1 (Visual.lua, v.oocAlpha): NW.ooc;
+--   * talents and the spec change which spell an ID stands for, the cooldowns read and what is on your bars: every live rule;
+--   * whatever else waited for this frame (an every-live-rule re-check, routed changes) joins the same pass, as it joined the full one.
+-- Then the live lists are made again from the answers the rules now have (one pass over the rule list, no rule checked); the aura and
+-- cooldown checks are built again only if the live lists changed, and every reader keeps the answer it last saw (CachedCheck).
+-- A settings change, a new rule list, entering the world (a loading screen) and /xui enable still re-check every rule.
+-------------------------------------------------------------------------------
+local NW = { by = {}, ooc = {}, list = {}, lists = {}, ver = false, serial = 0, on = false, stepped = 0,
+    ALL_LIVE = { talents = true, specID = true, role = true, hero = true, class = true },
+    RESTRICT = { combat = true, encounter = true, mythicPlus = true, encounterID = true, instance = true, instanceType = true,
+        instanceID = true, difficultyID = true } }
+NW.lists[1] = NW.list
+ns.EngineNarrow = NW   -- (tests and the V27 gate read NW.stepped, NW.by)
+do
+local by, ooc, list = NW.by, NW.ooc, NW.list
+-- (a full step) the index starts over; NW.Index for each switched-on rule; NW.Done
+function NW.Begin()
+    for _, l in pairs(by) do Clear(l) end
+    Clear(ooc)
+    NW.ver = false
+end
+function NW.Index(rule)
+    local reads = ns.LoadReads(rule)
+    for i = 1, #reads do
+        local k = reads[i]
+        local l = by[k]
+        if not l then l = {}; by[k] = l end
+        l[#l + 1] = rule
+    end
+    local v = rule.visual
+    if type(v) == "table" and v.enabled and (tonumber(v.oocAlpha) or 1) < 1 then ooc[#ooc + 1] = rule end
+end
+function NW.Done() NW.ver = ns.configVersion end
+-- mark the rules of a list for this narrowed pass (a mark on the rule's runtime record: no table per pass)
+function NW.Mark(l, m) for i = 1, #l do RT(l[i]).nwMark = m end end
+-- (inside the step, after the marked aura / cooldown checks were read) the marked rules and the rules whose check answered differently,
+-- each once, in the rule list's order; then the live lists again
+function NW.Run(ctx, now, pn)
+    local m = NW.serial
+    for i = 1, pn do RT(probeDue[i]).nwMark = m end
+    local rules, rts = ns.rules, ns.runtime
+    local n = 0
+    for i = 1, #rules do
+        local r = rules[i]
+        local rt = rts[r]
+        if rt and rt.nwMark == m then n = n + 1; list[n] = r end
+    end
+    for i = n + 1, #list do list[i] = nil end
+    NW.stepped = n
+    StepLive(list, ctx, now)
+    -- only a rule re-checked here can have changed how it is live (whether it is live depends on its own and its parent's answers and
+    -- on the settings): when none did, the live lists stand (a re-checked rule that is not live waits for nothing: Unplan)
+    local moved = false
+    for i = 1, n do
+        local r = list[i]
+        local rt = rts[r]
+        local key = LiveKey(r, ns.RuleOff(r), (pvV and pvV[r]) or (pvS and pvS[r]) or false)
+        if key ~= ((rt and rt.liveKey) or 0) then moved = true; break end
+        if key < 2 then Unplan(r) end
+    end
+    if not moved then return end
+    ClearLive()
+    for i = 1, #rules do
+        local r = rules[i]
+        local pv = (pvV and pvV[r]) or (pvS and pvS[r]) or false
+        if not AddLive(r, ns.RuleOff(r), pv) then Unplan(r) end
+    end
+    if built.Same() then
+        for _, k in ipairs(KINDS) do liveCount[k] = #live[k] end
+        return
+    end
+    LiveChanged()
+    built.Note()
+    -- the checks were built again: the rules just re-checked note the answers they saw (every other reader kept its own: CachedCheck),
+    -- and a unit whose every check was read in this pass gets its memory of the watched auras' instance IDs back from those reads
+    local tick = ns.tickID
+    for i = 1, n do ProbesStale(list[i], tick) end
+    for _, u in ipairs(PROBE_UNITS) do
+        local U = probeUnits[u]
+        local all = #U.probes > 0
+        for j = 1, #U.probes do if U.probes[j].tick ~= tick then all = false; break end end
+        if all then
+            for j = 1, #U.probes do NoteMem(U, U.probes[j]) end
+            U.complete = CountLoose(U)
+        end
+    end
+end
+end
+
 local function Step()
     if not ns.rules then return end
     stepSerial = stepSerial + 1
@@ -1325,6 +1471,7 @@ local function Step()
         -- D7 (core 0.6.56): a switched-off rule (or a cue of one) is skipped once it has been cleaned up: no runtime record is made for a
         -- rule that was never on, and nothing of it runs per step, unless it is previewed
         listSerial = stepSerial
+        NW.Begin()
         for _, rule in ipairs(ns.rules) do
             inList[rule] = stepSerial
             local off = ns.RuleOff(rule)
@@ -1334,8 +1481,10 @@ local function Step()
             if AddLive(rule, off, pv) then Plan(rule, RT(rule), now, pv) else Unplan(rule) end
             -- the rules with a talent requirement, compared on a talent-tree event (TalentEventCheck below)
             if not off and ns.HasTalentRequirement and ns.HasTalentRequirement(rule) then talentN = talentN + 1; talentRules[talentN] = rule end
+            if not off then NW.Index(rule) end   -- (round 9: the load facts each rule reads, for the narrowed re-check)
         end
         for i = talentN + 1, #talentRules do talentRules[i] = nil end
+        NW.Done()
         if built.Same() then
             for _, k in ipairs(KINDS) do liveCount[k] = #live[k] end   -- (the same counts: the events watched stay as they are)
         else
@@ -1346,8 +1495,11 @@ local function Step()
     else
         -- the aura and cooldown checks the events marked: read once each, here, in this step; the rules whose check changed join the run
         local pn = stepProbe and RunProbes() or 0
-        for i = 1, #lists do StepLive(lists[i], ctx, now) end
-        if pn > 0 then StepLive(probeDue, ctx, now) end
+        if NW.on then NW.Run(ctx, now, pn)   -- (round 9: a narrowed re-check after a load fact changed, above)
+        else
+            for i = 1, #lists do StepLive(lists[i], ctx, now) end
+            if pn > 0 then StepLive(probeDue, ctx, now) end
+        end
     end
 end
 
@@ -1415,8 +1567,9 @@ end
 -- frame while nothing changes:
 --   pend.full  every rule, once (a settings change, login, /xui enable)                 -> the settle timer, next frame
 --   pend.ctx   a load fact may have changed: the context is read once and compared;      -> the same timer
---              only a real change re-checks every rule
---   pend.all   ns.MarkStateDirty (another file saw a change: movement, a glow ...)        -> every LIVE rule, next frame
+--              only a real change re-checks, and only the rules it concerns (round 9: NW)
+--   pend.all   ns.MarkStateDirty (another file saw a change: a target, a glow ...)        -> every LIVE rule, next frame
+--              (round 9: movement, a totem, a rune, a loss of control: pend.move / totem / power / loc, their rows only)
 --   pend.<k>   an input's own event: your auras, target / focus auras and cooldowns      -> the aura / cooldown checks it marked, read
 --              mark checks (above); resources, range and casts mark the live rules that     on the next frame, then only the rules whose
 --              read them                                                                    check changed
@@ -1431,8 +1584,9 @@ end
 -- path runs twice in a gap), takes itself off, and hands what still waits for the pace to the one-shot timers.
 -------------------------------------------------------------------------------
 local pend = { full = false, ctx = false, all = false, allAfterCtx = false, allAt = 0, settleAt = 0 }   -- (allAt / settleAt: the moment that timer is set for)
-local ROUTED = { "cd", "aura", "tgt", "power", "range", "cast", "icon" }
-local LISTED = { power = true, range = true, cast = true }   -- (cd, aura and tgt go through their checks; icon, a Cooldown Manager alert, too)
+local ROUTED = { "cd", "aura", "tgt", "power", "range", "cast", "icon", "move", "totem", "loc" }
+-- (cd, aura and tgt go through their checks; icon, a Cooldown Manager alert, too; round 9: move, totem and loc, the routed state events)
+local LISTED = { power = true, range = true, cast = true, move = true, totem = true, loc = true }
 for _, k in ipairs(ROUTED) do pend[k] = false end
 local f = CreateFrame("Frame")
 -- A failing step must never stop the engine or flood the error window: it is caught here, reported once per distinct
@@ -1601,6 +1755,8 @@ local function Settle(now)
             if pend.all or AnyRouted() then Kick() end
             return
         end
+        -- (round 9, SD-77) a load fact changed: only the rules it concerns (NW above); the full re-check when that cannot be worked out
+        if NW.Try(ctx, now) then return end
     end
     -- (round 8, RB-30 finding 5) every rule is checked now: the every-live-rule re-check the same events asked for is part of it. Before,
     -- a load event (ns.LoadEvent) ran it as well, in the same frame: every live rule twice.
@@ -1712,6 +1868,62 @@ Kick = function()
 end
 local function QueueSettle() Kick() end
 
+-- (round 9, SD-77) the settle found a load fact changed (ctx: the context just read): mark the rules it concerns (NW above), with what
+-- else waited for this frame, and run them in one pass. False (nothing done): the full re-check, as before. That is when the index of
+-- the load facts was not made for the settings and rule list in use, or no single value changed (it cannot be worked out).
+function NW.Try(ctx, now)
+    if not lastCtx or NW.ver == false or NW.ver ~= ns.configVersion or ListChanged() then return false end
+    local m = NW.serial + 1
+    local by, allLive, restrict, combat, any = NW.by, false, false, false, false
+    local facts = ns.CTX_FACTS or EMPTY
+    for i = 1, #facts do
+        local k = facts[i]
+        if ctx[k] ~= lastCtx[k] then
+            any = true
+            if by[k] then NW.Mark(by[k], m) end
+            if NW.ALL_LIVE[k] then allLive = true end
+            if NW.RESTRICT[k] then restrict = true end
+            if k == "combat" then combat = true end
+        end
+    end
+    if ns.talentEpoch ~= lastTalentEp then
+        any, allLive = true, true
+        if by.talents then NW.Mark(by.talents, m) end
+    end
+    if not any then return false end
+    NW.serial = m
+    if combat then NW.Mark(NW.ooc, m) end
+    if restrict then
+        NW.Mark(live.power, m); NW.Mark(live.range, m); NW.Mark(live.move, m); NW.Mark(live.totem, m); NW.Mark(live.loc, m)
+        NW.Mark(live.other, m)
+        for _, u in ipairs(PROBE_UNITS) do
+            local U = probeUnits[u]
+            if #U.probes > 0 or #U.loose > 0 or TextWaits(u) then U.whole = true end
+        end
+        if #cdChecks.probes > 0 or #cdChecks.loose > 0 then cdChecks.whole = true end
+    end
+    -- what else waited: an every-live-rule re-check (a talent or spec change brings it too) and the routed rows. The every-live-rule
+    -- re-check a load event asks for when its load fact did not change (pend.allAfterCtx) is not needed here: the gear rows it is for are
+    -- marked by the gear event itself (Triggers.lua, pend.all), and nothing but the load conditions reads the encounter
+    if allLive or pend.all then NW.Mark(live.all, m) end
+    for k in pairs(LISTED) do if pend[k] then NW.Mark(live[k], m) end end
+    if pend.cd then CdRefeed(now) end   -- (a running cooldown's new end, as on a routed pass)
+    -- the rules on the 0.2 s re-check (SD-68 cases A and B) join this pass and their next re-check is a TICK after it, as with the full
+    -- re-check (which re-checked them too): the re-check keeps its pace and its phase
+    if next(polled) ~= nil then
+        for rule in pairs(polled) do RT(rule).nwMark = m end
+        lastPollAt = now
+    end
+    pend.full, pend.ctx, pend.all, pend.allAfterCtx = false, false, false, false
+    for _, k in ipairs(ROUTED) do pend[k] = false end
+    ES.settle = ES.settle + 1
+    lastCtx, lastCtxSig, lastTalentEp = ctx, ctx.sig, ns.talentEpoch   -- (the re-checks from now on use this context)
+    NW.on = true
+    RunLists(NW.lists, true, true, AnyProbeWork())
+    NW.on = false
+    return true
+end
+
 -- (ns.configVersion: settings changed, so memos keyed on settings - load checks - start over)
 function ns.MarkDirty() barsDirty = true; ns.configVersion = (ns.configVersion or 0) + 1; ns.Fire("EDITED"); pend.full = true; QueueSettle() end
 -- game state changed: every loaded rule is re-checked on the next frame, keeping the minimum gap between them. (round 6) what = "cast"
@@ -1743,6 +1955,17 @@ function ns.MarkStateDirty(what, icon)
         if U.nonDirect > 0 or #U.loose > 0 then U.touched = true; pend.aura = true end
         if #cdChecks.probes > 0 or #cdChecks.loose > 0 then cdChecks.whole = true; pend.cd = true end
         if (liveCount.cast or 0) > 0 then pend.cast = true end
+    elseif what == "move" or what == "totem" or what == "loc" or what == "rune" then
+        -- (round 9, SD-77, her answer "Route + narrow (Recommended)") movement, a totem, a loss of control, a rune (Triggers.lua): only
+        -- the live rules with a row that reads it (Deps; a rune is a "power" row), on the next routed pass. A loss of control can also
+        -- lock a spell (the cooldown checks' lockout, rule.countLOC): every cooldown check is read. The fallback: while a live rule has a
+        -- row type the routing does not know, every live rule is re-checked, as before.
+        local k = (what == "rune") and "power" or what
+        local want = false
+        if (liveCount[k] or 0) > 0 then pend[k] = true; want = true end
+        if what == "loc" and (#cdChecks.probes > 0 or #cdChecks.loose > 0) then cdChecks.whole = true; pend.cd = true; want = true end
+        if (liveCount.unproven or 0) > 0 then pend.all = true; want = true end
+        if not want then return end   -- (no live rule reads it: nothing to do, no timer)
     else
         pend.all = true
     end
@@ -1768,88 +1991,8 @@ function ns.OnDBReady()
     pend.full = true; QueueSettle()
 end
 
--- (round 7, SD-60, her answer "1": events only, no talent timer) talents are read again only when the game says they may have changed. The
--- once-a-second talent re-read (review R3's safety net, a C_Timer.NewTicker out of combat) is gone. The events, all in
--- docs/reference/api/events.md:
---   * these say talents or the spec did change: the kept talent answers are dropped (ns.talentEpoch) and every rule is checked again on
---     the next frame (TALENT_EVENTS below);
---   * these fire while talents are picked in the talent window before they are saved, or for a single node: the switched-on rules with a
---     talent requirement compare each entry's known / not known with their kept answer (Conditions.lua ns.TalentCodesChanged: no table,
---     no string), and only a real difference re-checks the rules (TALENT_MAYBE below).
-local function TalentEventCheck()
-    if ns.RulesDisabled or not ns.TalentCodesChanged then return end
-    for i = 1, talentN do
-        if ns.TalentCodesChanged(talentRules[i]) then ns.talentEpoch = (ns.talentEpoch or 0) + 1; pend.ctx = true; QueueSettle(); return end
-    end
-end
-
--- auto-capture status into the ring-buffer log every SNAP_EVERY seconds of combat, since /xui debug status can't be typed mid-fight;
--- only while someone can read it (ns.LogWanted("snapshot"), Core.lua): otherwise no timer exists
-local snapTicker
-local function SnapTick() if inCombat and ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat tick") end end
-local function SnapStop() if snapTicker then snapTicker:Cancel(); snapTicker = nil end end
-
--- events: always registered (the load facts, the action bars, the state events the engine has always stepped on)
--- (round 7, SD-60) every way the reference names for talents or the spec to change (events.md): the spec (PLAYER_SPECIALIZATION_CHANGED
--- :1215, ACTIVE_PLAYER_SPECIALIZATION_CHANGED :30, ACTIVE_TALENT_GROUP_CHANGED :31), talents and loadouts saved or switched
--- (PLAYER_TALENT_UPDATE :1222, TRAIT_CONFIG_UPDATED :1536, TRAIT_CONFIG_LIST_UPDATED :1535, ACTIVE_COMBAT_CONFIG_CHANGED :27),
--- hero talents (TRAIT_SUB_TREE_CHANGED :1540), PvP talents (PLAYER_PVP_TALENT_UPDATE :1204, and WAR_MODE_STATUS_UPDATE :1770), a reset
--- or a spec change by the game (TALENTS_INVOLUNTARILY_RESET :1466, SPEC_INVOLUNTARILY_CHANGED :1426), the spellbook (SPELLS_CHANGED :1428, the spells the talent check reads with
--- IsPlayerSpell) and entering the world. (INFERENCE, not in the reference: War Mode, and a loading screen into an arena or battleground,
--- switch PvP talents on and off without a talent event of their own; both are listened to for that reason.)
-local TALENT_EVENTS = {
-    PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_TALENT_GROUP_CHANGED = true,
-    PLAYER_TALENT_UPDATE = true, TRAIT_CONFIG_UPDATED = true, TRAIT_CONFIG_LIST_UPDATED = true, ACTIVE_COMBAT_CONFIG_CHANGED = true,
-    TRAIT_SUB_TREE_CHANGED = true, PLAYER_PVP_TALENT_UPDATE = true, WAR_MODE_STATUS_UPDATE = true, TALENTS_INVOLUNTARILY_RESET = true,
-    SPELLS_CHANGED = true, PLAYER_ENTERING_WORLD = true, SPEC_INVOLUNTARILY_CHANGED = true,
-}
--- picked in the talent window but not saved yet, or one node or tree changed (TRAIT_NODE_CHANGED :1537, TRAIT_NODE_CHANGED_PARTIAL :1538,
--- TRAIT_NODE_ENTRY_UPDATED :1539, TRAIT_TREE_CHANGED :1543), a loadout made, deleted or picked in the list, or a save that failed
--- (TRAIT_CONFIG_CREATED :1533, TRAIT_CONFIG_DELETED :1534, SELECTED_LOADOUT_CHANGED :1359, CONFIG_COMMIT_FAILED :446), or a spell
--- learned (LEARNED_SPELL_IN_SKILL_LINE :897); (round 7 repair) a level gained (PLAYER_LEVEL_UP :1193, it carries numNewTalents), a
--- node's condition (TRAIT_COND_INFO_CHANGED :1532), the talent-point count (CHARACTER_POINTS_CHANGED :271), and a pick, a PvP pick, a
--- spec change or a starter build that failed (PLAYER_LEARN_TALENT_FAILED :1189, PLAYER_LEARN_PVP_TALENT_FAILED :1188,
--- SPECIALIZATION_CHANGE_CAST_FAILED :1425, STARTER_BUILD_ACTIVATION_FAILED :1447; INFERENCE: the talent window may show a pick before
--- it fails): compared, not re-checked (TalentEventCheck above). Each is rare and costs one compare of the talent rules' entries.
--- Considered and not listened to: glyphs (ACTIVATE_GLYPH :26, USE_GLYPH :1699, CANCEL_GLYPH_CAST :223: no talent entry reads a glyph;
--- a spell a glyph teaches comes with SPELLS_CHANGED, INFERENCE), the pet's spec (PET_SPECIALIZATION_CHANGED :1143: no load check reads
--- it), talent-tree currency and the trait NPC (TRAIT_TREE_CURRENCY_INFO_UPDATED :1544, TRAIT_SYSTEM_INTERACTION_STARTED :1541,
--- TRAIT_SYSTEM_NPC_CLOSED :1542: points and windows, not picks), and PLAYER_LEVEL_CHANGED :1192 (PLAYER_LEVEL_UP is listened to).
--- (round 8, the round 7 review's question) also considered and not listened to: CLASS_TALENTS_SWITCH_TO_LOADOUT_BY_INDEX / _BY_NAME and
--- CLASS_TALENTS_SWITCH_TO_SPECIALIZATION_BY_INDEX / _BY_NAME (:353-356, CallbackEvent: a request to the talent window to switch, made
--- before anything changed; the switch itself sends TRAIT_CONFIG_UPDATED / ACTIVE_COMBAT_CONFIG_CHANGED / PLAYER_SPECIALIZATION_CHANGED,
--- listened to above), CONFIRM_TALENT_WIPE (:454: the confirmation box before a reset; the reset sends TALENTS_INVOLUNTARILY_RESET /
--- PLAYER_TALENT_UPDATE), HONOR_LEVEL_UPDATE (:733) and PET_SPECIALIZATION_CHANGED (no talent entry reads them). Added in round 8 and
--- compared like the events above: PVP_MATCH_ACTIVE (:1243), PVP_MATCH_INACTIVE (:1245) and PLAYER_JOINED_PVP_MATCH (:1187): a PvP
--- match starting, ending or being joined may switch PvP talents on or off without a talent event of its own (INFERENCE, as for War Mode
--- and the loading screen into an arena; UNVERIFIED IN GAME). The closest talent change known to come with no event of its own: War Mode,
--- and a loading screen into an arena or battleground (INFERENCE; covered by WAR_MODE_STATUS_UPDATE and PLAYER_ENTERING_WORLD). Not covered:
--- a zone change with no loading screen does not make talents be read again (ZONE_CHANGED_* re-check the load facts, not the talents).
-local TALENT_MAYBE = { TRAIT_NODE_CHANGED = true, TRAIT_NODE_CHANGED_PARTIAL = true, TRAIT_NODE_ENTRY_UPDATED = true, TRAIT_TREE_CHANGED = true,
-    TRAIT_CONFIG_CREATED = true, TRAIT_CONFIG_DELETED = true, SELECTED_LOADOUT_CHANGED = true, CONFIG_COMMIT_FAILED = true,
-    LEARNED_SPELL_IN_SKILL_LINE = true, PLAYER_LEVEL_UP = true, TRAIT_COND_INFO_CHANGED = true, CHARACTER_POINTS_CHANGED = true,
-    PLAYER_LEARN_TALENT_FAILED = true, PLAYER_LEARN_PVP_TALENT_FAILED = true, SPECIALIZATION_CHANGE_CAST_FAILED = true,
-    STARTER_BUILD_ACTIVATION_FAILED = true, PVP_MATCH_ACTIVE = true, PVP_MATCH_INACTIVE = true, PLAYER_JOINED_PVP_MATCH = true }
-local CTX_EVENTS = {
-    PLAYER_ENTERING_WORLD = true, PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true, GROUP_ROSTER_UPDATE = true,
-    ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true, PLAYER_DIFFICULTY_CHANGED = true,
-    PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_EQUIPMENT_CHANGED = true,
-    CHALLENGE_MODE_START = true, CHALLENGE_MODE_COMPLETED = true, CHALLENGE_MODE_RESET = true, ENCOUNTER_START = true, ENCOUNTER_END = true,
-    UNIT_FLAGS = true,   -- (player: the combat flag; UnitAffectingCombat is a load fact)
-}
-for e in pairs(TALENT_EVENTS) do CTX_EVENTS[e] = true end
--- load facts another file keeps from the event itself (Conditions.lua ns.LoadEvent: the encounter, the equipment count), that the engine
--- itself changes here (talents), or that the game sets only after the event (PLAYER_REGEN_DISABLED comes just before combat lockdown,
--- INFERENCE from Blizzard's secure code; the stand-in game sets combat after the event too): read on the next frame, once every handler ran
-local CTX_LATER = { ENCOUNTER_START = true, ENCOUNTER_END = true, PLAYER_EQUIPMENT_CHANGED = true, PLAYER_ENTERING_WORLD = true,
-    PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true }
-for e in pairs(TALENT_EVENTS) do CTX_LATER[e] = true end
-local BAR_EVENTS = { ACTIONBAR_SLOT_CHANGED = true, UPDATE_BONUS_ACTIONBAR = true, ACTIONBAR_PAGE_CHANGED = true, UPDATE_SHAPESHIFT_FORM = true }
-for e in pairs(CTX_EVENTS) do if e ~= "UNIT_FLAGS" then f:RegisterEvent(e) end end
-for e in pairs(TALENT_MAYBE) do f:RegisterEvent(e) end
-f:RegisterUnitEvent("UNIT_FLAGS", "player")
-for e in pairs(BAR_EVENTS) do f:RegisterEvent(e) end
-f:RegisterEvent("PLAYER_TARGET_CHANGED"); f:RegisterEvent("PLAYER_FOCUS_CHANGED")   -- a new target / focus changes every target answer at once
+do   -- (round 9: a block, so the event handling below does not count against the file's 200 local names; Lua 5.1's limit)
+do   -- (round 9: the input events in a block of their own, so their names and the ones below are not counted together)
 -- events registered only while a live rule reads their input (Watch, from LiveChanged): kind -> { event, unit or false }
 local INPUT_EVENTS = {
     cd = { { "SPELL_UPDATE_COOLDOWN" }, { "SPELL_UPDATE_CHARGES" }, { "SPELL_UPDATE_USABLE" }, { "ACTIONBAR_UPDATE_COOLDOWN" },
@@ -2012,6 +2155,91 @@ tgtFrame:SetScript("OnEvent", function(_, event, unit, info)
     if perf.on then perf.events["UNIT_AURA (target / focus)"] = (perf.events["UNIT_AURA (target / focus)"] or 0) + 1 end
     if RouteAura(unit, info) then pend.tgt = true; Kick() end
 end)
+end
+-- (round 7, SD-60, her answer "1": events only, no talent timer) talents are read again only when the game says they may have changed. The
+-- once-a-second talent re-read (review R3's safety net, a C_Timer.NewTicker out of combat) is gone. The events, all in
+-- docs/reference/api/events.md:
+--   * these say talents or the spec did change: the kept talent answers are dropped (ns.talentEpoch) and every rule is checked again on
+--     the next frame (TALENT_EVENTS below);
+--   * these fire while talents are picked in the talent window before they are saved, or for a single node: the switched-on rules with a
+--     talent requirement compare each entry's known / not known with their kept answer (Conditions.lua ns.TalentCodesChanged: no table,
+--     no string), and only a real difference re-checks the rules (TALENT_MAYBE below).
+local inCombat = false   -- kept by the combat events (was asked of the game on every rendered frame)
+local SNAP_EVERY = 5   -- seconds between auto status snapshots while in combat (only while someone reads them: ns.LogWanted)
+local function TalentEventCheck()
+    if ns.RulesDisabled or not ns.TalentCodesChanged then return end
+    for i = 1, talentN do
+        if ns.TalentCodesChanged(talentRules[i]) then ns.talentEpoch = (ns.talentEpoch or 0) + 1; pend.ctx = true; QueueSettle(); return end
+    end
+end
+
+-- auto-capture status into the ring-buffer log every SNAP_EVERY seconds of combat, since /xui debug status can't be typed mid-fight;
+-- only while someone can read it (ns.LogWanted("snapshot"), Core.lua): otherwise no timer exists
+local snapTicker
+local function SnapTick() if inCombat and ns.LogStatusSnapshot and not ns.RulesDisabled then ns.LogStatusSnapshot("combat tick") end end
+local function SnapStop() if snapTicker then snapTicker:Cancel(); snapTicker = nil end end
+
+-- events: always registered (the load facts, the action bars, the state events the engine has always stepped on)
+-- (round 7, SD-60) every way the reference names for talents or the spec to change (events.md): the spec (PLAYER_SPECIALIZATION_CHANGED
+-- :1215, ACTIVE_PLAYER_SPECIALIZATION_CHANGED :30, ACTIVE_TALENT_GROUP_CHANGED :31), talents and loadouts saved or switched
+-- (PLAYER_TALENT_UPDATE :1222, TRAIT_CONFIG_UPDATED :1536, TRAIT_CONFIG_LIST_UPDATED :1535, ACTIVE_COMBAT_CONFIG_CHANGED :27),
+-- hero talents (TRAIT_SUB_TREE_CHANGED :1540), PvP talents (PLAYER_PVP_TALENT_UPDATE :1204, and WAR_MODE_STATUS_UPDATE :1770), a reset
+-- or a spec change by the game (TALENTS_INVOLUNTARILY_RESET :1466, SPEC_INVOLUNTARILY_CHANGED :1426), the spellbook (SPELLS_CHANGED :1428, the spells the talent check reads with
+-- IsPlayerSpell) and entering the world. (INFERENCE, not in the reference: War Mode, and a loading screen into an arena or battleground,
+-- switch PvP talents on and off without a talent event of their own; both are listened to for that reason.)
+local TALENT_EVENTS = {
+    PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_PLAYER_SPECIALIZATION_CHANGED = true, ACTIVE_TALENT_GROUP_CHANGED = true,
+    PLAYER_TALENT_UPDATE = true, TRAIT_CONFIG_UPDATED = true, TRAIT_CONFIG_LIST_UPDATED = true, ACTIVE_COMBAT_CONFIG_CHANGED = true,
+    TRAIT_SUB_TREE_CHANGED = true, PLAYER_PVP_TALENT_UPDATE = true, WAR_MODE_STATUS_UPDATE = true, TALENTS_INVOLUNTARILY_RESET = true,
+    SPELLS_CHANGED = true, PLAYER_ENTERING_WORLD = true, SPEC_INVOLUNTARILY_CHANGED = true,
+}
+-- picked in the talent window but not saved yet, or one node or tree changed (TRAIT_NODE_CHANGED :1537, TRAIT_NODE_CHANGED_PARTIAL :1538,
+-- TRAIT_NODE_ENTRY_UPDATED :1539, TRAIT_TREE_CHANGED :1543), a loadout made, deleted or picked in the list, or a save that failed
+-- (TRAIT_CONFIG_CREATED :1533, TRAIT_CONFIG_DELETED :1534, SELECTED_LOADOUT_CHANGED :1359, CONFIG_COMMIT_FAILED :446), or a spell
+-- learned (LEARNED_SPELL_IN_SKILL_LINE :897); (round 7 repair) a level gained (PLAYER_LEVEL_UP :1193, it carries numNewTalents), a
+-- node's condition (TRAIT_COND_INFO_CHANGED :1532), the talent-point count (CHARACTER_POINTS_CHANGED :271), and a pick, a PvP pick, a
+-- spec change or a starter build that failed (PLAYER_LEARN_TALENT_FAILED :1189, PLAYER_LEARN_PVP_TALENT_FAILED :1188,
+-- SPECIALIZATION_CHANGE_CAST_FAILED :1425, STARTER_BUILD_ACTIVATION_FAILED :1447; INFERENCE: the talent window may show a pick before
+-- it fails): compared, not re-checked (TalentEventCheck above). Each is rare and costs one compare of the talent rules' entries.
+-- Considered and not listened to: glyphs (ACTIVATE_GLYPH :26, USE_GLYPH :1699, CANCEL_GLYPH_CAST :223: no talent entry reads a glyph;
+-- a spell a glyph teaches comes with SPELLS_CHANGED, INFERENCE), the pet's spec (PET_SPECIALIZATION_CHANGED :1143: no load check reads
+-- it), talent-tree currency and the trait NPC (TRAIT_TREE_CURRENCY_INFO_UPDATED :1544, TRAIT_SYSTEM_INTERACTION_STARTED :1541,
+-- TRAIT_SYSTEM_NPC_CLOSED :1542: points and windows, not picks), and PLAYER_LEVEL_CHANGED :1192 (PLAYER_LEVEL_UP is listened to).
+-- (round 8, the round 7 review's question) also considered and not listened to: CLASS_TALENTS_SWITCH_TO_LOADOUT_BY_INDEX / _BY_NAME and
+-- CLASS_TALENTS_SWITCH_TO_SPECIALIZATION_BY_INDEX / _BY_NAME (:353-356, CallbackEvent: a request to the talent window to switch, made
+-- before anything changed; the switch itself sends TRAIT_CONFIG_UPDATED / ACTIVE_COMBAT_CONFIG_CHANGED / PLAYER_SPECIALIZATION_CHANGED,
+-- listened to above), CONFIRM_TALENT_WIPE (:454: the confirmation box before a reset; the reset sends TALENTS_INVOLUNTARILY_RESET /
+-- PLAYER_TALENT_UPDATE), HONOR_LEVEL_UPDATE (:733) and PET_SPECIALIZATION_CHANGED (no talent entry reads them). Added in round 8 and
+-- compared like the events above: PVP_MATCH_ACTIVE (:1243), PVP_MATCH_INACTIVE (:1245) and PLAYER_JOINED_PVP_MATCH (:1187): a PvP
+-- match starting, ending or being joined may switch PvP talents on or off without a talent event of its own (INFERENCE, as for War Mode
+-- and the loading screen into an arena; UNVERIFIED IN GAME). The closest talent change known to come with no event of its own: War Mode,
+-- and a loading screen into an arena or battleground (INFERENCE; covered by WAR_MODE_STATUS_UPDATE and PLAYER_ENTERING_WORLD). Not covered:
+-- a zone change with no loading screen does not make talents be read again (ZONE_CHANGED_* re-check the load facts, not the talents).
+local TALENT_MAYBE = { TRAIT_NODE_CHANGED = true, TRAIT_NODE_CHANGED_PARTIAL = true, TRAIT_NODE_ENTRY_UPDATED = true, TRAIT_TREE_CHANGED = true,
+    TRAIT_CONFIG_CREATED = true, TRAIT_CONFIG_DELETED = true, SELECTED_LOADOUT_CHANGED = true, CONFIG_COMMIT_FAILED = true,
+    LEARNED_SPELL_IN_SKILL_LINE = true, PLAYER_LEVEL_UP = true, TRAIT_COND_INFO_CHANGED = true, CHARACTER_POINTS_CHANGED = true,
+    PLAYER_LEARN_TALENT_FAILED = true, PLAYER_LEARN_PVP_TALENT_FAILED = true, SPECIALIZATION_CHANGE_CAST_FAILED = true,
+    STARTER_BUILD_ACTIVATION_FAILED = true, PVP_MATCH_ACTIVE = true, PVP_MATCH_INACTIVE = true, PLAYER_JOINED_PVP_MATCH = true }
+local CTX_EVENTS = {
+    PLAYER_ENTERING_WORLD = true, PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true, GROUP_ROSTER_UPDATE = true,
+    ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true, PLAYER_DIFFICULTY_CHANGED = true,
+    PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_EQUIPMENT_CHANGED = true,
+    CHALLENGE_MODE_START = true, CHALLENGE_MODE_COMPLETED = true, CHALLENGE_MODE_RESET = true, ENCOUNTER_START = true, ENCOUNTER_END = true,
+    UNIT_FLAGS = true,   -- (player: the combat flag; UnitAffectingCombat is a load fact)
+}
+for e in pairs(TALENT_EVENTS) do CTX_EVENTS[e] = true end
+-- load facts another file keeps from the event itself (Conditions.lua ns.LoadEvent: the encounter, the equipment count), that the engine
+-- itself changes here (talents), or that the game sets only after the event (PLAYER_REGEN_DISABLED comes just before combat lockdown,
+-- INFERENCE from Blizzard's secure code; the stand-in game sets combat after the event too): read on the next frame, once every handler ran
+local CTX_LATER = { ENCOUNTER_START = true, ENCOUNTER_END = true, PLAYER_EQUIPMENT_CHANGED = true, PLAYER_ENTERING_WORLD = true,
+    PLAYER_REGEN_DISABLED = true, PLAYER_REGEN_ENABLED = true }
+for e in pairs(TALENT_EVENTS) do CTX_LATER[e] = true end
+local BAR_EVENTS = { ACTIONBAR_SLOT_CHANGED = true, UPDATE_BONUS_ACTIONBAR = true, ACTIONBAR_PAGE_CHANGED = true, UPDATE_SHAPESHIFT_FORM = true }
+for e in pairs(CTX_EVENTS) do if e ~= "UNIT_FLAGS" then f:RegisterEvent(e) end end
+for e in pairs(TALENT_MAYBE) do f:RegisterEvent(e) end
+f:RegisterUnitEvent("UNIT_FLAGS", "player")
+for e in pairs(BAR_EVENTS) do f:RegisterEvent(e) end
+f:RegisterEvent("PLAYER_TARGET_CHANGED"); f:RegisterEvent("PLAYER_FOCUS_CHANGED")   -- a new target / focus changes every target answer at once
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "UNIT_FLAGS" and arg1 ~= "player" then return end
     -- (round 8, RB-30 finding 4) PLAYER_SPECIALIZATION_CHANGED carries the unit (events.md:1215) and fires for group members too: another
@@ -2046,13 +2274,18 @@ f:SetScript("OnEvent", function(_, event, arg1)
     end
     if event == "PLAYER_ENTERING_WORLD" or event == "SPELLS_CHANGED" or event == "PLAYER_SPECIALIZATION_CHANGED" or BAR_EVENTS[event] then barsDirty = true end
     if CTX_EVENTS[event] then
-        if CTX_LATER[event] then
+        if event == "PLAYER_ENTERING_WORLD" then
+            -- (round 9) a loading screen (or a /reload): every rule is checked again, as before (talents, the zone, the bars and what the
+            -- game hides may all have changed); every other load event re-checks only the rules it concerns (NW, Settle)
+            pend.full = true; QueueSettle()
+        elseif CTX_LATER[event] then
             pend.ctx = true; QueueSettle()   -- (another file's handler of this event updates what the context reads: checked next frame)
         elseif not pend.full and not ns.RulesDisabled then
             -- the game's own answers are current when the event arrives: compared now, so an event that changed nothing a load check
-            -- reads (a roster update with the same group, a subzone with the same map) costs one read and no timer
+            -- reads (a roster update with the same group, a subzone with the same map) costs one read and no timer. (round 9) A change is
+            -- compared again by the settle on the next frame, which re-checks only the rules it concerns (before: every rule)
             local ctx = ns.ReadContext()
-            if not (lastCtx and ctx.sig == lastCtxSig and ns.talentEpoch == lastTalentEp) then pend.full = true; QueueSettle() end
+            if not (lastCtx and ctx.sig == lastCtxSig and ns.talentEpoch == lastTalentEp) then pend.ctx = true; QueueSettle() end
         end
     end
     -- the action bars, a form, a new target / focus: every loaded rule (a stance row, "only while on an action bar", target answers)
@@ -2114,4 +2347,5 @@ function ns.SetRulesDisabled(on)
         ns.Fire("RULES_ENABLED")
     end
     return true
+end
 end

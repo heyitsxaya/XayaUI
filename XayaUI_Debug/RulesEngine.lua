@@ -6,8 +6,8 @@
 -- "rulesdebug" service, Modules.lua ns.Provide / ns.Service) while this addon is loaded and otherwise answers with core's one plain line. With XayaUI Rules switched off this file defines nothing (no /xuiengine).
 -- (V26, SD-16; Xaya 2026-11-10 on /xuiengine full and /xuiengine refresh: "Remove entirely"; "/xui shouldn't have anything that allows
 -- configuration of rules through the console") /xuiengine only shows the status, which reads and changes nothing; it works in combat
--- (read-only debugging is exempt from the combat lock). A word XayaUI Dev Assist registers (ns.RegisterSubcommand("xuiengine", ...),
--- qa-installer-branch) is passed on to it, as before; (SD-47) none of those changes the engine. V24 / V25 cost: nothing until typed.
+-- (read-only debugging is exempt from the combat lock). A word typed after /xuiengine changes nothing: it shows the status (round 9:
+-- the hand-off of such words to XayaUI Dev Assist was removed with core's ns.RunSubcommand in round 8). V24 / V25 cost: nothing until typed.
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI) and XayaUI Rules
@@ -65,18 +65,12 @@ function D.Status()
     if s.lastError then Say("last engine error: " .. s.lastError) end
 end
 
-local function EngineStatus(msg)
-    local cmd, rest = tostring(msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
-    cmd = cmd:lower()
+local function EngineStatus()
     if not D.DB() then Say("saved data not loaded yet") return end
-    if cmd ~= "" and ns.RunSubcommand and ns.RunSubcommand("xuiengine", cmd, rest) then
-        -- (a developer word Dev Assist registered; none changes the engine, SD-47)
-    else
-        D.Status()
-        -- (no "|r" in chat text: WoW reads it as a colour code)
-        Say("/xuiengine shows what the combat engine draws; it changes nothing." .. (ns.SubcommandList and ns.SubcommandList("xuiengine", "/xuiengine ") or "")
-            .. "  The engine draws aura displays through the game's own aura frames, so time and stacks show in combat.")
-    end
+    D.Status()
+    -- (no "|r" in chat text: WoW reads it as a colour code)
+    Say("/xuiengine shows what the combat engine draws; it changes nothing."
+        .. "  The engine draws aura displays through the game's own aura frames, so time and stacks show in combat.")
 end
 local svc = ns.Service("rulesdebug") or {}
 svc.EngineStatus = EngineStatus

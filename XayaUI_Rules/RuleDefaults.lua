@@ -648,12 +648,13 @@ if ns.Provide then
         Unlocked = function() return ns.unlocked and true or false end,
         MarkDirty = function(...) if ns.MarkDirty then return ns.MarkDirty(...) end end,
         CurrentSpecID = function(...) if ns.CurrentSpecID then return ns.CurrentSpecID(...) end end,
-        -- the spellbook and talent lists the rule editor's pickers use (Conditions.lua), read by XayaUI QoL's Character Toolkit
+        -- the spellbook and talent lists the rule editor's pickers use (Conditions.lua), read by the Stat Calculator
+        -- (XayaUI_Bonus_StatCalculator/StatModel.lua: BuildSpellList, BuildTalentList, and ForgetSpellLists for its Refresh spell data)
         BuildSpellList = function(...) return ns.BuildSpellList(...) end,
         BuildTalentList = function(...) return ns.BuildTalentList(...) end,
         ForgetSpellLists = function() ns.spellList, ns.talentList = nil, nil end,
-        -- the damage school / dispel type words coloured (BarCue.lua), used by XayaUI Bonus Features' tooltips
-        BarColorizeTypes = function(...) return ns.BarColorizeTypes(...) end,
+        -- (round 9, V34) BarColorizeTypes left this service: its one reader was the tooltip type colours of the Bonus Features retired
+        -- to the QA branch (SD-2); no addon on main reads it
     })
 end
 

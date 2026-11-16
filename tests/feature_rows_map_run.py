@@ -32,7 +32,27 @@ W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1
 local ns = rawget(_G, "XayaUI_NS")
 check("(sanity) core loaded", ns ~= nil and ns.PrintDebugHelp ~= nil and SlashCmdList.XAYAUI ~= nil)
 if not ns then return R end
-local function run(msg) ns._capture = {}; pcall(SlashCmdList.XAYAUI, msg); local t = table.concat(ns._capture, " | "); ns._capture = nil; return t end
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": ns.CaptureOutput is gone) what a command shows the
+-- player, read from the stand-in game: the lines printed in chat (W.printed) and the lines drawn in the console window, each without the
+-- "XayaUI: " name in front, in that order (one command prints in one of the two). With the debug tools loaded the console window is opened
+-- first, so each line is drawn as it comes (a window opening in the middle of a command first draws the older lines it missed). A Lua
+-- error in the command ends the list as "(error: ...)".
+local SHOWN_NAME = "|cff33ccffXayaUI|r: "
+local function unname(l) l = tostring(l); if l:sub(1, #SHOWN_NAME) == SHOWN_NAME then return l:sub(#SHOWN_NAME + 1) end; return l end
+local function consoleLines() local cw = rawget(_G, "XayaUIConsoleWindow"); return cw and cw.log and cw.log._lines end
+local function shown(fn, ...)
+  if ns.DebugToolsLoaded and ns.DebugToolsLoaded() and not ns.ConsoleWindowOn() then ns.ConsoleWindow(true) end
+  local c0, log0 = #W.printed, consoleLines()
+  local n0 = log0 and #log0 or 0
+  local ok, err = pcall(fn, ...)
+  local out = {}
+  for i = c0 + 1, #W.printed do out[#out + 1] = unname(W.printed[i]) end
+  local log = consoleLines()
+  if log then for i = (log == log0 and n0 or 0) + 1, #log do out[#out + 1] = unname(log[i]) end end
+  if not ok then out[#out + 1] = "(error: " .. tostring(err) .. ")" end
+  return out
+end
+local function run(msg) return table.concat(shown(SlashCmdList.XAYAUI, msg), " | ") end
 -- (core 0.6.50: plain /xui debug lists the diagnostic commands; core 0.6.56, #81: the map report is XayaUI Dev Assist's)
 do
   local t = run("debug")

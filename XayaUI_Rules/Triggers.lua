@@ -125,6 +125,11 @@ local LOC_SETS = {
     rooted = { ROOT = true },
     silenced = { SILENCE = true },
 }
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") which of the events routed below a "Player State" row reads, by its Check:
+-- "Moving" reads IsPlayerMoving (the movement events), the loss-of-control checks read C_LossOfControl (the loss-of-control events). The
+-- engine re-checks a row on those events only (Engine.lua Deps); every other Check is re-checked on every state event, as before.
+ns.STATE_ROUTE = { moving = "move" }
+for k in pairs(LOC_SETS) do ns.STATE_ROUTE[k] = "loc" end
 function ns.PlayerHasLossOfControl(what)
     local set = LOC_SETS[what]
     local LOC = C_LossOfControl
@@ -1311,7 +1316,7 @@ end
 
 
 -------------------------------------------------------------------------------
--- Events: the engine already re-evaluates every 0.2 s, so these only make rare changes react at once.
+-- Events: changes the trigger rows read that no input event of the engine covers (round 5: the engine runs only when told).
 -- (High-frequency events such as power updates are deliberately NOT registered.)
 -------------------------------------------------------------------------------
 local ev = CreateFrame("Frame")
@@ -1325,6 +1330,14 @@ for _, e in ipairs({ "LOSS_OF_CONTROL_ADDED", "LOSS_OF_CONTROL_UPDATE", "PLAYER_
 for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_PET", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE", "UNIT_INVENTORY_CHANGED" }) do
     pcall(ev.RegisterUnitEvent, ev, e, "player")
 end
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") the events below go only to the rows that read them (Engine.lua
+-- ns.MarkStateDirty, Deps): movement to the "Player State: Moving" rows (and the Range Check rows, whose answer moves with you), a rune
+-- to the rune rows (Class Resource: Runes, Death Knight Runes), a totem to the Totem / Guardian Slot rows, a loss of control to the
+-- "Loss of control on you" rows, the loss-of-control Player State checks and the cooldown checks (a lockout: rule.countLOC). Before, each
+-- re-checked every live rule. Any other event here still re-checks every live rule (nil).
+local STATE_EVENT_ROUTE = { PLAYER_STARTED_MOVING = "move", PLAYER_STOPPED_MOVING = "move", RUNE_POWER_UPDATE = "rune",
+    PLAYER_TOTEM_UPDATE = "totem", LOSS_OF_CONTROL_ADDED = "loc", LOSS_OF_CONTROL_UPDATE = "loc" }
+ns.STATE_EVENT_ROUTE = STATE_EVENT_ROUTE   -- (tests)
 ev:SetScript("OnEvent", function(_, event, _, _, spellID)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         local now = GetTime()
@@ -1344,7 +1357,7 @@ ev:SetScript("OnEvent", function(_, event, _, _, spellID)
         if ns.MarkStateDirty then ns.MarkStateDirty("cast") end
         return
     end
-    if ns.MarkStateDirty then ns.MarkStateDirty() end
+    if ns.MarkStateDirty then ns.MarkStateDirty(STATE_EVENT_ROUTE[event]) end
 end)
 
 -- The number a numeric extra trigger (Item Count, Class Resource) is reading right now, for condition comparisons. nil = unreadable (never guessed).

@@ -3,7 +3,8 @@
 <!--
 Shown in the game: version pane > Info > Help (FAQ); the ? in the title bars opens it. Static questions and answers, taken from
 docs/USER-GUIDE.md sections 9-11 and 12.14 (the four groups Xaya chose on 2026-11-06). Dynamic question answering is a roadmap item.
-The game cannot read this file: after any edit run  python3 tools/build_info_pane_data.py
+The game cannot read this file: after any edit, rebuild XayaUI_Options/InfoPaneData.lua with tools/build_info_pane_data.py
+(only on qa-installer-branch; its round 9 change is pending there, see docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md).
 Layout: "## Group", then "### Question" and its answer (paragraphs and "- " bullets, **bold**, `commands`).
 -->
 
@@ -75,15 +76,18 @@ The game restricts chat actions to other players in several kinds of content, an
 `/xui help` lists the commands you use. The diagnostic ones are under `/xui debug`; `/xui debug` alone lists them. The debug tools (the console window, `/xui bug`, `/xui report`, `/xui status`, `/xui auras`, `/xuiengine`, and `/xui debug status`, `perf` and `auras`) work only while **Advanced Debugging** is on (Settings > Debugging, off by default; type `/reload` after turning it on). Until then each says so in one chat line. With them on, any `/xui debug` command opens the XayaUI console and prints there.
 
 ### Why does /xui unlock open the settings window?
-The mover (dragging your displays and groups on screen) is part of the settings window and works only while it is open. `/xui unlock` opens the window with every display unlocked; closing the window closes the mover. Moves you have not saved are kept, and the mover opens again with them the next time you open the window.
+The mover (dragging your displays and groups on screen) is part of the settings window and works only while it is open. `/xui unlock` opens the window with every display unlocked; closing the window closes the mover. Moves you have not saved are kept. The next time you open the window, one question asks: **Save**, **Discard** (everything goes back) or **Keep editing** (the mover opens with them). Nothing is asked at login. If combat closed the window, the mover opens again by itself with your moves when combat ends.
 
-### Why does chat say "Advanced debugging is on" every time I log in?
-Because Advanced Debugging is on (Settings > Debugging). While it is on, every login and /reload prints "Advanced debugging is on. To turn this off, open /xui > Settings > Debugging.", so you always know the debug tools are loaded. To stop it, untick Advanced Debugging and type `/reload`.
+### Why does chat say "Advanced Debugging is on" every time I log in?
+Because Advanced Debugging is on (Settings > Debugging). While it is on, every login and /reload prints "XayaUI: Advanced Debugging is on. Turn it off in /xui > Settings > Debugging.", so you always know the debug tools are loaded. To stop it, untick Advanced Debugging and type `/reload`.
+
+### How do I see how much work the combat engine does?
+Turn on **Advanced Debugging** and type `/reload`. Type `/xui debug perf on`, play a fight, then `/xui debug perf` for the report and `/xui debug perf off` to stop. It counts each kind of re-check and the redraws, shows the most in one second (as a range such as "10 to 14" when it cannot be pinned down; at exactly 10 a second it can read "possibly over"), and the game's CPU meter and memory for each XayaUI addon. For your CPU limits, read the game's AddOn Usage screen.
 
 ### Why won't the settings window open in combat?
 The settings window, the rule editor, the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and `/xui enable` are locked in combat, because rules and combat tracking are changed only there. Ask in combat and one chat line says so, for example "the settings window can't open during combat. It will open when combat ends.": it then opens by itself when combat ends (only your last request is kept).
 - **Open when combat starts:** the window closes (unsaved rule edits go to Rule Drafts) and opens again where you were when combat ends. The mover closes and opens again with your unsaved moves.
-- **Still allowed in combat:** `/xui disable`, closing any window, `/xui report`, `/xui bug`, `/xui console`, `/xui help`, `/xui status`, `/xui auras`, `/xuiengine` and the `/xui debug` commands that only read.
+- **Still allowed in combat:** `/xui disable`, closing any window, `/xui report`, `/xui bug`, `/xui console`, `/xui help`, `/xui status`, `/xui auras`, `/xuiengine` and the `/xui debug` commands that only read, such as `/xui debug talents status`.
 
 ### How do I turn every rule off at once?
 Type `/xui disable`. It works in combat too: every rule stops checking, and their displays, glows and sounds stop (a sound already playing finishes). They stay off until you type `/xui enable` or `/reload`. `/xui enable` waits until combat ends if you are in a fight; rules then start fresh, as after a /reload.

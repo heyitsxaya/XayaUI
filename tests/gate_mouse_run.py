@@ -19,6 +19,8 @@ looks at every shown frame XayaUI made (or that sits in one it made):
   WARNING  aura buttons Blizzard's container made for the combat engine whose click state XayaUI never set (not documented).
 Each violation: the line that turned clicks on (or the line that made the frame, when clicks were never set: a Button takes clicks
 by default, INFERENCE), the window it sits in, at which checkpoints, how many frames, their size.
+(round 9; SD-64: she keeps Advanced Debugging on; round 8 review) every check runs on both variants of the scenario, Advanced
+Debugging off and on (XayaUI_Debug loaded); findings of the second are marked "[Advanced Debugging on]".
 Run: python3 tests/gate_mouse_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,9 +37,8 @@ def where_of(e):
     return by
 
 
-def main():
-    data, secs, cached = GC.result()
-    rep = GC.Report(GATE)
+def judge(data, rep):
+    """Every check of this gate on one variant's result (round 9: both variants, see main)."""
     GC.integrity(data, rep)
     cps = data.get("checkpoints") or []
     in_combat = [cp for cp in cps if cp.get("combat")]
@@ -168,7 +169,11 @@ def main():
     for k, n in (data.get("mouseCalls") or {}).items():
         rep.warn(k.split(" ")[0], "XayaUI code changed a frame's mouse in combat with the window closed: " + k, "%d call(s)" % n,
                  "EnableMouse / SetMouseClickEnabled are protected on secure frames in combat (widgets.md 110, 283)")
-    return rep.show(data, secs, cached)
+
+
+def main():
+    # (round 9; SD-64 she keeps Advanced Debugging on; round 8 review: only the default variant was judged) both variants
+    return GC.both_variants(GATE, judge)
 
 
 if __name__ == "__main__":

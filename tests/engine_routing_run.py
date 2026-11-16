@@ -32,7 +32,9 @@ local cue = ns.NewCueRule(AU, "sound"); cue.sound.source, cue.sound.value = "kit
 -- (round 5, V27: the engine is event-driven; a new rule list is announced as the editor does, ns.MarkDirty, and is stepped once on the
 -- next frame; nothing re-checks the rules on a timer any more)
 ns.MarkDirty()
-check("each rule is tied to what it reads", ns.EngineDeps ~= nil and ns.EngineDeps(CD).cd and not ns.EngineDeps(CD).aura and ns.EngineDeps(AU).auraOnly and ns.EngineDeps(OT).other
+check("each rule is tied to what it reads", ns.EngineDeps ~= nil and ns.EngineDeps(CD).cd and not ns.EngineDeps(CD).aura and ns.EngineDeps(AU).auraOnly
+  -- (round 9, SD-77 "Route + narrow": a Player State "Moving" row is tied to the movement events, no longer to every state event)
+  and ns.EngineDeps(OT).move and not ns.EngineDeps(OT).other
   and ns.EngineDeps(cue).auraOnly)
 local n = {}
 local E0 = ns.Evaluate

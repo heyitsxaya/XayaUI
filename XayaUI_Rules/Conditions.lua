@@ -1970,19 +1970,28 @@ function ns.ReadContext()
         if okH and not issecret(hid) then ctx.hero = tonumber(hid) or 0 end
     end
     ReadPlace(ctx)
+    -- (round 9, SD-77) the gear count is a context value of its own (only while a load check reads gear: EquipUsed), so the engine can
+    -- tell a gear change from the other load facts (ns.CTX_FACTS below)
+    if EquipUsed() then ctx.equipGen = equipGen end
     -- every value a load check reads, in one string: equal strings = equal load answers (ns.CheckContext memo). (round 7) The parts are
-    -- gathered in one reused list (the same count every time: no table per read)
+    -- gathered in one reused list (the same count every time: no table per read). (round 9) Built from ns.CTX_FACTS, the same list the
+    -- engine compares value by value, so the two cannot drift apart.
     local parts = sigParts
+    local tri = ns.LOAD_TRI
     for i = #parts, 1, -1 do parts[i] = nil end
-    for i, c in ipairs(ns.LOAD_TRI) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
-    parts[#parts + 1] = tostring(ctx.instanceType); parts[#parts + 1] = tostring(ctx.specID)
-    parts[#parts + 1] = tostring(ctx.role); parts[#parts + 1] = tostring(ctx.hero); parts[#parts + 1] = tostring(ctx.class)
-    parts[#parts + 1] = tostring(ctx.mapID); parts[#parts + 1] = tostring(ctx.instanceID); parts[#parts + 1] = tostring(ctx.difficultyID)
-    parts[#parts + 1] = tostring(ctx.instSize); parts[#parts + 1] = tostring(ctx.encounterID)
-    parts[#parts + 1] = EquipUsed() and tostring(equipGen) or "-"
+    for i, c in ipairs(tri) do local v = ctx[c.key]; parts[i] = (v == nil) and "?" or (v and "1" or "0") end
+    local facts, n = ns.CTX_FACTS, #tri
+    for i = n + 1, #facts do parts[i] = tostring(ctx[facts[i]]) end
     ctx.sig = table.concat(parts, "|")
     return ctx
 end
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") every context value a load check reads, by its key in the context: the
+-- Yes / No load facts (ns.LOAD_TRI, in that order) first, then the rest. ReadContext's signature is made of exactly these, and the engine
+-- compares them one by one when the signature changes, to re-check only the rules whose load reads what changed (Engine.lua).
+ns.CTX_FACTS = {}
+for _, c in ipairs(ns.LOAD_TRI) do ns.CTX_FACTS[#ns.CTX_FACTS + 1] = c.key end
+for _, k in ipairs({ "instanceType", "specID", "role", "hero", "class", "mapID", "instanceID", "difficultyID", "instSize", "encounterID",
+    "equipGen" }) do ns.CTX_FACTS[#ns.CTX_FACTS + 1] = k end
 
 -- Load conditions. Every active (non-ignored) condition yields true / false / nil(unknown).
 -- load.mode "any": at least one active condition must be true. Otherwise (blank / "all") every one must be.
@@ -2047,10 +2056,21 @@ function ns.CheckContext(rule, ctx, static)
     if static or not sig then return CheckContextRaw(rule, ctx, static) end
     local ver = ns.configVersion or 0
     local m = ctxMemo[rule]
-    if m and m.sig == sig and m.ver == ver then return m.ok, m.fail end
+    if m and m.ver == ver then
+        if m.sig == sig then return m.ok, m.fail end
+        -- (round 9, SD-77) the context changed only in values this rule's load does not read (ns.LoadReads, a superset of what the check
+        -- reads): the same answer. The engine re-checks after a load-fact change only the rules that read it; without this, every
+        -- other rule would run its load checks once more at its next re-check (the first pass of a fight: every aura rule)
+        local old = m.ctx
+        if old and not rule.parentUid then
+            local reads, same = ns.LoadReads(rule), true
+            for i = 1, #reads do local k = reads[i]; if old[k] ~= ctx[k] then same = false; break end end
+            if same then m.sig, m.ctx = sig, ctx; return m.ok, m.fail end
+        end
+    end
     local ok, fail = CheckContextRaw(rule, ctx)
     if not m then m = {}; ctxMemo[rule] = m end
-    m.sig, m.ver, m.ok, m.fail = sig, ver, ok, fail
+    m.sig, m.ver, m.ok, m.fail, m.ctx = sig, ver, ok, fail, ctx
     return ok, fail
 end
 -- #319 (Xaya, 2026-11-04): "Always load" ignores every load condition, unless the Class or Specialization row has its own tick box
@@ -2157,6 +2177,61 @@ function CheckContextRaw(rule, ctx, static)
         if ok ~= true then return false, ckKey[i] .. (ok == nil and " (unknown)" or "") end
     end
     return true
+end
+
+-- (round 9, SD-77, her answer "Route + narrow (Recommended)") which context values (ns.CTX_FACTS keys) a rule's load answer can read, and
+-- "talents" when it has a talent requirement: its own Load tab (a cue or condition: its parent's, which is where its load lives) and every
+-- group it sits in (the group's own class, spec, role and instance-type lists and its ID lists; a group set to Always still reads the
+-- class / spec rows it marked). The engine re-checks only the rules that read a load fact that changed (Engine.lua, the narrowed
+-- re-check). It is a superset of what CheckContextRaw above reads: a value listed here that the check skips (a mode, a switch beside a
+-- list) costs one extra re-check, never a missed one; tests/fix_r9_engine_narrow_run.py compares the two on many generated rules.
+-- Worked out once per settings change (ns.configVersion; a new or replaced rule list too); the list is kept per rule (no table per call).
+local readsMemo, readsVer, readsList, readsN = setmetatable({}, { __mode = "k" }), nil, nil, -1
+local function AddRead(l, k) for i = 1, #l do if l[i] == k then return end end l[#l + 1] = k end
+local function IdListReads(load, l)
+    if type(load) ~= "table" then return end
+    if ns.SetActive(load.mapIDs) then AddRead(l, "mapID") end
+    for i = 1, #ID_LISTS do local d = ID_LISTS[i]; if ns.SetActive(load[d[1]]) then AddRead(l, d[2]) end end
+    if ns.SetActive(load.equipped) then AddRead(l, "equipGen") end
+end
+function ns.LoadReads(rule)
+    local ver, list = ns.configVersion or 0, ns.rules
+    local n = list and #list or 0
+    if readsVer ~= ver or readsList ~= list or readsN ~= n then
+        readsVer, readsList, readsN = ver, list, n
+        for k in pairs(readsMemo) do readsMemo[k] = nil end
+    end
+    local l = readsMemo[rule]
+    if l then return l end
+    l = {}
+    local r = rule
+    if rule.parentUid and ns.FindParentRule then r = ns.FindParentRule(rule) or rule end
+    local fid, guard = r.folder, 0
+    while fid and guard < 32 do
+        local f = ns.FolderById and ns.FolderById(fid)
+        if not f then break end
+        if ns.SetActive(f.loadClasses) then AddRead(l, "class") end
+        if ns.SetActive(f.loadSpecs) then AddRead(l, "specID") end
+        if ns.SetActive(f.loadRoles) then AddRead(l, "role") end
+        if ns.SetActive(f.loadInst) then AddRead(l, "instanceType") end
+        IdListReads(f.loadIds, l)
+        fid, guard = f.parent, guard + 1
+    end
+    local load = r.load
+    if type(load) == "table" and load.mode ~= "never" then
+        if ns.SetActive(load.classes) then AddRead(l, "class") end
+        if ns.SetActive(load.specs) or (load.specID or 0) > 0 then AddRead(l, "specID") end
+        if load.mode ~= "always" then
+            for _, c in ipairs(ns.LOAD_TRI) do if not ns.Ignored(load[c.key]) then AddRead(l, c.key) end end
+            if load.instanceTypes and next(load.instanceTypes) then AddRead(l, "instanceType") end
+            if ns.SetActive(load.roles) or not ns.Ignored(load.role) then AddRead(l, "role") end
+            if ns.SetActive(load.heroes) then AddRead(l, "hero") end
+            IdListReads(load, l)
+        end
+    end
+    if ns.HasTalentRequirement and ns.HasTalentRequirement(r) then AddRead(l, "talents") end
+    readsMemo[rule] = l
+    return l
 end
 
 -------------------------------------------------------------------------------

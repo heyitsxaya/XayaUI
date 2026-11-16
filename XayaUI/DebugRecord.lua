@@ -221,17 +221,8 @@ end
 -- (round 7) Messages into the console window (ns.ConsoleMessage) are XayaUI_Debug/Console.lua's: core's ns.Print and error handler send
 -- a message there only while ns.MessageDest says so, which needs that addon loaded.
 -------------------------------------------------------------------------------
-
--- What a function prints, collected instead of shown (Core.lua ns.Print reads ns._capture)
-function ns.CaptureOutput(fn, ...)
-    local prev = ns._capture
-    local out = {}
-    ns._capture = out
-    local ok, err = pcall(fn, ...)
-    ns._capture = prev
-    if not ok then out[#out + 1] = "(error: " .. tostring(err) .. ")" end
-    return out
-end
+-- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)") ns.CaptureOutput, which only the tests used, is
+-- removed: every message ns.Print gets is shown (the tests read what the stand-in game printed).
 
 -------------------------------------------------------------------------------
 -- Events (rule V14). One frame, made the first time something needs an event, holding only what is needed now:

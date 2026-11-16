@@ -1,0 +1,431 @@
+#!/usr/bin/env python3
+"""Bundle 1 round 9, docs: what the player reads matches the code after rounds 1 to 9, and Xaya's round 7 and 8 answers about the
+documents are met (REQUEST-LOG A23). Every quoted chat line and number below is read from the Lua file that prints or uses it, so a
+document that drifts from the code fails here.
+
+  F  SD-72, her answer "Remove from main, keep on QA (Recommended)": MANIFEST.md5 is not in the tree; VERIFICATION.md V10 says the
+     manifest check applies on qa-installer-branch only; tests/devassist_rename_run.py no longer excludes the file.
+  D  SD-70, her answer "Short with path (Recommended)": USER-GUIDE, HELP-FAQ (its question heading too), QA-CHECKLIST B402,
+     PATCH-NOTES and WHATS-NEW quote the whole chat line exactly as the player sees it: core's "XayaUI: " prefix (XayaUI/Core.lua
+     ns.Print) and DR.ON_LINE (XayaUI/DebugRecord.lua); no document keeps the old "Advanced debugging is on. To turn this off" line.
+  M  SD-68 mover, her answer "Ask on next settings open (Recommended)": USER-GUIDE, HELP-FAQ, WHATS-NEW and PATCH-NOTES no longer
+     say the mover simply opens again next time; each names Save, Discard and Keep editing; QA B405 quotes the close line and the
+     question (with 1 move) and the three buttons exactly as XayaUI_Options/Mover.lua prints them; a QA step quotes the mover's
+     combat line and expects no question after combat (SD-15).
+  T  SD-67 talents, her answer "Read-only answers anytime (Recommended)": QA B404 no longer expects "can't be read during combat";
+     it expects the summary at once in combat (XayaUI_Rules/TalentDump.lua's lines) and the scan's combat line.
+  P  The bundle 1 landing: PATCH-NOTES has it outside any comment, first, with one heading per changed addon at the version its
+     .toc carries, each above main's (origin/main when git has it); main's Stat Calculator landing follows unchanged; the entry names
+     the round 8 and 9 changes the player meets (route + narrow, redraws only while something changes, the perf tracker, the mover
+     question, Advanced Debugging off by default and its line, talents at once, the right-click tracker gone). WHATS-NEW section 15
+     covers rounds 1 to 9.
+  N  Numbers the guide states come from the code: "at most 10 times a second" (Engine.lua ROUTED_GAP), "at most 30 times a second"
+     per display (Visual.lua FX_GAP), and the tracker's "10 to 14" / "possibly over" range (XayaUI_Debug/RulesPerf.lua LIMIT and its
+     "possibly over" text; SD-84 "Keep the range").
+  I  SD-69 (recent notes only in game): XayaUI_Options/InfoPaneData.lua holds at most the newest 5 landings plus an "Older notes"
+     entry, its first landing is PATCH-NOTES' first, and it offers no removed command (/xuiengine full or refresh, /xui debug perf
+     ui) except to say it was removed. (tests/info_pane_run.py checks the pane itself and its memory.)
+  Q  QA-CHECKLIST has one step each for the in-game checks of round 9 (B424 to B429): the tracker, the mover after combat, combat
+     start / boss pull / combat end drawing, AddOn Usage at a pull, the C_Timer /run test (the exact line), the SD-49 right-click
+     check with a /run line; B401 names the new versions; B414 no longer waits on her decision.
+  S  Studies and roadmap: R7-EUI-STUDY carries the round 8 corrections; ROADMAP has the widgets.md:4344 StatusBar:SetValue
+     follow-up and the "per pass + cheap repeats" item.
+  L  REQUEST-LOG A23 status column only: SD-13, 16, 17, 25, 31, 32, 34 and SD-56 to SD-85 no longer read OPEN for work that is
+     built; her words (second column) of SD-1 to SD-85 are unchanged from the last commit (when git is there).
+  (repair 1, the reviewer's three blockers)
+  I3 No document says the build tool's round 9 change (KEEP_LANDINGS, XUI_ROOT) is on qa-installer-branch: each one that names it says
+     it is pending, and it really is not there (origin/qa-installer-branch, when git has it; once it lands there this check asks
+     for the documents to be updated). I4 The recorded patch, applied to qa-installer-branch's tool, rebuilds InfoPaneData.lua
+     exactly from this checkout's markdown. I5 The pane's own text uses no in-house word "landing".
+  P7 The Rules developers' note compares the costliest fight frame with main's, as the gate stores it (tests/gate_performance_run.py
+     V33_EVENT_CAPS, origin/main ad60a051's XayaUI Rules = main's), and its words for the size of the drop match the two numbers it
+     gives; no "about half" (that was against round 8's unlanded branch, never main).
+  P8 The game-played sound bullets say what AuraSound.lua does: the Load tab choices it cannot know ahead (its DROP list: Combat,
+     Boss encounter) count as possibly true, so such a rule's sound can also play outside combat or outside the encounter.
+     (repair 2) USER-GUIDE splits them by direction, with the Load tab's words read from Conditions.lua LOAD_TRI: "Only in combat",
+     "Only during a boss encounter" and a Boss encounters list can also play outside combat / the encounter and got no game copy on
+     main; "Only out of combat" and "Only outside boss encounters" can also play in combat / the encounter and already had the copy
+     on main (main's A.Plan skipped rules not loaded at the sync, which runs out of combat only). QA B434 is the in-game step.
+  Q2 QA-CHECKLIST has the round 8 in-game checks that had no step: the Cooldown Manager alert (B430), memory over a long session
+     (B431), a hitch at a load change (B432), pace and lag in a busy pull with "seconds left" sounds (B433).
+Negative control: on the documents before this round's docs unit (proved on a private copy) F, D, M, T, P, I, Q, S and L fail;
+on the documents before repair 1 (scratchpad r9pre-docs-repair1) I3, I4, I5, P7, P8 and Q2 fail; on the documents before repair 2
+(scratchpad r9pre-docs-repair2) P8 USER-GUIDE and Q B434 fail.
+Run: python3 tests/fix_r9_docs_run.py   (XUI_R9_ROOT=<a checkout> to check another copy)"""
+import os, re, subprocess, sys, tempfile, shutil, hashlib
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.normpath(os.environ.get("XUI_R9_ROOT") or os.path.join(HERE, ".."))
+results = []
+
+
+def check(name, ok, extra=""):
+    results.append((name + ("" if ok else "  [%s]" % (str(extra)[:300],)), bool(ok)))
+
+
+def read(rel):
+    p = os.path.join(ROOT, rel)
+    if not os.path.exists(p):
+        return ""
+    with open(p, encoding="utf-8") as f:
+        return f.read()
+
+
+def lua_str(src, pattern):
+    m = re.search(pattern, src, re.S)
+    return m.group(1) if m else None
+
+
+def steps(qa):
+    out = {}
+    for line in qa.splitlines():
+        m = re.match(r"- \[ \] \*\*B(\d+)\.\*\*", line)
+        if m:
+            out[int(m.group(1))] = line
+    return out
+
+
+def nocomment(s):
+    return re.sub(r"<!--.*?-->", "", s, flags=re.S)
+
+
+def vkey(v):
+    return tuple(int(x) for x in v.split("."))
+
+
+def toc_version(folder):
+    m = re.search(r"^## Version:\s*(\S+)", read("%s/%s.toc" % (folder, folder)), re.M)
+    return m.group(1) if m else None
+
+
+MAIN_FALLBACK = {"XayaUI": "0.6.85", "XayaUI_Options": "0.6.108", "XayaUI_Rules": "0.7.0"}   # origin/main fda1e293
+
+
+def main_version(folder):
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "show", "origin/main:%s/%s.toc" % (folder, folder)], capture_output=True, text=True,
+                           timeout=60)
+        m = re.search(r"^## Version:\s*(\S+)", r.stdout, re.M) if r.returncode == 0 else None
+        # (a clone's origin/main can be an older local branch: the higher of it and main's known version at the round 9 merge)
+        if m and vkey(m.group(1)) > vkey(MAIN_FALLBACK[folder]):
+            return m.group(1)
+    except Exception:
+        pass
+    return MAIN_FALLBACK[folder]
+
+
+def main():
+    ug, faq, qa = read("docs/USER-GUIDE.md"), read("docs/HELP-FAQ.md"), read("docs/QA-CHECKLIST.md")
+    pn_raw, wn = read("PATCH-NOTES.md"), read("docs/WHATS-NEW.md")
+    pn = nocomment(pn_raw)
+    wn1 = wn.replace("\n  ", " ")
+    debugrec, core, mover = read("XayaUI/DebugRecord.lua"), read("XayaUI/Core.lua"), read("XayaUI_Options/Mover.lua")
+    talents, perf = read("XayaUI_Rules/TalentDump.lua"), read("XayaUI_Debug/RulesPerf.lua")
+    engine, visual = read("XayaUI_Rules/Engine.lua"), read("XayaUI_Rules/Visual.lua")
+    st = steps(qa)
+
+    # F: the manifest (SD-72)
+    check("F1 SD-72: MANIFEST.md5 is not in the tree", not os.path.exists(os.path.join(ROOT, "MANIFEST.md5")))
+    ver = read("docs/process/VERIFICATION.md")
+    v10 = [l for l in ver.splitlines() if "`MANIFEST.md5` matches the files git tracks" in l]
+    check("F2 SD-72: VERIFICATION.md V10 says the manifest check applies on qa-installer-branch only",
+          len(v10) == 1 and "qa-installer-branch only" in v10[0] and "SD-72" in v10[0], v10)
+    check("F3 SD-72: tests/devassist_rename_run.py no longer excludes MANIFEST.md5 (the file is gone)",
+          '":!MANIFEST.md5"' not in read("tests/devassist_rename_run.py"))
+
+    # D: the login line (SD-70)
+    on_line = lua_str(debugrec, r'DR\.ON_LINE = "([^"]+)"')
+    # core's ns.Print: print("|cff33ccffXayaUI|r: " .. text): the player reads "XayaUI: " before the line (the color code shows nothing)
+    pm = re.search(r'print\("\|cff[0-9a-fA-F]{6}(XayaUI)\|r(: )" \.\. text\)', core)
+    prefix = pm and (pm.group(1) + pm.group(2).rstrip())
+    full = on_line and prefix and ("%s %s" % (prefix, on_line))
+    check("D0 the login line and core's prefix are found in the code", full, (prefix, on_line))
+    for name, text in (("USER-GUIDE", ug), ("HELP-FAQ", faq), ("QA-CHECKLIST B402", st.get(402, "")), ("PATCH-NOTES", pn),
+                       ("WHATS-NEW", wn1)):
+        check("D1 SD-70: %s quotes the whole chat line exactly, prefix included" % name, full and ('"%s"' % full) in text, full)
+    check("D2 SD-70: the HELP-FAQ question heading quotes \"Advanced Debugging is on\"",
+          '### Why does chat say "Advanced Debugging is on" every time I log in?' in faq)
+    old = "Advanced debugging is on. To turn this off"
+    stale = [n for n, t in (("USER-GUIDE", ug), ("HELP-FAQ", faq), ("QA-CHECKLIST", qa), ("PATCH-NOTES", pn), ("WHATS-NEW", wn1),
+                            ("README-INGAME", read("docs/README-INGAME.md"))) if old in t]
+    check("D3 SD-70: no document keeps the old line", not stale, stale)
+
+    # M: the mover question (SD-68)
+    close_line = lua_str(mover, r'\("(the mover closed with the settings window\. Your %d unsaved move\(s\) are kept[^"]*)"\)')
+    ask = lua_str(mover, r'local ASK_TEXT = "([^"]+)"')
+    btns = re.findall(r'\{ "(Save|Discard|Keep editing)", ', lua_str(mover, r'(T\.Ask\(ASK_TEXT.*?\}\))') or "")
+    combat_line = lua_str(mover, r'"(the mover closed because combat started\. It will open again with your unsaved moves when combat ends\.)"')
+    check("M0 the close line, the question, its three buttons and the combat line are found in Mover.lua",
+          close_line and ask and btns == ["Save", "Discard", "Keep editing"] and combat_line, (close_line, ask, btns, combat_line))
+    old_m = re.compile(r"mover opens again with (them|your moves) the next time you open")
+    for name, text in (("USER-GUIDE", ug), ("HELP-FAQ", faq), ("WHATS-NEW", wn1), ("PATCH-NOTES", pn)):
+        check("M1 SD-68: %s no longer says the mover just opens again next time, and names Save, Discard and Keep editing" % name,
+              not old_m.search(text) and all(w in text for w in ("Save", "Discard", "Keep editing")) and "at login" in text)
+    b405 = st.get(405, "")
+    check("M2 SD-68: QA B405 quotes the close line and the question (1 move) and the three buttons exactly",
+          close_line and ask and (close_line % 1) in b405 and (ask % 1) in b405
+          and len(btns) == 3 and ("with the buttons **%s**, **%s** and **%s**" % tuple(btns)) in b405 and "no question at login" in b405,
+          b405[:160])
+    after = [n for n, l in st.items() if combat_line and combat_line in l and "**no** Save / Discard / Keep editing question" in l]
+    check("M3 SD-15: a QA step expects the mover back after combat with no question", len(after) == 1, after)
+
+    # T: talents status at once (SD-67)
+    b404 = st.get(404, "")
+    scan_lock = lua_str(talents, r'local SCAN_LOCK = "([^"]+)"')
+    none = lua_str(talents, r'return "(No talent scan saved yet\.)"')
+    check("T1 SD-67: QA B404 expects the talent status at once in combat, with the scan's combat line",
+          "can't be read during combat" not in b404 and "at once, in combat" in b404 and scan_lock and scan_lock in b404
+          and none and none in b404, b404[:200])
+
+    # P: the bundle 1 landing
+    heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
+    first = re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M)
+    entry = first[1] if len(first) > 1 else ""
+    check("P1 the bundle 1 landing is in PATCH-NOTES outside any comment, first", heads and heads[0][1] == "Rules Fix Bundle 1", heads[:2])
+    check("P2 main's Stat Calculator landing follows it, with Bonus Features 0.6.46 and 0.6.45 and Options 0.6.108",
+          len(heads) > 1 and heads[1][1] == "Stat Calculator" and len(first) > 2
+          and all(h in first[2] for h in ("### Bonus Features 0.6.46", "### Options 0.6.108", "### Bonus Features 0.6.45")))
+    for addon, folder in (("XayaUI", "XayaUI"), ("Options", "XayaUI_Options"), ("Rules", "XayaUI_Rules")):
+        tv, mv = toc_version(folder), main_version(folder)
+        m = re.search(r"^### %s (\d+\.\d+\.\d+)\s*$" % addon, entry, re.M)
+        check("P3 V10: %s's heading in the entry is its .toc version (%s), above main's %s" % (addon, tv, mv),
+              m and tv and m.group(1) == tv and vkey(tv) > vkey(mv), m and m.group(1))
+    for folder in ("XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"):
+        check("P4 %s is unchanged by bundle 1, so its version stays main's 0.6.46" % folder, toc_version(folder) == "0.6.46",
+              toc_version(folder))
+    must = [("route", "Moving, runes, totems and loss of control"), ("narrow", "a boss pull"),
+            ("redraw", "at most 30 times a second on each display, and only while something on it changes"),
+            ("tracker", "/xui debug perf on"), ("mover question", "Save, Discard (everything goes back) or Keep editing"),
+            ("Debugging off", "Advanced Debugging is now off by default"), ("talents", "answer at once, in combat too"),
+            ("tracker off main", "/xui debug mouse (the right-click tracker) is no longer part of this download"),
+            ("combat lock", "no longer open in combat"), ("disable", "/xui disable")]
+    miss = [k for k, w in must if w not in entry]
+    check("P5 the entry names the player-visible changes of rounds 1 to 9", not miss, miss)
+    sec = wn1[wn1.find("## 15. Rules fix bundle 1"):]
+    wmust = ["rounds 1 to 9", "Moving, runes, totems and loss of control", "at most 30 times a second", "/xui debug perf on",
+             "**Keep editing**", "Advanced Debugging is off by default", "/xui disable", "Combat lock"]
+    wmiss = [w for w in wmust if w not in sec]
+    check("P6 WHATS-NEW section 15 covers rounds 1 to 9", sec and not wmiss, wmiss)
+
+    # N: numbers from the code
+    gap = lua_str(engine, r"\nlocal ROUTED_GAP = ([0-9.]+)")
+    fx = lua_str(visual, r"\nlocal FX_GAP = ([0-9.]+)")
+    check("N1 USER-GUIDE: each kind of re-check at most %s times a second (ROUTED_GAP %s)" % (gap and round(1 / float(gap)), gap),
+          gap and ("each kind of re-check runs at most %d times a second" % round(1 / float(gap))) in ug)
+    check("N2 USER-GUIDE: moving parts redrawn at most %s times a second per display, only while something changes (FX_GAP %s)"
+          % (fx and round(1 / float(fx)), fx),
+          fx and ("redrawn at most %d times a second, and only while something on that display changes" % round(1 / float(fx))) in ug)
+    limit = lua_str(perf, r"\nlocal LIMIT = (\d+)")
+    poss = "(limit %d/s: possibly over)" % int(limit) if limit else None
+    check("N3 SD-84: the guide quotes the tracker's range and its 'possibly over' text as RulesPerf.lua prints it",
+          poss and poss in perf.replace("%d", str(limit)) and ("most in 1 s 10 to 14 " + poss) in ug and "possibly over" in faq, poss)
+
+    # I: the in-game notes (SD-69)
+    ipd = read("XayaUI_Options/InfoPaneData.lua")
+    pats = re.findall(r'^    \{ date = "([^"]+)", title = "([^"]+)", blocks = \{', ipd, re.M)
+    check("I1 SD-69: the pane holds at most the newest 5 landings plus \"Older notes\", starting with PATCH-NOTES' first",
+          pats and len(pats) <= 6 and pats[-1][0] == "Older notes" and heads and pats[0] == heads[0]
+          and [p for p in pats[:-1]] == heads[:len(pats) - 1], pats)
+    bad = [l.strip()[:120] for l in ipd.splitlines()
+           if (re.search(r"/xuiengine (full|refresh)", l) or "perf ui" in l) and "removed" not in l]
+    check("I2 the pane offers no removed command (/xuiengine full or refresh, /xui debug perf ui)", not bad, bad)
+
+    # I3 / I4 / I5 (repair 1): the build tool's round 9 change is pending on qa-installer-branch, and the pane is what it builds
+    plan_rel = "docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md"
+    plan = read(plan_rel)
+    named = {"PATCH-NOTES (its comment)": pn_raw[:pn_raw.find("-->") + 3], "README-INGAME": read("docs/README-INGAME.md")[:1200],
+             "HELP-FAQ": faq[:1200], "USER-GUIDE": ug, "tests/info_pane_run.py": read("tests/info_pane_run.py")}
+    log_all = read("docs/process/REQUEST-LOG.md")
+    sd69 = [l for l in log_all.splitlines() if l.startswith("| SD-69 | ")]
+    named["REQUEST-LOG SD-69"] = sd69[0] if sd69 else ""
+    false_claim = re.compile(r"KEEP_LANDINGS[^.;)]{0,20}(?:on |, )qa-installer-branch|<qa checkout>/tools/build_info_pane_data\.py\)")
+    bad_claim = [n for n, t in named.items() if false_claim.search(t)]
+    unflagged = [n for n, t in named.items() if "build_info_pane_data" in t and "qa-installer-branch" in t
+                 and not ("pending" in t.lower() and plan_rel in t)]
+    check("I3 no document says the tool's round 9 change is on qa-installer-branch; each that names the tool there says it is pending "
+          "and points to the patch", plan and not bad_claim and not unflagged and "Status: **pending.**" in plan, (bad_claim, unflagged))
+    qa_tool = None
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "show", "origin/qa-installer-branch:tools/build_info_pane_data.py"], capture_output=True,
+                           text=True, timeout=60)
+        qa_tool = r.stdout if r.returncode == 0 and r.stdout else None
+    except Exception:
+        pass
+    if qa_tool is None:
+        print("note: origin/qa-installer-branch not readable here; I3's 'really not there' and I4 not checked")
+    else:
+        check("I3 the change really is not on qa-installer-branch yet (when it is, update the documents above)",
+              "KEEP_LANDINGS" not in qa_tool and "XUI_ROOT" not in qa_tool)
+        m = re.search(r"```diff\n(.*?)```", plan, re.S)
+        base_md5 = re.search(r"md5 ([0-9a-f]{32})", plan)
+        ok4, why = False, "no diff in " + plan_rel
+        if m:
+            tmp = tempfile.mkdtemp()
+            try:
+                os.makedirs(os.path.join(tmp, "tools"))
+                with open(os.path.join(tmp, "tools", "build_info_pane_data.py"), "w", encoding="utf-8") as fh:
+                    fh.write(qa_tool)
+                with open(os.path.join(tmp, "tool.diff"), "w", encoding="utf-8") as fh:
+                    fh.write(m.group(1))
+                pr = subprocess.run(["patch", "-s", "-p1", "-d", tmp, "-i", os.path.join(tmp, "tool.diff")], capture_output=True,
+                                    text=True, timeout=60)
+                if pr.returncode != 0:
+                    why = "patch did not apply: " + (pr.stdout + pr.stderr)[:200]
+                else:
+                    env = dict(os.environ, XUI_ROOT=ROOT)
+                    cr = subprocess.run([sys.executable, "-I", os.path.join(tmp, "tools", "build_info_pane_data.py"), "--check"],
+                                        capture_output=True, text=True, timeout=120, env=env)
+                    ok4, why = cr.returncode == 0, (cr.stdout + cr.stderr)[:200]
+            finally:
+                shutil.rmtree(tmp, ignore_errors=True)
+        base_ok = base_md5 and hashlib.md5(qa_tool.encode("utf-8")).hexdigest() == base_md5.group(1)
+        check("I4 qa-installer-branch's tool with the recorded patch rebuilds InfoPaneData.lua exactly from this checkout's markdown "
+              "(the plan's base md5 is QA's tool)", ok4 and base_ok, (why, base_ok))
+    visible = [l for l in ipd.splitlines() if not l.lstrip().startswith("--")]
+    land = [l.strip()[:100] for l in visible if re.search(r"\blandings?\b", l, re.I)]
+    check("I5 the pane's text uses no in-house word 'landing'", not land, land)
+
+    # P7 / P8 (repair 1): the Rules developers' note and the sound bullets say what is true against main
+    gp = read("tests/gate_performance_run.py")
+    capm = re.search(r'V33_EVENT_CAPS = \{"source": "ad60a051".*?"every": \{"XayaUI_Rules": (\d+)', gp, re.S)
+    main_cap = int(capm.group(1)) if capm else None
+    rules = entry[entry.find("### Rules "):] if "### Rules " in entry else ""
+    devs = re.findall(r"\*Developers' notes?:[^*]*\*", rules)
+    nums = None
+    for d in devs:
+        mm = re.search(r"costliest frame in a fight is ([\d,]+) .*?main's ([\d,]+)", d)
+        if mm:
+            nums = (int(mm.group(1).replace(",", "")), int(mm.group(2).replace(",", "")), d)
+    words_ok = False
+    if nums:
+        drop = 1 - nums[0] / float(nums[1])
+        words_ok = (("about a third less" in nums[2]) == (0.29 <= drop <= 0.38)) and (("about half" in nums[2]) == (0.45 <= drop <= 0.55))
+    check("P7 the Rules developers' note gives the costliest fight frame against main's (%s, the gate's stored ad60a051 = main) and "
+          "words that match the two numbers; no 'about half'" % main_cap,
+          main_cap and nums and nums[1] == main_cap and words_ok and "about half" not in rules, nums and nums[:2])
+    au = read("XayaUI_Rules/AuraSound.lua")
+    dm = re.search(r"local DROP = \{([^}]*)\}", au)
+    drop_keys = re.findall(r"(\w+) = true", dm.group(1)) if dm else []
+    snd_pn = rules[rules.find("**Sounds**"):] if "**Sounds**" in rules else ""
+    snd_wn = sec[sec.find("**Game-played sound"):][:900] if "**Game-played sound" in sec else ""
+    need = []
+    if "combat" in drop_keys:
+        need.append("can also play outside combat")
+    if "encounter" in drop_keys:
+        need.append("outside the encounter")
+    wrong = "follows the rule's load conditions, including rules that load only in combat"
+    for name, t in (("PATCH-NOTES", snd_pn), ("WHATS-NEW", snd_wn)):
+        miss_s = [w for w in need if w not in t]
+        check("P8 %s: the game-played sound bullets say Combat and Boss encounter count as possibly true (AuraSound.lua DROP: %s)"
+              % (name, ", ".join(drop_keys)), bool(t) and bool(drop_keys) and not miss_s and wrong not in t, miss_s or "no sound bullets")
+    # (repair 2) USER-GUIDE: which way each dropped choice widens the sound, and which rules had no copy on main. The Load tab's
+    # words come from Conditions.lua LOAD_TRI. On main (origin/main AuraSound.lua A.Plan) a rule not loaded at the sync got no copy,
+    # and the sync runs out of combat only: so "Only in combat", "Only during a boss encounter" and a Boss encounters list had none
+    # (now they can also play outside); "Only out of combat" and "Only outside boss encounters" had one, kept through fights (now as
+    # then, they can also play in combat or in the encounter).
+    cond = read("XayaUI_Rules/Conditions.lua")
+    tri = {k: (y, n) for k, y, n in re.findall(r'\{ key = "(\w+)", label = "[^"]*", yes = "([^"]*)", no = "([^"]*)"', cond)}
+    yes_l = [tri[k][0] for k in drop_keys if k in tri]
+    no_l = [tri[k][1] for k in drop_keys if k in tri]
+    if "encounter" in drop_keys:
+        yes_l.append("Boss encounters")
+    ug = read("docs/USER-GUIDE.md")
+    ugb = ug[ug.find("- **Let the game play this sound on the aura itself**"):]
+    nxt = re.search(r"\n- ", ugb[3:])
+    ugb = ugb[:nxt.start() + 3] if nxt else ugb
+    ug_lines = [l for l in ugb.splitlines() if "can also play" in l]
+    out_w = (["outside combat"] if "combat" in drop_keys else []) + (["outside the encounter"] if "encounter" in drop_keys else [])
+    in_w = (["in combat"] if "combat" in drop_keys else []) + (["in the encounter"] if "encounter" in drop_keys else [])
+    l_yes = [l for l in ug_lines if all("**%s**" % w in l for w in yes_l) and not any(w in l for w in no_l)]
+    l_no = [l for l in ug_lines if all("**%s**" % w in l for w in no_l)]
+    ok_yes = len(l_yes) == 1 and all("can also play " + w in l_yes[0].replace("can also play outside combat or outside", "can also play outside combat, can also play outside")
+                                     for w in out_w) and "got no game copy" in l_yes[0]
+    ok_no = (len(l_no) == 1 and all(w in l_no[0] for w in in_w) and not any(w in l_no[0] for w in out_w) and "got no game copy" not in l_no[0]
+             and "already got the game's copy" in l_no[0])
+    bad = [l.strip()[:120] for l in ugb.splitlines() if any(w in l for w in no_l) and ("got no game copy" in l or "outside combat" in l)]
+    check("P8 USER-GUIDE: %s can also play outside and had no copy before; %s can also play in combat / the encounter, as before "
+          "(Conditions.lua LOAD_TRI, AuraSound.lua DROP: %s)" % (", ".join(yes_l), ", ".join(no_l), ", ".join(drop_keys)),
+          bool(drop_keys) and len(yes_l) == len(drop_keys) + ("encounter" in drop_keys) and ok_yes and ok_no and not bad,
+          (len(l_yes), len(l_no), ok_yes, ok_no, bad))
+
+    # Q: in-game steps
+    want = {
+        424: ["/xui debug perf on", "possibly over", "10 to 14", "redrawText", "/xui debug perf ui"],
+        425: ["SD-15", "**no** Save / Discard / Keep editing question"],
+        426: ["Only in combat", "Only out of combat", "absent", "Out of combat", "boss encounter", "redrawText stops"],
+        427: ["AddOn Usage", "Average CPU", "hitch", "V33"],
+        428: ['/run collectgarbage("collect") local a=collectgarbage("count") for i=1,1000 do C_Timer.After(10, print) end print(collectgarbage("count")-a)', "C_Timer.NewTimer"],
+        429: ["SD-49", "/run for _,r in ipairs(GetMouseFoci()) do", "IsMouseClickEnabled"],
+        421: ["RB-29", "garrison"],
+        # (repair 1) round8-summary.md in_game_steps that had no step
+        430: ["Cooldown Manager", "shows when the buff is applied and hides when it is removed", "flicker",
+              "perf: alert (Cooldown Manager alert re-checks):"],
+        431: ['/run collectgarbage("collect")', "10 minutes", "AddOns list", "39,959.7 KB", "third"],
+        432: ["talent", "loadout", "loading screen", "hitch"],
+        433: ["busy pull", "0.1 seconds", "seconds left", "none is skipped"],
+        # (repair 2) the USER-GUIDE's combat / boss Load choice bullets for the game-played sound point here
+        434: ["Only in combat", "Only out of combat", "The game plays it on the aura alone, so \"Only in combat\" does not apply to it.",
+              "before bundle 1, (a) never got the game's copy"],
+        401: ["0.6.86", "0.6.109", "0.7.1"],
+    }
+    for n, words in sorted(want.items()):
+        line = st.get(n, "")
+        missing = [w for w in words if w not in line]
+        check("Q B%d exists once with %s" % (n, ", ".join(repr(w[:40]) for w in words)),
+              line and not missing and len(re.findall(r"\*\*B%d\.\*\*" % n, qa)) == 1, missing or "no step")
+    # (repair 2) B434's quoted pane line is the one AuraSound.lua builds for one dropped choice: its two fixed parts and the label
+    lab = re.search(r'\{ key = "combat", label = "[^"]*", yes = "([^"]*)"', read("XayaUI_Rules/Conditions.lua"))
+    parts_ok = ('" The game plays it on the aura alone, so " ..' in au and '" does") .. " not apply to it"' in au and lab
+                and ('The game plays it on the aura alone, so "%s" does not apply to it.' % lab.group(1)) in st.get(434, ""))
+    check("Q B434 quotes the pane line as AuraSound.lua builds it for \"Only in combat\"", parts_ok, lab and lab.group(1))
+    b414 = st.get(414, "")
+    check("Q B414 no longer waits on her decision (SD-68 decided: gated, with the tracker)",
+          "NEEDS HER DECISION" not in b414 and "pollRange" in b414, b414[:120])
+
+    # S: studies and roadmap
+    eui = read("docs/plans/R7-EUI-STUDY-2026-11-13.md")
+    check("S1 R7-EUI-STUDY carries the round 8 corrections (self-timed preset bars; 1,888 differences; 10/s holds for two paths)",
+          "## Corrections" in eui and "self-timed preset bars" in eui and "1,888" in eui and "only two EUI paths" in eui)
+    rm = read("docs/ROADMAP.md")
+    check("S2 ROADMAP: the widgets.md:4344 StatusBar:SetValue follow-up (api.json:125485 is right) and 'per pass + cheap repeats'",
+          "widgets.md:4344" in rm and "api.json:125485" in rm and "Per pass + cheap repeats" in rm)
+
+    # L: the request log's status column
+    log = read("docs/process/REQUEST-LOG.md")
+    rows = {}
+    for line in log.splitlines():
+        m = re.match(r"\| (SD-(\d+)) \| ", line)
+        if m:
+            rows[int(m.group(2))] = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
+    targets = [13, 16, 17, 25, 31, 32, 34] + list(range(56, 86))
+    still_open = [n for n in targets if n in rows and len(rows[n]) > 2 and rows[n][2].startswith("OPEN")]
+    check("L1 status cells of SD-13, 16, 17, 25, 31, 32, 34 and SD-56 to SD-85 no longer start with OPEN", rows and not still_open,
+          still_open)
+    try:
+        r = subprocess.run(["git", "-C", ROOT, "show", "HEAD:docs/process/REQUEST-LOG.md"], capture_output=True, text=True, timeout=60)
+        old_log = r.stdout if r.returncode == 0 else None
+    except Exception:
+        old_log = None
+    if old_log:
+        changed = []
+        for line in old_log.splitlines():
+            m = re.match(r"\| (SD-(\d+)) \| ", line)
+            if m:
+                cells = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
+                now = rows.get(int(m.group(2)))
+                if not now or now[1] != cells[1]:
+                    changed.append(m.group(1))
+        check("L2 her words (second column) of every SD row are unchanged from the last commit", not changed, changed)
+    else:
+        print("note: git not available here; L2 (her words unchanged) not checked")
+
+    bad_n = 0
+    for name, ok in results:
+        print(("PASS " if ok else "FAIL ") + name)
+        bad_n += 0 if ok else 1
+    print("%d checks, %d failed" % (len(results), bad_n))
+    return 1 if bad_n else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

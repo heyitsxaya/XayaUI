@@ -36,7 +36,9 @@ check("docs/reference/build_reference.py reads either name", "env.XayaUIDevAssis
 
 # 4. nothing else still points at the old folder (history in the RETROSPECTIVE stays as written)
 allowed = {"docs/reference/build_reference.py", "tests/devassist_rename_run.py"}
-out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", ".", ":!docs/process/RETROSPECTIVE.md", ":!MANIFEST.md5"],
+# (bundle 1 round 9, REQUEST-LOG A23 SD-72, her answer "Remove from main, keep on QA (Recommended)": MANIFEST.md5 is gone from main,
+# so its exclusion here was dropped; qa-installer-branch keeps the file and its own copy of this test)
+out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", ".", ":!docs/process/RETROSPECTIVE.md"],
                      cwd=ROOT, capture_output=True, text=True).stdout.split()
 stray = [p for p in out if p not in allowed and not p.endswith(".md") and p != ".gitignore"]
 check("no code file outside the expected places names XayaUI_GameDump", not stray, stray)

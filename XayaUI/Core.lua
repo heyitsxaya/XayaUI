@@ -115,7 +115,7 @@ function ns.Ignored(s) return s == nil or s == "" or s == "none" or s == "any" e
 function ns.Val(v) if v == nil or v == "" or v == "none" then return nil end return v end
 
 -- A message that names another player (or anything else personal): shown like ns.Print, but never kept anywhere a report reads:
--- not in the debug record, not in the console's line buffer (the bug report and "Copy" read it), not in collected output.
+-- not in the debug record, not in the console's line buffer (the bug report and "Copy" read it).
 local privateMsg = false
 function ns.PrintPrivate(...)
     privateMsg = true
@@ -127,7 +127,6 @@ function ns.Print(...)
     local parts = {}
     for i = 1, select("#", ...) do parts[#parts + 1] = tostring((select(i, ...))) end
     local text = table.concat(parts, " ")
-    if ns._capture and not privateMsg then ns._capture[#ns._capture + 1] = text; return end   -- (DebugRecord.lua ns.CaptureOutput)
     if ns.RecordLine and not privateMsg then ns.RecordLine("msg", text) end
     -- where messages go (DebugRecord.lua, Settings > Debugging): chat, the XayaUI console window, or both. core 0.6.50, whatever the
     -- setting: a command typed in the console window, and any /xui debug command, prints in the console window (ns.consoleRunning,
@@ -357,28 +356,22 @@ end)
 -------------------------------------------------------------------------------
 -- the diagnostic commands core owns: { name, fn(arg), help }. help is "name [args] (what it does)", without "/xui debug".
 -- core 0.6.56 (Xaya 2026-11-06, REQUEST-LOG #81, her answers: developer diagnostics "Move all of them"; edge cases "Yes, as
--- recommended"): only these stay in core for players: status (the console form of /xui status), perf (the engine meter; "perf ui" is
--- XayaUI Dev Assist's), talents (rule creation uses the scan) and loader (for when /xui will not open the window). auras is AuraList.lua's.
+-- recommended"): only these stay in core for players: status (the console form of /xui status), perf (the engine meter), talents (rule
+-- creation uses the scan) and loader (for when /xui will not open the window). auras is AuraList.lua's.
 -- Every other diagnostic (probe, timing, model, tracker, mods, groups, icons, media, seed, map, debuffs, loc, gamemenu, chatprobe,
--- widthprobe, perf ui) is registered by XayaUI Dev Assist (XayaUI_DevAssist/CoreDebug.lua); without it they and their help lines do
--- not exist, and core does not load their code.
+-- widthprobe) is registered by XayaUI Dev Assist (XayaUI_DevAssist/CoreDebug.lua); without it they and their help lines do
+-- not exist, and core does not load their code. (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": the
+-- hand-off of "perf ui" to Dev Assist is removed; every word after perf goes to the engine meter, XayaUI_Debug/RulesPerf.lua.)
 -- (P4) status, perf (the engine meter) and talents are XayaUI Rules' (rules = true): they run through its "rules" service
 -- (XayaUI_Rules/RuleDefaults.lua); with XayaUI Rules switched off their help lines are left out and the command says which addon it
 -- needs (ns.ModuleMissingText, the same line as for any other module's command).
 local function RulesSvc() return ns.Service and ns.Service("rules") end
 local CORE_DEBUG = {
     { "status", function() local R = RulesSvc(); if R and R.PrintStatus then R.PrintStatus() end end, "status (every rule's answer right now, and why)", rules = true },
-    { "perf", function(arg)
-        if tostring(arg or ""):lower():match("^ui") then   -- settings-window rebuild timing: XayaUI Dev Assist's (it registers "perf")
-            if not (ns.RunDebugCommand and ns.RunDebugCommand("perf", arg)) then
-                ns.Print(("there is no debug command \"perf %s\"."):format((tostring(arg):gsub("|", "||"))))
-                ns.PrintDebugHelp()
-            end
-        else   -- engine timing on this machine (XayaUI Rules: Engine.lua)
-            local R = RulesSvc()
-            if R and R.PerfCommand then R.PerfCommand(arg) else ns.Print(ns.ModuleMissingText("perf", true)) end
-        end
-    end, "perf [on|off] (engine timing)", rules = true },
+    { "perf", function(arg)   -- the engine meter on this machine (XayaUI_Debug/RulesPerf.lua, through XayaUI Rules' "rules" service)
+        local R = RulesSvc()
+        if R and R.PerfCommand then R.PerfCommand(arg) else ns.Print(ns.ModuleMissingText("perf", true)) end
+    end, "perf [on|off] (measure the combat engine: pass counts, CPU and memory)", rules = true },
     { "talents", function(arg) local R = RulesSvc(); if R and R.TalentCommand then R.TalentCommand(arg) end end, "talents [status|<name>] (scan every class's talents; find one by name)", rules = true },
     { "loader", function()   -- (was /xui debug window; Xaya 2026-11-06: "Rename it" -> "/xui debug loader")
         local function yn(v) return v and "yes" or "NO" end
@@ -466,7 +459,7 @@ end
 local function RunDebug(arg)
     local sub, rest = tostring(arg or ""):match("^(%S*)%s*(.-)$")
     if sub == "" or sub == "help" then ns.PrintDebugHelp()
-    elseif coreDebug[sub] and rulesDebug[sub] and not RulesSvc() and sub ~= "perf" then ns.Print(ns.ModuleMissingText(sub, true))
+    elseif coreDebug[sub] and rulesDebug[sub] and not RulesSvc() then ns.Print(ns.ModuleMissingText(sub, true))
     elseif coreDebug[sub] then coreDebug[sub](rest)
     elseif ns.RunDebugCommand and ns.RunDebugCommand(sub, rest) then   -- a feature's own (Modules.lua ns.RegisterDebugCommand)
     elseif ns.ModuleMissingText(sub, true) then ns.Print(ns.ModuleMissingText(sub, true))   -- a feature's, whose addon is off

@@ -9,6 +9,13 @@ and Esc closes it before the settings window. Addon Info and Settings > Acknowle
 The pane's text (XayaUI_Options/InfoPaneData.lua) is generated from PATCH-NOTES.md, docs/README-INGAME.md and docs/HELP-FAQ.md by
 tools/build_info_pane_data.py, which is not on this branch (tools/ left it), so its --check is not run here; the landing count and
 the newest landing's date below are still read from PATCH-NOTES.md.
+(bundle 1 round 9, REQUEST-LOG A23 SD-69, her answer "Recent notes only in game (Recommended)": "In-game pane shows the last few
+versions' notes plus a pointer to the full file; stays under 200 KB with room to grow") The pane holds only the newest KEEP landings
+of PATCH-NOTES.md, in the file's order, then an "Older notes" entry (and a last What's New paragraph) naming PATCH-NOTES.md and the
+repository link; no older landing is in the pane. Its memory is measured from the file's text under a fixed chunk name, so the reading
+no longer depends on where the checkout lies (round 8: 200.1 KB in one checkout, a pass in another); the cap stays 200 KB and the
+reading must also stay under main's 190 KB target (b1bef6e9, A24 #12). Negative control: the round 8 data (every landing, no pointer)
+fails the landing list, the pointer and the target checks.
 Run: python3 tests/info_pane_run.py"""
 import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -19,8 +26,15 @@ import run as H  # noqa: E402
 # (round 7 docs) HTML comments are left out, as tools/build_info_pane_data.py leaves them out (strip_comments): a landing held in a
 # comment in PATCH-NOTES.md is not in the pane, so it is not counted here either
 PATCH = re.sub(r"<!--.*?-->", "", open(os.path.join(ROOT, "PATCH-NOTES.md"), encoding="utf-8").read(), flags=re.S)
-N_LANDINGS = len(re.findall(r"^## \d{4}-\d{2}-\d{2} — ", PATCH, re.M))
-FIRST_DATE = re.search(r"^## (\d{4}-\d{2}-\d{2}) — ", PATCH, re.M).group(1)
+ALL_LANDINGS = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", PATCH, re.M)
+KEEP = 5   # SD-69: the newest landings shown in game ("few" = 5 is the docs unit's reading of her words, not her number). It must match
+           # KEEP_LANDINGS in the build tool's round 9 patch, which is NOT on qa-installer-branch yet (pending; the patch is in
+           # docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md)
+TRIMMED = len(ALL_LANDINGS) > KEEP
+N_LANDINGS = min(len(ALL_LANDINGS), KEEP) + (1 if TRIMMED else 0)   # + the "Older notes" entry
+FIRST_DATE = ALL_LANDINGS[0][0]
+KEPT = ALL_LANDINGS[:KEEP]
+DROPPED_TITLES = [t for _, t in ALL_LANDINGS[KEEP:] if t not in [k[1] for k in KEPT]]
 CREDIT_NAMES = re.findall(r'\{ name = "([^"]+)"', open(os.path.join(ROOT, "XayaUI_Options", "AddonInfo.lua"), encoding="utf-8").read())
 
 LUA = r'''
@@ -83,6 +97,25 @@ check("two tabs: Patch Notes | Info", tabNames() == "Patch Notes|Info", tabNames
 local nl = navLabels()
 check("Patch Notes lists What's New, then one entry per landing (newest first)", #nl == 1 + __N__ and nl[1] == "What's New" and nl[2] == "__FIRST__",
   table.concat(nl, ", "))
+-- (round 9, SD-69) recent notes only: the newest landings in the file's order, then "Older notes" pointing to the full file
+local wantNav = { __KEPT__ }
+local navOk = #wantNav > 0
+for i, d in ipairs(wantNav) do if nl[1 + i] ~= d then navOk = false end end
+check("SD-69: the pane lists only the newest __KEEP__ landings of PATCH-NOTES.md, in its order", navOk, table.concat(nl, ", "))
+local D = ns.InfoPaneData
+local dropped, droppedHit = { __DROPPED__ }, {}
+for _, l in ipairs(D.patches) do for _, t in ipairs(dropped) do if l.title == t then droppedHit[#droppedHit + 1] = t end end end
+check("SD-69: no older landing is in the pane (" .. #dropped .. " older titles looked for)", #droppedHit == 0, table.concat(droppedHit, "; "))
+if __TRIMMED__ then
+  check("SD-69: the last entry is \"Older notes\"", nl[#nl] == "Older notes", nl[#nl])
+  P.Select("patch", "p" .. __N__)
+  local ot = contentText()
+  check("SD-69: \"Older notes\" points to the full file (PATCH-NOTES.md and the repository link)",
+    ot:find("PATCH-NOTES.md", 1, true) ~= nil and ot:find("https://github.com/heyitsxaya/XayaUI", 1, true) ~= nil, ot:sub(1, 200))
+  P.Select("patch", "whatsnew")
+  local wt = contentText()
+  check("SD-69: What's New ends by pointing to the full file too", wt:find("PATCH-NOTES.md", 1, true) ~= nil, wt:sub(-200))
+end
 local txt = contentText()
 check("What's New shows new features grouped by addon line (e.g. Bonus Features 0.6.x, Stat Calculator)",
   txt:find("Bonus Features 0.6.x", 1, true) ~= nil and txt:find("Stat Calculator", 1, true) ~= nil, txt:sub(1, 200))
@@ -271,11 +304,14 @@ check("releasing the settings window closes the pane and hides the ?", not f:IsS
 return R
 end
 '''.replace("__N__", str(N_LANDINGS)).replace("__FIRST__", FIRST_DATE).replace(
+    "__KEEP__", str(KEEP)).replace("__TRIMMED__", "true" if TRIMMED else "false").replace(
+    "__KEPT__", ", ".join('"%s"' % d for d, _ in KEPT)).replace(
+    "__DROPPED__", ", ".join('"%s"' % t.replace("\\", "\\\\").replace('"', '\\"') for t in DROPPED_TITLES)).replace(
     "__CREDITS__", ", ".join('"%s"' % n for n in CREDIT_NAMES)).replace("__NCRED__", str(len(CREDIT_NAMES)))
 
 
-def data_memory_kb(L):
-    """Lua memory the generated text adds once XayaUI_Options loads (measured, Lua 5.1 via lupa)."""
+def data_memory_kb_by_path(L, path):
+    """(round 9 docs repair) The round 8 way, kept only as a control: loadfile(path), so the chunk name is the file's own path."""
     f = L.eval('''function(path)
         collectgarbage("collect"); local before = collectgarbage("count")
         local ns = {}
@@ -283,7 +319,24 @@ def data_memory_kb(L):
         collectgarbage("collect"); local after = collectgarbage("count")
         return after - before, ns.InfoPaneData ~= nil
     end''')
-    kb, ok = f(os.path.join(ROOT, "XayaUI_Options", "InfoPaneData.lua"))
+    return f(path)
+
+
+def data_memory_kb(L, path=None):
+    """Lua memory the generated text adds once XayaUI_Options loads (measured, Lua 5.1 via lupa).
+    (round 9, SD-69) The text is loaded under one fixed chunk name, the same on every machine, not under this checkout's path: Lua
+    keeps the chunk name as a string in memory, so loadfile(path) counted the path's own length and the reading moved with where the
+    checkout lies (round 8: 200.1 KB from a long scratch path)."""
+    f = L.eval('''function(src)
+        collectgarbage("collect"); local before = collectgarbage("count")
+        local ns = {}
+        local chunk = assert(loadstring(src, "@Interface/AddOns/XayaUI_Options/InfoPaneData.lua")); chunk("XayaUI_Options", ns)
+        collectgarbage("collect"); local after = collectgarbage("count")
+        return after - before, ns.InfoPaneData ~= nil
+    end''')
+    with open(path or os.path.join(ROOT, "XayaUI_Options", "InfoPaneData.lua"), encoding="utf-8") as fh:
+        src = fh.read()
+    kb, ok = f(src)
     return kb, ok
 
 
@@ -293,6 +346,27 @@ def main():
     enabled = list(folders)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     kb, loaded = data_memory_kb(L)
+    # (round 9, SD-69 "stays under 200 KB with room to grow") main's own target for this file (b1bef6e9, A24 #12): under 190 KB
+    results.append(("SD-69: it stays under main's 190 KB target (%.1f KB; room under the 200 KB cap %.1f KB)" % (kb, 200 - kb),
+                    loaded and kb < 190))
+    # the reading does not depend on where the checkout lies: the same text copied under a long path reads the same
+    import tempfile, shutil
+    tmp = tempfile.mkdtemp()
+    deep = os.path.join(tmp, *(["a_rather_long_folder_name_for_this_check"] * 6))
+    os.makedirs(deep)
+    shutil.copy(os.path.join(ROOT, "XayaUI_Options", "InfoPaneData.lua"), os.path.join(deep, "InfoPaneData.lua"))
+    # (a new Lua state, as the first reading had: a second load into the same state shares the first one's strings and reads less)
+    kb2, _ = data_memory_kb(H.lua51.LuaRuntime(unpack_returned_tuples=True), os.path.join(deep, "InfoPaneData.lua"))
+    # (round 9 docs repair) control: the round 8 way (loadfile by path) does move with the path, so the two readings above being equal
+    # shows the fixed chunk name removed that, and is not a reading too coarse to see a path at all
+    here_p = os.path.join(ROOT, "XayaUI_Options", "InfoPaneData.lua")
+    kb_p1, _ = data_memory_kb_by_path(H.lua51.LuaRuntime(unpack_returned_tuples=True), here_p)
+    kb_p2, _ = data_memory_kb_by_path(H.lua51.LuaRuntime(unpack_returned_tuples=True), os.path.join(deep, "InfoPaneData.lua"))
+    shutil.rmtree(tmp, ignore_errors=True)
+    results.append(("control: loading by path (the round 8 way) reads more from the deeper copy (%d characters: %.3f KB; %d characters: "
+                    "%.3f KB)" % (len(here_p), kb_p1, len(os.path.join(deep, "InfoPaneData.lua")), kb_p2), kb_p2 > kb_p1 + 0.05))
+    results.append(("SD-69: the reading does not depend on the checkout's path (here %.1f KB; a copy %d characters deep %.1f KB)"
+                    % (kb, len(deep), kb2), abs(kb - kb2) < 0.005))
     results.append(("the generated text loads; it adds %.1f KB of Lua memory once the settings window addon loads" % kb, loaded and kb < 200))   # cap raised from 120 (2026-11-07): every patch note stays in game; only loaded with the settings window
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)

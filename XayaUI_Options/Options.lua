@@ -1829,6 +1829,8 @@ function Tree.CombatStart()
     -- (round 6, SD-53) Combat Tracking Setup closes too and, like the window, opens again after the fight (before the window's OnHide
     -- would close it for good)
     if RE.AuraSetup_SettingsClosed then pcall(RE.AuraSetup_SettingsClosed, true) end
+    -- (SD-68) the mover tells this combat close from a close by hand (it resumes after combat, SD-15; a close by hand asks next time)
+    if ns.MoverWindowClosingForCombat then pcall(ns.MoverWindowClosingForCombat) end
     -- hidden now, before the lockdown begins (AceConfigDialog:Close waits for the next frame); its OnClose lets the window go as usual
     if of.Hide then pcall(of.Hide, of) else pcall(of.frame.Hide, of.frame) end
     if AceConfigDialog.OpenFrames[APP] then pcall(AceConfigDialog.Close, AceConfigDialog, APP) end

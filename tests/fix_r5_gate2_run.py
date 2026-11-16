@@ -30,7 +30,7 @@ Rules engine (what the player gets, and what it costs):
   E7 a repeat sound repeats with no event (kept)
   E8 "Only when mounted": mounting shows the display on the next frame (a load fact; before: up to 50 ms later)
   E9 a cast, movement or target change (ns.MarkStateDirty) re-checks only the loaded rules, not the 290 rules that are not loaded
-     (before: every rule)
+     (before: every rule); (round 9, SD-77) movement re-checks only the rows that read it
   E10 a target debuff rule follows UNIT_AURA on the target on the next frame (registered only while such a rule is loaded; before: the
       next 0.2 s tick)
   E11 /xui disable: no OnUpdate, no timer, no input event; /xui enable: the rules are back on the next frame
@@ -314,11 +314,17 @@ check("E8 dismounting hides it on the next frame", not shown(MOUNT))
 
 -- E9 a state change re-checks only the loaded rules
 W.tick(0.5, 1); reset()
-W.fire("PLAYER_STARTED_MOVING"); W.tick(0.06, 2)
+-- (round 9, SD-77 "Route + narrow": movement now goes only to the rows that read it; a target change is the every-live-rule state change)
+W.fire("PLAYER_TARGET_CHANGED"); W.tick(0.06, 2)
 local nl = 0
 for i = 1, #NL do nl = nl + (n[NL[i]] or 0) end
-check("[new] E9 a state change (movement) re-checks the loaded rules and none of the 290 rules that do not load here", nl == 0 and (n[CAST] or 0) >= 1,
+check("[new] E9 a state change (a target change) re-checks the loaded rules and none of the 290 rules that do not load here", nl == 0 and (n[CAST] or 0) >= 1,
   "not loaded re-checked: " .. nl .. ", loaded: " .. tostring(n[CAST]))
+W.tick(0.5, 1); reset()
+W.fire("PLAYER_STARTED_MOVING"); W.tick(0.06, 2)
+local mv = 0
+for _, c in pairs(n) do mv = mv + c end
+check("E9 (round 9) movement re-checks no rule here: none has a row that reads it (before round 9: every loaded rule)", mv == 0, mv)
 
 -- E10 target debuffs
 local hasT = false

@@ -11,7 +11,12 @@ identical 20-second cycles of the busiest case at 30 frames a second (a loading 
 target, a 15-second fight with UNIT_AURA, SPELL_UPDATE_COOLDOWN, SPELL_UPDATE_CHARGES, ACTIONBAR_UPDATE_*, UNIT_POWER_FREQUENT and
 cast storms every frame, roster updates) and 30 seconds idle. Every event handler, OnUpdate script and timer callback of XayaUI runs
 through a measuring dispatcher; judged per source file and line, everything after the settings window closed:
-  P1 FAIL  an OnUpdate script runs in a 2-second window in which it changes nothing visible (a running loop);
+  P1 FAIL  an OnUpdate script runs in a 2-second window in which it changes nothing visible (a running loop); (round 9, SD-79) counted
+           per frame it runs on; a display's effects loop (Visual.lua) is held per display to at most 30 runs in any second and to no run
+           that changes nothing beyond the single run that finds nothing left to animate (her answer "<=30/s, stop if idle");
+           (round 9 repair 1) a run that changes the screen always counts, a display script left set while it only skips for more than a
+           second FAILs, and the redraw timers (gate_common.py REDRAWS: Visual.lua's wake) are counted per display with its frame
+           script, at most 30 in any second, and FAIL on two idle runs in a row (instead of P2's 10 a second per callback);
   P2 FAIL  a repeating timer (C_Timer.NewTicker) or a timer chain that re-arms itself (a timer callback that makes the next timer,
            directly or through others) runs while it changes nothing visible, or is still armed after 30 seconds idle; (round 7, round 8)
            any re-check path, every timer callback (one-shot ones armed by events included: routed and every-live-rule passes, wakes,
@@ -26,8 +31,8 @@ through a measuring dispatcher; judged per source file and line, everything afte
            warning, more than two passes in one event (rules x rules) fail;
   P4 FAIL  steady-state allocation per frame in the busiest case (cycles 2 and 3): an OnUpdate that allocates, or a storm-event handler
            that allocates on 10% or more of its runs; every handler's KB per second and bytes per frame is reported; (round 8, SD-68
-           guard) a timer call site that hands C_Timer a new function made from the same definition on a later call (a closure per call)
-           on the hot path (a storm event, a timer callback or a frame script; WARNING elsewhere);
+           guard) a timer call site that hands C_Timer a new function made from the same definition on a later call (a closure per call),
+           (round 9, SD-82 "FAIL everywhere") on the hot path and everywhere else;
   P5 FAIL  a non-integer x / y passed to SetPoint, or a non-integer size to SetSize / SetWidth / SetHeight, by XayaUI code;
   P6 FAIL  runaway: a function whose call count grows from cycle to cycle (or idle window to idle window) on identical input, a
            handler whose work grows the same way, frames made or hooks placed again in the steady state (frames are never freed in
@@ -38,8 +43,13 @@ through a measuring dispatcher; judged per source file and line, everything afte
            billing and the scenario's likeness to her play are INFERENCE; the budget and the measured numbers are printed on every run,
            with each addon's work per event and per frame and its timers' allocation per pass. (round 8, SD-66 "No worse than ad60a51")
            per addon, the costliest single fight frame above that addon's own on ad60a051 (V33_EVENT_CAPS, stored with its source).
+           (round 9) the fights and each combat end's second ("end N"), and on their own lines the frames right after combat start, a
+           boss pull, the boss down and combat end (SD-77); XayaUI_Debug at most 600 (SD-81 "600, same as core").
+  DRAW FAIL (round 9, SD-77 "Route + narrow") after each load-fact change a display shows something other than a full re-check of every
+           rule shows (gate_common.py drawCheck).
   MEM FAIL (round 8, SD-66 "Today +15%, tighten later") Lua memory after a full collection at the end of any cycle (or after the idle)
-           above 34,747.6 KB x 1.15 = 39,959.7 KB; the growth per cycle is still reported (WARNING when it grows every cycle).
+           above 34,747.6 KB x 1.15 = 39,959.7 KB; the growth per cycle is still reported (WARNING when it grows every cycle; round 9: read in
+           the memory play, so it is the addons' own, not the gate's records).
 Every check runs on both variants of the scenario (Advanced Debugging off and on; findings of the second are marked so).
 Measuring limits (V25; UNVERIFIED IN GAME): instructions are Lua VM instructions in Lua 5.1 and include the stand-in's own widget
 methods (C in the game), so they overstate; allocation excludes the stand-in's widget methods and the gate's own measuring; the game's
@@ -52,7 +62,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gate_common as GC  # noqa: E402
 
 GATE = "gate_performance"
-AFTER = lambda p: p == "closed" or p.startswith("busy") or p.startswith("idle")   # noqa: E731  (the window is closed)
+AFTER = lambda p: p in ("closed", "effects") or p.startswith("busy") or p.startswith("idle")   # noqa: E731  (the window is closed)
+FX_PHASES = ("preview", "unlock")   # (round 9, SD-79) before the close: the previews and the mover, judged only by the per-display checks
 STEADY = ("busy 2", "busy 3")
 IDLE = ("idle 1", "idle 2", "idle 3")
 STORM_FAIL = 0.10   # a storm-event handler that allocates on this share of its runs or more allocates per frame
@@ -144,8 +155,34 @@ FIGHT = ("fight 2", "fight 3")
 # XayaUI Rules 367,547,500 / 900 = 408,386.1 per fight frame (second play 367,582,400 / 900 = 408,424.9), core 800 / 900 = 0.9,
 # Options 0.0: within 0.05% of the 408,576.2 above ((408,386.1 - 408,576.2) / 408,576.2 = -0.047%), the same reading. So
 # 4% = 408,386.1 and 1% = 408,386.1 / 4 = 102,096.5 per frame.
-V33_RECORDED = {"stamp": "9a9fb14ec503", "rules": 408386.1, "core": 0.9, "options": 0.0}   # (2026-11-15, round 8 repair 2, 900 fight frames)
+# (round 9, 2026-11-15) the scenario changed (stamp 9a9fb14ec503 -> aa8a21168329: the measured play counts no call (SD-80), a boss pull
+# in every fight, combat end as a segment of its own, 25 more rules with displays (absent target debuffs, out-of-combat opacity, boss
+# rules, effect displays), previews and the mover at 144 frames a second, the effects part); ad60a051 played twice with this gate
+# (tests/gate_common.py tree_copy / tree_result, git archive of the repository's own ad60a051, XUI_GATE_NOCACHE=1):
+# XayaUI Rules 382,651,600 / 900 = 425,168.4 per fight frame (second play 382,651,100 / 900 = 425,167.9), core 1,000 / 900 = 1.1
+# (second play 900 / 900 = 1.0), Options 0.0. So 4% = 425,168.4 and 1% = 425,168.4 / 4 = 106,292.1 per frame. (The round 8 value
+# above, 408,386.1, was for scenario 9a9fb14ec503: (425,168.4 - 408,386.1) / 408,386.1 = +4.1%.)
+# (round 9 gate repair 1, 2026-11-16) the scenario's text changed again (stamp aa8a21168329 -> 6e573efe8b12: the gate's own records only:
+# a display script's skips while it changes nothing, the run times per display, and in the tree play the widget each change lands on for
+# the redraw timers, REDRAWS; the addons' code and the measured play's hook are unchanged), so ad60a051 was played twice more with this
+# gate (tree_copy / git archive of the repository's own ad60a051, XUI_GATE_NOCACHE=1, 182 s each):
+# XayaUI Rules 382,656,000 / 900 = 425,173.3 per fight frame (second play 382,655,800 / 900 = 425,173.1), core 1,000 / 900 = 1.1 (both
+# plays), Options 0.0. Against the aa8a21168329 value: (425,173.3 - 425,168.4) / 425,168.4 = +0.001%, the same reading (the gate's own
+# code between two measured runs moves the 100-instruction counter's phase).
+V33_RECORDED = {"stamp": "6e573efe8b12", "rules": 425173.3, "core": 1.1, "options": 0.0,   # (2026-11-16, round 9 gate repair 1, 900 fight frames)
+                "when": "in round 9 gate repair 1 (2026-11-16, ad60a051 played twice, the first play)"}
 FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
+# (round 9, SD-77) the second after each fight's combat end is a measured segment of its own ("end N"); the per-event cap judges the
+# fights and these together, and the frames right after each moment that changes load facts on their own lines
+END_ALL = ("end 1", "end 2", "end 3")
+CAP_EVERY = FIGHT_ALL + END_ALL
+CAP_STEADY = ("fight 2", "fight 3", "end 2", "end 3")
+MOMENTS = (("combat start", "combat start"), ("boss pull", "a boss pull (ENCOUNTER_START)"), ("boss down", "the boss down (ENCOUNTER_END)"),
+           ("combat end", "combat end"))
+# (round 9; REQUEST-LOG A23 SD-81, her answer "600, same as core (Recommended)") XayaUI_Debug (read only with Advanced Debugging on, V34):
+# its costliest single fight frame at most 600 Lua instructions, in every variant it is loaded in. Her number, fixed: it is not taken
+# from ad60a051 (which had no XayaUI_Debug) and does not follow core's cap if that is measured again.
+DEBUG_EVENT_CAP = {"XayaUI_Debug": 600}
 # V33 per event (round 8; REQUEST-LOG A23 SD-66, her answer "No worse than ad60a51 (Recommended)"): for each addon, the costliest single
 # frame of the fight (its handlers' Lua instructions billed to one drawn frame) must not exceed that addon's own costliest fight frame
 # on origin/main ad60a051 (her install when she read AddOn Usage, SD-38), played in this same scenario by this same gate. Two readings,
@@ -177,10 +214,33 @@ FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
 # The rule is unchanged (the higher reading of two plays of this scenario), so the caps follow this scenario's readings: Rules 538,500
 # (300 below the cdcaf3b76a92 cap 538,800: three steps of the 100-instruction hook, 0.06%), core 600 (fight 1's 800 above was two
 # PLAYER_REGEN_DISABLED runs; here fight 1 reads 300).
-V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "9a9fb14ec503",
-                  "how": "measured 2026-11-15, round 8 repair 2, two plays of ad60a051 in this scenario, the higher reading",
-                  "caps": {"every": {"XayaUI_Rules": 538500, "XayaUI": 600, "XayaUI_Options": 0},
-                           "steady": {"XayaUI_Rules": 538500, "XayaUI": 600, "XayaUI_Options": 0}}}
+# (round 9, 2026-11-15) stamp 9a9fb14ec503 -> aa8a21168329 (see V33_RECORDED); the caps are now judged on the fights and each combat
+# end's second (CAP_EVERY / CAP_STEADY). ad60a051 played twice with this gate (tree_copy / tree_result, as in round 8), costliest single
+# frame, fights 1 / 2 / 3, ends 1 / 2 / 3:
+#   XayaUI Rules    run 1: 579,700 / 579,600 / 579,500, 577,900 / 577,900 / 578,000   run 2: 579,700 / 579,800 / 579,500, 578,000 / 577,700 / 577,700
+#                   -> every 579,800, steady (fights 2-3, ends 2-3) 579,800; the frames after each moment (both runs, the higher):
+#                      combat start 577,000, boss pull 579,700, boss down 573,300, combat end 578,000
+#   XayaUI (core)   run 1: 500 / 500 / 500, 600 / 600 / 600                 run 2: 500 / 400 / 500, 600 / 600 / 600      -> 600, 600
+#   XayaUI Options  0 everywhere                                                                                         -> 0
+# The rule is unchanged (the higher reading of two plays of this scenario). Rules' cap rises from 538,500 to 579,800: +41,300 = 7.7%
+# (41,300 / 538,500). Its costliest frame is still the every-frame step lining up with the AuraDisplay timer and the charges handler
+# (step up to 555,600, AuraDisplay timer 51,400, SPELL_UPDATE_CHARGES 23,200 in fight 2); INFERENCE: the step re-checks every rule every
+# frame on ad60a051, and the 25 rules with displays the round 9 profile adds are dearer to re-check than the 22 cues they replace (the
+# list stays at about 300 entries); ad60a051's per-frame average rose 4.1% (V33_RECORDED). The call counting no longer in the measured
+# play does not change ad60a051's costliest frame (round 8: its costliest frame was outside the counting window).
+# (round 9 gate repair 1, 2026-11-16) stamp aa8a21168329 -> 6e573efe8b12 (see V33_RECORDED: only the gate's own records changed).
+# ad60a051 played twice with this gate (tree_copy / git archive, XUI_GATE_NOCACHE=1), costliest single frame, fights 1 / 2 / 3, ends 1 / 2 / 3:
+#   XayaUI Rules    run 1: 579,800 / 579,800 / 579,600, 578,000 / 577,900 / 578,000   run 2: 579,900 / 579,600 / 579,700, 577,900 / 578,000 / 578,000
+#                   -> every 579,900 (run 2, fight 1), steady (fights 2-3, ends 2-3) 579,800 (run 1, fight 2); the frames after each
+#                      moment (both runs, the higher): combat start 576,800, boss pull 579,900, boss down 573,400, combat end 578,000
+#   XayaUI (core)   run 1: 500 / 500 / 500, 600 / 600 / 500                 run 2: 500 / 500 / 500, 600 / 600 / 600      -> 600, 600
+#   XayaUI Options  0 everywhere                                                                                         -> 0
+# The rule is unchanged (the higher reading of two plays of this scenario, both kept above). Rules' every-segment cap 579,800 -> 579,900
+# (+100 = one step of the 100-instruction hook, 100 / 579,800 = 0.017%); its steady cap stays 579,800; core and Options unchanged.
+V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "6e573efe8b12",
+                  "how": "measured 2026-11-16, round 9 gate repair 1, two plays of ad60a051 in this scenario, the higher reading",
+                  "caps": {"every": {"XayaUI_Rules": 579900, "XayaUI": 600, "XayaUI_Options": 0},
+                           "steady": {"XayaUI_Rules": 579800, "XayaUI": 600, "XayaUI_Options": 0}}}
 V33_EVENT_CAPS_TOL = 0.01   # a replay of ad60a051 within 1% of the stored caps is the same reading (the 300-instruction spread above)
 NAMES = {"XayaUI": "XayaUI (Platform, core)", "XayaUI_Rules": "XayaUI Rules", "XayaUI_Options": "XayaUI Options"}
 
@@ -213,12 +273,24 @@ def peak(d, segs, addon):
     return best, where
 
 
+def moment_peak(d, segs, name, addon):
+    """(round 9) An addon's costliest frame among the frames right after a moment (gate_common.py moment()) over the named segments."""
+    best, where = 0, None
+    for s in segs:
+        v = ((((d.get("budget") or {}).get(s) or {}).get("moments") or {}).get(name) or {}).get(addon, 0) or 0
+        if v > best:
+            best, where = v, s
+    return best, where
+
+
 def event_caps(data, rep, base, stamp, pct):
-    """V33 per event (round 8; SD-66, her answer "No worse than ad60a51 (Recommended)"): see V33_EVENT_CAPS."""
+    """V33 per event (round 8; SD-66, her answer "No worse than ad60a51 (Recommended)"): see V33_EVENT_CAPS. (round 9) The segments
+    judged are the fights and the second after each fight's combat end (CAP_EVERY / CAP_STEADY); the costliest boss-pull and combat-end
+    frames are judged against the same caps on their own lines (SD-77); XayaUI_Debug against SD-81's 600 (DEBUG_EVENT_CAP)."""
     rec = V33_EVENT_CAPS
     measured = None
     if base is not None:
-        measured = {k: {a: peak(base, segs, a)[0] for a in rec["caps"][k]} for k, segs in (("every", FIGHT_ALL), ("steady", FIGHT))}
+        measured = {k: {a: peak(base, segs, a)[0] for a in rec["caps"][k]} for k, segs in (("every", CAP_EVERY), ("steady", CAP_STEADY))}
     if rec["stamp"] == stamp:
         caps, how = rec["caps"], "stored in this gate for scenario %s (%s)" % (stamp, rec["how"])
         drift = measured is not None and any(abs(measured[k][a] - caps[k][a]) > V33_EVENT_CAPS_TOL * max(caps[k][a], 100)
@@ -235,13 +307,28 @@ def event_caps(data, rep, base, stamp, pct):
         rep.fail("tests/gate_performance_run.py (V33 per-event caps)", "the V33 per-event limit has no caps: %s could not be played here and the "
                  "stored caps are for another scenario (%s, this one is %s)" % (rec["source"], rec["stamp"], stamp), "",
                  "run the gate in a git checkout that has %s (or set XUI_V33_REPO to one), then store its numbers in V33_EVENT_CAPS" % rec["source"])
-        return
+        caps = None
     B = data.get("budget") or {}
-    addons = sorted(set(a for sg in FIGHT_ALL for a in (((B.get(sg) or {}).get("peak")) or {})) | set(caps["every"]))
+    addons = sorted(set(a for sg in CAP_EVERY for a in (((B.get(sg) or {}).get("peak")) or {})) | set((caps or {}).get("every") or {})
+                    | (set(DEBUG_EVENT_CAP) if data.get("debugLoaded") else set()))
     for a in addons:
         name = NAMES.get(a, a)
-        cur_e, seg_e = peak(data, FIGHT_ALL, a)
-        cur_s, seg_s = peak(data, FIGHT, a)
+        cur_e, seg_e = peak(data, CAP_EVERY, a)
+        cur_s, seg_s = peak(data, CAP_STEADY, a)
+        if a in DEBUG_EVENT_CAP:
+            # (round 9, SD-81, her answer "600, same as core (Recommended)") XayaUI_Debug, read only with Advanced Debugging on (V34)
+            cap = DEBUG_EVENT_CAP[a]
+            line = ("V33 %s per event (SD-81): costliest single fight frame %.0f instructions (%s; cap %.0f, her answer \"600, same as core\")" % (
+                name, cur_e, seg_e or "none", cap))
+            if cur_e > cap:
+                rep.fail(a, "V33 per-event limit: %s's costliest single fight frame is above her cap of %.0f instructions (SD-81 \"600, same as "
+                         "core\")" % (name, cap), line + "; over by %.0f" % (cur_e - cap),
+                         "do no work in a fight frame beyond reading counters: count in place and show only when the player asks")
+            else:
+                rep.note(line)
+            continue
+        if caps is None:
+            continue
         if a not in caps["every"]:
             if cur_e:
                 rep.note("V33 %s per event (NOT JUDGED, NEEDS_HER_DECISION: %s has no value on %s, which had no such addon): costliest single "
@@ -259,6 +346,18 @@ def event_caps(data, rep, base, stamp, pct):
                      "changed" % rec["source"])
         else:
             rep.note(line)
+        # (round 9, SD-77 "Route + narrow (Recommended)": "boss pulls (encounterID) and combat end") the frames right after each moment
+        for mname, what in MOMENTS:
+            v, sg = moment_peak(data, CAP_EVERY, mname, a)
+            if not sg:
+                continue
+            mline = "V33 %s per event, %s: costliest frame %.0f instructions (%s; cap %.0f = %s's)" % (name, what, v, sg, cap_e, rec["source"])
+            if v > cap_e:
+                rep.fail(a, "V33 per-event limit (SD-77): %s's costliest frame at %s is heavier than %s's costliest fight frame" % (
+                    name, what, rec["source"]), mline + "; over by %.0f" % (v - cap_e),
+                    "re-check only the rules the changed fact concerns (SD-77), not every rule")
+            else:
+                rep.note(mline)
 
 
 def v33(data, rep):
@@ -273,12 +372,12 @@ def v33(data, rep):
                      how, "fix the scenario on the old build before reading the budget")
             return
         if V33_RECORDED["stamp"] == stamp and V33_RECORDED["rules"]:
-            how += "; recorded for this scenario in round 7: %.0f" % V33_RECORDED["rules"]
+            how += "; recorded for this scenario %s: %.0f" % (V33_RECORDED["when"], V33_RECORDED["rules"])
     elif V33_RECORDED["stamp"] == stamp and V33_RECORDED["rules"]:
         b_rules, b_core, b_opt = V33_RECORDED["rules"], V33_RECORDED["core"], V33_RECORDED["options"]
-        rep.warn("tests/gate_common.py (V33 calibration)", "%s could not be played here (%s); the budget uses the calibration recorded in round 7 "
-                 "for this same scenario" % (GC.V33_BASE_COMMIT, how))
-        how = "recorded in round 7 for scenario %s" % stamp
+        rep.warn("tests/gate_common.py (V33 calibration)", "%s could not be played here (%s); the budget uses the calibration recorded %s "
+                 "for this same scenario" % (GC.V33_BASE_COMMIT, how, V33_RECORDED["when"]))
+        how = "recorded %s for scenario %s" % (V33_RECORDED["when"], stamp)
     else:
         rep.fail("tests/gate_common.py (V33 calibration)", "the V33 budget has no calibration: %s could not be played (%s) and the recorded "
                  "calibration is for another scenario (%s, this one is %s)" % (GC.V33_BASE_COMMIT, how, V33_RECORDED["stamp"], stamp), "",
@@ -368,20 +467,8 @@ def judge(data, rep):
     chains = cycles_in(data.get("timerEdges") or {})
     repeating_site = {site for site, t in timers_made.items() if t.get("kind") == "NewTicker" or t.get("rearm") or site in chains}
 
-    # ---- P1 OnUpdate scripts running while nothing visible changes ------------------------------------------------------------
-    for src, s in (st.get("ou") or {}).items():
-        wins = [w for w in vals(s.get("wins")) if AFTER(w.get("phase", ""))]
-        idle_w = [w for w in wins if w.get("runs", 0) > 0 and w.get("vis", 0) == 0]
-        if not idle_w:
-            continue
-        idle_runs = sum(p.get("n", 0) for ph, p in (s.get("byPhase") or {}).items() if ph in IDLE)
-        rep.fail(src, "P1 an OnUpdate script runs every frame while it changes nothing on screen (a running loop)",
-                 "%d runs with the window closed, %d of them with no visible change; %d of %d 2-second windows changed nothing "
-                 "(%d runs in the 30 s idle with nothing on screen changing); %s allocated; %d Lua instructions per run on average" % (
-                     s.get("n", 0), s.get("idle", 0), len(idle_w), len(wins), idle_runs, kb(s.get("bytes", 0)),
-                     s.get("ins", 0) // max(1, s.get("n", 1))),
-                 "run an OnUpdate only while something it draws is moving; hide its frame / SetScript(\"OnUpdate\", nil) otherwise, and do the "
-                 "work in the events that change it (a stored expiry time for countdowns)")
+    # ---- P1 OnUpdate scripts running while nothing visible changes (round 9, SD-79: per frame they run on, "per display") -----------
+    p1(data, rep)
 
     # ---- P2 tickers and timer chains ------------------------------------------------------------------------------------------
     tm = st.get("tm") or {}
@@ -561,8 +648,234 @@ def judge(data, rep):
     # ---- V33 work budget per addon ------------------------------------------------------------------------------------------------
     pct = v33(data, rep)
     event_caps(data, rep, baseline()[0], GC.scenario_stamp(), pct)
+    # ---- (round 9, SD-77) what is drawn after each load-fact change, against a full re-check ---------------------------------------
+    drawn(data, rep)
 
     memory(data, rep)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# P1 and the display effects loop (round 9; REQUEST-LOG A23 SD-79, her answer "<=30/s, stop if idle (Recommended)": "effects loop at
+# most 30/s per display while a run changes something; the loop stops when a run changes nothing (exact-value compare); the gate gets an
+# effects scenario and counts per display"). Every frame script's runs are kept per frame it runs on (gate_common.py ownNote; before
+# round 9 the effects loop, Visual.lua FxOnUpdate, was summed over every display). Judged after the window closed (the fights, the
+# effects part at 144 frames a second, idle) and, for displays, also in the preview and the mover before the close:
+#   P1 FAIL     a frame that is not a display (the engine's next-frame script): its script runs in a 2-second window in which it changes
+#               nothing on screen (as before round 9, now per frame);
+#   SD-79 FAIL  a display's effects loop runs more than 30 times in any sliding second (a real run: one that does at least FX_SKIP Lua
+#               instructions; the throttle's early return on the frames between runs is a skip);
+#   SD-79 FAIL  a display's effects loop runs while it changes nothing on screen, beyond the single run that finds there is nothing
+#               left to animate (counted again from 0 when the loop is set on the display again, or when a run changes something).
+# (round 9 repair 1) A run that changes the screen is always a run, however few instructions it takes (before, a loop that changed the
+# screen on every frame in under FX_SKIP instructions was all skips and never judged). Also:
+#   SD-79 FAIL  a display's frame script stays set while it only skips (no run that changes something or does real work) for more than
+#               a second of frames: the loop is idle and has not stopped (before, such a script was all skips and never judged);
+#   SD-79 FAIL  a display redrawn more than 30 times in any second by its frame script and the redraw timers (gate_common.py REDRAWS:
+#               Visual.lua's wake, which draws a display at the next moment its tenths, flash threshold or wipe pixel changes) together,
+#               counted per display (SD-76 asked "whether 10/s covers screen redraws"; her answer SD-79: at most 30 a second per display);
+#   SD-79 FAIL  a redraw timer that runs twice in a row changing nothing on screen (it did not stop when nothing was left to draw).
+# A redraw timer is judged per display instead of P2's 10 a second per callback only while every run of it changes nothing outside the
+# displays and it runs no re-check pass (REPASSES: a pass stays at 10 a second whatever drives it, SD-78); otherwise P2 judges it as any
+# timer callback.
+# The 10-a-second limit stays on every re-check path (P2 below; SD-78 "Per pass (Recommended)"); the display effects loop is held to
+# 30 a second per display instead (SD-79), and a re-check pass it runs still counts for that pass.
+# ---------------------------------------------------------------------------------------------------------------------------------
+def fx_judged(ph):
+    return AFTER(ph) or ph in FX_PHASES
+
+
+def p1(data, rep):
+    """P1 per frame (non-display frames) and the SD-79 checks per display (see above)."""
+    owners = [dict(o, n=i) for i, o in enumerate(vals(data.get("owners")), 1) if isinstance(o, dict)]   # (n: the order the frames were first seen)
+    ou = (data.get("stats") or {}).get("ou") or {}
+    ran_after = sum(sum(p.get("n", 0) for ph, p in (s.get("byPhase") or {}).items() if AFTER(ph)) for s in ou.values())
+    if ran_after and not owners:
+        rep.fail("tests/gate_common.py (the scenario)", "frame scripts ran after the close but the result has no record per frame (ownNote): P1 and "
+                 "the per-display effects checks cannot be judged", "%d frame-script runs after the close" % ran_after, "")
+        return
+    fx_n = int(data.get("fxN") or 30)
+    # P1 for frames that are not displays: per frame, every invocation a run
+    groups = collections.OrderedDict()
+    for o in owners:
+        if o.get("display"):
+            continue
+        wins = [w for w in vals(o.get("wins")) if AFTER(w.get("phase", ""))]
+        bad = [w for w in wins if w.get("runs", 0) > 0 and w.get("vis", 0) == 0]
+        if bad:
+            groups.setdefault(o.get("src") or "?", []).append((o, bad, wins))
+    for src, lst in groups.items():
+        runs = sum(o.get("runs", 0) for o, _, _ in lst)
+        idle = sum(o.get("idle", 0) for o, _, _ in lst)
+        nbad = sum(len(b) for _, b, _ in lst)
+        nwin = sum(len(w) for _, _, w in lst)
+        st = ou.get(src) or {}
+        idle_runs = sum(p.get("n", 0) for ph, p in (st.get("byPhase") or {}).items() if ph in IDLE)
+        rep.fail(src, "P1 an OnUpdate script runs while it changes nothing on screen (a running loop), counted per frame it runs on",
+                 "%d frame(s); %d runs with the window closed, %d of them with no visible change; %d of %d 2-second windows changed nothing "
+                 "(%d runs in the 30 s idle with nothing on screen changing); %s allocated; %d Lua instructions per run on average" % (
+                     len(lst), runs, idle, nbad, nwin, idle_runs, kb(st.get("bytes", 0)), st.get("ins", 0) // max(1, st.get("n", 1))),
+                 "run an OnUpdate only while something it draws is moving; hide its frame / SetScript(\"OnUpdate\", nil) otherwise, and do the "
+                 "work in the events that change it (a stored expiry time for countdowns)")
+    # SD-79 per display
+    disp = [o for o in owners if o.get("display")]
+    over, idle = collections.OrderedDict(), collections.OrderedDict()
+    for o in disp:
+        n_over = sum(int(v) for ph, v in (o.get("over") or {}).items() if fx_judged(ph))
+        n_idle = sum(int(v) for ph, v in (o.get("idleOver") or {}).items() if fx_judged(ph))
+        if n_over:
+            over.setdefault(o.get("src") or "?", []).append((o, n_over))
+        if n_idle:
+            idle.setdefault(o.get("src") or "?", []).append((o, n_idle))
+
+    def who(o):
+        return "%r (frame %s)" % (o.get("rule"), o.get("n") or "?")
+    for src, lst in over.items():
+        rep.fail(src, "SD-79 a display's effects loop ran more than %d times within one second (her limit: at most 30 a second per display, "
+                 "\"<=30/s, stop if idle\")" % fx_n,
+                 "%d display(s); %s" % (len(lst), "; ".join("%s: %d run(s) found more than %d runs in the second up to them, most %d; first: %s" % (
+                     who(o), n, fx_n, int(o.get("most") or 0), o.get("first")) for o, n in sorted(lst, key=lambda x: -x[1])[:6])),
+                 "hold each display's effects runs to one per 1/30 s, counted from its last run")
+    for src, lst in idle.items():
+        rep.fail(src, "SD-79 / P1 a display's effects loop ran while it changed nothing on screen, beyond the single run that finds there is "
+                 "nothing left to animate (her answer \"<=30/s, stop if idle\": the loop stops when a run changes nothing)",
+                 "%d display(s); %s" % (len(lst), "; ".join("%s: %d such run(s) of %d (%d changed something; by phase %s); first: %s" % (
+                     who(o), n, int(o.get("runs") or 0), int(o.get("changed") or 0),
+                     ", ".join("%s %s" % (ph, v) for ph, v in sorted((o.get("idleOver") or {}).items()) if fx_judged(ph)), o.get("firstIdle"))
+                     for o, n in sorted(lst, key=lambda x: -x[1])[:6])),
+                 "take the frame script off when a run changes nothing (exact-value compare), and set it again at the next moment something "
+                 "will change (the flash threshold, the next tenth, an aura change)")
+    # (repair 1) a display's frame script set and only skipping for more than a second of frames: idle, not stopped
+    waits = collections.OrderedDict()
+    for o in disp:
+        n_wait = sum(int(v) for ph, v in (o.get("waitOver") or {}).items() if fx_judged(ph))
+        if n_wait:
+            waits.setdefault(o.get("src") or "?", []).append((o, n_wait))
+    for src, lst in waits.items():
+        rep.fail(src, "SD-79 / P1 a display's frame script stays set while it changes nothing and does no work for more than a second "
+                 "(her answer \"<=30/s, stop if idle\": the loop stops when there is nothing to animate; a script left set that returns at "
+                 "once has not stopped)",
+                 "%d display(s); %s" % (len(lst), "; ".join("%s: %d call(s) more than %s s of frames after its last run or after it was set "
+                                                            "(%d runs, %d skips); first: %s" % (
+                     who(o), n, data.get("fxWait") or 1, int(o.get("runs") or 0), int(o.get("skips") or 0), o.get("firstWait"))
+                     for o, n in sorted(lst, key=lambda x: -x[1])[:6])),
+                 "take the frame script off when there is nothing to animate, and set it again (or arm one timer) at the next moment "
+                 "something will change")
+    runs_by = collections.Counter()
+    for o in disp:
+        for ph, v in (o.get("runsBy") or {}).items():
+            if fx_judged(ph):
+                runs_by[ph.split(" ")[0]] += int(v)
+    rep.note("display effects loop (SD-79), per display: %d display(s) ran it; real runs by part: %s; most runs within one second on one "
+             "display: %d (limit %d; the effects part at %s frames a second); skips (the throttle's early return): %d" % (
+                 len(disp), ", ".join("%s %d" % kv for kv in sorted(runs_by.items())) or "none",
+                 max([int(o.get("most") or 0) for o in disp] + [0]), fx_n, data.get("fpsFx"), sum(int(o.get("skips") or 0) for o in disp)))
+    redraw(data, rep, owners)
+    tr = sum(int((d.get("byPhase") or {}).get("effects") or 0) for t in vals(data.get("fxRedraw") or {}) if isinstance(t, dict)
+             for d in vals(t.get("disp") or {}) if isinstance(d, dict))
+    if not runs_by.get("effects") and not tr:
+        rep.warn("tests/gate_common.py (the effects part)", "the display effects loop did not run in the effects part, so SD-79 (at most 30 a "
+                 "second per display, stop if idle) was not exercised there", "effect displays shown: %s of %s" % (data.get("fxShown"), data.get("fxGained")),
+                 "if the effects no longer use a frame script, nothing is left to judge; otherwise the scenario is not reaching them")
+
+
+def most_in_second(times):
+    """The most entries in any sliding second (t - 1, t] of a list of moments (seconds; FX_EPS for the float error of 1/144 s frames)."""
+    ts = sorted(float(t) for t in times)
+    best, j = 0, 0
+    for i, t in enumerate(ts):
+        while ts[j] <= t - 1 + 1e-6:
+            j += 1
+        best = max(best, i - j + 1)
+    return best
+
+
+def redraw_lines(data):
+    """The listed redraw timers the play kept ({"file:line": (name, what)}): as the play recorded them (gate_common.py run_scenario),
+    else this checkout's REDRAWS."""
+    rl = data.get("redrawLines")
+    if isinstance(rl, dict):
+        return {k: tuple(vals(v)) for k, v in rl.items()}
+    return GC.redraw_lines()[0]
+
+
+def redraw_exempt(data):
+    """{callback src: why} for the listed redraw timers (gate_common.py REDRAWS) that P2 does not judge per callback: kept in the tree
+    play (fxRedraw), no change outside the displays, and no re-check pass (REPASSES) run by them."""
+    fr = data.get("fxRedraw")
+    if not isinstance(fr, dict):
+        return {}
+    lines = redraw_lines(data)
+    passes = set()
+    try:
+        passes = set(pass_lines(GC.Report("quiet")))
+    except Exception:  # noqa: BLE001  (the pass list is judged in pace())
+        passes = set()
+    drives = set()
+    for src, p in (data.get("paceAny") or {}).items():
+        if src in passes:
+            drives |= set((p.get("drivers") or {}).keys())
+    out = {}
+    for src in lines:
+        t = fr.get(src)
+        if isinstance(t, dict) and not int(t.get("outside") or 0) and src not in drives:
+            out[src] = lines[src]
+    return out
+
+
+def redraw(data, rep, owners):
+    """(round 9 repair 1) the listed redraw timers per display, with each display's frame-script runs (see above)."""
+    fx_n = int(data.get("fxN") or 30)
+    missing = GC.redraw_lines()[1]
+    lines = redraw_lines(data)
+    for m in missing:
+        rep.fail("tests/gate_common.py (REDRAWS)", "the redraw timer %s named in REDRAWS is not defined: the list is out of date, so that "
+                 "callback's redraws are not counted per display" % m, "REDRAWS", "name the callback as the file defines it now")
+    fr = data.get("fxRedraw")
+    if fr is None:
+        if data.get("paceTree"):
+            rep.fail("tests/gate_common.py (the scenario)", "the tree play has no record of the redraw timers (fxRedraw): their redraws "
+                     "cannot be counted per display", "", "")
+        return
+    ftimes = collections.defaultdict(list)
+    for o in owners:
+        if o.get("display") and o.get("rule") is not None:
+            ftimes[str(o.get("rule"))] += [float(t) for t in vals(o.get("times") or [])]
+    for src in sorted(lines):
+        t = fr.get(src)
+        if not isinstance(t, dict):
+            continue
+        over = []
+        for key, d in (t.get("disp") or {}).items():
+            tt = [float(x) for x in vals((d or {}).get("times") or [])]
+            both = most_in_second(tt + ftimes.get(key, []))
+            if both > fx_n:
+                over.append((key, both, most_in_second(tt), most_in_second(ftimes.get(key, []))))
+        if over:
+            over.sort(key=lambda x: -x[1])
+            rep.fail(src, "SD-79 a display was redrawn more than %d times within one second by this redraw timer and its frame script "
+                     "together (her limit: at most 30 a second per display, \"<=30/s, stop if idle\")" % fx_n,
+                     "%d display(s); %s" % (len(over), "; ".join("%r: most %d in one second (this timer alone %d, its frame script alone %d)" % x
+                                                               for x in over[:6])),
+                     "draw each display at most once per 1/30 s, counting the timer's redraws and the frame script's runs together")
+        n_idle = sum(int(v) for ph, v in (t.get("idleOver") or {}).items() if fx_judged(ph))
+        if n_idle:
+            rep.fail(src, "SD-79 a redraw timer ran twice or more in a row changing nothing on screen (her answer \"<=30/s, stop if idle\": "
+                     "it stops when a run changes nothing)",
+                     "%d such run(s) of %d (%d changed nothing); first: %s" % (n_idle, int(t.get("runs") or 0), int(t.get("idle") or 0),
+                                                                            t.get("firstIdle")),
+                     "arm the next wake only for a moment at which something drawn changes, and arm none when nothing is left")
+        why = []
+        if int(t.get("outside") or 0):
+            why.append("%d change(s) outside the displays (first: %s)" % (int(t.get("outside")), t.get("firstOutside")))
+        if src not in redraw_exempt(data) and not why:
+            why.append("it runs a re-check pass (REPASSES)")
+        disp_n = len(t.get("disp") or {})
+        allm = [most_in_second([float(x) for x in vals((d or {}).get("times") or [])]) for d in vals(t.get("disp") or {}) if isinstance(d, dict)]
+        rep.note("redraw timer %s (%s): %d run(s), %d changed nothing; %d display(s) redrawn, most redraws of one display within one second "
+                 "%d (limit %d, with its frame script); %s" % (
+                     src, lines[src][0], int(t.get("runs") or 0), int(t.get("idle") or 0), disp_n, max(allm + [0]), fx_n,
+                     ("judged under P2 per callback (10 a second): " + "; ".join(why)) if why else
+                     "judged per display (SD-79), not under P2's 10 a second per callback"))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -645,9 +958,12 @@ def pace(data, rep):
     if passes:
         rep.note("pace per re-check pass, most runs within one second over everything that runs it%s: %s" % (
             "" if anyp is not None else " (timer callbacks and frame scripts only: this result has no event call trees)", ", ".join(seen)))
+    exempt = redraw_exempt(data)
     for src, p in sorted((data.get("pace") or {}).items()):
         if src in passes:
             continue   # (judged above, on every run)
+        if src in exempt:
+            continue   # (round 9 repair 1: a redraw timer, judged per display; see redraw())
         over = sum(n for ph, n in (p.get("over") or {}).items() if AFTER(ph))
         if not over:
             continue
@@ -692,7 +1008,8 @@ def pace(data, rep):
 # teeth now that the stand-in's own timer records are no longer billed to the addon: a timer call site that hands C_Timer a NEW
 # function made from the same definition on a later call (a closure made per call), on the hot path (a storm event that fires every
 # frame of a fight, a timer callback or a frame script, after the window closed), is a violation: that closure is Lua garbage per
-# event in the game too, whatever the game's C_Timer does. The same outside the hot path (a one-off change event) is a WARNING.
+# event in the game too, whatever the game's C_Timer does. (round 9, SD-82, her answer "FAIL everywhere (Recommended)") The same outside
+# the hot path (a one-off change event) is a violation too (before round 9 a WARNING).
 # ---------------------------------------------------------------------------------------------------------------------------------
 def closures(data, rep):
     for site, g in sorted((data.get("timerFresh") or {}).items()):
@@ -706,7 +1023,78 @@ def closures(data, rep):
             rep.fail(site, "P4 a new function per timer call on the hot path: this C_Timer call makes a closure each time it runs, in "
                      "handlers that run every frame of a fight (SD-68 guard)", numbers, fix)
         elif other:
-            rep.warn(site, "P4 a new function per timer call (outside the hot path: a one-off change event)", numbers, fix)
+            # (round 9, SD-82, her answer "FAIL everywhere (Recommended)": before, a WARNING outside the hot path)
+            rep.fail(site, "P4 a new function per timer call (outside the hot path: a one-off change event; SD-82 \"FAIL everywhere\")",
+                     numbers, fix)
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------
+# (round 9; REQUEST-LOG A23 SD-77, her answer "Route + narrow (Recommended)": "at a load-fact change re-check only the affected rules,
+# including combat-only drawing (Triggers.lua:878 absent rows, Visual.lua:2642-2644 out-of-combat opacity), boss pulls (encounterID) and
+# combat end") the draw check (gate_common.py drawCheck, a play of its own with nothing measured): after each moment that changes load
+# facts (mount, dismount, a group joined, a target, combat start, a boss pull, the boss down, combat end, the group left), what every
+# display shows is compared with what it shows after the engine re-checks every rule, in the same instant. FAIL: any display that differs
+# (a narrowed re-check missed a rule); FAIL: the full re-check did not run (the check proves nothing); FAIL: the scenario's rules that
+# test the narrowing (PROFILE_LUA 6c) did not change at their moment (the target debuffs that must be absent shown out of combat and not
+# in it, the out-of-combat opacity 0.5 out of combat and 1 in it, the boss rules shown only during the boss), so a narrowing that missed
+# them would not show here.
+# ---------------------------------------------------------------------------------------------------------------------------------
+DRAW_LABELS = ("mounted", "dismounted", "group joined", "target picked", "combat start", "boss pull", "boss down", "combat end",
+               "group left, target dropped")
+
+
+def drawn(data, rep):
+    checks = [c for c in vals(data.get("drawCheck")) if isinstance(c, dict)]
+    if data.get("drawCheck") is None:
+        if data.get("paceTree"):
+            rep.fail("tests/gate_common.py (the draw play)", "the result has no draw check although the gate played its other plays", "", "")
+        else:
+            rep.note("draw check (SD-77) not played: this result has no second play (XUI_GATE_NOTREE / XUI_GATE_NOHOOK)")
+        return
+    if int(data.get("drawErrors") or 0):
+        rep.fail("tests/gate_common.py (the draw play)", "a Lua error in the draw play", "; ".join(vals(data.get("drawErrorText")))[:400], "")
+    labels = collections.Counter(c.get("label") for c in checks)
+    missing = [l for l in DRAW_LABELS if labels.get(l, 0) < 3]
+    if missing:
+        rep.fail("tests/gate_common.py (the draw play)", "the draw check did not run at every moment of the three cycles", "missing: %s; ran: %s" % (
+            missing, dict(labels)), "")
+    notran = [c for c in checks if not c.get("ran")]
+    if notran:
+        rep.fail("tests/gate_common.py (the draw play)", "the full re-check the draw check compares with did not run (Engine.lua ns.EngineStats.settle did "
+                 "not move after ns.MarkDirty), so these checks prove nothing", "; ".join("%s (%s)" % (c.get("label"), c.get("phase")) for c in notran[:6]), "")
+    bad = [c for c in checks if int(c.get("ndiff") or 0) > 0]
+    for c in bad:
+        rep.fail("XayaUI_Rules (what is drawn after %s)" % c.get("label"),
+                 "SD-77: after %s (%s, %s) %d display(s) show something other than what a full re-check of every rule shows: the narrowed "
+                 "re-check missed a rule whose answer or drawing reads the changed fact" % (
+                     c.get("label"), c.get("phase"), "in combat" if c.get("combat") else "out of combat", int(c.get("ndiff") or 0)),
+                 "; ".join(vals(c.get("diffs")))[:900],
+                 "re-check every rule whose answer or drawing reads the fact that changed (SD-77 conditions 2 and 3)")
+
+    def grp(label, cyc_phase=None):
+        out = [c.get("groups") or {} for c in checks if c.get("label") == label]
+        return out
+    # the scenario's own rules must change at their moments (else the draw check cannot see a narrowing that misses them)
+    cov = []
+    for cs, ce in zip(grp("combat start"), grp("combat end")):
+        a_in, a_out = (cs.get("Absent") or {}).get("shown"), (ce.get("Absent") or {}).get("shown")
+        o_in, o_out = (cs.get("Ooc") or {}).get("alpha"), (ce.get("Ooc") or {}).get("alpha")
+        cov.append(bool(a_out) and a_in == 0 and o_in and o_out and set(o_in.split(",")) == {"1"} and set(o_out.split(",")) == {"0.5"})
+    for bp, bd in zip(grp("boss pull"), grp("boss down")):
+        cov.append(bool((bp.get("Boss") or {}).get("shown")) and (bd.get("Boss") or {}).get("shown") == 0)
+    if len(cov) < 6 or not all(cov):
+        rep.fail("tests/gate_common.py (the draw play)", "the rules that test the narrowed re-check did not change at their moments (target debuffs "
+                 "that must be absent: shown out of combat, not in combat; out-of-combat opacity: 0.5 out of combat, 1 in combat; boss rules: "
+                 "shown only during the boss), so a narrowing that missed them would not show",
+                 "combat start %s; combat end %s; boss pull %s; boss down %s" % (grp("combat start")[:1], grp("combat end")[:1], grp("boss pull")[:1],
+                                                                                 grp("boss down")[:1]), "")
+    rep.note("draw check (SD-77): %d moment(s) compared with a full re-check of every rule (%d displays and aura groups each), %d differ; at combat "
+             "start the absent target debuffs shown %s (out of combat %s), out-of-combat opacity %s (out of combat %s); at the boss pull the boss "
+             "rules shown %s" % (
+                 len(checks), max([int(c.get("n") or 0) for c in checks] + [0]), len(bad),
+                 ((grp("combat start") or [{}])[0].get("Absent") or {}).get("shown"), ((grp("combat end") or [{}])[0].get("Absent") or {}).get("shown"),
+                 ((grp("combat start") or [{}])[0].get("Ooc") or {}).get("alpha"), ((grp("combat end") or [{}])[0].get("Ooc") or {}).get("alpha"),
+                 ((grp("boss pull") or [{}])[0].get("Boss") or {}).get("shown")))
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -735,13 +1123,40 @@ def memory(data, rep):
                  "find what holds the memory (the per-cycle growth below, a /xui debug memory report in game) and cut it")
     else:
         rep.note("memory budget: %s; %s; headroom %s KB" % (cap_txt, all_txt, "{:,.1f}".format(MEM_CAP_KB - max([m for _, m in readings] + [0]))))
-    if len(mem) >= 3:
+    # (round 9; round 8 engine-core handoff: the growth WARNING measured the gate's own per-cycle records: ST.cyc snapshots, BUD
+    # segments, PACE rings, TIMERS_SEEN, OUT.checkpoints and mouseCombat, the stand-in's W.sounds) the growth per cycle is read in the
+    # memory play (gate_common.py CFG.memplay: no instruments, nothing of the gate's kept per cycle, the stand-in's list of sounds played
+    # emptied before each reading), so it is the addons' own (with the stand-in's records of the frames they made). The cap above is
+    # still judged on the measured play's whole-state readings, as when it was set (SD-66).
+    ma = data.get("memAddons") or {}
+    mm = [m for m in vals(ma.get("mem")) if isinstance(m, (int, float))]
+    if len(mm) >= 3:
+        d1, d2 = mm[1] - mm[0], mm[2] - mm[1]
+        txt = ("the addons' own Lua memory (the memory play) after a full collection at the end of cycles 1, 2, 3: %s, %s, %s (+%s, +%s per "
+               "cycle); after the effects part and 30 s idle: %s" % (kb(mm[0] * 1024), kb(mm[1] * 1024), kb(mm[2] * 1024), kb(d1 * 1024),
+                                                                     kb(d2 * 1024), kb((ma.get("memEnd") or 0) * 1024)))
+        if len(mem) >= 3:
+            g1, g2 = mem[1] - mem[0], mem[2] - mem[1]
+            txt += ("; the measured play, whole Lua state with the gate's records: %s, %s, %s (+%s, +%s per cycle), so the gate's own records "
+                    "and the stand-in's sound list grew by %s and %s" % (kb(mem[0] * 1024), kb(mem[1] * 1024), kb(mem[2] * 1024), kb(g1 * 1024),
+                                                                         kb(g2 * 1024), kb((g1 - d1) * 1024), kb((g2 - d2) * 1024)))
+        if int(ma.get("errors") or 0):
+            rep.fail("tests/gate_common.py (the memory play)", "a Lua error in the memory play", "errors: %s" % ma.get("errors"), "")
+        if d1 > 16 and d2 > 16:
+            rep.warn("(whole addon set)", "the addons' Lua memory grows every cycle on identical input (a leak or an unbounded cache)", txt,
+                     "find the table that grows (a /xui debug memory report in game)")
+        else:
+            rep.note(txt)
+    elif len(mem) >= 3:
         d1, d2 = mem[1] - mem[0], mem[2] - mem[1]
-        txt = "Lua memory after a full collection at the end of cycles 1, 2, 3: %s, %s, %s (+%s, +%s per cycle); after 30 s idle: %s" % (
-            kb(mem[0] * 1024), kb(mem[1] * 1024), kb(mem[2] * 1024), kb(d1 * 1024), kb(d2 * 1024), kb((end or 0) * 1024))
+        if data.get("paceTree"):
+            rep.fail("tests/gate_common.py (the memory play)", "the result has no memory play although the gate played its other plays", "", "")
+        txt = ("Lua memory after a full collection at the end of cycles 1, 2, 3: %s, %s, %s (+%s, +%s per cycle); after 30 s idle: %s (no memory "
+               "play: these include the gate's own per-cycle records)" % (kb(mem[0] * 1024), kb(mem[1] * 1024), kb(mem[2] * 1024), kb(d1 * 1024),
+                                                                         kb(d2 * 1024), kb((end or 0) * 1024)))
         if d1 > 16 and d2 > 16:
             rep.warn("(whole addon set)", "Lua memory grows every cycle on identical input (a leak or an unbounded cache); includes the gate's own "
-                     "per-cycle records, a few KB", txt, "find the table that grows (a /xui debug memory report in game)")
+                     "per-cycle records", txt, "find the table that grows (a /xui debug memory report in game)")
         else:
             rep.note(txt)
 

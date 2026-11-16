@@ -418,12 +418,13 @@ end
 
 -- When to resync: login, end of combat, spec / talent / gear / zone / group / Mythic+ / resting changes, and every rule edit (debounced; out of combat only).
 -- Mount changes do not wait for this: OnMount (above) runs at once.
+-- (SD-82) one function made once, not a new one per call; at most one timer is armed (queued)
 local queued = false
+local function RunQueued() queued = false; pcall(A.Sync) end
 function A.Queue()
     if queued then return end
     queued = true
-    local function Run() queued = false; pcall(A.Sync) end
-    if C_Timer and C_Timer.After then C_Timer.After(0.5, Run) else Run() end
+    if C_Timer and C_Timer.After then C_Timer.After(0.5, RunQueued) else RunQueued() end
 end
 
 -- V14 (core 0.6.47; Xaya 2026-11-05: "anything that is disabled in the addon through a tick box should NEVER LOAD or contribute to
@@ -461,7 +462,10 @@ Start = function()
     if not evf then
         evf = CreateFrame("Frame")
         if evf.SetScript then
-            evf:SetScript("OnEvent", function(_, event)
+            evf:SetScript("OnEvent", function(_, event, unit)
+                -- (RB-30) PLAYER_SPECIALIZATION_CHANGED (unitTarget: UnitTokenVariant; events.md 1215, no secret flag) also fires for
+                -- other units: only the player's own spec change re-plans (Start registers it for "player" only where the game can)
+                if event == "PLAYER_SPECIALIZATION_CHANGED" and unit ~= "player" then return end
                 if event == "PLAYER_MOUNT_DISPLAY_CHANGED" or event == "PLAYER_REGEN_DISABLED" then OnMount(event); return end
                 if event == "PLAYER_REGEN_ENABLED" then
                     if inFight then inFight = false; OnMount() end   -- (SD-31) the fight is over: back to the mount state now
@@ -478,7 +482,11 @@ Start = function()
             end)
         end
     end
-    for _, e in ipairs(EVENTS) do pcall(evf.RegisterEvent, evf, e) end
+    for _, e in ipairs(EVENTS) do
+        -- (RB-30) the spec event for the player only: RegisterUnitEvent (widgets.md 239, SecretArguments=AllowedWhenUntainted)
+        if e == "PLAYER_SPECIALIZATION_CHANGED" and evf.RegisterUnitEvent then pcall(evf.RegisterUnitEvent, evf, e, "player")
+        else pcall(evf.RegisterEvent, evf, e) end
+    end
     if next(gated) then MountWatch(true) end
 end
 Stop = function()

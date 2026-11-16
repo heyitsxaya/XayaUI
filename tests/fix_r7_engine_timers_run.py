@@ -280,7 +280,8 @@ for key in pairs(ns.TRIGGER_TYPES or {}) do
   local r = ns.NewRule(); r.name = "route " .. key; r.enabled = true; r.useBuff = false
   r.extra = { mode = "all", list = { { type = key, unit = "target" } } }
   local d = ns.EngineDeps(r)
-  local routed = d.cd or d.aura or d.tgt or d.power or d.range or d.cast or d.other
+  -- (round 9, SD-77: movement, totem and loss-of-control rows have routes of their own)
+  local routed = d.cd or d.aura or d.tgt or d.power or d.range or d.cast or d.other or d.move or d.totem or d.loc
   if not routed or d.poll then missing[#missing + 1] = key end
 end
 table.sort(missing)

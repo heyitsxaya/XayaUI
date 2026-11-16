@@ -2,7 +2,9 @@
 
 <!--
 Shown in the game: version pane > Info > Readme. A short, readable version of docs/USER-GUIDE.md (sections 1, 2, 4 and 5 of the
-outline Xaya chose on 2026-11-06). The game cannot read this file: after any edit run  python3 tools/build_info_pane_data.py
+outline Xaya chose on 2026-11-06). The game cannot read this file: after any edit, rebuild XayaUI_Options/InfoPaneData.lua with
+tools/build_info_pane_data.py. That tool is only on qa-installer-branch, and its round 9 change is pending there (see
+docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md).
 Supported markdown: #, ##, ### headings, paragraphs, "- " bullets (two spaces more for a nested bullet), **bold**, `commands`.
 -->
 
@@ -10,53 +12,47 @@ Supported markdown: #, ##, ### headings, paragraphs, "- " bullets (two spaces mo
 
 XayaUI is a group of addons. Each one is its own entry in the game's AddOns list (under XayaUI), so you can switch any of them off; the game needs a /reload after a change there.
 
-- **XayaUI** holds the rules (cooldown, aura and other triggers), cues, conditions and actions, combat aura tracking, sharing and backups, themes, the console, the minimap button and the Esc-menu button. Every other XayaUI addon needs it.
-- **XayaUI Options** is the settings window. It loads the first time you open it, so it costs nothing until then.
-- **XayaUI Chat** holds the Chat Panel, the Chat Data Panel, message filters and sounds, history and the privacy cover.
-- **XayaUI QoL** holds the cursor highlight and trail, the Character Reskin, the Shopping List and Release Guard.
-- **XayaUI Bonus Features** holds the Stat Calculator (Bonus Features > Stat Calculator, or `/xui stats`).
-- **XayaUI Blizzard Reskin** puts XayaUI's look on Blizzard's frames without changing what they do (today: the Esc menu).
-- **XayaUI Media** is a support folder for your own pictures and sounds.
+- **XayaUI** (XayaUI Platform in the AddOns list) holds saved settings, themes, sharing, profiles, the Recycle Bin, sound and media lists, XayaUI's error record, the minimap button and the Esc-menu button. Every other XayaUI addon needs it.
+- **XayaUI Rules** holds the rules (cooldown, aura and other triggers), cues, conditions and actions, combat aura tracking, rule sharing and backups. Switch it off if you make no rules.
+- **XayaUI Options** is the settings window, with everything that only works while it is open: the rule editor, the mover, Combat Tracking Setup, the talent scan and the displays' right-click menu. The game reads it the first time you open the window, so it costs nothing until then.
+- **XayaUI Debug** holds the debug tools: the console window, the bug report, the debug report, `/xui status`, `/xui auras` and `/xuiengine`. The game reads it only while Settings > Debugging > **Advanced Debugging** is on (off by default), once per login or /reload.
+- **XayaUI Bonus Features** holds the Stat Calculator (Bonus Features > Stat Calculator, or `/xui stats`). The calculator itself is the separate entry XayaUI Bonus Features: Stat Calculator, which the game reads only while the Stat Calculator is on.
 
-A feature you switch off costs nothing: it runs no timers, listens to no events and keeps no frames. Your settings are kept either way.
+A feature you switch off costs nothing: it runs no timers, listens to no events and keeps no frames. Your settings are kept either way. (The minimap button and the Esc-menu button are part of XayaUI itself; switched off, they are not built.)
 
 ## Getting started
 
 - Open the settings window with `/xui`, the XayaUI minimap button, or the XayaUI button in the Esc menu.
 - **Rules** is where you make and edit rules. A rule watches something (a trigger), and when it is true it plays cues (a sound, speech, an icon), checks conditions and runs actions.
-- **QoL**, **Bonus Features** and **Blizzard UI Reskin** each list their features in the left pane. The tick box beside a name turns that feature on or off; hover it for what it does.
+- **Bonus Features** lists the Stat Calculator in the left pane. The tick box beside its name turns it on or off; the change takes effect after a /reload.
 - **Settings** (the toolbar button) holds UI Options (Display, Rule Creation, Theme), the Minimap Button and Debugging.
 - Click the version text in the settings window's bottom-left corner for this window: Patch Notes and Info. The **?** in the title bar opens Help.
 
 ## Features at a glance
 
 - **Auto-Generate Rules.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Auto-Generate Rules.
-- **Chat Panel.** Reskins Blizzard's chat in place, with a Chat Data Panel, filters, history, per-tab sounds and a privacy cover. Blizzard UI Reskin > Chat Panel, or `/xui chat settings`.
-- **Character Reskin.** Blizzard's character window in XayaUI's look: item levels colored by upgrade track, enchant and gem lines, a wider and taller window, and the full stat list. Blizzard UI Reskin > Character Pane, or `/xui reskin`.
+- **Combat Tracking Setup.** Sets up buff durations for your class and spec. The very first time you open the settings window it opens with it; after that, use **Open Combat Tracking Setup** on the Rules tab. It closes with the settings window.
 - **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. Bonus Features > Stat Calculator, or `/xui stats`.
-- **Shopping List.** What your gear is missing and what your tracked recipes need. Blizzard UI Reskin > Shopping List, or `/xui shop`.
-- **Release Guard.** Covers the Release Spirit button when you die so a misclick does not release you. QoL > Release Guard.
-- **Cursor Highlight and Trail.** A colored shape at the cursor and a trail of gradient dots, to find the mouse easily. Both off by default. QoL > Cursor, or `/xui cursor`.
-- **Enhanced Tooltips.** ID lines for spells, items, auras and NPCs (more if you turn them on), and Aura ID lines for the effects an item or spell describes. Bonus Features > Enhanced Tooltips.
-- **Notepad and Calculator.** Bonus Features > Utilities, or `/notes` and `/calc`.
-- **Data Panels.** Your own panels and bars of live information. `/xui data`.
 - **Themes.** Colors and fonts for every XayaUI window. Settings > UI Options > Theme.
-- **Debugging.** Advanced Debugging records what is needed to find a problem. Settings > Debugging.
+- **Debugging.** Advanced Debugging (off by default) records what is needed to find a problem and loads the debug tools at the next login or /reload. While it is on, every login and /reload prints one chat line saying so. Settings > Debugging.
 
 ## Slash commands
 
 - `/xui` opens or closes the settings window (`/xayaui` works too).
 - `/xui help` lists every command you can use.
+- `/xui unlock` opens the settings window with the mover on, so you can drag displays and groups. The mover works only while the settings window is open: closing the window closes it. Moves you have not saved are kept, and the next time you open the window one question asks you to save them, discard them or keep editing.
+- `/xui disable` turns every rule off at once, in combat too; `/xui enable` turns them back on (after combat, if you are in a fight). A /reload also turns them back on.
+- `/xui stats` opens the Stat Calculator (with XayaUI Bonus Features).
+- `/xui debug` lists the diagnostic commands.
+
+These are debug tools: they need Advanced Debugging on and a /reload. With it off, each answers with one chat line saying so.
+
 - `/xui console` opens the XayaUI console: its messages, and a line to type commands in.
 - `/xui status` prints every rule's answer right now, and why.
 - `/xui auras` prints aura IDs, and whether XayaUI can follow them in combat.
-- `/xui unlock` lets you drag displays and groups; type it again to lock.
-- `/xui disable` turns every rule off at once, in combat too; `/xui enable` turns them back on (after combat, if you are in a fight). A /reload also turns them back on.
 - `/xui bug` makes a bug report.
-- `/xui debug` lists the diagnostic commands.
-- `/xui chat`, `/xui panel`, `/xui privacy` for the Chat Panel, the Chat Data Panel and the privacy cover.
-- `/xui reskin`, `/xui stats`, `/xui shop`, `/xui cursor` for the QoL features.
-- `/xui notes`, `/xui calc`, `/xui data` for the Bonus Features.
+- `/xuiengine` shows what the combat engine draws.
+- `/xui debug perf on`, `/xui debug perf` and `/xui debug perf off` measure the combat engine: how often it re-checks, its CPU and memory.
 
 In combat the settings window, the rule editor and the mover do not open: one chat line says so, and the one you asked for opens by itself when combat ends. A window that is open when combat starts closes and opens again afterwards.
 

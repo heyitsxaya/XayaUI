@@ -98,10 +98,23 @@ check("  (an ordinary message is in that buffer, so the check above can fail)", 
 L.execute("UI().msgDest = 'both'; RESET(); NS.PrintPrivate('Saved Otherperson note'); UI().msgDest = nil")
 check("  ...'Both': shown in chat and the window, still not in the buffer",
       E("#CHAT == 1 and #SINK == 1 and not BUFHAS('Otherperson')"))
-L.execute("OUTP = NS.CaptureOutput(function() NS.PrintPrivate('Thirdperson') end)")
-check("  ...and never collected into captured output", E("#OUTP == 0"))
-L.execute("OUT = NS.CaptureOutput(function() NS.Print('collected line') end)")
-check("collected output is returned to the caller, not shown", E("OUT[1] == 'collected line' and not BUFHAS('collected line')"), E("tostring(OUT[1])"))
+# (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)": ns.CaptureOutput is removed; intended change, was
+#  "...and never collected into captured output" and "collected output is returned to the caller, not shown") What is left that collects a
+#  message is the detailed record's hand-in point (ns.RecordLine, XayaUI Dev Assist's; a spy here) and the console's line buffer: a private
+#  message reaches neither, an ordinary one reaches both (the control); nothing swallows a message any more, not even a leftover
+#  ns._capture table, and ns.CaptureOutput no longer exists.
+L.execute("RECORDED = {}; NS.RecordLine = function(kind, text) RECORDED[#RECORDED + 1] = kind .. ':' .. tostring(text) end")
+L.execute("RECHAS = function(t) for _, l in ipairs(RECORDED) do if l:find(t, 1, true) then return true end end return false end")
+L.execute("RESET(); NS.PrintPrivate('Thirdperson')")
+check("  ...and never collected: not in the detailed record nor the line buffer, though shown",
+      E("not RECHAS('Thirdperson') and not BUFHAS('Thirdperson') and (#CHAT + #SINK) >= 1"), E("table.concat(RECORDED, ' / ')"))
+L.execute("RESET(); NS.Print('collected line')")
+check("  (an ordinary message reaches the detailed record and the buffer, so the check above can fail)",
+      E("RECHAS('msg:collected line') and BUFHAS('collected line')"), E("table.concat(RECORDED, ' / ')"))
+L.execute("NS.RecordLine = nil")
+L.execute("NS._capture = {}; RESET(); NS.Print('shown line'); LEFT = #NS._capture; NS._capture = nil")
+check("no collected output any more (SD-83): ns.CaptureOutput is gone, and a message is shown even with an ns._capture table set",
+      E("NS.CaptureOutput == nil and LEFT == 0 and (#CHAT + #SINK) == 1 and BUFHAS('shown line')"), E("tostring(LEFT) .. ' ' .. #CHAT .. ' ' .. #SINK"))
 
 # 4. XayaUI's own Lua errors (core 0.6.56: the coded record, CueRulesDB.errorLog; XUI-E001 for a core or Rules file)
 L.execute("RESET(); HANDLER('Interface/AddOns/XayaUI_Rules/Engine.lua:12: boom')")

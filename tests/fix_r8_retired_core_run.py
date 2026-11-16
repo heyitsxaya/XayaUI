@@ -126,12 +126,14 @@ local gone = { "SetDebugHooks", "RegisterReskin", "SetReskinTab", "RegisterConfl
   "ConflictsFor", "ConflictPageText", "InfoBox", "infoBoxOpen", "MapTrace", "MapTraceCounts", "MapTraceOrder", "SectionTabs",
   "RegisterSubcommand", "RunSubcommand", "SubcommandList", "SubcommandHelp", "SwitchPending", "SwitchApplyNow", "SwitchCommand",
   "SwitchesHeld", "SettingsSplitSub", "SettingsKeyMove", "DevAssistOn", "GameMenuDiag", "GameMenu_DiagState", "Minimap_Where",
-  "Minimap_TogglePopupAt", "Minimap_SidebarChanged" }
+  "Minimap_TogglePopupAt", "Minimap_SidebarChanged",
+  -- (bundle 1 round 9, REQUEST-LOG A23 SD-83, her answer "Remove both (Recommended)"; intended change: it was in the kept list below)
+  "CaptureOutput" }
 local still = {}
 for _, k in ipairs(gone) do if ns[k] ~= nil then still[#still + 1] = k end end
 check("[new] R none of the removed hand-in points exists (" .. #gone .. " names)", #still == 0, table.concat(still, ","))
 local kept = { "SwitchInEffect", "SwitchSaveForReload", "ReskinTabOn", "ReskinTabSaved", "SaveReskinTab", "RegisterDebugCommand",
-  "RunDebugCommand", "CaptureOutput", "SettingsLegacyGet", "SettingsLegacyMerge", "ModuleMissingText", "Provide", "Service" }
+  "RunDebugCommand", "SettingsLegacyGet", "SettingsLegacyMerge", "ModuleMissingText", "Provide", "Service" }
 local missing = {}
 for _, k in ipairs(kept) do if type(ns[k]) ~= "function" then missing[#missing + 1] = k end end
 check("R (control) what still has a caller or touches saved data is still there", #missing == 0, table.concat(missing, ","))
