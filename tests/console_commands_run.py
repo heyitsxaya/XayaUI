@@ -3,15 +3,17 @@
 Xaya, 2026-11-05: "XUI Console does nothing and has no input options" (screenshot: an empty console window, four buttons, nothing to
 type in), and of the /xui help list: "can't some of these be consolidated into a /xui debug _____ ? this is a LOT of noise" (29 lines).
 What the player sees, checked here with the real addons in the stand-in game:
-  1. /xui help lists the player's commands: on this branch (XayaUI core, XayaUI_Options and XayaUI_Rules; the feature addons that add
-     commands of their own live on another branch) exactly core's 8: /xui, /xui console, /xui bug, /xui report, /xui unlock, the two
-     shortcuts /xui status and /xui auras (Xaya 2026-11-06) and /xui debug, no other diagnostic command; pipes in it are doubled ("||",
-     shown as "|"; she chose "Back to '|'" over "[on/off]").
+  1. /xui help lists the player's commands: core's ten (/xui, /xui console, /xui bug, /xui report, /xui unlock, the two shortcuts
+     /xui status and /xui auras (Xaya 2026-11-06), /xui debug, /xui disable, /xui enable), no other diagnostic command; pipes in it are
+     doubled ("||", shown as "|"; she chose "Back to '|'" over "[on/off]"). This branch also holds XayaUI Bonus Features (main's, with
+     the Stat Calculator and, from round 10, the arithmetic Calculator); (bundle 1 round 10, REQUEST-LOG SD-118) a part's words are listed
+     only while that part is switched on, so on this test's fresh install (the Stat Calculator off) /xui stats is not listed.
   2. /xui debug lists every diagnostic command as "/xui debug <name>"; each listed name runs; an unknown one says so and lists them;
      the loader check is /xui debug loader (was window: "Rename it" -> "/xui debug loader").
   3. The old forms (/xui chatprobe, /xui perf, /xui stats widthprobe ...) no longer run (Xaya 2026-11-06: "let's move to /xui debug
      ____", "7. Retire"): each prints /xui help instead (/xui stats was XayaUI QoL's command; since Bonus 0.6.45 it is the Stat
-     Calculator's, XayaUI Bonus Features, which runs no width probe: with the Stat Calculator off it says so). A developer debug command (XayaUI Dev Assist's, not on this branch) does not
+     Calculator's, XayaUI Bonus Features, which runs no width probe: with the Stat Calculator off it prints SD-118's one line, "The Stat
+     Calculator is off. Turn it on in /xui > Bonus Features."). A developer debug command (XayaUI Dev Assist's, not on this branch) does not
      exist: /xui debug <name> says there is no such command.
   4. The console window has a command line inside it, under the log, clear of the resize grip. With XayaUI's messages set to the
      chat window (Xaya's case), a command typed there prints in the console window and not in chat; the typed line is echoed;
@@ -79,15 +81,26 @@ for i = 2, #help do
 end
 check("help: a header with the count, then that many lines", help[1] == ("commands (%d):"):format(#help - 1), help[1])
 -- core's own player commands, in the order /xui help prints them (Core.lua CORE_HELP; XayaUI Rules is on, so its three are listed).
--- Feature addons add theirs through ns.RegisterCommand; none of them is on this branch, so this is the whole list.
+-- Feature addons add theirs through ns.RegisterCommand (Modules.lua section 2): on this branch that is XayaUI Bonus Features (main's),
+-- whose words belong to its parts, the Stat Calculator (/xui stats) and the arithmetic Calculator (/xui calc, /xui calculator).
 -- (V26, lock-core round 3: /xui disable and /xui enable added, XayaUI Rules' on-off switch)
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status", "/xui auras", "/xui debug", "/xui disable", "/xui enable" }
--- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its one command, /xui stats, comes after core's
--- (Bonus 0.6.46) /xui stats is registered by XayaUI Bonus Features' loader, whether or not the Stat Calculator itself (the load-on-demand
--- XayaUI_Bonus_StatCalculator) is loaded
+-- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator: its command, /xui stats, is registered by Bonus's
+-- loader. (bundle 1 round 10, REQUEST-LOG SD-118, intended change) a part's words are listed only while the part is switched on: this
+-- test's install is fresh, with the Stat Calculator off (its switch XayaUIBonusDB.characterToolkit.enabled), so /xui stats is not listed.
+-- The Calculator's /xui calc is on by default (SD-116) and is listed when XayaUI Bonus Features registers it (the calculator unit).
 local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false
-if SC_ON then WANT[#WANT + 1] = "/xui stats" end
-check("help: " .. #WANT .. " lines (it was 29), core's own commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or " only"), #help - 1 == #WANT, #help - 1)
+local scSwitch = SC_ON and type(rawget(_G, "XayaUIBonusDB")) == "table" and type(XayaUIBonusDB.characterToolkit) == "table"
+  and XayaUIBonusDB.characterToolkit.enabled == true or false
+if scSwitch then WANT[#WANT + 1] = "/xui stats" end
+local calcLine   -- (the Calculator's /xui calc and /xui calculator, when registered: listed while it is on, the default; in the order printed)
+for i = 2, #help do
+  local c = plain(help[i]):match("^  (/xui calc%a*)%s") or plain(help[i]):match("^  (/xui calc%a*)$")
+  if SC_ON and (c == "/xui calc" or c == "/xui calculator") then calcLine = true; WANT[#WANT + 1] = c end
+end
+check("help: the Stat Calculator is off on this fresh install (setup)", scSwitch == false, scSwitch)
+check("help: " .. #WANT .. " lines (it was 29), core's own commands" .. (calcLine and " and the Calculator's /xui calc" or "") .. "; /xui stats only while the Stat Calculator is on (SD-118)",
+  #help - 1 == #WANT, #help - 1)
 check("help: exactly " .. table.concat(WANT, ", ") .. ", in that order", table.concat(cmds, ",") == table.concat(WANT, ","), table.concat(cmds, " "))
 check("help: /xui report is listed (core 0.6.56)", helpText_ ~= nil)
 local diag = { "status", "probe", "debuffs", "perf", "timing", "seed", "talents", "model", "tracker", "loc", "media", "gamemenu",
@@ -169,12 +182,14 @@ for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "
   -- /xui help, Modules.lua's list of feature commands; it runs nothing either way)
   -- (Bonus 0.6.45) with XayaUI Bonus Features loaded, /xui stats is the Stat Calculator's: "widthprobe" is no word of it, so it runs no
   -- width probe; the Stat Calculator is off by default here, so it says so (and opens nothing)
+  -- (bundle 1 round 10, REQUEST-LOG SD-118, intended change: was "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator
+  -- (or /xui stats on), then /reload.") a switched-off part's word prints core's one line, and "/xui stats on" no longer exists
   local scNote = "; /xui stats: says XayaUI QoL is not installed"
   if old == "stats widthprobe" then
     if SC_ON then
-      isHelp = #out == 1 and out[1] == "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload."
+      isHelp = #out == 1 and out[1] == "The Stat Calculator is off. Turn it on in /xui > Bonus Features."
         and rawget(_G, "XayaUIStatCalculator") == nil
-      scNote = "; /xui stats is the Stat Calculator's: no width probe, it says the Stat Calculator is off and opens nothing"
+      scNote = "; /xui stats is the Stat Calculator's: no width probe, it prints SD-118's one 'is off' line and opens nothing"
     else
       isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors)."
     end

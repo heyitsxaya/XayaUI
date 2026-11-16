@@ -397,7 +397,8 @@ local function DebugWordGated(arg)
     return not (sub == "" or sub == "help" or DEBUG_UNGATED[sub])
 end
 
--- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua)
+-- the player's commands core owns (/xui help); features add theirs through ns.RegisterCommand (Modules.lua), and (SD-118) a part's lines
+-- are listed only while that part is switched on (ns.CommandHelp leaves the others out)
 local CORE_HELP = { "/xui (settings)", "/xui console (the XayaUI console: its messages, and a line to type these commands in)",
     "/xui bug (bug report)", "/xui report (debug report: XayaUI's errors and warnings with their codes, to send to Xaya)",
     "/xui unlock (drag displays and groups; again to lock)",
@@ -554,7 +555,8 @@ SlashCmdList["XAYAUI"] = function(msg)
         ns.ShowBugReport()
     elseif cmd == "report" then   -- (core 0.6.56; REQUEST-LOG #82: the debug report window)
         ns.ShowDebugReport()
-    elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand)
+    elseif ns.RunCommand(cmd, arg) then   -- a feature's own command (Modules.lua: ns.RegisterCommand); (SD-118) a switched-off part's
+                                          -- word prints its one "The <part> is off. Turn it on in <where>." line there instead
     elseif ns.ModuleMissingText(cmd) then   -- a feature's command whose addon is off or failed to load
         ns.Print(ns.ModuleMissingText(cmd))
     else

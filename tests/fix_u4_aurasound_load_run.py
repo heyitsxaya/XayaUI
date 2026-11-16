@@ -82,11 +82,15 @@ NS.AuraSound.OnEdited()
 RUN_TIMERS()
 ''')
 st = lambda r: str(L.eval("NS.AuraSound.StatusLine(%s)" % r))
-check("'Only in combat' rule, set up out of combat: the game holds its sound (it plays in combat while the aura is hidden)",
-      L.eval("HOLDS(5001)") is True, st("INCOMBAT"))
-check("  ...the pane says the game plays it, and that the Load tab's \"Only in combat\" does not apply to the game's copy",
-      "The game plays this sound" in st("INCOMBAT") and '"Only in combat" does not apply' in st("INCOMBAT"), st("INCOMBAT"))   # (R2 follow-up: editor's label)
-check("'Only during a boss encounter' rule with an encounter list: the game holds its sound", L.eval("HOLDS(5002)") is True, st("BOSS"))
+# (round 10, SD-96 "This function needs to work as intended and expected", V32: intended change) the game's copy follows the Load tab
+# exactly: an "Only in combat" / boss rule is no longer held out of combat (before: held all the time, playing outside combat too); it is
+# handed to the game as the fight starts / the boss is pulled (tests/fix_r10_sound_run.py has every edge)
+check("'Only in combat' rule out of combat: the game does not hold its sound (its Load tab says no)",
+      L.eval("HOLDS(5001)") is False, st("INCOMBAT"))
+check("  ...and the pane says why and that it is given to the game as each fight starts",
+      "Only in combat" in st("INCOMBAT") and "as each fight starts" in st("INCOMBAT") and "does not apply" not in st("INCOMBAT"), st("INCOMBAT"))
+check("'Only during a boss encounter' rule with an encounter list, out of the encounter: the game does not hold its sound",
+      L.eval("HOLDS(5002)") is False, st("BOSS"))
 check("'Only in a group' + 'Only during a Mythic+' while solo: not handed to the game (kept, re-planned on group / Mythic+ events)",
       L.eval("HOLDS(5003)") is False, st("GROUP"))   # (R2 follow-up: group and Mythic+ are kept; tests/fix_r2_aurasound_static_load_run.py)
 check("a rule for another class: not handed to the game", L.eval("HOLDS(5004)") is False)
@@ -94,7 +98,8 @@ check("  ...and the pane names the load condition that blocks it (class)",
       "not for this character (Class)" in st("OTHERCLASS"), st("OTHERCLASS"))   # (R2 follow-up: plain text)
 check("a rule set to Never load: not handed to the game, and the pane says so",
       L.eval("HOLDS(5005)") is False and '"Never load"' in st("NEVER"), st("NEVER"))   # (R2 follow-up: plain text)
-check("'any' mode 'in combat OR Druid' on a Demon Hunter: combat may be true, so the game holds its sound", L.eval("HOLDS(5007)") is True, st("ANYC"))   # (R2 follow-up)
+check("'any' mode 'in combat OR Druid' on a Demon Hunter, out of combat: neither is true, so the game does not hold its sound",
+      L.eval("HOLDS(5007)") is False, st("ANYC"))   # (round 10, SD-96: intended change; before: held, every Load choice ignored)
 check("XayaUI's own load answer is unchanged by the sync: 'Only in combat' is not loaded out of combat",
       L.eval("LOADED_BEFORE") is False and L.eval("NS.IsLoaded(INCOMBAT)") is False)
 L.execute("COMBAT = true")
@@ -105,8 +110,18 @@ L.execute("MAP = 2248; FIRE('ZONE_CHANGED_NEW_AREA'); RUN_TIMERS()")
 check("walking into that zone (no loading screen): the game holds its sound", L.eval("HOLDS(5006)") is True, st("ZONE"))
 L.execute("MAP = 2339; FIRE('ZONE_CHANGED_NEW_AREA'); RUN_TIMERS()")
 check("walking out again: the game's copy is taken back", L.eval("HOLDS(5006)") is False, st("ZONE"))
-check("the 'Only in combat' rule keeps its single registration through those syncs",
+# a fight starts (PLAYER_REGEN_DISABLED comes before the combat flag in this stand-in, as in the game's lockdown: INFERENCE)
+L.execute("FIRE('PLAYER_REGEN_DISABLED'); COMBAT = true")
+check("a fight starts: the game holds the 'Only in combat' sound at once", L.eval("HOLDS(5001)") is True, st("INCOMBAT"))
+check("  ...and the 'in combat OR Druid' one", L.eval("HOLDS(5007)") is True, st("ANYC"))
+check("  ...and the pane says the game plays it", "The game plays this sound" in st("INCOMBAT"), st("INCOMBAT"))
+L.execute("FIRE('ENCOUNTER_START', 3009, 'Boss', 16, 20)")
+check("the listed boss is pulled: the game holds the boss rule's sound", L.eval("HOLDS(5002)") is True, st("BOSS"))
+L.execute("MAP = 2248; FIRE('ZONE_CHANGED_NEW_AREA'); RUN_TIMERS(); MAP = 2339; FIRE('ZONE_CHANGED_NEW_AREA'); RUN_TIMERS()")
+check("the 'Only in combat' rule keeps its single registration through those syncs (in the fight)",
       L.eval("(function() local n = 0; for _, s in pairs(HELD) do if s == 5001 then n = n + 1 end end; return n end)()") == 1)
+L.execute("FIRE('ENCOUNTER_END', 3009, 'Boss', 16, 20, 1); COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
+check("the fight ends: both are taken back", L.eval("HOLDS(5001)") is False and L.eval("HOLDS(5002)") is False)
 
 print("FAILS: %d" % len(fails))
 sys.exit(1 if fails else 0)

@@ -66,7 +66,18 @@ sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
 
 ROOT = os.path.dirname(HERE)
-ADDONS = ("XayaUI", "XayaUI_Rules", "XayaUI_Options")
+ADDONS = ("XayaUI", "XayaUI_Rules", "XayaUI_Options", "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator")
+# (bundle 1 round 10; REQUEST-LOG A23 SD-98, her answer "Yes, fold in (Recommended)") XayaUI Bonus Features and its Stat Calculator are
+# folded into both variants: switched on in the game's AddOns list in every play (they are on main since fda1e293). The Stat Calculator
+# (XayaUI_Bonus_StatCalculator, load on demand) is read only while its switch is on (V34) and, with SD-105 "Load at first open
+# (Recommended)", only at the first open of its panel: "default" (a fresh install) has it off (never loaded: an integrity check), "debug"
+# (her install) has it on and the scenario opens its panel (so it loads) and closes it. The arithmetic Calculator lives inside
+# XayaUI_Bonus with its own switch, on by default (SD-115, SD-116): its keypad is opened and closed in both variants.
+BONUS_ADDON, STATCALC_ADDON = "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"
+BONUS_ADDONS = (BONUS_ADDON, STATCALC_ADDON)
+# the Stat Calculator's switch saved on (her install, the "debug" variant): XayaUIBonusDB.characterToolkit (StatCalculatorLoader.lua;
+# the same data set as tests/harness/run.py STATCALC_ON)
+STATCALC_SAVED = {"storeVersion": 1, "characterToolkit": {"enabled": True, "panel": True}}
 # (round 8; round 7 review: the gate never loaded XayaUI_Debug) the debug tools' load-on-demand addon, switched on in the game's AddOns
 # list as on every install; core loads it at login only while Settings > Debugging > Advanced Debugging (CueRulesDB.ui.advancedDebug)
 # is on (XayaUI/DebugRecord.lua, V34). The gate plays two variants of the same scenario:
@@ -136,8 +147,11 @@ G.targetDebuffs, G.target = {}, false
 C_UnitAuras.GetUnitAuras = function(unit, filter) if unit == "target" and G.target then return G.targetDebuffs end return {} end
 local UE0 = UnitExists
 UnitExists = function(u) if u == "target" then return G.target end return UE0(u) end
-C_UnitAuras.AddAuraSound = function() G.nextInstance = G.nextInstance + 1; return G.nextInstance end
-C_UnitAuras.RemoveAuraSound = function() end
+-- (round 10, SD-96 / SD-109; the gate task: "the game-played sound edges (combat start add, boss pull, combat end) are measured") every
+-- copy the game is handed or asked to take back is counted, so the scenario can show the edges ran (OUT.soundEdges)
+G.soundAdd, G.soundRem = 0, 0
+C_UnitAuras.AddAuraSound = function() G.soundAdd = G.soundAdd + 1; G.nextInstance = G.nextInstance + 1; return G.nextInstance end
+C_UnitAuras.RemoveAuraSound = function() G.soundRem = G.soundRem + 1 end
 -- a spell's cooldown (SpellCooldownInfo): a new table per call, as the game returns
 C_Spell.GetSpellCooldown = function(id)
   local c = G.cds[tonumber(id) or 0]
@@ -178,6 +192,14 @@ function G.lose(id)
 end
 function G.cast(id, dur) G.cds[id] = { startTime = W.now, duration = dur } end
 function G.clear() G.auras, G.byInstance, G.cds = {}, {}, {} end
+-- (round 10, SD-98 / SD-105) the game's character window (Blizzard's CharacterFrame), hidden until the player opens it: the Stat
+-- Calculator docks beside it. A frame of the game's, not XayaUI's (made here, before any addon loads); only its rectangle matters
+-- (INFERENCE: 338 x 424 at the top left of the screen, as the game's own window sits)
+if not rawget(_G, "CharacterFrame") then
+  local cf = realCreate("Frame", "CharacterFrame", UIParent)
+  cf:SetSize(338, 424); cf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116); cf:Hide()
+  rawset(_G, "CharacterFrame", cf)
+end
 return G
 end
 '''
@@ -256,6 +278,21 @@ for i = 1, 20 do
     if i % 4 == 1 then r.load.mounted = "yes" elseif i % 4 == 2 then r.load.mounted = "no" end
   end)
   made.game = made.game + 1
+end
+-- 4b. (round 10; SD-96 "This function needs to work as intended and expected", V32; the gate task: the game-played sound's edges are
+--     measured) game-played sounds whose Load tab reads a choice that changes in a fight, so the copy the game holds changes at its
+--     edges (AuraSound.lua FightReads): only in combat (added at combat start, taken back at combat end), only out of combat (the
+--     other way round), only in a boss encounter, the gate's boss in a Boss encounters list (added at the boss pull, taken back at the
+--     boss down) and only outside boss encounters
+for i, set in ipairs({ function(l) l.combat = "yes" end, function(l) l.combat = "no" end, function(l) l.encounter = "yes" end,
+    function(l) l.encounterIDs = { [2001] = true } end, function(l) l.encounter = "no" end }) do
+  rule("Game sound edge " .. i, function(r)
+    r.useBuff, r.buffID, r.buffState = true, 320020 + i, "present"
+    r.sound.enabled, r.sound.source, r.sound.value = true, "file", SOUND
+    r.gameSound = { enabled = true }
+    set(r.load)
+  end)
+  made.gameEdge = (made.gameEdge or 0) + 1
 end
 -- 5. hover-tooltip displays drawn by XayaUI itself (a cooldown-ready icon; V27: hover allowed, clicks pass). (A buff display is drawn
 --    by the combat engine's Blizzard container instead: ns.EngineOwns.)
@@ -374,10 +411,12 @@ end
 '''
 
 
-def _world(L, saved_source=None, debug=None):
-    """A stand-in game (tests/harness/world.lua + loader.lua) with XayaUI, XayaUI_Rules and XayaUI_Options switched on.
+def _world(L, saved_source=None, debug=None, statcalc=False):
+    """A stand-in game (tests/harness/world.lua + loader.lua) with XayaUI, XayaUI_Rules, XayaUI_Options, XayaUI_Bonus and
+    XayaUI_Bonus_StatCalculator switched on (round 10, SD-98: the last two where this checkout has them).
     debug (round 8): None = XayaUI_Debug not in the list (as before); "off" = switched on in the AddOns list, Advanced Debugging as
-    saved (off on a new install); "on" = switched on in the list and Advanced Debugging saved on (core loads it at login)."""
+    saved (off on a new install); "on" = switched on in the list and Advanced Debugging saved on (core loads it at login).
+    statcalc (round 10, SD-98): the Stat Calculator's switch saved on (her install; STATCALC_SAVED), else as saved (off on a new install)."""
     folders = H.find_addons()
     sv = H.savedvars(L)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
@@ -389,6 +428,12 @@ def _world(L, saved_source=None, debug=None):
     if debug == "on":
         L.eval("function(s) s.XayaUI = s.XayaUI or {}; local c = s.XayaUI.CueRulesDB or {}; s.XayaUI.CueRulesDB = c; "
                "c.ui = c.ui or {}; c.ui.advancedDebug = true end")(opts["saved"])
+    if statcalc:
+        # (round 10, SD-98) merged into what session A saved for XayaUI_Bonus (its store version and anything else it wrote)
+        L.eval("function(s, b) s.XayaUI_Bonus = s.XayaUI_Bonus or {}; local d = s.XayaUI_Bonus.XayaUIBonusDB or {}; "
+               "s.XayaUI_Bonus.XayaUIBonusDB = d; d.storeVersion = d.storeVersion or b.storeVersion; "
+               "local c = d.characterToolkit or {}; d.characterToolkit = c; "
+               "for k, v in pairs(b.characterToolkit) do c[k] = v end end")(opts["saved"], H.to_lua(L, STATCALC_SAVED))
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world, opts)
     return world, loader, game, sv
 
@@ -556,8 +601,21 @@ function proto:SetPassThroughButtons(...) self._pass = { ... } end
 function proto:IsKeyboardEnabled() return self._keyboard and true or false end
 -- keyboard: calls made by XayaUI code after the window closed (V27, V29)
 local KBCALLS = {}
+-- (round 10; REQUEST-LOG A23 SD-99, her answer: "v27 is only if ALL windows of XUI are closed; XUI windows that are actively opened and
+-- have the mouse over them should accept clicks [...]") while a window she opened herself is open (WINOPEN: from her opening it to its
+-- close, the Stat Calculator panel or the Calculator keypad), the keyboard calls made then are that window's own and are kept apart
+-- (KBWIN, listed by the keyboard gate, not failed); everything else after the close is judged as before
+local WINOPEN = false
+local KBWIN = {}
 local function noteKb(what)
   if not CLOSED then return end
+  if WINOPEN and not W.combat then
+    local m0, e0 = exStart()
+    local w = whereFrom(2)
+    if w then bump(KBWIN, w .. " " .. what) end
+    exEnd(m0, e0)
+    return
+  end
   local m0, e0 = exStart()
   local w = whereFrom(2)
   if w then bump(KBCALLS, w .. " " .. what .. (W.combat and " (in combat)" or "")) end
@@ -1092,9 +1150,19 @@ end
 -- addon's costliest of them, kept per segment under the moment's name (MOMENT_FRAMES frames: the event's own frame, the next-frame
 -- settle and any pass held to the 10-a-second pace, 0.1 s = 3 frames, all fall inside)
 local MOMENT, MOMENT_LEFT, MOMENT_FRAMES = nil, 0, 15
-local function moment(name) MOMENT, MOMENT_LEFT = name, MOMENT_FRAMES end
+-- (round 10; SD-96 / SD-109, the gate task "the game-played sound edges (combat start add, boss pull, combat end) are measured") the
+-- copies the game was handed (AddAuraSound) or asked to take back (RemoveAuraSound) over each moment's frames, summed over the cycles:
+-- OUT.soundEdges[moment] = { add, rem } (the integrity check reads that the edges ran inside the frames the per-event cap judges)
+local SND_ADD, SND_REM = 0, 0
+OUT.soundEdges = {}
+local function edgeDone()
+  if not MOMENT then return end
+  local e = OUT.soundEdges[MOMENT]; if not e then e = { add = 0, rem = 0 }; OUT.soundEdges[MOMENT] = e end
+  e.add = e.add + ((G.soundAdd or 0) - SND_ADD); e.rem = e.rem + ((G.soundRem or 0) - SND_REM)
+end
+local function moment(name) edgeDone(); MOMENT, MOMENT_LEFT = name, MOMENT_FRAMES; SND_ADD, SND_REM = G.soundAdd or 0, G.soundRem or 0 end
 local function budFrame()
-  if not BSEG then for a in rawpairs(BFRAME) do BFRAME[a] = nil end; MOMENT = nil; return end
+  if not BSEG then for a in rawpairs(BFRAME) do BFRAME[a] = nil end; edgeDone(); MOMENT = nil; return end
   local s = budSeg(BSEG)
   local secIndex = math.floor(s.frames / 30) + 1   -- (30 frames a second: the scenario's FPS)
   s.frames = s.frames + 1
@@ -1103,7 +1171,7 @@ local function budFrame()
     s.moments = s.moments or {}
     mo = s.moments[MOMENT]; if not mo then mo = {}; s.moments[MOMENT] = mo end
     MOMENT_LEFT = MOMENT_LEFT - 1
-    if MOMENT_LEFT <= 0 then MOMENT = nil end
+    if MOMENT_LEFT <= 0 then edgeDone(); MOMENT = nil end
   end
   for a, w in rawpairs(BFRAME) do
     s.work[a] = (s.work[a] or 0) + w
@@ -1349,8 +1417,63 @@ local function inMenu(o)
   while f and menu and guard < 40 do if f == menu then return true end; f = rawget(f, "_parent"); guard = guard + 1 end
   return false
 end
-local function checkpoint(label)
-  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, hoverList = {}, noArea = {}, wheel = {}, keyboard = {}, kbHidden = {}, engine = {}, focus = {}, keys = {}, shown = {}, big = {} }
+-- (round 10; REQUEST-LOG A23 SD-99, her answer verbatim: "v27 is only if ALL windows of XUI are closed; XUI windows that are actively
+-- opened and have the mouse over them should accept clicks unless a "allow clickthrough" is flagged (only available for rules)"; SD-114
+-- "No, keep as is": rule displays always pass clicks once every XayaUI window is closed) the windows she opens herself: the Stat
+-- Calculator panel (alone and docked) and the Calculator keypad. A window is the top XayaUI frame (xuiRoot) that became shown when she
+-- opened it. While it is open, a frame inside it may take clicks, the wheel and the keyboard inside the window's own rectangle; a frame
+-- of it that takes the mouse outside that rectangle is a violation (winOutside), and every frame that is not in an open window is
+-- judged as before. KNOWNWIN: every window root she opened in this play; one shown at a checkpoint where every window should be closed
+-- (in a fight, after a close, after a fight) is listed (winShown).
+local KNOWNWIN = setmetatable({}, { __mode = "k" })   -- [root frame] = what it is ("the Stat Calculator panel ...")
+local function xuiRoot(o)   -- the top frame XayaUI made that this object sits in (itself included), or nil
+  local f, root, g = o, nil, 0
+  while f and g < 40 do if ORIGIN[f] then root = f end; f = rawget(f, "_parent"); g = g + 1 end
+  return root
+end
+local function winOf(o, wins)
+  if not wins then return nil end
+  local f, g = o, 0
+  while f and g < 40 do
+    for _, wi in rawipairs(wins) do if wi.root == f then return wi end end
+    f = rawget(f, "_parent"); g = g + 1
+  end
+  return nil
+end
+-- where a frame can take the mouse: its rectangle, and for a frame inside a scroll frame's scroll child, placed from the scroll frame's
+-- top-left (moved by its vertical scroll) and cut to the scroll frame (INFERENCE: the game draws a scroll child that way and parts
+-- outside the scroll frame can neither be seen nor clicked; ScrollFrame:SetScrollChild is not in docs/reference/api/widgets.md, and the
+-- stand-in places a scroll child that has no points of its own at the screen's corner). Returns l, b, r, t (r < l or t < b: no area).
+local function mouseRect(o)
+  local a = W.rect(o)
+  local l, b, r, t = a.l, a.b, a.l + a.w, a.b + a.h
+  local c, g = o, 0
+  while c and g < 40 do
+    local p = rawget(c, "_parent")
+    if p and rawget(p, "_scrollChild") == c then
+      local cr, sr = W.rect(c), W.rect(p)
+      local dx = sr.l - cr.l
+      local dy = (sr.b + sr.h + (rawget(p, "_vs") or 0)) - (cr.b + cr.h)
+      l, r, b, t = l + dx, r + dx, b + dy, t + dy
+      l, b, r, t = math.max(l, sr.l), math.max(b, sr.b), math.min(r, sr.l + sr.w), math.min(t, sr.b + sr.h)
+    end
+    c = p; g = g + 1
+  end
+  return l, b, r, t
+end
+local function inRect(o, root)   -- (half a pixel of slack for the stand-in's float sums; a part cut away entirely takes no mouse)
+  local l, b, r, t = mouseRect(o)
+  if r <= l or t <= b then return true end
+  local w = W.rect(root)
+  return l >= w.l - 0.5 and b >= w.b - 0.5 and r <= w.l + w.w + 0.5 and t <= w.b + w.h + 0.5
+end
+local function checkpoint(label, wins)
+  local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, hoverList = {}, noArea = {}, wheel = {}, keyboard = {}, kbHidden = {}, engine = {}, focus = {}, keys = {}, shown = {}, big = {},
+    open = {}, winMouse = {}, winOutside = {}, winKb = {}, winFocus = {}, winKeys = {}, winShown = {} }
+  for _, wi in rawipairs(wins or {}) do
+    local r = W.rect(wi.root)
+    cp.open[#cp.open + 1] = { name = wi.name, shown = wi.root:IsVisible() and true or false, w = r.w, h = r.h, l = r.l, b = r.b }
+  end
   local nsx = rawget(_G, "XayaUI_NS")
   local act = 0
   if nsx and nsx.runtime then for _, rt in rawpairs(nsx.runtime) do if rt.active then act = act + 1 end end end
@@ -1363,10 +1486,36 @@ local function checkpoint(label)
       if n == "frames" and type(v) == "table" then for r, f in rawpairs(v) do ruleOf[f] = r end end
     end
   end
+  -- (round 10) a window she opened that is shown where none is open (wins empty): in a fight (SD-100), after its close, after a fight (SD-102)
+  if not wins or #wins == 0 then
+    for root, what in rawpairs(KNOWNWIN) do
+      if root:IsVisible() then cp.winShown[#cp.winShown + 1] = { name = what, where = ORIGIN[root], combat = W.combat and true or false } end
+    end
+  end
   for _, o in rawipairs(W.objects) do
     local where, viaParent = originOf(o)
     if where and not viaParent and o:IsVisible() then bump(cp.shown, where) end
-    if where and o:IsVisible() and not ALLOWED[o] and not (o._kind == "Texture" or o._kind == "FontString" or o._kind == "MaskTexture" or o._kind == "Line") then
+    local wi = where and winOf(o, wins)
+    if wi and o:IsVisible() and not (o._kind == "Texture" or o._kind == "FontString" or o._kind == "MaskTexture" or o._kind == "Line") then
+      -- (round 10, SD-99) a frame of a window she opened, while it is open
+      local area, w, h = hasArea(o)
+      local takes = o:IsMouseEnabled() or o._wheel
+      if takes and area then
+        local e = { name = o._name or ("a " .. tostring(o._kind)), kind = o._kind, where = where, window = wi.name, w = w, h = h,
+          by = o._clickBy or o._wheelBy or o._motionBy or (o._mouseSet and "?" or ("never set: a " .. o._kind .. " takes clicks by default")),
+          click = o:IsMouseClickEnabled() and not passesClicks(o), wheel = o._wheel and true or false }
+        if inRect(o, wi.root) then cp.winMouse[#cp.winMouse + 1] = e else
+          local l, b, r, t = mouseRect(o)
+          local rr = W.rect(wi.root)
+          e.rect = string.format("%.0f,%.0f %.0fx%.0f; the window %.0f,%.0f %.0fx%.0f", l, b, r - l, t - b, rr.l, rr.b, rr.w, rr.h)
+          cp.winOutside[#cp.winOutside + 1] = e
+        end
+      end
+      if o._keyboard then cp.winKb[#cp.winKb + 1] = { name = o._name or ("a " .. tostring(o._kind)), where = where, window = wi.name } end
+      if o._kind == "EditBox" and o._focus then cp.winFocus[#cp.winFocus + 1] = { name = o._name or "an edit box", where = where, window = wi.name } end
+    elseif wi then
+      -- (a hidden part of an open window: its own business while the window is open)
+    elseif where and o:IsVisible() and not ALLOWED[o] and not (o._kind == "Texture" or o._kind == "FontString" or o._kind == "MaskTexture" or o._kind == "Line") then
       local click = o:IsMouseClickEnabled() and not passesClicks(o)
       local area, w, h, frac = hasArea(o)
       local nm = o._name or ("a " .. tostring(o._kind))
@@ -1395,12 +1544,14 @@ local function checkpoint(label)
       if o._wheel and area then cp.wheel[#cp.wheel + 1] = { name = nm, kind = o._kind, where = where, by = o._wheelBy or "?", w = w, h = h } end
       if o._keyboard then cp.keyboard[#cp.keyboard + 1] = { name = nm, kind = o._kind, where = where, by = o._kbBy or "?", propagate = o._propagate and true or false } end
     end
-    if where and o._keyboard and not o:IsVisible() then cp.kbHidden[#cp.kbHidden + 1] = { name = o._name or ("a " .. tostring(o._kind)), kind = o._kind, where = where, by = o._kbBy or "?" } end
-    if o._kind == "EditBox" and o._focus then cp.focus[#cp.focus + 1] = { name = o._name or "an edit box", where = where or "not XayaUI's", xui = where ~= nil, visible = o:IsVisible() } end
+    if where and not wi and o._keyboard and not o:IsVisible() then cp.kbHidden[#cp.kbHidden + 1] = { name = o._name or ("a " .. tostring(o._kind)), kind = o._kind, where = where, by = o._kbBy or "?" } end
+    if o._kind == "EditBox" and o._focus and not wi then cp.focus[#cp.focus + 1] = { name = o._name or "an edit box", where = where or "not XayaUI's", xui = where ~= nil, visible = o:IsVisible() } end
   end
+  -- the keys: judged only while every XayaUI window is closed (SD-99); with a window she opened, what they reached is kept (winKeys)
+  local keyList = (wins and #wins > 0) and cp.winKeys or cp.keys
   for _, key in rawipairs({ "PRINTSCREEN", "W", "SPACE" }) do
     local got = W.pressKey(key)
-    cp.keys[#cp.keys + 1] = { key = key, reached = (got == "game"), ran = W.gameRan, by = (got ~= "game") and (rawget(got, "_name") or tostring(got and got._kind)) or nil,
+    keyList[#keyList + 1] = { key = key, reached = (got == "game"), ran = W.gameRan, by = (got ~= "game") and (rawget(got, "_name") or tostring(got and got._kind)) or nil,
       byWhere = (got ~= "game") and originOf(got) or nil }
   end
   if not CFG.memplay then OUT.checkpoints[#OUT.checkpoints + 1] = cp end   -- (round 9: the memory play keeps no record per cycle)
@@ -1598,6 +1749,131 @@ do
   checkpoint("after the minimap list closed")
 end
 
+-- (round 10; REQUEST-LOG A23 SD-98 "Yes, fold in (Recommended)", SD-99, SD-105 "Load at first open (Recommended)") the windows she opens
+-- herself, out of combat, with the settings window closed: the Calculator keypad (/xui calc; the Calculator is on by default, SD-116) in
+-- both variants; with the Stat Calculator switched on (her install, "debug"), its panel on its own (/xui stats) and docked beside the
+-- character window (the game's CharacterFrame shown; /xui stats when it does not come with it). Each is checked open (SD-99: it may take
+-- the mouse inside its own rectangle) and after its close (every XayaUI window closed again: V27 as before). With the Stat Calculator
+-- off (a fresh install, "default"), /xui stats and the character window must not load it (V34; an integrity check at the end).
+-- Opened through the player's own paths (the /xui command, the game's character window), so nothing here names a function of theirs.
+-- Which window an action opened: the XayaUI top frames from that addon's files that became shown (ORIGIN; the measured and tree
+-- plays). Whether to press the command a second time (a toggle that found its window open) is read from the game's Esc list
+-- (UISpecialFrames: every such window names itself there, so Esc closes it), which works in every play (the memory play keeps no
+-- ORIGIN), so every play makes the same moves.
+setPhase("windows")
+local function slash(msg) local f = SlashCmdList and SlashCmdList["XAYAUI"]; if f then pcall(f, msg) end end
+local function specialShown()   -- [name] = true for every frame in the game's Esc list that is shown now
+  local t = {}
+  for _, n in rawipairs(UISpecialFrames or {}) do local f = rawget(_G, n); if type(f) == "table" and f.IsVisible and f:IsVisible() then t[n] = true end end
+  return t
+end
+local function newSpecial(before) local now = specialShown(); for n in rawpairs(now) do if not before[n] then return true end end; return false end
+local function rootsFrom(prefix)   -- the shown XayaUI top frames (with an area) made by files of one addon: [root] = true, and a list
+  local set, list = {}, {}
+  for _, o in rawipairs(W.objects) do
+    if ORIGIN[o] and o:IsVisible() then
+      local r = xuiRoot(o)
+      local w = r and ORIGIN[r]
+      if w and not set[r] and w:sub(1, #prefix) == prefix and r:IsVisible() and hasArea(r) then set[r] = true; list[#list + 1] = r end
+    end
+  end
+  return set, list
+end
+-- open a window: the action (a second time when nothing new shows in the Esc list), then the windows it opened
+local function openWin(what, prefix, action, again)
+  local before, sp = rootsFrom(prefix), specialShown()
+  WINOPEN = true
+  action(); frames(0.2)
+  if not newSpecial(sp) and again then again(); frames(0.2) end
+  local _, now = rootsFrom(prefix)
+  local wins = {}
+  for _, r in rawipairs(now) do
+    if not before[r] then wins[#wins + 1] = { root = r, name = what .. " (made at " .. tostring(ORIGIN[r]) .. ")" }; KNOWNWIN[r] = what end
+  end
+  return wins, newSpecial(sp)
+end
+-- close it: the action, then Esc as the game does it (a text box with the keyboard focus takes Esc first; the game's Esc then hides the
+-- shown frames of its Esc list) while any of it is still shown; returns what is still shown
+local function closeWin(wins, action)
+  if action then action(); frames(0.2) end
+  for _ = 1, 2 do
+    local any = false
+    for _, wi in rawipairs(wins) do if wi.root:IsVisible() then any = true end end
+    if not any then break end
+    local got = W.pressKey("ESCAPE")
+    if got == "game" then for n in rawpairs(specialShown()) do local f = rawget(_G, n); if f then f:Hide() end end end
+    frames(0.2)
+  end
+  WINOPEN = false
+  local still = {}
+  for _, wi in rawipairs(wins) do if wi.root:IsVisible() then still[#still + 1] = wi.name end end
+  return still
+end
+local STATON = CFG.statcalc and true or false
+local CF = rawget(_G, "CharacterFrame")
+OUT.win = { statOn = STATON, keypad = {}, alone = {}, docked = {}, atFight = {} }
+do  -- the Calculator keypad (both variants): /xui calc opens it; Esc (the text box first) closes it
+  local k = OUT.win.keypad
+  local wins, esc = openWin("the Calculator keypad", "XayaUI_Bonus/", function() slash("calc") end)   -- (closed at login: one press)
+  k.opened, k.escList = #wins, esc
+  if #wins > 0 then
+    checkpoint("the Calculator keypad is open (a window she opened)", wins)
+    k.still = closeWin(wins, function() W.pressKey("ESCAPE") end)
+    if #k.still > 0 then WINOPEN = true; k.still = closeWin(wins, function() slash("calc") end) end
+    checkpoint("after the Calculator keypad closed")
+  else
+    WINOPEN = false
+  end
+end
+local STAT_SP = {}   -- the Esc-list names the Stat Calculator showed (to tell later whether it is open, in every play)
+if STATON then
+  local a, d = OUT.win.alone, OUT.win.docked
+  local sp0 = specialShown()
+  local wins = openWin("the Stat Calculator panel on its own", "XayaUI_Bonus_StatCalculator/", function() slash("stats") end, function() slash("stats") end)
+  for n in rawpairs(specialShown()) do if not sp0[n] then STAT_SP[n] = true end end
+  a.opened = #wins
+  if #wins > 0 then
+    checkpoint("the Stat Calculator is open on its own (a window she opened)", wins)
+    a.still = closeWin(wins, function() slash("stats") end)
+    checkpoint("after the Stat Calculator closed")
+  else
+    WINOPEN = false
+  end
+  local dw = {}
+  if CF then
+    dw = openWin("the Stat Calculator docked beside the character window", "XayaUI_Bonus_StatCalculator/", function() CF:Show() end, function() slash("stats") end)
+  end
+  d.opened = #dw
+  if #dw > 0 then
+    checkpoint("the Stat Calculator is docked beside the character window (a window she opened)", dw)
+    d.still = closeWin(dw, function() CF:Hide() end)
+    checkpoint("after the character window closed")
+  else
+    WINOPEN = false
+    if CF then CF:Hide(); frames(0.2) end
+  end
+else
+  -- the Stat Calculator off: her command and the character window (V34: nothing of it is read)
+  slash("stats"); frames(0.2)
+  if CF then CF:Show(); frames(0.2); CF:Hide(); frames(0.2) end
+end
+WINOPEN = false
+OUT.win.kbCalls = KBWIN
+-- (each fight, her install) the panel open on its own as the fight starts: it must close at combat start (SD-100) and must not come
+-- back by itself after the fight (SD-102); its combat-start work is judged by the per-event cap (SD-112)
+local function statOpenForFight(cyc)
+  if not STATON then return end
+  local open = false
+  for n in rawpairs(STAT_SP) do local f = rawget(_G, n); if f and f:IsVisible() then open = true end end
+  if not open then
+    openWin("the Stat Calculator panel on its own", "XayaUI_Bonus_StatCalculator/", function() slash("stats") end, function() slash("stats") end)
+  end
+  WINOPEN = false
+  local now = false
+  for n in rawpairs(STAT_SP) do local f = rawget(_G, n); if f and f:IsVisible() then now = true end end
+  OUT.win.atFight[cyc] = now
+end
+
 -- the busiest case: 60 seconds in three 20-second cycles
 local BUFFS = {}
 for i = 1, 66 do BUFFS[#BUFFS + 1] = 300000 + i end
@@ -1748,6 +2024,7 @@ for cyc = 1, 3 do
   drawCheck("group joined")
   G.target = true; sfire("PLAYER_TARGET_CHANGED"); frames(0.25)
   drawCheck("target picked")
+  statOpenForFight(cyc)   -- (round 10, her install) the Stat Calculator open as the fight starts
   -- the fight: 15 seconds of storms
   BSEG = "fight " .. cyc   -- (the fight's first second is judged like the rest of it)
   moment("combat start")
@@ -1883,6 +2160,11 @@ OUT.nonint = NONINT
 OUT.frames = FRAMES
 OUT.fps = FPS
 OUT.stats = ST
+-- (round 10, SD-98) which of Bonus's addons are loaded at the end (V34: the Stat Calculator only with its switch on, after its first open)
+OUT.addonsLoaded = {}
+for _, a in rawipairs({ "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator", "XayaUI_Debug" }) do
+  OUT.addonsLoaded[a] = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(a)) and true or false
+end
 OUT.errors = #W.errors
 OUT.errorText = {}
 for i = 1, math.min(#W.errors, 12) do OUT.errorText[i] = tostring(W.errors[i]):sub(1, 400) end
@@ -1931,8 +2213,10 @@ def run_scenario(perf=True, verbose=False, variant="default", tree=False, drawch
     t0 = time.time()
     saved, n, made, nf, errs_a = build_profile()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
-    world, loader, game, sv = _world(L, saved, debug=("on" if variant == "debug" else "off"))
+    # (round 10, SD-98) her install ("debug") also has the Stat Calculator switched on; a fresh install ("default") has it off
+    world, loader, game, sv = _world(L, saved, debug=("on" if variant == "debug" else "off"), statcalc=(variant == "debug"))
     cfg = H.to_lua(L, {"perf": perf, "verbose": verbose or bool(os.environ.get("XUI_GATE_VERBOSE")), "variant": variant,
+                        "statcalc": variant == "debug",
                         "nosample": bool(os.environ.get("XUI_GATE_NOSAMPLE")), "nohook": bool(os.environ.get("XUI_GATE_NOHOOK")),
                         "busy": float(os.environ.get("XUI_GATE_BUSY", "15")), "tree": bool(tree), "drawcheck": bool(drawcheck),
                         "memplay": bool(memplay), "redraws": {k: True for k in redraw_lines()[0]}})
@@ -1941,7 +2225,25 @@ def run_scenario(perf=True, verbose=False, variant="default", tree=False, drawch
     out = H.lua_to_py(res)
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
     out["redrawLines"] = {k: list(v) for k, v in rl.items()}
+    out["bonusTree"] = bonus_tree()
     return out, round(time.time() - t0, 1)
+
+
+def bonus_tree(root=None):
+    """(round 10, SD-98) What this checkout has of XayaUI Bonus Features: which of its addon folders, and whether XayaUI_Bonus lists the
+    arithmetic Calculator (SD-115: inside XayaUI_Bonus; a file of its .toc whose name has "calc" in it, the Stat Calculator's loader left
+    out), so the gate knows whether the keypad must open."""
+    root = root or ROOT
+    out = {"folders": {a: os.path.isdir(os.path.join(root, a)) for a in BONUS_ADDONS}, "calcFiles": []}
+    toc = os.path.join(root, BONUS_ADDON, BONUS_ADDON + ".toc")
+    if os.path.isfile(toc):
+        with open(toc, encoding="utf-8", errors="replace") as fh:
+            for ln in fh.read().splitlines():
+                ln = ln.strip()
+                if ln and not ln.startswith("#") and ln.lower().endswith(".lua") and "calc" in ln.lower() \
+                        and "statcalculatorloader" not in ln.lower().replace("\\", "/").split("/")[-1]:
+                    out["calcFiles"].append(ln)
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -2174,8 +2476,10 @@ class Report:
         self.notes.append(text)
 
     def show(self, data, secs, cached):
-        print("%s (V27 release gate; XayaUI + XayaUI_Options + XayaUI_Rules%s, %s rules, %s groups; scenario %.0f s%s)" % (
-            self.gate, " + XayaUI_Debug (Advanced Debugging on: variant \"debug\")" if data.get("variant") == "debug" else "",
+        print("%s (V27 release gate; XayaUI + XayaUI_Options + XayaUI_Rules + XayaUI_Bonus (Stat Calculator %s)%s, %s rules, %s groups; "
+              "scenario %.0f s%s)" % (
+            self.gate, "on" if data.get("variant") == "debug" else "off",
+            " + XayaUI_Debug (Advanced Debugging on: variant \"debug\")" if data.get("variant") == "debug" else "",
             data.get("rules"), data.get("folders"), secs or 0, ", result from the cache" if cached else ""))
         for t in self.notes:
             print("  " + t)
@@ -2223,14 +2527,16 @@ def both_variants(gate, judge):
     Debugging on, XayaUI_Debug loaded), its findings tagged. Returns the exit code of Report.show."""
     rep = Report(gate)
     data, secs, cached = result()
-    rep.note("variant \"default\" (Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded: V34)")
+    rep.note("variant \"default\" (a fresh install: Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded: V34; "
+             "XayaUI_Bonus on, its Stat Calculator switched off and never loaded, SD-98)")
     judge(data, rep)
     if not os.path.isdir(os.path.join(ROOT, DEBUG_ADDON)):
         rep.note(DEBUG_TAG + "variant \"debug\" not played: this checkout has no %s folder" % DEBUG_ADDON)
         return rep.show(data, secs, cached)
     ddata, dsecs, dcached = result("debug")
-    rep.note(DEBUG_TAG + "variant \"debug\": the same scenario with Settings > Debugging > Advanced Debugging saved on; XayaUI_Debug loaded: %s" %
-             ddata.get("debugLoaded"))
+    rep.note(DEBUG_TAG + "variant \"debug\" (her install): the same scenario with Settings > Debugging > Advanced Debugging saved on and the "
+             "Stat Calculator switched on (SD-98; its panel opened and closed, so it loads, SD-105); XayaUI_Debug loaded: %s; Bonus: %s" % (
+                 ddata.get("debugLoaded"), ddata.get("addonsLoaded")))
     judge(ddata, Tagged(rep, DEBUG_TAG))
     return rep.show(data, (secs or 0) + (dsecs or 0), cached and dcached)
 
@@ -2274,6 +2580,60 @@ def integrity(data, rep):
         (int(data.get("fxShown") or 0) >= 6, "the effects part showed the effect displays", "shown %s of %s" % (data.get("fxShown"), data.get("fxGained"))),
         (int(used.get("previewRules") or 0) >= 6, "the preview before the close had the effect displays to preview", "rules %s" % used.get("previewRules")),
     ]
+    # (round 10; REQUEST-LOG A23 SD-98 "Yes, fold in (Recommended)", SD-105 "Load at first open (Recommended)", SD-115 / SD-116) XayaUI
+    # Bonus Features in both variants; the Stat Calculator off in a fresh install and on in hers (opened, so it loads, and closed)
+    variant = data.get("variant", "default")
+    bt = data.get("bonusTree") or {}
+    folders = bt.get("folders") or {}
+    loaded = data.get("addonsLoaded") or {}
+    win = data.get("win") or {}
+    if folders.get(BONUS_ADDON):
+        checks.append((bool(loaded.get(BONUS_ADDON)), "XayaUI Bonus Features is switched on in the AddOns list and loaded (SD-98, both variants)",
+                       "loaded: %s" % loaded))
+    else:
+        rep.warn("tests/gate_common.py (the scenario)", "this checkout has no %s folder: Bonus Features was not played (SD-98)" % BONUS_ADDON)
+    if folders.get(STATCALC_ADDON):
+        if variant == "debug":
+            alone, docked, at = win.get("alone") or {}, win.get("docked") or {}, win.get("atFight") or {}
+            atl = [bool(at.get(str(c), at.get(c))) if isinstance(at, dict) else bool(at[c - 1]) if len(at) >= c else False for c in (1, 2, 3)]
+            checks += [
+                (bool(loaded.get(STATCALC_ADDON)) and bool(data.get("debugLoaded")),
+                 "her install (Advanced Debugging and the Stat Calculator on): XayaUI_Debug and XayaUI_Bonus_StatCalculator are both loaded "
+                 "after the Stat Calculator's panel was opened and closed (SD-98, SD-105)", "loaded: %s; XayaUI_Debug: %s" % (loaded, data.get("debugLoaded"))),
+                (int(alone.get("opened") or 0) > 0 and not alone.get("still"),
+                 "the Stat Calculator panel opened on its own (/xui stats) and closed again", "opened %s; still shown after the close: %s" % (
+                     alone.get("opened"), alone.get("still"))),
+                (int(docked.get("opened") or 0) > 0 and not docked.get("still"),
+                 "the Stat Calculator panel opened docked beside the character window and closed with it", "opened %s; still shown after the close: %s" % (
+                     docked.get("opened"), docked.get("still"))),
+                (all(atl), "the Stat Calculator panel was open on its own as each of the three fights started (SD-100, SD-112: its combat-start "
+                 "work is measured)", "open at the start of fights 1, 2, 3: %s" % atl),
+            ]
+        else:
+            checks.append((not loaded.get(STATCALC_ADDON),
+                           "a fresh install (the Stat Calculator off): XayaUI_Bonus_StatCalculator is NOT loaded, after /xui stats and the "
+                           "character window too (V34; SD-98)", "loaded: %s" % loaded))
+    if bt.get("calcFiles"):
+        kp = win.get("keypad") or {}
+        checks.append((int(kp.get("opened") or 0) > 0 and not kp.get("still"),
+                       "the Calculator keypad (/xui calc; on by default, SD-116) opened and closed again (Esc)",
+                       "XayaUI_Bonus lists %s; opened %s; still shown after the close: %s" % (", ".join(bt["calcFiles"]), kp.get("opened"), kp.get("still"))))
+    elif folders.get(BONUS_ADDON):
+        rep.warn("tests/gate_common.py (the scenario)", "XayaUI_Bonus lists no Calculator file yet (SD-115 is built in round 10): the Calculator "
+                 "keypad was not played", "", "once XayaUI_Bonus lists it, the keypad must open and close or the gate FAILs")
+    # (round 10; SD-96 / SD-109; the gate task: "the game-played sound edges (combat start add, boss pull, combat end) are measured")
+    edges = data.get("soundEdges") or {}
+    made = (data.get("profile") or {}).get("made") or {}
+    checks.append((int(made.get("gameEdge") or 0) >= 5, "the profile has its game-played sounds that follow combat and boss encounters (round 10)",
+                   "made: %s" % made))
+    # whether the build's edges ran is the build's own behavior, not the scenario's (older builds have no edges: ad60a051, which the per-event
+    # caps and tests/v33_budget_teeth_run.py play): a WARNING here; tests/fix_r10_gate_bonus_run.py FAILs it on this checkout
+    for m in ("combat start", "boss pull", "combat end"):
+        e = edges.get(m) or {}
+        if int(e.get("add") or 0) + int(e.get("rem") or 0) <= 0:
+            rep.warn("tests/gate_common.py (the scenario)", "the game-played sound's edge at %s did not run in the frames the per-event cap "
+                     "judges (the game was neither handed nor asked to take back a copy), so its cost there is not measured" % m,
+                     "copies added / taken back per moment, three fights: %s" % edges)
     for ok, what, numbers in checks:
         if not ok:
             rep.fail("tests/gate_common.py (the scenario)", "the scenario did not run as planned: " + what, numbers,

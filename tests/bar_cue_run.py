@@ -227,14 +227,6 @@ local t2 = ns.BarTypeInTooltip({ lines = { { leftText = "x" }, { leftText = "Dea
 check("damage words with no school but a bracketed dispel type: that dispel type", t2 == "Curse", tostring(t2))
 check("the Now: label: 'Fire Damage' in the Fire colour, '(Magic)' in the Magic colour",
   ns.BarTypeLabel("Fire", "Magic") == "|cffe6661aFire Damage|r |cff334df2(Magic)|r", ns.BarTypeLabel("Fire", "Magic"))
-check("game tooltip text: 'fire damage (magic)' becomes title case, each part in its colour",
-  ns.BarColorizeTypes("Deals 50 fire damage (magic) to all enemies.") == "Deals 50 |cffe6661aFire Damage|r |cff334df2(Magic)|r to all enemies.",
-  ns.BarColorizeTypes("Deals 50 fire damage (magic) to all enemies."))
-check("game tooltip text: 'Shadowflame damage' is title-cased in the Shadow colour", ns.BarColorizeTypes("10 Shadowflame damage") == "10 |cff734dd9Shadowflame Damage|r",
-  ns.BarColorizeTypes("10 Shadowflame damage"))
-check("game tooltip text: a word inside a colour code is left alone", ns.BarColorizeTypes("|cffffffffFire damage|r") == "|cffffffffFire damage|r")
-check("game tooltip text: words naming no school are unchanged", ns.BarColorizeTypes("Deals 5 Chaos damage.") == "Deals 5 Chaos damage.")
-check("an aura tooltip's top-right 'Magic' takes the Magic colour", ns.BarColorizeTypes("Magic", true) == "|cff334df2Magic|r")
 
 -- 5. values: reverse, direction, cooldown, stacks
 b.reverse = true; ns.RefreshVisual(cue)

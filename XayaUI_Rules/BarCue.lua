@@ -381,49 +381,8 @@ function ns.BarTooltipType(spellID, unit, instanceID)
 end
 function ns.BarForgetTooltipTypes() tipType = {} end   -- (tests, /reload-free re-read)
 
--- The game's tooltips (XayaUI_Bonus Enhanced Tooltips; Xaya S8-10 "Also in game tooltips"): every "<word> damage" whose word names a
--- school becomes "<Word> Damage" in that school's colour, and a dispel type in brackets right after it takes its dispel colour.
--- wholeIsDispel: the text is the dispel type alone (an aura tooltip's top right). Blizzard's own colours, read from the game. A word
--- right after a "|" (inside a colour code) is left alone. Returns the new text (the same text when nothing matched).
-function ns.BarColorizeTypes(text, wholeIsDispel)
-    text = Str(text)
-    if not text then return nil end
-    if wholeIsDispel then
-        if IS_DISPEL[text] then
-            local r, g, b = ns.BarTypeColor(text)   -- (not `d and ns.BarTypeColor(d)`: `and` keeps only the first value)
-            if r then return "|cff" .. Hex(r, g, b) .. text .. "|r" end
-        end
-        return text
-    end
-    if not text:find("[Dd]amage") then return text end
-    local out, pos, changed = {}, 1, false
-    while true do
-        local st, e, word = text:find("(%a+) [Dd]amage", pos)
-        if not st then break end
-        local school = (st == 1 or text:sub(st - 1, st - 1) ~= "|") and SchoolOfWord(word) or nil
-        out[#out + 1] = text:sub(pos, st - 1)
-        if school then
-            local r, g, b = ns.BarTypeColor(school)
-            local label = TitleWord(word) .. " Damage"
-            out[#out + 1] = r and ("|cff" .. Hex(r, g, b) .. label .. "|r") or label
-            pos = e + 1
-            local sp, word2, close = text:match("^(%s*)%((%a+)%)()", pos)
-            local dd = word2 and IS_DISPEL[TitleWord(word2)] and TitleWord(word2)
-            if dd then
-                local r2, g2, b2 = ns.BarTypeColor(dd)
-                out[#out + 1] = sp .. (r2 and ("|cff" .. Hex(r2, g2, b2) .. "(" .. dd .. ")|r") or ("(" .. dd .. ")"))
-                pos = close
-            end
-            changed = true
-        else
-            out[#out + 1] = text:sub(st, e)
-            pos = e + 1
-        end
-    end
-    if not changed then return text end
-    out[#out + 1] = text:sub(pos)
-    return table.concat(out)
-end
+-- (round 10, V34, SD-58) ns.BarColorizeTypes (the game tooltips' damage-type colours) is gone: its only reader was the tooltip type
+-- colours of the Bonus Features retired QA addons; nothing on main reads it (tests/fix_r10_display_run.py).
 
 -- The game's dispel type of a live aura, when addon code may read it (out of combat). nil = unknown or none.
 function ns.BarAuraDispelType(unit, instanceID)
@@ -730,7 +689,7 @@ end
 -- (file-level helpers: no closure is made per step or per rendered frame)
 -- (round 9, SD-79) the fill is written only when it differs from the value last written (exact compare), so a drawing that changes
 -- nothing writes nothing and the effects loop (Visual.lua FxPlan) can stop; each fill written is counted for XayaUI_Debug ("bar fills
--- written", ns.EngineStats.redrawFill). Returns true when it wrote.
+-- and wipe steps written", ns.EngineStats.redrawFill, with an icon's wipe steps, Visual.lua). Returns true when it wrote.
 local function Counted()
     local es = ns.EngineStats
     if es then es.redrawFill = es.redrawFill + 1 end

@@ -116,8 +116,10 @@ check("joining a group: 'Only in a group' is handed to the game", H(6004), st("I
 L.execute("CALLS = 0; FIRE('GROUP_ROSTER_UPDATE'); FIRE('GROUP_ROSTER_UPDATE'); n = #TIMERS; RUN_TIMERS()")
 check("someone else joins (still in a group, not a raid): nothing is re-planned", L.eval("n") == 0 and L.eval("CALLS") == 0, L.eval("n"))
 L.execute("COMBAT = true; GROUPED = false; FIRE('GROUP_ROSTER_UPDATE'); RUN_TIMERS()")
-check("leaving the group in combat: the game keeps the previous setting until combat ends", H(6004))
-check("  ...and the pane says it waits for the end of combat", "Waiting" in st("INGROUP"), st("INGROUP"))
+# (round 10, SD-96 / V32: intended change) a copy whose Load answer turns no is taken back at once, in combat too (RemoveAuraSound has
+# no restriction flag); before, it kept playing until the end of combat
+check("leaving the group in combat: the game's copy is taken back at once (its Load answer is no now)", not H(6004))
+check("  ...and the pane says it is not set to load here (Only in a group)", "(Only in a group)" in st("INGROUP"), st("INGROUP"))
 L.execute("COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
 check("combat ends: 'Only in a group' is taken back", not H(6004), st("INGROUP"))
 
@@ -134,7 +136,13 @@ L.execute("RESTING = false; FIRE('PLAYER_UPDATE_RESTING'); RUN_TIMERS()")
 check("walking out of the inn: it is handed to the game", H(6006), st("NOTRESTING"))
 
 # Match ANY: a left-out choice may be true
-check("Match ANY 'raid OR in combat' while solo: combat may be true, so the game holds its sound", H(6007), st("ANYRAID"))
+# (round 10, SD-96: intended change) Match ANY is checked exactly: out of combat and solo, neither choice is met (before: held, combat
+# counted as possibly true, so every Load choice of the rule was ignored)
+check("Match ANY 'raid OR in combat' while solo, out of combat: neither is met, so the game does not hold its sound", not H(6007), st("ANYRAID"))
+L.execute("FIRE('PLAYER_REGEN_DISABLED'); COMBAT = true")
+check("  ...a fight starts: the game holds it at once", H(6007), st("ANYRAID"))
+L.execute("COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
+check("  ...the fight ends: taken back", not H(6007), st("ANYRAID"))
 check("Match ANY 'inside an instance OR Druid' on a Demon Hunter in the open world: not handed to the game", not H(6008), st("ANYINST"))
 check("  ...and the pane says none of its choices are met", "none of its Load tab choices" in st("ANYINST"), st("ANYINST"))
 

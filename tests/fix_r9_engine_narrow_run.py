@@ -379,12 +379,22 @@ LOAD_COVERED = {
     ("Conditions.lua", "fn:ns.LoadPlaceNow"): "the settings' Add current buttons (not a rule's answer)",
     ("Triggers.lua", "targetDebuff"): "'absent' unknown in combat: every aura check is read on a combat edge (NW.RESTRICT)",
     ("Visual.lua", "fn:ns.UpdateVisualText"): "the out-of-combat opacity: NW.ooc",
+    # (round 10) the out-of-combat opacity is worked out in one place for XayaUI's displays, their companion texts and the buttons the
+    # combat engine draws (Combat/AuraDisplay.lua BaseAlpha): the same displays, re-checked at a combat edge through NW.ooc
+    ("Visual.lua", "fn:ns.DisplayOocMul"): "the out-of-combat opacity (XayaUI's displays and the combat engine's buttons): NW.ooc",
     ("Engine.lua", "events"): "(the engine's own combat flag for status snapshots, on entering the world)",
     ("Actions.lua", "fn:DoChat"): "the chat channel at the moment an action posts (not a rule's answer or drawing)",
     ("AuraList.lua", "fn:CurrentSpec"): "the Cooldown Manager catalogue (a spec change re-checks every live rule)",
     ("AuraSound.lua", "fn:MountedNow"): "the game-played sound copy follows the mount and combat events itself (SD-25)",
-    ("AuraSound.lua", "fn:A.Sync"): "the game-played sound copy (its own events)", ("AuraSound.lua", "fn:OnMount"): "the game-played sound copy",
+    ("AuraSound.lua", "fn:A.Sync"): "the game-played sound copy (its own events)",
     ("AuraSound.lua", "fn:A.Queue"): "the game-played sound copy (its own events)",
+    # (round 10, SD-96) the copy follows the fight, boss and mount moments itself (OnEdge, was OnMount), in a fight or not (InFightNow),
+    # and a sub-zone crossing only when the map changed (MapNow, OnEvent): its own events, not a rule's answer or drawing
+    ("AuraSound.lua", "fn:OnEdge"): "the game-played sound copy (its own fight, boss and mount events)",
+    ("AuraSound.lua", "fn:InFightNow"): "the game-played sound copy (the Cooldown Manager choice is made out of combat only)",
+    ("AuraSound.lua", "fn:ReadEncounter"): "the game-played sound copy (the boss encounter at its own fight start / end)",
+    ("AuraSound.lua", "fn:MapNow"): "the game-played sound copy (a sub-zone crossing on the same map is skipped)",
+    ("AuraSound.lua", "fn:OnEvent"): "the game-played sound copy (its own events)",
     ("ClassLearn.lua", "fn:CL.Learn"): "learning paused in combat (not a rule's answer)",
     ("AuraDisplay.lua", "fn:D.Build"): "the combat engine's protected container waits for combat end (its own event)",
     ("AuraDisplay.lua", "fn:QueueBuild"): "the combat engine's container (its own events)", ("AuraDisplay.lua", "fn:RulesOff"): "/xui disable",

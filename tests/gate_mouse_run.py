@@ -21,6 +21,18 @@ Each violation: the line that turned clicks on (or the line that made the frame,
 by default, INFERENCE), the window it sits in, at which checkpoints, how many frames, their size.
 (round 9; SD-64: she keeps Advanced Debugging on; round 8 review) every check runs on both variants of the scenario, Advanced
 Debugging off and on (XayaUI_Debug loaded); findings of the second are marked "[Advanced Debugging on]".
+(round 10; REQUEST-LOG A23 SD-98 "Yes, fold in (Recommended)"; SD-99, a STANDING CLARIFICATION of V27, her words: "v27 is only if ALL
+windows of XUI are closed; XUI windows that are actively opened and have the mouse over them should accept clicks unless a "allow
+clickthrough" is flagged (only available for rules)"; SD-114 "No, keep as is": rule displays always pass clicks once every XayaUI window
+is closed) XayaUI_Bonus is on in both variants and the Stat Calculator in hers. The windows she opens herself are played: the Calculator
+keypad (both variants), the Stat Calculator panel on its own and docked beside the character window (hers). The checks above are judged
+only at checkpoints where every XayaUI window is closed. While a window she opened is open, its own frames may take clicks and the wheel
+inside the window's rectangle; every other frame is judged as above, and:
+  FAIL     a frame of the open window takes the mouse (clicks, motion or the wheel) outside the window's own rectangle;
+  FAIL     a window she opened is shown at a checkpoint where every window should be closed: in a fight (the Stat Calculator: SD-100,
+           "stat calculator isn't allowed to be open during combat"; her install opens it before every fight), after she closed it, or
+           after a fight (SD-102 "Don't reappear");
+  NOTE     how many of its frames take the mouse inside its rectangle (allowed).
 Run: python3 tests/gate_mouse_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -91,6 +103,39 @@ def judge(data, rep):
                      c["max"], ", ".join(sorted(c["sizes"])), ", ".join(sorted(c["strata"])), ", ".join(sorted(c["scripts"])) or "none",
                      "in and out of combat" if c["combat"] else "out of combat only", len(c["cps"]), len(cps), "; ".join(c["cps"])),
                  fix)
+
+    # 1b. (round 10, SD-99) the windows she opened: the mouse outside their own rectangle, and a window shown where every window should
+    #     be closed (in a fight: SD-100; after its close or after a fight: SD-102)
+    outside = collections.OrderedDict()
+    for cp in cps:
+        for e in cp.get("winOutside") or []:
+            o = outside.setdefault((e.get("by") or e.get("where"), e.get("window")), {"e": e, "cps": []})
+            o["cps"].append(cp["label"])
+        if cp.get("open"):
+            rep.note("%s: %s open; %d of its frames take the mouse inside its rectangle (allowed, SD-99)" % (
+                cp["label"], ", ".join("%s %dx%d" % (o.get("name"), round(o.get("w") or 0), round(o.get("h") or 0)) for o in cp["open"]),
+                len(cp.get("winMouse") or [])))
+    for (by, win), o in outside.items():
+        e = o["e"]
+        rep.fail(GC.short(by) if by and not str(by).startswith("never") else e.get("where"),
+                 "a frame of a window she opened (%s) takes the mouse outside the window's own rectangle (SD-99: only while the mouse is over "
+                 "the window)" % win, "%s %s (%s%s); its place %s; at: %s" % (
+                     e.get("kind"), e.get("name"), "clicks" if e.get("click") else "hover", ", the wheel" if e.get("wheel") else "", e.get("rect"),
+                     "; ".join(o["cps"])),
+                 "keep every part of the window inside its own frame (or take the mouse off the part that hangs outside)")
+    shown = collections.OrderedDict()
+    for cp in cps:
+        for e in cp.get("winShown") or []:
+            shown.setdefault((e.get("where"), e.get("name"), bool(e.get("combat"))), []).append(cp["label"])
+    for (made, name, combat), labels in shown.items():
+        if combat:
+            rep.fail(made or name, "a window she opened (%s) is shown in a fight (SD-99; the Stat Calculator: SD-100, her words \"stat calculator "
+                     "isn't allowed to be open during combat\")" % name, "at: " + "; ".join(labels),
+                     "hide it as combat starts (PLAYER_REGEN_DISABLED) and do nothing else in the fight")
+        else:
+            rep.fail(made or name, "a window she opened (%s) is shown where every XayaUI window should be closed: after she closed it, or back "
+                     "by itself after a fight (SD-102, her answer \"Don't reappear\")" % name, "at: " + "; ".join(labels),
+                     "after combat it stays closed until she opens it again; a close hides every part of it")
 
     # 2. full-screen catchers (any mouse at all over half the screen)
     big = collections.OrderedDict()

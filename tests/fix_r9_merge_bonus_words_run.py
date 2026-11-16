@@ -13,11 +13,15 @@ What the player sees, checked here with the real addons in the stand-in game, on
 XayaUI Bonus Features (and its Stat Calculator) installed but switched off in the AddOns list:
   1. /xui notes, /xui notepad, /xui note and /xui data print /xui help in chat (the same as any other word no addon on main has), never a
      "never registered" line and never a line sending the player to XayaUI Bonus Features.
-  2. /xui stats, the one word main's Bonus registers, still answers as before: with Bonus on, the Stat Calculator's own line (it is off on
-     a fresh install); with Bonus off, the line main's own tests expect (tests/console_commands_run.py).
-/xui calc and /xui calculator are left as they were: tests/audit_core_run.py D8 checks that they name XayaUI Bonus Features, so changing
-them is Xaya's decision (reported NEEDS_HER_DECISION). Their current output is printed below as INFO lines, not counted as a pass.
-Negative control: on the merge commit 6321e10d (Modules.lua with the old Bonus words) checks 1 fail in both runs.
+  2. /xui stats: with Bonus on and the Stat Calculator off (a fresh install), (bundle 1 round 10, REQUEST-LOG SD-118, intended change)
+     core's one line for a switched-off part, "The Stat Calculator is off. Turn it on in /xui > Bonus Features."; with Bonus off, the
+     line main's own tests expect, naming XayaUI QoL (SD-89, "Keep naming QoL").
+  3. (bundle 1 round 10; SD-95 / SD-115 / SD-116 / SD-118: the arithmetic Calculator lives inside XayaUI Bonus Features with its own
+     switch, on by default, and registers /xui calc and /xui calculator with it) with Bonus on, neither word prints the false
+     "never registered" line nor an "is off" line (the Calculator is on on a fresh install); with Bonus off, both name XayaUI Bonus
+     Features and the AddOns list (tests/audit_core_run.py D8). Until round 10 these were INFO lines (her decision was open).
+Negative control: on the merge commit 6321e10d (Modules.lua with the old Bonus words) checks 1 fail in both runs; on round 9's files
+(before XayaUI_Bonus registers the Calculator's words with its switch) the Bonus-on halves of 2 and 3 fail.
 Run: python3 tests/fix_r9_merge_bonus_words_run.py   (Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -53,13 +57,29 @@ for _, w in ipairs({ "notes", "notepad", "note", "data" }) do
 end
 local st = chat("stats")
 if bonusOn then
-  check("/xui stats with Bonus Features on: the Stat Calculator answers (off on a fresh install)",
-    st[1] == "XayaUI: Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload.", st[1])
+  -- (bundle 1 round 10, SD-118, intended change: was "XayaUI: Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or
+  -- /xui stats on), then /reload.")
+  check("/xui stats with Bonus Features on and the Stat Calculator off (fresh install): one line, 'The Stat Calculator is off. Turn it on in /xui > Bonus Features.'",
+    #st == 1 and st[1] == "XayaUI: The Stat Calculator is off. Turn it on in /xui > Bonus Features.", table.concat(st, " / "))
 else
   check("/xui stats with Bonus Features switched off: core's line for it, as main's tests expect",
     st[1] ~= nil and st[1]:find("/xui stats is part of ", 1, true) ~= nil, st[1])
 end
-for _, w in ipairs({ "calc", "calculator" }) do INFO[#INFO + 1] = ("/xui %s %s prints: %s"):format(w, where, tostring(chat(w)[1])) end
+for _, w in ipairs({ "calc", "calculator" }) do
+  local out = chat(w)
+  local text = table.concat(out, "\n")
+  if bonusOn then
+    check(("/xui %s with Bonus Features on: no false 'never registered' line (the Calculator registers it, SD-95 / SD-116)"):format(w),
+      #out >= 1 and not text:find("never registered", 1, true), out[1])
+    check(("/xui %s with Bonus Features on: no 'is off' line (the Calculator is on on a fresh install, SD-116)"):format(w),
+      not text:find(" is off. Turn it on in", 1, true), out[1])
+  else
+    check(("/xui %s with Bonus Features switched off: one line naming XayaUI Bonus Features and the AddOns list (D8)"):format(w),
+      #out == 1 and out[1] == ("XayaUI: /xui %s is part of XayaUI Bonus Features, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(w),
+      text)
+  end
+  INFO[#INFO + 1] = ("/xui %s %s prints: %s"):format(w, where, tostring(out[1]))
+end
 return R, INFO
 end
 '''
@@ -82,7 +102,7 @@ def run_once(bonus_on):
         if not ok:
             bad += 1
     for i in range(1, len(info) + 1):
-        print("INFO (not checked; NEEDS_HER_DECISION) " + str(info[i]))
+        print("INFO " + str(info[i]))
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", e[:600])

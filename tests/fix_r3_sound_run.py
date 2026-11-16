@@ -196,10 +196,20 @@ check("the key is reset while still inside: 'Not during a Mythic+' comes back", 
 L = world('NS.folders[#NS.folders + 1] = { id = "f-raid", name = "Raid Bosses", loadIds = { encounterIDs = { [3009] = true } } }'
           '; INRAIDGROUP = RULE("bossgroup", 7030, { mode = "all" }, "f-raid")')
 st, H = helpers(L)
-check("a rule in a group with a Boss encounters list: the game holds its sound (the list is only known during the pull)",
-      H(7030) == 1, st("INRAIDGROUP"))
-check("  ...and the pane names the group's list as not applying",
-      '"Boss encounters" of its group "Raid Bosses" does not apply' in st("INRAIDGROUP"), st("INRAIDGROUP"))
+# (round 10, SD-96 / V32: intended change) the group's Boss encounters list is followed exactly: no copy outside that boss (before: held
+# all the time, the list "does not apply"), the copy at the pull of a listed boss, taken back when it ends
+check("a rule in a group with a Boss encounters list, out of the encounter: the game does not hold its sound",
+      H(7030) == 0, st("INRAIDGROUP"))
+check("  ...and the pane names the group's list as the reason, and says when the game is given it",
+      'Boss encounters, group "Raid Bosses"' in st("INRAIDGROUP") and "when a boss fight it is set for starts" in st("INRAIDGROUP"),
+      st("INRAIDGROUP"))
+L.execute("COMBAT = true; FIRE('ENCOUNTER_START', 9999, 'Other', 16, 20)")
+check("  ...another boss is pulled: still not held", H(7030) == 0)
+L.execute("FIRE('ENCOUNTER_END', 9999, 'Other', 16, 20, 1); FIRE('ENCOUNTER_START', 3009, 'Listed', 16, 20)")
+check("  ...the listed boss is pulled: the game holds it at once", H(7030) == 1, st("INRAIDGROUP"))
+L.execute("FIRE('ENCOUNTER_END', 3009, 'Listed', 16, 20, 1)")
+check("  ...the boss fight ends: taken back at once", H(7030) == 0)
+L.execute("COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
 check("XayaUI's own load check still waits for the boss (not loaded out of the encounter)",
       L.eval("(function() local c = NS.ReadContext(); return NS.CheckContext(INRAIDGROUP, c) end)()") is not True)
 

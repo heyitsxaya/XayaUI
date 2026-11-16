@@ -130,7 +130,7 @@ elseif phase == "on" then
   check("[new] P2e every path has its line (9), with her limit on the seven re-check paths only",
     count(rep, "XayaUI: perf: routed (") + count(rep, "XayaUI: perf: all (") + count(rep, "XayaUI: perf: settle (") + count(rep, "XayaUI: perf: pollRange (")
       + count(rep, "XayaUI: perf: pollCd (") + count(rep, "XayaUI: perf: wake (") + count(rep, "XayaUI: perf: alert (") + count(rep, "XayaUI: perf: redrawText (")
-      + count(rep, "XayaUI: perf: redrawFill (") == 9 and count(rep, "(limit 10/s") == 6 and count(rep, "XayaUI: perf: redrawFill (bar fills written): 0, most in 1 s 0") == 1,
+      + count(rep, "XayaUI: perf: redrawFill (") == 9 and count(rep, "(limit 10/s") == 6 and count(rep, "XayaUI: perf: redrawFill (bar fills and wipe steps written): 0, most in 1 s 0") == 1,
     count(rep, "(limit 10/s"))
   check("[new] P3 a burst of 6 + 6 across the 1 s mark counts 12 in 1 s (windows move one read at a time)",
     has(rep, "XayaUI: perf: all (every-live-rule re-checks): 12, most in 1 s 12 (limit 10/s: over)"), first(rep, "perf: all ("))

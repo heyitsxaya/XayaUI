@@ -68,6 +68,20 @@ local watch = setmetatable({}, { __mode = "k" })
 local pendingBuild, lastError
 local serial = 0       -- build number: a slot built by the latest build carries it
 local ApplyMods   -- (defined with the live sync below; a new button of a single slot draws the current condition changes at once)
+-- (round 10) a single slot's opacity, as XayaUI's own displays draw it (Visual.lua): the display's opacity (or a true condition's), times
+-- its "Out of combat" opacity while you are out of combat (ns.DisplayOocMul). Before, the buttons the combat engine draws took the display's
+-- opacity only, so a display set to 50% out of combat stayed fully drawn. A combat start or end re-checks every display with an out-of-
+-- combat opacity below 1 (Engine.lua NW.ooc), and that re-check syncs its slot (SyncSingle below), on the same frame as XayaUI's own.
+local EMPTY_V = {}
+local function BaseAlpha(v, mods)
+    local a = (mods and mods.alpha ~= nil) and tonumber(mods.alpha) or (tonumber(v.alpha) or 1)
+    return a * (ns.DisplayOocMul and ns.DisplayOocMul(v) or 1)
+end
+local function WriteAlpha(s, a)   -- every button of the slot, only when its opacity changed (a sync that changes nothing writes nothing)
+    if s.alphaW == a then return end
+    s.alphaW = a
+    for _, b in ipairs(s.btns or {}) do pcall(b.SetAlpha, b, a) end
+end
 
 local REL_FRAMES = { player = "PlayerFrame", target = "TargetFrame", focus = "FocusFrame", minimap = "Minimap", chat = "ChatFrame1" }
 -- vector from a frame point to the frame centre, as a multiple of (width, height)
@@ -471,8 +485,8 @@ local function BarButtonInit(w, h, display, single, rec)
     local maxApps = (src == "stacks") and ns.BarCueMax(display) or nil
     return function(btn)
         btn:SetSize(w, h)
-        if single then btn:SetAlpha(tonumber(v.alpha) or 1) end
-        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig = nil end
+        if single then btn:SetAlpha(BaseAlpha(v)) end
+        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig, rec.alphaW = nil, nil end
         if v.bg and v.bg.enabled then
             local c = v.bg.color or { 0, 0, 0, 0.2 }
             local bg = btn:CreateTexture(nil, "BACKGROUND")
@@ -560,8 +574,8 @@ local function LookInit(w, h, display, single, rec)
     return function(btn)
         -- runs inside Blizzard's frame creation; a failure here is caught by the caller
         btn:SetSize(w, h)
-        if single then btn:SetAlpha(tonumber(v.alpha) or 1) end
-        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig = nil end   -- (a new button: draw the current condition changes on it too)
+        if single then btn:SetAlpha(BaseAlpha(v)) end
+        if single and rec then rec.btns = rec.btns or {}; rec.btns[#rec.btns + 1] = btn; rec.modSig, rec.alphaW = nil, nil end   -- (a new button: draw the current condition changes on it too)
         if single and v.bg and v.bg.enabled then
             local c = v.bg.color or { 0, 0, 0, 0.5 }
             local bg = btn:CreateTexture(nil, "BACKGROUND")
@@ -1144,6 +1158,8 @@ local function SameMods(s, mods)
 end
 ApplyMods = function(s, display)
     local mods = ModsOf(display)
+    local v = (display and display.visual) or EMPTY_V
+    WriteAlpha(s, BaseAlpha(v, mods))   -- (round 10: written whenever it changed, the out-of-combat opacity included)
     if SameMods(s, mods) then return end
     s.modSig, s.modOn = true, mods and true or false
     if mods then
@@ -1151,7 +1167,6 @@ ApplyMods = function(s, display)
         s.modDesat, s.modAlpha, s.modTint = mods.desat, mods.alpha, t ~= nil
         if t then s.modT1, s.modT2, s.modT3, s.modT4 = t[1] or 1, t[2] or 1, t[3] or 1, t[4] or 1 end
     end
-    local v = (display and display.visual) or {}
     for _, art in ipairs(s.arts or {}) do
         if ns.PaintDisplayArt then pcall(ns.PaintDisplayArt, art, display) end   -- the display's own look first
         if mods then
@@ -1162,8 +1177,6 @@ ApplyMods = function(s, display)
             end
         end
     end
-    local alpha = (mods and mods.alpha ~= nil) and tonumber(mods.alpha) or (tonumber(v.alpha) or 1)
-    for _, b in ipairs(s.btns or {}) do pcall(b.SetAlpha, b, alpha) end
 end
 D._ApplyMods = ApplyMods
 
@@ -1234,7 +1247,8 @@ local function SyncSingle(s)
     local d = s.spec.display
     local show = Allowed(s.parent, d, s.spec.trigger, s.spec.gated) and not RuleUnlocked(d)
     if s.frame:IsShown() ~= show then pcall(s.frame.SetShown, s.frame, show) end
-    if show and d and d.isCue then pcall(ApplyMods, s, d) end
+    if show and d and d.isCue then pcall(ApplyMods, s, d)
+    elseif show and d then WriteAlpha(s, BaseAlpha(d.visual or EMPTY_V)) end   -- (round 10: the out-of-combat opacity, above)
 end
 -- A dynamic group's filter holds the members that may show now; it is rewritten only when one of them changed (g.dirty).
 local function SyncGroupFilter(g)
@@ -1398,11 +1412,12 @@ SlashCmdList["XUIENGINE"] = Slash
 -------------------------------------------------------------------------------
 -- rule / group edits arrive as ns.MarkDirty; rebuild once, a second after the last one (never in combat)
 local rebuildQueued = false
+-- (round 10, SD-82 / SD-90 "FAIL everywhere") one file-level function for the timer: before, each queued rebuild made a new function
+local function BuildRun() rebuildQueued = false; pcall(D.Build) end
 local function QueueBuild()
     if rebuildQueued then return end
     rebuildQueued = true
-    local function Run() rebuildQueued = false; pcall(D.Build) end
-    if C_Timer and C_Timer.After then C_Timer.After(1, Run) else Run() end
+    if C_Timer and C_Timer.After then C_Timer.After(1, BuildRun) else BuildRun() end
 end
 D.QueueBuild = QueueBuild
 

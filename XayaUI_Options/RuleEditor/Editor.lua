@@ -1706,7 +1706,8 @@ local function BuildRule(i, rule)
             -- Decision D2 (AuraSound.lua): the game plays the sound on the aura itself, so it works while the aura is hidden in combat
             gameSoundOn = { type = "toggle", order = 10, width = "full",
                 name = "Let the game play this sound on the aura itself (works in combat while the aura is hidden)",
-                desc = "Plays this sound file when the trigger's aura is gained or lost, even in combat; the rule's other triggers, conditions and Repeat are ignored. Set up out of combat only.",
+                -- (round 10, SD-96 / SD-107 / SD-109) what the switch does now, in plain words; the status line below says what holds for this rule
+                desc = "The game plays this sound file when the aura is gained or lost, even in a fight while the aura is hidden, following the Load tab but never Repeat or the rule's other triggers. If this buff is in your Cooldown Manager, XayaUI plays the sound itself instead and follows every setting of the rule.",
                 hidden = function() return not (ns.AuraSound and ns.AuraSound.Available()) end,
                 get = function() return type(rule.gameSound) == "table" and rule.gameSound.enabled == true end,
                 set = function(_, v)

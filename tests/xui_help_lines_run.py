@@ -4,11 +4,14 @@ was one line joined by " | ", unreadable in the console window and the chat hist
 header with the count, then every command on its own line starting with /xui, the command colored and closed, what it does after it,
 literal pipes doubled ("||", shown as "|"; core 0.6.50 printed "/" for a while, Xaya 2026-11-06 chose "Back to '|'"), and no line
 holding two commands. (core 0.6.50 moved the diagnostic commands under /xui debug: tests/console_commands_run.py.)
-Main holds XayaUI, XayaUI_Options and XayaUI_Rules only (the main slim-down; Rules 0.7.0): neither Options nor Rules registers a
-/xui command of its own, so the list is exactly core's ten (Core.lua CORE_HELP, all shown with XayaUI Rules on; ten since V26 added
-/xui disable and /xui enable). The 11 more the list had before were all registered by the addons that left main (Bonus, Chat, QoL:
-data, notes, calc, chat, panel, privacy, cursor, reskin, shop, releaseguard, stats). Since Bonus 0.6.45 XayaUI Bonus Features is back
-on main with the Stat Calculator only, which registers /xui stats: eleven lines.
+This branch holds XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Debug (load-on-demand), XayaUI_Bonus and XayaUI_Bonus_StatCalculator
+(load-on-demand). Neither Options nor Rules registers a /xui command of its own; core's ten are Core.lua CORE_HELP (all shown with XayaUI
+Rules on; ten since V26 added /xui disable and /xui enable). The 11 more the list had before the main slim-down were all registered by
+the addons that left main (Bonus, Chat, QoL: data, notes, calc, chat, panel, privacy, cursor, reskin, shop, releaseguard, stats).
+XayaUI Bonus Features (main's) registers the words of its parts: /xui stats (the Stat Calculator) and, from round 10, /xui calc and
+/xui calculator (the arithmetic Calculator, SD-95 / SD-115 / SD-116). (bundle 1 round 10, REQUEST-LOG SD-118, intended change) a part's
+words are listed only while the part is switched on: on this test's fresh install the Stat Calculator is off, so /xui stats is not
+listed (eleven lines before round 10, ten now); the Calculator is on by default, so its words are listed once Bonus registers them.
 Run: python3 tests/xui_help_lines_run.py   (loads the real addons in the stand-in game, Lua 5.1 via lupa)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -47,16 +50,24 @@ local nCmd = 0
 for _, l in ipairs(out) do if l:find("/xui", 1, true) then nCmd = nCmd + 1 end end
 check("a header line with the count", out[1] and out[1]:match("^commands %((%d+)%):$") ~= nil and tonumber(out[1]:match("%((%d+)%)")) == #out - 1, out[1])
 -- (V26, lock-core round 3: ten since /xui disable and /xui enable were added)
--- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator only: its /xui stats follows core's ten
-local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false   -- (Bonus 0.6.46: /xui stats is the loader's, registered whether or not the calculator is loaded)
-local nWant = SC_ON and 11 or 10
-check("core's ten commands" .. (SC_ON and " and the Stat Calculator's /xui stats" or "") .. ", one per line", #out - 1 == nWant and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
+-- (Bonus 0.6.45, A24 #10) XayaUI Bonus Features is on main with the Stat Calculator: its /xui stats is the loader's.
+-- (bundle 1 round 10, SD-118, intended change) listed only while the Stat Calculator is switched on (XayaUIBonusDB.characterToolkit
+-- .enabled): off on this fresh install, so not listed. The Calculator's words (on by default, SD-116) follow core's ten once registered.
+local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false
+local scSwitch = SC_ON and type(rawget(_G, "XayaUIBonusDB")) == "table" and type(XayaUIBonusDB.characterToolkit) == "table"
+  and XayaUIBonusDB.characterToolkit.enabled == true or false
+check("setup: the Stat Calculator is off on this fresh install", scSwitch == false, scSwitch)
+local got = {}
+for i = 2, #out do got[#got + 1] = out[i]:match("^  |cff%x%x%x%x%x%x(.-)|r") or out[i] end
+local calc = {}   -- the Calculator's lines, as printed (its help text is the calculator unit's)
+for _, g in ipairs(got) do if SC_ON and (g:find("^/xui calc ") or g == "/xui calc" or g:find("^/xui calculator")) then calc[#calc + 1] = g end end
+local nWant = 10 + #calc
+check("core's ten commands" .. (#calc > 0 and (" and the Calculator's " .. #calc) or "") .. ", one per line; no /xui stats while the Stat Calculator is off (SD-118)",
+  #out - 1 == nWant and nCmd == #out - 1, ("%d lines, %d with /xui"):format(#out - 1, nCmd))
 -- the commands, in core's order (the colored part of each line, pipes doubled)
 local WANT = { "/xui", "/xui console", "/xui bug", "/xui report", "/xui unlock", "/xui status",
   "/xui auras [target||focus||pet] [debuffs] or <spellID>", "/xui debug", "/xui disable", "/xui enable" }
-if SC_ON then WANT[#WANT + 1] = "/xui stats [on||off||options||status]" end
-local got = {}
-for i = 2, #out do got[#got + 1] = out[i]:match("^  |cff%x%x%x%x%x%x(.-)|r") or out[i] end
+for _, c in ipairs(calc) do WANT[#WANT + 1] = c end
 check("the commands are core's, in its order (with XayaUI Rules on: unlock, status and auras included)",
   table.concat(got, "\n") == table.concat(WANT, "\n"), table.concat(got, " ; "))
 local two, uncolored, unclosed, badPipe, debugLine, consoleLine = nil, nil, nil, nil, nil, nil

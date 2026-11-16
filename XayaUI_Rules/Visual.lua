@@ -1995,6 +1995,7 @@ local function GetFrame(rule)
     fr:SetScript("OnDragStart", function(self) local M = Unl(rule) and ns.MoverDisplay; if M then M.DragStart(rule, self) end end)
     fr:SetScript("OnDragStop", function(self) local M = Unl(rule) and ns.MoverDisplay; if M then M.DragStop(rule, self) end end)
     fr:SetScript("OnMouseUp", function(self, button) local M = Unl(rule) and ns.MoverDisplay; if M then M.MouseUp(rule, self, button) end end)
+    fr:SetScript("OnShow", GA.FxOnShow)   -- (round 10: effects held while it could not be seen are drawn again: FxOnShow below)
     -- smooth animation: the engine ticks 5x per second, which made the wipe / fades step. While one of those
     -- effects is active, re-run just that part every rendered frame from the stored (absolute) expiry time.
     -- (the per-frame effects script is attached only while an effect changes on every run: see FxPlan)
@@ -2330,8 +2331,8 @@ end
 --   * a part that changes on every run (a fade, the flash pulse, a Bar cue's fill): the effects loop, at most 30 runs a second
 --     (FX_GAP), on that display only;
 --   * parts that change only at known moments (the next tenth of a second, the flash threshold, the wipe's next whole pixel): no loop;
---     one C_Timer.After at the earliest such moment over all displays (FxArm / FxWake) draws the display on the first frame of that
---     moment, so nothing runs in between and the change is not late;
+--     one timer at the earliest such moment over all displays (FxArm / FxWake; round 10: one cancelable C_Timer.NewTimer, set again
+--     when that moment moves) draws the display on the first frame of that moment, so nothing runs in between and the change is not late;
 --   * nothing left to change (the aura ran out, previews paused): neither; the next re-check (an event) plans again.
 -- A run that changes nothing on screen (exact-value compare of every write: the Fx* writers below) stops the loop at once.
 -- No new function or table per run or per timer (file-level functions only; the moments live in fxWakeAt).
@@ -2339,8 +2340,38 @@ local FX_GAP = 0.033   -- the loop's spacing: at most ~30 runs a second per disp
 local FX_EPS = 1e-6    -- a moment is armed this much after the exact crossing, so the run lands where the value has already changed
 local fxChanged = 0    -- what the drawing in progress changed on screen (counted by the Fx* writers)
 local fxWakeAt = setmetatable({}, { __mode = "k" })   -- [display frame] = the GetTime() moment its parts change next (no loop meanwhile)
-local fxPend, fxDue = {}, {}   -- the moments of the C_Timer.After calls still to come (ascending, a handful); frames due now (reused)
+local fxDue = {}   -- the frames due at a wake (reused)
+-- (round 10) ONE wake timer, set for the earliest moment in fxWakeAt (fxTimerAt), and set again whenever that earliest moment moves: a
+-- moment that comes sooner sets it sooner; when the display whose moment it was set for is drawn by a re-check first (its next moment
+-- moves later) or stops, the timer is cancelled and set for the new earliest moment, or for none. Before, each earlier moment made one more
+-- C_Timer.After call that could not be taken back, and a call whose moment a re-check had already moved ran and drew nothing (the round 9
+-- gate: 6 of 81 wake runs, 7.4%).
+local fxTimer, fxTimerAt, fxInWake = nil, nil, false
 local issecretV = ns.IsSecret or rawget(_G, "issecretvalue") or function() return false end
+local FxWake
+local function FxArm(at)
+    if fxTimer and fxTimerAt <= at + 1e-9 then return end   -- the wake already comes at or before that moment
+    if fxTimer then fxTimer:Cancel() end
+    local d = at - GetTime()
+    fxTimerAt = at
+    fxTimer = C_Timer.NewTimer(d > 0 and d or 0, FxWake)   -- (FxWake: a file-level function, no new function per call; SD-82)
+end
+local function FxResync()   -- the earliest moment moved later or went: the wake is set for the new earliest moment, or for none
+    local nxt = nil
+    for _, at in pairs(fxWakeAt) do if not nxt or at < nxt then nxt = at end end
+    if fxTimer and not (nxt and nxt <= fxTimerAt + 1e-9) then fxTimer:Cancel(); fxTimer, fxTimerAt = nil, nil end
+    if nxt then FxArm(nxt) end
+end
+-- a display's next moment (nil: none). Only the display whose moment the wake is set for can make it move later (FxResync: a scan of the
+-- displays waiting for a moment, a handful); every other change is at most one compare
+local function FxSetAt(fr, at)
+    local old = fxWakeAt[fr]
+    if old == at then return end
+    fxWakeAt[fr] = at
+    if fxInWake then return end   -- (the wake sets itself again once its displays are drawn)
+    if old and fxTimer and old <= fxTimerAt + 1e-9 and not (at and at <= old) then FxResync()
+    elseif at then FxArm(at) end
+end
 local function FxRun(fr)   -- one drawing of the time-driven parts; a failing effect stops itself instead of erroring every frame
     local r = fr.fxRule
     if not r then return end
@@ -2348,7 +2379,8 @@ local function FxRun(fr)   -- one drawing of the time-driven parts; a failing ef
     local ok, err = pcall(ns.UpdateVisualText, r, fr.fxInfo, true)
     if t then ns.PerfAdd("fx", debugprofilestop() - t) end
     if not ok then
-        fr.fxRule, fr.fxLoop, fxWakeAt[fr] = nil, false, nil
+        fr.fxRule, fr.fxLoop, fr.fxHeld = nil, false, nil
+        FxSetAt(fr, nil)
         fr:SetScript("OnUpdate", nil)
         if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display effect: " .. tostring(err), nil, "XUI-E012") end
     end
@@ -2360,46 +2392,63 @@ local function FxOnUpdate(self, elapsed)
     self.fxAcc = 0
     FxRun(self)
 end
-local FxWake
-local function FxArm(at)
-    if fxPend[1] and fxPend[1] <= at + 1e-9 then return end   -- a call already comes at or before that moment
-    table.insert(fxPend, 1, at)
-    local d = at - GetTime()
-    C_Timer.After(d > 0 and d or 0, FxWake)
+-- (round 10) a display that is shown but cannot be seen (its parent is hidden: Alt+Z hides the whole interface, a cinematic, a hidden
+-- group): its effects are HELD: no loop, no moment, nothing drawn by the effects; its rule is kept. The game runs a frame script only for
+-- a frame that can be seen, but a timer runs regardless: before, a tenths countdown under a hidden interface was drawn about 10 times a
+-- second while nobody could see it. When it can be seen again (OnShow: INFERENCE that the game sends it to every shown child when a hidden
+-- parent is shown again; UNVERIFIED IN GAME) it is drawn at once from a fresh clock and plans again; a loop paused by the game while hidden
+-- also reads a fresh clock then (fxT cleared: no drawing at the loop's last, older moment).
+local function FxHold(fr)
+    if fr.fxLoop then fr.fxLoop = false; fr:SetScript("OnUpdate", nil) end
+    FxSetAt(fr, nil)
+    fr.fxHeld, fr.fxT = true, nil
 end
-FxWake = function()
-    table.remove(fxPend, 1)
-    local now, n, nxt = GetTime(), 0, nil
-    for fr, at in pairs(fxWakeAt) do
-        if at <= now + 1e-9 then n = n + 1; fxDue[n] = fr
-        elseif not nxt or at < nxt then nxt = at end
+local function FxOnShow(self)
+    self.fxT = nil
+    if self.fxHeld then
+        self.fxHeld = nil
+        if self.fxRule and self:IsVisible() then FxRun(self) end
     end
+end
+GA.FxOnShow = FxOnShow   -- (set on every display frame when it is made, above)
+FxWake = function(h)
+    -- (a timer cancelled after it came due in this same frame, where it still runs: INFERENCE that the game never runs one; the stand-in
+    -- game does) only the timer set last does anything; an older one leaves it alone
+    if h ~= fxTimer then return end
+    fxTimer, fxTimerAt = nil, nil
+    local now, n = GetTime(), 0
+    for fr, at in pairs(fxWakeAt) do
+        if at <= now + 1e-9 then n = n + 1; fxDue[n] = fr end
+    end
+    fxInWake = true
     for i = 1, n do
         local fr = fxDue[i]; fxDue[i] = nil
         fxWakeAt[fr] = nil
-        if fr.fxRule and fr:IsShown() then FxRun(fr) else fr.fxRule = nil end
-        local at = fxWakeAt[fr]
-        if at and (not nxt or at < nxt) then nxt = at end
+        if fr.fxRule and fr:IsVisible() then FxRun(fr)
+        elseif fr.fxRule and fr:IsShown() then FxHold(fr)   -- (shown under a hidden parent: held until it can be seen, above)
+        else fr.fxRule = nil end
     end
-    if nxt then FxArm(nxt) end
+    fxInWake = false
+    FxResync()
 end
 -- after a drawing: loop, wait for a moment, or nothing (see above). cont = a part changes on every run; at = the moment (GetTime) the
 -- next part changes; run = this drawing was the effects' own run (a run that changed nothing stops the loop)
 local function FxPlan(fr, rule, cont, at, run)
     if run and fxChanged == 0 then cont = false end
+    fr.fxRule = (cont or at) and rule or nil
+    if fr.fxRule and fr:IsShown() and not fr:IsVisible() then FxHold(fr); return end   -- (round 10: held while it cannot be seen)
+    fr.fxHeld = nil
     if cont then
-        fxWakeAt[fr] = nil
+        FxSetAt(fr, nil)
         if not fr.fxLoop then fr.fxLoop = true; fr.fxAcc = 0; fr:SetScript("OnUpdate", FxOnUpdate) end
     else
         if fr.fxLoop then fr.fxLoop = false; fr:SetScript("OnUpdate", nil) end
-        fxWakeAt[fr] = at
-        if at then FxArm(at) end
+        FxSetAt(fr, at)
     end
-    fr.fxRule = (cont or at) and rule or nil
 end
 local function FxStop(fr)   -- the display hides or goes: no loop, no moment; its next drawing reads the clock afresh
-    fr.fxRule, fr.fxT = nil, nil
-    fxWakeAt[fr] = nil
+    fr.fxRule, fr.fxT, fr.fxHeld = nil, nil, nil
+    FxSetAt(fr, nil)
     if fr.fxLoop then fr.fxLoop = false; fr:SetScript("OnUpdate", nil) end
 end
 -- (tests, XayaUI_Debug) whether a display's effects loop runs, and the moment it waits for
@@ -2426,9 +2475,11 @@ local function FxColor(fr, r, g, b, a)
         fxChanged = fxChanged + 1
     end
 end
--- (round 9, SD-68 "one rounding and one key") the tenths of a second a display shows: one key, floor(seconds left x 10), and the text is
--- made from that key only, so every drawing (the effects' own runs and every re-check) writes the same tenth for the same key: the tenth
--- the countdown has not yet gone below (4.25 s and 4.21 s left both show 4.3, as the effects loop always showed between two tenths).
+-- (round 9, SD-68 "one rounding and one key") the tenths of a second a display shows: one key, and the text is made from that key only,
+-- so every drawing (the effects' own runs and every re-check) writes the same tenth for the same key: the tenth the countdown has not yet
+-- gone below (4.25 s and 4.21 s left both show 4.3, as the effects loop always showed between two tenths). (round 10) The key is
+-- ceil(seconds left x 10) - 1, the text (key + 1) / 10: exactly on a tenth the countdown shows that tenth (2.500 s shows 2.5; round 9's
+-- floor(seconds left x 10) showed 2.6 there, the next tenth up); between two tenths nothing changes (2.53 s still shows 2.6).
 -- Before, a re-check wrote the rounded seconds (4.2 at 4.24 s) and the loop the next key's text, so the tenth a player saw at a moment
 -- depended on whether a re-check had just run. The texts are made once and kept (no new string per change).
 -- a Bar cue's source, worked out on each re-check and reused by the effects' own runs (ns.BarCueSource finds a cue's parent by walking
@@ -2446,7 +2497,7 @@ local function TenthsOf(k)
     return s
 end
 local function FxTenths(fr, rem)
-    local k = math.floor(rem * 10)
+    local k = math.ceil(rem * 10) - 1   -- (round 10: the tenth not yet gone below, exactly on a tenth too; see above)
     if fr.tenthKey ~= k then
         fr.tenthKey = k
         local s = TenthsOf(k)
@@ -2632,7 +2683,7 @@ local function Companion(fr, rule)
     if c:GetFrameStrata() ~= strata then c:SetFrameStrata(strata) end
     local lvl = math.min(fr:GetFrameLevel() + 30, 9000)
     if c:GetFrameLevel() ~= lvl then c:SetFrameLevel(lvl) end
-    c:SetAlpha(fr.baseAlpha or 1)
+    c:SetAlpha((fr.baseAlpha or 1) * ns.DisplayOocMul(rule.visual))   -- (round 10: its "Out of combat" opacity too, as the display's)
     return c
 end
 local function SetCompanionShown(fr, rule, on)
@@ -2644,6 +2695,14 @@ local function SetCompanionShown(fr, rule, on)
     end
 end
 
+-- (round 10) a display's "Out of combat" opacity multiplier: v.oocAlpha while you are out of combat, 1 in a fight. One place for XayaUI's
+-- own displays (below), their companion texts (above) and the buttons the combat engine draws (Combat/AuraDisplay.lua BaseAlpha).
+-- UnitAffectingCombat: globals.md:556, its result not secret.
+function ns.DisplayOocMul(v)
+    local oa = type(v) == "table" and tonumber(v.oocAlpha) or 1
+    if oa and oa < 1 and not ((UnitAffectingCombat and UnitAffectingCombat("player")) or false) then return oa end
+    return 1
+end
 function ns.UpdateVisualText(rule, info, fxOnly)
     local fr = frames[rule]
     if not fr then return end
@@ -2793,10 +2852,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
     -- opacity: out-of-combat multiplier, fade opacity as the buff runs out, then the "about to expire" flash
     local alpha = fr.baseAlpha or 1
     if mods and mods.alpha ~= nil then alpha = mods.alpha end
-    local oa = v.oocAlpha or 1
-    if oa < 1 and not ((UnitAffectingCombat and UnitAffectingCombat("player")) or false) and not sample then
-        alpha = alpha * oa
-    end
+    if not sample and (v.oocAlpha or 1) < 1 then alpha = alpha * ns.DisplayOocMul(v) end   -- (the multiplier only when one is set)
     local alphaDone = false
     if v.fadeGrey and fr.fadeToClear then
         if f ~= nil then
@@ -2880,7 +2936,7 @@ function ns.UpdateVisualText(rule, info, fxOnly)
             if fr.tex2On then fr.tex2:SetShown(n > 0) end
             fxChanged = fxChanged + 1
             local es = ns.EngineStats
-            if es then es.redrawFill = es.redrawFill + 1 end   -- (XayaUI_Debug: "bar fills written"; the icon's wipe is a fill too)
+            if es then es.redrawFill = es.redrawFill + 1 end   -- (XayaUI_Debug: "bar fills and wipe steps written": this is a wipe step)
         end
         -- the next pixel: p moves at (mx - mn) / duration per second, down while the aura runs out (up when reversed)
         local span = srcK == 2 and SAMPLE_DURATION or dur

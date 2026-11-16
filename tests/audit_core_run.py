@@ -159,8 +159,10 @@ do
   ns.SetPreview({ A, B }, "visual", false)
   A.enabled, B.enabled = false, false
 end
--- D8: core's list of feature addons (Modules.lua; those addons are not on this branch) names the addon behind each of their /xui
--- words, so with that addon off or not installed the command says which addon to turn on
+-- D8: core's list of feature addons (Modules.lua ns.MODULES) names the addon behind each of their /xui words, so with that addon off or
+-- not installed the command says which addon to turn on. (bundle 1 round 10) XayaUI QoL is not on this branch; XayaUI Bonus Features is
+-- (main's): calc and calculator are its Calculator's words (SD-95 / SD-115), answered by this row only while Bonus is off or missing
+-- (with Bonus loaded, by the Calculator's own switch, SD-118); stats keeps naming XayaUI QoL (SD-89, her answer "Keep naming QoL").
 do
   local want = { stats = "XayaUI_QoL", shop = "XayaUI_QoL", reskin = "XayaUI_QoL", releaseguard = "XayaUI_QoL", calc = "XayaUI_Bonus", calculator = "XayaUI_Bonus" }
   local bad = {}

@@ -44,13 +44,20 @@ through a measuring dispatcher; judged per source file and line, everything afte
            with each addon's work per event and per frame and its timers' allocation per pass. (round 8, SD-66 "No worse than ad60a51")
            per addon, the costliest single fight frame above that addon's own on ad60a051 (V33_EVENT_CAPS, stored with its source).
            (round 9) the fights and each combat end's second ("end N"), and on their own lines the frames right after combat start, a
-           boss pull, the boss down and combat end (SD-77); XayaUI_Debug at most 600 (SD-81 "600, same as core").
+           boss pull, the boss down and combat end (SD-77); XayaUI_Debug at most 600 (SD-81 "600, same as core"); (round 10) in both
+           variants XayaUI_Bonus_StatCalculator at most 600 (SD-112) and XayaUI_Bonus at most 600 (SD-117), every fight frame and each of
+           those moments on its own line (her install opens the Stat Calculator's panel before every fight, so its combat-start close
+           is measured).
   DRAW FAIL (round 9, SD-77 "Route + narrow") after each load-fact change a display shows something other than a full re-check of every
            rule shows (gate_common.py drawCheck).
   MEM FAIL (round 8, SD-66 "Today +15%, tighten later") Lua memory after a full collection at the end of any cycle (or after the idle)
            above 34,747.6 KB x 1.15 = 39,959.7 KB; the growth per cycle is still reported (WARNING when it grows every cycle; round 9: read in
            the memory play, so it is the addons' own, not the gate's records).
-Every check runs on both variants of the scenario (Advanced Debugging off and on; findings of the second are marked so).
+Every check runs on both variants of the scenario (Advanced Debugging off and on; findings of the second are marked so). (round 10,
+SD-98) XayaUI_Bonus and XayaUI_Bonus_StatCalculator are switched on in the AddOns list in both: a fresh install ("default") has the Stat
+Calculator off (never loaded), hers ("debug") has it on; the windows she opens herself (the "windows" part: the Calculator keypad, the
+Stat Calculator on its own and docked) are judged by gate_mouse and gate_keyboard (SD-99), and here only as she has them open (like the
+settings window, the P-checks start again once they are closed); the memory cap stays 39,959.7 KB (SD-66).
 Measuring limits (V25; UNVERIFIED IN GAME): instructions are Lua VM instructions in Lua 5.1 and include the stand-in's own widget
 methods (C in the game), so they overstate; allocation excludes the stand-in's widget methods and the gate's own measuring; the game's
 aura / cooldown reads hand back a new table per call (as the game does), and that garbage counts as XayaUI's.
@@ -169,8 +176,15 @@ FIGHT = ("fight 2", "fight 3")
 # XayaUI Rules 382,656,000 / 900 = 425,173.3 per fight frame (second play 382,655,800 / 900 = 425,173.1), core 1,000 / 900 = 1.1 (both
 # plays), Options 0.0. Against the aa8a21168329 value: (425,173.3 - 425,168.4) / 425,168.4 = +0.001%, the same reading (the gate's own
 # code between two measured runs moves the 100-instruction counter's phase).
-V33_RECORDED = {"stamp": "6e573efe8b12", "rules": 425173.3, "core": 1.1, "options": 0.0,   # (2026-11-16, round 9 gate repair 1, 900 fight frames)
-                "when": "in round 9 gate repair 1 (2026-11-16, ad60a051 played twice, the first play)"}
+# (bundle 1 round 10, 2026-11-16) the scenario changed (stamp 6e573efe8b12 -> f23dc769159a: XayaUI_Bonus and XayaUI_Bonus_StatCalculator
+# switched on in every play (SD-98; ad60a051 has neither folder, so nothing of them loads there), the game's character window, the
+# windows she opens (the "windows" part; her install's Stat Calculator opened before each fight), five game-played sound rules that follow
+# combat and boss encounters (PROFILE_LUA 4b; the list stays at 300 entries: five fewer filler cues), and the sound copies counted), so
+# ad60a051 was played twice with this gate (tree_copy / git archive of the repository's own ad60a051, XUI_GATE_NOCACHE=1, 91 s and 119 s):
+# XayaUI Rules 386,418,300 / 900 = 429,353.7 per fight frame (second play 386,422,000 / 900 = 429,357.8), core 1,000 / 900 = 1.1 (both
+# plays), Options 0.0. Against the 6e573efe8b12 value: (429,353.7 - 425,173.3) / 425,173.3 = +0.98%.
+V33_RECORDED = {"stamp": "f23dc769159a", "rules": 429353.7, "core": 1.1, "options": 0.0,   # (2026-11-16, bundle 1 round 10, 900 fight frames)
+                "when": "in bundle 1 round 10 (2026-11-16, ad60a051 played twice, the first play)"}
 FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
 # (round 9, SD-77) the second after each fight's combat end is a measured segment of its own ("end N"); the per-event cap judges the
 # fights and these together, and the frames right after each moment that changes load facts on their own lines
@@ -183,6 +197,15 @@ MOMENTS = (("combat start", "combat start"), ("boss pull", "a boss pull (ENCOUNT
 # its costliest single fight frame at most 600 Lua instructions, in every variant it is loaded in. Her number, fixed: it is not taken
 # from ad60a051 (which had no XayaUI_Debug) and does not follow core's cap if that is measured again.
 DEBUG_EVENT_CAP = {"XayaUI_Debug": 600}
+# (bundle 1 round 10) her fixed per-event caps for the Bonus Features addons folded into both variants (SD-98), judged in BOTH variants
+# (a fresh install and hers) at every fight frame, the frames right after combat start, a boss pull, the boss down and combat end
+# included, each also on its own line: XayaUI_Bonus_StatCalculator, REQUEST-LOG A23 SD-112, her answer "600, same as core
+# (Recommended)" (its only fight work is closing its panel at combat start when it is open: the scenario opens it before every fight in
+# her install); XayaUI_Bonus (its loader and the arithmetic Calculator, always read while Bonus is on), SD-117, her answer "600, same as
+# core (Recommended)". Her numbers, fixed: not taken from ad60a051 (which had no Bonus) and not following core's cap if that is measured
+# again. [addon] = (cap, request-log number, her answer)
+BONUS_EVENT_CAPS = {"XayaUI_Bonus_StatCalculator": (600, "SD-112", "600, same as core (Recommended)"),
+                    "XayaUI_Bonus": (600, "SD-117", "600, same as core (Recommended)")}
 # V33 per event (round 8; REQUEST-LOG A23 SD-66, her answer "No worse than ad60a51 (Recommended)"): for each addon, the costliest single
 # frame of the fight (its handlers' Lua instructions billed to one drawn frame) must not exceed that addon's own costliest fight frame
 # on origin/main ad60a051 (her install when she read AddOn Usage, SD-38), played in this same scenario by this same gate. Two readings,
@@ -237,12 +260,27 @@ DEBUG_EVENT_CAP = {"XayaUI_Debug": 600}
 #   XayaUI Options  0 everywhere                                                                                         -> 0
 # The rule is unchanged (the higher reading of two plays of this scenario, both kept above). Rules' every-segment cap 579,800 -> 579,900
 # (+100 = one step of the 100-instruction hook, 100 / 579,800 = 0.017%); its steady cap stays 579,800; core and Options unchanged.
-V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "6e573efe8b12",
-                  "how": "measured 2026-11-16, round 9 gate repair 1, two plays of ad60a051 in this scenario, the higher reading",
-                  "caps": {"every": {"XayaUI_Rules": 579900, "XayaUI": 600, "XayaUI_Options": 0},
-                           "steady": {"XayaUI_Rules": 579800, "XayaUI": 600, "XayaUI_Options": 0}}}
+# (bundle 1 round 10, 2026-11-16) stamp 6e573efe8b12 -> f23dc769159a (see V33_RECORDED). ad60a051 played twice with this gate (tree_copy
+# / git archive, XUI_GATE_NOCACHE=1), costliest single frame, fights 1 / 2 / 3, ends 1 / 2 / 3:
+#   XayaUI Rules    run 1: 586,200 / 586,000 / 586,000, 583,900 / 583,700 / 583,600   run 2: 586,100 / 586,100 / 586,100, 583,900 / 583,800 / 583,900
+#                   -> every 586,200 (run 1, fight 1), steady (fights 2-3, ends 2-3) 586,100 (run 2, fight 2); the frames after each
+#                      moment (both runs, the higher): combat start 561,600, boss pull 586,200, boss down 579,200, combat end 583,900
+#   XayaUI (core)   run 1: 400 / 500 / 500, 600 / 600 / 600                 run 2: 500 / 500 / 500, 600 / 500 / 600      -> 600, 600
+#   XayaUI Options  0 everywhere                                                                                         -> 0
+# The rule is unchanged (the higher reading of two plays of this scenario, both kept above; SD-66 "No worse than ad60a51"). Rules' caps
+# 579,900 -> 586,200 (every: +6,300 = 6,300 / 579,900 = 1.09%) and 579,800 -> 586,100 (steady: +6,300 = 1.09%); core and Options
+# unchanged. Bonus cannot be the cause: ad60a051 has no XayaUI_Bonus folder, so nothing of it loads in the plays the caps come from; the
+# scenario played twice more on ad60a051 with only the five game-played sound rules of PROFILE_LUA 4b left out (stamp fee5aed7e287, the
+# filler cues back in their place) reads Rules every 579,700 / 579,800 and steady 579,600 / 579,800 (run 1 / run 2): the round 9 caps
+# 579,900 / 579,800 within one step of the 100-instruction hook. So the Bonus fold-in, the character window and the windows part change
+# nothing of Rules' baseline, and the +6,300 is the five rules' own re-check work on ad60a051 (round 10 gate report).
+V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "f23dc769159a",
+                  "how": "measured 2026-11-16, bundle 1 round 10, two plays of ad60a051 in this scenario, the higher reading",
+                  "caps": {"every": {"XayaUI_Rules": 586200, "XayaUI": 600, "XayaUI_Options": 0},
+                           "steady": {"XayaUI_Rules": 586100, "XayaUI": 600, "XayaUI_Options": 0}}}
 V33_EVENT_CAPS_TOL = 0.01   # a replay of ad60a051 within 1% of the stored caps is the same reading (the 300-instruction spread above)
-NAMES = {"XayaUI": "XayaUI (Platform, core)", "XayaUI_Rules": "XayaUI Rules", "XayaUI_Options": "XayaUI Options"}
+NAMES = {"XayaUI": "XayaUI (Platform, core)", "XayaUI_Rules": "XayaUI Rules", "XayaUI_Options": "XayaUI Options",
+         "XayaUI_Bonus": "XayaUI Bonus Features", "XayaUI_Bonus_StatCalculator": "XayaUI Bonus Features: Stat Calculator"}
 
 
 def first_second(B, seg, addon):
@@ -310,11 +348,32 @@ def event_caps(data, rep, base, stamp, pct):
         caps = None
     B = data.get("budget") or {}
     addons = sorted(set(a for sg in CAP_EVERY for a in (((B.get(sg) or {}).get("peak")) or {})) | set((caps or {}).get("every") or {})
-                    | (set(DEBUG_EVENT_CAP) if data.get("debugLoaded") else set()))
+                    | (set(DEBUG_EVENT_CAP) if data.get("debugLoaded") else set()) | set(BONUS_EVENT_CAPS))
     for a in addons:
         name = NAMES.get(a, a)
         cur_e, seg_e = peak(data, CAP_EVERY, a)
         cur_s, seg_s = peak(data, CAP_STEADY, a)
+        if a in BONUS_EVENT_CAPS:
+            # (round 10, SD-112 / SD-117) both variants, every fight frame and each moment on its own line
+            cap, sd, ans = BONUS_EVENT_CAPS[a]
+            loaded = ((data.get("addonsLoaded") or {}).get(a))
+            line = ("V33 %s per event (%s): costliest single fight frame %.0f instructions (%s; cap %.0f, her answer \"%s\"; loaded: %s)" % (
+                name, sd, cur_e, seg_e or "none", cap, ans, loaded))
+            if cur_e > cap:
+                rep.fail(a, "V33 per-event limit: %s's costliest single fight frame is above her cap of %.0f instructions (%s \"%s\")" % (
+                    name, cap, sd, ans), line + "; over by %.0f" % (cur_e - cap),
+                    "do no work in a fight frame beyond what the fight needs: close the panel at combat start with one Hide and nothing else")
+            else:
+                rep.note(line)
+            for mname, what in MOMENTS:
+                v, sg = moment_peak(data, CAP_EVERY, mname, a)
+                mline = "V33 %s per event, %s (%s): costliest frame %.0f instructions (%s; cap %.0f)" % (name, what, sd, v, sg or "none", cap)
+                if v > cap:
+                    rep.fail(a, "V33 per-event limit (%s): %s's costliest frame at %s is above her cap of %.0f instructions" % (sd, name, what, cap),
+                             mline + "; over by %.0f" % (v - cap), "do no work at that moment beyond one Hide of an open panel")
+                else:
+                    rep.note(mline)
+            continue
         if a in DEBUG_EVENT_CAP:
             # (round 9, SD-81, her answer "600, same as core (Recommended)") XayaUI_Debug, read only with Advanced Debugging on (V34)
             cap = DEBUG_EVENT_CAP[a]

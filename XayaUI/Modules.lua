@@ -11,7 +11,8 @@
 -- Core never calls a feature by name. A feature registers what it offers here, and core only walks these lists, so a feature
 -- that is switched off (or not installed) simply leaves nothing behind:
 --   ns.WhenReady(fn)                          run fn once the saved settings exist (right away if they already do)
---   ns.RegisterCommand(names, fn, help)       /xui <name> [args]; names is one string or a list; several handlers may share a name
+--   ns.RegisterCommand(names, fn, help, part) /xui <name> [args]; names is one string or a list; several handlers may share a name;
+--                                             part (SD-118): { name, isOn, where }, its words work only while isOn() is true (section 2)
 --   ns.RegisterLauncher(entry)                a row in the minimap button's quick-access list
 --   ns.RegisterSettingsPage(module, key, fn)  a page in the settings window; fn(Notify) returns an AceConfig group
 --   ns.MODULES                                which addon owns which /xui commands, so core can say why one does nothing
@@ -647,29 +648,76 @@ function ns.LoggedIn() return loggedIn end
 
 -------------------------------------------------------------------------------
 -- 2. /xui commands. Core's own commands stay in Core.lua; a feature adds its own here.
+-- (bundle 1 round 10; REQUEST-LOG SD-118, a STANDING RULE, her answer "All parts, say how (Recommended)") a part's chat words work only
+-- while that part is switched on. A part that has its own switch hands it in with its words, as the 4th argument:
+--   ns.RegisterCommand(names, fn, help, part)
+--   part = { name  = "Calculator",               -- what the player calls it; the line reads "The <name> is off."
+--            isOn  = function() return ... end,  -- its switch: returns true while the part is on (any other answer, or an error, is off)
+--            where = "/xui > Bonus Features" }   -- where it is turned on; the line reads "Turn it on in <where>."
+-- While isOn() is not true, typing one of its words prints that ONE line (ns.PartOffText), e.g. "XayaUI: The Calculator is off. Turn it
+-- on in /xui > Bonus Features.", and core never calls fn (nothing of the part runs), and /xui help leaves its help line out. The switch is
+-- asked each time a word is typed and each time /xui help is printed, so turning the part on or off takes effect for its words at once
+-- (whether the part itself needs a /reload is the part's own business, behind fn). Nothing is polled; nothing is made per call but the
+-- help list's copy. A part with no switch (core's own words, Core.lua) passes no 4th argument: its words always run, as before.
+-- A part table without a name, an isOn function and a where is refused (nothing registered) and reported to the game's error handler.
+-- A part whose addon is not loaded registers nothing: its words fall to section 3 (ns.MODULES), which names the addon to turn on.
 -------------------------------------------------------------------------------
 local commands, helpText = {}, {}
 
-function ns.RegisterCommand(names, fn, help)
-    if type(fn) ~= "function" then return end
+-- whether a part is on (no part: always). Its isOn() is called through pcall; an error is reported and counts as off.
+local function PartOn(part)
+    if part == nil then return true end
+    local ok, on = pcall(part.isOn)
+    if not ok then Report(on); return false end
+    return on == true
+end
+local function ValidPart(part)
+    return type(part) == "table" and type(part.isOn) == "function" and type(part.name) == "string" and part.name ~= ""
+        and type(part.where) == "string" and part.where ~= ""
+end
+-- the one line a switched-off part's word prints (SD-118, her example: "The Calculator is off. Turn it on in /xui > Bonus Features.")
+function ns.PartOffText(part)
+    return ("The %s is off. Turn it on in %s."):format(tostring(part.name), tostring(part.where))
+end
+
+-- returns true when registered
+function ns.RegisterCommand(names, fn, help, part)
+    if type(fn) ~= "function" then return false end
+    if part ~= nil and not ValidPart(part) then
+        Report("XayaUI: ns.RegisterCommand: the part needs a name, an isOn function and a where (SD-118); nothing registered")
+        return false
+    end
     if type(names) == "string" then names = { names } end
+    local entry = { fn = fn, part = part }
     for _, n in ipairs(names) do
         n = tostring(n):lower()
         commands[n] = commands[n] or {}
-        table.insert(commands[n], fn)
+        table.insert(commands[n], entry)
     end
-    if type(help) == "string" and help ~= "" then helpText[#helpText + 1] = help end
-end
-
--- true when at least one registered handler took the command
-function ns.RunCommand(cmd, arg)
-    local list = commands[cmd]
-    if not list then return false end
-    for _, fn in ipairs(list) do Call(fn, arg) end
+    if type(help) == "string" and help ~= "" then helpText[#helpText + 1] = { text = help, part = part } end
     return true
 end
 
-function ns.CommandHelp() return helpText end
+-- true when at least one registered handler took the command. A handler whose part is off is not called; when no handler of the word
+-- ran because each one's part is off, the first such part's one line is printed (one line, however many handlers share the word).
+function ns.RunCommand(cmd, arg)
+    local list = commands[cmd]
+    if not list then return false end
+    local ran, offPart = false, nil
+    for _, e in ipairs(list) do
+        if PartOn(e.part) then ran = true; Call(e.fn, arg)
+        elseif not offPart then offPart = e.part end
+    end
+    if not ran and offPart and ns.Print then ns.Print(ns.PartOffText(offPart)) end
+    return true
+end
+
+-- the help lines of the words that work now: a switched-off part's lines are left out (SD-118)
+function ns.CommandHelp()
+    local out = {}
+    for _, h in ipairs(helpText) do if PartOn(h.part) then out[#out + 1] = h.text end end
+    return out
+end
 
 -- 2b. /xui debug <name> [args] (core 0.6.50; Xaya 2026-11-05: "can't some of these be consolidated into a /xui debug _____ ? this is a
 -- LOT of noise"). Diagnostic commands live under /xui debug, so /xui help lists only what a player uses. /xui debug <name> is the only
@@ -712,7 +760,12 @@ ns.MODULES = {
     { addon = "XayaUI_QoL",     title = "XayaUI QoL",             commands = { "cursor", "stats", "shop", "reskin", "releaseguard", "rg" } },
     -- (bundle 1 round 9, merge of main fda1e293) main's XayaUI_Bonus registers only /xui stats (StatCalculatorLoader.lua); the old
     -- qa-installer-branch Bonus words notes, notepad, note and data are gone from this row, so with main's Bonus loaded they print
-    -- /xui help instead of a false "never registered" line. calc and calculator stay until Xaya decides (tests/audit_core_run.py D8).
+    -- /xui help instead of a false "never registered" line.
+    -- (bundle 1 round 10; SD-95 / SD-115 / SD-116 / SD-118) calc and calculator are the arithmetic Calculator's, inside XayaUI_Bonus with
+    -- its own switch: XayaUI_Bonus registers them with that switch (section 2, the part argument), so with Bonus loaded they either run
+    -- (Calculator on) or print "The Calculator is off. Turn it on in /xui > Bonus Features." (off). This row only answers while
+    -- XayaUI_Bonus itself is switched off or missing in the AddOns list: then the words name XayaUI Bonus Features (audit_core D8).
+    -- stats stays in the QoL row above (SD-89, her answer "Keep naming QoL").
     { addon = "XayaUI_Bonus",   title = "XayaUI Bonus Features",  commands = { "calc", "calculator" } },
     { addon = "XayaUI_Reskin",  title = "XayaUI Blizzard Reskin", commands = {} },
     { addon = "XayaUI_Options", title = "XayaUI Options",         commands = {} },

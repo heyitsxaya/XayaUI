@@ -106,7 +106,7 @@ end
 local PATHS = { "routed", "all", "settle", "pollRange", "pollCd", "wake", "alert", "redrawText", "redrawFill" }
 local WHAT = { routed = "aura and cooldown re-checks", all = "every-live-rule re-checks", settle = "full settles",
     pollRange = "0.2 s range re-checks", pollCd = "0.2 s hidden cooldown-end re-checks", wake = "wake timer fires",
-    alert = "Cooldown Manager alert re-checks", redrawText = "tenths texts rewritten", redrawFill = "bar fills written" }
+    alert = "Cooldown Manager alert re-checks", redrawText = "tenths texts rewritten", redrawFill = "bar fills and wipe steps written" }   -- (round 10: the count includes each whole-pixel step of an icon's Progress-Bar Wipe, Visual.lua)
 local RECHECK = { routed = true, all = true, settle = true, pollRange = true, pollCd = true, wake = true, alert = true }
 local LIMIT = 10            -- her limit for every re-check path, a second (SD-66)
 -- seconds between ticks. INFERENCE (UNVERIFIED IN GAME): the game runs a ticker on frames, so a tick comes on the first frame at or

@@ -129,7 +129,9 @@ L.execute("FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 49184)")
 check("Spell Glows: unreadable, but GLOW_SHOW arrived -> true", L.eval("ROW(G1)") is True)
 L.execute("FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_HIDE', 49184)")
 check("Spell Glows: unreadable, GLOW_HIDE arrived -> unknown again", L.eval("ROW(G1)") is None)
-L.execute("GLOW_API = true; TIMERS = {}")
+# (round 10, SD-82 / SD-90: the glow look-later is one armed timer for every glow, not a function per glow) dropping the stand-in's
+# pending timers drops that armed look-later and its queue too, as dropping the per-glow timer did before
+L.execute("GLOW_API = true; TIMERS = {}; if NS._GlowLaterReset then NS._GlowLaterReset() end")
 check("Spell Glows is offered as a trigger type with a combat note", L.eval("NS.TRIGGER_TYPES.spellGlow ~= nil and NS.TriggerCombatNote({}, 'x', G1):find('readable') ~= nil"))
 
 # ---------------------------------------------------------------- gap 5: glow -> aura, only after the pairing is seen to hold

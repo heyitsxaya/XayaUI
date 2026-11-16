@@ -15,6 +15,12 @@ combat, in each of three fights, after each fight, after 30 seconds idle) the ga
 Each violation: the line that turned the keyboard on (or made the frame), which checkpoints, in or out of combat.
 (round 9; SD-64: she keeps Advanced Debugging on; round 8 review) every check runs on both variants of the scenario, Advanced
 Debugging off and on (XayaUI_Debug loaded); findings of the second are marked "[Advanced Debugging on]".
+(round 10; REQUEST-LOG A23 SD-98, SD-99, her words: "v27 is only if ALL windows of XUI are closed; XUI windows that are actively opened
+and have the mouse over them should accept clicks [...]") the windows she opens herself (the Calculator keypad, whose text box takes the
+keyboard focus; the Stat Calculator panel on its own and docked) are played open and closed. Key presses are judged only while every
+XayaUI window is closed; while a window she opened is open, its own keyboard and text-box focus and the keyboard calls its code makes are
+listed (NOTE), and every frame outside it is judged as above. After its close every check above applies again: a frame of it still
+keyboard-enabled (shown or hidden), a text box of it still holding the focus, or a key that no longer reaches the game, FAILs.
 Run: python3 tests/gate_keyboard_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -74,7 +80,16 @@ def judge(data, rep):
             if not k.get("reached"):
                 o = keys.setdefault((k.get("key"), k.get("byWhere") or k.get("by")), [])
                 o.append(cp["label"] + (" (in combat)" if cp.get("combat") else ""))
-    rep.note("key presses tried: %d (PRINTSCREEN, W and SPACE at every checkpoint)" % tried)
+    rep.note("key presses tried: %d (PRINTSCREEN, W and SPACE at every checkpoint where every XayaUI window is closed)" % tried)
+    # (round 10, SD-99) while a window she opened is open: what took the keys, its keyboard and focus (listed, not judged)
+    for cp in cps:
+        if cp.get("open"):
+            rep.note("%s: keys (not judged while a window she opened is open, SD-99): %s; keyboard-enabled in it: %d; text box focus in it: %s" % (
+                cp["label"], ", ".join("%s %s" % (k.get("key"), "reached the game" if k.get("reached") else "kept by %s" % (k.get("byWhere") or k.get("by")))
+                                       for k in cp.get("winKeys") or []),
+                len(cp.get("winKb") or []), ", ".join(str(f.get("where")) for f in cp.get("winFocus") or []) or "none"))
+    for call, n in ((data.get("win") or {}).get("kbCalls") or {}).items():
+        rep.note("while a window she opened was open: %s, %d time(s) (that window's own; not judged, SD-99)" % (call, n))
     if tried == 0:
         rep.fail("tests/gate_common.py (the scenario)", "no key was pressed at any checkpoint", "", "")
     for (key, by), labels in keys.items():

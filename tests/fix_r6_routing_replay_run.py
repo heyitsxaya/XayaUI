@@ -4,36 +4,39 @@ fix first"). Proves that no rule answers differently, and that nothing is drawn 
 and the engine now.
 
 The same event streams are played, frame by frame, into copies of the stand-in game that differ only in the rule engine: XayaUI_Rules/
-Engine.lua, Conditions.lua, AuraAlias.lua, Visual.lua, BarCue.lua, Outcomes.lua and Triggers.lua at commit 89ea79ab (the round-5 save,
-before round 6), against the files of the tree this test sits in. Everything else is the same tree.
+Engine.lua, Conditions.lua, AuraAlias.lua, Outcomes.lua and Triggers.lua at commit 89ea79ab (the round-5 save, before round 6), against
+the files of the tree this test sits in. Everything else is the same tree, the display code (Visual.lua, BarCue.lua) included, in every
+comparison that passes or fails. 89ea79ab's display code is used only for the figures printed under 3.
 
-  1. STRICT (the proof): the old engine runs at the routed pace of the engine under test (its two lines ROUTED_GAP / ROUTED_DUE are
-     copied from the Engine.lua under test into the old one; round 7 runs at 10 a second, SD-61 "10/s for all, like EUI"; the pace is
-     her decision and is tested in tests/fix_r2_engine_followups_run.py and tests/engine_routing_run.py). After every frame, for every
-     rule: whether it is active, whether XayaUI wants its display shown, and what is DRAWN: shown, visible, the duration / count / shield
-     texts, grey, opacity, a bar's fill, where the display sits (a dynamic group's layout), who draws it (XayaUI or the combat engine),
-     every group frame's shown state and place, and every sound played so far, in order. All must match, frame by frame, with two
-     allowances, each counted and printed:
-       a. REDRAW: a duration text shown in tenths of a second may differ by one tenth, and a bar's fill by one hundredth (the longest
-          run on one rule is printed; round 9: up to 16 frames, 30 ms, as the old display code waited for its next 1/30 s run):
-          the display moves them itself (Visual.lua's effects loop, about 30 times a second); the old engine also redrew them whenever
-          any aura event re-checked every aura rule (a visible difference she was told of in round 6);
+(round 10, REQUEST-LOG A23 SD-87, her answer "Today's display (Recommended)") Exact parity is judged against the old engine drawn by
+today's display code (1, "STRICT, SAME DISPLAY CODE"), and that is pass / fail. The difference against 89ea79ab's display code stays
+printed as a reported figure (3: rule-frames, longest runs), not pass / fail. Allowance a (a tenths text off by one tenth, a bar fill off
+by one hundredth) is no longer a pass condition anywhere in this test: no check below passes because of it.
+
+  1. STRICT, SAME DISPLAY CODE (the proof; pass / fail; round 9 comparison 1b): the old engine runs at the routed pace of the engine under
+     test (its two lines ROUTED_GAP / ROUTED_DUE are copied from the Engine.lua under test into the old one; round 7 runs at 10 a second,
+     SD-61 "10/s for all, like EUI"; the pace is her decision and is tested in tests/fix_r2_engine_followups_run.py and
+     tests/engine_routing_run.py), drawn by this tree's display code. After every frame, for every rule: whether it is active, whether
+     XayaUI wants its display shown, and what is DRAWN: shown, visible, the duration / count / shield texts, grey, opacity, a bar's fill,
+     where the display sits (a dynamic group's layout), who draws it (XayaUI or the combat engine), every group frame's shown state and
+     place, and every sound played so far, in order. All must match EXACTLY at every frame, the tenths text and the bar fill included
+     (SD-68, her answer "option 2 ..."), with one allowance, counted and printed:
        b. EARLIER: a row may already show what the old engine shows within the next tenth of a second and one frame. The new engine
           runs a pass only when an event changed something a rule reads; the old one ran one for every aura or cooldown event, and each
           pass made the next one wait the pace. So after events no rule reads (a raid's debuffs on your target) the new engine can take
           the next real change on the next frame while the old one still waits: never later, at most one pace window earlier.
      At the last frame of every part of the streams (each is followed by at least a tenth of a second and one frame) every row must
-     match exactly (allowance a only): a rule left on an answer it no longer gives (the round-6 stuck icon) cannot hide behind b.
-  1b. (round 9, SD-68, her answer "option 2 ...": exact parity for the tenths text and the bar fill at every frame) STRICT again, with the
-     old engine drawn by the display code of this tree (Visual.lua, BarCue.lua) instead of the one at 89ea79ab, and WITHOUT allowance a:
-     every drawn field must match exactly at every frame. It proves that what is drawn no longer depends on how often the engine
-     re-checks a rule (round 9: one clock per display, Visual.lua FxPlan). Comparison 1 keeps 89ea79ab's display code with allowance a,
-     whose longest run per field is now printed: that display code wrote the rounded seconds and a fresh fill whenever the round-5
-     engine happened to re-check, so no engine that re-checks less can match it exactly (which of the two is the parity she holds the
-     build to: NEEDS_HER_DECISION, round 9 display report).
-  2. PACE BOUND: against the old engine at its own pace (1/30 s), every row the engine under test draws must be one the old engine drew
-     within the last tenth of a second and one frame (it never draws something the old one never did, and lags by at most the pace),
-     and the same sounds play.
+     match exactly: a rule left on an answer it no longer gives (the round-6 stuck icon) cannot hide behind b. Exact parity here proves
+     that what is drawn no longer depends on how often the engine re-checks a rule (round 9: one clock per display, Visual.lua FxPlan).
+  2. PACE BOUND (pass / fail): against the old engine at its own pace (1/30 s), drawn by this tree's display code, every row the engine
+     under test draws must be exactly one the old engine drew within the last tenth of a second and one frame (it never draws something
+     the old one never did, and lags by at most the pace), and the same sounds play.
+  3. REPORTED, NOT PASS / FAIL (SD-87): comparisons 1 and 2 again with the old engine drawn by 89ea79ab's display code, which wrote the
+     rounded seconds and a fresh fill whenever the round-5 engine happened to re-check, so no engine that re-checks less can match it
+     exactly. Printed: the rule-frames where only a tenths text (by one tenth) or a bar fill (by one hundredth) differs (the old
+     allowance a), the longest run of such frames on one rule (round 9: 684 rule-frames; tenths text 16 frames (30 ms), bar fill 12
+     frames (22 ms)), the rule-frames, group frames and sounds that differ otherwise, and the rows the pace bound does not find even
+     with allowance a. None of these figures fails the test.
 
 The streams use readable (non-secret) samples wherever the game gives them, so the routing branches are exercised, not bypassed:
   out of combat, readable payloads: auras added, updated (refresh, stacks) and removed by instance ID; an aura no rule watches; extra IDs;
@@ -66,7 +69,7 @@ import run as H  # noqa: E402
 
 BASE = "89ea79ab"   # the round-5 save: the engine before round 6
 OLD_FILES = ["Engine.lua", "Conditions.lua", "AuraAlias.lua", "Visual.lua", "BarCue.lua", "Outcomes.lua", "Triggers.lua"]
-DISPLAY_FILES = ("Visual.lua", "BarCue.lua")   # (round 9) the display code: kept from the tree under test in comparison 1b
+DISPLAY_FILES = ("Visual.lua", "BarCue.lua")   # the display code: this tree's in comparisons 1 and 2 (pass / fail), 89ea79ab's only in 3 (reported)
 FRAME = 1 / 60.0
 
 LUA = r'''
@@ -639,6 +642,32 @@ def strict(fa, fb, allow_redraw):
     return diffs, redraw, earlier, longest
 
 
+def pace_bound(fn, fb, allow_redraw):
+    """Every row of run fb against run fn (the old engine at its own pace): the rows fn did not draw (exactly, or with allowance a when
+    allow_redraw) within the last pace window, and the most any row was behind."""
+    lag = WINDOW
+    late, worst = [], 0.0
+    for k, y in enumerate(fb):
+        t = y.get("now") or 0
+        ry = y.get("rows") or []
+        for i, b_ in enumerate(ry):
+            hit = None
+            j = min(k, len(fn) - 1)
+            while j >= 0 and (t - (fn[j].get("now") or 0)) <= lag + 1e-9:
+                rx = fn[j].get("rows") or []
+                a_ = rx[i] if i < len(rx) else None
+                if Same(a_, b_, allow_redraw):
+                    hit = t - (fn[j].get("now") or 0)
+                    break
+                j -= 1
+            if hit is None:
+                late.append("%s: rule %d drawn as\n      now:    %s\n      the old engine at its own pace never drew that in the %.0f ms before (it drew: %s)"
+                            % (y.get("label"), i + 1, b_, lag * 1000, ((fn[k].get("rows") if k < len(fn) else None) or [None] * (i + 1))[i]))
+            elif hit > worst:
+                worst = hit
+    return late, worst
+
+
 def run_with(folders):
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
@@ -695,14 +724,16 @@ def main():
             print("FAILS: 1")
             sys.exit(1)
         trees = {}
-        for kind in ("same", "native", "samedisplay"):
+        # (round 10, SD-87) "samedisplay" / "nativedisplay": the old engine (at the routed pace / its own pace) drawn by this tree's display
+        # code: the pass / fail references. "same" / "native": the same with 89ea79ab's display code: reported figures only (3)
+        for kind in ("same", "native", "samedisplay", "nativedisplay"):
             d = os.path.join(tmp, kind, "XayaUI_Rules")
             shutil.copytree(folders["XayaUI_Rules"], d)
             for f in OLD_FILES:
-                if kind == "samedisplay" and f in DISPLAY_FILES:
-                    continue   # (1b: the display code under test draws the old engine's answers)
+                if kind.endswith("display") and f in DISPLAY_FILES:
+                    continue   # (this tree's display code draws the old engine's answers)
                 data = olds[f]
-                if f == "Engine.lua" and kind != "native":
+                if f == "Engine.lua" and not kind.startswith("native"):
                     data = paced.encode("utf-8")
                 with open(os.path.join(d, f), "wb") as fh:
                     fh.write(data)
@@ -710,85 +741,59 @@ def main():
         old_same = run_with(dict(folders, XayaUI_Rules=trees["same"]))
         old_native = run_with(dict(folders, XayaUI_Rules=trees["native"]))
         old_disp = run_with(dict(folders, XayaUI_Rules=trees["samedisplay"]))
+        old_ndisp = run_with(dict(folders, XayaUI_Rules=trees["nativedisplay"]))
         now = run_with(folders)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     fa, fb, fn = old_same.get("frames") or [], now.get("frames") or [], old_native.get("frames") or []
+    fd, fnd = old_disp.get("frames") or [], old_ndisp.get("frames") or []
     m = re.search(PACE_LINES[0], new_engine, re.M)
     print("    (the routed pace of the engine under test, given to the old engine for the strict comparison: %s)" % (m.group(0) if m else "?"))
-    if len(fa) != len(fb) or len(fn) != len(fb) or not fa:
-        print("FAIL: the runs played a different number of frames (%d, %d, %d)" % (len(fa), len(fn), len(fb)))
+    if not fb or any(len(x) != len(fb) for x in (fa, fn, fd, fnd)):
+        print("FAIL: the runs played a different number of frames (%d, %d, %d, %d, %d)" % (len(fd), len(fnd), len(fa), len(fn), len(fb)))
         fails += 1
-    # 1. STRICT, frame by frame (allowances a and b), and exactly at the end of every part of the streams
     rules_n = 0
-    for x in fa + fb:
+    for x in fd + fb:
         rules_n = max(rules_n, len(x.get("rows") or []))
-    diffs, redraw, earlier, longest = strict(fa, fb, True)
-    for d in diffs[:int(os.environ.get("XUI_REPLAY_SHOW", "12"))]:
+    show = int(os.environ.get("XUI_REPLAY_SHOW", "12"))
+    # 1. STRICT, SAME DISPLAY CODE (pass / fail): exactly, frame by frame (allowance b only), and exactly at the end of every part
+    diffs, _, earlier, _ = strict(fd, fb, False)
+    for d in diffs[:show]:
         print("DIFF " + d)
     ok = not diffs
-    nf = min(len(fa), len(fb))
-    print(("ok  " if ok else "FAIL: ") + "STRICT: every rule answers and is drawn the same at every frame as in the engine before round 6 at the same "
-          "pace (%d frames x %d rules: active, display wanted, shown, visible, duration / count / shield text, grey, opacity, bar fill, place, "
-          "drawn by; group frames; every sound in order), and exactly the same at the end of every part of the streams%s"
-          % (nf, rules_n, "" if ok else " [%d differences]" % len(diffs)))
+    nf = min(len(fd), len(fb))
+    print(("ok  " if ok else "FAIL: ") + "STRICT, SAME DISPLAY CODE (SD-68 option 2; SD-87 'Today's display'): the engine before round 6, drawn by "
+          "this tree's display code, at the same pace: every rule answers and is drawn exactly the same at every frame (%d frames x %d rules: "
+          "active, display wanted, shown, visible, duration / count / shield text, grey, opacity, bar fill, place, drawn by; group frames; "
+          "every sound in order), tenths text and bar fill included (no allowance a), and exactly the same at the end of every part of the "
+          "streams%s" % (nf, rules_n, "" if ok else " [%d differences]" % len(diffs)))
     fails += 0 if ok else 1
-    print("    (allowance a, REDRAW, visible difference she was told of in round 6: a tenths text by one tenth or a bar fill by one hundredth: "
-          "%d rule-frames; the longest run on one rule: tenths text %s, bar fill %s)" % (redraw, longest[TEXT], longest[BAR]))
     print("    (allowance b, EARLIER: already showing what the engine before round 6 showed within the next tenth of a second and one frame: "
           "%d rule-frames)" % earlier)
-    # 1b. (round 9, SD-68 "option 2": exact parity for the tenths text and the bar fill at every frame) the same comparison, with the engine
-    # before round 6 drawn by the display code under test (Visual.lua, BarCue.lua of this tree) and allowance a removed: what is drawn
-    # may not depend on how often the engine re-checks a rule. Allowance a above remains for the display code of 89ea79ab, whose text
-    # and fill depended on when the round-5 engine happened to re-check (NEEDS_HER_DECISION, round 9 display report: which of the two is
-    # the parity she holds the build to).
-    fd = old_disp.get("frames") or []
-    if len(fd) != len(fb):
-        print("FAIL: the runs played a different number of frames (%d, %d)" % (len(fd), len(fb)))
-        fails += 1
-    diffs2, redraw2, earlier2, _ = strict(fd, fb, False)
-    for d in diffs2[:int(os.environ.get("XUI_REPLAY_SHOW", "12"))]:
-        print("DIFF (1b) " + d)
-    ok = not diffs2
-    print(("ok  " if ok else "FAIL: ") + "STRICT, SAME DISPLAY CODE (SD-68 option 2): the engine before round 6, drawn by this tree's display code, at the "
-          "same pace: every rule is drawn exactly the same at every frame, tenths text and bar fill included (no allowance a)%s"
-          % ("" if ok else " [%d differences]" % len(diffs2)))
-    fails += 0 if ok else 1
-    print("    (allowance b, EARLIER: %d rule-frames)" % earlier2)
-    # 2. PACE BOUND, against the old engine at its own pace
-    lag = WINDOW
-    late, worst = [], 0.0
-    for k, y in enumerate(fb):
-        t = y.get("now") or 0
-        ry = y.get("rows") or []
-        for i, b_ in enumerate(ry):
-            hit = None
-            j = k
-            while j >= 0 and (t - (fn[j].get("now") or 0)) <= lag + 1e-9:
-                rx = fn[j].get("rows") or []
-                a_ = rx[i] if i < len(rx) else None
-                if Same(a_, b_):
-                    hit = t - (fn[j].get("now") or 0)
-                    break
-                j -= 1
-            if hit is None:
-                late.append("%s: rule %d drawn as\n      now:    %s\n      the old engine at its own pace never drew that in the %.0f ms before (it drew: %s)"
-                            % (y.get("label"), i + 1, b_, lag * 1000, (fn[k].get("rows") or [None] * (i + 1))[i]))
-            elif hit > worst:
-                worst = hit
-    for d in late[:int(os.environ.get("XUI_REPLAY_SHOW", "12"))]:
+    # 2. PACE BOUND (pass / fail), against the old engine at its own pace, drawn by this tree's display code: exact rows
+    late, worst = pace_bound(fnd, fb, False)
+    for d in late[:show]:
         print("LATE " + d)
     ok = not late
-    print(("ok  " if ok else "FAIL: ") + "PACE BOUND: against the engine before round 6 at its own pace (1/30 s), every row drawn now is one it drew "
-          "within the last tenth of a second and one frame%s" % ("" if ok else " [%d rows]" % len(late)))
+    print(("ok  " if ok else "FAIL: ") + "PACE BOUND: against the engine before round 6 at its own pace (1/30 s), drawn by this tree's display code, "
+          "every row drawn now is exactly one it drew within the last tenth of a second and one frame%s" % ("" if ok else " [%d rows]" % len(late)))
     fails += 0 if ok else 1
     print("    (the most any row was behind the old engine's: %.0f ms)" % (worst * 1000))
-    sa = sorted((fn[-1].get("sounds") or "").split(",")) if fn else []
+    sa = sorted((fnd[-1].get("sounds") or "").split(",")) if fnd else []
     sb = sorted((fb[-1].get("sounds") or "").split(",")) if fb else []
     ok = sa == sb
     print(("ok  " if ok else "FAIL: ") + "PACE BOUND: the same sounds play as with the engine before round 6 at its own pace (%d sounds)%s"
           % (len(sb), "" if ok else " [before %d, now %d]" % (len(sa), len(sb))))
     fails += 0 if ok else 1
+    # 3. REPORTED, NOT PASS / FAIL (SD-87): against the old engine drawn by 89ea79ab's display code
+    diffs3, redraw3, earlier3, longest3 = strict(fa, fb, True)
+    late3, worst3 = pace_bound(fn, fb, True)
+    print("    REPORTED, not pass / fail (SD-87): the engine before round 6 drawn by 89ea79ab's display code, at the same pace: a tenths text "
+          "by one tenth or a bar fill by one hundredth (the old allowance a): %d rule-frames; the longest run on one rule: tenths text %s, "
+          "bar fill %s; rule-frames, group frames and sounds that differ otherwise: %d; allowance b: %d rule-frames"
+          % (redraw3, longest3[TEXT], longest3[BAR], len(diffs3), earlier3))
+    print("    REPORTED, not pass / fail (SD-87): against it at its own pace, rows drawn now that it did not draw within the last tenth of a "
+          "second and one frame even with the old allowance a: %d (the most any row was behind: %.0f ms)" % (len(late3), worst3 * 1000))
     # the streams must have exercised the rules: each rule was active at some frame, and shown at some frame when it has a display
     seen, drawn = set(), set()
     for x in fb:
@@ -803,7 +808,8 @@ def main():
     print(("ok  " if ok2 else "FAIL: ") + "every rule turned on at least once in the streams%s" % ("" if ok2 else " [never: %s]" % ", ".join(never)))
     fails += 0 if ok2 else 1
     print("    (rules drawn on screen at some frame: %d of %d)" % (len(drawn), rules_n))
-    for side, r in (("before, same pace", old_same), ("before, own pace", old_native), ("now", now)):
+    for side, r in (("before, same pace, this display code", old_disp), ("before, own pace, this display code", old_ndisp),
+                    ("before, same pace, 89ea79ab's display code", old_same), ("before, own pace, 89ea79ab's display code", old_native), ("now", now)):
         for e in (r.get("errors") or []):
             print("ERROR (%s) in the game stand-in: %s" % (side, str(e)[:500]))
             fails += 1

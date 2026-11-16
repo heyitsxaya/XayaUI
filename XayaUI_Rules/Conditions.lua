@@ -496,6 +496,36 @@ end
 -- rule needs the icon (EllesmereUI's notes say the same of GetSpellID and the cooldownInfo fields; API facts only). So the IDs
 -- an icon showed when they were readable are kept on it (xuiLastIDs) and used while they are hidden. Blizzard reuses icons
 -- for other spells: Timing.lua clears the kept IDs when an icon is given another spell (OnCooldownIDSet).
+-- (round 10, SD-107 known gap) An icon XayaUI never saw readable (a pooled icon given its spell during a fight, its IDs hidden) had no
+-- IDs at all, so XayaUI's own sound could not hear its buff. Each icon also stands for a cooldownID (the Cooldown Manager's own entry,
+-- CooldownViewerCooldown.cooldownID, structures.md:1798-1800): the IDs read readable are kept per cooldownID too (cidIDs, one entry per
+-- entry ever shown: bounded), and an icon with nothing kept looks its cooldownID up there, else asks the game once
+-- (C_CooldownViewer.GetCooldownViewerCooldownInfo, namespaces.md:1371: MayReturnNothing, no secret-return flag; every field is still
+-- checked). UNVERIFIED IN GAME: that the icon's cooldownID itself stays readable in a fight (INFERENCE; a secret one is never used).
+local cidIDs = {}
+local function CooldownIDOf(fr)
+    local ok, cid = pcall(Field, fr, "cooldownID")
+    if ok and type(cid) == "number" and not issecret(cid) then return cid end
+    return nil
+end
+local LINK_KEYS = { "spellID", "overrideSpellID", "overrideTooltipSpellID" }
+local function CooldownInfoIDs(cid)
+    local C = C_CooldownViewer
+    if not (C and C.GetCooldownViewerCooldownInfo) then return nil end
+    local ok, info = pcall(C.GetCooldownViewerCooldownInfo, cid)
+    if not ok or type(info) ~= "table" or issecret(info) then return nil end
+    local out
+    for _, k in ipairs(LINK_KEYS) do
+        local okF, v = pcall(Field, info, k)
+        if okF and type(v) == "number" and not issecret(v) then out = out or {}; out[#out + 1] = v end
+    end
+    local okL, l = pcall(Field, info, "linkedSpellIDs")
+    if okL and type(l) == "table" and not issecret(l) then
+        for _, x in ipairs(l) do if type(x) == "number" and not issecret(x) then out = out or {}; out[#out + 1] = x end end
+    end
+    return out
+end
+ns._CooldownIDsKept = cidIDs   -- (tests)
 local function FrameIDs(fr)
     local ids, hidden = {}, false
     local function Add(v)
@@ -518,9 +548,19 @@ local function FrameIDs(fr)
     end
     if hidden then
         local last = fr.xuiLastIDs
+        if type(last) ~= "table" and #ids == 0 then   -- (round 10, SD-107) never seen readable: by its cooldownID
+            local cid = CooldownIDOf(fr)
+            if cid then
+                last = cidIDs[cid]
+                if last == nil then last = CooldownInfoIDs(cid) or false; cidIDs[cid] = last end   -- (false: the game gave none; asked once)
+                if last then fr.xuiLastIDs = last end
+            end
+        end
         if type(last) == "table" then for _, x in ipairs(last) do ids[#ids + 1] = x end end
     elseif #ids > 0 then
         fr.xuiLastIDs = ids
+        local cid = CooldownIDOf(fr)
+        if cid then cidIDs[cid] = ids end
     end
     return ids
 end
@@ -970,6 +1010,11 @@ end
 local GLOW_TRUST = 2
 ns.GLOW_TRUST = GLOW_TRUST
 local glowButtons
+-- (round 10, SD-82 / SD-90) the glows to look at a moment later: [button] = when it began to glow (GetTime()); one timer at a time,
+-- one function made once (before: a new function per glow). The timer looks at every glow that began by the moment it was set.
+local glowDue, glowArmed, glowArmedAt = {}, false, 0
+local GLOW_LATER = 0.15
+local GlowLater
 local function GlowButtons()
     if glowButtons then return glowButtons end
     glowButtons = {}
@@ -1071,6 +1116,22 @@ function ns.OnSpellOverrideUpdated(base, override)
         end
     end
 end
+-- each due glow is looked at; one that came later than the first waits for its own moment (the timer is set again for the earliest)
+function GlowLater()
+    glowArmed = false
+    local cut, nextAt = glowArmedAt, nil
+    for b, at in pairs(glowDue) do
+        if at <= cut then glowDue[b] = nil; pcall(ns.ObserveGlowPairing, b)
+        elseif not nextAt or at < nextAt then nextAt = at end
+    end
+    if nextAt and C_Timer and C_Timer.After then
+        glowArmed, glowArmedAt = true, nextAt
+        local d = nextAt + GLOW_LATER - GetTime()
+        C_Timer.After(d > 0 and d or 0, GlowLater)
+    end
+end
+-- (tests) a stand-in that drops its pending timers drops the armed look-later too (the game's timers always run)
+function ns._GlowLaterReset() glowArmed = false; for b in pairs(glowDue) do glowDue[b] = nil end end
 if CreateFrame then
     local gf = CreateFrame("Frame")
     for _, e in ipairs({ "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE",
@@ -1084,7 +1145,9 @@ if CreateFrame then
                     glowOn[a1] = true
                     -- the aura and the glow arrive in either order within a frame: look a moment later
                     if GlowButtons()[a1] and C_Timer and C_Timer.After then
-                        C_Timer.After(0.15, function() pcall(ns.ObserveGlowPairing, a1) end)
+                        local now = GetTime()
+                        glowDue[a1] = now
+                        if not glowArmed then glowArmed, glowArmedAt = true, now; C_Timer.After(GLOW_LATER, GlowLater) end
                     end
                 else
                     glowOn[a1] = nil
