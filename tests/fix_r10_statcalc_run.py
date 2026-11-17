@@ -29,6 +29,12 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
      does not bring it back after combat; reopening it afterwards docks it. In combat only PLAYER_REGEN_ENABLED is heard; closed, nothing.
   G  while on: /xui stats status (not loaded yet / loaded), options, off (typed: one line; the open settings page redraws at once).
   H  a profile import that switches it off (loaded) makes it inert at once with the same line; one that switches it on installs the hook.
+  I  (repair 1) the guards that carry SD-94 / SD-105: saved on, then "/xui stats off" before the first open prints one plain line and
+     afterwards the character window opening reads nothing of it; saved on with the panel left closed (or its panel switched off), the
+     character window opening reads nothing of it; the character window opened in combat and left open, the first /xui stats after
+     combat opens the panel docked and leaves it open (it is not opened and closed again).
+  J  (repair 1) the calculator switched off in the game's AddOns list: a click on the minimap row prints one line, the row leaves the
+     list, the open settings page redraws by itself and says it could not load this session; a second try is silent.
 In-game behaviour is UNVERIFIED IN GAME: the harness is a stand-in for the game (V25). Instruction counts are stand-in numbers.
 Run: python3 tests/fix_r10_statcalc_run.py   (Lua 5.1 via lupa; slow: the stand-in settings window redraws take seconds)."""
 import os, sys
@@ -363,13 +369,104 @@ return R
 end
 '''
 
+# I: guards that carry SD-94 / SD-105 (round 10 repair 1: the reviewer's surviving mutations R15, R1, R2 and R13)
+# I1 saved on, switched off by typing before the first open: one plain line; then nothing of it is ever read, the character window included
+S_OFF_FIRST = r'''
+return function(W, L)
+''' + COMMON + LOGIN + r'''
+section("I1", function()
+check("I1 setup: saved on, not loaded, the loader's hook is in", not loaded() and cfHooks == 1 and XayaUIBonusDB.characterToolkit.enabled == true)
+local n = #said
+ns.RunCommand("stats", "off")
+local got = saidSince(n)
+check("I1 /xui stats off before the first open: exactly one line, 'The Stat Calculator is off.' (nothing loaded, so no memory line)",
+  #got == 1 and got[1] == "The Stat Calculator is off." and XayaUIBonusDB.characterToolkit.enabled == false and not loaded(), table.concat(got, " / "))
+CharacterFrame:Show(); W.tick(0.1, 3)
+check("I1 ...then the character window opens (panel left open, the default): nothing of it is read, nothing loads, nothing shows (SD-105, SD-94)",
+  not loaded() and #chunks == 0 and #loadCalls == 0 and not shown(), #chunks .. " chunks, " .. #loadCalls .. " load calls")
+CharacterFrame:Hide(); CharacterFrame:Show(); W.tick(0.1, 3); CharacterFrame:Hide()
+check("I1 ...and again: still nothing read", not loaded() and #chunks == 0 and #loadCalls == 0)
+check("I1 ...the minimap row is left out of the list", not rowAvailable())
+end)
+return R
+end
+'''
 
-def session(src, saved):
+# I2 saved on, the panel left closed (or its panel switched off): the character window opening loads nothing (SD-94)
+S_CLOSED = r'''
+return function(W, L)
+''' + COMMON + LOGIN + r'''
+section("I2", function()
+local c = XayaUIBonusDB.characterToolkit
+c.panelOpen = false
+CharacterFrame:Show(); W.tick(0.1, 3); CharacterFrame:Hide()
+check("I2 saved on, the panel left closed: the character window opening loads nothing, reads none of its files (SD-94: \"if window is not open, it shouldn't use memory\")",
+  not loaded() and #chunks == 0 and #loadCalls == 0 and not shown(), #chunks .. " chunks, " .. #loadCalls .. " load calls")
+c.panelOpen = nil; c.panel = false
+CharacterFrame:Show(); W.tick(0.1, 3); CharacterFrame:Hide()
+check("I2 its panel switched off in its options: the character window opening loads nothing", not loaded() and #chunks == 0 and #loadCalls == 0)
+c.panel = nil; c.panelOpen = true
+CharacterFrame:Show(); W.tick(0.1, 3)
+check("I2 control: the panel left open, the character window opening is the first open (loaded once, docked)", loaded() and #loadCalls == 1 and shown()
+  and panel().standalone == false, #loadCalls)
+CharacterFrame:Hide()
+end)
+return R
+end
+'''
+
+# I3 the character window opened in combat and left open; after combat the first /xui stats opens the panel (docked) and leaves it open
+S_COMBAT_THEN_TYPED = r'''
+return function(W, L)
+''' + COMMON + LOGIN + r'''
+section("I3", function()
+W.enterCombat()
+CharacterFrame:Show(); W.tick(0.1, 3)
+W.leaveCombat(); W.tick(0.2, 5)
+check("I3 setup: the character window opened in combat and left open; after combat nothing loaded (SD-102)", not loaded() and #loadCalls == 0 and not shown())
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+check("I3 the first /xui stats after combat: loaded once, and the panel is open (docked beside the open window), not opened and closed again",
+  loaded() and #loadCalls == 1 and shown() and panel().standalone == false, tostring(shown()))
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+check("I3 ...the next /xui stats closes it", not shown())
+CharacterFrame:Hide()
+end)
+return R
+end
+'''
+
+# J: the calculator could not load (switched off in the game's AddOns list), the settings window open (R10, R11)
+S_NOLOAD = r'''
+return function(W, L)
+''' + COMMON + LOGIN + WINDOW + r'''
+section("J", function()
+openWindow()
+check("J setup: saved on, the page says its options appear after the first open", drawnText("Its options appear here after you first open the Stat Calculator.") and rowAvailable())
+local b0, n = builds, #said
+clickRow(); W.tick(0.1, 3)
+local got = saidSince(n)
+check("J a click on the minimap row, the calculator switched off in the AddOns list: one line saying so and how to fix it; nothing shows",
+  #got == 1 and got[1] == "the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload."
+  and not loaded() and not shown(), table.concat(got, " / "))
+check("J ...the minimap row is left out of the list now (it could not load this session)", not rowAvailable())
+check("J ...the open settings window redrew by itself with a fresh tree", builds > b0, (builds - b0) .. " builds")
+check("J ...its page now says it could not load this session (not the stale 'appear after you first open' line)",
+  drawnText("The Stat Calculator could not load this session. Chat says why.") and not drawnText("Its options appear here after you first open"))
+n = #said
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+check("J ...a second try says nothing more and asks for no second load", #saidSince(n) == 0 and #loadCalls == 1, #loadCalls)
+end)
+return R
+end
+'''
+
+
+def session(src, saved, off=()):
     folders = H.find_addons()
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
-    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}})
+    opts = H.to_lua(L, {"folders": folders, "enabled": {k: (k not in off) for k in folders}})
     opts["saved"] = H.to_lua(L, saved or {})
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world, opts)
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(src, world, loader)
@@ -384,9 +481,12 @@ ON = {"XayaUI_Bonus": {"XayaUIBonusDB": {"storeVersion": 1, "characterToolkit": 
 def main():
     bad = n = 0
     errs = []
-    for tag, src, saved in (("fresh install, settings window open", S_FRESH, {}), ("saved on", S_ON, ON),
-                            ("profile import off", S_IMPORT, ON), ("profile import on", S_IMPORT_ON, {})):
-        r, e = session(src, saved)
+    for tag, src, saved, *rest in (("fresh install, settings window open", S_FRESH, {}), ("saved on", S_ON, ON),
+                            ("profile import off", S_IMPORT, ON), ("profile import on", S_IMPORT_ON, {}),
+                            ("saved on, off before the first open", S_OFF_FIRST, ON), ("saved on, panel closed", S_CLOSED, ON),
+                            ("saved on, window opened in combat", S_COMBAT_THEN_TYPED, ON)) + (
+                            ("saved on, calculator off in the AddOns list", S_NOLOAD, ON, ("XayaUI_Bonus_StatCalculator",)),):
+        r, e = session(src, saved, *rest)
         for name, ok in r:
             n += 1
             print(("PASS " if ok else "FAIL ") + "[%s] %s" % (tag, name))

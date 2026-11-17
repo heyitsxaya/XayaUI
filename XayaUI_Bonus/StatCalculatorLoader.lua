@@ -94,6 +94,7 @@ local function Load()
         Changed()   -- (an open settings window: the page now has its detailed options)
         return true, true
     end
+    Changed()   -- (an open settings window: the page now says it could not load, never the stale "appear after you first open" line)
     if not ns.Print then return false, false end
     -- (as the settings window's own load does, core ns.LoadOptions) one line saying why
     local state = ns.ModuleState and ns.ModuleState(PART)
