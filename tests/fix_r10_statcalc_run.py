@@ -35,6 +35,13 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
      combat opens the panel docked and leaves it open (it is not opened and closed again).
   J  (repair 1) the calculator switched off in the game's AddOns list: a click on the minimap row prints one line, the row leaves the
      list, the open settings page redraws by itself and says it could not load this session; a second try is silent.
+  K  (repair 1, SD-112: at most 600 instructions per event; gate_performance bills a handler for every game call it makes, plus the
+     gate's own wrapper around each call) the panel open on its own, combat starts: the calculator's handler makes at most 4 game calls
+     (its events changed: UnregisterAllEvents and RegisterEvent; IsShown and Hide of the panel) and asks no Change box whether it has
+     the keyboard (before: 13 calls, 8 of them HasFocus from core's panel-hide pass, 1200 instructions in the gate; after: 4 calls, 400
+     instructions in the gate, both stand-in numbers). What the player
+     keeps: a Change box with the keyboard still lets go when combat starts and when the panel is closed (V29); a drag or a resize cut
+     off by combat start is still ended (gate G-006).
 In-game behaviour is UNVERIFIED IN GAME: the harness is a stand-in for the game (V25). Instruction counts are stand-in numbers.
 Run: python3 tests/fix_r10_statcalc_run.py   (Lua 5.1 via lupa; slow: the stand-in settings window redraws take seconds)."""
 import os, sys
@@ -460,6 +467,95 @@ return R
 end
 '''
 
+# K: the combat-start close, what it costs and what it keeps (round 10 repair 1, SD-112)
+S_COMBAT_COST = r'''
+return function(W, L)
+''' + COMMON + LOGIN + r'''
+-- the calculator's own frames that hear combat start; its handler is run alone (as the gate bills it), then the game is in combat
+local function calcCombatStart(measure)
+  local hs = {}
+  for _, o in ipairs(mine()) do if o._events.PLAYER_REGEN_DISABLED and o._scripts.OnEvent then hs[#hs + 1] = o end end
+  local mt = getmetatable(UIParent); local old = mt.__index
+  local calls, focusAsks, ins = {}, 0, 0
+  if measure then
+    mt.__index = function(t, k)
+      local v = old(t, k)
+      if type(k) == "string" and k:match("^[A-Z]") and type(v) == "function" then calls[#calls + 1] = k; if k == "HasFocus" then focusAsks = focusAsks + 1 end end
+      return v
+    end
+  end
+  for _, o in ipairs(hs) do
+    if measure then debug.sethook(function() ins = ins + 1 end, "", 1) end
+    o._scripts.OnEvent(o, "PLAYER_REGEN_DISABLED")
+    if measure then debug.sethook() end
+  end
+  mt.__index = old
+  W.combat = true
+  return #hs, calls, focusAsks, ins
+end
+local function boxes() local t = {}; for _, o in ipairs(mine()) do if o._kind == "EditBox" then t[#t + 1] = o end end; return t end
+local function leave() W.combat = false; W.fire("PLAYER_REGEN_ENABLED"); W.tick(0.1, 3) end
+section("K", function()
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+check("K setup: the panel is open on its own, its Change boxes made", shown() and panel().standalone == true and #boxes() >= 1, #boxes())
+local n, calls, asks, ins = calcCombatStart(true)
+check("K combat starts: the panel is hidden (SD-100)", n == 1 and not shown(), n)
+check("K ...its handler asks no Change box whether it has the keyboard (core's panel-hide pass over every guarded box is not run)",
+  asks == 0, asks .. " HasFocus calls")
+check("K ...and makes at most 4 game calls (its events: UnregisterAllEvents, RegisterEvent; the panel: IsShown, Hide)",
+  #calls <= 4, #calls .. ": " .. table.concat(calls, ", "))
+check("K ...stand-in instructions of the whole handler, everything it calls included, at most 600 (SD-112)", ins <= 600, ins)
+leave()
+-- a Change box with the keyboard: combat start lets go of it
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+local eb
+for _, b in ipairs(boxes()) do if b:IsVisible() then eb = b; break end end
+check("K setup: open again, a Change box is shown", shown() and eb ~= nil)
+eb:SetFocus()
+check("K setup: the box has the keyboard", eb:HasFocus())
+calcCombatStart(false)
+check("K a box with the keyboard lets go when combat starts (V29)", not eb:HasFocus() and not shown())
+leave()
+-- a Change box with the keyboard: closing the panel (/xui stats) lets go of it
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+eb:SetFocus()
+check("K setup: open again, the box has the keyboard", shown() and eb:HasFocus())
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+check("K a box with the keyboard lets go when the panel is closed (V29, G-024)", not shown() and not eb:HasFocus())
+-- a box with the keyboard, the panel closed by the game's Esc list (a Hide on the panel itself)
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+eb:SetFocus()
+panel():Hide(); W.tick(0.1, 2)
+check("K a box with the keyboard lets go when the game hides the panel (Esc)", not shown() and not eb:HasFocus())
+-- a drag under way, cut off by combat start: it is ended (gate G-006)
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+local p = panel()
+local stops = 0
+local rawStop = p.StopMovingOrSizing
+rawset(p, "StopMovingOrSizing", function(self, ...) stops = stops + 1; return rawStop(self, ...) end)
+p:GetScript("OnDragStart")(p)
+calcCombatStart(false)
+check("K a drag cut off by combat start is ended (StopMovingOrSizing once; gate G-006)", stops == 1 and not shown(), stops)
+leave()
+-- a resize under way, cut off by combat start
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+stops = 0
+rawset(p, "sizing", true)
+calcCombatStart(false)
+check("K a resize cut off by combat start is ended, and the panel's size is set again by later draws (sizing cleared)",
+  stops == 1 and rawget(p, "sizing") == nil, stops)
+leave()
+-- a plain combat start with no drag: no stop call
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+stops = 0
+calcCombatStart(false)
+check("K a plain combat start (no drag, no resize) makes no StopMovingOrSizing call", stops == 0, stops)
+leave()
+end)
+return R
+end
+'''
+
 
 def session(src, saved, off=()):
     folders = H.find_addons()
@@ -484,7 +580,8 @@ def main():
     for tag, src, saved, *rest in (("fresh install, settings window open", S_FRESH, {}), ("saved on", S_ON, ON),
                             ("profile import off", S_IMPORT, ON), ("profile import on", S_IMPORT_ON, {}),
                             ("saved on, off before the first open", S_OFF_FIRST, ON), ("saved on, panel closed", S_CLOSED, ON),
-                            ("saved on, window opened in combat", S_COMBAT_THEN_TYPED, ON)) + (
+                            ("saved on, window opened in combat", S_COMBAT_THEN_TYPED, ON),
+                            ("saved on, combat-start close", S_COMBAT_COST, ON)) + (
                             ("saved on, calculator off in the AddOns list", S_NOLOAD, ON, ("XayaUI_Bonus_StatCalculator",)),):
         r, e = session(src, saved, *rest)
         for name, ok in r:

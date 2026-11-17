@@ -685,11 +685,15 @@ local function Box(key)
         -- Enter commits the typed value; letting go of the keyboard is core's (V29, gate G-024): KeyFocusGuard with enterLetsGo clears
         -- the focus after this script (core KeyCatch.lua), and installs its own Esc (the box has none of its own: the template's Esc
         -- handler, if InputBoxTemplate carries one in the game, is removed here so core's runs. INFERENCE: not checked against the live
-        -- template). Core also lets go on a click outside (GLOBAL_MOUSE_DOWN) and when the panel hides.
+        -- template). Core also lets go on a click outside (GLOBAL_MOUSE_DOWN) and when the box hides; the panel's own hide hook lets go
+        -- of the box that has the keyboard (focusBox).
         eb:SetScript("OnEnterPressed", function(self) ns.StatCalc_SetInput(self.key, self:GetText()) end)
         eb:SetScript("OnEscapePressed", nil)
         if ns.KeyFocusGuard then
-            ns.KeyFocusGuard(eb, { enterLetsGo = true })
+            -- (Bonus 0.6.47, SD-112: combat start at most 600 instructions) window = the box itself: core then hooks only the box's
+            -- own hide, not the panel's (its panel-hide pass asks every guarded box whether it has the keyboard). The panel's own hide
+            -- hook lets go of the one box that has it (focusBox), so a hidden panel still never keeps the keyboard (V29, G-024)
+            ns.KeyFocusGuard(eb, { enterLetsGo = true, window = eb })
         else
             -- (only with a core without KeyFocusGuard; tests/statcalc_keys_run.py fails then) Enter and Esc still let go
             eb:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -833,9 +837,9 @@ local function Build()
     panel:EnableMouse(true)
     panel:SetMovable(true)
     panel:RegisterForDrag("LeftButton")
-    panel:SetScript("OnDragStart", function(self) if not Docked() then self:StartMoving() end end)
+    panel:SetScript("OnDragStart", function(self) if not Docked() then self.moving = true; self:StartMoving() end end)
     panel:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
+        self:StopMovingOrSizing(); self.moving = nil
         local c = Cfg(); if not c or Docked() then return end
         local x, y = self:GetCenter()
         local ux, uy = UIParent:GetCenter()
@@ -1000,8 +1004,12 @@ local function Build()
     panel:HookScript("OnShow", function() if OnPanelShown then OnPanelShown() end end)
     panel:HookScript("OnHide", function(self)
         -- (gate G-006) a drag or resize cut off by the hide (combat, the character window closing) ends here: no OnMouseUp / OnDragStop
-        -- may come, and a set panel.sizing would stop every later draw from setting the size
-        self:StopMovingOrSizing(); self.sizing = nil
+        -- may come, and a set panel.sizing would stop every later draw from setting the size. (Bonus 0.6.47, SD-112) only while a drag
+        -- (moving, set at OnDragStart) or a resize (sizing) is under way, so a plain hide (combat start) makes no game call here
+        if rawget(self, "sizing") or rawget(self, "moving") then self:StopMovingOrSizing(); self.sizing, self.moving = nil, nil end
+        -- (V29, G-024) the Change box that has the keyboard lets go (the boxes are guarded with window = the box, see Box)
+        local eb = focusBox
+        if eb then focusBox = nil; eb:ClearFocus() end
         if OnPanelHidden then OnPanelHidden() end
     end)
     panel:Hide()
