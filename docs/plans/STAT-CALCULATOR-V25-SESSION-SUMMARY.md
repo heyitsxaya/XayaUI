@@ -28,3 +28,9 @@ Core on QA is older than main (main has the KeyCatch.lua fix bundle). Do not por
 
 ## Standing reminder (her words, A24 #8)
 The full stat list freezes in combat "for now ... circle back to this later after we confirm performance is wholly optimized. ask repeatedly, since we might need to dynamically calculate character stats later". Ask her again after every performance confirmation.
+
+## Standing rules 2026-11-17 (replace the older inherited global instructions)
+Source: docs/process/XAYA-STANDING-RULES.md on claude/dazzling-brown-x9fqrm (147c569e; REQUEST-LOG SD-132), relayed by the main session. Binding from now on. Key additions for this work:
+- CODE: the right coding model for the session (quality of landing first; cost-cutting that risks quality is unacceptable); error handling and documentation in every implementation; a maintained filemap and function call index; ask Xaya whether she wants wireframes for any UX/UI code.
+- CODE: XUI: design wireframes alongside code builds; nothing is flagged complete until it passes three questions: (1) best-practice performance, low CPU/RAM, *elegant* code that scales without patching; (2) delivers the original request in full, plus reasonable extension cases; (3) fits the holistic system, siloed so a failure does not compromise the rest. How these apply to work already in progress is being asked of Xaya by the main session; until she answers, apply them to new work and raise conflicts.
+- Never copy other codebases unless their license allows; research pointers only.
