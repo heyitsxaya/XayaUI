@@ -55,6 +55,11 @@ local DEFAULTS = {
     charDefaults = {},   -- FA-7 (Xaya 2026-11-07, "Per character (Recommended)"): per character (CharKey(), like the history), your own
                          --   default per slot key ("ench:<slot>", "gem", "diamond"): { name, itemID }   (S7)
     buy = {},            -- the "To buy" list: { { name, itemID, need, key } }   (S10)
+    upgradeToast = true,    -- UPG-1 (Xaya 2026-11-07): ask once when new gear with a socket or an enchant slot may be an upgrade.
+                            --   Default ON inside this off-by-default feature: NOT chosen by her (flagged in the debug log)
+    onlyHigherTrack = false,   -- the toast's tick "only on a higher upgrade track" (saved when the toast is answered; also on the page)
+    minTrack = "",          -- "don't make recommendations for the shopping list below ___ track": "" = no floor, else a TRACK_ORDER name
+    ignored = {},           -- per character (CharKey()): { [itemKey] = true }, itemKey = the item's GUID (this exact item), else its link
     closedTillAH = false,   -- UI-77 (O-139, QoL 0.7.42): closed with its X (or /xui shop); stays closed across reloads until the next
                             --   Auction House visit
     history = {},        -- per character: { ench = { [slot] = { [enchantID] = { n, last, name } } }, gems = { [gemID] = { n, last, name } },
@@ -67,9 +72,10 @@ local function Cfg()
     local c = QolS.shoppingList
     if type(c) ~= "table" then c = {}; QolS.shoppingList = c end
     for k, v in pairs(DEFAULTS) do if c[k] == nil then c[k] = Copy(v) end end
-    for _, k in ipairs({ "enabled", "panel", "tracker", "closedTillAH" }) do c[k] = c[k] == true end
+    for _, k in ipairs({ "enabled", "panel", "tracker", "closedTillAH", "upgradeToast", "onlyHigherTrack" }) do c[k] = c[k] == true end
+    if type(c.minTrack) ~= "string" then c.minTrack = "" end
     c.fontSize = math.max(8, math.min(16, tonumber(c.fontSize) or 11))
-    for _, k in ipairs({ "free", "defaults", "charDefaults", "buy", "history" }) do if type(c[k]) ~= "table" then c[k] = Copy(DEFAULTS[k]) end end
+    for _, k in ipairs({ "free", "defaults", "charDefaults", "buy", "history", "ignored" }) do if type(c[k]) ~= "table" then c[k] = Copy(DEFAULTS[k]) end end
     for i = #c.buy, 1, -1 do
         local b = c.buy[i]
         if type(b) ~= "table" or type(b.name) ~= "string" or b.name == "" then table.remove(c.buy, i)
@@ -930,6 +936,245 @@ local function HookTracker()
 end
 function Shop.TrackerHooked() return hookedModules.ProfessionsRecipeTracker == true end
 
+
+-------------------------------------------------------------------------------
+-- UPG-1: new gear in your bags that may be an upgrade (Xaya, 2026-11-07, her words): "auto detect new upgrade item in bag upon
+-- looting/landing IFF the item has a socket or can be enchanted. Do a single confirmation toast: "XUI has detected a new item that may
+-- potentially be an upgrade. Do you want to add a {gem}{enchant} to your shopping list for it?" yes no options. Tick Options: "ignore
+-- item," "only on a higher upgrade track" (the latter only if possible) underneath". Her answers (same day): an upgrade = "same upgrade
+-- track (champion:champion, hero:hero, myth:myth, etc) or above", with a setting "don't make recommendations for the shopping list below
+-- ___ track"; the tick compares track order, "ilvl less important if the item is on a superior track"; "ignore item" = this exact item,
+-- this character; Yes adds the gem and enchant to To buy; the toast is top-center.
+--
+-- Map (module UPG-1; docs/reference/maps/SHOPPING-LIST-UPGRADE-TOAST.md):
+--   event BAG_UPDATE_DELAYED -> Shop.ScanBags (pcall'd) -> Shop.UpgradeCandidate -> Shop.UpgradeOffer -> queue -> ToastNext
+--   toast Yes / No -> ToastAnswer -> Shop.AddToBuy (Yes), Ignored(c)[key] (tick), c.onlyHigherTrack (tick) -> ToastNext
+--   Apply (feature off or switch off) -> Shop.ToastOff
+--
+-- Game facts (docs/reference/api; quoted in the debug log):
+--   C_Item.GetItemUpgradeInfo(itemInfo) -> ItemUpgradeInfo? { currentLevel, maxLevel, maxItemLevel, trackString?, trackStringID? }
+--     (namespaces.md:2798; structures.md:4285: trackString is Nilable)
+--   C_Item.GetItemGUID(itemLocation) -> itemGUID (namespaces.md:2763): one item, the same while it moves or is worn
+--   C_Item.GetItemNumSockets / GetItemGemID (2786 / 2765); C_Item.GetItemInfoInstant's itemEquipLoc (2772)
+-- INFERENCE (unverified in game, not in the API docs): the order of the track NAMES in TRACK_ORDER. The game gives no ranking, and
+--   trackString is in the client's language: a name not in the list reads as unknown, and an unknown track asks nothing (fails safe).
+-- Rules that are mine (flagged in the debug log): the same track needs a higher item level than what you wear; an empty slot always
+--   qualifies; the comparison is with the weakest worn item of the item's slots (both rings, both trinkets, both weapon slots).
+-------------------------------------------------------------------------------
+Shop.TRACK_ORDER = { "explorer", "adventurer", "veteran", "champion", "hero", "myth" }
+local TRACK_RANK = {}
+for i, n in ipairs(Shop.TRACK_ORDER) do TRACK_RANK[n] = i end
+function Shop.CanReadTrack() return (C_Item and C_Item.GetItemUpgradeInfo) and true or false end
+-- an item's upgrade track: its rank in TRACK_ORDER and the name the game gave; nil when not readable or not in the list
+function Shop.TrackOf(link)
+    if type(link) ~= "string" or isSecret(link) or not Shop.CanReadTrack() then return nil end
+    local ok, info = pcall(C_Item.GetItemUpgradeInfo, link)
+    if not ok or type(info) ~= "table" or type(info.trackString) ~= "string" or isSecret(info.trackString) then return nil end
+    return TRACK_RANK[info.trackString:lower()], info.trackString
+end
+-- the character slots an item can go in (equip location -> inventory slots); slots without enchants or sockets in this expansion are
+-- listed too, so a socketed neck or a ring is still found
+local EQUIP_SLOTS = { INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
+    INVTYPE_WAIST = { 6 }, INVTYPE_LEGS = { 7 }, INVTYPE_FEET = { 8 }, INVTYPE_WRIST = { 9 }, INVTYPE_HAND = { 10 },
+    INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 }, INVTYPE_CLOAK = { 15 }, INVTYPE_WEAPON = { 16, 17 },
+    INVTYPE_2HWEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_SHIELD = { 17 },
+    INVTYPE_HOLDABLE = { 17 }, INVTYPE_RANGED = { 16 }, INVTYPE_RANGEDRIGHT = { 16 } }
+Shop.EQUIP_SLOTS = EQUIP_SLOTS
+-- one item's key: its GUID (this exact item, wherever it is), else its link. loc: an ItemLocation (Blizzard's ItemLocationMixin)
+local function ItemKey(loc, link)
+    if loc and C_Item and C_Item.GetItemGUID then
+        local ok, g = pcall(C_Item.GetItemGUID, loc)
+        if ok and type(g) == "string" and g ~= "" and not isSecret(g) then return g end
+    end
+    return (type(link) == "string" and not isSecret(link)) and link or nil
+end
+local function BagLoc(bag, slot) local IL = _G.ItemLocation; return IL and IL.CreateFromBagAndSlot and IL:CreateFromBagAndSlot(bag, slot) or nil end
+local function WornLoc(slot) local IL = _G.ItemLocation; return IL and IL.CreateFromEquipmentSlot and IL:CreateFromEquipmentSlot(slot) or nil end
+local function Ignored(c) local k = CharKey(); if type(c.ignored[k]) ~= "table" then c.ignored[k] = {} end; return c.ignored[k] end
+Shop.Ignored = Ignored
+-- Is this bag item worth asking about? Returns { slots, emptySockets, enchant, track, trackName, higher } or nil, reason (the reasons
+-- are read by the tests and /xui shop status).
+function Shop.UpgradeCandidate(c, link, key)
+    if type(link) ~= "string" or isSecret(link) then return nil, "no link" end
+    if key and Ignored(c)[key] then return nil, "ignored" end
+    local equipLoc = select(4, R(C_Item.GetItemInfoInstant, link))
+    local slots = type(equipLoc) == "string" and EQUIP_SLOTS[equipLoc] or nil
+    if not slots then return nil, "not gear" end
+    local cd = ns.CharDisplay_EnchantCfg and ns.CharDisplay_EnchantCfg() or nil   -- (the same enchant slots Shop.Missing uses)
+    local wanted = CM.EnchantSlots(cd)
+    local enchant = false
+    for _, s in ipairs(slots) do if wanted[s] then enchant = true end end
+    local sockets, empty = N(C_Item.GetItemNumSockets, link), 0
+    if num(sockets) and sockets > 0 then
+        local filled = 0
+        for i = 1, sockets do local g = N(C_Item.GetItemGemID, link, i); if num(g) and g > 0 then filled = filled + 1 end end
+        empty = sockets - filled
+    end
+    if not enchant and empty == 0 then return nil, "no socket, no enchant" end
+    local rank, name = Shop.TrackOf(link)
+    if not rank then return nil, "track unknown" end
+    local floor = TRACK_RANK[(c.minTrack or ""):lower()]
+    if floor and rank < floor then return nil, "below your track floor" end
+    -- the weakest worn item of those slots (lowest track, then lowest item level); an empty slot always qualifies
+    local refRank, refIlvl, emptySlot = nil, nil, false
+    for _, s in ipairs(slots) do
+        local w = R(GetInventoryItemLink, "player", s)
+        if type(w) ~= "string" then emptySlot = true
+        else
+            local r2, i2 = Shop.TrackOf(w) or 0, CM.ItemLevel(w) or 0
+            if refRank == nil or r2 < refRank or (r2 == refRank and i2 < refIlvl) then refRank, refIlvl = r2, i2 end
+        end
+    end
+    local higher = true
+    if not emptySlot then
+        if rank < refRank then return nil, "lower track than worn" end
+        if rank == refRank then
+            higher = false
+            if c.onlyHigherTrack then return nil, "not a higher track" end
+            local il = CM.ItemLevel(link)
+            if not (num(il) and il > refIlvl) then return nil, "same track, not a higher item level" end
+        end
+    end
+    return { slots = slots, emptySockets = empty, enchant = enchant, track = rank, trackName = name, higher = higher }
+end
+-- what the toast offers: the gem (one per empty socket) and the enchant, each only when a suggestion exists (your default, the one you
+-- used most); nil when neither has one (then there is nothing to add, and no toast)
+function Shop.UpgradeOffer(c, cand)
+    local o = {}
+    if cand.emptySockets > 0 then
+        local g = Shop.GemSuggestion(c)
+        if g and g.name then o.gem = { name = g.name, itemID = g.itemID, count = cand.emptySockets } end
+    end
+    if cand.enchant then
+        local e = Shop.EnchantSuggestion(c, cand.slots[1])
+        if e and e.name then o.enchant = { name = e.name, itemID = e.itemID } end
+    end
+    if o.gem or o.enchant then return o end
+end
+-- her sentence with {gem}{enchant} filled in ("a Deadly Peridot + Amani Mastery"; "2x " before the gem when two sockets are empty)
+function Shop.UpgradeToastText(o)
+    local parts = {}
+    if o.gem then parts[#parts + 1] = (o.gem.count > 1 and (o.gem.count .. "x ") or "") .. o.gem.name end
+    if o.enchant then parts[#parts + 1] = o.enchant.name end
+    return "XUI has detected a new item that may potentially be an upgrade. Do you want to add a " .. table.concat(parts, " + ")
+        .. " to your shopping list for it?"
+end
+
+-- state (V14: nothing of it exists until the first scan with the feature on; Shop.ToastOff empties it)
+local toast                                    -- the toast frame, built on the first toast
+local up = { queue = {}, seen = {}, seeded = false, lastError = nil }
+Shop.upgrade = up
+local ToastNext
+local function ToastAnswer(yes)
+    local t, c = toast, Cfg()
+    local it = t and t.item
+    if not (c and it) then return end
+    if t.ignore and it.key then Ignored(c)[it.key] = true end
+    if t.tickTrack:IsShown() then c.onlyHigherTrack = t.higher == true end
+    if yes then
+        local o = it.offer
+        if o.gem then Shop.AddToBuy(c, o.gem.name, o.gem.itemID, o.gem.count, "gem", "upg:" .. it.key .. ":gem") end
+        if o.enchant then Shop.AddToBuy(c, o.enchant.name, o.enchant.itemID, 1, "ench:" .. SlotKey(it.cand.slots[1]), "upg:" .. it.key .. ":ench") end
+    end
+    t.item = nil; t:Hide()
+    if panel and panel:IsShown() then Shop.Render() end
+    ToastNext()
+end
+local TOAST_W, TOAST_PAD = 380, ns.UI_MARGIN or 10
+local function BuildToast()
+    if toast then return toast end
+    local t = CreateFrame("Frame", "XayaUIShoppingToast", UIParent)
+    t:SetSize(TOAST_W, 132); t:SetFrameStrata("DIALOG"); t:SetClampedToScreen(true); t:EnableMouse(true)
+    t:SetPoint("TOP", UIParent, "TOP", 0, -140)   -- top-center (her answer)
+    t.bg = t:CreateTexture(nil, "BACKGROUND"); t.bg:SetAllPoints(t)
+    local bg = TC("xui-panel", "bg", { 0.05, 0.05, 0.07, 0.92 }); t.bg:SetColorTexture(bg[1], bg[2], bg[3], bg[4] or 0.92)
+    t.text = t:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    t.text:SetPoint("TOPLEFT", TOAST_PAD, -TOAST_PAD); t.text:SetWidth(TOAST_W - 2 * TOAST_PAD); t.text:SetJustifyH("LEFT")
+    if t.text.SetWordWrap then t.text:SetWordWrap(true) end
+    local function Button(label, x, fn)
+        local b = CreateFrame("Button", nil, t); b:SetSize(60, 22); b:SetPoint("BOTTOMLEFT", x, TOAST_PAD)
+        b.bg = b:CreateTexture(nil, "BACKGROUND"); b.bg:SetAllPoints(b)
+        local bc = TC("xui-button", "bg", { 0.04, 0.04, 0.04, 0.7 }); b.bg:SetColorTexture(bc[1], bc[2], bc[3], bc[4] or 1)
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.text:SetPoint("CENTER"); b.text:SetText(label)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b); hl:SetColorTexture(1, 1, 1, 0.08)
+        b:SetScript("OnClick", fn)
+        return b
+    end
+    t.yes = Button("Yes", TOAST_PAD, function() ToastAnswer(true) end)
+    t.no = Button("No", TOAST_PAD + 68, function() ToastAnswer(false) end)
+    -- the two ticks, under the text: a box that shows a check mark while ticked
+    local function Tick(label, y, field)
+        local b = CreateFrame("Button", nil, t); b:SetSize(220, 16); b:SetPoint("BOTTOMLEFT", TOAST_PAD + 146, y)
+        b.box = b:CreateTexture(nil, "BACKGROUND"); b.box:SetSize(12, 12); b.box:SetPoint("LEFT", 0, 0); b.box:SetColorTexture(0.15, 0.15, 0.15, 1)
+        b.mark = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.mark:SetPoint("CENTER", b.box, "CENTER")
+        b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); b.label:SetPoint("LEFT", b.box, "RIGHT", 6, 0); b.label:SetText(label)
+        function b.Set(v) t[field] = v and true or false; b.mark:SetText(v and "x" or "") end
+        b:SetScript("OnClick", function() b.Set(not t[field]) end)
+        return b
+    end
+    t.tickIgnore = Tick("ignore item", TOAST_PAD + 20, "ignore")
+    t.tickTrack = Tick("only on a higher upgrade track", TOAST_PAD, "higher")
+    toast = t
+    return t
+end
+ToastNext = function()
+    if toast and toast.item then return end
+    local it = table.remove(up.queue, 1)
+    if not it then return end
+    local t, c = BuildToast(), Cfg()
+    t.item = it
+    t.text:SetText(Shop.UpgradeToastText(it.offer))
+    t.tickIgnore.Set(false)
+    t.tickTrack.Set(c and c.onlyHigherTrack)
+    -- "the latter only if possible": offered only when the game gives upgrade tracks
+    if Shop.CanReadTrack() then t.tickTrack:Show() else t.tickTrack:Hide() end
+    t:Show()
+end
+function Shop.ToastShown() return toast ~= nil and toast.item ~= nil and toast:IsShown() and true or false end
+function Shop.ToastFrame() return toast end
+-- One look at your gear in the bags. An item counts as new when its key (GUID) was not in your bags or on you at the last look: loot,
+-- a purchase, mail. What you take off was worn at the last look, so it does not ask. The first look after the feature turns on only
+-- learns what is there. Only gear is looked at (one GetItemInfoInstant per slot, no tooltip reads).
+local function BagCountSlots() local k = _G.Constants and Constants.InventoryConstants and Constants.InventoryConstants.NumBagSlots; return num(k) and k or 4 end
+function Shop.ScanBags(c)
+    if not (c and c.upgradeToast) or not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo) then return end
+    local now = {}
+    for slot = 1, 19 do
+        local w = R(GetInventoryItemLink, "player", slot)
+        if type(w) == "string" then local k = ItemKey(WornLoc(slot), w); if k then now[k] = true end end
+    end
+    local fresh = {}
+    for bag = 0, BagCountSlots() do
+        local n = N(C_Container.GetContainerNumSlots, bag)
+        for i = 1, (num(n) and n or 0) do
+            local info = R(C_Container.GetContainerItemInfo, bag, i)
+            local link = type(info) == "table" and info.hyperlink
+            if type(link) == "string" and not isSecret(link) then
+                local equipLoc = select(4, R(C_Item.GetItemInfoInstant, link))
+                if type(equipLoc) == "string" and EQUIP_SLOTS[equipLoc] then
+                    local k = ItemKey(BagLoc(bag, i), link)
+                    if k then
+                        now[k] = true
+                        if up.seeded and not up.seen[k] then fresh[#fresh + 1] = { key = k, link = link } end
+                    end
+                end
+            end
+        end
+    end
+    for _, f in ipairs(fresh) do
+        local cand, why = Shop.UpgradeCandidate(c, f.link, f.key)
+        local offer = cand and Shop.UpgradeOffer(c, cand)
+        if offer then up.queue[#up.queue + 1] = { key = f.key, link = f.link, offer = offer, cand = cand }
+        else up.lastSkip = why or "nothing to suggest" end
+    end
+    up.seen, up.seeded = now, true
+    ToastNext()
+end
+function Shop.ToastOff()
+    up.queue, up.seen, up.seeded = {}, {}, false
+    if toast then toast.item = nil; toast:Hide() end
+end
+
 -------------------------------------------------------------------------------
 -- On / off (V14: nothing exists while off)
 -------------------------------------------------------------------------------
@@ -958,12 +1203,16 @@ function Shop.Apply(show)
     local c = Cfg()
     if not c then return end
     if not On(c) then
+        Shop.ToastOff()
         if ev then ev:UnregisterAllEvents() end
         if panel then panel:Hide() end
         if popup then popup:Hide() end
         return
     end
     Shop.Observe(c)
+    -- (UPG-1) the first look learns what you own; the switch off forgets it and hides a toast
+    if c.upgradeToast then if not up.seeded then local ok, err = pcall(Shop.ScanBags, c); if not ok then up.lastError = tostring(err) end end
+    else Shop.ToastOff() end
     if not ev then
         ev = CreateFrame("Frame")
         ev:SetScript("OnEvent", function(_, event, ...)
@@ -976,6 +1225,11 @@ function Shop.Apply(show)
             elseif (event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_ENTERING_WORLD") and not (panel and panel:IsShown())
                 and Shop.AutoShowWanted(cc) then
                 ShowPanel()   -- worn gear misses an enchant or a gem (read again once the game has the items), and it was not closed
+            end
+            if event == "BAG_UPDATE_DELAYED" then
+                -- (UPG-1) a failure in the look at your bags is kept for /xui shop status and never stops the rest of this handler
+                local ok, err = pcall(Shop.ScanBags, cc)
+                if not ok then up.lastError = tostring(err) end
             end
             if event == "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED" then Shop.ReadBrowse() end
             if event == "AUCTION_HOUSE_CLOSED" then browse.key, browse.results, browse.pending = nil, {}, false end
@@ -1034,6 +1288,29 @@ function ns.BuildShoppingListPage(Notify)
             get = function() return C().tracker end, set = function(_, v) C().tracker = v and true or false; Changed() end },
         fontSize = { type = "range", order = 4, name = "Text size", min = 8, max = 16, step = 1, disabled = off,
             get = function() return C().fontSize end, set = function(_, v) C().fontSize = v; Changed() end },
+        -- (UPG-1) its own tab: the toast for new gear that may be an upgrade
+        upgHdr = { type = "header", order = 5, name = "New gear",
+            desc = "Asks once when new gear with a socket or an enchant slot may be an upgrade." },
+        upgradeToast = { type = "toggle", order = 5.1, width = "full", name = "Suggest gems and enchants for new gear", disabled = off,
+            desc = "New gear in your bags with a socket or an enchant slot, on your upgrade track or higher, asks once whether to add its gem and enchant to your list.",
+            get = function() return C().upgradeToast end, set = function(_, v) C().upgradeToast = v and true or false; Changed() end },
+        onlyHigher = { type = "toggle", order = 5.2, name = "Only on a higher upgrade track",
+            disabled = function() return off() or not C().upgradeToast or not Shop.CanReadTrack() end,
+            desc = "Off, the same track with a higher item level asks too.",
+            get = function() return C().onlyHigherTrack end, set = function(_, v) C().onlyHigherTrack = v and true or false; Changed() end },
+        minTrack = { type = "select", order = 5.3, name = "Don't suggest below this track",
+            disabled = function() return off() or not C().upgradeToast end,
+            values = function()
+                local t = { [""] = "No limit" }
+                for _, n in ipairs(Shop.TRACK_ORDER) do t[n] = n:sub(1, 1):upper() .. n:sub(2) end
+                return t
+            end,
+            sorting = function() local o = { "" }; for _, n in ipairs(Shop.TRACK_ORDER) do o[#o + 1] = n end; return o end,
+            desc = "New gear on a lower upgrade track than this asks nothing.",
+            get = function() return C().minTrack end, set = function(_, v) C().minTrack = v or ""; Changed() end },
+        forgetIgnored = { type = "execute", order = 5.4, name = "Forget ignored items", disabled = off,
+            desc = "Items you told to be ignored can ask again.",
+            func = function() local c = Cfg(); if c then c.ignored[CharKey()] = {} end; Changed() end },
         defHdr = { type = "header", order = 10, name = "Your defaults",
             desc = "Sets this slot's suggested enchant or gem, kept for this character only; empty uses the one XayaUI has seen most. Type a name, or shift-click an item into the box." },
         histHdr = { type = "header", order = 30, name = "History" },
@@ -1088,6 +1365,9 @@ ns.RegisterCommand("shop", function(arg)
         ns.Print(("Shopping List: %s%s; panel %s; Blizzard's list restyled %s; %d to buy; tracker hooked %s."):format(c.enabled and "on" or "off",
             ns.ReskinTabOn() and "" or " (Blizzard Reskin is off: Blizzard Reskin > Overview, so it does not show)",
             c.panel and "on" or "off", c.tracker and "on" or "off", #c.buy, Shop.TrackerHooked() and "yes" or "no"))
+        -- (UPG-1) the new-gear toast: on / off, waiting toasts, the last reason an item did not ask, and the last error if any
+        ns.Print(("New gear toast: %s; %d waiting; last skipped: %s%s."):format(c.upgradeToast and "on" or "off", #Shop.upgrade.queue,
+            Shop.upgrade.lastSkip or "none", Shop.upgrade.lastError and ("; error: " .. Shop.upgrade.lastError) or ""))
         return
     end
     Shop.Toggle()
