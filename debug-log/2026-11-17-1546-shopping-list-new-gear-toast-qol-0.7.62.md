@@ -45,3 +45,10 @@ snapshot tests, both brought back to the base's result:
 - options_split_parity (+1, off-XayaUI_Reskin): every variant differs from 236262bc in exactly the 6 New gear lines. Only that entry was
   updated; the 6 variants already stale on 236262bc were left (refreshing them would approve differences this change did not make).
   Now 14 failed, as on the base.
+
+## Her answers 2026-11-17 (REQUEST-LOG A25 UPG-4), built
+- "Switch a/an by the name": "an" before a name starting with a vowel letter (a letter rule; INFERENCE that no name needs the sound rule).
+- "Hold until combat ends": ToastNext returns while InCombatLockdown(); PLAYER_REGEN_ENABLED (registered with the Shopping List's other
+  events, only while it is on) shows the next one. Tests: 4 new checks (134 / 134).
+- Switch default: "On" (kept). Landing: "2 but this will only be prioritized after the current work gets pushed to main" (a main build,
+  after the current work is on main; not started).

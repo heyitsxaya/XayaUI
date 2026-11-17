@@ -152,7 +152,7 @@ a1e68985edbc7ffac99a2e70095b9957  XayaUI_DevAssist/QAQuestions.lua
 af25a207933966037dbe9521308c6d15  XayaUI_DevAssist/QAReview.lua
 3b52708757fdb0a30a288f2976188fa0  XayaUI_DevAssist/QATable.lua
 af12a8e85c749375b80459d8a5b1c261  XayaUI_DevAssist/QAWalk.lua
-773aedbdf6a199f1ebe40fd6c2dc9119  XayaUI_DevAssist/QAWalks-Checklist.lua
+f99d821295bf7f6b2ff8f8ae42a9b9b3  XayaUI_DevAssist/QAWalks-Checklist.lua
 2c7bcc90ddc48aae39382a84cd014833  XayaUI_DevAssist/QAWalks-aspect-ratio.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 51a36ed4c91b187e415532e164ee077d  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
@@ -300,7 +300,7 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b48b81bdc7c9b379d6eb979df296f6ef  XayaUI_QoL/ProfilePart.lua
 0c5cb7acdb1b91fdba642b3252c19117  XayaUI_QoL/ReleaseGuard.lua
-6f702cb9f8bb073891bdf60d098ac4ab  XayaUI_QoL/ShoppingList.lua
+d9cfc8648cb3ace4d902739ada0c5abf  XayaUI_QoL/ShoppingList.lua
 85ff4b8dfdb3b6b39b051c4f85008e01  XayaUI_QoL/StatMath.lua
 488e3279f61d45bc163b1250c265f465  XayaUI_QoL/StatModel.lua
 8ccc81be51d6ab142daeffb57bbd7fff  XayaUI_QoL/StatsTextBoxes.lua
@@ -738,13 +738,13 @@ acfaabbcd7c9f67410a80dbd8d31c1e0  debug-log/2026-11-11-0141-stat-calculator-v25-
 34b586cc35b99fc8ece4f6e6a5d84209  debug-log/2026-11-11-2116-stat-calculator-v25-a24-7-qol-0.7.59.md
 cf959f764c245818687f69b7bb15cc75  debug-log/2026-11-11-2243-stat-calculator-v25-a24-8-9-qol-0.7.60.md
 776da227d07280aa7682f6ff4ba110aa  debug-log/2026-11-12-1641-stat-calculator-a24-10-rating-title-bonus-0.6.44.md
-47deb644245d50025b15618f0f7aaea9  debug-log/2026-11-17-1546-shopping-list-new-gear-toast-qol-0.7.62.md
+aec64f52ab51bdcc40ffa934400abc88  debug-log/2026-11-17-1546-shopping-list-new-gear-toast-qol-0.7.62.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-dce8824c61884ec6b337705744060aaf  docs/QA-CHECKLIST.md
+cb636fe6c216b074fa32fe48ee67b1ce  docs/QA-CHECKLIST.md
 cd710d1e9687811c155d64ea6297b2fa  docs/README-INGAME.md
 b05cf662ff82d66b612b33572b803618  docs/ROADMAP.md
 50a873d05fbcbbd5e5b2092535d3af7b  docs/SESSION-START-SUMMARY.md
-a2dcf68442df0ced351944699d7fe1c9  docs/USER-GUIDE.md
+ff4393e1e2d01a112f9526538fc5ccf1  docs/USER-GUIDE.md
 42810fe59c293f31d59a0210868a40bb  docs/WHATS-NEW.md
 addc6d522657e880ed4c488098f3799b  docs/design/BUILD-RULES.md
 7a7ebd0fe5b00917b159b0c33c48504f  docs/design/DISPLAY-AUDIT-UI-47-2026-11-07.md
@@ -808,7 +808,7 @@ fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rx
 24f31d09558468b94eb1055cb47b936b  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-00a933152255b5fd34f2f3efc77ad47b  docs/process/REQUEST-LOG.md
+59adbf8449b5703db48039fe0bf866e0  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 c754a2713e18df1a531461cd2af4b5da  docs/process/VERIFICATION.md
 3fcee98869dd9370442f963cf4c125fa  docs/process/WAKEUP-SUMMARY-2026-11-07.md
@@ -848,7 +848,7 @@ eb6cc6f83c143a933535fbca9eba237e  docs/reference/content/classes.json
 3784fba6b7ed9d1bc7dfd78ca24d172d  docs/reference/content/instances.json
 61e26f0926bef4bbed6058398e65292e  docs/reference/content/item-spells.json
 447cb6f865eab4f0c5401ffd2d383529  docs/reference/content/items.json
-6940c4081c2d14f2aa69298e6406fee2  docs/reference/maps/SHOPPING-LIST-UPGRADE-TOAST.md
+25190ecde474bd14587d6674b80fb1b4  docs/reference/maps/SHOPPING-LIST-UPGRADE-TOAST.md
 1dc5ba652036ae3c12def5ef6a4acec7  docs/reference/procs.md
 abf6edfcffd8bdb89997b8c97fff077f  docs/reference/spells/DEATHKNIGHT.md
 6ee777f2918cf1cbdcac0f3dd7d74996  docs/reference/spells/DEMONHUNTER.md
@@ -1121,7 +1121,7 @@ d43721b5fc0e38fc2308b80402321cf8  tests/settings_restructure_run.py
 75b88e5718ec5c805dc28649ea57de70  tests/settings_seam_run.py
 58371ee9e7e117cb74bdd09fc14e6bf0  tests/settings_stores.py
 8ec8a4fb395a5f024ed53ad53bdedadf  tests/share_strings_presplit_run.py
-a07f6589bdc7a1f10a8014269763592e  tests/shopping_list_run.py
+303de3ceb4b80ebab6220cb490638c60  tests/shopping_list_run.py
 d56b219db3d013b68b41f41d70827f75  tests/sidebar_delete_run.py
 74013242fe542c50dac6a6d9be9f79e9  tests/sidebar_icon_columns_run.py
 ae5f9937dbee82349d1388da8a5b7905  tests/sidebar_merge_run.py

@@ -496,6 +496,16 @@ BAGS[#BAGS + 1] = { itemID = 9512, stackCount = 1, guid = "GE" }
 local ok = pcall(fire, "BAG_UPDATE_DELAYED")
 check("an error in the bag look is caught and kept for /xui shop status", ok and (Shop.upgrade.lastError or ""):find("boom", 1, true) ~= nil, Shop.upgrade.lastError)
 Shop.UpgradeCandidate = realUC; Shop.upgrade.lastError = nil
+-- her answers 2026-11-17: "Switch a/an by the name"; "Hold until combat ends"
+check("a/an: 'an' before a vowel name", Shop.UpgradeToastText({ enchant = { name = "Amani Mastery" } }):find("add an Amani Mastery to", 1, true) ~= nil)
+check("  ...'a' before a consonant name", Shop.UpgradeToastText({ gem = { name = "Deadly Peridot", count = 1 } }):find("add a Deadly Peridot to", 1, true) ~= nil)
+combat = true
+addBag("Myth Gloves 2", 9513, "INVTYPE_HAND", { 0 }, "Myth", 700, "GC")
+-- (2 waiting: these gloves, and the gloves of the error check above, which the failed look never recorded as seen, so they are asked about now)
+check("in combat: the toasts wait (queued, none shown)", not Shop.ToastShown() and #Shop.upgrade.queue == 2, #Shop.upgrade.queue)
+combat = false; fire("PLAYER_REGEN_ENABLED")
+check("  ...combat over: the first shows", Shop.ToastShown())
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no); Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
 c.upgradeToast = false; Shop.Apply()
 addBag("Myth Helm 3", 9507, "INVTYPE_HEAD", { 0 }, "Myth", 700)
 check("the switch off: nothing asks, and nothing is kept", not Shop.ToastShown() and not Shop.upgrade.seeded and next(Shop.upgrade.seen) == nil)

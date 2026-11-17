@@ -1051,12 +1051,16 @@ function Shop.UpgradeOffer(c, cand)
     end
     if o.gem or o.enchant then return o end
 end
--- her sentence with {gem}{enchant} filled in ("a Deadly Peridot + Amani Mastery"; "2x " before the gem when two sockets are empty)
+-- her sentence with {gem}{enchant} filled in ("a Deadly Peridot + Amani Mastery"; "2x " before the gem when two sockets are empty).
+-- "a" becomes "an" before a name that starts with a vowel letter (her answer 2026-11-17: "Switch a/an by the name"); a simple letter
+-- rule, so a name like "Unique ..." would read "an Unique" (INFERENCE that no gem or enchant name needs the sound rule).
 function Shop.UpgradeToastText(o)
     local parts = {}
     if o.gem then parts[#parts + 1] = (o.gem.count > 1 and (o.gem.count .. "x ") or "") .. o.gem.name end
     if o.enchant then parts[#parts + 1] = o.enchant.name end
-    return "XUI has detected a new item that may potentially be an upgrade. Do you want to add a " .. table.concat(parts, " + ")
+    local what = table.concat(parts, " + ")
+    local article = what:sub(1, 1):lower():match("[aeiou]") and "an" or "a"
+    return "XUI has detected a new item that may potentially be an upgrade. Do you want to add " .. article .. " " .. what
         .. " to your shopping list for it?"
 end
 
@@ -1119,6 +1123,8 @@ local function BuildToast()
 end
 ToastNext = function()
     if toast and toast.item then return end
+    -- held while in combat (her answer 2026-11-17: "Hold until combat ends"); PLAYER_REGEN_ENABLED calls this again
+    if InCombatLockdown and InCombatLockdown() then return end
     local it = table.remove(up.queue, 1)
     if not it then return end
     local t, c = BuildToast(), Cfg()
@@ -1226,6 +1232,7 @@ function Shop.Apply(show)
                 and Shop.AutoShowWanted(cc) then
                 ShowPanel()   -- worn gear misses an enchant or a gem (read again once the game has the items), and it was not closed
             end
+            if event == "PLAYER_REGEN_ENABLED" then ToastNext() end   -- (UPG-1) combat over: a held toast shows
             if event == "BAG_UPDATE_DELAYED" then
                 -- (UPG-1) a failure in the look at your bags is kept for /xui shop status and never stops the rest of this handler
                 local ok, err = pcall(Shop.ScanBags, cc)
@@ -1238,7 +1245,8 @@ function Shop.Apply(show)
         end)
     end
     for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "PLAYER_ENTERING_WORLD", "BAG_UPDATE_DELAYED", "TRACKED_RECIPE_UPDATE",
-        "GET_ITEM_INFO_RECEIVED", "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "ADDON_LOADED" }) do
+        "GET_ITEM_INFO_RECEIVED", "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", "ADDON_LOADED",
+        "PLAYER_REGEN_ENABLED" }) do
         pcall(ev.RegisterEvent, ev, e)
     end
     if c.tracker then HookTracker(); RestyleTracker() end

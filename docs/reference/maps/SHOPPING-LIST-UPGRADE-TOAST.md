@@ -15,7 +15,8 @@ BAG_UPDATE_DELAYED (Shop.Apply's event frame; registered only while the Shopping
             Shop.TrackOf(link) (C_Item.GetItemUpgradeInfo .trackString -> TRACK_ORDER rank)
             c.minTrack floor; weakest worn item of the slots; c.onlyHigherTrack; same track -> higher item level (CM.ItemLevel)
        -> Shop.UpgradeOffer(c, cand)                   Shop.GemSuggestion / Shop.EnchantSuggestion; nil = nothing to add
-       -> Shop.upgrade.queue -> ToastNext -> BuildToast (first time only) -> Shop.UpgradeToastText
+       -> Shop.upgrade.queue -> ToastNext (returns while InCombatLockdown()) -> BuildToast (first time only) -> Shop.UpgradeToastText
+event PLAYER_REGEN_ENABLED (combat over) -> ToastNext (a held toast shows)
 Toast Yes / No -> ToastAnswer
        tick "ignore item" -> Ignored(c)[key] = true (per character)
        tick "only on a higher upgrade track" -> c.onlyHigherTrack
