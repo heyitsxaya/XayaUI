@@ -95,12 +95,19 @@ local function IsNestTop(button)
 end
 ns.IsNestTop = IsNestTop
 -- (Options 0.6.109, class themes v2; design mockup ClassThemesV2 cards, confirmed 2026-11-13) the name on a class glow is drawn in
--- that class's glow text colour; nil on any other glow (a colour or gradient of your own on "Parent group glow": normal text)
+-- that class's glow text colour; nil on any other glow (a colour or gradient of your own on "Parent group glow": normal text).
+-- The rule list repaints its rows several times a second, so the colour is worked out once per theme change (every theme or scope
+-- edit goes through T.Resolve, whose listeners clear it): nil = not worked out yet, false = this glow has no name colour.
+local glowName
+if ns.Theme and ns.Theme.OnResolve then ns.Theme.OnResolve(function() glowName = nil end) end
 local function GlowNameColor(button)
     local TH = ns.Theme
     if not (TH and TH.Grad and IsNestTop(button)) then return nil end
-    local g = TH.Grad("xui-list-parent", "bg", "settings")
-    return g and g.fixed and g.text and g.text.name or nil
+    if glowName == nil then
+        local ok, g = pcall(TH.Grad, "xui-list-parent", "bg", "settings")
+        glowName = ok and g and g.fixed and g.text and g.text.name or false
+    end
+    return glowName or nil
 end
 
 function ns.PaintRowText(button)
