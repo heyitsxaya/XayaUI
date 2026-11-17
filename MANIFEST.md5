@@ -228,6 +228,7 @@ d80985e09b10d2fd97bbe206f3362fff  docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.
 0d9591958c2388041894092b0921d397  docs/plans/STAT-CALCULATOR-REDESIGN-2026-11-04.md
 08487822040dfba940699388dc7a08e8  docs/plans/STAT-CALCULATOR-REQUIREMENTS-2026-11-04.md
 5cf08a28c3a6c0cf0331ad1b56e38f7b  docs/process/BRANCHES-2026-11-07.md
+456cd59c6e20b99dd7c5f1f1e38e32a2  docs/process/BRANCHES-2026-11-08.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 0e6f505ca76ce1a9f019a5d67b9a4f6d  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
 c26bb038def46ae46c7073a1d7286cbc  docs/process/FUNCTION-AUDIT-2026-11-07.md
@@ -256,6 +257,7 @@ b43bf1277a43de688b90c6fe565db7be  docs/process/REQUEST-LOG.md
 081e1d5d47786327b4103006f6fe1245  docs/process/audits/debug-triage-2026-11-08.md
 8cb92d917efd42bdfb8da522d1b1ef77  docs/process/audits/toggle-audit-2026-11-08.md
 1e94015a6bbc6df04beba4c8e3d8b12c  docs/process/handoffs/bar-cues.md
+d6dd03f85800bbd9b6a6f5820daf6ffb  docs/process/handoffs/bold-cerf-status-branches.md
 248f0fc438b5174dcd9b29362c14c26d  docs/process/handoffs/character-pane.md
 309179f1a93a212af450b63cd877fc72  docs/process/handoffs/chat-issue-review.md
 ba484bd6279bcc1fd5a17a8d1929c865  docs/process/handoffs/d8-raid-rules.md
