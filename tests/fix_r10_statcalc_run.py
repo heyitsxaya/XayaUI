@@ -35,6 +35,8 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
      combat opens the panel docked and leaves it open (it is not opened and closed again).
   J  (repair 1) the calculator switched off in the game's AddOns list: a click on the minimap row prints one line, the row leaves the
      list, the open settings page redraws by itself and says it could not load this session; a second try is silent.
+     (repair 2) /xui stats status then says it could not load this session and why (it said "not loaded yet" before), and the
+     character window opening loads and says nothing. J2: the same for its folder not installed.
   K  (repair 1, SD-112: at most 600 instructions per event; gate_performance bills a handler for every game call it makes, plus the
      gate's own wrapper around each call) the panel open on its own, combat starts: the calculator's handler makes at most 4 game calls
      (its events changed: UnregisterAllEvents and RegisterEvent; IsShown and Hide of the panel) and asks no Change box whether it has
@@ -462,6 +464,42 @@ check("J ...its page now says it could not load this session (not the stale 'app
 n = #said
 ns.RunCommand("stats", ""); W.tick(0.1, 2)
 check("J ...a second try says nothing more and asks for no second load", #saidSince(n) == 0 and #loadCalls == 1, #loadCalls)
+-- (round 10 repair 2) /xui stats status in the same state says what the page says: it could not load this session, and why
+n = #said
+ns.RunCommand("stats", "status"); W.tick(0.1, 2)
+local st = saidSince(n)
+check("J ...'/xui stats status' then says it could not load this session and why, in one line (never 'not loaded yet'); nothing more is loaded",
+  #st == 1 and st[1] == "Stat Calculator: on, but it could not load this session. It is switched off in the game's AddOns list: turn it on, then /reload."
+  and #loadCalls == 1 and not loaded(), table.concat(st, " / ") .. " | loads " .. #loadCalls)
+n = #said
+CharacterFrame:Show(); W.tick(0.1, 3); CharacterFrame:Hide()
+check("J ...the character window opening then loads nothing and says nothing", #saidSince(n) == 0 and #loadCalls == 1 and not shown(), #loadCalls)
+end)
+return R
+end
+'''
+
+# J2 (round 10 repair 2): the calculator's folder is not installed; /xui stats status after the first try says so (no settings window)
+S_MISSING = r'''
+return function(W, L)
+''' + COMMON + LOGIN + r'''
+section("J2", function()
+local n = #said
+ns.RunCommand("stats", "status")
+local st = saidSince(n)
+check("J2 setup: saved on, before the first try /xui stats status says 'not loaded yet'",
+  #st == 1 and st[1] == "Stat Calculator: on, not loaded yet (it loads the first time you open it).", table.concat(st, " / "))
+n = #said
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+local got = saidSince(n)
+check("J2 /xui stats with the folder not installed: one line saying so; nothing shows",
+  #got == 1 and got[1] == "the Stat Calculator is on, but its folder XayaUI_Bonus_StatCalculator is not installed: it belongs next to XayaUI_Bonus in Interface\\AddOns."
+  and not loaded() and not shown(), table.concat(got, " / "))
+n = #said
+ns.RunCommand("stats", "status")
+st = saidSince(n)
+check("J2 ...'/xui stats status' then says it could not load this session because its folder is not installed (one line)",
+  #st == 1 and st[1] == "Stat Calculator: on, but it could not load this session. Its folder XayaUI_Bonus_StatCalculator is not installed.", table.concat(st, " / "))
 end)
 return R
 end
@@ -557,8 +595,8 @@ end
 '''
 
 
-def session(src, saved, off=()):
-    folders = H.find_addons()
+def session(src, saved, off=(), gone=()):
+    folders = {k: v for k, v in H.find_addons().items() if k not in gone}
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
@@ -582,7 +620,8 @@ def main():
                             ("saved on, off before the first open", S_OFF_FIRST, ON), ("saved on, panel closed", S_CLOSED, ON),
                             ("saved on, window opened in combat", S_COMBAT_THEN_TYPED, ON),
                             ("saved on, combat-start close", S_COMBAT_COST, ON)) + (
-                            ("saved on, calculator off in the AddOns list", S_NOLOAD, ON, ("XayaUI_Bonus_StatCalculator",)),):
+                            ("saved on, calculator off in the AddOns list", S_NOLOAD, ON, ("XayaUI_Bonus_StatCalculator",)),
+                            ("saved on, calculator folder not installed", S_MISSING, ON, (), ("XayaUI_Bonus_StatCalculator",)),):
         r, e = session(src, saved, *rest)
         for name, ok in r:
             n += 1

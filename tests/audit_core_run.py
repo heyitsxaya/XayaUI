@@ -168,6 +168,18 @@ do
   local bad = {}
   for w, a in pairs(want) do local m = ns.ModuleOfCommand and ns.ModuleOfCommand(w); if not (m and m.addon == a) then bad[#bad + 1] = w end end
   check("D8 /xui stats, shop, reskin, releaseguard, calc, calculator name their addon", #bad == 0, table.concat(bad, ","))
+  -- (bundle 1 round 10, calculator unit) with XayaUI Bonus Features loaded (as here) the row is not what answers: the Calculator registered
+  -- both words with its switch (on by default, SD-116), so a sum gets its answer, not a "never registered" or an "is off" line
+  if C_AddOns.IsAddOnLoaded("XayaUI_Bonus") then
+    for _, w in ipairs({ "calc", "calculator" }) do
+      local n0 = #W.printed
+      local took = ns.RunCommand(w, "2+3*4")
+      local said = {}
+      for i = n0 + 1, #W.printed do said[#said + 1] = tostring(W.printed[i]):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") end
+      check(("D8 with XayaUI Bonus Features loaded, /xui %s 2+3*4 is the Calculator's: one line, 2+3*4 = 14"):format(w),
+        took == true and #said == 1 and said[1] == "XayaUI: 2+3*4 = 14", tostring(took) .. " " .. table.concat(said, " / "))
+    end
+  end
 end
 -- D57: a rule whose evaluation fails is recorded for /xui report; a cue migration that fails on one condition leaves it as it was
 do

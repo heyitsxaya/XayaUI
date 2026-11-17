@@ -1,14 +1,14 @@
 {
  "all-on": {
-  "registered": "chat= qol= bonus=statcalc reskin= debugging= nameplates= media= rules= core= cooldowns=",
+  "registered": "chat= qol= bonus=calculator,statcalc reskin= debugging= nameplates= media= rules= core= cooldowns=",
   "tabs": {
    "<root>": [
     "1d9b85139063968d",
     1
    ],
    "bonus": [
-    "211f2cc16dc30394",
-    3
+    "846d5e8f1ac01082",
+    8
    ],
    "cooldowns": [
     "0b5c193a92951b7c",
@@ -19,12 +19,12 @@
     37
    ],
    "set": [
-    "5506788f272a74ab",
-    234
+    "4205a4a9b040d813",
+    235
    ],
    "settings": [
-    "504240cced864385",
-    233
+    "94a60d23311175f0",
+    234
    ]
   }
  },

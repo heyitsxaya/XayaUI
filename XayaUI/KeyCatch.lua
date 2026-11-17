@@ -114,6 +114,11 @@ local function WatchCombat()
 end
 
 local function Hook(frame, kc)
+    -- the key kept for one press is given back next frame (SD-90: made once per window, not on every key)
+    local function GiveBack()
+        kc.held = nil
+        if not Fighting() then Pass(frame) end
+    end
     -- (A23 SD-12) a window that was let go (SetActive(false): the settings window's AceGUI frame, recycled for another addon) with its
     -- keyboard already off is not touched again
     frame:HookScript("OnShow", function(self) if kc.active or kc.kb then Apply(self, kc) end end)
@@ -139,10 +144,7 @@ local function Hook(frame, kc)
         if ok and used == true then
             pcall(self.SetPropagateKeyboardInput, self, false)   -- this key only
             kc.held = true
-            C_Timer.After(0, function()
-                kc.held = nil
-                if not Fighting() then Pass(self) end
-            end)
+            C_Timer.After(0, GiveBack)
         else
             Pass(self)
         end

@@ -231,9 +231,10 @@ local function BuildButton()
             Place()
         end)
     end)
+    local function DragDone() b.dragging = false end   -- (SD-90: made once with the button, not on every drag)
     b:SetScript("OnDragStop", function(self)
         self:SetScript("OnUpdate", nil)
-        C_Timer.After(0.05, function() self.dragging = false end)   -- the click that ends a drag is not a click
+        C_Timer.After(0.05, DragDone)   -- the click that ends a drag is not a click
         if ns.Minimap_Changed then ns.Minimap_Changed() end
     end)
     b:SetScript("OnEnter", function(self)

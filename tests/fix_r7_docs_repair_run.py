@@ -139,7 +139,9 @@ def main():
           # (round 9 docs: the section grew to B429 with the round 9 in-game steps, B424 to B429; the check still asks for the last one)
           # (round 9 docs repair 1: B430 to B433, the round 8 in-game checks that had no step, so the last one is B433)
           # (round 9 docs repair 2: B434, the game-played sound with a combat or boss Load choice; the last one is B434)
-          last == 434 and ("B401 to B%d" % last) in wn and ("B401 to B%d" % last) in sss)
+          # (round 10 docs: B435 to B438, the in-game steps only the game can confirm (sound probe, Stat Calculator first open,
+          # Calculator keys, hidden interface); the last one is B438)
+          last == 438 and ("B401 to B%d" % last) in wn and ("B401 to B%d" % last) in sss)
 
     # L: REQUEST-LOG status cells (V15)
     log = read("docs/process/REQUEST-LOG.md")

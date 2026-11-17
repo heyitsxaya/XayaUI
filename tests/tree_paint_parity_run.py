@@ -43,6 +43,10 @@ merge base ad60a05's reproduces every merged drawing exactly (0 lines differ). A
 every drawing that lists the top tabs (on-rules-selected lists none: 0 lines), and in the Rules-off Profiles drawing also main's
 left-over "Stat Calculator" tree row. Against main: rules-enabled +1 (round 6's Open Combat Tracking Setup button), rules-selected and
 rules-smart (review R10, above): all bundle 1's.
+Regenerated on 2026-11-17 (bundle 1 round 10, calculator unit; SD-95 / SD-115 / SD-116: the arithmetic Calculator is a page of its own in
+Bonus Features) with `--golden`: only off.profiles changed, 9 -> 10 lines. `--dump` before and after differ in exactly that drawing: the
+left-over Bonus Features tree gains the row "Calculator" (sorted before "Stat Calculator"), and the "Stat Calculator" row, now second,
+is drawn in the next row's text color (col 0.96 0.96 0.98 instead of 1.00 1.00 1.00). Every other drawing is unchanged.
 Run: python3 tests/tree_paint_parity_run.py   (Lua 5.1 via lupa)"""
 import hashlib, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))

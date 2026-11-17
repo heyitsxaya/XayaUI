@@ -80,6 +80,11 @@ local function Changed() if ns.Fire then ns.Fire("CONFIG_CHANGED") end end   -- 
 -- Load at first open (SD-105)
 -------------------------------------------------------------------------------
 local loadTried, loadOk = false, false
+-- (round 10 repair 2) why it could not load, for /xui stats status: one of the three lines below, set once by the failed load
+local WHY_DISABLED = "Stat Calculator: on, but it could not load this session. It is switched off in the game's AddOns list: turn it on, then /reload."
+local WHY_MISSING = "Stat Calculator: on, but it could not load this session. Its folder XayaUI_Bonus_StatCalculator is not installed."
+local WHY_OTHER = "Stat Calculator: on, but it could not load this session. /xui bug shows errors."
+local loadWhy = WHY_OTHER
 -- returns whether it is loaded, and whether this call loaded it
 local function Load()
     if loadTried then return loadOk, false end
@@ -95,9 +100,10 @@ local function Load()
         return true, true
     end
     Changed()   -- (an open settings window: the page now says it could not load, never the stale "appear after you first open" line)
-    if not ns.Print then return false, false end
     -- (as the settings window's own load does, core ns.LoadOptions) one line saying why
     local state = ns.ModuleState and ns.ModuleState(PART)
+    loadWhy = (state == "disabled" and WHY_DISABLED) or (state == "missing" and WHY_MISSING) or WHY_OTHER
+    if not ns.Print then return false, false end
     if state == "disabled" then
         ns.Print("the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload.")
     elseif state == "missing" then
@@ -180,7 +186,7 @@ ns.StatCalcLoader = { Tried = function() return loadTried end, Loaded = function
 
 local function Switch(Notify)
     return { type = "toggle", order = 1, name = LABEL,
-        desc = "Turns the Stat Calculator on or off. On, it loads the first time you open it. Off, nothing of it runs; once it has loaded, its memory is freed at your next /reload.",
+        desc = "On, the Stat Calculator loads the first time you open it. Off, nothing of it runs; once it has loaded, its memory is freed at your next /reload.",
         tip = "Turns on the Stat Calculator.",
         get = function() return Saved() end,
         set = function(_, v)
@@ -226,6 +232,8 @@ local function Command(arg)
     if arg == "status" then
         local calc = Calc()
         if calc and calc.Command then calc.Command("status"); return end
+        -- (round 10 repair 2) after a failed load this session, say so and why, as the page does (NoteText); never "not loaded yet"
+        if loadTried and not loadOk then ns.Print(loadWhy); return end
         ns.Print("Stat Calculator: on, not loaded yet (it loads the first time you open it).")
         return
     end

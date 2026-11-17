@@ -27,10 +27,10 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 
 ## 2026-11-16 — Rules Fix Bundle 1
 
-### XayaUI 0.6.86
+### XayaUI 0.6.87
 
 **Install (read this first)**
-- Replace the XayaUI, XayaUI_Options and XayaUI_Rules folders as whole folders, and add the new XayaUI_Debug folder next to them. The rule editor moved from XayaUI_Rules to XayaUI_Options. The XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders are unchanged.
+- Replace the XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders as whole folders, and add the new XayaUI_Debug folder next to them. The rule editor moved from XayaUI_Rules to XayaUI_Options.
 
 **Combat lock (new)**
 - The settings window, the rule editor, the mover (/xui unlock), Combat Tracking Setup, the talent scan and /xui enable no longer open in combat. Asked for in combat, one chat line says so, for example "the settings window can't open during combat. It will open when combat ends.", and it opens by itself when combat ends. Only your last request is kept.
@@ -60,6 +60,8 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Commands**
 - /xui notes, /xui notepad, /xui note and /xui data now show the command list. Before, they printed a false "did not respond" line.
 - /xui debug talents status and /xui debug talents followed by a name now answer at once, in combat too, with the settings window closed. Only the scan itself waits until combat ends.
+- A part's commands now work only while that part is on. Typed while it is off, they run nothing and print one line naming the part and where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features."
+- /xui help now lists only the commands you can use right now. The debug tools' commands are listed only while Advanced Debugging has loaded them.
 
 **Saved data**
 - The last bug report is no longer kept in your saved settings; /xui bug builds it fresh each time. A detailed debug record left by an earlier XayaUI Dev Assist is cleared once at login.
@@ -69,9 +71,11 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - /xui debug mouse (the right-click tracker) is no longer part of this download. It is kept for when the developer tools are rebuilt.
 - /xui debug perf ui is removed. Any word after /xui debug perf now goes to the performance tracker.
 - Removed leftover code that served only addons that are not part of this download. Your saved settings for those addons are kept.
-  *Developers' notes: Not yet tested in game (QA B423).*
+- The performance tracker's redrawFill line now reads "bar fills and wipe steps written": it always counted both.
+- Timers in XayaUI, XayaUI Options and XayaUI Rules no longer make a new function each time they are set, so they leave less for the game to clean up.
+  *Developers' notes: Not yet tested in game (QA B423, B424).*
 
-### Options 0.6.109
+### Options 0.6.110
 
 **Rule editor**
 - The rule editor is now part of XayaUI Options, so its code is read only when the settings window first opens. It works as before.
@@ -79,6 +83,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Fixed an issue where dragging a slider (bar cues, group layout, Keep up to (drafts)) rebuilt the whole settings window on every step. Keep up to (drafts) no longer deletes drafts while you drag it.
 - Fixed an issue where hovering a spell or item search result switched off the game's item comparison tooltips until a /reload.
 - Fixed an issue where Duplicate on a group copied only its name.
+- The "Let the game play this sound" switch's hover text and the line under it now say plainly what the game's copy can and cannot do, and when XayaUI plays the sound itself instead.
   *Developers' notes: Not yet tested in game (QA B403, B404).*
 
 **Mover**
@@ -95,7 +100,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Recycle Bin**
 - Fixed an issue where the Recycle Bin page said deleted items are checked every 30 minutes. They are checked when you log in or out and when the page lists them.
 
-### Rules 0.7.1
+### Rules 0.7.2
 
 **Combat engine**
 - The engine's speed guard is removed: the engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the game's CPU meter reads high.
@@ -106,26 +111,53 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - In combat, a hidden cooldown end and a hidden aura time on a display's text are now counted by the game itself.
 - A Range Check row on your focus or pet is re-checked five times a second only while you have that focus or pet, and on your mouseover only while you hover a unit. A hidden cooldown end the game gives no timer for is re-checked only while that cooldown runs.
 - A Cooldown Manager alert now re-checks only the rules that read that icon.
-  *Developers' notes: Not yet tested in game (QA B407, B410 to B416, B426, B427, B430, B433). Measured in the test stand-in, not in the game (instructions, not milliseconds): the costliest frame in a fight is 375,400 Lua instructions, against main's 579,900 in the same test fight, about a third less (375,400 / 579,900 = 64.7%).*
+  *Developers' notes: Not yet tested in game (QA B407, B410 to B416, B426, B427, B430, B433). Measured in the test stand-in, not in the game (instructions, not milliseconds): the costliest frame in a fight is 391,300 Lua instructions, against main's 586,200 in the same test fight, about a third less (391,300 / 586,200 = 66.8%).*
 
 **Displays**
 - Fades, flashes, the cooldown sweep, bar fills and the tenths countdown now redraw at most 30 times a second on each display, and only while something on it changes. A display with nothing changing does no work.
 - The tenths countdown always shows the tenth not yet gone below, the same on every redraw.
+- A display's Out of combat opacity now also applies to displays the combat engine draws.
+- A display hidden with the rest of the interface (Alt+Z, a cinematic) no longer keeps redrawing, and shows the right time as soon as it is back.
 - Fixed an issue where a deleted group's border and background stayed on screen until a /reload.
 - A group's border and background are now drawn on each display, every group, also on displays the combat engine draws. A group with no saved padding uses 0 px.
-  *Developers' notes: Not yet tested in game (QA B426). When a duration's tenths text sits exactly on a tenth (for example 2.500 seconds), it shows the next tenth up (2.6) for that one frame.*
+  *Developers' notes: Not yet tested in game (QA B426, B438).*
 
 **Sounds**
-- "Let the game play this sound" now follows the rule's load conditions, including Mythic+ and changes of group, and is set up again when they change.
-- Rules that load only in combat or only in a boss encounter now get the game's copy too. Before, they got none. The game can't be told about combat or an encounter ahead of time, so for these rules the sound can also play outside combat or outside the encounter.
+- "Let the game play this sound" now follows the rule's Load tab exactly. The game's copy is given only while every Load choice is met, and taken back the moment one stops being met, in combat too. Combat, boss encounter, talent, Mythic+, group, zone and difficulty choices are all followed: a combat-only copy is given as each fight starts, a boss-only copy at the boss pull.
+- If the game refuses the copy as a fight starts or at a boss pull, XayaUI notices and keeps the copy from before the fight for the rest of the session, so the sound still plays. The rule's pane says so and suggests adding the buff to your Cooldown Manager.
+- A rule whose buff is in your Cooldown Manager no longer hands its sound to the game: XayaUI plays it itself and follows every setting of the rule, in fights too.
+- The rule's pane now says that the game's copy can never repeat or wait for the rule's other triggers, conditions or ANY trigger mode.
 - With "Only when mounted" or "Only when not mounted", the game's copy follows your mount, including a dismount straight into a pull.
 - Another player changing spec no longer makes XayaUI re-plan its aura sounds.
-  *Developers' notes: Not yet tested in game (QA B399).*
+  *Developers' notes: Not yet tested in game (QA B399, B434, B435). In the first fight of a session in which the game refuses the copy, combat-only and boss-only rules are silent.*
 
 **Backups**
 - Each rule backup is now kept as one compact block of text and read only when you load it or show its text, so backups take much less memory. Backups from earlier versions are converted once, at the first login, with nothing lost.
 - Older XayaUI versions cannot read the new backups.
   *Developers' notes: Not yet tested in game (QA B408).*
+
+### Bonus Features 0.6.47
+
+**Install (read this first)**
+- Replace both the XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders.
+
+**Calculator (new)**
+- Added the Calculator: a small calculator window with a keypad, and sums in chat. /xui calc 23,249 / 3,472 prints "XayaUI: 23,249 / 3,472 = 6.696141". /xui calculator and /calc do the same (/calc only when no other addon uses it). /xui calc alone, or Calculator in the minimap button's list, opens or closes the window.
+- It has its own tick box at Bonus Features > Calculator, on by default. Off, its commands only say it is off, and the window and its minimap row are gone.
+- Enter works the sum out and lets go of the keyboard. The first Esc lets go of the keyboard and the second closes the window. Opened in combat, it does not take the keyboard.
+- Your sums and the window's place stay on your computer: a profile carries only its on / off.
+  *Developers' notes: Not yet tested in game (QA B437). It is read with XayaUI Bonus Features at login (about 39 KB in the test stand-in) and does nothing until you use it.*
+
+**Stat Calculator**
+- The Stat Calculator now loads the first time you open it (the minimap row, /xui stats, or the character window when you left the panel open), not at login. Until then, nothing of it is read.
+- Turning it on or off now takes effect at once, with no "Reload now?" question. Turned off after it has loaded, it stops at once, and its memory is freed at your next /reload.
+- /xui stats on is removed: turn it on in Bonus Features > Stat Calculator. While it is off, /xui stats says so and where to turn it on.
+- It closes when a fight starts and no longer comes back by itself after the fight. Open it again from the minimap row, with /xui stats, or by opening the character window.
+- Opening the settings window no longer loads it. Until you have opened it once in a session, its settings page shows its tick box and one line; its options appear after the first open.
+- Closing the panel now lets go of what it worked out.
+- /xui stats status now says why when the Stat Calculator could not load (for example, when it is switched off in the AddOns list).
+- Fixed an issue where the panel's close button sat 2 pixels outside the panel.
+  *Developers' notes: Not yet tested in game (QA B436; docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). In the test stand-in, logging in with it on now uses 602.86 KB less Lua memory (8,326.61 - 7,723.75), and once it has been opened 1,684.57 KB stays until /reload (9,408.32 - 7,723.75).*
 
 ## 2026-11-12 — Stat Calculator
 

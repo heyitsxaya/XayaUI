@@ -389,19 +389,25 @@ end
 function Tree.AcePending() local f = AceConfigDialog.frame; return (f and f.apps and f.apps[APP]) and true or false end   -- (a field: this file is at Lua's 200-local limit)
 -- a redraw asked for before a full Open that has just happened is not needed (the Open drew the latest tree): drop it (Options 0.6.68)
 function Tree.DropPending() local f = AceConfigDialog.frame; if f and f.apps then f.apps[APP] = nil end end
+-- (SD-90) the redraw next frame: one function, made once (a field: this file is at Lua's 200-local limit), not one per request. Each
+-- request gets the next number (Tree.viewAsked) in place of a new token table; every wait is 0 s, so the waits come due in the order
+-- they were asked and the n-th run belongs to the n-th request (Tree.viewDue counts them). Only the latest request still in Tree.view
+-- redraws, as before.
+function Tree.ViewDue()
+    Tree.viewDue = (Tree.viewDue or 0) + 1
+    if Tree.view ~= Tree.viewDue then return end   -- cancelled by Notify(), or a later request replaced it
+    Tree.view = nil
+    local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
+    if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end
+    local user = of:GetUserDataTable()
+    Tree.Keep()
+    pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
+    Tree.keep = nil
+end
 function Tree.ViewChanged()
-    local token = {}
-    Tree.view = token
-    C_Timer.After(0, function()
-        if Tree.view ~= token then return end   -- cancelled by Notify(), or a later request replaced it
-        Tree.view = nil
-        local of = AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]
-        if not (of and of.frame and of.frame:IsShown()) or Tree.AcePending() then return end
-        local user = of:GetUserDataTable()
-        Tree.Keep()
-        pcall(AceConfigDialog.Open, AceConfigDialog, APP, unpack(user.basepath or {}))
-        Tree.keep = nil
-    end)
+    Tree.viewAsked = (Tree.viewAsked or 0) + 1
+    Tree.view = Tree.viewAsked
+    C_Timer.After(0, Tree.ViewDue)
 end
 -- Tree.hold: a sidebar tick box is running its switch's set (Tree.SwitchClick); a redraw that set asks for is dropped and the click
 -- makes the one redraw itself.

@@ -64,8 +64,10 @@ local scSwitch = SC_ON and type(rawget(_G, "XayaUIBonusDB")) == "table" and type
 check("setup: the Stat Calculator is off on this fresh install", scSwitch == false, scSwitch)
 local got = {}
 for i = 2, #out do got[#got + 1] = out[i]:match("^  |cff%x%x%x%x%x%x(.-)|r") or out[i] end
-local calc = {}   -- the Calculator's lines, as printed (its help text is the calculator unit's)
-for _, g in ipairs(got) do if SC_ON and (g:find("^/xui calc ") or g == "/xui calc" or g:find("^/xui calculator")) then calc[#calc + 1] = g end end
+-- (bundle 1 round 10, calculator unit, intended change) the Calculator's two lines, exactly, after core's: with XayaUI Bonus Features
+-- loaded it is on by default (SD-116), so both are listed (SD-118). Before, the list was built from whatever was printed, so a missing
+-- line passed too.
+local calc = SC_ON and { "/xui calc [sum]", "/xui calculator [sum]" } or {}
 -- (round 10 repair 1, SD-118, intended change) Advanced Debugging's five (console, bug, report, status, auras) only while its tools are loaded
 check("setup: the debug tools are " .. (dbgOn and "loaded" or "not loaded"), (ns.DebugToolsLoaded() and true or false) == dbgOn, ns.DebugToolsLoaded())
 local nCore = dbgOn and 10 or 5
@@ -99,6 +101,14 @@ check("every color is closed", unclosed == nil, unclosed)
 check("literal pipes are doubled, color codes are not", badPipe == nil, badPipe)
 check("/xui debug is listed with what it does", debugLine ~= nil)
 check("the description follows its command without the brackets", unlockLine ~= nil and (consoleLine ~= nil) == dbgOn)
+-- (calculator unit) what the Calculator's lines say, after the command (SD-118: listed while it is on, the default)
+local calcDesc, calculatorDesc
+for i = 2, #out do
+  if out[i]:find("/xui calc [sum]|r  with a sum: the answer in chat; alone: open or close the Calculator", 1, true) then calcDesc = true end
+  if out[i]:find("/xui calculator [sum]|r  the same as calc", 1, true) then calculatorDesc = true end
+end
+check("the Calculator's lines say what they do (XayaUI Bonus Features loaded: on by default)", (calcDesc and calculatorDesc and true or false) == SC_ON,
+  tostring(calcDesc) .. " " .. tostring(calculatorDesc))
 return R
 end
 '''

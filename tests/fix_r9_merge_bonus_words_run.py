@@ -66,13 +66,24 @@ else
     st[1] ~= nil and st[1]:find("/xui stats is part of ", 1, true) ~= nil, st[1])
 end
 for _, w in ipairs({ "calc", "calculator" }) do
-  local out = chat(w)
+  -- (bundle 1 round 10, calculator unit, intended change: the Calculator is registered now) with Bonus on the word is checked with a sum
+  -- (its answer in chat, one line) and alone (it opens the keypad and prints nothing; again, it closes it), as qa-installer-branch's
+  -- Calculator did. Before, "#out >= 1" accepted any printed line, /xui help included.
+  local out = chat(bonusOn and (w .. " 6*7") or w)
   local text = table.concat(out, "\n")
   if bonusOn then
     check(("/xui %s with Bonus Features on: no false 'never registered' line (the Calculator registers it, SD-95 / SD-116)"):format(w),
       #out >= 1 and not text:find("never registered", 1, true), out[1])
     check(("/xui %s with Bonus Features on: no 'is off' line (the Calculator is on on a fresh install, SD-116)"):format(w),
       not text:find(" is off. Turn it on in", 1, true), out[1])
+    check(("/xui %s 6*7 with Bonus Features on: exactly one line, 'XayaUI: 6*7 = 42' (the Calculator's answer)"):format(w),
+      #out == 1 and out[1] == "XayaUI: 6*7 = 42", text)
+    local alone = chat(w)
+    local kp = rawget(_G, "XayaUICalculator")
+    check(("/xui %s alone with Bonus Features on: prints nothing and opens the Calculator keypad"):format(w),
+      #alone == 0 and kp ~= nil and kp:IsShown(), table.concat(alone, " / "))
+    chat(w)
+    check(("/xui %s alone again: closes the keypad"):format(w), kp ~= nil and not kp:IsShown())
   else
     check(("/xui %s with Bonus Features switched off: one line naming XayaUI Bonus Features and the AddOns list (D8)"):format(w),
       #out == 1 and out[1] == ("XayaUI: /xui %s is part of XayaUI Bonus Features, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(w),

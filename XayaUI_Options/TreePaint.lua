@@ -117,10 +117,12 @@ end
 function ns.HookRowHover(button)
     if button.xuiTxtHook then return end
     button.xuiTxtHook = true
+    -- once more next frame (SD-90: made once per row, not on every hover)
+    local function againLater() if button.xuiFontDone and TP.Ours(button.obj) then ns.PaintRowText(button) end end
     local function again(self)
         if not (self.xuiFontDone and TP.Ours(self.obj)) then return end   -- (review R13) only while the row is in XayaUI's window
         ns.PaintRowText(self)
-        C_Timer.After(0, function() if self.xuiFontDone and TP.Ours(self.obj) then ns.PaintRowText(self) end end)
+        C_Timer.After(0, againLater)
     end
     button:HookScript("OnEnter", again)
     button:HookScript("OnLeave", again)

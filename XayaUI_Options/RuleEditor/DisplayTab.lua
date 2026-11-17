@@ -189,15 +189,17 @@ end
 local pick, pickHush, pickNotify, pickHooked
 local function Picking() local P = rawget(_G, "ColorPickerFrame"); return (P and P.IsShown and P:IsShown()) and true or false end
 -- the picker closed: drop the copy and make the one redraw, on the next frame (AceGUI sends Cancel's color right after the close)
+-- (SD-90: one function, made once; it reads only this file's picker state, as the closure made per close did)
+local function PickClosedNext()
+    pick = nil
+    if Picking() then return end   -- reopened at once (another swatch): the redraw waits for that close
+    local n = pickNotify; pickNotify = nil
+    if n then pcall(n) end
+end
 local function PickClosed()
     if not (pick or pickNotify) then return end   -- the picker was used for something else
     if not C_Timer then pick = nil; return end
-    C_Timer.After(0, function()
-        pick = nil
-        if Picking() then return end   -- reopened at once (another swatch): the redraw waits for that close
-        local n = pickNotify; pickNotify = nil
-        if n then pcall(n) end
-    end)
+    C_Timer.After(0, PickClosedNext)
 end
 local function WatchPicker()
     if pickHooked then return end

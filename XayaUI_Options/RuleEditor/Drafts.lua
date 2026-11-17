@@ -122,6 +122,10 @@ end
 -- State
 -------------------------------------------------------------------------------
 local cache = { t = -1 }
+-- (SD-90) the timer callbacks of this file are made once, here and below, not on every call: the second redraw next frame after a
+-- discard, save as new or undo step (cache dropped, then the window redrawn), and the redraw a sidebar refresh asks for
+local function NotifyAgain() cache = { t = -1 }; ns.UI.Notify() end
+local function NotifyUI() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end
 -- "Prompt for saving and enable drafts" (Settings > UI Options). Off by default: edits are kept as you make them, there is no save bar,
 -- and closing the window never moves anything to Drafts. On: the behaviour described in the guide (section 12.2).
 function ns.DraftsEnabled()
@@ -219,9 +223,8 @@ end
 -- rows that only exist after the first rebuild). Called after a save, after the window closes, and after the window opens.
 function ns.RefreshSidebar(group)
     for _, r in ipairs(group or {}) do pcall(ns.RefreshVisual, r) end
-    local function go() if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end end
-    go()
-    if C_Timer then C_Timer.After(0, go) end
+    NotifyUI()
+    if C_Timer then C_Timer.After(0, NotifyUI) end
 end
 
 function ns.DraftNew(rule)
@@ -274,7 +277,7 @@ function ns.DraftDiscard(rule)
     if not wasNew and ns.ReselectRule then local r = GroupOf(uid)[1]; if r then pcall(ns.ReselectRule, r) end end
     if ns.UI and ns.UI.Notify then
         ns.UI.Notify()
-        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end   -- a second pass next frame redraws the other tabs
+        if C_Timer then C_Timer.After(0, NotifyAgain) end   -- a second pass next frame redraws the other tabs
     end
 end
 
@@ -365,7 +368,7 @@ function ns.DraftSaveAsCopy(rule)
     if ns.ReselectRule then local r = GroupOf(newUid)[1]; if r then pcall(ns.ReselectRule, r) end end
     if ns.UI and ns.UI.Notify then
         ns.UI.Notify()
-        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end
+        if C_Timer then C_Timer.After(0, NotifyAgain) end
     end
 end
 
@@ -739,11 +742,14 @@ local function Commit()
     u.fwd = {}
     u.cur = { sig = sig, rules = Copies(g) }
 end
-local function Arm()
+-- (SD-90) the undo step closes 0.5 s after the last edit: one function, made once, not one per wait
+local Arm
+local function ArmDue()
+    if GetTime() - lastNote < 0.45 then Arm() else armed = false; Commit() end
+end
+function Arm()
     armed = true
-    C_Timer.After(0.5, function()
-        if GetTime() - lastNote < 0.45 then Arm() else armed = false; Commit() end
-    end)
+    C_Timer.After(0.5, ArmDue)
 end
 local function UndoNote()   -- runs after every edit: ns.MarkDirty fires EDITED (Modules.lua section 6)
     if restoring or not windowOpen or not C_Timer or not ns.SelectedRuleForUndo then return end
@@ -768,7 +774,7 @@ local function Restore(uid, st)
     if ns.ReselectRule then local r = GroupOf(uid)[1]; if r then pcall(ns.ReselectRule, r) end end
     if ns.UI and ns.UI.Notify then
         ns.UI.Notify()
-        if C_Timer then C_Timer.After(0, function() cache = { t = -1 }; ns.UI.Notify() end) end
+        if C_Timer then C_Timer.After(0, NotifyAgain) end
     end
 end
 -- Ctrl+Z (redo = false) / Ctrl+Y (redo = true). Returns true when the key was used.

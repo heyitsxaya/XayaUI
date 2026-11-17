@@ -323,6 +323,9 @@ local function Build()
     frame:HookScript("OnHide", function() ev:UnregisterEvent("PLAYER_REGEN_DISABLED") end)
 end
 
+-- the second scan after opening (SD-90: one function, made once; it reads only this file's window, as the closure made per open did)
+local function RescanSoon() if frame:IsShown() then ns.AuraSetup_Refresh() end end
+
 -- atStep: the step to show (1 when nil; the step it was on when combat closed it)
 function ns.AuraSetup_Open(atStep)
     -- (V26) locked in combat: one line, and it opens when combat ends (Modules.lua ns.CombatLock); without core's lock, as before
@@ -352,7 +355,7 @@ function ns.AuraSetup_Open(atStep)
         if db then db.setupShowError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(errS) end
     end
     -- spell text arrives asynchronously: scan again shortly so the first view is not half-empty
-    if C_Timer then C_Timer.After(1.5, function() if frame:IsShown() then ns.AuraSetup_Refresh() end end) end
+    if C_Timer then C_Timer.After(1.5, RescanSoon) end
 end
 
 -------------------------------------------------------------------------------

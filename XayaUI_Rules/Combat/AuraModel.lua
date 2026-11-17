@@ -655,6 +655,23 @@ else
 end
 f:RegisterEvent("SPELL_DATA_LOAD_RESULT")
 local dataReloadQueued = false
+-- (SD-90) the timer callbacks below are made once, here, not on every event or cast
+local function Reload()
+    dataReloadQueued = false
+    M.cache = {}
+    if M.OnSpellDataLoaded then pcall(M.OnSpellDataLoaded) end
+end
+-- a cast's aura comparison 0.4 s later: each cast's spell and snapshot wait in a list in the order they were set; every wait is 0.4 s,
+-- so they come due in that same order and each run takes the oldest (as the function made per cast did with its own values)
+local diffSpell, diffBefore, diffHead, diffTail = {}, {}, 1, 0
+local function DiffDue()
+    local h = diffHead
+    local spellID, before = diffSpell[h], diffBefore[h]
+    diffSpell[h], diffBefore[h] = nil, nil
+    if h >= diffTail then diffHead, diffTail = 1, 0 else diffHead = h + 1 end
+    if spellID == nil then return end
+    pcall(DiffAfterCast, spellID, before)
+end
 f:SetScript("OnEvent", function(_, event, unit, a2, a3, a4)
     if event == "PLAYER_REGEN_ENABLED" then
         if pendingRefresh then RefreshSoon() end
@@ -669,11 +686,6 @@ f:SetScript("OnEvent", function(_, event, unit, a2, a3, a4)
         -- is dropped at most once a second, after the burst
         if not dataReloadQueued then
             dataReloadQueued = true
-            local function Reload()
-                dataReloadQueued = false
-                M.cache = {}
-                if M.OnSpellDataLoaded then pcall(M.OnSpellDataLoaded) end
-            end
             if C_Timer and C_Timer.After then C_Timer.After(1, Reload) else Reload() end
         end
         return
@@ -696,7 +708,9 @@ f:SetScript("OnEvent", function(_, event, unit, a2, a3, a4)
     if learning and AurasReadable() then
         local before = snapBefore
         if C_Timer and C_Timer.After then
-            C_Timer.After(0.4, function() pcall(DiffAfterCast, spellID, before) end)
+            diffTail = diffTail + 1
+            diffSpell[diffTail], diffBefore[diffTail] = spellID, before
+            C_Timer.After(0.4, DiffDue)
         end
     end
 end)

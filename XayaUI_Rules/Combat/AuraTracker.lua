@@ -520,6 +520,23 @@ function T.OnCastSent(castID)
     pre[castID] = Snap(true)
 end
 
+-- (SD-90) the checks after a cast: one function per delay in LINK_DELAYS, made once here, not two new ones on every cast in combat.
+-- Each cast's values wait in that delay's list in the order they were set; one delay's waits are all the same length, so they come
+-- due in that same order and each run takes the oldest (as the function made per cast did with its own values).
+local linkWait = {}
+for i = 1, #LINK_DELAYS do
+    local q = { cast = {}, rel = {}, before = {}, head = 1, tail = 0 }
+    q.due = function()
+        local h = q.head
+        local castID, rel, before = q.cast[h], q.rel[h], q.before[h]
+        q.cast[h], q.rel[h], q.before[h] = nil, nil, nil
+        if h >= q.tail then q.head, q.tail = 1, 0 else q.head = h + 1 end
+        if castID == nil then return end
+        pcall(ConfirmLink, castID, rel, before)
+    end
+    linkWait[i] = q
+end
+
 function T.OnCastWindows(castID)
     if ns.RulesDisabled or not T.Enabled() then return end   -- (V26) rules off: no evidence kept, no check scheduled
     local M = Model()
@@ -549,8 +566,12 @@ function T.OnCastWindows(castID)
     local rel = RelevantTargets(castID)
     if not rel then return end
     if C_Timer and C_Timer.After then
-        for _, delay in ipairs(LINK_DELAYS) do
-            C_Timer.After(delay, function() pcall(ConfirmLink, castID, rel, before) end)
+        for i, delay in ipairs(LINK_DELAYS) do
+            local q = linkWait[i]
+            local n = q.tail + 1
+            q.tail = n
+            q.cast[n], q.rel[n], q.before[n] = castID, rel, before
+            C_Timer.After(delay, q.due)
         end
     end
 end

@@ -16,7 +16,7 @@ XayaUI is a group of addons. Each one is its own entry in the game's AddOns list
 - **XayaUI Rules** holds the rules (cooldown, aura and other triggers), cues, conditions and actions, combat aura tracking, rule sharing and backups. Switch it off if you make no rules.
 - **XayaUI Options** is the settings window, with everything that only works while it is open: the rule editor, the mover, Combat Tracking Setup, the talent scan and the displays' right-click menu. The game reads it the first time you open the window, so it costs nothing until then.
 - **XayaUI Debug** holds the debug tools: the console window, the bug report, the debug report, `/xui status`, `/xui auras` and `/xuiengine`. The game reads it only while Settings > Debugging > **Advanced Debugging** is on (off by default), once per login or /reload.
-- **XayaUI Bonus Features** holds the Stat Calculator (Bonus Features > Stat Calculator, or `/xui stats`). The calculator itself is the separate entry XayaUI Bonus Features: Stat Calculator, which the game reads only while the Stat Calculator is on.
+- **XayaUI Bonus Features** holds the Stat Calculator's switch (Bonus Features > Stat Calculator, or `/xui stats`) and the Calculator (Bonus Features > Calculator, or `/xui calc`). The Stat Calculator itself is the separate entry XayaUI Bonus Features: Stat Calculator, which the game reads only the first time you open it, and never while it is off.
 
 A feature you switch off costs nothing: it runs no timers, listens to no events and keeps no frames. Your settings are kept either way. (The minimap button and the Esc-menu button are part of XayaUI itself; switched off, they are not built.)
 
@@ -24,7 +24,7 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 
 - Open the settings window with `/xui`, the XayaUI minimap button, or the XayaUI button in the Esc menu.
 - **Rules** is where you make and edit rules. A rule watches something (a trigger), and when it is true it plays cues (a sound, speech, an icon), checks conditions and runs actions.
-- **Bonus Features** lists the Stat Calculator in the left pane. The tick box beside its name turns it on or off; the change takes effect after a /reload.
+- **Bonus Features** lists the Calculator and the Stat Calculator in the left pane. The tick box beside each name turns it on or off at once; no reload is needed.
 - **Settings** (the toolbar button) holds UI Options (Display, Rule Creation, Theme), the Minimap Button and Debugging.
 - Click the version text in the settings window's bottom-left corner for this window: Patch Notes and Info. The **?** in the title bar opens Help.
 
@@ -32,7 +32,8 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 
 - **Auto-Generate Rules.** Builds a first batch of rules for your spec: one skeleton rule per cooldown, and you choose which to make. Rules > Auto-Generate Rules.
 - **Combat Tracking Setup.** Sets up buff durations for your class and spec. The very first time you open the settings window it opens with it; after that, use **Open Combat Tracking Setup** on the Rules tab. It closes with the settings window.
-- **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. Bonus Features > Stat Calculator, or `/xui stats`.
+- **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. Bonus Features > Stat Calculator, or `/xui stats`. It loads the first time you open it. It closes when a fight starts and stays closed until you open it again.
+- **Calculator.** A small calculator window, and sums in chat: `/xui calc 23,249 / 3,472`. Bonus Features > Calculator (on unless you switch it off).
 - **Themes.** Colors and fonts for every XayaUI window. Settings > UI Options > Theme.
 - **Debugging.** Advanced Debugging (off by default) records what is needed to find a problem and loads the debug tools at the next login or /reload. While it is on, every login and /reload prints one chat line saying so. Settings > Debugging.
 
@@ -42,7 +43,9 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - `/xui help` lists every command you can use.
 - `/xui unlock` opens the settings window with the mover on, so you can drag displays and groups. The mover works only while the settings window is open: closing the window closes it. Moves you have not saved are kept, and the next time you open the window one question asks you to save them, discard them or keep editing.
 - `/xui disable` turns every rule off at once, in combat too; `/xui enable` turns them back on (after combat, if you are in a fight). A /reload also turns them back on.
-- `/xui stats` opens the Stat Calculator (with XayaUI Bonus Features).
+- `/xui stats` opens the Stat Calculator, while it is on (with XayaUI Bonus Features).
+- `/xui calc` opens the Calculator; `/xui calc` and a sum answers in chat. `/calc` works too, unless another addon uses it.
+- A command of a part that is switched off prints one line saying where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features."
 - `/xui debug` lists the diagnostic commands.
 
 These are debug tools: they need Advanced Debugging on and a /reload. With it off, each answers with one chat line saying so.

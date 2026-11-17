@@ -291,14 +291,32 @@ function RS.Reveal(e)
     return true
 end
 RS.RevealTries = 10   -- frames to wait for the redraw that draws the option's tab
+-- (SD-90) one function, made once, not one per search: each reveal asked for (the option, and how many frames it has tried) waits in a
+-- list; every wait is 0 s, so the waits come due in the order they were set and each run takes the oldest, as the function made per
+-- reveal did with its own values. A reveal that must try again goes to the end of the list, where its next wait was set.
+local revealE, revealN, revealHead, revealTail = {}, {}, 1, 0
+local function RevealTry(e, n)
+    n = n + 1
+    if RS.Reveal(e) then RS.lastReveal = e; return end
+    if n < RS.RevealTries and C_Timer and C_Timer.After then return n end
+end
+local RevealDue
+local function RevealWait(e, n)
+    revealTail = revealTail + 1
+    revealE[revealTail], revealN[revealTail] = e, n
+    C_Timer.After(0, RevealDue)
+end
+RevealDue = function()
+    local h = revealHead
+    local e, n = revealE[h], revealN[h]
+    revealE[h], revealN[h] = nil, nil
+    if h >= revealTail then revealHead, revealTail = 1, 0 else revealHead = h + 1 end
+    if n == nil then return end
+    local again = RevealTry(e, n)
+    if again then RevealWait(e, again) end
+end
 local function RevealSoon(e)
-    local n = 0
-    local function try()
-        n = n + 1
-        if RS.Reveal(e) then RS.lastReveal = e; return end
-        if n < RS.RevealTries and C_Timer and C_Timer.After then C_Timer.After(0, try) end
-    end
-    if C_Timer and C_Timer.After then C_Timer.After(0, try) else try() end
+    if C_Timer and C_Timer.After then RevealWait(e, 0) else RevealTry(e, 0) end
 end
 
 -- the search box and its results, added on top of a rule's settings (above its tabs). notify() redraws.

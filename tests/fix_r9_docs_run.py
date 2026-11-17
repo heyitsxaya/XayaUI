@@ -48,6 +48,14 @@ document that drifts from the code fails here.
      on main (main's A.Plan skipped rules not loaded at the sync, which runs out of combat only). QA B434 is the in-game step.
   Q2 QA-CHECKLIST has the round 8 in-game checks that had no step: the Cooldown Manager alert (B430), memory over a long session
      (B431), a hitch at a load change (B432), pace and lag in a busy pull with "seconds left" sounds (B433).
+  (round 10 docs unit, intended changes decided by her round 10 answers; each is stricter or follows the new code, none is dropped)
+  P4 SD-95, SD-105, SD-115 and SD-118 changed XayaUI_Bonus and XayaUI_Bonus_StatCalculator in bundle 1, so they are no longer "main's
+     0.6.46": each .toc is now above main's 0.6.46 and the entry has "### Bonus Features <that version>".
+  P8 SD-96 ("This function needs to work as intended and expected") removed AuraSound.lua's DROP list: the game's copy follows the Load
+     tab exactly. P8 now FAILs if a DROP list comes back or if PATCH-NOTES, WHATS-NEW or USER-GUIDE still says the copy "can also play
+     outside combat / outside the encounter" or that a choice "does not apply" (the old behaviour). What the documents must say now is
+     checked by tests/fix_r10_docs_run.py (S1 to S4).
+  Q B434 quotes LIMITS as AuraSound.lua builds it (was: the removed "does not apply" line); B401 names every addon's .toc version.
 Negative control: on the documents before this round's docs unit (proved on a private copy) F, D, M, T, P, I, Q, S and L fail;
 on the documents before repair 1 (scratchpad r9pre-docs-repair1) I3, I4, I5, P7, P8 and Q2 fail; on the documents before repair 2
 (scratchpad r9pre-docs-repair2) P8 USER-GUIDE and Q B434 fail.
@@ -190,9 +198,11 @@ def main():
         m = re.search(r"^### %s (\d+\.\d+\.\d+)\s*$" % addon, entry, re.M)
         check("P3 V10: %s's heading in the entry is its .toc version (%s), above main's %s" % (addon, tv, mv),
               m and tv and m.group(1) == tv and vkey(tv) > vkey(mv), m and m.group(1))
+    # (round 10) SD-95 / SD-105 / SD-115 / SD-118 changed both Bonus folders in bundle 1: above main's 0.6.46, with their heading
     for folder in ("XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"):
-        check("P4 %s is unchanged by bundle 1, so its version stays main's 0.6.46" % folder, toc_version(folder) == "0.6.46",
-              toc_version(folder))
+        tv = toc_version(folder)
+        check("P4 %s changed in bundle 1 round 10: its version (%s) is above main's 0.6.46 and the entry has its Bonus Features heading"
+              % (folder, tv), tv and vkey(tv) > vkey("0.6.46") and ("### Bonus Features %s\n" % tv) in entry, tv)
     must = [("route", "Moving, runes, totems and loss of control"), ("narrow", "a boss pull"),
             ("redraw", "at most 30 times a second on each display, and only while something on it changes"),
             ("tracker", "/xui debug perf on"), ("mover question", "Save, Discard (everything goes back) or Keep editing"),
@@ -304,49 +314,20 @@ def main():
           "words that match the two numbers; no 'about half'" % main_cap,
           main_cap and nums and nums[1] == main_cap and words_ok and "about half" not in rules, nums and nums[:2])
     au = read("XayaUI_Rules/AuraSound.lua")
-    dm = re.search(r"local DROP = \{([^}]*)\}", au)
-    drop_keys = re.findall(r"(\w+) = true", dm.group(1)) if dm else []
+    # (round 10, SD-96) the DROP list is gone: the game's copy follows the Load tab exactly. No document may keep the old behaviour.
+    check("P8 SD-96: AuraSound.lua has no DROP list any more (the game's copy follows every Load tab choice)",
+          au and not re.search(r"local DROP = \{", au))
     snd_pn = rules[rules.find("**Sounds**"):] if "**Sounds**" in rules else ""
     snd_wn = sec[sec.find("**Game-played sound"):][:900] if "**Game-played sound" in sec else ""
-    need = []
-    if "combat" in drop_keys:
-        need.append("can also play outside combat")
-    if "encounter" in drop_keys:
-        need.append("outside the encounter")
-    wrong = "follows the rule's load conditions, including rules that load only in combat"
-    for name, t in (("PATCH-NOTES", snd_pn), ("WHATS-NEW", snd_wn)):
-        miss_s = [w for w in need if w not in t]
-        check("P8 %s: the game-played sound bullets say Combat and Boss encounter count as possibly true (AuraSound.lua DROP: %s)"
-              % (name, ", ".join(drop_keys)), bool(t) and bool(drop_keys) and not miss_s and wrong not in t, miss_s or "no sound bullets")
-    # (repair 2) USER-GUIDE: which way each dropped choice widens the sound, and which rules had no copy on main. The Load tab's
-    # words come from Conditions.lua LOAD_TRI. On main (origin/main AuraSound.lua A.Plan) a rule not loaded at the sync got no copy,
-    # and the sync runs out of combat only: so "Only in combat", "Only during a boss encounter" and a Boss encounters list had none
-    # (now they can also play outside); "Only out of combat" and "Only outside boss encounters" had one, kept through fights (now as
-    # then, they can also play in combat or in the encounter).
-    cond = read("XayaUI_Rules/Conditions.lua")
-    tri = {k: (y, n) for k, y, n in re.findall(r'\{ key = "(\w+)", label = "[^"]*", yes = "([^"]*)", no = "([^"]*)"', cond)}
-    yes_l = [tri[k][0] for k in drop_keys if k in tri]
-    no_l = [tri[k][1] for k in drop_keys if k in tri]
-    if "encounter" in drop_keys:
-        yes_l.append("Boss encounters")
     ug = read("docs/USER-GUIDE.md")
     ugb = ug[ug.find("- **Let the game play this sound on the aura itself**"):]
     nxt = re.search(r"\n- ", ugb[3:])
     ugb = ugb[:nxt.start() + 3] if nxt else ugb
-    ug_lines = [l for l in ugb.splitlines() if "can also play" in l]
-    out_w = (["outside combat"] if "combat" in drop_keys else []) + (["outside the encounter"] if "encounter" in drop_keys else [])
-    in_w = (["in combat"] if "combat" in drop_keys else []) + (["in the encounter"] if "encounter" in drop_keys else [])
-    l_yes = [l for l in ug_lines if all("**%s**" % w in l for w in yes_l) and not any(w in l for w in no_l)]
-    l_no = [l for l in ug_lines if all("**%s**" % w in l for w in no_l)]
-    ok_yes = len(l_yes) == 1 and all("can also play " + w in l_yes[0].replace("can also play outside combat or outside", "can also play outside combat, can also play outside")
-                                     for w in out_w) and "got no game copy" in l_yes[0]
-    ok_no = (len(l_no) == 1 and all(w in l_no[0] for w in in_w) and not any(w in l_no[0] for w in out_w) and "got no game copy" not in l_no[0]
-             and "already got the game's copy" in l_no[0])
-    bad = [l.strip()[:120] for l in ugb.splitlines() if any(w in l for w in no_l) and ("got no game copy" in l or "outside combat" in l)]
-    check("P8 USER-GUIDE: %s can also play outside and had no copy before; %s can also play in combat / the encounter, as before "
-          "(Conditions.lua LOAD_TRI, AuraSound.lua DROP: %s)" % (", ".join(yes_l), ", ".join(no_l), ", ".join(drop_keys)),
-          bool(drop_keys) and len(yes_l) == len(drop_keys) + ("encounter" in drop_keys) and ok_yes and ok_no and not bad,
-          (len(l_yes), len(l_no), ok_yes, ok_no, bad))
+    old_words = ("can also play outside combat", "outside the encounter", "does not apply")
+    for name, t in (("PATCH-NOTES", snd_pn), ("WHATS-NEW", snd_wn), ("USER-GUIDE", ugb)):
+        stale_w = [w for w in old_words if w in t]
+        check("P8 %s: the game-played sound text no longer says the copy can also play outside combat or the encounter, or that a "
+              "choice does not apply (SD-96)" % name, bool(t) and not stale_w, stale_w or "no sound text")
 
     # Q: in-game steps
     want = {
@@ -364,20 +345,22 @@ def main():
         432: ["talent", "loadout", "loading screen", "hitch"],
         433: ["busy pull", "0.1 seconds", "seconds left", "none is skipped"],
         # (repair 2) the USER-GUIDE's combat / boss Load choice bullets for the game-played sound point here
-        434: ["Only in combat", "Only out of combat", "The game plays it on the aura alone, so \"Only in combat\" does not apply to it.",
-              "before bundle 1, (a) never got the game's copy"],
-        401: ["0.6.86", "0.6.109", "0.7.1"],
+        # (round 10) B434: the Load tab followed exactly (SD-96), and the refusal fallback (SD-109)
+        434: ["Only in combat", "Only out of combat", "The game is given it as each fight starts.", "only (b) plays", "only (a) plays",
+              "The game would not take this sound when a fight started"],
+        401: [toc_version(f) or "?" for f in ("XayaUI", "XayaUI_Options", "XayaUI_Rules", "XayaUI_Debug", "XayaUI_Bonus",
+                                                  "XayaUI_Bonus_StatCalculator")],
     }
     for n, words in sorted(want.items()):
         line = st.get(n, "")
         missing = [w for w in words if w not in line]
         check("Q B%d exists once with %s" % (n, ", ".join(repr(w[:40]) for w in words)),
               line and not missing and len(re.findall(r"\*\*B%d\.\*\*" % n, qa)) == 1, missing or "no step")
-    # (repair 2) B434's quoted pane line is the one AuraSound.lua builds for one dropped choice: its two fixed parts and the label
-    lab = re.search(r'\{ key = "combat", label = "[^"]*", yes = "([^"]*)"', read("XayaUI_Rules/Conditions.lua"))
-    parts_ok = ('" The game plays it on the aura alone, so " ..' in au and '" does") .. " not apply to it"' in au and lab
-                and ('The game plays it on the aura alone, so "%s" does not apply to it.' % lab.group(1)) in st.get(434, ""))
-    check("Q B434 quotes the pane line as AuraSound.lua builds it for \"Only in combat\"", parts_ok, lab and lab.group(1))
+    # (round 10) B434 quotes the limits line exactly as AuraSound.lua builds it (LIMITS); no "does not apply" (SD-96)
+    lim = re.search(r'local LIMITS = "([^"]+)" \.\.\s*"([^"]+)"', au)
+    lim_txt = lim and (lim.group(1) + lim.group(2)).strip()
+    check("Q B434 quotes the pane's limits line as AuraSound.lua builds it, and no 'does not apply'",
+          lim_txt and lim_txt in st.get(434, "") and "does not apply" not in st.get(434, ""), lim_txt)
     b414 = st.get(414, "")
     check("Q B414 no longer waits on her decision (SD-68 decided: gated, with the tracker)",
           "NEEDS HER DECISION" not in b414 and "pollRange" in b414, b414[:120])

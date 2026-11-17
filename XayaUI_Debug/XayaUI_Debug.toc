@@ -2,8 +2,8 @@
 ## Title: XayaUI Debug
 ## Notes: XayaUI's debug tools: the console window (/xui console), the bug report (/xui bug), the debug report (/xui report), and XayaUI Rules' engine perf report (/xui debug perf), /xui status, /xui auras and /xuiengine. XayaUI loads them once per login or /reload, only while Settings > Debugging > Advanced Debugging is on (off by default), so they cost nothing otherwise.
 ## Author: Xaya
-## Version: 0.7.0
-## X-Date: 2026-11-12
+## Version: 0.7.1
+## X-Date: 2026-11-16
 ## Dependencies: XayaUI
 ## OptionalDeps: XayaUI_Rules
 ## LoadOnDemand: 1

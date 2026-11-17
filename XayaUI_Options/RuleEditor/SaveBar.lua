@@ -59,6 +59,13 @@ do
         f.text:SetPoint("TOPLEFT", 8, -6); f.text:SetPoint("TOPRIGHT", -8, -6)
         f.text:SetJustifyH("LEFT"); f.text:SetJustifyV("TOP"); f.text:SetHeight(30)
         f.btn = {}
+        -- "Click again to discard" ends 4 s after the first click. (SD-90) One function per bar, made once, not one per click: every
+        -- wait is 4 s, so the n-th wait to end belongs to the n-th first click (f.armTok counts them from 1); only the latest still
+        -- in f.armTok lets go, as before
+        local function Disarm()
+            f.armDue = (f.armDue or 0) + 1
+            if f.armTok == f.armDue then f.armed = false end
+        end
         for _, d in ipairs(LIST) do
             local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
             b:SetText(d[2])
@@ -70,8 +77,7 @@ do
                     if not f.armed then
                         f.armed = true
                         f.armTok = (f.armTok or 0) + 1
-                        local tok = f.armTok
-                        if C_Timer then C_Timer.After(4, function() if f.armTok == tok then f.armed = false end end) end
+                        if C_Timer then C_Timer.After(4, Disarm) end
                         return
                     end
                     f.armed = false

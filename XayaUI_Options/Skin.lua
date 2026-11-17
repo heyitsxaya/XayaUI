@@ -220,7 +220,9 @@ ns.OptionsApi.TreeFilter = function() return ns.treeFilter end   -- (Dev Assist'
 local function HoverCol() return TC("xui-list-selected", "text", { 1, 1, 1, 1 }) end   -- lit / hover text: the theme's selected-text color
 -- a theme change also repaints every rule-list row (their text color was set when the row was drawn: dark text from Light mode stayed on a dark theme)
 -- (A23 SD-12) only while the window is open: closed, it is painted afresh when it opens (Options.lua's Open wrapper decorates it)
-if TH and TH.OnResolve then TH.OnResolve(function() if ACD.OpenFrames[APP] and C_Timer then C_Timer.After(0.05, function() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end) end end) end
+-- (SD-90: the delayed repaint is one function, made once, not one per theme change)
+local function DecorateSoon() if ns.DecorateTrees then pcall(ns.DecorateTrees) end end
+if TH and TH.OnResolve then TH.OnResolve(function() if ACD.OpenFrames[APP] and C_Timer then C_Timer.After(0.05, DecorateSoon) end end) end
 ns.On("THEME_CHANGED", function() if ACD.OpenFrames[APP] and ns.DecorateTrees then pcall(ns.DecorateTrees) end end)   -- live theme edits (Theme.lua)
 
 -- Rule search box: nested at the top of the All Rules sidebar, above the Loaded row. Typing filters the rule lists (ns.treeFilter).
@@ -244,6 +246,21 @@ local function RestoreSearchFocus()
         end
     end
 end
+-- The filter applied 0.25 s after the last letter. (SD-90) One function, made once, not one per letter: every wait is 0.25 s, so the
+-- n-th wait to end belongs to the n-th letter (filterStamp counts them from 1, in every box); only the latest still in filterStamp
+-- runs, with the box it was typed in (filterBox), as before.
+local filterDue, filterBox = 0, nil
+local function FilterDue()
+    filterDue = filterDue + 1
+    if filterDue ~= filterStamp then return end
+    local sb = filterBox
+    filterBox = nil
+    if sb:HasFocus() then ns.treeSearchRefocus = { pos = sb:GetCursorPosition(), t = GetTime() } end
+    if ns.UI and ns.UI.Notify then ns.UI.Notify() end
+    RestoreSearchFocus()
+    C_Timer.After(0, RestoreSearchFocus)     -- the rebuild can finish on the next frame
+    C_Timer.After(0.1, RestoreSearchFocus)
+end
 local function MakeSearchBox(parent)
     local sb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
     sb:SetAutoFocus(false); sb:SetHeight(20)
@@ -265,15 +282,8 @@ local function MakeSearchBox(parent)
         ns.treeFilter = q
         ns.treeFilterOpen = (q ~= "") or nil
         filterStamp = filterStamp + 1
-        local stamp = filterStamp
-        C_Timer.After(0.25, function()
-            if stamp ~= filterStamp then return end
-            if sb:HasFocus() then ns.treeSearchRefocus = { pos = sb:GetCursorPosition(), t = GetTime() } end
-            if ns.UI and ns.UI.Notify then ns.UI.Notify() end
-            RestoreSearchFocus()
-            C_Timer.After(0, RestoreSearchFocus)     -- the rebuild can finish on the next frame
-            C_Timer.After(0.1, RestoreSearchFocus)
-        end)
+        filterBox = sb
+        C_Timer.After(0.25, FilterDue)
     end)
     sb:SetText(ns.treeFilter or "")
     refreshHint(sb)
@@ -416,6 +426,8 @@ local function TraceGroupFire(w, what)
     if w.xuiFireTraced then return end
     w.xuiFireTraced = true
     local orig = w.Fire
+    -- (SD-90: the next-frame note is made once per widget, not on every switch)
+    local function NextFrameNote() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end
     w.Fire = function(self, ev, ...)
         if ev ~= "OnGroupSelected" then return orig(self, ev, ...) end
         -- A tab / tree switch builds the new pane's widgets inside this call. They are plain AceGUI widgets until the skin pass runs, and
@@ -436,7 +448,7 @@ local function TraceGroupFire(w, what)
             ns.xuiDecorating = nil
             if tracing then ns.Trace(string.format("%s switch built in %.0f ms + skin %.0f ms", what, t1 - t0, debugprofilestop() - t1)) end
         end
-        if tracing and C_Timer then C_Timer.After(0, function() ns.Trace("next frame after " .. what .. " switch (anything below this ran late)") end) end
+        if tracing and C_Timer then C_Timer.After(0, NextFrameNote) end
         if not okF then error(r1, 0) end
         return r1, r2
     end
@@ -897,6 +909,17 @@ local function SkinTree(w)
                 ns.Print("sidebar resize error (please report): " .. tostring(err))
                 if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
             end
+            -- the one deferred pass after a drag, next frame (SD-90: made once per tree, not on every drag)
+            local function AfterFinish()
+                if w.treeframe ~= tf or not tf:IsVisible() then return end
+                local ok, err = pcall(function()
+                    local st2 = Status()
+                    if st2 and st2.fullwidth then w:OnWidthSet(st2.fullwidth) end
+                    w:RefreshTree()
+                    w:DoLayout()
+                end)
+                if not ok then Fail(err) end
+            end
             local function Finish()
                 if not running then return end
                 running = nil
@@ -908,16 +931,7 @@ local function SkinTree(w)
                 tf:SetScript("OnSizeChanged", origSize)
                 if st then st.treewidth = width; st.xuiManualWidth = true; st.xuiManualTW = width end   -- (ns.EnsureNameRoom no longer widens it past her width, and gives it back if a layout pass capped it)
                 pcall(w.Fire, w, "OnTreeResize", width)
-                C_Timer.After(0, function()
-                    if w.treeframe ~= tf or not tf:IsVisible() then return end
-                    local ok, err = pcall(function()
-                        local st2 = Status()
-                        if st2 and st2.fullwidth then w:OnWidthSet(st2.fullwidth) end
-                        w:RefreshTree()
-                        w:DoLayout()
-                    end)
-                    if not ok then Fail(err) end
-                end)
+                C_Timer.After(0, AfterFinish)
             end
             local md1 = function(f, button)
                 if button and button ~= "LeftButton" then return end
@@ -1850,9 +1864,10 @@ local function SkinSlider(w)
                 if b.xuiT1 then b.xuiT1:Cancel(); b.xuiT1 = nil end
                 if b.xuiT2 then b.xuiT2:Cancel(); b.xuiT2 = nil end
             end
+            local function startRepeat() b.xuiT2 = C_Timer.NewTicker(0.07, step) end   -- (SD-90: made once per arrow, not on every press)
             b:SetScript("OnMouseDown", function()
                 step(); stop()
-                b.xuiT1 = C_Timer.NewTimer(0.4, function() b.xuiT2 = C_Timer.NewTicker(0.07, step) end)
+                b.xuiT1 = C_Timer.NewTimer(0.4, startRepeat)
             end)
             b:SetScript("OnMouseUp", stop); b:SetScript("OnLeave", stop); b:SetScript("OnHide", stop)
             b.xuiStop = stop

@@ -53,6 +53,15 @@ It sets up buff durations for the class and spec you are playing (it scans your 
 ### My "Only when not mounted" sound played while I was still mounted.
 That can happen in a fight, on purpose. With **Let the game play this sound on the aura itself** ticked, the game's copy of an **Only when not mounted** sound is set up as each fight starts, even while you are mounted, because the game does not let XayaUI set it up during the fight. That way, if you are knocked off your mount in the fight, the sound still plays. In that fight it may also play while you are still mounted. When the fight ends and you are mounted, the copy is taken back.
 
+### The sound pane says "XayaUI plays this sound itself".
+The rule has **Let the game play this sound on the aura itself** ticked, and its buff has an icon in your Cooldown Manager. Then XayaUI plays the sound itself instead of handing a copy to the game, because it can see that icon in a fight and so can follow every setting of the rule (Load tab, triggers, conditions, Repeat). Two small differences: if the buff is already up (or already gone) when a fight starts, a rule that loads only in combat plays once as the fight starts; a buff lost and gained again in the same instant makes no sound.
+
+### The sound pane says "The game would not take this sound when a fight started".
+The game refused the rule's copy at the start of a fight (or at a boss pull). For the rest of the session XayaUI keeps the copy from before the fight, so the sound still plays, but it may also play when your Load tab says no. To make it exact, add that buff to Blizzard's Cooldown Manager: then XayaUI plays the sound itself and follows every setting.
+
+### Why doesn't the game's copy of my sound repeat?
+The game plays its copy on the aura alone, so it can never repeat it (**Repeat**) or wait for the rule's other triggers, conditions or ANY trigger mode. Everything on the Load tab is followed. If you need Repeat, add the buff to your Cooldown Manager (XayaUI then plays it itself, with Repeat, in fights too), or untick **Let the game play this sound** (XayaUI's own sound repeats, but in a fight it plays only for auras XayaUI can see).
+
 ## What the game won't allow
 
 ### Why is there no trigger for health, mana, rage or the combat log?
@@ -73,7 +82,16 @@ The game restricts chat actions to other players in several kinds of content, an
 ## Commands and reporting
 
 ### Where are the commands?
-`/xui help` lists the commands you use. The diagnostic ones are under `/xui debug`; `/xui debug` alone lists them. The debug tools (the console window, `/xui bug`, `/xui report`, `/xui status`, `/xui auras`, `/xuiengine`, and `/xui debug status`, `perf` and `auras`) work only while **Advanced Debugging** is on (Settings > Debugging, off by default; type `/reload` after turning it on). Until then each says so in one chat line. With them on, any `/xui debug` command opens the XayaUI console and prints there.
+`/xui help` lists the commands you can use right now: a part's commands are listed only while that part is on. The diagnostic ones are under `/xui debug`; `/xui debug` alone lists them. The debug tools (the console window, `/xui bug`, `/xui report`, `/xui status`, `/xui auras`, `/xuiengine`, and `/xui debug status`, `perf` and `auras`) work only while **Advanced Debugging** is on (Settings > Debugging, off by default; type `/reload` after turning it on). Until then each says so in one chat line. With them on, any `/xui debug` command opens the XayaUI console and prints there.
+
+### Why does /xui stats (or /xui calc) say it is off?
+Each part's commands work only while that part is switched on. Typed while it is off, they run nothing and print one line naming the part and where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features." Tick the part's box in the settings window (**Bonus Features > Stat Calculator** or **Bonus Features > Calculator**); it works at once, with no reload. There is no `/xui stats on` any more.
+
+### The Stat Calculator closed when a fight started and did not come back.
+That is on purpose: it never stays open in a fight and does not reopen by itself afterwards. Open it again from the **Stat Calculator** row in the minimap button's list, with `/xui stats`, or by opening the character window again. It also loads only the first time you open it, not at login.
+
+### Does /calc work?
+Yes, while the Calculator is on: `/calc 12k*3` answers in chat, and `/calc` alone opens or closes the Calculator window. If another addon already uses `/calc`, XayaUI leaves it to that addon; `/xui calc` always works.
 
 ### Why does /xui unlock open the settings window?
 The mover (dragging your displays and groups on screen) is part of the settings window and works only while it is open. `/xui unlock` opens the window with every display unlocked; closing the window closes the mover. Moves you have not saved are kept. The next time you open the window, one question asks: **Save**, **Discard** (everything goes back) or **Keep editing** (the mover opens with them). Nothing is asked at login. If combat closed the window, the mover opens again by itself with your moves when combat ends.

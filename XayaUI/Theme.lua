@@ -511,20 +511,22 @@ end
 -- AceGUI recycles its widgets on a rebuild, and the picker keeps calling the old widget, which by then belongs to a different option,
 -- so the color lands on the wrong setting. Repaints are queued and run once the picker closes.
 local queue, qticker = {}, nil
+-- live preview: repaint the windows that are already open IN PLACE (no rebuild, so no widget is recycled under the picker),
+-- at most ~8 times a second; the full rebuild waits for the picker to close. (SD-90: one function, made once; it reads only this file's
+-- values, so it does what the closure made on each call did.)
+local function DeferTick(t)
+    if T.liveDirty then T.liveDirty = false; ns.Fire("THEME_CHANGED") end
+    if ColorPickerFrame:IsShown() then return end
+    t:Cancel(); qticker = nil
+    local q = queue; queue = {}
+    for f in pairs(q) do pcall(f) end
+end
 function T.Defer(fn)
     if not (ColorPickerFrame and ColorPickerFrame.IsShown and ColorPickerFrame:IsShown() and C_Timer) then fn(); return end
     queue[fn] = true
     T.liveDirty = true
     if qticker then return end
-    -- live preview: repaint the windows that are already open IN PLACE (no rebuild, so no widget is recycled under the picker),
-    -- at most ~8 times a second; the full rebuild waits for the picker to close
-    qticker = C_Timer.NewTicker(0.12, function(t)
-        if T.liveDirty then T.liveDirty = false; ns.Fire("THEME_CHANGED") end
-        if ColorPickerFrame:IsShown() then return end
-        t:Cancel(); qticker = nil
-        local q = queue; queue = {}
-        for f in pairs(q) do pcall(f) end
-    end)
+    qticker = C_Timer.NewTicker(0.12, DeferTick)
 end
 function T.UINotify()
     ns.Fire("CONFIG_CHANGED")

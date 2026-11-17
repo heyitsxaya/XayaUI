@@ -532,11 +532,12 @@ Not tested in game. QA H6 to H10; walkthroughs in `/xui dev qa`: "Settings windo
 
 ## 15. Rules fix bundle 1, rounds 1 to 9 (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
 
-Not tested in game. QA B399 and B401 to B434 (section B-bundle1). Versions in this build: XayaUI 0.6.86, Options 0.6.109,
-Rules 0.7.1, and the new XayaUI Debug 0.7.0. Bonus Features (0.6.46) is unchanged. Landing commit: not landed yet.
+Not tested in game. QA B399 and B401 to B438 (section B-bundle1). Versions after round 9: XayaUI 0.6.86, Options 0.6.109,
+Rules 0.7.1, and the new XayaUI Debug 0.7.0. Round 10 (section 16) raises them to XayaUI 0.6.87, Options 0.6.110, Rules 0.7.2,
+XayaUI Debug 0.7.1 and Bonus Features 0.6.47. Landing commit: not landed yet.
 
-- **Install:** replace `XayaUI`, `XayaUI_Options` and `XayaUI_Rules` as whole folders and add the new `XayaUI_Debug` folder next to
-  them. The rule editor moved from `XayaUI_Rules` to `XayaUI_Options`. `XayaUI_Bonus` and `XayaUI_Bonus_StatCalculator` are unchanged.
+- **Install:** replace `XayaUI`, `XayaUI_Options`, `XayaUI_Rules`, `XayaUI_Bonus` and `XayaUI_Bonus_StatCalculator` as whole
+  folders and add the new `XayaUI_Debug` folder next to them. The rule editor moved from `XayaUI_Rules` to `XayaUI_Options`.
 - **Combat lock:** the settings window, the rule editor, the mover (`/xui unlock`), Combat Tracking Setup, the talent scan and
   `/xui enable` do not open in combat. One chat line says so, for example "the settings window can't open during combat. It will
   open when combat ends.", and it opens by itself when combat ends. An open settings window closes as combat starts and opens again
@@ -585,14 +586,38 @@ Rules 0.7.1, and the new XayaUI Debug 0.7.0. Bonus Features (0.6.46) is unchange
 - **Borders on each display:** a group's border and background are drawn on each display, every group, also on displays the combat
   engine draws (0 px padding when none was saved). A deleted group's border no longer stays on screen until a /reload.
 - **Game-played sound follows the load conditions:** including Mythic+, a change of group, and "Only when mounted" / "Only when not
-  mounted" (a dismount straight into a pull too). Rules that load only in combat or only in a boss encounter now get the game's copy
-  too (before: none). The game can't be told about combat or an encounter ahead of time, so their sound can also play outside combat
-  or outside the encounter.
+  mounted" (a dismount straight into a pull too). Round 10 makes this exact for combat and boss encounters too (section 16).
 - **Commands:** `/xui notes`, `notepad`, `note` and `data` show the command list instead of a false "did not respond" line.
 - **`/xui debug mouse` (the right-click tracker) is no longer in this download;** it is kept for when the developer tools are
   rebuilt. Your `/run` tracker lines still work.
 - **Recycle Bin:** its page no longer says items are checked every 30 minutes; they are checked when you log in or out and when the
   page lists them.
+
+## 16. Rules fix bundle 1, round 10 (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
+
+Not tested in game. QA B434 to B438, and docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md. Versions: XayaUI 0.6.87, Options 0.6.110,
+Rules 0.7.2, XayaUI Debug 0.7.1, Bonus Features 0.6.47 (both of its folders). Landing commit: not landed yet.
+
+- **Calculator (new, Bonus Features):** a small calculator window with a keypad, and sums in chat:
+  `/xui calc 23,249 / 3,472` prints "XayaUI: 23,249 / 3,472 = 6.696141". `/xui calculator` and `/calc` do the same (`/calc` only when
+  no other addon uses it). `/xui calc` alone, **Calculator** in the minimap button's list, or **Open calculator** on its page opens or
+  closes the window. Its own tick box at **Bonus Features > Calculator**, on by default. Enter works the sum out and lets go of the
+  keyboard; the first Esc lets go of the keyboard and the second closes the window; opened in combat it does not take the keyboard.
+- **A part's commands work only while it is on:** typed while it is off, they print one line, for example "XayaUI: The Calculator is
+  off. Turn it on in /xui > Bonus Features." `/xui help` lists only the commands you can use right now. `/xui stats on` is gone.
+- **Stat Calculator loads the first time you open it** (minimap row, `/xui stats`, or the character window when you left the panel
+  open), not at login. Its switch works at once, with no reload question; turned off after it loaded, it stops at once and its memory
+  is freed at the next /reload. It closes when a fight starts and does **not** come back by itself afterwards. Opening the settings
+  window does not load it; until it has been opened once, its page shows its tick box and one line (for now, until Xaya decides how
+  that page should work).
+- **Game-played sound follows the Load tab exactly:** the game's copy is given only while every Load choice is met (combat and boss
+  encounters too) and taken back the moment one stops being met. If the game refuses the copy as a fight starts or at a boss pull,
+  XayaUI keeps the copy from before the fight and the rule's pane suggests adding the buff to your Cooldown Manager. A buff that is in
+  your Cooldown Manager is played by XayaUI itself, following every setting of the rule. The pane says plainly that the game's copy can
+  never repeat or wait for other triggers.
+- **Displays:** Out of combat opacity now also applies to displays the combat engine draws; a display hidden with the interface
+  (Alt+Z) stops redrawing and shows the right time when it is back; the tenths countdown shows exactly the tenth it is on.
+- **Performance tracker:** redrawFill reads "bar fills and wipe steps written".
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.

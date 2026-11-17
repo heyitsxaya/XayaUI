@@ -192,6 +192,20 @@ local function ConfirmAllSounds(count, cb)
     soundAllDlg:Show()
 end
 
+-- (SD-90) The tree's scroll position put back again next frame after an eye click: one function, made once, not one per click. Each
+-- click's status table, position and tree wait in a list; every wait is 0 s, so they come due in the order they were set and each run
+-- takes the oldest, as the function made per click did with its own values.
+local function PutScroll(st, sv, tree) st.scrollvalue = sv; if tree.scrollbar and tree.scrollbar.SetValue then pcall(tree.scrollbar.SetValue, tree.scrollbar, sv) end end
+local putSt, putSv, putTree, putHead, putTail = {}, {}, {}, 1, 0
+local function PutScrollDue()
+    local h = putHead
+    local st, sv, tree = putSt[h], putSv[h], putTree[h]
+    putSt[h], putSv[h], putTree[h] = nil, nil, nil
+    if h >= putTail then putHead, putTail = 1, 0 else putHead = h + 1 end
+    if st == nil then return end
+    PutScroll(st, sv, tree)
+end
+
 local function MakeToggle(button, kind)
     local b = CreateFrame("Button", nil, button)
     b:SetSize(15, 15)
@@ -221,8 +235,12 @@ local function MakeToggle(button, kind)
             local sv = st and st.scrollvalue
             Notify()
             if st and sv then
-                local function put() st.scrollvalue = sv; if tree.scrollbar and tree.scrollbar.SetValue then pcall(tree.scrollbar.SetValue, tree.scrollbar, sv) end end
-                put(); if C_Timer then C_Timer.After(0, put) end
+                PutScroll(st, sv, tree)
+                if C_Timer then
+                    putTail = putTail + 1
+                    putSt[putTail], putSv[putTail], putTree[putTail] = st, sv, tree
+                    C_Timer.After(0, PutScrollDue)
+                end
             end
         end
         if on and kindNow == "sound" and #objs > 1 then ConfirmAllSounds(#objs, go) else go() end
@@ -1848,10 +1866,26 @@ function ns.SidebarRename(button)
     eb:Show(); eb:SetFocus(); eb:HighlightText()
 end
 
+-- (SD-90) A row's name box opened a moment later: one function per delay, made once here, not one per call. Each call's row waits in
+-- that delay's list; its waits are all the same length, so they come due in the order they were set and each run takes the oldest
+-- row, as the function made per call did with its own row.
+local function RowWait(delay, run)
+    local rows, head, tail = {}, 1, 0
+    local function due()
+        local b = rows[head]
+        rows[head] = nil
+        if head >= tail then head, tail = 1, 0 else head = head + 1 end
+        if b then run(b) end
+    end
+    return function(b) tail = tail + 1; rows[tail] = b; C_Timer.After(delay, due) end
+end
+local renameMenuWait = RowWait(0.1, function(button) if button:IsShown() then ns.SidebarRename(button) end end)
+local renameNewWait = RowWait(0.15, function(button) if button:IsShown() and ns.SidebarRename and Ours(button.obj) then ns.SidebarRename(button) end end)
+
 -- Called from the right-click menu: the menu closes after the click and takes keyboard focus with it, so the box opens a moment later.
 function ns.SidebarRenameLater(button)
     if not (button and button.IsShown and button:IsShown() and C_Timer) then return false end
-    C_Timer.After(0.1, function() if button:IsShown() then ns.SidebarRename(button) end end)
+    renameMenuWait(button)
     return true
 end
 
@@ -1946,7 +1980,7 @@ function R.Hooks(button)
         local rnum = tostring(button.uniquevalue or ""):match("rule(%d+)$")
         if pr and rnum and ns.rules[tonumber(rnum)] == pr and C_Timer then
             ns.pendingRename = nil
-            C_Timer.After(0.15, function() if button:IsShown() and ns.SidebarRename and Ours(button.obj) then ns.SidebarRename(button) end end)
+            renameNewWait(button)
         end
     end
 end

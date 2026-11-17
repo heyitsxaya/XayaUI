@@ -93,11 +93,11 @@ local SC_ON = C_AddOns.IsAddOnLoaded("XayaUI_Bonus") and true or false
 local scSwitch = SC_ON and type(rawget(_G, "XayaUIBonusDB")) == "table" and type(XayaUIBonusDB.characterToolkit) == "table"
   and XayaUIBonusDB.characterToolkit.enabled == true or false
 if scSwitch then WANT[#WANT + 1] = "/xui stats" end
-local calcLine   -- (the Calculator's /xui calc and /xui calculator, when registered: listed while it is on, the default; in the order printed)
-for i = 2, #help do
-  local c = plain(help[i]):match("^  (/xui calc%a*)%s") or plain(help[i]):match("^  (/xui calc%a*)$")
-  if SC_ON and (c == "/xui calc" or c == "/xui calculator") then calcLine = true; WANT[#WANT + 1] = c end
-end
+-- (bundle 1 round 10, calculator unit, intended change) the Calculator's /xui calc and /xui calculator, exactly, after core's: with
+-- XayaUI Bonus Features loaded it is on by default (SD-116), so both are listed (SD-118). Before, they were taken from whatever was
+-- printed, so a missing line passed too.
+local calcLine = SC_ON
+if SC_ON then WANT[#WANT + 1] = "/xui calc"; WANT[#WANT + 1] = "/xui calculator" end
 check("help: the Stat Calculator is off on this fresh install (setup)", scSwitch == false, scSwitch)
 check("help: " .. #WANT .. " lines (it was 29), core's own commands" .. (calcLine and " and the Calculator's /xui calc" or "") .. "; /xui stats only while the Stat Calculator is on (SD-118)",
   #help - 1 == #WANT, #help - 1)

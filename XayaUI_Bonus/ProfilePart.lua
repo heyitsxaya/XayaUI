@@ -15,8 +15,8 @@
 -- at once: after the import the loader's switch logic runs (ns.StatCalcLoader.SwitchChanged, XayaUI_Bonus/StatCalculatorLoader.lua), as
 -- after a tick on its row: imported on, it is usable now (it loads at its first open); imported off, a loaded calculator is inert now
 -- and its memory is freed at the next /reload; a loaded one takes the imported settings at once.
--- Format 1 was qa-installer-branch's Bonus Features part (data panels, tooltips, calculator); none of it is on main, so a format-1
--- part imports nothing here.
+-- Format 1 was qa-installer-branch's Bonus Features part (data panels, tooltips, calculator); of it only the Calculator's switch is on
+-- main (below), so a format-1 part imports that and nothing else.
 -- Older strings from qa-installer-branch: there the Stat Calculator's settings travel in the QoL part (XayaUI_QoL/ProfilePart.lua,
 -- db = { ..., "characterToolkit", ... }), not in the Bonus Features part. adopt() (called by XayaUI_Options/Profiles.lua before the
 -- parts are cleaned) takes that characterToolkit into this part while no XayaUI QoL is loaded, so such a string imports its Stat
@@ -31,7 +31,13 @@ ns = _G.XayaUI_NS or ns
 if not (ns and ns.RegisterProfilePart) then return end
 local BonusS = ns.Settings("bonus")
 
-local def = { key = "bonus", label = "Bonus Features", module = "XayaUI_Bonus", order = 50, version = 2, db = { "characterToolkit" } }
+-- (0.6.47, bundle 1 round 10; SD-95 / SD-115 / SD-116) the arithmetic Calculator is back inside XayaUI_Bonus (Calculator.lua): its key
+-- `calculator` travels as it did in qa-installer-branch's Bonus part (format 1: db "calculator", never history / point / x / y), so only
+-- its switch `enabled` is in a profile; your sums and its place on screen stay yours. The format stays 2: a key is only added (the
+-- Platform's check takes each `db` key that is there), so a format-2 string from before has no `calculator` and leaves the switch as it
+-- is, and an older XayaUI_Bonus reading a newer string leaves `calculator` out; a format-1 (QA) string's `calculator.enabled` imports.
+local def = { key = "bonus", label = "Bonus Features", module = "XayaUI_Bonus", order = 50, version = 2, db = { "characterToolkit", "calculator" },
+    never = { calculator = { history = true, point = true, x = true, y = true } } }
 ns.RegisterProfilePart(def)
 local base = def.snapshot   -- (the Platform's, built from `db`)
 if type(base) == "function" then
@@ -54,6 +60,7 @@ if type(baseApply) == "function" then
         local was = L and L.Saved and L.Saved() or false
         local res = baseApply(part, ...)
         if L and L.SwitchChanged then L.SwitchChanged(was) end
+        if ns.Calculator_Sync then ns.Calculator_Sync() end   -- (the Calculator imported off: an open keypad closes at once; on: usable now)
         return res
     end
 end

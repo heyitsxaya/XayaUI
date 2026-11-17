@@ -1,8 +1,14 @@
-# Stat Calculator on main: in-game checks (Bonus Features 0.6.46, 2026-11-12)
+# Stat Calculator on main: in-game checks (Bonus Features 0.6.46, 2026-11-12; updated for bundle 1 round 10, Bonus Features 0.6.47, 2026-11-16)
 
 For Xaya or a tester. Main has no XayaUI Dev Assist, so these are written steps rather than `/xui dev qa` walkthroughs. Each step says what to do and what you should see. Every step is **UNVERIFIED IN GAME** until someone runs it. The offline tests (tests/char_stat*_run.py, char_statcalc*_run.py, char_spells*_run.py, char_gear_icons_run.py, statcalc_*_run.py, gate_statcalc_main_run.py) use a stand-in of the game. They do not prove in-game cost, taint or behavior, or how the game's AddOns list looks.
 
 Source: REQUEST-LOG A24 #10 (her words: "Self-contained but under Bonus Features parent addon folder"), #11, #12 and #13. Since Bonus 0.6.46 (A24 #13, the option she chose: "XayaUI_Bonus keeps only a tiny loader: the on/off switch, settings page entry, /xui stats and the minimap row. The calculator code moves to XayaUI_Bonus_StatCalculator, shown in the AddOns list under Bonus Features as 'load on demand'. Off means it is never read; on means it loads once per reload.") the build is two folders on branch `claude/stat-calculator-main`: `XayaUI_Bonus` (the switch, the settings page entry, `/xui stats`, the minimap row, the profile part) and `XayaUI_Bonus_StatCalculator` (the calculator itself, load on demand).
+
+**Round 10 changes (bundle 1, Bonus Features 0.6.47; her answers SD-94, SD-100, SD-102, SD-103, SD-105, SD-112, SD-118).** The steps below are updated to them:
+- The calculator loads the **first time it is opened** (the minimap row, `/xui stats`, or the character window when the panel was left open), never at login and never in combat. The switch works **at once**: no "Reload now?" question. Turned off after it loaded, it stops at once, chat says "XayaUI: The Stat Calculator is off. Its memory is freed at your next /reload.", and the memory is freed at the next /reload.
+- `/xui stats on` no longer exists. While the Stat Calculator is off, every `/xui stats` word prints only "XayaUI: The Stat Calculator is off. Turn it on in /xui > Bonus Features." (SD-118).
+- In combat the panel closes and does **not** come back after combat (SD-102); reopen it yourself.
+- Opening the settings window does not load it. Until it has loaded this session, its page shows the tick box and one line (an interim built while SD-103 is parked).
 
 When a step fails, write down its number, what you saw and a screenshot, and run `/xui bug` if there was a Lua error.
 
@@ -15,20 +21,20 @@ Her note on this layout (A24 #13): "unsure how this will look in game -- this mi
 2. **Look at the AddOns list.** Log out to the character select screen and click **AddOns** (bottom left), or in the game press **Esc** > **AddOns**. Find the **XayaUI** entry and open it (its arrow) if it is folded.
    **Expect (what the build declares; the look itself is UNVERIFIED IN GAME):** under XayaUI you see, among the others, **XayaUI Bonus Features** (version 0.6.46) and **XayaUI Bonus Features: Stat Calculator** (version 0.6.46), each with its own tick box, both ticked. Both files say `## Group: XayaUI`, the same group as XayaUI Bonus Features, so both are listed under XayaUI. Where exactly the Stat Calculator line sits (right under Bonus Features, or elsewhere in the XayaUI group) depends on how the game sorts a group's entries: INFERENCE that it sorts by title, which would put it right after XayaUI Bonus Features. Its tooltip (hover its name) shows its notes, and the game marks it as load on demand (in the client this can show as a note such as "Load on demand" or nothing at all until it is loaded: UNVERIFIED IN GAME). XayaUI Options has always been listed the same way (also load on demand).
    Take a screenshot of the list so she can decide whether this look is okay.
-3. **Switch the calculator off and on, and /reload.** This is the Stat Calculator's own switch (not the AddOns list): `/xui` > top tab **Bonus Features** > the tick box on the **Stat Calculator** row.
-   - Tick it. **Expect:** the game asks "Stat Calculator: this change takes effect after a reload. Reload now?" with **Reload** / **Later**. The page shows one line: "On after a reload: type /reload to load the Stat Calculator and list its options here." Click **Reload** (or type `/reload`).
-   - After the reload, open `/xui` > **Bonus Features** > **Stat Calculator** again. **Expect:** its options are there (**Panel** and **Spell Math** under it, each with its own tick box). `/xui stats` opens the panel. The XayaUI minimap button's list has a **Stat Calculator** row.
-   - Untick it. **Expect:** the same "Reload now?" question. Click **Later**: the Stat Calculator keeps working in this session (the panel still opens with `/xui stats`). Then `/reload`. **Expect:** the page shows one line: "Off: none of the Stat Calculator is read. Tick it, then /reload to load it and list its options here." `/xui stats` says "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload." The minimap list has no Stat Calculator row.
-   - The same from chat: `/xui stats on` says "Stat Calculator: saved ON. It takes effect after a reload: type /reload."; `/xui stats off` says "Stat Calculator: saved OFF. It takes effect after a reload: type /reload."
-4. Optional, to see the "off means it is never read" part: with the Stat Calculator off and after a `/reload`, type `/dump C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")`. **Expect:** `false`. Turn it on and `/reload`: **Expect:** `true`. (If you use a memory or CPU addon, XayaUI Bonus Features: Stat Calculator shows nothing while it is off.)
-5. With the Stat Calculator on, untick **XayaUI Bonus Features: Stat Calculator** in the game's AddOns list and `/reload`. **Expect:** one chat line at login: "the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload." No Lua error. Tick it again and `/reload`.
-6. With the Stat Calculator on, pull a training dummy and type `/reload` while it is still attacking you (the game may or may not keep you in combat through the loading screen). **Expect:** if the login is in combat, the calculator loads once combat ends and nothing of it shows until then; otherwise it loads at login as usual. UNVERIFIED IN GAME; the offline test plays it (tests/statcalc_lod_run.py, L3).
+3. **Switch the calculator on and off (no reload).** This is the Stat Calculator's own switch (not the AddOns list): `/xui` > top tab **Bonus Features** > the tick box on the **Stat Calculator** row.
+   - Tick it. **Expect:** no "Reload now?" question. The page shows the tick box and one line: "Its options appear here after you first open the Stat Calculator." The XayaUI minimap button's list now has a **Stat Calculator** row.
+   - Close the settings window and type `/xui stats`. **Expect:** the panel opens (this first open loads the calculator, in the middle of the session). Open `/xui` > **Bonus Features** > **Stat Calculator** again. **Expect:** its options are there (**Panel** and **Spell Math** under it, each with its own tick box).
+   - Untick it. **Expect:** no question; the panel closes at once and chat says "XayaUI: The Stat Calculator is off. Its memory is freed at your next /reload." The page shows "Off. Turn it on, then open it once, to see its options here." after the next `/reload` (until then it may still list its options). `/xui stats` says "XayaUI: The Stat Calculator is off. Turn it on in /xui > Bonus Features." The minimap list has no Stat Calculator row.
+   - From chat, while it is on: `/xui stats off` turns it off (the same line as above once it has loaded; "XayaUI: The Stat Calculator is off." before). `/xui stats on` does not exist: while it is off it prints the off line above.
+4. Optional, to see the "off means it is never read" part: with the Stat Calculator off and after a `/reload`, type `/dump C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")`. **Expect:** `false`. Tick it (no reload) and type the line again. **Expect:** still `false`. Open the panel once (`/xui stats`) and type it again. **Expect:** `true`. (If you use a memory or CPU addon, XayaUI Bonus Features: Stat Calculator shows nothing until its first open.)
+5. With the Stat Calculator on, untick **XayaUI Bonus Features: Stat Calculator** in the game's AddOns list and `/reload`. **Expect:** nothing at login. Type `/xui stats`. **Expect:** one chat line: "XayaUI: the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload." No Lua error. `/xui stats status` says "XayaUI: Stat Calculator: on, but it could not load this session. It is switched off in the game's AddOns list: turn it on, then /reload." and the settings page says "The Stat Calculator could not load this session. Chat says why." Tick it again and `/reload`.
+6. With the Stat Calculator on and not opened yet this session, start a fight and type `/xui stats` and click the minimap button in it. **Expect:** nothing opens or loads, nothing is said, and nothing loads when the fight ends (`/dump C_AddOns.IsAddOnLoaded("XayaUI_Bonus_StatCalculator")` still `false`). Type `/xui stats` after the fight: it loads and opens.
 7. Fresh settings only, if you have never used the Stat Calculator: open the character window (C).
    **Expect:** no Stat Calculator panel, and no **Stat Calc** button anywhere on the character window. That button belongs to Improved Character Display, which is not on main.
 8. Click the XayaUI minimap button.
    **Expect:** the list has no **Stat Calculator** row while the Stat Calculator is off.
 9. Type `/xui stats status`.
-   **Expect:** with it off: `Stat Calculator: off (not loaded).` With it on (after the reload): `Stat Calculator: on, panel on, spell math off (0 spells), converter present.`
+   **Expect:** with it off: "XayaUI: The Stat Calculator is off. Turn it on in /xui > Bonus Features." With it on, before the first open: "XayaUI: Stat Calculator: on, not loaded yet (it loads the first time you open it)." After the first open: `Stat Calculator: on, panel on, spell math off (0 spells), converter present.`
 
 ## B. Settings carried over from the QA build
 
@@ -39,7 +45,7 @@ Her note on this layout (A24 #13): "unsure how this will look in game -- this mi
 
 11. `/xui` > top tab **Bonus Features**.
    **Expect:** the tab shows one entry, **Stat Calculator**, with a tick box. It has no Enhanced Tooltips, Data Panels or Utilities entries.
-12. Tick **Stat Calculator** and `/reload` (Bonus 0.6.46: on takes effect after a reload, step 3).
+12. Tick **Stat Calculator**, close the settings window, open the panel once with `/xui stats`, then open the settings window again (round 10: the options appear after the first open, step 3).
    **Expect:** **Panel** and **Spell Math** appear under it, each with its own tick box. Panel is ticked and Spell Math is not. The intro text says the panel opens with the character window when you left it open, or on its own from the minimap button and `/xui stats`. It does not mention a Stat Calc button.
 13. Close the settings window.
 
@@ -81,9 +87,9 @@ Her note on this layout (A24 #13): "unsure how this will look in game -- this mi
 26. In combat, type `/xui stats` and click the minimap button.
    **Expect:** nothing opens and nothing is said in chat. The minimap list opened in combat has **no Stat Calculator row**.
 27. Leave combat with the character window still open.
-   **Expect:** the panel comes back docked, with fresh numbers. The minimap list has the row again.
+   **Expect (round 10, SD-102 "Don't reappear"):** the panel does **not** come back. The minimap list has the row again. Close the character window and open it again: the panel docks beside it.
 28. Open the panel on its own (window closed), then enter combat.
-   **Expect:** it hides. After combat it comes back on its own, where it was.
+   **Expect:** it hides. After combat it stays closed; `/xui stats` or the minimap row opens it again.
 29. Click a Change box (keyboard focus in it), then enter combat.
    **Expect:** the box lets go of the keyboard as combat starts. Your keys work in combat.
 30. Open the minimap list **before** combat and keep it open while combat starts.
@@ -94,12 +100,12 @@ Her note on this layout (A24 #13): "unsure how this will look in game -- this mi
 31. With the panel closed, click, right-click and camera-drag where it usually sits.
    **Expect:** every click and drag reaches the game. A closed panel takes no mouse input.
 32. Stand in a busy place (a city, or a raid with the panel closed) for a minute with the Stat Calculator on but its panel closed. If you have a CPU profiler addon, read XayaUI Bonus Features: Stat Calculator (the calculator) and XayaUI Bonus Features (only its loader: nothing after login).
-   **Expect:** close to zero CPU while the panel is closed. With the panel closed it listens only to the start and end of combat and to spec and level changes.
+   **Expect:** close to zero CPU while the panel is closed. Round 10: with the panel closed it listens to no game event at all, and before its first open nothing of it is read.
 
 ## I. Switching off
 
-33. Untick **Stat Calculator** in Bonus Features (Bonus 0.6.46: it takes effect after a reload, step 3).
-   **Expect:** "Reload now?". After the reload the panel is gone, the minimap row leaves the list, and opening the character window shows nothing extra. `/xui stats` says "Stat Calculator is off. Turn it on in Bonus Features > Stat Calculator (or /xui stats on), then /reload."
+33. Untick **Stat Calculator** in Bonus Features (round 10: at once, step 3).
+   **Expect:** no question; the panel closes, the minimap row leaves the list, and opening the character window shows nothing extra. `/xui stats` says "XayaUI: The Stat Calculator is off. Turn it on in /xui > Bonus Features."
 34. Switch **XayaUI Bonus Features** off in the game's AddOns list, then `/reload`.
    **Expect:** no Bonus Features tab and no minimap row. `/xui stats` opens nothing, and every other part of XayaUI works. Known core text issue (reported, not changed): core's one-line answer names **XayaUI QoL** as the owner of `/xui stats`, because its command list (`XayaUI/Modules.lua` `ns.MODULES`) predates this build.
 
@@ -108,7 +114,7 @@ Her note on this layout (A24 #13): "unsure how this will look in game -- this mi
 - **No Stat Calc button on main.** The panel opens with the character window (when left open), from the minimap row and from `/xui stats` (A24 #10 (d), as read).
 - **Right-column rows and the E? mark (A24 #10 (a), (b)).** These belong to Improved Character Display, which is not on main. As asked, she is asked again after her test on main.
 - **Profiles (A24 #13, her answer "Yes, include them (Recommended)"): built.** See section J.
-- **Wording of the page's one line and the login message (A24 #13 build, not her text: proposed).** Off: "Off: none of the Stat Calculator is read. Tick it, then /reload to load it and list its options here."; saved on but not loaded yet: "On after a reload: type /reload to load the Stat Calculator and list its options here."; the switch's tooltip uses her option text ("Off means it is never read; on means it loads once per reload."). The AddOns list title "XayaUI Bonus Features: Stat Calculator" is also proposed.
+- **(Superseded in round 10: the page lines are now "Its options appear here after you first open the Stat Calculator.", "Off. Turn it on, then open it once, to see its options here." and "The Stat Calculator could not load this session. Chat says why."; there is no login message and no reload question. How this page should work is parked with her, SD-103.)** Wording of the page's one line and the login message (A24 #13 build, not her text: proposed). Off: "Off: none of the Stat Calculator is read. Tick it, then /reload to load it and list its options here."; saved on but not loaded yet: "On after a reload: type /reload to load the Stat Calculator and list its options here."; the switch's tooltip uses her option text ("Off means it is never read; on means it loads once per reload."). The AddOns list title "XayaUI Bonus Features: Stat Calculator" is also proposed.
 - **Core text (needs core, not changed).** `XayaUI/Modules.lua` `ns.MODULES` lists `stats` under XayaUI QoL and `notes / calc / data` under Bonus. `XayaUI/DebugRecord.lua` XUI-E005 says "Lua error in XayaUI Bonus Features (tooltips, notepad, data panels, calculator)". See also step 30.
 
 ## J. Profiles (Bonus 0.6.46, A24 #13)

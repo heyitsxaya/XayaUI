@@ -243,6 +243,19 @@ local function Place(slot, anchor)
     btn:SetFrameLevel((slot:GetFrameLevel() or 1) + 5)
 end
 
+-- The check again next frame (other skins may resize the menu buttons after us). (SD-90) One function, made once, not one per build:
+-- each build's own menu, anchor, slot and padding wait in a list in the order they were set; every wait is 0 s, so they come due in
+-- that same order and each run takes the oldest, as the function made per build did with its own values.
+local again, againHead, againTail = {}, 1, 0
+local function CheckAgain()
+    local i = againHead * 4
+    local menu, anchor, slot, padBefore = again[i - 3], again[i - 2], again[i - 1], again[i]
+    again[i - 3], again[i - 2], again[i - 1], again[i] = nil, nil, nil, nil
+    if againHead >= againTail then againHead, againTail = 1, 0 else againHead = againHead + 1 end
+    if not menu then return end
+    if anchor and btn and btn:IsShown() and slot then Place(slot, anchor); if menu.Layout then menu:Layout() end end
+    FitHeight(menu, padBefore)
+end
 local function Install(menu)
     -- the pool recycles buttons: a slot we made invisible last time may now be a real menu entry, so put its alpha back
     ResetSlots(menu)
@@ -285,10 +298,10 @@ local function Install(menu)
     FitHeight(menu, padBefore)
     -- other skins may resize the menu buttons after us: check once more next frame
     if C_Timer then
-        C_Timer.After(0, function()
-            if anchor and btn and btn:IsShown() and slot then Place(slot, anchor); if menu.Layout then menu:Layout() end end
-            FitHeight(menu, padBefore)
-        end)
+        againTail = againTail + 1
+        local i = againTail * 4
+        again[i - 3], again[i - 2], again[i - 1], again[i] = menu, anchor, slot, padBefore
+        C_Timer.After(0, CheckAgain)
     end
 end
 

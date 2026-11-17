@@ -142,6 +142,24 @@ branch: 15 diff lines, 7201 -> 7208, all from main (the `bonus` tab, `bonus.stat
 3 + 2 + 2 = 7 added lines and 4 changed lines (7 + 4 x 2 = 15). Merged against main: 2340 diff lines, all from bundle 1 (the notes
 from 2026-11-10 to 2026-11-13 above). off-XayaUI_Bonus: the branch's all-on window (same hashes for "profiles", "set" and "settings":
 cb4b7d1248032574, 14ad1ae55fa6be62, b53fed29e302ddee; "cooldowns" differs only in the random ids).
+Updated on 2026-11-17 (bundle 1 round 10, Stat Calculator repair 1): only the all-on "bonus" entry, 211f2cc16dc30394 -> 6a81bd4fee213ffb,
+3 nodes both. `--dump` before and after differ in 1 line, `bonus.statcalc`: its switch's hover text drops "Turns the Stat Calculator on
+or off." and reads "On, the Stat Calculator loads the first time you open it. Off, nothing of it runs; once it has loaded, its memory is
+freed at your next /reload." (tests/hover_brevity_run.py: at most two sentences; it had three). The value is the one `--golden` writes on
+a copy of the tree; that copy's "cooldowns" entries (another unit's change) were not taken over.
+Updated on 2026-11-17 (bundle 1 round 10, calculator unit; SD-95 / SD-115 / SD-116: the arithmetic Calculator, its own page and its own
+minimap row inside XayaUI Bonus Features): only all-on entries, "bonus" 6a81bd4fee213ffb (3 nodes) -> 4c373448aa500b52 (8), "set"
+5506788f272a74ab (234) -> 4205a4a9b040d813 (235), "settings" 504240cced864385 (233) -> 94a60d23311175f0 (234) and the registered pages
+(bonus=statcalc -> bonus=calculator,statcalc). `--dump` before (a copy without XayaUI_Bonus/Calculator.lua) and after differ, apart from
+the "cooldowns" random ids, in: `bonus.calculator` and its four lines (about, how, open, reads: 3 + 5 = 8 nodes), `bonus.statcalc` order
+1 -> 2, and in "set" and "settings" the new `minimap.entries.calc` row ("Calculator") with the two other rows' order + 1 (234 + 1 = 235,
+233 + 1 = 234). off-XayaUI_Bonus: 0 lines. The values are the ones `--golden` writes on a copy of the tree; that copy's "cooldowns"
+entries (another unit's change) were not taken over.
+Updated on 2026-11-17 (bundle 1 round 10, calculator repair 1; CHAT-6, the short word /calc): only the all-on "bonus" entry,
+4c373448aa500b52 -> 846d5e8f1ac01082, 8 nodes both. `--dump` before (the pre-repair Calculator.lua) and after differ in 2 lines
+(4 diff lines), both on the Calculator's page: `bonus.calculator` (its switch's tip and desc name /calc too) and `bonus.calculator.how`
+(names /calc, and says /calc is left to another addon that already uses it; /xui calc always works). off-XayaUI_Bonus: 0 lines. The
+value is the one `--golden` writes on a copy of the tree; that copy's "cooldowns" entries (another unit's change) were not taken over.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import hashlib, json, os, re, sys
@@ -388,8 +406,10 @@ def main():
         reg = dict(x.split("=", 1) for x in allon["registered"].split())
         check("the rule editor registers no settings page of its own (rules / core / cooldowns)",
               all(reg.get(m) == "" for m in ("rules", "core", "cooldowns")))
-        check("no module registers a settings page but XayaUI Bonus Features' Stat Calculator (bonus = statcalc; main holds no other feature addon with pages)",
-              all(v == "" for k, v in reg.items() if k != "bonus") and reg.get("bonus") == "statcalc" and len(reg) == 10, allon["registered"])
+        # (bundle 1 round 10, calculator unit, intended change; SD-95 / SD-115 / SD-116) Bonus Features also registers the arithmetic
+        # Calculator's page (XayaUI_Bonus/Calculator.lua)
+        check("no module registers a settings page but XayaUI Bonus Features' Calculator and Stat Calculator (bonus = calculator,statcalc; main holds no other feature addon with pages)",
+              all(v == "" for k, v in reg.items() if k != "bonus") and reg.get("bonus") == "calculator,statcalc" and len(reg) == 10, allon["registered"])
     for tag, e in errs_all:
         print("ERROR in the game stand-in [%s]: %s" % (tag, e[:600]))
     print("%d checks, %d failed, %d Lua errors" % (total, bad, len(errs_all)))
