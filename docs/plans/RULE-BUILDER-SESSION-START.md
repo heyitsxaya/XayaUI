@@ -43,3 +43,9 @@
 1. The engine's usage gate (docs/plans/LOAD-CONDITIONS-PERF.md §1, items A-C). Rebase this on bundle 1's engine: bundle 1 now includes SD-77 (2026-11-15), which sends movement / runes / totem / loss-of-control events only to the rows that read them, and on a load-fact change re-checks only the rules that fact affects. That goes further than item C as written here (full step when a used fact changes), so do NOT build the narrowing separately (Rules session message, 2026-11-15).
 2. Then M2 (in a vehicle) and M20 (max level).
 3. The rest wait (LOAD-CONDITIONS-PERF.md §4). Future-only concepts are in RB-20.
+
+## Standing rules (from 2026-11-17)
+Xaya's standing rules replace the older inherited instructions: verbatim in `docs/process/XAYA-STANDING-RULES.md` on `claude/dazzling-brown-x9fqrm` (commit 147c569e, REQUEST-LOG SD-132; relayed by the main session). For this project they mean:
+- **Build (once bundle 1 lands):** the wireframes keep growing alongside the code (the design canvas is the wireframe set). A module counts as done only after the three XUI checks: (1) performance and elegance, and whether it scales without later patching; (2) delivers the request in full, plus reasonable extension cases; (3) fits the app and is siloed, so a failure here cannot break the rest. Every new element gets error handling and documentation, a decision on whether it needs a module map, end-user testing, and entries in the filemap and function call index.
+- **Model check:** at the start of the build, confirm the model and effort level suit the work. Flag lower settings as a quality risk.
+- **Work already in progress:** the main session is asking Xaya how the new XUI rules apply to it. Until she answers, apply them to new work and raise any conflict with her.
