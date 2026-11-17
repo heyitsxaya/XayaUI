@@ -1,3 +1,5 @@
+> Hub merge WITHDRAWN for XayaUI (SD-142, Xaya ~21:00 UTC: "XayaUI is not part of this bundle at all."). This file stays as a cold-start state document; this session continues the work.
+
 # Handoff: XayaUI lead (bundle 1, rounds 1-10; round 11 planned; docs off main + history erase planned)
 - Session: session_014bN6tVBGo8BHkHu65TAcjD · Project: heyitsxaya/XayaUI (PUBLIC repo) · Branch: claude/dazzling-brown-x9fqrm @ see the commit that adds this file (pushed: yes) · Open PRs: none for this branch (PR #523 merged 2026-11-09; no new PR on purpose, see §8 "PR refs") · Released/live: main fda1e293 (XayaUI 0.6.85, Options 0.6.108, Rules 0.7.0, Bonus / StatCalculator 0.6.46) is what players have; nothing from bundle 1 is on main.
 - Child sessions: session_014bN6tSvaDBEe8dCKeMYcgo (Rule Builder, PR #525, design only until bundle 1 lands), session_014bN6tUmdW8ddPT74JogMYj (Stat Calculator review on QA branch). The hub is messaging both directly.
