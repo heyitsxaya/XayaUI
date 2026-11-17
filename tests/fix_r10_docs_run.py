@@ -27,6 +27,14 @@ so a document that drifts from the code fails here.
      0.6.47 included, and names the round 10 changes; WHATS-NEW has section 16; QA B401 names every version; the Rules developers' note
      and QA B427 compare with the cap the gate holds for main (V33_EVENT_CAPS).
   M  docs/SESSION-START-SUMMARY.md no longer tells a session to regenerate MANIFEST.md5 on main (SD-72).
+  R  (repair 1) README.md, the download's own folder guide: the Stat Calculator loads at its first open, never at login (SD-105);
+     XayaUI_Bonus holds the Calculator (SD-115, its page from Calculator.lua's RegisterSettingsPage, its words /xui calc, /xui calculator,
+     /calc); no "not on main" claim for the Calculator and no "holds only the Stat Calculator".
+  G  (repair 1) every gap the round 10 reviews left unrepaired is written in its REQUEST-LOG status cell, not only in a report: SD-100 /
+     SD-112 (the stand-in does not pass a hide to the 8 shown Change boxes; about 842 = 400 + 8 x 55.2), SD-105 (an error inside the
+     calculator's files; the AddOns-list reason; the open choice on a second /xui stats after a failed load, NEEDS HER DECISION), SD-107
+     (Essential / Utility icons; a Cooldown Manager change noticed only at the next sync or fight end), SD-118 (an unknown /xui stats word
+     toggles the panel; the /xui debug help line while Advanced Debugging is off).
 Negative control: on the documents before this round's docs unit (scratchpad r10pre-docs, proved on a private copy) checks in every
 group fail; each deliberate mutation listed in the round 10 docs report is caught.
 Run: python3 tests/fix_r10_docs_run.py   (XUI_R10_ROOT=<a checkout> to check another copy)"""
@@ -220,14 +228,17 @@ def main():
     check("C4 USER-GUIDE and QA B436 quote the failed-load status line", why_dis and ("XayaUI: " + why_dis) in st.get(436, "")
           and why_dis in ug)
     stale = []
-    for name, text in (("USER-GUIDE", ug), ("README-INGAME", rd), ("HELP-FAQ", faq)):
-        if re.search(r"Turning it on or off takes effect after a reload|the change takes effect after a /reload", text):
+    readme = read("README.md")
+    for name, text in (("USER-GUIDE", ug), ("README-INGAME", rd), ("HELP-FAQ", faq), ("README.md", readme)):
+        if re.search(r"Turning it on or off takes effect after a reload|the change takes effect after a /reload"
+                     r"|loads it once at login|once per reload, only while", text):
             stale.append(name + ": reload")
         for m in re.finditer(r"/xui stats on", text):
             ctx = text[max(0, m.start() - 160):m.end() + 160]
             if not re.search(r"no longer exists|no `/xui stats on`|There is no `/xui stats on`|is removed|does not exist", ctx):
                 stale.append(name + ": /xui stats on")
-    check("C5 no player document says the Stat Calculator switch needs a reload or that /xui stats on exists", not stale, stale)
+    check("C5 no player document (README.md included) says the Stat Calculator switch needs a reload, that it loads at login or "
+          "once per reload, or that /xui stats on exists", not stale, stale)
     a12 = ug[ug.find("### 12.12a"):ug.find("### 12.12 Character Toolkit")]
     check("C6 USER-GUIDE 12.12a: loads at first open, never at login or in combat, does not come back after a fight (SD-102), "
           "the settings page interim names SD-103",
@@ -347,6 +358,37 @@ def main():
     ss = read("docs/SESSION-START-SUMMARY.md")
     check("M1 SESSION-START-SUMMARY no longer tells a session to regenerate MANIFEST.md5 on main (SD-72)",
           "regenerates MANIFEST.md5 and reruns" not in ss and "SD-72" in ss)
+
+    # ---------------- R: README.md (repair 1)
+    rows_md = {m.group(1): m.group(2) for m in re.finditer(r"^\| `(XayaUI\w*)` \| [^|]+\| (.+) \|\s*$", readme, re.M)}
+    rb, rs = rows_md.get("XayaUI_Bonus", ""), rows_md.get("XayaUI_Bonus_StatCalculator", "")
+    toc_b = read("XayaUI_Bonus/XayaUI_Bonus.toc")
+    pgname = "Bonus Features > Calculator" if (pg and pg.groups() == ("bonus", "calculator")) else None
+    check("R1 README's XayaUI_Bonus row holds the Calculator (Calculator.lua is in its .toc): its words and its page (%s)" % pgname,
+          "Calculator.lua" in toc_b and pgname and pgname in rb and all(w in rb for w in ("`/xui calc`", "`/xui calculator`", "`/calc`"))
+          and "on by default" in rb, rb[:120])
+    check("R2 README says the Calculator is on main and the new Bonus folder holds more than the Stat Calculator",
+          not re.search(r"Notepad, Calculator", rb) and "holds only the Stat Calculator)" not in readme
+          and "Since Bonus 0.6.47 `XayaUI_Bonus` also holds the Calculator" in readme)
+    check("R3 README's Stat Calculator row: loads the first time its panel opens, never at login or in combat; off after loading, "
+          "memory freed at the next /reload (SD-105, SD-86, SD-100)",
+          all(w in rs for w in ("the first time you open its panel", "never at login and never in combat", "freed at your next /reload"))
+          and "once at login" not in rs, rs[:120])
+
+    # ---------------- G: every unrepaired review gap is in its REQUEST-LOG cell (repair 1)
+    st_ = lambda n: rows.get(n, ["", "", ""])[2]
+    check("G1 SD-100 and SD-112 name the stand-in's hide gap and its estimate with arithmetic (about 842 = 400 + 8 x 55.2, 718 / 13)",
+          "about 842 (400 + 8 x 55.2, where 55.2 = 718 / 13" in st_(100) and "8 shown Change boxes" in st_(100)
+          and "about 842" in st_(112) and "INFERENCE" in st_(112))
+    check("G2 SD-105 names the error-inside-its-files gap, the AddOns-list reason gap and the open choice on a second /xui stats",
+          all(w in st_(105) for w in ("stop with a Lua error while loading", "'on, not loaded yet'", "ns.ModuleState",
+                                      "NEEDS HER DECISION", "a second /xui stats")) and "see SD-105" in st_(86))
+    check("G3 SD-107 names both Cooldown Manager gaps (Essential / Utility icons; a change noticed only at the next sync or fight end)",
+          all(w in st_(107) for w in ("Essential or Utility", "next rule sync or at the end of the next fight", "INFERENCE")))
+    check("G4 SD-118 names the unknown-word toggle and the /xui debug help line gap",
+          "opens or closes the panel without a word" in st_(118) and "shown in the console window" in st_(118)
+          and "the list prints in chat, not in a console window" in st_(118))
+    check("G5 SD-109's gap stays written", "Known gap from review" in st_(109))
 
     failed = [n for n, ok in results if not ok]
     for n, ok in results:
