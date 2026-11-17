@@ -738,7 +738,7 @@ acfaabbcd7c9f67410a80dbd8d31c1e0  debug-log/2026-11-11-0141-stat-calculator-v25-
 34b586cc35b99fc8ece4f6e6a5d84209  debug-log/2026-11-11-2116-stat-calculator-v25-a24-7-qol-0.7.59.md
 cf959f764c245818687f69b7bb15cc75  debug-log/2026-11-11-2243-stat-calculator-v25-a24-8-9-qol-0.7.60.md
 776da227d07280aa7682f6ff4ba110aa  debug-log/2026-11-12-1641-stat-calculator-a24-10-rating-title-bonus-0.6.44.md
-e0e858ede263bc2e164f3d908c7e8f10  debug-log/2026-11-17-1546-shopping-list-new-gear-toast-qol-0.7.62.md
+47deb644245d50025b15618f0f7aaea9  debug-log/2026-11-17-1546-shopping-list-new-gear-toast-qol-0.7.62.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
 dce8824c61884ec6b337705744060aaf  docs/QA-CHECKLIST.md
 cd710d1e9687811c155d64ea6297b2fa  docs/README-INGAME.md
@@ -1059,8 +1059,8 @@ e8813370853b60d939f4fa4607655cae  tests/notepad_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-3d1057196b7ba1ddfbf16c2397cf9f57  tests/options_split_parity_golden.json
-b44963da44cf7faf58f913875d5f6866  tests/options_split_parity_run.py
+dbcb451e65b1f0bb9200046d4f96bdcc  tests/options_split_parity_golden.json
+522139aae9e1b8093226386b4461e1b5  tests/options_split_parity_run.py
 36cc48db23f6e98338ee5a015f90601a  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -1118,7 +1118,7 @@ b66f173aec689b386a745d134f605b24  tests/rule_editor_load_run.py
 5658b4307ebf8c5f9686dd04048feb21  tests/run_all_markers_run.py
 0aaddbd2a51f9fbbc0517938ea3c8504  tests/settings_migration_run.py
 d43721b5fc0e38fc2308b80402321cf8  tests/settings_restructure_run.py
-02d9fd2fdda841933e6026e030ef6d92  tests/settings_seam_run.py
+75b88e5718ec5c805dc28649ea57de70  tests/settings_seam_run.py
 58371ee9e7e117cb74bdd09fc14e6bf0  tests/settings_stores.py
 8ec8a4fb395a5f024ed53ad53bdedadf  tests/share_strings_presplit_run.py
 a07f6589bdc7a1f10a8014269763592e  tests/shopping_list_run.py

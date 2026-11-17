@@ -35,3 +35,13 @@ already registered by Apply (unregistered while off). New frame: XayaUIShoppingT
 ## Tests
 tests/shopping_list_run.py 130 / 130 (section 12: 26 new checks). Negative control: with the old ShoppingList.lua / StatModel.lua
 the run stops at section 12's first new call (Shop.ToastOff nil). QA E2i; walkthrough upg-shop-toast.
+
+## Full suite (bf61db19, with the API index), and the two golden tests
+5 check groups failed. On qa-installer-branch 236262bc (same harness) 4 of them fail the same way: american_spelling (13), info_pane (1),
+options_split_parity (14), qa_walk_audit (1): not this change's, left as they are. Two came from this change, both "same as before"
+snapshot tests, both brought back to the base's result:
+- settings_seam B (2): the four new shoppingList defaults are the only difference (dump diff of 236262bc and the new code, all on, both
+  sessions); added as UPG1_DEFAULTS_ADDED, taken out only where they hold their default. Now 56 / 56.
+- options_split_parity (+1, off-XayaUI_Reskin): every variant differs from 236262bc in exactly the 6 New gear lines. Only that entry was
+  updated; the 6 variants already stale on 236262bc were left (refreshing them would approve differences this change did not make).
+  Now 14 failed, as on the base.
