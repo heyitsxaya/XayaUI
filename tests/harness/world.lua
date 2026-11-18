@@ -763,7 +763,9 @@ C_Timer = { After = function(d, fn) addTimer(d, fn, 1) end,
   NewTimer = function(d, fn) local h; h = addTimer(d, function() fn(h) end, 1); return h end,
   NewTicker = function(d, fn, n) local h; h = addTimer(d, function() fn(h) end, n or math.huge); return h end }
 InCombatLockdown = function() return W.combat end
-UnitAffectingCombat = function(u) return W.combat end
+-- (round 11, scope item 1) the player is already affecting combat while PLAYER_REGEN_DISABLED is handled, before the lockdown begins
+-- (W.enterCombat sets W.affecting only for that dispatch; INFERENCE from the event's meaning, as tests/gate_common.py fight())
+UnitAffectingCombat = function(u) return (W.combat or W.affecting) and true or false end
 
 -------------------------------------------------------------------------------
 -- the player and the world (values a level-90 Vengeance Demon Hunter in Dornogal would return)
@@ -1143,7 +1145,8 @@ function W.click(f, button)
 end
 -- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown
 -- begins after the PLAYER_REGEN_DISABLED event fires, and ends before the PLAYER_REGEN_ENABLED event fires")
-function W.enterCombat() W.fire("PLAYER_REGEN_DISABLED"); W.combat = true end
+-- (round 11) while the event is handled, UnitAffectingCombat("player") is already true and InCombatLockdown() still false
+function W.enterCombat() W.affecting = true; W.fire("PLAYER_REGEN_DISABLED"); W.affecting = false; W.combat = true end
 function W.leaveCombat() W.combat = false; W.fire("PLAYER_REGEN_ENABLED") end
 function W.registeredEvents()
   local set = {}

@@ -162,6 +162,9 @@ def session(folders, enabled, saved, write_back=True, quick=False):
     out = {
         "seconds": round(time.time() - t0, 1),
         "errors": [world.errors[i] for i in range(1, len(world.errors) + 1)],
+        # (round 11, SD-119) errors in options the settings window hides (scenario.lua reads them "in the shadow", never get or set):
+        # the game cannot raise them while hidden, so they are WARNs below, not FAILs
+        "hiddenErrors": [S.hiddenErrors[i] for i in range(1, len(S.hiddenErrors) + 1)] if S.hiddenErrors else [],
         "badMethods": {k: v for k, v in world.badMethods.items()},
         "unknownGlobals": {k: v for k, v in world.unknownGlobals.items()},
         "problems": [loader.problems[i] for i in range(1, len(loader.problems) + 1)],
@@ -171,9 +174,9 @@ def session(folders, enabled, saved, write_back=True, quick=False):
         "noPayload": (S.noPayloadStart, S.noPayloadEnd),
         "unknownMethods": {k: v for k, v in world.unknownMethods.items()},
         "stats": {"commands": S.commands, "launchers": S.launchers, "optionNodes": S.optionNodes, "optionCalls": S.optionCalls,
-                  # (round 11, SD-119) options whose value was read (get), and options with a get the game's window never calls because
-                  # the option or a group above it is hidden (scenario.lua, as AceConfigDialog-3.0's CheckOptionHidden)
-                  "optionGets": S.optionGets or 0, "optionHidden": S.optionHidden or 0,
+                  # (round 11, SD-119) options whose value was read (get); options with a get that are hidden where they stand; options
+                  # inside a hidden group. The game's window reads nothing of the last two (scenario.lua, as AceConfigDialog-3.0 does)
+                  "optionGets": S.optionGets or 0, "optionHidden": S.optionHidden or 0, "optionUnder": S.optionUnder or 0,
                   "otherEvents": len(S.otherEvents) if S.otherEvents else 0, "noOptions": bool(S.noOptions)},
         "saved": lua_to_py(S.saved) if S.saved else {},           # Python data, for the drift report only
         "savedSource": sv.Serialize(S.saved) if S.saved else "{}",  # what the next session loads (key types kept; f6-3)
@@ -235,6 +238,13 @@ def run_combo(folders, enabled, saved, label):
             where = step_of(i, s["steps"])
             line = "session %d, %s: %s" % (idx, where, e.strip()[:1500])
             (warns if (a or 0) <= i < (b or 0) else fails).append(line)
+        for e in s.get("hiddenErrors", []):
+            key = e.split("\n")[0]
+            if key in seen:
+                continue
+            seen.add(key)
+            warns.append("session %d, an option the settings window hides (the game cannot raise this while it is hidden): %s"
+                         % (idx, e.strip()[:1500]))
         for k, tb in s["badMethods"].items():
             fails.append("session %d: the game has no %s\n%s" % (idx, k, str(tb)[:600]))
         for p in s["problems"]:
@@ -418,8 +428,10 @@ def main():
                         unknown.setdefault("method " + k, str(tb))
                 st = r["s1"]["stats"]
                 status = "FAIL" if r["fails"] else "ok  "
-                print("%s %-80s files %3d | cmds %2d | rows %d | options %5d nodes %6d calls | %4.1fs + %4.1fs | %d fail, %d warn" % (
-                    status, r["label"][:80], r["s1"]["files"], st["commands"], st["launchers"], st["optionNodes"], st["optionCalls"],
+                # (round 11) options: those the window can show, and (+N) those inside groups it hides, read in the shadow (scenario.lua)
+                print("%s %-80s files %3d | cmds %2d | rows %d | options %5d (+%d hidden) nodes %6d calls | %4.1fs + %4.1fs | %d fail, %d warn" % (
+                    status, r["label"][:80], r["s1"]["files"], st["commands"], st["launchers"], st["optionNodes"], st.get("optionUnder", 0),
+                    st["optionCalls"],
                     r["s1"]["seconds"], r["s2"]["seconds"], len(r["fails"]), len(r["warns"])))
                 total_fail += len(r["fails"])
                 summary.append(r)

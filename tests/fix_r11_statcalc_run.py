@@ -8,8 +8,8 @@ Round 10 final review (R10-FINAL-RESULT final.blockers 4 and 5, concern 9) and X
          reason (it said it once, then nothing).
   SD-118 its words work only while it is on; core's rule for /xui: an unknown word prints help.
 On the real addons of this tree in the stand-in game (tests/harness), what the player sees and gets:
-  E   one of the calculator's three files stops with a Lua error while loading (a stand-in error put into the file: at its top, or just
-      before its last function, after it already offered its service): /xui stats prints one line saying its files stopped with a Lua
+  E   one of the calculator's three files stops with a Lua error while loading (a stand-in error put into the file: at its top, after
+      it already offered its statCalc service, or just before its last function): /xui stats prints one line saying its files stopped with a Lua
       error, on every try (the same line, no second load); '/xui stats status' says it could not load this session and why; its
       settings page says it could not load (never "Its options appear here after you first open"), and with the settings window open
       the drawn page says so too; the minimap row leaves the list; the character window opening says and runs nothing; nothing of
@@ -21,6 +21,10 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
   N   the AddOns list's descriptions (.toc '## Notes', what the player reads in the game's AddOns list) are true: XayaUI_Bonus names
       the arithmetic Calculator and does not say the Stat Calculator is loaded only while it is on; XayaUI_Bonus_StatCalculator says
       it loads the first time it is opened, never at login, and not "once per reload".
+  KNOWN GAP (outside XayaUI_Bonus, counted as FAILs, never skipped): a stop in StatMath.lua, or in StatCalculator.lua's last lines,
+      leaves no trace the loader can read through core's services; a stop late in StatModel.lua is caught by the loader, but
+      StatCalculator.lua's own start-up still runs with the half-read model. Both need XayaUI_Bonus_StatCalculator (an end-of-file
+      mark per file; its start-up standing down when the model did not finish).
 In-game behavior is UNVERIFIED IN GAME: the harness is a stand-in for the game (V25). That the game reports an addon whose file
 errored as loaded is INFERENCE (the stand-in does the same: each file runs on its own).
 Run: python3 tests/fix_r11_statcalc_run.py   (Lua 5.1 via lupa)."""
@@ -249,24 +253,27 @@ def main():
         errs_all.extend("[%s] %s" % (tag, e) for e in other + (mine if not allowed else []))
 
     ON = R10.ON
-    # E: each file broken just before its last function (it already ran almost all of it), and the panel file broken at its top
-    for tag, f, before, window in (
-            ("StatCalculator.lua stops at its top, settings window open", "StatCalculator.lua", "", True),
-            ("StatCalculator.lua stops before its last function", "StatCalculator.lua", "function ns.StatCalc_Command(arg)", True),
-            ("StatModel.lua stops before its last function", "StatModel.lua", "function CM.ValueFor(it, mode)", False),
-            ("StatMath.lua stops before its last function", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)", False)):
+    # E: each file broken just before its last function (it already ran almost all of it), and the panel file broken at its top.
+    # gap (a text): a case XayaUI_Bonus's loader cannot fix from its side (KNOWN GAP, needs XayaUI_Bonus_StatCalculator: one end-of-file
+    # mark per calculator file, read by the loader, and the panel's start-up standing down when the model file stopped). These cases
+    # are run and counted like every other: they FAIL until that is built (never skipped, never excused).
+    NO_MARK = ("the loader reads no service offered after this point in the file, so it still counts the calculator as loaded: needs "
+               "XayaUI_Bonus_StatCalculator to end each file with a mark the loader reads")
+    OWN_START = ("the loader says it could not load (checked below), but StatCalculator.lua's own start-up still runs with the half-read "
+                 "model and raises Lua errors when the character window opens: needs StatCalculator.lua to stand down when the model "
+                 "file did not finish")
+    for tag, f, before, window, gap in (
+            ("StatCalculator.lua stops at its top, settings window open", "StatCalculator.lua", "", True, None),
+            # (its statCalc service is offered already: Calc() is not nil, the files still did not finish)
+            ("StatCalculator.lua stops after offering its service", "StatCalculator.lua", 'if ns.Provide then ns.Provide("statCalcDebug"',
+             False, None),
+            ("StatModel.lua stops before its last function", "StatModel.lua", "function CM.ValueFor(it, mode)", False, OWN_START),
+            ("StatCalculator.lua stops before its last function", "StatCalculator.lua", "function ns.StatCalc_Command(arg)", True, NO_MARK),
+            ("StatMath.lua stops before its last function", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)", False, NO_MARK)):
+        if gap:
+            print("GAP [%s] KNOWN GAP outside XayaUI_Bonus: %s. Its FAILs below are that gap, counted." % (tag, gap))
         src = fill(S_ERR).replace("__FILE__", lua_str(f)).replace("__BEFORE__", lua_str(before))
-        strict = f != "StatModel.lua"
-        r, e = session(src, {"window": window, "strict": strict}, ON)
-        if not strict:
-            # (KNOWN GAP, outside this unit's files) StatModel.lua stopped late, StatCalculator.lua still ran whole: its own start-up
-            # hooks the character window (StatCalculator.lua ShowIfDocked) and draws with the half-read model. The loader neither
-            # calls it nor says anything false (checked above); these errors come from the calculator's own file only.
-            own = [x for x in e if MARK not in x and "StatCalculatorLoader.lua" not in x and "/XayaUI_Bonus_StatCalculator/" in x]
-            for x in own:
-                print("NOTE [%s] the calculator's own code after its model file stopped (needs StatCalculator.lua): %s"
-                      % (tag, x.splitlines()[0][:200]))
-            e = [x for x in e if x not in own]
+        r, e = session(src, {"window": window, "strict": True}, ON)
         report(tag, r, e, allowed=1)
     # R: SD-146 for the other two causes
     for tag, line, off, gone in (("switched off in the AddOns list", DISABLED, ("XayaUI_Bonus_StatCalculator",), ()),

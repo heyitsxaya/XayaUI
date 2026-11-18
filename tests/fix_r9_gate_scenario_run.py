@@ -68,8 +68,8 @@ def reference_play(variant="default"):
     return json.loads(json.dumps(data, default=str))
 
 
-# (round 11) every mutant tree this run makes, removed when it ends (each is about 7 MB; before round 11 they stayed in the temp folder,
-# one pair per checkout, 70 of them by 2026-11-18, and the disk filled up)
+# (round 11) every mutant tree this run makes, removed when it ends (each is about 7.7 MB; before round 11 they stayed in the temp folder,
+# one pair per checkout path, and were never removed)
 TREES = []
 # (round 11) the plays running in their own processes, stopped if this test is stopped
 PROCS, PROCS_LOCK = [], threading.Lock()
@@ -142,17 +142,24 @@ def secs_of(d, seg, addon="XayaUI_Rules"):
 
 
 FAILS, DONE = [], []
+# (round 11) one writer at a time, and nothing after the count line: once main() has printed it, a check still running in the worker
+# thread prints nothing more (the count line must stay the last line the suite reads). Every line goes to the real standard output
+# (OUT), never to the buffer gate_text swaps in for its judge (contextlib.redirect_stdout swaps sys.stdout for every thread).
+OUT_LOCK, CLOSED, OUT = threading.Lock(), [], sys.stdout
 
 
 def check(ok, what, detail=""):
-    print(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""))
-    DONE.append(what)
-    if not ok:
-        FAILS.append(what)
+    with OUT_LOCK:
+        if CLOSED:
+            return
+        print(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""), file=OUT)
+        DONE.append(what)
+        if not ok:
+            FAILS.append(what)
 
 
 class Stopped(Exception):
-    """The test was stopped from outside (the suite's time limit sends SIGTERM)."""
+    """The test was stopped from outside (a time limit's SIGTERM, Ctrl+C)."""
 
 
 def _kill_plays():
@@ -163,7 +170,6 @@ def _kill_plays():
 
 
 def _on_term(signum, _frame):
-    _kill_plays()
     raise Stopped("stopped by signal %d" % signum)
 
 
@@ -175,30 +181,51 @@ class _Pool(concurrent.futures.ThreadPoolExecutor):
         return False
 
 
-def main():
-    """(round 11, round 10 final review: inside the suite this test once printed nothing at all) it always ends with its count line:
-    each line is written out as it is printed (a test killed part-way still shows how far it got); an error anywhere (the gate's
-    scenario, a disk that is full, a play that dies) or a stop from outside (SIGTERM, Ctrl+C) is a named FAIL with its traceback,
-    followed by the count line; the plays running in their own processes are stopped and the mutant trees removed."""
-    sys.stdout.reconfigure(line_buffering=True)
-    signal.signal(signal.SIGTERM, _on_term)
-    stopped = False
+def _worker(box):
     try:
         _main()
-    except (Exception, KeyboardInterrupt) as e:  # noqa: BLE001  (every way of stopping is reported, never silent)
-        stopped = True
-        print("".join(traceback.format_exception(type(e), e, e.__traceback__))[-3000:].rstrip())
-        check(False, "the test ran to its end", "it stopped at: %s: %s" % (type(e).__name__, str(e)[:300]))
+    except BaseException as e:  # noqa: BLE001  (handed to main(), which reports it)
+        box.append(e)
+
+
+def main():
+    """(round 11, round 10 final review: inside the suite this test once printed nothing at all) it always ends with its count line.
+    Before round 11 every line went to a pipe buffer that only a normal exit wrote out, the gate's own result (GC.result: the scenario
+    played, its cache written to the temp folder) came before the first line, and the mutant trees went to a fixed folder per checkout:
+    so an error there (a full disk, a cache that cannot be written), a stop from outside (a time limit's SIGTERM) or a second run of
+    this test on the same checkout at the same time (deleting this run's mutant addons mid-play) ended it with nothing or no count line
+    on its standard output, which is all the suite reads (tests/run_all.py). Now: each line is written out as it is printed; the work
+    runs in a worker thread while the main thread only waits, so a SIGTERM or Ctrl+C is handled at once even during a long Lua play;
+    an error anywhere or a stop from outside is a named FAIL with its traceback, followed by the count line; the plays running in their
+    own processes are stopped and this run's mutant trees removed."""
+    OUT.reconfigure(line_buffering=True)
+    signal.signal(signal.SIGTERM, _on_term)
+    box, err = [], None
+    worker = threading.Thread(target=_worker, args=(box,), name="fix_r9_gate_scenario", daemon=True)
+    try:
+        worker.start()
+        while worker.is_alive():
+            worker.join(0.25)
+        err = box[0] if box else None
+    except (Stopped, KeyboardInterrupt) as e:
+        err = e
+    try:
+        if err is not None:
+            with OUT_LOCK:
+                print("".join(traceback.format_exception(type(err), err, err.__traceback__))[-3000:].rstrip(), file=OUT)
+            check(False, "the test ran to its end", "it stopped at: %s: %s" % (type(err).__name__, str(err)[:300]))
     finally:
         _kill_plays()
         for t in TREES:
             shutil.rmtree(t, ignore_errors=True)
         if not DONE:
             check(False, "the test checked something (no check ran)")
-        print("%d checks, %d failed" % (len(DONE), len(FAILS)))
-    if stopped:
-        sys.stdout.flush()
-        os._exit(1)   # (a play still running in this process's threads must not hold the exit back)
+        with OUT_LOCK:
+            print("%d checks, %d failed" % (len(DONE), len(FAILS)), file=OUT)
+            CLOSED.append(True)
+            OUT.flush()
+    if err is not None:
+        os._exit(1)   # (the worker thread may still be inside a Lua play: it must not hold the exit back)
     return 1 if FAILS else 0
 
 
@@ -302,7 +329,7 @@ def _main():
         check(bool(hit) and any(n.startswith("Ooc") for n in names) and any(n.startswith("Absent") for n in names),
               "draw: the mutant engine FAILs the gate on what is drawn: the out-of-combat opacity displays and the target debuffs that must "
               "be absent differ from a full re-check after combat starts", "findings %s; displays %s" % ([h[0] for h in hit], sorted(names)))
-        print("      mutant draw findings: %s; displays named: %s" % (sorted(set(h[0] for h in hit)), sorted(names)))
+        print("      mutant draw findings: %s; displays named: %s" % (sorted(set(h[0] for h in hit)), sorted(names)), file=OUT)
     # ---- effects (SD-79) ---------------------------------------------------------------------------------------------------------
     # (round 9 repair 1) a display's time-driven parts are drawn by its frame script (the effects loop) or by a redraw timer (Visual.lua's
     # wake at the next moment a part changes, gate_common.py REDRAWS); both are counted per display, together
@@ -324,7 +351,7 @@ def _main():
           "effects: the effects part drew every effect display and the bar cue (by its effects loop or by the redraw timer), counted per "
           "display, at most 30 in any second", "%s" % sorted((k, e["loop"], e["timer"], most[k]) for k, e in per.items()))
     print("      effects part, per display (loop runs, redraw-timer redraws, most in one second): %s" % sorted(
-        (k, e["loop"], e["timer"], most[k]) for k, e in eff.items()))
+        (k, e["loop"], e["timer"], most[k]) for k, e in eff.items()), file=OUT)
     # ---- memory -------------------------------------------------------------------------------------------------------------------
     ma = data.get("memAddons") or {}
     mm = GP.vals(ma.get("mem"))

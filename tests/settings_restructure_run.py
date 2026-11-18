@@ -21,7 +21,7 @@ Loads the real addons in the stand-in game, opens the window and checks what the
     component or a non-table value is cleaned; ns.UI.Settings / ns.UI.RecycleBin / ns.UI.Export open their tabs.
 Negative control: A-E fail on main 7b830cf (Options 0.6.63: toolbar, "Blizzard UI Reskin", recyclebin top tab, no ns.Profile).
 Run: python3 tests/settings_restructure_run.py"""
-import os, sys
+import os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -281,7 +281,7 @@ def main():
     bonus_part = str('"dataPanels"' in pp_src).lower()
     # (round 11a, check E only) XUI_BONUS_CALC: this branch's Bonus part carries the arithmetic Calculator's key (its db lists
     # "calculator"); check E's "history and position never leave" then runs against it instead of printing a SKIP
-    calc_part = str(any("db = {" in l and '"calculator"' in l for l in pp_src.splitlines()) and "XayaUI_Bonus" not in ABSENT).lower()
+    calc_part = str(bool(re.search(r'\bdb\s*=\s*\{[^}]*"calculator"', pp_src)) and "XayaUI_Bonus" not in ABSENT).lower()
     L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s; XUI_BONUS_PART = %s; "
               "XUI_BONUS_CALC = %s"
               % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus"),

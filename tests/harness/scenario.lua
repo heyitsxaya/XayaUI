@@ -1,8 +1,8 @@
 -- tests/harness/scenario.lua : one play session in the stand-in world (Lua 5.1). Called by run.py once per combination of addons.
 -- Steps: start up (load, ADDON_LOADED, PLAYER_LOGIN, PLAYER_ENTERING_WORLD) -> five seconds of frames -> the everyday events with
 -- realistic payloads -> a fight (PLAYER_REGEN_DISABLED then the lockdown, events, frames, lockdown off then PLAYER_REGEN_ENABLED) ->
--- every /xui command -> every minimap row -> open the settings window and touch every option as the game's AceConfigDialog does
--- (read every label, state, list, and value, but no value of an option it hides; write back the value it already has) ->
+-- every /xui command -> every minimap row -> open the settings window and touch every option the way the game's AceConfigDialog does
+-- (read every label, state, list, and value of every option it can show, nothing of one it hides; write back the value it already has) ->
 -- close it -> log out (saved variables checked). Each step is labelled so the report says where an error happened.
 return function(W, L, opts)
 local S = { steps = {}, step = "start", stats = {} }
@@ -62,6 +62,9 @@ step("other registered events (no payload)")
 S.noPayloadStart = #W.errors
 local fired = {}
 for _, e in ipairs(EVENTS) do fired[e[1]] = true end
+-- (round 11, scope item 1) the combat edges are played by the fight below, in the game's order (W.enterCombat / W.leaveCombat). Fired
+-- here on their own they were a state the game never has: PLAYER_REGEN_DISABLED with nobody in combat and no lockdown after it.
+fired.PLAYER_REGEN_DISABLED, fired.PLAYER_REGEN_ENABLED = true, true
 local others = {}
 for ev in pairs(W.registeredEvents()) do if not fired[ev] and ev ~= "PLAYER_LOGOUT" and ev ~= "ADDON_LOADED" then others[#others + 1] = ev end end
 table.sort(others)
@@ -130,34 +133,45 @@ end
 
 -------------------------------------------------------------------------------
 step("settings window: open")
-S.optionNodes, S.optionCalls, S.optionGets, S.optionHidden = 0, 0, 0, 0
+S.optionNodes, S.optionCalls, S.optionGets, S.optionHidden, S.optionUnder, S.optionHiddenKeys, S.hiddenErrors = 0, 0, 0, 0, 0, {}, {}
 if N and N.ToggleUI then W.safecall(N.ToggleUI) end
 W.tick(0.1, 5)
 step("settings window: every option")
--- (round 11, SD-119 / scope item 2) every option is read the way the game's settings window reads it: AceConfigDialog-3.0 (the copy in
--- XayaUI_Options/Libs/AceConfig-3.0/AceConfigDialog-3.0/AceConfigDialog-3.0.lua). Its FeedOptions asks CheckOptionHidden first
--- (:1128 "local hidden = CheckOptionHidden(v, options, path, appName)", then :1130 "if not hidden then") and only a shown control
--- has its get called (e.g. :1191, :1201, :1225); a hidden group's options are never fed at all (:961, :990, :1017, :1052 "if not inline and not
--- hidden then"; :1553 a selected path stops at a hidden group). CheckOptionHidden (:927-935) takes dialogHidden / guiHidden first,
--- then the member "hidden", which like get, set, func, confirm, validate and disabled is INHERITED (isInherited, :131-139): the last
--- one set on the way from the root to the option, called with the option's own info (GetOptionsMemberValue, :164-226). So: a hidden
--- option, or any option under a hidden group, has no get or set called here (before round 11 the harness called get on hidden options,
--- e.g. Editor.lua's game-sound rows on a rule with no game sound, an error the game cannot raise). Its other members (name, desc,
--- disabled, width, image, order, values, sorting) are still read, as before, so their code is still played. Counted: S.optionGets
--- (get calls made), S.optionHidden (options whose get the window would never call).
-local APP = "CueRules"                                   -- (XayaUI_Options/Skin.lua APP: the name the window is registered under)
-local INHERITED = { set = true, get = true, func = true, confirm = true, validate = true, disabled = true, hidden = true }
-local LITERAL_STRING = { name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true, tooltipHyperlink = true }
-local ALWAYS_LITERAL = { type = true, descStyle = true, imageWidth = true, imageHeight = true }
+-- (round 11, SD-119 / round 11 scope item 2) every option is read the way the game's settings window reads it: AceConfigDialog-3.0
+-- (the copy in XayaUI_Options/Libs/AceConfig-3.0/AceConfigDialog-3.0/AceConfigDialog-3.0.lua).
+--   * Before an option is shown it is sorted: BuildSortedOptionsTable (:310-346) reads "order" and "name" of every option of the group.
+--   * Then FeedOptions asks CheckOptionHidden first and reads the option's controls only when it is shown: :1128 "local hidden =
+--     CheckOptionHidden(v, options, path, appName)", :1129 its name, :1130 "if not hidden then"; only then disabled, desc, width,
+--     image, values, sorting and get (e.g. :1191, :1201, :1225 GetOptionsMemberValue("get", ...)). set runs on a click on a shown control.
+--   * A hidden group is never opened: nothing inside it is sorted, fed or read (:961, :990, :1017, :1052 "if not inline and not
+--     hidden then"; :1553 a selected path stops at a hidden group).
+--   * CheckOptionHidden (:927-935) takes dialogHidden / guiHidden first ("pickfirstset"), then the member "hidden", which like get,
+--     set, func, confirm, validate and disabled is INHERITED (isInherited, :131-139): the last one set on the way from the root to the
+--     option, called with the option's own info (GetOptionsMemberValue, :164-226; a string names a method of the nearest handler).
+-- So the walk reads every option the window can show exactly so (tree groups that are not selected too: she can click to them), and a
+-- hidden option, or anything inside a hidden group, never has its get or set called. Before round 11 the harness read every member of
+-- every option, hidden or not, and so raised errors the game cannot (her real data: Editor.lua:1727 / :1736, the game-sound rows read
+-- rule.gameSound on a rule with none, rows hidden exactly when it is missing).
+-- What the window hides is still walked "in the shadow", for coverage (much of the rule editor sits in groups hidden in one place and
+-- shown in another, e.g. the default cue folders under All Rules, RulesTree.lua hideFolder): its labels, states and lists are read as
+-- the window would read them if it were shown, but never get or set, and an error there goes to S.hiddenErrors (a WARN in run.py,
+-- naming the option), not to W.errors (a FAIL): the game cannot raise it while the option is hidden.
+-- Counted: S.optionNodes (options the window can show), S.optionGets (of those, values read), S.optionHidden (options hidden where they
+-- stand), S.optionUnder (options inside a hidden group), S.optionHiddenKeys[key] = { times hidden, options inside } (for debugging).
+local APP = "CueRules"                                   -- (XayaUI_Options/Skin.lua:9 APP: the name the window is registered under)
+local INHERITED = { set = true, get = true, func = true, confirm = true, validate = true, disabled = true, hidden = true }   -- (:131-139)
+local LITERAL_STRING = { name = true, desc = true, icon = true, usage = true, width = true, image = true, fontSize = true,
+  tooltipHyperlink = true }                                                                                                -- (:142-151)
+local ALWAYS_LITERAL = { type = true, descStyle = true, imageWidth = true, imageHeight = true }                              -- (:154-159)
 local NO_GET = { execute = true, description = true, header = true, group = true }
--- chain: the tables from the root to this option (the option last), as GetOptionsMemberValue walks them with GetSubOption
-local function walk(node, path, chain, depth, hiddenAbove)
+-- chain: the tables from the root to this option (the option last), the tables GetOptionsMemberValue walks with GetSubOption.
+-- shadow: true inside a hidden group (see above)
+local function walk(node, path, chain, depth, shadow)
   if type(node) ~= "table" or depth > 40 then return end
-  S.optionNodes = S.optionNodes + 1
-  local root = chain[1]
+  if shadow then S.optionUnder = S.optionUnder + 1 else S.optionNodes = S.optionNodes + 1 end
   local handler
   for _, g in ipairs(chain) do handler = g.handler or handler end
-  local info = { options = root, option = node, arg = node.arg, handler = handler, type = node.type, uiType = "dialog",
+  local info = { options = chain[1], option = node, arg = node.arg, handler = handler, type = node.type, uiType = "dialog",
     uiName = "AceConfigDialog-3.0", appName = APP }
   info[0] = APP
   for i, k in ipairs(path) do info[i] = k end
@@ -178,35 +192,42 @@ local function walk(node, path, chain, depth, hiddenAbove)
     if type(f) == "function" then res = { pcall(f, info, ...) }
     elseif handler and type(handler[f]) == "function" then res = { pcall(handler[f], handler, info, ...) }
     else res = { false, ("Method %s doesn't exist in handler for type %s"):format(f, field) } end   -- (AceConfigDialog :221 errors so)
-    if not res[1] then W.errors[#W.errors + 1] = tostring(res[2]) .. "\n  at option " .. where .. " [" .. field .. "]"; return nil end
+    if not res[1] then
+      local msg = tostring(res[2]) .. "\n  at option " .. where .. " [" .. field .. "]"
+      if shadow then S.hiddenErrors[#S.hiddenErrors + 1] = msg else W.errors[#W.errors + 1] = msg end
+      return nil
+    end
     return unpack(res, 2)
   end
-  -- hidden first, as CheckOptionHidden (the root itself is never asked: the window feeds the root's options, not the root)
-  local hidden = hiddenAbove
+  -- sorted (order, name), then hidden first (the root itself is never asked: the window feeds the root's options, not the root)
+  call("order"); call("name")
+  local hidden = false
   if depth > 0 then
-    local own = node.dialogHidden
-    if own == nil then own = node.guiHidden end
-    if own == nil then own = call("hidden") end
-    hidden = hidden or (own and true or false)
+    hidden = node.dialogHidden
+    if hidden == nil then hidden = node.guiHidden end
+    if hidden == nil then hidden = call("hidden") end
   end
-  call("name"); call("desc"); call("disabled"); call("width"); call("image"); call("order")
+  local hasGet = not NO_GET[node.type] and member("get") ~= nil
+  local hiddenHere = hidden and not shadow                 -- the first hidden one on this path: from here on, the shadow
+  local underBefore = S.optionUnder
+  if hiddenHere then
+    if hasGet then S.optionHidden = S.optionHidden + 1 end
+    shadow = true
+  end
+  call("desc"); call("disabled"); call("width"); call("image")
   local values = call("values")
   if node.sorting then call("sorting") end
-  if not NO_GET[node.type] and member("get") ~= nil then
-    if hidden then
-      S.optionHidden = S.optionHidden + 1
+  if hasGet and not shadow then
+    local canSet = opts.writeBack and member("set") ~= nil
+    S.optionGets = S.optionGets + 1
+    if node.type == "multiselect" then
+      if type(values) == "table" then for k in pairs(values) do local v = call("get", k); if canSet then call("set", k, v) end end end
+    elseif node.type == "color" then
+      local r, g, b, a = call("get")
+      if canSet and r then call("set", r, g, b, a) end
     else
-      local canSet = opts.writeBack and member("set") ~= nil
-      S.optionGets = S.optionGets + 1
-      if node.type == "multiselect" then
-        if type(values) == "table" then for k in pairs(values) do local v = call("get", k); if canSet then call("set", k, v) end end end
-      elseif node.type == "color" then
-        local r, g, b, a = call("get")
-        if canSet and r then call("set", r, g, b, a) end
-      else
-        local v = call("get")
-        if canSet and v ~= nil then call("set", v) end
-      end
+      local v = call("get")
+      if canSet and v ~= nil then call("set", v) end
     end
   end
   if type(node.args) == "table" then
@@ -219,8 +240,14 @@ local function walk(node, path, chain, depth, hiddenAbove)
       for i, x in ipairs(chain) do c[i] = x end
       p[#p + 1] = k
       c[#c + 1] = node.args[k]
-      walk(node.args[k], p, c, depth + 1, hidden)
+      walk(node.args[k], p, c, depth + 1, shadow)
     end
+  end
+  if hiddenHere then
+    local k = tostring(path[#path])
+    local h = S.optionHiddenKeys[k] or { 0, 0 }
+    h[1], h[2] = h[1] + 1, h[2] + (S.optionUnder - underBefore)
+    S.optionHiddenKeys[k] = h
   end
 end
 N = ns()
@@ -228,6 +255,9 @@ N = ns()
 local optionsOn = C_AddOns.GetAddOnEnableState("XayaUI_Options") == 2 and C_AddOns.DoesAddOnExist("XayaUI_Options")
 local okB, built = false, nil
 if N and N.BuildOptionsTable then okB, built = pcall(N.BuildOptionsTable) end
+-- (round 11) a test may hand the walk an option table of its own, to prove it reads exactly what AceConfigDialog reads
+-- (tests/fix_r11_harness_run.py); every play session leaves opts.optionTable unset
+if type(opts.optionTable) == "table" then built = opts.optionTable end
 if type(built) == "table" then walk(built, {}, { built }, 0, false)
 else
   S.noOptions = true
