@@ -74,7 +74,7 @@ location if they aren't already. / refactor all code appropriately. / priority: 
    Calculator page only, until she confirms).
 
 ## B. Gaps found in the audit (PROPOSED: each waits for her answer)
-Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. The audit: [DISPLAY-AUDIT-UI-47-2026-11-07.md](DISPLAY-AUDIT-UI-47-2026-11-07.md). Each gap is asked through the question flow; the
+Filled in as the tab-by-tab audit (UI-47 step 3) finds display types with no ruling. The audit (2026-11-07) is kept with the project's private developer notes. Each gap is asked through the question flow; the
 answer moves it to section A.
 
 | # | Display type | What differs today | Proposal | Status |

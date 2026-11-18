@@ -156,8 +156,10 @@ CDT[7021] = nil; W.fire("SPELL_UPDATE_COOLDOWN"); W.tick(0.2, 2)
 
 ---------------------------------------------------------------- 3. a full re-check (a load fact changed: combat starts, ends)
 -- every rule is checked again; what the rules read did not change, so nothing on screen changes
+-- (round 11, scope item 1) in the game's order: PLAYER_REGEN_DISABLED is handled before the lockdown begins, and the lockdown ends
+-- before PLAYER_REGEN_ENABLED (tests/harness/world.lua W.enterCombat / W.leaveCombat)
 local function fullPass(on)
-  W.combat = on; W.fire(on and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
+  if on then W.enterCombat() else W.leaveCombat() end
   return measured(SettleTimer)
 end
 fullPass(true); W.tick(1 / 60, 3); fullPass(false); W.tick(1 / 60, 3)

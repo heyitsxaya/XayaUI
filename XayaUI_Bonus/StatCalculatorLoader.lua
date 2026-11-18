@@ -21,6 +21,19 @@
 --   SD-103 (her answer: "unsure, circle back to this within the broader scope of addon load demands"), PARKED: opening the settings
 --     window never loads it. Interim: its page shows the switch; the detailed options come from the calculator only when it is already
 --     loaded this session, else one plain line says they appear after it is first opened.
+-- (round 11a) The round 10 final review's Stat Calculator blockers and her SD-146 answer:
+--   SD-105 gap: the game reports a load-on-demand addon as loaded even when one of its files stopped with a Lua error (the game runs
+--     each file of the .toc on its own: an error stops that file only; INFERENCE for the game, the stand-in does the same). The loader
+--     now counts the calculator as loaded only when its files ran to their ends as far as its services show (FilesComplete below;
+--     its known gap is written there); otherwise it says it could not load (chat, '/xui stats status', the settings page), and
+--     nothing of the half-read calculator is called.
+--   SD-146, her answer "Repeat the reason each time (Recommended)": while the calculator cannot load this session (switched off in the
+--     game's AddOns list, not installed, or its files stopped with an error), every '/xui stats' prints the same one-line reason, not
+--     only the first. The character window opening says it once (its first try) and then nothing: a window the player opens for
+--     other reasons should not repeat it.
+--   '/xui stats <word it does not know>' prints the stats help line and opens or closes nothing (core's rule for /xui: an unknown word
+--     prints help). Technical choice (SD-145): a typo such as "/xui stats stauts" used to open or close the panel, which the player
+--     did not ask for; the help line names the words that work.
 --
 -- What is here (and nothing else of the Stat Calculator):
 --   * the saved store's declaration (XayaUIBonusDB, this addon's .toc; core Modules.lua section 0b): the settings stay
@@ -73,6 +86,28 @@ end
 local SC_PART = { name = LABEL, isOn = Saved, where = "/xui > Bonus Features" }
 -- the loaded calculator (nil while it is not loaded)
 local function Calc() return ns.Service and ns.Service("statCalc") or nil end
+-- (round 11a, SD-105 gap) whether the calculator's files ran to their ends, as far as XayaUI_Bonus can see them. The loader reads the
+-- calculator only through core's services (Modules.lua section 7: XayaUI_Bonus never names XayaUI_Bonus_StatCalculator's functions;
+-- the harness's boundary check holds every addon to that), so each file is probed by the last service entry it offers:
+--   StatModel.lua       the statModel service and its CM.ValueFor (CM is the model's own table; ValueFor is its last function)
+--   StatCalculator.lua  the statCalc service with the entries this loader calls, and the statCalcDebug service, offered after all of
+--                       the file but its last 210 lines (the spell resolver, the settings page builder, its /xui stats part, start-up)
+-- What this cannot see (KNOWN GAP, needs those files, not this one): StatMath.lua offers no service (StatModel.lua reads it by name),
+-- and StatCalculator.lua's last 210 lines offer none either; a stop there still reads as loaded. The full answer is one end-of-file
+-- service entry per calculator file (three lines in XayaUI_Bonus_StatCalculator), which this probe would then read instead.
+-- Once true it stays true (nothing of a loaded addon is unloaded before /reload), so the answer is kept and later reads cost nothing.
+local complete = false
+local function FilesComplete()
+    if complete then return true end
+    local S = ns.Service
+    if not S then return false end
+    local model, calc, dbg = S("statModel"), Calc(), S("statCalcDebug")
+    complete = type(model) == "table" and type(model.CM) == "table" and type(model.CM.ValueFor) == "function"
+        and type(calc) == "table" and type(calc.Toggle) == "function" and type(calc.Apply) == "function"
+        and type(calc.Shown) == "function" and type(calc.Command) == "function"
+        and type(dbg) == "table"
+    return complete
+end
 local function InLockdown() return type(InCombatLockdown) == "function" and InCombatLockdown() and true or false end
 local function Changed() if ns.Fire then ns.Fire("CONFIG_CHANGED") end end   -- (core section 6: an open settings window redraws)
 
@@ -80,38 +115,55 @@ local function Changed() if ns.Fire then ns.Fire("CONFIG_CHANGED") end end   -- 
 -- Load at first open (SD-105)
 -------------------------------------------------------------------------------
 local loadTried, loadOk = false, false
--- (round 10 repair 2) why it could not load, for /xui stats status: one of the three lines below, set once by the failed load
+-- Why it could not load this session, set once by the failed load: `loadSay` is the chat line /xui stats prints on every try (SD-146),
+-- `loadWhy` the '/xui stats status' line (round 10 repair 2). One pair per cause, so the two never disagree.
+-- (The status lines stay named locals: the player documents quote them, and tests/fix_r10_docs reads WHY_DISABLED from this file.)
 local WHY_DISABLED = "Stat Calculator: on, but it could not load this session. It is switched off in the game's AddOns list: turn it on, then /reload."
 local WHY_MISSING = "Stat Calculator: on, but it could not load this session. Its folder XayaUI_Bonus_StatCalculator is not installed."
+local WHY_ERRORED = "Stat Calculator: on, but it could not load this session. Its files stopped with a Lua error while loading: /xui bug shows errors."
 local WHY_OTHER = "Stat Calculator: on, but it could not load this session. /xui bug shows errors."
-local loadWhy = WHY_OTHER
--- returns whether it is loaded, and whether this call loaded it
+local WHY = {
+    disabled = { status = WHY_DISABLED,
+        say = "the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload." },
+    missing = { status = WHY_MISSING,
+        say = "the Stat Calculator is on, but its folder XayaUI_Bonus_StatCalculator is not installed: it belongs next to XayaUI_Bonus in Interface\\AddOns." },
+    -- (round 11a, SD-105 gap) the game loaded the folder, but one of its files stopped with a Lua error
+    errored = { status = WHY_ERRORED, say = "the Stat Calculator is on, but its files stopped with a Lua error while loading. /xui bug shows errors." },
+    other = { status = WHY_OTHER },   -- (its chat line carries the game's own reason: Load below)
+}
+local loadSay, loadWhy = nil, WHY_OTHER
+-- the one-line reason, printed by every /xui stats while it cannot load (SD-146) and by the character window's first try
+local function SayWhy() if loadSay and ns.Print then ns.Print(loadSay) end end
+-- the calculator, only once it is loaded whole (nil before its first open, and for the whole session after a failed load: nothing of a
+-- half-read calculator is ever called)
+local function LoadedCalc()
+    if loadTried and not loadOk then return nil end
+    if FilesComplete() then return Calc() end
+    return nil
+end
+-- returns whether it is loaded, and whether this call tried to load it (true also when that try failed: the caller then says why)
 local function Load()
     if loadTried then return loadOk, false end
-    if Calc() then loadTried, loadOk = true, true; return true, false end   -- (already loaded some other way: nothing to load)
+    if FilesComplete() then loadTried, loadOk = true, true; return true, false end   -- (already loaded some other way: nothing to load)
     if InLockdown() then return false, false end   -- (SD-100) never in combat lockdown; nothing waits for its end (SD-102)
     loadTried = true
     local A = C_AddOns
     local ok, loaded, reason = false, nil, nil
     if A and A.LoadAddOn then ok, loaded, reason = pcall(A.LoadAddOn, PART) end
-    loadOk = (ok and loaded) and true or false
-    if loadOk then
-        Changed()   -- (an open settings window: the page now has its detailed options)
-        return true, true
-    end
-    Changed()   -- (an open settings window: the page now says it could not load, never the stale "appear after you first open" line)
+    -- (round 11a, SD-105 gap) the game's "loaded" is not enough: each file must have run to its end
+    loadOk = (ok and loaded and FilesComplete()) and true or false
+    Changed()   -- (an open settings window redraws: its detailed options, or the line saying it could not load; never a stale line)
+    if loadOk then return true, true end
     -- (as the settings window's own load does, core ns.LoadOptions) one line saying why
-    local state = ns.ModuleState and ns.ModuleState(PART)
-    loadWhy = (state == "disabled" and WHY_DISABLED) or (state == "missing" and WHY_MISSING) or WHY_OTHER
-    if not ns.Print then return false, false end
-    if state == "disabled" then
-        ns.Print("the Stat Calculator is on, but XayaUI Bonus Features: Stat Calculator is switched off in the game's AddOns list. Turn it on, then /reload.")
-    elseif state == "missing" then
-        ns.Print("the Stat Calculator is on, but its folder XayaUI_Bonus_StatCalculator is not installed: it belongs next to XayaUI_Bonus in Interface\\AddOns.")
+    local cause
+    if ok and loaded then cause = "errored"
     else
-        ns.Print("the Stat Calculator could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
+        local state = ns.ModuleState and ns.ModuleState(PART)
+        cause = (state == "disabled" or state == "missing") and state or "other"
     end
-    return false, false
+    loadWhy = WHY[cause].status
+    loadSay = WHY[cause].say or ("the Stat Calculator could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
+    return false, true
 end
 
 -- open or close the panel: the minimap row and /xui stats. The first open loads the calculator; opening it may already have docked the
@@ -120,8 +172,9 @@ end
 local function OpenOrToggle()
     if not Saved() or InLockdown() then return end
     local ok, now = Load()
-    if not ok then return end
-    local calc = Calc()
+    -- (SD-146 "Repeat the reason each time") it could not load this session: the same one line on every try, never silence
+    if not ok then if loadTried then SayWhy() end; return end
+    local calc = LoadedCalc()
     if not (calc and calc.Toggle) then return end
     if now and calc.Shown and calc.Shown() then return end
     calc.Toggle()
@@ -135,8 +188,9 @@ local function OnCharacterShown()
     if loadTried or not Saved() or InLockdown() then return end
     local c = BonusS.characterToolkit
     if c.panel == false or c.panelOpen == false then return end
-    if not (Load()) then return end
-    local calc = Calc()
+    local ok, tried = Load()
+    if not ok then if tried then SayWhy() end; return end   -- (its first try says why once; loadTried then ends every later call)
+    local calc = LoadedCalc()
     if calc and calc.Shown and not calc.Shown() and calc.ShowIfDocked then calc.ShowIfDocked() end
 end
 local function Owner() return _G.PaperDollFrame or _G.CharacterFrame end
@@ -167,7 +221,7 @@ end
 local function SwitchChanged(wasOn)
     local on = Saved()
     if on then InstallHook() end
-    local calc = Calc()
+    local calc = LoadedCalc()
     if calc and calc.Apply then calc.Apply() end   -- loaded: on again, it listens as before; off, inert now (no event, panel hidden)
     if on == wasOn then return end
     if not on and loadOk and ns.Print then ns.Print("The Stat Calculator is off. Its memory is freed at your next /reload.") end
@@ -204,7 +258,7 @@ end
 
 local function BuildPage(Notify)
     if not ns.SettingsReady("bonus") then return nil end
-    local calc = Calc()
+    local calc = LoadedCalc()
     local page = calc and calc.Page and calc.Page(Notify) or nil
     if type(page) ~= "table" then
         page = { type = "group", name = LABEL, order = 3, childGroups = "tree", args = {
@@ -216,13 +270,11 @@ local function BuildPage(Notify)
 end
 
 -- /xui stats while the Stat Calculator is on (SD-118: while it is off, core prints its one line and never calls this)
+local HELP = "/xui stats: open or close the Stat Calculator. Also: /xui stats options | status | off"
 local function Command(arg)
     arg = tostring(arg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if arg == "" then OpenOrToggle(); return end
     if arg == "options" or arg == "settings" then ns.OpenSettingsPage("bonus", "statcalc"); return end
-    if arg == "help" then
-        ns.Print("/xui stats: open or close the Stat Calculator. Also: /xui stats options | status | off")
-        return
-    end
     if arg == "off" then
         local loaded = loadOk
         SetOn(false)
@@ -230,14 +282,16 @@ local function Command(arg)
         return
     end
     if arg == "status" then
-        local calc = Calc()
+        local calc = LoadedCalc()
         if calc and calc.Command then calc.Command("status"); return end
         -- (round 10 repair 2) after a failed load this session, say so and why, as the page does (NoteText); never "not loaded yet"
         if loadTried and not loadOk then ns.Print(loadWhy); return end
         ns.Print("Stat Calculator: on, not loaded yet (it loads the first time you open it).")
         return
     end
-    OpenOrToggle()
+    -- "help", and (round 11a) any word it does not know (core's rule for /xui: an unknown word prints help): the help line only;
+    -- nothing opens, closes or loads
+    ns.Print(HELP)
 end
 
 -- the page, the command and the minimap row: once Bonus's settings are open (with XayaUI Bonus Features off: none of them)
@@ -256,7 +310,7 @@ ns.WhenSettingsReady("bonus", function()
             OpenOrToggle, nil, order = 12,
             available = function()
                 if not Saved() or InLockdown() then return false end
-                local calc = Calc()
+                local calc = LoadedCalc()
                 if calc then return (calc.Available and calc.Available()) and true or false end
                 if loadTried then return false end   -- (it could not load: chat said why)
                 return BonusS.characterToolkit.panel ~= false

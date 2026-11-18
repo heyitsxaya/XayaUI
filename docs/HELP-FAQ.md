@@ -4,7 +4,7 @@
 Shown in the game: version pane > Info > Help (FAQ); the ? in the title bars opens it. Static questions and answers, taken from
 docs/USER-GUIDE.md sections 9-11 and 12.14 (the four groups Xaya chose on 2026-11-06). Dynamic question answering is a roadmap item.
 The game cannot read this file: after any edit, rebuild XayaUI_Options/InfoPaneData.lua with tools/build_info_pane_data.py
-(only on qa-installer-branch; its round 9 change is pending there, see docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md).
+(only on qa-installer-branch; its round 9 change is pending there).
 Layout: "## Group", then "### Question" and its answer (paragraphs and "- " bullets, **bold**, `commands`).
 -->
 

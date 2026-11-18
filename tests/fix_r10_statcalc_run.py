@@ -34,7 +34,8 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
      character window opening reads nothing of it; the character window opened in combat and left open, the first /xui stats after
      combat opens the panel docked and leaves it open (it is not opened and closed again).
   J  (repair 1) the calculator switched off in the game's AddOns list: a click on the minimap row prints one line, the row leaves the
-     list, the open settings page redraws by itself and says it could not load this session; a second try is silent.
+     list, the open settings page redraws by itself and says it could not load this session; (round 11a, SD-146, her answer "Repeat
+     the reason each time (Recommended)") a second try prints the same one line again (it was silent before) and loads nothing more.
      (repair 2) /xui stats status then says it could not load this session and why (it said "not loaded yet" before), and the
      character window opening loads and says nothing. J2: the same for its folder not installed.
   K  (repair 1, SD-112: at most 600 instructions per event; gate_performance bills a handler for every game call it makes, plus the
@@ -463,7 +464,10 @@ check("J ...its page now says it could not load this session (not the stale 'app
   drawnText("The Stat Calculator could not load this session. Chat says why.") and not drawnText("Its options appear here after you first open"))
 n = #said
 ns.RunCommand("stats", ""); W.tick(0.1, 2)
-check("J ...a second try says nothing more and asks for no second load", #saidSince(n) == 0 and #loadCalls == 1, #loadCalls)
+-- (round 11a, SD-146 "Repeat the reason each time (Recommended)"; was: "a second try says nothing more") the same one line again
+local again = saidSince(n)
+check("J ...a second try prints the same one line again (SD-146) and asks for no second load",
+  #again == 1 and again[1] == got[1] and #loadCalls == 1 and not shown(), table.concat(again, " / ") .. " | loads " .. #loadCalls)
 -- (round 10 repair 2) /xui stats status in the same state says what the page says: it could not load this session, and why
 n = #said
 ns.RunCommand("stats", "status"); W.tick(0.1, 2)

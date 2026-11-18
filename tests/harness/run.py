@@ -105,6 +105,21 @@ def load_api():
     return API
 
 
+def require_api(who):
+    """The API index, for a test that cannot mean anything without it (round 11, SD-138 M1: a test fails when something it needs is
+    missing, and says what). Without the index the stand-in defines no documented function (no C_AddOns, no IsEncounterInProgress, ...),
+    so the addons run in a world unlike the game's: tests/fix_r10_display_run.py then waited forever for a display that never showed.
+    Prints a FAIL line with the remedy and exits 1 when the index is missing."""
+    api = load_api()
+    if not api.get("functions"):
+        p = os.environ.get("XUI_API_INDEX", os.path.join(HERE, "api_index.json"))
+        print("FAIL: %s needs the stand-in's API index, which is missing or empty (%s). Build it from this repository's own "
+              "documentation: python3 tests/harness/api_index_from_docs.py, or set XUI_API_INDEX to an index file." % (who, p))
+        print("1 checks, 1 failed")
+        sys.exit(1)
+    return api
+
+
 def savedvars(L):
     """tests/harness/savedvars.lua in runtime L: Serialize(value) -> Lua source, Load(source) -> value, LoadFile(file text)."""
     return L.eval("function(p) return dofile(p) end")(os.path.join(HERE, "savedvars.lua"))
@@ -156,6 +171,9 @@ def session(folders, enabled, saved, write_back=True, quick=False):
         "noPayload": (S.noPayloadStart, S.noPayloadEnd),
         "unknownMethods": {k: v for k, v in world.unknownMethods.items()},
         "stats": {"commands": S.commands, "launchers": S.launchers, "optionNodes": S.optionNodes, "optionCalls": S.optionCalls,
+                  # (round 11, SD-119) options whose value was read (get), and options with a get the game's window never calls because
+                  # the option or a group above it is hidden (scenario.lua, as AceConfigDialog-3.0's CheckOptionHidden)
+                  "optionGets": S.optionGets or 0, "optionHidden": S.optionHidden or 0,
                   "otherEvents": len(S.otherEvents) if S.otherEvents else 0, "noOptions": bool(S.noOptions)},
         "saved": lua_to_py(S.saved) if S.saved else {},           # Python data, for the drift report only
         "savedSource": sv.Serialize(S.saved) if S.saved else "{}",  # what the next session loads (key types kept; f6-3)

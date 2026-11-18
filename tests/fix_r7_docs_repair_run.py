@@ -17,9 +17,9 @@ the code fails here.
      account's SavedVariables folder aside and restores it; B416 keeps the rules on and changes only the trigger's State to the editor's
      "Buff is MISSING" label, which AuraDisplay.lua keeps with XayaUI (review concern a); B422 (SD-62: the Minimap Button page in XayaUI
      Options, both buttons not built while switched off, with the code's labels and frame names) and B423 (the retired addons' leftover
-     code: /xui dev qa, saved settings kept) exist (review concern b); WHATS-NEW and SESSION-START-SUMMARY name B401 to B423.
-  L  REQUEST-LOG A23 (status column only), V15 ("A report that says "done" for an item not on `main` is wrong"): no status cell of
-     SD-52 to SD-64 says DONE (bundle 1 is not on main); every built row says "not on main".
+     code: /xui dev qa, saved settings kept) exist (review concern b); WHATS-NEW names B401 to the last bundle 1 step.
+  (round 11a, SD-140 "Docs like this should not be on main.": the working docs left this repo, so Q6 no longer reads
+     SESSION-START-SUMMARY, and L (the request log's status cells for SD-52 to SD-64) was removed; both live in Xaya's private notes.)
 Fails on the documents before this repair (proved on a private copy); passes after.
 Run: python3 tests/fix_r7_docs_repair_run.py"""
 import os, re, sys
@@ -49,7 +49,7 @@ def steps(qa):
 
 def main():
     readme, ug, faq, qa = read("README.md"), read("docs/USER-GUIDE.md"), read("docs/HELP-FAQ.md"), read("docs/QA-CHECKLIST.md")
-    wn, sss = read("docs/WHATS-NEW.md"), read("docs/SESSION-START-SUMMARY.md")
+    wn = read("docs/WHATS-NEW.md")
     engine, debugrec = read("XayaUI_Rules/Engine.lua"), read("XayaUI/DebugRecord.lua")
     setup, auradisp, editor = read("XayaUI_Options/AuraSetup.lua"), read("XayaUI_Rules/Combat/AuraDisplay.lua"), read("XayaUI_Options/RuleEditor/Editor.lua")
     minimap, minitab, gamemenu, options = (read("XayaUI/MinimapButton.lua"), read("XayaUI_Options/MinimapTab.lua"),
@@ -135,28 +135,14 @@ def main():
           and '`["chat"] = {`' in b423 and '`["qol"] = {`' in b423 and '`["rsk"] = {`' in b423 and "still there" in b423, b423[:200])
     sec = qa.split("### B-bundle1.", 1)[1].split("\n## ", 1)[0] if "### B-bundle1." in qa else ""
     last = max([int(x) for x in re.findall(r"\*\*B(\d+)\.\*\*", sec)] or [0])
-    check("Q6 WHATS-NEW and SESSION-START-SUMMARY name the bundle 1 steps up to the last one (B%d)" % last,
+    check("Q6 WHATS-NEW names the bundle 1 steps up to the last one (B%d)" % last,
           # (round 9 docs: the section grew to B429 with the round 9 in-game steps, B424 to B429; the check still asks for the last one)
           # (round 9 docs repair 1: B430 to B433, the round 8 in-game checks that had no step, so the last one is B433)
           # (round 9 docs repair 2: B434, the game-played sound with a combat or boss Load choice; the last one is B434)
           # (round 10 docs: B435 to B438, the in-game steps only the game can confirm (sound probe, Stat Calculator first open,
           # Calculator keys, hidden interface); the last one is B438)
-          last == 438 and ("B401 to B%d" % last) in wn and ("B401 to B%d" % last) in sss)
-
-    # L: REQUEST-LOG status cells (V15)
-    log = read("docs/process/REQUEST-LOG.md")
-    cells = {}
-    for line in log.splitlines():
-        m = re.match(r"\| SD-(\d+) \| ", line)
-        if m and 52 <= int(m.group(1)) <= 64:
-            c = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-            cells[int(m.group(1))] = c[2] if len(c) == 4 else ""
-    check("L0 rows SD-52 to SD-64 are found", sorted(cells) == list(range(52, 65)), sorted(cells))
-    done = [n for n, c in cells.items() if re.search(r"\bDONE\b", c)]
-    check("L1 no status cell of SD-52 to SD-64 says DONE (bundle 1 is not on main; V15)", not done, done)
-    built = [52, 53, 54, 55, 57, 58, 60, 61, 62, 63, 64]
-    no_main = [n for n in built if "not on main" not in cells.get(n, "")]
-    check("L2 every built row (SD-%s) says it is not on main" % ",".join(map(str, built)), not no_main, no_main)
+          # (round 11a, SD-140: SESSION-START-SUMMARY, a working doc, left this repo; WHATS-NEW is the player's copy and stays checked)
+          last == 438 and ("B401 to B%d" % last) in wn)
 
     bad_n = 0
     for name, ok in results:

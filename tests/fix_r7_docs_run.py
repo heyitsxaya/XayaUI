@@ -27,12 +27,11 @@ file that prints or uses it, so a doc that drifts from the code fails here.
      two cases still re-checked every 0.2 s, and the garrison reminder (RB-29).
   A  The addon tables (USER-GUIDE section 0, README.md) list XayaUI Rules and XayaUI Debug, and every folder they name exists; the Combat
      README points at XayaUI_Options/AuraSetup.lua, which exists.
-  L  REQUEST-LOG A23 (status column only): SD-52, SD-53 and SD-55 no longer read "OPEN, round 6"; SD-57, SD-58, SD-61 and SD-64 no longer
-     say "OPEN, bundle 1 round 7" / "OPEN, round 7"; her words (the second column) of SD-52 to SD-64 are unchanged from the
-     last commit (when git is there).
+  (L, the request log's status cells for SD-52 to SD-64, was removed in round 11a with the working docs: SD-140, "Docs like this should
+     not be on main."; the request log lives in Xaya's private notes repo now.)
 Fails on the documents before round 7's docs unit (proved on a private copy); passes after.
 Run: python3 tests/fix_r7_docs_run.py"""
-import os, re, subprocess, sys
+import os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -183,41 +182,6 @@ def main():
     check("A3 the Combat README points at XayaUI_Options/AuraSetup.lua (which exists), not at a file in this folder",
           "`XayaUI_Options/AuraSetup.lua`" in combat and os.path.isfile(os.path.join(ROOT, "XayaUI_Options", "AuraSetup.lua"))
           and not os.path.isfile(os.path.join(ROOT, "XayaUI_Rules", "Combat", "AuraSetup.lua")))
-
-    # L: the request log's status column
-    log = read("docs/process/REQUEST-LOG.md")
-    rows = {}
-    for line in log.splitlines():
-        m = re.match(r"\| (SD-(\d+)) \| ", line)
-        if m and 52 <= int(m.group(2)) <= 64:
-            cells = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-            rows[m.group(1)] = cells
-    check("L0 rows SD-52 to SD-64 are found with four cells each", len(rows) == 13 and all(len(c) == 4 for c in rows.values()),
-          {k: len(v) for k, v in rows.items()})
-    for sd in ("SD-52", "SD-53", "SD-55"):
-        st_cell = rows.get(sd, ["", "", ""])[2]
-        check("L1 %s status no longer reads 'OPEN, round 6'" % sd, st_cell and not st_cell.startswith("OPEN, round 6"), st_cell[:80])
-    for sd in ("SD-57", "SD-58", "SD-61", "SD-64"):
-        st_cell = rows.get(sd, ["", "", ""])[2]
-        check("L2 %s status no longer says 'OPEN, bundle 1 round 7' / 'OPEN, round 7' (built in round 7)" % sd,
-              st_cell and "OPEN, bundle 1 round 7" not in st_cell and "OPEN, round 7" not in st_cell, st_cell[:80])
-    try:
-        old = subprocess.run(["git", "-C", ROOT, "show", "HEAD:docs/process/REQUEST-LOG.md"], capture_output=True, text=True, timeout=60)
-        old_log = old.stdout if old.returncode == 0 else None
-    except Exception:
-        old_log = None
-    if old_log:
-        changed = []
-        for line in old_log.splitlines():
-            m = re.match(r"\| (SD-(\d+)) \| ", line)
-            if m and 52 <= int(m.group(2)) <= 64:
-                cells = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-                now = rows.get(m.group(1))
-                if not now or now[1] != cells[1] or now[3] != cells[3]:
-                    changed.append(m.group(1))
-        check("L3 her words (second column) and the where column of SD-52 to SD-64 are unchanged from the last commit", not changed, changed)
-    else:
-        print("note: git not available here; L3 (her words unchanged) not checked")
 
     bad_n = 0
     for name, ok in results:

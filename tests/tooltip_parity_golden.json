@@ -2,6 +2,7 @@
  "SetOwner|<owner>|ANCHOR_BOTTOM\nSetText|Collapse to the banner\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_BOTTOM\nSetText|Help\nAddLine|Opens Help (FAQ) in the version pane (Info > Help).|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_LEFT\nSetText|XayaUI|1.000|0.820|0.000\nAddLine|Left-click: quick-access list|1.000|1.000|1.000\nAddLine|Right-click: open or close the XayaUI settings|1.000|1.000|1.000\nAddLine|Drag: move around the minimap|0.600|0.600|0.600\nShow\n--leave--\nHide",
+ "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|Calculator|1.000|0.820|0.000\nAddLine|Show or hide the calculator (also /xui calc)|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_RIGHT\nSetText|XayaUI Settings|1.000|0.820|0.000\nAddLine|Open or close the XayaUI settings window|1.000|1.000|1.000|true\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_TOP\nAddLine|Group: Advanced Cue Tracking|1.000|0.820|0.000\nAddLine|0 display(s) on screen|1.000|1.000|1.000\nAddLine|Click: open this group's settings|0.600|0.850|1.000\nAddLine|Right-click: X / Y, centering and anchoring|0.600|0.850|1.000\nAddLine|Drag this tab: move the whole group|0.600|0.850|1.000\nShow\n--leave--\nHide",
  "SetOwner|<owner>|ANCHOR_TOP\nAddLine|Group: Display Cues|1.000|0.820|0.000\nAddLine|0 display(s) on screen|1.000|1.000|1.000\nAddLine|Click: open this group's settings|0.600|0.850|1.000\nAddLine|Right-click: X / Y, centering and anchoring|0.600|0.850|1.000\nAddLine|Drag this tab: move the whole group|0.600|0.850|1.000\nShow\n--leave--\nHide",

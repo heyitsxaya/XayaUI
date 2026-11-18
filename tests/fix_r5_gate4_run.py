@@ -140,7 +140,8 @@ check("1000 SPELL_UPDATE_CHARGES in combat make no garbage of XayaUI's own (was 
 
 # what the player reads: Death and Decay (2 charges), a charge used in combat, the recharge not started yet: not full, 1 left
 lua("COMBAT = false; T = T + 5; SP[43265].cur = 2; FIRE('PLAYER_REGEN_ENABLED')")
-lua("COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); T = T + 2; CAST(43265); SP[43265].cur = 1; FIRE('SPELL_UPDATE_CHARGES')")
+# (round 11, scope item 1) the game's order: PLAYER_REGEN_DISABLED is handled before the lockdown (InCombatLockdown here is COMBAT) begins
+lua("FIRE('PLAYER_REGEN_DISABLED'); COMBAT = true; T = T + 2; CAST(43265); SP[43265].cur = 1; FIRE('SPELL_UPDATE_CHARGES')")
 check("in combat, a charge used and its recharge not started: the rule reads not ready (never 'full')", ev("READY(DND)") is False, ev("READY(DND)"))
 check("  ...and the count it shows is 1", ev("COUNT(DND)") == 1, ev("COUNT(DND)"))
 # the recharge runs, then finishes between engine steps: the watcher sees it on SPELL_UPDATE_CHARGES

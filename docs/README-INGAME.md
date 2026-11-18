@@ -3,8 +3,7 @@
 <!--
 Shown in the game: version pane > Info > Readme. A short, readable version of docs/USER-GUIDE.md (sections 1, 2, 4 and 5 of the
 outline Xaya chose on 2026-11-06). The game cannot read this file: after any edit, rebuild XayaUI_Options/InfoPaneData.lua with
-tools/build_info_pane_data.py. That tool is only on qa-installer-branch, and its round 9 change is pending there (see
-docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md).
+tools/build_info_pane_data.py. That tool is only on qa-installer-branch, and its round 9 change is pending there.
 Supported markdown: #, ##, ### headings, paragraphs, "- " bullets (two spaces more for a nested bullet), **bold**, `commands`.
 -->
 

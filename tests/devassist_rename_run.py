@@ -34,11 +34,13 @@ check("the old folder is gone from the repository", not os.path.exists(os.path.j
 br = open(os.path.join(ROOT, "docs", "reference", "build_reference.py"), encoding="utf-8").read()
 check("docs/reference/build_reference.py reads either name", "env.XayaUIDevAssistDB or env.XayaUIGameDumpDB" in br)
 
-# 4. nothing else still points at the old folder (history in the RETROSPECTIVE stays as written)
+# 4. nothing else still points at the old folder
 allowed = {"docs/reference/build_reference.py", "tests/devassist_rename_run.py"}
 # (bundle 1 round 9, REQUEST-LOG A23 SD-72, her answer "Remove from main, keep on QA (Recommended)": MANIFEST.md5 is gone from main,
 # so its exclusion here was dropped; qa-installer-branch keeps the file and its own copy of this test)
-out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", ".", ":!docs/process/RETROSPECTIVE.md"],
+# (round 11a, SD-140: the RETROSPECTIVE, a working doc, left this repo, so its pathspec exclusion went with it; .md files are
+# skipped below in any case)
+out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", "."],
                      cwd=ROOT, capture_output=True, text=True).stdout.split()
 stray = [p for p in out if p not in allowed and not p.endswith(".md") and p != ".gitignore"]
 check("no code file outside the expected places names XayaUI_GameDump", not stray, stray)

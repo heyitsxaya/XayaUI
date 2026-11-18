@@ -203,6 +203,20 @@ section("E: the profile codec", function()
   else skip("XayaUI_Chat", "E: other players' names never leave (whisper-sound senders)") end
   if XUI_HAS_BONUS then
   check("E: the calculator's history and position never leave", data.parts.bonus.calculator.history == nil and data.parts.bonus.calculator.x == nil and data.parts.bonus.calculator.enabled == true)
+  elseif XUI_BONUS_CALC then
+  -- (round 11a; R10 final review concern 8) this branch's XayaUI_Bonus holds the arithmetic Calculator (SD-95 / SD-115) and its own
+  -- profile part carries the Calculator's key (XayaUI_Bonus/ProfilePart.lua, db "calculator", never history / point / x / y), so the
+  -- check runs against the real module: a Bonus Features profile with your sums and the keypad's place saved carries only its switch.
+  -- (Its own snapshot: the profile above ticks Themes, not Bonus Features, on this branch.) The saved Calculator table is put back after.
+  local keep = DB.calculator
+  DB.calculator = { enabled = true, history = { "1+1 = 2" }, point = "TOPLEFT", x = 5, y = -7 }
+  local ctxt, cerr = ns.Share.Encode("profile", P.Snapshot({ bonus = true }, "mine"))
+  local cdata = ctxt and ns.Share.Read(ctxt)
+  DB.calculator = keep
+  local cc = type(cdata) == "table" and type(cdata.parts) == "table" and type(cdata.parts.bonus) == "table" and cdata.parts.bonus.calculator
+  check("E: the calculator's history and position never leave (XayaUI_Bonus's own part: only the Calculator's switch travels)",
+    type(cc) == "table" and cc.history == nil and cc.point == nil and cc.x == nil and cc.y == nil and cc.enabled == true,
+    type(cc) == "table" and ("history " .. tostring(cc.history) .. ", point " .. tostring(cc.point) .. ", x " .. tostring(cc.x) .. ", y " .. tostring(cc.y) .. ", enabled " .. tostring(cc.enabled)) or tostring(cerr or cc))
   else skip("XayaUI_Bonus", "E: the calculator's history and position never leave") end
   check("E: one-time upgrade flags never leave", data.parts.settings.ui.hybridMigrated == nil and data.parts.settings.ui.selStyle == "bar")
   -- import on a changed setup: only the ticked components land; settings merge
@@ -265,9 +279,13 @@ def main():
     pp = os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua")
     pp_src = open(pp, encoding="utf-8").read() if os.path.isfile(pp) else ""
     bonus_part = str('"dataPanels"' in pp_src).lower()
-    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s; XUI_BONUS_PART = %s"
+    # (round 11a, check E only) XUI_BONUS_CALC: this branch's Bonus part carries the arithmetic Calculator's key (its db lists
+    # "calculator"); check E's "history and position never leave" then runs against it instead of printing a SKIP
+    calc_part = str(any("db = {" in l and '"calculator"' in l for l in pp_src.splitlines()) and "XayaUI_Bonus" not in ABSENT).lower()
+    L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s; XUI_BONUS_PART = %s; "
+              "XUI_BONUS_CALC = %s"
               % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus"),
-                 str(bool(pp_src) and "XayaUI_Bonus" not in ABSENT).lower()))
+                 str(bool(pp_src) and "XayaUI_Bonus" not in ABSENT).lower(), calc_part))
     res = L.eval("function(src, W, Ld) return loadstring(src)()(W, Ld) end")(LUA, world, loader)
     bad, nchecks = 0, 0
     for i in range(1, len(res) + 1):

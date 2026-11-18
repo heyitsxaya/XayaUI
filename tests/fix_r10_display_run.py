@@ -40,6 +40,15 @@ return function(W, L, MODE)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name, ok and true or false, extra ~= nil and tostring(extra) or nil } end
 local FRAME = 1 / 60
+-- (round 11, test audit: this test hung at the suite's 900 s limit) every wait for a moment on screen is bounded: if the moment does not
+-- come within the frames it should, the wait is a named FAIL, not a hang. (The hang: a checkout without the stand-in's API index, where
+-- no display ever shows, so "wait until the countdown reads 3.8" never ended; tests/harness/run.py require_api now stops that first.)
+local function waitFor(cond, maxFrames, what)
+  for _ = 1, maxFrames do if cond() then return true end; W.tick(FRAME, 1) end
+  if cond() then return true end
+  check(what .. " within " .. maxFrames .. " frames (it never did: the test stops here)", false)
+  return false
+end
 -- ---------------------------------------------------------------- the game model
 local G = { auras = {}, nextIID = 100, absorb = 5000 }
 local function copy(a) local t = {}; for k, v in pairs(a) do t[k] = v end; return t end
@@ -190,7 +199,7 @@ if MODE == "A" then
   W.tick(FRAME, 30)
   check("(setup) A. the tenths countdown and the fading display show", shown(TE) and shown(FA) and txt(TE) == wantTenth(a), txt(TE) .. " / " .. wantTenth(a))
   -- (hidden while 3.8 shows: the next change, 3.7, is not a whole second, so the effects' own wake comes first, not the engine's)
-  while txt(TE) ~= "3.8" do W.tick(FRAME, 1) end
+  if not waitFor(function() return txt(TE) == "3.8" end, 120, "A. the tenths countdown reaches 3.8") then return R end
   local w0, f0, t0 = wakes, fxRuns, ES.redrawText
   UIParent:Hide()
   local hiddenFor = 90   -- (1.5 s)
@@ -224,17 +233,26 @@ elseif MODE == "B" or MODE == "B2" then
   local a = gain(9103, 4.5003)
   local bad, n = 0, 0
   local function frames(k) for _ = 1, k do W.tick(FRAME, 1); n = n + 1; if shown(TE) and txt(TE) ~= wantTenth(G.auras[9103]) then bad = bad + 1 end end end
+  -- the middle of a tenth (0.55-0.75 of the way through it); a tenth is 6 frames at 60 a second, so 12 frames always reach one
+  local function midTenth()
+    local function inMid() local a = G.auras[9103]; if not a then return false end
+      local rem = a.expirationTime - W.now; local x = rem * 10 - math.floor(rem * 10); return x > 0.55 and x < 0.75 end
+    for _ = 1, 12 do if inMid() then return true end; frames(1) end
+    if inMid() then return true end
+    check(MODE .. ". the countdown reaches the middle of a tenth within 12 frames (it never did: the test stops here)", false)
+    return false
+  end
   frames(20)
   for i = 1, 6 do
     -- in the middle of a tenth (0.03 s after one): refreshed, so the next tenth is later than the moment already waited for
-    while true do local rem = G.auras[9103].expirationTime - W.now; local x = rem * 10 - math.floor(rem * 10); if x > 0.55 and x < 0.75 then break end; frames(1) end
+    if not midTenth() then return R end
     refresh(9103); frames(9 + i)
   end
   frames(40)
-  while true do local rem = G.auras[9103].expirationTime - W.now; local x = rem * 10 - math.floor(rem * 10); if x > 0.55 and x < 0.75 then break end; frames(1) end
+  if not midTenth() then return R end
   lose(9103); frames(30)
   a = gain(9103, 3.2003); frames(40)
-  while true do local rem = G.auras[9103].expirationTime - W.now; local x = rem * 10 - math.floor(rem * 10); if x > 0.55 and x < 0.75 then break end; frames(1) end
+  if not midTenth() then return R end
   lose(9103); frames(30)
   if MODE == "B" then
     check("B. a tenths countdown refreshed 6 times and lost twice in the middle of a tenth: no wake timer run changes nothing on screen",
@@ -343,6 +361,11 @@ def world(addons=None, saved=None):
 
 
 def main():
+    # (round 11) each line reaches the suite as it is printed, so a test stopped by the suite's time limit still shows how far it got
+    sys.stdout.reconfigure(line_buffering=True)
+    # (round 11, SD-138 M1) without the API index the stand-in has no documented function (C_AddOns, ...): no display ever shows and
+    # every check here would measure nothing. Stop with a named FAIL instead.
+    H.require_api("tests/fix_r10_display_run.py")
     total = bad = 0
 
     def report(name, ok, extra=None):

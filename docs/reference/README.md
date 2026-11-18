@@ -20,7 +20,7 @@ This repository is public, so it holds the `--public` build:
 
 Why the split: Blizzard owns its written game text. Names, IDs and signatures are factual. US federal rules list "Words and short phrases such as names, titles, and slogans" as not subject to copyright (37 CFR 202.1(a)). They are widely published already, for example on warcraft.wiki.gg and in the public wow-ui-source mirror.
 
-Terms (read 2026-11-04; details in `debug-log/2026-11-04-1550-terms-check-blizzard-wago.md`; not legal advice):
+Terms (read 2026-11-04; details in the project's private developer notes, 2026-11-04 terms check; not legal advice):
 - **Blizzard EULA**, last revised March 21, 2024:
   - §1.C.6 forbids "any unauthorized process or software that intercepts, collects, reads, or 'mines' information". It adds that Blizzard "may, at its sole and absolute discretion, allow the use of certain third-party user interfaces" (add-ons).
   - §2.A.1.i: "you will not create any work based on the Platform, except as expressly set forth in this Agreement."

@@ -2,14 +2,16 @@
 
 Collected 2026-11-06 from branch `claude/ui-bugs-focused` (head e417cf2). Read-only; nothing in the repo was changed.
 
-Sources (short names used below):
-- **LOG** = docs/process/REQUEST-LOG.md: S1 rows `#n`, `O-n` (A10), `S2-n`, `S7-n`, `S9-n`, `UI-n` (A8), `FUS-n`, `B-n` (section B).
-- **XC** = docs/process/REQUEST-LOG-CROSS-CHAT.md: `ENG-n`, `CHAT-n`, `WHISP-n`, `INDENT-n`, `TIPS-n`, `CHARWIN-n`, `HIEFF-n`, `HIEFF-Dn`, `HIEFF-En`, `ATTR-n`, `PART-n`.
-- **S3** = REQUEST-LOG-session-014bN6tStyDJVemzE9tX7F38.md (`R-n`, `C-n`). **NB** = REQUEST-LOG-session-014bN6tSs9peLMW4F93tnQcj.md (rows `NB-n`).
-  **GEN** = REQUEST-LOG-session-014bN6tTRFsCmBvVCUDVtrds.md. **CON** = REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md. **E** =
-  REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md (engine session). **Q** = docs/process/QUESTIONS-engine-session.md (her answers;
+Sources (short names used below). Every source is a working document kept with the project's private developer notes (the
+request log and its per-session logs, the question and decision notes, the session summary, the debug log), not in this
+repository; the short names stay so each ruling can still be traced there:
+- **LOG** = the request log: S1 rows `#n`, `O-n` (A10), `S2-n`, `S7-n`, `S9-n`, `UI-n` (A8), `FUS-n`, `B-n` (section B).
+- **XC** = the cross-chat request log: `ENG-n`, `CHAT-n`, `WHISP-n`, `INDENT-n`, `TIPS-n`, `CHARWIN-n`, `HIEFF-n`, `HIEFF-Dn`, `HIEFF-En`, `ATTR-n`, `PART-n`.
+- **S3** = request log of session 014bN6tStyDJVemzE9tX7F38 (`R-n`, `C-n`). **NB** = request log of session 014bN6tSs9peLMW4F93tnQcj (rows `NB-n`).
+  **GEN** = request log of session 014bN6tTRFsCmBvVCUDVtrds. **CON** = request log of session 014bN6tVFhD1GEbb6ieFgKLz. **E** =
+  request log of session 014bN6tV8wAAEXAShpTKqUfz (engine session). **Q** = the engine session's question notes (her answers;
   not in the task's source list but holds her verbatim layout answers).
-- **SSS2** = docs/SESSION-START-SUMMARY.md section 2. **DEC** = docs/process/DECISIONS-2026-11-04.md. **DL** = debug-log/<file>.
+- **SSS2** = the session-start summary, section 2. **DEC** = the 2026-11-04 decision notes. **DL** = the debug log.
 
 Conventions:
 - Quotes are hers, copied verbatim from the source (the logs themselves say "verbatim"; screenshots are the logs' bracket text and
@@ -157,7 +159,7 @@ Conventions:
 
 | # | Ruling (her words) | Source | Notes |
 |---|---|---|---|
-| 9.1 | "Options style: a dropdown never takes a whole row alone, labels stay short, and the explanation goes in the tooltip." | SSS2; docs/ROADMAP.md line 23 | "labels stay short / explanation in the tooltip": project rule; her verbatim words for it were NOT found in the sources (interpretation, not her words) |
+| 9.1 | "Options style: a dropdown never takes a whole row alone, labels stay short, and the explanation goes in the tooltip." | SSS2; the roadmap as collected, line 23 | "labels stay short / explanation in the tooltip": project rule; her verbatim words for it were NOT found in the sources (interpretation, not her words) |
 | 9.2 | "Display should be a tab that exists, 'Rule' should likely be renamed 'Info'" | DL 2026-11-02-2330-info-tab-rename-comment-cleanup-0.5.72.md | |
 | 9.3 | "Rule templates is a bit of a misnomer. They are pre-created rules" | XC CHAT-9 | |
 | 9.4 | ""character toolkit" title should be changed to `Stat Calculator`" | S3 R39 | |

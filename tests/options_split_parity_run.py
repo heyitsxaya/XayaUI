@@ -160,9 +160,22 @@ Updated on 2026-11-17 (bundle 1 round 10, calculator repair 1; CHAT-6, the short
 (4 diff lines), both on the Calculator's page: `bonus.calculator` (its switch's tip and desc name /calc too) and `bonus.calculator.how`
 (names /calc, and says /calc is left to another addon that already uses it; /xui calc always works). off-XayaUI_Bonus: 0 lines. The
 value is the one `--golden` writes on a copy of the tree; that copy's "cooldowns" entries (another unit's change) were not taken over.
+Updated on 2026-11-18 (bundle 1 round 11a; the stale golden of the round 10 final review, blocker 3 (a)): only the "cooldowns" entries,
+all-on 0b5c193a92951b7c -> 4ce0abe5f2f4db45 and off-XayaUI_Bonus 27a61cac8a959437 -> 123e2c0caecfc428, 6700 nodes both. `--dump` of
+68432825 (round 9's end; it passes its golden, 23 checks, 0 failed) and of round 10's code (dd80f897, and the working tree then, whose
+dumps are byte for byte the same) differ in "cooldowns" in 15 lines per variant and nothing else: the `snd_gameSoundOn` switch of the
+sound cue (2 nodes) and the 13 `actions` nodes that carry its pane in `xuiParts`; replacing the old hover text by the new one in the
+old dump gives the new dump exactly. The hover text is the sound unit's rewrite (SD-96 / SD-107, XayaUI_Options/RuleEditor/Editor.lua):
+old "Plays this sound file when the trigger's aura is gained or lost, even in combat; the rule's other triggers, conditions and Repeat
+are ignored. Set up out of combat only.", new "The game plays this sound file when the aura is gained or lost, even in a fight while the
+aura is hidden, following the Load tab but never Repeat or the rule's other triggers. If this buff is in your Cooldown Manager, XayaUI
+plays the sound itself instead and follows every setting of the rule." The other all-on lines that differ from 68432825 (6 gone,
+13 new: the Calculator's page, `bonus.statcalc` and its note, the `minimap.entries.calc` rows) are round 10's already recorded entries.
+The golden also holds, from now on, a per-node record ("nodes": one 10-digit hash per dump line, in dump order). A failed tab hash then
+names the nodes behind it ("now differs", "new", "gone"), and a check keeps that record in step with the tab hashes.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
-import hashlib, json, os, re, sys
+import difflib, hashlib, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.environ.get("XUI_HARNESS") or os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -312,13 +325,53 @@ def run_variant(off):
     return dump, str(res[3]), errs
 
 
-def summarise(dump):
+def node_path(line):
+    """The key path of one dump line ("" for the root node)."""
+    return line.split(" :: ", 1)[0]
+
+
+def split_tabs(dump):
+    """The dump's lines per top tab, in dump order (the walk visits keys sorted, so the order is fixed)."""
     tabs = {}
     for line in dump.split("\n"):
-        path = line.split(" :: ", 1)[0]
+        path = node_path(line)
         top = path.split(".", 1)[0] if path else "<root>"
         tabs.setdefault(top, []).append(line)
-    return {t: [hashlib.sha256("\n".join(ls).encode("utf-8")).hexdigest()[:16], len(ls)] for t, ls in sorted(tabs.items())}
+    return tabs
+
+
+def node_digest(lines):
+    """One short hash per node line, in dump order: the golden's per-node record. It only serves to NAME the nodes behind a failed tab
+    hash (the tab hash stays the check); 10 hex digits, so a chance collision among ~7,200 lines is negligible (about 2.4e-5)."""
+    return [hashlib.sha256(l.encode("utf-8")).hexdigest()[:10] for l in lines]
+
+
+def summarise(dump):
+    tabs = split_tabs(dump)
+    return ({t: [hashlib.sha256("\n".join(ls).encode("utf-8")).hexdigest()[:16], len(ls)] for t, ls in sorted(tabs.items())},
+            {t: node_digest(ls) for t, ls in sorted(tabs.items())})
+
+
+def name_node_differences(lines, want_digest, limit=12):
+    """Names the nodes of one tab that differ from the golden's per-node record (round 11a: a stale golden must say WHICH node moved).
+    The golden keeps hashes only, so a node is named by its path in this dump: "now differs" (a golden node replaced in place, i.e. its
+    text changed), "new" (no golden node there) or "gone" (golden nodes with no counterpart, named by the node just before them).
+    Returns a list of short strings, at most `limit` plus a count of the rest."""
+    if not want_digest:
+        return ["the golden holds no per-node record for this tab; record one with --golden after proving the change"]
+    cur = node_digest(lines)
+    paths = [node_path(l) or "<root>" for l in lines]
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, want_digest, cur, autojunk=False).get_opcodes():
+        if op == "equal":
+            continue
+        both = min(i2 - i1, j2 - j1)
+        out += ["now differs: " + paths[j] for j in range(j1, j1 + both)]
+        out += ["new: " + paths[j] for j in range(j1 + both, j2)]
+        if i2 - i1 > both:
+            where = ("after " + paths[j1 + both - 1]) if j1 + both > 0 else "at the start of the tab"
+            out.append("gone: %d golden node(s) %s" % (i2 - i1 - both, where))
+    return out[:limit] + (["... and %d more" % (len(out) - limit)] if len(out) > limit else [])
 
 
 def main():
@@ -330,6 +383,7 @@ def main():
     # first one built in the process, as when the golden was recorded
     variants = [None] + MODULES
     results = {}
+    dumps = {}
     errs_all = []
     for off in variants:
         tag = "all-on" if off is None else ("off-" + off)
@@ -340,7 +394,9 @@ def main():
             continue
         if dump_dir:
             open(os.path.join(dump_dir, tag + ".txt"), "w", encoding="utf-8").write(dump + "\n")
-        results[tag] = {"tabs": summarise(dump), "registered": reg}
+        tabs, nodes = summarise(dump)
+        results[tag] = {"tabs": tabs, "registered": reg, "nodes": nodes}
+        dumps[tag] = dump
     if "--golden" in sys.argv:
         json.dump(results, open(GOLDEN_FILE, "w", encoding="utf-8"), indent=1, sort_keys=True)
         print("golden written: %s (%d variants, %d Lua errors)" % (GOLDEN_FILE, len(results), len(errs_all)))
@@ -365,9 +421,20 @@ def main():
             check("[%s] golden present" % tag, want is not None)
             continue
         keys = sorted(set(got["tabs"]) | set(want["tabs"]))
+        lines = split_tabs(dumps[tag])
+        want_nodes = want.get("nodes") or {}
         for t in keys:
             nm = "[%s] %s: same nodes, names, descs, types, widths, hidden / disabled / get results as before the move" % (tag, t)
-            check(nm, got["tabs"].get(t) == want["tabs"].get(t), "got %s want %s" % (got["tabs"].get(t), want["tabs"].get(t)))
+            same = got["tabs"].get(t) == want["tabs"].get(t)
+            # (round 11a) a failed hash names the nodes behind it, so a stale golden is diagnosable without a second dump
+            check(nm, same, "" if same else "got %s want %s; %s" % (got["tabs"].get(t), want["tabs"].get(t),
+                  "; ".join(name_node_differences(lines.get(t, []), want_nodes.get(t)))))
+        # the per-node record must agree with the hashes it explains: one entry per node of every tab, and equal to this dump's wherever
+        # the tab hash is equal (else a later failure would name the wrong nodes)
+        stale = [t for t in want["tabs"] if len(want_nodes.get(t) or []) != want["tabs"][t][1]
+                 or (got["tabs"].get(t) == want["tabs"][t] and want_nodes.get(t) != got["nodes"].get(t))]
+        check("[%s] the golden's per-node record agrees with its tab hashes (it names the nodes behind a failed hash)" % tag, not stale,
+              "stale or missing for: %s" % stale)
         check("[%s] the same settings pages are registered per module" % tag, got["registered"] == want["registered"],
               "got %s want %s" % (got["registered"], want["registered"]))
     # D (P4) XayaUI Rules switched off: no golden from the old code (the module did not exist). The window is the all-on window minus
@@ -401,6 +468,19 @@ def main():
         reg = dict(x.split("=", 1) for x in (off_reg or "").split())
         check("[off-XayaUI_Rules] the other modules register the same settings pages as with it on",
               off_reg == results["all-on"]["registered"], "%s / %s" % (off_reg, results["all-on"]["registered"]))
+    # (round 11a) the naming itself, on this run's real all-on dump: one node's text changed, one node removed and one added must be named
+    # by path and kind, and nothing else (a test of the diagnosis, so a broken one cannot hide behind a passing golden)
+    if dumps.get("all-on"):
+        tab_lines = max(split_tabs(dumps["all-on"]).values(), key=len)
+        k = len(tab_lines) // 2
+        # node k changed, node k + 2 removed, a node added after node k + 4
+        mutated = (tab_lines[:k] + [tab_lines[k] + " ; mutated=1", tab_lines[k + 1]] + tab_lines[k + 3:k + 5]
+                   + [node_path(tab_lines[k + 4]) + "_new :: name=\"x\""] + tab_lines[k + 5:])
+        got_names = name_node_differences(mutated, node_digest(tab_lines))
+        want_names = ["now differs: " + node_path(tab_lines[k]), "gone: 1 golden node(s) after " + node_path(tab_lines[k + 1]),
+                      "new: " + node_path(tab_lines[k + 4]) + "_new"]
+        check("a failed tab hash names the node that changed, the node that is gone and the node that is new (self-check on the real dump)",
+              got_names == want_names, "got %s want %s" % (got_names, want_names))
     allon = results.get("all-on")
     if allon:
         reg = dict(x.split("=", 1) for x in allon["registered"].split())

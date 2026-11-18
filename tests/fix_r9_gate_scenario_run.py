@@ -24,7 +24,7 @@ What the gate must do now, checked on this checkout's addons:
 Mutants are this checkout's addon folders copied to the temp folder with only that change, played in this checkout's gate scenario.
 Run: python3 tests/fix_r9_gate_scenario_run.py   (Lua 5.1 via lupa; the gate's result is read from its cache when there; the reference
 play and the mutants about 1-2 minutes each)"""
-import concurrent.futures, contextlib, hashlib, io, json, os, re, shutil, subprocess, sys, tempfile
+import concurrent.futures, contextlib, io, json, os, re, shutil, signal, subprocess, sys, tempfile, threading, traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "harness"))
@@ -68,9 +68,19 @@ def reference_play(variant="default"):
     return json.loads(json.dumps(data, default=str))
 
 
+# (round 11) every mutant tree this run makes, removed when it ends (each is about 7 MB; before round 11 they stayed in the temp folder,
+# one pair per checkout, 70 of them by 2026-11-18, and the disk filled up)
+TREES = []
+# (round 11) the plays running in their own processes, stopped if this test is stopped
+PROCS, PROCS_LOCK = [], threading.Lock()
+
+
 def mutant_tree(name, edit):
-    dest = os.path.join(tempfile.gettempdir(), "xui_r9_%s-%s" % (name, hashlib.sha1(GC.ROOT.encode()).hexdigest()[:10]))
-    shutil.rmtree(dest, ignore_errors=True)
+    # (round 11) a folder of this run's own. Before round 11 the folder was named after the checkout only, so two runs of this test on
+    # the same checkout at the same time (a suite while another session ran the same tests) deleted and rewrote each other's mutant
+    # addons in the middle of a play.
+    dest = tempfile.mkdtemp(prefix="xui_r9_%s-" % name)
+    TREES.append(dest)
     for a in GC.ADDONS + (GC.DEBUG_ADDON,):
         if os.path.isdir(os.path.join(GC.ROOT, a)):
             shutil.copytree(os.path.join(GC.ROOT, a), os.path.join(dest, a))
@@ -87,10 +97,22 @@ def play_in(tree, **kw):
     """One play of this checkout's scenario in a tree copy (its own process: the harness reads the addons next to it)."""
     code = ("import sys, json; sys.path.insert(0, %r); import gate_common as GC; d, s = GC.run_scenario(**%r); "
             "print(json.dumps(d, default=str))" % (os.path.join(tree, "tests"), kw))
-    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=tree, env=GC.tree_env(tree), timeout=1800)
-    if r.returncode != 0:
-        raise RuntimeError((r.stderr or r.stdout)[-400:])
-    return json.loads(r.stdout.strip().splitlines()[-1])
+    p = subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=tree,
+                         env=GC.tree_env(tree))
+    with PROCS_LOCK:
+        PROCS.append(p)
+    try:
+        out, err = p.communicate(timeout=1800)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        out, err = p.communicate()
+        raise RuntimeError("the play did not end within 1800 s (stopped)")
+    if p.returncode != 0:
+        raise RuntimeError((err or out)[-400:] or "the play ended with exit code %s and no output" % p.returncode)
+    lines = out.strip().splitlines()
+    if not lines:
+        raise RuntimeError("the play printed nothing (exit code %s)" % p.returncode)
+    return json.loads(lines[-1])
 
 
 def gate_text(data):
@@ -119,19 +141,72 @@ def secs_of(d, seg, addon="XayaUI_Rules"):
     return list(s or [])
 
 
+FAILS, DONE = [], []
+
+
+def check(ok, what, detail=""):
+    print(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""))
+    DONE.append(what)
+    if not ok:
+        FAILS.append(what)
+
+
+class Stopped(Exception):
+    """The test was stopped from outside (the suite's time limit sends SIGTERM)."""
+
+
+def _kill_plays():
+    with PROCS_LOCK:
+        for p in PROCS:
+            if p.poll() is None:
+                p.kill()
+
+
+def _on_term(signum, _frame):
+    _kill_plays()
+    raise Stopped("stopped by signal %d" % signum)
+
+
+class _Pool(concurrent.futures.ThreadPoolExecutor):
+    """A thread pool that, when the block it serves ends with an error, does not wait for the plays still running (they are stopped,
+    and the reference play in this process is abandoned: main() ends the process at once after the count line)."""
+    def __exit__(self, et, ev, tb):
+        self.shutdown(wait=et is None, cancel_futures=et is not None)
+        return False
+
+
 def main():
-    fails, done = [], []
+    """(round 11, round 10 final review: inside the suite this test once printed nothing at all) it always ends with its count line:
+    each line is written out as it is printed (a test killed part-way still shows how far it got); an error anywhere (the gate's
+    scenario, a disk that is full, a play that dies) or a stop from outside (SIGTERM, Ctrl+C) is a named FAIL with its traceback,
+    followed by the count line; the plays running in their own processes are stopped and the mutant trees removed."""
+    sys.stdout.reconfigure(line_buffering=True)
+    signal.signal(signal.SIGTERM, _on_term)
+    stopped = False
+    try:
+        _main()
+    except (Exception, KeyboardInterrupt) as e:  # noqa: BLE001  (every way of stopping is reported, never silent)
+        stopped = True
+        print("".join(traceback.format_exception(type(e), e, e.__traceback__))[-3000:].rstrip())
+        check(False, "the test ran to its end", "it stopped at: %s: %s" % (type(e).__name__, str(e)[:300]))
+    finally:
+        _kill_plays()
+        for t in TREES:
+            shutil.rmtree(t, ignore_errors=True)
+        if not DONE:
+            check(False, "the test checked something (no check ran)")
+        print("%d checks, %d failed" % (len(DONE), len(FAILS)))
+    if stopped:
+        sys.stdout.flush()
+        os._exit(1)   # (a play still running in this process's threads must not hold the exit back)
+    return 1 if FAILS else 0
 
-    def check(ok, what, detail=""):
-        print(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""))
-        done.append(what)
-        if not ok:
-            fails.append(what)
 
+def _main():
     data, _, _ = GC.result()
     check(int(data.get("errors") or 0) == 0, "the gate's scenario ran without a Lua error", "; ".join(data.get("errorText") or [])[:300])
 
-    with concurrent.futures.ThreadPoolExecutor(3) as ex:
+    with _Pool(3) as ex:
         f_ref = ex.submit(reference_play)
 
         def edit_draw(d):
@@ -261,8 +336,6 @@ def main():
         d1, d2 = leak[1] - leak[0], leak[2] - leak[1]
         check(d1 > 16 and d2 > 16 and re.search(r"WARNING \[gate_performance\] \(whole addon set\)\n\s+what:\s+the addons' Lua memory grows every cycle", lt) is not None,
               "memory: a mutant addon keeping 32 KB more per combat end grows %.1f and %.1f KB a cycle in the memory play and is a WARNING" % (d1, d2))
-    print("%d checks, %d failed" % (len(done), len(fails)))
-    return 1 if fails else 0
 
 
 if __name__ == "__main__":

@@ -3,8 +3,8 @@
 documents are met (REQUEST-LOG A23). Every quoted chat line and number below is read from the Lua file that prints or uses it, so a
 document that drifts from the code fails here.
 
-  F  SD-72, her answer "Remove from main, keep on QA (Recommended)": MANIFEST.md5 is not in the tree; VERIFICATION.md V10 says the
-     manifest check applies on qa-installer-branch only; tests/devassist_rename_run.py no longer excludes the file.
+  F  SD-72, her answer "Remove from main, keep on QA (Recommended)": MANIFEST.md5 is not in the tree; tests/devassist_rename_run.py
+     no longer excludes the file.
   D  SD-70, her answer "Short with path (Recommended)": USER-GUIDE, HELP-FAQ (its question heading too), QA-CHECKLIST B402,
      PATCH-NOTES and WHATS-NEW quote the whole chat line exactly as the player sees it: core's "XayaUI: " prefix (XayaUI/Core.lua
      ns.Print) and DR.ON_LINE (XayaUI/DebugRecord.lua); no document keeps the old "Advanced debugging is on. To turn this off" line.
@@ -28,15 +28,15 @@ document that drifts from the code fails here.
   Q  QA-CHECKLIST has one step each for the in-game checks of round 9 (B424 to B429): the tracker, the mover after combat, combat
      start / boss pull / combat end drawing, AddOn Usage at a pull, the C_Timer /run test (the exact line), the SD-49 right-click
      check with a /run line; B401 names the new versions; B414 no longer waits on her decision.
-  S  Studies and roadmap: R7-EUI-STUDY carries the round 8 corrections; ROADMAP has the widgets.md:4344 StatusBar:SetValue
-     follow-up and the "per pass + cheap repeats" item.
-  L  REQUEST-LOG A23 status column only: SD-13, 16, 17, 25, 31, 32, 34 and SD-56 to SD-85 no longer read OPEN for work that is
-     built; her words (second column) of SD-1 to SD-85 are unchanged from the last commit (when git is there).
+  (round 11a, SD-140 "Docs like this should not be on main.": the working docs left this repo for Xaya's private notes repo, so F2
+     (VERIFICATION.md V10), S1 / S2 (R7-EUI-STUDY, ROADMAP) and L1 / L2 (the request log's status cells and her words) were removed.)
   (repair 1, the reviewer's three blockers)
   I3 No document says the build tool's round 9 change (KEEP_LANDINGS, XUI_ROOT) is on qa-installer-branch: each one that names it says
      it is pending, and it really is not there (origin/qa-installer-branch, when git has it; once it lands there this check asks
-     for the documents to be updated). I4 The recorded patch, applied to qa-installer-branch's tool, rebuilds InfoPaneData.lua
-     exactly from this checkout's markdown. I5 The pane's own text uses no in-house word "landing".
+     for the documents to be updated); (round 11a, SD-140) no player document points at the patch's working-doc path. I4 The recorded
+     patch, applied to qa-installer-branch's tool, rebuilds InfoPaneData.lua exactly from this checkout's markdown; (round 11a) the
+     patch is read from Xaya's private notes checkout (XUI_DOCS_ROOT, else a sibling folder xui-docs), never from this repo; without
+     that checkout the run says so and I4 is not checked. I5 The pane's own text uses no in-house word "landing".
   P7 The Rules developers' note compares the costliest fight frame with main's, as the gate stores it (tests/gate_performance_run.py
      V33_EVENT_CAPS, origin/main ad60a051's XayaUI Rules = main's), and its words for the size of the drop match the two numbers it
      gives; no "about half" (that was against round 8's unlanded branch, never main).
@@ -64,6 +64,10 @@ import os, re, subprocess, sys, tempfile, shutil, hashlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.environ.get("XUI_R9_ROOT") or os.path.join(HERE, ".."))
+# Xaya's private notes repo (heyitsxaya/XUI-Docs), where the working docs live since round 11a (SD-140): XUI_DOCS_ROOT, else a sibling
+# checkout next to this repo named xui-docs or XUI-Docs (the first that exists). Only I4 reads it; a run without it says so.
+DOCS_ROOT = os.path.normpath(os.environ.get("XUI_DOCS_ROOT") or next(
+    (c for c in (os.path.join(ROOT, "..", n) for n in ("xui-docs", "XUI-Docs")) if os.path.isdir(c)), os.path.join(ROOT, "..", "xui-docs")))
 results = []
 
 
@@ -134,10 +138,6 @@ def main():
 
     # F: the manifest (SD-72)
     check("F1 SD-72: MANIFEST.md5 is not in the tree", not os.path.exists(os.path.join(ROOT, "MANIFEST.md5")))
-    ver = read("docs/process/VERIFICATION.md")
-    v10 = [l for l in ver.splitlines() if "`MANIFEST.md5` matches the files git tracks" in l]
-    check("F2 SD-72: VERIFICATION.md V10 says the manifest check applies on qa-installer-branch only",
-          len(v10) == 1 and "qa-installer-branch only" in v10[0] and "SD-72" in v10[0], v10)
     check("F3 SD-72: tests/devassist_rename_run.py no longer excludes MANIFEST.md5 (the file is gone)",
           '":!MANIFEST.md5"' not in read("tests/devassist_rename_run.py"))
 
@@ -241,19 +241,24 @@ def main():
     check("I2 the pane offers no removed command (/xuiengine full or refresh, /xui debug perf ui)", not bad, bad)
 
     # I3 / I4 / I5 (repair 1): the build tool's round 9 change is pending on qa-installer-branch, and the pane is what it builds
-    plan_rel = "docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md"
-    plan = read(plan_rel)
+    # (round 11a, SD-140) the patch is a working doc: it lives in Xaya's private notes repo (XUI-Docs), read from that checkout only
+    plan_name = "R9-INFO-PANE-TOOL-PATCH-2026-11-16.md"
+    plan_path = os.path.join(DOCS_ROOT, 'docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md')
+    plan = None
+    if os.path.isfile(plan_path):
+        with open(plan_path, encoding="utf-8") as fh:
+            plan = fh.read()
     named = {"PATCH-NOTES (its comment)": pn_raw[:pn_raw.find("-->") + 3], "README-INGAME": read("docs/README-INGAME.md")[:1200],
              "HELP-FAQ": faq[:1200], "USER-GUIDE": ug, "tests/info_pane_run.py": read("tests/info_pane_run.py")}
-    log_all = read("docs/process/REQUEST-LOG.md")
-    sd69 = [l for l in log_all.splitlines() if l.startswith("| SD-69 | ")]
-    named["REQUEST-LOG SD-69"] = sd69[0] if sd69 else ""
     false_claim = re.compile(r"KEEP_LANDINGS[^.;)]{0,20}(?:on |, )qa-installer-branch|<qa checkout>/tools/build_info_pane_data\.py\)")
     bad_claim = [n for n, t in named.items() if false_claim.search(t)]
     unflagged = [n for n, t in named.items() if "build_info_pane_data" in t and "qa-installer-branch" in t
-                 and not ("pending" in t.lower() and plan_rel in t)]
-    check("I3 no document says the tool's round 9 change is on qa-installer-branch; each that names the tool there says it is pending "
-          "and points to the patch", plan and not bad_claim and not unflagged and "Status: **pending.**" in plan, (bad_claim, unflagged))
+                 and "pending" not in t.lower()]
+    pointing = [n for n, t in named.items() if n != "tests/info_pane_run.py" and plan_name in t]
+    check("I3 no document says the tool's round 9 change is on qa-installer-branch; each that names the tool there says it is pending; "
+          "no player document points at the patch's working-doc path (SD-140)",
+          (named["USER-GUIDE"] and named["HELP-FAQ"] and not bad_claim and not unflagged and not pointing),
+          (bad_claim, unflagged, pointing))
     qa_tool = None
     try:
         r = subprocess.run(["git", "-C", ROOT, "show", "origin/qa-installer-branch:tools/build_info_pane_data.py"], capture_output=True,
@@ -266,9 +271,13 @@ def main():
     else:
         check("I3 the change really is not on qa-installer-branch yet (when it is, update the documents above)",
               "KEEP_LANDINGS" not in qa_tool and "XUI_ROOT" not in qa_tool)
+    if qa_tool is not None and plan is None:
+        print("note: Xaya's private notes checkout not found (%s; set XUI_DOCS_ROOT); I4 not checked" % plan_path)
+    if qa_tool is not None and plan is not None:
+        check("I4 the recorded patch (private notes) still says it is pending", "Status: **pending.**" in plan)
         m = re.search(r"```diff\n(.*?)```", plan, re.S)
         base_md5 = re.search(r"md5 ([0-9a-f]{32})", plan)
-        ok4, why = False, "no diff in " + plan_rel
+        ok4, why = False, "no diff in " + plan_path
         if m:
             tmp = tempfile.mkdtemp()
             try:
@@ -364,43 +373,6 @@ def main():
     b414 = st.get(414, "")
     check("Q B414 no longer waits on her decision (SD-68 decided: gated, with the tracker)",
           "NEEDS HER DECISION" not in b414 and "pollRange" in b414, b414[:120])
-
-    # S: studies and roadmap
-    eui = read("docs/plans/R7-EUI-STUDY-2026-11-13.md")
-    check("S1 R7-EUI-STUDY carries the round 8 corrections (self-timed preset bars; 1,888 differences; 10/s holds for two paths)",
-          "## Corrections" in eui and "self-timed preset bars" in eui and "1,888" in eui and "only two EUI paths" in eui)
-    rm = read("docs/ROADMAP.md")
-    check("S2 ROADMAP: the widgets.md:4344 StatusBar:SetValue follow-up (api.json:125485 is right) and 'per pass + cheap repeats'",
-          "widgets.md:4344" in rm and "api.json:125485" in rm and "Per pass + cheap repeats" in rm)
-
-    # L: the request log's status column
-    log = read("docs/process/REQUEST-LOG.md")
-    rows = {}
-    for line in log.splitlines():
-        m = re.match(r"\| (SD-(\d+)) \| ", line)
-        if m:
-            rows[int(m.group(2))] = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-    targets = [13, 16, 17, 25, 31, 32, 34] + list(range(56, 86))
-    still_open = [n for n in targets if n in rows and len(rows[n]) > 2 and rows[n][2].startswith("OPEN")]
-    check("L1 status cells of SD-13, 16, 17, 25, 31, 32, 34 and SD-56 to SD-85 no longer start with OPEN", rows and not still_open,
-          still_open)
-    try:
-        r = subprocess.run(["git", "-C", ROOT, "show", "HEAD:docs/process/REQUEST-LOG.md"], capture_output=True, text=True, timeout=60)
-        old_log = r.stdout if r.returncode == 0 else None
-    except Exception:
-        old_log = None
-    if old_log:
-        changed = []
-        for line in old_log.splitlines():
-            m = re.match(r"\| (SD-(\d+)) \| ", line)
-            if m:
-                cells = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-                now = rows.get(int(m.group(2)))
-                if not now or now[1] != cells[1]:
-                    changed.append(m.group(1))
-        check("L2 her words (second column) of every SD row are unchanged from the last commit", not changed, changed)
-    else:
-        print("note: git not available here; L2 (her words unchanged) not checked")
 
     bad_n = 0
     for name, ok in results:

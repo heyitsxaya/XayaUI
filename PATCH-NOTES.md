@@ -3,8 +3,8 @@
 <!--
 HOW THIS FILE WORKS (read by tools/build_info_pane_data.py; the game shows it in the version pane > Patch Notes).
 The game cannot read this file. After any edit, rebuild XayaUI_Options/InfoPaneData.lua with the tool. The tool lives only on
-qa-installer-branch (SD-8), and its round 9 change (KEEP_LANDINGS, XUI_ROOT) is NOT there yet: it is pending, with the patch in
-docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md. Until that patch is applied, QA's tool as it is puts every landing back.
+qa-installer-branch (SD-8), and its round 9 change (KEEP_LANDINGS, XUI_ROOT) is NOT there yet: it is pending (the patch is kept with the
+project's private developer notes, not in this repository). Until that patch is applied, QA's tool as it is puts every landing back.
 Recent notes only (SD-69, her answer "Recent notes only in game (Recommended)"): the game shows only the newest 5 landings below,
 plus an "Older notes" entry pointing to this file; this file keeps every landing.
 

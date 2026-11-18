@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""Bundle 1 round 10, docs: what the player reads, the standards and the request log match the code after round 10 and Xaya's answers
+"""Bundle 1 round 10, docs: what the player reads matches the code after round 10 and Xaya's answers
 SD-86 to SD-118 (REQUEST-LOG A23). Every quoted chat line, page line and number is read from the Lua or test file that prints or uses it,
 so a document that drifts from the code fails here.
 
-  V  VERIFICATION.md: V27 carries SD-99 (her words, exactly as logged) and SD-114; V34 says the Stat Calculator loads at first open
-     (SD-105) and names three exceptions: SD-62, SD-113 (BarCue.lua and AuraSound.lua, with the measured 107.7 KB / 3,900 login
-     instructions) and SD-115 (Calculator.lua, about 39 KB); standing rules SD-104, SD-113 and SD-118 with her words; the SD-87 replay
-     reference; per-event caps SD-112 and SD-117 at the number the gate holds (tests/gate_performance_run.py BONUS_EVENT_CAPS).
-  L  REQUEST-LOG status cells (never her words): no SD-86 to SD-118 row starts with OPEN; SD-103 is PARKED; SD-85 says BUILT, not DONE;
-     SD-56 names every round 9 merge decision and its round 10 answer; SD-58 corrects the calc / calculator and BarColorizeTypes
-     claims; SD-66 gives both caps of each round (every fight frame, steady fights) and the cap the gate holds now.
+  (V, VERIFICATION.md's rules; L1 to L7, the request log's status cells; M, SESSION-START-SUMMARY; and G, the review gaps in the
+     request log's status cells, were removed in round 11a with the working docs: SD-140, "Docs like this should not be on main."; they
+     live in Xaya's private notes repo now. L0 keeps the gate caps P8 compares with.)
   C  Stat Calculator (SD-94, SD-100, SD-102, SD-103, SD-105, SD-118): USER-GUIDE, QA B436 and STAT-CALCULATOR-MAIN-INGAME-CHECKS quote
      the off line (core's ns.PartOffText with the loader's part), the memory line, the not-loaded-yet status line, the page lines and the
      switch's hover text exactly as XayaUI_Bonus/StatCalculatorLoader.lua prints them; no player document says it takes effect after a
@@ -26,19 +22,13 @@ so a document that drifts from the code fails here.
      2026-11-16; PATCH-NOTES' bundle 1 entry (dated 2026-11-16) has a heading per changed addon at its .toc version, Bonus Features
      0.6.47 included, and names the round 10 changes; WHATS-NEW has section 16; QA B401 names every version; the Rules developers' note
      and QA B427 compare with the cap the gate holds for main (V33_EVENT_CAPS).
-  M  docs/SESSION-START-SUMMARY.md no longer tells a session to regenerate MANIFEST.md5 on main (SD-72).
   R  (repair 1) README.md, the download's own folder guide: the Stat Calculator loads at its first open, never at login (SD-105);
      XayaUI_Bonus holds the Calculator (SD-115, its page from Calculator.lua's RegisterSettingsPage, its words /xui calc, /xui calculator,
      /calc); no "not on main" claim for the Calculator and no "holds only the Stat Calculator".
-  G  (repair 1) every gap the round 10 reviews left unrepaired is written in its REQUEST-LOG status cell, not only in a report: SD-100 /
-     SD-112 (the stand-in does not pass a hide to the 8 shown Change boxes; about 842 = 400 + 8 x 55.2), SD-105 (an error inside the
-     calculator's files; the AddOns-list reason; the open choice on a second /xui stats after a failed load, NEEDS HER DECISION), SD-107
-     (Essential / Utility icons; a Cooldown Manager change noticed only at the next sync or fight end), SD-118 (an unknown /xui stats word
-     toggles the panel; the /xui debug help line while Advanced Debugging is off).
 Negative control: on the documents before this round's docs unit (scratchpad r10pre-docs, proved on a private copy) checks in every
 group fail; each deliberate mutation listed in the round 10 docs report is caught.
 Run: python3 tests/fix_r10_docs_run.py   (XUI_R10_ROOT=<a checkout> to check another copy)"""
-import os, re, subprocess, sys
+import os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.environ.get("XUI_R10_ROOT") or os.path.join(HERE, ".."))
@@ -102,22 +92,6 @@ def toc_date(folder):
     return m.group(1) if m else None
 
 
-def log_rows(text):
-    rows = {}
-    for line in text.splitlines():
-        m = re.match(r"\| SD-(\d+) \| ", line)
-        if m:
-            rows[int(m.group(1))] = re.split(r"(?<!\\) \| ", line.strip()[2:-2])
-    return rows
-
-
-def answer(rows, n):
-    """Her verbatim answer in the log row's words cell (after 'verbatim:'), log escapes undone."""
-    w = rows.get(n, ["", ""])[1]
-    m = re.search(r'verbatim: "(.*)"\s*$', w)
-    return m.group(1).replace('\\"', '"') if m else None
-
-
 # round 9 values (the round 9 docs unit's .toc lines) and main's (origin/main fda1e293)
 ROUND9 = {"XayaUI": "0.6.86", "XayaUI_Options": "0.6.109", "XayaUI_Rules": "0.7.1", "XayaUI_Debug": "0.7.0",
           "XayaUI_Bonus": "0.6.46", "XayaUI_Bonus_StatCalculator": "0.6.46"}
@@ -131,9 +105,6 @@ HEAD_NAMES = {"XayaUI": "XayaUI", "XayaUI_Options": "Options", "XayaUI_Rules": "
 
 
 def main():
-    ver = read("docs/process/VERIFICATION.md")
-    log = read("docs/process/REQUEST-LOG.md")
-    rows = log_rows(log)
     ug, faq, qa = read("docs/USER-GUIDE.md"), read("docs/HELP-FAQ.md"), read("docs/QA-CHECKLIST.md")
     rd = nocomment(read("docs/README-INGAME.md"))
     pn = nocomment(read("PATCH-NOTES.md"))
@@ -144,68 +115,10 @@ def main():
     calc, au = read("XayaUI_Bonus/Calculator.lua"), read("XayaUI_Rules/AuraSound.lua")
     perf, visual, gp = read("XayaUI_Debug/RulesPerf.lua"), read("XayaUI_Rules/Visual.lua"), read("tests/gate_performance_run.py")
 
-    # ---------------- V: VERIFICATION.md
-    v27 = [l for l in ver.splitlines() if l.startswith("- **V27 ")]
-    v27 = v27[0] if v27 else ""
-    a99 = answer(rows, 99)
-    check("V1 V27 quotes SD-99 exactly as logged and says rule displays always pass clicks (SD-114)",
-          a99 and ('"%s"' % a99) in v27 and "SD-114" in v27 and "every XayaUI window is closed" in v27, (a99 or "")[:60])
-    v34 = [l for l in ver.splitlines() if l.startswith("- **V34 ")]
-    v34 = "\n".join(ver.splitlines()[ver.splitlines().index(v34[0]):][:6]) if v34 else ""
-    check("V2 V34: the Stat Calculator loads at first open (SD-105, her answer quoted)",
-          "loads at first open" in v34 and "SD-105" in v34 and ('"%s' % (answer(rows, 105) or "?")) in v34)
-    check("V3 V34 names three exceptions: SD-62; SD-113 (BarCue.lua, AuraSound.lua, 107.7 KB, 3,900 login instructions); SD-115 "
-          "(Calculator.lua, about 39 KB, arithmetic shown)",
-          "Named exceptions" in v34 and "The one named exception" not in ver and "SD-62" in v34
-          and all(w in v34 for w in ("SD-113", "BarCue.lua", "AuraSound.lua", "107.7 KB", "3,900 login instructions"))
-          and all(w in v34 for w in ("SD-115", "Calculator.lua", "about 39 KB", "7,737.82 - 7,699.50 = 38.32 KB"))
-          and "decided later, after performance is measured" not in ver)
-    for n, key in ((104, "Questions to her in plain words"), (113, "No new addon folder unless"), (118, "A part's chat words work only")):
-        a = answer(rows, n)
-        if n == 118:
-            a = answer(rows, 116) and "the chat calls only become available if individual components are enabled"
-        check("V4 standing rule SD-%d is written with her words (%s)" % (n, key), a and key in ver and a in ver, (a or "")[:60])
-    check("V5 the SD-87 replay reference is written (her answer, today's display, 89ea79ab only reported)",
-          "SD-87" in ver and ('"%s"' % (answer(rows, 87) or "?")) in ver and "89ea79ab" in ver)
-    caps = {a: b for a, b, _ in re.findall(r'"(XayaUI_Bonus(?:_StatCalculator)?)": \((\d+), "(SD-\d+)"', gp)}
-    v33 = [l for l in ver.splitlines() if l.startswith("- **V33 ")]
-    v33 = v33[0] if v33 else ""
-    check("V6 V33 names the per-event caps SD-112 and SD-117 at the number the gate holds (%s)" % caps,
-          caps.get("XayaUI_Bonus_StatCalculator") and caps.get("XayaUI_Bonus")
-          and ("XayaUI_Bonus_StatCalculator %s (SD-112" % caps["XayaUI_Bonus_StatCalculator"]) in v33
-          and ("XayaUI_Bonus %s (SD-117" % caps["XayaUI_Bonus"]) in v33, caps)
-
-    # ---------------- L: REQUEST-LOG status cells
-    open_rows = [n for n in range(86, 119) if n in rows and rows[n][2].startswith("OPEN")]
-    check("L1 no SD-86 to SD-118 status starts with OPEN", rows and not open_rows, open_rows)
-    check("L2 SD-103 is PARKED (her answer: circle back), and its interim is labelled as not her decision",
-          rows.get(103, ["", "", ""])[2].startswith("PARKED") and "not her decision" in rows[103][2])
-    check("L3 SD-85 says BUILT, not DONE", rows.get(85, ["", "", ""])[2].startswith("BUILT") and "DONE" not in rows[85][2])
-    s56 = rows.get(56, ["", "", ""])[2]
-    check("L4 SD-56 names every round 9 merge decision and its round 10 answer",
-          "NEEDS HER DECISION from the round 9 merge" not in s56
-          and all(w in s56 for w in ("SD-86", "SD-88", "SD-89", "SD-91", "SD-92", "SD-98", "SD-105", "SD-113", "SD-115", "SD-118")), s56[:80])
-    s58 = rows.get(58, ["", "", ""])[2]
-    check("L5 SD-58 corrects round 9: calc and calculator stay in core's Bonus row on purpose; BarColorizeTypes removed in round 10",
-          "calc and calculator" in s58 and "BarColorizeTypes" in s58 and "round 10" in s58 and "REMINDER" not in s58)
-    s66 = rows.get(66, ["", "", ""])[2]
+    # the caps the gate holds now (tests/gate_performance_run.py V33_EVENT_CAPS); P8 compares the documents with them
     capm = re.search(r'"every": \{"XayaUI_Rules": (\d+).*?"steady": \{"XayaUI_Rules": (\d+)', gp, re.S)
     cap_e, cap_s = (int(capm.group(1)), int(capm.group(2))) if capm else (None, None)
-    check("L6 SD-66 gives round 9's caps (579,900 every fight frame, 579,800 steady) and the caps the gate holds now (%s, %s)"
-          % (cap_e, cap_s),
-          cap_e and "579,900 for every fight frame and 579,800 for the steady fights" in s66
-          and ("{:,} for every fight frame and {:,} for the steady fights".format(cap_e, cap_s)) in s66
-          and "cap became 579,800" not in s66, s66[:120])
-    try:
-        r = subprocess.run(["git", "-C", ROOT, "show", "HEAD:docs/process/REQUEST-LOG.md"], capture_output=True, text=True, timeout=60)
-        old = log_rows(r.stdout) if r.returncode == 0 else None
-    except Exception:
-        old = None
-    if old:
-        changed = [n for n in old if n in rows and old[n][1] != rows[n][1]]
-        check("L7 her words (second cell) of every SD row are unchanged from the last commit", not changed, changed)
-    else:
-        print("note: git not available here; L7 (her words unchanged) not checked")
+    check("L0 the gate's caps for main are found (every fight frame %s, steady fights %s)" % (cap_e, cap_s), cap_e and cap_s)
 
     # ---------------- C: Stat Calculator
     pfmt = lua_str(modules, r'function ns\.PartOffText\(part\)\s*return \("([^"]+)"\)')
@@ -354,11 +267,6 @@ def main():
           nums and cap_e and nums[1] == cap_e and ("{:,}".format(nums[0])) in b427 and ("{:,}".format(cap_e)) in b427
           and "576,800" not in b427, nums)
 
-    # ---------------- M: SESSION-START-SUMMARY
-    ss = read("docs/SESSION-START-SUMMARY.md")
-    check("M1 SESSION-START-SUMMARY no longer tells a session to regenerate MANIFEST.md5 on main (SD-72)",
-          "regenerates MANIFEST.md5 and reruns" not in ss and "SD-72" in ss)
-
     # ---------------- R: README.md (repair 1)
     rows_md = {m.group(1): m.group(2) for m in re.finditer(r"^\| `(XayaUI\w*)` \| [^|]+\| (.+) \|\s*$", readme, re.M)}
     rb, rs = rows_md.get("XayaUI_Bonus", ""), rows_md.get("XayaUI_Bonus_StatCalculator", "")
@@ -374,21 +282,6 @@ def main():
           "memory freed at the next /reload (SD-105, SD-86, SD-100)",
           all(w in rs for w in ("the first time you open its panel", "never at login and never in combat", "freed at your next /reload"))
           and "once at login" not in rs, rs[:120])
-
-    # ---------------- G: every unrepaired review gap is in its REQUEST-LOG cell (repair 1)
-    st_ = lambda n: rows.get(n, ["", "", ""])[2]
-    check("G1 SD-100 and SD-112 name the stand-in's hide gap and its estimate with arithmetic (about 842 = 400 + 8 x 55.2, 718 / 13)",
-          "about 842 (400 + 8 x 55.2, where 55.2 = 718 / 13" in st_(100) and "8 shown Change boxes" in st_(100)
-          and "about 842" in st_(112) and "INFERENCE" in st_(112))
-    check("G2 SD-105 names the error-inside-its-files gap, the AddOns-list reason gap and the open choice on a second /xui stats",
-          all(w in st_(105) for w in ("stop with a Lua error while loading", "'on, not loaded yet'", "ns.ModuleState",
-                                      "NEEDS HER DECISION", "a second /xui stats")) and "see SD-105" in st_(86))
-    check("G3 SD-107 names both Cooldown Manager gaps (Essential / Utility icons; a change noticed only at the next sync or fight end)",
-          all(w in st_(107) for w in ("Essential or Utility", "next rule sync or at the end of the next fight", "INFERENCE")))
-    check("G4 SD-118 names the unknown-word toggle and the /xui debug help line gap",
-          "opens or closes the panel without a word" in st_(118) and "shown in the console window" in st_(118)
-          and "the list prints in chat, not in a console window" in st_(118))
-    check("G5 SD-109's gap stays written", "Known gap from review" in st_(109))
 
     failed = [n for n, ok in results if not ok]
     for n, ok in results:

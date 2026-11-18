@@ -10,11 +10,16 @@ The sorted list of those call logs must equal tests/tooltip_parity_golden.json, 
 (Main slim-down, Rules 0.7.0: main holds XayaUI, XayaUI_Options and XayaUI_Rules only. The golden was re-recorded then: the new recording
 equals the old golden minus exactly the 15 hovers the retired addons drew (XayaUI_Chat's 12 and XayaUI_Bonus's Calculator / Notes /
 Data Panels minimap rows); every hover of core, Options and Rules was unchanged.)
+(Bundle 1 round 11a, 2026-11-18: re-recorded for the arithmetic Calculator's own minimap row, SD-115 / SD-116, XayaUI_Bonus/Calculator.lua.
+The recording of round 10's code (dd80f897) equals the recording of 68432825, round 9's end, which equals the old golden, plus exactly one
+hover, "Calculator" (ANCHOR_RIGHT, title gold 1.000/0.820/0.000, line "Show or hide the calculator (also /xui calc)"): 14 -> 15 hovers,
+none gone or changed.)
 It also checks that the hovers of the converted files are in the recording (so the comparison covers them), and that ns.Tip exists.
+A failure names the hovers behind it (title and anchor; for a changed hover, its first differing call), and a self-check proves that naming.
 
 Re-record (only for a deliberate change to a hover, never to make a refactor pass): python3 tests/tooltip_parity_run.py --record
 Run: python3 tests/tooltip_parity_run.py   (Lua 5.1 via lupa)."""
-import json, os, sys
+import collections, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402  (the whole-addon harness)
@@ -117,6 +122,40 @@ def record():
     return logs, bool(res.tip), errs
 
 
+def hover_name(log):
+    """A hover's readable name: its title (the first SetText, else the first AddLine) and its anchor, e.g. "Calculator (ANCHOR_RIGHT)"."""
+    calls = log.split("\n")
+    anchor = next((c.split("|")[2] for c in calls if c.startswith("SetOwner|") and c.count("|") >= 2), "no anchor")
+    title = next((c.split("|")[1] for c in calls if c.startswith("SetText|") and c.count("|") >= 1), None)
+    if title is None:
+        title = next((c.split("|")[1] for c in calls if c.startswith("AddLine|") and c.count("|") >= 1), "<no text>")
+    return "%s (%s)" % (title, anchor)
+
+
+def name_hover_differences(logs, want):
+    """Names WHICH hovers differ from the golden (round 11a: a stale golden must be diagnosable). Compared as multisets (the same hover
+    can be drawn by several frames, e.g. four group locks). A recorded and a golden hover with the same name are reported as one
+    "changed" hover with its first differing call; the rest are "new" or "gone"."""
+    extra = collections.Counter(logs) - collections.Counter(want)
+    gone = collections.Counter(want) - collections.Counter(logs)
+    gone_by_name = collections.defaultdict(list)
+    for w in sorted(gone.elements()):
+        gone_by_name[hover_name(w)].append(w)
+    out = []
+    for g in sorted(extra.elements()):
+        name = hover_name(g)
+        if gone_by_name.get(name):
+            w = gone_by_name[name].pop(0)
+            a, b = w.split("\n"), g.split("\n")
+            i = next((i for i in range(max(len(a), len(b))) if (a[i:i + 1] or [None]) != (b[i:i + 1] or [None])), 0)
+            out.append("changed: %s, call %d: golden %r, now %r" % (name, i + 1, (a[i:i + 1] or ["(none)"])[0], (b[i:i + 1] or ["(none)"])[0]))
+        else:
+            out.append("new: " + name)
+    for name, rest in sorted(gone_by_name.items()):
+        out += ["gone: " + name for _ in rest]
+    return sorted(out)
+
+
 def main():
     logs, tip, errs = record()
     if "--record" in sys.argv:
@@ -132,11 +171,27 @@ def main():
         if not ok:
             fails.append(name)
     want = sorted(json.load(open(GOLDEN, encoding="utf-8")))
-    check("hovers recorded: %d (golden: %d)" % (len(logs), len(want)), len(logs) == len(want))
+    # (round 11a) every failure below names the hovers behind it (title and anchor; for a changed one, its first differing call)
+    named = name_hover_differences(logs, want)
+    check("hovers recorded: %d (golden: %d)" % (len(logs), len(want)), len(logs) == len(want), "; ".join(named))
     missing = [w for w in want if w not in logs]
     extra = [g for g in logs if g not in want]
     check("every hover draws exactly the tooltip it drew before the refactor (same calls, arguments, order)",
-          not missing and not extra, "changed/missing: %s || new: %s" % (missing[:2], extra[:2]))
+          not missing and not extra and not named, "; ".join(named))
+    # the naming itself, on this run's real recording: one hover's text changed, one gone and one new must each be named, nothing else
+    if len(logs) >= 3:
+        first = logs[0]
+        second = next((l for l in logs if hover_name(l) != hover_name(first)), first)
+        lines = first.split("\n")
+        k = next(i for i, c in enumerate(lines) if c.startswith("SetText|") or c.startswith("AddLine|"))
+        changed = "\n".join(lines[:k + 1] + ["AddLine|self-check text"] + lines[k + 1:])
+        fake = "SetOwner|<owner>|ANCHOR_TOP\nSetText|Self-check hover\nShow\n--leave--\nHide"
+        mutated = [changed] + [l for l in logs[1:] if l not in (first, second)] + [first] * (logs.count(first) - 1) + [fake]
+        got_names = name_hover_differences(mutated, logs)
+        want_names = sorted(["changed: %s, call %d: golden %r, now %r" % (hover_name(first), k + 2, (lines[k + 1:k + 2] or ["(none)"])[0],
+                             "AddLine|self-check text"), "new: Self-check hover (ANCHOR_TOP)"] + ["gone: " + hover_name(second)] * logs.count(second))
+        check("a failed comparison names the hover that changed, the one that is gone and the one that is new (self-check on the real recording)",
+              got_names == want_names, "got %s want %s" % (got_names, want_names))
     for label, text in COVERS:
         check("the recording covers %s" % label, any(text in g for g in logs))
     check("core has the shared tooltip helper ns.Tip (Show, Hide)", tip)
