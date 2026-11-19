@@ -12,18 +12,23 @@ result count; a test that runs too long is HUNG, not passed).
      H1-H2 a real play (XayaUI + Rules + Options) with a rule whose sound cue has no game-played sound: no error, and the
            game-sound rows are counted as hidden; with a game-played sound switched on the rows are shown and read, no error.
      H3-H12 an option table of the test's own, walked by tests/harness/scenario.lua (opts.optionTable): which members the walk reads.
+     H13 tests/harness/run.py reports an error in a hidden option as a WARN naming it, not a FAIL.
   C  (scope item 1, docs/plans/HIDDEN-DATA-FIGHT-SPEC-2026-11-17.md in XUI-Docs, "Combat order in the existing tests") the fight in a
      play enters combat in the game's order: PLAYER_REGEN_DISABLED is handled while InCombatLockdown() is still false and
      UnitAffectingCombat("player") already true; the lockdown is on during the fight; it is off again before PLAYER_REGEN_ENABLED.
      (warcraft.wiki.gg API_InCombatLockdown: "Combat lockdown begins after the PLAYER_REGEN_DISABLED event fires, and ends before the
      PLAYER_REGEN_ENABLED event fires"; this repository's docs/reference/api lists both events, events.md:1206-1207, but not their
      order. UnitAffectingCombat being true already during PLAYER_REGEN_DISABLED is INFERENCE from the event's meaning.)
-     C4 no test in tests/ sets the stand-in's lockdown (W.combat) and then fires PLAYER_REGEN_DISABLED in the same statement.
+     C4 no test in tests/ sets its stand-in's lockdown (W.combat, or the flag its own InCombatLockdown returns) and then fires
+     PLAYER_REGEN_DISABLED (before round 11: scenario.lua:74, fix_r7_engine_alloc_run.py:160, fix_r5_gate4_run.py:143,
+     log_gate_run.py:46); a control file proves the check finds both kinds.
   D  (test audit 2026-11-17: tests/fix_r10_display_run.py stopped at the suite's 900 s limit with no output, twice) it ends with a
      named FAIL and its count line, never hangs: D1 without the stand-in's API index (an untracked file a fresh clone lacks:
      tests/harness/.gitignore), D2 on addons whose tenths countdown never shows "3.8" (Visual.lua writes whole seconds).
   E  (round 10 final review: tests/fix_r9_gate_scenario_run.py printed nothing inside the suite) stopped from outside (SIGTERM, as a
-     time limit does) part-way, it still ends with a named FAIL and its count line on standard output, at once.
+     time limit does) part-way, it still ends with a named FAIL and its count line on standard output, at once, and leaves none of its
+     mutant trees or running plays behind: E1 after 8 s, E2 while it copies them; E3 an error before its first line (its gate result cannot be read)
+     still gives a named FAIL and the count line; E4 with its reader gone, a stop still ends it at once and removes its trees.
 Stand-in numbers and behaviour; in-game behaviour is UNVERIFIED IN GAME (V25).
 Run: XUI_API_INDEX=tests/harness/api_index.json python3 tests/fix_r11_harness_run.py   (Lua 5.1 via lupa; about 1-2 minutes)"""
 import os, re, shutil, signal, subprocess, sys, tempfile, time
@@ -148,8 +153,9 @@ return { type = "group", name = "root", handler = H, args = {
     check("H3 a shown option: its get is read and its value written back (as a click would)", n("shown.get") >= 1 and n("shown.set") >= 1, log)
     check("H4 a hidden option: hidden is asked, its order and name are read (the window sorts and names every option), its get and set "
           "never", n("hid.hidden") >= 1 and n("hid.order") >= 1 and n("hid.name") >= 1 and n("hid.get") == 0 and n("hid.set") == 0, log)
-    check("H5 dialogHidden = true wins over hidden (pickfirstset): hidden is not even asked, get never read",
-          n("dlg.hidden") == 0 and n("dlg.get") == 0, log)
+    check("H5 dialogHidden = true wins over hidden (pickfirstset): hidden is not even asked, get never read (in a walk that read this "
+          "table: the shown option's get was read)",
+          n("shown.get") >= 1 and n("dlg.hidden") == 0 and n("dlg.get") == 0, log)
     check("H6 dialogHidden = false wins over a hidden() that says true: the option is shown and its get read",
           n("dlgShown.hidden") == 0 and n("dlgShown.get") >= 1, log)
     check("H7 a hidden group: nothing inside it has its get read", n("child.get") == 0 and n("grp.hidden:grp") >= 1, log)
@@ -161,6 +167,22 @@ return { type = "group", name = "root", handler = H, args = {
     check("H10 a hidden given as a method name is called on the handler, and then get is not read", n("meth.hidden") >= 1 and n("meth.get") == 0, log)
     check("H11 a get given as a method name is called on the nearest handler, with the handler as self", n("meth2.get.self") >= 1, log)
     check("H12 the play itself raised no error", not errors(W), errors(W)[:2])
+
+    # H13 the harness's judge (tests/harness/run.py run_combo) turns an error in a hidden option into a WARN naming the option, never a
+    # FAIL, and drops none (three sessions stand in for the plays)
+    def fake_session(folders, enabled, saved, write_back=True, quick=False):
+        return {"errors": [], "hiddenErrors": ["XUI_TEST error in a hidden row\n  at option grp > child [desc]"], "badMethods": {},
+                "unknownGlobals": {}, "problems": [], "steps": [], "noPayload": (None, None), "saveIssues": [], "saved": {},
+                "savedSource": "{}"}
+    real = H.session
+    H.session = fake_session
+    try:
+        res = H.run_combo({}, (), None, "XUI_TEST")
+    finally:
+        H.session = real
+    hw = [w for w in res["warns"] if "XUI_TEST error in a hidden row" in w]
+    check("H13 the harness reports an error in a hidden option as one WARN naming it (grp > child), not as a FAIL",
+          not res["fails"] and len(hw) == 1 and "grp > child" in hw[0] and "hides" in hw[0], (res["fails"][:2], res["warns"][:2]))
 
 
 def part_c():
@@ -178,18 +200,48 @@ def part_c():
           "%d events, %s" % (len(mid), mid[:2]))
     check("C3 while PLAYER_REGEN_ENABLED is handled, the lockdown is already off", len(ena) == 1 and not ena[0]["lock"], ena)
     check("C3 ... and the play raised no error", not errors(W), errors(W)[:2])
-    # C4 no test sets the stand-in's lockdown and then fires PLAYER_REGEN_DISABLED (the order before round 11)
-    pat = re.compile(r"W\.combat\s*=\s*(?:true|on)\s*;?\s*W\.fire\(\s*(?:on and\s*)?[\"']PLAYER_REGEN_DISABLED")   # (\s spans lines)
+    # C4 no test sets its stand-in's lockdown and then fires PLAYER_REGEN_DISABLED (the order before round 11). The lockdown flag is
+    # what the file's own InCombatLockdown returns (the last one it defines), else the one of tests/engine_bench.py when the file plays
+    # that bench, and always the stand-in's W.combat (tests/harness/world.lua).
+    bad = stale_combat_order(HERE)
+    check("C4 no test in tests/ sets its stand-in's lockdown (W.combat, or what its own InCombatLockdown returns) before firing "
+          "PLAYER_REGEN_DISABLED", not bad, bad)
+    # ... and the check finds that order where it is (so an empty list above means something)
+    probe = os.path.join(tempfile.mkdtemp(prefix="xui_r11_c4-"), "probe_run.py")
+    try:
+        with open(probe, "w", encoding="utf-8") as fh:
+            fh.write("InCombatLockdown = function() return LOCKED end\nLOCKED = true; FIRE('PLAYER_REGEN_DISABLED')\n"
+                     "W.combat = true\n  W.fire(\"PLAYER_REGEN_DISABLED\")\n")
+        found = stale_combat_order(os.path.dirname(probe))
+        check("C4 ... (control) the same check finds both kinds of the old order in a file written for it", len(found) == 2, found)
+    finally:
+        shutil.rmtree(os.path.dirname(probe), ignore_errors=True)
+
+
+LOCKDOWN_DEF = re.compile(r"(?:InCombatLockdown\s*=\s*function\s*\(\s*\)|function\s+InCombatLockdown\s*\(\s*\))\s*return\s+([A-Za-z_][\w.]*)")
+
+
+def stale_combat_order(top):
+    """file:line of every place under top where a test sets its lockdown flag to true and then (in the same statement run, \\s spans
+    lines) fires PLAYER_REGEN_DISABLED."""
+    bench_p = os.path.join(HERE, "engine_bench.py")
+    bench = LOCKDOWN_DEF.findall(open(bench_p, encoding="utf-8").read()) if os.path.isfile(bench_p) else []
     bad = []
-    for dp, dn, fs in os.walk(HERE):
-        dn[:] = [d for d in dn if d != "__pycache__"]
+    for dp, dn, fs in os.walk(top):
+        dn[:] = [d for d in dn if d not in ("__pycache__", "reports")]
         for fn in fs:
-            if fn.endswith((".py", ".lua")) and fn != os.path.basename(__file__):
-                p = os.path.join(dp, fn)
-                text = open(p, encoding="utf-8", errors="replace").read()
+            if not fn.endswith((".py", ".lua")) or fn == os.path.basename(__file__):
+                continue
+            p = os.path.join(dp, fn)
+            text = open(p, encoding="utf-8", errors="replace").read()
+            own = LOCKDOWN_DEF.findall(text)
+            flags = {"W.combat"} | ({own[-1]} if own else (set(bench[-1:]) if "engine_bench.py" in text else set()))
+            for v in sorted(flags):
+                pat = re.compile(r"(?<![\w.])" + re.escape(v) + r"\s*=\s*(?:true|on)\s*;?\s*(?:W\.fire|FIRE|fire)\(\s*(?:on and\s*)?"
+                                 r"[\"']PLAYER_REGEN_DISABLED")
                 for m in pat.finditer(text):
                     bad.append("%s:%d" % (os.path.relpath(p, ROOT), text.count("\n", 0, m.start()) + 1))
-    check("C4 no test in tests/ sets the stand-in's lockdown (W.combat) before firing PLAYER_REGEN_DISABLED", not bad, bad)
+    return sorted(bad)
 
 
 def tree_copy(edit=None):
@@ -257,27 +309,143 @@ def part_d():
         shutil.rmtree(tree, ignore_errors=True)
 
 
+def plays_left(tmp, wait=3.0):
+    """The processes still running whose command line names tmp (the plays fix_r9_gate_scenario starts in its mutant trees there),
+    after up to `wait` seconds for a kill to land; any found are then stopped, so this test leaves nothing running. None when the
+    process list cannot be read (no /proc), which the caller reports as a FAIL saying so."""
+    if not os.path.isdir("/proc"):
+        return None
+
+    def scan():
+        out = []
+        for d in os.listdir("/proc"):
+            if d.isdigit() and int(d) != os.getpid():
+                try:
+                    with open("/proc/%s/cmdline" % d, "rb") as fh:
+                        cmd = fh.read().decode("utf-8", "replace")
+                except OSError:
+                    continue
+                if tmp in cmd:
+                    out.append(int(d))
+        return out
+    t_end = time.time() + wait
+    found = scan()
+    while found and time.time() < t_end:
+        time.sleep(0.1)
+        found = scan()
+    for pid in found:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    return found
+
+
 def part_e():
-    env = dict(os.environ)
-    p = subprocess.Popen([sys.executable, os.path.join(HERE, "fix_r9_gate_scenario_run.py")], stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True, cwd=ROOT, env=env)
-    time.sleep(8)
-    t0 = time.time()
-    p.send_signal(signal.SIGTERM)
+    """fix_r9_gate_scenario stopped from outside, twice, each in a temp folder of its own (TMPDIR). There the gate's result is a stand-in
+    cache entry (no error, nothing else), so the test reaches its mutant trees and its plays in seconds without the gate's minutes-long
+    scenario: E1 after 8 s, E2 the moment its first mutant tree appears (a stop while it copies). Each must end at once with a named FAIL
+    and its count line last, and leave no mutant tree of its own behind."""
+    import gate_common as GC
+    cached = GC.cache_path()   # (the key: every file the scenario reads; the folder: this process's temp folder, replaced below)
+    for tag, when in (("E1", "after 8 s"), ("E2", "while it copies its mutant trees")):
+        tmp = tempfile.mkdtemp(prefix="xui_r11_e-")
+        try:
+            os.makedirs(os.path.join(tmp, "xui_gate_cache"))
+            with open(os.path.join(tmp, "xui_gate_cache", os.path.basename(cached)), "w") as fh:
+                fh.write('{"errors": 0, "_secs": 0}')
+            env = dict(os.environ, TMPDIR=tmp)
+            env.pop("XUI_GATE_NOCACHE", None)
+            p = subprocess.Popen([sys.executable, os.path.join(HERE, "fix_r9_gate_scenario_run.py")], stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True, cwd=ROOT, env=env)
+            trees = lambda: sorted(n for n in os.listdir(tmp) if n.startswith("xui_r9_"))  # noqa: E731
+            if tag == "E1":
+                time.sleep(8)
+            else:
+                t_end = time.time() + 600
+                while not trees() and p.poll() is None and time.time() < t_end:
+                    time.sleep(0.02)
+            seen = trees()
+            t0 = time.time()
+            p.send_signal(signal.SIGTERM)
+            try:
+                out, err = p.communicate(timeout=60)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, err = p.communicate()
+            secs = time.time() - t0
+            running = plays_left(tmp)
+            left = trees()
+            lines = out.strip().splitlines()
+            last = (lines or [""])[-1]
+            m = COUNT.match(last)
+            check("%s fix_r9_gate_scenario stopped from outside %s (SIGTERM): it ends within 30 s (%.1f s) with a named FAIL and its "
+                  "count line as the last line of its standard output, exit code not 0" % (tag, when, secs),
+                  secs < 30 and p.returncode not in (0, None) and m is not None and int(m.group(2)) >= 1
+                  and any(l.startswith("FAIL the test ran to its end") for l in lines),
+                  "exit %s, %d lines, last %r, stderr %r" % (p.returncode, len(lines), last, err.strip()[-200:]))
+            check("%s ... and it leaves none of its mutant trees in the temp folder (trees made: %s) and none of its plays running"
+                  % (tag, seen or "none yet"), not left and (tag == "E1" or bool(seen)) and running == [],
+                  "left: %s; made: %s; plays still running: %s" % (left, seen, "cannot tell (no /proc)" if running is None else running))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+    # E4 its reader is gone (the suite or the suite's own time limit stopped first), then it is stopped: it must still end at once and
+    # remove its trees (a write to the closed pipe must not skip the stop: seen in round 11, the process then waited minutes for its
+    # reference play)
+    tmp = tempfile.mkdtemp(prefix="xui_r11_e-")
     try:
-        out, err = p.communicate(timeout=60)
-    except subprocess.TimeoutExpired:
-        p.kill()
-        out, err = p.communicate()
-    secs = time.time() - t0
-    lines = out.strip().splitlines()
-    last = (lines or [""])[-1]
-    m = COUNT.match(last)
-    check("E1 fix_r9_gate_scenario stopped from outside after 8 s (SIGTERM): it ends within 30 s (%.1f s) with a named FAIL and its "
-          "count line as the last line of its standard output, exit code not 0" % secs,
-          secs < 30 and p.returncode not in (0, None) and m is not None and int(m.group(2)) >= 1
-          and any(l.startswith("FAIL the test ran to its end") for l in lines),
-          "exit %s, %d lines, last %r, stderr %r" % (p.returncode, len(lines), last, err.strip()[-200:]))
+        os.makedirs(os.path.join(tmp, "xui_gate_cache"))
+        with open(os.path.join(tmp, "xui_gate_cache", os.path.basename(cached)), "w") as fh:
+            fh.write('{"errors": 0, "_secs": 0}')
+        env = dict(os.environ, TMPDIR=tmp)
+        env.pop("XUI_GATE_NOCACHE", None)
+        p = subprocess.Popen([sys.executable, os.path.join(HERE, "fix_r9_gate_scenario_run.py")], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, cwd=ROOT, env=env)
+        time.sleep(8)
+        seen = sorted(n for n in os.listdir(tmp) if n.startswith("xui_r9_"))
+        p.stdout.close()
+        t0 = time.time()
+        p.send_signal(signal.SIGTERM)
+        try:
+            p.wait(timeout=60)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+        secs = time.time() - t0
+        running = plays_left(tmp)
+        left = sorted(n for n in os.listdir(tmp) if n.startswith("xui_r9_"))
+        check("E4 fix_r9_gate_scenario whose reader is gone, then stopped from outside (SIGTERM) after 8 s: it ends within 30 s (%.1f s) "
+              "and leaves none of its mutant trees (made: %s) and none of its plays running" % (secs, seen or "none yet"),
+              secs < 30 and p.returncode not in (0, None) and bool(seen) and not left and running == [],
+              "exit %s, left %s, plays still running: %s" % (p.returncode, left, "cannot tell (no /proc)" if running is None else running))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # E3 an error before its first line: the gate's cached result cannot be read (here a cache file cut short; a full disk when the
+    # cache is written fails at the same place, GC.result). Before round 11 its standard output was then empty: the suite read
+    # nothing at all (round 10's final review: "printed nothing").
+    tmp = tempfile.mkdtemp(prefix="xui_r11_e-")
+    try:
+        os.makedirs(os.path.join(tmp, "xui_gate_cache"))
+        with open(os.path.join(tmp, "xui_gate_cache", os.path.basename(cached)), "w") as fh:
+            fh.write('{"errors": 0, "budget": {')
+        env = dict(os.environ, TMPDIR=tmp)
+        env.pop("XUI_GATE_NOCACHE", None)
+        try:
+            r = subprocess.run([sys.executable, os.path.join(HERE, "fix_r9_gate_scenario_run.py")], capture_output=True, text=True,
+                               cwd=ROOT, env=env, timeout=120)
+            rc, out = r.returncode, r.stdout
+        except subprocess.TimeoutExpired as e:
+            rc, out = None, (e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or ""))
+        lines = out.strip().splitlines()
+        last = (lines or [""])[-1]
+        m = COUNT.match(last)
+        check("E3 fix_r9_gate_scenario whose gate result cannot be read (a cache file cut short) ends with a FAIL naming where it stopped "
+              "and its count line last, exit code not 0 (before round 11: nothing on its standard output)",
+              rc not in (0, None) and m is not None and int(m.group(2)) >= 1
+              and any(l.startswith("FAIL the test ran to its end") and "JSONDecodeError" in l for l in lines),
+              "exit %s, %d lines, last %r" % (rc, len(lines), last))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def main():

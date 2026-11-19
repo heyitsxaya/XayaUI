@@ -9,11 +9,18 @@ Round 10 final review (R10-FINAL-RESULT final.blockers 4 and 5, concern 9) and X
   SD-118 its words work only while it is on; core's rule for /xui: an unknown word prints help.
 On the real addons of this tree in the stand-in game (tests/harness), what the player sees and gets:
   E   one of the calculator's three files stops with a Lua error while loading (a stand-in error put into the file: at its top, after
-      it already offered its statCalc service, or just before its last function): /xui stats prints one line saying its files stopped with a Lua
-      error, on every try (the same line, no second load); '/xui stats status' says it could not load this session and why; its
-      settings page says it could not load (never "Its options appear here after you first open"), and with the settings window open
-      the drawn page says so too; the minimap row leaves the list; the character window opening says and runs nothing; nothing of
-      the half-read calculator is called (no Lua error beyond the one put in); '/xui stats off' still works.
+      it already offered its statCalc service, or just before its last function; once as an error that names no file,
+      error(msg, 0)): /xui stats prints one line saying its files stopped with a Lua error, on every try (the same line, no second
+      load); '/xui stats status' says it could not load this session and why; its settings page says it could not load (never "Its
+      options appear here after you first open"), and with the settings window open the drawn page says so too; the minimap row
+      leaves the list; the character window opening says and runs nothing; nothing of the half-read calculator is called (no Lua
+      error beyond the one put in); '/xui stats off' still works. (repair 1) The error still reaches the error handler that was
+      active (the one put in is recorded once), that handler is active again after the load, and a later file of the calculator,
+      while it is read, already sees that an earlier one stopped (ns.StatCalcLoader.FilesErrored, for the calculator's own
+      stand-down). Also with the error handler held by another addon (seterrorhandler does nothing): a stop after the statCalc
+      service is still caught by the service probe.
+  W   (repair 1) a healthy calculator while another addon's code raises a Lua error during the same load (its ADDON_LOADED handler):
+      that error is not the calculator's; it opens and shows, the error reaches the earlier handler, and that handler is active again.
   R   (SD-146) switched off in the game's AddOns list, and its folder not installed: three /xui stats in a row print the same one line
       three times; one load is asked for, not three.
   U   while on: '/xui stats <word it does not know>' (a typo, "on", "show") prints exactly the stats help line and opens, closes and
@@ -21,10 +28,10 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
   N   the AddOns list's descriptions (.toc '## Notes', what the player reads in the game's AddOns list) are true: XayaUI_Bonus names
       the arithmetic Calculator and does not say the Stat Calculator is loaded only while it is on; XayaUI_Bonus_StatCalculator says
       it loads the first time it is opened, never at login, and not "once per reload".
-  KNOWN GAP (outside XayaUI_Bonus, counted as FAILs, never skipped): a stop in StatMath.lua, or in StatCalculator.lua's last lines,
-      leaves no trace the loader can read through core's services; a stop late in StatModel.lua is caught by the loader, but
-      StatCalculator.lua's own start-up still runs with the half-read model. Both need XayaUI_Bonus_StatCalculator (an end-of-file
-      mark per file; its start-up standing down when the model did not finish).
+  KNOWN GAP (outside XayaUI_Bonus, counted as FAILs, never skipped): a stop late in StatModel.lua is caught by the loader (it says
+      it could not load), but StatCalculator.lua's own start-up still runs with the half-read model and raises Lua errors when the
+      character window opens. That needs XayaUI_Bonus_StatCalculator: its start-up standing down when an earlier file stopped
+      (ns.StatCalcLoader.FilesErrored() is already true then, checked in E).
 In-game behavior is UNVERIFIED IN GAME: the harness is a stand-in for the game (V25). That the game reports an addon whose file
 errored as loaded is INFERENCE (the stand-in does the same: each file runs on its own).
 Run: python3 tests/fix_r11_statcalc_run.py   (Lua 5.1 via lupa)."""
@@ -40,13 +47,19 @@ MARK = "XUI_TEST stand-in load error"
 
 # put a stand-in Lua error into one of the calculator's files as the harness reads it (before the given text, or at its top)
 BREAK = r'''
-local BREAK_FILE, BREAK_BEFORE = __FILE__, __BEFORE__
+local BREAK_FILE, BREAK_BEFORE, BREAK_LEVEL0 = __FILE__, __BEFORE__, __LEVEL0__
 local broke = 0
+-- (repair 1) what ns.StatCalcLoader.FilesErrored() answers while StatCalculator.lua is read, just before its own start-up
+local SEEN_AT = 'ns.WhenSettingsReady("bonus", function()\n    if Cfg() then ns.StatCalc_Apply() end'
 do
   local inner = loadstring
   loadstring = function(src, name)
+    if type(src) == "string" and type(name) == "string" and name:sub(-19) == "/StatCalculator.lua" then
+      local i = src:find("\n" .. SEEN_AT, 1, true)
+      if i then src = src:sub(1, i) .. "rawset(_G, 'XUI_TEST_SEEN', ns.StatCalcLoader and ns.StatCalcLoader.FilesErrored and ns.StatCalcLoader.FilesErrored() and true or false)\n" .. src:sub(i + 1) end
+    end
     if BREAK_FILE and type(src) == "string" and type(name) == "string" and name:sub(-#BREAK_FILE - 1) == "/" .. BREAK_FILE then
-      local line = "error(\"''' + MARK + r'''\")\n"
+      local line = BREAK_LEVEL0 and "error(\"''' + MARK + r'''\", 0)\n" or "error(\"''' + MARK + r'''\")\n"
       if BREAK_BEFORE == "" then src = line .. src; broke = broke + 1
       else
         local i = src:find("\n" .. BREAK_BEFORE, 1, true)
@@ -70,6 +83,8 @@ S_ERR = r'''
 return function(W, L, ARGS)
 local WINDOW_ON, STRICT = ARGS.window, ARGS.strict
 ''' + BREAK + R10.COMMON + R10.LOGIN + R10.WINDOW + r'''
+-- (repair 1) another addon holds the error handler: seterrorhandler does nothing from now on
+if ARGS.nohandler then seterrorhandler = function() end end
 local function errCount() return #W.errors end
 -- errors since e0 raised through XayaUI_Bonus's loader (its file on the error's stack), the one put in aside (it is raised inside the
 -- loader's LoadAddOn call, as in the game)
@@ -89,9 +104,15 @@ ns.RunCommand("stats", "status")
 local st = saidSince(n)
 check("E setup: saved on, before the first open '/xui stats status' says 'not loaded yet'", #st == 1 and st[1] == "__NOTYET__", table.concat(st, " / "))
 local e0 = errCount()
+local h0 = geterrorhandler()
 n = #said
 ns.RunCommand("stats", ""); W.tick(0.1, 3)
 local got = saidSince(n)
+check("E ...the error handler that was active before the load is active again after it", geterrorhandler() == h0)
+if BREAK_FILE ~= "StatCalculator.lua" then
+  check("E ...while StatCalculator.lua was read, its start-up could already see that an earlier file stopped (FilesErrored)",
+    rawget(_G, "XUI_TEST_SEEN") == true, rawget(_G, "XUI_TEST_SEEN"))
+end
 check("E /xui stats: the stand-in error was put into the file and raised once while loading (the game still calls the folder loaded)",
   broke == 1 and errCount() == e0 + 1 and tostring(W.errors[#W.errors]):find("__MARK__", 1, true) ~= nil and loaded(),
   broke .. " broken, errors " .. (errCount() - e0) .. ", loaded " .. tostring(loaded()))
@@ -134,6 +155,36 @@ end)
 return R
 end
 '''
+
+# W: a healthy calculator, while another addon's ADDON_LOADED handler raises a Lua error during the same load
+S_OTHER = r'''
+return function(W, L)
+''' + R10.COMMON + R10.LOGIN + r'''
+local other = CreateFrame("Frame")
+other:RegisterEvent("ADDON_LOADED")
+other:SetScript("OnEvent", loadstring("local _, _, name = ...; if name == 'XayaUI_Bonus_StatCalculator' then error('another addon broke') end",
+  "@Interface/AddOns/OtherAddon/Other.lua"))
+section("W", function()
+local e0, h0 = #W.errors, geterrorhandler()
+local n = #said
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+local got = saidSince(n)
+local last = tostring(W.errors[#W.errors] or "")
+check("W setup: the other addon's error was raised during the load and reached the earlier handler (recorded once)",
+  #W.errors == e0 + 1 and last:find("OtherAddon/Other.lua", 1, true) ~= nil and loaded(), #W.errors - e0)
+check("W ...it is not the calculator's: '/xui stats' opens it (shown, nothing said)", shown() and #got == 0, table.concat(got, " / "))
+check("W ...counted as loaded, and FilesErrored() is false", ns.StatCalcLoader.Loaded() == true and ns.StatCalcLoader.FilesErrored() == false)
+check("W ...the error handler that was active before the load is active again after it", geterrorhandler() == h0)
+n = #said
+ns.RunCommand("stats", "status")
+got = saidSince(n)
+check("W ...'/xui stats status' is the calculator's own status line", #got == 1 and got[1]:find("^Stat Calculator: on, panel ") ~= nil,
+  table.concat(got, " / "))
+end)
+return R
+end
+'''
+
 
 # R: switched off in the AddOns list / not installed: the reason on every try (SD-146)
 S_REPEAT = r'''
@@ -237,7 +288,7 @@ def main():
     bad = n = 0
     errs_all = []
 
-    def report(tag, results, errs, allowed=0):
+    def report(tag, results, errs, allowed=0, allowed_other=None):
         nonlocal bad, n
         for name, ok in results:
             n += 1
@@ -245,6 +296,13 @@ def main():
             bad += 0 if ok else 1
         mine = [e for e in errs if MARK in e]
         other = [e for e in errs if MARK not in e]
+        if allowed_other:
+            # (W) exactly the one error the other addon raised, and nothing else
+            n += 1
+            ok = len(other) == 1 and allowed_other in other[0]
+            print(("PASS " if ok else "FAIL ") + "[%s] exactly 1 Lua error, the other addon's" % tag)
+            bad += 0 if ok else 1
+            other = [] if ok else other
         if allowed:
             n += 1
             ok = len(mine) == allowed
@@ -257,24 +315,31 @@ def main():
     # gap (a text): a case XayaUI_Bonus's loader cannot fix from its side (KNOWN GAP, needs XayaUI_Bonus_StatCalculator: one end-of-file
     # mark per calculator file, read by the loader, and the panel's start-up standing down when the model file stopped). These cases
     # are run and counted like every other: they FAIL until that is built (never skipped, never excused).
-    NO_MARK = ("the loader reads no service offered after this point in the file, so it still counts the calculator as loaded: needs "
-               "XayaUI_Bonus_StatCalculator to end each file with a mark the loader reads")
     OWN_START = ("the loader says it could not load (checked below), but StatCalculator.lua's own start-up still runs with the half-read "
                  "model and raises Lua errors when the character window opens: needs StatCalculator.lua to stand down when the model "
                  "file did not finish")
-    for tag, f, before, window, gap in (
-            ("StatCalculator.lua stops at its top, settings window open", "StatCalculator.lua", "", True, None),
+    AFTER_SERVICE = 'if ns.Provide then ns.Provide("statCalcDebug"'
+    for tag, f, before, window, gap, extra in (
+            ("StatCalculator.lua stops at its top, settings window open", "StatCalculator.lua", "", True, None, {}),
             # (its statCalc service is offered already: Calc() is not nil, the files still did not finish)
-            ("StatCalculator.lua stops after offering its service", "StatCalculator.lua", 'if ns.Provide then ns.Provide("statCalcDebug"',
-             False, None),
-            ("StatModel.lua stops before its last function", "StatModel.lua", "function CM.ValueFor(it, mode)", False, OWN_START),
-            ("StatCalculator.lua stops before its last function", "StatCalculator.lua", "function ns.StatCalc_Command(arg)", True, NO_MARK),
-            ("StatMath.lua stops before its last function", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)", False, NO_MARK)):
+            ("StatCalculator.lua stops after offering its service", "StatCalculator.lua", AFTER_SERVICE, False, None, {}),
+            ("StatModel.lua stops before its last function", "StatModel.lua", "function CM.ValueFor(it, mode)", False, OWN_START, {}),
+            # (repair 1) no service is offered after these points: the error watch sees them
+            ("StatCalculator.lua stops before its last function", "StatCalculator.lua", "function ns.StatCalc_Command(arg)", True, None, {}),
+            ("StatMath.lua stops before its last function", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)", False, None, {}),
+            ("StatMath.lua stops with an error that names no file", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)",
+             False, None, {"level0": True}),
+            # (repair 1) the error handler cannot be chained: the service probe is the second signal
+            ("error handler held by another addon, StatCalculator.lua stops after offering its service", "StatCalculator.lua",
+             AFTER_SERVICE, False, None, {"nohandler": True})):
         if gap:
             print("GAP [%s] KNOWN GAP outside XayaUI_Bonus: %s. Its FAILs below are that gap, counted." % (tag, gap))
-        src = fill(S_ERR).replace("__FILE__", lua_str(f)).replace("__BEFORE__", lua_str(before))
-        r, e = session(src, {"window": window, "strict": True}, ON)
+        src = (fill(S_ERR).replace("__FILE__", lua_str(f)).replace("__BEFORE__", lua_str(before))
+               .replace("__LEVEL0__", "true" if extra.get("level0") else "false"))
+        r, e = session(src, dict({"window": window, "strict": True}, **extra), ON)
         report(tag, r, e, allowed=1)
+    r, e = session(fill(S_OTHER), None, ON)
+    report("another addon's error during the load", r, e, allowed_other="OtherAddon/Other.lua")
     # R: SD-146 for the other two causes
     for tag, line, off, gone in (("switched off in the AddOns list", DISABLED, ("XayaUI_Bonus_StatCalculator",), ()),
                                  ("folder not installed", MISSING, (), ("XayaUI_Bonus_StatCalculator",))):

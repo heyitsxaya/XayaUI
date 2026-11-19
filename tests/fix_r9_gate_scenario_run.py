@@ -73,22 +73,34 @@ def reference_play(variant="default"):
 TREES = []
 # (round 11) the plays running in their own processes, stopped if this test is stopped
 PROCS, PROCS_LOCK = [], threading.Lock()
+# (round 11) set when this test is stopped: a mutant tree still being copied in the worker thread stops at its next file, so the copy
+# cannot outlive the removal of the trees (seen: two half-copied trees left in the temp folder by a stop during the copy)
+STOP = threading.Event()
+COPYING = threading.Lock()   # held while a mutant tree is copied
+
+
+def _copy_file(src, dst):
+    if STOP.is_set():
+        raise Stopped("stopped while copying a mutant tree")
+    return shutil.copy2(src, dst)
 
 
 def mutant_tree(name, edit):
     # (round 11) a folder of this run's own. Before round 11 the folder was named after the checkout only, so two runs of this test on
     # the same checkout at the same time (a suite while another session ran the same tests) deleted and rewrote each other's mutant
     # addons in the middle of a play.
-    dest = tempfile.mkdtemp(prefix="xui_r9_%s-" % name)
-    TREES.append(dest)
-    for a in GC.ADDONS + (GC.DEBUG_ADDON,):
-        if os.path.isdir(os.path.join(GC.ROOT, a)):
-            shutil.copytree(os.path.join(GC.ROOT, a), os.path.join(dest, a))
-    os.makedirs(os.path.join(dest, "tests"))
-    shutil.copytree(os.path.join(HERE, "harness"), os.path.join(dest, "tests", "harness"), ignore=shutil.ignore_patterns("reports", "__pycache__"))
-    for f in os.listdir(HERE):
-        if f.startswith("gate_") and f.endswith(".py"):
-            shutil.copy(os.path.join(HERE, f), os.path.join(dest, "tests", f))
+    with COPYING:
+        dest = tempfile.mkdtemp(prefix="xui_r9_%s-" % name)
+        TREES.append(dest)
+        for a in GC.ADDONS + (GC.DEBUG_ADDON,):
+            if os.path.isdir(os.path.join(GC.ROOT, a)):
+                shutil.copytree(os.path.join(GC.ROOT, a), os.path.join(dest, a), copy_function=_copy_file)
+        os.makedirs(os.path.join(dest, "tests"))
+        shutil.copytree(os.path.join(HERE, "harness"), os.path.join(dest, "tests", "harness"),
+                        ignore=shutil.ignore_patterns("reports", "__pycache__"), copy_function=_copy_file)
+        for f in os.listdir(HERE):
+            if f.startswith("gate_") and f.endswith(".py"):
+                _copy_file(os.path.join(HERE, f), os.path.join(dest, "tests", f))
     ok = edit(dest)
     return dest, ok
 
@@ -148,14 +160,31 @@ FAILS, DONE = [], []
 OUT_LOCK, CLOSED, OUT = threading.Lock(), [], sys.stdout
 
 
+def _emit(text):
+    """One line to the real standard output (called under OUT_LOCK). A reader that is gone (the suite or its time limit stopped) is
+    not an error of this test: the line is dropped, so the stop and the clean-up below still run (seen: a write to a closed pipe raised
+    BrokenPipeError, which skipped the immediate exit, and the process then waited minutes for the reference play to end)."""
+    try:
+        print(text, file=OUT)
+    except OSError:
+        pass
+
+
 def check(ok, what, detail=""):
     with OUT_LOCK:
         if CLOSED:
             return
-        print(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""), file=OUT)
+        _emit(("ok   " if ok else "FAIL ") + what + (("  [" + detail + "]") if (detail and not ok) else ""))
         DONE.append(what)
         if not ok:
             FAILS.append(what)
+
+
+def note(text):
+    """An information line (not a check), under the same rules as check: one writer at a time, nothing after the count line."""
+    with OUT_LOCK:
+        if not CLOSED:
+            _emit(text)
 
 
 class Stopped(Exception):
@@ -212,20 +241,22 @@ def main():
     try:
         if err is not None:
             with OUT_LOCK:
-                print("".join(traceback.format_exception(type(err), err, err.__traceback__))[-3000:].rstrip(), file=OUT)
+                _emit("".join(traceback.format_exception(type(err), err, err.__traceback__))[-3000:].rstrip())
             check(False, "the test ran to its end", "it stopped at: %s: %s" % (type(err).__name__, str(err)[:300]))
     finally:
+        STOP.set()
         _kill_plays()
+        if COPYING.acquire(timeout=5):   # (a copy in progress stops at its next file; a play in this process does not write to the trees)
+            COPYING.release()
         for t in TREES:
             shutil.rmtree(t, ignore_errors=True)
         if not DONE:
             check(False, "the test checked something (no check ran)")
         with OUT_LOCK:
-            print("%d checks, %d failed" % (len(DONE), len(FAILS)), file=OUT)
+            _emit("%d checks, %d failed" % (len(DONE), len(FAILS)))
             CLOSED.append(True)
-            OUT.flush()
-    if err is not None:
-        os._exit(1)   # (the worker thread may still be inside a Lua play: it must not hold the exit back)
+        if err is not None:
+            os._exit(1)   # (a thread may still be inside a Lua play: it must not hold the exit back; line buffering wrote every line)
     return 1 if FAILS else 0
 
 
@@ -329,7 +360,7 @@ def _main():
         check(bool(hit) and any(n.startswith("Ooc") for n in names) and any(n.startswith("Absent") for n in names),
               "draw: the mutant engine FAILs the gate on what is drawn: the out-of-combat opacity displays and the target debuffs that must "
               "be absent differ from a full re-check after combat starts", "findings %s; displays %s" % ([h[0] for h in hit], sorted(names)))
-        print("      mutant draw findings: %s; displays named: %s" % (sorted(set(h[0] for h in hit)), sorted(names)), file=OUT)
+        note("      mutant draw findings: %s; displays named: %s" % (sorted(set(h[0] for h in hit)), sorted(names)))
     # ---- effects (SD-79) ---------------------------------------------------------------------------------------------------------
     # (round 9 repair 1) a display's time-driven parts are drawn by its frame script (the effects loop) or by a redraw timer (Visual.lua's
     # wake at the next moment a part changes, gate_common.py REDRAWS); both are counted per display, together
@@ -350,8 +381,8 @@ def _main():
     check(len(eff) >= 7 and all(most[k] <= 30 for k in eff),
           "effects: the effects part drew every effect display and the bar cue (by its effects loop or by the redraw timer), counted per "
           "display, at most 30 in any second", "%s" % sorted((k, e["loop"], e["timer"], most[k]) for k, e in per.items()))
-    print("      effects part, per display (loop runs, redraw-timer redraws, most in one second): %s" % sorted(
-        (k, e["loop"], e["timer"], most[k]) for k, e in eff.items()), file=OUT)
+    note("      effects part, per display (loop runs, redraw-timer redraws, most in one second): %s" % sorted(
+        (k, e["loop"], e["timer"], most[k]) for k, e in eff.items()))
     # ---- memory -------------------------------------------------------------------------------------------------------------------
     ma = data.get("memAddons") or {}
     mm = GP.vals(ma.get("mem"))

@@ -15,6 +15,11 @@ N = 229
 rules = ",\n".join('{ name = "Rule %d", enabled = true, spellID = %d, uid = "u%d" }' % (i, 100000 + i, i) for i in range(1, N + 1))
 L.execute("CueRulesDB = { rules = { %s }, folders = {} }" % rules)
 L.execute(bench[a:b])
+# (round 11, scope item 1) the bench has one flag for both "in combat" and the lockdown (COMBAT); the game has two, in this order:
+# PLAYER_REGEN_DISABLED is handled while UnitAffectingCombat("player") is already true (INFERENCE from the event's meaning) and
+# InCombatLockdown() still false; the lockdown begins after it and ends before PLAYER_REGEN_ENABLED (warcraft.wiki.gg API
+# InCombatLockdown; tests/harness/world.lua W.enterCombat / W.leaveCombat). So the lockdown gets a flag of its own here.
+L.execute("LOCK = COMBAT; InCombatLockdown = function() return LOCK end")
 L.execute(r'''
 EVENTS = {}
 local M = FRAME_METHODS
@@ -43,8 +48,8 @@ ns.RecordLine = function() end
 function LINES() return #ns.logBuf end
 function CLEAR() for i = #ns.logBuf, 1, -1 do ns.logBuf[i] = nil end end
 function HAS(t) for _, l in ipairs(ns.logBuf) do if l:find(t, 1, true) then return true end end return false end
-function COMBAT_START() COMBAT = true; FIRE("PLAYER_REGEN_DISABLED") end
-function COMBAT_END() COMBAT = false; FIRE("PLAYER_REGEN_ENABLED") end
+function COMBAT_START() COMBAT = true; FIRE("PLAYER_REGEN_DISABLED"); LOCK = true end
+function COMBAT_END() LOCK = false; COMBAT = false; FIRE("PLAYER_REGEN_ENABLED") end
 function STEPS(n) for i = 1, n do NOW = (NOW or 0) + 0.2; ENGINE_STEP(ns) end end
 -- the rules' answer, set by the test: true = every rule fires, false = every rule clears (the engine logs the change)
 FLIP = false

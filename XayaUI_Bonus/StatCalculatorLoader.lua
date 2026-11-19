@@ -24,9 +24,11 @@
 -- (round 11a) The round 10 final review's Stat Calculator blockers and her SD-146 answer:
 --   SD-105 gap: the game reports a load-on-demand addon as loaded even when one of its files stopped with a Lua error (the game runs
 --     each file of the .toc on its own: an error stops that file only; INFERENCE for the game, the stand-in does the same). The loader
---     now counts the calculator as loaded only when its files ran to their ends as far as its services show (FilesComplete below;
---     its known gap is written there); otherwise it says it could not load (chat, '/xui stats status', the settings page), and
---     nothing of the half-read calculator is called.
+--     now counts the calculator as loaded only when no Lua error came from its folder while the game read it (ReadFiles below: the
+--     error handler is chained, never replaced, for that one call) and its services show the entries this loader calls
+--     (FilesComplete below); otherwise it says it could not load (chat, '/xui stats status', the settings page), and nothing of the
+--     half-read calculator is called. (repair 1) The error watch covers every file of the calculator, StatMath.lua and the end of
+--     StatCalculator.lua included, which the service probe alone could not see.
 --   SD-146, her answer "Repeat the reason each time (Recommended)": while the calculator cannot load this session (switched off in the
 --     game's AddOns list, not installed, or its files stopped with an error), every '/xui stats' prints the same one-line reason, not
 --     only the first. The character window opening says it once (its first try) and then nothing: a window the player opens for
@@ -92,9 +94,11 @@ local function Calc() return ns.Service and ns.Service("statCalc") or nil end
 --   StatModel.lua       the statModel service and its CM.ValueFor (CM is the model's own table; ValueFor is its last function)
 --   StatCalculator.lua  the statCalc service with the entries this loader calls, and the statCalcDebug service, offered after all of
 --                       the file but its last 210 lines (the spell resolver, the settings page builder, its /xui stats part, start-up)
--- What this cannot see (KNOWN GAP, needs those files, not this one): StatMath.lua offers no service (StatModel.lua reads it by name),
--- and StatCalculator.lua's last 210 lines offer none either; a stop there still reads as loaded. The full answer is one end-of-file
--- service entry per calculator file (three lines in XayaUI_Bonus_StatCalculator), which this probe would then read instead.
+-- What this probe cannot see: StatMath.lua offers no service (StatModel.lua reads it by name), and StatCalculator.lua's last 210 lines
+-- offer none either. Those stops are seen by the error watch (ReadFiles below); the probe stays as the second, independent signal for
+-- a game where the error handler cannot be chained (another addon may hold it), and it alone guards a calculator loaded some other way.
+-- (statCalcDebug is read as "the file ran past this point": if that service is ever offered only with Advanced Debugging on, this
+-- line must change; tests/fix_r10_statcalc fails loudly on a healthy calculator reported as not loaded.)
 -- Once true it stays true (nothing of a loaded addon is unloaded before /reload), so the answer is kept and later reads cost nothing.
 local complete = false
 local function FilesComplete()
@@ -115,6 +119,54 @@ local function Changed() if ns.Fire then ns.Fire("CONFIG_CHANGED") end end   -- 
 -- Load at first open (SD-105)
 -------------------------------------------------------------------------------
 local loadTried, loadOk = false, false
+
+-- (round 11a repair 1, SD-105 gap) the one LoadAddOn call, with a watch on the Lua errors raised while the game reads the calculator's
+-- files. The game reports an error in an addon's file through the active error handler and goes on with the next file (INFERENCE:
+-- geterrorhandler / seterrorhandler and that behavior are not in docs/reference/api; core Core.lua chains its handler the same way;
+-- the stand-in game does the same). So, for this one call only, OnLoadError is put in front of the handler that is active (core's
+-- chain, the game's error frame, BugSack...): every error still reaches that handler with the same message, and an error whose file
+-- is in the calculator's folder marks the load as failed. Afterwards the earlier handler is put back, unless something else replaced
+-- the handler during the call (then theirs stays, and OnLoadError, still in their chain, only passes errors on). Fails safe: when the
+-- handler cannot be read or set (another addon holds it), nothing is watched and FilesComplete is the only signal.
+-- One function made once at file load (SD-90), one table: nothing is made per call, and nothing runs outside this one call.
+local watch = { on = false, saw = false, prev = nil }
+local PART_IN_PATH = "[/\\%.]" .. PART .. "[/\\]"   -- the folder inside a file path ("...ddOns/XayaUI_Bonus_StatCalculator/...")
+-- whether an error message comes from one of the calculator's files: its own location ("<path>.lua:12: ..."), else (an error with no
+-- location: error(msg, 0), a table) the stack the game reports it with
+local function FromPart(msg)
+    local text = tostring(msg)
+    local loc = text:match("^%s*([^\n]-%.lua):%d+:")
+    if loc then return ("/" .. loc):find(PART_IN_PATH) ~= nil end
+    -- no location: the stack decides, as the message carries it (the stand-in appends it), else as the game reports it now
+    if text:find(PART_IN_PATH) then return true end
+    local ok, stack = pcall(debugstack, 3, 12, 0)
+    return ok and type(stack) == "string" and stack:find(PART_IN_PATH) ~= nil
+end
+local function OnLoadError(msg)
+    if watch.on and not watch.saw then
+        local ok, mine = pcall(FromPart, msg)
+        if ok and mine then watch.saw = true end
+    end
+    local prev = watch.prev
+    if prev then return prev(msg) end
+end
+-- C_AddOns.LoadAddOn(PART) under the watch; returns pcall's ok, the game's loaded and reason, and whether a calculator file errored
+local function ReadFiles(A)
+    local get, set = geterrorhandler, seterrorhandler
+    local watching = false
+    if type(get) == "function" and type(set) == "function" then
+        local okG, prev = pcall(get)
+        if okG and type(prev) == "function" and prev ~= OnLoadError then
+            watch.prev, watch.saw = prev, false
+            watching = pcall(set, OnLoadError) and get() == OnLoadError
+            watch.on = watching
+        end
+    end
+    local ok, loaded, reason = pcall(A.LoadAddOn, PART)
+    watch.on = false
+    if watching and get() == OnLoadError then pcall(set, watch.prev) end
+    return ok, loaded, reason, watch.saw
+end
 -- Why it could not load this session, set once by the failed load: `loadSay` is the chat line /xui stats prints on every try (SD-146),
 -- `loadWhy` the '/xui stats status' line (round 10 repair 2). One pair per cause, so the two never disagree.
 -- (The status lines stay named locals: the player documents quote them, and tests/fix_r10_docs reads WHY_DISABLED from this file.)
@@ -148,10 +200,11 @@ local function Load()
     if InLockdown() then return false, false end   -- (SD-100) never in combat lockdown; nothing waits for its end (SD-102)
     loadTried = true
     local A = C_AddOns
-    local ok, loaded, reason = false, nil, nil
-    if A and A.LoadAddOn then ok, loaded, reason = pcall(A.LoadAddOn, PART) end
-    -- (round 11a, SD-105 gap) the game's "loaded" is not enough: each file must have run to its end
-    loadOk = (ok and loaded and FilesComplete()) and true or false
+    local ok, loaded, reason, errored = false, nil, nil, false
+    if A and A.LoadAddOn then ok, loaded, reason, errored = ReadFiles(A) end
+    -- (round 11a, SD-105 gap) the game's "loaded" is not enough: no file may have stopped with an error, and the entries this loader
+    -- calls must be there
+    loadOk = (ok and loaded and not errored and FilesComplete()) and true or false
     Changed()   -- (an open settings window redraws: its detailed options, or the line saying it could not load; never a stale line)
     if loadOk then return true, true end
     -- (as the settings window's own load does, core ns.LoadOptions) one line saying why
@@ -234,9 +287,13 @@ local function SetOn(on)
     SwitchChanged(was)
 end
 
--- (tests, read only, and the calculator's off line) whether the load was asked for this session and whether it worked; the part
+-- (tests, read only, and the calculator's off line) whether the load was asked for this session and whether it worked; the part.
+-- (round 11a repair 1) FilesErrored: true from the moment a calculator file stopped with a Lua error during this session's load (the
+-- error watch above), so a later file of the calculator can see, while it is still being read, that an earlier one did not finish
+-- and stand down instead of starting on a half-read model (that stand-down is the calculator's own: XayaUI_Bonus_StatCalculator).
 ns.StatCalcLoader = { Tried = function() return loadTried end, Loaded = function() return loadOk end, Saved = function() return Saved() end,
-    Hooked = function() return hooked end, Part = SC_PART, SwitchChanged = SwitchChanged }
+    Hooked = function() return hooked end, Part = SC_PART, SwitchChanged = SwitchChanged,
+    FilesErrored = function() return watch.saw end }
 
 local function Switch(Notify)
     return { type = "toggle", order = 1, name = LABEL,
