@@ -224,6 +224,9 @@ CHAT_DEFAULTS_ADDED = {
              "privStartHidden": False, "privTexture": "Interface\\DialogFrame\\UI-DialogBox-Background", "privTile": False},
 }
 CHAT_COLOUR_WRITTEN_BACK = {"privR": (0.04, 0), "privG": (0.04, 0), "privB": (0.06, 0)}
+# (UPG-1, QoL 0.7.62) the Shopping List's new-gear toast settings, with their defaults: new keys the old code never had. Diffing the dumps
+# of qa-installer-branch 236262bc and the new code (all on, both sessions): exactly these 4 lines inside shoppingList; core only: none.
+UPG1_DEFAULTS_ADDED = {"upgradeToast": True, "onlyHigherTrack": False, "minTrack": "", "ignored": {}}
 
 
 STATS_HELP = "/xui stats [on||off||options||status]  Character Toolkit stat panel"   # the old code's line, as its golden holds it
@@ -308,6 +311,17 @@ def canon(saved):
                 for k, v in keys.items():
                     if k in t and isinstance(t[k], bool) == isinstance(v, bool) and t[k] == v:
                         del t[k]
+        # (UPG-1) the new-gear toast's keys are taken out of every shoppingList table where they hold their default
+        def _upg1(node):
+            if isinstance(node, dict):
+                sl = node.get("shoppingList")
+                if isinstance(sl, dict):
+                    for k, v in UPG1_DEFAULTS_ADDED.items():
+                        if k in sl and type(sl[k]) == type(v) and sl[k] == v:
+                            del sl[k]
+                for x in node.values():
+                    _upg1(x)
+        _upg1(db)
         t = db.get("chat")
         if isinstance(t, dict):
             for k, (now, was) in CHAT_COLOUR_WRITTEN_BACK.items():

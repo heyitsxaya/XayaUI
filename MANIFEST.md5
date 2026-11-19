@@ -152,7 +152,7 @@ a1e68985edbc7ffac99a2e70095b9957  XayaUI_DevAssist/QAQuestions.lua
 af25a207933966037dbe9521308c6d15  XayaUI_DevAssist/QAReview.lua
 3b52708757fdb0a30a288f2976188fa0  XayaUI_DevAssist/QATable.lua
 af12a8e85c749375b80459d8a5b1c261  XayaUI_DevAssist/QAWalk.lua
-9eb814f3d848922e1adfe4932f002076  XayaUI_DevAssist/QAWalks-Checklist.lua
+f99d821295bf7f6b2ff8f8ae42a9b9b3  XayaUI_DevAssist/QAWalks-Checklist.lua
 2c7bcc90ddc48aae39382a84cd014833  XayaUI_DevAssist/QAWalks-aspect-ratio.lua
 db86cb20e78e1e5011948ffcec158df9  XayaUI_DevAssist/QAWalks-audit-options.lua
 51a36ed4c91b187e415532e164ee077d  XayaUI_DevAssist/QAWalks-audit-qol-bonus.lua
@@ -173,7 +173,7 @@ f056b67eb6f494c4541b78f87a58f25d  XayaUI_DevAssist/QAWalks-debug-w3.lua
 e65a40d0d66a49c2a870d1d6588aaf14  XayaUI_DevAssist/QAWalks-debug-w9.lua
 c5eb031850f6528f96f16ee550759393  XayaUI_DevAssist/QAWalks-debug-w9b.lua
 44c4f76bc45277fc03d5a3f545282d8e  XayaUI_DevAssist/QAWalks-debug.lua
-96346214e38240167d8b914e47b49e55  XayaUI_DevAssist/QAWalks-display.lua
+43e6096824730d32577a86432f45165d  XayaUI_DevAssist/QAWalks-display.lua
 b1fa172d884e8a0677b43b7e90b40fe1  XayaUI_DevAssist/QAWalks-element-menu.lua
 2704c69140d1257de548ac33215a85ec  XayaUI_DevAssist/QAWalks-externals.lua
 ea04c8f0fca7aa543e936d555f286f69  XayaUI_DevAssist/QAWalks-friends.lua
@@ -201,7 +201,7 @@ e47e2338e926511163db32e5738c16cb  XayaUI_DevAssist/QAWalks-settings-migration.lu
 c60c0d22e93909446ad3d330a0e8b433  XayaUI_DevAssist/QAWalks-statmodel.lua
 e18d3015d86a6839f2fdc4578dabde14  XayaUI_DevAssist/QAWalks-tooltips-charstats.lua
 0a4c553262db631c0166d2c337c94c8c  XayaUI_DevAssist/QAWalks.lua
-532531a6ec0aee1e033a9b6a87aeaa1f  XayaUI_DevAssist/XayaUI_DevAssist.toc
+db4d1957520ccee5b5b3676f1bb3fb30  XayaUI_DevAssist/XayaUI_DevAssist.toc
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Graphics/.gitkeep
 d41d8cd98f00b204e9800998ecf8427e  XayaUI_Media/Icons/.gitkeep
 cdc7decdb1367d0e399b22685e6f8d83  XayaUI_Media/README.txt
@@ -300,11 +300,11 @@ f0e29238fc19ab5e18ed166ee89580b6  XayaUI_QoL/Media/Cursor/Ring.tga
 054aa82635cfab8851fded7704d8f102  XayaUI_QoL/Media/Cursor/Sparkle.tga
 b48b81bdc7c9b379d6eb979df296f6ef  XayaUI_QoL/ProfilePart.lua
 0c5cb7acdb1b91fdba642b3252c19117  XayaUI_QoL/ReleaseGuard.lua
-3a21ff7bc9db751f77c49f7c0516bab9  XayaUI_QoL/ShoppingList.lua
+d9cfc8648cb3ace4d902739ada0c5abf  XayaUI_QoL/ShoppingList.lua
 85ff4b8dfdb3b6b39b051c4f85008e01  XayaUI_QoL/StatMath.lua
-d85fadf9d2fd2db3cf77f070b2ecf72b  XayaUI_QoL/StatModel.lua
+488e3279f61d45bc163b1250c265f465  XayaUI_QoL/StatModel.lua
 8ccc81be51d6ab142daeffb57bbd7fff  XayaUI_QoL/StatsTextBoxes.lua
-3e190c3b93802701ccdff017ef65b4f9  XayaUI_QoL/XayaUI_QoL.toc
+d6e7c2f7748bed7d2657a48c57564ccd  XayaUI_QoL/XayaUI_QoL.toc
 14a06e271d1b5913b3eb2cf68bc67158  XayaUI_Reskin/BlizzardSkins.lua
 a8ede478e4f2bc7f5f9ba5ea384ac035  XayaUI_Reskin/FriendColors.lua
 d1cfd28c4abdb211211c93890514c47f  XayaUI_Reskin/GameMenuSkin.lua
@@ -738,12 +738,13 @@ acfaabbcd7c9f67410a80dbd8d31c1e0  debug-log/2026-11-11-0141-stat-calculator-v25-
 34b586cc35b99fc8ece4f6e6a5d84209  debug-log/2026-11-11-2116-stat-calculator-v25-a24-7-qol-0.7.59.md
 cf959f764c245818687f69b7bb15cc75  debug-log/2026-11-11-2243-stat-calculator-v25-a24-8-9-qol-0.7.60.md
 776da227d07280aa7682f6ff4ba110aa  debug-log/2026-11-12-1641-stat-calculator-a24-10-rating-title-bonus-0.6.44.md
+aec64f52ab51bdcc40ffa934400abc88  debug-log/2026-11-17-1546-shopping-list-new-gear-toast-qol-0.7.62.md
 28e1b9a5a902a0c1d291a571df8688a1  docs/HELP-FAQ.md
-0d4e320c3c7d30d1cb678a9167b7371e  docs/QA-CHECKLIST.md
+cb636fe6c216b074fa32fe48ee67b1ce  docs/QA-CHECKLIST.md
 cd710d1e9687811c155d64ea6297b2fa  docs/README-INGAME.md
 b05cf662ff82d66b612b33572b803618  docs/ROADMAP.md
 50a873d05fbcbbd5e5b2092535d3af7b  docs/SESSION-START-SUMMARY.md
-3b67bb1d595fe098fe311900539daf4c  docs/USER-GUIDE.md
+ff4393e1e2d01a112f9526538fc5ccf1  docs/USER-GUIDE.md
 42810fe59c293f31d59a0210868a40bb  docs/WHATS-NEW.md
 addc6d522657e880ed4c488098f3799b  docs/design/BUILD-RULES.md
 7a7ebd0fe5b00917b159b0c33c48504f  docs/design/DISPLAY-AUDIT-UI-47-2026-11-07.md
@@ -784,7 +785,7 @@ f4fe6d24f9ce20454b5043ffb6024fc6  docs/plans/STAT-CALCULATOR-BOUNDARY-MAP-2026-1
 b167131288a4d34a9d748baffa4fb8bd  docs/plans/STAT-CALCULATOR-REVIEW-2026-11-10.md
 20844070f1a9513250fa2265bddbaf00  docs/plans/STAT-CALCULATOR-TO-MAIN-2026-11-11.md
 cb02547a0ac366135b2a266bd633f73c  docs/plans/STAT-CALCULATOR-V25-SESSION-SUMMARY.md
-b6fe9caf31b12316506df60a83269e98  docs/plans/STAT-CALCULATOR-V25-TRACKER.md
+15a88ee1a9c84599819b9a61ce742999  docs/plans/STAT-CALCULATOR-V25-TRACKER.md
 5cf08a28c3a6c0cf0331ad1b56e38f7b  docs/process/BRANCHES-2026-11-07.md
 77e72b82ed528596d4ac3b4db2e4da9d  docs/process/DECISIONS-2026-11-04.md
 0e6f505ca76ce1a9f019a5d67b9a4f6d  docs/process/ELVUI-STRUCTURE-REVIEW-2026-11-05.md
@@ -807,7 +808,7 @@ fc0cd2f35e3929fe9b554668fb27a1ef  docs/process/REQUEST-LOG-session-014bN6tTuH6rx
 24f31d09558468b94eb1055cb47b936b  docs/process/REQUEST-LOG-session-014bN6tUDLJ6T742DewZDg1s.md
 4cb7be0d54babb510d2ebd7d30cd773f  docs/process/REQUEST-LOG-session-014bN6tV8wAAEXAShpTKqUfz.md
 76947a17028c43ee924a781bd2f94e0c  docs/process/REQUEST-LOG-session-014bN6tVFhD1GEbb6ieFgKLz.md
-42cf1234c2ec1a643810e362479587e9  docs/process/REQUEST-LOG.md
+59adbf8449b5703db48039fe0bf866e0  docs/process/REQUEST-LOG.md
 4999563a342677e16c97bb259f0a3e03  docs/process/RETROSPECTIVE.md
 c754a2713e18df1a531461cd2af4b5da  docs/process/VERIFICATION.md
 3fcee98869dd9370442f963cf4c125fa  docs/process/WAKEUP-SUMMARY-2026-11-07.md
@@ -847,6 +848,7 @@ eb6cc6f83c143a933535fbca9eba237e  docs/reference/content/classes.json
 3784fba6b7ed9d1bc7dfd78ca24d172d  docs/reference/content/instances.json
 61e26f0926bef4bbed6058398e65292e  docs/reference/content/item-spells.json
 447cb6f865eab4f0c5401ffd2d383529  docs/reference/content/items.json
+25190ecde474bd14587d6674b80fb1b4  docs/reference/maps/SHOPPING-LIST-UPGRADE-TOAST.md
 1dc5ba652036ae3c12def5ef6a4acec7  docs/reference/procs.md
 abf6edfcffd8bdb89997b8c97fff077f  docs/reference/spells/DEATHKNIGHT.md
 6ee777f2918cf1cbdcac0f3dd7d74996  docs/reference/spells/DEMONHUNTER.md
@@ -1057,8 +1059,8 @@ e8813370853b60d939f4fa4607655cae  tests/notepad_run.py
 664a982d1241e03b0d01cda02de8c258  tests/options_layout_v11_run.py
 a400b2ef31452797aa7d7175d5d8b9a1  tests/options_open_cost.lua
 da2657b732d0fd532e886d99f8c5764b  tests/options_open_cost_run.py
-3d1057196b7ba1ddfbf16c2397cf9f57  tests/options_split_parity_golden.json
-b44963da44cf7faf58f913875d5f6866  tests/options_split_parity_run.py
+dbcb451e65b1f0bb9200046d4f96bdcc  tests/options_split_parity_golden.json
+522139aae9e1b8093226386b4461e1b5  tests/options_split_parity_run.py
 36cc48db23f6e98338ee5a015f90601a  tests/perf_report_run.py
 7276a8b0530b285d6e04cf6ccad8a539  tests/perf_run.py
 aeac3da1cfb98604308ddbd84bca5027  tests/picker_rows_layout_run.py
@@ -1116,10 +1118,10 @@ b66f173aec689b386a745d134f605b24  tests/rule_editor_load_run.py
 5658b4307ebf8c5f9686dd04048feb21  tests/run_all_markers_run.py
 0aaddbd2a51f9fbbc0517938ea3c8504  tests/settings_migration_run.py
 d43721b5fc0e38fc2308b80402321cf8  tests/settings_restructure_run.py
-02d9fd2fdda841933e6026e030ef6d92  tests/settings_seam_run.py
+75b88e5718ec5c805dc28649ea57de70  tests/settings_seam_run.py
 58371ee9e7e117cb74bdd09fc14e6bf0  tests/settings_stores.py
 8ec8a4fb395a5f024ed53ad53bdedadf  tests/share_strings_presplit_run.py
-eb9395eb778733fce7f6b559f2b14e37  tests/shopping_list_run.py
+303de3ceb4b80ebab6220cb490638c60  tests/shopping_list_run.py
 d56b219db3d013b68b41f41d70827f75  tests/sidebar_delete_run.py
 74013242fe542c50dac6a6d9be9f79e9  tests/sidebar_icon_columns_run.py
 ae5f9937dbee82349d1388da8a5b7905  tests/sidebar_merge_run.py

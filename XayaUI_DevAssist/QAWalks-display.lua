@@ -517,6 +517,33 @@ QA.Register("ui-shop-autoshow", { title = "Shopping List: shows itself only at t
         check = function() local c, shown = ShopState(); if not c then return false, shown end; return shown, shown and "the panel is showing" or "the panel is not showing" end },
     { text = "Your look: with nothing missing on your gear, does it now stay away until you visit the Auction House or ask for it? Pass if yes; Fail and say when it still popped up.", noVerdict = true },
 } })
+-- (QoL 0.7.62, Dev Assist 0.7.80; UPG-1) the toast for new gear that may be an upgrade; the addon reads the toast and To buy, she judges
+-- the look
+local function ShopToast() return rawget(_G, "XayaUIShoppingToast") end
+QA.Register("upg-shop-toast", { title = "Shopping List: asks once when new gear may be an upgrade", qa = "E2i", order = 272, prefill = true, steps = {
+    { text = "Press |cffffd100Do it for me|r: the Shopping List is switched on with its New gear toast.\n\n|cffffd100Expect:|r the check says the toast is on and none is showing yet.",
+        setup = function()
+            local S = ShopSvc(); if not S then return end
+            local c = S.Cfg(); if c then c.enabled, c.panel, c.upgradeToast = true, true, true; S.Apply(true) end
+        end,
+        check = function()
+            local S = ShopSvc(); local c = S and S.Cfg(); if not c then return false, "XayaUI QoL or the Shopping List is off" end
+            local t = ShopToast(); local up = t and t:IsShown()
+            return c.upgradeToast == true and not up, "New gear toast " .. (c.upgradeToast and "on" or "off") .. ", toast " .. (up and "showing" or "not showing")
+        end },
+    { text = "Loot or buy gear with an empty socket or an enchant slot, on the same upgrade track as what you wear with a higher item level, or on a higher track. Then press |cffffd100Check|r.\n\n|cffffd100Expect:|r one toast at the top of the screen with Yes, No and two ticks.",
+        check = function()
+            local t = ShopToast(); local up = t and t:IsShown()
+            return up and true or false, up and ("the toast says: " .. tostring(t.text and t.text:GetText())) or "no toast is showing (/xui shop status says why the last item did not ask)"
+        end },
+    { text = "Press |cffffd100Yes|r on the toast, then press |cffffd100Check|r.\n\n|cffffd100Expect:|r the toast closes and its gem / enchant is in To buy.",
+        check = function()
+            local S = ShopSvc(); local c = S and S.Cfg(); if not c then return false, "XayaUI QoL or the Shopping List is off" end
+            local t = ShopToast(); local up = t and t:IsShown()
+            return (not up) and #c.buy > 0, (up and "the toast is still showing" or "the toast is closed") .. ", " .. #c.buy .. " line(s) in To buy"
+        end },
+    { text = "Your look: does the toast read well and sit well at the top of the screen? Then loot another such item, tick |cffffd100ignore item|r and press No: does it stay silent afterwards, and do gear you take off and lower-track gear stay silent too? Pass if yes; Fail and say which one asked.", noVerdict = true },
+} })
 
 -------------------------------------------------------------------------------
 -- 13. Brief hover texts (UI-65; every changed addon's version bumped, Dev Assist 0.7.22)

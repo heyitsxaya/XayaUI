@@ -416,6 +416,105 @@ arg2("fontSize").set(nil, 12)
 check("a setting changed (text size) does not pop it up", not shown())
 arg2("panel").set(nil, false); arg2("panel").set(nil, true)
 check("the panel's own switch turned on shows it (you asked for it)", shown())
+
+-- 12. UPG-1: new gear with a socket or an enchant slot that may be an upgrade (Xaya 2026-11-07). Test stand-ins only (IDs 9501+). -----
+-- worn: the helm (track Hero, ilvl 600) and the ring (Champion, 580). Tracks come from C_Item.GetItemUpgradeInfo; an item's key is its GUID.
+TRK = { Helm = { "Hero", 600 }, Ring = { "Champion", 580 } }
+C_Item.GetItemUpgradeInfo = function(link) local t = TRK[link:match("%[(.-)%]")]; if t then return { trackString = t[1], currentLevel = 1, maxLevel = 6, maxItemLevel = t[2] } end end
+local oldIL = C_Item.GetDetailedItemLevelInfo
+C_Item.GetDetailedItemLevelInfo = function(link) local t = TRK[link:match("%[(.-)%]")]; if t then return t[2] end; return oldIL(link) end
+EQUIPLOC = {}
+local baseInstant2 = C_Item.GetItemInfoInstant
+C_Item.GetItemInfoInstant = function(x) if type(x) == "string" then local l = EQUIPLOC[x:match("%[(.-)%]") or ""]; if l then return 1, "", "", l, 0, 4, 1 end end; return baseInstant2(x) end
+ItemLocation = { CreateFromBagAndSlot = function(_, bag, slot) return { guid = BAGS[slot] and (BAGS[slot].guid or ("bag-" .. BAGS[slot].itemID)) } end,
+  CreateFromEquipmentSlot = function(_, slot) return { guid = "worn-" .. slot } end }
+C_Item.GetItemGUID = function(loc) return loc and loc.guid end
+local function bagLink(nm, id) return "|cffffffff|Hitem:" .. id .. "::::::::90:::::|h[" .. nm .. "]|h|r" end
+function addBag(nm, id, loc, sockets, track, ilvl, guid)
+  NAMES[id] = nm; EQUIPLOC[nm] = loc; SOCKETS[nm] = sockets; TRK[nm] = track and { track, ilvl } or nil
+  BAGS[#BAGS + 1] = { itemID = id, stackCount = 1, guid = guid or ("G" .. id) }
+  fire("BAG_UPDATE_DELAYED")
+end
+local function toastText() local T = Shop.ToastFrame(); return T and T.text.text or "" end
+c.upgradeToast, c.minTrack, c.onlyHigherTrack, c.buy, c.ignored = true, "", false, {}, {}
+Shop.picks.gem = { name = "Deadly Peridot", itemID = 8001 }
+Shop.ToastOff(); Shop.Apply()
+check("UPG-1: what is in your bags at the first look asks nothing", not Shop.ToastShown())
+addBag("Hero Helm", 9501, "INVTYPE_HEAD", { 0 }, "Hero", 590)
+check("same track as worn (Hero), LOWER item level: no toast", not Shop.ToastShown(), Shop.upgrade.lastSkip)
+addBag("Myth Helm", 9502, "INVTYPE_HEAD", { 0 }, "Myth", 570)
+local T = Shop.ToastFrame()
+check("a higher track with a LOWER item level asks (item level matters less on a superior track)", Shop.ToastShown(), Shop.upgrade.lastSkip)
+check("  ...her sentence word for word, the gem and the enchant filled in", toastText() == "XUI has detected a new item that may potentially be an upgrade. Do you want to add a Deadly Peridot + "
+  .. (Shop.EnchantSuggestion(c, 1) and Shop.EnchantSuggestion(c, 1).name or "?") .. " to your shopping list for it?", toastText())
+check("  ...top-center", T.pts[1] and T.pts[1][1] == "TOP" and T.pts[1][2] == UIParent, T.pts[1] and T.pts[1][1])
+-- (child frames are shown unless hidden: the stand-in world starts every frame hidden, so this asserts nothing hid them; the track tick
+-- is shown by the code because it can be hidden)
+check("  ...Yes, No and the two ticks are there with her labels, the track tick shown", T.yes and T.no and T.tickIgnore and T.tickTrack.shown
+  and T.yes.text.text == "Yes" and T.no.text.text == "No" and T.tickIgnore.label.text == "ignore item" and T.tickTrack.label.text == "only on a higher upgrade track")
+T.tickIgnore.scripts.OnClick(T.tickIgnore)
+check("  ...a click ticks 'ignore item' (its mark shows)", T.tickIgnore.mark.text == "x")
+T.yes.scripts.OnClick(T.yes)
+local gemLine; for _, b in ipairs(c.buy) do if b.name == "Deadly Peridot" then gemLine = b end end
+check("Yes puts the gem in To buy", gemLine ~= nil and gemLine.need == 1, gemLine and gemLine.need)
+check("  ...and the toast closes", not Shop.ToastShown())
+check("'ignore item' keeps this exact item (its GUID) for this character", c.ignored["Xaya-Stormrage"] and c.ignored["Xaya-Stormrage"]["G9502"] == true)
+check("  ...another copy of the same item (other GUID) is NOT ignored", select(2, Shop.UpgradeCandidate(c, bagLink("Myth Helm", 9502), "G9502b")) ~= "ignored")
+check("  ...the ignored one itself never asks again", select(2, Shop.UpgradeCandidate(c, bagLink("Myth Helm", 9502), "G9502")) == "ignored")
+addBag("Hero Helm 2", 9504, "INVTYPE_HEAD", { 0, 0 }, "Hero", 610)
+check("same track, higher item level: asks; two empty sockets ask for 2x", Shop.ToastShown() and toastText():find("add a 2x Deadly Peridot", 1, true) ~= nil, toastText())
+local nBuy = #c.buy
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
+check("No adds nothing and closes", not Shop.ToastShown() and #c.buy == nBuy)
+c.onlyHigherTrack = true
+check("'only on a higher upgrade track': the same track no longer asks", select(2, Shop.UpgradeCandidate(c, bagLink("Hero Helm 2", 9504), "x")) == "not a higher track")
+c.onlyHigherTrack, c.minTrack = false, "myth"
+check("'Don't suggest below Myth': a Hero item asks nothing", select(2, Shop.UpgradeCandidate(c, bagLink("Hero Helm 2", 9504), "x")) == "below your track floor")
+c.minTrack = ""
+addBag("Boots", 9505, "INVTYPE_FEET", { 0 }, nil, nil)
+check("socketed gear whose track the game does not give: fails safe, no toast", not Shop.ToastShown() and Shop.upgrade.lastSkip == "track unknown", Shop.upgrade.lastSkip)
+addBag("Cloak of Nothing", 9506, "INVTYPE_CLOAK", { }, "Myth", 700)
+check("no socket and no enchant slot: no toast", not Shop.ToastShown() and Shop.upgrade.lastSkip == "no socket, no enchant", Shop.upgrade.lastSkip)
+-- taking gear off: the helm you wore (its GUID was on you at the last look) lands in the bags and asks nothing
+TRK["Old Myth Helm"] = { "Myth", 720 }; EQUIPLOC["Old Myth Helm"] = "INVTYPE_HEAD"; SOCKETS["Old Myth Helm"] = { 0 }; NAMES[9508] = "Old Myth Helm"
+local wornHelm = GEAR[1]; GEAR[1] = bagLink("Old Myth Helm", 9508); fire("BAG_UPDATE_DELAYED")
+GEAR[1] = wornHelm; BAGS[#BAGS + 1] = { itemID = 9508, stackCount = 1, guid = "worn-1" }; fire("BAG_UPDATE_DELAYED")
+check("gear you take off lands in your bags and asks nothing (it was worn at the last look)", not Shop.ToastShown())
+-- two at once: one toast at a time, the second after the first is answered
+addBag("Myth Ring A", 9510, "INVTYPE_FINGER", { 0 }, "Myth", 700, "GA")
+BAGS[#BAGS + 1] = { itemID = 9511, stackCount = 1, guid = "GB" }; NAMES[9511] = "Myth Ring B"; EQUIPLOC["Myth Ring B"] = "INVTYPE_FINGER"; SOCKETS["Myth Ring B"] = { 0 }; TRK["Myth Ring B"] = { "Myth", 700 }
+fire("BAG_UPDATE_DELAYED")
+check("two new items: one toast now, one waiting", Shop.ToastShown() and #Shop.upgrade.queue == 1, #Shop.upgrade.queue)
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
+check("  ...answering the first shows the second", Shop.ToastShown() and #Shop.upgrade.queue == 0)
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
+-- a failure inside the look at your bags is kept and does not break the rest of the event handler
+local realUC = Shop.UpgradeCandidate
+Shop.UpgradeCandidate = function() error("boom") end
+NAMES[9512] = "Myth Gloves"; EQUIPLOC["Myth Gloves"] = "INVTYPE_HAND"; SOCKETS["Myth Gloves"] = { 0 }; TRK["Myth Gloves"] = { "Myth", 700 }
+BAGS[#BAGS + 1] = { itemID = 9512, stackCount = 1, guid = "GE" }
+local ok = pcall(fire, "BAG_UPDATE_DELAYED")
+check("an error in the bag look is caught and kept for /xui shop status", ok and (Shop.upgrade.lastError or ""):find("boom", 1, true) ~= nil, Shop.upgrade.lastError)
+Shop.UpgradeCandidate = realUC; Shop.upgrade.lastError = nil
+-- her answers 2026-11-17: "Switch a/an by the name"; "Hold until combat ends"
+check("a/an: 'an' before a vowel name", Shop.UpgradeToastText({ enchant = { name = "Amani Mastery" } }):find("add an Amani Mastery to", 1, true) ~= nil)
+check("  ...'a' before a consonant name", Shop.UpgradeToastText({ gem = { name = "Deadly Peridot", count = 1 } }):find("add a Deadly Peridot to", 1, true) ~= nil)
+combat = true
+addBag("Myth Gloves 2", 9513, "INVTYPE_HAND", { 0 }, "Myth", 700, "GC")
+-- (2 waiting: these gloves, and the gloves of the error check above, which the failed look never recorded as seen, so they are asked about now)
+check("in combat: the toasts wait (queued, none shown)", not Shop.ToastShown() and #Shop.upgrade.queue == 2, #Shop.upgrade.queue)
+combat = false; fire("PLAYER_REGEN_ENABLED")
+check("  ...combat over: the first shows", Shop.ToastShown())
+Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no); Shop.ToastFrame().no.scripts.OnClick(Shop.ToastFrame().no)
+c.upgradeToast = false; Shop.Apply()
+addBag("Myth Helm 3", 9507, "INVTYPE_HEAD", { 0 }, "Myth", 700)
+check("the switch off: nothing asks, and nothing is kept", not Shop.ToastShown() and not Shop.upgrade.seeded and next(Shop.upgrade.seen) == nil)
+local pg3 = ns.BuildShoppingListPage(function() end)
+local function arg3(k) if pg3.args[k] then return pg3.args[k] end; for _, tab in pairs(pg3.args) do if type(tab) == "table" and tab.args and tab.args[k] then return tab.args[k] end end end
+check("settings: the New gear rows exist (switch, higher-track tick, track floor, forget ignored)", arg3("upgradeToast") and arg3("onlyHigher") and arg3("minTrack") and arg3("forgetIgnored"))
+check("  ...the track floor lists No limit then the tracks in order", arg3("minTrack").values()["myth"] == "Myth" and arg3("minTrack").sorting()[1] == "" and arg3("minTrack").sorting()[7] == "myth")
+arg3("forgetIgnored").func()
+check("  ...Forget ignored items empties this character's list", next(c.ignored["Xaya-Stormrage"]) == nil)
 '''.replace("__WORLD__", P("tests/char_world.lua")).replace("__MOD__", P("XayaUI/Modules.lua")).replace("__COMPAT__", P("XayaUI/Compat.lua"))
    .replace("__SM__", P("XayaUI_QoL/StatMath.lua")).replace("__CM__", P("XayaUI_QoL/StatModel.lua")).replace("__CT__", P("XayaUI_Bonus/StatCalculator.lua")).replace("__ICD__", P("XayaUI_QoL/ImprovedCharacterDisplay.lua"))
    .replace("__SL__", P("XayaUI_QoL/ShoppingList.lua")))
