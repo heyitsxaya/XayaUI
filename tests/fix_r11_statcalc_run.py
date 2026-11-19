@@ -18,9 +18,16 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
       active (the one put in is recorded once), that handler is active again after the load, and a later file of the calculator,
       while it is read, already sees that an earlier one stopped (ns.StatCalcLoader.FilesErrored, for the calculator's own
       stand-down). Also with the error handler held by another addon (seterrorhandler does nothing): a stop after the statCalc
-      service is still caught by the service probe.
+      service is still caught by the service probe. (repair 2) Also when the error is reported the way the game reports it (the
+      handler called where it was raised, nothing appended to the message: only debugstack names the calculator's file), when a
+      helper the file calls at load raises it (the message names the helper's file, Interface/SharedXML/Mixin.lua, not the
+      calculator's), and for an error that names no file the next handler sees the calculator's file first on the stack (the
+      loader's watch is not on it), which is how core's handler files such an error under the calculator.
   W   (repair 1) a healthy calculator while another addon's code raises a Lua error during the same load (its ADDON_LOADED handler):
       that error is not the calculator's; it opens and shows, the error reaches the earlier handler, and that handler is active again.
+  H   (repair 2) a healthy calculator while another addon replaces the error handler during the same load (chaining the one it
+      found): the other addon's handler is still the active one after the load, and a Lua error a calculator file raises later in
+      play reaches it and the earlier handler but is not a load error (still loaded, FilesErrored() false, /xui stats still works).
   R   (SD-146) switched off in the game's AddOns list, and its folder not installed: three /xui stats in a row print the same one line
       three times; one load is asked for, not three.
   U   while on: '/xui stats <word it does not know>' (a typo, "on", "show") prints exactly the stats help line and opens, closes and
@@ -47,8 +54,24 @@ MARK = "XUI_TEST stand-in load error"
 
 # put a stand-in Lua error into one of the calculator's files as the harness reads it (before the given text, or at its top)
 BREAK = r'''
-local BREAK_FILE, BREAK_BEFORE, BREAK_LEVEL0 = __FILE__, __BEFORE__, __LEVEL0__
+local BREAK_FILE, BREAK_BEFORE, BREAK_KIND = __FILE__, __BEFORE__, __KIND__
 local broke = 0
+-- (repair 2) how the stand-in error is raised in the file:
+--   plain   error(msg): the message names the file it was raised in
+--   level0  error(msg, 0): no location; the stand-in game appends the stack to the message (tests/harness/world.lua safecall)
+--   game0   no location, reported the way the game reports it (INFERENCE): the active error handler is called where the error was raised
+--           (xpcall with that handler), so only the stack at that moment (debugstack) names the calculator's file; the file then stops
+--   helper  a helper the file calls at load raises it (a stand-in named Interface/SharedXML/Mixin.lua): the message names the helper's
+--           file, never the calculator's (the stand-in appends the stack)
+--   gamehelper  the same helper, reported the way the game reports it: only debugstack names the calculator's file; the file stops
+local HELPER = "loadstring(\"error('__MARK__')\", \"@Interface/SharedXML/Mixin.lua\")"
+local BREAK_LINES = {
+  plain = "error(\"__MARK__\")\n",
+  level0 = "error(\"__MARK__\", 0)\n",
+  game0 = "xpcall(function() error(\"__MARK__\", 0) end, geterrorhandler()) do return end\n",
+  helper = HELPER .. "()\n",
+  gamehelper = "xpcall(" .. HELPER .. ", geterrorhandler()) do return end\n",
+}
 -- (repair 1) what ns.StatCalcLoader.FilesErrored() answers while StatCalculator.lua is read, just before its own start-up
 local SEEN_AT = 'ns.WhenSettingsReady("bonus", function()\n    if Cfg() then ns.StatCalc_Apply() end'
 do
@@ -59,7 +82,7 @@ do
       if i then src = src:sub(1, i) .. "rawset(_G, 'XUI_TEST_SEEN', ns.StatCalcLoader and ns.StatCalcLoader.FilesErrored and ns.StatCalcLoader.FilesErrored() and true or false)\n" .. src:sub(i + 1) end
     end
     if BREAK_FILE and type(src) == "string" and type(name) == "string" and name:sub(-#BREAK_FILE - 1) == "/" .. BREAK_FILE then
-      local line = BREAK_LEVEL0 and "error(\"''' + MARK + r'''\", 0)\n" or "error(\"''' + MARK + r'''\")\n"
+      local line = BREAK_LINES[BREAK_KIND]
       if BREAK_BEFORE == "" then src = line .. src; broke = broke + 1
       else
         local i = src:find("\n" .. BREAK_BEFORE, 1, true)
@@ -104,11 +127,28 @@ ns.RunCommand("stats", "status")
 local st = saidSince(n)
 check("E setup: saved on, before the first open '/xui stats status' says 'not loaded yet'", #st == 1 and st[1] == "__NOTYET__", table.concat(st, " / "))
 local e0 = errCount()
+-- (repair 2) a stand-in for the handler that was active before the load (core's chain, the game's error frame, BugSack): it notes the
+-- first addon folder the stack names when the error reaches it, the way core's ns.ErrorFolder files an error that names no file
+local probeFolder
+local hBefore = geterrorhandler()
+local function probe(m)
+  if probeFolder == nil and tostring(m):find("__MARK__", 1, true) then
+    probeFolder = debug.traceback("", 1):match("dOns[/\\]([%w_]+)[/\\]") or false
+  end
+  return hBefore(m)
+end
+if not ARGS.nohandler then seterrorhandler(probe) end
 local h0 = geterrorhandler()
 n = #said
 ns.RunCommand("stats", ""); W.tick(0.1, 3)
 local got = saidSince(n)
 check("E ...the error handler that was active before the load is active again after it", geterrorhandler() == h0)
+if BREAK_KIND == "game0" then
+  -- (the loader's watch passes the error on as a tail call: its own file is not on the stack the next handler reads, so an error that
+  -- names no file is still filed under the calculator's folder there, not XayaUI_Bonus's)
+  check("E ...the next handler sees the calculator's file first on the stack, not XayaUI_Bonus's loader", probeFolder == "XayaUI_Bonus_StatCalculator",
+    tostring(probeFolder))
+end
 if BREAK_FILE ~= "StatCalculator.lua" then
   check("E ...while StatCalculator.lua was read, its start-up could already see that an earlier file stopped (FilesErrored)",
     rawget(_G, "XUI_TEST_SEEN") == true, rawget(_G, "XUI_TEST_SEEN"))
@@ -185,6 +225,47 @@ return R
 end
 '''
 
+
+# H (repair 2): a healthy calculator while another addon replaces the error handler during the same load (its ADDON_LOADED handler,
+# chaining the one it found, as an error-catching addon loaded on demand would): its handler must stay active after the load, and an
+# error the calculator raises later in play is not a load error
+S_SWAP = r'''
+return function(W, L)
+''' + R10.COMMON + R10.LOGIN + r'''
+local theirs, found, theirsSaw = nil, nil, 0
+local other = CreateFrame("Frame")
+other:RegisterEvent("ADDON_LOADED")
+other:SetScript("OnEvent", function(_, _, name)
+  if name ~= "XayaUI_Bonus_StatCalculator" or theirs then return end
+  found = geterrorhandler()
+  theirs = function(m) theirsSaw = theirsSaw + 1; return found(m) end
+  seterrorhandler(theirs)
+end)
+section("H", function()
+local h0 = geterrorhandler()
+local n = #said
+ns.RunCommand("stats", ""); W.tick(0.1, 3)
+local got = saidSince(n)
+check("H setup: the other addon put its handler in during the load (in front of the one active then)", theirs ~= nil and found ~= nil and found ~= h0)
+check("H ...the calculator opens (shown, nothing said), counted as loaded, FilesErrored() false", shown() and #got == 0
+  and ns.StatCalcLoader.Loaded() == true and ns.StatCalcLoader.FilesErrored() == false, table.concat(got, " / "))
+check("H ...after the load the other addon's handler is still the active one (the loader did not put its old one back over it)",
+  geterrorhandler() == theirs)
+-- later, in play: a Lua error raised in a calculator file reaches the active handler (the game's report of it)
+local e0 = #W.errors
+geterrorhandler()("Interface/AddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:10: __MARK__")
+check("H a later error in a calculator file reaches the other addon's handler and the one before the load (recorded once)",
+  theirsSaw == 1 and #W.errors == e0 + 1 and tostring(W.errors[#W.errors]):find("__MARK__", 1, true) ~= nil, #W.errors - e0)
+check("H ...it is not a load error: still loaded, FilesErrored() still false",
+  ns.StatCalcLoader.Loaded() == true and ns.StatCalcLoader.FilesErrored() == false, tostring(ns.StatCalcLoader.FilesErrored()))
+n = #said
+ns.RunCommand("stats", ""); W.tick(0.1, 2)
+got = saidSince(n)
+check("H ...'/xui stats' still closes it, nothing said", not shown() and #got == 0, table.concat(got, " / "))
+end)
+return R
+end
+'''
 
 # R: switched off in the AddOns list / not installed: the reason on every try (SD-146)
 S_REPEAT = r'''
@@ -328,18 +409,30 @@ def main():
             ("StatCalculator.lua stops before its last function", "StatCalculator.lua", "function ns.StatCalc_Command(arg)", True, None, {}),
             ("StatMath.lua stops before its last function", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)", False, None, {}),
             ("StatMath.lua stops with an error that names no file", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)",
-             False, None, {"level0": True}),
+             False, None, {"kind": "level0"}),
+            # (repair 2) as the game reports an error: the handler runs where it was raised, nothing is appended to the message
+            ("StatMath.lua stops with an error that names no file, reported as the game does", "StatMath.lua",
+             "function M.Solve(g, target, lo, hi, increasing)", False, None, {"kind": "game0"}),
+            # (repair 2) the error is raised by a helper the file calls at load: the message names the helper's file
+            ("StatMath.lua stops in a helper it calls (SharedXML stand-in)", "StatMath.lua", "function M.Solve(g, target, lo, hi, increasing)",
+             False, None, {"kind": "helper"}),
+            ("StatMath.lua stops in a helper it calls, reported as the game does", "StatMath.lua",
+             "function M.Solve(g, target, lo, hi, increasing)", False, None, {"kind": "gamehelper"}),
+            ("StatCalculator.lua stops in a helper it calls, reported as the game does", "StatCalculator.lua",
+             "function ns.StatCalc_Command(arg)", True, None, {"kind": "gamehelper"}),
             # (repair 1) the error handler cannot be chained: the service probe is the second signal
             ("error handler held by another addon, StatCalculator.lua stops after offering its service", "StatCalculator.lua",
              AFTER_SERVICE, False, None, {"nohandler": True})):
         if gap:
             print("GAP [%s] KNOWN GAP outside XayaUI_Bonus: %s. Its FAILs below are that gap, counted." % (tag, gap))
         src = (fill(S_ERR).replace("__FILE__", lua_str(f)).replace("__BEFORE__", lua_str(before))
-               .replace("__LEVEL0__", "true" if extra.get("level0") else "false"))
+               .replace("__KIND__", lua_str(extra.get("kind", "plain"))))
         r, e = session(src, dict({"window": window, "strict": True}, **extra), ON)
         report(tag, r, e, allowed=1)
     r, e = session(fill(S_OTHER), None, ON)
     report("another addon's error during the load", r, e, allowed_other="OtherAddon/Other.lua")
+    r, e = session(fill(S_SWAP), None, ON)
+    report("another addon replaces the error handler during the load", r, e, allowed=1)
     # R: SD-146 for the other two causes
     for tag, line, off, gone in (("switched off in the AddOns list", DISABLED, ("XayaUI_Bonus_StatCalculator",), ()),
                                  ("folder not installed", MISSING, (), ("XayaUI_Bonus_StatCalculator",))):

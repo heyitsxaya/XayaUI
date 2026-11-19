@@ -28,7 +28,8 @@
 --     error handler is chained, never replaced, for that one call) and its services show the entries this loader calls
 --     (FilesComplete below); otherwise it says it could not load (chat, '/xui stats status', the settings page), and nothing of the
 --     half-read calculator is called. (repair 1) The error watch covers every file of the calculator, StatMath.lua and the end of
---     StatCalculator.lua included, which the service probe alone could not see.
+--     StatCalculator.lua included, which the service probe alone could not see. (repair 2) It also reads the stack when the error's
+--     message names another file (a helper the calculator's file called at load raised it).
 --   SD-146, her answer "Repeat the reason each time (Recommended)": while the calculator cannot load this session (switched off in the
 --     game's AddOns list, not installed, or its files stopped with an error), every '/xui stats' prints the same one-line reason, not
 --     only the first. The character window opening says it once (its first try) and then nothing: a window the player opens for
@@ -131,15 +132,21 @@ local loadTried, loadOk = false, false
 -- One function made once at file load (SD-90), one table: nothing is made per call, and nothing runs outside this one call.
 local watch = { on = false, saw = false, prev = nil }
 local PART_IN_PATH = "[/\\%.]" .. PART .. "[/\\]"   -- the folder inside a file path ("...ddOns/XayaUI_Bonus_StatCalculator/...")
--- whether an error message comes from one of the calculator's files: its own location ("<path>.lua:12: ..."), else (an error with no
--- location: error(msg, 0), a table) the stack the game reports it with
+-- whether an error raised during the load stopped one of the calculator's files: the message names the folder (its own location,
+-- "<path>/XayaUI_Bonus_StatCalculator/StatMath.lua:12: ...", or the stack a message carries: the stand-in game appends it), else the
+-- stack as the game reports the error now (the handler runs where the error was raised, before the stack unwinds: INFERENCE, as core's
+-- handler and BugSack read it). (round 11a repair 2) The stack is read also when the message names another file: a calculator file
+-- that stops because a helper it calls at load raised the error (Blizzard's SharedXML Mixin, a core ns.* helper, a library) gets a
+-- message naming the helper's file, and only the stack names the calculator's. Another addon's error during the same load (its
+-- ADDON_LOADED handler, fired after the calculator's files ran) has no calculator file on its stack and is not counted.
+-- debugstack(1, 20, 0): from the top, 20 lines, none from the bottom; this file's own lines never match PART_IN_PATH (it is
+-- XayaUI_Bonus/StatCalculatorLoader.lua). It runs only for an error during this one LoadAddOn call that does not name the folder.
+-- Known limit (INFERENCE): a frame script another addon runs from inside a calculator file at load (a hook on a frame the file
+-- shows) and that errors without stopping the file has the calculator's file on its stack too, and is counted: the calculator then
+-- says it could not load. It errs on the side of never calling a half-read calculator.
 local function FromPart(msg)
-    local text = tostring(msg)
-    local loc = text:match("^%s*([^\n]-%.lua):%d+:")
-    if loc then return ("/" .. loc):find(PART_IN_PATH) ~= nil end
-    -- no location: the stack decides, as the message carries it (the stand-in appends it), else as the game reports it now
-    if text:find(PART_IN_PATH) then return true end
-    local ok, stack = pcall(debugstack, 3, 12, 0)
+    if tostring(msg):find(PART_IN_PATH) then return true end
+    local ok, stack = pcall(debugstack, 1, 20, 0)
     return ok and type(stack) == "string" and stack:find(PART_IN_PATH) ~= nil
 end
 local function OnLoadError(msg)
@@ -148,6 +155,9 @@ local function OnLoadError(msg)
         if ok and mine then watch.saw = true end
     end
     local prev = watch.prev
+    -- a tail call, kept as one: this file's frame is gone from the stack the next handler reads, so core's handler (Core.lua
+    -- ns.ErrorFolder: the first addon file on the stack, for an error that names no file) files the error under the calculator's
+    -- folder, not XayaUI_Bonus's (tests/fix_r11_statcalc case game0 reads that stack)
     if prev then return prev(msg) end
 end
 -- C_AddOns.LoadAddOn(PART) under the watch; returns pcall's ok, the game's loaded and reason, and whether a calculator file errored
