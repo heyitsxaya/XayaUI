@@ -182,8 +182,35 @@ def session(folders, enabled, saved, write_back=True, quick=False):
         "savedSource": sv.Serialize(S.saved) if S.saved else "{}",  # what the next session loads (key types kept; f6-3)
         "saveIssues": [S.saveIssues[i] for i in range(1, len(S.saveIssues) + 1)] if S.saveIssues else [],
         "printed": [world.printed[i] for i in range(1, len(world.printed) + 1)],
+        # (round 11, SD-138 M1 / SD-139) the addons' own error record at the end of the session: every error and warning XayaUI reported
+        # (an engine step error SafeStep caught and only printed to chat included); run_combo FAILs on every entry
+        "errorLog": error_log(L),
     }
     return out
+
+
+ERROR_LOG_LUA = r'''function()
+  local db = rawget(_G, "CueRulesDB")
+  local log = type(db) == "table" and rawget(db, "errorLog") or nil
+  local out = {}
+  if type(log) ~= "table" then return out end
+  for i = 1, 200 do
+    local e = rawget(log, i)
+    if e == nil then break end
+    if type(e) == "table" then
+      out[#out + 1] = { code = tostring(rawget(e, "code")), n = tonumber(rawget(e, "n")) or 1, first = tostring(rawget(e, "first")),
+                        msg = tostring(rawget(e, "msg")):sub(1, 600) }
+    end
+  end
+  return out
+end'''
+
+
+def error_log(L):
+    """CueRulesDB.errorLog of a session (XayaUI/DebugRecord.lua: one entry per code and message, newest first, at most 50), read with
+    rawget only (world.lua reports every unknown global it is asked for) as [{code, n, first, msg}]."""
+    t = L.eval(ERROR_LOG_LUA)()
+    return [{"code": t[i]["code"], "n": int(t[i]["n"]), "first": t[i]["first"], "msg": t[i]["msg"]} for i in range(1, len(t) + 1)]
 
 
 def step_of(errors_index, steps):
@@ -251,6 +278,14 @@ def run_combo(folders, enabled, saved, label):
             fails.append("session %d: %s" % (idx, p))
         for p in s["saveIssues"]:
             (warns if "saved twice" in p else fails).append("session %d: saved variables: %s" % (idx, p))
+        # (round 11, SD-138 M1 / SD-139) an entry in the addons' error record is an error the run did not expect (the harness causes
+        # none on purpose); an entry a later session loaded from what the earlier one saved (same code, message, first time) once
+        for e in s.get("errorLog", []):
+            key = ("errorLog", e["code"], e["msg"], e["first"])
+            if key in seen:
+                continue
+            seen.add(key)
+            fails.append("session %d: the error record (CueRulesDB.errorLog) holds %s x%d: %s" % (idx, e["code"], e["n"], e["msg"][:600]))
     dep = load_api().get("deprecatedOnly", {})
     for idx, s in ((1, s1),):
         for k, tb in s["unknownGlobals"].items():
@@ -452,6 +487,8 @@ def main():
             f.write("  %-45s [%s] %s\n" % (k, tag, " | ".join(first)))
     print("unknown global names:", len(unknown), "| report:", os.path.join(args.report, "report.txt"))
     print("RESULT:", "FAIL (%d)" % total_fail if total_fail else "PASS")
+    # (round 11, SD-138 M1) the count line tests/run_all.py reads: how many runs were checked (each run: three sessions), and the failures
+    print("harness: %d runs checked (%d sessions), %d failure(s)  FAILS: %d" % (len(summary), 3 * len(summary), total_fail, total_fail))
     return 1 if total_fail else 0
 
 

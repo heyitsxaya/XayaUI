@@ -619,6 +619,22 @@ Rules 0.7.2, XayaUI Debug 0.7.1, Bonus Features 0.6.47 (both of its folders). La
   (Alt+Z) stops redrawing and shows the right time when it is back; the tenths countdown shows exactly the tenth it is on.
 - **Performance tracker:** redrawFill reads "bar fills and wipe steps written".
 
+## 17. Rules fix bundle 1, round 11a (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
+
+Not tested in game. QA B182 and B439 to B441 (all bundle 1 steps: B399 and B401 to B441). Versions: XayaUI 0.6.88, Options 0.6.111,
+Rules 0.7.3, XayaUI Debug 0.7.2, Bonus Features 0.6.48 (both of its folders). Landing commit: not landed yet.
+
+- **Errors and warnings are always saved:** every error or warning XayaUI prints in chat is also saved with a code, and so are its
+  own Lua errors, whether or not Advanced Debugging is on. Ordinary messages are never saved. To see them, turn on Advanced Debugging
+  (Settings > Debugging), type `/reload`, then `/xui bug` or `/xui report`. Settings > Debugging > Debug report shows how many there
+  are either way. The newest 50 are kept.
+- **Stat Calculator says why every time:** while it cannot load (switched off in the AddOns list, its folder missing, or its files
+  stopped with a Lua error), every `/xui stats` prints the same one line saying why. `/xui stats` with a word it does not know prints
+  its help line instead of opening or closing the panel. Known issues, not fixed yet: for some of these Lua errors, opening the
+  character window can still show a Lua error; and if another addon stops other addons from seeing Lua errors, XayaUI may miss some
+  of these errors (user guide 12.12a).
+- **AddOns list:** XayaUI Bonus Features and its Stat Calculator now say that the Stat Calculator loads the first time you open it.
+
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.
 

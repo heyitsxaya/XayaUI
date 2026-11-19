@@ -30,6 +30,19 @@ Static (every shipped Lua file, not the libraries):
   S2 no ns.Print / ns.PrintPrivate line reports an error or warning (words: error, fail, could not, cannot, can't, blocked, forbid,
      warn, damaged, not available), except the listed player-feedback lines (each with why it is not an error);
   S3 the old two-step pattern (ns.Print, then ns.RecordError / RecordWarn / CaptureError for the same failure) is gone.
+Player texts SD-139 made false (G; found in repair 1, reworded in repair 2 under ROUND11-SCOPE item 15 "Update DebugRecord.lua header,
+USER-GUIDE, debug_record tests"; a factual correction, SD-145):
+  G1 the Advanced Debugging switch's description does not say the switch records errors and warnings (they are saved either way);
+  G2/G3 the real debug report (XayaUI_Debug/DebugReport.lua), Advanced Debugging off, shows the saved entries (control) and does not
+     say that nothing is recorded;
+  G4 the known stale lines in USER-GUIDE, QA-CHECKLIST B182, HELP-FAQ, README-INGAME and the info pane (STALE_DOC_LINES) are gone;
+  G5 the switch's description and the debug report's "OFF" line say that errors and warnings are saved either way (what she reads);
+  G6 USER-GUIDE 12.14 says the saving does not depend on the switch, lists the chat prints among what is found, and its code table has a
+     row for every code in ns.ERROR_CODES (DebugRecord.lua says "the same list is in the USER-GUIDE");
+  G7 HELP-FAQ, README-INGAME and the info pane say XayaUI saves its errors and warnings whether or not the switch is on (same words in
+     the pane as in the markdown it is built from);
+  G8 QA step B182 tests the fix (V13): with the switch off the count goes up (x2), and an error from a session begun with it off is
+     there after turning it on (x3); it no longer says Advanced Debugging is on by default.
 Stand-in numbers are not WoW. UNVERIFIED IN GAME: that the game writes CueRulesDB.errorLog to XayaUI.lua at /reload, logout or a clean
 exit (a crash loses that session's entries, the limit SD-139 records).
 Run: python3 tests/fix_r11_error_record_run.py   (Lua 5.1 via lupa; reads tests/harness/api_index.json when XUI_API_INDEX points to it)."""
@@ -432,6 +445,137 @@ def static_checks():
     return res
 
 
+# ---------------------------------------------------------------------------------------------------------------------------------
+# G: player texts that SD-139 made false. Since round 11 every XayaUI error and warning is saved whether or not Advanced Debugging is
+# on, so a text that says the switch is what records them, or that nothing is recorded while it is off, now tells her something untrue.
+# Repair 1 labeled these GAP for another unit; ROUND11-SCOPE item 15 (SD-139) names the USER-GUIDE as this item's, and no other round 11
+# unit owns the lines, so repair 2 reworded them here (a factual correction, SD-145). Each check FAILS on the words before repair 2.
+# ---------------------------------------------------------------------------------------------------------------------------------
+GAP = ""
+# a sentence that says errors are recorded or saved is true only with "always", "either way" or "whether or not" in that same sentence
+SAYS_RECORDS = re.compile(r"\b(record(s|ed|ing)?|sav(e|es|ed|ing))\b", re.I)
+SAYS_ALWAYS = re.compile(r"\balways\b|\beither way\b|\bwhether or not\b", re.I)
+NOTHING_RECORDED = re.compile(r"nothing (new )?(is|gets) (recorded|kept|saved)", re.I)
+# the known stale lines in the player guides, QA steps and the in-game info pane (file, the false words, why they are false now)
+STALE_DOC_LINES = [
+    ("docs/USER-GUIDE.md", "off by default, records XayaUI's own errors", "the switch no longer decides that errors are recorded"),
+    ("docs/USER-GUIDE.md", "Off: nothing is recorded", "with it off, errors and warnings are still saved"),
+    ("docs/USER-GUIDE.md", "the recording starts or stops at once", "the switch starts or stops no recording"),
+    ("docs/QA-CHECKLIST.md", "still x1 and", "B182: an error with the switch off now counts (x2), so the step would fail on correct code"),
+    ("docs/HELP-FAQ.md", "records what is needed to find a problem", "turning it on records nothing more of XayaUI's errors"),
+    ("docs/README-INGAME.md", "records what is needed to find a problem", "same; the source of the info pane line below"),
+    ("XayaUI_Options/InfoPaneData.lua", "records what is needed to find a problem", "the in-game info pane (built from the two docs above)"),
+]
+
+
+def advanced_debug_desc():
+    """The description of the Settings > Debugging > Advanced Debugging switch, as XayaUI_Options/Options.lua writes it."""
+    src = open(os.path.join(ROOT, "XayaUI_Options", "Options.lua"), encoding="utf-8").read()
+    m = re.search(r'advancedDebug\s*=\s*\{[^\n]*\n\s*desc\s*=\s*"((?:[^"\\]|\\.)*)"', src)
+    return m.group(1) if m else None
+
+
+def stale_text_checks(L):
+    res = []
+    desc = advanced_debug_desc()
+    res.append((GAP + "G1 the Advanced Debugging switch's description (Settings > Debugging, XayaUI_Options/Options.lua) does not say"
+                " the switch records XayaUI's errors and warnings (SD-139: they are saved either way)",
+                desc is not None and not NOTHING_RECORDED.search(desc)
+                and not any(SAYS_RECORDS.search(x) and not SAYS_ALWAYS.search(x) for x in re.split(r"(?<=\.)\s+", desc)),
+                desc if desc is not None else "description not found"))
+    # the debug report with Advanced Debugging off, after the run above recorded two entries (the real XayaUI_Debug/DebugReport.lua,
+    # read into the same namespace, as the game would once the debug tools have loaded and the switch is then turned off)
+    src = open(os.path.join(ROOT, "XayaUI_Debug", "DebugReport.lua"), encoding="utf-8").read()
+    text = L.eval(r'''function(src)
+      local ns = rawget(_G, "XayaUI_NS")
+      if not ns then return "no namespace" end
+      local f, e = loadstring(src, "@Interface/AddOns/XayaUI_Debug/DebugReport.lua")
+      if not f then return "load failed: " .. tostring(e) end
+      local ok, err = pcall(f, "XayaUI_Debug", ns)
+      if not ok then return "run failed: " .. tostring(err) end
+      CueRulesDB.ui = CueRulesDB.ui or {}
+      local was = CueRulesDB.ui.advancedDebug
+      CueRulesDB.ui.advancedDebug = false
+      local ok2, t = pcall(ns.DebugReportText)
+      CueRulesDB.ui.advancedDebug = was
+      return ok2 and tostring(t) or ("report failed: " .. tostring(t))
+    end''')(src)
+    text = str(text)
+    shown = "XUI-E011" in text and "R11ER for the harness" in text
+    res.append(("G2 (control for G3) the debug report, Advanced Debugging off, shows the entries saved while it was off", shown, text[:200]))
+    bad = NOTHING_RECORDED.search(text)
+    res.append((GAP + "G3 the debug report with Advanced Debugging off (XayaUI_Debug/DebugReport.lua) does not say that nothing is recorded",
+                shown and not bad, bad.group(0) if bad else text[:200]))
+    for path, words, why in STALE_DOC_LINES:
+        found = []
+        for n, line in enumerate(open(os.path.join(ROOT, path), encoding="utf-8"), 1):
+            if words in line:
+                found.append("%s:%d" % (path, n))
+        res.append((GAP + "G4 %s no longer says \"%s\" (%s)" % (path, words, why), not found, ", ".join(found)))
+    res.extend(true_text_checks(desc, text))
+    return res
+
+
+def read(path):
+    return open(os.path.join(ROOT, path), encoding="utf-8").read()
+
+
+def section(src, start, end):
+    """The text of src from the line that starts with start up to (not including) the next line that starts with end."""
+    i = src.find(start)
+    if i < 0:
+        return ""
+    j = src.find(end, i + len(start))
+    return src[i:j if j > 0 else len(src)]
+
+
+def true_text_checks(desc, report):
+    """G5-G8: what she reads now says the true thing (positive checks; G1-G4 only say the false words are gone)."""
+    res = []
+    either = re.compile(r"\beither way\b|\bwhether or not\b", re.I)
+    res.append(("G5 the switch's description says errors and warnings are saved either way and still says what the switch does"
+                " (loads the debug tools from the next login or /reload; off by default)",
+                desc is not None and bool(re.search(r"errors and warnings are saved either way", desc or ""))
+                and "from your next login or /reload, loads the debug tools" in (desc or "") and "Off by default." in (desc or ""),
+                desc))
+    off_line = [l for l in str(report).split("\n") if l.startswith("Advanced Debugging is OFF")]
+    res.append(("G5 the debug report with Advanced Debugging off says errors and warnings are saved either way",
+                len(off_line) == 1 and "errors and warnings are saved either way" in off_line[0], off_line))
+    ug = read("docs/USER-GUIDE.md")
+    sec = section(ug, "### 12.14 ", "\n### ")
+    first = sec.split("\n\n", 2)[1] if sec.count("\n\n") >= 2 else ""
+    res.append(("G6 USER-GUIDE 12.14 says XayaUI saves its errors and warnings whether or not Advanced Debugging is on, and that with it"
+                " off they are still saved",
+                bool(re.search(r"saves its own errors and warnings by itself, whether or not Advanced Debugging is on", first))
+                and "Off: errors and warnings are still saved" in first, first[:300]))
+    found = section(sec, "**What is found on its own:**", "\n\n")
+    res.append(("G6 USER-GUIDE 12.14 lists every error or warning XayaUI prints in chat among what is found, and that ordinary and"
+                " private messages are never saved",
+                "every error or warning XayaUI prints in chat" in found and "never saved" in found, found[:300]))
+    rows = dict(re.findall(r"^\| (XUI-[EW]\d{3}) \| (.+?) \|$", sec, re.M))
+    missing = sorted(set(catalog()) - set(rows))
+    extra = sorted(set(rows) - set(catalog()))
+    res.append(("G6 USER-GUIDE 12.14's code table has one row for every code in ns.ERROR_CODES (%d codes) and no other" % len(catalog()),
+                not missing and not extra and len(catalog()) > 20, "missing %s, not in the catalog %s" % (missing, extra)))
+    for path, start in (("docs/HELP-FAQ.md", "### How do I report a problem?"), ("docs/README-INGAME.md", "- **Debugging.**")):
+        part = section(read(path), start, "\n### " if start.startswith("###") else "\n- **")
+        res.append(("G7 %s says XayaUI saves its errors and warnings whether or not Advanced Debugging is on" % path,
+                    bool(re.search(r"saves its (own )?errors and warnings", part)) and bool(either.search(part)), part[:240]))
+    pane = read("XayaUI_Options/InfoPaneData.lua")
+    faq_line = [l for l in read("docs/HELP-FAQ.md").splitlines() if l.startswith("- Turn on **Advanced Debugging**")]
+    ing_line = [l for l in read("docs/README-INGAME.md").splitlines() if l.startswith("- **Debugging.**")]
+    res.append(("G7 the in-game info pane holds the same two lines, word for word (it is built from those docs)",
+                len(faq_line) == 1 and len(ing_line) == 1 and faq_line[0][2:] in pane and ing_line[0][2:] in pane
+                and "saves its" in faq_line[0] and "saves its" in ing_line[0], (faq_line, ing_line)))
+    qa = [l for l in read("docs/QA-CHECKLIST.md").splitlines() if l.startswith("- [ ] **B182.**")]
+    b = qa[0] if len(qa) == 1 else ""
+    res.append(("G8 QA step B182 tests the fix: with the switch off the count goes to x2 and the report's OFF line says errors are saved"
+                " either way; an error from a session begun with it off is there (x3) after turning it on; no 'ticked (the default)'",
+                "now x2" in b and "errors and warnings are saved either way" in b and "Expect:** x3" in b
+                and "ticked (the default)" not in b, b[-400:]))
+    return res
+
+
 def main():
     folders = H.find_addons()
     enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
@@ -456,6 +600,8 @@ def main():
                     " keys (code, kind, msg, stack, first, last, n, ver, combat)", shape_ok))
     for name, ok, extra in static_checks():
         results.append((name + ("" if ok else "  [%s]" % extra), ok))
+    for name, ok, extra in stale_text_checks(L):
+        results.append((name + ("" if ok else "  [%s]" % (extra,)), ok))
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
     errs = [x for x in errs if MARK not in x]
     bad = 0

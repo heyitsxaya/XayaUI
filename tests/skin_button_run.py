@@ -40,9 +40,10 @@ function newButton()
   return b end
 ''')
 L.eval('function(src, ns) return load(src, "XayaUI/Core.lua + Skin.lua")("XayaUI", ns) end')(chunk, L.eval('(function() XayaUI_NS = {} return XayaUI_NS end)()'))
-fails = 0
+fails = checks = 0
 def check(n, c):
-    global fails
+    global fails, checks
+    checks += 1
     print(("PASS " if c else "FAIL ") + n); fails += 0 if c else 1
 L.execute("ns = XayaUI_NS; b = newButton(); p = newButton()")
 check("function exported", L.eval("type(ns.SkinPlainButton)") == "function")
@@ -61,4 +62,7 @@ L.execute("CueRulesDB.ui = { skinOff = true }; ns.SkinPlainButton(b, false)")
 check("skin off restores the Blizzard art", L.eval("b.regs[1].a == 1 and b.ht.a == 1 and b.xuiFlat.bg.shown == false"))
 L.execute("CueRulesDB.ui = nil; ns.SkinPlainButton(b, false)")
 check("skin back on hides it again", L.eval("b.regs[1].a == 0 and b.xuiFlat.bg.shown == true"))
-print("FAILS:", fails)
+# (round 11, SD-129 / SD-138 M1; test audit F4) the count line tests/run_all.py reads, and an exit code that says the same: before,
+# this test printed only "FAILS: N" and exited 0 whatever happened, so a run outside run_all hid its failures
+print("%d checks, %d failed" % (checks, fails))
+_sys.exit(1 if fails else 0)

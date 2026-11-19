@@ -34,7 +34,7 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - **Stat Calculator.** A panel beside the character window with your stats, gear and ability scaling. Bonus Features > Stat Calculator, or `/xui stats`. It loads the first time you open it. It closes when a fight starts and stays closed until you open it again.
 - **Calculator.** A small calculator window, and sums in chat: `/xui calc 23,249 / 3,472`. Bonus Features > Calculator (on unless you switch it off).
 - **Themes.** Colors and fonts for every XayaUI window. Settings > UI Options > Theme.
-- **Debugging.** Advanced Debugging (off by default) records what is needed to find a problem and loads the debug tools at the next login or /reload. While it is on, every login and /reload prints one chat line saying so. Settings > Debugging.
+- **Debugging.** Advanced Debugging (off by default) loads the debug tools at the next login or /reload and shows XayaUI's own Lua errors with its messages. XayaUI saves its own errors and warnings either way (never its ordinary messages); `/xui bug` lists them. While it is on, every login and /reload prints one chat line saying so. Settings > Debugging.
 
 ## Slash commands
 
@@ -42,7 +42,7 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - `/xui help` lists every command you can use.
 - `/xui unlock` opens the settings window with the mover on, so you can drag displays and groups. The mover works only while the settings window is open: closing the window closes it. Moves you have not saved are kept, and the next time you open the window one question asks you to save them, discard them or keep editing.
 - `/xui disable` turns every rule off at once, in combat too; `/xui enable` turns them back on (after combat, if you are in a fight). A /reload also turns them back on.
-- `/xui stats` opens the Stat Calculator, while it is on (with XayaUI Bonus Features).
+- `/xui stats` opens the Stat Calculator, while it is on (with XayaUI Bonus Features). If it cannot load, it says why each time you type it.
 - `/xui calc` opens the Calculator; `/xui calc` and a sum answers in chat. `/calc` works too, unless another addon uses it.
 - A command of a part that is switched off prints one line saying where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features."
 - `/xui debug` lists the diagnostic commands.
@@ -52,7 +52,7 @@ These are debug tools: they need Advanced Debugging on and a /reload. With it of
 - `/xui console` opens the XayaUI console: its messages, and a line to type commands in.
 - `/xui status` prints every rule's answer right now, and why.
 - `/xui auras` prints aura IDs, and whether XayaUI can follow them in combat.
-- `/xui bug` makes a bug report.
+- `/xui bug` makes a bug report, with XayaUI's saved errors and warnings.
 - `/xuiengine` shows what the combat engine draws.
 - `/xui debug perf on`, `/xui debug perf` and `/xui debug perf off` measure the combat engine: how often it re-checks, its CPU and memory.
 

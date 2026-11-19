@@ -506,9 +506,37 @@ def v33(data, rep):
     return pct
 
 
+def memory_report_fold(data, rep):
+    """(round 11, SD-129 "Yes, in round 11 (Recommended)"; test audit section 2) the rule-count checks tests/memory_report_run.py made,
+    now here (its moved-files and moved-functions checks are in tests/fix_r7_relocate_run.py L1; its report is the tool
+    tests/memory_report.py, outside the suite): (C4) the profile session A made has about 300 rules, at least 250 as memory_report held
+    it; (C1) "no rules loaded": the session played from what session A saved loaded its rules. The gate's own integrity check holds the
+    second at 290 or more; this one keeps memory_report's exact terms, so a change to either is seen. Session A's Lua errors, which
+    memory_report printed without failing, now fail.
+    NOT memory_report's realistic case on its own terms (round 11 repair 1, review finding): this is the gate's profile, the ~300-rule list
+    alone. memory_report's realistic profile was that list plus a long-used install's extras (tests/memory_report.py EXTRAS_LUA: backups,
+    the old place the settings move kept, Recycle Bin, drafts, a full error log, talent scan, learned data); that case, with C1 and C2 on
+    it, is tests/fix_r7_relocate_run.py L1 (one shared session A, memory_report.realistic_session_a). The extras stay out of the gate's
+    scenario on purpose: they would change its stamp and its calibrated caps (V33) for checks that need no frame timing. These are extra
+    checks on the gate's own profile, not the place C1 moved to."""
+    prof = data.get("profile") or {}
+    made = int(prof.get("entries") or 0)
+    if made < 250:
+        rep.fail("tests/gate_common.py (PROFILE_LUA, session A)", "[memory_report C4] the realistic profile has %d rules, expected about 300 "
+                 "(at least 250)" % made, "rules made by session A: %d" % made, "")
+    if int(data.get("rules") or 0) <= 0:
+        rep.fail("tests/gate_common.py (the scenario)", "[memory_report C1] no rules loaded: the session played from what session A saved "
+                 "has no rules", "rules: %s" % data.get("rules"), "")
+    errs = prof.get("errorsA") or []
+    if errs:
+        rep.fail("tests/gate_common.py (PROFILE_LUA, session A)", "[memory_report] session A (the realistic profile) raised a Lua error",
+                 "; ".join(str(e) for e in errs[:3])[:400], "")
+
+
 def judge(data, rep):
     """Every check of this gate on one variant's result."""
     GC.integrity(data, rep)
+    memory_report_fold(data, rep)
     st = data.get("stats") or {}
     frames = data.get("frames") or {}
     fps = data.get("fps") or 30

@@ -173,6 +173,14 @@ plays the sound itself instead and follows every setting of the rule." The other
 13 new: the Calculator's page, `bonus.statcalc` and its note, the `minimap.entries.calc` rows) are round 10's already recorded entries.
 The golden also holds, from now on, a per-node record ("nodes": one 10-digit hash per dump line, in dump order). A failed tab hash then
 names the nodes behind it ("now differs", "new", "gone"), and a check keeps that record in step with the tab hashes.
+Updated on 2026-11-19 (bundle 1 round 11a, error record repair 2; SD-139: errors and warnings are saved whether or not Advanced
+Debugging is on): only the "set" and "settings" entries of both variants, all-on 4205a4a9b040d813 -> d70722819b0f933f (235) and
+94a60d23311175f0 -> 20b4b7ad4c87cebe (234), off-XayaUI_Bonus 14ad1ae55fa6be62 -> eef50c818c99a7b9 (233) and b53fed29e302ddee ->
+73192a600e72024c (232), one node each (index 2). `--dump` before (the tree with the pre-repair XayaUI_Options/Options.lua) and after differ
+in exactly 4 lines, `set.debug.advancedDebug` and `settings.debug.advancedDebug` in each variant: the switch's hover text, old "Records
+XayaUI's own errors and warnings for the debug report (/xui report) and, from your next login or /reload, loads the debug tools: ...
+Off by default.", new "Shows XayaUI's own Lua errors where its messages go and, from your next login or /reload, loads the debug tools:
+... (errors and warnings are saved either way). Off by default." (tests/fix_r11_error_record_run.py G1 / G5).
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import difflib, hashlib, json, os, re, sys

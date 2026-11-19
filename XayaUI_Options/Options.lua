@@ -590,7 +590,7 @@ local function BuildAddonSettings()
         debug = { type = "group", name = "Debugging", order = 2, args = {
             debugHeader = { type = "header", name = "Debugging", order = 10 },
             advancedDebug = { type = "toggle", name = "Advanced Debugging (recommended)", order = 11, width = "full",
-                desc = "Records XayaUI's own errors and warnings for the debug report (/xui report) and, from your next login or /reload, loads the debug tools: the console window, /xui bug, /xui report and /xui status. Off by default.",
+                desc = "Shows XayaUI's own Lua errors where its messages go and, from your next login or /reload, loads the debug tools: the console window, /xui bug, /xui report and /xui status (errors and warnings are saved either way). Off by default.",
                 get = function() return PlatS.ui and PlatS.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)

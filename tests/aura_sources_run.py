@@ -27,9 +27,10 @@ CueRulesDB = {}
 def load(f):
     L.eval('function(src,n) return (load(src,n)) end')(open(os.path.join(ROOT, f)).read(), f)("XayaUI", L.eval("XayaUI_NS"))
 load("XayaUI/Modules.lua")
-fails = 0
+fails = checks = 0
 def check(n, c):
-    global fails
+    global fails, checks
+    checks += 1
     print(("PASS " if c else "FAIL ") + n); fails += 0 if c else 1
 # (bundle 1 round 7, REQUEST-LOG A23 SD-58) the file is XayaUI Options' (the rule editor's spell list) and builds nothing while XayaUI
 # Rules is off: with no "rules" service it stops at once. (The settings window's own code has loaded: ns.OptionsApi, Options.lua.)
@@ -80,4 +81,7 @@ L.execute("inCombat = true; local p = AS.state.pos; before = p; frameFn({SetScri
 check("paused in combat", L.eval("AS.state.pos") == L.eval("before"))
 L.execute("secret[9101]=true; tips.item[2] = {lines={{type=19,tooltipType=1,tooltipID=9101}}}")
 check("secret aura id skipped by scan", L.eval("AS.EmbeddedAuras({lines={{type=19,tooltipType=1,tooltipID=9101}}})[1]") is None)
-print("FAILS:", fails)
+# (round 11, SD-129 / SD-138 M1; test audit F4) the count line tests/run_all.py reads, and an exit code that says the same: before,
+# this test printed only "FAILS: N" and exited 0 whatever happened, so a run outside run_all hid its failures
+print("%d checks, %d failed" % (checks, fails))
+_sys.exit(1 if fails else 0)

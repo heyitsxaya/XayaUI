@@ -221,6 +221,129 @@ def session(mode, saved):
     return out
 
 
+# (round 11, SD-129 "Yes, in round 11 (Recommended)": tests/memory_report_run.py folded in; test audit section 2) the pass/fail checks
+# memory_report made, here in L1 on the same terms it made them: every addon folder switched on and nothing saved (a fresh install), and
+# memory_report's realistic profile, a long-used install: the V27 gate's ~300-rule profile (tests/gate_common.py PROFILE_LUA) plus what
+# such an install keeps (tests/memory_report.py EXTRAS_LUA: 3 backups, the old place the settings move kept, 20 Recycle Bin rules, 30
+# drafts, a 50-entry error log, Dev Assist's record, the last bug report, a talent scan of every class, learned data), made by the one
+# shared session A (memory_report.realistic_session_a), with XayaUI Options then loaded as /xui loads it (memory_report's "realistic"
+# measurement). Its report itself is the tool tests/memory_report.py, outside the suite.
+# (round 11 repair 1) the first fold played the gate's profile alone, without the extras, so a fault that shows only on a long-used
+# install (for example: rules not loaded when drafts are saved) passed here although memory_report failed it ("FAIL realistic: no rules
+# loaded"). The extras are back, and L1 checks that each one reached the login, so the condition cannot silently go missing again.
+FOLD_LUA = r'''
+return function(W, L, NAMES, MOVED, profile, EXP)
+local R = {}
+local function check(name, ok, extra) R[#R + 1] = { name .. ((ok or extra == nil) and "" or ("  [" .. tostring(extra) .. "]")), ok and true or false } end
+local okAll, errAll = pcall(function()
+L.startup()
+W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 20)
+local ns = rawget(_G, "XayaUI_NS")
+local function movedRulesRead()
+  local n, l = 0, {}
+  for _, c in ipairs(READS) do
+    local hit = c:find("^@Interface/AddOns/XayaUI_Rules/Editor/") ~= nil
+    for _, f in ipairs(MOVED) do if c == "@Interface/AddOns/XayaUI_Rules/" .. f then hit = true end end
+    if hit then n = n + 1; l[#l + 1] = c:gsub("^@Interface/AddOns/", "") end
+  end
+  return n, table.concat(l, ",")
+end
+local function namesThere() local t = {}; for _, n in ipairs(NAMES) do if ns and rawget(ns, n) ~= nil then t[#t + 1] = n end end return t end
+local tag = profile and "the realistic ~300-rule profile" or "a fresh install, every addon folder switched on"
+local n1, l1 = movedRulesRead()
+check("L1 [memory_report] " .. tag .. ": at login no file XayaUI Rules gave to XayaUI Options is read", n1 == 0, l1)
+local there = namesThere()
+check("L1 [memory_report] " .. tag .. ": at login none of the functions only the moved code defines exists", #there == 0, table.concat(there, ","))
+if profile then
+  -- the long-used install's saved extras are there at login (memory_report's realistic case is that install, not the rule list alone)
+  local CoreS = ns.Settings and ns.Settings("core") or {}
+  local db = rawget(_G, "CueRulesDB") or {}
+  local got = {
+    drafts = #(CoreS.drafts or {}),
+    backups = ns.Backups and #(ns.Backups() or {}) or 0,
+    errors = #(rawget(db, "errorLog") or {}),
+    recycled = ns.RecycleDB and #((ns.RecycleDB() or {}).items or {}) or 0,
+    talentClasses = #((rawget(_G, "XayaUITalentDB") or {}).classes or {}),
+  }
+  local miss = {}
+  for _, k in ipairs({ "drafts", "backups", "errors", "recycled", "talentClasses" }) do
+    if got[k] ~= EXP[k] or (EXP[k] or 0) <= 0 then miss[#miss + 1] = k .. " " .. tostring(got[k]) .. " (session A made " .. tostring(EXP[k]) .. ")" end
+  end
+  check("L1 [memory_report] the long-used install's saved extras are there at login (drafts " .. got.drafts .. ", backups " .. got.backups ..
+    ", error log " .. got.errors .. ", Recycle Bin " .. got.recycled .. ", talent scan " .. got.talentClasses .. " classes)", #miss == 0, table.concat(miss, "; "))
+  local n = 0
+  for _ in ipairs(ns and ns.rules or {}) do n = n + 1 end
+  check("L1 [memory_report] the realistic profile's rules are loaded at login (" .. n .. " rules; memory_report: 'no rules loaded')", n > 0, n)
+  -- XayaUI Options, as /xui loads it (memory_report loaded it the same way: ns.LoadOptions, then the window opened and closed)
+  local ok = ns.LoadOptions and ns.LoadOptions()
+  pcall(ns.ToggleUI); W.tick(0.05, 10); pcall(ns.ToggleUI); W.tick(0.1, 20)
+  check("L1 [memory_report] ... XayaUI Options loaded as /xui loads it", ok and C_AddOns.IsAddOnLoaded("XayaUI_Options") and true or false)
+  local n2, l2 = movedRulesRead()
+  check("L1 [memory_report] ... and with XayaUI Options loaded still no file XayaUI Rules gave to it is read from XayaUI Rules", n2 == 0, l2)
+end
+end)
+if not okAll then check("the session ran to its end", false, errAll) end
+return R
+end
+'''
+
+
+def fold_session(saved_source, extras=None):
+    """One login for the memory_report checks: saved_source None = a fresh install with every addon folder switched on (memory_report's
+    moved_names_at_login); else memory_report's realistic profile (the long-used install) as its session A saved it, extras = what that
+    session A made ({drafts, backups, errors, recycled, talentClasses}), each checked at login."""
+    folders = H.find_addons()
+    L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
+    L.eval("function(src) return loadstring(src)()() end")(PRE)
+    sv = H.savedvars(L)
+    api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
+    world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
+    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders}})
+    opts["saved"] = sv.Load(saved_source) if saved_source else L.table()
+    loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world, opts)
+    res = L.eval("function(src, W, Ld, n, f, p, e) return loadstring(src)()(W, Ld, n, f, p, e) end")(
+        FOLD_LUA, world, loader, H.to_lua(L, MOVED_NAMES), H.to_lua(L, list(MOVED_RULES_FILES)), saved_source is not None,
+        H.to_lua(L, extras or {}))
+    out = [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]
+    errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
+    out.append(("L1 [memory_report] the login (%s) raised no Lua error" % ("realistic profile" if saved_source else "fresh install"),
+                not errs) if not errs else ("L1 [memory_report] the login raised no Lua error  [%s]" % str(errs[0])[:300], False))
+    return out
+
+
+# what memory_report's EXTRAS_LUA makes in session A (tests/memory_report.py: 2 backups of hers plus the settings move's, 20 deleted rules,
+# 30 drafts, the error log at its cap of 50, a talent scan of 13 classes); the fold checks them exactly, so the long-used install is real
+EXTRAS_EXPECTED = {"backups": 3, "recycled": 20, "drafts": 30, "errors": 50, "talentClasses": 13}
+# the 50 error-log entries are seeded on purpose (EXTRAS_LUA step 5: ns.RecordError for a XayaUI_Rules file, XUI-E001); the suite's
+# honest-result guard (tests/run_all.py, SD-138 M1) reads every stand-in's CueRulesDB.errorLog, so the test declares them, exactly
+SEEDED_ERRORS = ("XUI-E001", 50)
+
+
+def memory_report_checks():
+    """memory_report's four pass/fail checks (each named where it stood there): (C3) moved functions after login, fresh install;
+    (C2) moved XayaUI Rules files read at login, fresh and realistic; (C1) the realistic profile's rules loaded; (C4) the profile session A
+    made has about 300 rules (at least 250, as memory_report held it; the gate holds its own profile at 290: gate_common.py integrity).
+    The realistic profile is memory_report's own (memory_report.realistic_session_a: the gate's rule list plus EXTRAS_LUA)."""
+    sys.path.insert(0, HERE)
+    out = fold_session(None)
+    try:
+        import memory_report as MR   # noqa: E402  (the shared session A: the gate's ~300-rule profile plus a long-used install's extras)
+    except ImportError as e:         # (SD-138 M1: a missing input is said, and fails)
+        print("MISSING INPUT: tests/memory_report.py (memory_report's realistic session A): %s" % e)
+        return out + [("L1 [memory_report] the realistic profile could be made (tests/memory_report.py importable)", False)]
+    src, info, errs_a = MR.build_realistic_saved()
+    n = int(info.get("rules") or 0)
+    made = {k: int((info.get("extras") or {}).get(k) or 0) for k in EXTRAS_EXPECTED}
+    out.append(("L1 [memory_report] the realistic profile session A made has about 300 rules (at least 250: %d)" % n, n >= 250))
+    wrong = ["%s %d (expected %d)" % (k, made[k], v) for k, v in sorted(EXTRAS_EXPECTED.items()) if made[k] != v]
+    out.append(("L1 [memory_report] session A made the long-used install's extras: " + ", ".join(
+        "%s %d" % (k, v) for k, v in sorted(EXTRAS_EXPECTED.items())), not wrong) if not wrong else
+        ("L1 [memory_report] session A made the long-used install's extras  [%s]" % "; ".join(wrong), False))
+    out.append(("L1 [memory_report] session A (the realistic profile) raised no Lua error", not errs_a) if not errs_a else
+               ("L1 [memory_report] session A raised no Lua error  [%s]" % str(errs_a[0])[:300], False))
+    return out + fold_session(src, EXTRAS_EXPECTED)
+
+
 def static_checks():
     """S: no use, in XayaUI core or XayaUI Rules, of an ns name only XayaUI Options defines (comments stripped), and no use there of
     the moved functions by name."""
@@ -252,11 +375,14 @@ def main():
     results = []
     for mode in ("on", "combatfirst", "rulesoff"):
         results += session(mode, saved if mode != "rulesoff" else {})
+    results += memory_report_checks()
     results += [(n, ok) if len(t) == 2 else (n + ("" if ok else "  [" + str(t[2]) + "]"), ok) for t in static_checks() for n, ok in [t[:2]]]
     bad = 0
     for name, ok in results:
         print(("PASS " if ok else "FAIL ") + name)
         bad += 0 if ok else 1
+    # (round 11, SD-138 M1) the error-log entries memory_report's session A seeds on purpose (EXTRAS_LUA step 5), declared exactly
+    print("EXPECT_ERRORS %s %d" % SEEDED_ERRORS)
     print("%d checks, %d failed" % (len(results), bad))
     return 1 if bad else 0
 

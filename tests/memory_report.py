@@ -27,11 +27,28 @@ later (Recommended)": Lua memory after a full collection at the end of each gate
   (c) every saved variable and its sub-tables, as loaded (exact, collectgarbage around loading each part from its saved text);
   (d) the 20 largest holders after login;
   plus per-addon totals and the cost of loading XayaUI Options and opening / closing the window once.
-FAIL (bundle 1 round 7, REQUEST-LOG A23 SD-57 / SD-58; V34): a part moved into XayaUI Options (the rule editor, Combat Tracking Setup,
-the talent scan, the editor's spell and texture lists, the displays' right-click menu, the Minimap Button page) is still read at login
-(XayaUI_Rules/Editor/, Combat/AuraSetup.lua, AuraSources.lua or TextureList.lua among the files XayaUI Rules has read), or a function
-only that code defines exists after login (XayaUI Options installed, not loaded).
-Run: python3 tests/memory_report_run.py [--json PATH]   (Lua 5.1 via lupa; about a minute)"""
+A TOOL, NOT A TEST (round 11, SD-129, her answer "Yes, in round 11 (Recommended)"; test audit 2026-11-17 section 2: the one test that
+could be folded without losing anything). This file was tests/memory_report_run.py; tests/run_all.py runs only *_run.py, so the report
+is no longer part of the suite. Its four pass/fail checks moved, each on the same terms:
+  C3 a function only the parts moved into XayaUI Options define exists after login (fresh install, every folder on)
+       -> tests/fix_r7_relocate_run.py L1 "[memory_report] a fresh install ...: none of the functions only the moved code defines exists"
+  C2 a part moved into XayaUI Options (XayaUI_Rules/Editor/, Combat/AuraSetup.lua, AuraSources.lua, TextureList.lua) is read at login,
+     fresh install and realistic profile with XayaUI Options loaded as /xui loads it
+       -> tests/fix_r7_relocate_run.py L1 "[memory_report] ... no file XayaUI Rules gave to XayaUI Options is read" (fresh; realistic,
+          before and after XayaUI Options loads)
+  C1 the realistic profile: no rules loaded
+       -> tests/fix_r7_relocate_run.py L1 "[memory_report] the realistic profile's rules are loaded at login"
+          (and, on the gate's own profile without the extras, tests/gate_performance_run.py memory_report_fold "[memory_report C1]")
+  C4 the realistic profile session A made has fewer than 250 rules ("expected about 300")
+       -> tests/fix_r7_relocate_run.py L1 "[memory_report] the realistic profile session A made has about 300 rules"
+          (and, on the gate's profile, tests/gate_performance_run.py memory_report_fold "[memory_report C4]")
+  (and the Lua errors it printed without failing now FAIL there: session A's in both, each login's in fix_r7_relocate L1)
+  "realistic" in fix_r7_relocate L1 is this report's own realistic profile, made by the one shared session A below
+  (realistic_session_a: the gate's rule list plus EXTRAS_LUA, the long-used install), and L1 checks that each extra was made and reached
+  the login (round 11 repair 1: the first fold played the gate's rule list alone, so a fault seen only on a long-used install, such as
+  rules not loaded when drafts are saved, passed there while this report failed it).
+The lines below still print what they find (FAIL ... / FAILS: N) for whoever runs the report by hand.
+Run: python3 tests/memory_report.py [--json PATH] [--saved FOLDER]   (Lua 5.1 via lupa; about a minute)"""
 import json, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -178,6 +195,7 @@ Ld.logout = function(...)
     classes[cid] = c
   end
   XayaUITalentDB = { built = "2026-11-08 21:40", build = 120100, classes = classes, errors = {} }
+  made.talentClasses = #classes
   -- 9. learned data (Conditions.lua / Timing.lua / ClassLearn.lua): aura durations, stacks, cooldowns, proc glows, 4 specs learned
   local dur, stk, cd, glow = {}, {}, {}, {}
   for i = 1, 200 do dur[300000 + i] = 6 + i % 30 end
@@ -729,16 +747,38 @@ def py(v):
     return H.lua_to_py(v) if H.lupa_type(v) == "table" else v
 
 
-def build_realistic():
-    """Session A: the ~300-entry rule list (tests/gate_common.py) plus EXTRAS_LUA, saved by a logout; returned as parts (SPLIT_LUA)."""
+def realistic_session_a():
+    """Session A of the realistic profile, the one place it is made: the ~300-entry rule list (tests/gate_common.py PROFILE_LUA) plus
+    EXTRAS_LUA (what a long-used install keeps), saved by a logout. Returns (L, sv, saved, info, errors): the Lua state, its savedvars
+    reader, the saved data (Lua table, per addon), {rules, groups, kinds, extras} and session A's Lua errors.
+    Shared (round 11 repair, SD-129 fold): this report reads it as parts (build_realistic); tests/fix_r7_relocate_run.py L1 logs in from
+    the same saved data (build_realistic_saved), so the fold's realistic checks run on the same long-used install this report measures."""
     L = lua()
     world, loader, game, sv = G._world(L)
     L.eval("function(src) return loadstring(src)() end")(EXTRAS_LUA)(world, loader)
     out, n, made, nf = L.eval("function(src, W, Ld, G) return loadstring(src)()(W, Ld, G) end")(G.PROFILE_LUA, world, loader, game)
     errors = [world.errors[i] for i in range(1, len(world.errors) + 1)]
+    extras = py(rawget_global(L, "EXTRAS_MADE")) or {}
+    return L, sv, out, {"rules": n, "groups": nf, "kinds": py(made), "extras": extras}, errors
+
+
+def rawget_global(L, name):
+    """A global of the stand-in read with rawget (world.lua reports every unknown global it is asked for)."""
+    return L.eval("function(n) return rawget(_G, n) end")(name)
+
+
+def build_realistic():
+    """Session A (realistic_session_a), returned as parts (SPLIT_LUA) for the measurements."""
+    L, sv, out, info, errors = realistic_session_a()
     spec = L.eval("function(src, o) return loadstring(src)()(o) end")(SPLIT_LUA, out)
-    extras = py(L.globals().EXTRAS_MADE)
-    return to_spec(spec), {"rules": n, "groups": nf, "kinds": py(made), "extras": extras}, errors
+    return to_spec(spec), info, errors
+
+
+def build_realistic_saved():
+    """Session A (realistic_session_a) as the saved text a next login loads (the harness's savedvars layout, as
+    gate_common.build_profile returns it). Returns (saved source, info, session A's Lua errors)."""
+    L, sv, out, info, errors = realistic_session_a()
+    return sv.Serialize(out), info, errors
 
 
 def to_spec(spec):

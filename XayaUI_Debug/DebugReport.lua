@@ -58,7 +58,7 @@ function ns.DebugReportText(d, expanded)
     local entries = type(d.entries) == "table" and d.entries or {}
     local ne, nw = 0, 0
     for _, e in ipairs(entries) do if e.kind == "warning" then nw = nw + 1 else ne = ne + 1 end end
-    if d.on == false then add("Advanced Debugging is OFF: nothing new is recorded (Settings > Debugging).") end
+    if d.on == false then add("Advanced Debugging is OFF (Settings > Debugging); errors and warnings are saved either way.") end   -- (SD-139)
     add(("%d entr%s: %d error%s, %d warning%s (the newest %d are kept)"):format(#entries, #entries == 1 and "y" or "ies", ne,
         ne == 1 and "" or "s", nw, nw == 1 and "" or "s", DR.MAX_ENTRIES))
     if #entries == 0 then add(""); add("No errors or warnings recorded.") end

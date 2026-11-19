@@ -87,6 +87,9 @@ The game restricts chat actions to other players in several kinds of content, an
 ### Why does /xui stats (or /xui calc) say it is off?
 Each part's commands work only while that part is switched on. Typed while it is off, they run nothing and print one line naming the part and where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features." Tick the part's box in the settings window (**Bonus Features > Stat Calculator** or **Bonus Features > Calculator**); it works at once, with no reload. There is no `/xui stats on` any more.
 
+### /xui stats keeps saying the Stat Calculator could not load.
+It says why every time you try: it is switched off in the game's AddOns list, its folder is missing, or its files stopped with a Lua error. Fix that, then type `/reload`. A Lua error is saved for the bug report (see "Does XayaUI save its error messages?" below).
+
 ### The Stat Calculator closed when a fight started and did not come back.
 That is on purpose: it never stays open in a fight and does not reopen by itself afterwards. Open it again from the **Stat Calculator** row in the minimap button's list, with `/xui stats`, or by opening the character window again. It also loads only the first time you open it, not at login.
 
@@ -113,8 +116,11 @@ Type `/xui disable`. It works in combat too: every rule stops checking, and thei
 ### Where are XayaUI's messages?
 In the main chat window, the XayaUI console window (`/xui console`), or both: choose under Settings > Debugging, "XayaUI's messages". The console window is one of the debug tools: while they are not loaded (Advanced Debugging was off at your last login or /reload), every message goes to the chat window. If you turn Advanced Debugging off during play, the tools stay loaded and your choice still applies until the next /reload.
 
+### Does XayaUI save its error messages?
+Yes. Every error or warning XayaUI prints in chat is also saved, with a code, whether or not Advanced Debugging is on. Ordinary messages are not saved. To see them, turn on Advanced Debugging (Settings > Debugging), type `/reload`, then type `/xui bug`.
+
 ### How do I report a problem?
-- Turn on **Advanced Debugging** (Settings > Debugging; recommended, off by default), then type `/reload`. It records what is needed to find a problem, so you do not have to remember a command, and it loads the bug report and the debug report.
+- Turn on **Advanced Debugging** (Settings > Debugging; recommended, off by default), then type `/reload`. It loads the bug report and the debug report. XayaUI saves its own errors and warnings by itself whether or not it is on, so you do not have to remember a command, and errors from before you turned it on are kept too.
 - Type `/reload` (or log out): the game writes its files only then.
 - Send `XayaUI.lua` from `World of Warcraft\_retail_\WTF\Account\<your account folder>\SavedVariables\`. Settings > Debugging shows the exact path and what to send.
 - `/xui bug` makes a bug report; `/xui report` shows XayaUI's errors with their codes, ready for a screenshot.

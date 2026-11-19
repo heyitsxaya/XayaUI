@@ -25,9 +25,9 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
-## 2026-11-16 — Rules Fix Bundle 1
+## 2026-11-18 — Rules Fix Bundle 1
 
-### XayaUI 0.6.87
+### XayaUI 0.6.88
 
 **Install (read this first)**
 - Replace the XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders as whole folders, and add the new XayaUI_Debug folder next to them. The rule editor moved from XayaUI_Rules to XayaUI_Options.
@@ -48,6 +48,9 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Advanced Debugging**
 - Advanced Debugging is now off by default. If it was on, it stays on.
 - While it is on, every login and /reload prints one chat line: "XayaUI: Advanced Debugging is on. Turn it off in /xui > Settings > Debugging."
+- XayaUI now saves every error and warning it prints in chat, with a code, whether or not Advanced Debugging is on. Its own Lua errors are saved too. Ordinary messages are never saved.
+- To see what was saved, turn on Advanced Debugging, type /reload, then type /xui bug or /xui report. Errors saved while it was off are there too.
+  *Developers' notes: Not yet tested in game (QA B439). The game writes saved data only at /reload, logout or a clean exit, so a game crash loses that session's entries. At most 50 are kept, newest first.*
 
 **Keyboard and mouse**
 - Fixed an issue where a XayaUI window first opened in combat could hold every key until combat ended, so the screenshot key, movement and abilities did not reach the game.
@@ -75,7 +78,11 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Timers in XayaUI, XayaUI Options and XayaUI Rules no longer make a new function each time they are set, so they leave less for the game to clean up.
   *Developers' notes: Not yet tested in game (QA B423, B424).*
 
-### Options 0.6.110
+### Options 0.6.111
+
+**Settings window**
+- Errors the settings window catches and prints in chat (a page that could not be drawn, an export that failed) are now also saved for the bug report, with a code.
+- The Advanced Debugging switch's hover text now says that errors and warnings are saved whether or not it is on.
 
 **Rule editor**
 - The rule editor is now part of XayaUI Options, so its code is read only when the settings window first opens. It works as before.
@@ -100,7 +107,10 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Recycle Bin**
 - Fixed an issue where the Recycle Bin page said deleted items are checked every 30 minutes. They are checked when you log in or out and when the page lists them.
 
-### Rules 0.7.2
+### Rules 0.7.3
+
+**Bug report**
+- Errors and warnings XayaUI Rules prints in chat (a rule or engine step that failed, a damaged backup, a glow action without its library) are now also saved for the bug report, with a code.
 
 **Combat engine**
 - The engine's speed guard is removed: the engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the game's CPU meter reads high.
@@ -136,7 +146,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Older XayaUI versions cannot read the new backups.
   *Developers' notes: Not yet tested in game (QA B408).*
 
-### Bonus Features 0.6.47
+### Bonus Features 0.6.48
 
 **Install (read this first)**
 - Replace both the XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders.
@@ -156,8 +166,12 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Opening the settings window no longer loads it. Until you have opened it once in a session, its settings page shows its tick box and one line; its options appear after the first open.
 - Closing the panel now lets go of what it worked out.
 - /xui stats status now says why when the Stat Calculator could not load (for example, when it is switched off in the AddOns list).
+- While the Stat Calculator cannot load, /xui stats now says why every time you type it, not only the first time.
+- If the Stat Calculator's files stop with a Lua error while loading, /xui stats now says so and its minimap row goes away until your next /reload. Known issues, not fixed yet: for some of these errors, opening the character window can still show a Lua error; and if another addon stops other addons from seeing Lua errors, XayaUI may miss some of these errors.
+- /xui stats followed by a word it does not know now prints its help line. Before, it opened or closed the panel.
+- The AddOns list now describes XayaUI Bonus Features and its Stat Calculator correctly: the Stat Calculator loads the first time you open it, never at login.
 - Fixed an issue where the panel's close button sat 2 pixels outside the panel.
-  *Developers' notes: Not yet tested in game (QA B436; docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). In the test stand-in, logging in with it on now uses 602.86 KB less Lua memory (8,326.61 - 7,723.75), and once it has been opened 1,684.57 KB stays until /reload (9,408.32 - 7,723.75).*
+  *Developers' notes: Not yet tested in game (QA B436, B440, B441; docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). In the test stand-in, logging in with it on now uses 602.86 KB less Lua memory (8,326.61 - 7,723.75), and once it has been opened 1,684.57 KB stays until /reload (9,408.32 - 7,723.75).*
 
 ## 2026-11-12 — Stat Calculator
 

@@ -2,8 +2,8 @@
 ## Title: XayaUI Bonus Features
 ## Notes: XayaUI extras: the Calculator (/xui calc) and the switch for the Stat Calculator (Bonus Features, /xui stats, the XayaUI minimap button's list). The Stat Calculator itself loads the first time you open it. Needs XayaUI.
 ## Author: Xaya
-## Version: 0.6.47
-## X-Date: 2026-11-16
+## Version: 0.6.48
+## X-Date: 2026-11-18
 ## Dependencies: XayaUI
 ## SavedVariables: XayaUIBonusDB
 ## Group: XayaUI
