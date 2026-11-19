@@ -70,6 +70,18 @@ check("off: a message goes to chat, as before", E("#CHAT == 1 and CHAT[1]:find('
 check("off: nothing goes to the console window, nothing is recorded", E("#SINK == 0 and NOREC()"))
 L.execute("NS.Log('a log line')")
 check("off: console lines are not recorded either", E("NOREC()"))
+# (round 11, SD-139 "Always save errors (Recommended)") with Advanced Debugging off a XayaUI Lua error and an error printed through the
+# shared helper are kept in the coded record (CueRulesDB.errorLog) all the same; chat shows only what it showed before (the helper's line,
+# never the Lua error); ordinary and private messages are never kept. The record is emptied again so section 4 starts as before.
+L.execute("RESET(); CueRulesDB.errorLog = {}; HANDLER('Interface/AddOns/XayaUI_Rules/Engine.lua:3: off boom')")
+check("off (SD-139): a XayaUI Lua error is still recorded (XUI-E001), and nothing of it is shown in chat or the console window",
+      E("#CueRulesDB.errorLog == 1 and CueRulesDB.errorLog[1].code == 'XUI-E001' and CueRulesDB.errorLog[1].msg:find('off boom', 1, true) ~= nil and #CHAT == 0 and #SINK == 0"))
+L.execute("RESET(); NS.PrintError('XUI-E011', 'engine step error (the engine keeps running): off step'); NS.Print('an ordinary error-free line'); NS.PrintPrivate('Someone-Realm: an error')")
+check("off (SD-139): an error printed through ns.PrintError is shown in chat as before and recorded (XUI-E011); the ordinary and the private line are not",
+      E("#CHAT == 3 and CHAT[1] == '|cff33ccffXayaUI|r: engine step error (the engine keeps running): off step' and #CueRulesDB.errorLog == 2 "
+        "and CueRulesDB.errorLog[1].code == 'XUI-E011' and CueRulesDB.errorLog[1].msg == 'engine step error (the engine keeps running): off step'"),
+      E("table.concat(CHAT, ' / ')"))
+L.execute("CueRulesDB.errorLog = {}")
 
 # 2. Advanced Debugging on: its own frame
 L.execute("UI().advancedDebug = true; NS.DebugSettingsChanged(); RESET(); NS.Print('engine says hi')")

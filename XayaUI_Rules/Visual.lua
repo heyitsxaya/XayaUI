@@ -3158,8 +3158,8 @@ function GA.RefreshAllPass()
             if ok then ok, err = pcall(ns.SetVisualShown, r, ns.runtime and ns.runtime[r] and ns.runtime[r].visualWanted) end
             if not ok and not refreshErrSeen[r] then
                 refreshErrSeen[r] = true
-                if ns.Print then ns.Print("display of '" .. tostring(r.name) .. "' could not be refreshed: " .. tostring(err)) end
-                if ns.CaptureError then pcall(ns.CaptureError, "XayaUI display refresh: " .. tostring(err), nil, "XUI-E012") end
+                if ns.PrintError then ns.PrintError("XUI-E012", "display of '" .. tostring(r.name) .. "' could not be refreshed: " .. tostring(err),
+                    "XayaUI display refresh: " .. tostring(err)) end
             end
         end
     end

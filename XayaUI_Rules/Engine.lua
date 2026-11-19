@@ -76,9 +76,9 @@ end
 local function ReportRuleError(rule, rt, err)
     if rt.vErrored then return end
     rt.vErrored = true
-    ns.Print("rule '" .. tostring(rule.name) .. "' error (the other rules keep running): " .. tostring(err))
-    -- (core 0.6.56; REQUEST-LOG #82: recorded with its code, XUI-E010, in the debug report; DebugRecord.lua)
-    if ns.RecordError then pcall(ns.RecordError, "XayaUI rule '" .. tostring(rule.name) .. "': " .. tostring(err), nil, "XayaUI", "XUI-E010") end
+    -- (core 0.6.56; REQUEST-LOG #82: recorded with its code, XUI-E010, in the debug report; round 11, SD-139: always, one helper, Core.lua)
+    ns.PrintError("XUI-E010", "rule '" .. tostring(rule.name) .. "' error (the other rules keep running): " .. tostring(err),
+        "XayaUI rule '" .. tostring(rule.name) .. "': " .. tostring(err))
 end
 
 -- Actions and sounds run guarded per rule: one failing action can neither stop the step nor block the other rules.
@@ -129,9 +129,9 @@ local function StepEnabled(rule, rt, ctx, now)
         local err = result
         result, info = false, nil
         if not rt.errored then
-            rt.errored = true; ns.Print("rule '" .. tostring(rule.name) .. "' error: " .. tostring(err))
             -- audit D57 (core 0.6.67): recorded for /xui report too (the file's header promises the error log), like the action errors
-            if ns.RecordError then pcall(ns.RecordError, "XayaUI rule '" .. tostring(rule.name) .. "' (evaluate): " .. tostring(err), nil, "XayaUI", "XUI-E010") end
+            rt.errored = true; ns.PrintError("XUI-E010", "rule '" .. tostring(rule.name) .. "' error: " .. tostring(err),
+                "XayaUI rule '" .. tostring(rule.name) .. "' (evaluate): " .. tostring(err))
         end
     end
     rt.info = info
@@ -1598,8 +1598,7 @@ local function SafeStep()
         err = tostring(err)
         if err ~= lastStepErr then
             lastStepErr = err
-            if ns.Print then ns.Print("engine step error (the engine keeps running): " .. err) end
-            if ns.RecordError then pcall(ns.RecordError, "XayaUI engine: " .. err, nil, "XayaUI", "XUI-E011") end   -- (DebugRecord.lua)
+            if ns.PrintError then ns.PrintError("XUI-E011", "engine step error (the engine keeps running): " .. err, "XayaUI engine: " .. err) end   -- (Core.lua, SD-139)
         end
     end
 end

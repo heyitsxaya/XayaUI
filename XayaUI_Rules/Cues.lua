@@ -316,7 +316,7 @@ function ns.MigrateCues()
             if ns.RecordError then pcall(ns.RecordError, "XayaUI cue migration, condition '" .. tostring(child.name) .. "': " .. tostring(errChild), nil, "XayaUI", "XUI-E011") end
         end
     end
-    if failed > 0 and ns.Print then ns.Print(failed .. " condition(s) could not be moved into Cues and were left as they were (see /xui report).") end
+    if failed > 0 and ns.PrintWarning then ns.PrintWarning("XUI-W008", failed .. " condition(s) could not be moved into Cues and were left as they were (see /xui report).") end
     DB.cuesVer = 2
     return made
 end

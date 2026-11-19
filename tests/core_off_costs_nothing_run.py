@@ -136,6 +136,12 @@ check("(sanity) core loaded", ns ~= nil and ns.rules ~= nil)
 if not ns then return R end
 -- the events of the record core keeps (XayaUI's errors and warnings, core 0.6.56): the two "action blocked" events, nothing else
 local function onlyBlocked(set, n) return n == 2 and set.ADDON_ACTION_BLOCKED and set.ADDON_ACTION_FORBIDDEN and true or false end
+-- (round 11, SD-139 "Always save errors (Recommended)": the blocked-action warning is recorded with Advanced Debugging off too) what
+-- DebugRecord.lua may hold whatever the switch says: exactly one frame with exactly those two events, no OnUpdate, no hook
+local function recordFrameOnly(file)
+  local n, _, set = events(file)
+  return frames(file) == 1 and onlyBlocked(set, n) and onupdates(file) == 0 and nhooks(file) == 0
+end
 local syncs = 0
 local rawSync = ns.AuraSound.Sync
 ns.AuraSound.Sync = function(...) syncs = syncs + 1; return rawSync(...) end
@@ -170,7 +176,9 @@ if MODE == "off" then
   ---------------------------------------------------------------------------------------------------------------------------------
   check("A1 Game Menu button saved off: GameMenu.lua made no frame and placed no hook", nothing(GM), cost(GM))
   check("A1b ...and added no theme-change listener", themeListeners(GM) == 0, themeListeners(GM))
-  check("A3 Advanced Debugging saved off: DebugRecord.lua made no frame and registered no event (17 before)", nothing(DBG), cost(DBG))
+  -- (round 11, SD-139; was "A3 Advanced Debugging saved off: DebugRecord.lua made no frame and registered no event (17 before)")
+  check("A3 Advanced Debugging saved off: DebugRecord.lua made one frame with only the two 'action blocked' events (SD-139; 17 before round 7)",
+    recordFrameOnly(DBG), cost(DBG))
   check("A4 no rule uses the game-played sound: AuraSound.lua made no frame, registered no event, placed no hook (on ns.MarkDirty before)",
     nothing(SND), cost(SND))
   check("A5 minimap button saved off: MinimapButton.lua made no frame and registered no event", nothing(MINI), cost(MINI))
@@ -257,7 +265,9 @@ if MODE == "off" then
   check("B12 ...a zone change and a combat read nothing and record nothing (no error happened)", instanceReads == 0
     and CueRulesDB.debugRecord == nil, instanceReads)
   switch("advancedDebug", false)
-  check("B13 Advanced Debugging switched off: every event of the record is let go", events(DBG) == 0, cost(DBG))
+  -- (round 11, SD-139; was "B13 Advanced Debugging switched off: every event of the record is let go")
+  check("B13 Advanced Debugging switched off: the record keeps its one frame and the two 'action blocked' events, nothing more (SD-139)",
+    recordFrameOnly(DBG), cost(DBG))
   -- B15-B18 the game-played sound (the rule's own switch in its sound settings)
   local rule = ns.rules[1]
   local tick = find(options(), "gameSoundOn")
@@ -306,7 +316,9 @@ elseif MODE == "defaults" then
   local nd, ld, setd = events(DBG)
   -- (round 7, REQUEST-LOG A23 SD-61, her answer "Off by default (Recommended)"; was "(works) C3 Advanced Debugging is on by default: the
   -- record's events are registered (the two 'action blocked' events only)")
-  check("C3 Advanced Debugging is off by default: DebugRecord.lua registers no event and makes no frame", nothing(DBG) and nd == 0, ld)
+  -- (round 11, SD-139; was "C3 Advanced Debugging is off by default: DebugRecord.lua registers no event and makes no frame")
+  check("C3 Advanced Debugging is off by default: DebugRecord.lua holds one frame with only the two 'action blocked' events (SD-139)",
+    recordFrameOnly(DBG) and nd == 2, ld)
   check("C3b ...and no PLAYER_LOGIN stays registered after the login (it fires once)", not setd.PLAYER_LOGIN, ld)
   local _, lm, setm = events(MINI)
   check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil

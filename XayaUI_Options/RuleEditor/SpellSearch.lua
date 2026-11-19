@@ -449,7 +449,7 @@ local function SP_Pick(id)
     if not (id and fn and eb and Ours(eb.obj)) then return end
     eb:SetText(""); eb:ClearFocus()
     local ok, err = pcall(fn, id)   -- an error in the pick handler used to vanish and leave the ID box unchanged
-    if not ok then ns.Print("search pick failed: " .. tostring(err)) end
+    if not ok then ns.PrintError("XUI-E015", "search pick failed: " .. tostring(err)) end
 end
 
 -- Hovering a result must never open the "compare with equipped gear" tooltips (Blizzard adds them on its own for items).

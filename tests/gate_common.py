@@ -1933,6 +1933,14 @@ local function storm(i)
   if i % 90 == 45 then cfire("PLAYER_TOTEM_UPDATE", 1) end
   if i % 150 == 75 then cfire("LOSS_OF_CONTROL_ADDED", "player", 1)
   elseif i % 150 == 76 or i % 150 == 120 then cfire("LOSS_OF_CONTROL_UPDATE", "player") end
+  -- (round 11, SD-139 "Always save errors (Recommended)") XayaUI/DebugRecord.lua now listens to the game's two "action blocked" events
+  -- in every variant (before: only with Advanced Debugging on), so the fight plays them: another addon's call blocked, then forbidden,
+  -- once every 5 seconds each (INFERENCE: a tainting addon in a busy pull; the game raises them only when it blocks an action). Payload
+  -- as docs/reference/api/events.md:34-35 (isTainted: cstring, function: cstring). Not XayaUI's own: that would be a bug of XayaUI's
+  -- and an entry in its error record (tests/fix_r11_error_record_run.py measures that path). Each is billed to the frame it lands in, so
+  -- core's per-event cap (V33, 600) and the per-handler numbers measure it.
+  if i % 150 == 100 then cfire("ADDON_ACTION_BLOCKED", "OtherAddon", "CastSpellByName()")
+  elseif i % 150 == 101 then cfire("ADDON_ACTION_FORBIDDEN", "OtherAddon", "PickupAction()") end
 end
 local function memNow() gc("collect"); return gc("count") end
 -- (round 9, item 7 of the round 9 gate task; SD-66) the memory play (CFG.memplay: no instruments, nothing the gate keeps per cycle):
@@ -2573,6 +2581,10 @@ def integrity(data, rep):
         # (round 9, SD-77) every fight has a boss pull and the boss down; the profile has the rules that test the narrowed re-check
         (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in ("ENCOUNTER_START", "ENCOUNTER_END")),
          "the fights played a boss pull and the boss down (ENCOUNTER_START, ENCOUNTER_END)", "fired: %s" % (data.get("fired") or {})),
+        # (round 11, SD-139) the fights played another addon's blocked and forbidden action (the record listens to both in every variant)
+        (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in ("ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN")),
+         "the fights played another addon's blocked and forbidden action (ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN; SD-139)",
+         "fired: %s" % (data.get("fired") or {})),
         (all(int(((data.get("profile") or {}).get("made") or {}).get(k) or 0) > 0 for k in ("absent", "ooc", "boss", "fx")),
          "the profile has target debuffs that must be absent, out-of-combat opacity displays, boss rules and effect displays (round 9)",
          "made: %s" % ((data.get("profile") or {}).get("made"))),

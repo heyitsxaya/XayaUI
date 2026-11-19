@@ -10,15 +10,26 @@
 --  * The record: XayaUI's errors and warnings, each with a code (ns.ERROR_CODES below: XUI-E001 ...), found on their own:
 --      - Lua errors raised in a XayaUI file (Core.lua chains the game's error handler: the handler set before is always called too;
 --        an error from another addon's file is not recorded);
---      - failures XayaUI already catches (a rule, an engine step, a display, the settings window, the ESC menu: E010-E014);
---      - warnings: an action the game blocked (W001), the combat engine's own safety stops and failed aura containers (W002-W004), a
---        Chat Panel part that could not be applied (W005).
+--      - failures XayaUI already catches (a rule, an engine step, a display, the settings window, the ESC menu: E010-E019);
+--      - warnings: an action the game blocked (W001), a failed aura container (W002), a module's settings left in place (W006), a
+--        glow action without its library (W007), conditions left out of Cues (W008), a game function missing in this client (W009);
+--      - (round 11, SD-139) every error or warning XayaUI prints in chat: they print through one helper, Core.lua ns.PrintError /
+--        ns.PrintWarning (code, chat text[, detail]), which shows the line exactly as ns.Print does and records it here. Ordinary
+--        messages (ns.Print) and messages that name another player (ns.PrintPrivate) are never recorded.
 --    Kept in CueRulesDB.errorLog (saved between sessions; the same list the bug report reads), newest first, one entry per code and
---    message with a count, at most MAX_ENTRIES, while Advanced Debugging is on; off records nothing. The record stays here in core,
---    so it works whether or not the debug tools have loaded (turned on during a session, it records at once; the tools load at the
---    next /reload and show what was recorded).
---    Cost while nothing goes wrong: none. Nothing is created per frame or per event: the error handler runs only on an error, and the
---    one event frame (made only while Advanced Debugging is on) listens to the two events the game raises when it blocks an action.
+--    message with a count, at most MAX_ENTRIES (50). (round 11, SD-139, her answers "Errors and warnings only (Recommended)", "Always
+--    save errors (Recommended)", "Yes, same file (Recommended)") Always kept, whether or not Advanced Debugging is on; Advanced
+--    Debugging decides only whether a Lua error is also shown where XayaUI's messages go (Core.lua) and whether the debug tools load.
+--    The record stays here in core, so it works whether or not the debug tools have loaded. The game writes it to XayaUI.lua only at
+--    /reload, logout or a clean exit: a game crash loses that session's entries (the limit SD-139 records).
+--    Entry shape (what the bug report and the tests read; SD-139 "tests read the same record"):
+--      { code = "XUI-E0nn" | "XUI-W0nn", kind = "error" | "warning", msg = plain text (colors and links taken out, at most 700
+--        characters), stack = plain text (at most 900) or nil, first = time() of the first, last = time() of the latest, n = count >= 1,
+--        ver = the addon's version at the first, combat = true when one happened in combat, else nil }
+--    Cost while nothing goes wrong: none. Nothing is created per frame or per event, and there is no timer: the error handler and the
+--    print helper run only on an error, and the one event frame (made once at login) listens to the two events the game raises only
+--    when it blocks an action of an addon (each costs one string test unless the action is XayaUI's). Memory: at most 50 entries
+--    (tests/fix_r11_error_record_run.py measures an entry at its longest).
 --  * The debug tools (XayaUI_Debug, load-on-demand): the console window, the bug report (/xui bug) and the debug report window
 --    (/xui report). Loaded once per login or /reload, at the login, only while Advanced Debugging is on; nothing else loads them.
 --    While they are not loaded, each of them, /xui status, /xui auras and the /xui debug words in the debug folder print one plain line
@@ -67,7 +78,7 @@ function ns.MessageDest()
 end
 
 -- (ns.RecordOn(kind), ns.RecordLine and the other hand-in points of the detailed record are XayaUI Dev Assist's: nil without it, and
--- every caller tests that first. The error record below is kept while Advanced Debugging is on: ns.AdvancedDebugOn.)
+-- every caller tests that first. The error record below is always kept (round 11, SD-139).)
 
 -------------------------------------------------------------------------------
 -- The codes. One line each says what it means (the same list is in the USER-GUIDE, "Debug report").
@@ -88,6 +99,13 @@ ns.ERROR_CODES = {
     { code = "XUI-E012", kind = "error", text = "A display could not be drawn or refreshed; XayaUI caught it" },
     { code = "XUI-E013", kind = "error", text = "Moving a display or group in the settings window failed; XayaUI caught it" },
     { code = "XUI-E014", kind = "error", text = "The ESC menu button or its look failed; XayaUI caught it" },
+    -- (round 11, SD-139) the chat errors that had no code: each prints through ns.PrintError (Core.lua). addon: whose version the entry
+    -- keeps (folder, above, is only for Lua errors: it decides a Lua error's code from the file it came from)
+    { code = "XUI-E015", kind = "error", addon = "XayaUI_Options", text = "A part of the settings window could not be drawn or opened; XayaUI caught it" },
+    { code = "XUI-E016", kind = "error", addon = "XayaUI_Options", text = "The settings window could not load or set itself up (XayaUI Options)" },
+    { code = "XUI-E017", kind = "error", addon = "XayaUI_Options", text = "A rule or group could not be exported" },
+    { code = "XUI-E018", kind = "error", addon = "XayaUI_Rules", text = "A saved backup could not be read (its saved text is damaged); nothing was changed" },
+    { code = "XUI-E019", kind = "error", addon = "XayaUI_Debug", text = "The debug tools (XayaUI Debug) could not load, or one of their commands failed" },
     { code = "XUI-W001", kind = "warning", text = "The game blocked or forbade an action of XayaUI (ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN)" },
     { code = "XUI-W002", kind = "warning", text = "The combat engine could not set up an aura display; XayaUI draws that display itself" },
     { code = "XUI-W003", kind = "warning", text = "Engine safety stop: Blizzard's aura containers cost too much, so only this spec's displays are drawn by the engine (lean mode)" },
@@ -95,6 +113,10 @@ ns.ERROR_CODES = {
     { code = "XUI-W005", kind = "warning", text = "A part of the Chat Panel could not be applied" },
     -- (P5 settings migration, Modules.lua section 0c) a module's settings copy differed from CueRulesDB: the module keeps reading CueRulesDB
     { code = "XUI-W006", kind = "warning", text = "A module's settings could not be copied to their new saved place unchanged; it keeps using the old place" },
+    -- (round 11, SD-139) the chat warnings that had no code: each prints through ns.PrintWarning (Core.lua)
+    { code = "XUI-W007", kind = "warning", text = "A glow action needs the LibCustomGlow library, and no loaded addon brings it" },
+    { code = "XUI-W008", kind = "warning", text = "Some conditions could not be moved into Cues and were left as they were" },
+    { code = "XUI-W009", kind = "warning", text = "A game function XayaUI needs is not available in this client" },
 }
 local CODE, FOLDER_CODE = {}, {}
 for _, c in ipairs(ns.ERROR_CODES) do
@@ -130,9 +152,10 @@ local function InCombat()
     local ok, v = pcall(function() return UnitAffectingCombat and UnitAffectingCombat("player") end)
     return (ok and v == true) or nil
 end
--- One entry, or one more count on an equal one. Must never raise an error itself (it runs inside the error handler).
+-- One entry, or one more count on an equal one. Must never raise an error itself (it runs inside the error handler). (round 11, SD-139)
+-- Always, whatever Advanced Debugging says: before, it returned at once while Advanced Debugging was off. Cost per call: the text made
+-- plain (four gsubs on at most the message) and one pass over at most 50 entries; it runs only when something went wrong.
 local function Add(code, kind, msg, stack, folder)
-    if not ns.AdvancedDebugOn() then return end
     local l = List()
     if not l then return end
     local text = Plain(msg):sub(1, 700)
@@ -145,10 +168,12 @@ local function Add(code, kind, msg, stack, folder)
         end
     end
     local e = { code = code, kind = kind, msg = text, stack = (stack and stack ~= "") and Plain(stack):sub(1, 900) or nil,
-        first = now, last = now, n = 1, ver = Version(folder or "XayaUI"), combat = InCombat() }
+        first = now, last = now, n = 1, ver = Version(folder or (CODE[code] and CODE[code].addon) or "XayaUI"), combat = InCombat() }
     table.insert(l, 1, e)
     while #l > MAX_ENTRIES do table.remove(l) end
-    if ns.Log then pcall(ns.Log, ("|cffff5555%s|r %s (/xui report): %s"):format(code, kind == "warning" and "warning" or "error", text:sub(1, 120))) end
+    -- (the console line, as before round 11: only while Advanced Debugging is on, so with it off the record's memory is its 50 entries
+    -- and nothing goes into the event log's buffer, Core.lua ns.logBuf)
+    if ns.Log and ns.AdvancedDebugOn() then pcall(ns.Log, ("|cffff5555%s|r %s (/xui report): %s"):format(code, kind == "warning" and "warning" or "error", text:sub(1, 120))) end
     return e
 end
 -- A Lua error. folder: the XayaUI folder it came from (Core.lua ns.ErrorFolder), or nil; code: a fixed code (E010-E014), or nil for
@@ -225,13 +250,18 @@ end
 -- removed: every message ns.Print gets is shown (the tests read what the stand-in game printed).
 
 -------------------------------------------------------------------------------
--- Events (rule V14). One frame, made the first time something needs an event, holding only what is needed now:
---   ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN  while Advanced Debugging is on (the game raises them only when it blocks an action
---                                                 of an addon: nothing arrives while nothing goes wrong)
+-- Events (rule V14). One frame, made once at login, holding only:
+--   ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN  always (round 11, SD-139 "Always save errors (Recommended)": the blocked-action
+--                                                 warning W001 is recorded whether or not Advanced Debugging is on). The game raises
+--                                                 them only when it blocks an action of an addon: nothing arrives while nothing goes
+--                                                 wrong. Technical choice (SD-145), V27 / V33: one frame for the session and no work
+--                                                 until the game raises one; another addon's blocked action costs one string test
+--                                                 (Blocked below) and returns. The gate measures it (tests/gate_common.py fires both
+--                                                 events for another addon and for XayaUI in every fight; V33 core cap 600).
 -- (round 7) The console window's wait for the end of combat is XayaUI_Debug's own (XayaUI_Debug/Console.lua); the hand-in for XayaUI
 -- Dev Assist's extra events (DR.extraEvents / DR.extraHandlers) served only that retired addon and was removed.
 -- Game API (docs/reference/api/events.md): ADDON_ACTION_BLOCKED / ADDON_ACTION_FORBIDDEN (isTainted: cstring, function: cstring);
--- widgets.md, Frame: RegisterEvent(eventName) -> registered: bool; UnregisterEvent(eventName) -> registered: bool.
+-- widgets.md, Frame: RegisterEvent(eventName) -> registered: bool.
 -------------------------------------------------------------------------------
 local handlers = {}
 local function Blocked(event, tainted, func)
@@ -255,30 +285,23 @@ local function OnEvent(_, event, ...)
         if not ok then pcall(ns.RecordError, "debug record: " .. tostring(err), nil, "XayaUI") end
     end
 end
-local function Wanted()
-    local want = {}
-    if ns.AdvancedDebugOn() then for _, e in ipairs(RECORD_EVENTS) do want[e] = true end end
-    return want
-end
+-- The frame, made once (core's ready point, at login) and kept for the session with both events (round 11, SD-139: always, the warning
+-- is recorded with Advanced Debugging off too). Called again (Settings > Debugging) it changes nothing. No CreateFrame (a stand-in
+-- without one): nothing is made and the warning is not heard.
 function DR.SyncEvents()
-    local want = Wanted()
-    if not evFrame then
-        if next(want) == nil or not CreateFrame then return end
-        evFrame = CreateFrame("Frame")
-        if evFrame.SetScript then evFrame:SetScript("OnEvent", OnEvent) end
-    end
-    for e in pairs(evOn) do
-        if not want[e] then pcall(evFrame.UnregisterEvent, evFrame, e); evOn[e] = nil end
-    end
-    for e in pairs(want) do
-        if not evOn[e] then pcall(evFrame.RegisterEvent, evFrame, e); evOn[e] = true end
+    if evFrame or not CreateFrame then return end
+    evFrame = CreateFrame("Frame")
+    if evFrame.SetScript then evFrame:SetScript("OnEvent", OnEvent) end
+    for _, e in ipairs(RECORD_EVENTS) do
+        if pcall(evFrame.RegisterEvent, evFrame, e) then evOn[e] = true end
     end
 end
 -- (tests) the events registered now, as a set
 function DR.EventsOn() local t = {}; for e in pairs(evOn) do t[e] = true end; return t end
 
--- Settings > Debugging calls this after a change. (round 7) The record's two events follow the switch at once; the debug tools
--- (XayaUI_Debug) load or go only at the next login or /reload (V34: on / off is detected once per reload; the game cannot unload code).
+-- Settings > Debugging calls this after a change. (round 11, SD-139) The record's two events no longer follow the switch (they are
+-- always on; SyncEvents changes nothing then); the debug tools (XayaUI_Debug) load or go only at the next login or /reload (V34: on / off
+-- is detected once per reload; the game cannot unload code).
 function ns.DebugSettingsChanged()
     DR.SyncEvents()
 end
@@ -347,7 +370,7 @@ function ns.DebugToolsNeeded(what)
     elseif reason == "disabled" then
         ns.Print(what .. " is one of the debug tools (XayaUI Debug), which is switched off in the game's AddOns list. Turn it on, then type /reload.")
     elseif toolsTried then   -- (on at the login, and the game refused to load them: its reason, e.g. an out-of-date or broken folder)
-        ns.Print(what .. " is one of the debug tools (XayaUI Debug), which could not load (" .. tostring(toolsWhy) .. "). Type /reload to try again.")
+        ns.PrintError("XUI-E019", what .. " is one of the debug tools (XayaUI Debug), which could not load (" .. tostring(toolsWhy) .. "). Type /reload to try again.")
     elseif ns.AdvancedDebugOn() then
         ns.Print(what .. " needs a /reload: the debug tools load at the next login or /reload while Advanced Debugging is on.")
     else

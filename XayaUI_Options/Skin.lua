@@ -906,7 +906,7 @@ local function SkinTree(w)
                 return MIN_TREE, math.max(MIN_TREE, math.min(400, fw - MIN_PANE))
             end
             local function Fail(err)
-                ns.Print("sidebar resize error (please report): " .. tostring(err))
+                ns.PrintError("XUI-E015", "sidebar resize error (please report): " .. tostring(err))
                 if ns.UI and ns.UI.Notify then pcall(ns.UI.Notify) end
             end
             -- the one deferred pass after a drag, next frame (SD-90: made once per tree, not on every drag)

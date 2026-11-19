@@ -360,8 +360,7 @@ local function OpenStore(module)
                 mm.reported = true
                 local title = Meta(st.addon, "Title") or st.addon
                 local text = ("%s: the settings could not be copied to their new saved place unchanged, so they stay where they were. Nothing was changed or lost."):format(title)
-                if ns.Print then pcall(ns.Print, text) end
-                if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W006", title .. ": " .. mm.diff) end
+                if ns.PrintWarning then pcall(ns.PrintWarning, "XUI-W006", text, title .. ": " .. mm.diff) end
             end
             return "old"
         end
@@ -1069,7 +1068,7 @@ function LoadOptionsNow()
         elseif state == "missing" then
             ns.Print("the settings window (XayaUI Options) is not installed: the XayaUI_Options folder belongs next to XayaUI in Interface\\AddOns.")
         else
-            ns.Print("the settings window could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
+            ns.PrintError("XUI-E016", "the settings window could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
         end
     end
     return false

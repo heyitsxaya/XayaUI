@@ -17,7 +17,7 @@ local APP = "CueRules"
 local AceConfigRegistry = LibStub and LibStub("AceConfigRegistry-3.0", true)
 local AceConfigDialog = LibStub and LibStub("AceConfigDialog-3.0", true)
 if not (AceConfigRegistry and AceConfigDialog) then
-    local function missing() ns.Print("the settings window cannot open: its Ace3 libraries are missing (check the Libs folder of XayaUI_Options).") end
+    local function missing() ns.PrintError("XUI-E016", "the settings window cannot open: its Ace3 libraries are missing (check the Libs folder of XayaUI_Options).") end
     ns.Options = { Toggle = missing, EditRule = missing, EditFolder = missing, OpenPage = missing, IsOpen = function() return false end }
     return
 end
@@ -548,7 +548,7 @@ function ns.OptionsApi.LoadRuleEditor()
     if ns.OptionsApi.ruleEditorTried or not RulesOn() then return EditorOn() end
     ns.OptionsApi.ruleEditorTried = true
     if not EditorOn() then
-        ns.Print("the rule editor could not be set up: the Rules tab is left out. /xui bug shows errors.")
+        ns.PrintError("XUI-E016", "the rule editor could not be set up: the Rules tab is left out. /xui bug shows errors.")
     end
     return EditorOn()
 end
@@ -1175,7 +1175,7 @@ function ns.OptionsApi.Toggle()
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
         Tree.keep = nil
         Tree.DropPending()
-        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+        if not ok then ns.PrintError("XUI-E015", "could not open the window: " .. tostring(err)) return end
         -- (round 6; Xaya, SD-53: "first run ever open with settings") the very first time ever, Combat Tracking Setup opens with the
         -- window (XayaUI_Rules/Combat/AuraSetup.lua; afterwards this call only reads two saved values and returns)
         if RE.AuraSetup_WithSettings then pcall(RE.AuraSetup_WithSettings) end

@@ -143,7 +143,7 @@ end
 local function GlowStart(rule, a)
     local lib = LCG()
     if not lib then
-        if not ns.glowWarned then ns.glowWarned = true; ns.Print("glow actions need the LibCustomGlow library, which comes with other addons (ElvUI, BigWigs, and others). None is loaded right now.") end
+        if not ns.glowWarned then ns.glowWarned = true; ns.PrintWarning("XUI-W007", "glow actions need the LibCustomGlow library, which comes with other addons (ElvUI, BigWigs, and others). None is loaded right now.") end
         return
     end
     local alpha = a.glowA
@@ -176,9 +176,9 @@ end
 -- codeOn from every import, so a box can only ever be ticked, and code only ever written, by you.
 local function DoCode(rule, phase, a)
     local fn, err = loadstring(a.code, "XayaUI action: " .. tostring(rule.name))
-    if not fn then ns.Print("custom code error in '" .. tostring(rule.name) .. "' (" .. phase .. "): " .. tostring(err)); return end
+    if not fn then ns.PrintError("XUI-E010", "custom code error in '" .. tostring(rule.name) .. "' (" .. phase .. "): " .. tostring(err)); return end
     local ok, e = pcall(fn, rule)
-    if not ok then ns.Print("custom code error in '" .. tostring(rule.name) .. "' (" .. phase .. "): " .. tostring(e)) end
+    if not ok then ns.PrintError("XUI-E010", "custom code error in '" .. tostring(rule.name) .. "' (" .. phase .. "): " .. tostring(e)) end
 end
 
 -- phase: "init" | "start" | "finish". Called by the engine; never for cues / conditions.

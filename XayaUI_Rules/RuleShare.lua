@@ -433,7 +433,7 @@ local function ReadBackup(e, fresh)
     if snap then return snap end
     snap = BkRead(rawget(e, "text"))
     if not snap then
-        ns.Print(("the backup '%s' could not be read (its saved text is damaged). Nothing was changed."):format(tostring(rawget(e, "name"))))
+        ns.PrintError("XUI-E018", ("the backup '%s' could not be read (its saved text is damaged). Nothing was changed."):format(tostring(rawget(e, "name"))))
         snap = {}
     end
     if not fresh then lastRead[e] = snap end

@@ -478,7 +478,7 @@ function ns.SafeDecorate(b)
         ns.lastTreeErr = tostring(err)
         if not ns.treeErrShown or ns.treeErrShown ~= ns.lastTreeErr then
             ns.treeErrShown = ns.lastTreeErr
-            ns.Print("sidebar decoration error (please report): " .. ns.lastTreeErr)
+            ns.PrintError("XUI-E015", "sidebar decoration error (please report): " .. ns.lastTreeErr)
         end
     end
 end

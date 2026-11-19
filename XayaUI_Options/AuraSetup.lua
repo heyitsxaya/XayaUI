@@ -337,7 +337,7 @@ function ns.AuraSetup_Open(atStep)
     if not frame then
         local ok, err = pcall(Build)
         if not ok then
-            ns.Print("setup window failed to build: " .. tostring(err))
+            ns.PrintError("XUI-E015", "setup window failed to build: " .. tostring(err))
             if frame then frame:Hide() end
             frame = nil; wipe(stepPanels); wipe(stepTabs)
             local db = ns.SettingsReady("core") and CoreS
@@ -350,7 +350,7 @@ function ns.AuraSetup_Open(atStep)
     if frame.combatEv then frame.combatEv:RegisterEvent("PLAYER_REGEN_DISABLED") end
     local okS, errS = pcall(ShowStep, (atStep == 2 or atStep == 3) and atStep or 1)
     if not okS then
-        ns.Print("setup window error: " .. tostring(errS))
+        ns.PrintError("XUI-E015", "setup window error: " .. tostring(errS))
         local db = ns.SettingsReady("core") and CoreS
         if db then db.setupShowError = (date and date("%Y-%m-%d %H:%M:%S ") or "") .. tostring(errS) end
     end

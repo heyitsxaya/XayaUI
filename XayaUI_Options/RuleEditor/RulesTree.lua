@@ -1158,7 +1158,7 @@ function ns.OptionsApi.RuleEditor.BuildRulesTab()
                     if o.g.xuiStub then o.g = BuildRule(o.g.xuiStub.i, o.rule) end
                     oke, err = pcall(ns.EmbedOutcome, pg, o.g, o.rule, cnt[par])
                 end
-                if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
+                if not oke and not ns.embedErr then ns.embedErr = true; ns.PrintError("XUI-E015", "outcome embed error: " .. tostring(err)) end
             end
         end
     end
@@ -1513,7 +1513,7 @@ function ns.OptionsApi.FillRule(stub)
             local og = o.g
             if og.xuiStub then og = BuildRule(og.xuiStub.i, o.rule) end
             local oke, err = pcall(ns.EmbedOutcome, g, og, o.rule, o.n)
-            if not oke and not ns.embedErr then ns.embedErr = true; ns.Print("outcome embed error: " .. tostring(err)) end
+            if not oke and not ns.embedErr then ns.embedErr = true; ns.PrintError("XUI-E015", "outcome embed error: " .. tostring(err)) end
         end
         return g
     end)
@@ -1567,7 +1567,7 @@ function ns.OptionsApi.EditRule(rule)
     if not ns.rules or not rule then return end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
-        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+        if not ok then ns.PrintError("XUI-E015", "could not open the window: " .. tostring(err)) return end
     end
     local top, tab = rule, nil
     local par = rule.parentUid and ns.FindParentRule and ns.FindParentRule(rule)
@@ -1593,7 +1593,7 @@ function ns.OptionsApi.EditFolder(f)
     if not (f and ns.FolderById and ns.FolderById(f.id)) then return end
     if not (AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[APP]) then
         local ok, err = pcall(AceConfigDialog.Open, AceConfigDialog, APP)
-        if not ok then ns.Print("could not open the window: " .. tostring(err)) return end
+        if not ok then ns.PrintError("XUI-E015", "could not open the window: " .. tostring(err)) return end
     end
     if ns.CueTransparent(f) then Notify(); return end   -- a built-in category / cue-type folder has no row of its own: stay where it is
     -- where it is listed (as BuildRulesTab lists it): Loaded / Not Loaded when it or a nested group holds such a rule, Disabled when it

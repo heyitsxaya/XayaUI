@@ -292,13 +292,23 @@ end
 check("G the string reads back to the same entries (code, count, message, kind, time)", same, back and #back.entries)
 check("G the import window for rules refuses the report string", (function() local d, err = ns.Share.Read(str); return d == nil and type(err) == "string" end)())
 SAVED_REPORT = str
--- Advanced Debugging off: nothing is recorded
+-- Advanced Debugging off: (round 11, SD-139 "Always save errors (Recommended)"; was "nothing is recorded" and "the record's frame lets
+-- its events go") the Lua error and the blocked action are still recorded, each once, and the frame keeps exactly its two events
 ui.advancedDebug = false; ns.DebugSettingsChanged()
 local n0 = #CueRulesDB.errorLog
 raiseFrom("XayaUI_Rules/Visual.lua", "boom while off")
 W.fire("ADDON_ACTION_BLOCKED", "XayaUI", "X()")
-check("E Advanced Debugging off: nothing is recorded", #CueRulesDB.errorLog == n0, #CueRulesDB.errorLog)
-check("E Advanced Debugging off: the record's frame lets its events go", next(ns.DebugRecordInfo.EventsOn()) == nil)
+local offErr, offWarn
+for _, e in ipairs(CueRulesDB.errorLog) do
+  if e.msg:find("boom while off", 1, true) then offErr = e end
+  if e.code == "XUI-W001" and e.msg:find("XayaUI's call to X()", 1, true) then offWarn = e end
+end
+check("E Advanced Debugging off (SD-139): the Lua error and the blocked action are still recorded, each once",
+  #CueRulesDB.errorLog == n0 + 2 and offErr ~= nil and offErr.code == "XUI-E001" and offErr.n == 1 and offWarn ~= nil and offWarn.n == 1, #CueRulesDB.errorLog - n0)
+local evOff, nOff = ns.DebugRecordInfo.EventsOn(), 0
+for _ in pairs(evOff) do nOff = nOff + 1 end
+check("E Advanced Debugging off (SD-139): the record's frame keeps exactly its two 'action blocked' events",
+  nOff == 2 and evOff.ADDON_ACTION_BLOCKED and evOff.ADDON_ACTION_FORBIDDEN, nOff)
 ui.advancedDebug = true; ns.DebugSettingsChanged()
 -- the cap: the newest 50
 for i = 1, 60 do raiseFrom("XayaUI_Rules/Engine.lua", "distinct error " .. i) end

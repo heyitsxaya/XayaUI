@@ -139,6 +139,27 @@ function ns.Print(...)
     print("|cff33ccffXayaUI|r: " .. text)
 end
 
+-- (round 11, SD-139; Xaya 2026-11-17, her words: "Prints should be sent to chat but also sent directly to an error tracking file"; her
+-- answers "Errors and warnings only (Recommended)", "Always save errors (Recommended)", "Yes, same file (Recommended)")
+-- Every error or warning XayaUI prints goes through these two: the line is shown exactly as ns.Print shows it, then recorded in the error
+-- record (DebugRecord.lua, CueRulesDB.errorLog: code, plain message, count; newest first; at most 50) whether or not Advanced Debugging
+-- is on. Ordinary messages stay on ns.Print and are never recorded; ns.PrintPrivate's never are either.
+--   code    a code from ns.ERROR_CODES (DebugRecord.lua): XUI-E... with ns.PrintError, XUI-W... with ns.PrintWarning
+--           (tests/fix_r11_error_record_run.py checks every call site's code against that list)
+--   text    the chat line, unchanged from what the site printed before
+--   detail  optional: what to record instead of the chat line (a site that recorded a longer or differently worded line keeps it)
+--   stack   optional (errors only): a stack to keep with it
+-- The record step runs under pcall: a broken record never stops the print or the caller. Cost: none until something went wrong (these
+-- run only on an error path; no table, closure or timer is made here per call beyond what the record keeps).
+local function PrintRecorded(record, code, text, detail, stack)
+    ns.Print(text)
+    if record then pcall(record, code, (detail ~= nil) and detail or text, stack) end
+end
+local function RecordErr(code, msg, stack) return ns.RecordError and ns.RecordError(msg, stack, nil, code) end
+local function RecordWarn(code, msg) return ns.RecordWarn and ns.RecordWarn(code, msg) end
+function ns.PrintError(code, text, detail, stack) PrintRecorded(RecordErr, code, text, detail, stack) end
+function ns.PrintWarning(code, text, detail) PrintRecorded(RecordWarn, code, text, detail, nil) end
+
 -------------------------------------------------------------------------------
 -- XayaUI's own Lua errors (core 0.6.56; REQUEST-LOG #82, Xaya 2026-11-06: the debug record is "only there to catch errors and bugs
 -- that might be expected within a live, user-facing version of the addon. these should have error codes built out, auto detection, and
@@ -147,7 +168,8 @@ end
 -- message, every time. Only an error raised in a XayaUI file (the file named at the start of the message, else the first file the stack
 -- names: Interface/AddOns/XayaUI*/...) is recorded, with its code (DebugRecord.lua ns.RecordError: XUI-E001 for core, E002 the settings
 -- window, ...). Nothing here runs unless an error happens: no event, no timer, no per-frame work.
--- With Advanced Debugging on (Settings > Debugging, off by default) the error is also shown where XayaUI's messages go.
+-- (round 11, SD-139 "Always save errors (Recommended)") The record is kept whether or not Advanced Debugging is on; with Advanced
+-- Debugging on (Settings > Debugging, off by default) the error is also shown where XayaUI's messages go.
 -------------------------------------------------------------------------------
 -- The XayaUI folder an error came from, or nil: the message's own location ("Interface/AddOns/XayaUI_Chat/Core.lua:12: ...") decides;
 -- a message without one (error(msg, 0)) is decided by the first addon file in the stack.
@@ -182,7 +204,7 @@ do
             local okF, f = pcall(ns.ErrorFolder, text, stack)
             folder = okF and f or nil
         end
-        if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; nothing while it is off)
+        if folder and ns.RecordError then pcall(ns.RecordError, text, stack, folder) end   -- (DebugRecord.lua; always, SD-139)
         local ok, on = pcall(function() return CueRulesDB and CueRulesDB.ui and CueRulesDB.ui.advancedDebug end)
         local mine = ok and on and folder ~= nil
         -- (core 0.6.50) an error while a command typed in the console window runs (Console.lua ns.ConsoleRun) is that command's:

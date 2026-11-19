@@ -835,7 +835,7 @@ local function VisualMenuParts(rule)
 end
 ns.VisualMenuParts = VisualMenuParts   -- (tests; the element menu reads it through ns.MoverDisplay.MenuParts, below)
 function ns.ShowVisualMenu(rule, anchor)
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the menu API is not available in this client.") return end
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.PrintWarning("XUI-W009", "the menu API is not available in this client.") return end
     if InCombat() then ns.Print("menus can't be opened during combat."); return end
     if not windowOpen then return end   -- (SD-58, V28) only while the settings window is open
     local strata = anchor and anchor.GetFrameStrata and anchor:GetFrameStrata()

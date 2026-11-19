@@ -70,7 +70,7 @@ ns.DebugEngineLine = EngineLine   -- (tests)
 local PrintStatusRaw
 function ns.PrintStatus()
     local ok, err = ns.WithStatusDetail(PrintStatusRaw)   -- (readable time-source labels while it prints, Timing.lua)
-    if not ok then ns.Print("status failed: " .. tostring(err)) end
+    if not ok then ns.PrintError("XUI-E019", "status failed: " .. tostring(err)) end
 end
 -- (XayaUI Rules' "rules" service asks here: RuleDefaults.lua)
 local svc = ns.Service("rulesdebug") or {}
@@ -96,7 +96,7 @@ function PrintStatusRaw()
         ns.Print("    cooldown: " .. ((info.cd and info.cd.why) or "?"))
         if ns.ExplainRule then
             local okx, line = pcall(ns.ExplainRule, r, ctx)
-            ns.Print("    " .. (okx and line or ("explain failed: " .. tostring(line))))
+            if okx and line then ns.Print("    " .. line) else ns.PrintError("XUI-E019", "    explain failed: " .. tostring(line)) end
         end
     end
 end

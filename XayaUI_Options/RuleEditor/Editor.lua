@@ -1003,11 +1003,11 @@ local function BuildRule(i, rule)
     if ns.BuildExtraTriggerArgs then
         local okx, xa = pcall(ns.BuildExtraTriggerArgs, rule, ns.UI)
         if okx then for k, v in pairs(xa) do trigger.args[k] = v end
-        elseif not ns.extraUiErr then ns.extraUiErr = true; ns.Print("additional triggers UI error: " .. tostring(xa)) end
+        elseif not ns.extraUiErr then ns.extraUiErr = true; ns.PrintError("XUI-E015", "additional triggers UI error: " .. tostring(xa)) end
     end
     if ns.DecorateBuiltinTriggers then   -- numbering, order and Move up / Move down for Cooldown and Buff / Aura
         local okd, errd = pcall(ns.DecorateBuiltinTriggers, rule, trigger.args)
-        if not okd and not ns.decorErr then ns.decorErr = true; ns.Print("trigger order UI error: " .. tostring(errd)) end
+        if not okd and not ns.decorErr then ns.decorErr = true; ns.PrintError("XUI-E015", "trigger order UI error: " .. tostring(errd)) end
     end
     -- Outcomes (Outcomes.lua). An outcome rule follows its parent's triggers: its own trigger sections are hidden and the
     -- combination row builder takes their place. A normal rule gets the Outcomes list instead, on its Conditions tab (below).
@@ -1017,16 +1017,16 @@ local function BuildRule(i, rule)
         if ns.BuildWhenArgs then
             local okw, whenArgs = pcall(ns.BuildWhenArgs, rule, ns.UI)
             if okw then for k, v in pairs(whenArgs) do trigger.args[k] = v end
-            elseif not ns.whenUiErr then ns.whenUiErr = true; ns.Print("outcome UI error: " .. tostring(whenArgs)) end
+            elseif not ns.whenUiErr then ns.whenUiErr = true; ns.PrintError("XUI-E015", "outcome UI error: " .. tostring(whenArgs)) end
         end
     elseif ns.BuildOutcomeArgs then
         local oko, oa = pcall(ns.BuildOutcomeArgs, rule, ns.UI)
         if oko then outcomeArgs = oa
-        elseif not ns.outcomeUiErr then ns.outcomeUiErr = true; ns.Print("outcomes UI error: " .. tostring(oa)) end
+        elseif not ns.outcomeUiErr then ns.outcomeUiErr = true; ns.PrintError("XUI-E015", "outcomes UI error: " .. tostring(oa)) end
         if ns.BuildCueArgs then
             local okq, qa = pcall(ns.BuildCueArgs, rule, ns.UI)
             if okq then cueArgs = qa
-            elseif not ns.cueUiErr then ns.cueUiErr = true; ns.Print("cues UI error: " .. tostring(qa)) end
+            elseif not ns.cueUiErr then ns.cueUiErr = true; ns.PrintError("XUI-E015", "cues UI error: " .. tostring(qa)) end
         end
     end
 

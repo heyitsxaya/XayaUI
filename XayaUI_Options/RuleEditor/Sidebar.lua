@@ -472,8 +472,7 @@ drag.fail = function(err)
     drag.kind, drag.obj = nil, nil
     if dragFrame then dragFrame:Hide(); dragFrame:SetScript("OnUpdate", nil) end
     drag.ClearMarks()
-    ns.Print("moving a row failed and was canceled: " .. tostring(err))
-    if ns.CaptureError then pcall(ns.CaptureError, "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "", "XUI-E013") end
+    ns.PrintError("XUI-E013", "moving a row failed and was canceled: " .. tostring(err), "XayaUI move: " .. tostring(err), debugstack and debugstack(2) or "")
     pcall(Notify)
 end
 local function StopDrag(button)
@@ -1055,14 +1054,14 @@ StaticPopupDialogs["XAYAUI_EXPORT"] = {
 ns.UI.ExportFolder = function(fold)
     local snap = ns.Share_SnapshotGroup(fold, tostring(fold.name or "Group"))
     local txt, err = ns.Share.Encode("rules", snap)
-    if not txt then ns.Print("could not export '" .. tostring(fold.name) .. "': " .. tostring(err)); return end
+    if not txt then ns.PrintError("XUI-E017", "could not export '" .. tostring(fold.name) .. "': " .. tostring(err)); return end
     ShowPopup("XAYAUI_EXPORT", "Export of the group '" .. tostring(fold.name) .. "': " .. #snap.folders .. " group(s), " .. #snap.rules .. " rule(s) including their cues and conditions"
         .. COPY_HOW .. "\nThen paste it into Import / Export > Import rules (or the Import button) on the other character or account.", { text = txt })
 end
 ns.UI.ExportRule = function(rule)
     local snap = ns.Share_SnapshotRule(rule, tostring(rule.name or "Rule"))
     local txt, err = ns.Share.Encode("rules", snap)
-    if not txt then ns.Print("could not export '" .. tostring(rule.name) .. "': " .. tostring(err)); return end
+    if not txt then ns.PrintError("XUI-E017", "could not export '" .. tostring(rule.name) .. "': " .. tostring(err)); return end
     local n = #snap.rules - 1
     ShowPopup("XAYAUI_EXPORT", "Export of '" .. tostring(rule.name) .. "'" .. (n > 0 and (" (+" .. n .. " condition" .. (n > 1 and "s" or "") .. ")") or "")
         .. COPY_HOW .. "\nThen paste it into Import / Export > Import rules on the other character or account.", { text = txt })
@@ -1241,7 +1240,7 @@ local function AddPasteMenu(root, label, getTargets, describe)
     local refresh = MenuResponse and MenuResponse.Refresh
     sub:CreateTitle(ruleClip and ("Copied: " .. tostring(ruleClip.name)) or "Nothing copied yet (use Copy Settings)")
     local okP, errP = pcall(ns.PasteMenuBuild, sub, ns.PASTE_TREE, refresh)   -- a fault in the paste tree must never take the whole right-click menu down
-    if not okP then ns.Print("paste menu error: " .. tostring(errP)) end
+    if not okP then ns.PrintError("XUI-E015", "paste menu error: " .. tostring(errP)) end
     sub:CreateDivider()
     sub:CreateButton("Paste Selected Sections", function()
         if not ruleClip then ns.Print("nothing copied yet: right-click a rule and choose Copy Settings first") return end
@@ -1407,7 +1406,7 @@ local function MenuOwner(button) return ns.ContextMenuOwner(button, "TOOLTIP", d
 local function Guarded(root) return ns.GuardMenu(root, drag.OpenNow) end
 
 local function ShowRowMenu(button)
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.PrintWarning("XUI-W009", "the context menu needs the game's MenuUtil, which is not available") return end
     local shown = false
     local ok, err = pcall(MenuUtil.CreateContextMenu, MenuOwner(button), function(_, root)
         -- Menu.lua runs root-registered acquired callbacks for every menu and submenu it opens, so submenus (e.g. Move To) are
@@ -1422,7 +1421,7 @@ local function ShowRowMenu(button)
         end
         shown = RowMenu(button, Guarded(root))
     end)
-    if not ok then ns.Print("context menu error: " .. tostring(err)) end
+    if not ok then ns.PrintError("XUI-E015", "context menu error: " .. tostring(err)) end
 end
 
 -- Right-click on EMPTY space in the Rules sidebar (below the last row, or between rows): New Rule / New Group / New Dynamic Group at the cursor.
@@ -1430,7 +1429,7 @@ end
 function ns.ShowBlankMenu(frame)
     local tab = ns.CurrentTab and ns.CurrentTab()
     if tab ~= "cooldowns" and tab ~= "smartcat" then return end   -- only the Rules sidebar; QoL and Settings trees have no rule list
-    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.Print("the context menu needs the game's MenuUtil, which is not available") return end
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then ns.PrintWarning("XUI-W009", "the context menu needs the game's MenuUtil, which is not available") return end
     local function NewGroup(dynamic)
         local nf = ns.NewFolder(dynamic and "Dynamic Group" or "Group")
         if dynamic then nf.cType = "dynamic" end
@@ -1452,7 +1451,7 @@ function ns.ShowBlankMenu(frame)
         root:CreateButton("New Group", function() NewGroup(false) end)
         root:CreateButton("New Dynamic Group", function() NewGroup(true) end)
     end)
-    if not ok then ns.Print("context menu error: " .. tostring(err)) end
+    if not ok then ns.PrintError("XUI-E015", "context menu error: " .. tostring(err)) end
 end
 -- hook the sidebar frame of a tree once; called from the row decorator, which knows its tree (button.obj)
 function ns.HookSidebarBlank(tree)
