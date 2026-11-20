@@ -708,20 +708,24 @@ def main():
     folders = {k: v for k, v in H.find_addons().items() if k != "XayaUI_DevAssist"}
     tmp = tempfile.mkdtemp(prefix="xui_replay_")
     fails = 0
+    # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) checks made and checks failed, for the last line
+    # "N checks, M failed" (FAILS above counts each Lua error on its own; here a run with errors is one failed check)
+    checks, failed = 0, 0
     try:
         olds = {}
         for f in OLD_FILES:
             src = git_show("XayaUI_Rules/%s" % f)
             if src is None:
                 print("FAIL: cannot read XayaUI_Rules/%s at %s from git (set XUI_REPLAY_GIT to a clone of the repository)" % (f, BASE))
-                print("FAILS: 1")
+                print("MISSING INPUT: XayaUI_Rules/%s at %s (git; set XUI_REPLAY_GIT to a clone of the repository)" % (f, BASE))
+                print("1 checks, 1 failed (the engine before round 6 could not be read)")
                 sys.exit(1)
             olds[f] = src
         new_engine = open(os.path.join(folders["XayaUI_Rules"], "Engine.lua"), encoding="utf-8").read()
         paced = with_pace(olds["Engine.lua"].decode("utf-8"), new_engine)
         if paced is None:
             print("FAIL: the routed pace lines (ROUTED_GAP / ROUTED_DUE) were not found in the engine under test or the old one")
-            print("FAILS: 1")
+            print("1 checks, 1 failed (the routed pace lines)")
             sys.exit(1)
         trees = {}
         # (round 10, SD-87) "samedisplay" / "nativedisplay": the old engine (at the routed pace / its own pace) drawn by this tree's display
@@ -749,9 +753,13 @@ def main():
     fd, fnd = old_disp.get("frames") or [], old_ndisp.get("frames") or []
     m = re.search(PACE_LINES[0], new_engine, re.M)
     print("    (the routed pace of the engine under test, given to the old engine for the strict comparison: %s)" % (m.group(0) if m else "?"))
+    checks += 1
     if not fb or any(len(x) != len(fb) for x in (fa, fn, fd, fnd)):
         print("FAIL: the runs played a different number of frames (%d, %d, %d, %d, %d)" % (len(fd), len(fnd), len(fa), len(fn), len(fb)))
         fails += 1
+        failed += 1
+    else:
+        print("ok  the five runs played the same number of frames (%d)" % len(fb))
     rules_n = 0
     for x in fd + fb:
         rules_n = max(rules_n, len(x.get("rows") or []))
@@ -768,6 +776,7 @@ def main():
           "every sound in order), tenths text and bar fill included (no allowance a), and exactly the same at the end of every part of the "
           "streams%s" % (nf, rules_n, "" if ok else " [%d differences]" % len(diffs)))
     fails += 0 if ok else 1
+    checks, failed = checks + 1, failed + (0 if ok else 1)
     print("    (allowance b, EARLIER: already showing what the engine before round 6 showed within the next tenth of a second and one frame: "
           "%d rule-frames)" % earlier)
     # 2. PACE BOUND (pass / fail), against the old engine at its own pace, drawn by this tree's display code: exact rows
@@ -778,6 +787,7 @@ def main():
     print(("ok  " if ok else "FAIL: ") + "PACE BOUND: against the engine before round 6 at its own pace (1/30 s), drawn by this tree's display code, "
           "every row drawn now is exactly one it drew within the last tenth of a second and one frame%s" % ("" if ok else " [%d rows]" % len(late)))
     fails += 0 if ok else 1
+    checks, failed = checks + 1, failed + (0 if ok else 1)
     print("    (the most any row was behind the old engine's: %.0f ms)" % (worst * 1000))
     sa = sorted((fnd[-1].get("sounds") or "").split(",")) if fnd else []
     sb = sorted((fb[-1].get("sounds") or "").split(",")) if fb else []
@@ -785,6 +795,7 @@ def main():
     print(("ok  " if ok else "FAIL: ") + "PACE BOUND: the same sounds play as with the engine before round 6 at its own pace (%d sounds)%s"
           % (len(sb), "" if ok else " [before %d, now %d]" % (len(sa), len(sb))))
     fails += 0 if ok else 1
+    checks, failed = checks + 1, failed + (0 if ok else 1)
     # 3. REPORTED, NOT PASS / FAIL (SD-87): against the old engine drawn by 89ea79ab's display code
     diffs3, redraw3, earlier3, longest3 = strict(fa, fb, True)
     late3, worst3 = pace_bound(fn, fb, True)
@@ -807,13 +818,17 @@ def main():
     ok2 = not never
     print(("ok  " if ok2 else "FAIL: ") + "every rule turned on at least once in the streams%s" % ("" if ok2 else " [never: %s]" % ", ".join(never)))
     fails += 0 if ok2 else 1
+    checks, failed = checks + 1, failed + (0 if ok2 else 1)
     print("    (rules drawn on screen at some frame: %d of %d)" % (len(drawn), rules_n))
     for side, r in (("before, same pace, this display code", old_disp), ("before, own pace, this display code", old_ndisp),
                     ("before, same pace, 89ea79ab's display code", old_same), ("before, own pace, 89ea79ab's display code", old_native), ("now", now)):
         for e in (r.get("errors") or []):
             print("ERROR (%s) in the game stand-in: %s" % (side, str(e)[:500]))
             fails += 1
-    print("FAILS: %d" % fails)
+        checks, failed = checks + 1, failed + (1 if r.get("errors") else 0)
+        if not r.get("errors"):
+            print("ok  no Lua error in the stand-in game (%s)" % side)
+    print("%d checks, %d failed  FAILS: %d" % (checks, failed, fails))
     sys.exit(1 if fails else 0)
 
 

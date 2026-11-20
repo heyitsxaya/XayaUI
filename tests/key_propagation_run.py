@@ -229,6 +229,10 @@ def main():
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # on purpose: ns.KeyCatch(e, function() error("broken handler") end), then a key pressed (a key handler with a Lua error leaves the
+    # key to the game): saved as XUI-E001 once
+    print("EXPECT_ERRORS XUI-E001 1")
     print("%d checks, %d failed, %d Lua errors" % (len(results), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

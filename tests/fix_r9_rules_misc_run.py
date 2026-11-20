@@ -20,7 +20,9 @@ from lupa.lua51 import LuaRuntime
 ROOT = os.environ.get("XUI_R9_ROOT") or os.path.join(HERE, "..")
 
 fails = []
+checked = [0]   # (round 11 repair, SD-138 M1: the last line says how many checks ran)
 def check(name, ok, extra=""):
+    checked[0] += 1
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -155,6 +157,8 @@ local r = { uid = "spec", name = "spec", enabled = true, useBuff = true, buffID 
   load = { mode = "all", specs = { ["581"] = true } },
   sound = { enabled = true, source = "file", value = "Interface\\AddOns\\SoundPack\\spec.ogg", channel = "Master" },
   gameSound = { enabled = true, when = "auto", channel = "Ambience", throttle = 1 } }
+-- (round 11 repair) built the way XayaUI builds every rule it loads or makes (RuleDefaults.lua ns.NormalizeRule)
+NS.NormalizeRule(r)
 NS.rules[#NS.rules + 1] = r
 SPECRULE = r
 SYNCS = 0
@@ -269,5 +273,5 @@ check("no addon on main outside XayaUI Rules reads BarColorizeTypes", not reader
 check("(V34) the 'rules' service no longer offers BarColorizeTypes, which nothing on main reads",
       L.eval("RS and RS.BarColorizeTypes") is None)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed  FAILS: %d" % (checked[0], len(fails), len(fails)))
 sys.exit(1 if fails else 0)

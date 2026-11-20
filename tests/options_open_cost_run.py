@@ -17,13 +17,20 @@ world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(
 loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
     os.path.join(HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
 out = L.eval("function(path, W, Ld) return dofile(path)(W, Ld) end")(os.path.join(os.path.dirname(os.path.abspath(__file__)), "options_open_cost.lua"), world, loader)
-fails = 0
+fails = checks = 0
 for i in range(1, len(out) + 1):
     print(out[i])
+    # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) each check() of the Lua part prints one line,
+    # "ok    <name>" or "FAIL  <name>"; the other lines are measurements ("info")
+    if out[i].startswith("ok    ") or out[i].startswith("FAIL"):
+        checks += 1
     if out[i].startswith("FAIL"): fails += 1
 errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
+checks += 1
 if errs:
     print("FAIL  Lua errors in the stand-in: %d" % len(errs)); fails += 1
     for e in errs[:5]: print("   ", str(e)[:300])
-print("FAILS: %d" % fails)
+else:
+    print("ok    no Lua error in the stand-in")
+print("%d checks, %d failed" % (checks, fails))
 sys.exit(1 if fails else 0)

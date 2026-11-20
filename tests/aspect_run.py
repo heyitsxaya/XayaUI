@@ -20,7 +20,9 @@ C_Texture = { GetAtlasInfo = function(n) if n == "bar-atlas" then return { width
 L.execute("local ns = ns\n" + vblock + "\n" + oblock)
 ns = L.globals().ns
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, got, want):
+    checked.append(name)
     ok = got == want
     print(("PASS " if ok else "FAIL ") + name + ": " + repr(got) + ("" if ok else "  want " + repr(want)))
     if not ok: fails.append(name)
@@ -87,5 +89,5 @@ ns.KeepArtAspect(v); check("swap while off: untouched", size(v), (128, 26))
 w = V(kind="spellicon", w=94, h=128, iconW=94, iconH=40, keepAspect=True)
 ns.KeepArtAspect(w); check("existing display never mutated on first look", size(w), (94, 40))
 
-print("\n%d failed" % len(fails) if fails else "\nall passed")
+print("\n%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

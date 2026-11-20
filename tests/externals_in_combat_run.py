@@ -66,7 +66,9 @@ for f in toc:
         failed.append((f, str(e)[:200]))
 
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -178,5 +180,5 @@ check("no rule lists an aura ID: no aura is read (off costs nothing)", L.eval("C
 # (the J26 walkthrough and its F6 probe are XayaUI Dev Assist's, on another branch: their checks left with it)
 
 print()
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

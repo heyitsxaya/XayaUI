@@ -63,11 +63,13 @@ for _, r in ipairs(ns.rules) do local rt = ns.runtime[r]; sig[#sig + 1] = (rt an
 return kb, n, table.concat(sig)
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok):
+    checked.append(name)
     print(("ok    " if ok else "FAIL  ") + name)
     if not ok: fails.append(name)
 check("garbage per engine step with %d rules: %.2f KB (limit %.0f KB; core 0.6.62 made 224.62 KB)" % (N, kb, LIMIT), kb < LIMIT)
 check("no function defined inside ReadCooldownRaw or TrackedBuffOfSpell runs during a step (closures per call): %d found" % nested, nested == 0)
 check("every rule decided (one mark per rule)", len(sig) == N)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

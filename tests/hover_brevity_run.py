@@ -31,5 +31,7 @@ print(("PASS " if n > 200 else "FAIL ") + "the scan found the hover texts (%d)" 
 print(("PASS " if not over else "FAIL ") + "every hover text has at most two sentences (%d longer)" % len(over))
 for o in over[:40]:
     print("   " + o)
-print("FAILS: %d" % (0 if ok else 1))
+# (round 11 repair, SD-138 / V35: a test fails if it prints no result count) the checks made: that the scan found the hover texts, and
+# each hover text found (at most two sentences); failed: a scan that found too few, and each longer text
+print("%d checks, %d failed (the scan, and %d hover texts)" % (1 + n, (0 if n > 200 else 1) + len(over), n))
 sys.exit(0 if ok else 1)

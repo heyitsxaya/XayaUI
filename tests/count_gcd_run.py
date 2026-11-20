@@ -66,7 +66,9 @@ function CAST(id) ns.NoteChargeCast(id, T) end
 function WATCH() ns._WatchCharges() end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 def lua(s): return L.execute(s)
@@ -185,4 +187,8 @@ lua("OVR[7010] = nil; OVR[7012] = nil")
 optsB4 = window_src()
 check("B4: the tick box is in the Cooldown section, cleared by Remove, copied with the spell",
       'exactSpell = Tog(rule, "exactSpell", "Exact spell ID"' in optsB4 and "rule.exactSpell = nil" in optsB4 and "dst.exactSpell = src.exactSpell" in optsB4)
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

@@ -61,10 +61,17 @@ settings window, the P-checks start again once they are closed); the memory cap 
 Measuring limits (V25; UNVERIFIED IN GAME): instructions are Lua VM instructions in Lua 5.1 and include the stand-in's own widget
 methods (C in the game), so they overstate; allocation excludes the stand-in's widget methods and the gate's own measuring; the game's
 aura / cooldown reads hand back a new table per call (as the game does), and that garbage counts as XayaUI's.
+(round 11 repair) The V33 numbers stored in this file (V33_RECORDED, V33_EVENT_CAPS) are the calibration and are self-sufficient: a
+checkout that cannot play ad60a051 (no git, a shallow or public clone) judges with them, as long as they were measured or confirmed in this
+same scenario (gate_common.scenario_stamp()) and stand-in (standin_stamp(): tests/harness world.lua, loader.lua, savedvars.lua). Playing
+ad60a051 now, where git has it, only cross-checks them. A record for another scenario, or one from another stand-in that cannot be
+cross-checked here, is a FAIL that says MISSING INPUT (record_check()); before, a replay turned a stale record into a WARNING and the gate
+passed only where git had ad60a051. The last line counts the checks run ("gate_performance: N checks, M failed (...)  FAILS: K": N = the
+named checks of judge() for each variant, M = those with a violation, K = the violations; Checks, count_line()), as tests/run_all.py reads it.
 Run: python3 tests/gate_performance_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached; the V33
 calibration plays ad60a051 once more, from git, about three minutes the first time, then cached).
 Proof that the round-7 checks have teeth: tests/v33_budget_teeth_run.py."""
-import collections, os, re, sys
+import collections, hashlib, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gate_common as GC  # noqa: E402
 
@@ -183,8 +190,42 @@ FIGHT = ("fight 2", "fight 3")
 # ad60a051 was played twice with this gate (tree_copy / git archive of the repository's own ad60a051, XUI_GATE_NOCACHE=1, 91 s and 119 s):
 # XayaUI Rules 386,418,300 / 900 = 429,353.7 per fight frame (second play 386,422,000 / 900 = 429,357.8), core 1,000 / 900 = 1.1 (both
 # plays), Options 0.0. Against the 6e573efe8b12 value: (429,353.7 - 425,173.3) / 425,173.3 = +0.98%.
-V33_RECORDED = {"stamp": "f23dc769159a", "rules": 429353.7, "core": 1.1, "options": 0.0,   # (2026-11-16, bundle 1 round 10, 900 fight frames)
-                "when": "in bundle 1 round 10 (2026-11-16, ad60a051 played twice, the first play)"}
+# (round 11 repair, 2026-11-19) stamp f23dc769159a -> c0d0cfcb6da7 (another addon's blocked and forbidden actions in the fights, SD-139;
+# see V33_EVENT_CAPS for the four plays, two of this scenario and two of the round-10 one, all on the current stand-in a8c536bf9194):
+# XayaUI Rules per fight frame, new scenario 386,411,700 / 900 = 429,346.3 and 386,421,400 / 900 = 429,357.1; round-10 scenario
+# 386,421,100 / 900 = 429,356.8 and 386,418,500 / 900 = 429,353.9. The scenario's own change: (429,346.3 + 429,357.1) / 2 - (429,356.8 +
+# 429,353.9) / 2 = 429,351.7 - 429,355.35 = -3.65 = -0.0009%, inside the new scenario's own play-to-play spread (429,357.1 - 429,346.3 =
+# 10.8): no measured change (ad60a051 has no Rules handler for either event), so Rules stays 429,353.7. XayaUI core: new 1,800 / 900 = 2.0
+# and 1,600 / 900 = 1.8, round-10 scenario 1,000 / 900 = 1.1 and 900 / 900 = 1.0: +0.85 per frame in both pairs, far beyond its spread
+# (0.1), a real change: ad60a051's core saves Advanced Debugging on by default (Core.lua:317) and so runs its DebugRecord.lua handler on
+# each of the 12 blocked / forbidden actions of fights 2-3 (another addon's: it returns at the name check), about 700-800 instructions in
+# all. Core is recorded as the first play, 2.0 (2.0 / (429,353.7 / 4) = 0.0019%: she read 0%, consistent). Options 0.0.
+# (round 11 repair 1, 2026-11-19) stamp c0d0cfcb6da7 -> 969b7396b065 (the gate's world uses the stand-in's one aura container instead
+# of its own copy, tests/gate_common.py GAME_LUA; see V33_EVENT_CAPS) and the stand-in's final round 11 world.lua (fingerprint
+# e9492285889a, read the repair 1 way: standin_stamp()). ad60a051 played twice in each scenario on that same stand-in (XUI_GATE_NOCACHE=1,
+# 89-93 s each). XayaUI Rules per fight frame: new scenario 386,420,500 / 900 = 429,356.1 and 386,422,400 / 900 = 429,358.2; the
+# c0d0cfcb6da7 scenario 386,417,700 / 900 = 429,353.0 and 386,418,900 / 900 = 429,354.3. The scenario's own change: (429,356.1 +
+# 429,358.2) / 2 - (429,353.0 + 429,354.3) / 2 = 429,357.15 - 429,353.65 = +3.5 = +0.0008%, inside the eight round 11 plays' own spread
+# (the four above on a8c536bf9194 and these four: 429,346.3 to 429,358.2 = 11.9): no measured change (ad60a051 makes its aura containers
+# at load, outside the fight frames: see V33_EVENT_CAPS), so Rules stays 429,353.7
+# (against it the new plays read +2.4 and +4.5, +0.001%). XayaUI core: new 1,600 / 900 = 1.8 twice, c0d0cfcb6da7 1,800 / 900 = 2.0 and
+# 1,700 / 900 = 1.9: (1,600 - 1,750) / 900 = -0.17 per frame, inside the spread of the six c0d0cfcb6da7 plays (1,600 to 1,800 = 0.22 per frame): stays 2.0 (informational
+# only: the 'consistent' note of v33()). Options 0.0 in all four plays.
+# (round 11 repair 2, 2026-11-19) stand-in e9492285889a -> 7b796e57e823, scenario unchanged (969b7396b065). Two things changed the
+# fingerprint: (a) standin_stamp() now reads comments as Lua does (standin_code(); the line-based reading of repair 1 kept the
+# fingerprint when a block was commented out with "--[[" ... "--]]"); the very stand-in measured above (its world.lua, loader.lua and
+# savedvars.lua byte for byte) reads e9492285889a the old way and 44cc06a46f54 the new way, a new name for the same files; (b) the
+# stand-in unit's round 11 repair 2 added to tests/harness/loader.lua a note of the error-record entries it hands each session from saved
+# data (at load, outside the fight frames). So ad60a051 was played twice more on the live stand-in 7b796e57e823 in this scenario
+# (XUI_GATE_NOCACHE=1, 92 s and 88 s): XayaUI Rules 386,417,100 / 900 = 429,352.3 and 386,416,100 / 900 = 429,351.2 per fight frame;
+# against the repair 1 plays above (429,356.1 and 429,358.2): (429,352.3 + 429,351.2) / 2 - 429,357.15 = 429,351.75 - 429,357.15 = -5.4
+# (-0.0013%), inside the plays' own spread (429,346.3 to 429,358.2 = 11.9, now ten plays): no measured change, Rules stays 429,353.7
+# (the new plays read -1.4 and -2.5 against it). XayaUI core 1,600 / 900 = 1.8 and 1,800 / 900 = 2.0, the same spread: stays 2.0.
+# Options 0.0 in both plays. Only the stand-in is stored.
+V33_RECORDED = {"stamp": "969b7396b065", "standin": "7b796e57e823", "rules": 429353.7, "core": 2.0, "options": 0.0,   # (900 fight frames)
+                "when": "in bundle 1 round 10 (2026-11-16, ad60a051 played twice, the first play), confirmed for this scenario and stand-in "
+                        "in round 11 repair 1 (2026-11-19, four plays: Rules and core unchanged) and repair 2 (2026-11-19, two plays on "
+                        "stand-in 7b796e57e823: unchanged)"}
 FIGHT_ALL = ("fight 1", "fight 2", "fight 3")
 # (round 9, SD-77) the second after each fight's combat end is a measured segment of its own ("end N"); the per-event cap judges the
 # fights and these together, and the frames right after each moment that changes load facts on their own lines
@@ -274,11 +315,89 @@ BONUS_EVENT_CAPS = {"XayaUI_Bonus_StatCalculator": (600, "SD-112", "600, same as
 # filler cues back in their place) reads Rules every 579,700 / 579,800 and steady 579,600 / 579,800 (run 1 / run 2): the round 9 caps
 # 579,900 / 579,800 within one step of the 100-instruction hook. So the Bonus fold-in, the character window and the windows part change
 # nothing of Rules' baseline, and the +6,300 is the five rules' own re-check work on ad60a051 (round 10 gate report).
-V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "f23dc769159a",
-                  "how": "measured 2026-11-16, bundle 1 round 10, two plays of ad60a051 in this scenario, the higher reading",
+# (round 11 repair, 2026-11-19) stamp f23dc769159a -> c0d0cfcb6da7: the fights play another addon's ADDON_ACTION_BLOCKED and
+# ADDON_ACTION_FORBIDDEN once every 5 s each (tests/gate_common.py storm(); SD-139: XayaUI/DebugRecord.lua listens to both in every
+# variant now, so their cost is measured in the same fight frames as everything else, against core's 600 cap). Also since round 10 the
+# stand-in changed (tests/harness/world.lua: UnitAffectingCombat while PLAYER_REGEN_DISABLED is handled; stand-in a8c536bf9194, round
+# 10's was 5aa34970409d). To keep the two apart, ad60a051 was played twice in each scenario on the SAME current stand-in (tree_copy /
+# git archive, XUI_GATE_NOCACHE=1, 101-108 s each): the new scenario, and the round-10 scenario (this gate_common.py with only the
+# blocked-action lines taken out: stamp f23dc769159a again). Costliest single frame, fights 1 / 2 / 3, ends 1 / 2 / 3:
+#   new scenario c0d0cfcb6da7
+#   XayaUI Rules    run 1: 586,400 / 586,200 / 586,100, 583,700 / 583,600 / 583,900   run 2: 586,400 / 585,900 / 586,500, 583,800 / 583,700 / 583,800
+#                   -> every 586,400 / 586,500, steady 586,200 / 586,500; moments (higher of the runs): combat start 561,900, boss pull
+#                      586,500, boss down 579,300, combat end 583,900
+#   XayaUI (core)   run 1: 500 / 500 / 500, 600 / 600 / 500                 run 2: 500 / 500 / 500, 600 / 600 / 500      -> 600, 600
+#                   (boss pull 100 in both runs, 0 in the round-10 scenario; INFERENCE: a blocked action lands in the frames after the pull)
+#   XayaUI Options  0 everywhere                                                                                         -> 0
+#   round-10 scenario f23dc769159a, the same stand-in
+#   XayaUI Rules    run 1: 586,200 / 586,300 / 586,100, 583,700 / 583,800 / 583,700   run 2: 586,200 / 586,200 / 586,100, 583,700 / 583,800 / 583,900
+#                   -> every 586,300 / 586,200, steady 586,300 / 586,200
+#   XayaUI (core)   600, 600 in both runs; XayaUI Options 0
+# The scenario's own change, measured (new against round-10 scenario, same stand-in, higher of two plays each): XayaUI Rules every
+# 586,500 - 586,300 = +200, steady 586,500 - 586,300 = +200. That is inside the play-to-play spread of the new scenario itself (steady
+# 586,500 - 586,200 = 300; this gate's documented spread is 300, V33_EVENT_CAPS_TOL below), so it is no measured change: ad60a051 has no
+# XayaUI Rules handler for either event (git grep ad60a051: ADDON_ACTION_BLOCKED is registered only by XayaUI/DebugRecord.lua, core),
+# and Rules' whole fight work agrees: (386,411,700 + 386,421,400) / 2 = 386,416,550 instructions in fights 2-3 against (386,421,100 +
+# 386,418,500) / 2 = 386,419,800 (-3,250 = -0.0008%). The stand-in's own change, measured (round-10 scenario now against the stored
+# round 10 caps): every 586,300 - 586,200 = +100, steady 586,300 - 586,100 = +200, inside the same spread. Core's per-event peak is 600
+# in both scenarios. So no cap moves: only the stamp and the stand-in it was confirmed in are recorded (a cap may change only by what
+# the scenario measurably adds; SD-66's rule, "No worse than ad60a51", is unchanged). Consequence, stated: a single play of ad60a051 in
+# this scenario can read up to 586,500 (+300 = 0.05% above the every cap, +400 = 0.07% above the steady cap); the replay cross-check
+# treats that as the same reading (V33_EVENT_CAPS_TOL), and bundle 1's costliest frame (391,300 in round 10) is far from either.
+# "standin": tests/harness world.lua + loader.lua + savedvars.lua, the Lua the stand-in runs (standin_stamp() below): the record is
+# self-sufficient only in the stand-in it was measured or confirmed in (see record_check()).
+# (round 11 repair 1, 2026-11-19) stamp c0d0cfcb6da7 -> 969b7396b065, stand-in -> e9492285889a. Two changes since the record above:
+# the stand-in's world.lua became the one definition of Blizzard's aura container (the stand-in unit, round 11 repair 1), and the gate's
+# world stopped defining its own copy over it (tests/gate_common.py GAME_LUA: its copy rawset its own methods over the stand-in's and
+# dropped any error in the addon's initializeFrame with pcall, so an addon error at that point could never reach the gate; the stand-in's
+# container reports it as a Lua error; tests/fix_r11_standin_run.py A2). ad60a051 was played twice in each scenario on the SAME final
+# stand-in (tree_copy / git archive, XUI_GATE_NOCACHE=1, 89-93 s each). Costliest single frame, fights 1 / 2 / 3, ends 1 / 2 / 3:
+#   new scenario 969b7396b065
+#   XayaUI Rules    run 1: 586,500 / 586,200 / 585,900, 583,600 / 583,800 / 583,900   run 2: 586,300 / 586,100 / 586,000, 584,000 / 583,900 / 583,900
+#                   -> every 586,500 / 586,300, steady 586,200 / 586,100; moments (higher of the runs): combat start 561,700, boss pull
+#                      586,500, boss down 579,400, combat end 584,000
+#   XayaUI (core)   every 600 / 600, steady 600 / 600 (boss pull 100: a blocked action lands in the frames after the pull, as before)
+#   XayaUI Options  0 everywhere
+#   scenario c0d0cfcb6da7 (the record above), the same stand-in
+#   XayaUI Rules    run 1: 586,900 / 585,700 / 585,900, 584,100 / 583,800 / 583,600   run 2: 586,400 / 586,200 / 586,000, 583,800 / 583,900 / 583,700
+#                   -> every 586,900 / 586,400, steady 585,900 / 586,200
+#   XayaUI (core)   600, 600 in both runs; XayaUI Options 0
+# The scenario's own change, measured (new against c0d0cfcb6da7, same stand-in, higher of two plays each): XayaUI Rules every 586,500 -
+# 586,900 = -400, steady 586,200 - 586,200 = 0; whole fight work (fights 2-3) (386,420,500 + 386,422,400) / 2 - (386,417,700 +
+# 386,418,900) / 2 = 386,421,450 - 386,418,300 = +3,150 (+0.0008%). Both inside the play-to-play spread of ad60a051 on this stand-in
+# (every 586,300 to 586,900 = 600 over the four plays; steady 585,900 to 586,200 = 300): no measured change. ad60a051 does make Blizzard
+# aura containers (XayaUI_Rules/Combat/AuraDisplay.lua:672-711 at ad60a051: CreateFrame "CustomAuraContainerTemplate", AddAuraGroup with
+# initializeFrame), but at load, outside the measured fight frames; INFERENCE: in the fights the container methods it calls are one-line
+# Lua setters in both the gate's old copy and the stand-in's container, which the +3,150 (3.5 a frame) agrees with. The stand-in's
+# own change (c0d0cfcb6da7 now against the plays recorded above on a8c536bf9194: every 586,900 against 586,500, steady 586,200 against
+# 586,500) is inside the same spread. Core's per-event peak is 600 in all four plays. So no cap moves (a cap changes only by what the
+# scenario measurably adds; SD-66 "No worse than ad60a51"): only the stamp and the stand-in are stored. Stated plainly: one play of
+# ad60a051 can read up to 586,900 here, 700 (0.12%) above the every cap and up to 586,500 here, 400 (0.07%) above the steady cap; the
+# replay cross-check treats that as the same reading (V33_EVENT_CAPS_TOL, 1%), and bundle 1's costliest frame (391,500 at combat end in
+# the round 11a review) is far below both.
+# (round 11 repair 2, 2026-11-19) stand-in e9492285889a -> 7b796e57e823 (why: V33_RECORDED above; e9492285889a is 44cc06a46f54 when
+# read the new way). ad60a051 played twice on stand-in 7b796e57e823 in this scenario 969b7396b065. Costliest single frame, fights 1 / 2 /
+# 3, ends 1 / 2 / 3:
+#   XayaUI Rules    run 1: 586,300 / 586,100 / 586,000, 583,800 / 583,800 / 583,700   run 2: 586,200 / 586,000 / 586,100, 583,900 / 583,600 / 583,600
+#                   -> every 586,300 / 586,200, steady 586,100 / 586,100; moments (higher of the runs): combat start 561,900, boss pull
+#                      586,300, boss down 579,100, combat end 583,900
+#   XayaUI (core)   every 600 / 600, steady 600 / 600; XayaUI Options 0 everywhere
+# Against the repair 1 plays in this scenario (higher of two each): every 586,300 - 586,500 = -200, steady 586,100 - 586,200 = -100;
+# against the stored caps: every 586,300 - 586,200 = +100 (0.02%), steady 586,100 - 586,100 = 0. All inside ad60a051's own
+# play-to-play spread (every 586,200 to 586,900 = 700 over the six plays in this scenario and c0d0cfcb6da7; steady 585,900 to 586,200 =
+# 300): no measured change, so no cap moves; only the stand-in is stored.
+V33_EVENT_CAPS = {"source": "ad60a051", "stamp": "969b7396b065", "standin": "7b796e57e823",
+                  "how": ("measured 2026-11-16 (bundle 1 round 10, two plays of ad60a051, the higher reading); confirmed 2026-11-19 for this "
+                          "scenario and stand-in (round 11 repair 1: two plays each of this and the c0d0cfcb6da7 scenario on the final "
+                          "round 11 stand-in, no measured change; round 11 repair 2: two plays on stand-in 7b796e57e823, no measured "
+                          "change)"),
                   "caps": {"every": {"XayaUI_Rules": 586200, "XayaUI": 600, "XayaUI_Options": 0},
                            "steady": {"XayaUI_Rules": 586100, "XayaUI": 600, "XayaUI_Options": 0}}}
-V33_EVENT_CAPS_TOL = 0.01   # a replay of ad60a051 within 1% of the stored caps is the same reading (the 300-instruction spread above)
+V33_EVENT_CAPS_TOL = 0.01   # a replay of ad60a051 within 1% of the stored caps is the same reading (the 300-600 instruction spread above)
+# (round 11 repair) the stand-in's Lua whose fingerprint a stored record carries (tests/harness/; the scenario's own Lua is the stamp)
+V33_STANDIN_FILES = ("world.lua", "loader.lua", "savedvars.lua")
+V33_WHERE_CAPS = "tests/gate_performance_run.py (V33 per-event caps)"
+V33_WHERE_CAL = "tests/gate_common.py (V33 calibration)"
 NAMES = {"XayaUI": "XayaUI (Platform, core)", "XayaUI_Rules": "XayaUI Rules", "XayaUI_Options": "XayaUI Options",
          "XayaUI_Bonus": "XayaUI Bonus Features", "XayaUI_Bonus_StatCalculator": "XayaUI Bonus Features: Stat Calculator"}
 
@@ -289,6 +408,128 @@ def first_second(B, seg, addon):
     if isinstance(sec, dict):
         return sec.get("1", sec.get(1, 0)) or 0
     return sec[0] if sec else 0
+
+
+# (round 11 repair 2) what standin_code() looks for: a comment start, a long bracket (a long string, or a long comment after "--") or a
+# short string quote; whitespace runs in code (Lua's isspace set)
+_LUA_NEXT = re.compile(rb"--|\[=*\[|[\"']")
+_LUA_LONG = re.compile(rb"\[(=*)\[")
+_LUA_WS = re.compile(rb"[ \t\r\n\f\v]+")
+
+
+def _lua_ws(chunk):
+    """A code chunk with each whitespace run folded to one character: a line break if the run has one, else a space."""
+    return _LUA_WS.sub(lambda m: b"\n" if (b"\n" in m.group() or b"\r" in m.group()) else b" ", chunk)
+
+
+def standin_code(body):
+    """(round 11 repair 2) The part of a stand-in Lua file that decides what the stand-in runs: its Lua with every comment taken out the
+    way Lua 5.1's own lexer reads comments (llex.c: "--" then a long bracket "[" "="* "[" is a long comment up to the matching "]" "="*
+    "]", any other "--" runs to the line end), every string kept byte for byte (short strings with their escapes, long strings
+    [[...]] / [=[...]=]), and each whitespace run in code folded to one character (a line break if it had one, else a space; a comment
+    counts as whitespace, so "a--[[x]]b" stays two names).
+    What it guarantees: two versions with the same result have the same Lua tokens in the same order, the same strings and the same line
+    breaks between tokens, so Lua compiles them to the same instructions (line numbers aside, which the gate's count hook does not read:
+    tests/gate_common.py debug.sethook(callhook, "", INS_STEP)). So a comment, blank-line or indentation edit keeps the stored V33
+    records valid (no needless re-record, which a public clone could not do), and every other edit changes the fingerprint: code
+    commented out or switched back on with a block comment ("--[[" ... "--]]" against "---[[" ... "--]]", any level "--[==[" ...
+    "]==]"), a changed string (a "--" line inside a long string included), a changed or added token.
+    Conservative on purpose (a needless re-confirm, never a missed one): removing or adding whitespace between two tokens ("a=b" against
+    "a = b") changes it. Out of scope: a file Lua could not compile (an unfinished string or comment runs to the file end here, and 5.1's
+    "nesting of [[...]]" error is not checked) fails to load in the stand-in itself, which every gate play reports.
+    Before (round 11 repair 1) it dropped every line whose first text was "--", which also dropped "--[[" / "--]]" themselves: commenting a
+    block out or back in kept the fingerprint (round 11a repair 1 review)."""
+    src = body.replace(b"\r\n", b"\n")
+    out, code, i, n = [], [], 0, len(src)
+    while True:
+        m = _LUA_NEXT.search(src, i)
+        if not m:
+            code.append(src[i:])
+            break
+        code.append(src[i:m.start()])
+        tok = m.group()
+        if tok == b"--":
+            lb = _LUA_LONG.match(src, m.end())
+            if lb:   # a long comment: whitespace, a line break if it spans one
+                close = b"]" + lb.group(1) + b"]"
+                j = src.find(close, lb.end())
+                j = n if j < 0 else j + len(close)
+                code.append(b"\n" if b"\n" in src[m.start():j] else b" ")
+            else:    # a line comment: up to the line end, which stays
+                j = src.find(b"\n", m.end())
+                j = n if j < 0 else j
+                code.append(b" ")
+            i = j
+            continue
+        if tok[:1] == b"[":   # a long string, kept whole
+            close = b"]" + tok[1:-1] + b"]"
+            j = src.find(close, m.end())
+            j = n if j < 0 else j + len(close)
+        else:                 # a short string, kept whole: up to the same quote not escaped, or the line end (Lua: unfinished string)
+            j = m.end()
+            while j < n and src[j:j + 1] != tok:
+                if src[j:j + 1] == b"\\":
+                    j += 1
+                elif src[j:j + 1] == b"\n":
+                    break
+                j += 1
+            j = min(j + 1, n)
+        out.append(_lua_ws(b"".join(code)))
+        out.append(src[m.start():j])
+        code, i = [], j
+    out.append(_lua_ws(b"".join(code)))
+    return b"".join(out).strip()
+
+
+def standin_stamp():
+    """(round 11 repair) A short hash of the stand-in's own Lua (V33_STANDIN_FILES in tests/harness/; standin_code(): its Lua without
+    comments, round 11 repair 2): its widget methods are Lua here and count as instructions, so a stored V33 number holds only in the
+    stand-in it was measured in."""
+    h = hashlib.sha1()
+    for f in V33_STANDIN_FILES:
+        try:
+            with open(os.path.join(GC.H.HERE, f), "rb") as fh:
+                body = standin_code(fh.read())
+        except OSError:
+            body = b"(missing)"
+        h.update(f.encode() + b"\0" + body)
+    return h.hexdigest()[:12]
+
+
+def record_check(rep, rec, name, stamp, replayed, where, now_text):
+    """(round 11 repair; R11A concern "a fresh public clone that cannot replay ad60a051 loses its calibration"; SD-138 / V35: "a test
+    fails if something it needs is missing (it must say what)") Whether the stored V33 record `rec` (V33_RECORDED or V33_EVENT_CAPS,
+    called `name`) may be used here. The stored record is the calibration and is self-sufficient: a checkout that cannot play ad60a051
+    (no git, a shallow or public clone, or after the history rewrite of SD-140) judges with it, as long as it was measured or confirmed
+    in this same scenario (stamp) and this same stand-in (standin_stamp()). Playing ad60a051 now (replayed) is a cross-check only.
+      the stamp differs                    FAIL, "MISSING INPUT": nothing records this scenario's calibration; with a replay the numbers to
+                                           store are printed (the run still judges with them, so every line prints), without one there
+                                           is nothing to judge with. Before round 11 repair, a replay made this a WARNING and the gate
+                                           passed only where git had ad60a051 (round 11a final review).
+      the stand-in differs, no replay      FAIL, "MISSING INPUT": the record cannot be confirmed for this stand-in (the run still judges
+                                           with it);
+      the stand-in differs, with replay    WARNING: the replay is the check (the drift WARNING follows when it differs by more than 1%);
+                                           store the new stand-in once it confirms the record;
+      both match                           used as stored.
+    Returns True when the stored record is used."""
+    here = standin_stamp()
+    if rec.get("stamp") != stamp:
+        rep.fail(where, "MISSING INPUT: %s holds no record for this scenario (stored for scenario %s, stand-in %s; this run's scenario is "
+                 "%s, stand-in %s); %s" % (name, rec.get("stamp"), rec.get("standin"), stamp, here,
+                                         "judged this run with ad60a051 played now" if replayed else "ad60a051 could not be played here"),
+                 ("store in %s: %s" % (name, now_text)) if replayed else "",
+                 "play ad60a051 twice in this scenario (a git checkout that has it, or XUI_V33_REPO) and store the numbers, the stamp and "
+                 "the stand-in in %s, with the arithmetic (a value changes only by what the scenario measurably adds)" % name)
+        return False
+    if rec.get("standin") != here:
+        if replayed:
+            rep.warn(where, "%s was recorded in another stand-in (%s; this one is %s): ad60a051 played now is the cross-check" % (
+                name, rec.get("standin"), here), "", "once the replay confirms it (no drift WARNING), store standin %s in %s" % (here, name))
+        else:
+            rep.fail(where, "MISSING INPUT: %s was recorded in another stand-in (tests/harness %s; this one is %s) and ad60a051 could not "
+                     "be played here to confirm it; judged with the stored record anyway" % (name, rec.get("standin"), here), "",
+                     "run the gate in a git checkout that has ad60a051 (or set XUI_V33_REPO): if it confirms the record, store standin %s" % here)
+    return True
 
 
 _BASE = []
@@ -329,22 +570,24 @@ def event_caps(data, rep, base, stamp, pct):
     measured = None
     if base is not None:
         measured = {k: {a: peak(base, segs, a)[0] for a in rec["caps"][k]} for k, segs in (("every", CAP_EVERY), ("steady", CAP_STEADY))}
-    if rec["stamp"] == stamp:
+    # (round 11 repair) the stored caps are the calibration (record_check: self-sufficient in their scenario and stand-in; a stale or
+    # unconfirmable record is a FAIL that says MISSING INPUT; playing ad60a051 now only cross-checks them)
+    if record_check(rep, rec, "V33_EVENT_CAPS", stamp, measured is not None, V33_WHERE_CAPS,
+                    '"stamp": "%s", "standin": "%s", "caps": %s (one play: play it twice and keep the higher reading)' % (
+                        stamp, standin_stamp(), measured)):
         caps, how = rec["caps"], "stored in this gate for scenario %s (%s)" % (stamp, rec["how"])
         drift = measured is not None and any(abs(measured[k][a] - caps[k][a]) > V33_EVENT_CAPS_TOL * max(caps[k][a], 100)
                                              for k in caps for a in caps[k])
         if drift:
-            rep.warn("tests/gate_performance_run.py (V33 per-event caps)", "the stored per-event caps differ from %s played now in this same "
+            rep.warn(V33_WHERE_CAPS, "the stored per-event caps differ from %s played now in this same "
                      "scenario" % rec["source"], "stored %s; played now %s" % (caps, measured),
                      "find why the same build and scenario measure differently (the stand-in or the harness changed?) before trusting either")
+        elif measured is None:
+            rep.note("V33 per-event caps: %s not played here; the caps stored for this scenario (%s) and stand-in (%s) are used as "
+                     "recorded" % (rec["source"], stamp, rec.get("standin")))
     elif measured is not None:
         caps, how = measured, "measured now on %s in this scenario (%s; the stored caps are for scenario %s)" % (rec["source"], stamp, rec["stamp"])
-        rep.warn("tests/gate_performance_run.py (V33 per-event caps)", "the stored per-event caps are for another scenario; this run uses "
-                 "%s played now" % rec["source"], "now: %s" % measured, "record these numbers and this scenario's stamp in V33_EVENT_CAPS")
     else:
-        rep.fail("tests/gate_performance_run.py (V33 per-event caps)", "the V33 per-event limit has no caps: %s could not be played here and the "
-                 "stored caps are for another scenario (%s, this one is %s)" % (rec["source"], rec["stamp"], stamp), "",
-                 "run the gate in a git checkout that has %s (or set XUI_V33_REPO to one), then store its numbers in V33_EVENT_CAPS" % rec["source"])
         caps = None
     B = data.get("budget") or {}
     addons = sorted(set(a for sg in CAP_EVERY for a in (((B.get(sg) or {}).get("peak")) or {})) | set((caps or {}).get("every") or {})
@@ -427,20 +670,28 @@ def v33(data, rep):
         b_core = GC.seg_per_frame(base, FIGHT, "XayaUI")[0]
         b_opt = GC.seg_per_frame(base, FIGHT, "XayaUI_Options")[0]
         if not bn or b_rules <= 0:
-            rep.fail("tests/gate_common.py (V33 calibration)", "the calibration run on %s measured no XayaUI Rules work in the fight" % GC.V33_BASE_COMMIT,
+            rep.fail(V33_WHERE_CAL, "the calibration run on %s measured no XayaUI Rules work in the fight" % GC.V33_BASE_COMMIT,
                      how, "fix the scenario on the old build before reading the budget")
             return
-        if V33_RECORDED["stamp"] == stamp and V33_RECORDED["rules"]:
+        # (round 11 repair) the record is checked even when ad60a051 plays here: a stale record is a FAIL (MISSING INPUT), not a pass
+        # that holds only where git has ad60a051
+        if record_check(rep, V33_RECORDED, "V33_RECORDED", stamp, True, V33_WHERE_CAL,
+                        '"stamp": "%s", "standin": "%s", "rules": %.1f, "core": %.1f, "options": %.1f (one play: play it twice)' % (
+                            stamp, standin_stamp(), b_rules, b_core, b_opt)) and V33_RECORDED["rules"]:
             how += "; recorded for this scenario %s: %.0f" % (V33_RECORDED["when"], V33_RECORDED["rules"])
     elif V33_RECORDED["stamp"] == stamp and V33_RECORDED["rules"]:
         b_rules, b_core, b_opt = V33_RECORDED["rules"], V33_RECORDED["core"], V33_RECORDED["options"]
-        rep.warn("tests/gate_common.py (V33 calibration)", "%s could not be played here (%s); the budget uses the calibration recorded %s "
-                 "for this same scenario" % (GC.V33_BASE_COMMIT, how, V33_RECORDED["when"]))
+        if V33_RECORDED.get("standin") == standin_stamp():
+            rep.warn(V33_WHERE_CAL, "%s could not be played here (%s); the budget uses the calibration recorded %s "
+                     "for this same scenario and stand-in" % (GC.V33_BASE_COMMIT, how, V33_RECORDED["when"]))
+        else:
+            record_check(rep, V33_RECORDED, "V33_RECORDED", stamp, False, V33_WHERE_CAL, "")
         how = "recorded %s for scenario %s" % (V33_RECORDED["when"], stamp)
     else:
-        rep.fail("tests/gate_common.py (V33 calibration)", "the V33 budget has no calibration: %s could not be played (%s) and the recorded "
-                 "calibration is for another scenario (%s, this one is %s)" % (GC.V33_BASE_COMMIT, how, V33_RECORDED["stamp"], stamp), "",
-                 "run the gate in a git checkout that has %s, then record its numbers in V33_RECORDED" % GC.V33_BASE_COMMIT)
+        # (round 11 repair) says MISSING INPUT (SD-138 / V35: it must say what is missing)
+        if record_check(rep, V33_RECORDED, "V33_RECORDED", stamp, False, V33_WHERE_CAL, ""):
+            rep.fail(V33_WHERE_CAL, "MISSING INPUT: V33_RECORDED has no XayaUI Rules number for this scenario and %s could not be played "
+                     "here (%s)" % (GC.V33_BASE_COMMIT, how), "", "play ad60a051 twice in this scenario and store its numbers")
         return
     unit = b_rules / V33_BASE_PCT          # instructions per frame that read as 1% Average CPU (INFERENCE: linear)
     pct = lambda w: w / unit               # noqa: E731
@@ -533,10 +784,58 @@ def memory_report_fold(data, rep):
                  "; ".join(str(e) for e in errs[:3])[:400], "")
 
 
+class Checks(object):
+    """(round 11 repair; R11A final: gate_performance had no count line, so the honest-result guard read it as NO COUNT LINE; SD-138 /
+    V35 "a test fails ... if it prints no result count") The gate's checks, counted for its last line. judge() names each check as it
+    starts it (begin()); every FAIL reported while a check runs counts against that check. A check is one of the named judgements above
+    (P1-P6, V33, DRAW, MEM, the scenario's integrity), run over every measured handler of one variant's result; the count line reads
+    "gate_performance: N checks, M failed (...)" where M is the number of checks with at least one violation."""
+
+    def __init__(self, rep, label):
+        self.rep, self.label, self.run = rep, label, []
+
+    def begin(self, name):
+        self.run.append([name, 0])
+
+    def fail(self, where, what, numbers, fix):
+        if not self.run:
+            self.begin("(a FAIL before any named check)")
+        self.run[-1][1] += 1
+        self.rep.fail(where, what, numbers, fix)
+
+    def warn(self, where, what, numbers="", fix=""):
+        self.rep.warn(where, what, numbers, fix)
+
+    def note(self, text):
+        self.rep.note(text)
+
+
+def begin(rep, name):
+    """Names the check that starts now, when rep counts checks (Checks); a plain Report (a test calling judge() itself) ignores it."""
+    b = getattr(rep, "begin", None)
+    if b is not None:
+        b(name)
+
+
+def count_line(rep, counted):
+    """(round 11 repair) The gate's last line: the checks run, the checks failed, and (as before) its violations and warnings. Read by
+    tests/run_all.py (COUNT_PATTERNS "N checks", FAILED_COUNT, FAILS_COUNT)."""
+    n = sum(len(c.run) for c in counted)
+    bad = [(c.label, name) for c in counted for name, f in c.run if f]
+    parts = "; ".join("variant %s: %d" % (c.label, len(c.run)) for c in counted)
+    return "%s: %d checks, %d failed (%s%s; %d violation(s), %d warning(s))  FAILS: %d" % (
+        GATE, n, len(bad), parts, ("; failed: " + ", ".join("%s %s" % b for b in bad)) if bad else "", len(rep.fails), len(rep.warns),
+        len(rep.fails))
+
+
 def judge(data, rep):
-    """Every check of this gate on one variant's result."""
+    """Every check of this gate on one variant's result. (round 11 repair) Each check is named as it starts (begin(): its FAILs are counted
+    against it for the count line, see Checks; a plain Report is passed through unchanged)."""
+    begin(rep, "the scenario ran as planned (gate_common.integrity)")
     GC.integrity(data, rep)
+    begin(rep, "memory_report C1 / C4 (the profile's rules)")
     memory_report_fold(data, rep)
+    begin(rep, "the scenario's length (steady state and idle)")
     st = data.get("stats") or {}
     frames = data.get("frames") or {}
     fps = data.get("fps") or 30
@@ -555,9 +854,11 @@ def judge(data, rep):
     repeating_site = {site for site, t in timers_made.items() if t.get("kind") == "NewTicker" or t.get("rearm") or site in chains}
 
     # ---- P1 OnUpdate scripts running while nothing visible changes (round 9, SD-79: per frame they run on, "per display") -----------
+    begin(rep, "P1 frame scripts and display effects (SD-79)")
     p1(data, rep)
 
     # ---- P2 tickers and timer chains ------------------------------------------------------------------------------------------
+    begin(rep, "P2 tickers and timer chains")
     tm = st.get("tm") or {}
     for site in sorted(set(repeating_site) | set(pending)):
         t = timers_made.get(site) or {}
@@ -584,6 +885,7 @@ def judge(data, rep):
             "%s %s x%d" % (site, t.get("kind"), t.get("afterClose")) for site, t in sorted(oneshots)))
 
     # ---- P3 loops over all rules per event --------------------------------------------------------------------------------------
+    begin(rep, "P3 loops over all rules per event")
     disp = collections.Counter()      # (kind, name, src, ctx) -> dispatches after the close
     ins = collections.Counter()
     insmax = collections.Counter()
@@ -640,6 +942,7 @@ def judge(data, rep):
             rep.warn(where, what + " (one pass per real change: allowed by her answer, listed for review)", numbers)
 
     # ---- P4 allocation ----------------------------------------------------------------------------------------------------------
+    begin(rep, "P4 allocation")
     sec = steady_frames / float(fps) if steady_frames else 1.0
     per_file = collections.Counter()
     per_file_idle = collections.Counter()
@@ -681,12 +984,14 @@ def judge(data, rep):
     rep.note("allocation in 30 s idle: %s" % (", ".join("%s %s" % (f, kb(b)) for f, b in per_file_idle.most_common() if b) or "none"))
 
     # ---- P5 whole pixels ----------------------------------------------------------------------------------------------------------
+    begin(rep, "P5 whole pixels")
     for line, s in (data.get("nonint") or {}).items():
         rep.fail(line, "P5 a non-integer position or size passed to %s by XayaUI code" % s.get("method"),
                  "%d call(s) with the window closed, e.g. %s; phases %s" % (s.get("n", 0), s.get("example"), ", ".join(sorted(s.get("phases") or {}))),
                  "store and set whole pixels: round once where the value is made (math.floor(v + 0.5)), not per frame")
 
     # ---- P6 runaway -----------------------------------------------------------------------------------------------------------------
+    begin(rep, "P6 runaway")
     def growth(seq, label, unit, min_delta, what, fix):
         series = [dict(x) if isinstance(x, dict) else {} for x in seq]
         if len(series) < 3:
@@ -728,16 +1033,22 @@ def judge(data, rep):
             rep.fail(site, "P6 runaway: timers made in growing numbers from cycle to cycle", "timers made in cycles 1, 2, 3: %d, %d, %d" % (a, b, c),
                      "one timer per real change; cancel the old one before making a new one")
     # ---- P2 (round 7, round 8) her pace for every re-check path ------------------------------------------------------------------
+    begin(rep, "P2 her pace, 10 a second per re-check path")
     pace(data, rep)
     # ---- P4 (round 8) a new function per timer call ---------------------------------------------------------------------------
+    begin(rep, "P4 a new function per timer call (SD-68, SD-82)")
     closures(data, rep)
 
     # ---- V33 work budget per addon ------------------------------------------------------------------------------------------------
+    begin(rep, "V33 work budget per fight frame")
     pct = v33(data, rep)
+    begin(rep, "V33 per-event caps")
     event_caps(data, rep, baseline()[0], GC.scenario_stamp(), pct)
     # ---- (round 9, SD-77) what is drawn after each load-fact change, against a full re-check ---------------------------------------
+    begin(rep, "DRAW what is drawn after each load-fact change (SD-77)")
     drawn(data, rep)
 
+    begin(rep, "MEM memory budget (SD-66)")
     memory(data, rep)
 
 
@@ -1268,19 +1579,25 @@ def main():
     rep = GC.Report(GATE)
     data, secs, cached = GC.result()
     rep.note("variant \"default\" (Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded: V34)")
-    judge(data, rep)
+    counted = [Checks(rep, "default")]
+    judge(data, counted[0])
     # (round 8; round 7 review: the gate never loaded XayaUI_Debug, and every install from before round 7 saved Advanced Debugging on,
     # hers included, SD-64) the same scenario with Advanced Debugging on: XayaUI_Debug loaded, judged by every check above
     tag = "[Advanced Debugging on] "
     if not os.path.isdir(os.path.join(GC.ROOT, GC.DEBUG_ADDON)):
         # (an older build played for the calibration or a teeth proof: it has no debug addon to load, so there is nothing to measure)
         rep.note(tag + "variant \"debug\" not played: this checkout has no %s folder" % GC.DEBUG_ADDON)
-        return rep.show(data, secs, cached)
+        rc = rep.show(data, secs, cached)
+        print(count_line(rep, counted))
+        return rc
     ddata, dsecs, dcached = GC.result("debug")
     rep.note(tag + "variant \"debug\": the same scenario with Settings > Debugging > Advanced Debugging saved on; XayaUI_Debug loaded: %s" %
              ddata.get("debugLoaded"))
-    judge(ddata, Tagged(rep, tag))
-    return rep.show(data, (secs or 0) + (dsecs or 0), cached and dcached)
+    counted.append(Checks(Tagged(rep, tag), "debug"))
+    judge(ddata, counted[1])
+    rc = rep.show(data, (secs or 0) + (dsecs or 0), cached and dcached)
+    print(count_line(rep, counted))   # (round 11 repair) the last line: run_all.py reads its count
+    return rc
 
 
 if __name__ == "__main__":

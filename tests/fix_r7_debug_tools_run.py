@@ -259,6 +259,10 @@ def main():
         bad += 0 if ok else 1
     for x in errors:
         print("ERROR in the game stand-in:", str(x)[:600])
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # F12, on purpose: pcall(geterrorhandler(), "Interface/AddOns/XayaUI_Rules/Engine.lua:1: a test error while debugging is off"),
+    # saved as XUI-E001 with Advanced Debugging off (SD-139: always saved)
+    print("EXPECT_ERRORS XUI-E001 1")
     print("%d checks, %d failed, %d Lua errors" % (len(results), bad, len(errors)))
     sys.exit(1 if bad or errors else 0)
 

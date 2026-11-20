@@ -213,7 +213,9 @@ function FR(r) return ns.DisplayFrame(r) end
 function INFO(r) local rt = ns.runtime[r]; return rt and rt.info end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 lua = lambda s: L.execute(s)
@@ -325,4 +327,8 @@ check("engine listens to PLAYER_TARGET_CHANGED and PLAYER_FOCUS_CHANGED", lua("r
 
 # (/xui debug timing, the coverage report, is XayaUI Dev Assist's (on another branch): its checks left with it)
 
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

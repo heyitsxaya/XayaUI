@@ -548,7 +548,7 @@ function ns.OptionsApi.LoadRuleEditor()
     if ns.OptionsApi.ruleEditorTried or not RulesOn() then return EditorOn() end
     ns.OptionsApi.ruleEditorTried = true
     if not EditorOn() then
-        ns.PrintError("XUI-E016", "the rule editor could not be set up: the Rules tab is left out. /xui bug shows errors.")
+        ns.PrintError("XUI-E016", "the rule editor could not be set up: the Rules tab is left out. The error is saved: /xui bug shows it (needs Advanced Debugging).")
     end
     return EditorOn()
 end

@@ -28,13 +28,22 @@ What the suite (tests/run_all.py) must now say about a test, proved on synthetic
   R  the whole-addon harness reads each session's error record (an entry FAILS the run, an entry carried by saved data once) and its last
      line says how many runs it checked; the report keeps its shape ("ok   ", "FAIL ", "HUNG ", reasons on "     M1 " lines; the final
      line "ALL CHECKS PASS" / "N CHECK GROUP(S) FAILED").
-  C  the count grammar reads every count line format the suite prints today, and line_passes is unchanged.
+  C  the count grammar reads every count line format the suite prints today, and line_passes is unchanged. (round 11 repair) C3: the
+     grammar is NOT widened for the closure scan's "in 83 file(s)" or tooltip_parity's "0 failed": those tests now print "N checks,
+     M failed" (a count of checks made); a count of files, sites or failures alone stays no count of checks.
+  N  (round 11 repair, R11A final hidden_error_inventory) the 42 tests the guard read as NO COUNT LINE end with an honest count line:
+     N1 each test whose checks each print one line ("PASS " / "FAIL " / "ok ") says it made exactly as many checks as it printed, and
+     failed exactly as many as it printed FAIL; N2 the scans (closure scan, hover texts, trigger labels) count their items, more than 0;
+     N3 the tests that raise errors on purpose (group C) declare exactly those (EXPECT_ERRORS): under the guard no ERROR RECORD and no
+     EXPECTED ERROR NOT SEEN reason; N4 gate_mouse and gate_keyboard (played on synthetic results here; the real plays take 15 minutes)
+     end with "<gate>: N checks, M failed (...)  FAILS: K", N = their named checks in both variants (counted from judge's source), a
+     violation names its check and does not pass, and a clean result passes.
 Fails on the pre-change files (tests/run_all.py, tests/harness/run.py, skin_button, aura_sources, memory_report_run.py, fix_r7_relocate,
 gate_performance): there the old rule (exit 0 and a passing last line) is applied, which takes the synthetic dishonest tests as ok.
 Stand-in only: UNVERIFIED IN GAME (nothing here runs in the game; the guard judges the offline tests).
 Run: XUI_API_INDEX=tests/harness/api_index.json python3 tests/fix_r11_honest_result_run.py"""
 # XUI_TIME_LIMIT: 900
-import importlib.util, os, re, shutil, signal, subprocess, sys, tempfile, time
+import concurrent.futures, contextlib, importlib.util, io, os, re, shutil, signal, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -420,6 +429,145 @@ def grammar():
     check("C1 the count grammar reads the %d count line formats as stated (None: no count of checks)" % len(cases), not bad, bad)
     check("C2 line_passes is unchanged (tests/run_all_markers_run.py holds it)", R.line_passes("18 checks, 0 failed") and
           not R.line_passes("18 checks, 10 failed") and not R.line_passes("FAILS: 03") and R.line_passes("ALL CHECKS PASS"))
+    # (round 11 repair) the R11A concern on COUNT_PATTERNS, decided as a technical choice (SD-145): the tests print a count of checks; the
+    # grammar is not widened. Each line below must read as stated: the old lines and counts of something else read None, the new ones
+    # read the checks they count.
+    pin = [("closure scan: 0 site(s) making a new function per timer call in 83 file(s)  FAILS: 0", None), ("0 failed", None),
+           ("10 failed", None), ("scanned 83 file(s)  FAILS: 0", None), ("closure scan: 0 site(s) in 0 file(s)  FAILS: 0", None),
+           ("12 file(s) skipped  FAILS: 0", None), ("244 hover texts, 0 longer  FAILS: 0", None), ("78 field labels  FAILS: 0", None),
+           ("gate_keyboard: 0 violation(s), 0 warning(s)  FAILS: 0", None),
+           ("closure scan: 0 site(s) making a new function per timer call in 83 file(s); 108 checks, 0 failed  FAILS: 0", 108),
+           ("closure scan: 0 site(s) making a new function per timer call in 0 file(s); 25 checks, 1 failed  FAILS: 1", 25),
+           ("10 checks, 0 failed", 10), ("245 checks, 0 failed (the scan, and 244 hover texts)", 245),
+           ("gate_mouse: 16 checks, 0 failed (variant default: 8; variant debug: 8; 0 violation(s), 4 warning(s))  FAILS: 0", 16)]
+    bad = [(l, want, R.checked_count(l)) for l, want in pin if R.checked_count(l) != want]
+    check("C3 COUNT_PATTERNS is not widened: a count of files, sites, texts or failures alone is no count of checks (the old closure-scan "
+          "and tooltip_parity lines stay NO COUNT LINE); the tests' new lines read the checks they made", not bad, bad)
+
+
+
+# (round 11 repair) N: the tests the R11A final run read as NO COUNT LINE (gate_performance has its own checks in fix_r8_gate_probe)
+LINE_TESTS = ("art_picker art_rows aspect aura_display aura_gaps build_content build_set_auras charges_combat compact_button_width "
+              "count_gcd cue_volume devassist_rename engine_garbage_229 engine_garbage engine_text error_handler_cost externals_in_combat "
+              "fix_r5_gate4 fix_r6_routing_replay flat_buttons flex_dropdown group_anchors layout_parity load_alloc load_class load_first "
+              "load_ids log_gate options_click_cost options_open_cost rule_click_cost sidebar_name_room switch_reload timing tooltip_parity "
+              "tracked_buff ui_gutter debug_record").split()
+SCAN_TESTS = ("fix_r10_closure_scan", "hover_brevity", "trigger_labels")
+# group C: the errors each test raises on purpose (the line that raises each is quoted beside its EXPECT_ERRORS line in the test)
+DECLARED = {"console_commands": {"XUI-E001": 2}, "devassist_debug_tools": {"XUI-E001": 50}, "fix_r7_debug_tools": {"XUI-E001": 1},
+            "key_propagation": {"XUI-E001": 1}, "rule_editor_load": {"XUI-E001": 18, "XUI-E016": 1}, "fix_r6_backups": {"XUI-E018": 1},
+            "fix_r8_carryovers": {"XUI-E018": 2}, "fix_r6_deadlogs": {"XUI-E010": 3, "XUI-W001": 1}, "debug_record": {"XUI-W001": 1},
+            "settings_migration": {"XUI-W006": 1}, "audit_core": {"XUI-W008": 1}}
+CHECK_LINE = re.compile(r"(PASS |FAIL |ok    |ok  |FAIL  |FAIL:)")
+FAIL_LINE = re.compile(r"(FAIL |FAIL  |FAIL:)")
+RECORD_CODES = ("ERROR RECORD", "EXPECTED ERROR NOT SEEN")
+
+
+def scan_want(name, out):
+    """N2: how many checks a scan made, from its own report lines (and, for the field labels, from Triggers.lua itself)."""
+    if name == "fix_r10_closure_scan":
+        a = re.search(r"scanner self-check: (\d+) snippet", out)
+        b = re.search(r"files scanned: (\d+)", out)
+        return int(a.group(1)) + 2 + int(b.group(1)) if a and b else None
+    if name == "hover_brevity":
+        a = re.search(r"the scan found the hover texts \((\d+)\)", out)
+        return 1 + int(a.group(1)) if a else None
+    src = open(os.path.join(ROOT, "XayaUI_Rules", "Triggers.lua"), encoding="utf-8").read()
+    n = len(re.findall(r'\{\s*key\s*=\s*"\w+",\s*kind\s*=\s*"\w+"[^\n]*?label\s*=\s*"', src))
+    return n or None
+
+
+def run_many(names):
+    """Each test under the suite's guard (4 at a time: separate processes), {name: (state, reasons, last line, stdout)}."""
+    def one(n):
+        return n, verdict(os.path.join(HERE, n + "_run.py"), limit=600)
+    with concurrent.futures.ThreadPoolExecutor(4) as ex:
+        return dict(ex.map(one, names))
+
+
+def count_lines():
+    """N1-N3: the count lines and the declared errors, read from each test's own run under the guard."""
+    got = run_many(sorted(set(LINE_TESTS) | set(SCAN_TESTS) | set(DECLARED)))
+    bad1 = []
+    for n in LINE_TESTS:
+        st, why, last, out = got[n]
+        m = re.search(r"\b(\d+) checks?, (\d+) failed\b", last)
+        lines = out.splitlines()
+        nl = sum(1 for l in lines if CHECK_LINE.match(l))
+        fl = sum(1 for l in lines if FAIL_LINE.match(l))
+        if not m or R.checked_count(last) != nl or int(m.group(2)) != fl or nl == 0:
+            bad1.append("%s: last line %r; printed %d check lines, %d FAIL" % (n, last[:100], nl, fl))
+    check("N1 the %d tests that print one line per check end with 'N checks, M failed': N = the check lines they printed, M = the FAIL "
+          "lines" % len(LINE_TESTS), not bad1, "; ".join(bad1))
+    bad2 = []
+    for n in SCAN_TESTS:
+        st, why, last, out = got[n]
+        k = R.checked_count(last)
+        want = scan_want(n, out)
+        if not k or k != want or "NO COUNT LINE" in codes(why) or not re.search(r"\b\d+ failed\b", last):
+            bad2.append("%s: %r, want %s checks (%s)" % (n, last[:140], want, text(why)))
+    check("N2 the scans end with a count of the items they checked and of those that failed: the closure scan its self-check snippets, "
+          "the mutation, files found and each file scanned; hover_brevity the scan and each hover text; trigger_labels each field label "
+          "(counted again here from XayaUI_Rules/Triggers.lua)", not bad2, "; ".join(bad2))
+    bad3 = []
+    for n, want in sorted(DECLARED.items()):
+        st, why, last, out = got[n]
+        rec = [(c, t) for c, t in why if c in RECORD_CODES]
+        said = {}
+        for l in out.splitlines():
+            m = R.EXPECT_ERRORS.match(l) if NEW else None
+            if m:
+                said["XUI-" + m.group(1)] = said.get("XUI-" + m.group(1), 0) + int(m.group(2))
+        if rec or said != want:
+            bad3.append("%s: declared %s, want %s; %s" % (n, said, want, text(rec)))
+    check("N3 the %d tests that raise errors on purpose declare exactly those (EXPECT_ERRORS) and the guard finds no other record entry"
+          % len(DECLARED), not bad3, "; ".join(bad3))
+
+
+def gate_count_lines():
+    """N4: gate_mouse and gate_keyboard's last line, on synthetic results (GC.result replaced; the real plays take 15 minutes each)."""
+    try:
+        import gate_common as GC
+        import gate_mouse_run as GM
+        import gate_keyboard_run as GK
+    except Exception as e:   # (a gate that does not import is a failure, said as one)
+        check("N4 the gates import", False, e)
+        return
+
+    def play(mod, data, quiet_integrity=False):
+        saved = (GC.result, GC.integrity)
+        GC.result = lambda variant="default", *a, **k: (dict(data, variant=variant), 0, True)
+        if quiet_integrity:
+            GC.integrity = lambda d, rep: None   # (a synthetic result cannot hold the whole scenario; the scenario check is the gate's)
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf):
+                rc = mod.main()
+        finally:
+            GC.result, GC.integrity = saved
+        return rc, (buf.getvalue().strip().splitlines() or [""])[-1]
+
+    variants = 2 if os.path.isdir(os.path.join(GC.ROOT, GC.DEBUG_ADDON)) else 1
+    cp = lambda **k: dict({"label": "x", "combat": False}, **k)   # noqa: E731
+    mm = {"button": True, "opened": True, "closedByClick": True, "escCloses": True, "closedAtEnd": True}
+    keys = [{"key": k, "reached": True} for k in ("PRINTSCREEN", "W", "SPACE")]
+    clean = {"checkpoints": [cp(label="a", keys=keys), cp(label="b", combat=True, keys=keys)], "minimap": mm, "hoverList": []}
+    clicks = dict(clean, checkpoints=[cp(label="a", keys=keys, mouse=[{"by": "X.lua:1", "where": "X.lua:1", "w": 10, "h": 10}]),
+                                      cp(label="b", combat=True, keys=keys)])
+    held = dict(clean, checkpoints=[cp(label="a", keys=[{"key": "W", "reached": False, "by": "X.lua:2"}]), cp(label="b", combat=True, keys=keys)])
+    for mod, broken, what in ((GM, clicks, "1 no shown XayaUI frame takes mouse clicks"), (GK, held, "keys were pressed, and PRINTSCREEN")):
+        src = open(mod.__file__, encoding="utf-8").read()
+        body = src[src.index("\ndef judge("):src.index("\ndef main(")]
+        named = len(re.findall(r"\n\s*begin\(rep, ", body))
+        rc, last = play(mod, clean, True)
+        want = "%s: %d checks, 0 failed (" % (mod.GATE, named * variants)
+        check("N4 %s on a clean result: the last line reads %r and passes run_all's guard (named checks counted from judge's source: %d "
+              "per variant)" % (mod.GATE, want + "...", named), named >= 5 and rc == 0 and last.startswith(want) and
+              R.checked_count(last) == named * variants and R.line_passes(last), last)
+        rc, last = play(mod, broken, True)
+        check("N4 %s: one violation names its check as failed in each variant and the line does not pass" % mod.GATE,
+              rc == 1 and ("%d failed" % variants) in last and last.count(what) == variants and not R.line_passes(last)
+              and R.checked_count(last) == named * variants, last)
 
 
 def main():
@@ -430,6 +578,8 @@ def main():
         os.makedirs(syn)
         synthetic(syn)
         grammar()
+        count_lines()
+        gate_count_lines()
         memory_fold()
         harness_checks()
         copy = copy_repo(os.path.join(work, "copy"))

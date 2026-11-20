@@ -20,7 +20,9 @@ ns = L.eval("{ Val = function(v) if v == nil or v == '' or v == 'none' then retu
 L.globals().NS = ns
 L.eval("function(src) local f = assert(loadstring(src, '@Sound.lua')); f('XayaUI', NS) end")(src)
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -45,5 +47,5 @@ c = play("{ enabled = true, source = 'file', value = 'Interface\\\\AddOns\\\\Xay
 check("a sound FILE: plays as before (the game has no per-sound volume for files)", c and c["fn"] == "PlaySoundFile")
 opt = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "Editor.lua"), encoding="utf-8").read()
 check("the cue's sound pane has the per-cue volume, switched off for files", "cueVolume = { type = \"range\"" in opt and 'disabled = function() return rule.sound.source ~= "kit" end' in opt)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

@@ -46,7 +46,9 @@ for f in toc:
         failed.append((f, str(e)[:200]))
 
 fails = []
+checked = [0]   # (round 11 repair, SD-138 M1: the last line says how many checks ran)
 def check(name, ok, extra=""):
+    checked[0] += 1
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -68,7 +70,9 @@ P = { uid = "P", name = "Proc", enabled = true, useBuff = true, buffID = 5001, b
 A = CUE(P, "qa", "A.ogg")
 B = CUE(P, "qb", "B.ogg")
 ns.rules[1] = P; ns.rules[2] = A; ns.rules[3] = B
-for _, r in ipairs(ns.rules) do if ns.NormalizeRule then pcall(ns.NormalizeRule, r) end end
+-- (round 11 repair) built the way XayaUI builds every rule it loads or makes (RuleDefaults.lua ns.NormalizeRule); called directly, so a
+-- failure shows (it was under pcall)
+for _, r in ipairs(ns.rules) do ns.NormalizeRule(r) end
 function STEP(n) for i = 1, (n or 1) do NOW = NOW + 0.2; ENGINE_STEP(ns) end end
 function COUNT(f) local n = 0 for _, x in ipairs(PLAYED) do if x == f then n = n + 1 end end return n end
 function RESET() PLAYED = {} end
@@ -89,7 +93,7 @@ check("no conditions: lost and gained again -> plays again", cnt("A.ogg") == 2 a
 L.execute(r'''
 C1 = COND(P, "Condition 1", { { ref = "n:buffStacks", cmp = ">=", num = 3, op = "and" } }, { "qa" })
 NS.rules[#NS.rules + 1] = C1
-if NS.NormalizeWhen then NS.NormalizeWhen(C1) end
+NS.NormalizeRule(C1)   -- (round 11 repair: the whole rule, as XayaUI loads it; it runs NormalizeWhen too)
 NS.MarkDirty()
 AURA(false); STEP(2); RESET(); AURA(true, 1); STEP(3)
 ''')
@@ -122,5 +126,5 @@ L.execute("C_UnitAuras.GetUnitAuraBySpellID = function(unit, id) return AURAS[id
 L.execute("P.load = { mode = 'all', specs = { ['999'] = true } }; NS.MarkDirty(); AURA(false); STEP(2); RESET(); AURA(true, 3); STEP(3)")
 check("the rule not loaded (another spec): no cue plays", cnt("A.ogg") == 0 and cnt("B.ogg") == 0, (cnt("A.ogg"), cnt("B.ogg")))
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed  FAILS: %d" % (checked[0], len(fails), len(fails)))
 sys.exit(1 if fails else 0)

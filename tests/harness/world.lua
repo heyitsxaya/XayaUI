@@ -555,6 +555,82 @@ W.templateInit = {
 }
 
 -------------------------------------------------------------------------------
+-- Blizzard's aura container (the Blizzard_AuraContainer addon: the "AuraContainer" widget type made with CustomAuraContainerTemplate).
+-- The combat engine (XayaUI_Rules/Combat/AuraDisplay.lua BareContainer, NewContainer, EnsureGroup) draws aura displays through it.
+-- (round 11 repair) Before, only the V27 gate's world had a container (tests/gate_common.py GAME_LUA) and every unit test fell back to
+-- XayaUI's own drawing with warning XUI-W002 in the error record (19 tests). This is the ONE definition of the stand-in container, for
+-- the unit tests and the gate alike: the gate's world is this world, and the gate only reads it (W.auraButtons, each button's group) to
+-- show a button while its aura is up. A world that adds its own container tables or methods on top drifts from this one:
+-- tests/fix_r11_standin_run.py A2 fails on it (the tables must be these very tables, a container's methods these very functions).
+-- NOT THE GAME, AND NOT DOCUMENTED (V2): the container's methods, its template and the three enum tables below are not in
+-- docs/reference/api (the 12.1.5 capture lists the widget types and C_AuraContainerUtil only). The addon took them from Blizzard's
+-- published UI source (AuraDisplay.lua's header: Blizzard_AuraContainer, live branch). So the names here are exactly the ones the addon
+-- calls, and the enum numbers are stand-in values (the addon only passes them on by name, it never compares or computes with them).
+-- What it does: an "AuraContainer" frame made with CustomAuraContainerTemplate has the methods the addon calls; each records what it was
+-- given (a test can read it); AddAuraGroup makes one aura button per group and hands it to the group's initializeFrame, as Blizzard's
+-- container makes its own buttons (they stay hidden: this world has no auras to show). Anything else stays bare, as in the game: a
+-- plain "Frame" made with that template gets none of it (AuraDisplay.lua: "created as a plain Frame its built-in OnLoad never runs"), so
+-- the addon's fallback (XUI-W002, XayaUI draws the display itself) is what a test sees there.
+-------------------------------------------------------------------------------
+AuraContainerSortMethod = { Default = 0, BigDefensive = 1, UnitFrameDebuff = 2, ImportantOnly = 3, Expiration = 4, ExpirationOnly = 5, Name = 6, NameOnly = 7, AuraInstanceIDOnly = 8 }
+AuraContainerSortDirection = { Normal = 0, Reverse = 1 }
+CustomAuraContainerAuraProcessingPolicy = { None = 0, ProcessAura = 1 }
+-- every container and every aura button it made, in order: W.auraContainers[i] = container; W.auraButtons[i] = { button, opts, container,
+-- key, group } (group: the aura group it belongs to; group.enabled follows SetAuraGroupEnabled). W.onAuraButton(entry), when a test or
+-- the gate sets it, runs for each new button after its initializeFrame.
+W.auraContainers, W.auraButtons = {}, {}
+-- the aura button's own methods (Blizzard's CustomAuraButton; the addon's initializeFrame calls these): quiet
+local AURA_BUTTON_METHODS = { "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
+  "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }
+local function quiet() end
+-- the container's methods: one shared function each (no function made per container or per call)
+local AC = {}
+function AC.SetUnit(self, unit) self.acUnit = unit end
+function AC.UpdateAllAuras(self) self.acUpdates = self.acUpdates + 1 end
+function AC.SetAuraProcessingPolicy(self, p) self.acPolicy = p end
+function AC.SetFlowLayoutAxis(self, a) self.acFlow.axis = a end
+function AC.SetFlowLayoutAnchorPoint(self, p) self.acFlow.anchor = p end
+function AC.SetFlowLayoutGrowthDirection(self, h, v) self.acFlow.h, self.acFlow.v = h, v end
+function AC.SetFlowLayoutMaximumLineSize(self, m) self.acFlow.max = m end
+function AC.AddAuraGroup(self, key, filter, o)
+  local g = { key = key, filter = filter, opts = o, enabled = true }
+  self.groups[key] = g
+  if type(o) == "table" and type(o.initializeFrame) == "function" then
+    local b = new("Button", nil, self)
+    b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide(); rawset(b, "_blizzard", true)
+    for _, m in ipairs(AURA_BUTTON_METHODS) do rawset(b, m, quiet) end
+    safecall(o.initializeFrame, b)   -- (Blizzard's code calls it; an error in it is the addon's: reported as a Lua error, never dropped)
+    local e = { button = b, opts = o, container = self, key = key, group = g }
+    W.auraButtons[#W.auraButtons + 1] = e
+    if W.onAuraButton then W.onAuraButton(e) end
+  end
+end
+local function group(self, key) return self.groups[key] end
+function AC.SetAuraGroupEnabled(self, key, on) local g = group(self, key); if g then g.enabled = on and true or false end end
+function AC.SetAuraGroupCandidateFilters(self, key, cf) local g = group(self, key); if g and type(g.opts) == "table" then g.opts.candidateFilters = cf end end
+function AC.SetAuraGroupLayout(self, key, l) local g = group(self, key); if g and type(g.opts) == "table" then g.opts.layout = l end end
+function AC.SetAuraGroupSortMethod(self, key, m, d) local g = group(self, key); if g and type(g.opts) == "table" then g.opts.sortMethod, g.opts.sortDirection = m, d end end
+function AC.RemoveAuraGroup(self, key) self.groups[key] = nil end
+function AC.ClearAuraGroups(self) for k in pairs(self.groups) do self.groups[k] = nil end end
+W.AURA_CONTAINER_METHODS = AC
+W.auraContainerPresent = true
+W.templateInit.CustomAuraContainerTemplate = function(f)
+  if f._kind ~= "AuraContainer" or not W.auraContainerPresent then return end   -- (a plain Frame with this template stays bare: see above)
+  for k, fn in pairs(AC) do rawset(f, k, fn) end
+  rawset(f, "groups", {}); rawset(f, "acFlow", {}); rawset(f, "acUpdates", 0)
+  W.auraContainers[#W.auraContainers + 1] = f
+end
+-- A client without Blizzard's aura container (the addon's fallback, XUI-W002: XayaUI draws every aura display itself). A test whose
+-- subject is XayaUI's own drawing of an aura display calls this before the addons start, says so, and declares the warning it causes:
+-- exactly one XUI-W002 per stand-in session (Combat/AuraDisplay.lua records the reason once per session, then makes no container), so
+-- "EXPECT_ERRORS XUI-W002 n" with n = the number of sessions that call this (tests/run_all.py). The container's template then gives nothing and its tables are gone, as if
+-- Blizzard_AuraContainer were missing (INFERENCE: what such a client would have; the addon only needs it to fail safe).
+function W.RemoveAuraContainer()
+  W.auraContainerPresent = false
+  AuraContainerSortMethod, AuraContainerSortDirection, CustomAuraContainerAuraProcessingPolicy = nil, nil, nil
+end
+
+-------------------------------------------------------------------------------
 -- the screen and the frames every UI has
 -------------------------------------------------------------------------------
 UIParent = new("Frame", "UIParent", nil); UIParent._w, UIParent._h, UIParent._isScreen = screenW, screenH, true
@@ -670,7 +746,10 @@ Menu = { ModifyMenu = function() end }
 TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) W.tooltipPostCalls = W.tooltipPostCalls or {}; table.insert(W.tooltipPostCalls, { kind, fn }) end,
   AddLinePreCall = function() end, AddLinePostCall = function() end }
 TooltipUtil = { SurfaceArgs = function() end, GetDisplayedUnit = function() return nil end, GetDisplayedSpell = function() return nil end, GetDisplayedItem = function() return nil end }
-AnchorUtil = { CreateAnchor = function() return { SetPoint = function() end } end }
+AnchorUtil = { CreateAnchor = function() return { SetPoint = function() end } end,
+  -- (round 11 repair) the flow layout names the combat engine passes to the aura container (see "Blizzard's aura container" above:
+  -- not in docs/reference/api; stand-in numbers, the addon only passes them on by name; the same tables as tests/gate_common.py had)
+  FlowLayoutAxis = { Horizontal = 0, Vertical = 1 }, FlowDirection = { Left = -1, Right = 1, Up = 1, Down = -1 } }
 CreateFromMixins = function(...) local t = {}; for i = 1, select("#", ...) do for k, v in pairs((select(i, ...))) do t[k] = v end end; return t end
 Mixin = function(o, ...) for i = 1, select("#", ...) do for k, v in pairs((select(i, ...))) do o[k] = v end end; return o end
 BackdropTemplateMixin = {}

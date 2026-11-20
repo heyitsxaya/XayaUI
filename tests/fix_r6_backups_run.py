@@ -234,6 +234,10 @@ def main():
     for e in errors:
         print("ERROR in the game stand-in:", str(e)[:600])
     print("(%d rules in the profile; %d older backups)" % (n, nb))
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # S3, on purpose: rawset(p, "text", rawget(p, "text"):sub(1, 5000)) cuts the backup "Saved now", then Load (replace): XayaUI says it
+    # could not be read, XUI-E018 once
+    print("EXPECT_ERRORS XUI-E018 1")
     print("%d checks, %d failed, %d Lua errors" % (len(results), bad, len(errors)))
     sys.exit(1 if bad or errors else 0)
 

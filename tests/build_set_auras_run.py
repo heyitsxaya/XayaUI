@@ -5,7 +5,9 @@ The IDs below are invented for the test; they are not game data. Run: python3 te
 import csv, json, os, re, subprocess, sys, tempfile
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 
@@ -43,5 +45,5 @@ with tempfile.TemporaryDirectory() as d:
     check("an aura two trigger steps from its bonus is linked", entry(9300) == (901, 4, [30], 9102), entry(9300))
     check("the file says where its facts come from and loads into the namespace",
           "wago.tools" in text and "local _, ns = ..." in text and 'ns.SET_BONUS_BUILD = "0.0.0.1"' in text)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

@@ -61,7 +61,9 @@ function CAST(id) ns.NoteChargeCast(id, T) end
 function WATCH() ns._WatchCharges() end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 def lua(s): return L.execute(s)
@@ -140,4 +142,8 @@ check("your casts reach the charge counter (Triggers.lua UNIT_SPELLCAST_SUCCEEDE
 tim = open(os.path.join(ROOT, "XayaUI_Rules", "Timing.lua"), encoding="utf-8").read()
 check("the Cooldown Manager's ChargeGained alerts are recorded on its icon (Timing.lua)", re.search(r"CDM_EVENT\.ChargeGained.*?xuiChargeGains", tim, re.S) is not None)
 
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

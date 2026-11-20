@@ -216,7 +216,7 @@ section("E: the profile codec", function()
   local cc = type(cdata) == "table" and type(cdata.parts) == "table" and type(cdata.parts.bonus) == "table" and cdata.parts.bonus.calculator
   check("E: the calculator's history and position never leave (XayaUI_Bonus's own part: only the Calculator's switch travels)",
     type(cc) == "table" and cc.history == nil and cc.point == nil and cc.x == nil and cc.y == nil and cc.enabled == true,
-    type(cc) == "table" and ("history " .. tostring(cc.history) .. ", point " .. tostring(cc.point) .. ", x " .. tostring(cc.x) .. ", y " .. tostring(cc.y) .. ", enabled " .. tostring(cc.enabled)) or tostring(cerr or cc))
+    type(cc) == "table" and ("history " .. tostring(cc.history) .. ", point " .. tostring(cc.point) .. ", x " .. tostring(cc.x) .. ", y " .. tostring(cc.y) .. ", enabled " .. tostring(cc.enabled)) or ("the Bonus Features part carries no calculator table (XayaUI_Bonus/ProfilePart.lua db lists \"calculator\"?): " .. tostring(cerr or cc)))
   else skip("XayaUI_Bonus", "E: the calculator's history and position never leave") end
   check("E: one-time upgrade flags never leave", data.parts.settings.ui.hybridMigrated == nil and data.parts.settings.ui.selStyle == "bar")
   -- import on a changed setup: only the ticked components land; settings merge
@@ -279,9 +279,14 @@ def main():
     pp = os.path.join(H.ROOT, "XayaUI_Bonus", "ProfilePart.lua")
     pp_src = open(pp, encoding="utf-8").read() if os.path.isfile(pp) else ""
     bonus_part = str('"dataPanels"' in pp_src).lower()
-    # (round 11a, check E only) XUI_BONUS_CALC: this branch's Bonus part carries the arithmetic Calculator's key (its db lists
-    # "calculator"); check E's "history and position never leave" then runs against it instead of printing a SKIP
-    calc_part = str(bool(re.search(r'\bdb\s*=\s*\{[^}]*"calculator"', pp_src)) and "XayaUI_Bonus" not in ABSENT).lower()
+    # (round 11a, check E only) XUI_BONUS_CALC: this branch's XayaUI_Bonus holds the arithmetic Calculator; check E's "history and
+    # position never leave" then runs against its profile part instead of printing a SKIP.
+    # (round 11 hygiene; R11A final review concern) Whether the Calculator is here is read from XayaUI_Bonus.toc (Calculator.lua listed),
+    # not from ProfilePart.lua's db list: when the module is on this branch and its part loses the "calculator" key, E runs and FAILS
+    # (the Calculator's switch no longer travels in a profile), instead of a SKIP that said the module was absent.
+    toc = os.path.join(H.ROOT, "XayaUI_Bonus", "XayaUI_Bonus.toc")
+    toc_src = open(toc, encoding="utf-8").read() if os.path.isfile(toc) else ""
+    calc_part = str(bool(re.search(r"^Calculator\.lua\s*$", toc_src, re.M)) and "XayaUI_Bonus" not in ABSENT).lower()
     L.execute("XUI_HAS_CHAT = %s; XUI_HAS_NAMEPLATES = %s; XUI_HAS_QOL = %s; XUI_HAS_BONUS = %s; XUI_HAS_BONUS_TAB = %s; XUI_BONUS_PART = %s; "
               "XUI_BONUS_CALC = %s"
               % (has("XayaUI_Chat"), has("XayaUI_Nameplates"), has("XayaUI_QoL"), bonus_part, has("XayaUI_Bonus"),

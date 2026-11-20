@@ -16,19 +16,24 @@ What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI
   H  a Lua error raised in a XayaUI file: XUI-E001 in the record; chat shows no XayaUI error line (as before with Advanced Debugging
      off: the game's own error handler, called as before, shows it).
   B  the game blocks XayaUI's call: XUI-W001 in the record; another addon's blocked call is not recorded.
-  M  the settings window cannot load: XUI-E016, chat line unchanged. X  a rule that cannot be exported: XUI-E017.
+  M  the settings window cannot load: XUI-E016; the line is shown once and the record keeps that same line. X  a rule that cannot be
+     exported: XUI-E017.
   N  an ordinary message (even one that says "error") is not recorded; P a ns.PrintPrivate message is not recorded.
   C  51 distinct errors keep the newest 50, newest first.
   K  the catalog: a Lua error's code still comes from its folder (XayaUI_Rules -> E001, XayaUI_Options -> E002); every code has one line.
   Z  zero cost until an error: no helper call and no record work in 20 s of play with two fights; the record holds one frame with the
      two "action blocked" events only; another addon's blocked action costs at most 600 Lua instructions (V33 core cap; measured).
-  S  memory: an entry at its longest (700-character message, 900-character stack) is measured; 100 distinct errors keep 50 and memory
-     stays at the cap.
+  S  memory: the record's own size (Lua 5.1 layout, computed from what it holds, so the same on every run) for an entry at its longest
+     (700-character message, 900-character stack) is at most 2.5 KB, 50 of them at most 125 KB; 100 and 300 more distinct errors keep
+     50 entries and that size; no copy of an error's text is reachable outside the record. (round 11 hygiene: the collector's count
+     includes Lua's string table, which doubles in 128 KB steps with the game's other strings, so it is printed, not judged.)
   T  (SD-139 "tests read the same record") the harness reads CueRulesDB.errorLog at the end of the run: its shape is checked here.
 Static (every shipped Lua file, not the libraries):
   S1 every ns.PrintError / ns.PrintWarning call names a code from ns.ERROR_CODES, XUI-E with PrintError and XUI-W with PrintWarning;
-  S2 no ns.Print / ns.PrintPrivate line reports an error or warning (words: error, fail, could not, cannot, can't, blocked, forbid,
-     warn, damaged, not available), except the listed player-feedback lines (each with why it is not an error);
+  S2 (round 11 hygiene) every chat line the shipped code writes (ns.Print, ns.PrintPrivate, print, AddMessage; 175 sites) is
+     classified in PRINT_SITES (an ordinary message, an answer to what she did, a pass-through of a text classified where it is made,
+     or an unsaved error); a new or changed site fails until it is classified (S2a), an ordinary message may not read as an error
+     (S2b), and an error or warning printed without being saved fails (S2c);
   S3 the old two-step pattern (ns.Print, then ns.RecordError / RecordWarn / CaptureError for the same failure) is gone.
 Player texts SD-139 made false (G; found in repair 1, reworded in repair 2 under ROUND11-SCOPE item 15 "Update DebugRecord.lua header,
 USER-GUIDE, debug_record tests"; a factual correction, SD-145):
@@ -38,11 +43,15 @@ USER-GUIDE, debug_record tests"; a factual correction, SD-145):
   G4 the known stale lines in USER-GUIDE, QA-CHECKLIST B182, HELP-FAQ, README-INGAME and the info pane (STALE_DOC_LINES) are gone;
   G5 the switch's description and the debug report's "OFF" line say that errors and warnings are saved either way (what she reads);
   G6 USER-GUIDE 12.14 says the saving does not depend on the switch, lists the chat prints among what is found, and its code table has a
-     row for every code in ns.ERROR_CODES (DebugRecord.lua says "the same list is in the USER-GUIDE");
+     row for every code in ns.ERROR_CODES (DebugRecord.lua says "the same list is in the USER-GUIDE") with that code's meaning;
   G7 HELP-FAQ, README-INGAME and the info pane say XayaUI saves its errors and warnings whether or not the switch is on (same words in
      the pane as in the markdown it is built from);
   G8 QA step B182 tests the fix (V13): with the switch off the count goes up (x2), and an error from a session begun with it off is
-     there after turning it on (x3); it no longer says Advanced Debugging is on by default.
+     there after turning it on (x3: /reload unticked, the error, tick, /reload, in that order); it no longer says Advanced Debugging is
+     on by default; it names the report's string button as DebugReport.lua labels it (Select string).
+  (round 11 hygiene) G5, G6 and G7 also read every sentence of the switch's description, the report's OFF line, USER-GUIDE 12.14, the
+     HELP-FAQ answer and the README-INGAME line: none may say, in any words, that XayaUI's errors or warnings are not saved, are lost, or
+     are saved only while the switch is on (false_claims).
 Stand-in numbers are not WoW. UNVERIFIED IN GAME: that the game writes CueRulesDB.errorLog to XayaUI.lua at /reload, logout or a clean
 exit (a crash loses that session's entries, the limit SD-139 records).
 Run: python3 tests/fix_r11_error_record_run.py   (Lua 5.1 via lupa; reads tests/harness/api_index.json when XUI_API_INDEX points to it)."""
@@ -204,9 +213,14 @@ A.IsAddOnLoaded = function(name) if name == "XayaUI_Options" then return true en
 p0 = #W.printed
 local okM = ns.Options == nil and ns.LoadOptions and ns.LoadOptions() == false
 A.LoadAddOn, A.IsAddOnLoaded = realLoad, realIsLoaded
-check("M the settings window cannot load: chat line unchanged, XUI-E016 in the record",
-  okM and count(since(p0), "XayaUI: the settings window could not load (true). /xui bug shows errors.") == 1
-  and entry("XUI-E016", "the settings window could not load (true)") ~= nil, table.concat(since(p0), " / ") .. " | " .. dump())
+-- (round 11 hygiene) the line is not pinned word for word (its wording after the first sentence is Modules.lua's to change, SD-145):
+-- what is checked is that it is shown once, names the failure and its reason, and that the record keeps that same line (one helper,
+-- SD-139 "same file": the chat line and the saved message are one text)
+local m16 = entry("XUI-E016", "the settings window could not load (true)")
+local m16chat = 0
+for _, l in ipairs(since(p0)) do if l:find("XayaUI: the settings window could not load (true).", 1, true) == 1 then m16chat = m16chat + 1 end end
+check("M the settings window cannot load: shown once in chat, and XUI-E016 in the record holds that same line",
+  okM and m16chat == 1 and m16 ~= nil and count(since(p0), "XayaUI: " .. m16.msg) == 1, table.concat(since(p0), " / ") .. " | " .. dump())
 
 -- X: a rule that cannot be exported (XayaUI_Options Sidebar.lua)
 if ns.LoadOptions then pcall(ns.LoadOptions) end
@@ -283,7 +297,60 @@ else
   check("Z the record's event frame has its OnEvent script", false)
 end
 
--- S: memory. Fresh record, 50 entries at their longest (700-character message, 900-character stack), made and dropped by the recorder
+-- S: memory. Fresh record, 50 entries at their longest (700-character message, 900-character stack), made and dropped by the recorder.
+-- (round 11 hygiene) What is judged is the record's own size and that nothing else keeps an error's text, both computed from what is
+-- reachable, so the result does not depend on the run: collectgarbage("count") also counts Lua's string table, which doubles in
+-- 128 KB steps (16384 slots x 8 bytes) when the number of live strings anywhere in the game crosses a power of two, so a cap check on
+-- it passed on one tree (106.1 KB) and failed on another (234.1 KB) for the same record. The collector's figures are still printed.
+-- Size model, Lua 5.1 on a 64-bit build (lobject.h / ltable.c / lstring.c; stand-in numbers, not WoW): a table 56 bytes, plus 16 per
+-- array slot and 40 per hash node, each part rounded up to a power of two; a string 24 bytes + its length + 1, each distinct string
+-- once (Lua keeps one copy of equal strings). Numbers and booleans live inside the slots.
+local function pow2(n) local p = 1; if n == 0 then return 0 end; while p < n do p = p * 2 end; return p end
+local function sizeOf(root)
+  local seen, strs, bytes, todo = {}, {}, 0, { root }
+  local function str(s) if not strs[s] then strs[s] = true; bytes = bytes + 24 + #s + 1 end end
+  while #todo > 0 do
+    local t = table.remove(todo)
+    if not seen[t] then
+      seen[t] = true
+      local n, h = 0, 0
+      while rawget(t, n + 1) ~= nil do n = n + 1 end
+      for k, v in next, t do
+        if not (type(k) == "number" and k >= 1 and k <= n and k % 1 == 0) then h = h + 1 end
+        if type(k) == "string" then str(k) elseif type(k) == "table" then todo[#todo + 1] = k end
+        if type(v) == "string" then str(v) elseif type(v) == "table" then todo[#todo + 1] = v end
+      end
+      bytes = bytes + 56 + 16 * pow2(n) + 40 * pow2(h)
+    end
+  end
+  return bytes
+end
+-- every string that holds `marker`, reachable from the game's globals and the Lua registry (tables, keys, metatables, upvalues and
+-- function environments), outside the table `skip`
+local function reachableWith(marker, skip)
+  local seen, found = { [skip] = true }, {}
+  local todo = { _G, debug.getregistry() }
+  local function visit(x)
+    local tx = type(x)
+    if tx == "string" then if x:find(marker, 1, true) then found[#found + 1] = x end
+    elseif (tx == "table" or tx == "function" or tx == "userdata") and not seen[x] then seen[x] = true; todo[#todo + 1] = x end
+  end
+  while #todo > 0 do
+    local o = table.remove(todo)
+    local to = type(o)
+    if to == "table" then
+      for k, v in next, o do visit(k); visit(v) end
+      visit(debug.getmetatable(o))
+    elseif to == "function" then
+      local i = 1
+      while true do local nm, v = debug.getupvalue(o, i); if not nm then break end; visit(v); i = i + 1 end
+      visit(getfenv(o))
+    elseif to == "userdata" then
+      visit(debug.getmetatable(o)); visit(debug.getfenv(o))
+    end
+  end
+  return found
+end
 CueRulesDB.errorLog = {}
 collectgarbage("collect"); collectgarbage("collect")
 local m0 = collectgarbage("count")
@@ -294,21 +361,36 @@ local function fill(from, to)
     ns.RecordError(msg, stack, "XayaUI_Rules")
   end
 end
-fill(1, 50)
+fill(1, 1)
+local one = sizeOf(CueRulesDB.errorLog)
+fill(2, 50)
 collectgarbage("collect"); collectgarbage("collect")
 local m1 = collectgarbage("count")
+local s1, n1 = sizeOf(CueRulesDB.errorLog), #log()
 fill(51, 150)
 collectgarbage("collect"); collectgarbage("collect")
 local m2 = collectgarbage("count")
+local s2, n2 = sizeOf(CueRulesDB.errorLog), #log()
 fill(151, 350)
 collectgarbage("collect"); collectgarbage("collect")
 local m3 = collectgarbage("count")
+local s3, n3 = sizeOf(CueRulesDB.errorLog), #log()
 INFO.after350KB = m3 - m0
-local per = (m1 - m0) / 50
-INFO.entryKB, INFO.capKB, INFO.afterKB = per, m1 - m0, m2 - m0
-check(("S an entry at its longest is %.2f KB; 50 of them %.1f KB (at most 50 x 2.5 KB = 125 KB)"):format(per, m1 - m0), #log() == 50 and (m1 - m0) <= 125, m1 - m0)
-check(("S 100 more distinct errors keep 50 entries and memory at the cap (%.1f KB after, %.1f KB at the cap)"):format(m2 - m0, m1 - m0),
-  #log() == 50 and (m2 - m0) <= (m1 - m0) + 4, m2 - m0)
+INFO.entryKB, INFO.capKB, INFO.afterKB = (m1 - m0) / 50, m1 - m0, m2 - m0
+INFO.modelOneB, INFO.modelCapKB, INFO.model150KB, INFO.model350KB = one, s1 / 1024, s2 / 1024, s3 / 1024
+local per = (s1 - sizeOf({})) / 50
+check(("S an entry at its longest is %.2f KB; 50 of them %.1f KB (at most 50 x 2.5 KB = 125 KB; the record's own size, Lua 5.1 layout)")
+  :format(per / 1024, s1 / 1024), n1 == 50 and per <= 2.5 * 1024 and s1 <= 125 * 1024, ("%d entries, %.1f KB"):format(n1, s1 / 1024))
+check(("S 100 and 300 more distinct errors keep 50 entries and the record's size at the cap (%.1f KB and %.1f KB, cap %.1f KB)")
+  :format(s2 / 1024, s3 / 1024, s1 / 1024), n2 == 50 and n3 == 50 and s2 <= s1 and s3 <= s1, ("%d / %d entries, %d / %d bytes, cap %d"):format(n2, n3, s2, s3, s1))
+-- the text of an error lives only in its entry: no other table, upvalue or buffer keeps a copy (a copy that outlives its entry, or a
+-- longer line built from it, is memory that grows with every distinct error; the record itself stays at 50)
+local inLog = {}
+for _, en in ipairs(log()) do inLog[en.msg] = true; if en.stack then inLog[en.stack] = true end end
+local copies = {}
+for _, s in ipairs(reachableWith("R11ER mem", CueRulesDB.errorLog)) do if not inLog[s] then copies[#copies + 1] = s:sub(1, 80) end end
+check("S after 350 distinct errors no copy of an error's text is kept outside the record (reachable from the globals and the registry)",
+  #copies == 0, #copies .. ": " .. table.concat(copies, " || ", 1, math.min(#copies, 3)))
 local e = log()[1]
 check("S the message and the stack are cut to 700 and 900 characters", e and #e.msg == 700 and e.stack and #e.stack == 900, e and (#e.msg .. " " .. tostring(e.stack and #e.stack)))
 
@@ -322,21 +404,243 @@ return R, INFO
 # ---------------------------------------------------------------------------------------------------------------------------------
 # Static checks
 # ---------------------------------------------------------------------------------------------------------------------------------
-# ns.Print lines whose words match the error pattern but are player feedback, not an error or a warning of XayaUI (SD-139 "Errors and
-# warnings only"): each is the answer to what the player just did, or a state she chose. (file, a fragment of the line, why)
-NOT_ERRORS = [
-    ("XayaUI_Options/RuleEditor/RuleSettings.lua", "combat tracking setup is not loaded", "answer to a button; the file's own load error is recorded by the Lua error handler"),
-    ("XayaUI_Options/RuleEditor/RulesTree.lua", "Combat Tracking Setup is not loaded.", "same as above"),
-    ("XayaUI_Options/RuleEditor/Sidebar.lua", "rules cannot be placed into a Smart Category", "a move the player asked for that is not allowed"),
-    ("XayaUI_Options/RuleEditor/Editor.lua", "The game cannot report this art's own size", "explains the locked proportions of a picture she chose"),
-    ("XayaUI_Options/Mover.lua", "picking a frame to snap to can't be done during combat.", "combat lock (V26), not a failure"),
-    ("XayaUI_Options/Mover.lua", "menus can't be opened during combat.", "combat lock (V26)"),
-    ("XayaUI_Options/Mover.lua", "so the mover can't open. Type /xui enable first.", "rules are off by her choice"),
-    ("XayaUI_Options/AuraSetup.lua", "Combat Tracking Setup can't open during combat.", "combat lock (V26)"),
-    ("XayaUI/Core.lua", "not loaded yet (", "a /xui debug status line"),
-    ("XayaUI/GameMenuButton.lua", "settings window is not available.", "a fallback for a missing ns.ToggleUI, which only a broken Modules.lua causes; that Lua error is recorded by the error handler"),
+# Every place XayaUI's shipped code writes a line to chat (round 11 hygiene; R11A final review concern: the old S2 read only string
+# literals inside ns.Print( against a word list, so a print through a variable, or with words outside the list, escaped). Each call site
+# of ns.Print, ns.PrintPrivate, pcall(ns.Print, ...), the global print and DEFAULT_CHAT_FRAME:AddMessage is listed here with a class:
+#   MSG     an ordinary message (a state, an answer to a command, a report line): its own words may not read as an error (S2b);
+#   ANSWER  the answer to what she did or chose that is not a fault of XayaUI (a limit, a combat lock (V26), an edit lock, her input,
+#           her setup of the AddOns list), so it may use words such as "can't" or "not installed"; why is required;
+#   PASS    prints a text that is made and classified elsewhere (a helper, a line built from parts); why names where; required;
+#   UNSAVED an error or warning XayaUI reports in chat that is not saved: S2c fails while one is listed (SD-139: every error or warning
+#           XayaUI prints is also saved); the fix belongs to the file's owner, then the row becomes ANSWER or the site uses
+#           ns.PrintError / ns.PrintWarning (S1).
+# A site is found by (file, the first 48 characters of its arguments with the spaces collapsed); equal keys in one file are matched in
+# the order they appear. A new site, a changed one, or a row whose site is gone fails S2a: each new chat line is a decision, not a
+# default (ns.PrintError / ns.PrintWarning sites are S1's and are not listed).
+MSG, ANSWER, PASS, UNSAVED = "msg", "answer", "pass", "unsaved"
+MISS = ("Modules.lua ns.ModuleMissingText: the part is switched off or not installed (her setup); a part that failed to load has its Lua"
+        " error saved by the error handler (XUI-E001..E009)")
+OFF = "core ns.PartOffText: the part is off by her choice"
+LIMIT = "a limit of the editor, said when she reaches it"
+LOCKED = "the rule or group is edit-locked by her"
+COMBAT = "combat lock (V26), not a failure"
+INPUT = "the answer to what she typed or picked"
+PRINT_SITES = [
+    # XayaUI/Core.lua
+    ('XayaUI/Core.lua', '...', PASS, "ns.PrintPrivate's own print (never saved, SD-139)"),
+    ('XayaUI/Core.lua', '"|cff33ccffXayaUI|r: " .. text', PASS, "ns.Print's own chat line"),
+    ('XayaUI/Core.lua', 'text', PASS, 'ns.PrintError / ns.PrintWarning: shown, then saved'),
+    ('XayaUI/Core.lua', '"|cffff5555[XayaUI Error]|r " .. text, 1, 0.35, ', PASS, "the Lua error handler's chat line (Advanced Debugging on); the error itself is saved by the handler (XUI-E001..E009)"),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText("perf", true)', PASS, MISS),
+    ('XayaUI/Core.lua', '("debug: ToggleUI=%s rules=%s AceConfigDialog=%s', MSG),
+    ('XayaUI/Core.lua', '"debug: settings window " .. (ns.Options and "lo', ANSWER, 'a /xui debug status line naming a state'),
+    ('XayaUI/Core.lua', 'header:format(#items)', MSG, 'the /xui help header'),
+    ('XayaUI/Core.lua', 'line', MSG, 'a /xui help line'),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(sub, true)', PASS, MISS),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(sub, true)', PASS, MISS),
+    ('XayaUI/Core.lua', '("there is no debug command \\"%s\\"."):format((su', ANSWER, INPUT + ' (an unknown /xui debug word)'),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(name)', PASS, MISS),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(name)', PASS, MISS),
+    ('XayaUI/Core.lua', '"rules are on again. They start fresh, as after ', MSG),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(cmd)', PASS, MISS),
+    ('XayaUI/Core.lua', '"every rule is off now: rules stop checking, and', MSG),
+    ('XayaUI/Core.lua', '"rules are already off. Type /xui enable to turn', MSG),
+    ('XayaUI/Core.lua', '"rules are already on."', MSG),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText("unlock")', PASS, MISS),
+    ('XayaUI/Core.lua', 'ns.ModuleMissingText(cmd)', PASS, MISS),
+    # XayaUI/DebugRecord.lua
+    ('XayaUI/DebugRecord.lua', 'what .. " is one of the debug tools (XayaUI Debu', ANSWER, 'a debug tool asked for while the XayaUI Debug addon is not installed (her setup)'),
+    ('XayaUI/DebugRecord.lua', 'what .. " is one of the debug tools (XayaUI Debu', ANSWER, 'a debug tool asked for while XayaUI Debug is switched off in the AddOns list (her setup)'),
+    ('XayaUI/DebugRecord.lua', 'what .. " needs a /reload: the debug tools load ', ANSWER, 'a debug tool asked for before the /reload that loads it'),
+    ('XayaUI/DebugRecord.lua', 'what .. " needs Advanced Debugging: turn it on i', ANSWER, 'a debug tool asked for while Advanced Debugging is off (her choice)'),
+    ('XayaUI/DebugRecord.lua', 'text', PASS, "ChatLine: prints DR.ON_LINE, the 'Advanced Debugging is on' login line"),
+    # XayaUI/GameMenuButton.lua
+    ('XayaUI/GameMenuButton.lua', '"settings window is not available."', ANSWER, 'a fallback for a missing ns.ToggleUI, which only a broken Modules.lua causes; that Lua error is saved by the error handler'),
+    ('XayaUI/GameMenuButton.lua', '"the Game Menu button change applies the next ti', MSG),
+    # XayaUI/Modules.lua
+    ('XayaUI/Modules.lua', 'ns.PartOffText(offPart)', PASS, OFF),
+    ('XayaUI/Modules.lua', 'message', PASS, "ns.CombatLock's message: the opener's own combat-lock line (V26)"),
+    ('XayaUI/Modules.lua', '"saved settings are not ready yet; try again in ', ANSWER, 'a click before her saved settings are read at login'),
+    ('XayaUI/Modules.lua', '"the settings window (XayaUI Options) is switche', ANSWER, "the settings window's addon is switched off in the AddOns list (her setup)"),
+    ('XayaUI/Modules.lua', '"the settings window (XayaUI Options) is not ins', ANSWER, "the settings window's folder is not installed (her setup)"),
+    ('XayaUI/Modules.lua', '"|cffffd100XayaUI|r /xuiskin switches the settin', MSG, '/xuiskin help'),
+    ('XayaUI/Modules.lua', '"|cffffd100XayaUI|r window skin " .. (CueRulesDB', MSG, '/xuiskin state'),
+    # XayaUI/Share.lua
+    ('XayaUI/Share.lua', '("the %s will be imported as soon as combat ends', MSG),
+    # XayaUI_Bonus/Calculator.lua
+    ('XayaUI_Bonus/Calculator.lua', 'ns.PartOffText(PART)', PASS, OFF),
+    ('XayaUI_Bonus/Calculator.lua', 'ns.PartOffText(PART)', PASS, OFF),
+    ('XayaUI_Bonus/Calculator.lua', '("calc: %s (%s)"):format(err, sum)', ANSWER, INPUT + ' (a sum the Calculator cannot work out, with its reason)'),
+    ('XayaUI_Bonus/Calculator.lua', '("%s = %s"):format(sum, answer)', MSG, "the Calculator's answer"),
+    # XayaUI_Bonus/StatCalculatorLoader.lua
+    ('XayaUI_Bonus/StatCalculatorLoader.lua', 'line', PASS, 'Tell: a failure prints through ns.PrintError XUI-E009 on the same line; ns.Print only for her setup (switched off, not installed) or when core has no ns.PrintError'),
+    ('XayaUI_Bonus/StatCalculatorLoader.lua', '"The Stat Calculator is off. Its memory is freed', MSG),
+    ('XayaUI_Bonus/StatCalculatorLoader.lua', '"The Stat Calculator is off."', MSG),
+    ('XayaUI_Bonus/StatCalculatorLoader.lua', '"Stat Calculator: on, not loaded yet (it loads t', ANSWER, "the /xui stats status line: 'not loaded yet' is its state until its first open (SD-105)"),
+    ('XayaUI_Bonus/StatCalculatorLoader.lua', 'HELP', MSG, 'HELP, the /xui stats help line'),
+    # XayaUI_Bonus_StatCalculator/StatCalculator.lua
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '(part and ns.PartOffText) and ns.PartOffText(par', PASS, OFF),
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '"The Stat Calculator panel is off. Turn it on in', ANSWER, 'the panel is off by her choice'),
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '"Stat Calculator: no spell found for \\"" .. tost', ANSWER, INPUT + ' (a spell name not found)'),
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '"Stat Calculator: up to 20 spells."', ANSWER, LIMIT),
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '"Stat Calculator: settings not ready."', ANSWER, 'asked before her saved settings are read'),
+    ('XayaUI_Bonus_StatCalculator/StatCalculator.lua', '("Stat Calculator: %s, panel %s, spell math %s (', ANSWER, "the /xui stats status line, asked for; it names the state of each part, and 'converter MISSING' when this client lacks the game function (a fact of the client)"),
+    # XayaUI_Debug/RulesAuras.lua
+    ('XayaUI_Debug/RulesAuras.lua', '"/xui debug auras: no spell found for \\"" .. tab', ANSWER, INPUT + ' (a spell name not found)'),
+    ('XayaUI_Debug/RulesAuras.lua', '("%s (ID %d): %s"):format(SpellName(id), id, Fac', MSG),
+    ('XayaUI_Debug/RulesAuras.lua', '"/xui debug auras: this game version has no aura', ANSWER, 'this game client has no aura list call: a fact of the client, not a failure'),
+    ('XayaUI_Debug/RulesAuras.lua', '"/xui debug auras: no " .. unit .. "."', MSG),
+    ('XayaUI_Debug/RulesAuras.lua', '"/xui debug auras: the game hides aura details f', MSG),
+    ('XayaUI_Debug/RulesAuras.lua', '("/xui debug auras: no %s on %s."):format(kind, ', MSG),
+    ('XayaUI_Debug/RulesAuras.lua', '("/xui debug auras: %d %s on %s (copy an ID into', MSG),
+    ('XayaUI_Debug/RulesAuras.lua', 'l', MSG, 'one line of the aura list'),
+    # XayaUI_Debug/RulesEngine.lua
+    ('XayaUI_Debug/RulesEngine.lua', '...', PASS, 'Say: the /xuiengine report lines, classified as an ordinary report'),
+    # XayaUI_Debug/RulesPerf.lua
+    ('XayaUI_Debug/RulesPerf.lua', '"perf: stopped after 10 minutes, the longest one', MSG),
+    ('XayaUI_Debug/RulesPerf.lua', '"perf: measuring. Play (ideally a fight), then /', MSG),
+    ('XayaUI_Debug/RulesPerf.lua', '"perf: stopped. /xui debug perf shows the report', MSG),
+    ('XayaUI_Debug/RulesPerf.lua', '"perf: not measuring. /xui debug perf on, play a', MSG),
+    ('XayaUI_Debug/RulesPerf.lua', 'fmt:format(...)', PASS, 'L: one line of the /xui debug perf report'),
+    # XayaUI_Debug/RulesStatus.lua
+    ('XayaUI_Debug/RulesStatus.lua', '"no rules"', MSG),
+    ('XayaUI_Debug/RulesStatus.lua', '("context: combat=%s group=%s raid=%s instance=%', MSG),
+    ('XayaUI_Debug/RulesStatus.lua', '("place: map=%s instanceID=%s difficulty=%s size', MSG),
+    ('XayaUI_Debug/RulesStatus.lua', 'EngineLine()', PASS, "EngineLine: the engine's status line in /xui debug status"),
+    ('XayaUI_Debug/RulesStatus.lua', '("#%d %s [%s] result=%s | cd:%s(%s) buff:%s(%s v', MSG),
+    ('XayaUI_Debug/RulesStatus.lua', '" cooldown: " .. ((info.cd and info.cd.why) or "', PASS, "a rule's cooldown state in /xui debug status (why it is or is not ready)"),
+    ('XayaUI_Debug/RulesStatus.lua', '" " .. line', PASS, "a line of a rule's state in /xui debug status"),
+    # XayaUI_Options/AuraSetup.lua
+    ('XayaUI_Options/AuraSetup.lua', '"Combat Tracking Setup closed because combat sta', MSG),
+    ('XayaUI_Options/AuraSetup.lua', '"combat tracking setup saved for " .. tostring(M', MSG),
+    ('XayaUI_Options/AuraSetup.lua', '"Combat Tracking Setup skipped for this spec. Op', MSG),
+    ('XayaUI_Options/AuraSetup.lua', '"Combat Tracking Setup can\'t open during combat.', ANSWER, COMBAT),
+    # XayaUI_Options/ImportWindow.lua
+    ('XayaUI_Options/ImportWindow.lua', 'm', PASS, "m: 'Imported ...' (the import's success line)"),
+    # XayaUI_Options/Mover.lua
+    ('XayaUI_Options/Mover.lua', 'MENU_COMBAT', ANSWER, 'MENU_COMBAT: combat lock (V26), not a failure'),
+    ('XayaUI_Options/Mover.lua', '"picking a frame to snap to can\'t be done during', ANSWER, COMBAT),
+    ('XayaUI_Options/Mover.lua', '"group \'" .. tostring(f3.name) .. "\' anchored to', MSG),
+    ('XayaUI_Options/Mover.lua', '"group \'" .. tostring(f3.name) .. "\' anchored to', MSG),
+    ('XayaUI_Options/Mover.lua', '"\'" .. tostring(rule.name) .. "\' snapped to " ..', MSG),
+    ('XayaUI_Options/Mover.lua', '"aura positioning: " .. SNAP_LABELS[mode]', MSG),
+    ('XayaUI_Options/Mover.lua', '"menus can\'t be opened during combat."', ANSWER, COMBAT),
+    ('XayaUI_Options/Mover.lua', '"visuals locked."', MSG),
+    ('XayaUI_Options/Mover.lua', 'HasMoves() and "the mover will open again with y', MSG),
+    ('XayaUI_Options/Mover.lua', 'n > 0 and ("the mover is open again with your %d', MSG),
+    ('XayaUI_Options/Mover.lua', '"rules are off (/xui disable), so the mover can\'', ANSWER, 'rules are off by her choice (/xui disable)'),
+    ('XayaUI_Options/Mover.lua', '"visuals UNLOCKED: drag them, then /xui unlock a', MSG),
+    ('XayaUI_Options/Mover.lua', 'n > 0 and "the mover closed because rules are of', MSG),
+    ('XayaUI_Options/Mover.lua', '("the mover closed with the settings window. You', MSG),
+    ('XayaUI_Options/Mover.lua', 'n > 0 and "the mover closed because combat start', MSG),
+    ('XayaUI_Options/Mover.lua', '("your %d move(s) are saved."):format(n)', MSG),
+    ('XayaUI_Options/Mover.lua', '"your unsaved moves were discarded. Everything i', MSG),
+    # XayaUI_Options/Options.lua
+    ('XayaUI_Options/Options.lua', 'shareMsg', PASS, "shareMsg: the backup restore's success line (okText)"),
+    ('XayaUI_Options/Options.lua', 'shareMsg', PASS, "shareMsg: the import's success line"),
+    ('XayaUI_Options/Options.lua', '"Recycle Bin emptied (" .. n .. " item(s) remove', MSG),
+    ('XayaUI_Options/Options.lua', 'ok and ("Restored \'" .. tostring(it.name) .. "\'.', ANSWER, "a Recycle Bin restore; 'Not restored' gives RecycleBin.lua's reason (an item gone or of an unknown kind; a failed restore says its error was saved)"),
+    ('XayaUI_Options/Options.lua', '"saved data is not ready yet (rules table is nil', ANSWER, 'a click before her saved rules are read at login'),
+    ('XayaUI_Options/Options.lua', 'string.format("|cffffd100XayaUI|r trace +%d fram', MSG, 'a developer trace line (ns.perf.trace)'),
+    ('XayaUI_Options/Options.lua', 'string.format("|cffffd100XayaUI|r rebuild #%d: b', MSG, 'a developer timing line (ns.perf.show)'),
+    ('XayaUI_Options/Options.lua', '"the settings window closed because combat start', MSG),
+    # XayaUI_Options/RuleEditor/AutoPicker.lua
+    ('XayaUI_Options/RuleEditor/AutoPicker.lua', '"auto-populate: " .. m', PASS, "m: Populate's result line (how many rules were added or skipped)"),
+    # XayaUI_Options/RuleEditor/Drafts.lua
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("%d rule(s) had unsaved changes. The changes we', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("Saved your edits as a new rule \'%s\'. \'%s\' went', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("Your edits to \'%s\' were added to Drafts. The r', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("A copy of \'%s\' was added to Drafts. This rule ', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("\'%s\' is edit-locked: unlock it in the sidebar ', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("Draft \'%s\' was put back into the editor%s. Pre', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("Draft \'%s\' was put back%s and is kept (drafts ', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '("\'%s\' is edit-locked: unlock it in the sidebar ', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '"nothing recorded to undo for this rule yet"', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', 'redo and "nothing to redo for this rule" or "not', MSG),
+    ('XayaUI_Options/RuleEditor/Drafts.lua', '((redo and "redid" or "undid") .. " the last cha', MSG),
+    # XayaUI_Options/RuleEditor/Editor.lua
+    ('XayaUI_Options/RuleEditor/Editor.lua', '"a trigger can watch at most " .. ns.AURA_ALT_MA', ANSWER, LIMIT),
+    ('XayaUI_Options/RuleEditor/Editor.lua', '"The game cannot report this art\'s own size (it ', ANSWER, 'explains the locked proportions of a picture she chose'),
+    ('XayaUI_Options/RuleEditor/Editor.lua', '"sound files must end in .ogg or .mp3 (not chang', ANSWER, INPUT + ' (a sound file name)'),
+    ('XayaUI_Options/RuleEditor/Editor.lua', '"the path must start with Interface\\\\AddOns\\\\ : ', ANSWER, INPUT + ' (a sound file path)'),
+    # XayaUI_Options/RuleEditor/OutcomesEditor.lua
+    ('XayaUI_Options/RuleEditor/OutcomesEditor.lua', '"\'" .. v .. "\' is not a number: the value is unc', ANSWER, INPUT + ' (not a number)'),
+    ('XayaUI_Options/RuleEditor/OutcomesEditor.lua', '"a condition can hold at most " .. MAX_TERMS .. ', ANSWER, LIMIT),
+    # XayaUI_Options/RuleEditor/RuleMerge.lua
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', 'Quote(kept) .. " is edit-locked: unlock it in th', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', '("%d edit-locked rule(s) are left out of the mer', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', '"nothing to merge: select at least one more rule', ANSWER, 'nothing she selected can be merged'),
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', '"Merge: " .. tostring(err)', ANSWER, "M.Plan's reason the rules she picked cannot be merged (a limit of a trigger)"),
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', '"Merge: " .. tostring(err2)', ANSWER, 'the same reason, checked again on Yes'),
+    ('XayaUI_Options/RuleEditor/RuleMerge.lua', '("merged %d rule(s) into %s; they are in the Rec', MSG),
+    # XayaUI_Options/RuleEditor/RuleSettings.lua
+    ('XayaUI_Options/RuleEditor/RuleSettings.lua', 'm', PASS, "m: the talent scan's start line ('Scanning all classes ...')"),
+    ('XayaUI_Options/RuleEditor/RuleSettings.lua', '"combat tracking setup is not loaded"', ANSWER, "answer to a button; the file's own load error is saved by the Lua error handler"),
+    # XayaUI_Options/RuleEditor/RulesTree.lua
+    ('XayaUI_Options/RuleEditor/RulesTree.lua', '"rule creator: " .. (creatorMsg:gsub("|c%x%x%x%x', PASS, "creatorMsg: the test-rule creator's result line (what was added or skipped)"),
+    ('XayaUI_Options/RuleEditor/RulesTree.lua', '"auto-populate: " .. autoMsg.last', PASS, "autoMsg.last: 'Added N rule(s) ...'"),
+    ('XayaUI_Options/RuleEditor/RulesTree.lua', '"Combat Tracking Setup is not loaded."', ANSWER, "answer to a button; the file's own load error is saved by the Lua error handler"),
+    # XayaUI_Options/RuleEditor/Sidebar.lua
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"eye icon: " .. I.visual.on .. " (off: " .. I.vi', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"that category group is missing - create a group', ANSWER, 'the category group she would copy into does not exist yet (her setup); the line says how to make it'),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"nothing inside \'" .. tostring(src.name) .. "\' t', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '(mode == "copy" and "copied " or "moved ") .. #r', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"nothing copied yet: right-click a rule and choo', ANSWER, INPUT + ' (nothing copied yet)'),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"no sections selected: tick the sections to past', ANSWER, INPUT + ' (no section ticked)'),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '("pasted into %d rule(s)"):format(n)', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"paste note: " .. note', PASS, 'a paste note (Sidebar.lua ns.pasteNotes): what the paste skipped or created'),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"copied settings of \'" .. tostring(rule.name) ..', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', 'on and ("linked %d display(s): dragging one move', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"rules cannot be placed into a Smart Category"', ANSWER, 'a move she asked for that is not allowed'),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '("%d edit-locked rule(s) were not moved (unlock ', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '("moved %d rule(s) to %s"):format(#keep, g and t', MSG),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '("%d edit-locked rule(s) are left out (unlock th', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"\'" .. tostring(rule.name) .. "\' is edit-locked:', ANSWER, LOCKED),
+    ('XayaUI_Options/RuleEditor/Sidebar.lua', '"the group \'" .. tostring(g.name) .. "\' is edit-', ANSWER, LOCKED),
+    # XayaUI_Options/RuleEditor/TriggersEditor.lua
+    ('XayaUI_Options/RuleEditor/TriggersEditor.lua', '"a rule can hold at most 12 additional triggers"', ANSWER, LIMIT),
+    ('XayaUI_Options/RuleEditor/TriggersEditor.lua', '"\'" .. v .. "\' is not a number: the ID is unchan', ANSWER, INPUT + ' (not a number)'),
+    ('XayaUI_Options/RuleEditor/TriggersEditor.lua', '"a trigger can watch at most " .. ns.AURA_ALT_MA', ANSWER, LIMIT),
+    ('XayaUI_Options/RuleEditor/TriggersEditor.lua', '"a rule can hold at most " .. MAX_ROWS .. " addi', ANSWER, LIMIT),
+    ('XayaUI_Options/RuleEditor/TriggersEditor.lua', '"a rule can hold at most " .. MAX_ROWS .. " addi', ANSWER, LIMIT),
+    # XayaUI_Options/TalentDump.lua
+    ('XayaUI_Options/TalentDump.lua', '"the talent scan stopped because combat started.', MSG),
+    ('XayaUI_Options/TalentDump.lua', 'msg', PASS, "msg: ns.ScanAllTalents' answer when a scan cannot start ('Scanning ...' or already running)"),
+    ('XayaUI_Options/TalentDump.lua', 'msg', UNSAVED, "the talent scan's summary: 'N class(es) failed' counts Lua errors that pcall(ScanClass) caught in XayaUI's own scan; they are kept only in XayaUITalentDB.errors, not in the error record (SD-139: every error XayaUI reports in chat is saved)"),
+    ('XayaUI_Options/TalentDump.lua', 'msg', PASS, "msg: ns.ScanAllTalents' start line"),
+    # XayaUI_Rules/Actions.lua
+    ('XayaUI_Rules/Actions.lua', 'msg, a.msgR or 1, a.msgG or 1, a.msgB or 1', PASS, "a rule's chat action: the text she wrote for it"),
+    # XayaUI_Rules/Combat/AuraDisplay.lua
+    ('XayaUI_Rules/Combat/AuraDisplay.lua', '"an old setting that kept some or all aura displ', MSG),
+    ('XayaUI_Rules/Combat/AuraDisplay.lua', '...', PASS, 'Say: the aura display report lines'),
+    # XayaUI_Rules/Cues.lua
+    ('XayaUI_Rules/Cues.lua', '"a rule can hold at most " .. MAX_CUES .. " cues', ANSWER, LIMIT),
+    # XayaUI_Rules/RuleDefaults.lua
+    ('XayaUI_Rules/RuleDefaults.lua', '"|cffffd100XayaUI|r group created: \'" .. tostrin', MSG),
+    ('XayaUI_Rules/RuleDefaults.lua', 'n .. " existing sounds / displays were moved int', MSG),
+    ('XayaUI_Rules/RuleDefaults.lua', 'n .. " imported group(s) were given standard ids', MSG),
+    ('XayaUI_Rules/RuleDefaults.lua', 'nHyb .. " existing rules are now under Hybrid Cu', MSG),
+    ('XayaUI_Rules/RuleDefaults.lua', 'nProg .. " active display(s) were converted to p', MSG),
+    ('XayaUI_Rules/RuleDefaults.lua', 'nA .. " group(s) with an anchor point other than', MSG),
+    # XayaUI_Rules/TalentDump.lua
+    ('XayaUI_Rules/TalentDump.lua', '"No talent scan saved yet - run /xui debug talen', ANSWER, 'asked before any talent scan was made'),
+    ('XayaUI_Rules/TalentDump.lua', '("%s [%s]: %s (spell %s)%s%s - %s"):format(txt(c', MSG),
+    ('XayaUI_Rules/TalentDump.lua', '"no talent matching \'" .. text .. "\' in the last', MSG),
+    ('XayaUI_Rules/TalentDump.lua', 'off', ANSWER, 'off: the settings window is switched off or not installed (her setup)'),
+    ('XayaUI_Rules/TalentDump.lua', 'off', ANSWER, 'off: the same'),
+    ('XayaUI_Rules/TalentDump.lua', 'ns.TalentStatus()', MSG, "ns.TalentStatus: the scan's state"),
+    # XayaUI_Rules/Visual.lua
+    ('XayaUI_Rules/Visual.lua', '"this group has nothing shown to center"', ANSWER, 'nothing in the group to center (her setup)'),
+    ('XayaUI_Rules/Visual.lua', '"that frame does not exist in this client, so th', ANSWER, 'the frame she picked to snap to does not exist in this client'),
+    ('XayaUI_Rules/Visual.lua', '"this aura is snapped to that side of the frame;', ANSWER, 'the aura is snapped to that side; the line says what to choose'),
 ]
-PATTERN = re.compile(r"error|fail|could not|couldn't|cannot|can't|blocked|forbid|warn|damaged|not available", re.I)
+# a chat line the shipped code writes (see PRINT_SITES)
+CHAT_ROUTE = re.compile(r'(?<![\w.:])(?:ns\.(?:Print|PrintPrivate)\s*\(|pcall\(\s*ns\.(?:Print|PrintPrivate)\s*,|print\s*\('
+                        r'|DEFAULT_CHAT_FRAME:AddMessage\s*\()')
+# words that read as an error or a warning: an ordinary message (MSG) may not use them (S2b); widened in round 11 hygiene with the words
+# the reviewer's mutation G showed escaping the old list (missing, broken, invalid, unable, refused, not installed)
+ERROR_WORDS = re.compile(r"error|fail|could not|couldn't|cannot|can't|unable|blocked|forbid|warn|damaged|broken|corrupt|invalid|missing"
+                         r"|refused|not available|not installed|not found|not loaded|lost\b|\bnil\b", re.I)
 
 
 def shipped_lua():
@@ -387,9 +691,48 @@ def call_args(seg):
     return seg
 
 
+def chat_sites(files):
+    """(file, line, key, literal text) of every chat line the shipped code writes (CHAT_ROUTE); a call's arguments may run over the
+    next lines. The definitions of ns.Print / ns.PrintPrivate are not sites."""
+    out = []
+    for f in files:
+        lines = code_lines(f)
+        for k, (n, s) in enumerate(lines):
+            for m in CHAT_ROUTE.finditer(s):
+                if re.search(r'function\s+$', s[:m.start()]):
+                    continue
+                args = call_args(s[m.end():] + "\n" + "\n".join(x for _, x in lines[k + 1:k + 8]))
+                text = " ".join(re.findall(r'"((?:[^"\\]|\\.)*)"', args))
+                out.append((f, n, " ".join(args.split())[:48], text))
+    return out
+
+
 def catalog():
     src = open(os.path.join(ROOT, "XayaUI", "DebugRecord.lua"), encoding="utf-8").read()
     return dict(re.findall(r'\{ code = "(XUI-[EW]\d{3})", kind = "(error|warning)"', src))
+
+
+def catalog_text():
+    """code -> its meaning, as ns.ERROR_CODES writes it (DebugRecord.lua)."""
+    src = open(os.path.join(ROOT, "XayaUI", "DebugRecord.lua"), encoding="utf-8").read()
+    return dict(re.findall(r'\{ code = "(XUI-[EW]\d{3})", kind = "(?:error|warning)",[^\n]*?text = "((?:[^"\\]|\\.)*)" \}', src))
+
+
+# the USER-GUIDE's code table speaks to the player: "the player's" is "your", and the game's event names in brackets are left out. Two
+# codes say more there than in the catalog, because this version never records them (DOC_MEANING: the catalog's words, the guide's).
+DOC_MEANING = {
+    "XUI-W003": ("Engine safety stop: Blizzard's aura containers cost too much, so only this spec's displays are drawn by the engine (lean mode)",
+                 "Engine safety stop, lean mode (older versions only: the speed guard is removed, so this version never records it)"),
+    "XUI-W004": ("Engine safety stop: still too costly in lean mode, so automatic engine drawing is off until /reload",
+                 "Engine safety stop, drawing off until /reload (older versions only: the speed guard is removed, so this version never records it)"),
+}
+
+
+def doc_meaning(code, text):
+    if code in DOC_MEANING:
+        was, doc = DOC_MEANING[code]
+        return doc if text == was else "(the catalog changed: %s)" % text
+    return re.sub(r" \([A-Z_]+(?: / [A-Z_]+)*\)$", "", text.replace("the player's", "your"))
 
 
 def static_checks():
@@ -416,19 +759,33 @@ def static_checks():
                     bad_code.append("%s:%d %s with %s (catalog: %s)" % (f, n, m.group(1), code, cat.get(code)))
     res.append(("S1 every ns.PrintError / ns.PrintWarning call names a catalog code of its kind (%d call sites)" % sites,
                 sites >= 40 and not bad_code, "; ".join(bad_code[:6]) or "only %d sites" % sites))
-    leftovers = []
-    pr = re.compile(r'ns\.Print(Private)?\s*\(')
-    for f in files:
-        for n, s in code_lines(f):
-            for m in pr.finditer(s):
-                text = " ".join(re.findall(r'"((?:[^"\\]|\\.)*)"', call_args(s[m.end():])))
-                if not text or not PATTERN.search(text):
-                    continue
-                if any(f == nf and frag in s for nf, frag, _ in NOT_ERRORS):
-                    continue
-                leftovers.append("%s:%d %s" % (f, n, s.strip()[:110]))
-    res.append(("S2 no ns.Print / ns.PrintPrivate line reports an error or warning (%d listed player-feedback lines excepted)" % len(NOT_ERRORS),
-                not leftovers, "%d found: %s" % (len(leftovers), " || ".join(leftovers[:6]))))
+    sites = chat_sites(files)
+    rows = {}
+    for f, key, cls, *why in PRINT_SITES:
+        rows.setdefault((f, key), []).append((cls, why[0] if why else ""))
+    unlisted, cls_of = [], []
+    for f, n, key, text in sites:
+        q = rows.get((f, key))
+        if not q:
+            unlisted.append("%s:%d (%s)" % (f, n, key))
+            continue
+        cls, why = q.pop(0)
+        cls_of.append((f, n, key, text, cls, why))
+    stale = ["%s (%s)" % (f, key) for (f, key), q in rows.items() for _ in q]
+    nowhy = ["%s (%s)" % (f, key) for f, key, cls, *why in PRINT_SITES if cls != MSG and not (why and why[0])]
+    badcls = ["%s (%s) %s" % (f, key, cls) for f, key, cls, *why in PRINT_SITES if cls not in (MSG, ANSWER, PASS, UNSAVED)]
+    res.append(("S2a every chat line the shipped code writes (%d sites: ns.Print, ns.PrintPrivate, print, AddMessage) is classified in"
+                " PRINT_SITES, every row names a site that is there, and every row but an ordinary message says why" % len(sites),
+                sites and not unlisted and not stale and not nowhy and not badcls,
+                "not classified: %s | rows with no site: %s | no why: %s | %s" % ("; ".join(unlisted[:6]), "; ".join(stale[:6]),
+                                                                                    "; ".join(nowhy[:4]), "; ".join(badcls[:4]))))
+    worded = ["%s:%d %r" % (f, n, ERROR_WORDS.search(text).group(0)) for f, n, key, text, cls, why in cls_of
+              if cls == MSG and ERROR_WORDS.search(text)]
+    res.append(("S2b no line classified as an ordinary message reads as an error or a warning (%d ordinary sites)"
+                % sum(1 for x in cls_of if x[4] == MSG), not worded, "; ".join(worded[:6])))
+    gaps = ["%s:%d %s" % (f, n, why) for f, n, key, text, cls, why in cls_of if cls == UNSAVED]
+    res.append(("S2c no chat line reports an error or a warning without saving it (SD-139; PRINT_SITES rows classified UNSAVED: %d)" % len(gaps),
+                not gaps, " || ".join(gaps[:4])))
     twostep = []
     for f in files:
         lines = code_lines(f)
@@ -455,7 +812,33 @@ GAP = ""
 # a sentence that says errors are recorded or saved is true only with "always", "either way" or "whether or not" in that same sentence
 SAYS_RECORDS = re.compile(r"\b(record(s|ed|ing)?|sav(e|es|ed|ing))\b", re.I)
 SAYS_ALWAYS = re.compile(r"\balways\b|\beither way\b|\bwhether or not\b", re.I)
-NOTHING_RECORDED = re.compile(r"nothing (new )?(is|gets) (recorded|kept|saved)", re.I)
+NOTHING_RECORDED = re.compile(r"nothing (new )?(is|gets|will be) (recorded|kept|saved|logged|captured|stored|tracked)", re.I)
+# (round 11 hygiene; R11A final review: G5-G8 matched fixed phrases, and the reviewer's mutations R2 "While it is off, warnings are not
+# saved." and R9 "errors from before you turned it on are lost." survived) A false claim about the record, in any wording: a sentence
+# about errors, warnings or entries that says they are not saved (a negation up to three words before a saving verb), that they are
+# lost, or that they are saved only while the switch is on (without "always", "either way" or "whether or not"). A sentence about
+# another addon's errors, ordinary messages or another player's names is about something else, and is skipped.
+CLAIM_SUBJECT = re.compile(r"\b(errors?|warnings?|entr(y|ies))\b", re.I)
+SAVE_WORD = (r"(?:record(?:s|ed|ing)?|sav(?:e|es|ed|ing)|kept|keeps?|keeping|log(?:s|ged|ging)?|captur(?:e|es|ed|ing)|track(?:s|ed|ing)?"
+             r"|stor(?:e|es|ed|ing))")
+CLAIM_SAVES = re.compile(r"\b" + SAVE_WORD + r"\b", re.I)
+CLAIM_NOT_SAVED = re.compile(r"(?:\b(?:not|never|no longer|nothing|none|no)\b|n't\b)(?:\s+[\w']+){0,3}?\s+" + SAVE_WORD + r"\b", re.I)
+CLAIM_LOST = re.compile(r"\b(lost|lose|loses|losing|gone|dropped|discarded|erased|deleted|wiped|thrown away|forgotten)\b", re.I)
+CLAIM_ONLY_ON = re.compile(r"\b(?:while|when|if|once|after)\s+(?:you\s+turn\s+on\s+|turning\s+on\s+)?(?:it|this|the switch|advanced debugging)"
+                           r"(?:\s+is|'s)?\s+(?:on|ticked|turned on)\b", re.I)
+CLAIM_OTHER = re.compile(r"another addon|other addons?\b|ordinary|another player|names another|PrintPrivate", re.I)
+
+
+def false_claims(text):
+    """The sentences of text that tell her XayaUI's errors or warnings are not saved, are lost, or are saved only while the switch is on."""
+    bad = []
+    for x in re.split(r"(?<=[.!?;:])\s+|\n+|\s+-\s+", re.sub(r"\*\*|`", "", text or "")):
+        x = x.strip()
+        if not x or not CLAIM_SUBJECT.search(x) or CLAIM_OTHER.search(x):
+            continue
+        if CLAIM_NOT_SAVED.search(x) or CLAIM_LOST.search(x) or (CLAIM_SAVES.search(x) and CLAIM_ONLY_ON.search(x) and not SAYS_ALWAYS.search(x)):
+            bad.append(x)
+    return bad
 # the known stale lines in the player guides, QA steps and the in-game info pane (file, the false words, why they are false now)
 STALE_DOC_LINES = [
     ("docs/USER-GUIDE.md", "off by default, records XayaUI's own errors", "the switch no longer decides that errors are recorded"),
@@ -541,6 +924,9 @@ def true_text_checks(desc, report):
     off_line = [l for l in str(report).split("\n") if l.startswith("Advanced Debugging is OFF")]
     res.append(("G5 the debug report with Advanced Debugging off says errors and warnings are saved either way",
                 len(off_line) == 1 and "errors and warnings are saved either way" in off_line[0], off_line))
+    said = false_claims(desc) + false_claims(off_line[0] if off_line else "")
+    res.append(("G5 neither the switch's description nor the report's OFF line says, in any words, that errors or warnings are not saved,"
+                " are lost, or are saved only while the switch is on", desc is not None and len(off_line) == 1 and not said, said[:3]))
     ug = read("docs/USER-GUIDE.md")
     sec = section(ug, "### 12.14 ", "\n### ")
     first = sec.split("\n\n", 2)[1] if sec.count("\n\n") >= 2 else ""
@@ -557,10 +943,23 @@ def true_text_checks(desc, report):
     extra = sorted(set(rows) - set(catalog()))
     res.append(("G6 USER-GUIDE 12.14's code table has one row for every code in ns.ERROR_CODES (%d codes) and no other" % len(catalog()),
                 not missing and not extra and len(catalog()) > 20, "missing %s, not in the catalog %s" % (missing, extra)))
+    # (round 11 hygiene; the reviewer's mutation R3, XUI-E017 'exported' changed to 'imported', survived G6's codes-only compare) each
+    # row says what the catalog says (DebugRecord.lua: "the same list is in the USER-GUIDE"), in the player's words (doc_meaning)
+    wrong = ["%s: guide %r, catalog %r" % (c, rows[c], doc_meaning(c, t)) for c, t in sorted(catalog_text().items())
+             if c in rows and rows[c] != doc_meaning(c, t)]
+    res.append(("G6 every row of USER-GUIDE 12.14's code table gives its code's meaning as ns.ERROR_CODES does (%d rows)" % len(rows),
+                rows and not wrong and len(catalog_text()) == len(catalog()), "; ".join(wrong[:3])))
+    prose = "\n".join(l for l in section(sec, "### 12.14 ", "**The detailed debug record").splitlines() if not l.startswith("|"))
+    said = false_claims(prose)
+    res.append(("G6 no sentence of USER-GUIDE 12.14 (up to the detailed record) says, in any words, that XayaUI's errors or warnings are"
+                " not saved, are lost, or are saved only while Advanced Debugging is on", prose and not said, said[:3]))
     for path, start in (("docs/HELP-FAQ.md", "### How do I report a problem?"), ("docs/README-INGAME.md", "- **Debugging.**")):
         part = section(read(path), start, "\n### " if start.startswith("###") else "\n- **")
         res.append(("G7 %s says XayaUI saves its errors and warnings whether or not Advanced Debugging is on" % path,
                     bool(re.search(r"saves its (own )?errors and warnings", part)) and bool(either.search(part)), part[:240]))
+        said = false_claims(part)
+        res.append(("G7 no sentence of %s's answer says, in any words, that errors or warnings are not saved, are lost, or are saved"
+                    " only while the switch is on (the info pane holds the same line, next check)" % path, part and not said, said[:3]))
     pane = read("XayaUI_Options/InfoPaneData.lua")
     faq_line = [l for l in read("docs/HELP-FAQ.md").splitlines() if l.startswith("- Turn on **Advanced Debugging**")]
     ing_line = [l for l in read("docs/README-INGAME.md").splitlines() if l.startswith("- **Debugging.**")]
@@ -573,6 +972,30 @@ def true_text_checks(desc, report):
                 " either way; an error from a session begun with it off is there (x3) after turning it on; no 'ticked (the default)'",
                 "now x2" in b and "errors and warnings are saved either way" in b and "Expect:** x3" in b
                 and "ticked (the default)" not in b, b[-400:]))
+    # (round 11 hygiene; the reviewer's mutation R8, the across-/reload step replaced by 'Tick Advanced Debugging.', survived) the x3
+    # step proves an error is saved across a /reload made with the switch off: after "now x2" and before the x3 expectation, in order,
+    # a /reload while still unticked, the error /run again, then ticking the switch and a /reload
+    after = b[b.find("now x2"):] if "now x2" in b else ""
+    x3 = after.find("Expect:** x3")
+    seg = after[:x3] if x3 > 0 else ""
+    order, at = [], 0
+    for what, rx in (("a /reload while still unticked", r"/reload"), ("the error /run again", r"run the first `/run` again"),
+                     ("ticking Advanced Debugging", r"\btick Advanced Debugging\b"), ("a /reload after ticking", r"/reload")):
+        m = re.compile(rx).search(seg, at)
+        if not m:
+            order.append(what)
+            continue
+        if what == "a /reload while still unticked" and re.search(r"\btick", seg[:m.start()], re.I):
+            order.append(what + " (ticked before it)")
+        at = m.end()
+    res.append(("G8 QA step B182's x3 step saves an error across a /reload made with the switch off: /reload unticked, the error again,"
+                " tick, /reload, then x3", seg and not order, order or "no 'now x2' ... 'Expect:** x3' part"))
+    # (concern 9) the report's string button, by the label XayaUI_Debug/DebugReport.lua gives it (UI-78: it selects, it cannot copy)
+    lab = re.search(r'local copy = CreateFrame\("Button".*?copy:SetText\("([^"]+)"\)', read("XayaUI_Debug/DebugReport.lua"), re.S)
+    label = lab.group(1) if lab else None
+    named = set(re.findall(r"\*\*([^*]+ string)\*\*", b))
+    res.append(("G8 QA step B182 names the report's string button as the game shows it (%s): the button and the press, no other name" % label,
+                label and b.count("**%s**" % label) >= 2 and named == {label}, sorted(named)))
     return res
 
 
@@ -609,11 +1032,20 @@ def main():
         print(("PASS " if ok else "FAIL ") + name)
         bad += 0 if ok else 1
     if info is not None:
-        print("MEASURED (stand-in Lua 5.1, not WoW): one entry at its longest %.2f KB, 50 entries %.1f KB, after 150 distinct %.1f KB;"
-              " after 350 distinct %.1f KB; another addon's blocked action %s instructions, XayaUI's (new entry) %s, XayaUI's again %s"
-              % (info.entryKB or 0, info.capKB or 0, info.afterKB or 0, info.after350KB or 0, info.blockedOther, info.blockedMineNew, info.blockedMineAgain))
+        print("MEASURED (stand-in Lua 5.1, not WoW): the record's own size (Lua 5.1 layout): one entry %s bytes, 50 entries %.1f KB, after"
+              " 150 distinct %.1f KB, after 350 distinct %.1f KB; the collector's count (includes the string table, not judged): 50 entries"
+              " %.1f KB, after 150 distinct %.1f KB, after 350 distinct %.1f KB; another addon's blocked action %s instructions, XayaUI's"
+              " (new entry) %s, XayaUI's again %s"
+              % (info.modelOneB, info.modelCapKB or 0, info.model150KB or 0, info.model350KB or 0, info.capKB or 0, info.afterKB or 0,
+                 info.after350KB or 0, info.blockedOther, info.blockedMineNew, info.blockedMineAgain))
     for x in errs:
         print("ERROR in the game stand-in:", x[:600])
+    # (round 11 hygiene; the honest-result guard, tests/run_all.py) the record this run ends with is left ON PURPOSE by section T for
+    # the harness read (SD-139 "tests read the same record"): after CueRulesDB.errorLog = {}, exactly the two lines
+    # PE("XUI-E011", "R11ER for the harness", nil) and W.fire("ADDON_ACTION_BLOCKED", "XayaUI", "R11ER_Harness()"); every earlier
+    # entry was cleared with the record. Declared exactly, so any other entry still fails the run.
+    print("EXPECT_ERRORS XUI-E011 1")
+    print("EXPECT_ERRORS XUI-W001 1")
     print("%d checks, %d failed, %d Lua errors" % (len(results), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

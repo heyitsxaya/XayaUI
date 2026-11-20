@@ -143,6 +143,8 @@ function RULE(uid, aura, load, folder)
     folder = folder,
     sound = { enabled = true, source = "file", value = "Interface\\AddOns\\SoundPack\\" .. uid .. ".ogg", channel = "Master" },
     gameSound = { enabled = true, when = "auto", channel = "Ambience", throttle = 1 } }
+  -- (round 11 repair) built the way XayaUI builds every rule it loads or makes (RuleDefaults.lua ns.NormalizeRule)
+  NS.NormalizeRule(r)
   NS.rules[#NS.rules + 1] = r
   return r
 end
@@ -150,7 +152,9 @@ function COUNT(uid, after) local n = 0; for _, e in ipairs(PLAYED) do if e.what 
 '''
 
 fails = []
+checked = [0]   # (round 11 repair, SD-138 M1: the last line says how many checks ran)
 def check(name, ok, extra=""):
+    checked[0] += 1
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra)[:600] + "]"))
     if not ok:
         fails.append(name)
@@ -477,5 +481,5 @@ for name, setup in (("mixed", MIXED), ("all Only in combat", ALLC), ("all Only o
 check("10a each fight / boss / mount moment costs the sound copy a bounded pass: at most 20,000 stand-in instructions with 20 rules (%d)"
       % worst, 0 < worst < 20000, worst)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed  FAILS: %d" % (checked[0], len(fails), len(fails)))
 sys.exit(1 if fails else 0)

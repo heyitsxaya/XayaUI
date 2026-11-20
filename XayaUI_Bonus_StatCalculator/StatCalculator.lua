@@ -79,6 +79,31 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+-- (round 11 repair, SD-105 "Load at first open (Recommended)" / SD-146 "Repeat the reason each time (Recommended)": files that stop with
+-- a Lua error while loading count as not loaded) The stand-down: this file does nothing at all when the calculator's load is already
+-- broken when the game starts reading it. Two signals, each enough:
+--   * the model is not whole: StatModel.lua offers the "statModel" service as its last statement (and stands down itself when
+--     StatMath.lua did not end), so no "statModel" service means a file before this one stopped;
+--   * XayaUI_Bonus's loader saw a Lua error from the calculator's files during this load (ns.StatCalcLoader.FilesErrored: its error
+--     watch, XayaUI_Bonus/StatCalculatorLoader.lua), so it will count the calculator as not loaded: nothing here may start either.
+-- Then nothing below runs: no function or setting is defined, no service is offered, no frame, event, hook or timer is made, and the
+-- character window is never touched (before round 11 the start-up below still ran on a half-read model, and opening the character
+-- window raised "attempt to call field 'ValueFor'"). The loader then says why on every /xui stats (SD-146). A stop inside this file
+-- itself leaves the start-up and both services at its end unreached, which is the same stand-down. (ns.Service is core's; without it,
+-- in a stand-in that loads this file alone, nothing can be told and the file runs as before.)
+-- (round 11 repair 2) The same test is read once more just before the start-up at the end of this file: a Lua error that a line of
+-- THIS file reports while the game reads it, without stopping the file (a helper run under xpcall or securecall reports through the
+-- error handler and returns), lets the file run on to its end, and the loader then counts the calculator as not loaded. Before repair 2
+-- the start-up still ran then: one event frame and a hook on the character window were made for a calculator the loader never calls
+-- (tests/fix_r11_statcalc E "StatCalculator.lua reports an error from a helper and goes on to its end"). One function, made once.
+-- Known limit: with the error handler held by another addon nothing is watched, so such an error is not seen at all (the loader's
+-- known limit, StatCalculatorLoader.lua); a stop is still seen by the "statModel" test and the end-of-file mark.
+local function LoadBroken()
+    if ns.Service and not ns.Service("statModel") then return true end
+    local L = ns.StatCalcLoader
+    return (L and L.FilesErrored and L.FilesErrored()) and true or false
+end
+if LoadBroken() then return end
 local BonusS = ns.Settings("bonus")   -- (Bonus 0.6.37: Bonus's own XayaUIBonusDB; Modules.lua section 0b)
 -- (Bonus 0.6.46, A24 #12 / #13) the store is declared by XayaUI_Bonus's loader (XayaUI_Bonus/StatCalculatorLoader.lua), which owns the
 -- XayaUIBonusDB saved variable; this load-on-demand addon only reads and writes it once it is loaded.
@@ -2506,70 +2531,70 @@ local function TellState()
     local open, available = panel ~= nil and panel:IsShown() or false, PanelAvailable()
     for _, fn in ipairs(stateListeners) do pcall(fn, open, available) end
 end
-if ns.Provide then
-    ns.Provide("statCalc", {
-        Cfg = function() return Cfg() end,
-        -- (V25 R2, for Improved Character Display's Stat Calc button) the panel can open (the Stat Calculator and its panel on); open or
-        -- close it as the button did; tell fn(open, available) whenever that changes
-        -- (V26) false in combat too: the button hides with the panel
-        Available = function() return PanelAvailable() end,
-        Toggle = function() ns.StatCalc_Toggle() end,
-        -- (Bonus 0.6.47, SD-94 / SD-105, for XayaUI_Bonus's loader) apply the saved settings now (the switch turned on or off, a profile
-        -- import), and dock beside the open character window when it was left open (the first open came from that window)
-        Apply = function() ns.StatCalc_Apply() end,
-        ShowIfDocked = function() if ns.StatCalc_ShowIfDocked then ns.StatCalc_ShowIfDocked() end end,
-        OnState = function(fn) if type(fn) == "function" then stateListeners[#stateListeners + 1] = fn end end,
-        -- open the panel on a tab ("stats" | "gear" | "spells"); false and why when the Stat Calculator or its panel is off
-        Open = function(tab)
-            local c = Cfg()
-            if not c then return false, "no saved settings yet" end
-            if not On(c) then return false, "Stat Calculator is off (Bonus Features > Stat Calculator)" end
-            if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Stat Calculator > Panel)" end
-            if InCombat() then return false, "in combat (the Stat Calculator does not open in combat)" end
-            if tab then c.tab = tab end
-            ns.StatCalc_SetOpen(true)
-            return panel ~= nil and panel:IsShown()
-        end,
-        Shown = function() return panel ~= nil and panel:IsShown() end,
-        Close = function() if panel and panel:IsShown() then ns.StatCalc_SetOpen(false) end end,
-        Drawn = function() return ns.StatCalc_Drawn() end,
-        -- (Bonus 0.6.38) type in a box as the player does ("crit" with "100": 100 more crit rating; "" clears it) and redraw; for the
-        -- change-color walkthrough (QAWalks-stat-colors.lua)
-        SetInput = function(key, text) ns.StatCalc_SetInput(key, text) end,
-        ToggleStat = function(key) ns.StatCalc_ToggleStat(key) end,
-        SelectGearSlot = function(slot) ns.StatCalc_SelectGearSlot(slot) end,
-        PickItem = function(link, slot) ns.StatCalc_PickItem(link, slot) end,
-        -- the header as drawn: left text, right text, and the game's two item levels it came from
-        Header = function()
-            if not panel then return nil end
-            return panel.hEq:GetText(), panel.hMax:GetText(), CM.HeaderInfo()
-        end,
-        HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
-        Page = function(Notify) return ns.BuildStatCalcPage and ns.BuildStatCalcPage(Notify or function() end) end,
-        -- (Bonus 0.6.46) /xui stats once this file is loaded (the loader owns the command and its options / off / help)
-        Command = function(arg) return ns.StatCalc_Command(arg) end,
-        TextW = function(text, size) return panel and TextW(text, size) or nil end,
-        -- (A24 #8 / #9, for the walkthroughs) the panel as the player has it: shown, opened on its own, its strata and the character
-        -- window's, its drawn width, the saved width (the corner grip's), the tab row, and whether its own name is in the game's UISpecialFrames (the list Esc closes). Read only.
-        Window = function()
-            if not panel then return nil end
-            local cf, listed = _G.CharacterFrame, false
-            for _, n in ipairs(type(UISpecialFrames) == "table" and UISpecialFrames or {}) do if n == PANEL_NAME then listed = true end end
-            local st = cf and cf.GetFrameStrata and cf:GetFrameStrata() or nil
-            if type(st) ~= "string" or isSecret(st) then st = nil end
-            -- (A24 #9 / V27) the tab row as placed: each tab's x (from the panel's left) and width
-            local tabs = {}
-            for i, b in ipairs(panel.tabs or {}) do
-                local _, _, _, x = b:GetPoint(1)
-                tabs[i] = { x = x, w = b:GetWidth() }
-            end
-            return { shown = panel:IsShown(), standalone = panel.standalone == true, strata = panel:GetFrameStrata(),
-                windowStrata = st, width = ns.STATCALC_LAYOUT.width, content = ns.STATCALC_LAYOUT.content, pad = PAD,
-                savedWidth = (function() local c = Cfg(); return c and type(c.size) == "table" and c.size.w or nil end)(),
-                escListed = listed, tabs = tabs }
-        end,
-    })
-end
+-- (round 11 repair) the service table is made here (its functions read the locals above) and offered at the end of this file, with
+-- statCalcDebug, once every line has run: a half-read calculator offers nothing (see the end of this file)
+local CALC_SERVICE = {
+    Cfg = function() return Cfg() end,
+    -- (V25 R2, for Improved Character Display's Stat Calc button) the panel can open (the Stat Calculator and its panel on); open or
+    -- close it as the button did; tell fn(open, available) whenever that changes
+    -- (V26) false in combat too: the button hides with the panel
+    Available = function() return PanelAvailable() end,
+    Toggle = function() ns.StatCalc_Toggle() end,
+    -- (Bonus 0.6.47, SD-94 / SD-105, for XayaUI_Bonus's loader) apply the saved settings now (the switch turned on or off, a profile
+    -- import), and dock beside the open character window when it was left open (the first open came from that window)
+    Apply = function() ns.StatCalc_Apply() end,
+    ShowIfDocked = function() if ns.StatCalc_ShowIfDocked then ns.StatCalc_ShowIfDocked() end end,
+    OnState = function(fn) if type(fn) == "function" then stateListeners[#stateListeners + 1] = fn end end,
+    -- open the panel on a tab ("stats" | "gear" | "spells"); false and why when the Stat Calculator or its panel is off
+    Open = function(tab)
+        local c = Cfg()
+        if not c then return false, "no saved settings yet" end
+        if not On(c) then return false, "Stat Calculator is off (Bonus Features > Stat Calculator)" end
+        if not c.panel then return false, "the Stat Calculator panel is off (Bonus Features > Stat Calculator > Panel)" end
+        if InCombat() then return false, "in combat (the Stat Calculator does not open in combat)" end
+        if tab then c.tab = tab end
+        ns.StatCalc_SetOpen(true)
+        return panel ~= nil and panel:IsShown()
+    end,
+    Shown = function() return panel ~= nil and panel:IsShown() end,
+    Close = function() if panel and panel:IsShown() then ns.StatCalc_SetOpen(false) end end,
+    Drawn = function() return ns.StatCalc_Drawn() end,
+    -- (Bonus 0.6.38) type in a box as the player does ("crit" with "100": 100 more crit rating; "" clears it) and redraw; for the
+    -- change-color walkthrough (QAWalks-stat-colors.lua)
+    SetInput = function(key, text) ns.StatCalc_SetInput(key, text) end,
+    ToggleStat = function(key) ns.StatCalc_ToggleStat(key) end,
+    SelectGearSlot = function(slot) ns.StatCalc_SelectGearSlot(slot) end,
+    PickItem = function(link, slot) ns.StatCalc_PickItem(link, slot) end,
+    -- the header as drawn: left text, right text, and the game's two item levels it came from
+    Header = function()
+        if not panel then return nil end
+        return panel.hEq:GetText(), panel.hMax:GetText(), CM.HeaderInfo()
+    end,
+    HasModeButton = function() return panel ~= nil and panel.modeBtn ~= nil end,
+    Page = function(Notify) return ns.BuildStatCalcPage and ns.BuildStatCalcPage(Notify or function() end) end,
+    -- (Bonus 0.6.46) /xui stats once this file is loaded (the loader owns the command and its options / off / help)
+    Command = function(arg) return ns.StatCalc_Command(arg) end,
+    TextW = function(text, size) return panel and TextW(text, size) or nil end,
+    -- (A24 #8 / #9, for the walkthroughs) the panel as the player has it: shown, opened on its own, its strata and the character
+    -- window's, its drawn width, the saved width (the corner grip's), the tab row, and whether its own name is in the game's UISpecialFrames (the list Esc closes). Read only.
+    Window = function()
+        if not panel then return nil end
+        local cf, listed = _G.CharacterFrame, false
+        for _, n in ipairs(type(UISpecialFrames) == "table" and UISpecialFrames or {}) do if n == PANEL_NAME then listed = true end end
+        local st = cf and cf.GetFrameStrata and cf:GetFrameStrata() or nil
+        if type(st) ~= "string" or isSecret(st) then st = nil end
+        -- (A24 #9 / V27) the tab row as placed: each tab's x (from the panel's left) and width
+        local tabs = {}
+        for i, b in ipairs(panel.tabs or {}) do
+            local _, _, _, x = b:GetPoint(1)
+            tabs[i] = { x = x, w = b:GetWidth() }
+        end
+        return { shown = panel:IsShown(), standalone = panel.standalone == true, strata = panel:GetFrameStrata(),
+            windowStrata = st, width = ns.STATCALC_LAYOUT.width, content = ns.STATCALC_LAYOUT.content, pad = PAD,
+            savedWidth = (function() local c = Cfg(); return c and type(c.size) == "table" and c.size.w or nil end)(),
+            escListed = listed, tabs = tabs }
+    end,
+}
 
 -- (Bonus 0.6.37: the slot overlays on the character window are XayaUI QoL's, XayaUI_QoL/ImprovedCharacterDisplay.lua)
 
@@ -2963,7 +2988,8 @@ end
 -- (audit QA walkthrough, D17) which of the Stat Calculator's events are registered now; its settings, and Apply after changing them
 -- (QAWalks-statcalc-fixes.lua) Builds: how many stat models the panel has built since the reload (a number, read only: nothing can set it);
 -- InCombat: whether the panel counts the player as in combat (V26)
-if ns.Provide then ns.Provide("statCalcDebug", { Cfg = function() return Cfg() end, Apply = function() return ns.StatCalc_Apply() end,
+-- (round 11 repair) offered at the end of this file with statCalc (see there)
+local DEBUG_SERVICE = { Cfg = function() return Cfg() end, Apply = function() return ns.StatCalc_Apply() end,
     Registered = function(e) return (ev and ev.IsEventRegistered and ev:IsEventRegistered(e)) and true or false end,
     Builds = function() return modelBuilds end,
     InCombat = function() return InCombat() end,
@@ -2980,7 +3006,7 @@ if ns.Provide then ns.Provide("statCalcDebug", { Cfg = function() return Cfg() e
         local n, focused = 0, false
         for _, eb in pairs(boxes) do n = n + 1; if eb.HasFocus and eb:HasFocus() then focused = true end end
         return focused, n
-    end }) end
+    end }
 
 -------------------------------------------------------------------------------
 -- Settings: Bonus Features > Stat Calculator (a feature node; its parts Panel and Spell Math are nodes under it, and each
@@ -3170,7 +3196,18 @@ end
 -- (Bonus 0.6.47, SD-105 "Load at first open") it is loaded at the panel's first open (the minimap row, /xui stats, or the character
 -- window opening while the panel was left open), never in combat lockdown; Bonus's store is open by then, so this runs at once and
 -- applies the saved settings (Apply docks it beside the open character window when it was left open).
+-- (round 11 repair 2) the stand-down's second reading (LoadBroken, at the top of this file): an error reported by this file's own lines
+-- while it was read leaves the start-up and both services below unmade
+if LoadBroken() then return end
 ns.WhenSettingsReady("bonus", function()
     if Cfg() then ns.StatCalc_Apply() end
 end)
 -- (/xui debug widthprobe and its file, CharacterWidthProbe.lua, are XayaUI Dev Assist's since QoL 0.7.33; REQUEST-LOG #81)
+
+-- (round 11 repair, SD-105 / SD-146) the end-of-file mark, and so the LAST statement of this file: the calculator is offered through
+-- core's services (statCalc: what XayaUI_Bonus's loader calls; statCalcDebug: read only, for the tests and walkthroughs) only once every
+-- line above has run, the start-up included. Until round 11 both were offered in the middle of the file, so a stop further down left a
+-- half-read calculator in the service list. A stop anywhere above leaves neither: XayaUI_Bonus's loader (StatCalculatorLoader.lua
+-- FilesComplete) counts the calculator as not loaded and says why, and nothing calls into it. tests/fix_r11_statcalc F reads that this
+-- is the file's last statement.
+if ns.Provide then ns.Provide("statCalcDebug", DEBUG_SERVICE); ns.Provide("statCalc", CALC_SERVICE) end

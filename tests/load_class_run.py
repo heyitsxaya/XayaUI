@@ -27,7 +27,9 @@ function R(load) return { uid = "r", name = "r", enabled = true, load = load } e
 function loads(rule) local ok, why = ns.CheckContext(rule, ctxNow()); return ok and true or false, why end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 lua = lambda s: L.execute(s)
@@ -134,4 +136,4 @@ check("#476 a class's fourth spec is listed (Druid - Restoration)", lua("return 
 check("#476 an Initial spec is never offered (Warrior 1446)", lua("return HAS(1446) == nil and HAS(73) ~= nil"))
 check("#476 the empty index adds no entry (13 classes: 4 Druid + 3 Demon Hunter + 3 Warrior + 0 for the classes with none)",
       lua("return #SPEC_FN3() == 10"), lua("return #SPEC_FN3()"))
-print("\nALL PASSED" if not fails else "\n%d FAILED" % len(fails)); sys.exit(1 if fails else 0)
+print("\n%d checks, %d failed" % (len(checked), len(fails))); sys.exit(1 if fails else 0)

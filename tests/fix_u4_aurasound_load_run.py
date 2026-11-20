@@ -52,7 +52,9 @@ for f in toc:
         failed.append((f, str(e)[:200]))
 
 fails = []
+checked = [0]   # (round 11 repair, SD-138 M1: the last line says how many checks ran)
 def check(name, ok, extra=""):
+    checked[0] += 1
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -66,6 +68,8 @@ function RULE(uid, aura, load)
   local r = { uid = uid, name = uid, enabled = true, useBuff = true, buffID = aura, buffState = "present", cdState = "none", load = load,
     sound = { enabled = true, source = "file", value = "Interface\\AddOns\\SoundPack\\" .. uid .. ".ogg", channel = "Master" },
     gameSound = { enabled = true, when = "auto", channel = "Ambience", throttle = 1 } }
+  -- (round 11 repair) built the way XayaUI builds every rule it loads or makes (RuleDefaults.lua ns.NormalizeRule)
+  NS.NormalizeRule(r)
   NS.rules[#NS.rules + 1] = r
   return r
 end
@@ -123,5 +127,5 @@ check("the 'Only in combat' rule keeps its single registration through those syn
 L.execute("FIRE('ENCOUNTER_END', 3009, 'Boss', 16, 20, 1); COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
 check("the fight ends: both are taken back", L.eval("HOLDS(5001)") is False and L.eval("HOLDS(5002)") is False)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed  FAILS: %d" % (checked[0], len(fails), len(fails)))
 sys.exit(1 if fails else 0)

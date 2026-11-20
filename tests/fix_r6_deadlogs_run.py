@@ -98,6 +98,12 @@ def main():
         bad += 0 if ok else 1
     for x in errors:
         print("ERROR in the game stand-in:", str(x)[:600])
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # test data, on purpose: the saved data both runs start from holds two error-record entries for the bug report to read (saved(): an
+    # XUI-E010 "a rule failed" with n = 3 and an XUI-W001 "the game blocked an action" with n = 1; B4 checks they are untouched); the
+    # second run loads the same entries (same first time), which count once
+    print("EXPECT_ERRORS XUI-E010 3")
+    print("EXPECT_ERRORS XUI-W001 1")
     print("%d checks, %d failed, %d Lua errors" % (len(results), bad, len(errors)))
     sys.exit(1 if bad or errors else 0)
 

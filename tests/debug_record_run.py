@@ -58,7 +58,9 @@ function NOREC() return CueRulesDB.debugRecord == nil end
 function RESET() CHAT = {}; SINK = {}; WINDOW.open = false; WINDOW.calls = 0 end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -209,5 +211,9 @@ check("Settings: 'What to send' shows XayaUI.lua's path in a box to copy, and ty
 check("Settings: still no developer file's box with that service provided", E("SEND.sendDev == nil and DBG.gameDump == nil and DBG.devPages == nil"))
 check("Settings: 'What to send' is shown even with Advanced Debugging off (a bug report needs it too)", E("DBG.send.hidden == nil"))
 
-print("FAILS: %d" % len(fails))
+# (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+# 6, on purpose: H.ADDON_ACTION_BLOCKED('XayaUI', 'CastSpellByID') after CueRulesDB.errorLog = {}: XUI-W001 once (another addon's
+# ADDON_ACTION_FORBIDDEN is not kept); the test empties the record before each earlier part, so this is the only entry left
+print("EXPECT_ERRORS XUI-W001 1")
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

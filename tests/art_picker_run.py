@@ -34,7 +34,9 @@ src = open(os.path.join(ROOT, "XayaUI", "UserMedia.lua"), encoding="utf-8").read
 L.eval("function(src) local f = assert(loadstring(src, '@UserMedia.lua')); f('XayaUI', NS) end")(src)
 
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -82,5 +84,5 @@ for mode in ("nothing", "error"):
 opt = open(os.path.join(ROOT, "XayaUI_Options", "RuleEditor", "Editor.lua"), encoding="utf-8").read()
 check("the art picker reads ns.AvailableLocalGraphics", "ns.AvailableLocalGraphics()" in opt)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

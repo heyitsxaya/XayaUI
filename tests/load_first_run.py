@@ -51,7 +51,9 @@ function STEP() NOW = NOW + 0.2; ENGINE_STEP(ns) end
 function COUNT(t, from, to) local n = 0; for i = from, to do n = n + (t[ns.rules[i]] or 0) end return n end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok):
+    checked.append(name)
     print(("ok    " if ok else "FAIL  ") + name)
     if not ok: fails.append(name)
 E = lambda s: L.eval(s)
@@ -70,5 +72,5 @@ L.execute("RESET(); NS.statusDetail = true; STEP(); NS.statusDetail = nil")
 check("while /xui debug status runs (ns.statusDetail): read in full even in a step", E("COUNT(CD, %d, %d)" % (LOADED + 1, N)) == nl)
 L.execute("RESET(); NS.rules[100].load = nil; NS.MarkDirty(); STEP()")
 check("a rule that becomes loaded is read again at once", E("(CD[NS.rules[100]] or 0) == 1"))
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

@@ -14,6 +14,7 @@ for m in re.finditer(r'\{\s*key\s*=\s*"(\w+)",\s*kind\s*=\s*"\w+"[^\n]*?label\s*
         fails.append("%s: %d characters: %s" % (key, len(label), label))
 for f in fails:
     print("FAIL field label too long for its column (move the detail into desc):", f)
-print("%d field labels checked" % n)
-print("FAILS: %d" % len(fails))
+# (round 11 repair, SD-138 / V35: a test fails if it prints no result count) one check per field label; 0 labels found reads
+# "0 checks" (the guard's CHECKED NOTHING: the pattern no longer matches Triggers.lua)
+print("%d checks, %d failed (one per field label in XayaUI_Rules/Triggers.lua)" % (n, len(fails)))
 sys.exit(1 if fails else 0)

@@ -219,4 +219,11 @@ function M.Solve(g, target, lo, hi, increasing)
     return (lo + hi) / 2
 end
 
-return M
+-- (round 11 repair, SD-105 / SD-146: files that stop with a Lua error while loading count as not loaded) the end-of-file mark, and so
+-- the LAST statement of this file: the arithmetic is offered as the "statMath" service only once every line above has run. A stop
+-- anywhere above (a Lua error raised while the game reads this file stops the file there: Lua's rule for a chunk, not a game guess)
+-- leaves no "statMath" service, so StatModel.lua stands down at its top, and XayaUI_Bonus's loader (StatCalculatorLoader.lua
+-- FilesComplete) counts the calculator as not loaded and says why. Nothing reads this file's return value (no file or test does; the game
+-- ignores it, INFERENCE), so the old "return M" is gone and this mark can be last. tests/fix_r11_statcalc F reads that this is the
+-- file's last statement.
+if ns.Provide then ns.Provide("statMath", M) end

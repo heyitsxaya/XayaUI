@@ -803,9 +803,9 @@ function ns.ModuleMissingText(cmd, isDebug)
     if state == "disabled" then
         return ("/xui %s is part of %s, which is switched off. Turn it on in the game's AddOns list, then /reload."):format(cmd, m.title)
     elseif state == "missing" then
-        return ("/xui %s is part of %s, which is not installed (or its files failed to load; /xui bug shows errors)."):format(cmd, m.title)
+        return ("/xui %s is part of %s, which is not installed or failed to load. Lua errors are saved: /xui bug shows them (needs Advanced Debugging)."):format(cmd, m.title)
     end
-    return ("/xui %s did not respond: %s is loaded, but the command was never registered. /xui bug shows errors."):format(cmd, m.title)
+    return ("/xui %s did not respond: %s is loaded, but the command was never registered. Lua errors are saved: /xui bug shows them (needs Advanced Debugging)."):format(cmd, m.title)
 end
 
 -------------------------------------------------------------------------------
@@ -1068,7 +1068,7 @@ function LoadOptionsNow()
         elseif state == "missing" then
             ns.Print("the settings window (XayaUI Options) is not installed: the XayaUI_Options folder belongs next to XayaUI in Interface\\AddOns.")
         else
-            ns.PrintError("XUI-E016", "the settings window could not load (" .. tostring(ok and reason or loaded) .. "). /xui bug shows errors.")
+            ns.PrintError("XUI-E016", "the settings window could not load (" .. tostring(ok and reason or loaded) .. "). The error is saved: /xui bug shows it (needs Advanced Debugging).")
         end
     end
     return false

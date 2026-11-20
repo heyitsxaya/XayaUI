@@ -23,7 +23,8 @@ Not a site: a function made once at load (a file-level function or local, the ma
 parameter, which is the caller's function). A timer call written at file level (the main chunk) runs once per load and is listed as
 a note, not failed. A callback the scan cannot classify (another call's result) is a FAIL too ("unknown": prove it is made once).
 
-FAIL: one line per site, "<file>:<line> <timer> <why>"; the last line "closure scan: N site(s) ... FAILS: N" (tests/run_all.py).
+FAIL: one line per site, "<file>:<line> <timer> <why>"; the last line "closure scan: N site(s) ... in F file(s); C checks, M failed
+FAILS: N" (tests/run_all.py; C = the self-check snippets, the mutation, files found, and each file scanned; M = those that failed).
 Expected (round 10 Stage 1a): FAILS until the closures unit lands (Stage 1b); the list is that unit's work list.
 The scanner proves itself first (SELF): known positive and negative Lua snippets, and a mutation of a real file (a closure per call
 put into a function of a file with no site) that must add exactly that site.
@@ -480,7 +481,14 @@ def main():
         print("FAIL %s:%d %s: %s" % (f, ln, lab, why))
     print("  sites per addon: %s" % (", ".join("%s %d" % (a, by_addon.get(a, 0)) for a in ADDONS)))
     nf = len(sites) + len(selff) + len(mutf) + (0 if files else 1)
-    print("closure scan: %d site(s) making a new function per timer call in %d file(s)  FAILS: %d" % (len(sites), len(files), nf))
+    # (round 11 repair, SD-138 / V35: a test fails if it prints no result count; R11A final: "in 83 file(s)" is not a count of checks)
+    # the checks made: each scanner self-check snippet, the mutation, that Lua files were found, and each file scanned (no site in it);
+    # failed: the wrong snippets, a missed mutation, no file found, and each file with a site. FAILS stays the number of sites and
+    # scanner faults, as before. No file found reads as the scanner's own checks only, with "no Lua file" failed.
+    checks = len(SELF_CASES) + 1 + 1 + len(files)
+    failed = len(selff) + len(mutf) + (0 if files else 1) + len({f for f, _, _, _ in sites})
+    print("closure scan: %d site(s) making a new function per timer call in %d file(s); %d checks, %d failed  FAILS: %d" % (
+        len(sites), len(files), checks, failed, nf))
     return 1 if nf else 0
 
 

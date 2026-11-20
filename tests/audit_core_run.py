@@ -266,6 +266,10 @@ def main():
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # D57 migration, on purpose: ns.NewCueRule = function(p, kind) if kind == "texture" then error("no texture") end ... end, then
+    # ns.MigrateCues(): one condition is left as it was and XayaUI says so, XUI-W008 once (its XUI-E011 goes to the test's own recorder)
+    print("EXPECT_ERRORS XUI-W008 1")
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

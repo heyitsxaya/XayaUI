@@ -11,7 +11,9 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 skin = open(os.path.join(ROOT, "XayaUI_Options", "Skin.lua"), encoding="utf-8").read()
 m = re.search(r"^local NAME_ROOM = .*?^function ns\.EnsureNameRoom\(.*?^end\n", skin, re.S | re.M)
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -100,5 +102,5 @@ end
       ns.EnsureNameRoom(t); return { t.status.treewidth, t.calls }
     end)()''')
     check("a sidebar the user dragged keeps their width (names show in full on mouse-over)", r[1] == 185 and r[2] == 0, r)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

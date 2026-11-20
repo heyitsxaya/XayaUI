@@ -32,7 +32,9 @@ assert ms, "ns.Style not found in XayaUI/Modules.lua"
 L.execute("local ns = ns\n" + ms.group(0))
 L.execute("local ns = ns\n" + chunk)
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -48,5 +50,5 @@ check("other controls alone on a row are unchanged (a slider still spans the pan
 L.execute("GRID = false")
 w5 = L.eval("(function() local d = W('Dropdown', 220, { a = 'Short' }); ns.FlexPrepass(CONTENT, { d }); return d.frame.width end)()")
 check("no grid: a lone dropdown keeps its own width (220), not the whole pane", w5 == 220, w5)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

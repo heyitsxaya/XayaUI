@@ -8,10 +8,12 @@ What a reader of the public repo gets, checked from git ls-files (V7) and the fi
      debug-log/, docs/issue-screenshots/, .claude/ or "Claude outputs/", and none of the single working files (roadmap, session
      summaries, audits, research notes). No saved game data (a WTF/ or SavedVariables path) is tracked.
   K  The player guides and build rules are still here (SD-145 keep list), and none of them, nor the in-game info pane text
-     (XayaUI_Options/InfoPaneData.lua), points at a working doc by its path or by a markdown link; every relative markdown link in a
-     kept doc opens a file that is in the tree.
+     (XayaUI_Options/InfoPaneData.lua), points at a working doc by its path or by a markdown link; (round 11 hygiene) every Markdown
+     file a kept doc names, by path or by its name alone, is a file of this tree (NAMED_ELSEWHERE lists the reviewed exceptions);
+     every relative markdown link in a kept doc opens a file that is in the tree.
   T  No test or tool reads a working doc from this repo: no string in their code (docstrings and comments are not code) names one,
-     except the reads listed in ALLOWED_PRIVATE, which read Xaya's private notes checkout (XUI_DOCS_ROOT), never this repo.
+     except the reads listed in ALLOWED_PRIVATE, which read Xaya's private notes checkout (XUI_DOCS_ROOT), never this repo; (round 11
+     hygiene) a Markdown file name alone that is not a file here, and a path built with os.path.join("docs", "plans", ...), count too.
   C  The repo-root CLAUDE.md is short (under 25 lines) and says: the repo is public; the rules and the request log live in the private
      repo heyitsxaya/XUI-Docs (docs/process/VERIFICATION.md, docs/process/REQUEST-LOG.md), read them before any work; refer to her as
      Xaya / she / her; never write working docs or her SavedVariables here; player guides, build rules and game data stay.
@@ -40,6 +42,67 @@ POINTER = re.compile(r"(?:docs/process/|docs/plans/(?!STAT-CALCULATOR-MAIN-INGAM
                      r"|docs/(?:ROADMAP|SESSION-START-SUMMARY|OPEN-ITEMS|TRIGGER-ENGINE-NOTES)\.md|DISPLAY-AUDIT-UI-47-2026-11-07\.md"
                      r"|GCD-RESEARCH-2026-11-07\.md|HOVER-REWRITES-UI-65-2026-11-07\.md|REQUEST-LOG[\w-]*\.md|VERIFICATION\.md"
                      r"|RETROSPECTIVE\.md)")
+# (round 11 hygiene; docs-off reviewer mutations R2, a bare 'PLATFORM-SPLIT-2026-11-07.md' in USER-GUIDE, and R10, a test reading
+# os.path.join('docs', 'plans', 'PLATFORM-SPLIT-2026-11-07.md'), survived POINTER, which knows paths and a few names only) A working
+# doc can also be named by its file name alone, or by a path built from parts. So every Markdown file name a kept doc or a test names
+# must be a file of this tree (by its path, or by its name when written alone): every working doc left the tree (W1), so a name that is
+# not here points at one (or at nothing). This needs no list of the erased names (the public repo does not carry them; the erase list,
+# XUI-Docs erase-tools/make_paths.py, was used to prove it catches every one), and it does not go stale.
+MD_NAME = re.compile(r"(?<![\w./-])((?:[\w.-]+/)*[\w.-]+\.md)\b", re.I)
+
+
+# Markdown names that are not files of this tree and are not pointers at a working doc: (file, a regex the name matches, why). Each one is
+# a decision; a name in another file, or of another shape, is not covered.
+NAMED_ELSEWHERE = (
+    ("docs/design/DISPLAY-RULINGS.md", r"\d{4}-\d{2}-\d{2}-\d{4}-[\w.-]+\.md",
+     "a ruling's source in its Source column (\"DL <file>\"); the page's legend says every source is a working document kept in the "
+     "private developer notes: a citation, not a pointer to read here (the round 11a docs-off review accepted it)"),
+    ("docs/QA-CHECKLIST.md", r"report\.md", "J18: the file tools/perf_report.py writes (--out report.md), not a document"),
+    ("docs/USER-GUIDE.md", r"XayaUI_DevAssist/FORMULA-CAPTURE-WALKTHROUGH\.md",
+     "a tester walkthrough shipped inside the XayaUI Dev Assist addon folder (qa-installer-branch), not a working doc"),
+    ("tests/fix_r9_docs_run.py", r"R9-INFO-PANE-TOOL-PATCH-2026-11-16\.md",
+     "I3 checks that no player document names this private patch; the file itself is read only from the private notes (T2)"),
+)
+
+
+def named_elsewhere(path, name):
+    return any(path == f and re.fullmatch(rx, name) for f, rx, _ in NAMED_ELSEWHERE)
+
+
+def md_names(text):
+    """Every Markdown file name or path written in text (a link target, a path, or a name alone)."""
+    return [m.group(1) for m in MD_NAME.finditer(text or "")]
+
+
+def unknown_md(name, fileset, basenames, here):
+    """True when name (a path or a file name alone) is not a file of this tree; here is the folder of the file it is written in."""
+    if "/" not in name:
+        return name not in basenames
+    rel = os.path.normpath(os.path.join(os.path.dirname(here), name)).replace(os.sep, "/")
+    return name not in fileset and rel not in fileset
+
+
+def joined_paths(path):
+    """(line, "a/b/c") for every os.path.join(...) call in a Python file whose arguments start with string literals: the path it builds
+    from them (a working doc reached as os.path.join("docs", "plans", ...) is a path like any other)."""
+    try:
+        tree = ast.parse(read(path) or "", filename=path)
+    except SyntaxError:
+        return []
+    out = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "join":
+            parts = []
+            for a in n.args:
+                if isinstance(a, ast.Constant) and isinstance(a.value, str):
+                    parts.append(a.value)
+                elif parts:
+                    break
+            if len(parts) >= 2:
+                out.append((n.lineno, "/".join(parts)))
+    return out
+
+
 # Reads of a working doc that come from Xaya's private notes checkout (XUI_DOCS_ROOT), never from this repo: (file, string, why).
 ALLOWED_PRIVATE = (
     ("tests/fix_r9_docs_run.py", "docs/plans/R9-INFO-PANE-TOOL-PATCH-2026-11-16.md",
@@ -120,6 +183,14 @@ def main():
                 if rel not in fileset and not os.path.isdir(os.path.join(ROOT, rel)):
                     broken.append("%s:%d -> %s" % (p, ln, target))
     check("K2 no kept doc (%d) names a working doc's path or file (SD-140)" % len(kept_md), kept_md and not pointers, pointers[:10])
+    basenames = {os.path.basename(p) for p in fileset}
+    unknown = []
+    for p in kept_md:
+        for ln, line in enumerate((read(p) or "").splitlines(), 1):
+            unknown += ["%s:%d %s" % (p, ln, x) for x in md_names(line)
+                        if unknown_md(x, fileset, basenames, p) and not named_elsewhere(p, x)]
+    check("K2 every Markdown file a kept doc names, by path or by its name alone, is a file of this tree (no working doc named by its"
+          " file name)", kept_md and not unknown, unknown[:10])
     check("K3 every relative markdown link in a kept doc opens a file in the tree", kept_md and not broken, broken[:10])
     ipd = read("XayaUI_Options/InfoPaneData.lua")
     pane = [m.group(0) for m in POINTER.finditer(ipd or "")]
@@ -137,6 +208,12 @@ def main():
         for ln, s in code_strings(p):
             if len(s) < 300 and POINTER.search(s) and (p, s) not in allowed:
                 readers.append("%s:%d %r" % (p, ln, s[:80]))
+            elif len(s) < 300 and (p, s) not in allowed:
+                readers += ["%s:%d %r (not a file of this tree)" % (p, ln, x) for x in md_names(s)
+                            if unknown_md(x, fileset, basenames, p) and not named_elsewhere(p, x)]
+        for ln, built in joined_paths(p):
+            if POINTER.search(built) or any(unknown_md(x, fileset, basenames, p) and not named_elsewhere(p, x) for x in md_names(built)):
+                readers.append("%s:%d os.path.join -> %r" % (p, ln, built[:80]))
     check("T1 no test or tool code (%d files) names a working doc to read from this repo" % scanned, scanned and not readers,
           readers[:10])
     for f, s, why in ALLOWED_PRIVATE:

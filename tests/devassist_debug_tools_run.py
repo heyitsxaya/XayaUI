@@ -360,6 +360,11 @@ def main():
         for e in errs:
             print("ERROR in the game stand-in [" + label + "]:", e[:600])
         lua_errs += len(errs)
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # E (the record's cap of 50): for i = 1, 60 do raiseFrom("XayaUI_Rules/Engine.lua", "distinct error " .. i) end, then
+    # raiseFrom("XayaUI_Rules/Engine.lua", "boom counted"): the record ends with its 50 newest entries ("boom counted" and "distinct
+    # error 12" to "60"), each XUI-E001 once; every earlier error of this test was pushed out by the cap, as the test checks
+    print("EXPECT_ERRORS XUI-E001 50")
     print("%d checks, %d failed, %d Lua errors" % (total, bad, lua_errs))
     sys.exit(1 if bad or lua_errs else 0)
 

@@ -9,7 +9,9 @@ import glob, os, re, sys
 from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -71,5 +73,5 @@ for path in sorted(glob.glob(os.path.join(ROOT, "XayaUI*", "**", "*.lua"), recur
         window = "\n".join(lines[i:i + 30])
         check("%s:%d %s gets the flat look" % (fname, i + 1, var), STYLED.search(window) is not None)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

@@ -164,9 +164,10 @@ def main():
         for e in errs:
             print("ERROR in the game stand-in:", e)
         sys.exit(1 if errs else 0)
-    fails = []
+    fails, checked = [], []   # (round 11 repair, SD-138 / V35) every check made, for the count line tests/run_all.py reads
 
     def check(name, ok, extra=""):
+        checked.append(name)
         print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra)[:900] + "]"))
         if not ok:
             fails.append(name)
@@ -202,7 +203,7 @@ def main():
     for e in errs:
         print("ERROR in the game stand-in:", e)
     check("no Lua errors", not errs, errs[:2])
-    print("%d failed" % len(fails))
+    print("%d checks, %d failed" % (len(checked), len(fails)))
     sys.exit(1 if fails else 0)
 
 

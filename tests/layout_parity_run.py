@@ -125,7 +125,9 @@ XayaUI_NS = ns
 CueRulesDB.engineDisplay = { groups = {}, auto = true }
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 
@@ -412,4 +414,8 @@ for j, (grp, goff, gsc, voff, sz) in enumerate(SINGLES):
           "XayaUI %.2f,%.2f vs engine %.2f,%.2f" % (xui + eng))
     check("  ...and the same size on screen", L.eval("SIZE_OK"))
 
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

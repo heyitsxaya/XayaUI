@@ -35,8 +35,10 @@ document that drifts from the code fails here.
      it is pending, and it really is not there (origin/qa-installer-branch, when git has it; once it lands there this check asks
      for the documents to be updated); (round 11a, SD-140) no player document points at the patch's working-doc path. I4 The recorded
      patch, applied to qa-installer-branch's tool, rebuilds InfoPaneData.lua exactly from this checkout's markdown; (round 11a) the
-     patch is read from Xaya's private notes checkout (XUI_DOCS_ROOT, else a sibling folder xui-docs), never from this repo; without
-     that checkout the run says so and I4 is not checked. I5 The pane's own text uses no in-house word "landing".
+     patch is read from Xaya's private notes checkout (XUI_DOCS_ROOT, else a sibling folder xui-docs), never from this repo. (round 11
+     hygiene, V35) Without that checkout, or without the qa-installer-branch ref, the run prints "MISSING INPUT: <what>" and fails,
+     unless the named opt-out is set on purpose (XUI_SKIP_PRIVATE_NOTES=1, XUI_SKIP_QA_BRANCH=1; a public clone needs the first); an
+     opt-out is printed and named on the count line. I5 The pane's own text uses no in-house word "landing".
   P7 The Rules developers' note compares the costliest fight frame with main's, as the gate stores it (tests/gate_performance_run.py
      V33_EVENT_CAPS, origin/main ad60a051's XayaUI Rules = main's), and its words for the size of the drop match the two numbers it
      gives; no "about half" (that was against round 8's unlanded branch, never main).
@@ -65,10 +67,14 @@ import os, re, subprocess, sys, tempfile, shutil, hashlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.environ.get("XUI_R9_ROOT") or os.path.join(HERE, ".."))
 # Xaya's private notes repo (heyitsxaya/XUI-Docs), where the working docs live since round 11a (SD-140): XUI_DOCS_ROOT, else a sibling
-# checkout next to this repo named xui-docs or XUI-Docs (the first that exists). Only I4 reads it; a run without it says so.
+# checkout next to this repo named xui-docs or XUI-Docs (the first that exists). Only I4 reads it; a run without it fails (MISSING
+# INPUT) unless XUI_SKIP_PRIVATE_NOTES=1 is set on purpose.
 DOCS_ROOT = os.path.normpath(os.environ.get("XUI_DOCS_ROOT") or next(
     (c for c in (os.path.join(ROOT, "..", n) for n in ("xui-docs", "XUI-Docs")) if os.path.isdir(c)), os.path.join(ROOT, "..", "xui-docs")))
 results = []
+# the named opt-outs for inputs a clone may lack (see I3 / I4): each must be set to 1 on purpose, and is printed when used
+OPT_OUTS = {"qa": "XUI_SKIP_QA_BRANCH", "notes": "XUI_SKIP_PRIVATE_NOTES"}
+OPTED = []
 
 
 def check(name, ok, extra=""):
@@ -266,13 +272,26 @@ def main():
         qa_tool = r.stdout if r.returncode == 0 and r.stdout else None
     except Exception:
         pass
+    # (round 11 hygiene; V35, SD-138: "a test fails if something it needs is missing (it must say what)") I3's second half and I4 need
+    # two inputs that a clone may lack: the qa-installer-branch ref and Xaya's private notes checkout. Each missing one prints
+    # "MISSING INPUT: <what>" (the suite's honest-result guard fails the test on it) and fails here, unless its named opt-out is set
+    # (OPT_OUTS), which is printed and carried on the count line, so a run that checked less says so. A public clone has no private
+    # notes, so it is expected to need XUI_SKIP_PRIVATE_NOTES=1 (technical choice, SD-145: a silent skip once hid I4 from every run).
+    def missing(what, var, checks):
+        if os.environ.get(var) == "1":
+            print("OPT-OUT %s=1: %s not checked (%s)" % (var, checks, what))
+            OPTED.append("%s via %s" % (checks, var))
+        else:
+            print("MISSING INPUT: %s; %s cannot be checked without it (set %s=1 to run without it, on purpose)" % (what, checks, var))
+            check("%s (MISSING INPUT: %s)" % (checks, what), False, "set %s=1 to opt out on purpose" % var)
     if qa_tool is None:
-        print("note: origin/qa-installer-branch not readable here; I3's 'really not there' and I4 not checked")
+        missing("origin/qa-installer-branch:tools/build_info_pane_data.py (git show in %s)" % ROOT, OPT_OUTS["qa"],
+                "I3 'really not on qa-installer-branch' and I4")
     else:
         check("I3 the change really is not on qa-installer-branch yet (when it is, update the documents above)",
               "KEEP_LANDINGS" not in qa_tool and "XUI_ROOT" not in qa_tool)
     if qa_tool is not None and plan is None:
-        print("note: Xaya's private notes checkout not found (%s; set XUI_DOCS_ROOT); I4 not checked" % plan_path)
+        missing("Xaya's private notes checkout with %s (XUI_DOCS_ROOT, else a sibling xui-docs)" % plan_path, OPT_OUTS["notes"], "I4")
     if qa_tool is not None and plan is not None:
         check("I4 the recorded patch (private notes) still says it is pending", "Status: **pending.**" in plan)
         m = re.search(r"```diff\n(.*?)```", plan, re.S)
@@ -378,7 +397,7 @@ def main():
     for name, ok in results:
         print(("PASS " if ok else "FAIL ") + name)
         bad_n += 0 if ok else 1
-    print("%d checks, %d failed" % (len(results), bad_n))
+    print("%d checks, %d failed%s" % (len(results), bad_n, (" (opted out: %s)" % "; ".join(OPTED)) if OPTED else ""))
     return 1 if bad_n else 0
 
 

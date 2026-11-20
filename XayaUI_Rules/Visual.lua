@@ -3105,7 +3105,27 @@ function ns.FlushLayouts()
     for df in pairs(layoutQueue) do layoutQueue[df] = nil; LayoutDynamic(df) end
 end
 
+-- (round 11 repair; CODE "Every code implementation should have error handling"; SD-139) A rule with no display settings (rule.visual
+-- missing or not a table). XayaUI never makes one: every rule it loads, imports or creates goes through ns.NormalizeRule
+-- (RuleDefaults.lua), which always adds them, so one reaching here is a bug elsewhere (round 11 found it only in test fixtures that
+-- skipped NormalizeRule). It has nothing to show, so nothing is shown (a frame it had is freed), and the fault is reported once per rule
+-- through the shared helper with its code: XUI-E012 ("A display could not be drawn or refreshed"), in chat and in the error record, as
+-- the display refresh above does. Before, it was a bare Lua error at the first read of rule.visual: recorded as XUI-E010 under the
+-- rules engine's guard, but silently dropped by the callers that pcall without reporting (the rules tree, /xui disable) and raised
+-- unguarded from the mover. Cost: one type() check per call; the rest runs only on the fault (no table or closure per call).
+local noVisualSeen = setmetatable({}, { __mode = "k" })
+local function NoVisualSettings(rule)
+    ns.DropVisual(rule)
+    if noVisualSeen[rule] then return end
+    noVisualSeen[rule] = true
+    if ns.PrintError then
+        ns.PrintError("XUI-E012", "display of '" .. tostring(rule.name) .. "' has no settings, so it is not shown (the other rules keep running)",
+            "XayaUI display: rule '" .. tostring(rule.name) .. "' has no display settings (rule.visual is " .. type(rule.visual)
+            .. "; every rule should pass ns.NormalizeRule)")
+    end
+end
 function ns.SetVisualShown(rule, shown)
+    if type(rule.visual) ~= "table" then return NoVisualSettings(rule) end
     local pv = ns.IsPreview(rule, "visual")
     if not pv and ns.RuleOff(rule) then ns.DropVisual(rule); return end   -- D7: switched off: no frame (an existing one is freed)
     local want, comp = nil, false

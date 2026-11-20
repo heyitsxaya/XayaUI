@@ -42,6 +42,13 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns
+-- (round 11 repair, SD-105 / SD-146: files that stop with a Lua error while loading count as not loaded) stand down when the file
+-- before this one, StatMath.lua, did not run to its end: it offers the "statMath" service as its last statement, so without it the
+-- arithmetic below would be half there. Nothing of this file is defined or offered then (no "statModel" service), StatCalculator.lua
+-- stands down in turn, and XayaUI_Bonus's loader says the calculator could not load. Nothing here makes a frame, an event or a hook in
+-- any case; standing down keeps a half-read model from ever being offered. (ns.Service is core's, Modules.lua section 7; without it,
+-- in a stand-in that loads this file alone, nothing can be told and the file runs as before.)
+if ns.Service and not ns.Service("statMath") then return end
 local SM = ns.StatMath
 
 local CM = {}
@@ -725,10 +732,8 @@ function CM.TooltipLines(it, mode)
     end
     return out
 end
--- (Bonus 0.6.45, main) the one model, offered as the "statModel" service by XayaUI Bonus Features itself: the Stat Calculator
--- (StatCalculator.lua, loaded after this file) reads it only through the service. Only CM is offered: the service's GcdRule / GcdFor /
--- Live / Model entries were for Enhanced Tooltips and XayaUI Dev Assist's walkthroughs, which are not on main.
-if ns.Provide then ns.Provide("statModel", { CM = CM }) end
+-- (Bonus 0.6.45, main) the one model is offered as the "statModel" service by this file itself: the Stat Calculator (StatCalculator.lua,
+-- loaded after this file) reads it only through the service. (round 11 repair) It is offered at the end of this file, not here: see there.
 
 -------------------------------------------------------------------------------
 -- Gear: per slot (one reader for the Gear tab and the slot overlays), totals, durability and repair
@@ -3576,4 +3581,11 @@ function CM.ValueFor(it, mode)
     return it.value, it.tone
 end
 
-return CM
+-- (round 11 repair, SD-105 / SD-146) the end-of-file mark, and so the LAST statement of this file: the one model is offered as the
+-- "statModel" service only once every line above has run (until round 11 it was offered near the top, so a stop further down left a
+-- half-read model in the service list). Only CM is offered: the service's GcdRule / GcdFor / Live / Model entries were for Enhanced
+-- Tooltips and XayaUI Dev Assist's walkthroughs, which are not on main. A stop anywhere above leaves no "statModel" service:
+-- StatCalculator.lua stands down at its top, and XayaUI_Bonus's loader (StatCalculatorLoader.lua FilesComplete) counts the calculator as
+-- not loaded and says why. Nothing reads this file's return value (no file or test does; the game ignores it, INFERENCE), so the old
+-- "return CM" is gone and this mark can be last. tests/fix_r11_statcalc F reads that this is the file's last statement.
+if ns.Provide then ns.Provide("statModel", { CM = CM }) end

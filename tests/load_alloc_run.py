@@ -48,7 +48,9 @@ function loads(rule) local ok, why = ns.CheckContext(rule, ctxNow()); return ok 
 function fire(event, ...) ns.LoadEvent(event, ...) end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 lua = lambda s: L.execute(s)
@@ -175,5 +177,5 @@ print("bytes per recheck: no load table %.0f, four ID lists %.0f" % (plain, list
 # recheck, these 64 / 704 (the 64 is the rule's own list of checks)
 check("a rule with no load table in two groups without lists: at most 80 bytes a recheck (the old checks: about 830)", plain <= 80, "%.0f" % plain)
 check("a rule with four ID lists in such groups: at most 800 bytes a recheck (the old checks: about 1,720)", lists <= 800, "%.0f" % lists)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

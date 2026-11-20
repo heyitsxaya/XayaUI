@@ -92,38 +92,13 @@ VARIANTS = ("default", "debug")
 GAME_LUA = r'''
 return function(W)
 local G = { auras = {}, byInstance = {}, cds = {}, mounted = false, group = false, raid = false, nextInstance = 100, buttons = {}, known = {} }
--- enums the combat engine reads (Blizzard_AuraContainerUtil.lua / AnchorUtil; values as in tests/aura_display_run.py)
-AnchorUtil = AnchorUtil or {}
-AnchorUtil.FlowLayoutAxis = AnchorUtil.FlowLayoutAxis or { Horizontal = 0, Vertical = 1 }
-AnchorUtil.FlowDirection = AnchorUtil.FlowDirection or { Left = -1, Right = 1, Up = 1, Down = -1 }
-AuraContainerSortMethod = AuraContainerSortMethod or { Default = 0, BigDefensive = 1, UnitFrameDebuff = 2, ImportantOnly = 3, Expiration = 4, ExpirationOnly = 5, Name = 6, NameOnly = 7, AuraInstanceIDOnly = 8 }
-AuraContainerSortDirection = AuraContainerSortDirection or { Normal = 0, Reverse = 1 }
-CustomAuraContainerAuraProcessingPolicy = CustomAuraContainerAuraProcessingPolicy or { None = 0, ProcessAura = 1 }
+-- Blizzard's aura container (Blizzard_AuraContainer): the stand-in's own, the one definition for the unit tests and the gate
+-- (tests/harness/world.lua "Blizzard's aura container": its tables, its methods, one aura button per aura group). (round 11 repair) The
+-- gate defined its own copy here until round 11 (its tables, its methods rawset over the stand-in's, an AddAuraGroup that dropped an
+-- error in the addon's initializeFrame with pcall); tests/fix_r11_standin_run.py A2 fails if a copy comes back. The gate only reads
+-- the stand-in's buttons, to show one while its aura is up (G.syncContainers).
+G.buttons = W.auraButtons
 local realCreate = CreateFrame
-local function noop() end
-CreateFrame = function(kind, name, parent, template, id)
-  local f = realCreate(kind, name, parent, template, id)
-  if template == "CustomAuraContainerTemplate" then
-    rawset(f, "groups", {})
-    for _, m in ipairs({ "SetUnit", "UpdateAllAuras", "SetAuraProcessingPolicy", "SetAuraGroupLayout", "SetAuraGroupSortMethod", "SetFlowLayoutAxis", "SetFlowLayoutAnchorPoint", "SetFlowLayoutGrowthDirection",
-        "SetFlowLayoutMaximumLineSize", "RemoveAuraGroup", "ClearAuraGroups" }) do rawset(f, m, noop) end
-    rawset(f, "SetAuraGroupCandidateFilters", function(self, key, cf) local o = self.groups[key]; if o then o.candidateFilters = cf end end)
-    rawset(f, "SetAuraGroupEnabled", function(self, key, on) local o = self.groups[key]; if o then o.xuiOff = not on end end)
-    rawset(f, "AddAuraGroup", function(self, key, filter, o)
-      self.groups[key] = o
-      if type(o) == "table" and type(o.initializeFrame) == "function" then
-        -- Blizzard's container makes its aura buttons itself and shows one while a matching aura is up (G.syncContainers)
-        local b = realCreate("Button", nil, self)
-        b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide(); rawset(b, "_blizzard", true)
-        for _, m in ipairs({ "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
-            "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }) do rawset(b, m, noop) end
-        pcall(o.initializeFrame, b)
-        G.buttons[#G.buttons + 1] = { button = b, opts = o, container = self }
-      end
-    end)
-  end
-  return f
-end
 -- the auras the player has right now: [spellID] = aura data (the game's AuraData fields the rules read). Like the game, every read
 -- hands back a new table (the game builds the AuraData table for each call).
 local function copy(a) if not a then return nil end; local t = {}; for k, v in pairs(a) do t[k] = v end; return t end
@@ -131,7 +106,7 @@ local function auraFor(id) return copy(G.auras[id]) end
 -- Blizzard's container: an aura button shows while an aura its group asks for is up (the game's secure code; not XayaUI's work)
 function G.syncContainers()
   for _, e in ipairs(G.buttons) do
-    local ids = not e.opts.xuiOff and e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
+    local ids = e.group.enabled and e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
     local up = false
     -- (the engine passes a set: [spellID] = true; Blizzard_AuraContainerUtil.lua also takes a list)
     if type(ids) == "table" then for k, v in pairs(ids) do if G.auras[k] or (type(v) == "number" and G.auras[v]) then up = true; break end end end
@@ -1980,7 +1955,7 @@ local function drawSnap()
       if g then g.rules = g.rules + 1; if shown then g.shown = g.shown + 1; g.alpha[#g.alpha + 1] = tostring(rawget(f, "_alpha")) end end
     end
   end
-  for i, e in rawipairs(G.buttons) do snap["aura group " .. i] = e.opts.xuiOff and "off" or "on"; n = n + 1 end
+  for i, e in rawipairs(G.buttons) do snap["aura group " .. i] = e.group.enabled and "on" or "off"; n = n + 1 end
   for _, g in rawipairs(DC_GROUPS) do groups[g].alpha = table.concat(groups[g].alpha, ",") end
   return snap, groups, n
 end

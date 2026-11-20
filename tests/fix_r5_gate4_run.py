@@ -100,7 +100,9 @@ function PROFILE()
 end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -211,5 +213,5 @@ lua("COMBAT = true; NAME_READS = 0; EDIT(); FIRE('UNIT_AURA', 'player', SECRET);
 check("in combat the handler returns at once (no name read, even after an edit)", ev("NAME_READS") == 0)
 
 print()
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

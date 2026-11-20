@@ -410,6 +410,11 @@ def main():
     errs = [e for e in errs if "boom from a test command" not in str(e) and "a test error notice" not in str(e)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # the two errors this test raises on purpose, each saved once as XUI-E001 (a Lua error in a XayaUI file):
+    #   LUA section 5: ns.RegisterCommand("xuitestboom", function() error("boom from a test command") end), then typed once
+    #   LUA section 6: pcall(geterrorhandler(), "Interface/AddOns/XayaUI/Test.lua:1: a test error notice")
+    print("EXPECT_ERRORS XUI-E001 2")
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

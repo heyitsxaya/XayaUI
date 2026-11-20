@@ -11,7 +11,9 @@ Run: python3 tests/devassist_rename_run.py"""
 import os, re, subprocess, sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 
@@ -45,5 +47,5 @@ out = subprocess.run(["git", "grep", "-l", "XayaUI_GameDump", "--", "."],
 stray = [p for p in out if p not in allowed and not p.endswith(".md") and p != ".gitignore"]
 check("no code file outside the expected places names XayaUI_GameDump", not stray, stray)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

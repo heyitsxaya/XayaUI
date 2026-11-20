@@ -18,8 +18,9 @@ so a document that drifts from the code fails here.
   D  Displays and tracker: the tenths note "next tenth up" is gone (Visual.lua FxTenths now shows the tenth it is on); redrawFill's label
      is quoted as XayaUI_Debug/RulesPerf.lua prints it (USER-GUIDE, B424); B426 (d) covers a display the combat engine draws; B438 is the
      hidden-interface step.
-  P  Versions and notes (V10, V17, V18): each addon changed in round 10 is above its round 9 version and main's; every X-Date is
-     2026-11-16; PATCH-NOTES' bundle 1 entry (dated 2026-11-16) has a heading per changed addon at its .toc version, Bonus Features
+  P  Versions and notes (V10, V17, V18): each addon changed in round 10 is above its round 9 version and main's; every addon's X-Date is
+     the date of the newest PATCH-NOTES entry, which is bundle 1's, first and not older than round 10's 2026-11-16 (round 11 hygiene:
+     the invariant, not a date that goes stale each round); the bundle 1 entry has a heading per changed addon at its .toc version, Bonus Features
      0.6.47 included, and names the round 10 changes; WHATS-NEW has section 16; QA B401 names every version; the Rules developers' note
      and QA B427 compare with the cap the gate holds for main (V33_EVENT_CAPS).
   R  (repair 1) README.md, the download's own folder guide: the Stat Calculator loads at its first open, never at login (SD-105);
@@ -241,11 +242,22 @@ def main():
         okv = tv and vkey(tv) > vkey(ROUND9[f]) and (f not in MAIN or vkey(tv) > vkey(MAIN[f]))
         check("P1 %s changed in round 10: .toc %s is above round 9's %s%s" % (f, tv, ROUND9[f], (" and main's %s" % MAIN[f]) if f in MAIN else ""),
               okv, tv)
-        check("P2 %s X-Date is 2026-11-16" % f, toc_date(f) == "2026-11-16", toc_date(f))
     heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
     parts = re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M)
     entry = parts[1] if len(parts) > 1 else ""
-    check("P3 the bundle 1 entry is first and dated 2026-11-16", heads and heads[0] == ("2026-11-16", "Rules Fix Bundle 1"), heads[:1])
+    # (round 11 hygiene; R11A final review blocker 4: P2 / P3 pinned round 10's date, 2026-11-16, and went stale when round 11a moved
+    # the X-Dates and the entry to 2026-11-18, which is correct) What they guard is that the versions and the notes move together: every
+    # addon's .toc X-Date is the date of the newest PATCH-NOTES entry, and that entry is bundle 1's, first, newest, and not older than
+    # round 10's notes (2026-11-16, a floor that does not go stale).
+    newest = heads[0][0] if heads else None
+    tocs = sorted(d for d in os.listdir(ROOT) if d.startswith("XayaUI") and os.path.isfile(os.path.join(ROOT, d, d + ".toc")))
+    check("P2 every addon changed in round 10 has its .toc here (%d .toc files)" % len(tocs), set(CHANGED_R10) <= set(tocs),
+          sorted(set(CHANGED_R10) - set(tocs)))
+    for d in tocs:
+        check("P2 %s X-Date is the newest PATCH-NOTES entry's date (%s)" % (d, newest), newest and toc_date(d) == newest, toc_date(d))
+    check("P3 the bundle 1 entry is first, dated no earlier than any other entry and than round 10's notes (2026-11-16)",
+          heads and heads[0][1] == "Rules Fix Bundle 1" and all(heads[0][0] >= h[0] for h in heads) and heads[0][0] >= "2026-11-16",
+          heads[:2])
     for f, h in HEAD_NAMES.items():
         check("P4 the entry has '### %s %s' (its .toc version)" % (h, toc_version(f)), ("### %s %s\n" % (h, toc_version(f))) in entry)
     must = ["**Calculator (new)**", "/xui stats on is removed", "loads the first time you open it", "no longer comes back by itself",

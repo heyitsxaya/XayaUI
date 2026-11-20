@@ -58,7 +58,9 @@ ns.Evaluate = function(r, ctx) local ok, res, info = pcall(realEval, r, ctx); in
 function FIRE_ALL() FLIP = false; STEPS(2); FLIP = true; STEPS(2) end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok):
+    checked.append(name)
     print(("ok    " if ok else "FAIL  ") + name)
     if not ok: fails.append(name)
 E = lambda s: L.eval(s)
@@ -83,5 +85,5 @@ L.execute("REC = {}; CLEAR(); NS.LogStatusSnapshot('combat tick')")
 check("5 s combat tick with no reader: nothing", E("LINES()") == 0)
 check("LogWanted is false with no reader, true with any one", E("NS.LogWanted('rule') == false") and (L.execute("CONSOLE = true") or True) and E("NS.LogWanted('snapshot') == true"))
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

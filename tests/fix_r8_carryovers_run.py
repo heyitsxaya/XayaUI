@@ -148,6 +148,10 @@ def main():
     for name, ok in results:
         print(("PASS " if ok else "FAIL ") + name)
         failed += 0 if ok else 1
+    # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+    # B, on purpose: rawset(broken, "text", rawget(broken, "text"):sub(1, 20)) cuts the backup "Broken one", then Load (replace) and
+    # Load (add): each says it could not be read, XUI-E018 twice (one entry, n = 2)
+    print("EXPECT_ERRORS XUI-E018 2")
     print("%d checks, %d failed" % (len(results), failed))
     sys.exit(1 if failed else 0)
 

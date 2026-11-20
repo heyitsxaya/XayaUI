@@ -176,10 +176,34 @@ local function Add(code, kind, msg, stack, folder)
     if ns.Log and ns.AdvancedDebugOn() then pcall(ns.Log, ("|cffff5555%s|r %s (/xui report): %s"):format(code, kind == "warning" and "warning" or "error", text:sub(1, 120))) end
     return e
 end
+-- (round 11 repair, error attribution by addon) A Lua error that a load-on-demand part's loader saw while the game read that part's
+-- files (XayaUI_Bonus/StatCalculatorLoader.lua: its error watch, in front of core's handler for that one LoadAddOn call) is filed by
+-- the loader under the part's own folder code, because the loader knows the part was being read: core's handler (Core.lua) decides a
+-- folder from the message's own file, else from the first addon file on the stack it reads, and that misses a load error that names no
+-- file of the part (an error(msg, 0): in the stand-in game its stack comes inside the message, not on the handler's stack, and the
+-- stand-in's debugstack ignores its arguments, so core's own frame came first: both were filed as core's XUI-E001 in
+-- tests/fix_r11_statcalc; INFERENCE that the game itself would name the part's file there), a helper's file (Interface/SharedXML/...:
+-- not filed at all), or a file name the game shortened to
+-- ".../ddOns/XayaUI_Bonus_StatCalculator/..." (the "AddOns" core looks for is cut: not filed at all; INFERENCE for the game, the
+-- stand-in's Lua shortens names longer than 60 characters). The same error then reaches core's handler, next in the chain: the one
+-- message just filed is remembered (claimed) and the next Lua-error record is skipped when it is that same message, so the error is
+-- one entry under one code. The claim lasts for that next record only, whatever it is: an unrelated later error is never skipped
+-- (beyond one that is the very same text while a claim is open, which is the same error). Cost: nothing until a part's load fails.
+local claimed, claimedEntry = nil, nil
+function ns.RecordLoadError(folder, msg, stack)
+    local text = tostring(msg)
+    local e = Add(DR.CodeOfFolder(folder), "error", text, stack, folder)
+    claimed, claimedEntry = text, e
+    return e
+end
 -- A Lua error. folder: the XayaUI folder it came from (Core.lua ns.ErrorFolder), or nil; code: a fixed code (E010-E014), or nil for
 -- the folder's code.
 function ns.RecordError(msg, stack, folder, code)
     if not code then
+        -- (round 11 repair) the message a part's loader just filed (ns.RecordLoadError above): already in the record, not again
+        local c, ce = claimed, claimedEntry
+        claimed, claimedEntry = nil, nil
+        if c ~= nil and tostring(msg) == c then return ce end
         folder = folder or (ns.ErrorFolder and ns.ErrorFolder(msg, stack)) or "XayaUI"
         code = DR.CodeOfFolder(folder)
     end

@@ -194,7 +194,9 @@ L.execute(r'''assert(loadfile(PATH))("XayaUI_Debug", NS)'''.replace("PATH", repr
 
 
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, cond, extra=""):
+    checked.append(name)
     print(("PASS " if cond else "FAIL ") + name + (("  [" + str(extra) + "]") if (extra and not cond) else ""))
     if not cond:
         fails.append(name)
@@ -635,5 +637,7 @@ L.execute(r'''local f = assert(loadfile(PATH)); f("XayaUI_CombatEngine", NS)'''.
 check("second copy steps aside (same module, same command, no second set of hooks)", lua("return NS.AuraDisplay == BEFORE_D and SlashCmdList['XUIENGINE'] == BEFORE_SLASH"))
 
 print()
-print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED")
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

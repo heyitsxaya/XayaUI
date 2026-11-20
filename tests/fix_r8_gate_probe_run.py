@@ -32,6 +32,20 @@ garbage per event fails and one that does not passes):
            C_Timer.After(0.09) at the next frame at or after 0.09 s: 0.1 s, 10 a second) is not a pace finding;
   memory   a reading above 34,747.6 KB x 1.15 = 39,959.7 KB at the end of a cycle is a FAIL; 39,959.7 KB itself is not;
   per event  an addon whose costliest fight frame is one instruction above its stored ad60a051 cap is a FAIL; at the cap it is not.
+  record   (round 11 repair; R11A final blockers[1] and its concern "a fresh public clone that cannot replay ad60a051 loses its
+           calibration") the stored records (V33_RECORDED, V33_EVENT_CAPS) are for this checkout's scenario (stamp) and stand-in, so the
+           caps above are judged from the record alone, with ad60a051 not played (as in a public or shallow clone); a record for another
+           scenario is a FAIL that says MISSING INPUT, with or without ad60a051 played (before: a WARNING, and the gate passed only where
+           git had ad60a051); a record from another stand-in is such a FAIL when ad60a051 cannot be played, a WARNING when it can.
+           (round 11 repair 1) The stand-in's fingerprint follows its code, not its comments: a comment or blank-line edit keeps it,
+           one changed code line changes it. (round 11 repair 2; round 11a repair 1 review) Comments are read as Lua 5.1 reads them:
+           wrapping a code block in a block comment ("--[[" ... "--]]", or "--[==[" ... "]==]") changes it, switching it back on
+           ("---[[" ... "--]]") gives the unwrapped fingerprint again, a "--" line inside a long string is string, not comment, and
+           the text the fingerprint reads still compiles in Lua 5.1.
+  count    (round 11 repair; SD-138 / V35 "a test fails ... if it prints no result count") the gate's last line says how many checks it
+           ran and how many failed, in the form tests/run_all.py reads (its COUNT_PATTERNS and failure counts): a clean result reads
+           "N checks, 0 failed", N = every named check of both variants; a cap one instruction over reads at least one failed check,
+           named, and does not pass.
 Run: python3 tests/fix_r8_gate_probe_run.py   (Lua 5.1 via lupa; about a minute and a half)"""
 import contextlib, inspect, io, json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -182,9 +196,10 @@ PROBE_PASSES = (("Pass", "the probe's pass driven by two timers"), ("PassX", "th
                 ("SlowEvPass", "the probe's pass an event handler runs every 4th event"))
 
 
-def gate_text(data):
+def gate_text(data, base=None):
     """This checkout's gate_performance main() on the given result (every variant), its output as text. The probe's passes are named
-    to the gate for this call (when this checkout's gate has a pass list)."""
+    to the gate for this call (when this checkout's gate has a pass list). base (round 11 repair): the result handed in as ad60a051
+    played now; None = ad60a051 not played (a checkout without it)."""
     saved = (GC.result, GC.v33_baseline)
     reps = getattr(GP, "REPASSES", None)
     src_text = getattr(GP, "source_text", None)
@@ -192,7 +207,8 @@ def gate_text(data):
         GP.REPASSES = dict(reps, **{PROBE_FILE: PROBE_PASSES})
         GP.source_text = lambda f: PROBE_SRC if f == PROBE_FILE else src_text(f)
     GC.result = lambda *a, **k: (data, 0, True)
-    GC.v33_baseline = lambda *a, **k: (None, "not played (tests/fix_r8_gate_probe_run.py)")
+    GC.v33_baseline = lambda *a, **k: ((base, "handed in (tests/fix_r8_gate_probe_run.py)") if base is not None else
+                                        (None, "not played (tests/fix_r8_gate_probe_run.py)"))
     if hasattr(GP, "_BASE"):
         del GP._BASE[:]
     buf = io.StringIO()
@@ -345,18 +361,236 @@ def main():
     rules_cap = (((caps or {}).get("caps") or {}).get("every") or {}).get("XayaUI_Rules", 570600) or 570600
     steady_cap = (((caps or {}).get("caps") or {}).get("steady") or {}).get("XayaUI_Rules", 570600) or 570600
 
-    def cap_text(v_every, v_steady):
+    def cap_budget(v_every, v_steady):
         b = {"fight 1": {"frames": 450, "work": {"XayaUI_Rules": 1}, "peak": {"XayaUI_Rules": v_every}},
              "fight 2": {"frames": 450, "work": {"XayaUI_Rules": 1}, "peak": {"XayaUI_Rules": v_steady}},
              "fight 3": {"frames": 450, "work": {"XayaUI_Rules": 1}, "peak": {"XayaUI_Rules": v_steady}}}
-        return findings(gate_text({"budget": b}))
+        return {"budget": b}
+
+    def cap_text(v_every, v_steady):
+        return findings(gate_text(cap_budget(v_every, v_steady)))
     lim = r"V33 per-event limit"
-    check(any(f[0] == "FAIL" and f[1].startswith("XayaUI_Rules") and re.search(lim, f[2]) for f in cap_text(rules_cap + 1, min(steady_cap, rules_cap))),
+    def evidence(fs):
+        """(round 11 repair) the FAIL that proves a check, printed under it: its numbers line"""
+        hit = [f for f in fs if f[0] == "FAIL" and f[1].startswith("XayaUI_Rules") and re.search(lim, f[2])]
+        if hit:
+            nums = [l.strip() for l in hit[0][2].split("\n") if l.strip().startswith("numbers:")]
+            print("      evidence: " + (nums[0] if nums else hit[0][2].split("\n")[0])[:400])
+        return bool(hit)
+    check(evidence(cap_text(rules_cap + 1, min(steady_cap, rules_cap))),
           "per event: XayaUI Rules one instruction above its ad60a051 cap (%d) in a fight frame is a FAIL" % rules_cap)
-    check(any(f[0] == "FAIL" and f[1].startswith("XayaUI_Rules") and re.search(lim, f[2]) for f in cap_text(min(steady_cap, rules_cap), steady_cap + 1)),
+    check(evidence(cap_text(min(steady_cap, rules_cap), steady_cap + 1)),
           "per event: XayaUI Rules one instruction above its steady-fight cap (%d) is a FAIL" % steady_cap)
-    check(not any(f[1].startswith("XayaUI_Rules") and re.search(lim, f[2]) for f in cap_text(rules_cap, steady_cap)),
+    at_caps = gate_text(cap_budget(rules_cap, steady_cap))
+    check(not any(f[1].startswith("XayaUI_Rules") and re.search(lim, f[2]) for f in findings(at_caps)),
           "per event: XayaUI Rules exactly at its caps is not a FAIL")
+
+    # ---- (round 11 repair) the stored record: this scenario, this stand-in, used without ad60a051 -----------------------------------
+    stamp_now = GC.scenario_stamp()
+    standin_now = GP.standin_stamp() if hasattr(GP, "standin_stamp") else None
+    recs = [("V33_EVENT_CAPS", getattr(GP, "V33_EVENT_CAPS", {}) or {}), ("V33_RECORDED", getattr(GP, "V33_RECORDED", {}) or {})]
+    check(all(r.get("stamp") == stamp_now and standin_now and r.get("standin") == standin_now for _, r in recs),
+          "record: V33_EVENT_CAPS and V33_RECORDED are stored for this scenario (stamp %s) and this stand-in (%s)" % (stamp_now, standin_now),
+          "; ".join("%s stamp %s standin %s" % (n, r.get("stamp"), r.get("standin")) for n, r in recs))
+    judged = re.search(r"V33 XayaUI Rules per event: costliest single fight frame %d instructions in every fight \(fight 1; cap %d = "
+                       r"ad60a051's\) and %d in the steady fights 2-3 \(fight 2; cap %d\).*Caps stored in this gate for scenario %s" % (
+                           rules_cap, rules_cap, steady_cap, steady_cap, stamp_now), at_caps)
+    check(judged is not None, "record: with ad60a051 not played (a public or shallow clone), the stored caps alone judge XayaUI Rules "
+          "and the gate prints that line (cap %d every fight, %d steady, scenario %s)" % (rules_cap, steady_cap, stamp_now),
+          "no such line; V33 lines: %s" % [l.strip()[:160] for l in at_caps.split("\n") if "V33 XayaUI Rules per event" in l])
+    if judged:
+        print("      evidence: " + judged.group(0)[:300])
+    mi = re.compile(r"MISSING INPUT:")
+    check(not mi.search(at_caps), "record: a record for this scenario and stand-in, ad60a051 not played, says nothing is missing")
+
+    def patched(base=None, caps_stamp=None, rec_stamp=None, standin=None):
+        """gate_text with the stored records' stamps, or the stand-in's fingerprint, changed for the call."""
+        keep = (GP.V33_EVENT_CAPS, GP.V33_RECORDED, getattr(GP, "standin_stamp", None))
+        try:
+            if caps_stamp:
+                GP.V33_EVENT_CAPS = dict(GP.V33_EVENT_CAPS, stamp=caps_stamp)
+            if rec_stamp:
+                GP.V33_RECORDED = dict(GP.V33_RECORDED, stamp=rec_stamp)
+            if standin:
+                GP.standin_stamp = lambda: standin
+            return gate_text(cap_budget(rules_cap, steady_cap), base)
+        finally:
+            GP.V33_EVENT_CAPS, GP.V33_RECORDED = keep[0], keep[1]
+            if keep[2] is not None:
+                GP.standin_stamp = keep[2]
+
+    def missing(text, where):
+        return [f for f in findings(text) if f[0] == "FAIL" and f[1].startswith(where) and mi.search(f[2])]
+    # a stand-in result for "ad60a051 played now": the same synthetic fight, enough for the gate's calibration and caps
+    base = cap_budget(rules_cap, steady_cap)
+    t = patched(caps_stamp="000000000000")
+    check(bool(missing(t, "tests/gate_performance_run.py (V33 per-event caps)")),
+          "record: per-event caps stored for another scenario, ad60a051 not played, is a FAIL that says MISSING INPUT")
+    t = patched(base=base, caps_stamp="000000000000")
+    m = missing(t, "tests/gate_performance_run.py (V33 per-event caps)")
+    check(bool(m) and "store in V33_EVENT_CAPS" in m[0][2],
+          "record: per-event caps stored for another scenario is still a FAIL that says MISSING INPUT when ad60a051 plays here (before "
+          "round 11 repair a WARNING: the gate passed only where git had ad60a051), and it prints the numbers to store",
+          "findings: %s" % [(f[0], f[1]) for f in findings(t)][:6])
+    t = patched(base=base, rec_stamp="000000000000")
+    check(bool(missing(t, "tests/gate_common.py (V33 calibration)")),
+          "record: V33_RECORDED for another scenario is a FAIL that says MISSING INPUT even when ad60a051 plays here")
+    t = patched(standin="ffffffffffff")
+    check(bool(missing(t, "tests/gate_performance_run.py (V33 per-event caps)")) and bool(missing(t, "tests/gate_common.py (V33 calibration)")),
+          "record: records from another stand-in, ad60a051 not played, are FAILs that say MISSING INPUT (they cannot be confirmed here)")
+    t = patched(base=base, standin="ffffffffffff")
+    check(not mi.search(t) and any(f[0] == "WARNING" and "another stand-in" in f[2] for f in findings(t)),
+          "record: records from another stand-in with ad60a051 played here are a WARNING, not missing (the replay is the cross-check)")
+
+    # ---- (round 11 repair 1 / repair 2) the stand-in fingerprint follows code, not comments -------------------------------------
+    # A copy of the three stand-in files in a temp folder, read through the gate's own standin_stamp() (GC.H.HERE pointed at the copy for
+    # the call): a comment-only or blank-line edit keeps the fingerprint (no needless re-record of V33); one changed code line, or a
+    # trailing "-- note" added after code, changes it (a stand-in change that can move an instruction count is never missed).
+    # (round 11 repair 2; round 11a repair 1 review: "--[[" / "--]]" lines were dropped as comments, so commenting a block out or back
+    # in kept the fingerprint) comments are read as Lua 5.1 reads them: a block wrapped in "--[[" ... "--]]" (or "--[==[" ... "]==]")
+    # changes it; "---[[" ... "--]]" (a line comment each: the block runs) gives the unwrapped fingerprint again; a "--" line inside a long
+    # string is string content and changes it; the text the fingerprint reads still compiles in Lua 5.1 (no two tokens merged).
+    import shutil, tempfile   # noqa: E402
+    if hasattr(GP, "standin_stamp") and hasattr(GP, "V33_STANDIN_FILES"):
+        tmpd = tempfile.mkdtemp(prefix="xui-standin-")
+        keep_here = GC.H.HERE
+        try:
+            for f in GP.V33_STANDIN_FILES:
+                shutil.copyfile(os.path.join(keep_here, f), os.path.join(tmpd, f))
+            wl = os.path.join(tmpd, "world.lua")
+            with open(wl, "rb") as fh:
+                orig = fh.read()
+
+            def stamp_with(body):
+                with open(wl, "wb") as fh:
+                    fh.write(body)
+                GC.H.HERE = tmpd
+                try:
+                    return GP.standin_stamp()
+                finally:
+                    GC.H.HERE = keep_here
+            s0 = stamp_with(orig)
+            lines = orig.split(b"\n")
+            ci = next(i for i, l in enumerate(lines) if l.lstrip().startswith(b"--") and not l.lstrip().startswith(b"--["))
+            code_i = next(i for i, l in enumerate(lines) if l.strip() and not l.lstrip().startswith(b"--") and b"=" in l)
+            commented = b"\n".join(lines[:ci] + [lines[ci] + b" (edited comment)", b"", b"-- a new comment line   "] + lines[ci + 1:])
+            s_comment = stamp_with(commented)
+            s_code = stamp_with(b"\n".join(lines[:code_i] + [lines[code_i] + b" local _xui_probe = 1"] + lines[code_i + 1:]))
+            s_trail = stamp_with(b"\n".join(lines[:code_i] + [lines[code_i] + b" -- trailing note"] + lines[code_i + 1:]))
+            # (round 11 repair 2) a "--" inside a short string on a code line is string content, not a comment
+            s_sq_a = stamp_with(b"\n".join(lines[:code_i] + [lines[code_i], b'local _xui_probe_q = "a -- b"'] + lines[code_i + 1:]))
+            s_sq_b = stamp_with(b"\n".join(lines[:code_i] + [lines[code_i], b'local _xui_probe_q = "a -- c"'] + lines[code_i + 1:]))
+            # a code block: the body of the stand-in's first function with at least three body lines (the lines after "function", up
+            # to its "end" at the same indent)
+            def fn_end(i):
+                ind = re.escape(re.match(rb"\s*", lines[i]).group())
+                return next((j for j in range(i + 1, len(lines)) if re.match(rb"%send\b" % ind, lines[j])), None)
+            fi, fe = next((i, fn_end(i)) for i, l in enumerate(lines)
+                          if re.match(rb"\s*(local\s+)?function\b", l) and fn_end(i) and fn_end(i) - i > 3)
+            body_lines = lines[fi + 1:fe]
+
+            def wrap(op, cl):
+                return b"\n".join(lines[:fi + 1] + [op] + body_lines + [cl] + lines[fe:])
+            s_off = stamp_with(wrap(b"--[[", b"--]]"))
+            s_on = stamp_with(wrap(b"---[[", b"--]]"))
+            s_off2 = stamp_with(wrap(b"--[==[", b"]==]"))
+            s_str_a = stamp_with(orig + b"\nlocal _xui_probe_s = [[\n-- a line in a string\n]]\n")
+            s_str_b = stamp_with(orig + b"\nlocal _xui_probe_s = [[\n-- another line in a string\n]]\n")
+            s_indent = stamp_with(b"\n".join(lines[:code_i] + [b"    \t" + lines[code_i].lstrip()] + lines[code_i + 1:]))
+        finally:
+            GC.H.HERE = keep_here
+            shutil.rmtree(tmpd, ignore_errors=True)
+        check(s0 == standin_now and s_comment == s0,
+              "record: a comment-only or blank-line edit of the stand-in keeps its fingerprint (the stored V33 records stay valid)",
+              "unchanged %s (live %s), comment edit %s" % (s0, standin_now, s_comment))
+        # (round 11 repair 2) a "-- note" after code is a comment (it costs no instruction): it keeps the fingerprint, as Lua reads it;
+        # repair 1 expected a change here only because it could not tell such a note from code. A "--" inside a string on a code line
+        # is not a comment: changing it changes the fingerprint.
+        check(s_code != s0 and s_trail == s0 and s_sq_a != s_sq_b,
+              "record: one changed code line in the stand-in changes its fingerprint (never missed); a '-- note' added after code is a "
+              "comment and keeps it; a '--' inside a string on a code line is string content and changes it",
+              "unchanged %s, code edit %s, trailing note %s, string %s / %s" % (s0, s_code, s_trail, s_sq_a, s_sq_b))
+        print("      evidence: stand-in %s; comment edit %s; code edit %s; trailing note %s; '--' in a string %s / %s" % (
+            s0, s_comment, s_code, s_trail, s_sq_a, s_sq_b))
+        check(s_off != s0 and s_off2 != s0,
+              "record: a code block of the stand-in commented out with a block comment ('--[[' ... '--]]', or '--[==[' ... ']==]') "
+              "changes its fingerprint (the block no longer runs)", "unchanged %s, --[[ %s, --[==[ %s" % (s0, s_off, s_off2))
+        check(s_on == s0 and s_on != s_off,
+              "record: the same block switched back on ('---[[' ... '--]]': two line comments, the block runs) gives the unwrapped "
+              "fingerprint again, not the commented-out one", "unchanged %s, ---[[ %s, --[[ %s" % (s0, s_on, s_off))
+        check(s_str_a != s_str_b,
+              "record: a '--' line inside a long string of the stand-in is string content: changing it changes the fingerprint",
+              "%s / %s" % (s_str_a, s_str_b))
+        check(s_indent == s0, "record: re-indenting a code line keeps the fingerprint (whitespace only)", "%s / %s" % (s0, s_indent))
+        print("      evidence: block lines %d-%d of world.lua: --[[ %s; ---[[ %s; --[==[ %s; long string %s / %s; re-indent %s" % (
+            fi + 2, fe, s_off, s_on, s_off2, s_str_a, s_str_b, s_indent))
+        # the text the fingerprint reads is still Lua that compiles (Lua 5.1, the stand-in's own): no two tokens were merged
+        L51 = H.lua51.LuaRuntime(unpack_returned_tuples=True)
+        comp = L51.eval("function(s) local f, e = loadstring(s); return f ~= nil, e end")
+        res = []
+        for f in GP.V33_STANDIN_FILES:
+            with open(os.path.join(keep_here, f), "rb") as fh:
+                res.append((f, comp(GP.standin_code(fh.read()))))
+        check(all(r[1][0] for r in res), "record: the text the fingerprint reads of each stand-in file still compiles in Lua 5.1",
+              "%s" % res)
+        # Small Lua run in Lua 5.1 (the round 11a repair 1 review's own case): the instructions each version runs, counted with a count
+        # hook of 1, against standin_code(). Same text read means the same instructions; a version that runs other instructions reads
+        # other text.
+        run_n = L51.eval("function(src) local f = assert(loadstring(src)); local c = 0; debug.sethook(function() c = c + 1 end, '', 1); "
+                         "f(); debug.sethook(); return c end")
+        pre = "local n = 0\nlocal function foo() n = n + 1 end\nlocal function bar() n = n + 1 end\nlocal a = 1\n"
+        cases = [("plain", pre + "foo()\nbar()\nreturn a\n"),
+                 ("--[[ off", pre + "--[[\nfoo()\nbar()\n--]]\nreturn a\n"),
+                 ("---[[ on", pre + "---[[\nfoo()\nbar()\n--]]\nreturn a\n"),
+                 ("--[==[ off", pre + "--[==[\nfoo()\nbar()\n]==]\nreturn a\n"),
+                 ("note after code", pre + "foo() -- note\nbar()\nreturn a\n"),
+                 ("local--[[c]]x", "local--[[c]]x = 1\nreturn x\n"),
+                 ("localx", "localx = 1\nreturn x\n")]
+        fp = dict((k, GP.standin_code(v.encode())) for k, v in cases)
+        ins = dict((k, run_n(v)) for k, v in cases)
+        same = ("plain", "---[[ on", "note after code")
+        check(all(fp[k] == fp["plain"] and ins[k] == ins["plain"] for k in same)
+              and all(fp[k] != fp["plain"] and ins[k] != ins["plain"] for k in ("--[[ off", "--[==[ off"))
+              and fp["local--[[c]]x"] != fp["localx"] and ins["local--[[c]]x"] != ins["localx"],
+              "record: in Lua 5.1, versions the fingerprint reads alike run the same instructions, and a block commented out "
+              "('--[[', '--[==[') or a comment between two words ('local--[[c]]x' against 'localx') reads differently and runs differently",
+              "%s" % [(k, ins[k], fp[k] == fp["plain"]) for k, _ in cases])
+        print("      evidence: Lua 5.1 instructions run (same text as 'plain'?): %s" % ", ".join(
+            "%s %d (%s)" % (k, ins[k], "same" if fp[k] == fp["plain"] else "other") for k, _ in cases))
+    else:
+        check(False, "record: the gate fingerprints the stand-in (standin_stamp, V33_STANDIN_FILES)")
+
+    # ---- (round 11 repair) the count line -------------------------------------------------------------------------------------
+    import run_all as RA   # noqa: E402  (tests/run_all.py: the guard's own readers, not a copy of them)
+    names = len(re.findall(r'^\s*begin\(rep, "', inspect.getsource(GP.judge), re.M))
+    # at the caps: the synthetic result has no scenario, so other checks fail (integrity, memory); the V33 per-event check does not
+    last = (at_caps.strip().splitlines() or [""])[-1]
+    n = RA.checked_count(last)
+    check(n is not None and n == 2 * names and not RA.line_passes(last) and "V33 per-event caps" not in last,
+          "count: the gate's last line counts every named check of both variants (2 x %d), as run_all reads it; at the caps the V33 "
+          "per-event check is not among the failed ones" % names, "last line %r, count %s" % (last[:300], n))
+    over = gate_text(cap_budget(rules_cap + 1, steady_cap))
+    lo = (over.strip().splitlines() or [""])[-1]
+    mf = re.search(r"\b(\d+) failed\b", lo)
+    check(RA.checked_count(lo) == 2 * names and mf is not None and lo.count("V33 per-event caps") == 2 and not RA.line_passes(lo),
+          "count: a cap one instruction over adds the V33 per-event check of each variant to the failed checks named on the last line, "
+          "which does not pass", "last line %r" % lo[:300])
+    # a clean run: every named check begun, no violation (the gate's own Checks and count_line, read by run_all's own readers)
+    rep0 = GC.Report("gate_performance")
+    if not (hasattr(GP, "Checks") and hasattr(GP, "count_line")):
+        clean = one = "(this gate has no Checks / count_line)"
+    else:
+        counted = [GP.Checks(rep0, "default"), GP.Checks(rep0, "debug")]
+        for c in counted:
+            for i in range(names):
+                c.begin("check %d" % i)
+        clean = GP.count_line(rep0, counted)
+        counted[1].fail("x", "y", "", "")
+        one = GP.count_line(rep0, counted)
+    check(names > 0 and RA.checked_count(clean) == 2 * names and RA.line_passes(clean) and re.search(r"\b0 failed\b", clean) is not None,
+          "count: a clean run's last line reads '%d checks, 0 failed' and passes run_all's guard" % (2 * names), clean)
+    check(not RA.line_passes(one) and re.search(r"\b1 failed\b", one) is not None and "FAILS: 1" in one,
+          "count: one violation in one check reads '1 failed' and does not pass", one)
 
     print("%d checks, %d failed" % (len(done), len(fails)))
     return 1 if fails else 0

@@ -123,9 +123,10 @@ def main():
         print("FAIL no Lua errors in the stand-in game  [%s]" % str(errs[0])[:400])
     else:
         print("PASS no Lua errors in the stand-in game")
-    print("%d checks, %d failed" % (n, bad))
     if bad == 0:
         print("ALL CHECKS PASS")
+    # (round 11 repair, SD-138 / V35) the count line is the last line: tests/run_all.py reads how many checks ran from it
+    print("%d checks, %d failed" % (n, bad))
     sys.exit(1 if bad else 0)
 
 

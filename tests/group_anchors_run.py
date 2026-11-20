@@ -117,7 +117,9 @@ function BoxPoint(rules, pt) local l, b, r, t = Box(rules); local p = P01[pt]; r
 function Centers(rules) local out = {}; for i, r in ipairs(rules) do out[i] = { CenterAbs(ns.VisualFramesOf(r)[1]) } end; return out end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 def near(a, b, tol=0.01): return abs(a - b) <= tol
@@ -480,4 +482,8 @@ if not RECORD:
           near(x1 - x0, 175), "%.2f" % (x1 - x0))
     check("  ...outside a pass the outline is read at once (100 px more: the others 275 right of where they started)", near(x2 - x0, 275), "%.2f" % (x2 - x0))
 
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

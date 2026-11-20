@@ -29,12 +29,63 @@ import gate_common as GC  # noqa: E402
 GATE = "gate_keyboard"
 
 
+class Checks(object):
+    """(round 11 repair; R11A final: this gate printed no count line, so the honest-result guard read it as NO COUNT LINE; SD-138 / V35
+    "a test fails ... if it prints no result count") The gate's checks, counted for its last line, as gate_performance counts its own.
+    judge() names each check as it starts it (begin()); every FAIL reported while a check runs counts against that check. Warnings and
+    notes judge nothing and are not counted as checks. A plain Report (a test calling judge() itself: fix_r9_gate_probe,
+    fix_r10_gate_bonus) has no begin(), so begin() leaves it as it is.
+    (Kept in this file, not imported from gate_performance_run.py, so a fault in one gate cannot stop another; the shared home for it is
+    gate_common.Report, reported to its owner.)"""
+
+    def __init__(self, rep, label):
+        self.rep, self.label, self.run, self.warns = rep, label, [], 0
+
+    def begin(self, name):
+        self.run.append([name, 0])
+
+    def fail(self, where, what, numbers, fix):
+        if not self.run:
+            self.begin("(a FAIL before any named check)")
+        self.run[-1][1] += 1
+        self.rep.fail(where, what, numbers, fix)
+
+    def warn(self, where, what, numbers="", fix=""):
+        self.warns += 1
+        self.rep.warn(where, what, numbers, fix)
+
+    def note(self, text):
+        self.rep.note(text)
+
+
+def begin(rep, name):
+    """Names the check that starts now, when rep counts checks (Checks); a plain Report ignores it."""
+    b = getattr(rep, "begin", None)
+    if b is not None:
+        b(name)
+
+
+def count_line(counted):
+    """The gate's last line, read by tests/run_all.py: the checks run in every variant judged, the checks with a violation, and (as on the
+    line before it) the violations and warnings: "<gate>: N checks, M failed (variant default: n; variant debug: n; ...)  FAILS: K"."""
+    n = sum(len(c.run) for c in counted)
+    bad = [(c.label, name) for c in counted for name, f in c.run if f]
+    k = sum(f for c in counted for _name, f in c.run)
+    parts = "; ".join("variant %s: %d" % (c.label, len(c.run)) for c in counted)
+    return "%s: %d checks, %d failed (%s%s; %d violation(s), %d warning(s))  FAILS: %d" % (
+        GATE, n, len(bad), parts, ("; failed: " + ", ".join("%s %s" % b for b in bad)) if bad else "", k, sum(c.warns for c in counted), k)
+
+
+
 def judge(data, rep):
-    """Every check of this gate on one variant's result (round 9: both variants, see main)."""
+    """Every check of this gate on one variant's result (round 9: both variants, see main). (round 11 repair) Each check is named as it
+    starts (begin(): its FAILs count against it for the count line, see Checks); a plain Report passes through unchanged."""
+    begin(rep, "the scenario ran as planned (gate_common.integrity)")
     GC.integrity(data, rep)
     cps = data.get("checkpoints") or []
     n_in = sum(1 for cp in cps if cp.get("combat"))
     rep.note("checkpoints judged: %d (%d in combat, %d out of combat), all after the settings window closed" % (len(cps), n_in, len(cps) - n_in))
+    begin(rep, "the checkpoints cover both in and out of combat")
     if n_in == 0 or n_in == len(cps):
         rep.fail("tests/gate_common.py (the scenario)", "the checkpoints must cover both in and out of combat", "in combat: %d of %d" % (n_in, len(cps)), "")
 
@@ -48,6 +99,7 @@ def judge(data, rep):
                 o["combat"].add("in combat" if cp.get("combat") else "out of combat")
         return out
 
+    begin(rep, "no XayaUI frame, shown or hidden, is keyboard-enabled with every window closed")
     for key, what in (("keyboard", "a shown XayaUI frame is keyboard-enabled (it takes keys before the game does)"),
                       ("kbHidden", "a hidden XayaUI frame is still keyboard-enabled (it takes keys the moment it is shown)")):
         for (by, made), o in gather(key).items():
@@ -56,6 +108,7 @@ def judge(data, rep):
                      "made at %s; turned on by %s; propagate %s; %s; at: %s" % (made, by, prop, " and ".join(sorted(o["combat"])), "; ".join(o["cps"])),
                      "turn the keyboard off (EnableKeyboard(false), through core's KeyCatch) when the settings window closes and out of combat only (V29)")
 
+    begin(rep, "no XayaUI edit box holds the keyboard focus with every window closed")
     focus = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("focus") or []:
@@ -72,6 +125,7 @@ def judge(data, rep):
     if others:
         rep.note("edit boxes with focus that XayaUI did not make (not judged): " + ", ".join(map(str, others)))
 
+    begin(rep, "keys were pressed, and PRINTSCREEN, W and SPACE reach the game at every checkpoint with every window closed")
     keys = collections.OrderedDict()
     tried = 0
     for cp in cps:
@@ -96,6 +150,7 @@ def judge(data, rep):
         rep.fail(str(by), "the %s key did not reach the game: it was kept by %s" % (key, by), "at: " + "; ".join(labels),
                  "nothing XayaUI shows with the window closed may take keys (V27, V29: the screenshot key is never held)")
 
+    begin(rep, "no keyboard call by XayaUI code after the close (SetPropagateKeyboardInput(true) out of combat allowed)")
     for call, n in (data.get("kbCalls") or {}).items():
         line = call.split(" ")[0]
         if "SetPropagateKeyboardInput(true)" in call and "(in combat)" not in call:
@@ -108,7 +163,16 @@ def judge(data, rep):
 
 def main():
     # (round 9; SD-64 she keeps Advanced Debugging on; round 8 review: only the default variant was judged) both variants
-    return GC.both_variants(GATE, judge)
+    # (round 11 repair) each variant's judge counts its checks (Checks) for the last line
+    counted = []
+
+    def counting(data, rep):
+        c = Checks(rep, data.get("variant") or "default")
+        counted.append(c)
+        judge(data, c)
+    rc = GC.both_variants(GATE, counting)
+    print(count_line(counted))   # the last line: run_all.py reads its count
+    return rc
 
 
 if __name__ == "__main__":

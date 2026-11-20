@@ -19,7 +19,9 @@ ns = L.eval("{}"); L.globals().NS = ns
 for f in ("XayaUI/Core.lua", "XayaUI/Modules.lua", "XayaUI_Rules/RuleDefaults.lua", "XayaUI_Rules/Conditions.lua", "XayaUI_Rules/Timing.lua", "XayaUI_Rules/Triggers.lua", "XayaUI_Rules/Outcomes.lua"):
     load(open(os.path.join(ROOT, f), encoding="utf-8").read(), f, ns)
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 
@@ -163,4 +165,8 @@ collectgarbage("restart")
 idx = L.eval("IDX_KB")
 print("step index garbage per step: %.2f KB (200 rules, 20 groups)" % idx)
 check("the step index makes under 1 KB per step while no rule or group changed (before 0.6.44 it was rebuilt every step)", idx < 1.0, "%.2f KB" % idx)
-print(); print("FAILED: " + ", ".join(fails) if fails else "ALL PASSED"); sys.exit(1 if fails else 0)
+print()
+if fails:
+    print("FAILED: " + ", ".join(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
+sys.exit(1 if fails else 0)

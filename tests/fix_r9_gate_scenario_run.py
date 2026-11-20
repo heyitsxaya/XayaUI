@@ -337,9 +337,16 @@ def _main():
         all(((B.get("end %d" % c) or {}).get("moments") or {}).get("combat end", {}).get("XayaUI_Rules") for c in (1, 2, 3))
     check(mom_ok, "scenario: the frames right after combat start, the boss pull, the boss down and combat end are kept for each cycle")
     text = gate_text(data)
+    # (round 11 repair) judged against the cap the gate stores for this scenario (GP.V33_EVENT_CAPS, ad60a051 not played here), not
+    # FAILed, and the line is shown under the check as its evidence
+    cap_every = ((GP.V33_EVENT_CAPS.get("caps") or {}).get("every") or {}).get("XayaUI_Rules")
     for what in ("a boss pull \\(ENCOUNTER_START\\)", "combat end"):
-        check(re.search(r"V33 XayaUI Rules per event, %s: costliest frame \d+ instructions" % what, text) is not None,
-              "scenario: the gate judges XayaUI Rules' costliest frame at %s against the cap and prints it" % what.replace("\\", ""))
+        mline = re.search(r"V33 XayaUI Rules per event, %s: costliest frame (\d+) instructions \((?:fight|end) \d; cap (\d+) = ad60a051's\)" % what, text)
+        check(mline is not None and int(mline.group(2)) == cap_every and int(mline.group(1)) <= cap_every,
+              "scenario: the gate judges XayaUI Rules' costliest frame at %s against the cap and prints it" % what.replace("\\", ""),
+              "line %s, stored cap %s" % (mline.group(0) if mline else None, cap_every))
+        if mline:
+            note("      evidence: " + mline.group(0))
     dc = [c for c in GP.vals(data.get("drawCheck")) if isinstance(c, dict)]
     labels = [c.get("label") for c in dc]
     check(all(labels.count(l) == 3 for l in DRAW_LABELS) and all(c.get("ran") for c in dc),

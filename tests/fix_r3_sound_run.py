@@ -57,13 +57,17 @@ function RULE(uid, aura, load, folder)
     folder = folder,
     sound = { enabled = true, source = "file", value = "Interface\\AddOns\\SoundPack\\" .. uid .. ".ogg", channel = "Master" },
     gameSound = { enabled = true, when = "auto", channel = "Ambience", throttle = 1 } }
+  -- (round 11 repair) built the way XayaUI builds every rule it loads or makes (RuleDefaults.lua ns.NormalizeRule)
+  NS.NormalizeRule(r)
   NS.rules[#NS.rules + 1] = r
   return r
 end
 '''
 
 fails = []
+checked = [0]   # (round 11 repair, SD-138 M1: the last line says how many checks ran)
 def check(name, ok, extra=""):
+    checked[0] += 1
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -213,5 +217,5 @@ L.execute("COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
 check("XayaUI's own load check still waits for the boss (not loaded out of the encounter)",
       L.eval("(function() local c = NS.ReadContext(); return NS.CheckContext(INRAIDGROUP, c) end)()") is not True)
 
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed  FAILS: %d" % (checked[0], len(fails), len(fails)))
 sys.exit(1 if fails else 0)

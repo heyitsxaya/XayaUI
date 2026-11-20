@@ -34,7 +34,9 @@ NS.MessageDest = function() return "chat" end
 function RESET() STACKS = 0; PREV = {}; RECORDED = {}; CHAT = {} end
 ''')
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok):
+    checked.append(name)
     print(("ok    " if ok else "FAIL  ") + name)
     if not ok: fails.append(name)
 E = lambda s: L.eval(s)
@@ -56,5 +58,5 @@ L.execute("RESET(); STACK_TEXT = '[string \"@Interface/AddOns/XayaUI/Engine.lua\
 check("an error with no file: one debugstack; the stack names XayaUI, so it is recorded as core's", E("STACKS") == 1 and E("#RECORDED") == 1 and E("RECORDED[1].folder") == "XayaUI")
 L.execute("RESET(); STACK_TEXT = '[string \"@Interface/AddOns/Plater/Plater.lua\"]:1: in function <x>'; HANDLER('custom error with no file')")
 check("an error with no file from another addon: one debugstack, not recorded", E("STACKS") == 1 and E("#RECORDED") == 0 and E("#PREV") == 1)
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

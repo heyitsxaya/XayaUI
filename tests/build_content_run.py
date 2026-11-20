@@ -9,7 +9,9 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 BUILDER = os.path.join(ROOT, "docs", "reference", "build_content.py")
 TEXT = "SENTINEL-WRITTEN-TEXT"   # stands in for Blizzard's descriptions; it must never reach an output file
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra)[:300] + "]"))
     if not ok: fails.append(name)
 
@@ -212,5 +214,5 @@ with tempfile.TemporaryDirectory() as d:
         r = run(d, o, {"PYTHONHASHSEED": str(seed)}, isolated=False)
         outs.add(open(os.path.join(o, "instances.json"), encoding="utf-8").read() if r.returncode == 0 else "error " + r.stderr[-200:])
     check("the same instances.json under 8 different hash seeds", len(outs) == 1, "%d different outputs" % len(outs))
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

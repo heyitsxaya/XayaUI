@@ -97,8 +97,13 @@ def main():
         check(bool(segs), "debug: XayaUI_Debug's handlers are measured by the work budget (its addon appears in the budget's segments)",
               "segments with XayaUI_Debug: %s" % segs)
         text = PROBE.gate_text(dd)
-        check(re.search(r"V33 XayaUI_Debug: .* per fight frame", text) is not None,
-              "debug: the gate prints XayaUI_Debug's V33 line (judged under her 1% always)")
+        # (round 11 repair) the line is printed only once the budget is calibrated (the stored V33_RECORDED for this scenario and
+        # stand-in, ad60a051 not played here); it is shown under the check as its evidence
+        dl = re.search(r"V33 XayaUI_Debug: [^\n]* per fight frame[^\n]*", text)
+        check(dl is not None, "debug: the gate prints XayaUI_Debug's V33 line (judged under her 1% always)",
+              "V33 lines: %s" % [l.strip()[:160] for l in text.split("\n") if "V33 " in l][:6])
+        if dl:
+            print("      evidence: " + dl.group(0).strip()[:300])
 
     # ---- guard on the real engine, and on a mutant engine ------------------------------------------------------------------------
     fs = PROBE.findings(PROBE.gate_text(data))

@@ -68,6 +68,31 @@ local function runFile(a, rel, private)
   W.safecall(fn, a.name, private)
 end
 
+-- What came in from saved data (round 11 repair 2, for the honest-result guard, tests/run_all.py; SD-138 M1, V35). A test that plays
+-- several sessions hands each new session what the last one saved (opts.saved), so an error-record entry (CueRulesDB.errorLog,
+-- XayaUI/DebugRecord.lua) written in one session arrives again in the next, with the same code, message and first time. The guard must
+-- count an occurrence once, in the session where it happened. Its fallback reads entries with the same code, message and first time
+-- as one entry, which also merges two separate sessions that started in the same wall-clock second (the stand-in's time() is the
+-- host's clock), so their occurrences were undercounted (R11A review: fix_r10_display "W002 x1, declared 5"). Here the loader, the one
+-- place saved data enters a session, notes each entry it hands over and its count at that moment; the guard reads this note to
+-- count only what each session added. Kept in the Lua registry (no global, nothing in the saved data the addons see), weak-keyed (an
+-- entry the record drops is forgotten), keyed by the entry table itself (DebugRecord.lua moves an entry to the top in place).
+-- LOADED_ERRORS[entry] = its count n when the loader handed it over. The table exists once a loader has been made in the runtime, so
+-- the guard can tell "nothing came from saved data" (an empty table) from "this runtime had no loader" (no table: its old rule applies).
+local LOADED_ERRORS_KEY = "XayaUI.harness.loadedErrorLog"
+local REG = debug.getregistry()
+local LOADED_ERRORS = REG[LOADED_ERRORS_KEY] or setmetatable({}, { __mode = "k" })
+REG[LOADED_ERRORS_KEY] = LOADED_ERRORS
+L.LOADED_ERRORS_KEY = LOADED_ERRORS_KEY
+-- note the error-record entries one saved variable holds (any saved variable with an errorLog list: today only CueRulesDB has one)
+local function noteLoadedErrors(v)
+  local log = type(v) == "table" and rawget(v, "errorLog")
+  if type(log) ~= "table" then return end
+  for _, e in ipairs(log) do
+    if type(e) == "table" then LOADED_ERRORS[e] = tonumber(rawget(e, "n")) or 1 end
+  end
+end
+
 local function deepcopy(v, seen)
   if type(v) ~= "table" then return v end
   seen = seen or {}
@@ -98,7 +123,11 @@ load = function(name, why)
   for _, rel in ipairs(a.files) do runFile(a, rel, private) end
   -- saved variables arrive after the files ran, then ADDON_LOADED
   local store = opts.saved and opts.saved[name] or {}
-  for _, var in ipairs(a.sv) do rawset(_G, var, deepcopy(store[var])) end
+  for _, var in ipairs(a.sv) do
+    local v = deepcopy(store[var])
+    rawset(_G, var, v)
+    noteLoadedErrors(v)
+  end
   L.loaded[name] = true
   L.loadedOrder[#L.loadedOrder + 1] = name
   a.loading = false

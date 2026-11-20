@@ -41,6 +41,54 @@ import gate_common as GC  # noqa: E402
 GATE = "gate_mouse"
 
 
+class Checks(object):
+    """(round 11 repair; R11A final: this gate printed no count line, so the honest-result guard read it as NO COUNT LINE; SD-138 / V35
+    "a test fails ... if it prints no result count") The gate's checks, counted for its last line, as gate_performance counts its own.
+    judge() names each check as it starts it (begin()); every FAIL reported while a check runs counts against that check. Warnings and
+    notes judge nothing and are not counted as checks. A plain Report (a test calling judge() itself: fix_r9_gate_probe,
+    fix_r10_gate_bonus) has no begin(), so begin() leaves it as it is.
+    (Kept in this file, not imported from gate_performance_run.py, so a fault in one gate cannot stop another; the shared home for it is
+    gate_common.Report, reported to its owner.)"""
+
+    def __init__(self, rep, label):
+        self.rep, self.label, self.run, self.warns = rep, label, [], 0
+
+    def begin(self, name):
+        self.run.append([name, 0])
+
+    def fail(self, where, what, numbers, fix):
+        if not self.run:
+            self.begin("(a FAIL before any named check)")
+        self.run[-1][1] += 1
+        self.rep.fail(where, what, numbers, fix)
+
+    def warn(self, where, what, numbers="", fix=""):
+        self.warns += 1
+        self.rep.warn(where, what, numbers, fix)
+
+    def note(self, text):
+        self.rep.note(text)
+
+
+def begin(rep, name):
+    """Names the check that starts now, when rep counts checks (Checks); a plain Report ignores it."""
+    b = getattr(rep, "begin", None)
+    if b is not None:
+        b(name)
+
+
+def count_line(counted):
+    """The gate's last line, read by tests/run_all.py: the checks run in every variant judged, the checks with a violation, and (as on the
+    line before it) the violations and warnings: "<gate>: N checks, M failed (variant default: n; variant debug: n; ...)  FAILS: K"."""
+    n = sum(len(c.run) for c in counted)
+    bad = [(c.label, name) for c in counted for name, f in c.run if f]
+    k = sum(f for c in counted for _name, f in c.run)
+    parts = "; ".join("variant %s: %d" % (c.label, len(c.run)) for c in counted)
+    return "%s: %d checks, %d failed (%s%s; %d violation(s), %d warning(s))  FAILS: %d" % (
+        GATE, n, len(bad), parts, ("; failed: " + ", ".join("%s %s" % b for b in bad)) if bad else "", k, sum(c.warns for c in counted), k)
+
+
+
 def where_of(e):
     """The line a fix changes: the call that turned clicks on, else the CreateFrame line (a Button that was never told)."""
     by = e.get("by") or "?"
@@ -50,15 +98,19 @@ def where_of(e):
 
 
 def judge(data, rep):
-    """Every check of this gate on one variant's result (round 9: both variants, see main)."""
+    """Every check of this gate on one variant's result (round 9: both variants, see main). (round 11 repair) Each check is named as it
+    starts (begin(): its FAILs count against it for the count line, see Checks); a plain Report passes through unchanged."""
+    begin(rep, "the scenario ran as planned (gate_common.integrity)")
     GC.integrity(data, rep)
     cps = data.get("checkpoints") or []
     in_combat = [cp for cp in cps if cp.get("combat")]
     rep.note("checkpoints judged: %d (%d in combat), all after the settings window closed" % (len(cps), len(in_combat)))
+    begin(rep, "the checkpoints include fights")
     if not in_combat:
         rep.fail("tests/gate_common.py (the scenario)", "no checkpoint ran in combat", "", "the scenario must judge the fights too")
 
     # 1. frames that take clicks
+    begin(rep, "1 no shown XayaUI frame takes mouse clicks with every window closed")
     clicks = collections.OrderedDict()   # (line, top window) -> info
     for cp in cps:
         menu_open = "list is open" in cp["label"]
@@ -106,6 +158,7 @@ def judge(data, rep):
 
     # 1b. (round 10, SD-99) the windows she opened: the mouse outside their own rectangle, and a window shown where every window should
     #     be closed (in a fight: SD-100; after its close or after a fight: SD-102)
+    begin(rep, "1b a window she opened takes the mouse only inside its own rectangle (SD-99)")
     outside = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("winOutside") or []:
@@ -123,6 +176,7 @@ def judge(data, rep):
                      e.get("kind"), e.get("name"), "clicks" if e.get("click") else "hover", ", the wheel" if e.get("wheel") else "", e.get("rect"),
                      "; ".join(o["cps"])),
                  "keep every part of the window inside its own frame (or take the mouse off the part that hangs outside)")
+    begin(rep, "1b a window she opened is not shown in a fight, after its close or after a fight (SD-100, SD-102)")
     shown = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("winShown") or []:
@@ -138,6 +192,7 @@ def judge(data, rep):
                      "after combat it stays closed until she opens it again; a close hides every part of it")
 
     # 2. full-screen catchers (any mouse at all over half the screen)
+    begin(rep, "2 no full-screen mouse catcher")
     big = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("big") or []:
@@ -152,6 +207,7 @@ def judge(data, rep):
                  "no frame over the game world takes the mouse; close menus on GLOBAL_MOUSE_DOWN instead of a click-catching overlay")
 
     # 3. the mouse wheel
+    begin(rep, "3 no shown XayaUI frame takes the mouse wheel")
     wheel = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("wheel") or []:
@@ -161,6 +217,7 @@ def judge(data, rep):
                  "made at %s; at: %s" % (made, "; ".join(labels)), "EnableMouseWheel(false) once the settings window is closed")
 
     # 4. the minimap button's list
+    begin(rep, "4 the minimap list opens, lets a world click through, closes on that click and on Esc, and is closed at the end")
     mm = data.get("minimap") or {}
     if not mm.get("button"):
         rep.warn("XayaUI/MinimapButton.lua", "the minimap button was not shown, so its list was not checked")
@@ -180,7 +237,7 @@ def judge(data, rep):
         if not mm.get("closedAtEnd"):
             rep.fail("XayaUI/MinimapButton.lua", "the minimap list was still open at the end", "", "")
 
-    # 5. hover only (allowed for now; SD-37)
+    # 5. hover only (allowed for now; SD-37): warnings only, no check (5 to 7 judge nothing)
     hov = collections.OrderedDict()
     for cp in cps:
         for e in cp.get("hoverList") or []:
@@ -218,7 +275,16 @@ def judge(data, rep):
 
 def main():
     # (round 9; SD-64 she keeps Advanced Debugging on; round 8 review: only the default variant was judged) both variants
-    return GC.both_variants(GATE, judge)
+    # (round 11 repair) each variant's judge counts its checks (Checks) for the last line
+    counted = []
+
+    def counting(data, rep):
+        c = Checks(rep, data.get("variant") or "default")
+        counted.append(c)
+        judge(data, c)
+    rc = GC.both_variants(GATE, counting)
+    print(count_line(counted))   # the last line: run_all.py reads its count
+    return rc
 
 
 if __name__ == "__main__":

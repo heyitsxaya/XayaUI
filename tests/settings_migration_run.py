@@ -391,6 +391,11 @@ def main():
         check("R: counts equal on both sides: rules, groups, bars", len(snap.get("rules") or []) == nR and len(snap.get("folders") or []) == nF
               and len(snap.get("bars") or []) == nB)
         bad = run(before, breakCore=True, rulesInfo=True)
+        # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
+        # R mismatch, on purpose: breakCore makes the copy lose a rule (afterCopy: table.remove(store.rules), "a rule lost in the copy"),
+        # so XayaUI Rules says once that its settings could not be copied: XUI-W006 "XayaUI Rules: rules.320 (table vs nil)". The runs
+        # after it load that saved data (same entry, same first time: it counts once); "R mismatch twice" checks it is not said again
+        print("EXPECT_ERRORS XUI-W006 1")
         sb = merge(bad["saved"])
         st_b = sb.get(sv) or {}
         mm = st_b.get("migrationMismatch") or {}

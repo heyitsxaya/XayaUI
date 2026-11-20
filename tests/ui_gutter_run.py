@@ -9,7 +9,9 @@ from lupa.lua51 import LuaRuntime
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 skin = open(os.path.join(ROOT, "XayaUI_Options", "Skin.lua"), encoding="utf-8").read()
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -69,5 +71,5 @@ g = gaps('W("Button", 64, { type = "execute", name = "Group", arg = { xuiTab = t
 check("tabs drawn as buttons keep 2 px (#370)", g[2] == 2, g[2])
 g = gaps('W("CheckBox", 200), W("Slider", 200)')
 check("rows that stretch a control keep the same gutter as before", g[2] == GUTTER, g[2])
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)

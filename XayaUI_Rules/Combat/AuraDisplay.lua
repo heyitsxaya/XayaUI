@@ -681,15 +681,55 @@ end
 
 -- Create a container. The template is an AuraContainer widget: created as a plain "Frame" its built-in OnLoad never runs and
 -- Blizzard's own OnLoad errors with "attempt to index field 'dirtyFlags'" (seen in game, engine 0.3.0).
+--
+-- (round 11 repair; V2; CODE "Every code implementation should have error handling") UNDOCUMENTED API: docs/reference/api (the 12.1.5
+-- capture) has no AuraContainer widget, no CustomAuraContainerTemplate, none of the container's methods and none of the three enum
+-- tables below (it has only C_AuraContainerUtil's option helpers and their structures). The names come from Blizzard's published UI
+-- source (Blizzard_AuraContainer, live branch; this file since 0.5.69, bae4a9a1). So they are checked before they are used, and a
+-- client where one is missing (a build that renamed or dropped it) fails safe for the whole session: no container is made again,
+-- XayaUI draws every aura display itself, and the reason is recorded ONCE (XUI-W002, ContainerUnusable). Before, each build made a
+-- container frame and then stopped at the missing name: the frame was never kept (the error came before the slot took it), so every
+-- rebuild left one more frame the game never frees, and XUI-W002 was recorded again for every display on every build.
+local CONTAINER_TABLES = { "CustomAuraContainerAuraProcessingPolicy", "AuraContainerSortMethod", "AuraContainerSortDirection" }
+local CONTAINER_METHODS = { "SetUnit", "SetAuraProcessingPolicy", "AddAuraGroup", "SetAuraGroupCandidateFilters", "SetAuraGroupLayout",
+    "SetAuraGroupSortMethod", "SetAuraGroupEnabled", "SetFlowLayoutAxis", "SetFlowLayoutAnchorPoint", "SetFlowLayoutGrowthDirection",
+    "SetFlowLayoutMaximumLineSize" }
+-- nil: not checked yet; true: the names are there; a string: why Blizzard's container cannot be used (kept for the session)
+local containerState, containerChecked = nil, false
+local function ContainerUnusable(why)
+    containerState = "Blizzard's aura container cannot be used in this client (" .. why .. "), so XayaUI draws every aura display itself"
+    if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W002", containerState) end
+    error(containerState, 0)
+end
 local containerN = 0
 local function BareContainer(unit)
+    if containerState ~= nil and containerState ~= true then error(containerState, 0) end   -- (found unusable earlier: no frame made)
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_AuraContainer") end
+    if containerState == nil then   -- once per session, after the load above: the three tables (read as the code below reads them)
+        for _, name in ipairs(CONTAINER_TABLES) do
+            if type(_G[name]) ~= "table" then ContainerUnusable(name .. " is missing") end
+        end
+        containerState = true
+    end
     containerN = containerN + 1
-    local c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
+    local c
+    if containerChecked then
+        c = CreateFrame("AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
+    else   -- the first container only: the widget can be made, and has every method this file calls (else it stays hidden)
+        local ok, made = pcall(CreateFrame, "AuraContainer", "XayaUIEngine" .. containerN, UIParent, "CustomAuraContainerTemplate")
+        if not ok then ContainerUnusable("an AuraContainer could not be made: " .. tostring(made)) end
+        c = made
+        for _, m in ipairs(CONTAINER_METHODS) do
+            if type(c[m]) ~= "function" then c:Hide(); ContainerUnusable("its method " .. m .. " is missing") end
+        end
+        containerChecked = true
+    end
     c:SetUnit(unit)
     c:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
     return c
 end
+-- (for Fail below and /xuiengine) the session's reason, when Blizzard's container cannot be used at all
+local function ContainerMissing() return containerState ~= true and containerState or nil end
 local function NewContainer(unit, filter, ids, w, h, sp, display, maxCount, single, rec, sortKey, rev)
     local c = BareContainer(unit)
     local method, dir = SortArgs(sortKey or "default", rev)
@@ -842,8 +882,9 @@ end
 local function Fail(slot, why)
     slot.ok, slot.err = false, tostring(why)
     lastError = slot.err
-    -- (core 0.6.56; REQUEST-LOG #82) a guarded game call failed: recorded with its code, only when it happens (DebugRecord.lua)
-    if ns.RecordWarn then pcall(ns.RecordWarn, "XUI-W002", slot.err) end
+    -- (core 0.6.56; REQUEST-LOG #82) a guarded game call failed: recorded with its code, only when it happens (DebugRecord.lua).
+    -- (round 11 repair) Not when the reason is that Blizzard's container cannot be used at all: BareContainer recorded that once.
+    if ns.RecordWarn and slot.err ~= ContainerMissing() then pcall(ns.RecordWarn, "XUI-W002", slot.err) end
     if slot.frame then slot.frame:Hide() end
 end
 
@@ -1413,7 +1454,17 @@ SlashCmdList["XUIENGINE"] = Slash
 -- rule / group edits arrive as ns.MarkDirty; rebuild once, a second after the last one (never in combat)
 local rebuildQueued = false
 -- (round 10, SD-82 / SD-90 "FAIL everywhere") one file-level function for the timer: before, each queued rebuild made a new function
-local function BuildRun() rebuildQueued = false; pcall(D.Build) end
+-- (round 11 repair; SD-139, CODE "Every code implementation should have error handling") A build that fails is recorded, never dropped:
+-- before, the three callers below ran pcall(D.Build) and threw the error away, so a build that stopped part-way left the engine not
+-- drawing, with nothing in the error record (round 11 found one: a stand-in without AnchorUtil.FlowLayoutAxis stopped every build in
+-- tests/fix_r6_aura_routing_run.py, unseen). Recorded as XUI-E011 ("An engine step failed; XayaUI caught it"), in the record only, as
+-- RuleDefaults.lua records its engine set-up failures: a build follows every edit, so a chat line per build would repeat; the record
+-- keeps one entry with a count. Cost: nothing unless a build fails (no table or closure per build).
+local function BuildRecorded()
+    local ok, err = pcall(D.Build)
+    if not ok and ns.RecordError then pcall(ns.RecordError, "XayaUI combat engine build: " .. tostring(err), nil, "XayaUI", "XUI-E011") end
+end
+local function BuildRun() rebuildQueued = false; BuildRecorded() end
 local function QueueBuild()
     if rebuildQueued then return end
     rebuildQueued = true
@@ -1466,7 +1517,7 @@ ev:SetScript("OnEvent", function(_, event, unit)
     -- by themselves): the first one builds (login, /reload), a later one only a build that waits (combat lockdown at the time)
     if event == "PLAYER_ENTERING_WORLD" and serial > 0 and not pendingBuild then return end
     if event == "PLAYER_SPECIALIZATION_CHANGED" and unit and unit ~= "player" then return end
-    pcall(D.Build)
+    BuildRecorded()
 end)
 
 -------------------------------------------------------------------------------
@@ -1502,7 +1553,7 @@ local function RulesOff()
 end
 local function RulesOn()
     hideWhenFree = false
-    pcall(D.Build)
+    BuildRecorded()
 end
 if ns.On then
     ns.On("RULES_DISABLED", RulesOff)

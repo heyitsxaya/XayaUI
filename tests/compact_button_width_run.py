@@ -45,7 +45,9 @@ assert ms, "ns.Style not found in XayaUI/Modules.lua"
 L.execute("local ns = ns\n" + ms.group(0))
 L.execute("local ns = ns\n" + chunk)
 fails = []
+checked = []   # (round 11 repair, SD-138 / V35: a test fails if it prints no result count) every check() made, for the last line "N checks, M failed" tests/run_all.py reads
 def check(name, ok, extra=""):
+    checked.append(name)
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok:
         fails.append(name)
@@ -102,5 +104,5 @@ res = L.eval('''(function()
 end)()''')
 check("tabs drawn as buttons: 2 px between them, none before the first; ordinary buttons keep 10 px",
       res[1] == 2 and res[2] == 2 and res[3] is None and res[4] == 10 and res[5] is True, [res[i] for i in range(1, 6)])
-print("FAILS: %d" % len(fails))
+print("%d checks, %d failed" % (len(checked), len(fails)))
 sys.exit(1 if fails else 0)
