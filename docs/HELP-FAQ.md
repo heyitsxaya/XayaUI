@@ -88,7 +88,7 @@ The game restricts chat actions to other players in several kinds of content, an
 Each part's commands work only while that part is switched on. Typed while it is off, they run nothing and print one line naming the part and where to turn it on, for example "XayaUI: The Calculator is off. Turn it on in /xui > Bonus Features." Tick the part's box in the settings window (**Bonus Features > Stat Calculator** or **Bonus Features > Calculator**); it works at once, with no reload. There is no `/xui stats on` any more.
 
 ### /xui stats keeps saying the Stat Calculator could not load.
-It says why every time you try: it is switched off in the game's AddOns list, its folder is missing, or its files stopped with a Lua error. Fix that, then type `/reload`. A Lua error is saved for the bug report (see "Does XayaUI save its error messages?" below).
+It says why every time you try: it is switched off in the game's AddOns list, its folder is missing, or its files stopped with a Lua error. Fix that, then type `/reload`. After a Lua error, nothing of it starts, and the error is saved for the bug report (see "Does XayaUI save its error messages?" below). If another addon takes over the game's Lua error handling, the Lua error itself may not be saved.
 
 ### The Stat Calculator closed when a fight started and did not come back.
 That is on purpose: it never stays open in a fight and does not reopen by itself afterwards. Open it again from the **Stat Calculator** row in the minimap button's list, with `/xui stats`, or by opening the character window again. It also loads only the first time you open it, not at login.

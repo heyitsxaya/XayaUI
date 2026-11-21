@@ -181,6 +181,13 @@ in exactly 4 lines, `set.debug.advancedDebug` and `settings.debug.advancedDebug`
 XayaUI's own errors and warnings for the debug report (/xui report) and, from your next login or /reload, loads the debug tools: ...
 Off by default.", new "Shows XayaUI's own Lua errors where its messages go and, from your next login or /reload, loads the debug tools:
 ... (errors and warnings are saved either way). Off by default." (tests/fix_r11_error_record_run.py G1 / G5).
+Updated on 2026-11-21 (bundle 1 round 11a final fix; SD-139, R11A final review concern "SD-139 wording": the Bug report's count,
+ns.ErrorCount, counts every saved entry, warnings included): only the "set" and "settings" entries of both variants, all-on
+d70722819b0f933f -> 5214ec2426f252c0 (235) and 20b4b7ad4c87cebe -> 3bb895f8859c7af4 (234), off-XayaUI_Bonus eef50c818c99a7b9 ->
+0551f587693a5588 (233) and 73192a600e72024c -> 233c8ad386b7f8db (232), one node each (index 6). `--dump` before (the tree with the
+previous XayaUI_Options/Options.lua) and after differ in exactly 4 lines, `set.debug.bug.bugInfo` and `settings.debug.bug.bugInfo` in
+each variant: old "XayaUI keeps its own Lua errors (0 so far, 0 different) ...", new "XayaUI keeps its own errors and warnings (0 so
+far, 0 different) ..." (tests/fix_r11_error_record_run.py G4 / G4b). The values are the ones `--golden` writes on a copy of the tree.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import difflib, hashlib, json, os, re, sys

@@ -191,7 +191,7 @@ for _, old in ipairs({ "perf", "loc", "gamemenu", "chatprobe", "probe 203720", "
         and rawget(_G, "XayaUIStatCalculator") == nil
       scNote = "; /xui stats is the Stat Calculator's: no width probe, it prints SD-118's one 'is off' line and opens nothing"
     else
-      isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors)."
+      isHelp = #out == 1 and out[1] == "/xui stats is part of XayaUI QoL, which is not installed or failed to load. Lua errors are saved: /xui bug shows them (needs Advanced Debugging)."
     end
   end
   check(("old form /xui %s no longer runs (prints /xui help%s)"):format(old, old == "stats widthprobe" and scNote or ""), isHelp and (ns.rules and #ns.rules or 0) == before, out[1])

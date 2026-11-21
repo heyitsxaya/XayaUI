@@ -126,7 +126,13 @@ function ns.ScanAllTalents(done)
             end
             local msg = ("talent scan done: %d classes, %d specs, %d talent nodes, %d talent entries (build %s). %d class(es) failed."):format(nC, nS, nN, nE, tostring(db.build), #db.errors)
             if not any then msg = msg .. " Nothing was read, so the previous scan is kept." end
-            if ns.Print then ns.Print(msg) end
+            -- (round 11a final fix, SD-139 "Always save errors") a class that failed is a Lua error XayaUI's own scan caught
+            -- (pcall(ScanClass) below): the same line is shown and saved in the error record under the settings window's code
+            -- (XUI-E002: this file is XayaUI Options'), with each failed class and its error kept as the entry's detail (the record
+            -- cuts it to 700 characters); a scan where every class was read prints as before and saves nothing. Error path only.
+            if #db.errors > 0 and ns.PrintError then
+                ns.PrintError("XUI-E002", msg, msg .. " " .. table.concat(db.errors, "; "))
+            elseif ns.Print then ns.Print(msg) end
             if done then pcall(done, true, msg) end
             return
         end

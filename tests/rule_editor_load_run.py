@@ -51,11 +51,7 @@ return function()
   -- FAILFILES[chunk name] = true: that file's code errors before it does anything (modes onefails / allfail)
   rawset(_G, "loadstring", function(src, name)
     READS[#READS + 1] = tostring(name)
-    -- (round 11 repair) the message names the mode (FAILFILES[name] = mode): the runs of "onefails" and "allfail" are separate sessions,
-    -- and the same message in both, made within the same second, read to tests/run_all.py as one entry carried by saved data (its
-    -- tally keys an entry by code, message and first time), so the count of these errors depended on the clock
-    local why = FAILFILES[tostring(name)]
-    if why then return function() error("XUI_TEST_EDITOR_SETUP_FAILS (" .. tostring(why) .. ") " .. tostring(name)) end end
+    if FAILFILES[tostring(name)] then return function() error("XUI_TEST_EDITOR_SETUP_FAILS " .. tostring(name)) end end
     return ls(src, name)
   end)
 end
@@ -69,8 +65,8 @@ local EDITOR = "@Interface/AddOns/XayaUI_Options/RuleEditor/"
 local NFILES = #FILES
 local MARK = "XUI_TEST_EDITOR_SETUP_FAILS"
 -- D / E: which editor files the stand-in makes fail (their chunk errors before it does anything)
-if mode == "onefails" then FAILFILES[EDITOR .. "RuleMerge.lua"] = mode end
-if mode == "allfail" then for _, f in ipairs(FILES) do FAILFILES[EDITOR .. f] = mode end end
+if mode == "onefails" then FAILFILES[EDITOR .. "RuleMerge.lua"] = true end
+if mode == "allfail" then for _, f in ipairs(FILES) do FAILFILES[EDITOR .. f] = true end end
 local la = C_AddOns.LoadAddOn
 C_AddOns.LoadAddOn = function(n, ...) LOADS[#LOADS + 1] = tostring(n); return la(n, ...) end
 LoadAddOn = C_AddOns.LoadAddOn
@@ -277,7 +273,8 @@ def main():
         bad += 0 if ok else 1
     # (round 11 repair; SD-139 every error is saved in CueRulesDB.errorLog; SD-138 M1, tests/run_all.py: an entry the test did not declare fails it)
     # on purpose: D ("onefails") makes RuleMerge.lua's code error, E ("allfail") every one of the editor's 17 files
-    # (PRE: error("XUI_TEST_EDITOR_SETUP_FAILS (" .. mode .. ") " .. name)): 1 + 17 = 18 Lua errors in XayaUI files, XUI-E001; and E's one
+    # (PRE: error("XUI_TEST_EDITOR_SETUP_FAILS " .. tostring(name))): 1 + 17 = 18 Lua errors in XayaUI files, XUI-E001 (each session in
+    # its own runtime: the guard counts each once, in the session where it happened, tests/run_all.py ERROR RECORD); and E's one
     # chat line "the rule editor could not be set up: the Rules tab is left out", XUI-E016
     print("EXPECT_ERRORS XUI-E001 %d" % (1 + len(EDITOR_FILES)))
     print("EXPECT_ERRORS XUI-E016 1")

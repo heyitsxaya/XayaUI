@@ -224,6 +224,8 @@ local function undebuff(unit, d)
 end
 local function cdEvent(...) W.fire("SPELL_UPDATE_COOLDOWN", ...) end
 -- ---------------------------------------------------------------- the addons and the rules
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 ns.rules = {}
@@ -828,6 +830,7 @@ def main():
         checks, failed = checks + 1, failed + (1 if r.get("errors") else 0)
         if not r.get("errors"):
             print("ok  no Lua error in the stand-in game (%s)" % side)
+    print("EXPECT_ERRORS XUI-W002 5")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
     print("%d checks, %d failed  FAILS: %d" % (checks, failed, fails))
     sys.exit(1 if fails else 0)
 

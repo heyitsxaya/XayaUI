@@ -26,7 +26,7 @@ quoted line is read from the Lua or .toc file that prints or shows it, so a docu
   S  SD-146 ("Repeat the reason each time (Recommended)") and the round 11a /xui stats words: USER-GUIDE 12.12a and QA B440 quote the
      loader's reason lines and its help line; no document says only the first open says why.
   A  AddOns list: QA B441 quotes both Bonus .toc Notes lines exactly, with their versions; no player document repeats the old Notes.
-  V  Versions (V10, V17, V18): each addon is above its round 10 version, X-Date 2026-11-18; PATCH-NOTES' first entry, the pane, QA
+  V  Versions (V10, V17, V18): each addon is above its round 10 version, X-Date 2026-11-19 (round 11a repair); PATCH-NOTES' first entry, the pane, QA
      B401 and WHATS-NEW section 17 carry those versions; the pane names the round 11a changes.
   K  (repair 1) Files that stop with a Lua error: no player text says more than the code does ("nothing of it is used", "counts as
      not loaded"), and PATCH-NOTES' Bonus entry, the pane, USER-GUIDE 12.12a and WHATS-NEW 17 state each limit the code still has
@@ -391,7 +391,7 @@ def _steps(qa):
 # round 10's .toc versions (the round 10 docs unit's lines); round 11a changed code in every one of these addons
 ROUND10 = {"XayaUI": "0.6.87", "XayaUI_Options": "0.6.110", "XayaUI_Rules": "0.7.2", "XayaUI_Debug": "0.7.1",
            "XayaUI_Bonus": "0.6.47", "XayaUI_Bonus_StatCalculator": "0.6.47"}
-R11A_DATE = "2026-11-18"
+R11A_DATE = "2026-11-19"   # (round 11a repair: every .toc X-Date and the bundle 1 entry moved to the repair date)
 
 
 def round11a_checks():

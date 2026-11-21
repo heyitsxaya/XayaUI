@@ -621,19 +621,23 @@ Rules 0.7.2, XayaUI Debug 0.7.1, Bonus Features 0.6.47 (both of its folders). La
 
 ## 17. Rules fix bundle 1, round 11a (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
 
-Not tested in game. QA B182 and B439 to B441 (all bundle 1 steps: B399 and B401 to B441). Versions: XayaUI 0.6.88, Options 0.6.111,
-Rules 0.7.3, XayaUI Debug 0.7.2, Bonus Features 0.6.48 (both of its folders). Landing commit: not landed yet.
+Not tested in game. QA B182, B439 to B441, B442 and B443 (all bundle 1 steps: B399 and B401 to B443). Versions: XayaUI 0.6.89,
+Options 0.6.112, Rules 0.7.4, XayaUI Debug 0.7.2, Bonus Features 0.6.49 (both of its folders). Landing commit: not landed yet.
 
 - **Errors and warnings are always saved:** every error or warning XayaUI prints in chat is also saved with a code, and so are its
   own Lua errors, whether or not Advanced Debugging is on. Ordinary messages are never saved. To see them, turn on Advanced Debugging
   (Settings > Debugging), type `/reload`, then `/xui bug` or `/xui report`. Settings > Debugging > Debug report shows how many there
-  are either way. The newest 50 are kept.
+  are either way. The newest 50 are kept. The chat lines for a `/xui` command whose part is not installed or did not respond,
+  and for the settings window, the rule editor and the Stat Calculator when they could not load, now say the error is saved and that
+  `/xui bug` needs Advanced Debugging.
 - **Stat Calculator says why every time:** while it cannot load (switched off in the AddOns list, its folder missing, or its files
   stopped with a Lua error), every `/xui stats` prints the same one line saying why. `/xui stats` with a word it does not know prints
-  its help line instead of opening or closing the panel. Known issues, not fixed yet: for some of these Lua errors, opening the
-  character window can still show a Lua error; and if another addon stops other addons from seeing Lua errors, XayaUI may miss some
-  of these errors (user guide 12.12a).
+  its help line instead of opening or closing the panel. If its files stopped with a Lua error, nothing of it starts, so no second
+  Lua error follows (opening the character window included); the error and the line are saved under XUI-E009 (user guide 12.12a).
+  If another addon takes over the game's Lua error handling, that line is still saved, but the Lua error itself may not be.
 - **AddOns list:** XayaUI Bonus Features and its Stat Calculator now say that the Stat Calculator loads the first time you open it.
+- **Combat engine:** a rebuild that fails is now saved for the bug report. If the game's aura container cannot be used at all,
+  XayaUI draws every aura display itself and saves one warning for the session, not one per display on every rebuild.
 
 *Not in this list yet:* Reskin 0.6.6 (its debug log was not found), and the Info pane / Patch Notes feature itself (its session sends its own note).
 They are added here only once they arrive and are checked against `main`.

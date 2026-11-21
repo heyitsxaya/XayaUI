@@ -435,6 +435,7 @@ def main():
                 sites.append("%s:%d (callback %s is made inside a function)" % (rel, i + 1, name or "?"))
     report("G. (SD-82 / SD-90) every timer call in Visual.lua, Combat/AuraDisplay.lua, BarCue.lua and XayaUI_Debug/RulesPerf.lua passes a "
            "file-level function (no new function per call)", not sites, "; ".join(sites) or None)
+    print("EXPECT_ERRORS XUI-W002 5")   # (round 11 repair) one per stand-in session that makes its container as a plain Frame on purpose (its CreateFrame wrapper outside mode C); Combat/AuraDisplay.lua records it once per session
     print("%d checks, %d failed" % (total, bad))
     sys.exit(1 if bad else 0)
 

@@ -82,6 +82,15 @@ do
   ns.Print = sp
   check("D10 every class failed: the last good scan is kept", XayaUITalentDB == good, XayaUITalentDB and XayaUITalentDB.built)
   check("D10 the chat line says the previous scan is kept", said and said:find("previous scan is kept", 1, true), said)
+  -- (round 11a final fix, SD-139 "Always save errors") a class the scan could not read is a Lua error its own pcall caught: the same
+  -- line is saved as XUI-E002 with each class and its error (XayaUI_Options/TalentDump.lua)
+  local e2
+  for _, e in ipairs(type(CueRulesDB) == "table" and CueRulesDB.errorLog or {}) do
+    if e.code == "XUI-E002" and tostring(e.msg):find("13 class(es) failed", 1, true) then e2 = e end
+  end
+  check("D10 (SD-139) the failed scan is saved once as XUI-E002: the chat line, then each class and its error",
+    e2 ~= nil and e2.kind == "error" and e2.n == 1 and said ~= nil and e2.msg:sub(1, #said) == said and e2.msg:find("class 1: ", 1, true) ~= nil,
+    e2 and e2.msg)
   C_ClassTalents, C_Traits, Constants = saveCT, saveTr, saveC
 end
 -- D11 / FA-12: the minimap list row is "XayaUI Settings" and says it opens or closes
@@ -270,6 +279,9 @@ def main():
     # D57 migration, on purpose: ns.NewCueRule = function(p, kind) if kind == "texture" then error("no texture") end ... end, then
     # ns.MigrateCues(): one condition is left as it was and XayaUI says so, XUI-W008 once (its XUI-E011 goes to the test's own recorder)
     print("EXPECT_ERRORS XUI-W008 1")
+    # D10 talent scan, on purpose: C_ClassTalents = { InitializeViewLoadout = function() error("api changed") end, ... }, then
+    # ns.ScanAllTalents(): all 13 classes fail, and the summary is saved as XUI-E002 once (round 11a final fix, SD-139; checked in D10)
+    print("EXPECT_ERRORS XUI-E002 1")
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

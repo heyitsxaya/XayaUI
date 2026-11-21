@@ -29,6 +29,8 @@ local aura = { [1001] = { spellId = 1001, auraInstanceID = 501, name = "Scope", 
 local function copy(a) local t = {}; for k, v in pairs(a) do t[k] = v end; return t end
 C_UnitAuras.GetPlayerAuraBySpellID = function(id) local a = aura[id]; return a and copy(a) or nil end
 C_UnitAuras.GetUnitAuraBySpellID = function(u, id) if u == "player" then return C_UnitAuras.GetPlayerAuraBySpellID(id) end end
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 ns.rules = {}
@@ -139,6 +141,7 @@ def main():
         t.write("local function A() return B() end\nlocal function B() return 1 end\n")
     probe = forward_refs(t.name); os.unlink(t.name)
     report("C. (the scan finds a planted forward reference)", len(probe) == 1 and probe[0][1] == "B", probe)
+    print("EXPECT_ERRORS XUI-W002 2")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
     print("%d checks, %d failed, %d Lua errors" % (total, bad, nerr))
     sys.exit(1 if bad or nerr else 0)
 

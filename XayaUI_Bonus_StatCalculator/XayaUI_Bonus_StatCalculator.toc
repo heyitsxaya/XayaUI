@@ -2,8 +2,8 @@
 ## Title: XayaUI Bonus Features: Stat Calculator
 ## Notes: The Stat Calculator of XayaUI Bonus Features: a stats panel beside the character window or on its own. Loads the first time you open it, never at login. Needs XayaUI and XayaUI Bonus Features.
 ## Author: Xaya
-## Version: 0.6.48
-## X-Date: 2026-11-18
+## Version: 0.6.49
+## X-Date: 2026-11-19
 ## Dependencies: XayaUI, XayaUI_Bonus
 ## LoadOnDemand: 1
 ## Group: XayaUI

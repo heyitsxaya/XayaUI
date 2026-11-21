@@ -171,17 +171,34 @@ function ns.PrintWarning(code, text, detail) PrintRecorded(RecordWarn, code, tex
 -- (round 11, SD-139 "Always save errors (Recommended)") The record is kept whether or not Advanced Debugging is on; with Advanced
 -- Debugging on (Settings > Debugging, off by default) the error is also shown where XayaUI's messages go.
 -------------------------------------------------------------------------------
+-- The addon folder a file's name shows, or nil when it shows none. path: a file's name as an error message or a stack line writes it.
+-- (round 11a final fix, SD-139 "Always save errors") Lua 5.1 writes a long file name shortened: it keeps only the last 52 characters
+-- (LUA_IDSIZE 60, less 8) after "...", so "Interface/AddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua" (63 characters) reads
+-- "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua" and the "AddOns/" the full form is found by is cut. INFERENCE: the game
+-- shortens names the same way (the stand-in runs Lua 5.1's own rule); UNVERIFIED IN GAME. A shortened name is read only where it still
+-- shows a whole XayaUI folder: right after "..." and the cut end of "AddOns" ("...ddOns/<folder>/", ".../<folder>/") or right after
+-- "..." itself ("...<folder>/"). Where the cut falls inside the folder's name or past it (the Ace libraries inside XayaUI_Options/Libs,
+-- 68 to 98 characters) the name shows no folder, and nil is returned: those libraries are shared by every addon that carries them
+-- (LibStub runs one copy), so the cut name cannot tell XayaUI's copy from another addon's, and claiming it would record other addons'
+-- errors. tests/fix_r11_error_record_run.py (L) checks every shipped XayaUI file's shortened name.
+local function FolderOfPath(path)
+    local addon = path:match("AddOns[/\\]([%w_%-]+)[/\\]")
+    if addon then return addon end
+    local cut, folder = path:match("%.%.%.(%w*)[/\\](XayaUI[%w_]*)[/\\]")
+    if folder and (cut == "" or ("AddOns"):sub(-#cut) == cut) then return folder end
+    return path:match("%.%.%.(XayaUI[%w_]*)[/\\]")
+end
 -- The XayaUI folder an error came from, or nil: the message's own location ("Interface/AddOns/XayaUI_Chat/Core.lua:12: ...") decides;
--- a message without one (error(msg, 0)) is decided by the first addon file in the stack.
+-- a message without one (error(msg, 0)) is decided by the first addon file in the stack whose name shows its folder.
 function ns.ErrorFolder(text, stack)
     text = tostring(text or "")
     local loc = text:match("^%s*([^\n]-%.lua):%d+:")
     if loc then
-        local folder = loc:match("AddOns[/\\](XayaUI[%w_]*)[/\\]")
-        return folder
+        local folder = FolderOfPath(loc)
+        return folder and folder:match("^XayaUI[%w_]*$") or nil
     end
     for path in tostring(stack or ""):gmatch("([^\n%[%]\"']-%.lua)") do
-        local addon = path:match("AddOns[/\\]([%w_%-]+)[/\\]")
+        local addon = FolderOfPath(path)
         if addon then return addon:match("^XayaUI[%w_]*$") and addon or nil end
     end
     return nil

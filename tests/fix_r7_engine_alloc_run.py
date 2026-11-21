@@ -41,6 +41,8 @@ C_UnitAuras.GetAuraDataByIndex = function(unit, i) if unit ~= "player" then retu
 local DEB = {}
 C_UnitAuras.GetUnitAuras = function(unit, filter) if unit == "target" then return DEB end return AUR_LIST end
 UnitExists = function(u) return u == "player" or u == "target" end
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 ns.rules = {}
@@ -252,6 +254,7 @@ def main():
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
+    print("EXPECT_ERRORS XUI-W002 1")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
     print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
     sys.exit(1 if bad or errs else 0)
 

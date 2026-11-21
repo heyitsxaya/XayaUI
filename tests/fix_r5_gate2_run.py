@@ -51,6 +51,8 @@ local nextIID = 500
 local function gain(id, dur) nextIID = nextIID + 1; AUR[id] = { auraInstanceID = nextIID, spellId = id, name = "Spell " .. id, icon = 136243, applications = 1,
   duration = dur, expirationTime = W.now + dur, isHelpful = true, sourceUnit = "player", isFromPlayerOrPlayerPet = true }; return AUR[id] end
 local mounted = false
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 local function copy(t) if not t then return nil end local o = {}; for k, v in pairs(t) do o[k] = v end; return o end
@@ -372,8 +374,9 @@ def main():
     errs = [world.errors[i] for i in range(1, len(world.errors) + 1)]
     for e in errs:
         print("ERROR in the game stand-in:", str(e)[:600])
-    print("%d checks, %d failed, %d Lua errors" % (len(res), bad, len(errs)))
-    print("FAILS: %d" % (bad + len(errs)))
+    print("EXPECT_ERRORS XUI-W002 1")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
+    # (round 11 repair; SD-138 M1 "if it prints no result count") the last line says how many things were checked
+    print("%d checks, %d failed, %d Lua errors  FAILS: %d" % (len(res), bad, len(errs), bad + len(errs)))
     sys.exit(1 if bad or errs else 0)
 
 

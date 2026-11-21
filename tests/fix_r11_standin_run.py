@@ -33,9 +33,12 @@ passes ns.NormalizeRule, RuleDefaults.lua):
   A9  (repair 2; the R11A review's tally finding) the stand-in's loader, the one place saved data enters a session, notes every
       error-record entry it hands over with its count at that moment (Lua registry "XayaUI.harness.loadedErrorLog", read by the
       honest-result guard, tests/run_all.py, to count each occurrence once, in the session where it happened): a fresh session has the
-      note and it is empty; the next session, loaded from what the first one saved, has the first session's XUI-W002 noted at n = 1;
-      when it happens again there the record's count grows in place (n = 2) while the note keeps 1; an entry made in that session is not
-      noted; the note adds nothing to the saved data or to _G.
+      note and it is empty; the next session, loaded from what the first one saved, has BOTH of the first session's entries noted, each
+      at its own count (XUI-W002 n = 1, and an XUI-E001 the first session raised twice on purpose, n = 2; round 11 repair, counts unit:
+      one entry at n = 1 could not catch a loader that notes every entry at 1, or only the first); when the W002 happens again there the
+      record's count grows in place (n = 2) while the note keeps 1; an entry made in that session is not noted; the note adds no field
+      to an entry, no global holds it (nor a table a global holds), making the loader adds to _G only the globals loader.lua assigns by
+      name, and after the same start the session loaded from saved data has exactly the fresh session's whole key set of _G.
   A6  (found by this unit) an engine build that fails part-way is recorded (XUI-E011), no longer dropped: three callers in
       AuraDisplay.lua ran pcall(D.Build) and threw the error away; the stand-in's missing flow layout tables stopped every build in
       tests/fix_r6_aura_routing_run.py that way, unseen.
@@ -280,60 +283,98 @@ end
 '''
 
 # A9: two sessions, the second loaded from what the first saved. The XUI-W002 in each is caused on purpose by W.RemoveAuraContainer()
-# (one per session: the second adds to the first's entry), the XUI-E012 in the second by the rule "Raw" built without ns.NormalizeRule.
+# (one per session: the second adds to the first's entry), the XUI-E001 in the first by its two calls pcall(eh, "...: A9 an error
+# carried into the next session") (one entry, n = 2), the XUI-E012 in the second by the rule "Raw" built without ns.NormalizeRule.
+# (round 11 repair, counts unit, after the repair-2 review) The first session hands over TWO entries, one with n = 2, so a loader that
+# notes every entry at 1, or only the first entry, is caught; "nothing the addons see" compares whole key sets of _G and looks for the
+# note itself in any global.
 NOTE_LUA = r'''function() local n = debug.getregistry()["XayaUI.harness.loadedErrorLog"]; return n end'''
+A9_KEYS = "fix_r11_standin.A9keys"   # (the test's own registry slot, not a global: _G's key set after the start of each A9 session)
+KEYS_LUA = r'''function() local k = {}; for x in pairs(_G) do k[#k + 1] = tostring(x) end; table.sort(k); return table.concat(k, "\n") end'''
+A9_SNAP = r'''local function a9keys() return (__KEYS__)() end
+local function a9holds(note)   -- the globals that hold the note itself, or hold a table with the note in it (one level down)
+  local out = {}
+  if type(note) ~= "table" then return out end
+  for k, v in pairs(_G) do
+    if rawequal(v, note) then out[#out + 1] = tostring(k)
+    elseif type(v) == "table" then for kk, vv in pairs(v) do if rawequal(vv, note) then out[#out + 1] = tostring(k) .. "." .. tostring(kk) end end end
+  end
+  return out
+end'''.replace("__KEYS__", KEYS_LUA)
 CARRY1 = r'''
 return function(W, L, S)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name, ok and true or false, extra ~= nil and tostring(extra) or nil } end
+__SNAP__
 local note = (__NOTE__)()
 check("A9. a fresh session: the loader's note of entries from saved data exists", type(note) == "table")
 W.RemoveAuraContainer()
 S.start()
 S.ns.rules = { S.buffRule("Shield", 1001) }
 S.settle()
-local db = rawget(_G, "CueRulesDB"); local e = db and db.errorLog and db.errorLog[1]
-check("A9. ... it stays empty: the XUI-W002 this session made is not noted (it came from no saved data)",
-  type(note) == "table" and next(note) == nil and e ~= nil and e.code == "XUI-W002" and e.n == 1, e and (e.code .. " x" .. tostring(e.n)))
-check("no Lua error", #W.errors == 0, W.errors[1])
+debug.getregistry()["__A9KEYS__"] = a9keys()
+-- on purpose: the same Lua error reported twice (one XUI-E001 entry, n = 2)
+local eh = geterrorhandler()
+pcall(eh, "Interface/AddOns/XayaUI_Rules/Engine.lua:1: A9 an error carried into the next session")
+pcall(eh, "Interface/AddOns/XayaUI_Rules/Engine.lua:1: A9 an error carried into the next session")
+local db = rawget(_G, "CueRulesDB"); local log = db and rawget(db, "errorLog") or {}
+local w, e1
+for _, e in ipairs(log) do if e.code == "XUI-W002" then w = e elseif e.code == "XUI-E001" then e1 = e end end
+check("A9. ... it stays empty: the XUI-W002 (n = 1) and the XUI-E001 (n = 2) this session made are not noted (they came from no saved data)",
+  type(note) == "table" and next(note) == nil and w ~= nil and w.n == 1 and e1 ~= nil and e1.n == 2,
+  (w and ("W002 x" .. tostring(w.n)) or "no W002") .. ", " .. (e1 and ("E001 x" .. tostring(e1.n)) or "no E001"))
+-- (the stand-in's error handler also lists the two errors raised on purpose above; any other is a failure)
+local others, mine = {}, 0
+for _, x in ipairs(W.errors) do if tostring(x):find("A9 an error carried into the next session", 1, true) then mine = mine + 1 else others[#others + 1] = x end end
+check("no Lua error (but the two raised on purpose)", #others == 0 and mine == 2, others[1] or ("raised on purpose: " .. mine))
 return R
 end
-'''
+'''.replace("__A9KEYS__", A9_KEYS)
 CARRY2 = r'''
 return function(W, L, S)
 local R = {}
 local function check(name, ok, extra) R[#R + 1] = { name, ok and true or false, extra ~= nil and tostring(extra) or nil } end
-local keys0 = 0; for _ in pairs(_G) do keys0 = keys0 + 1 end
+__SNAP__
 W.RemoveAuraContainer()
 S.start()
+S.ns.rules = { S.buffRule("Shield", 1001) }
+S.settle()
+debug.getregistry()["__A9KEYS__"] = a9keys()
 local note = (__NOTE__)()
 local function noted(e) return type(note) == "table" and e ~= nil and note[e] or nil end
 local db = rawget(_G, "CueRulesDB"); local log = db and rawget(db, "errorLog") or {}
-local carried
-for _, e in ipairs(log) do if e.code == "XUI-W002" then carried = e end end
-check("A9. the next session (loaded from what the first saved): the first session's XUI-W002 is noted with its count then (1)",
-  carried ~= nil and noted(carried) == 1, carried and tostring(noted(carried)))
+local carried, e1
+for _, e in ipairs(log) do if e.code == "XUI-W002" then carried = e elseif e.code == "XUI-E001" then e1 = e end end
+local nNoted = 0; if type(note) == "table" then for _ in pairs(note) do nNoted = nNoted + 1 end end
+check("A9. the next session (loaded from what the first saved): BOTH entries the first one saved are noted, each with its own count then "
+  .. "(XUI-W002 1, XUI-E001 2), and nothing else",
+  carried ~= nil and noted(carried) == 1 and e1 ~= nil and noted(e1) == 2 and nNoted == 2,
+  "W002 " .. tostring(noted(carried)) .. ", E001 " .. tostring(noted(e1)) .. ", entries noted " .. nNoted)
 local raw = { uid = "raw9", name = "Raw", enabled = true, useBuff = true, buffID = 1003, buffState = "present", cdState = "none" }
-S.ns.rules = { S.buffRule("Shield", 1001) }
-S.settle()
 pcall(S.ns.SetVisualShown, raw, true)
 local made
 for _, e in ipairs(log) do if e.code == "XUI-E012" then made = e end end
-check("A9. it happens again in this session: the record's count grows in place (n = 2) and the note keeps 1",
-  carried ~= nil and carried.n == 2 and noted(carried) == 1, carried and ("n " .. tostring(carried.n) .. ", note " .. tostring(noted(carried))))
+check("A9. it happens again in this session: the record's count grows in place (n = 2) and the note keeps 1; the XUI-E001 not raised "
+  .. "again keeps n = 2 and its note 2",
+  carried ~= nil and carried.n == 2 and noted(carried) == 1 and e1 ~= nil and e1.n == 2 and noted(e1) == 2,
+  carried and ("W002 n " .. tostring(carried.n) .. ", note " .. tostring(noted(carried)) .. "; E001 n " .. tostring(e1 and e1.n) .. ", note " .. tostring(noted(e1))))
 check("A9. an entry made in this session (XUI-E012) is not noted", type(note) == "table" and made ~= nil and noted(made) == nil,
   made and tostring(noted(made)))
 local fields = {}; for k in pairs(carried or {}) do fields[#fields + 1] = k end; table.sort(fields)
-local keys1 = 0; for _ in pairs(_G) do keys1 = keys1 + 1 end
-local other = {}; for k in pairs(_G) do if type(k) == "string" and k:find("harness", 1, true) then other[#other + 1] = k end end
-check("A9. the note adds nothing the addons see: no field on the entry beyond DebugRecord.lua's, no global",
-  #other == 0 and table.concat(fields, ","):find("loaded", 1, true) == nil and table.concat(fields, ","):find("note", 1, true) == nil,
-  table.concat(fields, ",") .. " | " .. table.concat(other, ","))
+check("A9. the note adds nothing to the entries: no field on the entry beyond DebugRecord.lua's",
+  carried ~= nil and table.concat(fields, ","):find("loaded", 1, true) == nil and table.concat(fields, ","):find("note", 1, true) == nil,
+  table.concat(fields, ","))
+local holds = a9holds(note)
+check("A9. no global holds the note, nor any table a global holds (one level down)", type(note) == "table" and #holds == 0, table.concat(holds, ", "))
 check("no Lua error", #W.errors == 0, W.errors[1])
 return R
 end
-'''
-
+'''.replace("__A9KEYS__", A9_KEYS)
+# the globals loader.lua assigns by name at its top level (its C_AddOns API); a global the loader adds any other way (rawset, or a
+# name built at run time) is caught by the A9 check on what making the loader adds to _G
+_LOADER_SRC = open(os.path.join(HERE, "harness", "loader.lua"), encoding="utf-8").read()
+LOADER_NAMED = sorted(set(re.findall(r"^([A-Za-z_]\w*)\s*=", _LOADER_SRC, re.M)) - set(re.findall(r"^\s*local\s+([A-Za-z_]\w*)", _LOADER_SRC, re.M)))
+LOADER_ADDED = []   # per session() call: the globals that making the loader added to _G (a key set before and after it)
 
 def session(L, scenario, saved=None):
     folders = H.find_addons()
@@ -343,9 +384,11 @@ def session(L, scenario, saved=None):
     opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}})
     # saved: what the last session saved (Lua source, tests/harness/savedvars.lua), as tests/harness/run.py session() hands it over
     opts["saved"] = H.savedvars(L).Load(saved) if isinstance(saved, str) else H.to_lua(L, {})
+    keys_w = set(L.eval(KEYS_LUA)().split("\n"))
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(H.HERE, "loader.lua"), world, opts)
+    LOADER_ADDED.append(sorted(set(L.eval(KEYS_LUA)().split("\n")) - keys_w))
     S = L.eval("function(src, W, Ld) return loadstring(src)(W, Ld) end")(SETUP, world, loader)
-    scenario = scenario.replace("__NOTE__", NOTE_LUA)
+    scenario = scenario.replace("__SNAP__", A9_SNAP).replace("__NOTE__", NOTE_LUA)
     return world, L.eval("function(src, W, Ld, S) return loadstring(src)()(W, Ld, S) end")(scenario, world, loader, S), loader
 
 
@@ -448,12 +491,26 @@ def main():
     # A9: the loader's note of saved-data entries (the W002s here are caused on purpose: W.RemoveAuraContainer() in CARRY1 and CARRY2, one
     # per session, the second adding to the first's entry; the E012 by the rule "Raw" in CARRY2)
     L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
+    del LOADER_ADDED[:]
     ld = run(L, "A9 (first session)", CARRY1, report)
     src = logout_source(L, ld) if ld is not None else "{}"
     L2 = H.lua51.LuaRuntime(unpack_returned_tuples=True)
     run(L2, "A9 (next session, from the first one's saved data)", CARRY2, report, saved=src)
+    # (round 11 repair, counts unit) the whole key sets of _G, compared in Python: making the loader adds only the globals loader.lua
+    # assigns by name, and the session loaded from saved data has exactly the fresh session's globals after the same start
+    added = LOADER_ADDED[:]
+    report("A9. making the loader adds to _G only the globals loader.lua assigns by name (its C_AddOns API), in both sessions",
+           len(added) == 2 and all(set(a) <= set(LOADER_NAMED) for a in added),
+           "added %s; loader.lua assigns by name: %s" % (" / ".join(",".join(a) for a in added), ",".join(LOADER_NAMED)))
+    reg = "function(k) return debug.getregistry()[k] end"
+    k1, k2 = L.eval(reg)(A9_KEYS), L2.eval(reg)(A9_KEYS)
+    s1, s2 = set((k1 or "").split("\n")), set((k2 or "").split("\n"))
+    report("A9. after the same start, the session loaded from saved data has exactly the fresh session's globals (the whole key set of "
+           "_G: handing saved data over, and the note, add none)", bool(k1) and bool(k2) and s1 == s2,
+           "only in the next session: %s | only in the first: %s" % (",".join(sorted(s2 - s1)), ",".join(sorted(s1 - s2))))
     expect["XUI-W002"] += 2
     expect["XUI-E012"] += 1
+    expect["XUI-E001"] = 2   # (A9, on purpose: CARRY1's two calls pcall(eh, "...: A9 an error carried into the next session"), one entry, n = 2)
     for c, n in sorted(expect.items()):
         if n:
             print("EXPECT_ERRORS %s %d" % (c, n))

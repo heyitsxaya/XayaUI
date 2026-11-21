@@ -64,6 +64,8 @@ C_InstanceEncounter = { IsEncounterInProgress = function() return G.enc end }
 UnitPower = function(u, e) return G.combo end
 for i = 1, 20 do G.auras[1000 + i] = { spellId = 1000 + i, auraInstanceID = 500 + i, name = "Buff " .. i, applications = 1, duration = 600,
   expirationTime = 0, sourceUnit = "player", isHelpful = true } end
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 for _, a in pairs(G.auras) do a.expirationTime = W.now + 600 end
 local ns = rawget(_G, "XayaUI_NS")
@@ -251,6 +253,8 @@ end
 # ---- C: ns.LoadReads is a superset of what the load check reads -----------------------------------------------------------------
 LOADREADS = r'''
 return function(W, L, seed)
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 math.randomseed(seed)
@@ -432,6 +436,8 @@ def scan_readers():
 
 DEPS = r'''
 return function(W, L)
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 local function d(t) local r = ns.NewRule(); r.name = "x"; r.enabled = true; r.extra = { list = { t } }; return ns.EngineDeps(r) end
@@ -519,6 +525,7 @@ def main():
     room = lua_room(os.path.join(ROOT, "XayaUI_Rules", "Engine.lua"))
     report("E. Lua 5.1: Engine.lua compiles with at least 10 of its main chunk's 200 local names free at its busiest point", room >= 10,
            "free: %d" % room if room >= 0 else "does not compile")
+    print("EXPECT_ERRORS XUI-W002 1")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
     print("%d checks, %d failed" % (total, bad))
     sys.exit(1 if bad else 0)
 

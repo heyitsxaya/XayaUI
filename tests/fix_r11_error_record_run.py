@@ -28,6 +28,16 @@ What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI
      50 entries and that size; no copy of an error's text is reachable outside the record. (round 11 hygiene: the collector's count
      includes Lua's string table, which doubles in 128 KB steps with the game's other strings, so it is printed, not judged.)
   T  (SD-139 "tests read the same record") the harness reads CueRulesDB.errorLog at the end of the run: its shape is checked here.
+  L  (round 11a final fix, R11A final review blocker 2) a Lua error in a file whose name Lua 5.1 shortens (it keeps the last 52
+     characters after "..."): every shipped XayaUI file (git ls-files, not the libraries) is filed under its own folder, its name
+     shortened or not; StatCalculator.lua ("...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua") raised in play is saved as XUI-E009
+     with Advanced Debugging off and still reaches the earlier handler; another addon's file is never filed (a shortened name, a name cut
+     inside a folder that ends in a XayaUI name, a XayaUI-named folder inside another addon's folder); a message that names no file is
+     filed from a shortened XayaUI name on the stack. KNOWN LIMIT, printed: the Ace3 library files under XayaUI_Options/Libs whose name
+     is cut past the folder are filed under no folder (LibStub shares one copy among every addon that carries it, so the cut name cannot
+     say whose copy raised it).
+  TS (round 11a final fix, R11A final review blocker 1d) the talent scan's summary with a class that failed is shown unchanged and saved
+     as XUI-E002 with the failed class and its error; a scan that reads every class saves nothing.
 Static (every shipped Lua file, not the libraries):
   S1 every ns.PrintError / ns.PrintWarning call names a code from ns.ERROR_CODES, XUI-E with PrintError and XUI-W with PrintWarning;
   S2 (round 11 hygiene) every chat line the shipped code writes (ns.Print, ns.PrintPrivate, print, AddMessage; 175 sites) is
@@ -40,7 +50,9 @@ USER-GUIDE, debug_record tests"; a factual correction, SD-145):
   G1 the Advanced Debugging switch's description does not say the switch records errors and warnings (they are saved either way);
   G2/G3 the real debug report (XayaUI_Debug/DebugReport.lua), Advanced Debugging off, shows the saved entries (control) and does not
      say that nothing is recorded;
-  G4 the known stale lines in USER-GUIDE, QA-CHECKLIST B182, HELP-FAQ, README-INGAME and the info pane (STALE_DOC_LINES) are gone;
+  G4 the known stale lines in USER-GUIDE, QA-CHECKLIST B182, HELP-FAQ, README-INGAME, the info pane and (round 11a final fix) the
+     Bug report line in Settings > Debugging (STALE_DOC_LINES) are gone; G4b that Bug report line says "errors and warnings" before
+     its count, which counts both;
   G5 the switch's description and the debug report's "OFF" line say that errors and warnings are saved either way (what she reads);
   G6 USER-GUIDE 12.14 says the saving does not depend on the switch, lists the chat prints among what is found, and its code table has a
      row for every code in ns.ERROR_CODES (DebugRecord.lua says "the same list is in the USER-GUIDE") with that code's meaning;
@@ -55,7 +67,7 @@ USER-GUIDE, debug_record tests"; a factual correction, SD-145):
 Stand-in numbers are not WoW. UNVERIFIED IN GAME: that the game writes CueRulesDB.errorLog to XayaUI.lua at /reload, logout or a clean
 exit (a crash loses that session's entries, the limit SD-139 records).
 Run: python3 tests/fix_r11_error_record_run.py   (Lua 5.1 via lupa; reads tests/harness/api_index.json when XUI_API_INDEX points to it)."""
-import os, re, sys
+import os, re, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "harness"))
@@ -252,6 +264,87 @@ p0 = #W.printed
 local okBroken = pcall(PE, "XUI-E015", "R11ER still shown")
 ns.RecordError = savedRE
 check("W a record that raises an error never stops the chat line or the caller", okBroken and count(since(p0), "XayaUI: R11ER still shown") == 1)
+
+-- L: (round 11a final fix, SD-139 "Always save errors"; R11A final review blocker 2) a Lua error in a file whose name Lua 5.1 shortens.
+-- Lua keeps the last 52 characters of a chunk name longer than that, after "...": "Interface/AddOns/XayaUI_Bonus_StatCalculator/
+-- StatCalculator.lua" (63) reads "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua", and core's ns.ErrorFolder read only
+-- "AddOns/<folder>/", so the error was neither saved nor shown (the stand-in runs Lua 5.1's own rule; INFERENCE for the game).
+local function errFrom(path, msg) local f = loadstring("error('" .. msg .. "')", "@Interface/AddOns/" .. path); local _, e = pcall(f); return tostring(e) end
+local SHIPPED = __SHIPPED__   -- (main) every shipped .lua file of the XayaUI folders, the libraries included
+local ownN, ownCut, libRead, libNone, wrongL = 0, 0, 0, 0, {}
+for _, rel in ipairs(SHIPPED) do
+  local folder = rel:match("^([^/]+)/")
+  local msg = errFrom(rel, "R11ER where")
+  local got = ns.ErrorFolder(msg, nil)
+  if rel:find("/Libs/", 1, true) then
+    -- a library's file: its own folder when the name still shows it, else no folder; never another one
+    if got == folder then libRead = libRead + 1 elseif got == nil and msg:sub(1, 3) == "..." then libNone = libNone + 1
+    else wrongL[#wrongL + 1] = rel .. " -> " .. tostring(got) .. " (" .. msg:sub(1, 60) .. ")" end
+  else
+    ownN = ownN + 1
+    if msg:sub(1, 3) == "..." then ownCut = ownCut + 1 end
+    if got ~= folder then wrongL[#wrongL + 1] = rel .. " -> " .. tostring(got) .. " (" .. msg:sub(1, 60) .. ")" end
+  end
+end
+INFO.libNone, INFO.libRead, INFO.ownN, INFO.ownCut = libNone, libRead, ownN, ownCut
+check(("L every XayaUI file's Lua error is filed under its own folder, its name shortened by Lua or not (%d files, %d shortened); a library file is filed under XayaUI_Options while its shortened name still shows that folder, never under another"):format(ownN, ownCut),
+  ownN == __OWN_N__ and ownCut >= 1 and libRead >= 1 and #wrongL == 0, ownN .. " of __OWN_N__ files read | " .. table.concat(wrongL, " || "))
+-- through the real handler, in play, Advanced Debugging off
+local prevL = #prev
+p0 = #W.printed
+raiseFrom("XayaUI_Bonus_StatCalculator/StatCalculator.lua", "R11ER long boom")
+local l1 = entry("XUI-E009", "R11ER long boom")
+check("L a Lua error in play from StatCalculator.lua (its name shortened to '...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua') is saved: XUI-E009, count 1, and the handler set before XayaUI still got it",
+  l1 ~= nil and l1.kind == "error" and l1.n == 1 and l1.msg:find("...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:1: R11ER long boom", 1, true) == 1
+  and #prev == prevL + 1 and not has(since(p0), "[XayaUI Error]"), dump())
+-- another addon's files: a shortened name, a name cut inside a folder that ends in a XayaUI name, a XayaUI-named folder inside
+-- another addon's folder: none is XayaUI's
+local nL = #log()
+raiseFrom("SomeOtherAddon/Modules/StatCalculatorExtended.lua", "R11ER other long boom")          -- "...ns/SomeOtherAddon/..."
+raiseFrom("My_Old_Copy_Of_XayaUI_Bonus_StatCalculator/StatCalculator.lua", "R11ER other cut boom")  -- "...py_Of_XayaUI_Bonus_..."
+raiseFrom("SomeOtherAddon/Plugins/XayaUI_Compat/StatCalculator.lua", "R11ER other nested boom")    -- "...eOtherAddon/Plugins/XayaUI_Compat/..."
+raiseFrom("OtherAddon/Plugins/XayaUI_Compat/Main.lua", "R11ER other nested full")                 -- "...ace/AddOns/OtherAddon/..."
+raiseFrom("LongOtherAddonName/XayaUI_Compat/StatCalculatorModule.lua", "R11ER other nested cut")   -- "...therAddonName/XayaUI_Compat/..."
+check("L another addon's Lua error is not saved: its shortened name ('...ns/SomeOtherAddon/'), a name cut inside its folder ('...py_Of_XayaUI_Bonus_StatCalculator/'), a XayaUI-named folder inside its own folder (shortened and not; also right after its cut name, '...therAddonName/XayaUI_Compat/')",
+  #log() == nL and #prev == prevL + 6, dump())
+-- the stack, for a message that names no file: a shortened XayaUI name decides; a shortened name that shows no folder is skipped
+local stackCut = "R11ER\n\t...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:12: in function <...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:10>\n"
+local stackLib = "R11ER\n\t...AceGUI-3.0/widgets/AceGUIWidget-MultiLineEditBox.lua:5: in function 'Fire'\n\tInterface/AddOns/XayaUI_Options/Options.lua:7: in main chunk\n"
+local stackOther = "R11ER\n\tInterface/AddOns/OtherAddon/Main.lua:3: in main chunk\n\tInterface/AddOns/XayaUI/Core.lua:9: in function 'x'\n"
+local f1, f2, f3 = ns.ErrorFolder("R11ER no file", stackCut), ns.ErrorFolder("R11ER no file", stackLib), ns.ErrorFolder("R11ER no file", stackOther)
+check("L a message that names no file: a shortened XayaUI name on the stack decides its folder; a shortened name that shows none is passed over; another addon's file first is not XayaUI's",
+  f1 == "XayaUI_Bonus_StatCalculator" and f2 == "XayaUI_Options" and f3 == nil, tostring(f1) .. " " .. tostring(f2) .. " " .. tostring(f3))
+
+-- TS: (round 11a final fix, SD-139; R11A final review blocker 1d) the talent scan's summary reports classes that failed (Lua errors its
+-- own pcall caught): the line is shown as before and saved under XUI-E002 with each failed class; a scan that reads every class saves
+-- nothing. The stand-in's talent view is present with empty trees (as tests/sidebar_switches_run.py C).
+C_ClassTalents.InitializeViewLoadout = C_ClassTalents.InitializeViewLoadout or function() end
+C_ClassTalents.ViewLoadout = C_ClassTalents.ViewLoadout or function() end
+C_ClassTalents.GetTraitTreeForSpec = C_ClassTalents.GetTraitTreeForSpec or function() return nil end
+local realGCI = GetClassInfo
+if ns.ScanAllTalents then
+  GetClassInfo = function(id) if id == 3 then error("R11ER-talent", 0) end; return realGCI(id) end
+  nL, p0 = #log(), #W.printed
+  local okS = ns.ScanAllTalents()
+  W.tick(0.05, 20)
+  GetClassInfo = realGCI
+  local line
+  for _, l in ipairs(since(p0)) do if l:find("talent scan done:", 1, true) then line = l end end
+  local t2 = entry("XUI-E002", "R11ER-talent")
+  check("TS a talent scan with a class that failed: its summary is shown once, unchanged ('... 1 class(es) failed.')",
+    okS and line ~= nil and count(since(p0), line) == 1 and line:find("^XayaUI: talent scan done: 12 classes, ") ~= nil
+    and line:sub(-20) == " 1 class(es) failed.", table.concat(since(p0), " / "))
+  check("TS ...and saved: XUI-E002, kind error, count 1, the shown line followed by the failed class and its error",
+    t2 ~= nil and t2.kind == "error" and t2.n == 1 and line ~= nil and t2.msg == line:sub(9) .. " class 3: R11ER-talent" and #log() == nL + 1, dump())
+  nL, p0 = #log(), #W.printed
+  ns.ScanAllTalents()
+  W.tick(0.05, 20)
+  check("TS a scan that reads every class: '13 classes ... 0 class(es) failed.' is shown and nothing is saved",
+    has(since(p0), "XayaUI: talent scan done: 13 classes, ") and has(since(p0), " 0 class(es) failed.") and #log() == nL,
+    table.concat(since(p0), " / ") .. " | " .. dump())
+else
+  check("TS the settings window's talent scan is there (ns.ScanAllTalents)", false)
+end
 
 -- K: the catalog (DebugRecord.lua ns.ERROR_CODES)
 check("K a Lua error's code still comes from its folder: XayaUI_Rules -> E001, XayaUI_Options -> E002, XayaUI_Debug -> E009",
@@ -606,7 +699,8 @@ PRINT_SITES = [
     # XayaUI_Options/TalentDump.lua
     ('XayaUI_Options/TalentDump.lua', '"the talent scan stopped because combat started.', MSG),
     ('XayaUI_Options/TalentDump.lua', 'msg', PASS, "msg: ns.ScanAllTalents' answer when a scan cannot start ('Scanning ...' or already running)"),
-    ('XayaUI_Options/TalentDump.lua', 'msg', UNSAVED, "the talent scan's summary: 'N class(es) failed' counts Lua errors that pcall(ScanClass) caught in XayaUI's own scan; they are kept only in XayaUITalentDB.errors, not in the error record (SD-139: every error XayaUI reports in chat is saved)"),
+    # (round 11a final fix, SD-139) the summary of a scan with a failed class prints through ns.PrintError XUI-E002 (S1's site; TS checks it)
+    ('XayaUI_Options/TalentDump.lua', 'msg', ANSWER, "the talent scan's summary when every class was read: its '0 class(es) failed' is a count of none; a scan with a failed class prints the same line through ns.PrintError XUI-E002 (saved, section TS)"),
     ('XayaUI_Options/TalentDump.lua', 'msg', PASS, "msg: ns.ScanAllTalents' start line"),
     # XayaUI_Rules/Actions.lua
     ('XayaUI_Rules/Actions.lua', 'msg, a.msgR or 1, a.msgG or 1, a.msgB or 1', PASS, "a rule's chat action: the text she wrote for it"),
@@ -848,6 +942,9 @@ STALE_DOC_LINES = [
     ("docs/HELP-FAQ.md", "records what is needed to find a problem", "turning it on records nothing more of XayaUI's errors"),
     ("docs/README-INGAME.md", "records what is needed to find a problem", "same; the source of the info pane line below"),
     ("XayaUI_Options/InfoPaneData.lua", "records what is needed to find a problem", "the in-game info pane (built from the two docs above)"),
+    # (round 11a final fix, R11A final review concern "SD-139 wording") Settings > Debugging > Bug report: its count (ns.ErrorCount)
+    # counts every entry of the record, warnings included, so "Lua errors" undersold what it counts and keeps
+    ("XayaUI_Options/Options.lua", "keeps its own Lua errors (", "the Bug report's count includes the warnings the record keeps"),
 ]
 
 
@@ -895,6 +992,11 @@ def stale_text_checks(L):
             if words in line:
                 found.append("%s:%d" % (path, n))
         res.append((GAP + "G4 %s no longer says \"%s\" (%s)" % (path, words, why), not found, ", ".join(found)))
+    # (round 11a final fix) and says what its count holds: the Bug report line names errors and warnings right before the count
+    opts = read("XayaUI_Options/Options.lua")
+    bug = re.search(r'return "XayaUI keeps its own ([^"(]+)\(" \.\. total \.\. " so far, " \.\. kinds \.\. " different\)', opts)
+    res.append(("G4b Settings > Debugging > Bug report says XayaUI keeps its own errors and warnings, then their count (ns.ErrorCount"
+                " counts both)", bool(bug) and bug.group(1).strip() == "errors and warnings", bug.group(1) if bug else "line not found"))
     res.extend(true_text_checks(desc, text))
     return res
 
@@ -1007,7 +1109,11 @@ def main():
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
         os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": {}}))
-    res, info = L.eval("function(src, ...) return loadstring(src)(...) end")(LUA, world, loader)
+    # (L) every shipped .lua file of the XayaUI folders, the libraries included (git ls-files, V7), as a Lua list
+    shipped = [p for p in subprocess.run(["git", "ls-files", "*.lua"], cwd=ROOT, capture_output=True, text=True).stdout.split()
+               if p.split("/")[0].startswith("XayaUI")]
+    lua_list = "{" + ", ".join('"%s"' % p for p in shipped if re.match(r"^[\w./-]+$", p)) + "}"
+    res, info = L.eval("function(src, ...) return loadstring(src)(...) end")(LUA.replace("__SHIPPED__", lua_list).replace("__OWN_N__", str(sum(1 for p in shipped if "/Libs/" not in p))), world, loader)
     results = [(res[i][1], res[i][2]) for i in range(1, len(res) + 1)]
     # T: what the harness reads at the end of a run: CueRulesDB.errorLog, through the harness's own reader (run.py lua_to_py)
     db = L.globals().CueRulesDB
@@ -1038,6 +1144,11 @@ def main():
               " (new entry) %s, XayaUI's again %s"
               % (info.modelOneB, info.modelCapKB or 0, info.model150KB or 0, info.model350KB or 0, info.capKB or 0, info.afterKB or 0,
                  info.after350KB or 0, info.blockedOther, info.blockedMineNew, info.blockedMineAgain))
+        # (L) the known limit, printed so it stays in sight: a library file's name cut past its folder is filed under no folder
+        print("KNOWN LIMIT (L): %s of XayaUI_Options' library files (Libs/, Ace3: shared by every addon that carries them) have a name"
+              " Lua shortens past the folder, so an error raised inside one is not filed (it cannot be told from another addon's copy);"
+              " %s library files are filed under XayaUI_Options; %s XayaUI files, %s of them shortened, are all filed under their folder"
+              % (info.libNone, info.libRead, info.ownN, info.ownCut))
     for x in errs:
         print("ERROR in the game stand-in:", x[:600])
     # (round 11 hygiene; the honest-result guard, tests/run_all.py) the record this run ends with is left ON PURPOSE by section T for

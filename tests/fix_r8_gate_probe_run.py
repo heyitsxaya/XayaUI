@@ -557,6 +557,24 @@ def main():
               "%s" % [(k, ins[k], fp[k] == fp["plain"]) for k, _ in cases])
         print("      evidence: Lua 5.1 instructions run (same text as 'plain'?): %s" % ", ".join(
             "%s %d (%s)" % (k, ins[k], "same" if fp[k] == fp["plain"] else "other") for k, _ in cases))
+        # (round 11a final fix, R11A final review concern "stand-in fingerprint": the gates repair-2 reviewer's mutations B, C and E
+        # survived, no check read standin_code()'s exact text) exact outputs, one per lexer branch, each written out by Lua 5.1's rule:
+        #   B  a long comment ends only at its own level's close: "--[==[ x ]] y ]==]" is one comment (a break that closes at any "]]"
+        #      leaves " y ]==]" as code);
+        #   C  a long string of any level is a string: "[==[ -- not a comment ]==]" is kept whole (a break that knows only "[[" reads its
+        #      "--" as a comment and drops the rest of the line);
+        #   E  a comment that spans a line break counts as a line break: "a--[[x\ny]]b" reads "a\nb" (a break that folds it to a space
+        #      reads "a b");
+        #   plus a short string with an escaped quote and a "--" inside, kept whole, and a line comment before a line break folded into it.
+        exact = [("B", b"a--[==[ x ]] y ]==]b", b"a b"),
+                 ("C", b"x = [==[ -- not a comment ]==]\nreturn x", b"x = [==[ -- not a comment ]==]\nreturn x"),
+                 ("E", b"a--[[x\ny]]b", b"a\nb"),
+                 ("short string", b's = "q\\"--r" -- note\nreturn s', b's = "q\\"--r"\nreturn s')]
+        got = [(k, GP.standin_code(src), want) for k, src, want in exact]
+        check(all(g == w for _k, g, w in got),
+              "record: standin_code() reads each lexer branch exactly as Lua 5.1 does (B a level-2 long comment ends at ']==]', not ']]';"
+              " C a level-2 long string is kept whole; E a comment over a line break reads as a line break; a short string with an escaped"
+              " quote and '--' is kept whole)", "%s" % [(k, g) for k, g, w in got if g != w])
     else:
         check(False, "record: the gate fingerprints the stand-in (standin_stamp, V33_STANDIN_FILES)")
 

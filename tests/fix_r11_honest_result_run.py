@@ -38,12 +38,18 @@ What the suite (tests/run_all.py) must now say about a test, proved on synthetic
      EXPECTED ERROR NOT SEEN reason; N4 gate_mouse and gate_keyboard (played on synthetic results here; the real plays take 15 minutes)
      end with "<gate>: N checks, M failed (...)  FAILS: K", N = their named checks in both variants (counted from judge's source), a
      violation names its check and does not pass, and a clean result passes.
+  T  (round 11 repair, the R11A repair-2 review of the stand-in loader's note) T1 tally_record counts each occurrence once, in the session
+     where it happened: two loader sessions that started in the same second add up (the old merge on code, message and first time read
+     them as one), a carried entry counts once, a seeded one at its seeded count; T2-T4 the guard's limit (a runtime is read once, when
+     it is freed) is guarded: two stand-in loader sessions in one runtime are GUARD BLIND, one is ok; T5 every place a test makes the
+     loader goes through dofile(path)(W, o), the call the guard counts; T6 a runtime made with encoding=None (it hands the guard
+     bytes) is read like any other.
 Fails on the pre-change files (tests/run_all.py, tests/harness/run.py, skin_button, aura_sources, memory_report_run.py, fix_r7_relocate,
 gate_performance): there the old rule (exit 0 and a passing last line) is applied, which takes the synthetic dishonest tests as ok.
 Stand-in only: UNVERIFIED IN GAME (nothing here runs in the game; the guard judges the offline tests).
 Run: XUI_API_INDEX=tests/harness/api_index.json python3 tests/fix_r11_honest_result_run.py"""
 # XUI_TIME_LIMIT: 900
-import concurrent.futures, contextlib, importlib.util, io, os, re, shutil, signal, subprocess, sys, tempfile, time
+import concurrent.futures, contextlib, glob, importlib.util, io, os, re, shutil, signal, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -211,6 +217,87 @@ def synthetic(d):
     check("H3 a test's own '# XUI_TIME_LIMIT: <s>' line raises its limit, and the gate tests have the long limit",
           NEW and R.time_limit(os.path.abspath(__file__)) >= 900 and R.time_limit(os.path.join(HERE, "gate_keyboard_run.py")) >= 2400
           and R.time_limit(paths["honest"]) == R.DEFAULT_TIME_LIMIT)
+
+
+# (round 11 repair, counts unit; the R11A repair-2 review of the stand-in loader's note) T: the tally per session and its limit
+LOADER = os.path.join(HERE, "harness", "loader.lua")
+TWO_IN_ONE = '''from lupa.lua51 import LuaRuntime
+L = LuaRuntime(unpack_returned_tuples=True)
+L.execute("CueRulesDB = { errorLog = {} }")
+mk = L.eval("function(p) return dofile(p) end")(%r)
+W = L.eval("{ fire = function() end, safecall = function(f, ...) return pcall(f, ...) end }")
+for _ in range(%%d):
+    mk(W, L.eval("{ folders = {}, saved = {} }"))
+print("3 checks, 0 failed")
+''' % LOADER
+REDOFILE = '''from lupa.lua51 import LuaRuntime
+L = LuaRuntime(unpack_returned_tuples=True)
+L.execute("CueRulesDB = { errorLog = {} }")
+make = L.eval("function(p, W) return dofile(p)(W, { folders = {}, saved = {} }) end")
+W = L.eval("{ fire = function() end, safecall = function(f, ...) return pcall(f, ...) end }")
+make(%r, W)
+L2 = LuaRuntime(unpack_returned_tuples=True)
+L2.execute("CueRulesDB = { errorLog = {} }")
+L2.eval("function(p, W) return dofile(p)(W, { folders = {}, saved = {} }) end")(%r, L2.eval("{ fire = function() end, safecall = pcall }"))
+make(%r, W)
+print("3 checks, 0 failed")
+''' % (LOADER, LOADER, LOADER)
+
+
+def tally_sessions(d):
+    """T1-T5: each occurrence counts once, in the session where it happened, also when two sessions start in the same second; the
+    guard's limit (a runtime is read once) is guarded: a runtime with more than one stand-in loader session is GUARD BLIND."""
+    if not NEW:
+        check("T0 the suite's guard is there to test", False, "the old run_all.py has no run_one")
+        return
+    e = lambda **k: dict({"code": "XUI-W002", "msg": "no container", "first": "1700000000", "n": 1}, **k)   # noqa: E731
+    cases = [
+        ("two separate loader sessions that started in the same second (same code, message and first time), each made it once",
+         [e(carried=0), e(carried=0)], 2),
+        ("the second session loaded the first's entry (n 1, noted 1) and it happened there again (n 2)", [e(carried=0), e(n=2, carried=1)], 2),
+        ("an entry seeded in saved data (n 3) that two sessions loaded and neither repeated", [e(n=3, carried=3), e(n=3, carried=3)], 3),
+        ("a seeded entry (n 3) that the session repeated twice (n 5)", [e(n=5, carried=3)], 5),
+        ("two bare runtimes without the loader, same code, message and first time (the old rule: one entry carried)",
+         [e(carried=None), e(n=2, carried=None)], 2),
+    ]
+    bad = [(what, R.tally_record(ent).get("XUI-W002"), want) for what, ent, want in cases if R.tally_record(ent).get("XUI-W002") != want]
+    check("T1 tally_record (unit): two same-second loader sessions add up (2, where the old merge read 1), a carried entry counts once, "
+          "a seeded one at its seeded count plus what was added, and runtimes without the loader keep the old rule", not bad, bad)
+    p1 = write(d, "syn_one_session_run.py", TWO_IN_ONE % 1)
+    st, why, last, _ = verdict(p1)
+    check("T2 control: one stand-in loader session in its own runtime is ok", st == "ok" and not why, "%s %s" % (st, text(why)))
+    p2 = write(d, "syn_two_sessions_run.py", TWO_IN_ONE % 2)
+    st, why, last, _ = verdict(p2)
+    check("T3 THE LIMIT, guarded: two stand-in loader sessions made in ONE runtime (the record is read once, when it is freed) FAIL: "
+          "GUARD BLIND names the 2 sessions", st == "FAIL" and any(c == "GUARD BLIND" and "made 2 stand-in loader sessions" in t
+                                                                 for c, t in why), "%s %s" % (st, text(why)))
+    p3 = write(d, "syn_redofile_run.py", REDOFILE)
+    st, why, last, _ = verdict(p3)
+    check("T4 ... also when the loader file is read again for the second session (dofile twice); another runtime's single session "
+          "is not counted with it", st == "FAIL" and sum(1 for c, t in why if c == "GUARD BLIND" and "loader sessions" in t) == 1
+          and any("made 2 stand-in loader sessions" in t for c, t in why), "%s %s" % (st, text(why)))
+    # T6: a runtime made with encoding=None (fix_r8_engine_scope makes one) hands the guard bytes: its entries are read as entries
+    p6 = write(d, "syn_bytes_run.py", 'from lupa.lua51 import LuaRuntime\nL = LuaRuntime(encoding=None)\n'
+               'L.execute(b\'CueRulesDB = { errorLog = { { code = "XUI-E011", kind = "error", msg = "boom", n = 2, first = 1 } } }\')\n'
+               'print("EXPECT_ERRORS XUI-E011 2")\nprint("3 checks, 0 failed")\n')
+    st, why, last, _ = verdict(p6)
+    check("T6 a runtime made with encoding=None (it returns bytes) is read like any other: its XUI-E011 x2, declared 2, is ok",
+          st == "ok" and not why, "%s %s" % (st, text(why)))
+    # T5: every place a test makes the stand-in's loader goes through dofile(".../loader.lua")(W, opts), which the guard counts
+    sites, blind = 0, []
+    for p in sorted(glob.glob(os.path.join(HERE, "*.py")) + glob.glob(os.path.join(HERE, "harness", "*.py"))):
+        if os.path.abspath(p) == os.path.abspath(__file__):
+            continue   # (this test: its T2-T4 cases make the loader through dofile on purpose, one way and the other)
+        src = open(p, encoding="utf-8").read()
+        for m in re.finditer(r'"loader\.lua"', src):
+            line = src[src.rfind("\n", 0, m.start()) + 1:src.find("\n", m.end())]
+            if line.lstrip().startswith("#") or "V33_STANDIN_FILES" in line or "_LOADER_SRC" in line:
+                continue   # (a comment; the gate's fingerprint of the stand-in files; fix_r11_standin reads the file's text)
+            sites += 1
+            if not re.search(r"dofile\(path\)\(W, o\)", src[max(0, m.start() - 300):m.start()]):
+                blind.append("%s: %s" % (os.path.relpath(p, ROOT), line.strip()[:100]))
+    check("T5 every place a test makes the stand-in's loader (%d) does it through dofile(path)(W, o), the call the guard counts" % sites,
+          sites >= 50 and not blind, blind)
 
 
 def copy_repo(dst):
@@ -457,7 +544,7 @@ SCAN_TESTS = ("fix_r10_closure_scan", "hover_brevity", "trigger_labels")
 DECLARED = {"console_commands": {"XUI-E001": 2}, "devassist_debug_tools": {"XUI-E001": 50}, "fix_r7_debug_tools": {"XUI-E001": 1},
             "key_propagation": {"XUI-E001": 1}, "rule_editor_load": {"XUI-E001": 18, "XUI-E016": 1}, "fix_r6_backups": {"XUI-E018": 1},
             "fix_r8_carryovers": {"XUI-E018": 2}, "fix_r6_deadlogs": {"XUI-E010": 3, "XUI-W001": 1}, "debug_record": {"XUI-W001": 1},
-            "settings_migration": {"XUI-W006": 1}, "audit_core": {"XUI-W008": 1}}
+            "settings_migration": {"XUI-W006": 1}, "audit_core": {"XUI-W008": 1, "XUI-E002": 1}}
 CHECK_LINE = re.compile(r"(PASS |FAIL |ok    |ok  |FAIL  |FAIL:)")
 FAIL_LINE = re.compile(r"(FAIL |FAIL  |FAIL:)")
 RECORD_CODES = ("ERROR RECORD", "EXPECTED ERROR NOT SEEN")
@@ -577,6 +664,7 @@ def main():
         syn = os.path.join(work, "syn")
         os.makedirs(syn)
         synthetic(syn)
+        tally_sessions(syn)
         grammar()
         count_lines()
         gate_count_lines()

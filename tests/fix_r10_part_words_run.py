@@ -154,7 +154,7 @@ else
   end
   local st = chat("stats")
   check("NOT LOADED 8: /xui stats still names XayaUI QoL (SD-89, 'Keep naming QoL')",
-    #st == 1 and st[1] == "XayaUI: /xui stats is part of XayaUI QoL, which is not installed (or its files failed to load; /xui bug shows errors).", table.concat(st, " / "))
+    #st == 1 and st[1] == "XayaUI: /xui stats is part of XayaUI QoL, which is not installed or failed to load. Lua errors are saved: /xui bug shows them (needs Advanced Debugging).", table.concat(st, " / "))
   check("NOT LOADED 8: /xui help lists none of calc, calculator, stats", headerOk(help) and not helpHas(help, "/xui calc") and not helpHas(help, "/xui stats"),
     table.concat(help, " / "))
   local anyOff

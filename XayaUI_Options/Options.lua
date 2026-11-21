@@ -648,7 +648,7 @@ local function BuildAddonSettings()
                     name = function()
                         local total, kinds = 0, 0
                         if ns.ErrorCount then total, kinds = ns.ErrorCount() end
-                        return "XayaUI keeps its own Lua errors (" .. total .. " so far, " .. kinds .. " different) and saves them between sessions. The report holds the version, the game build, those errors, the last console lines and, with Advanced Debugging on, the debug record. It never includes your character name, realm, or your rules' settings; rule names appear in the console lines and the record. Send it to Xaya or paste it into a GitHub issue."
+                        return "XayaUI keeps its own errors and warnings (" .. total .. " so far, " .. kinds .. " different) and saves them between sessions. The report holds the version, the game build, those errors, the last console lines and, with Advanced Debugging on, the debug record. It never includes your character name, realm, or your rules' settings; rule names appear in the console lines and the record. Send it to Xaya or paste it into a GitHub issue."
                     end },
                 bugText = { type = "input", name = "What happened  (optional)", order = 2, width = "full", multiline = 4,
                     get = function() return Ui().bugText or "" end,

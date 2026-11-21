@@ -102,6 +102,8 @@ local function refresh(id)
   W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { a.auraInstanceID } })
 end
 
+W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
+-- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)
 local ns = rawget(_G, "XayaUI_NS")
 ns.rules = {}
@@ -198,6 +200,16 @@ local function mostPerSecond(times)
 end
 local function until_(st, t, after) while W.now + FRAME <= t + 1e-9 do frame(st, after) end end
 local function shown(r) local fr = ns.DisplayFrame(r); return fr and fr:IsShown() end
+-- (round 11 repair) wait for a display to show, at most SHOW_WAIT seconds of frames: a display that never shows is a named failed check,
+-- not a run that waits forever (the guard, tests/run_all.py, would read it as HUNG after 600 s). The displays here show on the frame
+-- after their aura arrives (case 1 checks that after two frames), so 2 s is ample.
+local SHOW_WAIT = 2
+local function waitShown(st, r, what)
+  local t0 = W.now
+  while not shown(r) and W.now - t0 < SHOW_WAIT do frame(st) end
+  check("(setup) " .. what .. ": the display shows within " .. SHOW_WAIT .. " s of its aura arriving", shown(r),
+    string.format("waited %.2f s", W.now - t0))
+end
 
 -- ================================================================ 1. FLASH
 do
@@ -259,7 +271,7 @@ do
   local a = gain(9103, 4.5003)
   local st = watch({ TE })
   frame(st)
-  while not shown(TE) do frame(st) end
+  waitShown(st, TE, "3. the tenths display")
   local s = st[TE]; s.runs, s.idle, s.changes, s.script, s.times = 0, 0, 0, 0, {}
   local text0 = ES.redrawText or 0
   local bad, firstBad, frames_, written = 0, nil, 0, 0
@@ -352,7 +364,7 @@ do
   local a = gain(9106, 3.0003)
   local st = watch({ BA })
   frame(st)
-  while not shown(BA) do frame(st) end
+  waitShown(st, BA, "6. the bar cue display")
   local s = st[BA]; s.runs, s.idle, s.times = 0, 0, {}
   local fill0, walks0 = ES.redrawFill or 0, parentWalks
   local written, last = 0, ns.DisplayFrame(BA).barF:GetValue()
@@ -425,7 +437,7 @@ do
   local a = gain(9108, 6.0003)
   local st = watch({ WI })
   frame(st)
-  while not shown(WI) do frame(st) end
+  waitShown(st, WI, "9. the wipe display")
   local s = st[WI]; s.runs, s.idle, s.times, s.changes = 0, 0, {}, 0
   local frac, firstFrac = 0, nil
   while W.now + FRAME <= a.expirationTime + 0.2 do
@@ -463,6 +475,7 @@ def main():
     nerr = len(world.errors)
     for i in range(1, nerr + 1):
         print("ERROR in the game stand-in: %s" % str(world.errors[i])[:600])
+    print("EXPECT_ERRORS XUI-W002 1")   # (round 11 repair) one per stand-in session, caused on purpose by W.RemoveAuraContainer() above (Combat/AuraDisplay.lua records it once per session)
     print("%d checks, %d failed, %d Lua errors" % (total, bad, nerr))
     sys.exit(1 if bad or nerr else 0)
 

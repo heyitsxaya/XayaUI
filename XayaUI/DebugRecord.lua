@@ -182,10 +182,10 @@ end
 -- folder from the message's own file, else from the first addon file on the stack it reads, and that misses a load error that names no
 -- file of the part (an error(msg, 0): in the stand-in game its stack comes inside the message, not on the handler's stack, and the
 -- stand-in's debugstack ignores its arguments, so core's own frame came first: both were filed as core's XUI-E001 in
--- tests/fix_r11_statcalc; INFERENCE that the game itself would name the part's file there), a helper's file (Interface/SharedXML/...:
--- not filed at all), or a file name the game shortened to
--- ".../ddOns/XayaUI_Bonus_StatCalculator/..." (the "AddOns" core looks for is cut: not filed at all; INFERENCE for the game, the
--- stand-in's Lua shortens names longer than 60 characters). The same error then reaches core's handler, next in the chain: the one
+-- tests/fix_r11_statcalc; INFERENCE that the game itself would name the part's file there), or a helper's file (Interface/SharedXML/...:
+-- not filed at all). (A file name Lua shortened, "...ddOns/XayaUI_Bonus_StatCalculator/...", was not filed by core either until the
+-- round 11a final fix; core's ns.ErrorFolder now reads it, INFERENCE for the game, and the claim below keeps it one entry.)
+-- The same error then reaches core's handler, next in the chain: the one
 -- message just filed is remembered (claimed) and the next Lua-error record is skipped when it is that same message, so the error is
 -- one entry under one code. The claim lasts for that next record only, whatever it is: an unrelated later error is never skipped
 -- (beyond one that is the very same text while a claim is open, which is the same error). Cost: nothing until a part's load fails.

@@ -43,7 +43,9 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
       (round 11 repair, no watch) with the error handler held by another addon (seterrorhandler does nothing), a stop late in
       StatModel.lua, in StatMath.lua, in the middle of StatCalculator.lua or before its last function is still found (the end-of-file
       marks) and everything above holds, except that the error put in is filed only by core's own handler: it must then never be filed
-      under another code than XUI-E009 (a shortened file name is not filed at all by core today: printed as a NOTE, see the report).
+      under another code than XUI-E009, and it is filed exactly once there, a shortened file name included (round 11a final fix: core's
+      ns.ErrorFolder reads a name Lua shortened, "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua"; before it, the two
+      StatCalculator.lua cases were filed nowhere and printed a NOTE).
       Also with debugstack raising (a client without it): the error is still counted, filed and passed on.
   B   (round 11 repair, SD-138 (b) survivor "FromPart without pcall") an error object whose text cannot be read (its __tostring raises)
       is raised in StatMath.lua while loading: the earlier handler still receives it, the calculator says it could not load, nothing
@@ -56,7 +58,8 @@ On the real addons of this tree in the stand-in game (tests/harness), what the p
   H   a healthy calculator while another addon replaces the error handler during the same load (chaining the one it found): the other
       addon's handler is still the active one after the load, and a Lua error a calculator file raises later in play reaches it and
       the earlier handler but is not a load error (still loaded, FilesErrored() false, /xui stats still works); it is saved once under
-      XUI-E009 by core's handler.
+      XUI-E009 by core's handler, and so is one that names the file as Lua 5.1 writes it, shortened ("...ddOns/XayaUI_Bonus_
+      StatCalculator/StatCalculator.lua:20: ...", round 11a final fix).
   R   (SD-146) switched off in the game's AddOns list, and its folder not installed: three /xui stats in a row print the same one line
       three times; one load is asked for, not three; these two reasons are the player's own setup, ordinary messages: nothing is saved.
   U   while on: '/xui stats <word it does not know>' (a typo, "on", "show") prints exactly the stats help line and opens, closes and
@@ -75,7 +78,7 @@ E case, caused on purpose by the S_ERR line 'geterrorhandler()("__UNRELATED__")'
 XUI_TEST unrelated later error [case k]": core's file, so core's code XUI-E001) and checked there. Any other entry is left undeclared,
 so the guard fails on it. (round 11 repair 2, R11A repair-1 review blocker) Both numbers are FIXED by the cases, never summed from the
 record the guard compares them with: XUI-E001 is one per E case (len(cases)); XUI-E009 is, per E case, OWN (the error(s) put in: 1, or
-2 in the two-errors case; with nothing watched 1 for StatMath.lua / StatModel.lua and 0 for StatCalculator.lua, see OWN in main) plus
+2 in the two-errors case; with nothing watched also 1, filed by core's handler, see OWN in main) plus
 4 (the chat reason told 3 times and by the status line), plus B's reason told once and H's one later error. Until repair 2 they were
 summed from the record's own marked entries, so an entry a break dropped also dropped out of the declaration and the guard never saw
 it: the named check was the only catch (proved: the reviewer's break below, with the named check taken out, passed the guard).
@@ -228,6 +231,10 @@ HELP = "/xui stats: open or close the Stat Calculator. Also: /xui stats options 
 NOTYET = "Stat Calculator: on, not loaded yet (it loads the first time you open it)."
 H_MARK = MARK + " [H]"
 H_MSG = "Interface/AddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:10: " + H_MARK
+# (round 11a final fix, R11A final review blocker 2) the same file's name as Lua 5.1 writes it in a message: 63 characters, longer than
+# the 52 it keeps, so shortened after "..." (tests/fix_r11_error_record_run.py L checks every shipped file's shortened name)
+H_CUT_MARK = MARK + " [H cut]"
+H_CUT_MSG = "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:20: " + H_CUT_MARK
 # (round 11 repair 2) E's unrelated later error: core's own file, so core's code XUI-E001; each case's mark is its own
 UNRELATED = "XUI_TEST unrelated later error"
 
@@ -359,8 +366,8 @@ do
   local ok = #own == OWN
   for _, e in ipairs(own) do ok = ok and e.code == "XUI-E009" and e.kind == "error" and e.n == 1 end
   if ARGS.nohandler then
-    -- (round 11 repair 2: exact, was "at most once") nothing watched: only core's own handler files it, and core reads only a full
-    -- file name (see OWN in main)
+    -- (round 11 repair 2: exact, was "at most once") nothing watched: only core's own handler files it (see OWN in main); since the
+    -- round 11a final fix core also reads a file name Lua shortened, so every case files it once
     check(("E ...(nothing watched) the error put in is saved exactly %d time(s), only under the Stat Calculator's code XUI-E009"):format(OWN),
       ok, dumpRecord())
   else
@@ -478,6 +485,13 @@ check("H ...it is not a load error: still loaded, FilesErrored() still false",
 local own = entriesWith("__H_MARK__")
 check("H ...it is saved once, under the Stat Calculator's code XUI-E009, and nothing else is saved", #own == 1 and own[1].code == "XUI-E009"
   and own[1].n == 1 and #record() == 1, dumpRecord())
+-- (round 11a final fix) a later error naming the file as Lua writes it, shortened: before the fix core's handler filed nothing for it
+e0 = #W.errors
+geterrorhandler()("__H_CUT_MSG__")
+local cut = entriesWith("__H_CUT_MARK__")
+check("H ...a later error with the file's name as Lua writes it ('...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:20:') reaches both handlers and is saved once under XUI-E009 too",
+  theirsSaw == 2 and #W.errors == e0 + 1 and #cut == 1 and cut[1].code == "XUI-E009" and cut[1].kind == "error" and cut[1].n == 1
+  and #record() == 2, dumpRecord())
 n = #said
 ns.RunCommand("stats", ""); W.tick(0.1, 2)
 got = saidSince(n)
@@ -571,7 +585,7 @@ end'''
 def fill(src, cmark=MARK, shift=0, umark=UNRELATED):
     src = src.replace("__UNRELATED__", "Interface/AddOns/XayaUI/Core.lua:5: " + umark).replace("__UNRELATED_MARK__", umark)
     return (src.replace("__ERRORED_STATUS__", ERRORED_STATUS).replace("__ERRORED__", ERRORED).replace("__NOTYET__", NOTYET)
-            .replace("__HELP__", HELP).replace("__H_MSG__", H_MSG).replace("__H_MARK__", H_MARK)
+            .replace("__HELP__", HELP).replace("__H_MSG__", H_MSG).replace("__H_MARK__", H_MARK).replace("__H_CUT_MSG__", H_CUT_MSG).replace("__H_CUT_MARK__", H_CUT_MARK)
             .replace("__CMARK__", cmark).replace("__MARK__", MARK).replace("__SHIFT__", str(int(shift))))
 
 
@@ -774,13 +788,13 @@ def main():
         umark = "%s [case %d]" % (UNRELATED, k)
         second = extra.pop("second", None) or (None, None, None)
         # (round 11 repair 2) OWN: the record entries the error(s) put in must leave, fixed here. Watched: each one, filed by the loader
-        # under XUI-E009. Nothing watched (nohandler): only core's own handler can file it, and core's ns.ErrorFolder (XayaUI/Core.lua)
-        # reads only a full file name: StatMath.lua and StatModel.lua keep theirs (1); "Interface/AddOns/XayaUI_Bonus_StatCalculator/
-        # StatCalculator.lua" is 63 characters, longer than the 60 Lua 5.1 keeps of a chunk's name, so its message reads
-        # "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:N: ..." and core files nothing (0; the NOTE below; a Core.lua gap
-        # outside this test's files: when it is fixed these two become 1 and this test fails by name until they are changed here)
+        # under XUI-E009. Nothing watched (nohandler): only core's own handler can file it, from the message's file name.
+        # "Interface/AddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua" is 63 characters; Lua 5.1 keeps the last 52 of a longer
+        # chunk name, so its message reads "...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:N: ...". (round 11a final fix, R11A
+        # final review blocker 2) core's ns.ErrorFolder (XayaUI/Core.lua) now reads that shortened name, so every nohandler case files
+        # it once (was 0 for the two StatCalculator.lua cases, printed as a NOTE; the exact check below now fails on 0)
         put = 2 if second[0] else 1
-        own = (0 if f == "StatCalculator.lua" else 1) if extra.get("nohandler") else put
+        own = put
         src = (fill(S_ERR, cmark, k * 1000000, umark).replace("__FILE__", lua_str(f)).replace("__BEFORE__", lua_str(before))
                .replace("__KIND__", lua_str(extra.get("kind", "plain")))
                .replace("__FILE2__", lua_str(second[0])).replace("__BEFORE2__", lua_str(second[1])).replace("__KIND2__", lua_str(second[2])))
@@ -788,10 +802,6 @@ def main():
         report(tag, r, e, allowed=put, later=1)
         declared.append((tag, own + TOLD_E))
         declared1.append((tag, 1))   # (its one unrelated later error: S_ERR 'geterrorhandler()("__UNRELATED__")')
-        if own == 0:
-            print("NOTE [%s] the error put in is not in the record: with nothing watched only core's handler files it, and core's "
-                  "ns.ErrorFolder (XayaUI/Core.lua) does not read a shortened file name ('...ddOns/XayaUI_Bonus_StatCalculator/...'); "
-                  "reported for Core.lua" % tag)
     k += 1
     src = (fill(S_BADOBJ, "%s [case %d]" % (MARK, k), k * 1000000).replace("__FILE__", lua_str("StatMath.lua")).replace("__BEFORE__", lua_str(SOLVE))
            .replace("__KIND__", lua_str("badobj")).replace("__FILE2__", "nil").replace("__BEFORE2__", "nil").replace("__KIND2__", "nil"))
@@ -806,9 +816,10 @@ def main():
         report(tag, r, e, allowed_other=path.split("/")[-1])
     k += 1
     r, e, rec = session(fill(S_SWAP, MARK, k * 1000000), None, ON)
-    report("another addon replaces the error handler during the load", r, e, allowed=1)
-    # (H's later error in play, raised by the test's own geterrorhandler()("__H_MSG__") call: filed once by core under XUI-E009)
-    declared.append(("another addon replaces the error handler during the load (the later error in play)", 1))
+    report("another addon replaces the error handler during the load", r, e, allowed=2)
+    # (H's two later errors in play, raised by the test's own geterrorhandler()("__H_MSG__") and geterrorhandler()("__H_CUT_MSG__")
+    # calls: each filed once by core under XUI-E009)
+    declared.append(("another addon replaces the error handler during the load (the two later errors in play)", 2))
     # R: SD-146 for the other two causes
     for tag, line, off, gone in (("switched off in the AddOns list", DISABLED, (CALC,), ()),
                                  ("folder not installed", MISSING, (), (CALC,))):

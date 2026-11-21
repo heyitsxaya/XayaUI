@@ -32,9 +32,26 @@ runs too long is marked HUNG, not passed."). On top of the last-line rule, a tes
                    XayaUI reports is saved there, Advanced Debugging on or off; an engine step error caught by SafeStep is XUI-E011).
                    A test that causes an error on purpose declares it on a line of its output: "EXPECT_ERRORS <code> <n>", for
                    example "EXPECT_ERRORS XUI-E011 2"; n is exact (a declared error that did not happen fails too, as
-                   EXPECTED ERROR NOT SEEN). Counting: one entry per code and message with a repeat count n (DebugRecord.lua); an
-                   entry a later runtime of the same test loaded from saved data (same code, message and first time) counts once,
-                   at its highest n; entries of separate runtimes add up.
+                   EXPECTED ERROR NOT SEEN). Counting: one entry per code and message with a repeat count n (DebugRecord.lua),
+                   and each occurrence counts once, in the runtime where it happened. A runtime made with the stand-in's loader
+                   (tests/harness/loader.lua) has the loader's note of every entry it handed over from saved data and its count then
+                   (Lua registry "XayaUI.harness.loadedErrorLog"): such a runtime counts what it added (n minus the noted count), so
+                   an entry carried from one session into the next counts once and two separate sessions add up even when they
+                   started in the same second (round 11 repair 2; before, entries were merged on code, message and first time, and
+                   the stand-in's time() is the host's clock: fix_r10_display counted "W002 x1" for five sessions). An entry the test
+                   seeded in saved data (noted, but made by no runtime of the test) counts once, at its seeded count. A runtime
+                   without the loader (a test's own bare LuaRuntime) keeps the old rule: same code, message and first time count
+                   once, at the highest n.
+                   THE LIMIT of this count (round 11 repair, the R11A repair-2 review): a runtime is read ONCE, when it is freed
+                   (or at the exit), and what is read is the last session's CueRulesDB. So several stand-in loader sessions made in
+                   ONE runtime, each handing its saved data to the next, would be read as the last one only: the earlier sessions'
+                   occurrences are subtracted as "carried" but never read, which undercounts and could hide an error. No test does
+                   this today (every loader is made in a fresh runtime). The guard watches for it: in each runtime it counts the
+                   loader sessions made there (the stand-in's loader is always made through dofile(".../harness/loader.lua")(W,
+                   opts); the guard's dofile counts each call of the function that returns), and a runtime with more than one is
+                   GUARD BLIND, never a pass
+                   (tests/fix_r11_honest_result_run.py T2-T4; T5 checks that every place a test makes the loader goes through
+                   that dofile). A loader made any other way (loadfile, loadstring) would not be counted: T5 fails on such a site.
   GUARD BLIND      the test process ended without the guard's report (it left through os._exit, or crashed the interpreter), so
                    nothing above could be read: a run the guard could not see is not a pass.
   HUNG             it ran past its time limit (its own state, printed "HUNG", never ok); it and every process it started are stopped.
@@ -117,15 +134,27 @@ def time_limit(path, default=DEFAULT_TIME_LIMIT):
 
 
 def tally_record(entries):
-    """{code: occurrences} from the record entries the child read: per (code, message, first time) the highest n (one entry a later
-    runtime loaded from saved data), summed per code over the rest."""
-    best = {}
+    """{code: occurrences} from the record entries the child read (see ERROR RECORD in the module docstring). An entry with "carried"
+    (its runtime had the stand-in's loader; the count the loader handed over from saved data, 0 when it came from none) adds what its
+    runtime added; a noted entry that no runtime of the test made (seeded in saved data) adds its seeded count once. An entry without it
+    (a runtime without the loader): per (code, message, first time) the highest n, summed per code over the rest."""
+    out, made, seeded, legacy = {}, set(), {}, {}
     for e in entries:
-        key = (e.get("code"), e.get("msg"), e.get("first"))
-        best[key] = max(best.get(key, 0), int(e.get("n") or 1))
-    out = {}
-    for (code, _msg, _first), n in best.items():
-        out[code] = out.get(code, 0) + n
+        code, key, n = e.get("code"), (e.get("code"), e.get("msg"), e.get("first")), int(e.get("n") or 1)
+        carried = e.get("carried")
+        if carried is None:
+            legacy[key] = max(legacy.get(key, 0), n)
+            continue
+        out[code] = out.get(code, 0) + max(n - carried, 0)
+        if carried == 0:
+            made.add(key)
+        else:
+            seeded[key] = min(seeded.get(key, carried), carried)
+    for key, n in seeded.items():
+        if key not in made:   # (noted, but made by no runtime of this test: seeded in saved data, counted once at its seeded count)
+            out[key[0]] = out.get(key[0], 0) + n
+    for key, n in legacy.items():
+        out[key[0]] = out.get(key[0], 0) + n
     return out
 
 
@@ -222,25 +251,54 @@ def run_one(path, args=(), limit=None, cwd=None):
 # ---------------------------------------------------------------------------------------------------------------------------------
 # the child: runs one test with the guard's eyes on it (python3 tests/run_all.py --m1-child REPORT.json TEST.py [args])
 # ---------------------------------------------------------------------------------------------------------------------------------
-# reads CueRulesDB.errorLog with rawget only (the stand-in's _G reports every unknown global it is asked for: tests/harness/world.lua)
+# (round 11 repair) the guard's count of stand-in loader sessions per runtime (see THE LIMIT under ERROR RECORD): installed in every
+# runtime the child registers, before the test runs any Lua. dofile is wrapped so that the function tests/harness/loader.lua returns
+# counts each call (each call is one session). Kept in the Lua registry (no global the addons see; dofile itself stays the same name).
+# A runtime without the debug library or dofile is not counted ("-").
+SESSIONS_KEY = "XayaUI.runall.loaderSessions"
+SESSIONS_LUA = r'''function()
+  local dbg = rawget(_G, "debug")
+  local getreg = type(dbg) == "table" and rawget(dbg, "getregistry") or nil
+  local df = rawget(_G, "dofile")
+  if type(getreg) ~= "function" or type(df) ~= "function" then return false end
+  local reg, KEY = getreg(), "__KEY__"
+  rawset(reg, KEY, 0)
+  local function counted(f)
+    return function(...) rawset(reg, KEY, (rawget(reg, KEY) or 0) + 1); return f(...) end
+  end
+  local function pass(path, ...)
+    if type(path) == "string" and path:match("[/\\]loader%.lua$") and type((...)) == "function" then return counted((...)), select(2, ...) end
+    return ...
+  end
+  rawset(_G, "dofile", function(path) return pass(path, df(path)) end)
+  return true
+end'''.replace("__KEY__", SESSIONS_KEY)
+# reads CueRulesDB.errorLog with rawget only (the stand-in's _G reports every unknown global it is asked for: tests/harness/world.lua).
+# Its first row is "#sessions\t<n>": the loader sessions counted in this runtime ("-": not counted)
 HARVEST_LUA = r'''function()
+  local dbg0 = rawget(_G, "debug")
+  local reg0 = type(dbg0) == "table" and type(rawget(dbg0, "getregistry")) == "function" and dbg0.getregistry() or nil
+  local sessions = "#sessions\t" .. tostring(type(reg0) == "table" and rawget(reg0, "__KEY__") or "-")
   local db = rawget(_G, "CueRulesDB")
-  if type(db) ~= "table" then return nil end
+  if type(db) ~= "table" then return sessions end
   local log = rawget(db, "errorLog")
-  if type(log) ~= "table" then return nil end
-  local out, i = {}, 1
+  if type(log) ~= "table" then return sessions end
+  -- the stand-in loader's note of what came from saved data (tests/harness/loader.lua); "-": this runtime had no loader
+  local dbg = rawget(_G, "debug")
+  local note = type(dbg) == "table" and type(rawget(dbg, "getregistry")) == "function" and rawget(dbg.getregistry(), "XayaUI.harness.loadedErrorLog") or nil
+  local out, i = { sessions }, 1
   while i <= 200 do
     local e = rawget(log, i)
     if e == nil then break end
     if type(e) == "table" then
       local msg = tostring(rawget(e, "msg")):gsub("[\t\n\r]", " ")
       out[#out + 1] = tostring(rawget(e, "code")) .. "\t" .. tostring(rawget(e, "kind")) .. "\t" .. tostring(rawget(e, "n")) .. "\t" ..
-        tostring(rawget(e, "first")) .. "\t" .. msg:sub(1, 300)
+        tostring(rawget(e, "first")) .. "\t" .. (type(note) == "table" and tostring(rawget(note, e) or 0) or "-") .. "\t" .. msg:sub(1, 300)
     end
     i = i + 1
   end
   return table.concat(out, "\n")
-end'''
+end'''.replace("__KEY__", SESSIONS_KEY)
 NO_REPO_GIT = {"init", "clone", "version", "help", "--version", "--help", "-h"}
 
 
@@ -258,15 +316,31 @@ def _child(rpath, test, argv):
         except Exception as e:   # (a runtime closed or broken by the test: its record cannot be read)
             state["guardErrors"].append("a Lua runtime's error record could not be read: %s" % str(e)[:200])
             return
+        if isinstance(text, bytes):   # (a runtime made with encoding=None returns bytes: read them as text, not as their repr)
+            text = text.decode("utf-8", "replace")
         for row in str(text or "").split("\n"):
             if not row:
                 continue
-            code, kind, n, first, msg = (row.split("\t", 4) + ["", "", "", "", ""])[:5]
+            if row.startswith("#sessions\t"):
+                try:
+                    k = int(float(row.split("\t", 1)[1]))
+                except ValueError:
+                    k = None   # ("-": this runtime's sessions were not counted)
+                if k is not None and k > 1:
+                    state["guardErrors"].append(
+                        "one Lua runtime made %d stand-in loader sessions: its error record is read once, when the runtime is freed, "
+                        "so the earlier sessions' entries could not be counted (make each session in a fresh runtime)" % k)
+                continue
+            code, kind, n, first, carried, msg = (row.split("\t", 5) + ["", "", "", "", "", ""])[:6]
             try:
                 n = int(float(n))
             except ValueError:
                 n = 1
-            state["entries"].append({"code": code, "kind": kind, "n": n, "first": first, "msg": msg})
+            try:
+                carried = None if carried == "-" else int(float(carried))
+            except ValueError:
+                carried = None
+            state["entries"].append({"code": code, "kind": kind, "n": n, "first": first, "carried": carried, "msg": msg})
 
     def write():
         try:
@@ -284,6 +358,10 @@ def _child(rpath, test, argv):
             def __init__(self, *a, **kw):
                 state["runtimes"] += 1
                 seen_rt.add(self)
+                try:   # (round 11 repair) count the stand-in loader sessions made in this runtime (SESSIONS_LUA)
+                    self.eval(SESSIONS_LUA)()
+                except Exception as e:   # (a runtime the guard cannot prepare: said, not hidden)
+                    state["guardErrors"].append("a Lua runtime could not be prepared to count its loader sessions: %s" % str(e)[:200])
 
             def __del__(self):   # (runs while the runtime is still whole: its Lua state closes after this)
                 harvest(self)

@@ -154,10 +154,11 @@ local loadTried, loadOk = false, false
 -- and (2): XayaUI files the error only by core's own handler, if that addon passes errors on to it at all, by core's reading of the
 -- message (the folder the message names, else the first addon file on the stack), and a Lua error the game reports during the load
 -- without stopping a file (a frame script) is not counted. (round 11 repair 2, measured in the stand-in, tests/fix_r11_statcalc E
--- "error handler held by another addon"): core's handler then files nothing at all for an error in StatCalculator.lua, because the
--- game shortens a file name longer than 60 characters ("...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:N: ...", INFERENCE
--- for the game, Lua 5.1's rule in the stand-in) and core's ns.ErrorFolder (XayaUI/Core.lua) reads only a full "AddOns/<folder>/"
--- name; and an error a calculator file reports and then goes on from (a helper run under xpcall) is not seen at all, so that load
+-- "error handler held by another addon"; round 11a final fix): core's handler files the error under XUI-E009, also for
+-- StatCalculator.lua, whose name Lua shortens ("...ddOns/XayaUI_Bonus_StatCalculator/StatCalculator.lua:N: ...", INFERENCE for the
+-- game, Lua 5.1's rule in the stand-in; core's ns.ErrorFolder in XayaUI/Core.lua reads that form since the round 11a final fix and
+-- filed nothing for it before); but an error a calculator file reports and then goes on from (a helper run under xpcall) is not
+-- seen at all, so that load
 -- counts as loaded and StatCalculator.lua starts up (its LoadBroken stand-down reads FilesErrored, which stays false). UNVERIFIED IN
 -- GAME.
 -- One function made once at file load (SD-90), one table: nothing is made per call, and nothing runs outside this one call. ReadFiles
