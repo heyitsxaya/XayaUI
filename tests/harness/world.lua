@@ -10,6 +10,10 @@
 --   * reads of global names that exist nowhere are recorded (not errors): the report lists them for review, because legitimate
 --     code also asks "is this there?" (if C_Foo then ...).
 --   * errors inside scripts and event handlers go to the error handler and the world carries on, as in the game.
+--   * (round 11b, SD-120) hidden data as keys, raids and boss fights hide it: the addon restrictions (combat, encounter, Mythic+ key,
+--     map, chat) with drivers (W.enterCombat, W.enterInstance, W.startKey, W.startEncounter and their ends), state-driven C_Secrets /
+--     C_RestrictedActions answers, hidden aura and cooldown reads, forbidden aura buttons and an API guard for widget calls, all through
+--     the shared secret object tests/harness/secret.lua (section "the game's addon restrictions" below).
 -- Usage (from the Python driver): local W = dofile("world.lua")(api)   (api = the parsed api_index.json; may be empty)
 return function(API)
 API = API or {}
@@ -48,6 +52,63 @@ local function safecall(fn, ...)
   return ok
 end
 W.safecall = safecall
+
+-------------------------------------------------------------------------------
+-- (round 11b, SD-120) hidden data: the shared secret object and the restriction state every later part reads
+-------------------------------------------------------------------------------
+-- The shared secret object (tests/harness/secret.lua), from this file's own folder (the gates copy the harness folder whole into the
+-- ad60a051 tree). One object per Lua state: the loader, a test and the gate get this very table. Installed at the end of this file
+-- (S.install: type, issecretvalue, tonumber, string.format ... ), so a test that plays this world without the loader gets it too.
+local S
+do
+  local here = (debug.getinfo(1, "S").source or ""):match("^@(.*[/\\])[^/\\]*$") or ""
+  local ok, obj = pcall(dofile, here .. "secret.lua")
+  if not ok or type(obj) ~= "table" then
+    error("tests/harness/world.lua: cannot load the shared secret object " .. here .. "secret.lua (it must sit next to world.lua): " .. tostring(obj), 0)
+  end
+  S = obj
+end
+W.S = S
+-- the natives this file needs on its error paths (S.install wraps string.format; these stay the plain ones)
+local rawformat, smatch, sfind, getinfo = string.format, string.match, string.find, debug.getinfo
+local rawtype, rawtonumber = type, tonumber   -- (the natives: S.install below replaces the globals with host-side ones and shells)
+-- The stand-in's own bodies are the game's C code: they convert with the native tonumber, never the installed shell (which would bill 5
+-- instructions per conversion to the addon that called the widget method, and raise inside world.lua on a hidden value the API allows,
+-- e.g. a hidden number to SetSize, AllowedWhenTainted). Every 'tonumber' below is this local. (A hidden value reads as no number here:
+-- the body falls back to its default, as before round 11b; the API guard, not the body, is where the game's refusals are modelled.)
+local tonumber = rawtonumber
+-- The addon restrictions (Enum.AddOnRestrictionType: 0 Combat, 1 Encounter, 2 ChallengeMode, 4 Map, 5 Chat; 3 PvPMatch is not modelled,
+-- spec L5) and their states (Enum.AddOnRestrictionState: 0 Inactive, 1 Activating, 2 Active). Read here; changed only by W.setRestriction
+-- (the restriction section below). AURAS_HIDDEN: auras and cooldowns are hidden, i.e. Combat, Encounter or ChallengeMode is Active
+-- (SecretPredicatesDocumentation.lua:80-93; patch 12.1.0 notes: "during combat, encounters, M+, and PvP matches"). Map and Chat hide
+-- neither (a raid between bosses keeps auras and cooldowns readable).
+local RSTATE = { [0] = 0, [1] = 0, [2] = 0, [4] = 0, [5] = 0 }
+W.RSTATE = RSTATE
+local AURAS_HIDDEN = false
+local DUR_MT                           -- the stand-in's duration objects' metatable (set with the duration objects below)
+local CD_ARMED = {}                    -- [Cooldown widget] = the moment its cooldown ends (OnCooldownDone: W.tick)
+-- "Addon code" (spec 2: tainted code, all of XayaUI) is a chunk loaded from Interface/AddOns/ (tests/harness/loader.lua names every
+-- addon file so); the stand-in, the gate and a test's own Lua act as the game's own (untainted) code. As in the game, execution is
+-- tainted once addon code runs anywhere up the call chain (a Blizzard function called by an addon runs tainted too): addonAt(level)
+-- answers the nearest addon whose code is on the stack from that level up (counted from the caller of addonAt), or nil when none is.
+-- Limit: Lua 5.1 drops a frame that tail-calls ('return f:SetShown(v)'); when that frame was the only addon frame left, the call is
+-- read as untainted (a missed refusal, never a false alarm). Run only on the hidden paths (a hidden argument, auras hidden).
+local function addonAt(level)
+  local l = level + 1
+  while true do
+    local info = getinfo(l, "S")
+    if not info then return nil end
+    if info.what == "Lua" or info.what == "main" then
+      local a = smatch(info.source or "", "^@Interface/AddOns/([^/]+)/")
+      if a then return a end
+    end
+    l = l + 1
+  end
+end
+local function tainted(addon) return " (execution tainted by '" .. addon .. "')" end
+-- a documented method the stand-in does not implement: a quiet stand-in (this one until the API guard below replaces it with guarded ones)
+local function quietNil() return nil end
+W.quietMethod = function() return quietNil end
 
 -------------------------------------------------------------------------------
 -- frames
@@ -108,7 +169,7 @@ objMeta.__index = function(t, k)
   -- such method, record it (the report fails on these)
   if k:match("^[A-Z]") then
     if DOCUMENTED[k] or MIXIN[k] or not HAVE_DOCS then
-      return function(self) return nil end
+      return W.quietMethod(k)   -- (one shared quiet stand-in per name; guarded like the implemented methods: "the API guard" below)
     end
     -- the game has no such method: nil, as in the game (a call then errors with the line that made it; a probe such as
     -- "if f.MarkLayoutDirty then" simply finds nothing). Probes are listed in the report for review.
@@ -400,9 +461,28 @@ function proto:SetReverseFill() end
 function proto:SetFillStyle() end
 function proto:SetThumbTexture() end
 function proto:GetThumbTexture() self._thumb = self._thumb or new("Texture", nil, self); return self._thumb end
-function proto:SetCooldown(s, d) self._cd = { s, d } end
-function proto:SetCooldownFromDurationObject() end
-function proto:Clear() end
+-- (round 11b) a Cooldown runs out: OnCooldownDone at the first W.tick at or after its end while it is shown (alpha does not matter), as
+-- the game's widget does (INFERENCE, UNVERIFIED IN GAME; the same reading as tests/fix_r7_engine_timers_run.py). Fed a stand-in duration
+-- object (C_Spell.GetSpellCooldownDuration below), it times that object's end, hidden or not: the widget, not addon code, reads it.
+-- clearIfZero (default true, widgets.md:1013): an object that has already ended clears the widget, which then never runs OnCooldownDone;
+-- with false the widget ends at once (INFERENCE, the reading XayaUI_Rules/Engine.lua relies on). Any other object: nothing to time.
+function proto:SetCooldown(s, d)
+  self._cd = { s, d }
+  if rawtype(s) ~= "number" or rawtype(d) ~= "number" then s, d = rawtonumber(S.reveal(s)), rawtonumber(S.reveal(d)) end
+  if s and d and d > 0 then CD_ARMED[self] = s + d else CD_ARMED[self] = nil end
+end
+function proto:SetCooldownFromDurationObject(dur, clearIfZero)
+  if type(dur) ~= "table" or getmetatable(dur) ~= DUR_MT then return end
+  local s, d = dur._s, dur._d
+  local finish = s + d
+  if d <= 0 or W.now >= finish then
+    if clearIfZero ~= false then self._cd = nil; CD_ARMED[self] = nil; return end
+    finish = W.now
+  end
+  self._cd = { s, d }
+  CD_ARMED[self] = finish
+end
+function proto:Clear() self._cd = nil; CD_ARMED[self] = nil end
 function proto:SetDrawEdge() end
 function proto:SetDrawSwipe() end
 function proto:SetDrawBling() end
@@ -580,9 +660,54 @@ CustomAuraContainerAuraProcessingPolicy = { None = 0, ProcessAura = 1 }
 -- the gate sets it, runs for each new button after its initializeFrame.
 W.auraContainers, W.auraButtons = {}, {}
 -- the aura button's own methods (Blizzard's CustomAuraButton; the addon's initializeFrame calls these): quiet
-local AURA_BUTTON_METHODS = { "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
-  "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }
+local AURA_BUTTON = {}
 local function quiet() end
+for _, m in ipairs({ "SetIcon", "SetDurationCooldown", "SetDurationText", "SetDurationBar", "SetApplicationCount", "SetApplicationBar",
+  "SetSpellName", "AddDispelTypeTexture", "ApplyDispelTypeTexture" }) do AURA_BUTTON[m] = quiet end
+-- (round 11b, SD-120) Forbidden aura buttons (patch 12.1.0 notes, 07-14 and 07-23; spec 2.2): while auras are hidden, ANY method addon
+-- code calls on a button the container made errors. Exempt: (a) calls inside the group's initializeFrame callback (and before it: the
+-- button is the container's until then); (b) the button's native script-object methods (SetPoint, SetSize, Show ...: the widget API, not
+-- the CustomAuraButton methods above) during a UI (re)load, until PLAYER_LOGIN. Once auras are readable again the buttons are not
+-- forbidden. The stand-in's own code, the gate's (G.syncContainers) and a test's Lua are not addon code (addonAt above): they reach the
+-- button as the game's secure code does. The text is the one players report for forbidden frames, not checked against a source here
+-- (INFERENCE). Limit: the check runs when a method is looked up while auras are hidden and again when it is called; a method addon code
+-- looked up while auras were readable and kept in a local escapes it (the game checks every call).
+-- Cost: nothing while auras are readable. A readable button is a plain widget, as before round 11b: its CustomAuraButton methods are
+-- raw fields and its metatable is every widget's (objMeta), so SetIcon costs one raw read and SetSize the widget lookup, no extra hop.
+-- Only when the hidden state flips (refresh, in the restriction section) does setButtonsHidden swap each live button to the forbidding
+-- form (raw fields = the shared forbidding wrappers, metatable = hiddenButtonMeta) and back: work per flip, never per call.
+W.TEXT_FORBIDDEN = "Attempt to access forbidden object from code tainted by an AddOn"
+local INIT = setmetatable({}, { __mode = "k" })          -- [button] = true while its initializeFrame runs
+local FORBIDDING = setmetatable({}, { __mode = "k" })    -- [method] = its forbidding wrapper (one per method, shared by every button)
+local function forbidding(real, native)
+  local w = FORBIDDING[real]
+  if w then return w end
+  w = function(self, ...)
+    if AURAS_HIDDEN and not INIT[self] and not (native and not W.loggedIn) then
+      local addon = addonAt(2)
+      if addon then error(W.TEXT_FORBIDDEN .. tainted(addon), 2) end
+    end
+    return real(self, ...)
+  end
+  FORBIDDING[real] = w
+  return w
+end
+-- the hidden form's metatable: the native widget methods, looked up as for any widget, come back as forbidding wrappers
+local hiddenButtonMeta = { __index = function(t, k)
+  local m = objMeta.__index(t, k)   -- (objMeta.__index read now: a gate that replaced it is honoured)
+  if type(m) == "function" then return forbidding(m, true) end
+  return m
+end }
+local BUTTONS = setmetatable({}, { __mode = "k" })   -- [aura button] = true: every live button the container made
+-- put one button in the readable (hidden = false) or hidden form; a raw field the addon replaced with its own value is left alone
+local function buttonForm(b, hidden)
+  for m, real in pairs(AURA_BUTTON) do
+    local cur, wrapped = rawget(b, m), forbidding(real, false)
+    if cur == real or cur == wrapped then rawset(b, m, hidden and wrapped or real) end
+  end
+  setmetatable(b, hidden and hiddenButtonMeta or objMeta)
+end
+local function setButtonsHidden(hidden) for b in pairs(BUTTONS) do buttonForm(b, hidden) end end
 -- the container's methods: one shared function each (no function made per container or per call)
 local AC = {}
 function AC.SetUnit(self, unit) self.acUnit = unit end
@@ -597,9 +722,13 @@ function AC.AddAuraGroup(self, key, filter, o)
   self.groups[key] = g
   if type(o) == "table" and type(o.initializeFrame) == "function" then
     local b = new("Button", nil, self)
+    for m, real in pairs(AURA_BUTTON) do rawset(b, m, real) end
+    BUTTONS[b] = true
+    buttonForm(b, AURAS_HIDDEN)
+    INIT[b] = true   -- (the container's own set-up and the addon's initializeFrame: allowed while auras are hidden)
     b:SetSize(36, 36); b:SetPoint("CENTER", self, "CENTER", 0, 0); b:Hide(); rawset(b, "_blizzard", true)
-    for _, m in ipairs(AURA_BUTTON_METHODS) do rawset(b, m, quiet) end
     safecall(o.initializeFrame, b)   -- (Blizzard's code calls it; an error in it is the addon's: reported as a Lua error, never dropped)
+    INIT[b] = nil
     local e = { button = b, opts = o, container = self, key = key, group = g }
     W.auraButtons[#W.auraButtons + 1] = e
     if W.onAuraButton then W.onAuraButton(e) end
@@ -809,9 +938,7 @@ bit = bit or { band = function(a, b) local r, m = 0, 1; while a > 0 and b > 0 do
   bor = function(a, b) local r, m = 0, 1; while a > 0 or b > 0 do if a % 2 == 1 or b % 2 == 1 then r = r + m end; a, b, m = math.floor(a / 2), math.floor(b / 2), m * 2 end; return r end,
   lshift = function(a, n) return a * 2 ^ n end, rshift = function(a, n) return math.floor(a / 2 ^ n) end, bxor = function(a, b) local r, m = 0, 1; while a > 0 or b > 0 do if (a % 2) ~= (b % 2) then r = r + m end; a, b, m = math.floor(a / 2), math.floor(b / 2), m * 2 end; return r end,
   bnot = function(a) return -1 - a end }
-issecretvalue = function(v) return W.secret and W.secret[v] or false end
-canaccessvalue = function(v) return not issecretvalue(v) end
-issecrettable = function() return false end
+-- (round 11b) issecretvalue, canaccessvalue, issecrettable, canaccesstable: the shared secret object's, installed at the end of this file
 securecallfunction = function(fn, ...) return fn(...) end
 secureexecuterange = function(t, fn, ...) for k, v in pairs(t) do fn(k, v, ...) end end
 scrub = function(...) return ... end
@@ -842,8 +969,9 @@ C_Timer = { After = function(d, fn) addTimer(d, fn, 1) end,
   NewTimer = function(d, fn) local h; h = addTimer(d, function() fn(h) end, 1); return h end,
   NewTicker = function(d, fn, n) local h; h = addTimer(d, function() fn(h) end, n or math.huge); return h end }
 InCombatLockdown = function() return W.combat end
--- (round 11, scope item 1) the player is already affecting combat while PLAYER_REGEN_DISABLED is handled, before the lockdown begins
--- (W.enterCombat sets W.affecting only for that dispatch; INFERENCE from the event's meaning, as tests/gate_common.py fight())
+-- (round 11, scope item 1; round 11b) W.affecting: the player is affecting combat (UnitAffectingCombat), its own flag, set by W.enterCombat
+-- before PLAYER_REGEN_DISABLED is handled (the lockdown begins only after it) and cleared by W.leaveCombat (INFERENCE from the event's
+-- meaning; spec 3.2: it replaces the gate's own patch). W.combat alone (a test that sets the lockdown directly) still counts, as before.
 UnitAffectingCombat = function(u) return (W.combat or W.affecting) and true or false end
 
 -------------------------------------------------------------------------------
@@ -880,9 +1008,7 @@ GetNumSpecializations = function() return 3 end
 GetSpecializationRole = function() return "TANK" end
 IsInGroup = function() return false end
 IsInRaid = function() return false end
-IsInInstance = function() return false, "none" end
 GetNumGroupMembers = function() return 0 end
-GetInstanceInfo = function() return "Khaz Algar", "none", 0, "", 5, 0, false, 2552, 0 end
 GetZoneText = function() return "Dornogal" end
 GetRealZoneText = function() return "Dornogal" end
 GetSubZoneText = function() return "" end
@@ -918,20 +1044,16 @@ C_ChatInfo = { RegisterAddonMessagePrefix = function() return true end, IsAddonM
   InChatMessagingLockdown = function() return false end, GetChannelName = function() return 0 end }
 C_Spell = { GetSpellInfo = function(id) id = tonumber(id); if not id then return nil end return { name = "Spell " .. id, spellID = id, iconID = 136243, castTime = 0, minRange = 0, maxRange = 0, originalIconID = 136243 } end,
   GetSpellName = function(id) return id and ("Spell " .. tostring(id)) or nil end, GetSpellTexture = function(id) return 136243, 136243 end,
-  GetSpellCooldown = function() return { startTime = 0, duration = 0, isEnabled = true, modRate = 1 } end,
-  GetSpellCharges = function() return nil end, IsSpellUsable = function() return true, false end, DoesSpellExist = function() return true end,
+  IsSpellUsable = function() return true, false end, DoesSpellExist = function() return true end,
   GetSpellLink = function(id) return "|cff71d5ff|Hspell:" .. tostring(id) .. "|h[Spell]|h|r" end, GetSpellDescription = function() return "" end,
   IsSpellPassive = function() return false end, GetOverrideSpell = function(id) return id end, GetBaseSpell = function(id) return id end,
   GetSpellIDForSpellIdentifier = function(x) return tonumber(x) end, IsSpellInRange = function() return true end, IsCurrentSpell = function() return false end,
-  GetSpellCastCount = function() return 0 end, GetSpellPowerCost = function() return {} end, RequestLoadSpellData = function() end,
-  GetSpellLossOfControlCooldown = function() return 0, 0 end, GetSpellBookItemInfo = function() return nil end }
+  GetSpellPowerCost = function() return {} end, RequestLoadSpellData = function() end,
+  GetSpellBookItemInfo = function() return nil end }   -- (round 11b: the cooldown reads are with the restrictions, below)
 C_Item = { GetItemInfo = function() return nil end, GetItemIconByID = function() return 134400 end, GetItemNameByID = function(id) return "Item " .. tostring(id) end,
   GetItemCount = function() return 0 end, GetItemCooldown = function() return 0, 0, 1 end, RequestLoadItemDataByID = function() end, IsEquippedItem = function() return false end,
   GetItemSpell = function() return nil end, GetItemInfoInstant = function(id) return tonumber(id), "Armor", "Cloth", "INVTYPE_HEAD", 134400, 4, 1 end, DoesItemExistByID = function() return true end }
-C_UnitAuras = { GetAuraDataByIndex = function() return nil end, GetPlayerAuraBySpellID = function() return nil end, GetAuraDataBySpellName = function() return nil end,
-  GetAuraDataByAuraInstanceID = function() return nil end, GetUnitAuras = function() return {} end, GetBuffDataByIndex = function() return nil end,
-  GetDebuffDataByIndex = function() return nil end, GetAuraSlots = function() return nil end, IsAuraFilteredOutByInstanceID = function() return false end,
-  GetCooldownAuraBySpellID = function() return nil end, AuraIsBigDefensive = function() return false end, GetAuraDuration = function() return nil end }
+C_UnitAuras = { GetCooldownAuraBySpellID = function() return nil end, AuraIsBigDefensive = function() return false end }   -- (round 11b: the aura reads are with the restrictions, below)
 C_SpellBook = { GetNumSpellBookSkillLines = function() return 0 end, GetSpellBookSkillLineInfo = function() return nil end, GetSpellBookItemInfo = function() return nil end,
   IsSpellKnown = function() return false end, IsSpellInSpellBook = function() return false end, HasPetSpells = function() return nil end, FindSpellBookSlotForSpell = function() return nil end }
 IsPlayerSpell = function() return false end
@@ -966,11 +1088,9 @@ Constants.ChatFrameConstants.MaxChatWindows = 10
 INVSLOT_MAINHAND, INVSLOT_OFFHAND, INVSLOT_RANGED = 16, 17, 18
 LE_PARTY_CATEGORY_HOME, LE_PARTY_CATEGORY_INSTANCE = 1, 2
 C_GameRules = { IsGameRuleActive = function() return false end }
-C_Secrets = { HasSecretRestrictions = function() return false end, GetSpellAuraSecrecy = function() return 0 end, ShouldAurasBeSecret = function() return false end,
-  ShouldCooldownsBeSecret = function() return false end, ShouldUnitIdentityBeSecret = function() return false end }
-C_RestrictedActions = { IsAddOnRestrictionActive = function() return false end }
+-- (round 11b) C_Secrets, C_RestrictedActions, C_ChallengeMode, C_InstanceEncounter, IsInInstance and GetInstanceInfo answer from the
+-- restriction state: the section "the game's addon restrictions" below
 C_PartyInfo = { IsPartyWalkIn = function() return false end }
-C_ChallengeMode = { IsChallengeModeActive = function() return false end, GetActiveKeystoneInfo = function() return 0, {}, false end }
 C_Map = { GetBestMapForUnit = function() return 2339 end, GetMapInfo = function() return { name = "Dornogal", mapID = 2339 } end, GetPlayerMapPosition = function() return nil end }
 C_FriendList = { GetNumOnlineFriends = function() return 3 end, GetNumFriends = function() return 5 end, AddIgnore = function() end, GetFriendInfoByIndex = function() return nil end, ShowFriends = function() end }
 BNGetNumFriends = function() return 5, 2 end
@@ -978,8 +1098,7 @@ C_BattleNet = { GetFriendAccountInfo = function() return nil end, GetFriendNumGa
 C_CurrencyInfo = { GetCurrencyInfo = function() return nil end, GetBackpackCurrencyInfo = function() return nil end, GetCurrencyListSize = function() return 0 end }
 C_Container = { GetContainerNumSlots = function() return 0 end, GetContainerNumFreeSlots = function() return 0, 0 end, GetContainerItemInfo = function() return nil end }
 C_DateAndTime = { GetCurrentCalendarTime = function() return { hour = 12, minute = 0, weekday = 3, monthDay = 3, month = 11, year = 2026 } end, GetServerTimeLocal = function() return 0 end }
-C_DurationUtil = { CreateDuration = function() return { SetTimeFromStart = function() end, GetRemainingDuration = function() return 0 end, IsZero = function() return true end,
-  SetTimeSpan = function() end, GetTotalDuration = function() return 0 end, GetElapsedDuration = function() return 0 end, HasSecretValues = function() return false end } end }
+-- (round 11b) C_DurationUtil.CreateDuration: the stand-in's duration objects, with the restrictions below
 C_CooldownViewer = { GetCooldownViewerCategorySet = function() return {} end, GetCooldownViewerCooldownInfo = function() return nil end, IsCooldownViewerAvailable = function() return false end }
 C_EncounterJournal = { GetEncountersOnMap = function() return {} end }
 C_PvP = { IsActiveBattlefield = function() return false end, IsRatedMap = function() return false end, IsWarModeDesired = function() return false end }
@@ -1124,13 +1243,694 @@ do
   end
 end
 
--- Secret values. issecretvalue(v) answers W.secret[v] (as before). W.MarkSecret(v) marks a value secret for a test and returns it;
--- W.ClearSecret(v) undoes it. Keys are values, so marking 5 makes every 5 secret: mark something unique (a string such as
--- "secret-name-1", or a table). Nothing is marked by default: marking everything would fail code paths the game leaves readable.
--- Limit: a secret here is only reported by issecretvalue / canaccessvalue; arithmetic or comparison on it does not error as it
--- does in the game.
-function W.MarkSecret(v) W.secret = W.secret or {}; W.secret[v] = true; return v end
+-- Secret values marked by a test (round 11b: a real hidden value). W.MarkSecret(v) hands back v hidden (tests/harness/secret.lua S.new:
+-- a number or string stays its real type, a table becomes a hidden table, payload shape A) and keeps it in W.secret, the registry tests
+-- read. Use the value it returns: the plain v you passed stays plain (before round 11b W.secret[v] marked v itself, so marking 5 made
+-- every 5 secret). A value the game never hides (a test's own newproxy token, a function) keeps the old mark (the bridge in secret.lua
+-- answers issecretvalue for it) until its test moves to secret.lua (spec step 5). W.ClearSecret(v) drops v from W.secret; a hidden value
+-- stays hidden (the game never un-hides a value): pass a plain value afterwards.
+function W.MarkSecret(v)
+  W.secret = W.secret or {}
+  local k = type(v)
+  if k == "number" or k == "string" or k == "table" or k == "boolean" then v = S.new(v) end
+  W.secret[v] = true
+  return v
+end
 function W.ClearSecret(v) if W.secret then W.secret[v] = nil end end
+
+-------------------------------------------------------------------------------
+-- (round 11b, SD-120) the game's addon restrictions and the data they hide (build spec sections 2.2, 3.2 and 3.3, kept in the private
+-- XUI-Docs repo; sources there: SecretPredicatesDocumentation.lua = PRED, RestrictedActionsDocumentation.lua = RAD,
+-- RestrictedActionsConstantsDocumentation.lua = RACD, the patch notes, docs/reference/api/api.json)
+-------------------------------------------------------------------------------
+-- What it models (every order below is INFERENCE unless marked confirmed; tests/fix_r11_restrict_run.py plays both settings of each flip):
+--   * W.setRestriction(type, on): on = Activating (1), ADDON_RESTRICTION_STATE_CHANGED(type, 1) is fired, then Active (2) with no second
+--     event; off = Inactive (0), then the event (type, 0) (RAD:97-106, confirmed; "no second event" INFERENCE). While an Activating event
+--     is dispatched, GetAddOnRestrictionState(type) is 1 and IsAddOnRestrictionActive answers false for EVERY type (RAD:58, the literal
+--     reading). Each (type, state) fired is kept in W.restrictionLog (the gate's integrity checks, spec 4.3).
+--   * auras and cooldowns are hidden while Combat, Encounter or ChallengeMode is Active (PRED:80-93, confirmed): so a key between pulls is
+--     hidden, and an encounter while out of combat too (INFERENCE from RACD:27). Map and Chat hide neither: a raid between bosses keeps
+--     auras and cooldowns readable (spec 1, clarification). Chat is Active on a dungeon or raid map and while an Encounter or ChallengeMode
+--     is Active (PRED:64-68, confirmed); its events fire here, the data it hides (UnitIsAFK ...) stays readable (spec L5: looser than the
+--     game). Unit identity stays readable (L4: looser than the game).
+--   * per spell, NeverSecret (0) and AlwaysSecret (1) override the state both ways; an unknown spell is ContextuallySecret (2)
+--     (PRED:27-31, :80-83, :90-93; Enum.SecrecyLevel). W.auraSecrecy[spellID] and W.cdSecrecy[spellID] hold a test's levels.
+--   * drivers: W.enterCombat / W.leaveCombat, W.enterInstance / W.leaveInstance, W.startKey / W.completeKey, W.startEncounter /
+--     W.endEncounter, each in the default order of spec 3.3, with its flip (W.*RestrictFirst, documented at each driver).
+--   * W.combat set on its own (a test that wants the lockdown alone) leaves every restriction as it is: a harness-only state, NOT the game
+--     (RACD:26: Combat is "actively affecting combat"; the game's lockdown and Combat restriction coincide apart from their edges).
+-- Cost (V27 / V33; stand-in instructions, not WoW CPU): nothing runs until a driver or a read is called (W.tick adds one next() call per
+-- frame for the Cooldown widgets). The stand-in's own work is host-side where the game's is C (spec 3.1, 4.4.5): the C-API readers and
+-- the API guard's decision (below), so what addon code is billed does not grow with what is hidden. Measured 2026-11-21, instructions
+-- per call billed to addon code, 1,000 calls from an addon chunk under a count hook on the playing thread, the loop itself subtracted
+-- (each figure includes the CALL and its argument loads), against the world before round 11b (old) and this unit's first build (first):
+--                                                     old   first   now
+--   FontString:SetText / Frame:SetAlpha, plain value    11     19     21   (guard: one wrapper + one host-side verdict)
+--   ... a hidden value the guard allows                 11    110     21   (the same as plain: the verdict is host-side)
+--   StatusBar:SetValue plain / hidden                   14  22/123  24/24
+--   Cooldown:SetCooldown, plain                         15     38     40   (guard + the widget now times its end for OnCooldownDone)
+--   C_Spell.GetSpellCooldown readable / hidden          11 62/163  10/10   (host-side: the call and secret.lua's 5-instruction shell)
+--   C_Spell.GetSpellCooldownDuration hidden              6    264     10   (old: a stub)
+--   C_UnitAuras.GetAuraDataByIndex readable              6     99     15   (old: a stub answering nil; now + the Lua aura-access check)
+--   C_UnitAuras.GetPlayerAuraBySpellID hidden            6     50     10
+--   C_Secrets.ShouldAurasBeSecret                        7      7      7
+--   aura button SetIcon / SetSize while readable       6/27  13/59   6/37  (SetSize: the guard's +10, as on every widget)
+--   refused paths (they raise, as the game does): an addon's pcall on a forbidden button method 56 (first 74), a hidden value refused
+--   by Button:SetText 63 (first 117), an aura read refused while hidden 101 (first 186): the stack walk for the calling addon (addonAt)
+--   must run on the caller's own thread, and runs only just before the error.
+-- A hidden value is allocated only while something is hidden (inside S.onAlloc). tests/fix_r11_restrict_run.py (section TC) bounds
+-- these against references measured in the same loop.
+local RESTRICTION_NAME = { [0] = "Combat", [1] = "Encounter", [2] = "ChallengeMode", [4] = "Map", [5] = "Chat" }
+local ACTIVATING = 0                     -- > 0 while an Activating event is dispatched
+W.restrictionLog = {}
+W.auraSecrecy, W.cdSecrecy = {}, {}      -- [spellID] = Enum.SecrecyLevel (0 NeverSecret, 1 AlwaysSecret; absent = 2 ContextuallySecret)
+local function refresh()
+  local hidden = RSTATE[0] == 2 or RSTATE[1] == 2 or RSTATE[2] == 2
+  if hidden ~= AURAS_HIDDEN then AURAS_HIDDEN = hidden; setButtonsHidden(hidden) end   -- (the aura buttons change form only on a flip)
+end
+function W.aurasSecret() return AURAS_HIDDEN end
+function W.cooldownsSecret() return AURAS_HIDDEN end   -- (the same three restrictions hide cooldowns: PRED:80-93)
+function W.setRestriction(t, on)
+  local st = RSTATE[t]
+  if st == nil then
+    error("W.setRestriction: restriction type " .. tostring(t) .. " is not modelled (0 Combat, 1 Encounter, 2 ChallengeMode, 4 Map, 5 Chat; "
+      .. "3 PvPMatch is spec L5)", 2)
+  end
+  local log = W.restrictionLog
+  if on then
+    if st ~= 0 then return false end
+    RSTATE[t] = 1
+    log[#log + 1] = { t, 1 }
+    ACTIVATING = ACTIVATING + 1
+    W.fire("ADDON_RESTRICTION_STATE_CHANGED", t, 1)
+    ACTIVATING = ACTIVATING - 1
+    RSTATE[t] = 2
+    refresh()
+  else
+    if st == 0 then return false end
+    RSTATE[t] = 0
+    refresh()
+    log[#log + 1] = { t, 0 }
+    W.fire("ADDON_RESTRICTION_STATE_CHANGED", t, 0)
+  end
+  return true
+end
+W.RESTRICTION_NAME = RESTRICTION_NAME
+-- what holds the Chat restriction: "map" (a dungeon or raid map), "encounter", "key"; Active while anything holds it (PRED:64-68)
+local CHAT = {}
+local function chatHold(who, on)
+  if on then
+    CHAT[who] = true
+    if RSTATE[5] == 0 then W.setRestriction(5, true) end
+  elseif CHAT[who] then
+    CHAT[who] = nil
+    if next(CHAT) == nil and RSTATE[5] ~= 0 then W.setRestriction(5, false) end
+  end
+end
+
+C_RestrictedActions = C_RestrictedActions or {}
+C_RestrictedActions.IsAddOnRestrictionActive = function(t) if ACTIVATING > 0 then return false end return RSTATE[t] == 2 end
+C_RestrictedActions.GetAddOnRestrictionState = function(t) return RSTATE[t] or 0 end
+
+local function secrecy(levels, id)
+  local v = levels[rawtonumber(id) or id]
+  if v == nil then return 2 end
+  return v
+end
+-- is spell id's aura (levels = W.auraSecrecy) or cooldown (W.cdSecrecy) hidden right now
+local function spellHidden(levels, id)
+  local l = secrecy(levels, id)
+  if l == 0 then return false elseif l == 1 then return true end
+  return AURAS_HIDDEN
+end
+C_Secrets = C_Secrets or {}
+C_Secrets.HasSecretRestrictions = function() return true end   -- (INFERENCE: retail; the safer answer)
+C_Secrets.ShouldAurasBeSecret = function() return AURAS_HIDDEN end
+C_Secrets.ShouldCooldownsBeSecret = function() return AURAS_HIDDEN end
+C_Secrets.GetSpellAuraSecrecy = function(id) return secrecy(W.auraSecrecy, id) end
+C_Secrets.GetSpellCooldownSecrecy = function(id) return secrecy(W.cdSecrecy, id) end
+C_Secrets.ShouldSpellAuraBeSecret = function(id) return spellHidden(W.auraSecrecy, id) end
+C_Secrets.ShouldSpellCooldownBeSecret = function(id) return spellHidden(W.cdSecrecy, id) end
+C_Secrets.ShouldUnitIdentityBeSecret = function() return false end   -- (spec L4: looser than the game)
+
+-- the instance the player is in (W.enterInstance): { kind, difficulty, name, difficultyName, maxPlayers, instanceID, groupSize }
+W.instance = nil
+IsInInstance = function() local i = W.instance; if i then return true, i.kind end return false, "none" end
+GetInstanceInfo = function()
+  local i = W.instance
+  if i then return i.name, i.kind, i.difficulty, i.difficultyName, i.maxPlayers, 0, false, i.instanceID, i.groupSize, nil, false end
+  return "Khaz Algar", "none", 0, "", 5, 0, false, 2552, 0
+end
+-- the running key (W.startKey): { mapID, level, affixes }; IsChallengeModeActive follows it (true from the key's start until its
+-- restriction ends; INFERENCE, RACD:28 "active and incomplete")
+W.key = nil
+C_ChallengeMode = C_ChallengeMode or {}
+C_ChallengeMode.IsChallengeModeActive = function() return W.key ~= nil end
+C_ChallengeMode.GetActiveKeystoneInfo = function()
+  local k = W.key
+  if not k then return 0, {}, false end
+  local a = {}
+  for i, v in ipairs(k.affixes) do a[i] = v end
+  return k.level, a, false
+end
+C_ChallengeMode.GetActiveChallengeMapID = function() local k = W.key; return k and k.mapID or nil end
+-- the running boss encounter (W.startEncounter): { id, name, difficulty, size }
+W.encounter = nil
+C_InstanceEncounter = C_InstanceEncounter or {}
+C_InstanceEncounter.IsEncounterInProgress = function() return W.encounter ~= nil end
+
+-------------------------------------------------------------------------------
+-- duration objects (LuaDurationObject; api.json LuaDurationObjectAPI)
+-------------------------------------------------------------------------------
+-- The object is readable; HasSecretValues() is true while the data it was made from is hidden (Copy / HasSecretValues are
+-- ReturnsNeverSecret, confirmed). Its time getters then answer hidden numbers (INFERENCE: none carries a secret-return flag; the safer
+-- answer). IsZero, HasExpired, IsActive and HasStarted stay readable (INFERENCE, a named exception: a hidden boolean is truthy in Lua 5.1, so
+-- 'if d:IsZero()' would take the wrong branch silently). A zero-span object (span 0) counts as fully elapsed (patch 12.0.1 and 12.0.5
+-- notes, confirmed). One metatable, one function per method (no closure per object). Fields: _s start, _d span, _r mod rate, _secret.
+local DUR = {}
+DUR_MT = { __index = DUR }
+local newHidden = S.new
+local function newDuration(start, span, rate, secret)
+  return setmetatable({ _s = start, _d = span, _r = rate or 1, _secret = secret and true or false }, DUR_MT)
+end
+W.newDuration = newDuration
+local function dv(o, v) if o._secret then return newHidden(v) end return v end
+function DUR:HasSecretValues() return self._secret end
+function DUR:IsZero() return self._d <= 0 end
+function DUR:HasExpired() return self._d <= 0 or W.now >= self._s + self._d end
+function DUR:IsActive() return self._d > 0 and W.now >= self._s and W.now < self._s + self._d end
+function DUR:HasStarted() return W.now >= self._s end
+function DUR:GetStartTime() return dv(self, self._s) end
+function DUR:GetEndTime() return dv(self, self._s + self._d) end
+function DUR:GetTotalDuration() return dv(self, self._d) end
+function DUR:GetModRate() return dv(self, self._r) end
+local function elapsedPart(o)
+  if o._d <= 0 then return 1 end
+  local p = (W.now - o._s) / o._d
+  if p < 0 then return 0 elseif p > 1 then return 1 end
+  return p
+end
+function DUR:GetRemainingDuration() return dv(self, self._d * (1 - elapsedPart(self))) end
+function DUR:GetElapsedDuration() return dv(self, self._d * elapsedPart(self)) end
+function DUR:GetElapsedPercent() return dv(self, elapsedPart(self)) end
+function DUR:GetRemainingPercent() return dv(self, 1 - elapsedPart(self)) end
+function DUR:Copy() return newDuration(self._s, self._d, self._r, self._secret) end
+function DUR:Assign(o) if type(o) == "table" and getmetatable(o) == DUR_MT then self._s, self._d, self._r, self._secret = o._s, o._d, o._r, o._secret end end
+function DUR:Reset() self._s, self._d, self._r, self._secret = W.now, 0, 1, false end
+DUR.SetToDefaults = DUR.Reset
+function DUR:SetTimeFromStart(s, d, r) self._s, self._d, self._r = tonumber(s) or 0, tonumber(d) or 0, tonumber(r) or 1 end
+function DUR:SetTimeFromEnd(e, d, r) d = tonumber(d) or 0; self._s, self._d, self._r = (tonumber(e) or 0) - d, d, tonumber(r) or 1 end
+function DUR:SetTimeSpan(s, e) s = tonumber(s) or 0; self._s, self._d = s, (tonumber(e) or s) - s end
+function DUR:GetClock() return nil end
+function DUR:GetClockTime() return W.now end
+C_DurationUtil = C_DurationUtil or {}
+C_DurationUtil.CreateDuration = function() return newDuration(W.now, 0, 1, false) end
+
+-------------------------------------------------------------------------------
+-- cooldowns (SpellCooldownInfo, SpellChargeInfo; structures in api.json)
+-------------------------------------------------------------------------------
+-- A test (or the gate) sets them: W.setCooldown(spellID, start, duration [, { modRate, isOnGCD, activeCategory }]),
+-- W.setCharges(spellID, current, max [, start, duration, modRate]); W.cooldowns / W.charges hold them. While a spell's cooldown is hidden
+-- the reads hide field by field: startTime, duration, modRate, activeCategory (and timeUntilEndOfStartRecovery) of a cooldown;
+-- currentCharges and the cooldown times of charges. isEnabled, isActive, isOnGCD and maxCharges stay readable (NeverSecret fields,
+-- confirmed). Each read hands back a new table, as the game does.
+W.cooldowns, W.charges = {}, {}
+function W.setCooldown(id, start, duration, o)
+  W.cooldowns[id] = { startTime = start or W.now, duration = duration or 0, modRate = o and o.modRate or 1, isOnGCD = o and o.isOnGCD or false,
+    activeCategory = o and o.activeCategory or nil }
+end
+function W.setCharges(id, current, max, start, duration, modRate)
+  W.charges[id] = { current = current or 0, max = max or 1, startTime = start or W.now, duration = duration or 0, modRate = modRate or 1 }
+end
+local function hide(on, v) if on then return newHidden(v) end return v end
+C_Spell.GetSpellCooldown = function(id)
+  id = rawtonumber(id) or id
+  local c = W.cooldowns[id]
+  local info
+  if c ~= nil and c.duration > 0 and W.now < c.startTime + c.duration then
+    info = { startTime = c.startTime, duration = c.duration, isEnabled = true, isActive = true, modRate = c.modRate, activeCategory = c.activeCategory,
+      isOnGCD = c.isOnGCD and true or false }
+  else
+    info = { startTime = 0, duration = 0, isEnabled = true, isActive = false, modRate = c and c.modRate or 1, isOnGCD = false }
+  end
+  if spellHidden(W.cdSecrecy, id) then   -- (field by field; the NeverSecret fields stay)
+    info.startTime, info.duration, info.modRate = newHidden(info.startTime), newHidden(info.duration), newHidden(info.modRate)
+    if info.activeCategory ~= nil then info.activeCategory = newHidden(info.activeCategory) end
+  end
+  return info
+end
+C_Spell.GetSpellCharges = function(id)
+  id = rawtonumber(id) or id
+  local ch = W.charges[id]
+  if not ch then return nil end
+  local h, recharging = spellHidden(W.cdSecrecy, id), ch.current < ch.max
+  return { currentCharges = hide(h, ch.current), maxCharges = ch.max, cooldownStartTime = hide(h, recharging and ch.startTime or 0),
+    cooldownDuration = hide(h, recharging and ch.duration or 0), chargeModRate = hide(h, ch.modRate), isActive = recharging }
+end
+-- the other SecretWhenCooldownsRestricted reads the stand-in defines (api.json): hidden by the same rule
+C_Spell.GetSpellCastCount = function(id) return hide(spellHidden(W.cdSecrecy, id), 0) end
+C_Spell.GetSpellLossOfControlCooldown = function(id) local h = spellHidden(W.cdSecrecy, id); return hide(h, 0), hide(h, 0) end
+-- a cooldown's duration object follows whatever the cooldown read answers right now (a test or the gate may answer it themselves): a
+-- zero-span object when the cooldown is not active (or only the global cooldown runs and ignoreGCD is true); hidden values give an object
+-- whose HasSecretValues() is true. Charges: zero-span at max charges (patch 12.0.5 notes, confirmed). nil when the read gives nothing.
+local function num(v) return rawtonumber((S.reveal(v))) end
+C_Spell.GetSpellCooldownDuration = function(id, ignoreGCD)
+  local info = C_Spell.GetSpellCooldown(id)
+  if type(info) ~= "table" or S.isHidden(info) then return nil end
+  local s, d = num(info.startTime), num(info.duration)
+  local secret = S.isHidden(info.startTime) or S.isHidden(info.duration)
+  local active = info.isActive
+  if active == nil then active = s ~= nil and d ~= nil and d > 0 and W.now < s + d end
+  if not active or (ignoreGCD and info.isOnGCD) then return newDuration(W.now, 0, 1, secret) end
+  if not (s and d) then return nil end
+  return newDuration(s, d, num(info.modRate) or 1, secret)
+end
+C_Spell.GetSpellChargeDuration = function(id)
+  local ch = C_Spell.GetSpellCharges(id)
+  if type(ch) ~= "table" or S.isHidden(ch) then return nil end
+  local cur, max = num(ch.currentCharges), num(ch.maxCharges)
+  local secret = S.isHidden(ch.currentCharges) or S.isHidden(ch.cooldownStartTime) or S.isHidden(ch.cooldownDuration)
+  if not (cur and max) or cur >= max then return newDuration(W.now, 0, 1, secret) end
+  local s, d = num(ch.cooldownStartTime), num(ch.cooldownDuration)
+  if not (s and d) then return nil end
+  return newDuration(s, d, num(ch.chargeModRate) or 1, secret)
+end
+
+-------------------------------------------------------------------------------
+-- auras (AuraData; UNIT_AURA's UnitAuraUpdateInfo)
+-------------------------------------------------------------------------------
+-- A test (or the gate) gives a unit an aura with W.addAura(unit, fields [, quiet]) and takes it with W.removeAura(unit, auraInstanceID
+-- [, quiet]); each fires UNIT_AURA (unless quiet) with W.payload(info): while auras are hidden the payload is a hidden table in shape
+-- W.payloadShape ("A", default: the gate's; unit tests also "B" and "C"; spec 2.2, the shape is INFERENCE). unitTarget stays readable
+-- (a named exception, spec 2.2). Aura instance IDs are random (a fixed-seed generator, W.auraIDSeed: runs repeat), never in order, and
+-- re-randomized at a key's start and an encounter's start (patch 12.0.5 notes, confirmed), followed by a full update for the player and
+-- every unit holding an aura (INFERENCE): code that orders or compares IDs cannot pass by accident.
+-- The reads (C_UnitAuras), while auras are hidden:
+--   * by index, slot or instance ID, GetUnitAuras and GetUnitAuraInstanceIDs (every RequiresUnitAuraAccess function, 24 in api.json):
+--     a Lua error for addon code (PRED:47-51 FailureMode Error and XayaUI's in-game note; the sources conflict, N12.1.0 says "a secret
+--     vector": the error is the safer choice). The text is the stand-in's (INFERENCE: the game's is unknown).
+--   * by spell ID or name (GetPlayerAuraBySpellID, GetUnitAuraBySpellID, GetAuraDataBySpellName; RequiresNonSecretAura): nil unless the
+--     spell is NeverSecret (PRED:27-31, confirmed). An AlwaysSecret spell answers nil always.
+--   * C_Spell.GetSpellMaxCumulativeAuraApplications: hidden (SecretWhenUnitAuraRestricted, confirmed); NeverSecret / AlwaysSecret override.
+-- Outside restrictions an AlwaysSecret aura read by index or instance ID comes back with every field hidden (INFERENCE: what the game
+-- hands there is unknown, spec 2.2; the safer answer).
+W.payloadShape = "A"
+-- a table with every field hidden (payload shape B, an AlwaysSecret aura's data). A boolean field stays readable unless the test allows
+-- hidden booleans (S.allowHiddenBooleans, the line hook's tests): Lua 5.1 cannot raise on a hidden boolean's truth test, so the stand-in
+-- never hands one outside the line hook (spec 2.1, 4.2). INFERENCE, as the shapes are.
+local function hiddenRecord(t)
+  local ok, b = pcall(S.newTable, t, "B")
+  if ok then return b end
+  local rest, flags = {}, {}
+  for k, v in pairs(t) do if type(v) == "boolean" then flags[k] = v else rest[k] = v end end
+  b = S.newTable(rest, "B")
+  for k, v in pairs(flags) do b[k] = v end
+  return b
+end
+function W.payload(info)
+  if not AURAS_HIDDEN then return info end
+  local shape = W.payloadShape or "A"
+  if shape == "B" then return hiddenRecord(info) end
+  return S.newTable(info, shape)
+end
+function W.fireAura(unit, info) return W.fire("UNIT_AURA", unit, W.payload(info)) end
+local AURAS, BYIID = {}, {}                 -- AURAS[unit] = { aura, ... } in the order gained; BYIID[auraInstanceID] = aura
+local UNIT_OF = setmetatable({}, { __mode = "k" })
+W.auras = AURAS
+W.auraIDSeed = 20261121
+W.auraMaxStacks = {}                        -- [spellID] = the game's maximum stacks (a test's; unknown spells answer nil: the stand-in
+                                            -- knows no spell, looser than the game, which answers a number for every spell)
+local function newAuraID()   -- Park-Miller (16807, 2^31 - 1): exact in a Lua double (seed < 2^31, product < 2^46)
+  local s = W.auraIDSeed
+  repeat s = (s * 16807) % 2147483647 until s ~= 0 and BYIID[s] == nil
+  W.auraIDSeed = s
+  return s
+end
+local function auraCopy(a)
+  local t = {}
+  for k, v in pairs(a) do t[k] = v end
+  if secrecy(W.auraSecrecy, a.spellId) == 1 then return hiddenRecord(t) end
+  return t
+end
+local function matches(a, filter)
+  filter = filter or "HELPFUL"
+  if sfind(filter, "HARMFUL", 1, true) then
+    if a.isHelpful then return false end
+  elseif not a.isHelpful then return false end
+  if sfind(filter, "PLAYER", 1, true) and not a.isFromPlayerOrPlayerPet then return false end
+  return true
+end
+function W.addAura(unit, f, quiet)
+  local a = {}
+  for k, v in pairs(f or {}) do a[k] = v end
+  a.spellId = a.spellId or 0
+  if a.name == nil then a.name = "Spell " .. tostring(a.spellId) end
+  if a.icon == nil then a.icon = 136243 end
+  if a.applications == nil then a.applications = 1 end
+  if a.duration == nil then a.duration = 0 end
+  if a.expirationTime == nil then a.expirationTime = a.duration > 0 and (W.now + a.duration) or 0 end
+  if a.isHelpful == nil then a.isHelpful = unit == "player" end
+  if a.sourceUnit == nil then a.sourceUnit = "player" end
+  if a.isFromPlayerOrPlayerPet == nil then a.isFromPlayerOrPlayerPet = true end
+  a.auraInstanceID = newAuraID()
+  local list = AURAS[unit]
+  if not list then list = {}; AURAS[unit] = list end
+  list[#list + 1] = a
+  BYIID[a.auraInstanceID], UNIT_OF[a] = a, unit
+  if not quiet then W.fireAura(unit, { addedAuras = { auraCopy(a) } }) end
+  return a
+end
+function W.removeAura(unit, iid, quiet)
+  local a = BYIID[iid]
+  if not a or UNIT_OF[a] ~= unit then return nil end
+  BYIID[iid], UNIT_OF[a] = nil, nil
+  local list = AURAS[unit]
+  for i = 1, #list do if list[i] == a then table.remove(list, i); break end end
+  if not quiet then W.fireAura(unit, { removedAuraInstanceIDs = { iid } }) end
+  return a
+end
+function W.rerandomizeAuras()
+  for _, list in pairs(AURAS) do for i = 1, #list do BYIID[list[i].auraInstanceID] = nil end end
+  local units = {}
+  for unit, list in pairs(AURAS) do
+    for i = 1, #list do local a = list[i]; a.auraInstanceID = newAuraID(); BYIID[a.auraInstanceID] = a end
+    if unit ~= "player" then units[#units + 1] = unit end
+  end
+  table.sort(units)
+  W.fireAura("player", { isFullUpdate = true })
+  for i = 1, #units do W.fireAura(units[i], { isFullUpdate = true }) end
+end
+local function byIndex(unit, index, filter)
+  local list, n = AURAS[unit], 0
+  if not list then return nil end
+  for i = 1, #list do
+    local a = list[i]
+    if matches(a, filter) then n = n + 1; if n == index then return a end end
+  end
+  return nil
+end
+local function readable(id) local l = secrecy(W.auraSecrecy, id); return l == 0 or (l == 2 and not AURAS_HIDDEN) end
+local function bySpell(unit, test, key, filter)
+  local list = AURAS[unit]
+  if not list then return nil end
+  for i = 1, #list do
+    local a = list[i]
+    if a[key] == test and (filter == nil or matches(a, filter)) then
+      if not readable(a.spellId) then return nil end
+      return auraCopy(a)
+    end
+  end
+  return nil
+end
+C_UnitAuras = C_UnitAuras or {}
+C_UnitAuras.GetAuraDataByIndex = function(unit, index, filter) local a = byIndex(unit, index, filter); return a and auraCopy(a) or nil end
+C_UnitAuras.GetBuffDataByIndex = function(unit, index, filter) local a = byIndex(unit, index, filter and ("HELPFUL|" .. filter) or "HELPFUL"); return a and auraCopy(a) or nil end
+C_UnitAuras.GetDebuffDataByIndex = function(unit, index, filter) local a = byIndex(unit, index, filter and ("HARMFUL|" .. filter) or "HARMFUL"); return a and auraCopy(a) or nil end
+C_UnitAuras.GetAuraDataBySlot = function(unit, slot) local list = AURAS[unit]; local a = list and list[slot]; return a and auraCopy(a) or nil end
+C_UnitAuras.GetAuraSlots = function(unit, filter)
+  local list, out = AURAS[unit], {}
+  if list then for i = 1, #list do if matches(list[i], filter) then out[#out + 1] = i end end end
+  return nil, unpack(out)
+end
+C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, iid)
+  local a = BYIID[iid]
+  if not a or UNIT_OF[a] ~= unit then return nil end
+  return auraCopy(a)
+end
+C_UnitAuras.GetUnitAuras = function(unit, filter, maxCount)
+  local list, out = AURAS[unit], {}
+  if list then
+    for i = 1, #list do
+      if matches(list[i], filter) then out[#out + 1] = auraCopy(list[i]); if maxCount and #out >= maxCount then break end end
+    end
+  end
+  return out
+end
+C_UnitAuras.GetUnitAuraInstanceIDs = function(unit, filter, maxCount)
+  local list, out = AURAS[unit], {}
+  if list then
+    for i = 1, #list do
+      if matches(list[i], filter) then out[#out + 1] = list[i].auraInstanceID; if maxCount and #out >= maxCount then break end end
+    end
+  end
+  return out
+end
+C_UnitAuras.IsAuraFilteredOutByInstanceID = function(unit, iid, filter)
+  local a = BYIID[iid]
+  return not (a and UNIT_OF[a] == unit and matches(a, filter))
+end
+C_UnitAuras.GetAuraDuration = function(unit, iid)
+  local a = BYIID[iid]
+  if not a or UNIT_OF[a] ~= unit then return nil end
+  local d = tonumber(a.duration) or 0
+  local secret = secrecy(W.auraSecrecy, a.spellId) == 1
+  if d <= 0 then return newDuration(W.now, 0, 1, secret) end
+  return newDuration((tonumber(a.expirationTime) or W.now) - d, d, 1, secret)
+end
+C_UnitAuras.GetPlayerAuraBySpellID = function(id) return bySpell("player", rawtonumber(id) or id, "spellId") end
+C_UnitAuras.GetUnitAuraBySpellID = function(unit, id) return bySpell(unit, rawtonumber(id) or id, "spellId") end
+C_UnitAuras.GetAuraDataBySpellName = function(unit, name, filter) return bySpell(unit, name, "name", filter) end
+C_Spell.GetSpellMaxCumulativeAuraApplications = function(id)
+  id = rawtonumber(id) or id
+  return hide(spellHidden(W.auraSecrecy, id), W.auraMaxStacks[id])
+end
+-- Host-side C-API stand-ins (spec 3.1 and 4.4.5: the stand-in's own work is not billed to the addon that calls it). In the game these
+-- readers are C functions: an addon pays for its CALL instruction and nothing of the body. Here each body runs host-side through
+-- S.hostRaising (on secret.lua's hook-free helper thread, under pcall), so the gate's instruction counter and the hook-based unit tests
+-- bill the caller 5 instructions per call for the shell (as for tonumber / format), whatever the body does: the cooldown model, the
+-- per-spell secrecy, the aura copy, the hidden values (still made inside S.onAlloc). A body that raises (a stand-in fault, or a reader
+-- a test replaced) comes back as "internal fault in the stand-in's <name>: ..." raised at the caller's line; the helper never dies.
+-- Only readers with ONE result are hosted (the shell hands back one value): GetAuraSlots and GetSpellLossOfControlCooldown stay Lua.
+-- The aura-access check (W.auraAccess, below) stays Lua and wraps the hosted reader: it must walk the caller's own stack (addonAt), and
+-- does so only while auras are hidden. W.CAPI_BODY[name] keeps each plain Lua body (a test or the gate may read it; never addon code).
+-- Limit: a reader that raises when called through a tail call ('return C_Spell.GetSpellCooldown(id)') names no line (as tonumber).
+W.CAPI_BODY = {}
+do
+  local HOSTED = { "C_Spell.GetSpellCooldown", "C_Spell.GetSpellCharges", "C_Spell.GetSpellCastCount", "C_Spell.GetSpellCooldownDuration",
+    "C_Spell.GetSpellChargeDuration", "C_Spell.GetSpellMaxCumulativeAuraApplications", "C_UnitAuras.GetAuraDataByIndex",
+    "C_UnitAuras.GetBuffDataByIndex", "C_UnitAuras.GetDebuffDataByIndex", "C_UnitAuras.GetAuraDataBySlot", "C_UnitAuras.GetAuraDataByAuraInstanceID",
+    "C_UnitAuras.GetUnitAuras", "C_UnitAuras.GetUnitAuraInstanceIDs", "C_UnitAuras.IsAuraFilteredOutByInstanceID", "C_UnitAuras.GetAuraDuration",
+    "C_UnitAuras.GetPlayerAuraBySpellID", "C_UnitAuras.GetUnitAuraBySpellID", "C_UnitAuras.GetAuraDataBySpellName" }
+  local function hosted(name, real) return S.hostRaising(name, function(...) return (real(...)) end) end
+  for _, name in ipairs(HOSTED) do
+    local ns, fn = smatch(name, "^([^.]+)%.(.+)$")
+    local tbl = rawget(_G, ns)
+    local real = rawtype(tbl) == "table" and rawget(tbl, fn)
+    if rawtype(real) ~= "function" then error("tests/harness/world.lua: the host-side list names " .. name .. ", which the stand-in does not define") end
+    W.CAPI_BODY[name] = real
+    rawset(tbl, fn, hosted(name, real))
+  end
+  -- the duration object's time getters (LuaDurationObjectAPI: C methods in the game); the booleans and Copy stay Lua (a few instructions)
+  for _, m in ipairs({ "GetStartTime", "GetEndTime", "GetTotalDuration", "GetModRate", "GetRemainingDuration", "GetElapsedDuration",
+      "GetElapsedPercent", "GetRemainingPercent" }) do
+    local real = DUR[m]
+    W.CAPI_BODY["LuaDurationObject:" .. m] = real
+    DUR[m] = hosted("LuaDurationObject:" .. m, real)
+  end
+end
+-- RequiresUnitAuraAccess (api.json, through the index's secrecy section; the list below when no index was given): addon code errors while
+-- auras are hidden. W.auraAccess(name, fn) wraps any reader so (the gate wraps its own readers with it).
+W.TEXT_AURA_ACCESS = "%s: aura data is not accessible to addon code while auras are secret (stand-in text; the game's text is unknown)"
+local AURA_ACCESS_FALLBACK = { "C_TooltipInfo.GetUnitAura", "C_TooltipInfo.GetUnitAuraByAuraInstanceID", "C_TooltipInfo.GetUnitBuff",
+  "C_TooltipInfo.GetUnitBuffByAuraInstanceID", "C_TooltipInfo.GetUnitDebuff", "C_TooltipInfo.GetUnitDebuffByAuraInstanceID",
+  "C_UnitAuras.CancelAuraByInstanceID", "C_UnitAuras.DoesAuraHaveExpirationTime", "C_UnitAuras.GetAuraApplicationDisplayCount",
+  "C_UnitAuras.GetAuraBaseDuration", "C_UnitAuras.GetAuraCasterGUID", "C_UnitAuras.GetAuraDataByAuraInstanceID", "C_UnitAuras.GetAuraDataByIndex",
+  "C_UnitAuras.GetAuraDataBySlot", "C_UnitAuras.GetAuraDispelTypeColor", "C_UnitAuras.GetAuraDuration", "C_UnitAuras.GetAuraSlots",
+  "C_UnitAuras.GetBuffDataByIndex", "C_UnitAuras.GetDebuffDataByIndex", "C_UnitAuras.GetRefreshCarryOverDuration",
+  "C_UnitAuras.GetRefreshExtendedDuration", "C_UnitAuras.GetUnitAuraInstanceIDs", "C_UnitAuras.GetUnitAuras",
+  "C_UnitAuras.IsAuraFilteredOutByInstanceID" }   -- (docs/reference/api/api.json 12.1.5, every function flagged RequiresUnitAuraAccess)
+function W.auraAccess(name, fn)
+  return function(...)
+    if AURAS_HIDDEN then
+      local addon = addonAt(2)
+      if addon then error(rawformat(W.TEXT_AURA_ACCESS, name) .. tainted(addon), 2) end
+    end
+    return fn(...)
+  end
+end
+do
+  local names, sec = {}, API.secrecy and API.secrecy.functions
+  if type(sec) == "table" then
+    for name, flags in pairs(sec) do
+      if type(flags) == "table" then for _, f in pairs(flags) do if f == "RequiresUnitAuraAccess" then names[#names + 1] = name end end end
+    end
+  end
+  if #names == 0 then for i, n in ipairs(AURA_ACCESS_FALLBACK) do names[i] = n end end
+  W.AURA_ACCESS = names
+  for _, name in ipairs(names) do
+    local ns, fn = smatch(name, "^([^.]+)%.(.+)$")
+    local tbl = ns and rawget(_G, ns)
+    local real = type(tbl) == "table" and rawget(tbl, fn)
+    if type(real) == "function" then rawset(tbl, fn, W.auraAccess(name, real)) end
+  end
+end
+
+-------------------------------------------------------------------------------
+-- the API guard (spec 2.1, rows marked with the double dagger): a hidden value handed to a widget method by addon code
+-------------------------------------------------------------------------------
+-- From the index's secrecy section (tests/harness/api_index.json, built from docs/reference/api/api.json, never widgets.md), BY OBJECT
+-- TYPE: a Slider's SetValue is AllowedWhenUntainted, a StatusBar's AllowedWhenTainted. A hidden value given by addon code to a parameter
+-- flagged SecretArguments=AllowedWhenUntainted or NotAllowed errors "bad argument #n to 'Method' (Secret values are only allowed during
+-- untainted execution for this argument.)" (Warcraft Wiki, Secret Values; rarity #563; S.TEXT.argument); with AllowedWhenTainted it is
+-- allowed, except a hidden STRING in a number parameter (patch 12.0.0 notes, confirmed; the text is the stand-in's, INFERENCE). So
+-- SetShown, Button / EditBox SetText, Slider SetValue, FontString SetAlpha (SimpleFontAPI) and Cooldown SetCooldown error; FontString
+-- SetText, StatusBar SetValue and Frame / Region SetAlpha are allowed. (Cooldown SetCooldown is flagged, on FrameAPICooldown.) A method with
+-- no SecretArguments flag on its object is allowed (nothing documented). Untainted code (the stand-in, the gate, a test) may pass hidden
+-- values (addonAt). Argument numbers count from the first argument after self (INFERENCE: as Lua numbers a method's arguments).
+-- Which object answers for a widget type: Blizzard's widget hierarchy, most specific first (warcraft.wiki.gg, Widget API; not in api.json,
+-- so INFERENCE where two objects document the same method: a FontString's FontInstance (SimpleFontAPI) answers before its Region).
+-- Cost: a guarded method is one Lua wrapper around one host-side verdict call (verdictOf below: the hidden-argument scan, the per-type
+-- rule and the refusal text all run on secret.lua's hook-free helper thread), so it bills the same with a plain or an allowed hidden
+-- value (+10 per call over the unguarded body, measured); only methods some object's flags can refuse are wrapped. No index (an empty
+-- API): nothing is guarded.
+local FRAME = { "SimpleFrameAPI", "SimpleScriptRegionResizingAPI", "SimpleScriptRegionAPI", "SimpleAnimatableObjectAPI", "SimpleFrameScriptObjectAPI", "SimpleObjectAPI" }
+local REGION = { "SimpleRegionAPI", "SimpleScriptRegionResizingAPI", "SimpleScriptRegionAPI", "SimpleAnimatableObjectAPI", "SimpleFrameScriptObjectAPI", "SimpleObjectAPI" }
+local ANIM = { "SimpleAnimAPI", "SimpleFrameScriptObjectAPI", "SimpleObjectAPI" }
+local function chain(first, base) local t = {}; for _, o in ipairs(first) do t[#t + 1] = o end; for _, o in ipairs(base) do t[#t + 1] = o end; return t end
+local CHAIN = {
+  Frame = FRAME,
+  Button = chain({ "SimpleButtonAPI" }, FRAME), CheckButton = chain({ "SimpleCheckboxAPI", "SimpleButtonAPI" }, FRAME),
+  EditBox = chain({ "SimpleEditBoxAPI" }, FRAME), Slider = chain({ "SimpleSliderAPI" }, FRAME), StatusBar = chain({ "SimpleStatusBarAPI" }, FRAME),
+  Cooldown = chain({ "FrameAPICooldown" }, FRAME), ScrollFrame = chain({ "SimpleScrollFrameAPI" }, FRAME),
+  MessageFrame = chain({ "SimpleMessageFrameAPI" }, FRAME), ScrollingMessageFrame = chain({ "SimpleMessageFrameAPI" }, FRAME),
+  SimpleHTML = chain({ "SimpleHTMLAPI" }, FRAME), GameTooltip = chain({ "FrameAPITooltip" }, FRAME), Minimap = chain({ "MinimapFrameAPI" }, FRAME),
+  Model = chain({ "SimpleModelAPI" }, FRAME), PlayerModel = chain({ "SimpleModelAPI" }, FRAME), ColorSelect = chain({ "SimpleColorSelectAPI" }, FRAME),
+  Texture = chain({ "SimpleTextureAPI", "SimpleTextureBaseAPI" }, REGION), MaskTexture = chain({ "SimpleTextureBaseAPI" }, REGION),
+  Line = chain({ "SimpleLineAPI", "SimpleTextureBaseAPI" }, REGION), FontString = chain({ "SimpleFontStringAPI", "SimpleFontAPI" }, REGION),
+  Font = { "SimpleFontAPI", "SimpleFrameScriptObjectAPI", "SimpleObjectAPI" },
+  AnimationGroup = { "SimpleAnimGroupAPI", "SimpleFrameScriptObjectAPI", "SimpleObjectAPI" }, Animation = ANIM,
+  Alpha = chain({ "SimpleAnimAlphaAPI" }, ANIM), Scale = chain({ "SimpleAnimScaleAPI" }, ANIM), Translation = chain({ "SimpleAnimTranslationAPI" }, ANIM),
+  Rotation = chain({ "SimpleAnimRotationAPI" }, ANIM),
+}
+W.WIDGET_CHAIN = CHAIN
+local NUMBER_TYPE = { number = true, SingleColorValue = true, normalizedValue = true, luaIndex = true }
+local SEC = type(API.secrecy) == "table" and API.secrecy or {}
+local SEC_WIDGETS = type(SEC.widgets) == "table" and SEC.widgets or {}
+local SEC_TYPES = type(SEC.argTypes) == "table" and SEC.argTypes or {}
+-- an api.json flag list -> "untainted" (AllowedWhenUntainted, NotAllowed) | "tainted" (AllowedWhenTainted) | nil (no flag)
+local function ruleOf(flags)
+  if type(flags) ~= "table" then return nil end
+  for _, f in pairs(flags) do
+    local v = smatch(tostring(f), "^SecretArguments=(.+)$")
+    if v == "AllowedWhenTainted" then return "tainted" elseif v == "AllowedWhenUntainted" or v == "NotAllowed" then return "untainted" end
+  end
+  return nil
+end
+-- the parameter positions that take a number: { [i] = true } or nil
+local function numberParams(types)
+  if type(types) ~= "table" then return nil end
+  local out
+  for i, t in pairs(types) do
+    local base = smatch(tostring(t), "^([%w_]+)")
+    if base and NUMBER_TYPE[base] then out = out or {}; out[i] = true end
+  end
+  return out
+end
+-- what a rule refuses: the message for the first hidden argument it does not allow, or nil
+local isHidden, realType = S.isHidden, S.realType
+local function refusal(name, rule, nums, ...)
+  for i = 1, select("#", ...) do
+    local v = (select(i, ...))
+    if isHidden(v) then
+      if rule == "untainted" then return rawformat(S.TEXT.argument, i, name) end
+      if nums and nums[i] and realType(v) == "string" then
+        return rawformat("bad argument #%d to '%s' (%s)", i, name, rawformat(S.TEXT.tonumber, "string"))
+      end
+    end
+  end
+  return nil
+end
+-- The decision runs host-side (S.host: on a hook-free helper thread, so none of it is billed to the calling addon, as the game's C
+-- check is not): the guarded function's Lua side only reads the verdict, and walks the stack for the calling addon (addonAt, which must
+-- run on the caller's own thread) only when a hidden argument is refused, i.e. just before it raises. The body never raises (an error
+-- would end the helper): a fault inside it comes back as (message, true) and is raised loudly at the caller, addon or not.
+local function verdictOf(decide)
+  local function settle(ok, msg) if ok then return msg end return "tests/harness/world.lua: internal fault in the stand-in's API guard: " .. tostring(msg), true end
+  return S.host(function(...) return settle(pcall(decide, ...)) end)
+end
+-- (refuse) raise msg at the guarded call's caller when addon code is on the stack there; level 1 refuse, 2 the guarded function, 3 its caller
+local function refuse(msg, fault)
+  if fault then error(msg, 3) end
+  local addon = addonAt(3)
+  if addon then error(msg .. tainted(addon), 3) end
+end
+-- S.guard(name, fn, flags [, argTypes]): fn guarded by one api.json flag list (a C-API function; the widget methods use the per-type rules
+-- below). Returns fn itself when the flags refuse nothing. One verdict helper per guarded function, made here once (none per call).
+local function guard(name, fn, flags, types)
+  local rule, nums = ruleOf(flags), numberParams(types)
+  if rule == nil or (rule == "tainted" and nums == nil) then return fn end
+  local verdict = verdictOf(function(...) return refusal(name, rule, nums, ...) end)
+  return function(...)
+    local msg, fault = verdict(...)
+    if msg then refuse(msg, fault) end
+    return fn(...)
+  end
+end
+W.guard = guard
+if S.guard == nil then S.guard = guard end   -- (the shared object carries it for the gate and the tests; defined here, beside the stand-ins it guards)
+-- the rule for (widget type, method): { rule, nums } or false, worked out once per pair
+local RULES = {}
+local function methodRule(kind, m)
+  local byKind = RULES[kind]
+  if not byKind then byKind = {}; RULES[kind] = byKind end
+  local r = byKind[m]
+  if r == nil then
+    r = false
+    for _, obj in ipairs(CHAIN[kind] or FRAME) do
+      local key = obj .. ":" .. m
+      local flags = SEC_WIDGETS[key]
+      if flags ~= nil then
+        local rule = ruleOf(flags)
+        if rule then r = { rule, numberParams(SEC_TYPES[key]) } end
+        break
+      end
+    end
+    byKind[m] = r
+  end
+  return r
+end
+W.methodRule = methodRule
+-- the widget methods' verdict (host-side, one helper for every guarded method): the refusal for (self's widget type, method m), or nil
+local methodVerdict = verdictOf(function(self, m, ...)
+  if rawtype(self) ~= "table" then return nil end
+  local r = methodRule(rawget(self, "_kind") or "Frame", m)
+  if not r then return nil end
+  return refusal(m, r[1], r[2], ...)
+end)
+-- which method names some object's flags can refuse a hidden value for. Queries (Get*, Is*, Has*, Can*) are not guarded: their arguments
+-- select what to read (an index, a flag), they hand the game no value, and guarding them would add a check to every layout query (GetWidth,
+-- GetPoint ...) for nothing. Limit: a hidden value given to a query is not refused (looser than the game; no addon path does it today).
+local function isQuery(m) return smatch(m, "^Get") or smatch(m, "^Is") or smatch(m, "^Has") or smatch(m, "^Can") end
+local GUARDED = {}
+for key, flags in pairs(SEC_WIDGETS) do
+  local m = smatch(key, ":(.+)$")
+  local rule = ruleOf(flags)
+  if m and not isQuery(m) and (rule == "untainted" or (rule == "tainted" and numberParams(SEC_TYPES[key]))) then GUARDED[m] = true end
+end
+W.GUARDED_METHODS = GUARDED
+local function guardMethod(m, real)
+  return function(self, ...)
+    local msg, fault = methodVerdict(self, m, ...)
+    if msg then refuse(msg, fault) end
+    return real(self, ...)
+  end
+end
+W.GUARD_BODY = {}   -- [method] = the unguarded stand-in body (a test measures the guard's own cost against it; never addon code)
+for m in pairs(GUARDED) do
+  local real = rawget(proto, m)
+  if type(real) == "function" then W.GUARD_BODY[m] = real; proto[m] = guardMethod(m, real) end
+end
+do   -- a documented method the stand-in does not implement: one shared quiet stand-in per name, guarded like the rest
+  local cache = {}
+  W.quietMethod = function(k)
+    local f = cache[k]
+    if f == nil then
+      f = GUARDED[k] and guardMethod(k, quietNil) or quietNil
+      cache[k] = f
+    end
+    return f
+  end
+end
 
 local G_IGNORE = { _ENV = true, arg = true, __XUI_HARNESS = true }
 setmetatable(_G, { __index = function(t, k)
@@ -1143,6 +1943,7 @@ end })
 -------------------------------------------------------------------------------
 function W.fire(ev, ...)
   local n = 0
+  if ev == "PLAYER_LOGIN" then W.loggedIn = true end   -- (round 11b: the end of a UI load, for the forbidden aura buttons' exemption)
   for _, o in ipairs(W.objects) do
     if (o._events[ev] or o._allEvents) and o._scripts.OnEvent then n = n + 1; safecall(o._scripts.OnEvent, o, ev, ...) end
   end
@@ -1161,6 +1962,17 @@ function W.tick(dt, steps)
       safecall(t.fn)
       if t.left and t.left ~= math.huge then t.left = t.left - 1 end
       if not t.cancelled and t.left and t.left > 0 then t.at = W.now + math.max(t.every, 0.01); W.timers[#W.timers + 1] = t end
+    end
+    if next(CD_ARMED) ~= nil then   -- (round 11b) Cooldown widgets that ran out (proto:SetCooldown above)
+      local ran
+      for w, at in pairs(CD_ARMED) do if at <= W.now and proto.IsVisible(w) then ran = ran or {}; ran[#ran + 1] = w end end
+      if ran then
+        for _, w in ipairs(ran) do
+          CD_ARMED[w] = nil
+          local fn = w._scripts.OnCooldownDone
+          if fn then safecall(fn, w) end
+        end
+      end
     end
     local list = {}
     for i, o in ipairs(W.objects) do list[i] = o end
@@ -1222,15 +2034,98 @@ function W.click(f, button)
   if f._scripts.OnClick then safecall(f._scripts.OnClick, f, button, false) end
   W.mouseOver = was
 end
--- combat starts as in the game: PLAYER_REGEN_DISABLED runs before the lockdown begins (wiki, API InCombatLockdown: "Combat lockdown
--- begins after the PLAYER_REGEN_DISABLED event fires, and ends before the PLAYER_REGEN_ENABLED event fires")
--- (round 11) while the event is handled, UnitAffectingCombat("player") is already true and InCombatLockdown() still false
-function W.enterCombat() W.affecting = true; W.fire("PLAYER_REGEN_DISABLED"); W.affecting = false; W.combat = true end
-function W.leaveCombat() W.combat = false; W.fire("PLAYER_REGEN_ENABLED") end
+-- (round 11b, SD-120) the drivers: combat, an instance, a Mythic+ key, a boss encounter, each in the default order of spec 3.3. Every order
+-- is INFERENCE except where noted; each driver has a flip (W.*RestrictFirst: true = the restriction's event comes before the game's own
+-- event), and tests/fix_r11_restrict_run.py plays both settings of every flip. A key and an encounter re-randomize the aura instance IDs
+-- and send a full UNIT_AURA update once their restriction is Active (patch 12.0.5 notes, confirmed; the update is INFERENCE), so its
+-- handlers see hidden data (the safer reading).
+W.combatRestrictFirst = false        -- enter: PLAYER_REGEN_DISABLED, then (0,1)            true: (0,1) first
+W.combatLeaveRestrictFirst = true    -- leave: (0,0), then PLAYER_REGEN_ENABLED              false: PLAYER_REGEN_ENABLED first
+W.keyRestrictFirst = true            -- start: (2,1) ... then CHALLENGE_MODE_START           false: CHALLENGE_MODE_START first
+W.keyCompleteRestrictFirst = false   -- end: CHALLENGE_MODE_COMPLETED (still Active), (2,0)  true: (2,0) first
+W.encounterRestrictFirst = true      -- pull: (1,1) ... then ENCOUNTER_START                 false: ENCOUNTER_START first
+W.encounterEndRestrictFirst = false  -- kill: ENCOUNTER_END (still Active), (1,0)            true: (1,0) first
+-- Combat. The lockdown begins after PLAYER_REGEN_DISABLED is handled and ends before PLAYER_REGEN_ENABLED (warcraft.wiki.gg, API
+-- InCombatLockdown, confirmed); UnitAffectingCombat is true from the start (W.affecting). Default: PLAYER_REGEN_DISABLED (affecting,
+-- lockdown off) -> (0,1) -> Combat Active -> lockdown on; leaving: lockdown off, Combat Inactive -> (0,0) -> PLAYER_REGEN_ENABLED.
+function W.enterCombat()
+  W.affecting = true
+  if W.combatRestrictFirst then W.setRestriction(0, true); W.fire("PLAYER_REGEN_DISABLED")
+  else W.fire("PLAYER_REGEN_DISABLED"); W.setRestriction(0, true) end
+  W.combat = true
+end
+function W.leaveCombat()
+  W.combat, W.affecting = false, false
+  if W.combatLeaveRestrictFirst then W.setRestriction(0, false); W.fire("PLAYER_REGEN_ENABLED")
+  else W.fire("PLAYER_REGEN_ENABLED"); W.setRestriction(0, false) end
+end
+-- An instance: kind "party" (a dungeon), "raid", or another instance type (Map only). IsInInstance / GetInstanceInfo answer from the
+-- loading screen on: loading events (PLAYER_ENTERING_WORLD, ZONE_CHANGED_NEW_AREA) -> (4,1) -> Map Active -> (5,1) -> Chat Active (a
+-- dungeon or raid map). Auras and cooldowns stay readable. opts: { name, maxPlayers, instanceID, groupSize } (stand-in values otherwise).
+-- Leaving: Chat Inactive -> (5,0) (unless a key or an encounter still holds it) -> Map Inactive -> (4,0) -> loading events.
+function W.enterInstance(kind, difficulty, opts)
+  if W.instance then W.leaveInstance() end
+  opts, kind = opts or {}, kind or "party"
+  local raid = kind == "raid"
+  W.instance = { kind = kind, difficulty = difficulty or 0, name = opts.name or (raid and "Stand-in Raid" or "Stand-in Dungeon"),
+    difficultyName = opts.difficultyName or "", maxPlayers = opts.maxPlayers or (raid and 20 or 5),
+    instanceID = opts.instanceID or (raid and 9002 or 9001), groupSize = opts.groupSize or (raid and 20 or 5) }
+  W.fire("PLAYER_ENTERING_WORLD", false, false)
+  W.fire("ZONE_CHANGED_NEW_AREA")
+  W.setRestriction(4, true)
+  if kind == "party" or raid then chatHold("map", true) end
+end
+function W.leaveInstance()
+  if not W.instance then return end
+  chatHold("map", false)
+  W.setRestriction(4, false)
+  W.instance = nil
+  W.fire("PLAYER_ENTERING_WORLD", false, false)
+  W.fire("ZONE_CHANGED_NEW_AREA")
+end
+-- A Mythic+ key. Default: (2,1) -> ChallengeMode Active -> (5,1) if nothing holds Chat yet -> aura IDs re-randomized -> full UNIT_AURA
+-- update -> CHALLENGE_MODE_START(mapID). Completing: CHALLENGE_MODE_COMPLETED while still Active -> Inactive -> (2,0) -> (5,0) if the key
+-- held Chat last (RACD:28, "active and incomplete").
+local function keyOn() W.setRestriction(2, true); chatHold("key", true); W.rerandomizeAuras() end
+local function keyOff() W.key = nil; W.setRestriction(2, false); chatHold("key", false) end
+function W.startKey(mapID, level, affixes)
+  if W.key then error("W.startKey: a key is already running (W.completeKey first)", 2) end
+  W.key = { mapID = mapID or 0, level = level or 10, affixes = affixes or {} }
+  if W.keyRestrictFirst then keyOn(); W.fire("CHALLENGE_MODE_START", W.key.mapID)
+  else W.fire("CHALLENGE_MODE_START", W.key.mapID); keyOn() end
+end
+function W.completeKey()
+  if not W.key then return end
+  if W.keyCompleteRestrictFirst then keyOff(); W.fire("CHALLENGE_MODE_COMPLETED")
+  else W.fire("CHALLENGE_MODE_COMPLETED"); keyOff() end
+end
+-- A boss encounter (ENCOUNTER_START: encounterID, encounterName, difficultyID, groupSize). Default: (1,1) -> Encounter Active -> (5,1) if
+-- nothing holds Chat yet -> aura IDs re-randomized -> full UNIT_AURA update -> ENCOUNTER_START. Ending (success 1 = kill, 0 = wipe):
+-- ENCOUNTER_END while still Active -> Inactive -> (1,0) -> (5,0) if the encounter held Chat last. An encounter while out of combat
+-- hides auras and cooldowns (INFERENCE, RACD:27).
+local function encounterOn() W.setRestriction(1, true); chatHold("encounter", true); W.rerandomizeAuras() end
+local function encounterOff() W.encounter = nil; W.setRestriction(1, false); chatHold("encounter", false) end
+function W.startEncounter(id, name, difficulty, size)
+  if W.encounter then error("W.startEncounter: an encounter is already running (W.endEncounter first)", 2) end
+  local e = { id = id or 0, name = name or "", difficulty = difficulty or 0, size = size or 0 }
+  W.encounter = e
+  if W.encounterRestrictFirst then encounterOn(); W.fire("ENCOUNTER_START", e.id, e.name, e.difficulty, e.size)
+  else W.fire("ENCOUNTER_START", e.id, e.name, e.difficulty, e.size); encounterOn() end
+end
+function W.endEncounter(success)
+  local e = W.encounter
+  if not e then return end
+  if W.encounterEndRestrictFirst then encounterOff(); W.fire("ENCOUNTER_END", e.id, e.name, e.difficulty, e.size, success or 1, {})
+  else W.fire("ENCOUNTER_END", e.id, e.name, e.difficulty, e.size, success or 1, {}); encounterOff() end
+end
 function W.registeredEvents()
   local set = {}
   for _, o in ipairs(W.objects) do for e in pairs(o._events) do set[e] = true end end
   return set
 end
+-- (round 11b) the shared secret object's functions, installed last so they wrap the string functions this file defined (strjoin, format,
+-- string.join): type, issecretvalue, canaccessvalue, issecrettable, canaccesstable, tonumber, string.format ... (secret.lua S.install).
+-- legacy = W: W.secret marks of values the game never hides keep answering issecretvalue (W.MarkSecret above).
+S.install(_G, { legacy = W })
 return W
 end

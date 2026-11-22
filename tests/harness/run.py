@@ -145,6 +145,13 @@ def read_saved_source(path, addon=CORE):
     return sv.Serialize(t)
 
 
+# (round 11b, spec step 4) the line hook and the key scan (tests/harness/loader.lua): on in every harness session unless --no-linehook
+# (used to measure its cost: the spec's budget is at most 2x the run time without it, inside the 900 s timeout). What it raises lands in
+# the session's Lua errors and the error record like any other error (FAIL) when no pcall of the addon's swallows it; either way every
+# finding (S.lineHook.sites) and every fault of the line hook's own is a FAIL (line_hook_fails); its counters are printed at the end.
+LINE_HOOK = os.environ.get("XUI_HARNESS_NO_LINEHOOK") != "1"
+
+
 def session(folders, enabled, saved, write_back=True, quick=False):
     """One play session in a new Lua state. saved: what the last session saved, either Lua source from savedvars.lua (the
     harness's own round trip and --saved PATH: key types kept, as the game's SavedVariables files keep them) or a Python dict
@@ -153,7 +160,7 @@ def session(folders, enabled, saved, write_back=True, quick=False):
     sv = savedvars(L)
     api = to_lua(L, {k: v for k, v in load_api().items() if k != "framexml"})
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(HERE, "world.lua"), api)
-    opts = to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}})
+    opts = to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "lineHook": LINE_HOOK})
     opts["saved"] = sv.Load(saved) if isinstance(saved, str) else to_lua(L, saved or {})
     loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(os.path.join(HERE, "loader.lua"), world, opts)
     t0 = time.time()
@@ -185,7 +192,48 @@ def session(folders, enabled, saved, write_back=True, quick=False):
         # (round 11, SD-138 M1 / SD-139) the addons' own error record at the end of the session: every error and warning XayaUI reported
         # (an engine step error SafeStep caught and only printed to chat included); run_combo FAILs on every entry
         "errorLog": error_log(L),
+        # (round 11b) the line hook's own counters (lines compiled and checked while a hidden value was alive, raised, key scans, finds)
+        "lineHook": line_hook_stats(loader),
     }
+    return out
+
+
+def line_hook_stats(loader):
+    """The line hook's counters for one session (tests/harness/loader.lua S.lineHook), or None when the loader has none."""
+    lh = loader.lineHook
+    if lh is None:
+        return None
+    st, state = lh.stats, lh.state()
+    def n(k):
+        return int(st[k] or 0)   # (item access: a lupa table's attributes include its own methods, e.g. keys)
+    sites, faults = lh["sites"], lh["faults"]
+    return {"on": bool(state["on"]), "compiled": n("compiled"), "checked": n("checked"), "flagged": n("flagged"), "scans": n("scans"),
+            "keys": n("keys"), "faults": n("faults"), "blindFilter": bool(state["blindFilter"]),
+            # (round 11b repair 1) every finding per site (rule, place, count, message) and the line hook's own faults: run_combo FAILs on
+            # each, because a raise the addon's own pcall swallows reaches neither the session's Lua errors nor the error record
+            "sites": [{"rule": str(sites[i]["rule"]), "site": str(sites[i]["site"]), "n": int(sites[i]["n"] or 0),
+                       "text": str(sites[i]["text"])[:600]} for i in range(1, len(sites) + 1)] if sites is not None else [],
+            "faultTexts": [str(faults[i]) for i in range(1, len(faults) + 1)] if faults is not None else [],
+            "sitesDropped": n("sitesDropped")}
+
+
+def line_hook_fails(idx, s, seen):
+    """FAIL lines for one session's line-hook findings (tests/harness/loader.lua S.lineHook.sites) and the line hook's own faults. The
+    harness causes no finding on purpose, so each one fails the run, whether or not the addon's own pcall swallowed the raise (then it
+    is in no error list: round 11b repair 1). seen: keys already reported by an earlier session of the same run (each once)."""
+    out, lh = [], s.get("lineHook") or {}
+    for x in lh.get("sites", []):
+        key = ("lineHook", x["rule"], x["site"])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append("session %d: the line hook found a misuse of a hidden value (%s at %s, x%d; Lua 5.1 cannot raise it, the stand-in does): %s"
+                   % (idx, x["rule"], x["site"], x["n"], x["text"][:600]))
+    if lh.get("sitesDropped"):
+        out.append("session %d: the line hook found misuses at %d more sites than it keeps (200)" % (idx, lh["sitesDropped"]))
+    if lh.get("faults"):
+        out.append("session %d: the line hook had %d fault(s) of its own (a bug in tests/harness/loader.lua, so lines went unchecked): %s"
+                   % (idx, lh["faults"], " | ".join(lh.get("faultTexts", [])[:3])[:600]))
     return out
 
 
@@ -286,6 +334,7 @@ def run_combo(folders, enabled, saved, label):
                 continue
             seen.add(key)
             fails.append("session %d: the error record (CueRulesDB.errorLog) holds %s x%d: %s" % (idx, e["code"], e["n"], e["msg"][:600]))
+        fails.extend(line_hook_fails(idx, s, seen))
     dep = load_api().get("deprecatedOnly", {})
     for idx, s in ((1, s1),):
         for k, tb in s["unknownGlobals"].items():
@@ -402,7 +451,12 @@ def main():
     ap.add_argument("--fresh-only", action="store_true")
     ap.add_argument("--report", default=os.path.join(HERE, "reports"))
     ap.add_argument("--jobs", type=int, default=max(1, os.cpu_count() or 1))
+    ap.add_argument("--no-linehook", action="store_true", help="play without the line hook and key scan (to measure their cost)")
     args = ap.parse_args()
+    if args.no_linehook:
+        os.environ["XUI_HARNESS_NO_LINEHOOK"] = "1"   # (read by session() in every worker process: they start after this)
+        global LINE_HOOK
+        LINE_HOOK = False
     folders = find_addons()
     if CORE not in folders:
         print("FAIL: no XayaUI folder found under", ROOT)
@@ -486,6 +540,13 @@ def main():
             tag = "deprecated-only" if k in load_api().get("deprecatedOnly", {}) else ("Blizzard UI defines it" if k in fxset else "defined nowhere")
             f.write("  %-45s [%s] %s\n" % (k, tag, " | ".join(first)))
     print("unknown global names:", len(unknown), "| report:", os.path.join(args.report, "report.txt"))
+    lh = [s_["lineHook"] for r in summary for s_ in (r["s1"], r["s2"], r["s3"]) if s_.get("lineHook")]
+    on = [x for x in lh if x["on"]]
+    print("line hook: %s in %d of %d sessions | %d lines compiled, %d checked while a hidden value was alive | %d raised | key scans %d, "
+          "hidden keys found %d | %d faults of its own%s" % ("ON" if on else "OFF", len(on), 3 * len(summary), sum(x["compiled"] for x in on),
+                                      sum(x["checked"] for x in on), sum(x["flagged"] for x in on), sum(x["scans"] for x in on),
+                                      sum(x["keys"] for x in on), sum(x["faults"] for x in on),
+                                      " | (no hidden-value filter: checked every line)" if any(x["blindFilter"] for x in on) else ""))
     print("RESULT:", "FAIL (%d)" % total_fail if total_fail else "PASS")
     # (round 11, SD-138 M1) the count line tests/run_all.py reads: how many runs were checked (each run: three sessions), and the failures
     print("harness: %d runs checked (%d sessions), %d failure(s)  FAILS: %d" % (len(summary), 3 * len(summary), total_fail, total_fail))

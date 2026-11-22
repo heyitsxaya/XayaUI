@@ -95,18 +95,24 @@ check("a frame made from a Secure template is protected and blocked in combat", 
 sec = run("""
 local o = {}
 o.before = issecretvalue("xui-secret-name")
+-- (round 11b, build spec 3.2: W.MarkSecret hands back the value hidden, a value of the shared secret object tests/harness/secret.lua;
+-- the plain value passed in stays plain. Before, it marked the plain value itself, so marking 5 made every 5 secret.)
 local v = W.MarkSecret("xui-secret-name")
-o.ret = (v == "xui-secret-name")
-o.secret = issecretvalue("xui-secret-name"); o.can = canaccessvalue("xui-secret-name")
+o.ret = W.S.reveal(v) == "xui-secret-name" and type(v) == "string"
+o.secret = issecretvalue(v); o.can = canaccessvalue(v)
+o.plain = issecretvalue("xui-secret-name")
 o.other = issecretvalue("another name"); o.num = issecretvalue(5)
-W.ClearSecret("xui-secret-name")
-o.after = issecretvalue("xui-secret-name")
+o.marked = W.secret[v] == true
+W.ClearSecret(v)
+o.after = W.secret[v] == nil
+o.still = issecretvalue(v)
 return o
 """)
-check("W.MarkSecret: the value is secret (issecretvalue true, canaccessvalue false) and comes back from the call",
+check("W.MarkSecret: the value it hands back is secret (issecretvalue true, canaccessvalue false), a string holding the name",
       sec.before is False and sec.ret is True and sec.secret is True and sec.can is False)
-check("W.MarkSecret marks only that value", sec.other is False and sec.num is False)
-check("W.ClearSecret undoes it", sec.after is False)
+check("W.MarkSecret marks only that value (the plain name passed in, another name and 5 stay plain)",
+      sec.plain is False and sec.other is False and sec.num is False and sec.marked is True)
+check("W.ClearSecret drops it from the registry; the value stays hidden (the game never un-hides a value)", sec.after is True and sec.still is True)
 
 print("%d checks, %d failed" % (checks, fails))
 sys.exit(1 if fails else 0)

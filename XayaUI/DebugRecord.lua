@@ -371,6 +371,14 @@ DR.ON_LINE = "Advanced Debugging is on. Turn it off in /xui > Settings > Debuggi
 function ns.DebugToolsArrived() toolsLoaded = true end
 function ns.DebugToolsLoaded() return toolsLoaded end
 local toolsTried, toolsWhy = false, nil
+-- (round 11b, SD-149) whether the debug tools are wanted as the folder is read: false only while core reads it for the run logger alone
+-- (LoggerArrive below, Advanced Debugging off at the login). Each tool file then returns at its first line (XayaUI_Debug/*.lua: "if
+-- ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end"), so only the logger runs; read any other way (the login with
+-- Advanced Debugging on) the folder loads exactly as before. Advanced Debugging turned on during a session still waits for the next
+-- /reload, as before (V34: detected once per reload; the game cannot read a folder twice). INFERENCE (not in docs/reference/api): the game
+-- reads every file of the folder inside the C_AddOns.LoadAddOn call, before it returns, as the stand-in loader does.
+local loggerOnly = false
+function ns.DebugToolsWanted() return not loggerOnly end
 local function LoadTools()
     if toolsLoaded or toolsTried then return end
     toolsTried = true   -- (once per reload: a refused load is not retried until the next /reload)
@@ -379,16 +387,21 @@ local function LoadTools()
     local ok, loaded, why = pcall(A.LoadAddOn, DR.TOOLS_ADDON)
     if not (ok and loaded) then toolsWhy = tostring((ok and why) or loaded or "?") end
 end
+-- Whether the XayaUI_Debug folder is absent: "missing" (not installed), "disabled" (switched off in the game's AddOns list) or nil
+-- (installed and switched on). One C_AddOns.GetAddOnInfo call (above); shared by ns.DebugToolsNeeded and the run logger's hook (round
+-- 11b), so both say the same plain words and neither calls an absence an error.
+local function ToolsAbsent()
+    local A = C_AddOns
+    if not (A and A.GetAddOnInfo) then return nil end
+    local ok, name, _, _, _, why = pcall(A.GetAddOnInfo, DR.TOOLS_ADDON)
+    if ok and (why == "MISSING" or not name) then return "missing" end
+    if ok and why == "DISABLED" then return "disabled" end
+    return nil
+end
 -- One plain line saying what a debug tool needs while XayaUI_Debug is not loaded. what: "The bug report (/xui bug)" ...
 function ns.DebugToolsNeeded(what)
     what = tostring(what or "This debug command")
-    local reason
-    local A = C_AddOns
-    if A and A.GetAddOnInfo then
-        local ok, name, _, _, _, why = pcall(A.GetAddOnInfo, DR.TOOLS_ADDON)
-        if ok and (why == "MISSING" or not name) then reason = "missing"
-        elseif ok and why == "DISABLED" then reason = "disabled" end
-    end
+    local reason = ToolsAbsent()
     if reason == "missing" then
         ns.Print(what .. " is one of the debug tools (XayaUI Debug), which is not installed: the XayaUI_Debug folder belongs next to XayaUI in Interface\\AddOns.")
     elseif reason == "disabled" then
@@ -401,13 +414,15 @@ function ns.DebugToolsNeeded(what)
         ns.Print(what .. " needs Advanced Debugging: turn it on in /xui > Settings > Debugging, then type /reload.")
     end
 end
--- in chat, whatever "XayaUI's messages" says (her words: "print to the chat pane")
+-- in chat, whatever "XayaUI's messages" says (her words: "print to the chat pane"). (round 11b) Also the run logger's one "send the file"
+-- line (SD-124: "says once in chat"), through ns.ChatLine.
 local function ChatLine(text)
     local prev = ns.chatRunning
     ns.chatRunning = true
     pcall(ns.Print, text)
     ns.chatRunning = prev
 end
+ns.ChatLine = ChatLine
 if ns.AtLogin then
     ns.AtLogin(function()
         if not ns.AdvancedDebugOn() then return end
@@ -415,3 +430,157 @@ if ns.AtLogin then
         ChatLine(DR.ON_LINE)
     end)
 end
+
+-------------------------------------------------------------------------------
+-- The run logger's hook (round 11b). Her words: SD-121 "sure, prompt me before I go into an instance if this is the one I want to log for
+-- the test each time until it's done"; SD-122 "After loading, before pull (Recommended)"; SD-123 "Create a separate tick element inside
+-- XayaUI debug and by default it should be off except for this one round"; SD-149 "Logger box, works alone" (a tick box named "Advanced
+-- debug logging" under /xui > Settings > Debugging, for the logger only, working while Advanced Debugging stays off). The logger's code is
+-- XayaUI_Debug/RunLogger.lua (no new addon folder, SD-113); this is only the part of it core must hold, because the folder is read on
+-- demand:
+--  * the box: CueRulesDB.ui.runLogger, true / false as she sets it; nil (never touched) reads as DR.RUN_LOGGER_DEFAULT. The default is
+--    ON in the release that carries bundle 1 (SD-123 "except for this one round"); a later release turns it off with ONE change: set
+--    DR.RUN_LOGGER_DEFAULT to false (the box's hover text reads its "on / off by default" from it: ns.RunLoggerDefault). A box she ticked
+--    or unticked herself keeps her choice either way.
+--  * when the folder is read (technical choice, SD-145; V14 / V34): never at the login for the logger. While the box is on and the folder
+--    is not loaded yet, one frame of core listens to PLAYER_ENTERING_WORLD only, which the game raises at a loading screen (login, /reload,
+--    a zone or instance change), never in play. When one lands in a dungeon, Mythic+ key or raid (IsInInstance: "party" or "raid"), core
+--    loads XayaUI_Debug once (C_AddOns.LoadAddOn) and hands the moment to the logger (its "runlog" service, Modules.lua ns.Provide), which
+--    from then on listens for itself; core's frame lets go of the event. In the open world nothing of the logger is read. With Advanced
+--    Debugging on, the folder is already loaded at the login (above) and the logger sets itself up then.
+--  * a loading screen that lands in combat lockdown (she zoned in fighting): the load waits until combat is over (core's frame holds
+--    PLAYER_REGEN_ENABLED for that wait only), and even then it does not run in the combat-end frame: PLAYER_REGEN_ENABLED only hands it
+--    to one 0-second timer (C_Timer.After(0, LoggerWaitDone), a file-level function: nothing is made per call, SD-90), so the folder is
+--    read in the first frame after combat. Reading the folder and setting the question up is about 1800 instructions billed to
+--    XayaUI_Debug in one frame (stand-in, tests/fix_r11_logger_run.py C7: 1814 in the combat-end frame before repair 2), over its cap of
+--    600 (SD-81) at combat end, one of the four capped moments (V33). A pull chained before that frame (lockdown again) keeps the wait
+--    for the next end of combat. INFERENCE (not in docs/reference/api): a 0-second C_Timer.After runs at the next frame, after the
+--    current event's handlers, as the stand-in's timers do. The question waits for the end of combat anyway (SD-122 "never in combat").
+--  * XayaUI_Debug switched off in the AddOns list or not installed: nothing is loaded and nothing is saved as an error (it is not one).
+--    The box at its default stays quiet (most players never asked for the logger); a box she ticked herself gets one plain line, once per
+--    session, in the words ns.DebugToolsNeeded uses. Any other refusal (an out-of-date or broken folder) is an error: XUI-E019, saved.
+--  * box off: core's frame holds no event (made only the first time the box is on); a loaded logger stops at once (its "runlog"
+--    service's Stop: every event let go, the question hidden). Its code stays until the next /reload (the game cannot unload code).
+-- Game API (docs/reference/api/api.json, 12.1.5): IsInInstance() -> isInInstance: bool, instanceType: cstring (no flags);
+-- PLAYER_ENTERING_WORLD (isInitialLogin: bool, isReloadingUi: bool) (events.md:1172); PLAYER_REGEN_ENABLED (no payload);
+-- InCombatLockdown() (global; api.json lists it under C_RestrictedActions as documented, not present in the namespace);
+-- C_AddOns.LoadAddOn, C_AddOns.GetAddOnInfo (above).
+-- INFERENCE (not documented): instanceType "party" is a dungeon (a Mythic+ key included) and "raid" a raid, the reading the rest of XayaUI
+-- uses (XayaUI_Rules/Conditions.lua). UNVERIFIED IN GAME.
+-- Cost (V27 / V33): box off, nothing; box on in the open world, one event that fires only at a loading screen and returns after one
+-- IsInInstance call; no timer, no per-frame or per-combat-event work (PLAYER_REGEN_ENABLED is held only while a load waits, and the one
+-- 0-second timer runs once per such wait).
+-------------------------------------------------------------------------------
+DR.RUN_LOGGER_DEFAULT = true   -- (SD-123) ON for the bundle 1 release only; the next release sets this to false
+function ns.RunLoggerDefault() return DR.RUN_LOGGER_DEFAULT == true end
+function ns.RunLoggerOn()
+    local v = Ui().runLogger
+    if v == nil then return DR.RUN_LOGGER_DEFAULT == true end
+    return v == true
+end
+local logWatch            -- core's PLAYER_ENTERING_WORLD frame for the logger; nil until the box is first on
+local logWatching = false
+local logLoadTried = false
+local logWait             -- a load waiting for the end of combat: { isLogin, isReload } of the loading screen, else nil
+local logWaitArmed = false   -- the 0-second timer that runs the waiting load after combat is armed (one at a time)
+local function LoggerSvc() return ns.Service and ns.Service("runlog") end
+-- one call into the logger, under pcall: a logger failure stops the logger (its Fail: one line through ns.PrintError), never core
+local function LoggerCall(name, ...)
+    local svc = LoggerSvc()
+    if not (svc and svc[name]) then return end
+    local ok, err = pcall(svc[name], ...)
+    if not ok and svc.Fail then pcall(svc.Fail, err) end
+end
+-- true when the player is in a dungeon or raid instance right now
+function DR.InGroupInstance()
+    if not IsInInstance then return false end
+    local ok, inside, kind = pcall(IsInInstance)
+    return ok and inside == true and (kind == "party" or kind == "raid")
+end
+local function Lockdown() return (InCombatLockdown and InCombatLockdown()) and true or false end
+-- the folder is switched off or not installed: no load, no error; one plain line only for a box she ticked herself, once per session
+-- (LoadLogger runs once per reload: logLoadTried), in the debug tools' own words (ns.DebugToolsNeeded reads the same absence: "Advanced debug logging is one of the debug tools (XayaUI
+-- Debug), which is switched off in the game's AddOns list. Turn it on, then type /reload.")
+local function LoggerAbsent()
+    if Ui().runLogger ~= true then return end
+    ns.DebugToolsNeeded("Advanced debug logging")
+end
+-- the folder read for the logger alone (the tool files stay dormant: ns.DebugToolsWanted), once per reload
+local function LoadLogger()
+    logLoadTried = true   -- (once per reload, as the tools: a refused load is not retried until the next /reload)
+    local absent = ToolsAbsent()
+    if absent then LoggerAbsent(); return end
+    local A = C_AddOns
+    if not (A and A.LoadAddOn) then return end
+    loggerOnly = true
+    local ok, loaded, why = pcall(A.LoadAddOn, DR.TOOLS_ADDON)
+    loggerOnly = false
+    if ok and loaded then return end
+    if ok and (why == "MISSING" or why == "DISABLED") then return end   -- (an absence, not an error: quiet, as GetAddOnInfo did not say so)
+    ns.PrintError("XUI-E019", "The run logger (XayaUI Debug) could not load (" .. tostring((ok and why) or loaded or "?") .. "). Type /reload to try again.")
+end
+local SyncLoggerWatch
+local function SetWait(isLogin, isReload)
+    if isLogin == nil and isReload == nil then
+        if logWait and logWatch then logWatch:UnregisterEvent("PLAYER_REGEN_ENABLED") end
+        logWait = nil
+        return
+    end
+    logWait = logWait or {}
+    logWait[1], logWait[2] = isLogin, isReload
+    if logWatch then logWatch:RegisterEvent("PLAYER_REGEN_ENABLED") end
+end
+local LoggerWaitDone
+local function LoggerArrive(_, event, isLogin, isReload)
+    if event == "PLAYER_REGEN_ENABLED" then   -- (combat is over: the load that waited runs in the next frame, not in this one)
+        if not logWait then return end
+        if logWatch then logWatch:UnregisterEvent("PLAYER_REGEN_ENABLED") end
+        if logWaitArmed then return end
+        logWaitArmed = true
+        if C_Timer and C_Timer.After then C_Timer.After(0, LoggerWaitDone) else LoggerWaitDone() end
+        return
+    end
+    if not ns.RunLoggerOn() then SetWait(nil, nil); SyncLoggerWatch(); return end
+    if not DR.InGroupInstance() then SetWait(nil, nil); return end
+    if not LoggerSvc() and not logLoadTried then
+        if Lockdown() then SetWait(isLogin, isReload); return end   -- (a fight frame: the load waits for the end of combat)
+        LoadLogger()
+    end
+    SyncLoggerWatch()   -- (the logger listens for itself from here)
+    LoggerCall("Arrive", isLogin, isReload)
+end
+-- the first frame after combat: the load that waited, for the loading screen it waited for (a pull chained before this frame, lockdown
+-- again: LoggerArrive waits once more for the next end of combat)
+function LoggerWaitDone()
+    logWaitArmed = false
+    if not logWait then return end
+    local isLogin, isReload = logWait[1], logWait[2]
+    SetWait(nil, nil)
+    LoggerArrive(nil, "PLAYER_ENTERING_WORLD", isLogin, isReload)
+end
+-- core's frame holds PLAYER_ENTERING_WORLD exactly while the box is on and the logger is not loaded yet
+function SyncLoggerWatch()
+    local want = ns.RunLoggerOn() and not LoggerSvc() and not logLoadTried
+    if not want then SetWait(nil, nil) end
+    if want == logWatching then return end
+    if want and not logWatch then
+        if not CreateFrame then return end
+        logWatch = CreateFrame("Frame")
+        logWatch:SetScript("OnEvent", LoggerArrive)
+    end
+    if not logWatch then return end
+    if want then logWatch:RegisterEvent("PLAYER_ENTERING_WORLD") else logWatch:UnregisterEvent("PLAYER_ENTERING_WORLD") end
+    logWatching = want
+end
+-- Settings > Debugging > "Advanced debug logging" (XayaUI_Options/Options.lua). Takes effect at once: on, the next loading screen into a
+-- dungeon, key or raid asks; off, a loaded logger stops now.
+function ns.SetRunLogger(on)
+    Ui().runLogger = on and true or false
+    LoggerCall("Sync")
+    SyncLoggerWatch()
+end
+-- (tests) whether core's frame listens now, and whether a load waits for the end of combat
+function DR.LoggerWatching() return logWatching end
+function DR.LoggerWaiting() return logWait ~= nil end
+-- at the login: a logger loaded with the debug tools (Advanced Debugging on) sets itself up; else core's frame listens while the box is on
+if ns.AtLogin then ns.AtLogin(function() LoggerCall("Sync"); SyncLoggerWatch() end) end

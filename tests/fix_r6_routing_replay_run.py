@@ -320,13 +320,18 @@ W.tick(1 / 60, 30)
 -- ---------------------------------------------------------------- what the player sees, every frame
 local framesOf, containers = nil, nil
 if ns.VisualProbeState then framesOf, containers = ns.VisualProbeState() end
-local function txt(fs) if not fs then return "-" end; if fs.IsShown and not fs:IsShown() then return "hidden" end; local ok, t = pcall(fs.GetText, fs); return ok and tostring(t) or "?" end
-local function rnd(x) if type(x) ~= "number" then return "-" end return tostring(math.floor(x + 0.5)) end
+-- (round 11b, build spec 3.2: W.MarkSecret's values are hidden values of the shared secret object, and the game lets a hidden string or
+-- number reach FontString:SetText / StatusBar:SetValue. The snapshot is the test's own reading, not addon code: it reads such a value
+-- through W.S.reveal, which gives exactly the text it read before round 11b, when the marked value stayed a plain one.)
+local function plain(v) if issecretvalue(v) then return W.S.reveal(v) end return v end
+local function txt(fs) if not fs then return "-" end; if fs.IsShown and not fs:IsShown() then return "hidden" end; local ok, t = pcall(fs.GetText, fs); return ok and tostring(plain(t)) or "?" end
+local function rnd(x) x = plain(x); if type(x) ~= "number" then return "-" end return tostring(math.floor(x + 0.5)) end
 local function place(fr) local ok, l, b, w, h = pcall(fr.GetRect, fr); if not ok then return "?" end return rnd(l) .. "," .. rnd(b) .. "," .. rnd(w) .. "," .. rnd(h) end
 local function bar(fr)
   local b = fr and fr.barF
   if not (b and b:IsShown()) then return "-" end
   local ok, v = pcall(b.GetValue, b)
+  v = plain(v)
   return (ok and type(v) == "number") and ("%.2f"):format(v) or "?"
 end
 local function snap(label)
@@ -340,7 +345,7 @@ local function snap(label)
     local owns = ns.EngineOwns and ns.EngineOwns(r) and true or false
     rows[i] = table.concat({ tostring(r.name), tostring(rt and rt.active or false), tostring(rt and rt.visualWanted or false), tostring(shown),
       shown and txt(fr.text) or "", shown and txt(fr.count) or "", shown and txt(fr.absorb) or "", tostring(desat and true or false),
-      tostring(vis), shown and ("%.2f"):format(fr:GetAlpha() or 1) or "", shown and bar(fr) or "", shown and place(fr) or "", tostring(owns) }, "|")
+      tostring(vis), shown and ("%.2f"):format(plain(fr:GetAlpha()) or 1) or "", shown and bar(fr) or "", shown and place(fr) or "", tostring(owns) }, "|")
   end
   local g = {}
   if type(containers) == "table" then   -- (keyed by the group's name: a group's id differs from run to run)

@@ -18,9 +18,47 @@ from lupa.lua51 import LuaRuntime
 ROOT = os.environ.get("XUI_R10_ROOT") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 bench = open(os.path.join(ROOT, "tests", "engine_bench.py")).read()
 a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')", a)
+# (round 11b, build spec step 5) hidden data comes from the shared stand-in: the secret object and world.lua's restriction state machine
+# (combat, boss encounters and a key hide the auras through C_Secrets, as the game does), from this test's own folder even when
+# XUI_R10_ROOT names another tree's addon code; no local fake. Fights and boss pulls are world's drivers (W.enterCombat / W.leaveCombat,
+# W.startEncounter / W.endEncounter), whose events reach the addon through FIRE. Zones, difficulty and groups stay this test's own.
+HARNESS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness") + os.sep
+BENCH_RESTRICTIONS = r'''
+-- [bench restrictions] (round 11b, build spec step 5: one stand-in for hidden data, kept in the private XUI-Docs repo)
+-- A test on the engine_bench.py stubs gets the shared secret object (tests/harness/secret.lua) and the restriction state machine of
+-- tests/harness/world.lua, the same code the harness and the gates play. world.lua runs in its own environment, so its frames,
+-- C_Spell and C_UnitAuras stay there and the bench's stubs and the test's own game model are untouched. This state gets:
+--   W   the world: drive it with W.enterCombat / W.leaveCombat, W.startKey / W.completeKey, W.startEncounter / W.endEncounter,
+--       W.enterInstance / W.leaveInstance; set W.auraSecrecy[id] / W.cdSecrecy[id] (0 NeverSecret, 1 AlwaysSecret, absent 2)
+--   W.S the secret object: W.S.new(v) a hidden value, W.S.reveal(v) for asserts only (no global S: tests name rules S)
+--   the installed type, issecretvalue, canaccessvalue, issecrettable, canaccesstable, tonumber, string.format (S.install), and
+--   world's state-driven readers: C_Secrets, C_RestrictedActions, InCombatLockdown, UnitAffectingCombat, IsInInstance,
+--   GetInstanceInfo, C_ChallengeMode and C_InstanceEncounter (a test may still replace any of them after this block).
+-- The world's events (PLAYER_REGEN_DISABLED, ADDON_RESTRICTION_STATE_CHANGED, ...) go to BENCH_FIRE(event, ...) when the test defines
+-- it (its own event delivery), and nowhere otherwise. Run once, after the bench and before any addon file (addons keep 'local type =
+-- type'). Every copy of this block is the same: tests/fix_r11_fakes_run.py checks it (its owner should be engine_bench.py).
+do
+  local dir, G = ..., _G
+  local env = {}
+  for _, k in ipairs({ "assert", "collectgarbage", "coroutine", "debug", "dofile", "error", "gcinfo", "getfenv", "getmetatable", "ipairs",
+      "load", "loadfile", "loadstring", "math", "newproxy", "next", "os", "pairs", "pcall", "print", "rawequal", "rawget", "rawset",
+      "select", "setfenv", "setmetatable", "string", "table", "tonumber", "tostring", "type", "unpack", "xpcall", "_VERSION" }) do
+    env[k] = rawget(G, k)
+  end
+  env._G = env
+  local chunk = assert(loadfile(dir .. "world.lua"))
+  setfenv(chunk, env)
+  W = chunk()({})
+  W.S.install(G, { legacy = W })
+  for _, k in ipairs({ "C_Secrets", "C_RestrictedActions", "InCombatLockdown", "UnitAffectingCombat", "IsInInstance", "GetInstanceInfo",
+      "C_ChallengeMode", "C_InstanceEncounter" }) do
+    G[k] = env[k]
+  end
+  W.fire = function(e, ...) local f = rawget(G, "BENCH_FIRE"); if f then return f(e, ...) end end
+end
+-- [/bench restrictions]
+'''
 STANDIN = r'''
-SECRET = setmetatable({}, { __tostring = function() return "SECRET" end })
-issecretvalue = function(v) return v == SECRET end
 EVENTS = {}
 local M = FRAME_METHODS
 function M:RegisterEvent(e) EVENTS[e] = EVENTS[e] or {}; for _, f in ipairs(EVENTS[e]) do if f == self then return true end end; table.insert(EVENTS[e], self); return true end
@@ -59,17 +97,13 @@ function FRAMES(seconds)
 end
 function RUN_TIMERS() FRAMES(0.6) end
 hooksecurefunc = function(t, k, fn) if type(t) == "string" then return end; local old = t[k]; t[k] = function(...) local r = { old(...) }; fn(...); return unpack(r) end end
-COMBAT, LOCK, INST, ITYPE, GROUPED, RAID, KEY, RESTING, MOUNTED, BOSS = false, false, false, "none", false, false, false, false, false, false
-InCombatLockdown = function() return LOCK end
-UnitAffectingCombat = function() return COMBAT end
+BENCH_FIRE = FIRE   -- (world's PLAYER_REGEN_*, ADDON_RESTRICTION_STATE_CHANGED, ENCOUNTER_* and CHALLENGE_MODE_* reach the addon)
+INST, ITYPE, GROUPED, RAID, RESTING, MOUNTED = false, "none", false, false, false, false
 IsInInstance = function() return INST, ITYPE end
 IsInGroup = function() return GROUPED end
 IsInRaid = function() return RAID end
 IsResting = function() return RESTING end
 IsMounted = function() return MOUNTED end
-C_InstanceEncounter = { IsEncounterInProgress = function() return BOSS end }
-C_ChallengeMode = C_ChallengeMode or {}
-C_ChallengeMode.IsChallengeModeActive = function() return KEY end
 Enum = Enum or {}
 Enum.UnitAuraSoundTrigger = { Added = 0, ApplicationsIncreased = 1, Removed = 2 }
 Enum.CooldownViewerAlertEventType = { Available = 1, PandemicTime = 2, OnCooldown = 3, ChargeGained = 4, OnAuraApplied = 5, OnAuraRemoved = 6 }
@@ -82,8 +116,9 @@ HELD, NEXT, ADDS, ADDS_IN_LOCK, REFUSED = {}, 100, 0, 0, 0
 REFUSE_START, REFUSE_LOCK, REFUSE_HOW = false, false, "error"
 C_UnitAuras.AddAuraSound = function(trigger, info)
   ADDS = ADDS + 1
-  if LOCK then ADDS_IN_LOCK = ADDS_IN_LOCK + 1 end
-  if (REFUSE_START and COMBAT and not LOCK) or (REFUSE_LOCK and LOCK) then
+  local lock = InCombatLockdown()
+  if lock then ADDS_IN_LOCK = ADDS_IN_LOCK + 1 end
+  if (REFUSE_START and UnitAffectingCombat("player") and not lock) or (REFUSE_LOCK and lock) then
     REFUSED = REFUSED + 1
     if REFUSE_HOW == "error" then error("Interface action failed because of an AddOn") end
     return nil
@@ -92,12 +127,12 @@ C_UnitAuras.AddAuraSound = function(trigger, info)
 end
 C_UnitAuras.RemoveAuraSound = function(id) HELD[id] = nil end
 function HOLDS(spell) local n = 0; for _, s in pairs(HELD) do if s == spell then n = n + 1 end end return n end
--- auras (for XayaUI's own sound): UP[id] = true while on the player; hidden (SECRET) from addons in combat
+-- auras (for XayaUI's own sound): UP[id] = true while on the player; the spell-ID read answers nil while the aura is hidden
+-- (RequiresNonSecretAura, spec 2.2; before round 11b this stand-in answered a hidden token, which the game never does)
 UP = {}
-C_Secrets = { ShouldAurasBeSecret = function() return COMBAT end }
 C_UnitAuras.GetUnitAuraBySpellID = function(unit, id)
   if unit ~= "player" or not UP[id] then return nil end
-  if COMBAT then return SECRET end
+  if C_Secrets.ShouldSpellAuraBeSecret(id) then return nil end
   return { auraInstanceID = id, applications = 1, expirationTime = 0, duration = 0, spellId = id }
 end
 C_UnitAuras.GetPlayerAuraBySpellID = function(id) return C_UnitAuras.GetUnitAuraBySpellID("player", id) end
@@ -111,8 +146,11 @@ C_CooldownViewer = { GetCooldownViewerCooldownInfo = function(cid) return CDM_IN
 function ICON(spellID, cid, readable)
   local f = CreateFrame("Frame")
   f.cooldownID = cid
-  f.cooldownInfo = readable and { spellID = spellID, linkedSpellIDs = {} } or SECRET
-  function f:GetSpellID() if self.wasSetFromAura and COMBAT then return SECRET end if not readable then return SECRET end return spellID end
+  f.cooldownInfo = readable and { spellID = spellID, linkedSpellIDs = {} } or W.S.newTable({ spellID = spellID, linkedSpellIDs = {} }, "A")
+  function f:GetSpellID()
+    if (self.wasSetFromAura and C_Secrets.ShouldAurasBeSecret()) or not readable then return W.S.new(spellID) end
+    return spellID
+  end
   function f:TriggerAlertEvent(ev) end
   function f:OnUnitAuraUpdatedEvent() end
   function f:OnCooldownIDSet() end
@@ -122,7 +160,7 @@ end
 function LIGHT(f, on, id)
   UP[id] = on or nil
   f.wasSetFromAura = on and true or false
-  f.auraInstanceID = on and (COMBAT and SECRET or id) or nil
+  f.auraInstanceID = on and (C_Secrets.ShouldAurasBeSecret() and W.S.new(id) or id) or nil
   f:TriggerAlertEvent(on and Enum.CooldownViewerAlertEventType.OnAuraApplied or Enum.CooldownViewerAlertEventType.OnAuraRemoved)
   FIRE("UNIT_AURA", "player", {})
 end
@@ -164,6 +202,7 @@ def world(setup, engine=False):
     L = LuaRuntime(unpack_returned_tuples=True)
     L.execute("CueRulesDB = { rules = {}, folders = {} }")
     L.execute(bench[a:b])
+    L.execute(BENCH_RESTRICTIONS, HARNESS)
     L.execute(STANDIN)
     load = L.eval("function(src, name, ns) local f, e = loadstring(src, '@' .. name); if not f then error(e) end; return f('XayaUI', ns) end")
     ns = L.eval("{ settingsTestHooks = { keepOld = true } }"); L.globals().NS = ns
@@ -205,10 +244,10 @@ def EX(L, code):
         check("no Lua error in the scenario step", False, str(e).splitlines()[0][:160])
 
 def fight_start(L):   # PLAYER_REGEN_DISABLED comes before the combat lockdown (INFERENCE; the SD-31 mount hold relies on the same)
-    EX(L, "COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); LOCK = true")
+    EX(L, "W.enterCombat()")
 
 def fight_end(L):
-    EX(L, "COMBAT = false; LOCK = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
+    EX(L, "W.leaveCombat(); RUN_TIMERS()")
 
 def colons(s):
     return re.sub(r"\|c[0-9a-fA-F]{8}|\|r", "", s).count(":")
@@ -226,13 +265,12 @@ check("1d a rule with no Load choice: held, and its pane line does not claim any
       H(8003) == 1 and "does not apply" not in st("PLAIN"), st("PLAIN"))
 check("1e   ...and says plainly the game's copy can never repeat it or wait for the other triggers (ANY trigger mode)",
       "can never repeat it (Repeat)" in st("PLAIN") and "ANY trigger mode" in st("PLAIN"), st("PLAIN"))
-EX(L, "COMBAT = true; FIRE('PLAYER_REGEN_DISABLED')")
+EX(L, "W.enterCombat()")   # (PLAYER_REGEN_DISABLED is handled before the lockdown; 1l checks no add came in the lockdown)
 check("1f a fight starts: 'Only in combat' is handed to the game at once (in the PLAYER_REGEN_DISABLED handler, no timer)", H(8001) == 1)
 check("1g   ...and 'Only out of combat' is taken back at once", H(8002) == 0)
-EX(L, "LOCK = true")
 check("1h   ...the pane says the game plays the 'Only in combat' sound", "The game plays this sound" in st("INC"), st("INC"))
 check("1i   ...and XayaUI does not play a second copy (the game owns it)", EV(L, "NS.AuraSound.Owns(INC)") is True)
-EX(L, "COMBAT = false; LOCK = false; FIRE('PLAYER_REGEN_ENABLED')")   # no timers: at once
+EX(L, "W.leaveCombat()")   # no timers: at once
 check("1j the fight ends: 'Only in combat' is taken back at once", H(8001) == 0)
 check("1k   ...and 'Only out of combat' is handed back at once", H(8002) == 1)
 check("1l no add was asked in the combat lockdown", EV(L, "ADDS_IN_LOCK") == 0, EV(L, "ADDS_IN_LOCK"))
@@ -249,27 +287,27 @@ check("2b   ...the boss events are listened to", EV(L, "LISTENS('ENCOUNTER_START
 # order A: combat first, then the boss pull in the lockdown
 fight_start(L)
 check("2c combat starts on trash (no boss): still not held", H(8101) == 0 and H(8102) == 0 and H(8103) == 1)
-EX(L, "BOSS = true; FIRE('ENCOUNTER_START', 3009, 'Listed', 16, 20)")
+EX(L, "W.startEncounter(3009, 'Listed', 16, 20)")
 check("2d the listed boss is pulled in the lockdown: both boss rules handed to the game at once", H(8101) == 1 and H(8102) == 1)
 check("2e   ...and 'Only outside boss encounters' taken back at once", H(8103) == 0)
 check("2f   ...the game's answer in the lockdown is remembered as 'taken'", EV(L, "NS.AuraSound._edge.lock") is True)
-EX(L, "BOSS = false; FIRE('ENCOUNTER_END', 3009, 'Listed', 16, 20, 1)")
+EX(L, "W.endEncounter(1)")
 check("2g the boss dies: both taken back at once, 'Only outside' handed back (the game took adds in the lockdown)",
       H(8101) == 0 and H(8102) == 0 and H(8103) == 1)
 fight_end(L)
 # order B: the boss pull before combat (out of the lockdown), then combat
-EX(L, "BOSS = true; FIRE('ENCOUNTER_START', 4444, 'Other', 16, 20)")
+EX(L, "W.startEncounter(4444, 'Other', 16, 20)")
 check("2h another boss pulled before combat: 'Only during a boss encounter' held, the list rule (3009) not", H(8101) == 1 and H(8102) == 0)
 fight_start(L)
 check("2i   ...combat starts while the boss is in progress: still held, once", H(8101) == 1 and H(8102) == 0)
-EX(L, "BOSS = false; FIRE('ENCOUNTER_END', 4444, 'Other', 16, 20, 1)")
+EX(L, "W.endEncounter(1)")
 fight_end(L)
 check("2j   ...after it all: back to the out-of-encounter answers", H(8101) == 0 and H(8102) == 0 and H(8103) == 1)
 # a boss already in progress when the fight starts, its ENCOUNTER_START not seen by the sound's handler (e.g. ticked mid-pull)
-EX(L, "BOSS = true; COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); LOCK = true")
+EX(L, "BENCH_FIRE = nil; W.startEncounter(3009, 'Listed', 16, 20); BENCH_FIRE = FIRE; W.enterCombat()")
 check("2k a boss already in progress at combat start (IsEncounterInProgress): 'Only during a boss encounter' handed over",
       H(8101) == 1, st("BOSSR"))
-EX(L, "BOSS = false")
+EX(L, "BENCH_FIRE = nil; W.endEncounter(1); BENCH_FIRE = FIRE")
 fight_end(L)
 check("2l   ...taken back after the fight", H(8101) == 0)
 
@@ -306,7 +344,7 @@ fight_start(L)
 check("4b a fight starts while mounted: held at once (SD-31)", H(8301) == 1)
 EX(L, "MOUNTED = false; FIRE('PLAYER_MOUNT_DISPLAY_CHANGED')")
 check("4c   ...dazed off the mount in the lockdown: still held, once", H(8301) == 1)
-EX(L, "MOUNTED = true; FIRE('PLAYER_MOUNT_DISPLAY_CHANGED'); COMBAT = false; LOCK = false; FIRE('PLAYER_REGEN_ENABLED')")
+EX(L, "MOUNTED = true; FIRE('PLAYER_MOUNT_DISPLAY_CHANGED'); W.leaveCombat()")
 check("4d   ...the fight ends mounted: taken back", H(8301) == 0)
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -331,17 +369,17 @@ for how in ("error", "nil"):
 L = world('REFUSE_LOCK = true; BOSSR = RULE("boss", 8402, { mode = "all", encounter = "yes" })')
 st, H = helpers(L)
 fight_start(L)
-EX(L, "BOSS = true; FIRE('ENCOUNTER_START', 3009, 'Boss', 16, 20)")
+EX(L, "W.startEncounter(3009, 'Boss', 16, 20)")
 check("5e the boss pull in the lockdown is refused: seen", EV(L, "NS.AuraSound._edge.lock") is False)
-EX(L, "BOSS = false; FIRE('ENCOUNTER_END', 3009, 'Boss', 16, 20, 1)")
+EX(L, "W.endEncounter(1)")
 fight_end(L)
 check("5f   ...after the fight the boss rule keeps its copy from before the fight", H(8402) == 1, st("BOSSR"))
 check("5g   ...and the pane nudges to the Cooldown Manager", "at a boss pull" in st("BOSSR") and "Cooldown Manager" in st("BOSSR"), st("BOSSR"))
 fight_start(L)
-EX(L, "BOSS = true; FIRE('ENCOUNTER_START', 3009, 'Boss', 16, 20)")
+EX(L, "W.startEncounter(3009, 'Boss', 16, 20)")
 check("5h   ...the next pull: held (never silent), and no add is tried again in the lockdown", H(8402) == 1 and EV(L, "REFUSED") == 1,
       EV(L, "REFUSED"))
-EX(L, "BOSS = false; FIRE('ENCOUNTER_END', 3009, 'Boss', 16, 20, 1)")
+EX(L, "W.endEncounter(1)")
 fight_end(L)
 
 # ---------------------------------------------------------------------------------------------------------------------------------
@@ -380,10 +418,10 @@ check("6j   ...in the fight the icon is re-pooled, every ID hidden: found by its
       EV(L, "COUNT('gap', T2)") == 1, EV(L, "COUNT('gap', T2)"))
 fight_end(L)
 # an icon whose cooldownID was never shown readable: the game's own entry for that cooldownID is asked once
-EX(L, "CDM_INFO[79] = { spellID = 48709, linkedSpellIDs = {} }; ICO3 = ICON(48709, 79, false); COMBAT = true")
+EX(L, "CDM_INFO[79] = { spellID = 48709, linkedSpellIDs = {} }; ICO3 = ICON(48709, 79, false); W.enterCombat()")
 check("6k an icon never seen readable, its cooldownID unknown to XayaUI: its spell comes from the game's Cooldown Manager entry",
       EV(L, "(function() for _, x in ipairs(NS._FrameIDs(ICO3)) do if x == 48709 then return true end end return false end)()") is True)
-EX(L, "COMBAT = false")
+EX(L, "W.leaveCombat()")
 
 # ---------------------------------------------------------------------------------------------------------------------------------
 # 7. Talents, difficulty: the copy follows the same events as the rules engine
@@ -453,10 +491,10 @@ for i = 1, 20 do
 end'''
 ALLC = 'for i = 1, 20 do RULE("cost" .. i, 8800 + i, { mode = "all", combat = "yes" }) end'
 ALLO = 'for i = 1, 20 do RULE("cost" .. i, 8800 + i, { mode = "all", combat = "no" }) end'
-STEPS = (("PLAYER_REGEN_DISABLED", "COMBAT = true; FIRE('PLAYER_REGEN_DISABLED'); LOCK = true"),
-         ("ENCOUNTER_START", "BOSS = true; FIRE('ENCOUNTER_START', 3009, 'Boss', 16, 20)"),
-         ("ENCOUNTER_END", "BOSS = false; FIRE('ENCOUNTER_END', 3009, 'Boss', 16, 20, 1)"),
-         ("PLAYER_REGEN_ENABLED", "COMBAT = false; LOCK = false; FIRE('PLAYER_REGEN_ENABLED')"),
+STEPS = (("PLAYER_REGEN_DISABLED", "W.enterCombat()"),
+         ("ENCOUNTER_START", "W.startEncounter(3009, 'Boss', 16, 20)"),
+         ("ENCOUNTER_END", "W.endEncounter(1)"),
+         ("PLAYER_REGEN_ENABLED", "W.leaveCombat()"),
          ("PLAYER_MOUNT_DISPLAY_CHANGED", "MOUNTED = true; FIRE('PLAYER_MOUNT_DISPLAY_CHANGED')"))
 def measure(setup, on):
     L = world(setup + ("" if on else "; for _, r in ipairs(NS.rules) do r.gameSound.enabled = false end"))

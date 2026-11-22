@@ -27,6 +27,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI) and XayaUI Rules
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 if not (ns.Evaluate and ns.ReadContext and ns.WithStatusDetail) then return end   -- (XayaUI Rules is switched off: no rules to report)
 
 -- the engine's reading at the end of each fight (read only)

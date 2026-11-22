@@ -24,6 +24,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI) and XayaUI Rules
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 if not ns.AuraCatalogue then return end   -- (XayaUI Rules is switched off: its catalogue, and so this command, are not there)
 local issecret = issecretvalue or function() return false end
 

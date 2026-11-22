@@ -11,6 +11,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI) and XayaUI Rules
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 local D = ns.AuraDisplay
 if not (D and D.StatusData and D.DB) then return end   -- (XayaUI Rules is switched off: no combat engine)
 local function Say(...) if ns.Print then ns.Print(...) end end

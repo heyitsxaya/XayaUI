@@ -593,6 +593,17 @@ local function BuildAddonSettings()
                 desc = "Shows XayaUI's own Lua errors where its messages go and, from your next login or /reload, loads the debug tools: the console window, /xui bug, /xui report and /xui status (errors and warnings are saved either way). Off by default.",
                 get = function() return PlatS.ui and PlatS.ui.advancedDebug and true or false end,
                 set = function(_, v) Ui().advancedDebug = v and true or false; if ns.DebugSettingsChanged then ns.DebugSettingsChanged() end; Notify() end },
+            -- (round 11b; SD-123 "Create a separate tick element inside XayaUI debug ..."; SD-149 "Logger box, works alone") the run logger's
+            -- own box. Core holds the setting and its default (XayaUI/DebugRecord.lua ns.RunLoggerOn: on in the bundle 1 release only); the
+            -- logger is XayaUI_Debug/RunLogger.lua. It takes effect at once (ns.SetRunLogger), with or without Advanced Debugging. The hover's
+            -- "on / off by default" is read from core's one constant (ns.RunLoggerDefault, DR.RUN_LOGGER_DEFAULT), so a later release that
+            -- turns the default off changes that one line and the text follows (UI-65: two sentences).
+            runLogger = { type = "toggle", name = "Advanced debug logging", order = 11.05, width = "full",
+                desc = "Right after the loading screen into a dungeon, Mythic+ key or raid (never in combat), asks whether to log that run for the XayaUI test, saving counts only (never names, chat or spell names). "
+                    .. "Stops asking after 3 Mythic+ keys and 2 raid bosses, works with Advanced Debugging off, and is "
+                    .. ((ns.RunLoggerDefault and ns.RunLoggerDefault()) and "on" or "off") .. " by default.",
+                get = function() return ns.RunLoggerOn and ns.RunLoggerOn() or false end,
+                set = function(_, v) if ns.SetRunLogger then ns.SetRunLogger(v and true or false) end; Notify() end },
             -- the options Advanced Debugging brings (XayaUI/DebugRecord.lua)
             msgDest = { type = "select", name = "XayaUI's messages", order = 11.1,
                 desc = "Sets where XayaUI's messages appear: chat, the console window, or both. Default: the console while Advanced Debugging is on, else chat.",

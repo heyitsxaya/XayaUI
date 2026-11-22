@@ -20,6 +20,44 @@ a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')
 L = LuaRuntime(unpack_returned_tuples=True)
 L.execute("CueRulesDB = { rules = {}, folders = {} }")
 L.execute(bench[a:b])
+# (round 11b, build spec step 5) hidden data comes from the shared stand-in: the secret object and world.lua's restriction state (combat hides
+# the auras below through C_Secrets, as the game does; world's combat events reach the addon through FIRE); no local fake.
+BENCH_RESTRICTIONS = r'''
+-- [bench restrictions] (round 11b, build spec step 5: one stand-in for hidden data, kept in the private XUI-Docs repo)
+-- A test on the engine_bench.py stubs gets the shared secret object (tests/harness/secret.lua) and the restriction state machine of
+-- tests/harness/world.lua, the same code the harness and the gates play. world.lua runs in its own environment, so its frames,
+-- C_Spell and C_UnitAuras stay there and the bench's stubs and the test's own game model are untouched. This state gets:
+--   W   the world: drive it with W.enterCombat / W.leaveCombat, W.startKey / W.completeKey, W.startEncounter / W.endEncounter,
+--       W.enterInstance / W.leaveInstance; set W.auraSecrecy[id] / W.cdSecrecy[id] (0 NeverSecret, 1 AlwaysSecret, absent 2)
+--   W.S the secret object: W.S.new(v) a hidden value, W.S.reveal(v) for asserts only (no global S: tests name rules S)
+--   the installed type, issecretvalue, canaccessvalue, issecrettable, canaccesstable, tonumber, string.format (S.install), and
+--   world's state-driven readers: C_Secrets, C_RestrictedActions, InCombatLockdown, UnitAffectingCombat, IsInInstance,
+--   GetInstanceInfo, C_ChallengeMode and C_InstanceEncounter (a test may still replace any of them after this block).
+-- The world's events (PLAYER_REGEN_DISABLED, ADDON_RESTRICTION_STATE_CHANGED, ...) go to BENCH_FIRE(event, ...) when the test defines
+-- it (its own event delivery), and nowhere otherwise. Run once, after the bench and before any addon file (addons keep 'local type =
+-- type'). Every copy of this block is the same: tests/fix_r11_fakes_run.py checks it (its owner should be engine_bench.py).
+do
+  local dir, G = ..., _G
+  local env = {}
+  for _, k in ipairs({ "assert", "collectgarbage", "coroutine", "debug", "dofile", "error", "gcinfo", "getfenv", "getmetatable", "ipairs",
+      "load", "loadfile", "loadstring", "math", "newproxy", "next", "os", "pairs", "pcall", "print", "rawequal", "rawget", "rawset",
+      "select", "setfenv", "setmetatable", "string", "table", "tonumber", "tostring", "type", "unpack", "xpcall", "_VERSION" }) do
+    env[k] = rawget(G, k)
+  end
+  env._G = env
+  local chunk = assert(loadfile(dir .. "world.lua"))
+  setfenv(chunk, env)
+  W = chunk()({})
+  W.S.install(G, { legacy = W })
+  for _, k in ipairs({ "C_Secrets", "C_RestrictedActions", "InCombatLockdown", "UnitAffectingCombat", "IsInInstance", "GetInstanceInfo",
+      "C_ChallengeMode", "C_InstanceEncounter" }) do
+    G[k] = env[k]
+  end
+  W.fire = function(e, ...) local f = rawget(G, "BENCH_FIRE"); if f then return f(e, ...) end end
+end
+-- [/bench restrictions]
+'''
+L.execute(BENCH_RESTRICTIONS, os.path.join(ROOT, "tests", "harness") + os.sep)
 L.execute(r'''
 -- events and timers that can be driven
 EVENTS = {}
@@ -33,22 +71,16 @@ function RUN_TIMERS() local t = TIMERS; TIMERS = {}; for _, fn in ipairs(t) do f
 HOOKS = {}
 hooksecurefunc = function(t, k, fn) if type(t) == "string" then return end; local old = t[k]; t[k] = function(...) local r = { old(...) }; fn(...); return unpack(r) end end
 
-COMBAT = false
-InCombatLockdown = function() return COMBAT end
-UnitAffectingCombat = function() return COMBAT end
-SECRET = setmetatable({}, { __tostring = function() return "SECRET" end })
-issecretvalue = function(v) return v == SECRET end
+BENCH_FIRE = FIRE   -- (the world's PLAYER_REGEN_DISABLED / ADDON_RESTRICTION_STATE_CHANGED / PLAYER_REGEN_ENABLED reach the addon)
+function COMBAT(on) if on and not W.combat then W.enterCombat() elseif not on and W.combat then W.leaveCombat() end end
 Enum = Enum or {}
 Enum.SecrecyLevel = { NeverSecret = 0, AlwaysSecret = 1, ContextuallySecret = 2 }
 Enum.UnitAuraSoundTrigger = { Added = 0, ApplicationsIncreased = 1, Removed = 2 }
-SPELL_SECRET_NOW = {}
-C_Secrets = { ShouldAurasBeSecret = function() return COMBAT end, GetSpellAuraSecrecy = function() return 2 end,
-  ShouldSpellAuraBeSecret = function(id) if SPELL_SECRET_NOW[id] == nil then return true end return SPELL_SECRET_NOW[id] end }
--- auras on you: hidden (secret) in combat
+-- auras on you: the spell-ID read answers nil while the aura is hidden (RequiresNonSecretAura, spec 2.2; before round 11b this
+-- stand-in answered a hidden token, which the game never does); W.auraSecrecy[id] = 0 makes a spell NeverSecret
 AURAS = {}
-NIL_IN_COMBAT = {}   -- auras the game answers with nil (not a secret) while restricted
 C_UnitAuras.GetUnitAuraBySpellID = function(unit, id)
-  if COMBAT then if NIL_IN_COMBAT[id] then return nil end return SECRET end
+  if C_Secrets.ShouldSpellAuraBeSecret(id) then return nil end
   return AURAS[id]
 end
 C_UnitAuras.GetPlayerAuraBySpellID = function(id) return C_UnitAuras.GetUnitAuraBySpellID("player", id) end
@@ -137,17 +169,17 @@ L.execute("GLOW_API = true; TIMERS = {}; if NS._GlowLaterReset then NS._GlowLate
 check("Spell Glows is offered as a trigger type with a combat note", L.eval("NS.TRIGGER_TYPES.spellGlow ~= nil and NS.TriggerCombatNote({}, 'x', G1):find('readable') ~= nil"))
 
 # ---------------------------------------------------------------- gap 5: glow -> aura, only after the pairing is seen to hold
-L.execute("COMBAT = true; GLOW = { [49184] = true }")
+L.execute("COMBAT(true); GLOW = { [49184] = true }")
 p, s = L.eval("PRES(59052)")
 check("Rime hidden in combat, Howling Blast glowing, pairing never seen -> unknown (the table alone is not trusted)", p is None, (p, s))
 # out of combat: Rime is on you and the button glows -> one agreeing sighting each time
-L.execute("COMBAT = false; AURAS[59052] = { spellId = 59052, auraInstanceID = 5, applications = 0, expirationTime = 0, duration = 0 }")
+L.execute("COMBAT(false); AURAS[59052] = { spellId = 59052, auraInstanceID = 5, applications = 0, expirationTime = 0, duration = 0 }")
 L.execute("FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 49184); RUN_TIMERS()")
 check("one sighting: glow + Rime readable on you -> counted as agreeing", L.eval("CueRulesDB.procGlowSeen.auras[59052].yes") == 1)
-L.execute("COMBAT = true")
+L.execute("COMBAT(true)")
 p, s = L.eval("PRES(59052)")
 check("one agreeing sighting is not enough (needs %d) -> still unknown" % L.eval("NS.GLOW_TRUST"), p is None, (p, s))
-L.execute("COMBAT = false; FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 49184); RUN_TIMERS(); COMBAT = true")
+L.execute("COMBAT(false); FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 49184); RUN_TIMERS(); COMBAT(true)")
 p, s = L.eval("PRES(59052)")
 check("two agreeing sightings: Rime hidden, Howling Blast glowing -> PRESENT, from the glow", p is True and "proc glow" in str(s), (p, s))
 L.execute("GLOW = {}")
@@ -163,24 +195,24 @@ RROW = { type = "buffAura", spellID = 59052, state = "yes" }
 check("built-in Buff / Aura and a Buff / Aura row agree (both present from the glow)",
       L.eval("ANY(RIME)") is True and L.eval("ROW(RROW)") is True, (L.eval("ANY(RIME)"), L.eval("ROW(RROW)")))
 # one disagreement blocks the pairing for good
-L.execute("COMBAT = false; AURAS = {}; FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 44614); RUN_TIMERS()")
+L.execute("COMBAT(false); AURAS = {}; FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 44614); RUN_TIMERS()")
 L.execute("AURAS[190446] = { spellId = 190446, auraInstanceID = 6 }; for i = 1, 3 do FIRE('SPELL_ACTIVATION_OVERLAY_GLOW_SHOW', 44614); RUN_TIMERS() end")
-L.execute("COMBAT = true; GLOW = { [44614] = true }")
+L.execute("COMBAT(true); GLOW = { [44614] = true }")
 p, s = L.eval("PRES(190446)")
 check("Flurry glowed once while Brain Freeze read absent -> that pairing never answers (unknown), even after 3 agreements",
       p is None and L.eval("CueRulesDB.procGlowSeen.auras[190446].no") == 1, (p, s))
-L.execute("CueRulesDB.procGlowSeen.build = 'older build'; COMBAT = true; GLOW = { [49184] = true }")
+L.execute("CueRulesDB.procGlowSeen.build = 'older build'; COMBAT(true); GLOW = { [49184] = true }")
 p, s = L.eval("PRES(59052)")
 check("a new table build starts counting again -> unknown", p is None and L.eval("CueRulesDB.procGlowSeen.build == NS.PROC_GLOW_BUILD"), (p, s))
-L.execute("COMBAT = false; GLOW = {}; AURAS = {}")
+L.execute("COMBAT(false); GLOW = {}; AURAS = {}")
 
 # ---------------------------------------------------------------- gap 15: an icon's spell replaced in combat
 L.execute(r'''
 ICON = CreateFrame("Frame")
 ICON.xuiLastIDs = { 51271 }          -- the IDs it showed while readable
 ICON.wasSetFromAura = true
-function ICON:GetSpellID() return SECRET end
-ICON.cooldownInfo = SECRET
+function ICON:GetSpellID() return W.S.new(51271) end
+ICON.cooldownInfo = W.S.newTable({ spellID = 51271 }, "A")
 EssentialCooldownViewer = CreateFrame("Frame"); function EssentialCooldownViewer:GetChildren() return ICON end
 NOW = NOW + 1
 ''')
@@ -188,15 +220,19 @@ check("before: the icon is found under the spell it showed", L.eval("NS.FindCDMF
 check("before: not under the replacement it was given in combat", L.eval("NS.FindCDMFrame(900051) == nil"))
 L.execute("FIRE('COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED', 51271, 900051)")
 check("after COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED: found under the replacement too (no 0.25 s wait)", L.eval("NS.FindCDMFrame(900051) == ICON"))
-L.execute("FIRE('COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED', SECRET, 900052)")
+L.execute("FIRE('COOLDOWN_VIEWER_SPELL_OVERRIDE_UPDATED', W.S.new(51271), 900052)")
 check("a secret payload changes nothing", L.eval("NS.FindCDMFrame(900052) == nil"))
 L.execute("EssentialCooldownViewer = nil; NOW = NOW + 1")
 
 # ---------------------------------------------------------------- gap 20: reported, never decides
-L.execute("COMBAT = true; NIL_IN_COMBAT[777001] = true; SPELL_SECRET_NOW[777001] = false")
+L.execute("COMBAT(true); W.auraSecrecy[777001] = 0")   # (NeverSecret: ShouldSpellAuraBeSecret answers false; not on you: nil)
 p, s = L.eval("BP2(777001)")
-check("ShouldSpellAuraBeSecret = false is shown in the reason but the answer stays unknown", p is None and "NOT secret now" in str(s), (p, s))
-L.execute("COMBAT = false")
+# (round 11b, the truer stand-in: in combat the game answers ShouldSpellAuraBeSecret = false only for a NeverSecret spell (PRED:80-83),
+# whose GetSpellAuraSecrecy is 0 too. Before, this stand-in answered false for a ContextuallySecret spell in combat, which the game never
+# does, and the check read "the reason shows it, the answer stays unknown". Restated: such a spell is read from the aura API.)
+check("a NeverSecret aura (ShouldSpellAuraBeSecret = false in combat) not on you: MISSING, read from the aura API",
+      p is False and "NeverSecret" in str(s), (p, s))
+L.execute("COMBAT(false); W.auraSecrecy[777001] = nil")
 
 # ---------------------------------------------------------------- gap 12: Tier Set Pieces Worn
 L.execute(r'''
@@ -239,10 +275,10 @@ L.execute("BP.gameSound.alsoXayaUI = nil; NS.AuraSound.Sync()")
 check("nothing changed -> nothing registered again", L.eval("#SOUNDS_ADDED") == 2 and L.eval("#SOUNDS_REMOVED") == 0)
 L.execute("BP.buffState = 'missing'; NS.AuraSound.Sync()")
 check("buff MISSING rule -> re-registered on 'Removed'", L.eval("#SOUNDS_REMOVED") == 2 and L.eval("SOUNDS_ADDED[#SOUNDS_ADDED].trigger") == 2)
-L.execute("BP.buffState = 'present'; COMBAT = true; BP.gameSound.channel = 'SFX'; SOUNDS_ADDED = {}; NS.AuraSound.Sync()")
+L.execute("BP.buffState = 'present'; COMBAT(true); BP.gameSound.channel = 'SFX'; SOUNDS_ADDED = {}; NS.AuraSound.Sync()")
 check("in combat: nothing is registered (out of combat only), and the pane says it waits",
       L.eval("#SOUNDS_ADDED") == 0 and "Waiting" in str(L.eval("NS.AuraSound.StatusLine(BP)")), L.eval("NS.AuraSound.StatusLine(BP)"))
-L.execute("COMBAT = false; FIRE('PLAYER_REGEN_ENABLED'); RUN_TIMERS()")
+L.execute("COMBAT(false); RUN_TIMERS()")   # (world's leaveCombat fires PLAYER_REGEN_ENABLED to the addon)
 check("combat ends -> registered with the new channel", L.eval("#SOUNDS_ADDED") == 2 and L.eval("SOUNDS_ADDED[1].info.outputChannel") == "SFX")
 L.execute("BP.sound.source = 'kit'; BP.sound.value = '8959'; SOUNDS_ADDED = {}; NS.AuraSound.Sync()")
 check("a [Game] sound kit cannot be handed over: not registered, the pane says why, XayaUI keeps playing it",
@@ -257,7 +293,7 @@ check("opt-in off -> the game's registrations are removed", L.eval("#SOUNDS_REMO
 
 # ---------------------------------------------------------------- gap 21 / #21 part 1: one line for the whole rule
 L.execute(r'''
-C_Secrets.GetSpellAuraSecrecy = function(id) if id == 59052 then return 0 end return 2 end
+W.auraSecrecy[59052] = 0   -- (NeverSecret)
 MIX = { uid = "mix", name = "mix", enabled = true, useBuff = true, buffID = 424242, buffState = "present", cdState = "none",
   extra = { list = { { type = "spellGlow", spellID = 49184, state = "yes" }, { type = "buffAura", spellID = 59052, state = "yes" } } } }
 ''')
@@ -270,7 +306,7 @@ check("rule line: every trigger readable -> says so", "every trigger" in line, l
 # ================================================================ the first half of the batch (gaps 1, 4, 6, 7, 10, 11, 22)
 # ---------------------------------------------------------------- gap 1: a hidden Cooldown Manager window gives no answer
 L.execute(r'''
-COMBAT = true; AURAS = {}; GLOW = {}
+COMBAT(true); AURAS = {}; GLOW = {}
 IC = CreateFrame("Frame"); IC.cooldownInfo = { spellID = 3001 }; function IC:GetSpellID() return 3001 end
 IC.wasSetFromAura = false
 BuffIconCooldownViewer = CreateFrame("Frame"); function BuffIconCooldownViewer:GetChildren() return IC end
@@ -283,7 +319,7 @@ p, s = L.eval("BP2(3001)")
 check("the same icon while its window is hidden (it stops following auras) -> unknown, not missing", p is None, (p, s))
 L.execute("BuffIconCooldownViewer:Show(); IC.wasSetFromAura = true; NOW = NOW + 1")
 check("CDMFrameState is a read-only lit / unlit answer", L.eval("NS.CDMFrameState(3001)") is True)
-L.execute("BuffIconCooldownViewer = nil; COMBAT = false; NOW = NOW + 1")
+L.execute("BuffIconCooldownViewer = nil; COMBAT(false); NOW = NOW + 1")
 
 # ---------------------------------------------------------------- gap 4: spells replaced by a talent
 L.execute(r'''
@@ -299,7 +335,7 @@ L.execute("OVERRIDE = {}; NOW = NOW + 10")
 
 # ---------------------------------------------------------------- gap 6: aura length learned from a fresh application only
 L.execute(r'''
-COMBAT = false; CueRulesDB.learnedAuraDur = {}
+COMBAT(false); CueRulesDB.learnedAuraDur = {}
 AURAS[6001] = nil
 BP2(6001)                                            -- seen absent
 AURAS[6001] = { spellId = 6001, auraInstanceID = 61, expirationTime = NOW + 10, duration = 10, applications = 0 }
@@ -312,7 +348,7 @@ check("a refresh 5 s later (14 s with carried-over time) does not overwrite it",
 
 # ---------------------------------------------------------------- gap 7: a fallback icon starts the time estimate
 L.execute(r'''
-COMBAT = true; NOW = NOW + 1
+COMBAT(true); NOW = NOW + 1
 NAMES7 = { [7001] = "Shield Wall", [7002] = "Shield Wall" }
 OLDNAME = C_Spell.GetSpellName
 C_Spell.GetSpellName = function(id) return NAMES7[id] or OLDNAME(id) end
@@ -325,7 +361,7 @@ L.execute("P7, S7, R7 = NS.AuraPresence(7002, nil, nil)")
 check("aura 7002 found through the Tracked Buffs icon filed under its name", L.eval("P7") is True, L.eval("S7"))
 check("... and the reference carries that icon, so the estimate starts at its applied moment (8 s left)",
       L.eval("(function() local exp = NS.Timing.AuraEstimate(7002, nil, R7 and R7.cdmFrame); return exp and math.abs(exp - NOW - 8) < 0.01 end)()") is True)
-L.execute("BuffIconCooldownViewer = nil; C_Spell.GetSpellName = OLDNAME; COMBAT = false; NOW = NOW + 1")
+L.execute("BuffIconCooldownViewer = nil; C_Spell.GetSpellName = OLDNAME; COMBAT(false); NOW = NOW + 1")
 
 # ---------------------------------------------------------------- gap 10: a spell you do not have is never "ready"
 L.execute(r'''
@@ -342,8 +378,8 @@ check("a known spell off cooldown -> known and ready", L.eval("KK.known") is Tru
 
 # ---------------------------------------------------------------- gap 11: seconds left on a cooldown in combat
 L.execute(r'''
-COMBAT = true
-CDRET = { startTime = SECRET, duration = SECRET, isActive = false, isOnGCD = false, isEnabled = true }
+COMBAT(true)
+CDRET = { startTime = W.S.new(0), duration = W.S.new(0), isActive = false, isOnGCD = false, isEnabled = true }
 C_Spell.GetSpellCooldown = function(id) return CDRET end
 NS.Timing.CooldownEstimate = function() return nil end
 P11 = { spellID = 10001 }
@@ -355,7 +391,7 @@ L.execute("NS.Timing.CooldownEstimate = function() return NOW + 4 end")
 check("on cooldown, estimate in the future -> its seconds left", abs((L.eval("NS.NumRef('n:cdRemain', P11, {})") or -1) - 4) < 0.01)
 L.execute("CDRET.isOnGCD = true")
 check("only the global cooldown runs -> 0 s left", L.eval("NS.NumRef('n:cdRemain', P11, {})") == 0)
-L.execute("COMBAT = false")
+L.execute("COMBAT(false)")
 
 # ---------------------------------------------------------------- gap 22: "Cooldown (any spell)" rows' charges are watched
 L.execute(r'''
@@ -371,7 +407,7 @@ check("a Cooldown (any spell) row's charges are read with the rule's own spell",
 # 1241227 "Arcanoweave Audacity": in XayaUI_Rules/SetBonusAuras.lua, from set 1958's 2-piece bonus, any specialization (game data)
 check("SetBonusAuras.lua is loaded and lists 1241227 (set 1958, 2 pieces)", L.eval("NS.SET_BONUS_AURAS and NS.SET_BONUS_AURAS[1241227] and NS.SET_BONUS_AURAS[1241227].set == 1958 and NS.SET_BONUS_AURAS[1241227].pieces == 2") is True)
 L.execute(r'''
-COMBAT = true; NIL_IN_COMBAT = {}
+COMBAT(true)
 EQUIP = { [1] = 701, [3] = 703 }; ITEMSET = { [701] = 1958, [703] = 4242 }; ITEM_LOADED = { [701] = true, [703] = true }
 FIRE("PLAYER_EQUIPMENT_CHANGED")
 ''')
@@ -382,11 +418,11 @@ p, s2 = L.eval("PRES(1241227)")
 check("2 pieces worn: the bonus is active, so XayaUI reads the aura as usual (hidden in combat: unknown)", p is None, (p, s2))
 p, s2 = L.eval("PRES(1241227, { 777777 })")
 check("an extra aura ID that is not set-only keeps the normal reading", p is not False, (p, s2))
-L.execute("COMBAT = false; EQUIP = {}; FIRE('PLAYER_EQUIPMENT_CHANGED')")
+L.execute("COMBAT(false); EQUIP = {}; FIRE('PLAYER_EQUIPMENT_CHANGED')")
 note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 1241227, state = 'yes' })"))
 check("the aura trigger's In combat line says it comes from a set bonus", "set bonus" in note and "set 1958" in note, note)
 # the glow line: Rime 59052 (Howling Blast). (An earlier section made 59052 "never hidden": back to hidden in combat, as in the game.)
-L.execute("C_Secrets.GetSpellAuraSecrecy = function() return 2 end; NS.ClearSecrecyCache()")
+L.execute("W.auraSecrecy[59052] = nil; NS.ClearSecrecyCache()")
 L.execute("CueRulesDB.procGlowSeen = { build = NS.PROC_GLOW_BUILD, auras = { [59052] = { yes = 1, no = 0 } } }")
 note = str(L.eval("NS.TriggerCombatNote({}, 'x', { type = 'buffAura', spellID = 59052, state = 'yes' })"))
 check("glow not yet confirmed: the line says it will stand in after 2 agreeing sightings (1 so far)", "will stand in" in note and "1 so far" in note, note)
@@ -407,7 +443,7 @@ check("without a detailed record (no hand-in points): no aura line is recorded (
 L.execute(r'''
 NS.RecordOn = function(kind) return CueRulesDB.ui.advancedDebug and true or false end
 NS.RecordLine = function(kind, line) CueRulesDB.debugRecord = CueRulesDB.debugRecord or { lines = {} }; local t = CueRulesDB.debugRecord.lines; t[#t + 1] = line end
-COMBAT = false; CueRulesDB.debugRecord = nil
+COMBAT(false); CueRulesDB.debugRecord = nil
 CueRulesDB.ui = CueRulesDB.ui or {}; CueRulesDB.ui.advancedDebug = true
 AURAS[8801] = nil; BP2(8801); BP2(8801)
 AURAS[8801] = { spellId = 8801, auraInstanceID = 881, applications = 0, expirationTime = 0, duration = 0 }; BP2(8801); BP2(8801)

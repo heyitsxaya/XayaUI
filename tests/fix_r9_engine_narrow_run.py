@@ -64,6 +64,11 @@ C_InstanceEncounter = { IsEncounterInProgress = function() return G.enc end }
 UnitPower = function(u, e) return G.combo end
 for i = 1, 20 do G.auras[1000 + i] = { spellId = 1000 + i, auraInstanceID = 500 + i, name = "Buff " .. i, applications = 1, duration = 600,
   expirationTime = 0, sourceUnit = "player", isHelpful = true } end
+-- (round 11b, build spec 2.2) this model answers every aura in the clear in combat, readable payloads included, which the game does only
+-- for a NeverSecret spell (PRED:80-83); the world's C_Secrets now follow the restriction state (auras hidden in combat, unknown spells
+-- ContextuallySecret), so the model's auras are declared NeverSecret to the world. The test measures routing, not hidden data.
+for i = 1, 20 do W.auraSecrecy[1000 + i] = 0 end
+W.auraSecrecy[1100] = 0
 W.RemoveAuraContainer()   -- (round 11 repair, standin-repair1) this test measures XayaUI's own drawing of aura displays: a client without Blizzard's aura container,
 -- so the combat engine falls back (XUI-W002, declared below) and XayaUI draws them (tests/harness/world.lua)
 L.startup(); W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 3)

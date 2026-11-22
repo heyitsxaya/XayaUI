@@ -19,6 +19,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI)
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 
 -- core's debug words now run here (DebugRecord.lua ns.DebugToolsLoaded)
 if ns.DebugToolsArrived then ns.DebugToolsArrived() end

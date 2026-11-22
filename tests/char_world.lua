@@ -73,17 +73,33 @@ STAT_HASTE, STAT_VERSATILITY, STAT_ARMOR, STAT_DODGE, STAT_BLOCK = "Haste", "Ver
 HEADSLOT, FINGER0SLOT = "Head", "Finger"
 ATTACK_POWER_MAGIC_NUMBER = 3.5   -- stand-in for the value in Blizzard's PaperDollFrame.lua
 
--- secrets: a stand-in secret number. type() says "number" (as the game does for a secret number), and ANY comparison, arithmetic,
--- concatenation, tostring or length on it counts as misuse and errors, so a test sees it.
+-- secrets (round 11b, build spec step 5: one stand-in for hidden data, kept in the private XUI-Docs repo): SECRET is a hidden number from
+-- the shared secret object tests/harness/secret.lua, which raises the game's error on every misuse a Lua 5.1 metatable can catch
+-- (arithmetic, compare, tostring, '#', index, call; '..' of a hidden number is allowed and gives a hidden string, as in the game).
+-- type() says "number" and issecretvalue answers true through the installed functions (S.install at the end of this file, before any
+-- addon file runs). 'misuse' counts each refused operation on a hidden value, even one an addon's pcall swallows, so a test sees it:
+-- the counter wraps the refusing metamethods of the hidden values' one metatable in this test's own Lua state (the error raised is
+-- secret.lua's own text). No local fake.
+local SECRET_OBJ = dofile(((debug.getinfo(1, "S").source or ""):match("^@(.*[/\\])[^/\\]*$") or "") .. "harness/secret.lua")
 misuse = 0
-SECRET = setmetatable({}, {})
-local function bad() misuse = misuse + 1; error("secret value misused", 2) end
-for _, mm in ipairs({ "__lt", "__le", "__add", "__sub", "__mul", "__div", "__mod", "__pow", "__unm", "__concat", "__len", "__call", "__tostring", "__index" }) do
-  getmetatable(SECRET)[mm] = bad
+SECRET = SECRET_OBJ.new(0)
+do
+  local mt = debug.getmetatable(SECRET)
+  if not mt.__xuiMisuseCounted then
+    mt.__xuiMisuseCounted = true
+    for _, mm in ipairs({ "__lt", "__le", "__add", "__sub", "__mul", "__div", "__mod", "__pow", "__unm", "__concat", "__len", "__call",
+        "__tostring", "__index", "__newindex", "__eq" }) do
+      local real = mt[mm]
+      if real then
+        mt[mm] = function(...)
+          local r = { pcall(real, ...) }
+          if not r[1] then misuse = misuse + 1; error(r[2], 0) end
+          return unpack(r, 2, table.maxn(r))
+        end
+      end
+    end
+  end
 end
-local rawtype = type
-type = function(v) if rawequal(v, SECRET) then return "number" end; return rawtype(v) end
-issecretvalue = function(v) return rawequal(v, SECRET) end
 
 -- game reads (VDH-like numbers from Xaya's screenshot: 528 crit = 11.48%, 997 mastery, 1,287 haste in a later one)
 RATE = 1 / 46
@@ -328,3 +344,6 @@ function StandInSpellBook(lines)
   local baseName = C_Spell.GetSpellName
   C_Spell.GetSpellName = function(id) return SPELLBOOK_NAMES[id] or baseName(id) end
 end
+-- (round 11b) the shared secret object's functions: type, issecretvalue, canaccessvalue, issecrettable, canaccesstable, tonumber,
+-- string.format ... (installed last, so they wrap the string functions above; a test may still replace issecretvalue after this file)
+SECRET_OBJ.install(_G)

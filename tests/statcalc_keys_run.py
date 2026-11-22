@@ -17,7 +17,7 @@ ns.KeyFocusGuard), the Stat Calculator on, the character window open and the pan
   K4  the box focused, then the panel closed (its close): the box lets go; the box focused, then the character window closed: the
       docked panel hides with it and the box lets go; both keys reach the game after each.
   K5  K2-K4 again for the Gear tab's item box.
-  K6  ADDON_RESTRICTION_STATE_CHANGED (type Encounter 1, state Active 2; events.md:37, enums.md:485) with a box focused: the box lets go
+  K6  ADDON_RESTRICTION_STATE_CHANGED (type Encounter 1, state Activating 1; events.md:37, enums.md:485) with a box focused: the box lets go
       (gate G-023); an Inactive (0) state does not take the box away from a player typing.
   K7  (round 2) Enter pressed through the real key path still commits the typed amount, and the box lets go.
 Negative controls: on the tree at 5695993 (before this fix) 8 of 45 fail: K2 and K5 Enter / Esc (the box let go through its own
@@ -138,8 +138,10 @@ if box then
   box:SetFocus()
   W.fire("ADDON_RESTRICTION_STATE_CHANGED", 1, 0)
   check("K6 a restriction reported Inactive (0): the player keeps typing (the box keeps the keyboard)", box:HasFocus())
-  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 1, 2)
-  check("K6 a restriction becomes Active (Encounter, 2): the box lets go of the keyboard (gate G-023)", not box:HasFocus())
+  -- (round 11b, build spec 3.3: the game fires this event with Activating (1) as a restriction starts and Inactive (0) as it ends; it
+  -- never fires Active (2), which before round 11b this test sent)
+  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 1, 1)
+  check("K6 a restriction starts (Encounter, Activating 1): the box lets go of the keyboard (gate G-023)", not box:HasFocus())
   keys("K6 with the restriction active")
   box:SetFocus()
   W.fire("ADDON_RESTRICTION_STATE_CHANGED", 4, 1)

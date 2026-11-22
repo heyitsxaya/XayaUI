@@ -20,17 +20,51 @@ a = bench.index("L.execute(r'''") + len("L.execute(r'''"); b = bench.index("''')
 L = LuaRuntime(unpack_returned_tuples=True)
 L.execute("CueRulesDB = { rules = {}, folders = {} }")
 L.execute(bench[a:b])
+# (round 11b, build spec step 5) hidden values and the combat state come from the shared stand-in: the secret object (its values raise the game's
+# errors on misuse: arithmetic, compare, tostring ...; '== nil' is allowed, as in the game) and world.lua's restriction state; no local fake.
+BENCH_RESTRICTIONS = r'''
+-- [bench restrictions] (round 11b, build spec step 5: one stand-in for hidden data, kept in the private XUI-Docs repo)
+-- A test on the engine_bench.py stubs gets the shared secret object (tests/harness/secret.lua) and the restriction state machine of
+-- tests/harness/world.lua, the same code the harness and the gates play. world.lua runs in its own environment, so its frames,
+-- C_Spell and C_UnitAuras stay there and the bench's stubs and the test's own game model are untouched. This state gets:
+--   W   the world: drive it with W.enterCombat / W.leaveCombat, W.startKey / W.completeKey, W.startEncounter / W.endEncounter,
+--       W.enterInstance / W.leaveInstance; set W.auraSecrecy[id] / W.cdSecrecy[id] (0 NeverSecret, 1 AlwaysSecret, absent 2)
+--   W.S the secret object: W.S.new(v) a hidden value, W.S.reveal(v) for asserts only (no global S: tests name rules S)
+--   the installed type, issecretvalue, canaccessvalue, issecrettable, canaccesstable, tonumber, string.format (S.install), and
+--   world's state-driven readers: C_Secrets, C_RestrictedActions, InCombatLockdown, UnitAffectingCombat, IsInInstance,
+--   GetInstanceInfo, C_ChallengeMode and C_InstanceEncounter (a test may still replace any of them after this block).
+-- The world's events (PLAYER_REGEN_DISABLED, ADDON_RESTRICTION_STATE_CHANGED, ...) go to BENCH_FIRE(event, ...) when the test defines
+-- it (its own event delivery), and nowhere otherwise. Run once, after the bench and before any addon file (addons keep 'local type =
+-- type'). Every copy of this block is the same: tests/fix_r11_fakes_run.py checks it (its owner should be engine_bench.py).
+do
+  local dir, G = ..., _G
+  local env = {}
+  for _, k in ipairs({ "assert", "collectgarbage", "coroutine", "debug", "dofile", "error", "gcinfo", "getfenv", "getmetatable", "ipairs",
+      "load", "loadfile", "loadstring", "math", "newproxy", "next", "os", "pairs", "pcall", "print", "rawequal", "rawget", "rawset",
+      "select", "setfenv", "setmetatable", "string", "table", "tonumber", "tostring", "type", "unpack", "xpcall", "_VERSION" }) do
+    env[k] = rawget(G, k)
+  end
+  env._G = env
+  local chunk = assert(loadfile(dir .. "world.lua"))
+  setfenv(chunk, env)
+  W = chunk()({})
+  W.S.install(G, { legacy = W })
+  for _, k in ipairs({ "C_Secrets", "C_RestrictedActions", "InCombatLockdown", "UnitAffectingCombat", "IsInInstance", "GetInstanceInfo",
+      "C_ChallengeMode", "C_InstanceEncounter" }) do
+    G[k] = env[k]
+  end
+  W.fire = function(e, ...) local f = rawget(G, "BENCH_FIRE"); if f then return f(e, ...) end end
+end
+-- [/bench restrictions]
+'''
+L.execute(BENCH_RESTRICTIONS, os.path.join(ROOT, "tests", "harness") + os.sep)
 L.execute(r'''
-COMBAT = false
-SECRET = setmetatable({}, { __tostring = function() return "SECRET" end })        -- a hidden aura / iid
-SECRET_ABS = setmetatable({}, { __tostring = function() return "SECRET_ABS" end })  -- the hidden absorb total
-SECRET_STR = setmetatable({}, { __tostring = function() return "SECRET_STR" end })  -- a string the game made from a secret
-SECRET_NUM = setmetatable({}, { __tostring = function() return "SECRET_NUM" end })  -- a hidden cooldown number
-local SECRETS = { [SECRET] = true, [SECRET_ABS] = true, [SECRET_STR] = true, [SECRET_NUM] = true }
-function issecretvalue(v) return SECRETS[v] == true end
--- any comparison of a secret errors, like the game for tainted code (a table compared with < / > errors in Lua already;
--- equality with nil is caught by the metatables below)
-for s in pairs(SECRETS) do getmetatable(s).__eq = function() error("attempt to compare a secret value") end; getmetatable(s).__lt = getmetatable(s).__eq; getmetatable(s).__le = getmetatable(s).__eq end
+function COMBAT(on) if on and not W.combat then W.enterCombat() elseif not on and W.combat then W.leaveCombat() end end
+SECRET = W.S.new(77)                 -- a hidden aura instance id
+SECRET_ABS = W.S.new(12000)          -- the hidden absorb total
+SECRET_STR = W.S.new("12.0K")        -- a string the game made from a hidden number
+SECRET_NUM = W.S.new(19)             -- a hidden cooldown number
+LABEL = setmetatable({ [SECRET] = "SECRET", [SECRET_ABS] = "SECRET_ABS", [SECRET_STR] = "SECRET_STR", [SECRET_NUM] = "SECRET_NUM" }, { __mode = "k" })
 Enum = Enum or {}
 Enum.CooldownViewerAlertEventType = { Available = 1, PandemicTime = 2, OnCooldown = 3, ChargeGained = 4, OnAuraApplied = 5, OnAuraRemoved = 6 }
 Enum.NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 }
@@ -51,13 +85,13 @@ APPS = 0                                  -- stacks of Anti-Magic Shell (48707) 
 AURA_UNTIL = nil                          -- shield up until (out of combat: readable)
 C_UnitAuras.GetUnitAuraBySpellID = function(unit, id)
   if id ~= 48707 or not (AURA_UNTIL and NOW < AURA_UNTIL) then return nil end
-  if COMBAT then return nil end            -- RequiresNonSecretAura: "protected APIs will return no values"
+  if C_Secrets.ShouldSpellAuraBeSecret(id) then return nil end   -- RequiresNonSecretAura: "protected APIs will return no values"
   return { auraInstanceID = 77, applications = APPS, expirationTime = AURA_UNTIL, duration = 10, spellId = 48707 }
 end
 C_UnitAuras.GetAuraDuration = function() return nil end
 AURA_POINTS = 12345
 C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, iid)
-  if COMBAT then error("Auras cannot be accessed when secret while tainted") end
+  if C_Secrets.ShouldAurasBeSecret() then error("Auras cannot be accessed when secret while tainted") end
   if unit == "player" and iid == 77 then return { points = { AURA_POINTS } } end
   if unit == "target" and iid == 5 then return { points = { 500 } } end
 end
@@ -70,7 +104,7 @@ C_StringUtil = { TruncateWhenZero = function(v) TRUNC[#TRUNC + 1] = v; return SE
 DEBUFF = nil
 C_UnitAuras.GetUnitAuras = function(unit, filter)
   assert(filter == "HARMFUL|PLAYER")
-  if COMBAT then error("Auras cannot be accessed when secret while tainted") end
+  if C_Secrets.ShouldAurasBeSecret() then error("Auras cannot be accessed when secret while tainted") end
   if unit == "target" and DEBUFF then return { DEBUFF } end
   return {}
 end
@@ -80,12 +114,12 @@ CD_UNTIL = nil; CHG_CUR = 2
 C_Spell.GetSpellCooldown = function(id)
   local act = (id == 49998) and CD_UNTIL ~= nil and NOW < CD_UNTIL
   if id == 50000 then act = CHG_CUR == 0 end
-  if COMBAT then return { startTime = SECRET_NUM, duration = SECRET_NUM, isActive = act and true or false, isOnGCD = false, isEnabled = true } end
+  if C_Secrets.ShouldSpellCooldownBeSecret(id) then return { startTime = SECRET_NUM, duration = SECRET_NUM, isActive = act and true or false, isOnGCD = false, isEnabled = true } end
   return { startTime = act and NOW - 1 or 0, duration = act and 20 or 0, isActive = act and true or false, isOnGCD = false, isEnabled = true }
 end
 C_Spell.GetSpellCharges = function(id)
   if id ~= 50000 then return nil end
-  return { currentCharges = COMBAT and SECRET_NUM or CHG_CUR, maxCharges = 2, isActive = CHG_CUR < 2, cooldownStartTime = 0, cooldownDuration = 0 }
+  return { currentCharges = C_Secrets.ShouldSpellCooldownBeSecret(id) and SECRET_NUM or CHG_CUR, maxCharges = 2, isActive = CHG_CUR < 2, cooldownStartTime = 0, cooldownDuration = 0 }
 end
 DUROBJ = { name = "cooldown duration object" }; CHGOBJ = { name = "recharge duration object" }
 CDCALLS = {}
@@ -219,7 +253,9 @@ def check(name, ok, extra=""):
     print(("PASS " if ok else "FAIL ") + name + ("" if ok else "  [" + str(extra) + "]"))
     if not ok: fails.append(name)
 lua = lambda s: L.execute(s)
-txt = lambda r, fs: lua("local f = FR(%s); local t = f.%s; return t._shown and tostring(t._text) or 'hidden'" % (r, fs))
+# (round 11b: a hidden value has no text of its own (tostring raises, as in the game): it reads as its label, or 'a hidden value')
+txt = lambda r, fs: lua("local f = FR(%s); local t = f.%s; if not t._shown then return 'hidden' end; local x = t._text; "
+                        "if issecretvalue(x) then return LABEL[x] or 'a hidden value' end; return tostring(x)" % (r, fs))
 
 # 1. out of combat: readable aura. A buff that cannot stack (0) shows no count; time in XayaUI's format; its own shield amount
 lua('NOW = 1000; AURA_UNTIL = NOW + 6.5; APPS = 0; PLAY(0.3)')
@@ -234,7 +270,7 @@ check("stacks: 3 stacks show '3'", txt("R1", "count") == "3", txt("R1", "count")
 check("condition 'stacks' reads 3 out of combat", lua("return NS.NumRef('n:buffStacks', R1, INFO(R1)) == 3"))
 
 # 2. combat: the game hides the aura; the Cooldown Manager icon says it is up (secret instance id)
-lua('COMBAT = true; AMS.wasSetFromAura = false; AMS.auraInstanceID = SECRET; ABBR = {}; PLAY(0.3)')
+lua('COMBAT(true); AMS.wasSetFromAura = false; AMS.auraInstanceID = SECRET; ABBR = {}; PLAY(0.3)')
 check("in combat the shield is still known to be up (Cooldown Manager icon with a secret id)", lua("return INFO(R1).present == true"))
 check("the aura reference holds no secret value (id dropped, marked hidden)", lua("local r = INFO(R1).buffRef; for k, v in pairs(r) do if issecretvalue(v) then return false end end return r.instanceID == nil and r.hiddenID == true"))
 check("condition 'stacks' is UNKNOWN in combat (was a guessed 1)", lua("return NS.NumRef('n:buffStacks', R1, INFO(R1)) == nil"))
@@ -245,12 +281,12 @@ lua('R1.visual.absorb.abbreviate = false; TRUNC = {}; PLAY(0.3)')
 check("'hide when zero' without abbreviation: the game's TruncateWhenZero ('' for zero)", txt("R1", "absorb") == "SECRET_STR" and lua("return TRUNC[#TRUNC] == SECRET_ABS"))
 lua('R1.visual.absorb.hideZero = false; PLAY(0.3)')
 check("neither option: the secret number itself goes to SetText", txt("R1", "absorb") == "SECRET_ABS", txt("R1", "absorb"))
-lua('R1.visual.absorb.source = "total"; R1.visual.absorb.abbreviate = true; R1.visual.absorb.hideZero = true; COMBAT = false; ABBR = {}; PLAY(0.3)')
+lua('R1.visual.absorb.source = "total"; R1.visual.absorb.abbreviate = true; R1.visual.absorb.hideZero = true; COMBAT(false); ABBR = {}; PLAY(0.3)')
 check("source 'total' out of combat: the total is secret even then (SecretReturns), shown through the helper", txt("R1", "absorb") == "SECRET_STR" and lua("return ABBR[#ABBR] == SECRET_ABS"))
 lua('AURA_UNTIL = nil; AMS.auraInstanceID = nil; PLAY(0.3)')
 
 # 3. a cooldown with no aura: the game counts it down (duration object + text binding), exact in combat
-lua('COMBAT = true; CD_UNTIL = NOW + 20; CDCALLS = {}; PLAY(0.3)')
+lua('COMBAT(true); CD_UNTIL = NOW + 20; CDCALLS = {}; PLAY(0.3)')
 check("R2 shown while on cooldown", lua("return FR(R2):IsShown() == true"))
 check("cooldown duration asked of the game with the global cooldown ignored", lua("local c = LASTCALL('Visual.lua'); return c and c[1] == 49998 and c[2] == true"))
 # (round 7, SD-60) the engine waits for the hidden end of the same cooldown in a widget of its own, fed the duration object the
@@ -267,24 +303,24 @@ check("cooldown over: binding stopped (display hidden by its own rule)", lua("re
 lua('CHG_CUR = 1; CDCALLS = {}; PLAY(0.3)')
 check("charge spell not full: the RECHARGE duration object drives the time", lua("local c = LASTCALL('Visual.lua'); return c and c[1] == 50000 and c[2] == 'charge' and FR(R4).cdBind.dur == CHGOBJ and FR(R4).cdBind.enabled"))
 check("charges count in combat: the secret number handed to SetText", txt("R4", "count") == "SECRET_NUM", txt("R4", "count"))
-lua('COMBAT = false; PLAY(0.3)')
+lua('COMBAT(false); PLAY(0.3)')
 check("charges count out of combat: '1'", txt("R4", "count") == "1", txt("R4", "count"))
 lua('CHG_CUR = 2; PLAY(0.3)')
 
 # 4b. charges in a CONDITION, in combat (Insivius's Death and Decay rule, 2026-11-04: "charges == 2" never fired, because the
 # count is hidden in combat). The game still says whether a charge is recharging, and the maximum (both NeverSecret).
 for cur, want in ((2, 2), (1, 1), (0, 0)):
-    v = lua('COMBAT = true; CHG_CUR = %d; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)' % cur)
+    v = lua('COMBAT(true); CHG_CUR = %d; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)' % cur)
     check("charges condition in combat, %d of 2 charges: reads %d" % (cur, want), v == want, v)
-v = lua('COMBAT = true; CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.CheckValue({ ref = "n:cdCharges", cmp = "==", num = 2 }, R4, nil, info)')
+v = lua('COMBAT(true); CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.CheckValue({ ref = "n:cdCharges", cmp = "==", num = 2 }, R4, nil, info)')
 check("'charges == 2' is TRUE in combat at full charges (was unknown)", v is True, v)
 lua('''REAL_CHG = C_Spell.GetSpellCharges
 C_Spell.GetSpellCharges = function(id) local c = REAL_CHG(id); if c then c.maxCharges = 3 end; return c end''')
-v = lua('COMBAT = true; CHG_CUR = 1; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
+v = lua('COMBAT(true); CHG_CUR = 1; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
 check("3-charge spell recharging in combat: count stays unknown (no guess)", v is None, v)
-v = lua('COMBAT = true; CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
+v = lua('COMBAT(true); CHG_CUR = 2; local _, info = NS.Evaluate(R4); return NS.NumRef("n:cdCharges", R4, info)')
 check("3-charge spell not recharging in combat: exactly its maximum", v == 3, v)
-lua('C_Spell.GetSpellCharges = REAL_CHG; COMBAT = false; CHG_CUR = 2')   # (no engine step here: the sections below keep their own timeline)
+lua('C_Spell.GetSpellCharges = REAL_CHG; COMBAT(false); CHG_CUR = 2')   # (no engine step here: the sections below keep their own timeline)
 
 # 5. "Target Debuff (yours)": the debuff's own time and stacks, out of combat
 lua('DEBUFF = { spellId = 204598, auraInstanceID = 5, applications = 2, expirationTime = NOW + 7.2, duration = 10 }; PLAY(0.3)')
@@ -292,15 +328,15 @@ check("debuff rule shown", lua("return FR(R3):IsShown() == true"))
 check("debuff rule: time text from the debuff itself (was blank)", txt("R3", "text") == "7", txt("R3", "text"))
 check("debuff rule: stacks from the debuff itself", txt("R3", "count") == "2", txt("R3", "count"))
 check("debuff rule: its 'aura' amount is read on the TARGET (the reference carries its unit)", txt("R3", "absorb") == "500", txt("R3", "absorb"))
-lua('COMBAT = true; PLAY(0.3)')
+lua('COMBAT(true); PLAY(0.3)')
 check("in combat the debuff list is refused: no invented time (the combat engine draws these)", lua("return INFO(R3).auraRef == nil"))
 check("in combat (debuff unknown) the debuff display is hidden, so no stale or borrowed amount shows", lua("return FR(R3):IsShown() == false"))
-lua("COMBAT = false; FR(R3):Show(); NS.UpdateVisualText(R3, { auraRef = { unit = 'target', instanceID = 99 } })")
+lua("COMBAT(false); FR(R3):Show(); NS.UpdateVisualText(R3, { auraRef = { unit = 'target', instanceID = 99 } })")
 check("a debuff whose own amount cannot be read is never shown with YOUR absorbs", txt("R3", "absorb") == "hidden", txt("R3", "absorb"))
 lua("NS.UpdateVisualText(R3, { auraRef = { unit = 'player', instanceID = 99 } })")
 check("(the same on an aura on you: your total absorbs)", txt("R3", "absorb") == "SECRET_ABS", txt("R3", "absorb"))
-lua("COMBAT = true")
-lua('COMBAT = false; DEBUFF = nil; PLAY(0.3)')
+lua("COMBAT(true)")
+lua('COMBAT(false); DEBUFF = nil; PLAY(0.3)')
 
 # 6. the game's number formatter for XayaUI's time format: checked before use, the other breakpoint order tried, else not used
 probe = lambda: lua("local f = NS.TimeFormatter(true, 5); return f and (f:FormatNumber(65.4) .. '|' .. f:FormatNumber(4.96) .. '|' .. f:FormatNumber(12.2) .. '|' .. f:FormatNumber(7325)) or 'nil'")
@@ -312,7 +348,7 @@ lua('FORMATTER_MODE = "broken"')
 check("a formatter that disagrees is never used (the game's own format is used instead)", lua("return NS.TimeFormatter(true, 7) == nil"))
 
 # 7. companion texts of a display the combat engine draws (shield amount / charges): XayaUI's frame hides, the companion shows
-lua('FORMATTER_MODE = "desc"; COMBAT = true; AURA_UNTIL = NOW + 30; AMS.auraInstanceID = SECRET; R1.visual.absorb.source = "aura"; R1.visual.absorb.abbreviate = true')
+lua('FORMATTER_MODE = "desc"; COMBAT(true); AURA_UNTIL = NOW + 30; AMS.auraInstanceID = SECRET; R1.visual.absorb.source = "aura"; R1.visual.absorb.abbreviate = true')
 lua('OWNED = { [R1] = true }; NS.EngineOwns = function(r) return OWNED[r] == true end; NS.EngineCompanion = function(r) return OWNED[r] == true end; PLAY(0.3)')
 check("engine-drawn: XayaUI's own icon hidden", lua("return FR(R1):IsShown() == false"))
 check("engine-drawn: the companion shows the shield amount over the engine's icon", lua("local c = FR(R1).comp; return c and c._shown and c.absorb._shown and c.absorb._text == SECRET_STR"))

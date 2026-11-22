@@ -52,6 +52,17 @@ runs too long is marked HUNG, not passed."). On top of the last-line rule, a tes
                    GUARD BLIND, never a pass
                    (tests/fix_r11_honest_result_run.py T2-T4; T5 checks that every place a test makes the loader goes through
                    that dofile). A loader made any other way (loadfile, loadstring) would not be counted: T5 fails on such a site.
+  LINE HOOK        the stand-in's line hook or key scan (tests/harness/loader.lua, round 11b: a misuse of a hidden value that Lua 5.1
+                   cannot raise, such as '==' against a plain value of the same type) found a misuse the test did not declare. Every
+                   runtime's findings are read at its end, per site (rule and place, from S.lineHook.sites; the count is never capped),
+                   whether or not the addon's own pcall swallowed the raise: such a raise reaches neither the world's error list nor the
+                   error record, so ERROR RECORD alone would pass it (round 11b repair 1: XayaUI_Rules/Triggers.lua TDList in
+                   fix_r6_aura_routing). A test that misuses a hidden value on purpose declares each site on a line of its output:
+                   "EXPECT_LINEHOOK <rule> <site> <n>", for example "EXPECT_LINEHOOK eq XayaUI_LineProbe/probe.lua:9 1"; n is exact
+                   and a declared finding that did not happen fails (EXPECTED LINE HOOK FINDING NOT SEEN). Rules: eq, neg, bool, key
+                   (site "<addon>/<file>:<line>") and keyscan (site "<addon>"). A fault of the line hook itself (a bug in the stand-in,
+                   so lines went unchecked) is LINE HOOK FAULT, never a pass; a test that causes one on purpose (to check that a fault
+                   never reaches the addon) declares the exact number: "EXPECT_LINEHOOK_FAULTS <n>".
   GUARD BLIND      the test process ended without the guard's report (it left through os._exit, or crashed the interpreter), so
                    nothing above could be read: a run the guard could not see is not a pass.
   HUNG             it ran past its time limit (its own state, printed "HUNG", never ok); it and every process it started are stopped.
@@ -94,6 +105,8 @@ COUNT_PATTERNS = (
 )
 MISSING_INPUT = re.compile(r"MISSING INPUT:\s*(.*)")
 EXPECT_ERRORS = re.compile(r"^\s*EXPECT_ERRORS\s+(?:XUI-)?([EW]\d{3})\s+(\d+)\s*$")
+EXPECT_LINEHOOK = re.compile(r"^\s*EXPECT_LINEHOOK\s+(eq|neg|bool|key|keyscan)\s+(\S+)\s+(\d+)\s*$")
+EXPECT_LINEHOOK_FAULTS = re.compile(r"^\s*EXPECT_LINEHOOK_FAULTS\s+(\d+)\s*$")
 DEFAULT_TIME_LIMIT = 600   # seconds; the slowest ordinary test took about 100 s in the round-10 timing run (TEST-AUDIT section 3)
 # the tests that play the V27 gate's scenario (fresh, without the shared cached result, gate_keyboard took 756 s and fix_r10_gate_bonus
 # 764 s in the round-10 timing run on a loaded machine): about three times that
@@ -205,6 +218,38 @@ def judge(stdout, returncode, report, hung=False):
             why.append(("EXPECTED ERROR NOT SEEN", "declared EXPECT_ERRORS %s %d, the record has none" % (code, want)))
         else:
             why.append(("ERROR RECORD", "%s x%d, declared %d: %s" % (code, got, want, str(sample.get(code))[:200])))
+    # (round 11b repair 1) the line hook's findings per site, and its own faults (LINE HOOK in the module docstring)
+    lh_declared, lh_seen, lh_text = {}, {}, {}
+    for l in lines:
+        m = EXPECT_LINEHOOK.match(l)
+        if m:
+            key = (m.group(1), m.group(2))
+            lh_declared[key] = lh_declared.get(key, 0) + int(m.group(3))
+    for f in report.get("lineHook", []):
+        key = (f.get("rule"), f.get("site"))
+        lh_seen[key] = lh_seen.get(key, 0) + int(f.get("n") or 0)
+        lh_text.setdefault(key, f.get("text"))
+    for key in sorted(set(lh_seen) | set(lh_declared)):
+        got, want = lh_seen.get(key, 0), lh_declared.get(key, 0)
+        if got == want:
+            continue
+        if want == 0:
+            why.append(("LINE HOOK", "%s at %s x%d not declared (EXPECT_LINEHOOK %s %s %d): %s"
+                        % (key[0], key[1], got, key[0], key[1], got, str(lh_text.get(key))[:200])))
+        elif got == 0:
+            why.append(("EXPECTED LINE HOOK FINDING NOT SEEN", "declared EXPECT_LINEHOOK %s %s %d, the line hook found none" % (key[0], key[1], want)))
+        else:
+            why.append(("LINE HOOK", "%s at %s x%d, declared %d: %s" % (key[0], key[1], got, want, str(lh_text.get(key))[:200])))
+    if report.get("lineHookDropped"):
+        why.append(("LINE HOOK", "the line hook found misuses at %d more sites than it keeps (200)" % report["lineHookDropped"]))
+    faults_declared = sum(int(m.group(1)) for m in (EXPECT_LINEHOOK_FAULTS.match(l) for l in lines) if m)
+    faults_seen = int(report.get("lineHookFaultCount") or 0)
+    if faults_seen != faults_declared:
+        if faults_seen == 0:
+            why.append(("EXPECTED LINE HOOK FAULT NOT SEEN", "declared EXPECT_LINEHOOK_FAULTS %d, the line hook had none" % faults_declared))
+        else:
+            for x in report.get("lineHookFaults", []):
+                why.append(("LINE HOOK FAULT", x + ("" if not faults_declared else " (declared EXPECT_LINEHOOK_FAULTS %d)" % faults_declared)))
     for x in report.get("guardErrors", []):
         why.append(("GUARD BLIND", x))
     return why
@@ -279,14 +324,40 @@ HARVEST_LUA = r'''function()
   local dbg0 = rawget(_G, "debug")
   local reg0 = type(dbg0) == "table" and type(rawget(dbg0, "getregistry")) == "function" and dbg0.getregistry() or nil
   local sessions = "#sessions\t" .. tostring(type(reg0) == "table" and rawget(reg0, "__KEY__") or "-")
+  local out = { sessions }
+  -- (round 11b repair 1) the stand-in line hook's findings per site and its own faults (tests/harness/loader.lua; one per Lua state,
+  -- kept in the registry): "#linehook\t<rule>\t<site>\t<n>\t<message>", "#lhdropped\t<n>", "#lhfault\t<n>\t<first faults>"
+  local LH = type(reg0) == "table" and rawget(reg0, "XayaUI.harness.lineHook") or nil
+  if type(LH) == "table" then
+    local sites = rawget(LH, "sites")
+    if type(sites) == "table" then
+      for i = 1, 200 do
+        local x = rawget(sites, i)
+        if x == nil then break end
+        if type(x) == "table" then
+          out[#out + 1] = "#linehook\t" .. tostring(rawget(x, "rule")) .. "\t" .. tostring(rawget(x, "site")) .. "\t" .. tostring(rawget(x, "n"))
+            .. "\t" .. (tostring(rawget(x, "text")):gsub("[\t\n\r]", " ")):sub(1, 300)
+        end
+      end
+    end
+    local st = rawget(LH, "stats")
+    local dropped = type(st) == "table" and tonumber(rawget(st, "sitesDropped")) or 0
+    if dropped > 0 then out[#out + 1] = "#lhdropped\t" .. dropped end
+    local nf = type(st) == "table" and tonumber(rawget(st, "faults")) or 0
+    if nf > 0 then
+      local f, first = rawget(LH, "faults"), {}
+      for i = 1, 3 do local x = type(f) == "table" and rawget(f, i) or nil; if x == nil then break end; first[#first + 1] = tostring(x) end
+      out[#out + 1] = "#lhfault\t" .. nf .. "\t" .. (table.concat(first, " | "):gsub("[\t\n\r]", " ")):sub(1, 400)
+    end
+  end
   local db = rawget(_G, "CueRulesDB")
-  if type(db) ~= "table" then return sessions end
+  if type(db) ~= "table" then return table.concat(out, "\n") end
   local log = rawget(db, "errorLog")
-  if type(log) ~= "table" then return sessions end
+  if type(log) ~= "table" then return table.concat(out, "\n") end
   -- the stand-in loader's note of what came from saved data (tests/harness/loader.lua); "-": this runtime had no loader
   local dbg = rawget(_G, "debug")
   local note = type(dbg) == "table" and type(rawget(dbg, "getregistry")) == "function" and rawget(dbg.getregistry(), "XayaUI.harness.loadedErrorLog") or nil
-  local out, i = { sessions }, 1
+  local i = 1
   while i <= 200 do
     local e = rawget(log, i)
     if e == nil then break end
@@ -304,7 +375,8 @@ NO_REPO_GIT = {"init", "clone", "version", "help", "--version", "--help", "-h"}
 
 def _child(rpath, test, argv):
     import atexit, runpy, shlex, weakref
-    state = {"entries": [], "runtimes": 0, "missing": [], "guardErrors": [], "complete": False}
+    state = {"entries": [], "runtimes": 0, "missing": [], "guardErrors": [], "complete": False,
+             "lineHook": [], "lineHookFaults": [], "lineHookFaultCount": 0, "lineHookDropped": 0}
     seen_rt = weakref.WeakSet()
 
     def harvest(rt):
@@ -330,6 +402,29 @@ def _child(rpath, test, argv):
                     state["guardErrors"].append(
                         "one Lua runtime made %d stand-in loader sessions: its error record is read once, when the runtime is freed, "
                         "so the earlier sessions' entries could not be counted (make each session in a fresh runtime)" % k)
+                continue
+            if row.startswith("#linehook\t"):   # (round 11b repair 1) one line-hook site of this runtime
+                _, rule, site, n, text = (row.split("\t", 4) + ["", "", "", "", ""])[:5]
+                try:
+                    n = int(float(n))
+                except ValueError:
+                    n = 1
+                state["lineHook"].append({"rule": rule, "site": site, "n": n, "text": text})
+                continue
+            if row.startswith("#lhdropped\t"):
+                try:
+                    state["lineHookDropped"] += int(float(row.split("\t", 1)[1]))
+                except ValueError:
+                    state["lineHookDropped"] += 1
+                continue
+            if row.startswith("#lhfault\t"):
+                _, nf, text = (row.split("\t", 2) + ["", "", ""])[:3]
+                try:
+                    state["lineHookFaultCount"] += int(float(nf))
+                except ValueError:
+                    state["lineHookFaultCount"] += 1
+                state["lineHookFaults"].append("the stand-in's line hook had %s fault(s) of its own (a bug in tests/harness/loader.lua, so lines "
+                                               "went unchecked): %s" % (nf, text[:300]))
                 continue
             code, kind, n, first, carried, msg = (row.split("\t", 5) + ["", "", "", "", "", ""])[:6]
             try:

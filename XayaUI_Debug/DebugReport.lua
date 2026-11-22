@@ -9,6 +9,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI)
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 local DR = ns.DebugRecordInfo   -- (XayaUI/DebugRecord.lua: Version, GameFolder, MAX_ENTRIES)
 local Version = DR.Version
 

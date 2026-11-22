@@ -171,13 +171,14 @@ if ns.OpenImportWindow then
   check("(regression) import window opened out of combat: its box has the keyboard (paste at once)", box ~= nil)
   if iw then iw:Hide() end
 end
--- an addon restriction starting (a Mythic+ run: type ChallengeMode 2, state Active 2) lets go too; a Chat restriction does not
+-- an addon restriction starting (a Mythic+ run: type ChallengeMode 2, state Activating 1, the state the game fires as a restriction starts;
+-- before round 11b this test sent Active 2, which the game never fires: build spec 3.3) lets go too; a Chat restriction does not
 if ns.ShowCopyBox then
   local cb = rawget(_G, "XayaUICopyBox")
   ns.ShowCopyBox("Test", "text")
-  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 5, 2)
+  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 5, 1)
   check("(regression) a chat restriction does not take the keyboard from the box", cb.eb:HasFocus())
-  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 2, 2)
+  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 2, 1)
   check("R23 a Mythic+ run starting (addon restriction) lets go of the box", not cb.eb:HasFocus())
   cb:Hide()
 end

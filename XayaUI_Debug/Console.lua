@@ -13,6 +13,7 @@
 -------------------------------------------------------------------------------
 local _, ns = ...
 ns = _G.XayaUI_NS or ns   -- one namespace with XayaUI core (## Dependencies: XayaUI)
+if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round 11b, SD-149) loaded for the run logger alone: this tool stays dormant
 
 -- the Platform's settings, through its view (Modules.lua section 0b: only the Platform's own files name its saved variable)
 local PlatS = ns.Settings and ns.Settings("platform")
