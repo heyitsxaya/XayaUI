@@ -90,7 +90,7 @@ local spyCalls = {}
 local gameHandler = geterrorhandler()
 seterrorhandler(function(msg) spyCalls[#spyCalls + 1] = tostring(msg); return gameHandler(msg) end)
 -- (F) count every call into DebugRecord.lua from here on (the cost while nothing goes wrong)
-local drCalls, drNames, drRouting = 0, {}, 0
+local drCalls, drNames, drRouting, drSettings = 0, {}, 0, 0
 local DR_UI_LINE   -- the line of DebugRecord.lua's settings reader (local function Ui), read from the file below
 L.startup()
 local function countDR(on)
@@ -98,10 +98,17 @@ local function countDR(on)
     -- (the message routing that lives in the same file, ns.MessageDest / ns.ConsoleMessage and their settings read, serves every
     -- XayaUI message, error or not: B2, kept for players; it is counted apart)
     local ROUTING = { [ns.MessageDest] = true, [ns.ConsoleMessage] = true }
+    -- (round 11b, logger handover, triage unit; SD-123 / SD-149) the run logger's box reader lives in this file too: ns.RunLoggerOn and
+    -- ns.RunLoggerDefault are settings reads (the Options Debugging page reads them for the box and its hover text), not the record:
+    -- counted apart, like the Ui reader, and printed
+    local SETTINGS = {}
+    if ns.RunLoggerOn then SETTINGS[ns.RunLoggerOn] = true end
+    if ns.RunLoggerDefault then SETTINGS[ns.RunLoggerDefault] = true end
     debug.sethook(function()
       local i = debug.getinfo(2, "Sf")
       if i and i.source and i.source:sub(1, 1) == "@" and i.source:find("XayaUI/DebugRecord.lua", 1, true) then
         if ROUTING[i.func] then drRouting = drRouting + 1
+        elseif SETTINGS[i.func] then drSettings = drSettings + 1
         elseif i.linedefined == DR_UI_LINE then drRouting = drRouting + 1
         else drCalls = drCalls + 1; drNames[tostring(i.linedefined) .. "@" .. tostring(i.short_src) .. ":" .. tostring(i.what)] = true end
       end
@@ -217,7 +224,7 @@ countDR(false)
 check("F no error: nothing recorded (errors, warnings)", #CueRulesDB.errorLog == 0, #CueRulesDB.errorLog)
 check("F no error: no detailed record without Dev Assist", CueRulesDB.debugRecord == nil)
 local nm = {}; for k in pairs(drNames) do nm[#nm + 1] = k end
-check("F no error: no function of the record ran (30 s of steps, two combats, 40 log lines; message routing apart: " .. drRouting .. " calls)", drCalls == 0, drCalls .. " " .. table.concat(nm, ","))
+check("F no error: no function of the record ran (30 s of steps, two combats, 40 log lines; message routing apart: " .. drRouting .. " calls; the run logger box's settings reads apart: " .. drSettings .. " calls)", drCalls == 0, drCalls .. " " .. table.concat(nm, ","))
 print("MEASURED: calls into the error record while nothing went wrong: " .. drCalls .. "; message routing calls (any XayaUI message): " .. drRouting)
 local ev = ns.DebugRecordInfo.EventsOn()
 local extra = {}

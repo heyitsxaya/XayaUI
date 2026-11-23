@@ -16,6 +16,10 @@ Labels: "(works)" checks that a feature works when on; "(as before)" a fact that
 on the old code too. Every other check is a cost check; those kept from the first version fail on core 0.6.46 (origin/main 00f5f8b),
 see the debug log. B12 and D7 were rewritten for the record core keeps since 0.6.56 (errors and warnings only) and
 were not run against 0.6.46; A13 hands in stand-ins for the detailed record's hand-in points (ns.SetDebugHooks), since core alone has none.
+Round 11b (logger handover, triage unit; SD-123 / SD-149, spec section 7 risk 8: the tree became truer, nothing weakened): the run
+logger's box "Advanced debug logging" ships ticked and works with Advanced Debugging off, so while it is on DebugRecord.lua keeps one more
+frame holding exactly PLAYER_ENTERING_WORLD (loading screens only). A3, B9, B13 and C3 accept that one frame only while
+ns.DebugRecordInfo.LoggerWatching() is true; the new session "loggeroff" (the box saved off) keeps the original exact assertion (L1-L3).
 Run: python3 tests/core_off_costs_nothing_run.py   (Lua 5.1 via lupa; loads the settings window, so it takes a little while)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -138,7 +142,37 @@ if not ns then return R end
 local function onlyBlocked(set, n) return n == 2 and set.ADDON_ACTION_BLOCKED and set.ADDON_ACTION_FORBIDDEN and true or false end
 -- (round 11, SD-139 "Always save errors (Recommended)": the blocked-action warning is recorded with Advanced Debugging off too) what
 -- DebugRecord.lua may hold whatever the switch says: exactly one frame with exactly those two events, no OnUpdate, no hook
+-- (round 11b, SD-123 / SD-149; logger handover, triage unit) the run logger's box "Advanced debug logging" ships ticked and works with
+-- Advanced Debugging off: while it is on and XayaUI_Debug is not loaded, DebugRecord.lua keeps ONE more frame that holds exactly
+-- PLAYER_ENTERING_WORLD (it fires only at loading screens; LoggerArrive, SyncLoggerWatch). That frame is accepted only while core says it
+-- is watching (ns.DebugRecordInfo.LoggerWatching()) and only with exactly that one event; anything else still fails. The session MODE
+-- "loggeroff" (the box saved off) keeps the original exact assertion: one frame, the two "action blocked" events, nothing more.
+local function loggerWatching()
+  local DR = ns.DebugRecordInfo
+  return DR and DR.LoggerWatching and DR.LoggerWatching() and true or false
+end
+local function recordFrames(file)   -- frames of the file by kind: the record's (the two blocked events), the logger's (PEW only), other
+  local rec, logf, other = 0, 0, 0
+  for _, o in ipairs(W.objects) do
+    if rawget(o, "_owner") == file then
+      local l = {}
+      for e in pairs(o._events) do l[#l + 1] = e end
+      table.sort(l)
+      local k = table.concat(l, ",")
+      if k == "ADDON_ACTION_BLOCKED,ADDON_ACTION_FORBIDDEN" then rec = rec + 1
+      elseif k == "PLAYER_ENTERING_WORLD" then logf = logf + 1
+      else other = other + 1 end
+    end
+  end
+  return rec, logf, other
+end
 local function recordFrameOnly(file)
+  local rec, logf, other = recordFrames(file)
+  local logOk = (loggerWatching() and logf == 1) or (not loggerWatching() and logf == 0)
+  return rec == 1 and other == 0 and logOk and onupdates(file) == 0 and nhooks(file) == 0
+end
+-- the original exact assertion (box off): exactly one frame with exactly the two events
+local function recordFrameExact(file)
   local n, _, set = events(file)
   return frames(file) == 1 and onlyBlocked(set, n) and onupdates(file) == 0 and nhooks(file) == 0
 end
@@ -257,9 +291,9 @@ if MODE == "off" then
   closeMenu()
   -- B9-B13 Advanced Debugging (Settings > Debugging)
   check("(works) the Advanced Debugging switch is in the settings", switch("advancedDebug", true))
-  local n1, l1, set1 = events(DBG)
-  check("(works) B9 Advanced Debugging on: the record's events are registered (the two 'action blocked' events only)",
-    onlyBlocked(set1, n1), l1)
+  local _, l1 = events(DBG)
+  check("(works) B9 Advanced Debugging on: the record's events are registered (the two 'action blocked' events only; plus the run logger's"
+    .. " PLAYER_ENTERING_WORLD frame only while core watches for it)", recordFrameOnly(DBG), l1 .. " watching " .. tostring(loggerWatching()))
   instanceReads = 0
   W.fire("ZONE_CHANGED_NEW_AREA"); W.fire("PLAYER_REGEN_DISABLED"); W.fire("PLAYER_REGEN_ENABLED")
   check("B12 ...a zone change and a combat read nothing and record nothing (no error happened)", instanceReads == 0
@@ -318,13 +352,28 @@ elseif MODE == "defaults" then
   -- record's events are registered (the two 'action blocked' events only)")
   -- (round 11, SD-139; was "C3 Advanced Debugging is off by default: DebugRecord.lua registers no event and makes no frame")
   check("C3 Advanced Debugging is off by default: DebugRecord.lua holds one frame with only the two 'action blocked' events (SD-139)",
-    recordFrameOnly(DBG) and nd == 2, ld)
+    recordFrameOnly(DBG) and nd == (loggerWatching() and 3 or 2), ld .. " watching " .. tostring(loggerWatching()))
+  -- (round 11b) the box ships ticked (DR.RUN_LOGGER_DEFAULT = true, SD-123): on a fresh install core watches loading screens for it
+  check("C3c ...the run logger's box is on by default (SD-123), so core watches loading screens for it (one PLAYER_ENTERING_WORLD frame)",
+    loggerWatching() and select(2, recordFrames(DBG)) == 1, tostring(loggerWatching()))
   check("C3b ...and no PLAYER_LOGIN stays registered after the login (it fires once)", not setd.PLAYER_LOGIN, ld)
   local _, lm, setm = events(MINI)
   check("(works) C5 the minimap button is on by default: shown, with its loading-screen event", _G.XayaUIMinimapButton ~= nil
     and _G.XayaUIMinimapButton:IsShown() and setm.PLAYER_ENTERING_WORLD, lm)
   check("C7 no rule uses the game-played sound: nothing of it exists", nothing(SND), cost(SND))
   check("C8 the console window is closed by default: nothing of it exists", nothing(CON) and nothing(CORECON), cost(CON) .. " | " .. cost(CORECON))
+elseif MODE == "loggeroff" then
+  ---------------------------------------------------------------------------------------------------------------------------------
+  -- L. (round 11b, logger handover) Advanced Debugging off AND the run logger's box saved off: the original exact assertion
+  ---------------------------------------------------------------------------------------------------------------------------------
+  local nl, ll, setl = events(DBG)
+  check("L1 Advanced Debugging and the run logger's box saved off: DebugRecord.lua made exactly one frame with only the two 'action"
+    .. " blocked' events (the original A3 / C3 assertion)", recordFrameExact(DBG) and nl == 2 and not setl.PLAYER_ENTERING_WORLD, cost(DBG))
+  check("L2 ...core does not watch loading screens for the logger", not loggerWatching(), tostring(loggerWatching()))
+  local tml = #timers
+  W.fire("PLAYER_ENTERING_WORLD", false, false); W.tick(0.1, 5)
+  check("L3 ...a loading screen starts no timer of DebugRecord.lua and still leaves exactly one frame", ntimers(DBG, tml) == 0
+    and recordFrameExact(DBG), cost(DBG))
 elseif MODE == "on" then
   ---------------------------------------------------------------------------------------------------------------------------------
   -- D. saved on at login: each works from the start
@@ -379,6 +428,8 @@ def saved_for(mode):
         r["gameSound"] = {"enabled": True, "when": "auto", "channel": "Ambience", "throttle": 1}
         return {"XayaUI": {"CueRulesDB": {"ui": {"consoleOpen": True, "advancedDebug": True},
                                          "rules": [r]}}}
+    if mode == "loggeroff":   # (round 11b) Advanced Debugging off and the run logger's box off (SD-149)
+        return {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": False, "runLogger": False}}}}
     return {}
 
 
@@ -397,7 +448,7 @@ def world(mode):
 
 def main():
     total, bad, errs = 0, 0, 0
-    for mode in ("off", "defaults", "on"):
+    for mode in ("off", "defaults", "on", "loggeroff"):
         res, w = world(mode)
         for i in range(1, len(res) + 1):
             name, ok = res[i][1], res[i][2]

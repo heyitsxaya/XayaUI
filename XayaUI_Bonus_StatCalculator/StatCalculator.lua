@@ -2794,10 +2794,19 @@ local function LetGoOfKeys()
     if eb then focusBox = nil; eb:ClearFocus() end
 end
 -- (gate G-023) a restriction (combat, encounter, Mythic+, PvP: Enum.AddOnRestrictionType) is activating or active: the boxes let go.
--- A state that is not a plain number (missing, or secret) counts as active (fail safe). The type is not read: every kind lets go.
+-- A state that is not a plain number (missing, or secret) counts as active (fail safe).
+-- (round 11b, hidden-data fight F10, triage unit) only those four kinds let go, as core's KeyCatch.lua FIGHT_TYPE does: the Map (4) and
+-- Chat (5) restrictions start at every dungeon or raid entry (PRED:64-68, RACD:31) and restrict neither the keyboard nor the boxes, so
+-- before this the calculator lost the keyboard on every instance entry while she typed. A type that is not a plain number (missing, or
+-- secret) still lets go (fail safe). enums.md:497 Enum.AddOnRestrictionType Combat 0, Encounter 1, ChallengeMode 2, PvPMatch 3, Map 4,
+-- Chat 5. UNVERIFIED IN GAME.
 local RESTRICTION_INACTIVE = (Enum and Enum.AddOnRestrictionState and Enum.AddOnRestrictionState.Inactive) or 0
-local function OnRestriction(state)
+local RT = Enum and Enum.AddOnRestrictionType
+local KEY_RESTRICTIONS = { [RT and RT.Combat or 0] = true, [RT and RT.Encounter or 1] = true, [RT and RT.ChallengeMode or 2] = true,
+    [RT and RT.PvPMatch or 3] = true }
+local function OnRestriction(kind, state)
     if state ~= nil and not isSecret(state) and type(state) == "number" and state == RESTRICTION_INACTIVE then return end
+    if kind ~= nil and not isSecret(kind) and type(kind) == "number" and not KEY_RESTRICTIONS[kind] then return end   -- (Map, Chat)
     LetGoOfKeys()
 end
 local function EnterCombat()
@@ -2822,7 +2831,7 @@ end
 
 local function OnEvent(_, event, unit, arg2)
     if event == "PLAYER_REGEN_DISABLED" then EnterCombat(); return end
-    if event == "ADDON_RESTRICTION_STATE_CHANGED" then OnRestriction(arg2); return end   -- (type, state): the state is the second
+    if event == "ADDON_RESTRICTION_STATE_CHANGED" then OnRestriction(unit, arg2); return end   -- (type, state)
     if event == "PLAYER_REGEN_ENABLED" then
         -- out of combat the last readable GCD shows again. (SC-081, round 2) No read here: the panel reads it at its next open
         -- (OnPanelShown); nothing reopens it now (SD-102).

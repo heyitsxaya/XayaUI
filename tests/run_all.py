@@ -301,75 +301,98 @@ def run_one(path, args=(), limit=None, cwd=None):
 # counts each call (each call is one session). Kept in the Lua registry (no global the addons see; dofile itself stays the same name).
 # A runtime without the debug library or dofile is not counted ("-").
 SESSIONS_KEY = "XayaUI.runall.loaderSessions"
-SESSIONS_LUA = r'''function()
+# (round 11b final fix) the guard's own reader of the runtime's record (HARVEST_LUA, below) is made and kept in the Lua registry before the
+# test runs any Lua, and it captures every builtin it calls (type, tostring, rawget, string.gsub ...) as its own locals then. A test that
+# breaks a builtin on purpose (fix_r11_secret T1 kills the installed type()) no longer blinds the guard: before this, the harvest called
+# the test's type() when the runtime was freed and the group failed as GUARD BLIND. The dofile counter below captures its builtins the same
+# way. Held in the registry, not on the Python side: a Python handle to a Lua function keeps its runtime alive (lupa), and a runtime
+# that is freed only by the cyclic collector would hold its whole Lua state (megabytes) for an unknown time.
+HARVEST_KEY = "XayaUI.runall.harvest"
+SESSIONS_LUA = r"""function(harvester)
   local dbg = rawget(_G, "debug")
   local getreg = type(dbg) == "table" and rawget(dbg, "getregistry") or nil
+  if type(getreg) ~= "function" then return false end
+  local reg = getreg()
+  if type(harvester) == "function" then rawset(reg, "__HKEY__", harvester) end
   local df = rawget(_G, "dofile")
-  if type(getreg) ~= "function" or type(df) ~= "function" then return false end
-  local reg, KEY = getreg(), "__KEY__"
+  if type(df) ~= "function" then return false end
+  local type, select, rawget, rawset, match, KEY = type, select, rawget, rawset, string.match, "__KEY__"
   rawset(reg, KEY, 0)
   local function counted(f)
     return function(...) rawset(reg, KEY, (rawget(reg, KEY) or 0) + 1); return f(...) end
   end
   local function pass(path, ...)
-    if type(path) == "string" and path:match("[/\\]loader%.lua$") and type((...)) == "function" then return counted((...)), select(2, ...) end
+    if type(path) == "string" and match(path, "[/\\]loader%.lua$") and type((...)) == "function" then return counted((...)), select(2, ...) end
     return ...
   end
   rawset(_G, "dofile", function(path) return pass(path, df(path)) end)
   return true
-end'''.replace("__KEY__", SESSIONS_KEY)
-# reads CueRulesDB.errorLog with rawget only (the stand-in's _G reports every unknown global it is asked for: tests/harness/world.lua).
-# Its first row is "#sessions\t<n>": the loader sessions counted in this runtime ("-": not counted)
-HARVEST_LUA = r'''function()
-  local dbg0 = rawget(_G, "debug")
-  local reg0 = type(dbg0) == "table" and type(rawget(dbg0, "getregistry")) == "function" and dbg0.getregistry() or nil
-  local sessions = "#sessions\t" .. tostring(type(reg0) == "table" and rawget(reg0, "__KEY__") or "-")
-  local out = { sessions }
-  -- (round 11b repair 1) the stand-in line hook's findings per site and its own faults (tests/harness/loader.lua; one per Lua state,
-  -- kept in the registry): "#linehook\t<rule>\t<site>\t<n>\t<message>", "#lhdropped\t<n>", "#lhfault\t<n>\t<first faults>"
-  local LH = type(reg0) == "table" and rawget(reg0, "XayaUI.harness.lineHook") or nil
-  if type(LH) == "table" then
-    local sites = rawget(LH, "sites")
-    if type(sites) == "table" then
-      for i = 1, 200 do
-        local x = rawget(sites, i)
-        if x == nil then break end
-        if type(x) == "table" then
-          out[#out + 1] = "#linehook\t" .. tostring(rawget(x, "rule")) .. "\t" .. tostring(rawget(x, "site")) .. "\t" .. tostring(rawget(x, "n"))
-            .. "\t" .. (tostring(rawget(x, "text")):gsub("[\t\n\r]", " ")):sub(1, 300)
+end""".replace("__KEY__", SESSIONS_KEY).replace("__HKEY__", HARVEST_KEY)
+# the call that runs the kept reader: it touches only the global 'debug' table, its getregistry and the registry (no metatable); nil when
+# the runtime has no kept reader (then the reader is made now, from whatever builtins the runtime has left)
+HARVEST_CALL_LUA = r"""function()
+  local reg = debug.getregistry()
+  local h = reg["__HKEY__"]
+  if h then return h() end
+  return nil
+end""".replace("__HKEY__", HARVEST_KEY)
+# makes the reader: reads CueRulesDB.errorLog with rawget only (the stand-in's _G reports every unknown global it is asked for:
+# tests/harness/world.lua). Its first row is "#sessions\t<n>": the loader sessions counted in this runtime ("-": not counted)
+HARVEST_LUA = r"""function()
+  local type, tostring, tonumber, rawget, G = type, tostring, tonumber, rawget, _G
+  local gsub, sub, concat = string.gsub, string.sub, table.concat
+  local dbg0 = rawget(G, "debug")
+  local getreg = type(dbg0) == "table" and rawget(dbg0, "getregistry") or nil
+  if type(getreg) ~= "function" then getreg = nil end
+  local function flat(v, n) return sub((gsub(tostring(v), "[\t\n\r]", " ")), 1, n) end
+  return function()
+    local reg0 = getreg and getreg() or nil
+    local sessions = "#sessions\t" .. tostring(type(reg0) == "table" and rawget(reg0, "__KEY__") or "-")
+    local out = { sessions }
+    -- (round 11b repair 1) the stand-in line hook's findings per site and its own faults (tests/harness/loader.lua; one per Lua state,
+    -- kept in the registry): "#linehook\t<rule>\t<site>\t<n>\t<message>", "#lhdropped\t<n>", "#lhfault\t<n>\t<first faults>"
+    local LH = type(reg0) == "table" and rawget(reg0, "XayaUI.harness.lineHook") or nil
+    if type(LH) == "table" then
+      local sites = rawget(LH, "sites")
+      if type(sites) == "table" then
+        for i = 1, 200 do
+          local x = rawget(sites, i)
+          if x == nil then break end
+          if type(x) == "table" then
+            out[#out + 1] = "#linehook\t" .. tostring(rawget(x, "rule")) .. "\t" .. tostring(rawget(x, "site")) .. "\t" .. tostring(rawget(x, "n"))
+              .. "\t" .. flat(rawget(x, "text"), 300)
+          end
         end
       end
+      local st = rawget(LH, "stats")
+      local dropped = type(st) == "table" and tonumber(rawget(st, "sitesDropped")) or 0
+      if dropped > 0 then out[#out + 1] = "#lhdropped\t" .. dropped end
+      local nf = type(st) == "table" and tonumber(rawget(st, "faults")) or 0
+      if nf > 0 then
+        local f, first = rawget(LH, "faults"), {}
+        for i = 1, 3 do local x = type(f) == "table" and rawget(f, i) or nil; if x == nil then break end; first[#first + 1] = tostring(x) end
+        out[#out + 1] = "#lhfault\t" .. nf .. "\t" .. flat(concat(first, " | "), 400)
+      end
     end
-    local st = rawget(LH, "stats")
-    local dropped = type(st) == "table" and tonumber(rawget(st, "sitesDropped")) or 0
-    if dropped > 0 then out[#out + 1] = "#lhdropped\t" .. dropped end
-    local nf = type(st) == "table" and tonumber(rawget(st, "faults")) or 0
-    if nf > 0 then
-      local f, first = rawget(LH, "faults"), {}
-      for i = 1, 3 do local x = type(f) == "table" and rawget(f, i) or nil; if x == nil then break end; first[#first + 1] = tostring(x) end
-      out[#out + 1] = "#lhfault\t" .. nf .. "\t" .. (table.concat(first, " | "):gsub("[\t\n\r]", " ")):sub(1, 400)
+    local db = rawget(G, "CueRulesDB")
+    if type(db) ~= "table" then return concat(out, "\n") end
+    local log = rawget(db, "errorLog")
+    if type(log) ~= "table" then return concat(out, "\n") end
+    -- the stand-in loader's note of what came from saved data (tests/harness/loader.lua); "-": this runtime had no loader
+    local note = type(reg0) == "table" and rawget(reg0, "XayaUI.harness.loadedErrorLog") or nil
+    local i = 1
+    while i <= 200 do
+      local e = rawget(log, i)
+      if e == nil then break end
+      if type(e) == "table" then
+        out[#out + 1] = tostring(rawget(e, "code")) .. "\t" .. tostring(rawget(e, "kind")) .. "\t" .. tostring(rawget(e, "n")) .. "\t" ..
+          tostring(rawget(e, "first")) .. "\t" .. (type(note) == "table" and tostring(rawget(note, e) or 0) or "-") .. "\t" .. flat(rawget(e, "msg"), 300)
+      end
+      i = i + 1
     end
+    return concat(out, "\n")
   end
-  local db = rawget(_G, "CueRulesDB")
-  if type(db) ~= "table" then return table.concat(out, "\n") end
-  local log = rawget(db, "errorLog")
-  if type(log) ~= "table" then return table.concat(out, "\n") end
-  -- the stand-in loader's note of what came from saved data (tests/harness/loader.lua); "-": this runtime had no loader
-  local dbg = rawget(_G, "debug")
-  local note = type(dbg) == "table" and type(rawget(dbg, "getregistry")) == "function" and rawget(dbg.getregistry(), "XayaUI.harness.loadedErrorLog") or nil
-  local i = 1
-  while i <= 200 do
-    local e = rawget(log, i)
-    if e == nil then break end
-    if type(e) == "table" then
-      local msg = tostring(rawget(e, "msg")):gsub("[\t\n\r]", " ")
-      out[#out + 1] = tostring(rawget(e, "code")) .. "\t" .. tostring(rawget(e, "kind")) .. "\t" .. tostring(rawget(e, "n")) .. "\t" ..
-        tostring(rawget(e, "first")) .. "\t" .. (type(note) == "table" and tostring(rawget(note, e) or 0) or "-") .. "\t" .. msg:sub(1, 300)
-    end
-    i = i + 1
-  end
-  return table.concat(out, "\n")
-end'''.replace("__KEY__", SESSIONS_KEY)
+end""".replace("__KEY__", SESSIONS_KEY)
 NO_REPO_GIT = {"init", "clone", "version", "help", "--version", "--help", "-h"}
 
 
@@ -384,7 +407,12 @@ def _child(rpath, test, argv):
             return
         try:
             rt._xui_m1_read = True
-            text = rt.eval(HARVEST_LUA)()
+            try:   # (the reader kept before the test ran: its builtins are the runtime's own, whatever the test did to them)
+                text = rt.eval(HARVEST_CALL_LUA)()
+            except Exception:
+                text = None
+            if text is None:   # (no kept reader: a runtime the guard could not prepare)
+                text = rt.eval(HARVEST_LUA)()()
         except Exception as e:   # (a runtime closed or broken by the test: its record cannot be read)
             state["guardErrors"].append("a Lua runtime's error record could not be read: %s" % str(e)[:200])
             return
@@ -454,7 +482,7 @@ def _child(rpath, test, argv):
                 state["runtimes"] += 1
                 seen_rt.add(self)
                 try:   # (round 11 repair) count the stand-in loader sessions made in this runtime (SESSIONS_LUA)
-                    self.eval(SESSIONS_LUA)()
+                    self.eval(SESSIONS_LUA)(self.eval(HARVEST_LUA)())
                 except Exception as e:   # (a runtime the guard cannot prepare: said, not hidden)
                     state["guardErrors"].append("a Lua runtime could not be prepared to count its loader sessions: %s" % str(e)[:200])
 

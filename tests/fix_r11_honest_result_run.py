@@ -43,7 +43,8 @@ What the suite (tests/run_all.py) must now say about a test, proved on synthetic
      them as one), a carried entry counts once, a seeded one at its seeded count; T2-T4 the guard's limit (a runtime is read once, when
      it is freed) is guarded: two stand-in loader sessions in one runtime are GUARD BLIND, one is ok; T5 every place a test makes the
      loader goes through dofile(path)(W, o), the call the guard counts; T6 a runtime made with encoding=None (it hands the guard
-     bytes) is read like any other.
+     bytes) is read like any other; T7 (round 11b final fix) a test that kills Lua builtins in its runtime (type, tostring, rawget,
+     string.gsub, table.concat) is still read: the guard's reader captured them before the test ran (before: GUARD BLIND).
 Fails on the pre-change files (tests/run_all.py, tests/harness/run.py, skin_button, aura_sources, memory_report_run.py, fix_r7_relocate,
 gate_performance): there the old rule (exit 0 and a passing last line) is applied, which takes the synthetic dishonest tests as ok.
 Stand-in only: UNVERIFIED IN GAME (nothing here runs in the game; the guard judges the offline tests).
@@ -283,6 +284,18 @@ def tally_sessions(d):
     st, why, last, _ = verdict(p6)
     check("T6 a runtime made with encoding=None (it returns bytes) is read like any other: its XUI-E011 x2, declared 2, is ok",
           st == "ok" and not why, "%s %s" % (st, text(why)))
+    # T7 (round 11b final fix: fix_r11_secret was GUARD BLIND) a test that breaks Lua's own builtins on purpose (fix_r11_secret T1 kills the
+    # installed type() with a dead coroutine) must not blind the guard: its reader keeps the builtins it had before the test ran
+    KILL = ('L.execute("local co = coroutine.wrap(function() end); co(); for _, k in ipairs({ \'type\', \'tostring\', \'tonumber\', '
+            '\'rawget\' }) do rawset(_G, k, co) end; string.gsub, string.sub, table.concat = co, co, co")\n')
+    p7 = write(d, "syn_killtype_run.py", SEED % 1 + KILL + 'print("3 checks, 0 failed")\n')
+    st, why, last, _ = verdict(p7)
+    check("T7 a test that kills type(), tostring(), rawget(), string.gsub and table.concat in its runtime is still read: its undeclared "
+          "XUI-E011 FAILS as ERROR RECORD, never GUARD BLIND", st == "FAIL" and "ERROR RECORD" in codes(why) and "GUARD BLIND" not in codes(why),
+          "%s %s" % (st, text(why)))
+    p7b = write(d, "syn_killtype_declared_run.py", SEED % 1 + KILL + 'print("EXPECT_ERRORS XUI-E011 1")\nprint("3 checks, 0 failed")\n')
+    st, why, last, _ = verdict(p7b)
+    check("T7 ... and the same run with the entry declared is ok (the record was read whole)", st == "ok" and not why, "%s %s" % (st, text(why)))
     # T5: every place a test makes the stand-in's loader goes through dofile(".../loader.lua")(W, opts), which the guard counts
     sites, blind = 0, []
     for p in sorted(glob.glob(os.path.join(HERE, "*.py")) + glob.glob(os.path.join(HERE, "harness", "*.py"))):

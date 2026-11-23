@@ -21,6 +21,9 @@ What the player gets, checked with the real addons (XayaUI, XayaUI_Rules, XayaUI
   N  an ordinary message (even one that says "error") is not recorded; P a ns.PrintPrivate message is not recorded.
   C  51 distinct errors keep the newest 50, newest first.
   K  the catalog: a Lua error's code still comes from its folder (XayaUI_Rules -> E001, XayaUI_Options -> E002); every code has one line.
+  (round 11b, logger handover: while the run logger's box is on, its default, SD-123 / SD-149, Z also accepts exactly one more
+     DebugRecord.lua frame holding exactly PLAYER_ENTERING_WORLD while core watches for it; a second session with the box saved off
+     keeps the original exact assertion)
   Z  zero cost until an error: no helper call and no record work in 20 s of play with two fights; the record holds one frame with the
      two "action blocked" events only; another addon's blocked action costs at most 600 Lua instructions (V33 core cap; measured).
   S  memory: the record's own size (Lua 5.1 layout, computed from what it holds, so the same on every run) for an entry at its longest
@@ -134,18 +137,28 @@ for i = 1, 20 do ns.Print("an ordinary line " .. i) end
 ns.PrintError, ns.PrintWarning, ns.RecordError, ns.RecordWarn = rawPE, rawPW, rawRE, rawRW
 check("Z no error in 20 s of play (two fights, a zone change, 20 ordinary messages): no helper call, no record call, nothing recorded",
   calls == 0 and #log() == 0, calls .. " calls, " .. #log() .. " entries: " .. dump())
-local recFrames, recEvents, recOU = 0, {}, 0
+-- (round 11b, logger handover, triage unit; SD-123 / SD-149) the run logger's box ships ticked and works with Advanced Debugging off:
+-- while core watches loading screens for it (DR.LoggerWatching()), DebugRecord.lua keeps exactly ONE more frame, holding exactly
+-- PLAYER_ENTERING_WORLD (loading screens only) and no OnUpdate. Nothing else is accepted. The session with the box saved off
+-- (z_logger_off below) keeps the original exact assertion.
+local recFrames, recEvents, recOU, logFrames, otherFrames = 0, {}, 0, 0, 0
 for _, o in ipairs(W.objects) do
   if rawget(o, "_owner") == "XayaUI/DebugRecord.lua" then
-    recFrames = recFrames + 1
-    for e in pairs(o._events) do recEvents[#recEvents + 1] = e end
+    local l = {}
+    for e in pairs(o._events) do l[#l + 1] = e end
+    table.sort(l)
+    local k = table.concat(l, ",")
     if o._scripts.OnUpdate then recOU = recOU + 1 end
+    if k == "ADDON_ACTION_BLOCKED,ADDON_ACTION_FORBIDDEN" then recFrames = recFrames + 1; for _, e in ipairs(l) do recEvents[#recEvents + 1] = e end
+    elseif k == "PLAYER_ENTERING_WORLD" then logFrames = logFrames + 1
+    else otherFrames = otherFrames + 1; recEvents[#recEvents + 1] = "[" .. k .. "]" end
   end
 end
-table.sort(recEvents)
-check("Z the record holds one frame with only the two 'action blocked' events and no frame script (Advanced Debugging off)",
-  recFrames == 1 and table.concat(recEvents, ",") == "ADDON_ACTION_BLOCKED,ADDON_ACTION_FORBIDDEN" and recOU == 0,
-  recFrames .. " frames: " .. table.concat(recEvents, ","))
+local watching = DR.LoggerWatching and DR.LoggerWatching() and true or false
+check("Z the record holds one frame with only the two 'action blocked' events and no frame script (Advanced Debugging off); the run"
+  .. " logger's box (on by default) adds exactly one frame holding only PLAYER_ENTERING_WORLD, and only while core watches for it",
+  recFrames == 1 and otherFrames == 0 and recOU == 0 and ((watching and logFrames == 1) or (not watching and logFrames == 0)),
+  recFrames .. " record frames, " .. logFrames .. " logger frames, " .. otherFrames .. " other: " .. table.concat(recEvents, ",") .. " watching " .. tostring(watching))
 check("Z the record and the helpers start no timer (DebugRecord.lua: 0, as before)", (timersBy["XayaUI/DebugRecord.lua"] or 0) == 0, timersBy["XayaUI/DebugRecord.lua"])
 
 -- N: an ordinary message is shown and never recorded, even when it says "error"
@@ -370,8 +383,8 @@ check("C 51 distinct errors keep the newest 50, newest first (the first is dropp
 check("C the cap is the record's own number (50)", DR.MAX_ENTRIES == 50)
 
 -- Z (part 2): the cost of one "action blocked" event, in Lua instructions (as the gate counts them; stand-in numbers, not WoW)
-local frame
-for _, o in ipairs(W.objects) do if rawget(o, "_owner") == "XayaUI/DebugRecord.lua" then frame = o end end
+local frame   -- (round 11b) the record's frame: the one holding the "action blocked" events (not the run logger's loading-screen frame)
+for _, o in ipairs(W.objects) do if rawget(o, "_owner") == "XayaUI/DebugRecord.lua" and o._events.ADDON_ACTION_BLOCKED then frame = o end end
 local onEvent = frame and frame._scripts.OnEvent
 local function cost(fn, ...)
   local n = 0
@@ -1101,6 +1114,63 @@ def true_text_checks(desc, report):
     return res
 
 
+Z_OFF_LUA = r'''
+local W, L = ...
+local function owner()
+  for lv = 3, 40 do
+    local info = debug.getinfo(lv, "S")
+    if not info then break end
+    local f = (info.source or ""):match("Interface/AddOns/(XayaUI[%w_]*/[%w_/]+%.lua)")
+    if f then return f end
+  end
+  return "?"
+end
+local rawCreate = CreateFrame
+CreateFrame = function(...) local f = rawCreate(...); rawset(f, "_owner", owner()); return f end
+local timers = 0
+for _, k in ipairs({ "After", "NewTimer", "NewTicker" }) do
+  local raw = C_Timer[k]
+  C_Timer[k] = function(...) if owner() == "XayaUI/DebugRecord.lua" then timers = timers + 1 end; return raw(...) end
+end
+L.startup()
+W.fire("PLAYER_LOGIN"); W.fire("PLAYER_ENTERING_WORLD", true, false); W.tick(0.1, 10)
+for _ = 1, 2 do W.enterCombat(); W.tick(0.1, 50); W.leaveCombat(); W.fire("ZONE_CHANGED_NEW_AREA"); W.tick(0.1, 50) end
+W.fire("PLAYER_ENTERING_WORLD", false, false); W.tick(0.1, 5)
+local recFrames, recEvents, recOU = 0, {}, 0
+for _, o in ipairs(W.objects) do
+  if rawget(o, "_owner") == "XayaUI/DebugRecord.lua" then
+    recFrames = recFrames + 1
+    for e in pairs(o._events) do recEvents[#recEvents + 1] = e end
+    if o._scripts.OnUpdate then recOU = recOU + 1 end
+  end
+end
+table.sort(recEvents)
+local ns = rawget(_G, "XayaUI_NS")
+local DR = ns and ns.DebugRecordInfo
+local watching = DR and DR.LoggerWatching and DR.LoggerWatching() and true or false
+return recFrames == 1 and table.concat(recEvents, ",") == "ADDON_ACTION_BLOCKED,ADDON_ACTION_FORBIDDEN" and recOU == 0 and timers == 0
+  and not watching and (CueRulesDB.ui and CueRulesDB.ui.runLogger) == false,
+  recFrames .. " frames: " .. table.concat(recEvents, ",") .. "; timers " .. timers .. "; watching " .. tostring(watching)
+'''
+
+
+def z_logger_off(folders, enabled):
+    """(round 11b, logger handover) Z with the run logger's box saved off (CueRulesDB.ui.runLogger = false) and Advanced Debugging off:
+    the original exact assertion (one frame, the two 'action blocked' events, no OnUpdate, no timer), after a login, two fights, a
+    zone change and a loading screen."""
+    L = H.lua51.LuaRuntime(unpack_returned_tuples=True)
+    api = H.to_lua(L, {k: v for k, v in H.load_api().items() if k != "framexml"})
+    world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
+    saved = {"XayaUI": {"CueRulesDB": {"ui": {"advancedDebug": False, "runLogger": False}}}}
+    loader = L.eval("function(path, W, o) return dofile(path)(W, o) end")(
+        os.path.join(H.HERE, "loader.lua"), world, H.to_lua(L, {"folders": folders, "enabled": {k: True for k in enabled}, "saved": saved}))
+    ok, extra = L.eval("function(src, ...) return loadstring(src)(...) end")(Z_OFF_LUA, world, loader)
+    errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
+    return ("Z (the run logger's box saved off, Advanced Debugging off) the record holds exactly one frame with only the two 'action"
+            " blocked' events, no frame script and no timer, and core does not watch loading screens (the original assertion)"
+            + ("" if ok else "  [%s]" % extra), bool(ok)), errs
+
+
 def main():
     folders = H.find_addons()
     enabled = [n for n in folders if n in ("XayaUI", "XayaUI_Rules", "XayaUI_Options")]
@@ -1127,12 +1197,14 @@ def main():
                     and all(isinstance(x["first"], (int, float)) and isinstance(x["last"], (int, float)) and isinstance(x["ver"], str) for x in log))
     results.append(("T the harness reads CueRulesDB.errorLog at the end of the run: a list, newest first, entries with only the documented"
                     " keys (code, kind, msg, stack, first, last, n, ver, combat)", shape_ok))
+    zoff, zerrs = z_logger_off(folders, enabled)
+    results.append(zoff)
     for name, ok, extra in static_checks():
         results.append((name + ("" if ok else "  [%s]" % extra), ok))
     for name, ok, extra in stale_text_checks(L):
         results.append((name + ("" if ok else "  [%s]" % (extra,)), ok))
     errs = [str(world.errors[i]) for i in range(1, len(world.errors) + 1)]
-    errs = [x for x in errs if MARK not in x]
+    errs = [x for x in errs + zerrs if MARK not in x]
     bad = 0
     for name, ok in results:
         print(("PASS " if ok else "FAIL ") + name)

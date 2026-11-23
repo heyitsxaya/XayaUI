@@ -31,15 +31,20 @@ if ns.DebugToolsWanted and not ns.DebugToolsWanted() then return end   -- (round
 if not (ns.Evaluate and ns.ReadContext and ns.WithStatusDetail) then return end   -- (XayaUI Rules is switched off: no rules to report)
 
 -- the engine's reading at the end of each fight (read only)
-local reading   -- { blizz = ms or nil, rules = ms or nil, at = "HH:MM" } after the first fight end; nil before
+local reading   -- { blizz = ms or nil, rules = ms or nil, at = time() } after the first fight end; nil before (one table, filled again)
 local function Metric(name)
     local P, E = C_AddOnProfiler, Enum and Enum.AddOnProfilerMetric
     if not (P and P.GetAddOnMetric and E and E.RecentAverageTime) then return nil end
     local ok, v = pcall(P.GetAddOnMetric, name, E.RecentAverageTime)
     return (ok and type(v) == "number" and not (issecretvalue and issecretvalue(v))) and v or nil
 end
+-- (round 11b final fix) the combat-end frame is one of the four moments capped at 600 instructions for XayaUI_Debug (SD-81, V33), and the
+-- run logger answers the same frame: the reading fills one table made at the first fight end (no table per fight) and keeps the time as a
+-- number (time()); the "HH:MM" text is made when the line is read (EngineLine)
 local function ReadEngine()
-    reading = { blizz = Metric("Blizzard_AuraContainer"), rules = Metric("XayaUI_Rules"), at = date and date("%H:%M") or "?" }
+    local r = reading or {}
+    r.blizz, r.rules, r.at = Metric("Blizzard_AuraContainer"), Metric("XayaUI_Rules"), time and time() or nil
+    reading = r
 end
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -60,11 +65,12 @@ local function EngineLine()
     end
     -- (round 8: a missing XayaUI Rules figure is said as "unavailable", never left out; the same in both lines below)
     local rules = reading.rules and (", XayaUI Rules %.2f ms"):format(reading.rules) or ", XayaUI Rules unavailable"
+    local at = (reading.at and date) and date("%H:%M", reading.at) or "?"
     if not reading.blizz then
-        return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s) the game's meter gave no figure for Blizzard's aura containers (unavailable)%s."):format(reading.at, rules)
+        return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s) the game's meter gave no figure for Blizzard's aura containers (unavailable)%s."):format(at, rules)
     end
     return ("combat engine reading (read only, nothing acts on it): at the end of the last fight (%s), Blizzard's aura containers %.2f ms per frame, recent average (this includes Blizzard's own target-frame auras)%s."):format(
-        reading.at, reading.blizz, rules)
+        at, reading.blizz, rules)
 end
 ns.DebugEngineLine = EngineLine   -- (tests)
 

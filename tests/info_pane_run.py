@@ -391,7 +391,11 @@ def _steps(qa):
 # round 10's .toc versions (the round 10 docs unit's lines); round 11a changed code in every one of these addons
 ROUND10 = {"XayaUI": "0.6.87", "XayaUI_Options": "0.6.110", "XayaUI_Rules": "0.7.2", "XayaUI_Debug": "0.7.1",
            "XayaUI_Bonus": "0.6.47", "XayaUI_Bonus_StatCalculator": "0.6.47"}
-R11A_DATE = "2026-11-19"   # (round 11a repair: every .toc X-Date and the bundle 1 entry moved to the repair date)
+# (round 11b final fix: V1 / V2 pinned the round 11a repair date, 2026-11-19, and went stale when round 11b moved every .toc X-Date and
+# the bundle 1 entry to its own date, which is correct.) What they guard is that the versions and the notes move together: every addon's
+# .toc X-Date is the newest PATCH-NOTES entry's date, and that entry is bundle 1's, first, and not older than the round 11a repair date
+# (a floor that does not go stale), as fix_r10_docs P2 / P3 do.
+R11A_FLOOR = "2026-11-19"
 
 
 def round11a_checks():
@@ -504,15 +508,19 @@ def round11a_checks():
     # ---------------- V: versions and notes (V10, V17, V18)
     tv = {f: _toc(f, "Version") for f in ROUND10}
     low = ["%s %s" % (f, v) for f, v in tv.items() if _vkey(v) <= _vkey(ROUND10[f])]
-    dates = ["%s %s" % (f, _toc(f, "X-Date")) for f in ROUND10 if _toc(f, "X-Date") != R11A_DATE]
-    check("V1 every addon round 11a changed is above its round 10 version, X-Date %s" % R11A_DATE, not low and not dates, low + dates)
     heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
+    newest = heads[0][0] if heads else None
+    dates = ["%s %s" % (f, _toc(f, "X-Date")) for f in ROUND10 if not newest or _toc(f, "X-Date") != newest]
+    check("V1 every addon round 11a changed is above its round 10 version, X-Date the newest PATCH-NOTES entry's date (%s)" % newest,
+          newest and not low and not dates, low + dates)
     entry = (re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M) + ["", ""])[1]
     hn = {"XayaUI": "XayaUI", "XayaUI_Options": "Options", "XayaUI_Rules": "Rules", "XayaUI_Bonus": "Bonus Features",
           "XayaUI_Bonus_StatCalculator": "Bonus Features"}
     miss = ["### %s %s" % (h, tv[f]) for f, h in hn.items() if ("### %s %s\n" % (h, tv[f])) not in entry]
-    check("V2 PATCH-NOTES' first entry is bundle 1, dated %s, with a heading per changed addon at its .toc version" % R11A_DATE,
-          heads and heads[0] == (R11A_DATE, "Rules Fix Bundle 1") and not miss, (heads[:1], miss))
+    check("V2 PATCH-NOTES' first entry is bundle 1, dated %s (no earlier than any other entry and than the round 11a repair, %s), with a "
+          "heading per changed addon at its .toc version" % (newest, R11A_FLOOR),
+          heads and heads[0][1] == "Rules Fix Bundle 1" and all(heads[0][0] >= h[0] for h in heads) and heads[0][0] >= R11A_FLOOR
+          and not miss, (heads[:2], miss))
     pane_miss = ["%s %s" % (h, tv[f]) for f, h in hn.items() if ('"%s %s"' % (h, tv[f])) not in ipd]
     check("V3 the pane shows those versions as its newest entry's headings", not pane_miss, pane_miss)
     must = ["saves every error and warning it prints in chat", "says why every time you type it", "now prints its help line",

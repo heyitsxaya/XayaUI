@@ -21,6 +21,9 @@ keyboard focus; the Stat Calculator panel on its own and docked) are played open
 XayaUI window is closed; while a window she opened is open, its own keyboard and text-box focus and the keyboard calls its code makes are
 listed (NOTE), and every frame outside it is judged as above. After its close every check above applies again: a frame of it still
 keyboard-enabled (shown or hidden), a text box of it still holding the focus, or a key that no longer reaches the game, FAILs.
+(round 11b; REQUEST-LOG SD-120, SD-126) the cycles are played inside a Mythic+ key with hidden aura data (tests/gate_common.py); the run
+logger's question (SD-122) opens at the loading screen into the dungeon and takes the mouse only (V29), so its checkpoint judges the keys
+as if every window were closed: PRINTSCREEN, W and SPACE must reach the game while it is shown.
 Run: python3 tests/gate_keyboard_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

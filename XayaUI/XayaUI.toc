@@ -2,8 +2,8 @@
 ## Title: XayaUI Platform
 ## Notes: Xaya's personal UI toolkit: the platform every XayaUI addon runs on (settings, theme, sharing, Recycle Bin, profiles, sounds and media lists, the error record, minimap and game menu buttons). Rule-based cues and combat aura tracking (Rules), the settings window (Options) and the debug tools (Debug: console window, bug and debug reports, loaded only while Settings > Debugging > Advanced Debugging is on) are separate entries you can switch on or off. Commands: /xui, /xayaui
 ## Author: Xaya
-## Version: 0.6.89
-## X-Date: 2026-11-19
+## Version: 0.6.90
+## X-Date: 2026-11-22
 ## SavedVariables: CueRulesDB
 ## OptionalDeps: LibSharedMedia-3.0, XayaUI_Media
 ## AddonCompartmentFunc: XayaUI_OnCompartmentClick

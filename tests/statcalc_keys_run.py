@@ -18,7 +18,8 @@ ns.KeyFocusGuard), the Stat Calculator on, the character window open and the pan
       docked panel hides with it and the box lets go; both keys reach the game after each.
   K5  K2-K4 again for the Gear tab's item box.
   K6  ADDON_RESTRICTION_STATE_CHANGED (type Encounter 1, state Activating 1; events.md:37, enums.md:485) with a box focused: the box lets go
-      (gate G-023); an Inactive (0) state does not take the box away from a player typing.
+      (gate G-023); an Inactive (0) state does not take the box away from a player typing; (round 11b, F10) ChallengeMode 2 lets go too,
+      and the Map (4) and Chat (5) restrictions, which start at every dungeon or raid entry, do not.
   K7  (round 2) Enter pressed through the real key path still commits the typed amount, and the box lets go.
 Negative controls: on the tree at 5695993 (before this fix) 8 of 45 fail: K2 and K5 Enter / Esc (the box let go through its own
 scripts, not core's guard: no "enter" / "escape"), and K6 (no restriction handling: the box keeps the keyboard, the keys do not reach
@@ -143,10 +144,19 @@ if box then
   W.fire("ADDON_RESTRICTION_STATE_CHANGED", 1, 1)
   check("K6 a restriction starts (Encounter, Activating 1): the box lets go of the keyboard (gate G-023)", not box:HasFocus())
   keys("K6 with the restriction active")
+  -- (round 11b, hidden-data fight F10, triage unit; intended change: this check sent type 4, the Map restriction, and asserted the box let
+  -- go, which was the bug: Map (4) and Chat (5) start at every dungeon or raid entry and restrict neither the keyboard nor the boxes, so
+  -- the calculator lost the keyboard on every instance entry. Core's KeyCatch.lua lets go for Combat, Encounter, ChallengeMode and PvP
+  -- only (FIGHT_TYPE); the calculator now does the same.)
   box:SetFocus()
-  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 4, 1)
-  check("K6 ...also while it is Activating (1)", not box:HasFocus())
+  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 2, 1)
+  check("K6 ...also a Mythic+ run starting (ChallengeMode 2, Activating 1)", not box:HasFocus())
   keys("K6 after Activating")
+  box:SetFocus()
+  W.fire("ADDON_RESTRICTION_STATE_CHANGED", 4, 1); W.fire("ADDON_RESTRICTION_STATE_CHANGED", 5, 1)
+  check("K6 the Map (4) and Chat (5) restrictions starting (every dungeon or raid entry): the player keeps typing (round 11b, F10)",
+    box:HasFocus())
+  box:ClearFocus()
 end
 
 -- K7 (round 2) Enter through the real key path still commits the typed amount: the box's OnEnterPressed no longer lets go itself and

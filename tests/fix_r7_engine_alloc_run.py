@@ -174,10 +174,28 @@ check("3. a full re-check of 70 rules as combat starts or ends: under 60 bytes o
 check("3. ... and the displays shown are unchanged", picture() == WANT, picture())
 
 ---------------------------------------------------------------- 4. target debuff rows
+-- (round 11b, triage T-2; spec section 7 risk 8: the stand-in became truer) what a row read keeps making is the reference its found
+-- debuff hands the rule (Conditions.lua MakeAuraRef, the one small table per aura that is up, as case 3 says). Until round 11b the
+-- stand-in's issecretvalue was a Lua function in a /tests/ file whose line event moved this meter's billing away from MakeAuraRef just
+-- before the reference's fields were set, so part of each reference (its hash part) was never counted and the case read 720 bytes; with
+-- the game-like C issecretvalue every byte of it is counted (1,920). The bound is now stated from that table's own size, measured here in
+-- the same Lua state: at most one reference per row whose debuff is found (#DEB, 5 of the 10 rows) plus 256 bytes. A new record per
+-- row read (the old 4 KB) still fails, and so does a second table per reference: the reference itself must stay one table of at most
+-- 400 bytes (Lua 5.1 on 64 bits: the table and its 8-slot hash part for the five fields it gets, measured 384).
+local refB
+do
+  local probe = { spellId = 9001, auraInstanceID = 77, applications = 1, expirationTime = W.now + 10, duration = 12 }
+  local keep = ns.MakeAuraRef(probe, nil, "target")   -- warm-up (the strings and the function once)
+  local c0 = collectgarbage("count")
+  keep = ns.MakeAuraRef(probe, nil, "target")
+  refB = math.floor((collectgarbage("count") - c0) * 1024 + 0.5)
+end
 local b4, w4 = 0, ""
 for _ = 1, 4 do local b, w = routedPass(function() W.fire("UNIT_AURA", "target", { isFullUpdate = true }) end); if b >= b4 then b4, w4 = b, w end end
 W.tick(1 / 60, 10)
-check("4. a target aura event (10 Target Debuff rows read): under 1 KB of garbage (before: a new record per row read, about 4 KB)", b4 < 1024, b4 .. " bytes; " .. w4)
+check("4. a target aura event (10 Target Debuff rows read): at most one aura reference per row found (" .. #DEB .. " x " .. refB .. " bytes)"
+  .. " plus 256 bytes of garbage (before round 7: a new record per row read, about 4 KB)", refB > 0 and refB <= 400 and b4 <= #DEB * refB + 256,
+  b4 .. " bytes; " .. w4 .. "; one reference " .. refB .. " bytes")
 check("4. ... and the displays shown are unchanged", picture() == WANT, picture())
 collectgarbage("restart")
 

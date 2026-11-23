@@ -39,10 +39,20 @@ The window stays closed from the close onward: every frame the gates judge is "a
 V33 (round 7): every handler's Lua instructions are also summed per addon and per frame drawn, in segments "fight N" (from combat start,
 its first second included, to the fight's last frame), "out N" (the rest of cycle N) and "idle"; tests/gate_performance_run.py judges
 them against the work budget calibrated on her reading (the same scenario played on origin/main ad60a051: v33_baseline below).
-Not played yet (TODO, round 7, engine-b's game-driven timing; SD-60): what the game hides the moment of in combat (a cooldown whose end
-is secret, countdown seconds read from a secret duration, the range to a focus / mouseover / pet, a row type the engine does not know).
-The stand-in has no secret cooldowns, no duration object that counts down, no OnCooldownDone and no range events, so these need the
-stand-in to drive whatever route that unit builds; until then the 0.2 s re-check of such rules is not played and not measured here.
+(round 11b; REQUEST-LOG SD-120 "yes", SD-126 "Key only, raids in smaller tests (Recommended)"; build spec 4, kept in the private XUI-Docs
+repo) the hidden-data fight: the three cycles are played inside one Mythic+ key (a loading screen into a dungeon, W.enterInstance("party",
+8); the key started, W.startKey; after cycle 3 the key completed and the dungeon left), the boss is the key's (difficulty 8, a group of 5,
+through the stand-in's encounter driver), and combat goes through W.enterCombat / W.leaveCombat. Inside the key the stand-in hides aura
+and cooldown data all the time (in the fights and between the pulls): every UNIT_AURA payload is a hidden table (shape A, the gate's one
+choice; unit tests play B and C), the game's aura and cooldown reads are the stand-in's own (tests/harness/world.lua: the by-index /
+instance-ID reads error for addon code, the spell-ID reads give nil, cooldown times are hidden values), aura instance IDs are random and
+re-randomized at the key's start and each boss pull, and the container's aura buttons are forbidden to addon code. Cooldown widgets run
+OnCooldownDone. The run logger's question (SD-122) shows after the loading screen into the dungeon (its box ships ticked in bundle 1,
+SD-123) and is answered Yes. integrity() FAILs a play that did not hide (key_fight_checks). The stand-in's hidden values are billed to
+the stand-in (S.onAlloc), the line hook is off in every gate play, and the tree play measures the stand-in's own share of the handlers'
+work (KF.share). A raid boss is covered by tests/fix_r11_keyfight_run.py T3 (SD-126: no speed measure).
+Before round 11b (TODO from round 7, SD-60): the stand-in had no secret cooldowns, no duration object that counts down, no OnCooldownDone
+and no range events, so what the game hides in combat was not played; the range events are still not played.
 
 Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings are UNVERIFIED IN GAME):
   * the game's mouse model is added here on top of tests/harness/world.lua: EnableMouse sets clicks and motion together;
@@ -51,8 +61,10 @@ Stand-in limits (V25: a passing gate is not proof of in-game behavior; findings 
     a Button, CheckButton, EditBox or Slider takes clicks until told not to (INFERENCE: not documented; Blizzard's and every addon's
     buttons work without EnableMouse). EnableMouseWheel(true) is recorded (a shown frame that takes the wheel stops camera zoom; INFERENCE).
   * the game's aura and cooldown reads (C_UnitAuras.GetUnitAuraBySpellID, GetPlayerAuraBySpellID, GetAuraDataByAuraInstanceID,
-    C_Spell.GetSpellCooldown) answer from the scenario's own list of active auras and cooldowns; Blizzard's aura container (the combat
-    engine's displays) is a minimal stand-in that accepts the documented calls and draws nothing.
+    C_Spell.GetSpellCooldown) are the stand-in's (round 11b; before: the gate's own readable copies), answering from its aura and cooldown
+    store, which the scenario fills; Blizzard's aura container (the combat engine's displays) is a minimal stand-in that accepts the
+    documented calls and draws nothing. Every hidden-data rule the build spec marks INFERENCE (payload shape A, the order of the
+    restriction events, an encounter out of combat hiding auras) is UNVERIFIED IN GAME.
   * allocations are measured with collectgarbage("count") around each XayaUI handler (event, OnUpdate, timer) with the collector
     stopped; allocations made inside the stand-in's own widget methods (it stores points and colors in Lua tables; the game does not),
     by the stand-in's C_Timer (its timer record, handle and wrapper closures; round 8, SD-68) and by the gate's own measuring are taken
@@ -91,7 +103,7 @@ VARIANTS = ("default", "debug")
 # ---------------------------------------------------------------------------------------------------------------------------------
 GAME_LUA = r'''
 return function(W)
-local G = { auras = {}, byInstance = {}, cds = {}, mounted = false, group = false, raid = false, nextInstance = 100, buttons = {}, known = {} }
+local G = { auras = {}, mounted = false, group = false, raid = false, buttons = {}, known = {} }
 -- Blizzard's aura container (Blizzard_AuraContainer): the stand-in's own, the one definition for the unit tests and the gate
 -- (tests/harness/world.lua "Blizzard's aura container": its tables, its methods, one aura button per aura group). (round 11 repair) The
 -- gate defined its own copy here until round 11 (its tables, its methods rawset over the stand-in's, an AddAuraGroup that dropped an
@@ -99,42 +111,31 @@ local G = { auras = {}, byInstance = {}, cds = {}, mounted = false, group = fals
 -- the stand-in's buttons, to show one while its aura is up (G.syncContainers).
 G.buttons = W.auraButtons
 local realCreate = CreateFrame
--- the auras the player has right now: [spellID] = aura data (the game's AuraData fields the rules read). Like the game, every read
--- hands back a new table (the game builds the AuraData table for each call).
-local function copy(a) if not a then return nil end; local t = {}; for k, v in pairs(a) do t[k] = v end; return t end
-local function auraFor(id) return copy(G.auras[id]) end
--- Blizzard's container: an aura button shows while an aura its group asks for is up (the game's secure code; not XayaUI's work)
+-- (round 11b, SD-120, the hidden-data fight; build spec 4.2) the auras and cooldowns live in the stand-in's own store (tests/harness/world.lua
+-- "auras", "cooldowns"), and the game's reads are the stand-in's: C_UnitAuras.* and C_Spell.GetSpellCooldown answer from that store and
+-- follow the restriction state (while auras are hidden: the by-index / instance-ID reads and GetUnitAuras error for addon code, the
+-- spell-ID reads give nil, the cooldown's times are hidden values; spec 2.2). Until round 11b the gate replaced those reads with its own
+-- readable copies, so no play ever saw hidden data. G.auras[spellID] is the player's aura record in the store (the gate shows the
+-- container's buttons from it); aura instance IDs are the store's (random, re-randomized at a key's and an encounter's start).
 function G.syncContainers()
   for _, e in ipairs(G.buttons) do
     local ids = e.group.enabled and e.opts.candidateFilters and e.opts.candidateFilters.includeSpellIDs
     local up = false
     -- (the engine passes a set: [spellID] = true; Blizzard_AuraContainerUtil.lua also takes a list)
     if type(ids) == "table" then for k, v in pairs(ids) do if G.auras[k] or (type(v) == "number" and G.auras[v]) then up = true; break end end end
+    -- (Blizzard's secure code, not addon code: the stand-in lets it reach a forbidden button, spec 3.2)
     e.button:SetShown(up and e.container:IsVisible() and #e.container._pts > 0)
   end
 end
-C_UnitAuras.GetUnitAuraBySpellID = function(unit, id) if unit == "player" then return auraFor(id) end return nil end
-C_UnitAuras.GetPlayerAuraBySpellID = function(id) return auraFor(id) end
-C_UnitAuras.GetAuraDataByAuraInstanceID = function(unit, iid) return copy(G.byInstance[iid]) end
-C_UnitAuras.GetAuraDataBySpellName = function() return nil end
--- the target's debuffs cast by the player ("HARMFUL|PLAYER"): a list the scenario keeps (G.targetDebuffs)
+-- the target's debuffs cast by the player ("HARMFUL|PLAYER"): kept in the store under "target"; G.targetDebuffs lists the records
 G.targetDebuffs, G.target = {}, false
-C_UnitAuras.GetUnitAuras = function(unit, filter) if unit == "target" and G.target then return G.targetDebuffs end return {} end
 local UE0 = UnitExists
 UnitExists = function(u) if u == "target" then return G.target end return UE0(u) end
 -- (round 10, SD-96 / SD-109; the gate task: "the game-played sound edges (combat start add, boss pull, combat end) are measured") every
 -- copy the game is handed or asked to take back is counted, so the scenario can show the edges ran (OUT.soundEdges)
-G.soundAdd, G.soundRem = 0, 0
-C_UnitAuras.AddAuraSound = function() G.soundAdd = G.soundAdd + 1; G.nextInstance = G.nextInstance + 1; return G.nextInstance end
+G.soundAdd, G.soundRem, G.nextSound = 0, 0, 100
+C_UnitAuras.AddAuraSound = function() G.soundAdd = G.soundAdd + 1; G.nextSound = G.nextSound + 1; return G.nextSound end
 C_UnitAuras.RemoveAuraSound = function() G.soundRem = G.soundRem + 1 end
--- a spell's cooldown (SpellCooldownInfo): a new table per call, as the game returns
-C_Spell.GetSpellCooldown = function(id)
-  local c = G.cds[tonumber(id) or 0]
-  if c and W.now < c.startTime + c.duration then
-    return { startTime = c.startTime, duration = c.duration, isEnabled = true, modRate = 1, isActive = true, isOnGCD = false }
-  end
-  return { startTime = 0, duration = 0, isEnabled = true, modRate = 1, isActive = false, isOnGCD = false }
-end
 -- the profile's cooldown spells are known (the spellbook)
 C_SpellBook = C_SpellBook or {}
 local KN0 = C_SpellBook.IsSpellKnownOrInSpellBook
@@ -144,29 +145,48 @@ IsPlayerSpell = function(id) if G.known[id] then return true end if IPS0 then re
 for i = 1, 81 do G.known[400000 + i] = true end   -- (round 9: 61-81 are the out-of-combat opacity, boss and effect rules' spells, never cast)
 for i = 1, 4 do G.known[450000 + i] = true end   -- the talents the profile's talent requirements name (PROFILE_LUA 6b)
 IsMounted = function() return G.mounted end
--- (round 9, SD-77 condition 3) a boss encounter: C_InstanceEncounter.IsEncounterInProgress (docs/reference/api/namespaces.md:2667, no
--- secrecy flag) answers from the scenario's G.encounter, set with ENCOUNTER_START / ENCOUNTER_END (events.md:560, :562)
-G.encounter = false
-C_InstanceEncounter = C_InstanceEncounter or {}
-C_InstanceEncounter.IsEncounterInProgress = function() return G.encounter end
+-- (round 9, SD-77 condition 3; round 11b) a boss encounter: C_InstanceEncounter.IsEncounterInProgress (docs/reference/api/namespaces.md:2667,
+-- no secrecy flag) is the stand-in's, set by its encounter driver (W.startEncounter / W.endEncounter: the Encounter restriction, then
+-- ENCOUNTER_START; ENCOUNTER_END, then the restriction ends; tests/harness/world.lua, spec 3.3). The gate no longer keeps its own flag.
 IsInGroup = function() return G.group end
 IsInRaid = function() return G.raid end
 GetNumGroupMembers = function() return G.group and (G.raid and 20 or 5) or 0 end
 UnitInParty = function(u) return G.group and u ~= nil end
+-- an aura gained (the store's record; quiet: the scenario fires UNIT_AURA itself, through the payload rule, G.payload)
 function G.gain(id, dur, unit)
-  G.nextInstance = G.nextInstance + 1
-  local a = { auraInstanceID = G.nextInstance, spellId = id, name = "Spell " .. id, icon = 136243, applications = 1, duration = dur,
-    expirationTime = W.now + dur, isHelpful = (unit or "player") == "player", sourceUnit = "player", isFromPlayerOrPlayerPet = true }
-  G.auras[id] = a; G.byInstance[a.auraInstanceID] = a
+  unit = unit or "player"
+  local a = W.addAura(unit, { spellId = id, name = "Spell " .. id, icon = 136243, applications = 1, duration = dur, expirationTime = W.now + dur,
+    isHelpful = unit == "player", sourceUnit = "player", isFromPlayerOrPlayerPet = true }, true)
+  if unit == "player" then G.auras[id] = a end
   return a
 end
 function G.lose(id)
   local a = G.auras[id]
-  if a then G.auras[id] = nil; G.byInstance[a.auraInstanceID] = nil end
+  if a then G.auras[id] = nil; W.removeAura("player", a.auraInstanceID, true) end
   return a
 end
-function G.cast(id, dur) G.cds[id] = { startTime = W.now, duration = dur } end
-function G.clear() G.auras, G.byInstance, G.cds = {}, {}, {} end
+-- the target's debuffs: the old ones taken off the target, then these spells put on it (each 10 s, the player's)
+function G.setTargetDebuffs(ids)
+  for _, a in ipairs(G.targetDebuffs) do W.removeAura("target", a.auraInstanceID, true) end
+  local list = {}
+  for i, id in ipairs(ids) do
+    list[i] = W.addAura("target", { spellId = id, name = "Spell " .. id, icon = 136243, applications = 1, duration = 10, expirationTime = W.now + 10,
+      isHelpful = false, sourceUnit = "player", isFromPlayerOrPlayerPet = true }, true)
+  end
+  G.targetDebuffs = list
+  return list
+end
+function G.cast(id, dur) W.setCooldown(id, W.now, dur) end
+function G.clear()
+  for unit, list in pairs(W.auras) do
+    for i = #list, 1, -1 do W.removeAura(unit, list[i].auraInstanceID, true) end
+  end
+  G.auras, G.targetDebuffs = {}, {}
+  W.cooldowns = {}
+end
+-- (spec 4.2) the payload of every UNIT_AURA the scenario fires: the stand-in's rule (W.payload), a hidden table (shape A, the gate's one
+-- choice; unit tests play B and C) while auras are hidden, the plain table otherwise
+G.payload = W.payload
 -- (round 10, SD-98 / SD-105) the game's character window (Blizzard's CharacterFrame), hidden until the player opens it: the Stat
 -- Calculator docks beside it. A frame of the game's, not XayaUI's (made here, before any addon loads); only its rectangle matters
 -- (INFERENCE: 338 x 424 at the top left of the screen, as the game's own window sits)
@@ -398,7 +418,10 @@ def _world(L, saved_source=None, debug=None, statcalc=False):
     world = L.eval("function(path, api) return dofile(path)(api) end")(os.path.join(H.HERE, "world.lua"), api)
     game = L.eval("function(src, W) return loadstring(src)()(W) end")(GAME_LUA, world)
     on = set(ADDONS) | ({DEBUG_ADDON} if debug in ("off", "on") else set())
-    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders if k in on}})
+    # (round 11b, spec 4.3) the line hook and key scan (tests/harness/loader.lua) are off in every gate play: Lua runs one hook per thread, the
+    # gate's instruction counter is that hook, and the gate's memory and draw plays must not carry the line hook's records (integrity
+    # reads S.lineHook.state() at the end of the measured play)
+    opts = H.to_lua(L, {"folders": folders, "enabled": {k: True for k in folders if k in on}, "lineHook": False})
     opts["saved"] = sv.Load(saved_source) if saved_source else L.table()
     if debug == "on":
         L.eval("function(s) s.XayaUI = s.XayaUI or {}; local c = s.XayaUI.CueRulesDB or {}; s.XayaUI.CueRulesDB = c; "
@@ -446,6 +469,17 @@ end
 local EXCL = 0
 local function exStart() return gc("count"), EXCL end
 local function exEnd(m0, e0) EXCL = e0 + (gc("count") - m0) end
+-- (round 11b, SD-120; build spec 3.1 "allocation billing") the shared secret object (tests/harness/secret.lua) makes every hidden value,
+-- every hidden string ('..', string.format, strjoin on a hidden value) and every hidden payload inside S.onAlloc: here that runs inside
+-- the gate's exclusion, so P4 and MEM bill the stand-in's own hidden values to the stand-in, not to the addon that read them (in the game
+-- they are made in C). fn(make, ...) hands back every result of make(...) (secret.lua's refusals travel as extra results). The function
+-- runs on secret.lua's hook-free helper thread when the hidden value is made by a host-side reader: it calls no installed function.
+local KF = { S = W.S }   -- (round 11b: the key fight's own helpers and notes, one table: the chunk is at Lua 5.1's 200-local limit)
+do
+  local function allocDone(m0, e0, ...) EXCL = e0 + (gc("count") - m0); return ... end
+  KF.S.onAlloc(function(make, ...) local m0, e0 = gc("count"), EXCL; return allocDone(m0, e0, make(...)) end)
+  OUT.secretOnAlloc = true
+end
 local SHORT = {}                        -- [chunk source] = "XayaUI_Rules/Engine.lua" | false
 local function short(src)
   local v = SHORT[src]
@@ -479,6 +513,78 @@ local mt = getmetatable(UIParent)
 local proto
 for i = 1, 60 do local n, v = debug.getupvalue(mt.__index, i); if not n then break end; if n == "proto" then proto = v end end
 assert(proto, "the stand-in's widget prototype was not found")
+-- (round 11b, SD-120; build spec 4.4.5 "stand-in share") the stand-in's own Lua that addon code now runs because of the hidden-data fight:
+-- secret.lua's two-line shell (tonumber, string.format, strjoin, '..' with a hidden value, and every host-side C-API reader), the API
+-- guard's wrapper around a guarded widget method or C-API function, the aura-access check and the forbidden aura button's wrapper
+-- (tests/harness/world.lua). In the game these are C: no addon instruction. The tree play (whose instruction readings are never judged)
+-- counts the calls into each wrapper during the addons' handlers in the three fights (its call hook sees every call exactly), and each
+-- wrapper's own instructions per call are measured here, in this play, with a count hook of one instruction around 1,000 calls made
+-- from an addon-named chunk, against the same 1,000 calls of the bare function (so the caller's own CALL, which the game bills too, is
+-- not counted): readable and refused paths apart (a refusal walks the stack and raises). tests/gate_performance_run.py prints calls x
+-- cost for both builds and holds the readout's shift to 2%. (A sampling count hook was tried first: in the tree play the call hook's
+-- own instructions shift every sample to the start of the next function called, which over-weights two-line wrappers.)
+do
+  local SH = { world = {}, cost = {}, fightSeg = { ["fight 1"] = true, ["fight 2"] = true, ["fight 3"] = true }, out = {} }
+  local function mark(f, kind)
+    local i = type(f) == "function" and getinfo(f, "S")
+    if i and i.what == "Lua" then
+      if kind == "shell" then SH.secretSrc, SH.shellLine = i.source, i.linedefined else SH.world[i.linedefined] = kind; SH.worldSrc = i.source end
+    end
+  end
+  mark(tonumber, "shell")   -- (the installed tonumber is a secret.lua shell, the same function body as every other)
+  local gm
+  for m in pairs(W.GUARDED_METHODS or {}) do if type(rawget(proto, m)) == "function" and W.GUARD_BODY and W.GUARD_BODY[m] then gm = m; break end end
+  if gm then mark(rawget(proto, gm), "widget guard") end
+  local cg = W.guard and W.guard("share probe", rawequal, { "SecretArguments=AllowedWhenUntainted" })
+  if cg and cg ~= rawequal then mark(cg, "C-API guard") end
+  local aa = W.auraAccess and W.auraAccess("share probe", rawequal)
+  if aa then mark(aa, "aura access check") end
+  local function up(f, name) if type(f) ~= "function" then return nil end; for i = 1, 80 do local n, v = debug.getupvalue(f, i); if not n then return nil end; if n == name then return v end end end
+  local fbmake = up(up(up(up(W.setRestriction, "refresh"), "setButtonsHidden"), "buttonForm"), "forbidding")
+  local fb = fbmake and fbmake(rawequal, false)
+  if fb then mark(fb, "forbidden aura button") end
+  SH.found = { shell = SH.shellLine ~= nil }
+  for _, kind in pairs(SH.world) do SH.found[kind] = true end
+  OUT.shareFound = SH.found
+  if CFG.tree then
+    -- the cost per call, measured: 1,000 pcall(f, a, b) from an addon-named chunk, minus 1,000 pcall(bare, a, b); the hidden state of the
+    -- world (AURAS_HIDDEN, read through W.aurasSecret's upvalue) set for the refused paths and put back
+    local loop = assert(loadstring("local f, a, b, n = ...; for _ = 1, n do pcall(f, a, b) end", "@Interface/AddOns/XayaUI_ShareProbe/probe.lua"))
+    local function ins(f, a, b)
+      local c = 0
+      debug.sethook(function() c = c + 1 end, "", 1)
+      loop(f, a, b, 1000)
+      debug.sethook()
+      return c
+    end
+    local function hidden(on)
+      for i = 1, 20 do local n = debug.getupvalue(W.aurasSecret, i); if not n then return end; if n == "AURAS_HIDDEN" then debug.setupvalue(W.aurasSecret, i, on); return end end
+    end
+    local function per(f, bare, a, b) return (ins(f, a, b) - ins(bare, a, b)) / 1000 end
+    SH.cost["shell"] = per(tonumber, rawequal, "5", nil)
+    if gm then SH.cost["widget guard"] = per(rawget(proto, gm), W.GUARD_BODY[gm], UIParent, nil) end
+    if cg and cg ~= rawequal then SH.cost["C-API guard"] = per(cg, rawequal, 1, 2) end
+    if aa then SH.cost["aura access check"] = per(aa, rawequal, 1, 2) end
+    if fb then SH.cost["forbidden aura button"] = per(fb, rawequal, UIParent, nil) end
+    hidden(true)
+    if aa then SH.cost["aura access check (refused)"] = per(aa, rawequal, 1, 2) end
+    if fb then SH.cost["forbidden aura button (refused)"] = per(fb, rawequal, UIParent, nil) end
+    hidden(false)
+    OUT.shareCost = SH.cost
+  end
+  -- (tree play, the call hook below) one call into a wrapper during an addon handler in a fight: kind, readable or refused path
+  function SH.note(i, src)
+    local kind
+    if i.source == SH.secretSrc then kind = (i.linedefined == SH.shellLine) and "shell" or "secret.lua (other)"
+    elseif i.source == SH.worldSrc then kind = SH.world[i.linedefined] end
+    if not kind then return end
+    if (kind == "aura access check" or kind == "forbidden aura button") and W.aurasSecret() then kind = kind .. " (refused)" end
+    local a = src:match("^(XayaUI[%w_]*)/") or "?"
+    local o = SH.out[a]; if not o then o = {}; SH.out[a] = o end
+    o[kind] = (o[kind] or 0) + 1
+  end
+  KF.share = SH
+end
 do  -- one shared quiet stand-in per method name (the stand-in made a new closure on every look-up of an undocumented-here method)
   local old, cache = mt.__index, {}
   mt.__index = function(t, k)
@@ -846,8 +952,11 @@ local function noteLoop(n)
   end
   exEnd(m0, e0)
 end
+-- (round 11b, spec 4.2) type() is the shared secret object's: it answers "table" for a hidden payload (shape A) and a forbidden table
+-- (shape C), whose '#' raises. getmetatable answers false for both (secret.lua), so the loop note never measures one; Lua's own refusal
+-- (rawipairs) then answers as it would without the gate.
 ipairs = function(t)
-  if cur and type(t) == "table" then
+  if cur and type(t) == "table" and getmetatable(t) ~= false then
     local n = BIG[t] or #t
     if n >= LOOPMIN then noteLoop(n) end
   end
@@ -872,6 +981,27 @@ end
 local DCALLS, WCALLS = {}, {}
 local KEYS = {}
 local INS, INS_STEP = 0, 100
+-- (round 11b final fix 2; SD-81 "600, same as core", SD-112, SD-117) the addons held to one of her own fixed per-event caps (600 Lua
+-- instructions per frame, not a reading of ad60a051) are counted EXACTLY in the measured play: the hook is switched to count every
+-- instruction for each of their runs and back to steps after it (KF.exactDone), and the gate's own instructions inside the measuring
+-- window (quietRun's pcall wrapper and the counter reads around it: KF.OVER, measured once with an empty function, KF.calib) are taken
+-- out, as the gate already takes its own allocation out (EXCL). Why (round 11b final review): counted in 100-instruction steps, a run of
+-- 37 instructions read 0 or 100, a frame of eight short runs read up to about 200 above its true count, and the costliest of 900 such
+-- frames read 600 to 800 from one play to the next with the same code (gate_performance XayaUI_Debug, cap 600); counted one by one in the
+-- same key fight its costliest frame was 593 with the gate's wrapper inside, 8 runs x KF.OVER of it the gate's own. The addons judged
+-- against ad60a051's readings (XayaUI_Rules, XayaUI core, XayaUI_Options) stay in steps, as their caps were read. Switching the hook
+-- back restarts its step counter at a full INS_STEP (Lua 5.1 lua_sethook: the count given is also the step, so a shorter one would
+-- change every later step): left so, the next INS_STEP instructions would go uncounted after every exact run, reading the next handler
+-- about 50 instructions low on average. So right after the switch back the gate spends a number of instructions drawn from a fixed
+-- sequence, uniform over 0..INS_STEP - 8 (KF.burn: an empty numeric loop, outside every measuring window and never billed; KF.phase:
+-- Park-Miller, the same sequence in every play): the step counter's phase is then spread evenly again over 93 of its 100 places, as the
+-- never-switched hook's is over all 100, and the step readings stay unbiased within about 5 instructions per exact run (measured on this
+-- branch, the key fight: XayaUI Rules 52,132.2 and 52,134.0 instructions per fight frame, fights 2-3, against 52,122.0 and 52,128.8 with
+-- the hook never switched; XayaUI core 1.6 and 1.4 against 1.3 and 1.4). Measured play only (KF.on: the tree play's hook counts calls;
+-- its instruction readings are not used).
+KF.EXACT = { XayaUI_Debug = true, XayaUI_Bonus = true, XayaUI_Bonus_StatCalculator = true }
+KF.on, KF.OVER, KF.seed = false, 0, 20261123
+function KF.phase() KF.seed = (KF.seed * 16807) % 2147483647; return KF.seed % (INS_STEP - 7) end
 local SAMPLING = false   -- call counting is on only in the sampled windows of the tree play (it slows the stand-in about tenfold)
 -- one call into an addon function: level = the level of the function called, seen from the hook that calls countCall
 local function countCall(level)
@@ -1011,6 +1141,8 @@ local function treehook(ev)
       local ks = KEYS[f]; if not ks then ks = {}; KEYS[f] = ks end
       local k = ks[info.linedefined]; if not k then k = f .. ":" .. info.linedefined; ks[info.linedefined] = k end
       if not RUNDEF[k] then RUNDEF[k] = true; RUNN = RUNN + 1; RUNLIST[RUNN] = k end
+    elseif not f and cur and BSEG and KF.share.fightSeg[BSEG] then
+      KF.share.note(info, cur.src)   -- (round 11b, spec 4.4.5) a call into one of the stand-in's wrappers (the share, above)
     end
   end
   exEnd(m0, e0)
@@ -1302,11 +1434,14 @@ local function run(kind, name, owner, fn, ...)
   cur = { kind = kind, name = name, src = src }   -- (made before the measurement starts)
   if CFG.tree then TREE = true end   -- (round 8 repair 2: event handlers too, for the passes an event handler runs itself)
   gc("stop")
+  local ex = KF.on and KF.EXACT[addonOf(src)]   -- (round 11b final fix 2: counted one by one, see KF.EXACT; before the window opens)
+  if ex then debug.sethook(callhook, "", 1) end
   local i0 = INS
   local m0 = gc("count")
   local ok = quietRun(fn, ...)
   local m1 = gc("count")
-  local ins = (INS - i0) * INS_STEP
+  local n = INS - i0
+  local ins = ex and KF.exactDone(n) or n * INS_STEP   -- (the window closed at the read above, in both counts)
   if CFG.tree then TREE = false end   -- (after the reading: the measured play runs no extra instruction inside it)
   gc("restart")
   local c = cur
@@ -1317,8 +1452,55 @@ local function run(kind, name, owner, fn, ...)
   finish(kind, c.name, src, bytes, VIS - vis0, owner, ins)
   return ok
 end
+-- (round 11b final fix 2) the gate's own instructions in run()'s exact window, measured with an empty function through the same lines
+-- (the same upvalues, the same vararg call, so the same instructions; the empty function's own one instruction, its RETURN, is not the
+-- gate's): KF.OVER = KF.calib(function() end) - 1, once, when the measured play's hook is set
+function KF.burn() debug.sethook(callhook, "", INS_STEP); for _ = 1, KF.phase() do end end   -- (after callhook: its upvalue)
+function KF.calib(fn, ...)
+  debug.sethook(callhook, "", 1)
+  local i0 = INS
+  local m0 = gc("count")
+  local ok = quietRun(fn, ...)
+  local m1 = gc("count")
+  local n = INS - i0
+  KF.burn()
+  return n, ok, m0, m1
+end
+function KF.exactDone(n)
+  KF.burn()
+  n = n - KF.OVER
+  return n > 0 and n or 0
+end
+-- (round 11b, SD-120; build spec 4.3) what the integrity checks read of the key fight, noted as each event is fired (outside every measured
+-- run, so no addon is billed for it): every UNIT_AURA payload, hidden or readable, per budget segment (or phase before the first), and
+-- the readable ones fired inside the key (there must be none: the gate FAILs a stand-in that silently hides nothing); the key's and the
+-- boss's events, with ENCOUNTER_START's difficulty and group size.
+OUT.fired = OUT.fired or {}
+OUT.payloads, OUT.payloadShapes, OUT.keyReadable, OUT.encounters = {}, {}, 0, {}
+KF.keep = { ENCOUNTER_START = true, ENCOUNTER_END = true, CHALLENGE_MODE_START = true, CHALLENGE_MODE_COMPLETED = true }
+function KF.payload(p)
+  local seg = BSEG or PHASE
+  local c = OUT.payloads[seg]; if not c then c = { hidden = 0, readable = 0 }; OUT.payloads[seg] = c end
+  local sh = KF.S.shape(p)
+  if sh then
+    c.hidden = c.hidden + 1; OUT.payloadShapes[sh] = (OUT.payloadShapes[sh] or 0) + 1
+  else
+    c.readable = c.readable + 1
+    if W.key then
+      OUT.keyReadable = OUT.keyReadable + 1
+      OUT.keyReadableFirst = OUT.keyReadableFirst or string.format("%s, at %.2f s (segment %s)", PHASE, W.now, tostring(seg))
+    end
+  end
+end
+function KF.fired(ev, a1, a2, a3, a4)
+  OUT.fired[ev] = (OUT.fired[ev] or 0) + 1
+  if ev == "ENCOUNTER_START" then OUT.encounters[#OUT.encounters + 1] = { id = a1, difficulty = a3, size = a4, inKey = W.key ~= nil } end
+end
 -- W.fire / W.tick as the stand-in has them, through the dispatcher
 W.fire = function(ev, ...)
+  if ev == "UNIT_AURA" then KF.payload((select(2, ...)))
+  elseif KF.keep[ev] then KF.fired(ev, ...)
+  elseif ev == "PLAYER_LOGIN" then W.loggedIn = true end   -- (as the stand-in's own W.fire: the end of the UI load, for the aura buttons)
   local n, objs, i = 0, W.objects, 1
   while objs[i] do
     local o = objs[i]
@@ -1328,6 +1510,22 @@ W.fire = function(ev, ...)
   return n
 end
 local FRAMES = {}   -- [phase] = frames drawn
+-- (round 11b) the stand-in's Cooldown widgets time their end (tests/harness/world.lua proto:SetCooldown, CD_ARMED) and run OnCooldownDone at
+-- the first frame at or after it while shown, as the game does: the engine's cooldown wakes rely on it once a cooldown's end is hidden.
+-- The stand-in's own W.tick runs them; this one replaces it, so it runs them the same way, through the dispatcher (an addon's script,
+-- billed like an event handler). CD_ARMED is read from the stand-in's W.tick (its upvalue), as the widget prototype is above.
+for i = 1, 80 do local n, v = debug.getupvalue(W.tick, i); if not n then break end; if n == "CD_ARMED" then KF.cdArmed = v end end
+OUT.cdDone = 0
+function KF.cooldownsDone()
+  local CD_ARMED, ran = KF.cdArmed, nil
+  for w, at in rawpairs(CD_ARMED) do if at <= W.now and w:IsVisible() then ran = ran or {}; ran[#ran + 1] = w end end
+  if not ran then return end
+  for _, w in rawipairs(ran) do
+    CD_ARMED[w] = nil
+    local fn = w._scripts.OnCooldownDone
+    if fn then OUT.cdDone = OUT.cdDone + 1; local c0 = CTX; CTX = "change"; run("event", "OnCooldownDone (a Cooldown widget's script)", w, fn, w); CTX = c0 end
+  end
+end
 W.tick = function(dt, steps)
   for _ = 1, (steps or 1) do
     W.now = W.now + dt
@@ -1348,6 +1546,7 @@ W.tick = function(dt, steps)
       if t.left and t.left ~= math.huge then t.left = t.left - 1 end
       if not t.cancelled and t.left and t.left > 0 then t.at = W.now + math.max(t.every, 0.01); W.timers[#W.timers + 1] = t end
     end
+    if KF.cdArmed and next(KF.cdArmed) ~= nil then KF.cooldownsDone() end
     local objs = W.objects
     for i = 1, #objs do
       local o = objs[i]
@@ -1442,7 +1641,9 @@ local function inRect(o, root)   -- (half a pixel of slack for the stand-in's fl
   local w = W.rect(root)
   return l >= w.l - 0.5 and b >= w.b - 0.5 and r <= w.l + w.w + 0.5 and t <= w.b + w.h + 0.5
 end
-local function checkpoint(label, wins)
+-- (round 11b) keysJudged: the keys are judged although a window is open (the run logger's question takes the mouse only, never the keyboard:
+-- V29), so they land in cp.keys, not in the window's list
+local function checkpoint(label, wins, keysJudged)
   local cp = { label = label, combat = W.combat, mouse = {}, hover = 0, hoverList = {}, noArea = {}, wheel = {}, keyboard = {}, kbHidden = {}, engine = {}, focus = {}, keys = {}, shown = {}, big = {},
     open = {}, winMouse = {}, winOutside = {}, winKb = {}, winFocus = {}, winKeys = {}, winShown = {} }
   for _, wi in rawipairs(wins or {}) do
@@ -1523,7 +1724,7 @@ local function checkpoint(label, wins)
     if o._kind == "EditBox" and o._focus and not wi then cp.focus[#cp.focus + 1] = { name = o._name or "an edit box", where = where or "not XayaUI's", xui = where ~= nil, visible = o:IsVisible() } end
   end
   -- the keys: judged only while every XayaUI window is closed (SD-99); with a window she opened, what they reached is kept (winKeys)
-  local keyList = (wins and #wins > 0) and cp.winKeys or cp.keys
+  local keyList = (wins and #wins > 0 and not keysJudged) and cp.winKeys or cp.keys
   for _, key in rawipairs({ "PRINTSCREEN", "W", "SPACE" }) do
     local got = W.pressKey(key)
     keyList[#keyList + 1] = { key = key, reached = (got == "game"), ran = W.gameRan, by = (got ~= "game") and (rawget(got, "_name") or tostring(got and got._kind)) or nil,
@@ -1536,9 +1737,10 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------
 -- the scenario
 -------------------------------------------------------------------------------------------------------------------------------------
-local regen = false   -- (as in the game, UnitAffectingCombat("player") is already true when PLAYER_REGEN_DISABLED fires; INFERENCE)
-UnitAffectingCombat = function() return (W.combat or regen) and true or false end
-local function fight() FIGHT_AT = W.now; regen = true; W.enterCombat(); regen = false end
+-- (round 11b, spec 3.2 / 4.2) combat through the stand-in's drivers only: W.enterCombat (PLAYER_REGEN_DISABLED with UnitAffectingCombat
+-- already true, W.affecting; then the Combat restriction; then the lockdown) and W.leaveCombat. The gate never sets W.combat itself
+-- (tests/fix_r11_keyfight_run.py reads this file for it), and its old UnitAffectingCombat patch is gone (the stand-in's W.affecting).
+local function fight() FIGHT_AT = W.now; W.enterCombat() end
 local function peace() W.leaveCombat() end
 local FPS = 30
 local BUSY = tonumber(CFG.busy) or 15   -- seconds of fight per cycle (a shorter value only for profiling the gate itself)
@@ -1556,7 +1758,12 @@ local function framesFx(sec, each)
 end
 -- (round 9, SD-80) the measured play's hook counts instructions only, set once here and never switched (switching restarts its counter);
 -- set before login so the previews and the mover before the close (SD-79) are counted too. The tree play's hook is set at the close.
-if PERF and not CFG.nohook and not CFG.tree then debug.sethook(callhook, "", INS_STEP) end
+if PERF and not CFG.nohook and not CFG.tree then
+  debug.sethook(callhook, "", INS_STEP)
+  -- (round 11b final fix 2) the exact count for her fixed-cap addons (KF.EXACT) and the gate's own share of its window (KF.OVER)
+  KF.on, KF.OVER = true, KF.calib(function() end) - 1
+  OUT.exactOver = KF.OVER
+end
 
 setPhase("login")
 L.startup()
@@ -1854,8 +2061,11 @@ local BUFFS = {}
 for i = 1, 66 do BUFFS[#BUFFS + 1] = 300000 + i end
 for i = 1, 24 do BUFFS[#BUFFS + 1] = 310000 + i end
 for i = 1, 20 do BUFFS[#BUFFS + 1] = 320000 + i end
-local active = {}   -- instance ids of the auras up now, oldest first
+local active = {}   -- the aura records up now (the stand-in's store), oldest first
 local bi, ci = 0, 0
+-- (round 11b, spec 4.2) every UNIT_AURA the scenario fires goes through the stand-in's payload rule (G.payload = W.payload): inside the key
+-- (and in any fight) the handlers get a hidden payload, shape A; out of the key it is the plain table
+function KF.aura(unit, info) return W.fire("UNIT_AURA", unit, G.payload(info)) end
 local function gainOne(dur)
   bi = bi % #BUFFS + 1
   local id = BUFFS[bi]
@@ -1865,20 +2075,20 @@ local function gainOne(dur)
   active[#active + 1] = a
   local rem = old and { old.auraInstanceID } or nil
   G.syncContainers()
-  W.fire("UNIT_AURA", "player", { addedAuras = { a }, removedAuraInstanceIDs = rem })
+  KF.aura("player", { addedAuras = { a }, removedAuraInstanceIDs = rem })
 end
 local function loseOldest()
   local a = table.remove(active, 1)
-  if a and G.auras[a.spellId] == a then G.lose(a.spellId); G.syncContainers(); W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = { a.auraInstanceID } }) end
+  if a and G.auras[a.spellId] == a then local iid = a.auraInstanceID; G.lose(a.spellId); G.syncContainers(); KF.aura("player", { removedAuraInstanceIDs = { iid } }) end
 end
-OUT.fired = {}   -- (round 8) how often the scenario fired each of the fight's change events (an integrity check reads it)
+OUT.fired = OUT.fired or {}   -- (round 8) how often the scenario fired each of the fight's change events (an integrity check reads it)
 local function cfire(ev, ...) OUT.fired[ev] = (OUT.fired[ev] or 0) + 1; W.fire(ev, ...) end
 local function storm(i)
   CTX = "storm"
   local a = active[(i % math.max(#active, 1)) + 1]
-  if a then a.expirationTime = W.now + a.duration; W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { a.auraInstanceID } })
-  else W.fire("UNIT_AURA", "player", { updatedAuraInstanceIDs = { 1 } }) end
-  W.fire("UNIT_AURA", "target", { updatedAuraInstanceIDs = { 2 } })
+  if a then a.expirationTime = W.now + a.duration; KF.aura("player", { updatedAuraInstanceIDs = { a.auraInstanceID } })
+  else KF.aura("player", { updatedAuraInstanceIDs = { 1 } }) end
+  KF.aura("target", { updatedAuraInstanceIDs = { 2 } })
   W.fire("SPELL_UPDATE_COOLDOWN")
   W.fire("SPELL_UPDATE_CHARGES")
   W.fire("ACTIONBAR_UPDATE_COOLDOWN"); W.fire("ACTIONBAR_UPDATE_STATE"); W.fire("ACTIONBAR_UPDATE_USABLE")
@@ -1892,8 +2102,7 @@ local function storm(i)
   end
   if i % 30 == 0 then                                      -- the target's debuffs change once a second
     local k = (i / 30) % 16 + 1
-    G.targetDebuffs = { { spellId = 340000 + k, auraInstanceID = 9000 + k, duration = 10, expirationTime = W.now + 10, applications = 1, sourceUnit = "player" } }
-    W.fire("UNIT_AURA", "target", { isFullUpdate = false, addedAuras = G.targetDebuffs })
+    KF.aura("target", { isFullUpdate = false, addedAuras = G.setTargetDebuffs({ 340000 + k }) })
   end
   -- (round 8; round 7 review: the gate never played these, and each one re-checks every live rule) a fight with movement, a Death
   -- Knight's runes, a totem and a stun. Each is a real change of something a rule reads, so it is fired as a change event, not a storm.
@@ -1917,7 +2126,17 @@ local function storm(i)
   if i % 150 == 100 then cfire("ADDON_ACTION_BLOCKED", "OtherAddon", "CastSpellByName()")
   elseif i % 150 == 101 then cfire("ADDON_ACTION_FORBIDDEN", "OtherAddon", "PickupAction()") end
 end
-local function memNow() gc("collect"); return gc("count") end
+-- (round 11b final fix) before each whole-state reading the stand-in's own hidden-value registries are made again with their live entries
+-- only (tests/harness/secret.lua S.compact): weak-keyed, they forget a hidden value nobody holds, but a Lua 5.1 table keeps the slots it
+-- grew to, and the key fight makes hidden values by the thousand between two collections, so KIND and VALUE kept megabytes of empty
+-- slots (memory play, round 11b: 42,890.8 KB at the end of cycle 1; with KIND, FORBID and STABLE made again 40,113.9 KB). The game
+-- holds its hidden values in C; what the addons hold is unchanged and still counted, the stand-in and the gate's records too, as in
+-- round 7 (SD-66). Outside every handler: no addon is billed for it. A collection comes first: a hidden payload's real table holds
+-- hidden values of its own, and a Lua 5.1 weak-keyed table marks its values, so the registries forget one layer of dead hidden values
+-- per collection; rebuilt right after one (and collected again), they keep only what is live (memory play: 42,885.2 KB collected once,
+-- 37,548.1 KB collected, rebuilt and collected again; rebuilt before the only collection it read 42,884.2 KB, the round 11b final fix's
+-- first gate run).
+local function memNow() gc("collect"); if KF.S and KF.S.compact then KF.S.compact() end; gc("collect"); return gc("count") end
 -- (round 9, item 7 of the round 9 gate task; SD-66) the memory play (CFG.memplay: no instruments, nothing the gate keeps per cycle):
 -- the stand-in's list of sounds played (world.lua W.sounds: the game keeps no such list in Lua) is emptied before each reading, so the
 -- growth from cycle to cycle is the addons' own (with the stand-in's widget records of the frames they made)
@@ -1959,8 +2178,29 @@ local function drawSnap()
   for _, g in rawipairs(DC_GROUPS) do groups[g].alpha = table.concat(groups[g].alpha, ",") end
   return snap, groups, n
 end
+-- (round 11b final fix) a display whose difference is its OWN wake still on the way, not the moment's: a cooldown rule whose cooldown (or
+-- recharge) ended during the quiet frames, at most KF.LATE_S before the read. Engine.lua wakes the rules waiting for a cooldown end whose
+-- times are hidden from the Cooldown widget's OnCooldownDone, on the next frame, and the re-check it starts keeps her pace (10 a second,
+-- SD-61): one frame for the widget, one for the wake, one pace gap (0.1 s) at most (Engine.lua, SD-60; the round 11b gate repair 1 probe
+-- saw Cooldown 13 drawn again 2 frames after its hidden end). Such a display is listed (late) and not counted as a difference: the draw
+-- check judges what the load-fact moment re-checked, and that cooldown's end came after the moment. One that ended earlier than KF.LATE_S
+-- before the read and is still drawn wrong IS counted (a wake that never came).
+KF.LATE_S = 0.1 + 2 * DT
+function KF.lateWake(k, since)
+  local idx = tonumber(k:match("^(%d+) "))
+  local r = idx and ns.rules[idx]
+  local id = r and r.useCooldown and tonumber(r.spellID)
+  if not id then return nil end
+  for _, t in rawipairs({ W.cooldowns, W.charges }) do
+    local c = t and t[id]
+    local e = c and (tonumber(c.duration) or 0) > 0 and c.startTime + c.duration
+    if e and e > since and e <= W.now and W.now - e <= KF.LATE_S + 1e-6 then return e end
+  end
+  return nil
+end
 local function drawCheck(label)
   if not CFG.drawcheck then return end
+  local since = W.now
   W.tick(DT, 6)
   local a, ga, n = drawSnap()
   local ES = ns.EngineStats
@@ -1969,38 +2209,84 @@ local function drawCheck(label)
   W.tick(0, 3)
   local ran = (ES and ES.settle or 0) > s0
   local b = drawSnap()
-  local diffs = {}
-  for k, v in rawpairs(a) do if b[k] ~= v then diffs[#diffs + 1] = k .. ": " .. v .. " -> after the full re-check: " .. tostring(b[k]) end end
-  for k, v in rawpairs(b) do if a[k] == nil then diffs[#diffs + 1] = k .. ": none -> after the full re-check: " .. v end end
+  local diffs, late = {}, {}
+  local function add(k, line)
+    local e = KF.lateWake(k, since)
+    if e then late[#late + 1] = string.format("%s (its cooldown ended %.4f s before the read)", line, W.now - e)
+    else diffs[#diffs + 1] = line end
+  end
+  for k, v in rawpairs(a) do if b[k] ~= v then add(k, k .. ": " .. v .. " -> after the full re-check: " .. tostring(b[k])) end end
+  for k, v in rawpairs(b) do if a[k] == nil then add(k, k .. ": none -> after the full re-check: " .. v) end end
   table.sort(diffs)
+  table.sort(late)
   local keep = {}
   for i = 1, math.min(#diffs, 12) do keep[i] = diffs[i] end
   OUT.drawCheck[#OUT.drawCheck + 1] = { label = label, phase = PHASE, combat = W.combat and true or false, ran = ran, n = n, ndiff = #diffs,
-    diffs = keep, groups = ga }
+    diffs = keep, groups = ga, late = late, nlate = #late }
 end
 -- call counting (slow in the stand-in) runs around every state-change event and for 15 frames of each fight, the same in every
 -- cycle, so the counts of the three cycles compare; the other instruments run all the time (round 9, SD-80: the counting in the tree
 -- play only)
 local function sfire(ev, ...) sample(true); W.fire(ev, ...); sample(false) end
 local function sfireSame(ev, ...) sample(true); fireSame(ev, ...); sample(false) end
+function KF.saura(unit, info) sample(true); KF.aura(unit, info); sample(false) end
 -- (round 9, SD-77 condition 3) a boss pull in every fight: a Mythic+ pull that runs from the trash into the boss (INFERENCE about her
--- play): ENCOUNTER_START 8 s into the fight, ENCOUNTER_END 14 s in (the boss down), combat ending after the fight
+-- play): ENCOUNTER_START 8 s into the fight, ENCOUNTER_END 14 s in (the boss down), combat ending after the fight.
+-- (round 11b; REQUEST-LOG SD-126, her answer "Key only, raids in smaller tests (Recommended)") the boss is a Mythic+ key's boss: difficulty
+-- 8, a group of 5 (until round 11b: 16 and 20, a Mythic raid boss in a 5-player group), played through the stand-in's encounter driver
+-- (W.startEncounter: the Encounter restriction, a re-randomizing full aura update, then ENCOUNTER_START; spec 3.3)
 local BOSS_AT, BOSS_END, BOSS_ID = 240, 420, 2001
+KF.bossDiff, KF.bossSize = 8, 5
+-- (round 11b, SD-120 / SD-126; build spec 4.1) the three cycles are played inside one Mythic+ key: a loading screen into a dungeon
+-- (W.enterInstance("party", 8): the Map and Chat restrictions), the key started (W.startKey: the ChallengeMode restriction, aura IDs
+-- re-randomized with a full update, then CHALLENGE_MODE_START), and after the third cycle the key completed (W.completeKey) and the
+-- dungeon left (W.leaveInstance). Inside the key auras and cooldowns are hidden all the time, out of combat too (between pulls): every
+-- judged segment ("fight N", "end N", "out N" and the moments) is played on hidden data. The effects part and the idle stay readable.
+-- Not game-like and kept on purpose (INFERENCE; spec 4.1): each cycle still plays a loading screen, a mount and dismount and a group joined
+-- and left inside the key, so the judged segments stay comparable with the readable baseline; the stand-in changes no restriction on them.
+-- (round 11b; REQUEST-LOG SD-121..SD-123, SD-149) the run logger: its box ("Advanced debug logging") ships ticked in bundle 1, so a fresh
+-- install has it on and so does hers; right after the loading screen into the dungeon its question shows ("Log this run for the XayaUI
+-- test?"), and she answers Yes (the logging run is the costlier case, judged by XayaUI_Debug's per-event cap, SD-81).
+KF.keyMap, KF.keyLevel, KF.keyAffixes = 503, 10, { 9, 10 }
+OUT.logger = {}
+setPhase("key start")
+BSEG = "key start"
+sample(true); W.enterInstance("party", 8, { name = "Gate Dungeon", instanceID = 9001 }); sample(false)
+frames(0.5)
+do
+  local ok, on = pcall(function() return ns.RunLoggerOn and ns.RunLoggerOn() end)
+  local lp = rawget(_G, "XayaUIRunLogPrompt")
+  local lg = OUT.logger
+  lg.box = ok and on and true or false
+  lg.asked = (type(lp) == "table" and lp:IsVisible()) and true or false
+  if lg.asked then
+    local wins = { { root = lp, name = "the run logger's question (made at " .. tostring(ORIGIN[lp]) .. ")" } }
+    KNOWNWIN[lp] = "the run logger's question"
+    checkpoint("the run logger's question is open after the loading screen (a XayaUI window; mouse only, the keys judged)", wins, true)
+    local yes = rawget(_G, "XayaUIRunLogPromptYes")
+    if yes then W.click(yes, "LeftButton") end
+    frames(0.2)
+    lg.answered = yes ~= nil and not lp:IsVisible()
+    checkpoint("after the run logger's question was answered (Yes)")
+  end
+end
+sample(true); W.startKey(KF.keyMap, KF.keyLevel, KF.keyAffixes); sample(false)
+frames(1)
 for cyc = 1, 3 do
   setPhase("busy " .. cyc)
   BSEG = "out " .. cyc   -- (V33 budget segments, see budFrame: work done between two frames is billed to the next frame)
   for k in rawpairs(WCALLS) do WCALLS[k] = nil end
   -- every cycle plays the same thing from the same start (so a count that grows from cycle to cycle is the addon's, not the input's)
-  G.clear(); active = {}; bi, ci = 0, 0; G.targetDebuffs = {}; G.syncContainers()
-  sfire("UNIT_AURA", "player", { isFullUpdate = true })
-  -- a loading screen into the zone
+  G.clear(); active = {}; bi, ci = 0, 0; G.syncContainers()
+  KF.saura("player", { isFullUpdate = true })
+  -- a loading screen into the zone (round 11b: inside the key, the same instance; not game-like, see above)
   sfire("LOADING_SCREEN_ENABLED"); sfire("PLAYER_LEAVING_WORLD")
   sfire("PLAYER_ENTERING_WORLD", false, false); sfire("ZONE_CHANGED_NEW_AREA"); sfire("LOADING_SCREEN_DISABLED")
   frames(1)
   -- mounted, then dismounted
-  G.mounted = true; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(1)
+  G.mounted = true; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); KF.saura("player", { isFullUpdate = true }); frames(1)
   drawCheck("mounted")
-  G.mounted = false; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); sfire("UNIT_AURA", "player", { isFullUpdate = true }); frames(0.5)
+  G.mounted = false; sfire("PLAYER_MOUNT_DISPLAY_CHANGED"); KF.saura("player", { isFullUpdate = true }); frames(0.5)
   drawCheck("dismounted")
   -- a group joined (the game sends the roster update twice), a target picked
   G.group = true; sfire("GROUP_ROSTER_UPDATE"); sfireSame("GROUP_ROSTER_UPDATE"); frames(0.25)
@@ -2023,11 +2309,11 @@ for cyc = 1, 3 do
     storm(i)
     if i == 200 then sfireSame("GROUP_ROSTER_UPDATE") end   -- someone joins mid-fight (the player's group state does not change)
     if i == BOSS_AT then
-      G.encounter = true; moment("boss pull")
-      sample(true); cfire("ENCOUNTER_START", BOSS_ID, "Gate Boss", 16, 20); sample(false)
+      moment("boss pull")
+      sample(true); W.startEncounter(BOSS_ID, "Gate Boss", KF.bossDiff, KF.bossSize); sample(false)
     elseif i == BOSS_END then
-      G.encounter = false; moment("boss down")
-      sample(true); cfire("ENCOUNTER_END", BOSS_ID, "Gate Boss", 16, 20, 1, {}); sample(false)
+      moment("boss down")
+      sample(true); W.endEncounter(1); sample(false)
     end
   end)
   sample(false)
@@ -2042,7 +2328,7 @@ for cyc = 1, 3 do
   frames(0.5)
   BSEG = "out " .. cyc
   -- the group leaves, the target is dropped
-  G.group = false; sfire("GROUP_ROSTER_UPDATE"); G.target = false; G.targetDebuffs = {}; sfire("PLAYER_TARGET_CHANGED")
+  G.group = false; sfire("GROUP_ROSTER_UPDATE"); G.target = false; G.setTargetDebuffs({}); sfire("PLAYER_TARGET_CHANGED")
   frames(0.5)
   drawCheck("group left, target dropped")
   checkpoint("out of combat after the fight, cycle " .. cyc)
@@ -2057,19 +2343,46 @@ for cyc = 1, 3 do
     OUT.mem[cyc] = memRead()
   end
 end
+-- (round 11b, spec 4.1) the key completed (CHALLENGE_MODE_COMPLETED while its restriction is still on, then it ends) and the dungeon left
+setPhase("key end")
+BSEG = "key end"
+sample(true); W.completeKey(); sample(false)
+frames(1)
+sample(true); W.leaveInstance(); sample(false)
+frames(2)
+checkpoint("after the key, out of the dungeon")
+-- (round 11b final fix; SD-77 "Route + narrow (Recommended)", the draw check's teeth) the draw play only (CFG.drawcheck; the measured,
+-- tree and memory plays never run this): one fight out of the key, on readable data, with a target selected. Inside the key the
+-- target's debuffs are hidden all the time (out of combat too), so the rules whose debuff must be ABSENT read "unknown" (not shown) at
+-- every moment there, and combat start and end cannot change them: a narrowed re-check that missed them (Engine.lua: the re-read of
+-- what combat restricts) would not show in the key's cycles. Here, out of the key, they are shown out of combat (the debuff is readably
+-- absent) and not in combat (unknown while combat restricts auras), so combat start and combat end change them, as in round 11a's
+-- readable fight. The key's cycles keep testing the out-of-combat opacity and the boss rules.
+if CFG.drawcheck then
+  setPhase("out of the key")
+  BSEG = "out of the key"
+  G.target = true; G.setTargetDebuffs({}); sfire("PLAYER_TARGET_CHANGED"); frames(0.25)
+  drawCheck("target picked, out of the key")
+  fight()
+  drawCheck("combat start, out of the key")
+  frames(0.5)
+  peace(); frames(0.5)
+  drawCheck("combat end, out of the key")
+  G.target = false; sfire("PLAYER_TARGET_CHANGED"); frames(0.5)
+end
 -- (round 9, SD-79, her answer "<=30/s, stop if idle (Recommended)") the display effects, out of combat, at 144 frames a second: the six
 -- effect displays and the bar cue (PROFILE_LUA 6d) gain their buff for 6 s and are left to run out (fade, the flash from its 3 s
 -- threshold, the wipe, tenths below 5 s, the bar), the buffs' removal comes as they expire, then a second with nothing to animate
 setPhase("effects")
 BSEG = "effects"
-G.clear(); active = {}; G.targetDebuffs = {}; G.syncContainers()
-W.fire("UNIT_AURA", "player", { isFullUpdate = true })
+G.clear(); active = {}; G.syncContainers()
+KF.aura("player", { isFullUpdate = true })
 frames(0.5)
 do
   local fxA = {}
   for _, id in rawipairs({ 330001, 330002, 330003, 330004, 330005, 330006, 330010 }) do fxA[#fxA + 1] = G.gain(id, 6) end
   G.syncContainers()
-  W.fire("UNIT_AURA", "player", { addedAuras = fxA })
+  KF.aura("player", { addedAuras = fxA })
   framesFx(0.1)
   local shown = 0
   dframes()
@@ -2082,14 +2395,14 @@ do
   local rem = {}
   for _, a in rawipairs(fxA) do G.lose(a.spellId); rem[#rem + 1] = a.auraInstanceID end
   G.syncContainers()
-  W.fire("UNIT_AURA", "player", { removedAuraInstanceIDs = rem })
+  KF.aura("player", { removedAuraInstanceIDs = rem })
   framesFx(1)
 end
 -- idle out of combat: every aura and cooldown gone, nothing on screen changing
 setPhase("idle settle")
 BSEG = "idle settle"
 G.clear(); active = {}; G.syncContainers()
-W.fire("UNIT_AURA", "player", { isFullUpdate = true }); W.fire("SPELL_UPDATE_COOLDOWN")
+KF.aura("player", { isFullUpdate = true }); W.fire("SPELL_UPDATE_COOLDOWN")
 frames(5)
 BSEG = "idle"
 for w = 1, 3 do
@@ -2123,6 +2436,7 @@ OUT.owners = owners
 OUT.fxRedraw = TRED   -- (repair 1, tree play) the listed redraw timers' runs, per callback and per display
 OUT.fxN, OUT.fxSkip, OUT.fpsFx, OUT.fxWait = FX_N, FX_SKIP, FPS_FX, FX_WAIT
 OUT.paceN = PACE_N
+if CFG.tree then OUT.share = KF.share.out end   -- (round 11b, spec 4.4.5; tree play only) [addon] = { [wrapper kind] = calls in its fight handlers }
 local fpace = {}
 for f, p in rawpairs(FILEPACE) do fpace[f] = p.most end
 OUT.filePace = fpace
@@ -2147,6 +2461,22 @@ OUT.stats = ST
 OUT.addonsLoaded = {}
 for _, a in rawipairs({ "XayaUI_Bonus", "XayaUI_Bonus_StatCalculator", "XayaUI_Debug" }) do
   OUT.addonsLoaded[a] = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(a)) and true or false
+end
+-- (round 11b, spec 4.3) the restriction states the play went through, as (type, state) counts: the integrity check wants Activating (1)
+-- and Inactive (0) for each of the five types the stand-in models; the line hook's state (off in the measured play); the shared secret
+-- object's own health (a host-side function that stopped, a scratch left full); the run logger at the end
+do
+  local rl = {}
+  for _, e in rawipairs(W.restrictionLog or {}) do local k = tostring(e[1]) .. ":" .. tostring(e[2]); rl[k] = (rl[k] or 0) + 1 end
+  OUT.restrictions = rl
+  OUT.restrictionsLeft = {}
+  for _, t in rawipairs({ 0, 1, 2, 4, 5 }) do OUT.restrictionsLeft[tostring(t)] = W.RSTATE and W.RSTATE[t] or -1 end
+  local lh = L.lineHook and L.lineHook.state and L.lineHook.state() or nil
+  OUT.lineHook = lh and { on = lh.on and true or false, armed = lh.armed and true or false, slot = lh.slot } or { missing = true }
+  OUT.secretHealth = KF.S.health and KF.S.health() or nil
+  OUT.payloadShape = W.payloadShape
+  local lp = rawget(_G, "XayaUIRunLogPrompt")
+  OUT.logger.shownAtEnd = (type(lp) == "table" and lp:IsVisible()) and true or false
 end
 OUT.errors = #W.errors
 OUT.errorText = {}
@@ -2209,6 +2539,7 @@ def run_scenario(perf=True, verbose=False, variant="default", tree=False, drawch
     out["profile"] = {"entries": n, "made": made, "groups": nf, "errorsA": errs_a}
     out["redrawLines"] = {k: list(v) for k, v in rl.items()}
     out["bonusTree"] = bonus_tree()
+    out["debugFolder"] = os.path.isdir(os.path.join(ROOT, DEBUG_ADDON))   # (round 11b: the run logger lives in it, SD-149)
     return out, round(time.time() - t0, 1)
 
 
@@ -2260,7 +2591,7 @@ def _key(variant="default"):
         h.update(f.encode())
         with open(f, "rb") as fh:
             h.update(fh.read())
-    for k in ("XUI_GATE_BUSY", "XUI_GATE_NOSAMPLE", "XUI_GATE_NOHOOK", "XUI_GATE_NOTREE"):
+    for k in ("XUI_GATE_BUSY", "XUI_GATE_NOSAMPLE", "XUI_GATE_NOHOOK", "XUI_GATE_NOTREE", "XUI_GATE_SHAREPLAY"):
         h.update((k + "=" + os.environ.get(k, "")).encode())
     return h.hexdigest()
 
@@ -2287,6 +2618,7 @@ def result(variant="default"):
         tdata, tsecs = run_scenario(perf=True, variant=variant, tree=True)
         data["pace"], data["paceAny"], data["paceTree"] = tdata.get("pace"), tdata.get("paceAny"), True
         data["fxRedraw"] = tdata.get("fxRedraw") or {}   # (repair 1) the listed redraw timers, per display (tree play only)
+        data["share"], data["shareCost"], data["shareFound"] = tdata.get("share"), tdata.get("shareCost"), tdata.get("shareFound")   # (round 11b)
         st, tst = data.setdefault("stats", {}), tdata.get("stats") or {}
         for k in ("wide", "cyc", "idlewin"):
             st[k] = tst.get(k)
@@ -2297,6 +2629,13 @@ def result(variant="default"):
         data["memAddons"] = {"mem": mdata.get("mem"), "memEnd": mdata.get("memEnd"), "memStart": mdata.get("memStart"),
                              "errors": mdata.get("errors")}
         secs = round(secs + tsecs + dsecs + msecs, 1)
+    elif os.environ.get("XUI_GATE_SHAREPLAY") and not os.environ.get("XUI_GATE_NOHOOK"):
+        # (round 11b, spec 4.4.5) an old build played for the V33 calibration (tree_env: no pace, draw or memory play) still gets the tree
+        # play that measures the stand-in's share of its handlers' work, so the share is printed for both builds
+        tdata, tsecs = run_scenario(perf=True, variant=variant, tree=True)
+        data["share"], data["shareCost"], data["shareFound"] = tdata.get("share"), tdata.get("shareCost"), tdata.get("shareFound")
+        data["shareSecs"] = tsecs
+        secs = round(secs + tsecs, 1)
     data["_secs"] = secs
     os.makedirs(d, exist_ok=True)
     tmp = path + ".%d.tmp" % os.getpid()
@@ -2406,6 +2745,10 @@ def tree_env(tree):
     env["XUI_API_INDEX"] = own if os.path.isfile(own) else os.environ.get("XUI_API_INDEX", own)
     env["XUI_V33_REPO"] = os.environ.get("XUI_V33_REPO") or ROOT
     env["XUI_GATE_NOTREE"] = "1"   # (round 8 repair) an old build's pace is not judged: no second play for its call trees
+    # (round 11b, spec 4.4.5) its stand-in share is stored with its record (tests/gate_performance_run.py V33_RECORDED "share"): measured
+    # again only on request (XUI_V33_SHAREPLAY=1: one more play of ad60a051, its tree play, about 8 minutes), as when it is re-recorded
+    if os.environ.get("XUI_V33_SHAREPLAY"):
+        env["XUI_GATE_SHAREPLAY"] = "1"
     return env
 
 
@@ -2510,8 +2853,9 @@ def both_variants(gate, judge):
     Debugging on, XayaUI_Debug loaded), its findings tagged. Returns the exit code of Report.show."""
     rep = Report(gate)
     data, secs, cached = result()
-    rep.note("variant \"default\" (a fresh install: Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded: V34; "
-             "XayaUI_Bonus on, its Stat Calculator switched off and never loaded, SD-98)")
+    rep.note("variant \"default\" (a fresh install: Advanced Debugging off, XayaUI_Debug switched on in the AddOns list and not loaded at login: V34; "
+             "its run logger part loaded at the key's loading screen while the box \"Advanced debug logging\" is on: %s, SD-149; "
+             "XayaUI_Bonus on, its Stat Calculator switched off and never loaded, SD-98)" % ((data.get("addonsLoaded") or {}).get(DEBUG_ADDON)))
     judge(data, rep)
     if not os.path.isdir(os.path.join(ROOT, DEBUG_ADDON)):
         rep.note(DEBUG_TAG + "variant \"debug\" not played: this checkout has no %s folder" % DEBUG_ADDON)
@@ -2548,10 +2892,11 @@ def integrity(data, rep):
         (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in FIGHT_EVENTS),
          "the fight played movement, runes, a totem and a loss of control (%s)" % ", ".join(FIGHT_EVENTS),
          "fired: %s" % (data.get("fired") or {})),
-        # (round 8, V34) XayaUI_Debug is read only while Advanced Debugging is on: not loaded in the default variant, loaded in "debug"
+        # (round 8, V34) XayaUI_Debug is read at login only while Advanced Debugging is on: not loaded in the default variant, loaded in
+        # "debug" (read right after the login; round 11b: the run logger may load it later, at the loading screen into the key, SD-149)
         ((bool(data.get("debugLoaded")) == (data.get("variant") == "debug")),
-         "XayaUI_Debug is loaded exactly when Advanced Debugging is on (variant %s)" % data.get("variant", "default"),
-         "XayaUI_Debug loaded: %s" % data.get("debugLoaded")),
+         "XayaUI_Debug is loaded at login exactly when Advanced Debugging is on (variant %s)" % data.get("variant", "default"),
+         "XayaUI_Debug loaded at login: %s" % data.get("debugLoaded")),
         (int(data.get("errors") or 0) == 0, "no Lua error during the scenario", "; ".join((data.get("errorText") or [])[:3])),
         # (round 9, SD-77) every fight has a boss pull and the boss down; the profile has the rules that test the narrowed re-check
         (all(int((data.get("fired") or {}).get(e) or 0) > 0 for e in ("ENCOUNTER_START", "ENCOUNTER_END")),
@@ -2621,6 +2966,7 @@ def integrity(data, rep):
             rep.warn("tests/gate_common.py (the scenario)", "the game-played sound's edge at %s did not run in the frames the per-event cap "
                      "judges (the game was neither handed nor asked to take back a copy), so its cost there is not measured" % m,
                      "copies added / taken back per moment, three fights: %s" % edges)
+    checks += key_fight_checks(data)
     for ok, what, numbers in checks:
         if not ok:
             rep.fail("tests/gate_common.py (the scenario)", "the scenario did not run as planned: " + what, numbers,
@@ -2629,6 +2975,88 @@ def integrity(data, rep):
         rep.warn("tests/gate_common.py (the scenario)", "no visible slider was found to drag in the selected group's pane")
     if not used.get("dropdown"):
         rep.warn("tests/gate_common.py (the scenario)", "no visible dropdown list was found to open")
+
+
+def vals(x):
+    """A Lua list read back from JSON: a list, or a dict keyed "1".."n" (in order)."""
+    if isinstance(x, list):
+        return x
+    if isinstance(x, dict):
+        return [x[k] for k in sorted(x, key=lambda k: int(k) if str(k).isdigit() else 0)]
+    return []
+
+
+KEY_FIGHTS = ("fight 1", "fight 2", "fight 3")
+KEY_TYPES = ((0, "Combat"), (1, "Encounter"), (2, "ChallengeMode"), (4, "Map"), (5, "Chat"))
+KEY_BOSS = (8, 5)   # (SD-126) the key's boss: difficulty 8 (Mythic Keystone), a group of 5
+
+
+def scenario_sets_combat():
+    """(round 11b, spec 3.2 / 4.3) The lines of the gate's own Lua that set W.combat directly (it must play combat only through the
+    stand-in's W.enterCombat / W.leaveCombat): [(chunk, line number, text)]."""
+    out = []
+    for name, chunk in (("GAME_LUA", GAME_LUA), ("PROFILE_LUA", PROFILE_LUA), ("SCENARIO_LUA", SCENARIO_LUA)):
+        for i, ln in enumerate(chunk.split("\n"), 1):
+            code = ln.split("--", 1)[0]
+            if re.search(r"\bW\.combat\s*=(?!=)", code):
+                out.append((name, i, ln.strip()))
+    return out
+
+
+def key_fight_checks(data):
+    """(round 11b; REQUEST-LOG SD-120, SD-126 "Key only, raids in smaller tests (Recommended)"; build spec 4.3) The key fight ran as
+    planned, so a stand-in that silently hides nothing (or a scenario that plays no key) fails the gate: [(ok, what, numbers)].
+    Raid bosses are covered by tests/fix_r11_keyfight_run.py (no speed measure, SD-126)."""
+    fired = data.get("fired") or {}
+    pay = data.get("payloads") or {}
+    rl = data.get("restrictions") or {}
+    left = data.get("restrictionsLeft") or {}
+    encs = vals(data.get("encounters"))
+    lh = data.get("lineHook") or {}
+    shapes = data.get("payloadShapes") or {}
+    hidden_in_key = sum(int((pay.get(sg) or {}).get("hidden") or 0) for sg in pay if sg.startswith(("fight ", "end ", "out ", "key start")))
+    lg = data.get("logger") or {}
+    loaded = data.get("addonsLoaded") or {}
+    sets = scenario_sets_combat()
+    out = [
+        (int(fired.get("CHALLENGE_MODE_START") or 0) == 1 and int(fired.get("CHALLENGE_MODE_COMPLETED") or 0) == 1,
+         "the fights are played inside one Mythic+ key: CHALLENGE_MODE_START fired exactly once and CHALLENGE_MODE_COMPLETED once (SD-126)",
+         "CHALLENGE_MODE_START %s, CHALLENGE_MODE_COMPLETED %s" % (fired.get("CHALLENGE_MODE_START"), fired.get("CHALLENGE_MODE_COMPLETED"))),
+        (all(int(rl.get("%d:1" % t) or 0) > 0 and int(rl.get("%d:0" % t) or 0) > 0 for t, _ in KEY_TYPES),
+         "the restrictions went through Activating (1) and Inactive (0) for each of %s (ADDON_RESTRICTION_STATE_CHANGED)" % ", ".join(
+             "%s %d" % (n, t) for t, n in KEY_TYPES), "(type:state) counts: %s" % rl),
+        (all(int(left.get(str(t), left.get(t, -1)) if isinstance(left, dict) else -1) == 0 for t, _ in KEY_TYPES),
+         "every restriction is Inactive again after the key (the dungeon left)", "states at the end: %s" % left),
+        (all(int((pay.get(sg) or {}).get("hidden") or 0) > 0 for sg in KEY_FIGHTS),
+         "every fight got hidden UNIT_AURA payloads (the stand-in hides aura data in the key)",
+         "hidden / readable per fight: %s" % ", ".join("%s %s/%s" % (sg, (pay.get(sg) or {}).get("hidden"), (pay.get(sg) or {}).get("readable"))
+                                                         for sg in KEY_FIGHTS)),
+        (int(data.get("keyReadable") or 0) == 0 and hidden_in_key > 0,
+         "no UNIT_AURA payload inside the key was readable (inside a key auras are hidden between pulls too)",
+         "readable inside the key: %s (first: %s); hidden: %d" % (data.get("keyReadable"), data.get("keyReadableFirst"), hidden_in_key)),
+        (len(encs) == 3 and all(int(e.get("difficulty") or 0) == KEY_BOSS[0] and int(e.get("size") or 0) == KEY_BOSS[1] and e.get("inKey")
+                                for e in encs),
+         "each of the three boss pulls is the key's boss: ENCOUNTER_START with difficulty %d and group size %d, inside the key" % KEY_BOSS,
+         "pulls: %s" % encs),
+        (data.get("payloadShape") == "A" and set(shapes) == {"A"},
+         "the gate plays payload shape A, its one choice (build spec 4.2; unit tests play shapes B and C, SD-127)",
+         "shape set: %s; payloads by shape: %s" % (data.get("payloadShape"), shapes)),
+        (lh.get("on") is False and not lh.get("armed") and not lh.get("missing"),
+         "the measured play has the line hook off (tests/harness/loader.lua: the gate's instruction counter is the only hook)", "state: %s" % lh),
+        (not data.get("secretHealth"), "the shared secret object (tests/harness/secret.lua) stayed healthy", "%s" % data.get("secretHealth")),
+        (not sets, "the gate plays combat only through the stand-in's W.enterCombat / W.leaveCombat (it never sets W.combat itself)",
+         "; ".join("%s line %d: %s" % x for x in sets[:3])),
+        (bool(data.get("secretOnAlloc")), "the gate bills the stand-in's own hidden values to the stand-in (S.onAlloc set; build spec 3.1)", ""),
+    ]
+    # (round 11b; SD-121..SD-123, SD-149) the run logger: with its box on (as bundle 1 ships it), its question shows after the loading
+    # screen into the dungeon and is answered Yes; XayaUI_Debug is then loaded (the logger part alone with Advanced Debugging off)
+    if lg.get("box") and data.get("debugFolder", True):
+        out.append((bool(lg.get("asked")) and bool(lg.get("answered")) and bool(loaded.get(DEBUG_ADDON)) and not lg.get("shownAtEnd"),
+                    "the run logger's box is on: its question showed after the loading screen into the dungeon, was answered Yes, and "
+                    "XayaUI_Debug is loaded (SD-122, SD-149)", "logger: %s; XayaUI_Debug loaded: %s" % (lg, loaded.get(DEBUG_ADDON))))
+    else:
+        out.append((not lg.get("asked"), "the run logger's box is off: no question showed", "logger: %s" % lg))
+    return out
 
 
 def short(where):

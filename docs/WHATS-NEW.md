@@ -1,5 +1,7 @@
 # What's new in XayaUI
 
+**Updated 2026-11-22:** section 18 (at the end) covers round 11b of Rules fix bundle 1: Advanced debug logging, and rules in keys and raids where the game hides data. Not on `main` yet.
+
 **Updated 2026-11-16:** section 15 (at the end) covers rounds 1 to 9 of Rules fix bundle 1, which is not on `main` yet.
 
 **Updated 2026-11-06 evening:** sections 3 to 14 (below) cover the debug round, the group page / QA round, the auto-populate buttons, the engine session's changes and the bar cues that landed after this page was first written.
@@ -645,3 +647,23 @@ They are added here only once they arrive and are checked against `main`.
 **Version numbers:** two different changes on `main` carry the label Options 0.6.41 (the "switched-off features cost nothing"
 work and the auto-rule picker; two sessions numbered them at the same time). They are listed as they are; history is not
 renumbered.
+
+## 18. Rules fix bundle 1, round 11b (branch `claude/dazzling-brown-x9fqrm`; not on `main` yet)
+
+Not tested in game. QA B444 to B451 (all bundle 1 steps: B399 and B401 to B451). Versions: XayaUI 0.6.90, Options 0.6.113,
+Rules 0.7.5, XayaUI Debug 0.7.3, Bonus Features 0.6.50 (both of its folders). Landing commit: not landed yet.
+
+- **Advanced debug logging (new):** a tick box under Settings > Debugging, on in this release only, that works with Advanced
+  Debugging off. Right after the loading screen into a dungeon, Mythic+ key or raid (never in combat, never after a /reload), a small
+  window asks "Log this run for the XayaUI test?". **Yes** logs that run; **No** logs nothing and it asks again at the next dungeon or
+  raid. It saves counts and yes / no answers only (how busy each pull was, how often and how long the game hid aura and cooldown
+  data, the order of the game's combat, boss and key messages, XayaUI's CPU and memory from the game's meter), never names or chat.
+  After 3 finished Mythic+ keys and 2 raid boss kills it stops asking and says once in chat to send Xaya `XayaUI_Debug.lua` from
+  `WTF\Account\<YOUR ACCOUNT FOLDER>\SavedVariables\` (after a /reload or logout). Untick it to turn it off at once (user guide 12.14a).
+- **Rules in keys and raids:** XayaUI Rules now copes with aura updates the game hides from addons, also one it hides completely:
+  it re-checks every rule for that unit and shows no Lua error, where before such an update could stop with a Lua error and leave
+  rules showing old answers. A hidden update for your target or focus re-checks both, and a Target Debuff trigger treats a hidden
+  aura list as hidden. How the game hides these updates is not known yet; the logger records it.
+- **Stat Calculator:** its Change boxes no longer let go of the keyboard each time you enter a dungeon or raid; they let go when
+  combat, a boss encounter, a Mythic+ key or a PvP match starts.
+- **AddOns list:** XayaUI Debug's description now also names the run logger.

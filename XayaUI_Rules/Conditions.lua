@@ -913,9 +913,12 @@ end
 -- nil = no such icon. The name list is rebuilt with the icon index (at most every 0.25 s).
 local byName, byNameAt = {}, -1
 function ns.TrackedBuffStateByName(id)
-    local name = SpellNameOf(tonumber(id) or 0)
+    -- (round 11b final fix) the ID is read as a number once: this runs for every aura ID of every aura check whose answer is otherwise
+    -- unknown (in the key fight, every check of every pass), and the second tonumber was the same call on the same value
+    local nid = tonumber(id) or 0
+    local name = SpellNameOf(nid)
     if not name then return nil end
-    FindCDMFrame(tonumber(id) or 0)   -- (refreshes the index when stale)
+    FindCDMFrame(nid)   -- (refreshes the index when stale)
     if byNameAt ~= cdmAt then
         byName, byNameAt = {}, cdmAt
         for sid, list in pairs(cdmIndex) do

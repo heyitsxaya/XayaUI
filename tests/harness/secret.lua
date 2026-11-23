@@ -350,6 +350,21 @@ function S.shape(v)
   return nil
 end
 function S.allowHiddenBooleans(on) BOOLEANS = on and true or false end
+-- (round 11b final fix) S.compact(): the five registries above made again, holding only their live entries. They are weak-keyed: a
+-- collection forgets a hidden value nobody holds, but a Lua 5.1 table keeps the slots it grew to until an insert into a full table makes
+-- it again, so after a fight that made hidden values by the thousand between two collections (the gate's key fight) KIND and VALUE kept
+-- about 2^17 slots each, megabytes of the stand-in's own bookkeeping that the game does not have (its hidden values live in C), counted
+-- in every whole-state memory reading (tests/gate_performance_run.py MEM, SD-66). The gate calls this before each reading
+-- (tests/gate_common.py memNow), never in a handler: no addon is billed for it. Every function of this file reads the registries
+-- through the same upvalues, so they all see the new tables.
+function S.compact()
+  local function again(old)
+    local t = rawsetmeta({}, { __mode = "k" })
+    for k, v in rawnext, old do t[k] = v end
+    return t
+  end
+  KIND, VALUE, FORBID, FNAME, STABLE = again(KIND), again(VALUE), again(FORBID), again(FNAME), again(STABLE)
+end
 -- S.onAlloc(fn): fn(make, ...) must return make(...). Returns the previous fn. nil switches it off.
 function S.onAlloc(fn) local old = ALLOC; ALLOC = fn; return old end
 -- S.health(): nil, or every stand-in fault found: a host-side function that stopped, a format / join scratch left holding values

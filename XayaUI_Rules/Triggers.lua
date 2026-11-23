@@ -764,7 +764,9 @@ function TDList(unit)
     if memo then
         local l = memo[unit]
         if l ~= nil then
-            if l == TD_ERR then return nil, ns.StepMemo("tgtDebuffsErr")[unit] end
+            -- (round 11b, triage T-1, spec F7) rawequal: the memo may hold the list the game handed, which can be a hidden value
+            -- (N12.1.0: "will return a secret vector"); a same-type '==' on a hidden table raises in game (N12.0.0), rawequal never does
+            if rawequal(l, TD_ERR) then return nil, ns.StepMemo("tgtDebuffsErr")[unit] end
             return l
         end
     end
@@ -778,7 +780,8 @@ end
 -- found (true / false / nil), sawHidden, the aura. Never errors: each field is read under pcall (a secret list is "hidden").
 local function TDIndex(t, k) return t[k] end
 local function TDScanRaw(list, id)
-    if type(list) ~= "table" or issecret(list) then return nil, true end
+    -- (round 11b) a list addon code cannot read at all (a forbidden table: canaccesstable false, globals.md:743) is hidden too
+    if type(list) ~= "table" or issecret(list) or (canaccesstable and not canaccesstable(list)) then return nil, true end
     local hidden = false
     for i = 1, #list do
         local a = list[i]

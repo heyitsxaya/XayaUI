@@ -119,6 +119,12 @@ In the main chat window, the XayaUI console window (`/xui console`), or both: ch
 ### Does XayaUI save its error messages?
 Yes. Every error or warning XayaUI prints in chat is also saved, with a code, whether or not Advanced Debugging is on. Ordinary messages are not saved. To see them, turn on Advanced Debugging (Settings > Debugging), type `/reload`, then type `/xui bug`.
 
+### What is the "Log this run for the XayaUI test?" window?
+It comes from **Advanced debug logging** (Settings > Debugging), which is on in this release and works with Advanced Debugging off. It asks right after the loading screen into a dungeon, Mythic+ key or raid, never in combat and never after a /reload. **Yes** logs that run, **No** logs nothing. It saves counts only (how busy each pull was, how often the game hid aura and cooldown data, XayaUI's CPU and memory), never names or chat. After 3 finished Mythic+ keys and 2 raid boss kills it stops asking and says once in chat to send Xaya `XayaUI_Debug.lua` from your SavedVariables folder (type `/reload` or log out first).
+
+### How do I stop XayaUI asking to log my runs?
+Untick **Advanced debug logging** in Settings > Debugging. It stops at once, with no /reload.
+
 ### How do I report a problem?
 - Turn on **Advanced Debugging** (Settings > Debugging; recommended, off by default), then type `/reload`. It loads the bug report and the debug report. XayaUI saves its own errors and warnings by itself whether or not it is on, so you do not have to remember a command, and errors from before you turned it on are kept too.
 - Type `/reload` (or log out): the game writes its files only then.

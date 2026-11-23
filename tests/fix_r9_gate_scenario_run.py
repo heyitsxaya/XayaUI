@@ -18,6 +18,9 @@ What the gate must do now, checked on this checkout's addons:
            boss rules);
   draw     (SD-77) on this engine nothing differs from a full re-check; a mutant engine whose narrowed re-check leaves out the displays
            with an out-of-combat opacity and the re-read of what combat restricts FAILs the gate on what is drawn (the displays named);
+           (round 11b final fix) the absent target debuffs are tested in the draw play's fight out of the key (readable data; inside the
+           key they are hidden at every moment); a cooldown display whose own end fell in the check's quiet frames is listed, not counted
+           (its wake is still on the way), and a mutant engine whose hidden cooldown ends wake nothing still FAILs the gate;
   effects  (SD-79) the effects part runs every effect display's loop at 144 frames a second, per display;
   memory   the growth per cycle is read in the memory play (the addons' own) and reported next to the measured play's (with the gate's
            records); a mutant addon that keeps 32 KB more on every combat end makes the growth WARNING name the addons' own growth.
@@ -44,6 +47,13 @@ FIGHTS = ("fight 1", "fight 2", "fight 3")
 ENDS = ("end 1", "end 2", "end 3")
 DRAW_LABELS = ("mounted", "dismounted", "group joined", "target picked", "combat start", "boss pull", "boss down", "combat end",
                "group left, target dropped")
+# (round 11b final fix) the draw play's fight out of the key (readable data, a target selected): the only moments that change the absent
+# target debuffs (inside the key they are hidden at every moment)
+DRAW_OUT_LABELS = ("target picked, out of the key", "combat start, out of the key", "combat end, out of the key")
+# (round 11b final fix) a mutant whose hidden-cooldown wake never comes (OnCooldownDone wakes nothing): the draw check's late-wake list
+# (gate_common.py KF.lateWake: a cooldown that ended at most one pace gap and two frames before the read) must not hide it
+MUT_WAKE = ("    for i = #l, 1, -1 do\n        local rule = l[i]; l[i] = nil\n        local rt = ns.runtime[rule]\n"
+            "        if rt and rt.cdPoll then wakeAt[rule] = now; any = true end\n")
 MUT_OOC = "    if combat then NW.Mark(NW.ooc, m) end\n"
 MUT_RESTRICT = "    if restrict then\n"
 LEAK_LUA = r'''
@@ -90,6 +100,11 @@ def mutant_tree(name, edit):
     # the same checkout at the same time (a suite while another session ran the same tests) deleted and rewrote each other's mutant
     # addons in the middle of a play.
     with COPYING:
+        # (round 11b final fix) a stop that came between two trees makes no new one: the main thread's clean-up takes this lock after the
+        # stop and then removes every tree listed, so a tree made after that would be left in the temp folder (fix_r11_harness E1, with
+        # the third mutant tree, wakemut)
+        if STOP.is_set():
+            raise Stopped("stopped before making the %s tree" % name)
         dest = tempfile.mkdtemp(prefix="xui_r9_%s-" % name)
         TREES.append(dest)
         for a in GC.ADDONS + (GC.DEBUG_ADDON,):
@@ -101,7 +116,11 @@ def mutant_tree(name, edit):
         for f in os.listdir(HERE):
             if f.startswith("gate_") and f.endswith(".py"):
                 _copy_file(os.path.join(HERE, f), os.path.join(dest, "tests", f))
-    ok = edit(dest)
+        # (round 11b final fix) the edit too, under the lock and only while not stopped: an edit that wrote into a tree the clean-up was
+        # removing put a file back into it, and the tree was left (fix_r11_harness E1 and E4, wakemut)
+        if STOP.is_set():
+            raise Stopped("stopped before editing the %s tree" % name)
+        ok = edit(dest)
     return dest, ok
 
 
@@ -282,10 +301,19 @@ def _main():
             with open(p, "a", encoding="utf-8") as fh:
                 fh.write(LEAK_LUA)
             return True
+        def edit_wake(d):
+            p = os.path.join(d, "XayaUI_Rules", "Engine.lua")
+            s = open(p, encoding="utf-8").read()
+            if s.count(MUT_WAKE) != 1:
+                return False
+            open(p, "w", encoding="utf-8").write(s.replace(MUT_WAKE, "    for i = #l, 1, -1 do\n        l[i] = nil   -- (mutant: the hidden cooldown's end wakes nothing)\n"))
+            return True
         mdraw, mdraw_ok = mutant_tree("drawmut", edit_draw)
         mleak, _ = mutant_tree("leakmut", edit_leak)
+        mwake, mwake_ok = mutant_tree("wakemut", edit_wake)
         f_md = ex.submit(play_in, mdraw, perf=False, drawcheck=True) if mdraw_ok else None
         f_ml = ex.submit(play_in, mleak, perf=False, memplay=True)
+        f_mw = ex.submit(play_in, mwake, perf=False, drawcheck=True) if mwake_ok else None
         def got(f, what):
             try:
                 return f.result() if f else None
@@ -295,6 +323,7 @@ def _main():
         ref = got(f_ref, "reference (no call hook)") or {}
         md = got(f_md, "mutant draw")
         ml = got(f_ml, "mutant memory") or {}
+        mw = got(f_mw, "mutant wake")
 
     # ---- hook (SD-80) -----------------------------------------------------------------------------------------------------------
     check(int(ref.get("errors") or 0) == 0, "hook: the reference play (no call hook possible) ran without a Lua error")
@@ -352,6 +381,13 @@ def _main():
     check(all(labels.count(l) == 3 for l in DRAW_LABELS) and all(c.get("ran") for c in dc),
           "scenario: the draw check ran after each of the %d load-fact changes in all three cycles, and its full re-check ran each time" % len(DRAW_LABELS),
           "%s" % {l: labels.count(l) for l in DRAW_LABELS})
+    # (round 11b final fix: the key fight hid the target's debuffs at every moment, so the absent target debuffs no longer changed at
+    # combat start and end and this guard on SD-77 lost its teeth on them) the draw play's fight out of the key, on readable data
+    outk = {l: [((c.get("groups") or {}).get("Absent") or {}).get("shown") for c in dc if c.get("label") == l] for l in DRAW_OUT_LABELS}
+    check(all(len(v) == 1 for v in outk.values()) and outk[DRAW_OUT_LABELS[0]][0] and outk[DRAW_OUT_LABELS[1]][0] == 0
+          and outk[DRAW_OUT_LABELS[2]][0] == outk[DRAW_OUT_LABELS[0]][0],
+          "scenario: in the draw play's fight out of the key (readable, a target selected) the absent target debuffs are shown with the target "
+          "picked, not at combat start, shown again at combat end", "%s" % outk)
     check(not re.search(r"the rules that test the narrowed re-check did not change", text),
           "scenario: the absent target debuffs, the out-of-combat opacity and the boss rules changed at their moments")
     # ---- draw (SD-77) -------------------------------------------------------------------------------------------------------------
@@ -368,6 +404,18 @@ def _main():
               "draw: the mutant engine FAILs the gate on what is drawn: the out-of-combat opacity displays and the target debuffs that must "
               "be absent differ from a full re-check after combat starts", "findings %s; displays %s" % ([h[0] for h in hit], sorted(names)))
         note("      mutant draw findings: %s; displays named: %s" % (sorted(set(h[0] for h in hit)), sorted(names)))
+    late = ["%s %s: %s" % (c.get("label"), c.get("phase"), "; ".join(GP.vals(c.get("late")))) for c in dc if int(c.get("nlate") or 0)]
+    if late:
+        note("      listed, not counted (a cooldown that ended during the quiet frames, its wake still on the way): %s" % " | ".join(late)[:600])
+    check(mwake_ok, "draw: the mutant (a hidden cooldown's end wakes nothing) could be made from Engine.lua")
+    if mw is not None:
+        wt = gate_text(dict(data, drawCheck=mw.get("drawCheck"), drawErrors=mw.get("errors")))
+        wdiffs = " ".join(x for c in GP.vals(mw.get("drawCheck")) if isinstance(c, dict) for x in GP.vals(c.get("diffs")))
+        wnames = sorted(set(re.findall(r"\d+ ((?:Cooldown|Hover|Ooc|Boss) \d+)", wdiffs)))
+        check(re.search(r"SD-77: after .* display\(s\) show something other", wt) is not None and bool(wnames),
+              "draw: a mutant engine whose hidden cooldown ends wake nothing FAILs the gate on what is drawn (the late-wake list does not "
+              "hide a wake that never came)", "displays %s" % wnames)
+        note("      mutant wake: displays named %s" % wnames[:12])
     # ---- effects (SD-79) ---------------------------------------------------------------------------------------------------------
     # (round 9 repair 1) a display's time-driven parts are drawn by its frame script (the effects loop) or by a redraw timer (Visual.lua's
     # wake at the next moment a part changes, gate_common.py REDRAWS); both are counted per display, together

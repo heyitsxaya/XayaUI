@@ -2046,6 +2046,15 @@ end
 -- spell IDs of the auras added, and the instances updated or removed, looked up in the memory of the watched auras' instance IDs. A
 -- hidden payload, a hidden field, a full update, or an instance the memory cannot vouch for: every check of the unit. Nothing in a
 -- hidden payload is tested. Returns true when anything is to be read on the next frame.
+-- (round 11b, hidden-data fight F1; her answer SD-127 "Yes, fix it first (Recommended)") a payload, or a list inside it, may also be a
+-- table addon code cannot read at all (payload shape C, a forbidden table: canaccesstable false, and any index raises "attempted to
+-- index a forbidden table", WSV:45-52). Every table is tested with canaccesstable before its first index (globals.md:743; its argument is
+-- a LuaValueReference, exempt like the issecretvalue family: INFERENCE, spec 2.1), so such a payload routes as a hidden one does: every
+-- check of the unit, nothing in it read, no error, nothing left stale. One C call per table read, no pcall and nothing made per event.
+-- (Technical choice, SD-145: an explicit test rather than one pcall around the route, so an unrelated bug in it still surfaces.)
+-- The payload shape the game uses is INFERENCE, UNVERIFIED IN GAME (spec 2.2, open question 6).
+local canaccess = canaccesstable or function() return true end
+local function ReadableTable(t) return type(t) == "table" and not issecret(t) and canaccess(t) end
 local function MarkList(l) for i = 1, #l do Mark(l[i]) end end
 local function MarkMem(U, iid, forget)
     local x = U.mem[iid]
@@ -2059,7 +2068,7 @@ local function MarkMem(U, iid, forget)
 end
 local function MarkIDs(U, ids, forget)
     if ids == nil then return true end
-    if type(ids) ~= "table" or issecret(ids) then return false end
+    if not ReadableTable(ids) then return false end
     for i = 1, #ids do
         local iid = ids[i]
         if iid == nil or issecret(iid) then return false end
@@ -2073,7 +2082,7 @@ local function RouteAura(unit, info)
     local text = TextWaits(unit)
     if #U.probes == 0 and #U.loose == 0 and not text then return false end
     if U.whole then return true end
-    local ok = type(info) == "table" and not issecret(info)
+    local ok = ReadableTable(info)
     if ok then
         local full = info.isFullUpdate
         if issecret(full) or full == true then ok = false end
@@ -2081,11 +2090,11 @@ local function RouteAura(unit, info)
     if ok then
         local added = info.addedAuras
         if added ~= nil then
-            if type(added) ~= "table" or issecret(added) then ok = false
+            if not ReadableTable(added) then ok = false
             else
                 for i = 1, #added do
                     local a = added[i]
-                    if type(a) ~= "table" or issecret(a) then ok = false; break end
+                    if not ReadableTable(a) then ok = false; break end
                     local sid, iid = a.spellId, a.auraInstanceID
                     if issecret(sid) or issecret(iid) then ok = false; break end
                     local l = U.idx[sid]
@@ -2127,7 +2136,9 @@ inputFrame:SetScript("OnEvent", function(_, event, unit, a2)
     if perf.on then perf.events[event] = (perf.events[event] or 0) + 1 end
     local k = KIND_OF[event]
     local u = UNIT_OF[event]
-    if u and unit ~= u then return end
+    -- (round 11b, spec 2.2 / T14 variant U) a hidden unitTarget is never compared (a same-type compare of a hidden string raises in
+    -- game, N12.0.0): every unit event here is registered with RegisterUnitEvent for that one unit, so a hidden one is that unit
+    if u and not issecret(unit) and unit ~= u then return end
     if event == "UNIT_AURA" then
         ns.lastAuraEventAt = GetTime()   -- (Conditions.lua stamps an aura's appearance with it)
         if RouteAura("player", a2) then pend.aura = true; Kick() end
@@ -2150,6 +2161,14 @@ POLL.frame:SetScript("OnEvent", function(_, event, unit)
     if (liveCount.range or 0) > 0 then pend.range = true; Kick() end
 end)
 tgtFrame:SetScript("OnEvent", function(_, event, unit, info)
+    if issecret(unit) then
+        -- (round 11b, spec 2.2 / T14 variant U) a hidden unitTarget: registered for the target and the focus only, so it is one of them,
+        -- and which is not known: both routes as for a hidden payload (every check of both units; nothing in the payload is read)
+        if perf.on then perf.events["UNIT_AURA (target / focus)"] = (perf.events["UNIT_AURA (target / focus)"] or 0) + 1 end
+        local a = RouteAura("target", nil)
+        if RouteAura("focus", nil) or a then pend.tgt = true; Kick() end
+        return
+    end
     if unit ~= "target" and unit ~= "focus" then return end
     if perf.on then perf.events["UNIT_AURA (target / focus)"] = (perf.events["UNIT_AURA (target / focus)"] or 0) + 1 end
     if RouteAura(unit, info) then pend.tgt = true; Kick() end

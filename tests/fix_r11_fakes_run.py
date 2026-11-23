@@ -5,9 +5,10 @@ on hidden values, through ONE shared secret object; build spec sections 3.3 and 
 The six unit-test fakes the spec names are migrated onto the shared secret object (tests/harness/secret.lua) and the restriction state
 machine of tests/harness/world.lua: engine_text_run.py, aura_gaps_run.py, tracked_buff_run.py, fix_r10_sound_run.py, timing_run.py (all on
 the engine_bench.py stubs) and char_world.lua (the character window tests' world). This test reads what each of them hands the addon code
-under test, and what every other test file still keeps, so a fake cannot come back unseen:
+under test, and what every other test file still keeps, so a fake written in one of the forms D names cannot come back unseen (D and E
+read source lines, not behaviour: their limits are stated at the detectors below and pinned by H):
 
-  A  the six: no local secret fake (no own issecretvalue, C_Secrets, ShouldAurasBeSecret, type() override or SECRET token table); no
+  A  the six: no local secret fake (as D's detector sees one: a seen form of D below, e.g. own issecretvalue, C_Secrets, type()); no
      combat flag of their own deciding what is hidden (COMBAT = true / false); the five bench tests run the one [bench restrictions] block
      (the shared object and world.lua's state machine, below), byte for byte the copy in this file; char_world.lua loads and installs the
      shared object; each bench test's spell-ID aura read answers nil while the aura is hidden (RequiresNonSecretAura, spec 2.2), never a
@@ -20,15 +21,41 @@ under test, and what every other test file still keeps, so a fake cannot come ba
   C  char_world.lua, played: SECRET is a hidden number of the shared object (type "number", issecretvalue true); arithmetic and tostring on
      it raise secret.lua's errors and each counts as misuse, even under the addon's pcall; '== nil' and '..' are allowed (the game allows
      them) and count nothing.
-  D  every test file (tests/*.py, tests/*.lua; not the shared stand-in in tests/harness/): the files that still keep a local secret fake
-     are exactly the named list below, each with what it keeps (they are outside this unit's files; routed to their owners). A new fake
-     fails, and so does a listed file that no longer has one (the list only shrinks).
-  E  no test hands a hidden isActive (SpellCooldownInfo.isActive is readable, spec 2.2), except the one named file (routed).
+  D  every test file (tests/*.py, tests/*.lua; not the shared stand-in in tests/harness/, and not this file, whose H lines are fakes on
+     purpose): the files in which the detector sees a local secret fake are exactly the named list below, each with what it keeps (they
+     are outside this unit's files; routed to their owners).
+     The detector reads one code line at a time (lines starting with '--' or '#' are skipped) and sees ONLY these forms:
+       - issecretvalue, canaccessvalue, issecrettable or canaccesstable set by '=' (global, local, a table field M.NAME or a
+         constructor field), or defined by a 'function [path.]NAME' / 'function [path:]NAME' statement (path = any table, _G, M, ...);
+       - C_Secrets set by '='; a member set by C_Secrets.X = ... or C_Secrets[...] = ...; a 'function [path.]C_Secrets.X' or
+         'function C_Secrets:X' statement;
+       - a C_Secrets member name (the 27 documented ones: Should...BeSecret, Get...Secrecy, HasSecretRestrictions,
+         CanCompareUnitTokens) set to a function literal on any table or in a constructor (NAME = function), or defined by a
+         'function [path.]NAME(' statement;
+       - type(): a statement-level 'type = ...' or 'local type = ...' at the start of a line, after ';', 'then', 'do', 'else' or an
+         opening quote or '(' (Lua inside a Python string); '_G.type = ...'; 'L.globals().type = ...'; a global 'function type(' or
+         'function _G.type(' statement;
+       - any of those names given as a quoted key: rawset(<table>, "NAME", ...), Python setattr(<object>, "NAME", ...), or a bracket
+         assignment ["NAME"] = ... (quotes may be escaped, as in Lua inside a Python "..." string);
+       - a SECRET... = setmetatable(...) token table.
+     Any other form is NOT seen. Named examples: a name computed at run time (_G[k] = ... with k computed, setfenv with an environment
+     built elsewhere, an __index on _G); an alias (g = L.globals(); g.type = ...; CS = C_Secrets; CS.X = <not a function literal>);
+     a multiple assignment (local type, x = f, y); a fake spread over several lines so that no one line shows a seen form; 'local
+     function type' (a local helper, as in fix_r10_closures_run.py, deliberately not counted); a 'type = <value>' table field (a line
+     ending in ',', '{' or '}'; 'type = function' is counted unless its line ends in ','); 'local type = type' or '= _G.type' (caching
+     the installed one); a file outside tests/. A new fake in a seen form fails, and so does a listed file that no longer has one (the
+     list only shrinks).
+  E  no test hands a hidden isActive (SpellCooldownInfo.isActive is readable, spec 2.2), except the one named file (routed). Seen: an
+     isActive whose expression names a hidden token (SECRET..., SEC, S.new, MarkSecret), even inside 'COMBAT and SECRET or ...', or a
+     variable or helper of the same file that builds one (followed through helpers of helpers). Not seen: a helper from another file, a
+     value passed through a table or argument, an expression split over lines.
   F  spec 3.3 "State values": no test fires ADDON_RESTRICTION_STATE_CHANGED with state 2 (the game fires Activating 1 and Inactive 0).
   G  spec 3.3 combat table: tests/fix_r4_lock_run.py labels its lockdown without the event as deliberate.
+  H  the detectors of D and E on fixed lines: every stated form is seen and the named non-fakes are not, so a weaker detector fails;
+     every C_Secrets function in docs/reference/api/namespaces.md matches D's member-name pattern (a new API name outside it fails).
 
 Fails on the tree before this change (the six local fakes, state 2 sent, no label): A, C, F and G fail as assertions (B plays the block of
-this file, so it is the control that the block works). Passes after.
+this file, so it is the control that the block works; H checks this file's own detectors, so it passes on any tree). Passes after.
 Run: python3 tests/fix_r11_fakes_run.py   (Lua 5.1 via lupa)
      XUI_FAKES_TESTS=<a tests folder> reads another tree's tests (a private pre-change copy, a broken copy); its harness/ is played.
 Stand-in only: nothing here is World of Warcraft; every rule it enforces is the spec's (INFERENCE where the spec marks it).
@@ -110,18 +137,92 @@ CANON = block_of(BENCH_RESTRICTIONS)
 BENCH_SIX = ["engine_text_run.py", "aura_gaps_run.py", "tracked_buff_run.py", "fix_r10_sound_run.py", "timing_run.py"]
 CHAR_WORLD = "char_world.lua"
 
-# a local secret fake: its own hidden-value test, secrecy answers, type() override or token table (code lines; comments are skipped)
+# A local secret fake, as this test can see it: one CODE line (lines starting with '--' or '#' are skipped) matching one row of FAKE
+# below. The rows ARE the list of seen forms; the docstring's D paragraph names each of them and the forms that are not seen, and H pins
+# every named form (seen) and the named non-fakes (not seen) on fixed lines, so a row dropped or narrowed fails H.
+# The 27 C_Secrets functions (docs/reference/api/namespaces.md, "C_Secrets (27 functions)") all match this name pattern:
+# Should...BeSecret, Get...Secrecy, HasSecretRestrictions, CanCompareUnitTokens.
+SECRET_MEMBER = r"(?:Should\w+BeSecret|Get\w+Secrecy|HasSecretRestrictions|CanCompareUnitTokens)"
+SECRET_NAMES = r"(?:issecretvalue|canaccessvalue|issecrettable|canaccesstable|C_Secrets|" + SECRET_MEMBER + r"|type)"
+PREDICATE = r"(?:issecretvalue|canaccessvalue|issecrettable|canaccesstable)"
+DOTTED = r"(?:[A-Za-z_]\w*\s*[.:]\s*)*"      # an optional table path before a name: M. / _G. / env.C_Secrets.
+TYPE_AT = r"(?:^|;|[\"'(]|\bthen\b|\bdo\b|\belse\b)\s*"   # where a statement can start on one line (also inside a quoted chunk)
+NOT_TYPE_NOOP = r"(?!\s*(?:_G\s*\.\s*)?type\s*(?:;|--|$|\bend\b|[\"')]))"   # 'local type = type' caches the installed type()
 FAKE = [(re.compile(p), what) for p, what in (
     (r"\bissecretvalue\s*=(?!=)", "its own issecretvalue"),
-    (r"\bfunction\s+issecretvalue\b", "its own issecretvalue"),
+    (r"\b(canaccessvalue|issecrettable|canaccesstable)\s*=(?!=)", "its own secrecy predicate"),
+    (r"\bfunction\s+" + DOTTED + PREDICATE + r"\b", "its own secrecy predicate (function statement)"),
     (r"\bC_Secrets\s*=(?!=)", "its own C_Secrets"),
-    (r"\bC_Secrets\.\w+\s*=(?!=)", "its own C_Secrets answer"),
-    (r"\bShouldAurasBeSecret\s*=(?!=)\s*function", "its own ShouldAurasBeSecret"),
-    (r"(^|[;\s])type\s*=(?!=)\s*function", "its own type()"),
+    (r"\bC_Secrets\s*\.\s*\w+\s*=(?!=)", "its own C_Secrets answer"),
+    (r"\bC_Secrets\s*\[[^\]]*\]\s*=(?!=)", "its own C_Secrets answer (bracket form)"),
+    (r"\bfunction\s+" + DOTTED + r"C_Secrets\s*[.:]\s*\w+", "its own C_Secrets answer (function statement)"),
+    (r"\b" + SECRET_MEMBER + r"\s*=(?!=)\s*function\b", "its own C_Secrets answer (a member name set to a function)"),
+    (r"\bfunction\s+" + DOTTED + SECRET_MEMBER + r"\s*\(", "its own C_Secrets answer (a member name's function statement)"),
+    (TYPE_AT + r"(local\s+)?type\s*=(?!=)\s*function\b(?!.*,\s*$)", "its own type()"),
+    (TYPE_AT + r"(local\s+)?type\s*=(?!=)" + NOT_TYPE_NOOP + r"(?!\s*function\b)(?!.*[,{}]\s*$)", "its own type() (set to a value)"),
+    (r"(?<!\blocal )(?<!\blocal\t)\bfunction\s+(?:_G\s*[.:]\s*)?type\s*\(", "its own type() (function statement)"),
+    (r"\b_G\s*\.\s*type\s*=(?!=)", "its own type()"),
+    (r"\bglobals\(\)\s*\.\s*type\s*=(?!=)", "its own type() (lupa globals)"),
+    (r"\brawset\s*\((?:[^,()]|\([^()]*\))+,\s*\\?[\"']" + SECRET_NAMES + r"\\?[\"']", "a secret name set through rawset"),
+    (r"\bsetattr\s*\((?:[^,()]|\([^()]*\))+,\s*[\"']" + SECRET_NAMES + r"[\"']", "a secret name set through Python setattr"),
+    (r"\[\s*\\?[\"']" + SECRET_NAMES + r"\\?[\"']\s*\]\s*=(?!=)", "a secret name set in bracket form"),
     (r"\bSECRET\w*\s*=(?!=)\s*setmetatable\(", "a SECRET token table"),
 )]
 COMBAT_FLAG = re.compile(r"\bCOMBAT\s*=(?!=)\s*(true|false)\b")
-HIDDEN_ISACTIVE = re.compile(r"\bisActive\s*=(?!=)\s*(SECRET\w*|SEC\b|[\w.]*S\.new\b|[\w.]*MarkSecret\b)")
+
+# A hidden isActive, as this test can see it: an 'isActive = <expression>' field or assignment whose expression (up to the next ',',
+# ';' or '}' on that line) names a hidden token (SECRET..., SEC, ...S.new(...), ...MarkSecret(...)), or names a helper or variable of the
+# SAME file that builds one: a 'local NAME = ...' / 'NAME = ...' line whose right side names a token, or a function NAME whose body (to
+# its closing 'end', at most 40 lines) names a token. Followed through helpers that call such helpers. Not seen: a helper from another
+# file or from engine_bench.py, a value passed through a table or an argument, an expression split over several lines.
+HIDDEN_TOKEN = re.compile(r"\bSECRET\w*\b|\bSEC\b|\bS\.new\b|\bMarkSecret\b")
+ISACTIVE_RHS = re.compile(r"\bisActive\s*=(?!=)\s*([^,;}]*)")
+DEF_VALUE = re.compile(r"^\s*(?:local\s+)?([A-Za-z_]\w*)\s*=(?!=)\s*(?!function\b)(.+)$")
+DEF_FUNC = re.compile(r"^\s*(?:local\s+)?(?:function\s+([A-Za-z_][\w.:]*)\s*\(|([A-Za-z_]\w*)\s*=\s*function\s*\()")
+
+def hidden_builders(text):
+    """Names in this file whose value or body names a hidden token, followed to a fixed point (helpers of helpers)."""
+    lines = [ln for _, ln in code_lines(text)]
+    defs = []   # (name, body text)
+    for i, ln in enumerate(lines):
+        m = DEF_FUNC.match(ln)
+        if m:
+            name = (m.group(1) or m.group(2)).split(".")[-1].split(":")[-1]
+            ind = len(ln) - len(ln.lstrip())
+            body = [ln.split("(", 1)[1] if "(" in ln else ""]
+            one_line = re.search(r"\bend\s*[,)]?\s*$", ln) is not None
+            if not one_line:
+                for nxt in lines[i + 1:i + 41]:
+                    body.append(nxt)
+                    if nxt.strip() in ("end", "end,", "end)") and len(nxt) - len(nxt.lstrip()) <= ind:
+                        break
+            defs.append((name, "\n".join(body)))
+            continue
+        m = DEF_VALUE.match(ln)
+        if m:
+            defs.append((m.group(1), m.group(2)))
+    names = set()
+    while True:
+        grow = False
+        for name, body in defs:
+            if name in names or name in ("isActive", "_"):
+                continue
+            if HIDDEN_TOKEN.search(body) or any(re.search(r"\b%s\b" % re.escape(n), body) for n in names):
+                names.add(name)
+                grow = True
+        if not grow:
+            return names
+
+def hidden_isactive(text):
+    builders = hidden_builders(text)
+    out = []
+    for i, ln in code_lines(text):
+        for m in ISACTIVE_RHS.finditer(ln):
+            rhs = m.group(1)
+            if HIDDEN_TOKEN.search(rhs) or any(re.search(r"\b%s\b" % re.escape(n), rhs) for n in builders):
+                out.append("%d: %s" % (i, ln.strip()[:90]))
+                break
+    return out
 STATE2 = re.compile(r"ADDON_RESTRICTION_STATE_CHANGED[\"']\s*,\s*\d+\s*,\s*2\b")
 
 def code_lines(text):
@@ -285,7 +386,6 @@ KNOWN = {
     "engine_garbage_run.py": "own C_Secrets (always hidden)",
     "externals_in_combat_run.py": "token table, own issecretvalue and C_Secrets on COMBAT",
     "fix_r11_logger_run.py": "own C_Secrets answers (the logger unit's probe of hidden moments)",
-    "fix_r11_secret_run.py": "not a fake: a T13 measuring table's field named 'type'",
     "fix_r2_aurasound_static_load_run.py": "'nothing is hidden' issecretvalue",
     "fix_r3_sound_run.py": "'nothing is hidden' issecretvalue",
     "fix_r4_sound_run.py": "'nothing is hidden' issecretvalue",
@@ -326,7 +426,7 @@ for fn in sorted(os.listdir(TESTS)):
     if not (fn.endswith(".py") or fn.endswith(".lua")) or fn == os.path.basename(__file__):
         continue
     t = read(fn) or ""
-    h = ["%d: %s" % (i, ln.strip()[:90]) for i, ln in code_lines(t) if HIDDEN_ISACTIVE.search(ln)]
+    h = hidden_isactive(t)
     if h:
         iso[fn] = h
 check("E none of the six hands a hidden isActive (SpellCooldownInfo.isActive is readable, spec 2.2)",
@@ -346,6 +446,123 @@ t = read("fix_r4_lock_run.py") or ""
 check("G fix_r4_lock_run.py labels its lockdown without PLAYER_REGEN_DISABLED as deliberate (spec 3.3 combat table)",
       re.search(r"W\.combat = true\s+--[^\n]*\n\s*--\s*alone, with no PLAYER_REGEN_DISABLED", t) is not None or
       re.search(r"Deliberate: the lockdown\s*\n?\s*-*\s*alone", t) is not None)
+
+# ------------------------------------------------------------------------------------------------------------------------------------
+# H. the detectors of D and E, on fixed lines: every form the comments above say is seen is seen, and the stated non-fakes are not.
+# (D and E pass on today's tree whatever the detectors catch; these lines pin what they catch, so a weaker detector fails here.)
+print("H. the detectors of D and E, on fixed lines")
+FAKE_FORMS = [
+    'issecretvalue = function(v) return false end',
+    'function issecretvalue(v) return false end',
+    'local env = { issecretvalue = function() return true end }',
+    'canaccessvalue = function() return true end',
+    'function issecrettable(t) return false end',
+    'C_Secrets = { ShouldAurasBeSecret = function() return COMBAT end }',
+    'C_Secrets.GetSpellAuraSecrecy = function() return 0 end',
+    'C_Secrets["ShouldAurasBeSecret"] = function() return true end',
+    'C_Secrets[k] = fn',
+    'ShouldAurasBeSecret = function() return true end',
+    'type = function(v) return "number" end',
+    'local type = function(v) return "number" end',
+    'local x = 1; type = function(v) return "number" end',
+    '_G.type = mytype',
+    'rawset(_G, "issecretvalue", function() return false end)',
+    'L.execute("rawset(_G, \\"canaccesstable\\", f)")',
+    "_G['issecretvalue'] = function() return false end",
+    'env["GetSpellCooldownSecrecy"] = function() return 0 end',
+    'SECRET = setmetatable({}, { __index = function() error("x") end })',
+    # (repair 2: forms the reviewer planted that the earlier rows missed, and the neighbours of each)
+    'function C_Secrets.ShouldAurasBeSecret() return true end',
+    'function C_Secrets:ShouldAurasBeSecret() return true end',
+    'function env.C_Secrets.GetSpellAuraSecrecy(id) return 0 end',
+    'function C_Secrets.SomeLaterName() return true end',   # (a C_Secrets member outside today's 27 names)
+    'function type(v) return "number" end',
+    'function _G.type(v) return "number" end',
+    'L.execute("function type(v) return \'number\' end")',
+    'type = faketype',
+    'local type = faketype',
+    'if x then type = faketype end',
+    'L.execute("type = faketype")',
+    'L.globals().type = faketype',
+    'setattr(g, "issecretvalue", fake)',
+    "setattr(L.globals(), 'type', fake)",
+    'function M.issecretvalue(v) return false end',
+    'function M:canaccesstable(t) return true end',
+    'rawset(getfenv(1), "issecrettable", f)',
+    'rawset(setmetatable({}, mt), "issecretvalue", f)',
+    'L.globals()["canaccessvalue"] = f',
+    'cs.ShouldUnitAuraInstanceBeSecret = function() return true end',
+    '  ShouldSpellAuraBeSecret = function() return COMBAT end }',
+    '  HasSecretRestrictions = function() return false end,',
+    'function CS.ShouldCooldownsBeSecret() return true end',
+    'env["ShouldTotemSlotBeSecret"] = f',
+    'env["CanCompareUnitTokens"] = f',
+]
+NOT_FAKES = [
+    '-- issecretvalue = function() return false end   (a comment)',
+    '  type = function(v) for i = 1, 1000 do local r = type(v) end end,',
+    'if issecretvalue(v) then return nil end',
+    'local hidden = C_Secrets.ShouldAurasBeSecret()',
+    'assert(C_Secrets.ShouldAurasBeSecret == W_SAS)',
+    'local t = type(v)',
+    # (repair 2: the neighbours of the widened rows that are not fakes; each is a line of today's tree or its exact shape)
+    'local function type(t) eb:SetText(t); eb:GetScript("OnTextChanged")(eb, true) end',
+    'local type = type',
+    'local type = _G.type',
+    '                type = (o.type == "select" and "Dropdown") or (o.type == "execute" and "Button") or "Label" }',
+    '  return { width = "relative", relWidth = rw, type = "Label", frame = { width = 10 },',
+    "G1 = { type = 'spellGlow', spellID = 49184, state = 'yes' }",
+    'p.type = "x"',
+    'function obj.type() return 1 end',
+    'L.globals().NS = ns',
+    'rawset(f, "_owner", owner())',
+    'setattr(obj, "name", 1)',
+    'check("a NeverSecret aura (ShouldSpellAuraBeSecret = false in combat) not on you", ok)',
+    'if C_Secrets.ShouldAurasBeSecret() then end',
+    'local function ShouldShow() end',
+]
+missed = [f for f in FAKE_FORMS if not fakes_in(f)]
+check("H D's detector sees every fake form it states (%d forms: direct, constructor field, function statement with a table path, "
+      "C_Secrets member, type() as statement, value, function and lupa global, rawset, setattr, bracket, escaped quotes, token table)"
+      % len(FAKE_FORMS), not missed, missed)
+false_alarm = [f for f in NOT_FAKES if fakes_in(f)]
+check("H D's detector does not count comments, calls, reads, a 'local function type' helper, 'local type = type', a table field "
+      "named 'type' or another table's 'type' member (%d lines)" % len(NOT_FAKES), not false_alarm, false_alarm)
+# every documented C_Secrets function matches the member-name pattern (an API name outside it would make D blind to it)
+NSDOC = os.path.join(os.path.dirname(HERE), "docs", "reference", "api", "namespaces.md")
+try:
+    nsdoc = open(NSDOC, encoding="utf-8", errors="replace").read()
+except OSError:
+    nsdoc = None
+    print("MISSING INPUT: " + NSDOC)
+members = sorted(set(re.findall(r"C_Secrets\.(\w+)\(", nsdoc or "")))
+outside = [m for m in members if not re.fullmatch(SECRET_MEMBER, m)]
+check("H every C_Secrets function in docs/reference/api/namespaces.md (%d) matches D's member-name pattern" % len(members),
+      nsdoc is not None and len(members) >= 27 and not outside, outside or "no C_Secrets functions read")
+ISACTIVE_FORMS = [
+    'return { isActive = SECRET, isOnGCD = false }',
+    'return { isActive = COMBAT and SECRET or s.cd }',
+    't.isActive = SEC',
+    'return { isActive = W.S.new(true) }',
+    'return { isActive = W.MarkSecret(true) }',
+    'local hiddenTrue = W.MarkSecret(true)\nt.isActive = hiddenTrue',
+    'local function hide(v) return W.S.new(v) end\nreturn { isActive = hide(true) }',
+    'local function hide(v)\n  local x = W.S.new(v)\n  return x\nend\nlocal function hide2(v) return hide(v) end\nreturn { isActive = hide2(true) }',
+    'mk = function(v) return SECRET end\nreturn { isActive = mk(1) }',
+]
+NOT_ISACTIVE = [
+    'return { isActive = act and true or false, startTime = SECRET }',
+    'local function act(v) return v and true or false end\nreturn { isActive = act(x) }',
+    'local h = C_Secrets.ShouldSpellCooldownBeSecret(id)\nreturn { startTime = h and W.S.new(0) or 0, isActive = act }',
+    '-- isActive = SECRET   (a comment)',
+    'if info.isActive == SECRET then end',
+]
+missedE = [f for f in ISACTIVE_FORMS if not hidden_isactive(f)]
+check("H E's detector sees a hidden isActive set from a token, a conditional, a same-file variable, a one-line or multi-line helper, "
+      "and a helper of a helper (%d forms)" % len(ISACTIVE_FORMS), not missedE, missedE)
+false_alarmE = [f for f in NOT_ISACTIVE if hidden_isactive(f)]
+check("H E's detector does not count a readable isActive beside hidden fields, a readable helper, a comment or a comparison",
+      not false_alarmE, false_alarmE)
 
 print()
 print("UNVERIFIED IN GAME: the stand-in (tests/harness/world.lua, secret.lua) is a mock; the event orders and what is hidden when follow the "

@@ -58,6 +58,9 @@ def has_at(rep, where, *needles):
     return any(w == where and all(n in "%s %s" % (what, nums) for n in needles) for (w, what, nums, _f) in rep.fails)
 
 
+LOGGER_Q = "the run logger's question"   # (the name gate_common gives the run logger's question window in its checkpoints)
+
+
 def lst(d, key):
     """A list field of a checkpoint (an empty Lua table comes back from JSON as {})."""
     v = d.get(key)
@@ -105,10 +108,22 @@ def main():
     labels = [cp.get("label") for cp in dg.get("checkpoints") or [] if cp.get("open")]
     check(any("on its own" in str(l) for l in labels) and any("docked" in str(l) for l in labels),
           "her install: the checkpoints with the panel open (on its own, docked) name it as a window she opened (SD-99)", labels)
-    check(all(not lst(cp, "keys") and len(lst(cp, "winKeys")) == 3 for cp in dg.get("checkpoints") or [] if cp.get("open"))
+    # (round 11b final fix, test upkeep: spec section 7 risk 8) an open checkpoint is one of two kinds. A window SHE opened (the Calculator
+    # keypad, the Stat Calculator) may take keys, so its keys are kept apart (SD-99). The run logger's question is a XayaUI window she
+    # did not open: it shows by itself after the loading screen and takes the mouse only, never the keyboard (SD-122, V29), so all three
+    # keys are judged there as anywhere else (gate_common checkpoint(..., keysJudged)). It is told apart by the window the gate names.
+    def loggerq(cp):
+        return bool(cp.get("open")) and all(str(o.get("name", "")).startswith(LOGGER_Q) for o in cp.get("open") or [])
+    she = [cp for cp in dg.get("checkpoints") or [] if cp.get("open") and not loggerq(cp)]
+    check(she and all(not lst(cp, "keys") and len(lst(cp, "winKeys")) == 3 for cp in she)
           and all(len(lst(cp, "keys")) == 3 for cp in dg.get("checkpoints") or [] if not cp.get("open")),
-          "the keys pressed while a window she opened is open are kept apart (not judged, SD-99); at every other checkpoint all three "
-          "(PRINTSCREEN, W, SPACE) are judged", [(cp.get("label"), len(lst(cp, "keys")), len(lst(cp, "winKeys"))) for cp in dg.get("checkpoints") or []][:6])
+          "the keys pressed while a window she opened is open are kept apart (not judged, SD-99); at every checkpoint with no window "
+          "open all three (PRINTSCREEN, W, SPACE) are judged", [(cp.get("label"), len(lst(cp, "keys")), len(lst(cp, "winKeys"))) for cp in dg.get("checkpoints") or []][:8])
+    for d, v in ((dd, "default"), (dg, "debug")):
+        lq = [cp for cp in d.get("checkpoints") or [] if loggerq(cp)]
+        check(len(lq) == 1 and len(lst(lq[0], "keys")) == 3 and not lst(lq[0], "winKeys"),
+              "%s: while the run logger's question is open (a XayaUI window she did not open; mouse only) all three keys are judged, "
+              "none kept apart (SD-122, V29)" % v, [(cp.get("label"), len(lst(cp, "keys")), len(lst(cp, "winKeys"))) for cp in lq])
     closed_after = [cp.get("label") for cp in dg.get("checkpoints") or [] if str(cp.get("label", "")).startswith("after the") and not cp.get("open")]
     check(len(closed_after) >= 2, "her install: after each close a checkpoint judges everything closed again (keys, mouse, focus)", closed_after)
     for d, v in ((dd, "default"), (dg, "debug")):

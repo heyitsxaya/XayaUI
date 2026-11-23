@@ -25,9 +25,9 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
-## 2026-11-19 — Rules Fix Bundle 1
+## 2026-11-22 — Rules Fix Bundle 1
 
-### XayaUI 0.6.89
+### XayaUI 0.6.90
 
 **Install (read this first)**
 - Replace the XayaUI, XayaUI_Options, XayaUI_Rules, XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders as whole folders, and add the new XayaUI_Debug folder next to them. The rule editor moved from XayaUI_Rules to XayaUI_Options.
@@ -52,6 +52,14 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - To see what was saved, turn on Advanced Debugging, type /reload, then type /xui bug or /xui report. Errors saved while it was off are there too.
 - The chat lines for a /xui command whose part is not installed or did not respond, and for the settings window when it could not load, now say the error is saved and that /xui bug needs Advanced Debugging. Before, they pointed to /xui bug without saying that it needs Advanced Debugging (off by default).
   *Developers' notes: Not yet tested in game (QA B439, B443). The game writes saved data only at /reload, logout or a clean exit, so a game crash loses that session's entries. At most 50 are kept, newest first.*
+
+**Advanced debug logging (new)**
+- Added Advanced debug logging, a tick box under Settings > Debugging. It is on in this release only. Right after the loading screen into a dungeon, a Mythic+ key or a raid, a small window asks "Log this run for the XayaUI test?" with Yes and No. It never shows in combat: it waits until the fight is over.
+- Yes logs that run. No logs nothing, and it asks again at the next dungeon or raid. A /reload never asks.
+- It saves only counts and yes / no answers: how busy each pull was, how often and how long the game hid aura and cooldown data, the order of the game's combat, boss and key messages, and XayaUI's own CPU and memory from the game's meter. It never saves names, chat or spell names.
+- After 3 finished Mythic+ keys and 2 raid boss kills are logged, it stops asking and says once in chat which file to send Xaya: XayaUI_Debug.lua in your SavedVariables folder.
+- It works with Advanced Debugging off. Untick it to turn it off at once, with no /reload.
+  *Developers' notes: Not yet tested in game (QA B444 to B448). It is part of XayaUI Debug. With the box on and Advanced Debugging off, the game reads XayaUI Debug the first time you enter a dungeon or raid in a session, and only the logger runs. With the box off, none of it runs.*
 
 **Keyboard and mouse**
 - Fixed an issue where a XayaUI window first opened in combat could hold every key until combat ended, so the screenshot key, movement and abilities did not reach the game.
@@ -79,9 +87,10 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Timers in XayaUI, XayaUI Options and XayaUI Rules no longer make a new function each time they are set, so they leave less for the game to clean up.
   *Developers' notes: Not yet tested in game (QA B423, B424).*
 
-### Options 0.6.112
+### Options 0.6.113
 
 **Settings window**
+- Settings > Debugging has a new tick box, Advanced debug logging (see XayaUI above). Its hover text says what it does and that it is on by default in this release.
 - Errors the settings window catches and prints in chat (a page that could not be drawn, an export that failed) are now also saved for the bug report, with a code.
 - The Advanced Debugging switch's hover text now says that errors and warnings are saved whether or not it is on.
 - If the Rules tab cannot be set up, chat now says the error is saved and that /xui bug needs Advanced Debugging.
@@ -109,7 +118,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 **Recycle Bin**
 - Fixed an issue where the Recycle Bin page said deleted items are checked every 30 minutes. They are checked when you log in or out and when the page lists them.
 
-### Rules 0.7.4
+### Rules 0.7.5
 
 **Bug report**
 - Errors and warnings XayaUI Rules prints in chat (a rule or engine step that failed, a damaged backup, a glow action without its library) are now also saved for the bug report, with a code.
@@ -121,12 +130,18 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - The engine's speed guard is removed: the engine no longer draws only your current spec's displays, or stops drawing until a /reload, when the game's CPU meter reads high.
 - An aura or cooldown change now fully re-checks only the rules whose answer changed. Each kind of re-check runs at most 10 times a second.
 - Moving, runes, totems and loss of control (stuns, roots, silences) now re-check only the rules that read them.
-- Entering or leaving combat, a boss pull or its end, mounting and joining or leaving a group now re-check only the rules that change with it, instead of every rule. In the test stand-in, the frame at combat start or a boss pull now does a third to almost half less work.
+- Entering or leaving combat, a boss pull or its end, mounting and joining or leaving a group now re-check only the rules that change with it, instead of every rule. In the test stand-in's Mythic+ key fight, the frame at combat start or a boss pull now does about 45% less work.
 - Talents are read again only when the game reports a talent, loadout, spec, hero talent or PvP talent change. The once-a-second talent check is gone.
 - In combat, a hidden cooldown end and a hidden aura time on a display's text are now counted by the game itself.
 - A Range Check row on your focus or pet is re-checked five times a second only while you have that focus or pet, and on your mouseover only while you hover a unit. A hidden cooldown end the game gives no timer for is re-checked only while that cooldown runs.
 - A Cooldown Manager alert now re-checks only the rules that read that icon.
-  *Developers' notes: Not yet tested in game (QA B407, B410 to B416, B426, B427, B430, B433). Measured in the test stand-in, not in the game (instructions, not milliseconds): the costliest frame in a fight is 391,300 Lua instructions, against main's 586,200 in the same test fight, about a third less (391,300 / 586,200 = 66.8%).*
+  *Developers' notes: Not yet tested in game (QA B407, B410 to B416, B426, B427, B430, B433). Measured in the test stand-in, not in the game (instructions, not milliseconds), in its Mythic+ key fight with hidden aura and cooldown data: the costliest frame in a fight is 362,300 Lua instructions, against main's 653,400 in the same test fight, about 45% less (362,300 / 653,400 = 55.4%).*
+
+**Hidden data in keys and raids**
+- XayaUI Rules now copes with aura updates the game hides from addons in Mythic+ keys, raids and boss fights, also one it hides completely: it re-checks every rule for that unit, reads nothing in the update and shows no Lua error. Before, an update hidden completely could stop with a Lua error and leave rules showing old answers.
+- An aura update for your target or focus that hides which of the two it is for now re-checks the rules of both.
+- A Target Debuff trigger now treats an aura list the game hides as hidden, with no risk of a Lua error.
+  *Developers' notes: Not yet tested in game (QA B449). How the game hides an aura update is not known yet. The test stand-in plays all three guessed forms (a hidden value, a readable update with hidden fields, and one addons cannot read at all), and the run logger records which one the game uses.*
 
 **Displays**
 - Fades, flashes, the cooldown sweep, bar fills and the tenths countdown now redraw at most 30 times a second on each display, and only while something on it changes. A display with nothing changing does no work.
@@ -151,7 +166,7 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - Older XayaUI versions cannot read the new backups.
   *Developers' notes: Not yet tested in game (QA B408).*
 
-### Bonus Features 0.6.49
+### Bonus Features 0.6.50
 
 **Install (read this first)**
 - Replace both the XayaUI_Bonus and XayaUI_Bonus_StatCalculator folders.
@@ -176,7 +191,8 @@ again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 - /xui stats followed by a word it does not know now prints its help line. Before, it opened or closed the panel.
 - The AddOns list now describes XayaUI Bonus Features and its Stat Calculator correctly: the Stat Calculator loads the first time you open it, never at login.
 - Fixed an issue where the panel's close button sat 2 pixels outside the panel.
-  *Developers' notes: Not yet tested in game (QA B436, B440, B441, B442; docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). Each of its files now marks its own end, so a file that stopped is found even when another addon holds the game's error handler; the error itself may then not be saved. In the test stand-in, logging in with it on now uses 602.86 KB less Lua memory (8,326.61 - 7,723.75), and once it has been opened 1,684.57 KB stays until /reload (9,408.32 - 7,723.75).*
+- Fixed an issue where the Stat Calculator's text boxes let go of the keyboard each time you entered a dungeon or raid. They now let go only when combat, a boss encounter, a Mythic+ key or a PvP match starts.
+  *Developers' notes: Not yet tested in game (QA B436, B440, B441, B442, B450; docs/plans/STAT-CALCULATOR-MAIN-INGAME-CHECKS.md). Each of its files now marks its own end, so a file that stopped is found even when another addon holds the game's error handler; the error itself may then not be saved. In the test stand-in, logging in with it on now uses 602.86 KB less Lua memory (8,326.61 - 7,723.75), and once it has been opened 1,684.57 KB stays until /reload (9,408.32 - 7,723.75).*
 
 ## 2026-11-12 — Stat Calculator
 

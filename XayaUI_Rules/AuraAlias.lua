@@ -215,7 +215,10 @@ if CreateFrame then
     local f = CreateFrame("Frame")
     if f.RegisterUnitEvent then f:RegisterUnitEvent("UNIT_AURA", "player") else f:RegisterEvent("UNIT_AURA") end
     f:SetScript("OnEvent", function(_, _, unit, updateInfo)
-        if unit ~= "player" then return end
+        -- (round 11b, spec 2.2 / T14 variant U) the unitTarget can be hidden: comparing a hidden string raises the game's error, so a
+        -- hidden unit is never compared. The frame hears the player only (RegisterUnitEvent above), so a hidden unit is the player;
+        -- OnAura then stands down on its own while auras are restricted (Restricted), and reads no field of a hidden payload
+        if not issecret(unit) and unit ~= "player" then return end
         pcall(OnAura, updateInfo)
     end)
 end

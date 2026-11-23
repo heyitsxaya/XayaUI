@@ -28,7 +28,7 @@ garbage per event fails and one that does not passes):
            (round 8 repair 2) a pass an event handler runs itself on every event of a storm (30 a second) is a FAIL at the pass, one run
            on every 4th event (7.5 a second) is not, and the handlers themselves are not pace findings;
            two different passes (7.5 a second each) sharing one body are not P2 FAILs, and the body's 15 a second is a WARNING
-           (her rule is per path; whether 10/s bounds shared work is NEEDS_HER_DECISION); a timer chain every 3 frames (the stand-in runs
+           (her rule is per path: SD-78 "Per pass (Recommended)", cited by the WARNING since round 11b, SD-147); a timer chain every 3 frames (the stand-in runs
            C_Timer.After(0.09) at the next frame at or after 0.09 s: 0.1 s, 10 a second) is not a pace finding;
   memory   a reading above 34,747.6 KB x 1.15 = 39,959.7 KB at the end of a cycle is a FAIL; 39,959.7 KB itself is not;
   per event  an addon whose costliest fight frame is one instruction above its stored ad60a051 cap is a FAIL; at the cap it is not.
@@ -187,6 +187,8 @@ def play():
     if "tree" in inspect.getsource(GC.run_scenario):
         t = play_once(True)
         data["pace"], data["paceAny"], data["paceTree"] = t.get("pace"), t.get("paceAny"), True
+        # (round 11b, build spec 4.4.5) as the gate's result() does: the tree play also measures the stand-in's share
+        data["share"], data["shareCost"], data["shareFound"] = t.get("share"), t.get("shareCost"), t.get("shareFound")
     return data
 
 
@@ -322,7 +324,12 @@ def main():
               "pace: %s (two passes sharing one body, each 7.5 a second) is not a pace finding (her rule is per path)" % src[k])
     check(any(f[0] == "WARNING" and re.search(r"P2 work shared by several paths", f[2]) and
               re.search(r"%s 15 \(from 2 callbacks\)" % re.escape(src["P9"]), f[2]) for f in fs),
-          "pace: the shared body is reported (a WARNING, NEEDS_HER_DECISION) with its 15 a second and its 2 callbacks")
+          "pace: the shared body is reported (a WARNING) with its 15 a second and its 2 callbacks")
+    # (round 11b, SD-147) the WARNING cites her answer SD-78 "Per pass (Recommended)" and asks her nothing (no NEEDS_HER_DECISION)
+    shw = [f for f in fs if f[0] == "WARNING" and re.search(r"P2 work shared by several paths", f[2])]
+    check(bool(shw) and all("SD-78" in f[2] and "Per pass (Recommended)" in f[2] and "NEEDS_HER_DECISION" not in f[2] for f in shw),
+          "pace: the shared-work WARNING cites SD-78 \"Per pass (Recommended)\" and says no NEEDS_HER_DECISION (SD-147)",
+          "%s" % [f[2][-300:] for f in shw][:1])
     for k in ("P7", "P8"):
         pk = (data.get("pace") or {}).get(src[k]) or {}
         check(int(pk.get("most") or 0) <= 8 and not any(f[1].split(" ")[0] == src[k] and re.search(r"P2 ", f[2]) for f in fs),

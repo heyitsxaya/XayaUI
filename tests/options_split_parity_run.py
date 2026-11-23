@@ -188,6 +188,21 @@ d70722819b0f933f -> 5214ec2426f252c0 (235) and 20b4b7ad4c87cebe -> 3bb895f8859c7
 previous XayaUI_Options/Options.lua) and after differ in exactly 4 lines, `set.debug.bug.bugInfo` and `settings.debug.bug.bugInfo` in
 each variant: old "XayaUI keeps its own Lua errors (0 so far, 0 different) ...", new "XayaUI keeps its own errors and warnings (0 so
 far, 0 different) ..." (tests/fix_r11_error_record_run.py G4 / G4b). The values are the ones `--golden` writes on a copy of the tree.
+Updated on 2026-11-22 (bundle 1 round 11b, triage unit; logger handover). Every changed line was traced by three dumps before re-recording:
+round 11a's tree 18798861 (passes the old golden, 26/0), this tree's addon folders with 18798861's harness ("mix"), and this tree.
+(1) 18798861 -> mix differs in exactly 4 lines, the new toggle `set.debug.runLogger` and `settings.debug.runLogger` (name "Advanced
+debug logging", order 11.05; SD-123 / SD-149) in each variant: the only change of addon code. set/settings: one node inserted at index
+17, every other node equal (5214ec2426f252c0 -> 986774c91fed5c9f (236), 3bb895f8859c7af4 -> 50de2efdcbc5c959 (235); off-XayaUI_Bonus
+0551f587693a5588 -> 3e56e9c5196a683e (234), 233c8ad386b7f8db -> f0455e3b8fbb5c7f (233)). (2) mix -> this tree differs only in the
+"cooldowns" tab, 38 nodes per variant (76 diff lines), all from the stand-in becoming truer (hidden-data fight, spec section 7 risk 8),
+no addon code: (a) 6 `rule.status` lines read "cooldown unknown (cooldown hidden in combat, no estimate yet)" out of combat under the old
+stand-in, because its GetSpellCooldown had no isActive field (Conditions.lua reads cdActive == nil as hidden); the new stand-in answers
+isActive (NeverSecret, structures.md SpellCooldownInfo) and nothing is restricted out of combat (PRED:80-93), so they read "cooldown OK
+(single-charge)"; (b) 32 hint lines (`trigger.ruleCombat` 11, `cdCombat` 6, `buffCombat` 5, `cdmWarn` 10) are now shown, because the old
+stand-in answered GetSpellAuraSecrecy / GetSpellCooldownSecrecy 0 (NeverSecret) for every spell and the new one answers the game's
+default for an unknown spell, 2 (ContextuallySecret; spec section 2.2, PRED:27-31). These are the hints the addon already shows in game
+for such spells; no visible behaviour was chosen, so this is not spec F4's decision. cooldowns 4ce0abe5f2f4db45 -> 1a56a0b579a2f0fb
+(6700), off-XayaUI_Bonus 123e2c0caecfc428 -> c9f6329c22a62c77 (6700). The values are the ones `--golden` writes on this tree.
 The golden needs the API index (XUI_API_INDEX, default tests/harness/api_index.json, not in git): without it the dump differs (no Enum.SecrecyLevel).
 Run: python3 tests/options_split_parity_run.py"""
 import difflib, hashlib, json, os, re, sys

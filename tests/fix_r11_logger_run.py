@@ -123,8 +123,11 @@ end
 local PAYLOAD_A = W.MarkSecret(newproxy(true))
 getmetatable(PAYLOAD_A).__index = function() error("attempt to index a secret value") end
 local PAYLOAD_C = setmetatable({ __forbidden = true }, { __index = function() error("attempted to index a forbidden table") end })
-local function aura(unit, payload) W.fire("UNIT_AURA", unit or "player", payload or { isFullUpdate = false }) end
-local function settle() W.tick(0.5, 6) end
+local hidCount   -- (Y2: a number while the key hides auras, from its start to its completion: the UNIT_AURA events heard then)
+local function aura(unit, payload) if hidCount then hidCount = hidCount + 1 end; W.fire("UNIT_AURA", unit or "player", payload or { isFullUpdate = false }) end
+-- (round 11b final fix) a moment later an aura event, as the game sends after a fight ends (combat buffs and debuffs fall off): the
+-- logger arms the settled reading's timer from the first UNIT_AURA after the combat-end frame (none is armed in that frame, V33)
+local function settle() W.tick(1 / 30, 1); aura("player"); W.tick(0.5, 6) end
 local DUN, RAID = { name = "Gate Dungeon Name", kind = "party", diff = 8, size = 5, id = 765432 }, { name = "Gate Raid Name", kind = "raid", diff = 16, size = 20, id = 765433 }
 local function enter(inst, isReload)
   W.fire("LOADING_SCREEN_ENABLED"); W.fire("PLAYER_LEAVING_WORLD")
@@ -153,7 +156,9 @@ local function combatEnd() W.combat = false; RS(0, 0); W.affecting = false; W.fi
 local function pull(boss, kill)
   combatStart()
   for i = 1, 30 do aura("player", (i % 3 == 0) and PAYLOAD_A or nil); aura("target"); W.tick(1 / 30, 1) end
-  settle()
+  -- (round 11b final fix) the fight goes on with its aura events, as a fight does: the settled reading in the fight and the probe's steps
+  -- are read by the first UNIT_AURA due (no timer in a fight frame, V33); before, this was settle(): 3 s with no event at all in combat
+  for i = 1, 75 do aura("player", (i % 4 == 0) and PAYLOAD_A or nil); W.tick(1 / 30, 1) end
   if boss then
     RS(1, 1); W.fire("ENCOUNTER_START", 987654, "Test Boss Name", 8, 5)
     for i = 1, 30 do aura("player", (i % 5 == 0) and PAYLOAD_C or nil); W.tick(1 / 30, 1) end
@@ -345,26 +350,46 @@ if phase == "fresh" then
     not chainShown and chainWait == true and shown() and st().pending == true and st().arriveWait == false)
   clickNo(); leave()
   -- Y: a logged key
+  -- (round 11b final fix) how the logger's frame registers UNIT_AURA from here on (the stand-in's RegisterUnitEvent hears every unit,
+  -- so what it was asked for is noted)
+  local uaReg = {}
+  do
+    local f = st().frame
+    if f then
+      local ru, re = f.RegisterUnitEvent, f.RegisterEvent
+      local inner = false   -- (the stand-in's RegisterUnitEvent calls RegisterEvent itself)
+      f.RegisterUnitEvent = function(self, e, ...)
+        if e == "UNIT_AURA" then uaReg[#uaReg + 1] = "unit " .. table.concat({ ... }, ",") end
+        inner = true; local r = ru(self, e, ...); inner = false; return r
+      end
+      f.RegisterEvent = function(self, e, ...) if e == "UNIT_AURA" and not inner then uaReg[#uaReg + 1] = "every unit" end; return re(self, e, ...) end
+    end
+  end
   enter(DUN)
   check("Y0 another dungeon visit after No elsewhere: asked again", shown())
+  check("Y0b ... the logger hears UNIT_AURA for the player only (RegisterUnitEvent with \"player\", as the spec's section 8 step 5 reads it; in a key the group's and the nameplates' aura messages far outnumber hers)",
+    #uaReg >= 1 and table.concat(uaReg, "; ") == string.rep("unit player", #uaReg, "; "), table.concat(uaReg, "; "))
   clickYes(); W.tick(0.1, 2)
   local r = lastRun()
   check("Y1 Yes: the window closes and one run is kept, open, from the moment she arrived (its arrival line first)",
     not shown() and nruns() == 1 and r and r.open == true and r.kind == "party" and r.ev[1] and r.ev[1]:match("^%d+ AR ") ~= nil, r and r.ev and r.ev[1])
+  hidCount = 0   -- (startKey turns the restriction on before its first aura; completeKey turns it off after the last one)
   startKey()
   pull(false)
   W.tick(0.5, 8)   -- (between pulls in a started key)
   pull(true, true)
   completeKey()
+  local heardHidden = hidCount
+  hidCount = nil
   leave()
   r = db().runs[1]
-  check("Y2 the key's record: party, key started and finished, one boss killed, 2 pulls, UNIT_AURA heard and some while hidden, seconds hidden counted (auras hidden once, from the key's start)",
+  check("Y2 the key's record: party, key started and finished, one boss killed, 2 pulls, UNIT_AURA heard and those fired while the key hid auras counted as heard hidden (all of them, or all but the one whose own job read the hidden state: the logger reads it when an event comes, as before this round), seconds hidden counted (auras hidden once, from the key's start)",
     r.kind == "party" and r.diff == 8 and r.size == 5 and r.key == 1 and r.keyDone == 1 and r.kills == 1 and r.pulls == 2 and r.ua > 0
-      and r.uaHid > 0 and r.uaHid < r.ua and r.hidA > 0 and r.flips == 1,
-    ("kind %s key %s done %s kills %s pulls %s ua %s uaHid %s hidA %s flips %s"):format(tostring(r.kind), tostring(r.key), tostring(r.keyDone), tostring(r.kills), tostring(r.pulls), tostring(r.ua), tostring(r.uaHid), tostring(r.hidA), tostring(r.flips)))
+      and r.uaHid > 0 and r.uaHid < r.ua and r.uaHid <= heardHidden and r.uaHid >= heardHidden - 1 and r.hidA > 0 and r.flips == 1,
+    ("kind %s key %s done %s kills %s pulls %s ua %s uaHid %s (heard while hidden %s) hidA %s flips %s"):format(tostring(r.kind), tostring(r.key), tostring(r.keyDone), tostring(r.kills), tostring(r.pulls), tostring(r.ua), tostring(r.uaHid), tostring(heardHidden), tostring(r.hidA), tostring(r.flips)))
   local okOrder, missing = evOrder(r, { "AR", "Y", "RS", "CS", "RD", "RS", "RE", "ST", "RD", "RS", "ES", "EE", "RS", "RE", "CC", "RS" })
   check("Y3 section 8 step 1, the event order: arrival, Yes, then the key's restriction and start, each pull's combat and restriction events, the boss, the key's completion, each line with the lockdown and hidden state",
-    okOrder and evText(r):find(" CS %- %- L0 A1 C1 S00222 X%?%?%?%?%?") ~= nil and evText(r):find(" RS 2 1 L0 A0 C0 S00122 X00000", 1, true) ~= nil, tostring(missing) .. " / " .. evText(r):sub(1, 900))
+    okOrder and evText(r):find(" CS %- %- L0 A1 C1 S00222 X%?%?%?%?%?") ~= nil and evText(r):find(" RS 2 1 L0 A0 C0 S00122 X??0??", 1, true) ~= nil, tostring(missing) .. " / " .. evText(r):sub(1, 900))
   check("Y4 open question 3: during ADDON_RESTRICTION_STATE_CHANGED it records whether IsAddOnRestrictionActive answered true (here false, the literal reading)",
     (r.disp["type 0 state 1 active 0"] or 0) >= 2 and (r.disp["type 2 state 1 active 0"] or 0) == 1, joined(r.disp))
   local kb = 0
@@ -502,6 +527,7 @@ elseif phase == "count" then
   local inFight = count(since(lines0), "XayaUI_Debug.lua")
   combatEnd(); W.tick(0.1, 2)
   local atEnd = count(since(lines0), "XayaUI_Debug.lua")
+  aura("player")   -- (round 11b final fix: the first aura event after the fight arms the settled reading's timer, as in settle())
   W.tick(0.5, 6)   -- (the settled reading, out of combat)
   local out = since(lines0)
   local line
@@ -653,6 +679,22 @@ elseif phase == "nextrelease" then
   check("B5 ... while a box she ticked herself stays on", boxOn())
   CueRulesDB.ui.runLogger = nil
 elseif phase == "cost" then
+  -- (round 11b final fix) every timer RunLogger.lua arms, seen: the ones armed in a fight (combat start up to, not including, the
+  -- combat-end frame) and the ones a RunLogger timer callback arms itself (a chain: the gate's P2 judged the settled reading's and the
+  -- probe's chains, RunLogger.lua:916 and :498 before the fix)
+  local LT = { fight = 0, chain = 0, inCb = false, all = 0 }
+  local origAfter = C_Timer.After
+  C_Timer.After = function(d, fn)
+    local i = debug.getinfo(2, "S")
+    if i and i.source == LOGGER_SRC then
+      LT.all = LT.all + 1
+      if W.affecting or W.now == LT.endAt then LT.fight = LT.fight + 1 end
+      if LT.inCb then LT.chain = LT.chain + 1 end
+      local f = fn
+      fn = function(...) LT.inCb = true; local ok, e = pcall(f, ...); LT.inCb = false; if not ok then error(e, 0) end end
+    end
+    return origAfter(d, fn)
+  end
   enter(DUN); clickYes(); W.tick(0.1, 2); startKey(); W.tick(0.5, 6)
   local per = billed(function() for i = 1, 300 do aura("player"); aura("target"); aura("player", PAYLOAD_A); W.tick(1 / 30, 1) end end)
   NUM.uaPer = per / 900
@@ -664,7 +706,7 @@ elseif phase == "cost" then
   end
   NUM.frame = worst
   NUM.start = billed(function() combatStart(); aura("player"); aura("target"); W.tick(1 / 30, 1) end)
-  -- the fight's frames after the start (the settled reading in the fight and the probe's three steps fall in them), each billed alone
+  -- the fight's frames after the start (the settled reading in the fight and the probe's five steps fall in them, read by the aura events), each billed alone
   local fw = 0
   for i = 1, 120 do
     local b = billed(function() aura("player"); aura("target"); aura("player", PAYLOAD_A); W.tick(1 / 30, 1) end)
@@ -673,9 +715,11 @@ elseif phase == "cost" then
   NUM.fightFrame = fw
   NUM.bossPull = billed(function() RS(1, 1); W.fire("ENCOUNTER_START", 987654, "Test Boss Name", 8, 5); W.tick(1 / 30, 1) end)
   NUM.bossKill = billed(function() W.fire("ENCOUNTER_END", 987654, "Test Boss Name", 8, 5, 1, {}); RS(1, 0); W.tick(1 / 30, 1) end)
+  LT.endAt = W.now   -- (the combat-end frame: no timer either, V33; the first aura event after it arms the settled reading's)
   NUM["end"] = billed(function() combatEnd(); W.tick(1 / 30, 1) end)
   local ow, ot = 0, 0
-  for i = 1, 120 do local b = billed(function() W.tick(1 / 30, 1) end); ot = ot + b; if b > ow then ow = b end end
+  -- (round 11b final fix) an aura event a frame after combat end arms the settled reading's timer (settle() above)
+  for i = 1, 120 do local b = billed(function() if i == 2 then aura("player") end; W.tick(1 / 30, 1) end); ot = ot + b; if b > ow then ow = b end end
   NUM.settleAfter = ow
   NUM.afterTotal = ot
   check(("P1 cost while logging (instructions billed to RunLogger.lua, stand-in): UNIT_AURA %.1f each; worst storm frame %d; combat start %d; boss pull %d; boss kill %d; combat end %d: each at most XayaUI_Debug's per-event cap 600 (SD-81)"):format(
@@ -683,10 +727,15 @@ elseif phase == "cost" then
     NUM.frame <= 600 and NUM.start <= 600 and NUM.bossPull <= 600 and NUM.bossKill <= 600 and NUM["end"] <= 600 and NUM.uaPer > 0 and NUM.uaPer <= 60,
     "over the cap")
   local pr = joined(lastRun().probe)
-  check(("P2 every fight frame after the start, with the settled reading and the probe's three steps in them, at most 600: costliest %d (stand-in)"):format(NUM.fightFrame),
+  check(("P2 every fight frame after the start, with the settled reading and the probe's five steps in them, at most 600: costliest %d (stand-in)"):format(NUM.fightFrame),
     NUM.fightFrame <= 600 and NUM.fightFrame > NUM.frame and pr:find("dur hidden", 1, true) ~= nil, pr)
   check(("P3 out of combat, the settled reading after the pull makes the text, the pull line and the meters in one frame: %d instructions (%d over the next 4 s); outside the fight frames the cap judges"):format(NUM.settleAfter, NUM.afterTotal),
     NUM.settleAfter > 0 and (lastRun().pull[1] or ""):find("cpu ", 1, true) ~= nil)
+  C_Timer.After = origAfter
+  check(("P4 no timer is armed by RunLogger.lua in a fight frame (combat start to combat end, a boss pull, the boss down and the combat-end frame included): %d armed there (%d in the whole play); the settled reading in the fight and the probe's steps come from UNIT_AURA (round 11b final fix)"):format(LT.fight, LT.all),
+    LT.fight == 0 and LT.all > 0 and lastRun().probe and joined(lastRun().probe):find("dur hidden", 1, true) ~= nil, LT.fight)
+  check(("P5 no RunLogger timer callback arms another timer (no chain, the gate's P2): %d armed from inside one"):format(LT.chain),
+    LT.chain == 0, LT.chain)
 elseif phase == "bounds" then
   enter(DUN); clickYes(); W.tick(0.1, 2); startKey()
   local s = svc()
@@ -710,7 +759,9 @@ elseif phase == "error" then
   local n0 = #W.printed
   local ES = ns.EngineStats   -- (XayaUI Rules' engine keeps its own reference: only the logger reads this name, at a pull's start)
   ns.EngineStats = setmetatable({}, { __index = function() error("a test error in the engine counters' reader, on purpose") end })
-  combatStart(); W.tick(0.5, 6)
+  -- (round 11b final fix: the pull's starting engine counts are read by the first aura-event job after combat start, PullFill, no longer
+  -- in the combat-start frame; the fight's aura events reach it)
+  combatStart(); for _ = 1, 10 do aura("player"); W.tick(1 / 30, 1) end; W.tick(0.5, 6)
   ns.EngineStats = ES
   local got = since(n0)
   local e = CueRulesDB.errorLog and CueRulesDB.errorLog[1]

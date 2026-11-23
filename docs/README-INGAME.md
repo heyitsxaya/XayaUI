@@ -35,6 +35,7 @@ A feature you switch off costs nothing: it runs no timers, listens to no events 
 - **Calculator.** A small calculator window, and sums in chat: `/xui calc 23,249 / 3,472`. Bonus Features > Calculator (on unless you switch it off).
 - **Themes.** Colors and fonts for every XayaUI window. Settings > UI Options > Theme.
 - **Debugging.** Advanced Debugging (off by default) loads the debug tools at the next login or /reload and shows XayaUI's own Lua errors with its messages. XayaUI saves its own errors and warnings either way (never its ordinary messages); `/xui bug` lists them. While it is on, every login and /reload prints one chat line saying so. Settings > Debugging.
+- **Advanced debug logging.** On in this release, with or without Advanced Debugging: after the loading screen into a dungeon, Mythic+ key or raid, it asks whether to log that run for the XayaUI test (counts only, never names or chat). It stops after 3 finished keys and 2 raid bosses and tells you which file to send. Untick it to turn it off. Settings > Debugging.
 
 ## Slash commands
 

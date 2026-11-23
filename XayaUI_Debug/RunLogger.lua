@@ -47,9 +47,11 @@
 -- cannot be started in combat lockdown; a start in lockdown is counted (cs) without the split.
 --
 -- WHAT IT SAVES (XayaUI_Debug.lua in SavedVariables, XayaUIRunLogDB; nothing else is written): counts, yes / no and whole numbers only.
--- NEVER names (no character, realm, dungeon, boss or spell name), chat, GUIDs or spell names; no map or encounter ID either. Per run:
+-- NEVER names (no character, realm, dungeon, boss or spell name), chat, GUIDs or spell names; no map or encounter ID. The one ID kept
+-- is the instance ID of a run still open (inst: GetInstanceInfo's instanceID, the dungeon's, so a /reload or a re-entry continues the
+-- same run); it is dropped when the run closes, so a closed run holds counts only. Per run:
 --   kind ("party" | "raid"), difficulty ID, group size, key (0/1), key finished (0/1), bosses killed, wipes, length (s), pulls,
---   UNIT_AURA events heard (and how many while auras were hidden), seconds auras / cooldowns were hidden, times auras became hidden,
+--   the player's UNIT_AURA events heard (and how many while auras were hidden), seconds auras / cooldowns were hidden, times auras became hidden,
 --   t10 (length in tenths, for a resume) / leaves / reentries / reloads / awayS (seconds away) / cs (key starts) / cr (key resets) / split (1: opened by a new key in the same
 --   instance); while open only: open, inst (the instance ID, dropped at the close), seen (wall-clock seconds), away (1 while away)
 --   ev:   the order of the restriction, combat, encounter, key and loading-screen events (spec section 8 step 1, open questions 1-3), each
@@ -60,7 +62,8 @@
 --         lockdown, a loading screen inside a run: steps 2, 3, 4, 9)
 --   shape: the UNIT_AURA payload's shape (step 5): sampled after each state change, counted by signature
 --   probe: once per pull, in combat while cooldowns are hidden: the hidden-value operations on the global cooldown's duration, the
---         duration object's readers and the aura instance ID read (steps 6, 7, 8), each ok (1) or error (0)
+--         duration object's readers and the aura instance ID read (steps 6, 7, 8), each ok (1) or error (0); for the readers hidden (1),
+--         readable (0) or error (e)
 --   pull: one line per pull: length, UNIT_AURA count and the most in one second, seconds hidden, boss, the engine's pass counts
 --         (XayaUI Rules' ns.EngineStats), XayaUI's CPU (C_AddOnProfiler) and memory (GetAddOnMemoryUsage) per addon after the pull, and
 --         how many errors XayaUI saved during it
@@ -73,14 +76,24 @@
 -- event or timer; after "No", only the loading-screen event, which fires at loading screens only; while away from a run, the start of a
 -- loading screen too, and a restriction event only between that start and its PLAYER_ENTERING_WORLD). While a run is open, every fight
 -- frame stays small (technical choice, SD-145): an event at a state change stores its numbers raw (Raw: the time, a code and the hidden
--- state packed into one number; no string is made); UNIT_AURA adds to counters and reads at most one payload per frame for the first
--- SHAPE_SAMPLES frames after a change (packed into one number too); the once-per-pull probe runs in three small steps half a second
--- apart. Everything that makes text (the ev lines, the count tables, the pull line with the CPU and memory meters) runs out of combat:
--- at the settled reading SETTLE_S after the last change once combat is over, when a run closes, and at the logout. One settle timer at a
--- time, one probe timer at a time and one after-combat timer at a time (C_Timer.After with file-level functions: no function is made
--- per call, SD-90).
+-- state packed into one number; no string is made; a restriction event reads IsAddOnRestrictionActive for its own type only, the
+-- settled reading all five); UNIT_AURA adds to counters and does at most one job per frame (Ua job, round 11b final fix): the fight's
+-- settled reading when due, else a step of the once-per-pull probe when due (five small steps 0.2 s apart; its answers packed into one
+-- number), else one payload read for the first SHAPE_SAMPLES frames after a change (packed too). No timer is armed in a fight frame (in
+-- the gate's key fight each arming bills the frame a timer record; before the final fix the settled reading and the probe ran on timer
+-- chains, judged P2 by the gate, and combat start, a boss pull and the boss down cost XayaUI_Debug up to 1,300 instructions, over its
+-- 600, SD-81); out of a fight the settled reading's timer is a one-shot, at most one per frame that changed something, and no timer
+-- callback arms another (C_Timer.After with file-level functions: no function is made per call, SD-90). UNIT_AURA is heard for the
+-- player only (RegisterUnitEvent, widgets.md; as the spec's section 8 step 5 reads it): in a key the target's, the group's and the
+-- nameplates' aura messages far outnumber the player's, and each one heard is a handler run in a fight frame (round 11b final fix: the
+-- gate's key fight fires the player's and the target's in every fight frame). INFERENCE: a fight sends the player's UNIT_AURA every few
+-- frames (her own buffs and their updates); a fight that sends none after its settled reading is due gets no
+-- settled reading in the fight and no probe (the reading after combat still comes, from its timer). Everything that makes text (the ev
+-- lines, the count tables, the probe line, the pull line with the CPU and memory meters) runs out of combat: at the settled reading
+-- SETTLE_S after the last change once combat is over, when a run closes, and at the logout. One after-combat timer at a time.
 -- tests/fix_r11_logger_run.py measures the instructions each moment costs (combat start, the boss pull, the boss kill, combat end, the
--- costliest storm frame, the probe steps) and holds each under 600.
+-- costliest storm frame, the fight frames with the settled reading and the probe steps) and holds each under 600; the gate
+-- (tests/gate_performance_run.py) holds every fight frame of the key fight to 600 (SD-81).
 -- ERRORS. A handler that fails stops the logger for the session (every event let go, the window hidden) and prints one line through the
 -- SD-139 helper (ns.PrintError, XUI-E019: saved in the error record); nothing else of XayaUI is touched. /reload starts it again.
 --
@@ -120,7 +133,6 @@ local SHAPE_SAMPLES = 8        -- UNIT_AURA payloads read after each state chang
 local SETTLE_S = 2             -- seconds after the last state change before the "settled" reading
 local RESUME_S = 900           -- a run (or a "No") belongs to the same visit when its instance is re-entered within this many seconds
 local GCD_SPELL = 61304
-local RESTRICT_TYPES = { 0, 1, 2, 4, 5 }
 -- the XayaUI addons whose CPU and memory are read after a pull (short names keep the line small)
 local METER_ADDONS = { { "XayaUI", "core" }, { "XayaUI_Rules", "rules" }, { "XayaUI_Options", "opt" }, { "XayaUI_Debug", "dbg" },
     { "XayaUI_Bonus", "bonus" }, { "XayaUI_Bonus_StatCalculator", "calc" } }
@@ -156,9 +168,10 @@ local arriveLogin, arriveReload   -- its two arguments
 local afterArmed = false          -- the one 0-second timer after PLAYER_REGEN_ENABLED is armed
 local t0 = 0             -- GetTime() at arrival (run time base)
 -- counters kept in locals on the hot path, written into the run at Flush
-local uaN, uaHidN, uaBase, uaHidBase = 0, 0, 0, 0
+local uaN, uaHidN, uaBase, uaHidBase = 0, 0, 0, 0   -- (uaHidN, the events heard while auras were hidden, is kept by the hide and unhide
+                                                   -- moments, never per event: -uaN at a hide, +uaN at the unhide; Flush adds an open one)
 local secEnd, secN, peak = 0, 0, 0
-local shapeLeft, shapeT = 0, nil
+local shapeLeft = 0
 local shapeN = {}                    -- [packed payload signature] = count, turned into run.shape at Drain
 local hidA, hidC = false, false      -- auras / cooldowns hidden now
 local hidASince, hidCSince = 0, 0
@@ -166,7 +179,17 @@ local hidAAcc, hidCAcc = 0, 0        -- seconds hidden so far this session (adde
 local hidABase, hidCBase = 0, 0
 local inEnc = false
 local pull                           -- the pull in progress or waiting for its meters
-local settleDue, settleArmed = 0, false
+-- (round 11b final fix) the settled reading: due at settleDue (nil: none waits). Out of combat a one-shot timer reads it (at most one
+-- armed per frame that changed something: ArmSettle); in a fight no timer is armed (each costs a fight frame a timer record, V33), and
+-- the first UNIT_AURA at or after settleDue reads it (fightSettle). In the combat-end frame (capped too) the timer is not armed either:
+-- the first UNIT_AURA of a later frame arms it (armWanted). No timer callback arms another timer (P2: no chain).
+local settleDue, armedAt = nil, nil
+local fighting = false               -- between PLAYER_REGEN_DISABLED and PLAYER_REGEN_ENABLED of a run
+local endT                           -- GetTime() of the last combat-end frame (PLAYER_REGEN_ENABLED)
+local fightSettle, armWanted = false, false
+local jobT                           -- the frame of the last UNIT_AURA job (at most one job per frame beyond the counters)
+local jobs = false                   -- a UNIT_AURA job may be waiting (UaJob clears it when none is)
+local jobAfter = 0                   -- the UNIT_AURA count after which jobs may run again (a change's frame and the events right after it run none)
 local errBase                        -- [code] = count when the run started
 local errSeen = 0                    -- errors XayaUI saved during the run, as of the last out-of-combat reading
 -- the raw event buffer: numbers only, turned into ev lines at Drain (out of combat)
@@ -181,11 +204,6 @@ for i, c in ipairs(CODES) do C_[c] = i end
 -------------------------------------------------------------------------------
 -- Small readers (each safe: a missing API reads "?")
 -------------------------------------------------------------------------------
-local function B(v)   -- a boolean (or nil) as one character; a hidden value as "s"
-    if v == nil then return "-" end
-    if issecret(v) then return "s" end
-    return v and "1" or "0"
-end
 local function Arg(v)   -- an event argument: only booleans and whole numbers are kept, never a string
     local t = type(v)
     if v == nil then return "-" end
@@ -224,33 +242,90 @@ local function Tri(v) if v == nil or issecret(v) then return 2 end return v and 
 -- The game functions the fight-frame path calls, looked up once when a run starts (Bind): no table lookup per event. nil when this
 -- client has no such function (the part it answers then reads "?").
 local fLock, fSA, fSC, fRS, fRA
+local stS = nil       -- the five restriction states as last read, packed (nil: to be read again; Pack below)
+local acOK, baseP     -- (Pack below)
+local stale = false   -- (Pack below: false, or the restriction type read at a restriction event (ALLX: several), to be read again by the next UNIT_AURA frame)
 local function BindApi()
     local S, R = C_Secrets, C_RestrictedActions
     fLock = InCombatLockdown
     fSA, fSC = S and S.ShouldAurasBeSecret, S and S.ShouldCooldownsBeSecret
     fRS, fRA = R and R.GetAddOnRestrictionState, R and R.IsAddOnRestrictionActive
+    stS, acOK, baseP, stale = nil, false, nil, false   -- (Pack reads them again)
 end
 -- The hidden state packed into one whole number (no string, no table: it runs at every state-change event, in fights too):
 -- ((L * 3 + A) * 3 + C) * 1024 + S) * 243 + X, where L / A / C are lockdown, auras hidden, cooldowns hidden (0 no, 1 yes, 2 unknown),
 -- S the states of types 0, 1, 2, 4, 5 in base 4 (0 Inactive, 1 Activating, 2 Active, 3 unknown) and X their IsAddOnRestrictionActive
--- answers in base 3 (0, 1, 2 unknown). X is read only when withX is true (a restriction event, whose dispatch is what open question 3
--- asks about, and the settled readings); else it reads unknown. Decoded into "L0 A1 C1 S00202 X00101" by StateText.
--- The five functions are documented to return a plain boolean or enum number (api.json: no secret-return flag), so they are read as
--- plain values here; were one to return a hidden value, the test of it would raise an error and the logger would stop (svc.Fail), never
--- guess.
-local pa, pc = 2, 2   -- the auras / cooldowns digits of the last Pack (Recompute reads them instead of asking the game again)
-local function Pack(withX)
-    local L = (fLock and fLock()) and 1 or 0
-    local a = fSA and (fSA() and 1 or 0) or 2
-    local c = fSC and (fSC() and 1 or 0) or 2
-    pa, pc = a, c
-    local st = 1023
-    if fRS then st = (fRS(0) or 3) + 4 * (fRS(1) or 3) + 16 * (fRS(2) or 3) + 64 * (fRS(4) or 3) + 256 * (fRS(5) or 3) end
-    local x = 242
-    if withX and fRA then
-        x = (fRA(0) and 1 or 0) + 3 * (fRA(1) and 1 or 0) + 9 * (fRA(2) and 1 or 0) + 27 * (fRA(4) and 1 or 0) + 81 * (fRA(5) and 1 or 0)
+-- answers in base 3 (0, 1, 2 unknown). Decoded into "L0 A1 C1 S00202 X00101" by StateText. L is read at every event. xt says what else:
+--   ALLX (the settled readings, an arrival, a resume): A, C, every S and every X, read now;
+--   XONLY (the fight's settled reading): every X read now; A, C and S as last read (the refresh job read them in an earlier frame);
+--   a restriction type number (a restriction event of that type): that type's S and X read now (its dispatch is what open question 3
+--     asks about; Drain's disp count reads that type only), out of a fight A and C too; the other S as last read, the other X unknown;
+--   nil (every other event): A, C and S as last read, X unknown.
+-- (round 11b final fix, V33: every event read A, C and all five S, and a restriction event all five X, in fight frames; in the gate's
+-- key fight combat start, a boss pull and the boss down cost XayaUI_Debug up to 1,300 instructions, over its 600, SD-81.) "As last read"
+-- is kept packed (baseP, from pa, pc, stS). It is exact between restriction events: auras and cooldowns are hidden, and a restriction's
+-- state changes, only as a restriction changes, which sends its event (INFERENCE from events.md, ADDON_RESTRICTION_STATE_CHANGED (type,
+-- state), and C_Secrets' ShouldAurasBeSecret / ShouldCooldownsBeSecret). The moment right after one (the stand-in's Activating becomes
+-- Active, and the auras hide, right after the dispatch, tests/harness/world.lua) is read again: out of a fight by the next event (it
+-- reads A, C and all five S); in a fight by the next UNIT_AURA frame (UaJob: stale), so a fight frame never reads them twice, and an
+-- event after a restriction event in the same fight frame shows the state that event read. The functions are documented to return a
+-- plain boolean or enum number (api.json: no secret-return flag), so they are read as plain values here; were one to return a hidden
+-- value, the test of it would raise an error and the logger would stop (svc.Fail), never guess.
+local ALLX = -1
+local X_DIV = { [0] = 1, 3, 9, nil, 27, 81 }
+local S_DIV = { [0] = 1, 4, 16, nil, 64, 256 }
+local pa, pc = 2, 2   -- the auras / cooldowns digits as last read (Recompute reads them instead of asking the game again)
+acOK = false          -- pa / pc are good to reuse (dropped at every restriction event)
+local function ReadS()
+    if not fRS then return 1023 end
+    return (fRS(0) or 3) + 4 * (fRS(1) or 3) + 16 * (fRS(2) or 3) + 64 * (fRS(4) or 3) + 256 * (fRS(5) or 3)
+end
+local acNew = false   -- A / C were read since the last Recompute (Transition reads it)
+-- baseP: the packed state with L 0 and every X unknown, made from pa, pc and stS (nil: made again when needed)
+local function ReadAC()
+    pa = fSA and (fSA() and 1 or 0) or 2
+    pc = fSC and (fSC() and 1 or 0) or 2
+    acOK, acNew, baseP = true, true, nil
+end
+local function Base()
+    if not acOK then ReadAC() end
+    if stS == nil then stS = ReadS() end
+    baseP = ((pa * 3 + pc) * 1024 + stS) * 243 + 242
+    return baseP
+end
+local XONLY = -2      -- (the fight's settled reading: every X read now; A, C and S as last read, the refresh job having just read them)
+local LMUL = 3 * 3 * 1024 * 243   -- (the lockdown digit's weight)
+local function Pack(xt, sv)   -- sv: a restriction event's own state argument (its type's S then comes from the event, not a read)
+    local L = (fLock and fLock()) and LMUL or 0
+    if xt == nil then return (baseP or Base()) + L end   -- (every event but a restriction event and a full reading: L read now)
+    if xt >= 0 then
+        -- a restriction event: that type's S and X read now; out of a fight A and C too (in a fight the next UNIT_AURA frame does). The
+        -- state read is kept (stS, baseP) for the events after it in this frame, and marked stale: the next UNIT_AURA frame reads A, C
+        -- and all five S again (UaJob), so the moment right after the dispatch is read too
+        if not fighting then ReadAC() end
+        local p, d = baseP or Base(), S_DIV[xt]
+        stale, jobs = (stale and stale ~= xt) and ALLX or xt, true   -- (the type to read again; two different types: all five)
+        if d then
+            -- (the event's state argument is that type's state: documented plain, events.md; read only when it is not a number)
+            local now = (type(sv) == "number" and sv >= 0 and sv <= 2) and sv or (fRS and fRS(xt))
+            if now then
+                local dS = 243 * d * (now - floor(stS / d) % 4)
+                p = p + dS
+                baseP, stS = p, stS + dS / 243
+            end
+            if fRA then p = p - X_DIV[xt] * (fRA(xt) and 1 or 2) end   -- (242: every digit 2 unknown; that type's digit 2 -> 1 or 0)
+        end
+        -- (out of a fight, frames are not capped: an event after this one in the same frame reads A, C and S again, as they are after the
+        -- dispatch; in a fight it takes them as read here, and the next UNIT_AURA frame reads them again)
+        if not fighting then stS, acOK, baseP = nil, false, nil end
+        return p + L
     end
-    return (((L * 3 + a) * 3 + c) * 1024 + st) * 243 + x
+    if xt == ALLX then ReadAC(); stS, stale = ReadS(), false end
+    local p = baseP or Base()
+    if fRA then
+        p = p - 242 + (fRA(0) and 1 or 0) + 3 * (fRA(1) and 1 or 0) + 9 * (fRA(2) and 1 or 0) + 27 * (fRA(4) and 1 or 0) + 81 * (fRA(5) and 1 or 0)
+    end
+    return p + L
 end
 local TRI_CH, ST_CH = { [0] = "0", "1", "?" }, { [0] = "0", "1", "2", "?" }
 local function StateText(p)
@@ -265,7 +340,6 @@ local function StateText(p)
         TRI_CH[x0], TRI_CH[x1], TRI_CH[x2], TRI_CH[x4], TRI_CH[x5]), x, L
 end
 -- the "active" answer for one type out of a packed X
-local X_DIV = { [0] = 1, 3, 9, nil, 27, 81 }
 local function ActiveOf(x, t) local d = X_DIV[t]; if not d then return "?" end return TRI_CH[floor(x / d) % 3] end
 local function InGroupInstance()
     if not IsInInstance then return false end
@@ -349,13 +423,14 @@ end
 -------------------------------------------------------------------------------
 -- Recording
 -------------------------------------------------------------------------------
-local function Now() return GetTime and GetTime() or 0 end
+local GetTime = GetTime or function() return 0 end   -- (looked up once: the clock every event and UNIT_AURA reads)
+local function Now() return GetTime() end
 local function Wall() return time and time() or 0 end
 -- the hidden state changed? (read at state-change events only: the game hides auras and cooldowns only as a restriction changes)
 local function Recompute(now)   -- (always right after a Raw, whose Pack read the two answers: pa, pc)
     local a, c = pa == 1, pc == 1
     if a ~= hidA then
-        if hidA then hidAAcc = hidAAcc + (now - hidASince) else run.flips = (run.flips or 0) + 1 end
+        if hidA then hidAAcc, uaHidN = hidAAcc + (now - hidASince), uaHidN + uaN else run.flips, uaHidN = (run.flips or 0) + 1, uaHidN - uaN end
         hidA, hidASince = a, now
     end
     if c ~= hidC then
@@ -368,12 +443,14 @@ local function HidTotals(now)
 end
 -- one event, raw: its time, code, two arguments (kept as they came; turned into text, never a string argument, at Drain) and the
 -- packed hidden state, with the encounter flag as its sign (negative: inside an encounter)
-local function Raw(code, a, b, withX)
-    local p = Pack(withX)   -- (first, also when the buffer is full: Recompute reads its two answers)
-    if rawN >= RAW_MAX then rawDrop = rawDrop + 1; return end
+local function Raw(code, a, b, xt)   -- returns the time it read (the handlers pass it on: one GetTime per event)
+    local p = Pack(xt, b)   -- (first, also when the buffer is full: Recompute reads its two answers)
+    local now = Now()
+    if rawN >= RAW_MAX then rawDrop = rawDrop + 1; return now end
     local n = rawN + 1
     rawN = n
-    rT[n], rC[n], rA[n], rB[n], rP[n] = Now(), code, a, b, inEnc and -(p + 1) or p
+    rT[n], rC[n], rA[n], rB[n], rP[n] = now, code, a, b, inEnc and -(p + 1) or p
+    return now
 end
 -- The payload's signature (spec section 8 step 5), packed: h<auras hidden now> u<unitTarget hidden> i<payload hidden> t<issecrettable>
 -- a<canaccesstable> f<isFullUpdate: r readable, s hidden, e error, - nil>; t and a read "e" when the call raised an error
@@ -394,6 +471,31 @@ end
 local function ShapeText(k)
     return ("h%s u%s i%s t%s a%s f%s"):format(SIG[k % 4], SIG[floor(k / 4) % 4], SIG[floor(k / 16) % 4], SIG[floor(k / 64) % 4],
         SIG[floor(k / 256) % 4], FULL[floor(k / 1024) % 4])
+end
+-- The probe's answers (spec section 8 steps 6, 7, 8; ProbeStep below), packed into one whole number per probe in the fight (no string
+-- there) and turned into the probe's text line at Drain: d the global cooldown's duration (0 none, 1 readable, 2 hidden); while hidden,
+-- whether tostring, tonumber, # and a table key read of it worked (1) or raised an error (0); o the duration object (0 no such call,
+-- 1 none, 2 the call raised an error, 3 an object); its HasSecretValues (B: 0, 1, s hidden, - nil; 4 an error) and whether IsZero,
+-- HasExpired and GetRemainingDuration answered hidden (1), readable (0) or raised an error (2); the aura instance ID read (0 no such call,
+-- 1 error, 2 nil, 3 hidden, 4 a table, 5 other).
+local probeN = {}   -- [packed answers] = count, turned into run.probe at Drain
+local P_TXT = { ok = { [0] = "0", "1" }, b = { [0] = "0", "1", "s", "-", "e" }, hid = { [0] = "0", "1", "e" },
+    ids = { [0] = "-", "error", "nil", "hidden", "table", "other" } }
+local P_RADIX = { 3, 2, 2, 2, 2, 4, 5, 3, 3, 3, 6 }   -- d, tostring, tonumber, #, key read, o, HasSecretValues, IsZero, HasExpired, Remaining, IDs
+local function ProbePack(v)
+    local k, m = 0, 1
+    for i = 1, #P_RADIX do k = k + (v[i] or 0) * m; m = m * P_RADIX[i] end
+    return k
+end
+local function ProbeText(k)
+    local v = {}
+    for i = 1, #P_RADIX do local r = P_RADIX[i]; v[i] = k % r; k = (k - v[i]) / r end
+    local T = P_TXT
+    local a = (v[1] == 2) and ("dur hidden: tostring %s tonumber %s len %s keyread %s"):format(T.ok[v[2]], T.ok[v[3]], T.ok[v[4]], T.ok[v[5]])
+        or ("dur " .. ((v[1] == 0) and "none" or "readable"))
+    local b = (v[6] == 3) and ("obj HasSecretValues %s IsZero-hidden %s HasExpired-hidden %s Remaining-hidden %s"):format(T.b[v[7]],
+        T.hid[v[8]], T.hid[v[9]], T.hid[v[10]]) or ({ [0] = "obj -", "obj none", "obj error" })[v[6]]
+    return a .. "; " .. b .. "; auraIDs " .. T.ids[v[11]]
 end
 local function At(context, st) Count(run.at, context .. " " .. st) end
 -- the raw events and payload counts turned into the run's text (out of combat only: string work stays out of the fights)
@@ -416,6 +518,7 @@ local function Drain()
     rawN = 0
     if rawDrop > 0 then run.evDrop = run.evDrop + rawDrop; rawDrop = 0 end
     for k, n in pairs(shapeN) do Count(run.shape, ShapeText(k), n); shapeN[k] = nil end
+    for k, n in pairs(probeN) do Count(run.probe, ProbeText(k), n); probeN[k] = nil end
 end
 -- the run's saved numbers brought up to date (out of combat: at the settled reading, a close and the logout)
 local function Flush()
@@ -424,78 +527,96 @@ local function Flush()
     local now = Now()
     run.len = floor(now - t0)
     run.t10 = floor((now - t0) * 10)   -- (the same length in tenths: a resumed run's clock goes on from it, so its lines never go back)
-    run.ua, run.uaHid = uaBase + uaN, uaHidBase + uaHidN
+    run.ua, run.uaHid = uaBase + uaN, uaHidBase + uaHidN + (hidA and uaN or 0)
     local a, c = HidTotals(now)
     run.hidA, run.hidC = floor(hidABase + a), floor(hidCBase + c)
     local d, total = ErrDelta()
     run.err, errSeen = d, total
     if run.open then run.seen = Wall() end
 end
--- a state change: re-read the hidden state, sample the next payloads, take a settled reading SETTLE_S after the last change (one timer
--- at a time: a change while it waits moves the reading, and the timer waits on for the rest)
+-- a state change: re-read the hidden state, sample the next payloads, take a settled reading SETTLE_S after the last change. Out of a
+-- fight: one one-shot timer per frame that changed something (ArmSettle; a change while one waits moves settleDue, and the earlier
+-- timer, finding the reading not due yet, does nothing: no timer callback arms another, P2). In a fight, and in the combat-end frame, no
+-- timer: see settleDue above (round 11b final fix).
 local SettleSafe   -- (the one file-level function every settle timer calls; defined below)
 local Settle
-local function Transition()
-    local now = Now()
-    Recompute(now)
-    shapeLeft, shapeT = SHAPE_SAMPLES, now   -- (payloads are read from the next frame on: the change's own frame stays small)
+local UaJob        -- (the UNIT_AURA handler's one job per frame; defined below)
+local function ArmSettle(now)
+    if armedAt ~= now and C_Timer and C_Timer.After then armedAt = now; C_Timer.After(SETTLE_S, SettleSafe) end
+end
+local trT, trFight   -- the frame of the last Transition, and whether it was in a fight
+local function Transition(now)
+    now = now or Now()
+    if acNew then Recompute(now); acNew = false end
+    -- (a second change in the same frame, the fight's state the same and nothing read again: everything below is already so)
+    if trT == now and trFight == fighting then return end
+    trT, trFight = now, fighting
+    shapeLeft, jobT, jobs, jobAfter = SHAPE_SAMPLES, now, true, uaN + 6   -- (payloads and other UNIT_AURA jobs after the next six aura events, about one fight frame of the gate's key fight: its frame stays small)
     settleDue = now + SETTLE_S
-    if not settleArmed and C_Timer and C_Timer.After then settleArmed = true; C_Timer.After(SETTLE_S, SettleSafe) end
+    if fighting then fightSettle, armWanted = true, false
+    elseif endT == now then fightSettle, armWanted = false, true
+    else fightSettle, armWanted = false, false; ArmSettle(now) end
 end
 
--- The probe (spec section 8 steps 6, 7, 8): once per pull, in combat while cooldowns are hidden, in three steps half a second apart so no
--- fight frame carries all of it: 1 the global cooldown's hidden duration through tostring, tonumber, # and a table key read; 2 the
--- duration object's readers; 3 the aura instance ID read, then one count line. Each answer: 1 the operation worked, 0 it raised an error;
--- for the readers, 1 the answer was hidden, 0 readable, e an error.
+-- The probe (spec section 8 steps 6, 7, 8): once per pull, in combat while cooldowns are hidden, in five small steps 0.2 s apart,
+-- each run by the first UNIT_AURA due (no timer: round 11b final fix; before, three steps on a timer chain the gate judged P2, each
+-- step with its timer about 600 instructions in a fight frame): 1 the global cooldown's duration, and while hidden tostring and
+-- tonumber of it; 2 # and a table key read of it; 3 the duration object and its HasSecretValues and IsZero; 4 its HasExpired and
+-- GetRemainingDuration; 5 the aura instance ID read, then the answers are counted (packed: ProbePack; text at Drain, out of combat).
+-- Each operation: worked (1) or raised an error (0); for the readers, hidden (1), readable (0) or an error (2). A probe that does not
+-- finish (no UNIT_AURA before the next pull, or the run closed) is dropped.
 local function Len(v) return #v end
 local function KeyRead(v) local t = {}; return t[v] end
 local function Method(o, name) return o[name](o) end
-local function Ok(fn, a, b) return (pcall(fn, a, b)) and "1" or "0" end
+local function Ok(fn, a) return (pcall(fn, a)) and 1 or 0 end
 local function Hid(o, name)
     local ok, r = pcall(Method, o, name)
-    if not ok then return "e" end
-    return issecret(r) and "1" or "0"
+    if not ok then return 2 end
+    return issecret(r) and 1 or 0
 end
-local probeK, probeA, probeB = 0, nil, nil
-local ProbeSafe
-local function ProbeStep()
-    if not run or stopped then probeK = 0; return end
-    local S = C_Spell
+local probeK, probeDue, probeD, probeO = 0, nil, nil, nil
+local probeV = {}
+local function ProbeReset() probeK, probeDue, probeD, probeO = 0, nil, nil, nil end
+local function ProbeStep(now)
+    if not run or stopped then ProbeReset(); return end
+    local S, v = C_Spell, probeV
     if probeK == 1 then
+        for i = 1, #P_RADIX do v[i] = 0 end
         local d
         if S and S.GetSpellCooldown then
             local ok, c = pcall(S.GetSpellCooldown, GCD_SPELL)
             if ok and type(c) == "table" and not issecret(c) then d = c.duration end
         end
-        if d ~= nil and issecret(d) then
-            probeA = ("dur hidden: tostring %s tonumber %s len %s keyread %s"):format(Ok(tostring, d), Ok(tonumber, d), Ok(Len, d), Ok(KeyRead, d))
-        else
-            probeA = "dur " .. ((d == nil) and "none" or "readable")
-        end
+        if d ~= nil and issecret(d) then v[1], v[2], v[3], probeD = 2, Ok(tostring, d), Ok(tonumber, d), d
+        else v[1] = (d == nil) and 0 or 1 end
     elseif probeK == 2 then
-        probeB = "obj -"
+        if v[1] == 2 then v[4], v[5] = Ok(Len, probeD), Ok(KeyRead, probeD) end
+        probeD = nil
+    elseif probeK == 3 then
         if S and S.GetSpellCooldownDuration then
             local ok, o = pcall(S.GetSpellCooldownDuration, GCD_SPELL)
             if ok and o ~= nil and not issecret(o) then
                 local okH, h = pcall(Method, o, "HasSecretValues")
-                probeB = ("obj HasSecretValues %s IsZero-hidden %s HasExpired-hidden %s Remaining-hidden %s"):format(okH and B(h) or "e",
-                    Hid(o, "IsZero"), Hid(o, "HasExpired"), Hid(o, "GetRemainingDuration"))
+                v[6], v[7], v[8], probeO = 3, okH and ((h == nil and 3) or (issecret(h) and 2) or (h and 1) or 0) or 4, Hid(o, "IsZero"), o
             else
-                probeB = "obj " .. (ok and "none" or "error")
+                v[6] = ok and 1 or 2
             end
         end
+    elseif probeK == 4 then
+        if probeO then v[9], v[10] = Hid(probeO, "HasExpired"), Hid(probeO, "GetRemainingDuration") end
+        probeO = nil
     else
-        local U, ids = C_UnitAuras, "-"
+        local U = C_UnitAuras
         if U and U.GetUnitAuraInstanceIDs then
             local ok, r = pcall(U.GetUnitAuraInstanceIDs, "player", "HELPFUL")
-            ids = (not ok and "error") or (r == nil and "nil") or (issecret(r) and "hidden") or (type(r) == "table" and "table") or "other"
+            v[11] = (not ok and 1) or (r == nil and 2) or (issecret(r) and 3) or (type(r) == "table" and 4) or 5
         end
-        Count(run.probe, tostring(probeA) .. "; " .. tostring(probeB) .. "; auraIDs " .. ids)
-        probeK, probeA, probeB = 0, nil, nil
+        local k = ProbePack(v)
+        probeN[k] = (probeN[k] or 0) + 1
+        ProbeReset()
         return
     end
-    probeK = probeK + 1
-    if C_Timer and C_Timer.After then C_Timer.After(0.5, ProbeSafe) else probeK = 0 end
+    probeK, probeDue = probeK + 1, now + 0.2
 end
 
 -- XayaUI's CPU and memory from the game's meters, read once per pull, out of combat
@@ -536,22 +657,24 @@ local function EngineSnap()
     return { es.routed or 0, es.all or 0, es.settle or 0, es.pollRange or 0, es.pollCd or 0, es.wake or 0, es.alert or 0 }
 end
 local PullSave
-local function PullStart()
+local function PullFill(p)   -- the pull's starting totals (seconds hidden, the engine's passes): from the first UNIT_AURA job after combat start
+    local a, c = HidTotals(p.t)
+    p.a, p.c, p.eng, p.fill = a, c, EngineSnap(), nil
+end
+local function PullStart(now)
     if pull and pull.done and not pull.saved then PullSave(false) end   -- (a chained pull: the last one is written without its meters)
     if pull and not pull.done then return end
-    local now = Now()
-    local a, c = HidTotals(now)
-    pull = { t = now, ua = uaN, a = a, c = c, eng = EngineSnap(), err = errSeen, boss = 0 }
-    secN, peak, secEnd = 0, 0, now + 1
+    probeK, probeDue = 0, nil   -- (a probe the last pull did not finish is dropped)
+    -- (round 11b final fix) the combat-start frame keeps only the pull's time and counts; its hidden seconds and the engine's passes so far
+    -- are read by the first UNIT_AURA job after it (PullFill), a few frames into the pull (combat start is capped at 600 for XayaUI_Debug)
+    pull = { t = now, ua = uaN, err = errSeen, boss = 0, fill = true }
+    jobs, secN, peak, secEnd = true, 0, 0, now + 1
 end
-local function PullEnd()
+local function PullEnd(now)   -- (the combat-end frame: the end's raw numbers only; PullSave works the line out, out of combat)
     if not pull or pull.done then return end
-    local now = Now()
+    if pull.fill then PullFill(pull) end   -- (no UNIT_AURA job ran in the pull: its start totals are read now)
     local a, c = HidTotals(now)
-    if secN > peak then peak = secN end
-    pull.done = true
-    pull.len, pull.uaN, pull.peak = floor(now - pull.t), uaN - pull.ua, peak
-    pull.hidA, pull.hidC = floor(a - pull.a), floor(c - pull.c)
+    pull.done, pull.tE, pull.uaE, pull.pk, pull.aE, pull.cE = true, now, uaN, (secN > peak) and secN or peak, a, c
 end
 -- the pull's line (out of combat), with the meters unless combat already started again (a chained pull: "-")
 function PullSave(withMeters)
@@ -570,7 +693,8 @@ function PullSave(withMeters)
     if withMeters then cpu, mem = Meters() end
     local _, errN = ErrDelta()
     run.pull[#run.pull + 1] = ("len %d ua %d peak %d hidA %d hidC %d boss %d eng %s cpu %s mem %s err %d"):format(
-        pull.len, pull.uaN, pull.peak, pull.hidA, pull.hidC, pull.boss, eng, cpu, mem, errN - pull.err)
+        floor(pull.tE - pull.t), pull.uaE - pull.ua, pull.pk, floor(pull.aE - pull.a), floor(pull.cE - pull.c), pull.boss, eng, cpu, mem,
+        errN - pull.err)
 end
 
 -------------------------------------------------------------------------------
@@ -588,7 +712,11 @@ local function SetEvent(e, on)
         evFrame:SetScript("OnEvent", OnEvent)
     end
     if not evFrame then return end
-    if on then evFrame:RegisterEvent(e); evOn[e] = true else evFrame:UnregisterEvent(e); evOn[e] = nil end
+    if on then
+        -- (round 11b final fix) the player's UNIT_AURA only (see the header); a hidden unitTarget is then the player's, as AuraAlias.lua reads it
+        if e == "UNIT_AURA" and evFrame.RegisterUnitEvent then evFrame:RegisterUnitEvent(e, "player") else evFrame:RegisterEvent(e) end
+        evOn[e] = true
+    else evFrame:UnregisterEvent(e); evOn[e] = nil end
 end
 local function Recording(on) for _, e in ipairs(REC_EVENTS) do SetEvent(e, on) end end
 local function ReleaseAll() for e in pairs(evOn) do SetEvent(e, false) end end
@@ -626,13 +754,14 @@ local function BuildPrompt()
     f:Hide()
     return f
 end
-local function HidePrompt() if prompt then prompt:Hide() end end
+-- (prompt.up mirrors whether the window is shown: the fight's first frame asks the flag, not the widget, V33)
+local function HidePrompt() if prompt then prompt:Hide(); prompt.up = false end end
 local function Ask()
     if not pending then waitAsk = false; return end
     if InFight() then waitAsk = true; HidePrompt(); return end   -- (never in combat: it waits for the end of combat)
     waitAsk = false
     prompt = prompt or BuildPrompt()
-    prompt:Show()
+    prompt:Show(); prompt.up = true
 end
 
 -------------------------------------------------------------------------------
@@ -655,9 +784,12 @@ local function Bind(r, now, keepRaw)   -- keepRaw: the captured loading-screen e
     hidA, hidC = AurasHidden() == true, CooldownsHidden() == true
     hidASince, hidCSince = now, now
     inEnc, pull, secN, peak, secEnd = false, nil, 0, 0, now + 1
-    shapeLeft, shapeT, probeK = SHAPE_SAMPLES, nil, 0
+    shapeLeft, jobT, jobs, trT = SHAPE_SAMPLES, nil, true, nil
+    ProbeReset()
+    fighting, endT, fightSettle, armWanted, settleDue = InFight(), nil, false, false, nil
     if not keepRaw then rawN, rawDrop = 0, 0 end
     for k in pairs(shapeN) do shapeN[k] = nil end
+    for k in pairs(probeN) do probeN[k] = nil end
     errBase = ErrSums()
     for code, n in pairs(r.err or {}) do errBase[code] = (errBase[code] or 0) - n end   -- (a resumed run keeps counting from its total)
     errSeen = 0
@@ -741,12 +873,15 @@ local function Resume(r, inst, now, isLogin, isReload, cap)
     Recording(true)
     if isReload then r.reloads = (r.reloads or 0) + 1 else r.reentries = (r.reentries or 0) + 1 end
     Raw(C_.PE, isLogin, isReload)
-    At("loading-screen-in-run", (StateText(Pack(true))))
+    At("loading-screen-in-run", (StateText(Pack(ALLX))))
     Transition()
 end
 local function DropPending()
     run, pending, pendInst, pull = nil, false, nil, nil
-    rawN, rawDrop, probeK = 0, 0, 0
+    rawN, rawDrop = 0, 0
+    ProbeReset()
+    fightSettle, armWanted, settleDue = false, false, nil
+    for k in pairs(probeN) do probeN[k] = nil end
     for k in pairs(shapeN) do shapeN[k] = nil end
     waitAsk = false
     HidePrompt()
@@ -780,21 +915,26 @@ end
 -------------------------------------------------------------------------------
 local H = {}
 function H.ADDON_RESTRICTION_STATE_CHANGED(t, state)
-    if not run then if capT then Raw(C_.RS, t, state, true) end; return end   -- (away: the re-entry's loading screen, captured)
-    Raw(C_.RS, t, state, true); Transition()
+    -- (the event's own type's IsAddOnRestrictionActive is read; a type that is not a plain number reads all five)
+    -- (the payload is documented plain: api.json lists no SecretPayloads flag for this event; a type nil reads all five)
+    local xt = t or ALLX
+    if not run then if capT then Raw(C_.RS, t, state, xt) end; return end   -- (away: the re-entry's loading screen, captured)
+    local now = Raw(C_.RS, t, state, xt); Transition(now)
 end
 function H.PLAYER_REGEN_DISABLED()
-    Raw(C_.RD)
-    if prompt and prompt:IsShown() then waitAsk = true; prompt:Hide() end   -- (combat started before she answered: it waits)
-    PullStart()
-    Transition()
+    fighting = true   -- (first: this event's line takes A, C and S as last read, which combat start does not change before its restriction event)
+    local now = Raw(C_.RD)
+    if prompt and prompt.up then waitAsk = true; HidePrompt() end   -- (combat started before she answered: it waits)
+    PullStart(now)
+    Transition(now)
 end
 local AfterCombatSafe   -- (the one file-level function the 0-second timer calls; defined below)
 function H.PLAYER_REGEN_ENABLED()
     if run then
-        Raw(C_.RE)
-        PullEnd()
-        Transition()
+        local now = Raw(C_.RE)
+        PullEnd(now)
+        fighting, endT = false, now
+        Transition(now)
     end
     -- (combat is over: the lockdown ends before this event, spec section 2.2) the question that waited, or the arrival that waited, in
     -- the next frame: this frame is combat end, capped at 600 (V33)
@@ -805,12 +945,12 @@ function H.PLAYER_REGEN_ENABLED()
 end
 function H.ENCOUNTER_START()
     inEnc = true
-    Raw(C_.ES)
+    local now = Raw(C_.ES)
     if pull and not pull.done then pull.boss = 1 end
-    Transition()
+    Transition(now)
 end
 function H.ENCOUNTER_END(_, _, _, _, success)
-    Raw(C_.EE, success)
+    local now = Raw(C_.EE, success)
     inEnc = false
     if success == 1 then
         run.kills = run.kills + 1
@@ -818,7 +958,7 @@ function H.ENCOUNTER_END(_, _, _, _, success)
     else
         run.wipes = run.wipes + 1
     end
-    Transition()
+    Transition(now)
 end
 -- a new key in a run that already started one (an abandoned key followed by a new one in the same dungeon): the old run closed, a new one
 -- opened and kept (see the header, repair 2). Rare and out of combat (INFERENCE: a key cannot start in lockdown): the close's text work
@@ -861,20 +1001,27 @@ function H.PLAYER_LOGOUT() if Live() then Flush() end end
 function H.PLAYER_ENTERING_WORLD(isLogin, isReload) svc.Arrive(isLogin, isReload) end
 
 function OnEvent(_, event, a, b, c, d, e)
-    if event == "UNIT_AURA" then   -- (the busy one: counters only; at most one payload read per frame, while shapeLeft > 0)
+    if event == "UNIT_AURA" then   -- (the busy one: counters, and at most one job per frame while one waits: UaJob)
         if not run then return end
-        uaN = uaN + 1
-        if hidA then uaHidN = uaHidN + 1 end
-        local now = GetTime()
-        if now >= secEnd then
-            if secN > peak then peak = secN end
-            secN, secEnd = 0, now + 1
+        local n = uaN + 1
+        uaN = n
+        -- (round 11b final fix) the most in one second is counted four at a time: the clock is read at every fourth event, not at each
+        -- (a fight frame hears several, V33), so the pull line's "peak" is a multiple of four, at most three below the true count
+        if n % 4 == 0 then
+            local now = GetTime()
+            if now >= secEnd then
+                if secN > peak then peak = secN end
+                secN, secEnd = 0, now + 1
+            end
+            secN = secN + 4
         end
-        secN = secN + 1
-        if shapeLeft > 0 and now ~= shapeT then
-            shapeLeft, shapeT = shapeLeft - 1, now
-            local ok, k = pcall(ShapeCode, a, b)
-            if ok then shapeN[k] = (shapeN[k] or 0) + 1 else svc.Fail(k) end
+        -- (no job in the change's own frame or the next few events: jobAfter, set at each change; then one per frame)
+        if jobs and (n > jobAfter or armWanted) then   -- (the settled reading's timer after combat is armed by the first event after its frame)
+            local now = GetTime()
+            if now ~= jobT then
+                local ok, err = pcall(UaJob, now, a, b)
+                if not ok then svc.Fail(err) end
+            end
         end
         return
     end
@@ -886,22 +1033,25 @@ function OnEvent(_, event, a, b, c, d, e)
     if not ok then svc.Fail(err) end
 end
 
--- the settled reading, SETTLE_S after the last state change. In combat: one raw line, and the probe's first step once per pull. Out of
--- combat: the text work (Drain), the moments section 8 asks about, the pull's line with the meters, the saved totals, the question if it
--- waits, and the "done" line.
+-- the settled reading, SETTLE_S after the last state change. In a fight (from UNIT_AURA: FightSettle): one raw line, and the probe's
+-- start once per pull. Out of combat (the timer: Settle): the text work (Drain), the moments section 8 asks about, the pull's line with
+-- the meters, the saved totals, the question if it waits, and the "done" line.
+local function FightSettle(now)
+    if not run or stopped then return end
+    Raw(C_.ST, nil, nil, XONLY)
+    if acNew then Recompute(now); acNew = false end
+    if pull and not pull.done and not pull.probed and hidC and probeK == 0 then
+        pull.probed = true
+        probeK, probeDue = 1, now + 0.2   -- (its own frame, not this one: the first UNIT_AURA due runs step 1)
+    end
+end
 function Settle()
     if not run or stopped then return end
-    Raw(C_.ST, nil, nil, true)
-    if Lockdown() then
-        if pull and not pull.done and not pull.probed and hidC and probeK == 0 and C_Timer and C_Timer.After then
-            pull.probed = true
-            probeK = 1
-            C_Timer.After(0.5, ProbeSafe)   -- (its own frame, not this one)
-        end
-        return
-    end
+    if fighting or Lockdown() then FightSettle(Now()); return end
+    local now = Raw(C_.ST, nil, nil, ALLX)
+    if acNew then Recompute(now); acNew = false end
     Drain()
-    local st = StateText(Pack(true))
+    local st = StateText(Pack(ALLX))
     if KeyActive() then At("key-between-pulls", st) end                         -- (spec section 8 step 2)
     if run.kind == "raid" and not inEnc then At("raid-between-bosses", st) end   -- (step 3)
     if pull and pull.done and not pull.saved then PullSave(true) end
@@ -910,18 +1060,46 @@ function Settle()
     if db and db.done and not db.told then Tell() end
 end
 SettleSafe = function()
-    settleArmed = false
-    if run and not stopped and Now() < settleDue - 0.05 then   -- (a later change moved the reading: wait the rest)
-        settleArmed = true
-        C_Timer.After(settleDue - Now(), SettleSafe)
-        return
-    end
+    -- (a reading a later change moved, or one a fight reads from UNIT_AURA, or one already read: nothing; no timer is armed from here)
+    if fightSettle or settleDue == nil or Now() < settleDue - 0.05 then return end
+    settleDue = nil
     local ok, err = pcall(Settle)
     if not ok then svc.Fail(err) end
 end
-ProbeSafe = function()
-    local ok, err = pcall(ProbeStep)
-    if not ok then svc.Fail(err) end
+-- one job of the UNIT_AURA handler, at most one per frame (after the counters): the fight's settled reading when due, else the settled
+-- reading's timer after combat end (armWanted: the combat-end frame armed none), else a probe step when due, else one payload sample
+function UaJob(now, unit, info)
+    if armWanted then
+        -- (out of combat: the settled reading's timer, one frame after combat end at the earliest; first, so a single aura event after
+        -- the fight is enough)
+        jobT, armWanted = now, false
+        ArmSettle(now)
+    elseif pull and pull.fill then
+        jobT = now
+        PullFill(pull)
+    elseif stale or stS == nil or not acOK then
+        -- (after a restriction event: the hidden state read again in a frame of its own; only that event's type can have changed since,
+        -- so only its state is read again with A and C, unless two types changed or nothing was read yet)
+        local t = stale
+        jobT, stale = now, false
+        ReadAC()
+        local d = (t and t ~= ALLX and stS) and S_DIV[t]
+        if d and fRS then stS = stS + d * ((fRS(t) or 3) - floor(stS / d) % 4) else stS = ReadS() end
+        Base()
+        Recompute(now); acNew = false   -- (auras or cooldowns that hid or came back right after that event: their seconds counted from here)
+    elseif fightSettle and now >= settleDue then
+        jobT, fightSettle, settleDue = now, false, nil
+        FightSettle(now)
+    elseif probeDue and now >= probeDue then
+        jobT = now
+        ProbeStep(now)
+    elseif shapeLeft > 0 then
+        jobT, shapeLeft = now, shapeLeft - 1
+        local k = ShapeCode(unit, info)
+        shapeN[k] = (shapeN[k] or 0) + 1
+    elseif not (fightSettle or probeDue) then
+        jobs = false   -- (nothing waits: the counters only, until the next change)
+    end
 end
 -- the first frame after PLAYER_REGEN_ENABLED: the arrival that waited, else the question that waited. A pull chained before this frame
 -- (lockdown again) keeps both waiting for the next end of combat (PLAYER_REGEN_ENABLED stays held: in the run's events, or for the wait).
@@ -975,7 +1153,7 @@ function svc.Arrive(isLogin, isReload)
     if stopped or not (ns.RunLoggerOn and ns.RunLoggerOn()) then return end
     if Lockdown() then
         arriveWait, arriveLogin, arriveReload = true, isLogin, isReload
-        if prompt and prompt:IsShown() then waitAsk = true; prompt:Hide() end
+        if prompt and prompt.up then waitAsk = true; HidePrompt() end
         SetEvent("PLAYER_REGEN_ENABLED", true)
         return
     end
@@ -994,7 +1172,7 @@ function svc.Arrive(isLogin, isReload)
         if inside and inst ~= nil and inst == run.inst then   -- (a loading screen inside the run: a /reload, step 9)
             if isReload then run.reloads = (run.reloads or 0) + 1 else run.reentries = (run.reentries or 0) + 1 end
             Raw(C_.PE, isLogin, isReload)
-            At("loading-screen-in-run", (StateText(Pack(true))))
+            At("loading-screen-in-run", (StateText(Pack(ALLX))))
             Transition()
             return
         end
@@ -1043,7 +1221,9 @@ end
 function svc.Fail(err)
     if stopped then return end
     stopped = true
-    run, pending, pull, rawN, probeK = nil, false, nil, 0, 0
+    run, pending, pull, rawN = nil, false, nil, 0
+    ProbeReset()
+    fightSettle, armWanted, settleDue = false, false, nil
     awayRun, awayAt, arriveWait, capT = nil, nil, false, nil
     HidePrompt()
     ReleaseAll()

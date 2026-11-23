@@ -33,6 +33,11 @@ inside the window's rectangle; every other frame is judged as above, and:
            "stat calculator isn't allowed to be open during combat"; her install opens it before every fight), after she closed it, or
            after a fight (SD-102 "Don't reappear");
   NOTE     how many of its frames take the mouse inside its rectangle (allowed).
+(round 11b; REQUEST-LOG SD-120, SD-126) the cycles are played inside a Mythic+ key with hidden aura data (tests/gate_common.py); the run
+logger's question (SD-122, its box ticked by default in bundle 1, SD-123) is a XayaUI window that opens at the loading screen into the
+dungeon: it is judged like a window she opened (its frames may take the mouse inside its own rectangle, never outside it), then answered
+Yes; after that every check above applies again. The aura buttons are read through the stand-in's own fields and the gate's untainted
+calls (a forbidden button refuses addon code only, tests/harness/world.lua), so the forbidding never hides a finding.
 Run: python3 tests/gate_mouse_run.py  (Lua 5.1 via lupa; about two minutes, or seconds when the shared result is cached)."""
 import collections, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
