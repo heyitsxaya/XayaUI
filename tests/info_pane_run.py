@@ -41,6 +41,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(HERE, "harness"))
 import run as H  # noqa: E402
+sys.path.insert(0, HERE)
+import release_notes as RN  # noqa: E402  (bundle 1's entry and versions, read from fixed facts; SD-155)
 
 # (round 7 docs) HTML comments are left out, as tools/build_info_pane_data.py leaves them out (strip_comments): a landing held in a
 # comment in PATCH-NOTES.md is not in the pane, so it is not counted here either
@@ -394,7 +396,8 @@ ROUND10 = {"XayaUI": "0.6.87", "XayaUI_Options": "0.6.110", "XayaUI_Rules": "0.7
 # (round 11b final fix: V1 / V2 pinned the round 11a repair date, 2026-11-19, and went stale when round 11b moved every .toc X-Date and
 # the bundle 1 entry to its own date, which is correct.) What they guard is that the versions and the notes move together: every addon's
 # .toc X-Date is the newest PATCH-NOTES entry's date, and that entry is bundle 1's, first, and not older than the round 11a repair date
-# (a floor that does not go stale), as fix_r10_docs P2 / P3 do.
+# (a floor that does not go stale), as fix_r10_docs P2 / P3 do. (SD-155: since bundle 1 landed, read through tests/release_notes.py:
+# the X-Date is the date of the newest entry naming the addon's .toc version, and bundle 1's entry is found by its title.)
 R11A_FLOOR = "2026-11-19"
 
 
@@ -506,29 +509,35 @@ def round11a_checks():
           and "loads the first time you open it" in nb and "Loads the first time you open it, never at login" in ns_ and not stale, stale)
 
     # ---------------- V: versions and notes (V10, V17, V18)
-    tv = {f: _toc(f, "Version") for f in ROUND10}
+    # (SD-155) bundle 1 landed on main (a9cdbba5, SD-150): a later release sits above its entry, so bundle 1 is found by its title and
+    # checked at its landed versions (RN.BUNDLE1). What V1 / V2 guard is unchanged: versions and notes move together (each addon's X-Date
+    # is the date of the newest entry naming its .toc version), entries run newest first, and bundle 1 is not older than round 11a.
+    tv = dict(RN.BUNDLE1)
     low = ["%s %s" % (f, v) for f, v in tv.items() if _vkey(v) <= _vkey(ROUND10[f])]
-    heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
-    newest = heads[0][0] if heads else None
-    dates = ["%s %s" % (f, _toc(f, "X-Date")) for f in ROUND10 if not newest or _toc(f, "X-Date") != newest]
-    check("V1 every addon round 11a changed is above its round 10 version, X-Date the newest PATCH-NOTES entry's date (%s)" % newest,
-          newest and not low and not dates, low + dates)
-    entry = (re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M) + ["", ""])[1]
+    probs = RN.VersionDateProblems(pn, list(ROUND10))
+    check("V1 every addon round 11a changed landed above its round 10 version; each X-Date is the date of the newest PATCH-NOTES entry "
+          "naming its .toc version", not low and not probs, low + probs)
+    b1date, entry = RN.EntryByTitle(pn)
     hn = {"XayaUI": "XayaUI", "XayaUI_Options": "Options", "XayaUI_Rules": "Rules", "XayaUI_Bonus": "Bonus Features",
           "XayaUI_Bonus_StatCalculator": "Bonus Features"}
     miss = ["### %s %s" % (h, tv[f]) for f, h in hn.items() if ("### %s %s\n" % (h, tv[f])) not in entry]
-    check("V2 PATCH-NOTES' first entry is bundle 1, dated %s (no earlier than any other entry and than the round 11a repair, %s), with a "
-          "heading per changed addon at its .toc version" % (newest, R11A_FLOOR),
-          heads and heads[0][1] == "Rules Fix Bundle 1" and all(heads[0][0] >= h[0] for h in heads) and heads[0][0] >= R11A_FLOOR
-          and not miss, (heads[:2], miss))
+    check("V2 PATCH-NOTES has the bundle 1 entry, dated %s (no earlier than the round 11a repair, %s; entries newest first), with a "
+          "heading per changed addon at its landed version" % (b1date, R11A_FLOOR),
+          b1date and b1date >= R11A_FLOOR and RN.NewestFirst(pn) and not miss, (b1date, miss))
     pane_miss = ["%s %s" % (h, tv[f]) for f, h in hn.items() if ('"%s %s"' % (h, tv[f])) not in ipd]
-    check("V3 the pane shows those versions as its newest entry's headings", not pane_miss, pane_miss)
+    check("V3 the pane shows bundle 1's versions as its entry's headings", not pane_miss, pane_miss)
+    # (review of SD-155) and for whatever release is newest: every heading of PATCH-NOTES' newest entry is in the pane (catches notes
+    # added under an existing title without rebuilding InfoPaneData.lua)
+    newest = RN.Entries(pn)[:1]
+    nh = re.findall(r"^### (.+?)\s*$", newest[0][2], re.M) if newest else []
+    check("V3 the pane shows every heading of PATCH-NOTES' newest entry (%s)" % (newest[0][1] if newest else "none"),
+          nh and not [h for h in nh if ('{ "h3", "%s" }' % h) not in ipd], [h for h in nh if ('{ "h3", "%s" }' % h) not in ipd])
     must = ["saves every error and warning it prints in chat", "says why every time you type it", "now prints its help line",
             "The AddOns list now describes XayaUI Bonus Features and its Stat Calculator correctly"]
     check("V4 the bundle 1 entry, and so the pane, names the round 11a changes", not [w for w in must if w not in entry or w not in ipd],
           [w for w in must if w not in entry or w not in ipd])
     b401 = st.get(401, "")
-    check("V5 QA B401 names every addon's .toc version", all(v and v in b401 for v in tv.values()), [v for v in tv.values() if v not in b401])
+    check("V5 QA B401 names every addon's bundle 1 version", all(v and v in b401 for v in tv.values()), [v for v in tv.values() if v not in b401])
     s17 = wn[wn.find("## 17. Rules fix bundle 1, round 11a"):]
     wv = ["XayaUI %s" % tv["XayaUI"], "Options %s" % tv["XayaUI_Options"], "Rules %s" % tv["XayaUI_Rules"],
           "XayaUI Debug %s" % tv["XayaUI_Debug"], "Bonus Features %s" % tv["XayaUI_Bonus"]]

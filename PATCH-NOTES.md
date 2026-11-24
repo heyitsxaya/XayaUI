@@ -25,6 +25,14 @@ that starts with "Added", newest first, grouped by addon. An addon's list keeps 
 again when it reaches the next x.Y.0 (e.g. Quality of Life 0.8.0).
 -->
 
+## 2026-11-24 — Settings Window Shading
+
+### Options 0.6.114
+
+**Settings window**
+- Both halves of the settings window, the list on the left and the page on the right, are now more solid, so the game shows through them less. They still follow Window opacity in a custom theme.
+  *Developers' notes: Not yet tested in game (QA B452).*
+
 ## 2026-11-22 — Rules Fix Bundle 1
 
 ### XayaUI 0.6.90

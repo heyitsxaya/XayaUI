@@ -51,6 +51,12 @@ ns.InfoPaneData = {
     { "p", "Older patch notes are not kept in the game, so the settings window stays light. All patch notes are in PATCH-NOTES.md at https://github.com/heyitsxaya/XayaUI." },
   },
   patches = {
+    { date = "2026-11-24", title = "Settings Window Shading", blocks = {
+      { "h3", "Options 0.6.114" },
+      { "grp", "Settings window" },
+      { "b", 1, "Both halves of the settings window, the list on the left and the page on the right, are now more solid, so the game shows through them less. They still follow Window opacity in a custom theme." },
+      { "dev", 2, "Developers' notes: Not yet tested in game (QA B452)." },
+    } },
     { date = "2026-11-22", title = "Rules Fix Bundle 1", blocks = {
       { "h3", "XayaUI 0.6.90" },
       { "grp", "Install (read this first)" },
@@ -238,12 +244,6 @@ ns.InfoPaneData = {
       { "h3", "Options 0.6.102" },
       { "grp", "Theme" },
       { "b", 1, "The Theme page carries the new switch and the gradient color list." },
-    } },
-    { date = "2026-11-08", title = "Debug Batch W7", blocks = {
-      { "h3", "Options 0.6.100" },
-      { "grp", "Settings Window" },
-      { "b", 1, "Clicking an option in the rule editor now does about half the work it did: the width of dropdown text is measured once and cached (by font, size, flags and scale) instead of on every click. In the test stand-in, game calls per click went from 53,802 to 27,704." },
-      { "dev", 2, "Developers' notes: Measured in the test stand-in only, not in game; the real click time needs your re-run of the J31 walkthrough (\"perf-settings-click\") and the new \"debug-w7\" walkthrough (QA B293). Issue #467 stays open." },
     } },
     { date = "Older notes", title = "Older patch notes", blocks = {
       { "p", "Older patch notes are not kept in the game, so the settings window stays light. All patch notes are in PATCH-NOTES.md at https://github.com/heyitsxaya/XayaUI." },

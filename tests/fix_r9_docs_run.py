@@ -63,6 +63,8 @@ on the documents before repair 1 (scratchpad r9pre-docs-repair1) I3, I4, I5, P7,
 (scratchpad r9pre-docs-repair2) P8 USER-GUIDE and Q B434 fail.
 Run: python3 tests/fix_r9_docs_run.py   (XUI_R9_ROOT=<a checkout> to check another copy)"""
 import os, re, subprocess, sys, tempfile, shutil, hashlib
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import release_notes as RN  # noqa: E402  (bundle 1's entry and versions, read from fixed facts; SD-155)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.environ.get("XUI_R9_ROOT") or os.path.join(HERE, ".."))
@@ -116,20 +118,7 @@ def toc_version(folder):
     return m.group(1) if m else None
 
 
-MAIN_FALLBACK = {"XayaUI": "0.6.85", "XayaUI_Options": "0.6.108", "XayaUI_Rules": "0.7.0"}   # origin/main fda1e293
-
-
-def main_version(folder):
-    try:
-        r = subprocess.run(["git", "-C", ROOT, "show", "origin/main:%s/%s.toc" % (folder, folder)], capture_output=True, text=True,
-                           timeout=60)
-        m = re.search(r"^## Version:\s*(\S+)", r.stdout, re.M) if r.returncode == 0 else None
-        # (a clone's origin/main can be an older local branch: the higher of it and main's known version at the round 9 merge)
-        if m and vkey(m.group(1)) > vkey(MAIN_FALLBACK[folder]):
-            return m.group(1)
-    except Exception:
-        pass
-    return MAIN_FALLBACK[folder]
+MAIN_FALLBACK = {"XayaUI": "0.6.85", "XayaUI_Options": "0.6.108", "XayaUI_Rules": "0.7.0"}   # main before bundle 1 (fda1e293)
 
 
 def main():
@@ -192,21 +181,26 @@ def main():
           and none and none in b404, b404[:200])
 
     # P: the bundle 1 landing
+    # (SD-155) bundle 1 landed on main (a9cdbba5, SD-150), so "first entry", ".toc version" and "origin/main" no longer name bundle 1
+    # and the pre-bundle main: its entry is found by its title, its versions are the landed ones (RN.BUNDLE1) and the main it rose above
+    # is main before the merge (MAIN_FALLBACK, fda1e293). Entries still run newest first.
     heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
-    first = re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M)
-    entry = first[1] if len(first) > 1 else ""
-    check("P1 the bundle 1 landing is in PATCH-NOTES outside any comment, first", heads and heads[0][1] == "Rules Fix Bundle 1", heads[:2])
+    titles = [t for _, t in heads]
+    _, entry = RN.EntryByTitle(pn)
+    nxt = RN.Entries(pn)[titles.index("Rules Fix Bundle 1") + 1] if "Rules Fix Bundle 1" in titles[:-1] else (None, None, "")
+    check("P1 the bundle 1 landing is in PATCH-NOTES outside any comment, entries newest first",
+          entry and RN.NewestFirst(pn), heads[:3])
     check("P2 main's Stat Calculator landing follows it, with Bonus Features 0.6.46 and 0.6.45 and Options 0.6.108",
-          len(heads) > 1 and heads[1][1] == "Stat Calculator" and len(first) > 2
-          and all(h in first[2] for h in ("### Bonus Features 0.6.46", "### Options 0.6.108", "### Bonus Features 0.6.45")))
+          nxt[1] == "Stat Calculator"
+          and all(h in nxt[2] for h in ("### Bonus Features 0.6.46", "### Options 0.6.108", "### Bonus Features 0.6.45")))
     for addon, folder in (("XayaUI", "XayaUI"), ("Options", "XayaUI_Options"), ("Rules", "XayaUI_Rules")):
-        tv, mv = toc_version(folder), main_version(folder)
+        tv, mv = RN.BUNDLE1[folder], MAIN_FALLBACK[folder]
         m = re.search(r"^### %s (\d+\.\d+\.\d+)\s*$" % addon, entry, re.M)
-        check("P3 V10: %s's heading in the entry is its .toc version (%s), above main's %s" % (addon, tv, mv),
-              m and tv and m.group(1) == tv and vkey(tv) > vkey(mv), m and m.group(1))
+        check("P3 V10: %s's heading in the bundle 1 entry is its landed version (%s), above the earlier main's %s" % (addon, tv, mv),
+              m and m.group(1) == tv and vkey(tv) > vkey(mv), m and m.group(1))
     # (round 10) SD-95 / SD-105 / SD-115 / SD-118 changed both Bonus folders in bundle 1: above main's 0.6.46, with their heading
     for folder in ("XayaUI_Bonus", "XayaUI_Bonus_StatCalculator"):
-        tv = toc_version(folder)
+        tv = RN.BUNDLE1[folder]
         check("P4 %s changed in bundle 1 round 10: its version (%s) is above main's 0.6.46 and the entry has its Bonus Features heading"
               % (folder, tv), tv and vkey(tv) > vkey("0.6.46") and ("### Bonus Features %s\n" % tv) in entry, tv)
     must = [("route", "Moving, runes, totems and loss of control"), ("narrow", "a boss pull"),
@@ -376,8 +370,8 @@ def main():
         # (round 10) B434: the Load tab followed exactly (SD-96), and the refusal fallback (SD-109)
         434: ["Only in combat", "Only out of combat", "The game is given it as each fight starts.", "only (b) plays", "only (a) plays",
               "The game would not take this sound when a fight started"],
-        401: [toc_version(f) or "?" for f in ("XayaUI", "XayaUI_Options", "XayaUI_Rules", "XayaUI_Debug", "XayaUI_Bonus",
-                                                  "XayaUI_Bonus_StatCalculator")],
+        401: [RN.BUNDLE1[f] for f in ("XayaUI", "XayaUI_Options", "XayaUI_Rules", "XayaUI_Debug", "XayaUI_Bonus",
+                                      "XayaUI_Bonus_StatCalculator")],   # (SD-155) B401 is bundle 1's install step
     }
     for n, words in sorted(want.items()):
         line = st.get(n, "")
