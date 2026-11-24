@@ -8,7 +8,8 @@ left half (the sidebar list) and the right half (the page) of every sidebar tree
   2. the fill follows the window opacity in the same proportion (Theme > window opacity, /xuiskin alpha, SD-152's slider):
      window 31% -> halves 30%; window 100% -> halves 97% (100 x 60 / 62); an out-of-range saved 150% -> capped at 100%;
   3. a released tree widget goes back to AceGUI's own colors (nothing of the skin leaks into another addon's AceGUI window).
-Negative control: on Options 0.6.113 (A() x 0.6) check 1 fails (0.372).
+Negative control: on Options 0.6.113 (A() x 0.6) check 1 fails (0.372); a half drawn in another color (the independent
+reviewer's break: the left half white) fails its near-black check.
 Run: python3 tests/pane_fill_opacity_run.py   (slow: each redraw of the stand-in window takes many seconds here)."""
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -43,8 +44,13 @@ local function halves(label, want)
   local ts = trees(root())
   check(label .. ": a sidebar tree is on screen", #ts > 0, #ts)
   for i, t in ipairs(ts) do
-    local _, _, _, la = t.treeframe:GetBackdropColor()
-    local _, _, _, ra = t.border:GetBackdropColor()
+    local lr, lg, lb, la = t.treeframe:GetBackdropColor()
+    local rr, rg, rb, ra = t.border:GetBackdropColor()
+    -- (review, V35 c: a white half passed when only the alpha was read) the colors stay the skin's near-black
+    check(("%s: tree %d left half is near-black (0.03)"):format(label, i), near(lr, 0.03) and near(lg, 0.03) and near(lb, 0.03),
+          ("%s %s %s"):format(tostring(lr), tostring(lg), tostring(lb)))
+    check(("%s: tree %d right half is near-black (0.04)"):format(label, i), near(rr, 0.04) and near(rg, 0.04) and near(rb, 0.04),
+          ("%s %s %s"):format(tostring(rr), tostring(rg), tostring(rb)))
     check(("%s: tree %d left half (the list) filled at %d%%"):format(label, i, math.floor(want * 100 + 0.5)), near(la, want), la)
     check(("%s: tree %d right half (the page) filled at %d%%"):format(label, i, math.floor(want * 100 + 0.5)), near(ra, want), ra)
   end

@@ -526,6 +526,12 @@ def round11a_checks():
           b1date and b1date >= R11A_FLOOR and RN.NewestFirst(pn) and not miss, (b1date, miss))
     pane_miss = ["%s %s" % (h, tv[f]) for f, h in hn.items() if ('"%s %s"' % (h, tv[f])) not in ipd]
     check("V3 the pane shows bundle 1's versions as its entry's headings", not pane_miss, pane_miss)
+    # (review of SD-155) and for whatever release is newest: every heading of PATCH-NOTES' newest entry is in the pane (catches notes
+    # added under an existing title without rebuilding InfoPaneData.lua)
+    newest = RN.Entries(pn)[:1]
+    nh = re.findall(r"^### (.+?)\s*$", newest[0][2], re.M) if newest else []
+    check("V3 the pane shows every heading of PATCH-NOTES' newest entry (%s)" % (newest[0][1] if newest else "none"),
+          nh and not [h for h in nh if ('{ "h3", "%s" }' % h) not in ipd], [h for h in nh if ('{ "h3", "%s" }' % h) not in ipd])
     must = ["saves every error and warning it prints in chat", "says why every time you type it", "now prints its help line",
             "The AddOns list now describes XayaUI Bonus Features and its Stat Calculator correctly"]
     check("V4 the bundle 1 entry, and so the pane, names the round 11a changes", not [w for w in must if w not in entry or w not in ipd],

@@ -254,6 +254,7 @@ def main():
     check("P2 every addon changed in round 10 has its .toc here (%d .toc files)" % len(tocs), set(CHANGED_R10) <= set(tocs),
           sorted(set(CHANGED_R10) - set(tocs)))
     probs = RN.VersionDateProblems(pn, [d for d in tocs if d in RN.HEAD_NAMES])
+    probs += ["%s: no PATCH-NOTES heading name known (add it to tests/release_notes.py HEAD_NAMES)" % d for d in tocs if d not in RN.HEAD_NAMES]
     check("P2 every addon's X-Date is the date of the newest PATCH-NOTES entry naming its .toc version", not probs, probs)
     check("P3 the bundle 1 entry is there, dated no earlier than round 10's notes (2026-11-16), and entries run newest first",
           b1date and b1date >= "2026-11-16" and RN.NewestFirst(pn), b1date)
