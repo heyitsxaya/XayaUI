@@ -55,12 +55,19 @@ local function RestoreLF(b) if b and b.xuiLFRest then pcall(b.xuiLFRest, b); b.x
 local function SkinOn() return not (PlatS.ui and PlatS.ui.skinOff) end
 -- window opacity (0.1 - 1). /xuiskin alpha 0.4 changes it; takes effect on the next redraw / reopen.
 local function Pad() local u = PlatS.ui; return math.max(0, math.min(30, tonumber(u and u.skinPad) or 8)) end
+local DEFAULT_ALPHA = 0.62   -- the window's opacity when ui.skinAlpha is not set
 local function A()
     local u = PlatS.ui
-    local a = (u and tonumber(u.skinAlpha)) or 0.62
+    local a = (u and tonumber(u.skinAlpha)) or DEFAULT_ALPHA
     if TH and TH.IsLight and TH.IsLight() then a = a * 0.85 end   -- light themes: a further 15% more see-through (Xaya, 2026-11-01)
     return a
 end
+-- (SD-154 / SD-155, Xaya 2026-11-24: "rules pane should have more opacity in the core rule box"; her answers "60%" and "Both left and
+-- right hand sides (center of the addon)".) The fill of a sidebar tree's two halves (the list on the left, the page on the right), drawn
+-- over the window's own background. 60% at the default window opacity; it follows the window opacity (light themes, /xuiskin alpha and
+-- SD-152's slider) in the same proportion, capped at fully solid. Was A() x 0.6 (37% at the default). One value for both halves.
+local PANE_FILL = 0.60
+local function PaneA() return math.min(1, A() * (PANE_FILL / DEFAULT_ALPHA)) end
 
 -- /xuiskin lives in core (Modules.lua) so it works before this addon is loaded.
 
@@ -884,7 +891,7 @@ end
 
 local function SkinTree(w)
     TraceGroupFire(w, "tree")
-    PaneFill(w.treeframe, { 0.03, 0.03, 0.03, A() * 0.6 })
+    PaneFill(w.treeframe, { 0.03, 0.03, 0.03, PaneA() })   -- (SD-155) the left half
     PaneDivider(w)
     -- Dragging the sidebar separator. AceGUI's own drag (StartSizing on the tree frame, then on release SetHeight(0) + ClearAllPoints +
     -- re-anchor + OnWidthSet + DoLayout) fights the skin: OnSizeChanged runs the skin's multi-pass RefreshTree on EVERY mouse move
@@ -1084,7 +1091,7 @@ local function SkinTree(w)
         w.content:SetPoint("BOTTOMRIGHT", w.border, "BOTTOMRIGHT", -(UI_MARGIN + pad), UI_MARGIN + pad)
         w.xuiPadApplied = pad
     end
-    PaneFill(w.border, { 0.04, 0.04, 0.04, A() * 0.6 })
+    PaneFill(w.border, { 0.04, 0.04, 0.04, PaneA() })   -- (SD-155) the right half
     for _, b in ipairs(w.buttons or {}) do
         local ht = b:GetHighlightTexture()
         if ht then

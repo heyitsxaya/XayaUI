@@ -19,8 +19,9 @@ so a document that drifts from the code fails here.
      is quoted as XayaUI_Debug/RulesPerf.lua prints it (USER-GUIDE, B424); B426 (d) covers a display the combat engine draws; B438 is the
      hidden-interface step.
   P  Versions and notes (V10, V17, V18): each addon changed in round 10 is above its round 9 version and main's; every addon's X-Date is
-     the date of the newest PATCH-NOTES entry, which is bundle 1's, first and not older than round 10's 2026-11-16 (round 11 hygiene:
-     the invariant, not a date that goes stale each round); the bundle 1 entry has a heading per changed addon at its .toc version, Bonus Features
+     the date of the newest PATCH-NOTES entry naming its .toc version, entries newest first, and the bundle 1 entry not older than round
+     10's 2026-11-16 (SD-155: bundle 1 landed, so it is found by its title and checked at its landed versions, tests/release_notes.py);
+     the bundle 1 entry has a heading per changed addon at its landed version, Bonus Features
      0.6.47 included, and names the round 10 changes; WHATS-NEW has section 16; QA B401 names every version; the Rules developers' note
      and QA B427 compare with the cap the gate holds for main (V33_EVENT_CAPS).
   R  (repair 1) README.md, the download's own folder guide: the Stat Calculator loads at its first open, never at login (SD-105);
@@ -30,6 +31,8 @@ Negative control: on the documents before this round's docs unit (scratchpad r10
 group fail; each deliberate mutation listed in the round 10 docs report is caught.
 Run: python3 tests/fix_r10_docs_run.py   (XUI_R10_ROOT=<a checkout> to check another copy)"""
 import os, re, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import release_notes as RN  # noqa: E402  (bundle 1's entry and versions, read from fixed facts; SD-155)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.environ.get("XUI_R10_ROOT") or os.path.join(HERE, ".."))
@@ -242,34 +245,31 @@ def main():
         okv = tv and vkey(tv) > vkey(ROUND9[f]) and (f not in MAIN or vkey(tv) > vkey(MAIN[f]))
         check("P1 %s changed in round 10: .toc %s is above round 9's %s%s" % (f, tv, ROUND9[f], (" and main's %s" % MAIN[f]) if f in MAIN else ""),
               okv, tv)
-    heads = re.findall(r"^## (\d{4}-\d{2}-\d{2}) — (.+?)\s*$", pn, re.M)
-    parts = re.split(r"^## \d{4}-\d{2}-\d{2} — .*$", pn, flags=re.M)
-    entry = parts[1] if len(parts) > 1 else ""
-    # (round 11 hygiene; R11A final review blocker 4: P2 / P3 pinned round 10's date, 2026-11-16, and went stale when round 11a moved
-    # the X-Dates and the entry to 2026-11-18, which is correct) What they guard is that the versions and the notes move together: every
-    # addon's .toc X-Date is the date of the newest PATCH-NOTES entry, and that entry is bundle 1's, first, newest, and not older than
-    # round 10's notes (2026-11-16, a floor that does not go stale).
-    newest = heads[0][0] if heads else None
+    # (SD-155) bundle 1 landed on main (a9cdbba5, SD-150): its entry is found by its title and checked at its landed versions
+    # (RN.BUNDLE1); a later release has its own entry above it. What P2 / P3 guard is unchanged: the versions and the notes move together
+    # (every addon's .toc X-Date is the date of the newest entry naming its .toc version), entries run newest first, and bundle 1's entry
+    # is not older than round 10's notes (2026-11-16, a floor that does not go stale).
+    b1date, entry = RN.EntryByTitle(pn)
     tocs = sorted(d for d in os.listdir(ROOT) if d.startswith("XayaUI") and os.path.isfile(os.path.join(ROOT, d, d + ".toc")))
     check("P2 every addon changed in round 10 has its .toc here (%d .toc files)" % len(tocs), set(CHANGED_R10) <= set(tocs),
           sorted(set(CHANGED_R10) - set(tocs)))
-    for d in tocs:
-        check("P2 %s X-Date is the newest PATCH-NOTES entry's date (%s)" % (d, newest), newest and toc_date(d) == newest, toc_date(d))
-    check("P3 the bundle 1 entry is first, dated no earlier than any other entry and than round 10's notes (2026-11-16)",
-          heads and heads[0][1] == "Rules Fix Bundle 1" and all(heads[0][0] >= h[0] for h in heads) and heads[0][0] >= "2026-11-16",
-          heads[:2])
+    probs = RN.VersionDateProblems(pn, [d for d in tocs if d in RN.HEAD_NAMES])
+    check("P2 every addon's X-Date is the date of the newest PATCH-NOTES entry naming its .toc version", not probs, probs)
+    check("P3 the bundle 1 entry is there, dated no earlier than round 10's notes (2026-11-16), and entries run newest first",
+          b1date and b1date >= "2026-11-16" and RN.NewestFirst(pn), b1date)
     for f, h in HEAD_NAMES.items():
-        check("P4 the entry has '### %s %s' (its .toc version)" % (h, toc_version(f)), ("### %s %s\n" % (h, toc_version(f))) in entry)
+        check("P4 the bundle 1 entry has '### %s %s' (its landed version)" % (h, RN.BUNDLE1[f]), ("### %s %s\n" % (h, RN.BUNDLE1[f])) in entry)
     must = ["**Calculator (new)**", "/xui stats on is removed", "loads the first time you open it", "no longer comes back by itself",
             "follows the rule's Load tab exactly", "Out of combat opacity now also applies", "A part's commands now work only while"]
     check("P5 the entry names the round 10 changes", not [w for w in must if w not in entry], [w for w in must if w not in entry])
     sec16 = wn[wn.find("## 16. Rules fix bundle 1, round 10"):]
-    vers = ["XayaUI %s" % toc_version("XayaUI"), "Options %s" % toc_version("XayaUI_Options"), "Rules %s" % toc_version("XayaUI_Rules"),
-            "XayaUI Debug %s" % toc_version("XayaUI_Debug"), "Bonus Features %s" % toc_version("XayaUI_Bonus")]
-    check("P6 WHATS-NEW section 16 covers round 10 with every version", "## 16. Rules fix bundle 1, round 10" in wn
+    B = RN.BUNDLE1
+    vers = ["XayaUI %s" % B["XayaUI"], "Options %s" % B["XayaUI_Options"], "Rules %s" % B["XayaUI_Rules"],
+            "XayaUI Debug %s" % B["XayaUI_Debug"], "Bonus Features %s" % B["XayaUI_Bonus"]]
+    check("P6 WHATS-NEW section 16 covers round 10 with every bundle 1 version", "## 16. Rules fix bundle 1, round 10" in wn
           and not [v for v in vers if v not in sec16] and "Calculator (new" in sec16, [v for v in vers if v not in sec16])
     b401 = st.get(401, "")
-    check("P7 QA B401 names every addon's .toc version", all(toc_version(f) and toc_version(f) in b401 for f in ROUND9)
+    check("P7 QA B401 names every addon's bundle 1 version", all(B[f] in b401 for f in ROUND9)
           and "stay 0.6.46" not in b401)
     rules = entry[entry.find("### Rules "):]
     mm = re.search(r"costliest frame in a fight is ([\d,]+) .*?main's ([\d,]+)", rules)
